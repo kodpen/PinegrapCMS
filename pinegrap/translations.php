@@ -95,15 +95,15 @@ if ($group !== '') {
 
 // The queue: "Draw the waiting pictures" on the Pictures group draws each
 // picture waiting or out of date in this browser, one after another, with
-// the Design Canvas's own drawing (assets/js/picture_queue.js). The server
-// checks each draw as the Design Canvas's Languages list does. Without this
+// the Artifact Canvas's own drawing (assets/js/picture_queue.js). The server
+// checks each draw as the Artifact Canvas's Languages list does. Without this
 // view the same rows are drawn by an open panel page (picture_auto.js) and
 // by the translation job (pg_picture_tr_draw_due()).
 if (($group === 'pictures') && !empty($_GET['draw'])) {
     $queue = pg_picture_tr_queue();
     $queue_back = 'translations.php?' . http_build_query(array('language' => $language, 'group' => 'pictures'));
     $queue_rows = '';
-    $open_picture_label = lang('Edit this image in the Design Canvas');
+    $open_picture_label = lang('Edit this image in the Artifact Canvas');
 
     foreach ($queue as $queue_item) {
         $queue_rows .= '<li class="pg-list-row" data-pq-row="1">
@@ -111,7 +111,7 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
                 <div class="pg-list-row-main">
                     <div class="pg-list-row-head pg-list-row-head-wrap"><span class="pg-list-row-title">' . h($queue_item['name']) . '</span><span class="pg-pill pg-tone-gray text-nowrap">' . lang('Waiting') . '</span></div>
                     <div class="pg-list-row-text"><span' . $text_lang($queue_item['language']) . '>' . h($queue_item['label']) . '</span><span data-pq-reason="1"> · ' . (($queue_item['state'] === 2) ? lang('Out of date') : lang('Not drawn yet')) . '</span><span class="d-block" data-pq-note="1" hidden></span></div>
-                    <div class="pg-list-row-actions" data-pq-edit="1" hidden><button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-image-edit="' . h($queue_item['name']) . '" title="' . h($open_picture_label) . '"><i class="bi bi-brush" aria-hidden="true"></i>' . lang('Edit in the Design Canvas') . '</button></div>
+                    <div class="pg-list-row-actions" data-pq-edit="1" hidden><button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-image-edit="' . h($queue_item['name']) . '" title="' . h($open_picture_label) . '"><i class="bi bi-brush" aria-hidden="true"></i>' . lang('Edit in the Artifact Canvas') . '</button></div>
                 </div>
             </li>';
     }
@@ -121,7 +121,7 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
         'extra classes'       => 'translations pg-measure-list',
         'icon'                => 'settings',
         'heading'             => lang('Draw the waiting pictures'),
-        'heading_description' => lang('The pictures made in the Design Canvas whose texts are translated, drawn now in each language one after another in this browser. They are drawn by themselves without this page too: by an open panel, or, with nobody in the panel, by the server where it can. Keep this page open until the count reaches zero.'),
+        'heading_description' => lang('The pictures made in the Artifact Canvas whose texts are translated, drawn now in each language one after another in this browser. They are drawn by themselves without this page too: by an open panel, or, with nobody in the panel, by the server where it can. Keep this page open until the count reaches zero.'),
     )) . '
 <main id="content" class="container-fluid">
     <div id="pg_pq" data-config="' . h(encode_json(array(
@@ -543,12 +543,12 @@ if ($language !== '') {
 }
 
 // The Pictures group: the picture each text comes from, which opens in the
-// Design Canvas (pg_image_editor_includes(), its data-pg-image-edit button).
+// Artifact Canvas (pg_image_editor_includes(), its data-pg-image-edit button).
 $row_pictures = ($group === 'pictures') ? pg_tr_picture_files(array_column($rows, 'id')) : array();
 
 // How many pictures the queue would draw for this user (up to its bound).
 $picture_queue_count = ($group === 'pictures') ? count(pg_picture_tr_queue()) : 0;
-$open_picture_label = lang('Edit this image in the Design Canvas');
+$open_picture_label = lang('Edit this image in the Artifact Canvas');
 
 // The editor rows.
 $output_rows = '';
@@ -614,7 +614,7 @@ if (($language !== '') && !$rows) {
         // (its file_translation rows), so Update lists none before that.
         . (($scope_stats['total'] === 0)
             ? (($group === 'pictures')
-                ? lang('No picture yet. A picture made in the Design Canvas whose words are text layers is listed here once a page that shows it is saved in the Visual Page Editor or opened in another language.')
+                ? lang('No picture yet. A picture made in the Artifact Canvas whose words are text layers is listed here once a page that shows it is saved in the Visual Page Editor or opened in another language.')
                 : lang(array('string' => 'No text has been scanned yet. Press "{var:1}": the pages are read and their texts are listed here.', 'vars' => h($update_button_label))))
             : lang('No text matches the filter.'))
         . '</div>';
@@ -984,7 +984,7 @@ echo pg_page_shell(array(
                         <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . ($selected_page ? ' · <a href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener">' . lang('Open the page') . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '</span>
                     </div>
                     <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '')
-                        . (($group === 'pictures') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of pictures made in the Design Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language\'s texts are translated, its picture is drawn by itself: by an open panel, or, with nobody in the panel, by the server where it can. "Draw the waiting pictures" draws them now.') . '</div>' : '')
+                        . (($group === 'pictures') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of pictures made in the Artifact Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language\'s texts are translated, its picture is drawn by itself: by an open panel, or, with nobody in the panel, by the server where it can. "Draw the waiting pictures" draws them now.') . '</div>' : '')
                         . ($picture_queue_count ? '<div class="d-flex justify-content-end py-3 border-bottom"><a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url(array('draw' => 1, 'p' => 0))) . '"><i class="bi bi-brush" aria-hidden="true"></i>' . lang('Draw the waiting pictures') . ' <span class="pg-count">' . (int) $picture_queue_count . '</span></a></div>' : '') . $output_index_note . $output_bulk . $output_rows . '
                         ' . ($output_pagination !== '' ? '<div class="d-flex justify-content-center pt-5">' . $output_pagination . '</div>' : '') . '
                     </div>
@@ -1004,8 +1004,8 @@ echo pg_page_shell(array(
                     <div class="dialog-body">
                         <div class="mb-5">
                             <label class="form-label" for="pg_tr_import_file">' . lang('CSV file') . '</label>
-                            <input type="file" class="form-control" id="pg_tr_import_file" name="csv" accept=".csv,text/csv" required="required"/>
-                            ' . pg_upload_limit_hint() . '
+                            <input type="file" class="form-control" id="pg_tr_import_file" name="csv" accept=".csv,text/csv,' . PG_SHEET_IMPORT_ACCEPT . '" required="required"/>
+                            ' . pg_sheet_import_hint() . pg_upload_limit_hint() . '
                             <div class="form-text">' . lang('A file exported from this screen, with its translation column filled in. Rows are matched by the hash column; a row whose source text has since changed is skipped.') . '</div>
                         </div>
                         <div class="form-field">

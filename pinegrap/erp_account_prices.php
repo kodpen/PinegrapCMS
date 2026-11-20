@@ -66,9 +66,25 @@ if ($_POST) {
     // Every field of the forms is one value. One posted as an array counts as
     // not given: (int) read an array product as product 1 and put it on the
     // list, (string) read the discount as "Array" with a notice.
-    pg_request_single_values(array('erp_action', 'product_id', 'account_discount'));
+    pg_request_single_values(array('erp_action', 'product_id', 'account_discount', 'price_account_id'));
 
     $action = (string) ($_POST['erp_action'] ?? 'save');
+
+    // Whose prices the account buys at; the save refuses a second hop.
+    if ($action === 'price_account') {
+        $saved = $readonly
+            ? array('success' => false, 'error' => lang('You can read the ERP but not change it.'))
+            : erp_account_price_pointer_save($account_id, (int) ($_POST['price_account_id'] ?? 0));
+
+        if ($saved['success']) {
+            log_activity(lang(array('string' => 'erp price list of account ({var:1}) was changed', 'vars' => (string) $account['title'])), $_SESSION['sessionusername']);
+            $liveform->add_notice(h(lang('Whose prices the account uses was saved.')));
+        } else {
+            $liveform->mark_error('price_account_id', h($saved['error']));
+        }
+
+        go($self);
+    }
 
     if ($action === 'add') {
         if (erp_account_prices_add($account_id, (int) ($_POST['product_id'] ?? 0), (int) $user['id'])) {
@@ -102,6 +118,66 @@ if (!$ready) {
 // on sales only), so a supplier's page says so instead of looking in force.
 if ($ready && ((string) $account['kind'] === 'supplier')) {
     $liveform->add_warning(h(lang('This account is a supplier only. Account prices apply to sales only (invoices, quotes and the store), never to purchases.')));
+}
+
+// Whose prices the account buys at ("Uses the prices of"): the accounts the
+// picker offers, the one chosen, and the accounts that use this one's.
+$shared = $ready && erp_shared_prices_ready();
+$price_account_id = $shared ? (int) ($account['price_account_id'] ?? 0) : 0;
+$price_account = ($price_account_id > 0) ? erp_account($price_account_id) : null;
+$price_users = $shared ? erp_account_price_users_shown($account_id, 10) : array('count' => 0, 'rows' => array(), 'more' => 0);
+$price_account_refused = $liveform->check_field_error('price_account_id');
+
+if (is_array($price_account)) {
+    // The account's name links to its prices; the sentence is escaped first
+    // and the link put in its place.
+    $liveform->add_warning(str_replace(
+        '{account}',
+        '<a href="erp_account_prices.php?account_id=' . (int) $price_account['id'] . '">' . h((string) $price_account['title']) . '</a>',
+        h(lang(array('string' => 'This account buys at the prices of {var:1}. Its own prices below are kept and are used again when it stops.', 'vars' => '{account}')))
+    ));
+}
+
+$output_price_account = '';
+
+if ($shared) {
+    $options_html = '<option value="0">' . h(lang('Its own prices')) . '</option>';
+
+    foreach (erp_account_price_pointer_options(erp_accounts(array('kind' => 'customer')), $account_id, $price_account_id) as $option_id => $option_title) {
+        $options_html .= '<option value="' . (int) $option_id . '"' . (($option_id === $price_account_id) ? ' selected' : '') . '>' . h($option_title) . '</option>';
+    }
+
+    // An account others follow cannot follow another (one hop): the list is
+    // shown, not offered, with who follows it.
+    $followed = ($price_users['count'] > 0) && ($price_account_id <= 0);
+    $locked = $readonly || $followed;
+    $users_html = '';
+
+    foreach ($price_users['rows'] as $user_row) {
+        $users_html .= '<li><a href="erp_account_prices.php?account_id=' . (int) $user_row['id'] . '">' . h($user_row['title']) . '</a></li>';
+    }
+
+    // The rest past the first ten: one plain line under the list.
+    $users_more_html = ($price_users['more'] > 0)
+        ? '<p class="pg-text-2 fg-secondary mt-2 mb-0">' . h(lang(array('string' => 'and {var:1} more accounts', 'vars' => pg_format_number($price_users['more'], 0)))) . '</p>'
+        : '';
+
+    $output_price_account = '
+                <form method="post" action="erp_account_prices.php" class="card pg-card mb-7">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="account_id" value="' . $account_id . '" />
+                    <input type="hidden" name="erp_action" value="price_account" />
+                    <h2 class="card-header bg-reset border-0 pg-title-status">' . h(lang('Shared prices')) . '</h2>
+                    <div class="card-body">
+                        <div class="form-field">
+                            <label class="form-label" for="price_account_id">' . h(lang('Uses the prices of')) . '</label>
+                            <select class="form-control' . ($price_account_refused ? ' is-invalid' : '') . '" id="price_account_id" name="price_account_id" data-pg-combobox' . ($price_account_refused ? ' aria-invalid="true"' : '') . ($locked ? ' disabled' : '') . '>' . $options_html . '</select>
+                            ' . (!$followed ? '<div class="form-text">' . h(lang('Only the prices and the discount follow; payment terms and the credit limit stay this account\'s. Making the chosen account passive does not stop its prices.')) . '</div>' : '') . '
+                        </div>
+                        ' . ($users_html !== '' ? '<p class="pg-text-2 fg-secondary mt-5 mb-2">' . (($price_users['count'] === 1) ? h(lang('One account uses this account\'s prices, so it keeps its own:')) : h(lang(array('string' => '{var:1} accounts use this account\'s prices, so it keeps its own:', 'vars' => pg_format_number($price_users['count'], 0))))) . '</p><ul class="pg-text-2 mb-0">' . $users_html . '</ul>' . $users_more_html : '') . '
+                        ' . (!$locked ? '<button type="submit" class="pg-button pg-button-fill w-100 mt-5"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>' : '') . '
+                    </div>
+                </form>';
 }
 
 // The products' price and discount change in place, saved as soon as they
@@ -212,6 +288,7 @@ pg_page_shell([
         </div>
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky my-7" style="top:3.3rem;">
+                ' . $output_price_account . '
                 <form method="post" action="erp_account_prices.php" class="card pg-card mb-7">
                     ' . get_token_field() . '
                     <input type="hidden" name="account_id" value="' . $account_id . '" />
@@ -243,7 +320,7 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

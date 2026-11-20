@@ -4,9 +4,9 @@
  *
  * Tests for reading a zip entry whole without inflating it past what its
  * archive declares: pg_zip_entry_contents() and pg_zip_import_open()
- * (includes/fn/files.php), and the OpenDocument check in front of PHPExcel
- * (pg_products_import_ods_check(), import_products_f.php) as the product
- * importer and the bank statement importer use it. The archives are small
+ * (includes/fn/files.php), and an .ods whose content.xml declares too much
+ * or inflates past what it declares, as the product importer and the bank
+ * statement importer meet it through the sheet reader. The archives are small
  * and written here; in some of them one entry's declared size is changed
  * afterwards, the data and its checksum left as they were.
  *
@@ -113,8 +113,8 @@ function zip_entry_contents_test_libzip_reads_past($zip, $name)
 	return is_string($data) && (strlen($data) > $stat['size']);
 }
 
-// The two parts PHPExcel's OpenDocument reader reads, around one sheet with a
-// heading row and one transaction.
+// The parts of an .ods around one sheet with a heading row and one
+// transaction.
 function zip_entry_contents_test_ods_parts()
 {
 	$cell = function ($text) {
@@ -334,13 +334,12 @@ function test_zip_import_open_measures_the_archive_first()
 	zip_entry_contents_test_clean($dir);
 }
 
-// The OpenDocument check passes an honest file and turns away one whose
-// parts declare too much, inflate past what they declare, or are not there;
-// the product importer and the bank statement importer answer with it
-// before PHPExcel holds a part.
-function test_zip_entry_contents_ods_check()
+// An honest .ods is read; one whose content.xml declares too much or
+// inflates past what it declares, or that is no zip, is turned away by both
+// importers before a cell is taken.
+function test_zip_entry_contents_ods_importers()
 {
-	if (!class_exists('ZipArchive')) {
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
 		return;
 	}
 
@@ -349,33 +348,28 @@ function test_zip_entry_contents_ods_check()
 	$unreadable = lang('The file could not be read.');
 
 	$honest = zip_entry_contents_test_archive($dir . '/honest.ods', $parts);
-	pg_assert_same('', pg_products_import_ods_check($honest), 'an honest file');
+	$read = erp_bank_read_file($honest, 'statement.ods');
+	pg_assert_same(array(array('Tarih', 'Açıklama', 'Tutar'), array('2026-09-23', 'Kira', '-800.50')), $read['rows'], 'bank statement: an honest file');
 
 	$bomb = zip_entry_contents_test_archive($dir . '/bomb.ods', $parts, array('content.xml' => 100));
-	pg_assert_same($unreadable, pg_products_import_ods_check($bomb), 'content.xml inflating past its declared size');
-
-	$large = zip_entry_contents_test_archive($dir . '/large.ods', $parts, array('content.xml' => PG_PRODUCTS_IMPORT_ODS_MAX_PART + 1));
-	pg_assert_same(lang('The file is too large.'), pg_products_import_ods_check($large), 'content.xml declaring more than the ceiling');
-
-	$no_meta = $parts;
-	unset($no_meta['meta.xml']);
-	$no_meta = zip_entry_contents_test_archive($dir . '/no-meta.ods', $no_meta);
-	pg_assert_same($unreadable, pg_products_import_ods_check($no_meta), 'no meta.xml');
-
-	file_put_contents($dir . '/not.ods', 'not a workbook');
-	pg_assert_same($unreadable, pg_products_import_ods_check($dir . '/not.ods'), 'not a zip');
-
-	// The importers answer before the reader: nothing is taken in.
 	$read = erp_bank_read_file($bomb, 'statement.ods');
 	pg_assert_same(array(), $read['rows'], 'bank statement: no rows from the doctored file');
 	pg_assert_same($unreadable, $read['error'], 'bank statement: said so');
 
+	$large = zip_entry_contents_test_archive($dir . '/large.ods', $parts, array('content.xml' => PG_SHEET_ODS_MAX_PART + 1));
 	$read = erp_bank_read_file($large, 'statement.ods');
 	pg_assert_same(lang('The file is too large.'), $read['error'], 'bank statement: too large');
+
+	file_put_contents($dir . '/not.ods', 'not a workbook');
+	$read = erp_bank_read_file($dir . '/not.ods', 'statement.ods');
+	pg_assert_same($unreadable, $read['error'], 'bank statement: not a zip');
 
 	$error = '';
 	pg_assert_same('', pg_products_import_to_csv($bomb, 'products.ods', $error), 'product import: no CSV from the doctored file');
 	pg_assert_same($unreadable, $error, 'product import: said so');
+
+	pg_assert_same('', pg_products_import_to_csv($large, 'products.ods', $error), 'product import: no CSV from the large file');
+	pg_assert_same(lang('The file is too large.'), $error, 'product import: too large');
 
 	zip_entry_contents_test_clean($dir);
 }

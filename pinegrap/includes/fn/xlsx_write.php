@@ -472,3 +472,249 @@ function pg_xlsx_write_plain($columns, $rows, $path, $sheet_title)
 
     return $zip->close();
 }
+
+/**
+ * A number as the text of a <v> element: up to ten decimals, no trailing
+ * zeros, never the exponent form.
+ *
+ * @param int|float $value
+ * @return string
+ */
+function pg_xlsx_number_text($value)
+{
+    if (is_int($value)) {
+        return (string) $value;
+    }
+
+    $text = rtrim(rtrim(number_format((float) $value, 10, '.', ''), '0'), '.');
+
+    return (($text === '') || ($text === '-0')) ? '0' : $text;
+}
+
+/**
+ * A one-sheet workbook with fixed rows above the data: a help note, a
+ * heading row, column widths and merged cells, the way an import sheet of
+ * another program is laid out. The rows are data in code, so no template
+ * file is needed.
+ *
+ * $layout:
+ *   title      the sheet name
+ *   first_row  the row number of the first data row
+ *   columns    how many data columns: every one gets a bordered cell
+ *   widths     column index => width
+ *   head       row number => array('cells' => column index => text,
+ *              'style' => 'note' | 'heading', 'height' => points or 0,
+ *              'size' => font size of a note)
+ *   merge      cell ranges merged in the head, e.g. 'A1:F1'
+ *   formats    column index => number format code of the data cells
+ *
+ * A data row is an array keyed by column index. An int or a float is a
+ * number, array('date' => 'Y-m-d' or 'Y-m-d H:i') a date (pg_xlsx_date_serial())
+ * in its column's format, anything else inline text, never a formula. An
+ * empty value leaves the bordered cell empty.
+ *
+ * @param array  $layout
+ * @param array  $rows
+ * @param string $path  Where to write the .xlsx
+ * @return bool
+ */
+function pg_xlsx_write_layout($layout, $rows, $path)
+{
+    if (!class_exists('ZipArchive')) {
+        return false;
+    }
+
+    $first_row = max(1, (int) ($layout['first_row'] ?? 2));
+    $columns = max(1, (int) ($layout['columns'] ?? 1));
+    $formats = isset($layout['formats']) ? (array) $layout['formats'] : array();
+
+    // Fonts, number formats and cell formats are collected as the cells ask
+    // for them; a cell names its format by index.
+    $fonts = array('<font><sz val="11"/><name val="Arial"/><family val="2"/></font>');
+    $num_fmts = array();
+    $xfs = array('<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>');
+    $xf_index = array();
+
+    $style = function ($bold, $size, $border, $wrap, $format) use (&$fonts, &$num_fmts, &$xfs, &$xf_index) {
+        $key = serialize(array($bold, $size, $border, $wrap, $format));
+
+        if (isset($xf_index[$key])) {
+            return $xf_index[$key];
+        }
+
+        $font = '<font>' . ($bold ? '<b/>' : '') . '<sz val="' . (float) $size . '"/><name val="Arial"/><family val="2"/></font>';
+        $font_id = array_search($font, $fonts, true);
+        if ($font_id === false) {
+            $fonts[] = $font;
+            $font_id = count($fonts) - 1;
+        }
+
+        // 0 General, 4 #,##0.00, 14 a short date; anything else is the
+        // workbook's own from 164 up.
+        $builtin = array('' => 0, '#,##0.00' => 4, 'mm-dd-yy' => 14);
+        if (isset($builtin[$format])) {
+            $fmt_id = $builtin[$format];
+        } else {
+            if (!isset($num_fmts[$format])) {
+                $num_fmts[$format] = 164 + count($num_fmts);
+            }
+            $fmt_id = $num_fmts[$format];
+        }
+
+        $alignment = $wrap ? '<alignment vertical="top" wrapText="1"/>' : '<alignment horizontal="left" vertical="center"/>';
+
+        $xfs[] = '<xf numFmtId="' . $fmt_id . '" fontId="' . $font_id . '" fillId="0" borderId="' . ($border ? 1 : 0) . '" xfId="0"' .
+            (($fmt_id > 0) ? ' applyNumberFormat="1"' : '') . ' applyFont="1"' . ($border ? ' applyBorder="1"' : '') . ' applyAlignment="1">' . $alignment . '</xf>';
+        $xf_index[$key] = count($xfs) - 1;
+
+        return $xf_index[$key];
+    };
+
+    $data = '';
+    $last_row = $first_row - 1;
+    $head = isset($layout['head']) ? (array) $layout['head'] : array();
+    ksort($head);
+
+    foreach ($head as $number => $row) {
+        $number = (int) $number;
+        if (($number < 1) || ($number >= $first_row)) {
+            continue;
+        }
+
+        $note = (($row['style'] ?? '') === 'note');
+        $s = $note ? $style(true, $row['size'] ?? 11, false, true, '') : $style(true, 11, true, false, '');
+        $height = (float) ($row['height'] ?? 0);
+
+        $data .= '<row r="' . $number . '"' . (($height > 0) ? ' ht="' . $height . '" customHeight="1"' : '') . '>';
+        $cells = isset($row['cells']) ? (array) $row['cells'] : array();
+        ksort($cells);
+        foreach ($cells as $index => $text) {
+            $data .= '<c r="' . pg_xlsx_column_letter((int) $index) . $number . '" s="' . $s . '" t="inlineStr"><is><t xml:space="preserve">' . pg_xlsx_xml($text) . '</t></is></c>';
+        }
+        $data .= '</row>';
+    }
+
+    $number = $first_row - 1;
+
+    foreach ($rows as $row) {
+        $number++;
+        $row = (array) $row;
+        $width = max($columns, empty($row) ? 0 : max(array_keys($row)) + 1);
+        $data .= '<row r="' . $number . '">';
+
+        for ($index = 0; $index < $width; $index++) {
+            $value = $row[$index] ?? null;
+            $format = (string) ($formats[$index] ?? '');
+            $reference = pg_xlsx_column_letter($index) . $number;
+
+            if (is_array($value)) {
+                $serial = isset($value['date']) ? pg_xlsx_date_serial($value['date']) : null;
+                $value = ($serial === null) ? (string) ($value['date'] ?? '') : $serial;
+                if ($serial !== null) {
+                    $data .= '<c r="' . $reference . '" s="' . $style(false, 11, true, false, ($format === '') ? 'mm-dd-yy' : $format) . '"><v>' . pg_xlsx_number_text($serial) . '</v></c>';
+                    continue;
+                }
+            }
+
+            $s = $style(false, 11, true, false, $format);
+
+            if (($value === null) || ($value === '') || is_bool($value)) {
+                $data .= '<c r="' . $reference . '" s="' . $s . '"/>';
+            } elseif (is_int($value) || (is_float($value) && is_finite($value))) {
+                $data .= '<c r="' . $reference . '" s="' . $s . '"><v>' . pg_xlsx_number_text($value) . '</v></c>';
+            } else {
+                $data .= '<c r="' . $reference . '" s="' . $s . '" t="inlineStr"><is><t xml:space="preserve">' . pg_xlsx_xml($value) . '</t></is></c>';
+            }
+        }
+
+        $data .= '</row>';
+        $last_row = $number;
+    }
+
+    $cols = '';
+    $widths = isset($layout['widths']) ? (array) $layout['widths'] : array();
+    ksort($widths);
+    foreach ($widths as $index => $width) {
+        $cols .= '<col min="' . ((int) $index + 1) . '" max="' . ((int) $index + 1) . '" width="' . (float) $width . '" customWidth="1"/>';
+    }
+
+    $merges = '';
+    foreach ((array) ($layout['merge'] ?? array()) as $range) {
+        if (preg_match('/^[A-Z]{1,3}[0-9]+:[A-Z]{1,3}[0-9]+$/', (string) $range)) {
+            $merges .= '<mergeCell ref="' . $range . '"/>';
+        }
+    }
+
+    $ns = 'http://schemas.openxmlformats.org/';
+    $head_xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n";
+
+    $sheet = $head_xml .
+        '<worksheet xmlns="' . $ns . 'spreadsheetml/2006/main">' .
+        '<dimension ref="A1:' . pg_xlsx_column_letter($columns - 1) . max(1, $last_row) . '"/>' .
+        '<sheetViews><sheetView showGridLines="0" workbookViewId="0"/></sheetViews>' .
+        '<sheetFormatPr defaultRowHeight="15"/>' .
+        (($cols !== '') ? '<cols>' . $cols . '</cols>' : '') .
+        '<sheetData>' . $data . '</sheetData>' .
+        (($merges !== '') ? '<mergeCells count="' . substr_count($merges, '<mergeCell ') . '">' . $merges . '</mergeCells>' : '') .
+        '</worksheet>';
+
+    $fmt_xml = '';
+    foreach ($num_fmts as $code => $id) {
+        $fmt_xml .= '<numFmt numFmtId="' . $id . '" formatCode="' . pg_xlsx_xml($code) . '"/>';
+    }
+
+    $styles = $head_xml .
+        '<styleSheet xmlns="' . $ns . 'spreadsheetml/2006/main">' .
+        (($fmt_xml !== '') ? '<numFmts count="' . count($num_fmts) . '">' . $fmt_xml . '</numFmts>' : '') .
+        '<fonts count="' . count($fonts) . '">' . implode('', $fonts) . '</fonts>' .
+        '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' .
+        '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' .
+        '<border><left style="thin"><color rgb="FFB8B8B8"/></left><right style="thin"><color rgb="FFB8B8B8"/></right><top style="thin"><color rgb="FFB8B8B8"/></top><bottom style="thin"><color rgb="FFB8B8B8"/></bottom><diagonal/></border></borders>' .
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' .
+        '<cellXfs count="' . count($xfs) . '">' . implode('', $xfs) . '</cellXfs>' .
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' .
+        '</styleSheet>';
+
+    $parts = array(
+        '[Content_Types].xml' => $head_xml .
+            '<Types xmlns="' . $ns . 'package/2006/content-types">' .
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' .
+            '<Default Extension="xml" ContentType="application/xml"/>' .
+            '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' .
+            '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' .
+            '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' .
+            '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' .
+            '</Types>',
+        '_rels/.rels' => $head_xml .
+            '<Relationships xmlns="' . $ns . 'package/2006/relationships">' .
+            '<Relationship Id="rId1" Type="' . $ns . 'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' .
+            '</Relationships>',
+        'xl/workbook.xml' => $head_xml .
+            '<workbook xmlns="' . $ns . 'spreadsheetml/2006/main" xmlns:r="' . $ns . 'officeDocument/2006/relationships">' .
+            '<bookViews><workbookView activeTab="0"/></bookViews>' .
+            '<sheets><sheet name="' . pg_xlsx_xml(pg_xlsx_sheet_title($layout['title'] ?? '')) . '" sheetId="1" r:id="rId1"/></sheets>' .
+            '</workbook>',
+        'xl/_rels/workbook.xml.rels' => $head_xml .
+            '<Relationships xmlns="' . $ns . 'package/2006/relationships">' .
+            '<Relationship Id="rId1" Type="' . $ns . 'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' .
+            '<Relationship Id="rId2" Type="' . $ns . 'officeDocument/2006/relationships/styles" Target="styles.xml"/>' .
+            '<Relationship Id="rId3" Type="' . $ns . 'officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>' .
+            '</Relationships>',
+        'xl/sharedStrings.xml' => $head_xml .
+            '<sst xmlns="' . $ns . 'spreadsheetml/2006/main" count="0" uniqueCount="0"/>',
+        'xl/styles.xml' => $styles,
+        'xl/worksheets/sheet1.xml' => $sheet,
+    );
+
+    $zip = new ZipArchive();
+
+    if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        return false;
+    }
+
+    foreach ($parts as $name => $part) {
+        $zip->addFromString($name, $part);
+    }
+
+    return $zip->close();
+}

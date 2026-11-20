@@ -14,7 +14,7 @@ description: ERP accountant pack (4.78): the shared xlsx writer, where the ZIP i
 
 ## Which xlsx writer does a report use?
 - `erp_accountant_write_workbook($sheets, $path)`: several sheets, frozen bold heading with filters. A cell is a scalar typed by its column, or `['v' => value, 't' => type]` (`text`, `money`, `money_bold`, `date`, `int`, `number`, `bold`); money in currency units, dates as dates.
-- Used by the VAT, profit and expense exports; a new Excel output uses it. The export profiles (`includes/erp/export.php`) keep their own (Paraşüt templates).
+- Used by the VAT, profit and expense exports; a new Excel output uses it. The export profiles use `includes/fn/xlsx_write.php` (`parasut-import-sheets.md`).
 
 ## Where is the ZIP kept?
 - `data/temp/erp_packages/` (`erp_accountant_directory()`, plus a `Require all denied` `.htaccess`). The ZIP is a delivery copy, not a record: the row keeps what went in, and a pack whose file is gone is built again.

@@ -62,9 +62,13 @@ function pg_auto_dialog_name_in_use($name, $except_id)
  *                             pg_auto_dialog_open_settings(); null, or a site
  *                             whose columns are not added yet, leaves them as
  *                             stored (the defaults on a create)
+ * @param array|null $content  what it shows (content, component_id), read
+ *                             through pg_auto_dialog_content(); null, or a
+ *                             site whose columns are not added yet, leaves
+ *                             them as stored (an address on a create)
  * @return int the auto dialog's id, 0 when a query failed
  */
-function pg_auto_dialog_save($auto_dialog_id, $values, $user_id, $open = null)
+function pg_auto_dialog_save($auto_dialog_id, $values, $user_id, $open = null, $content = null)
 {
     $auto_dialog_id = (int) $auto_dialog_id;
     $values = array_values($values);
@@ -87,6 +91,13 @@ function pg_auto_dialog_save($auto_dialog_id, $values, $user_id, $open = null)
         $open = pg_auto_dialog_open_settings($open);
         $open_columns = array_keys($open);
         array_splice($row, 8, 0, array_values($open));
+    }
+
+    // What it shows follows them.
+    if (($content !== null) && pg_auto_dialog_content_ready()) {
+        $content = pg_auto_dialog_content($content);
+        array_splice($row, 8 + count($open_columns), 0, array_values($content));
+        $open_columns = array_merge($open_columns, array_keys($content));
     }
 
     if ($auto_dialog_id > 0) {
@@ -128,26 +139,160 @@ function pg_auto_dialog_save($auto_dialog_id, $values, $user_id, $open = null)
 }
 
 /**
- * The auto dialog rows a page may hand to software.init_auto_dialogs(), which
- * opens each URL in an iframe: a row whose URL a browser would open with a
+ * The auto dialog rows a page may hand to software.init_auto_dialogs(). An
+ * address opens in an iframe: a row whose URL a browser would open with a
  * scheme other than http or https (javascript:, data:), saved before the
  * save checked the address, is left out, so it never runs in the site's
- * origin. The keys of the rows that stay are renumbered (a JSON list).
+ * origin. A designed pop-up is kept only while its shared component is
+ * there to draw (pg_auto_dialog_components_found()): a missing one would
+ * open an empty box. The keys of the rows that stay are renumbered (a JSON
+ * list). Pure.
  *
- * @param array $rows  auto_dialogs rows with a url column
+ * @param array $rows           auto_dialogs rows with a url column
+ * @param array $component_ids  the shared components that can be drawn
  * @return array
  */
-function pg_auto_dialogs_for_page($rows)
+function pg_auto_dialogs_for_page($rows, $component_ids = array())
 {
     $kept = array();
+    $component_ids = array_map('intval', (array) $component_ids);
 
     foreach ((array) $rows as $row) {
-        if (is_array($row) && isset($row['url']) && pg_address_opens_as_web($row['url'])) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $content = pg_auto_dialog_content($row);
+
+        if ($content['content'] === 'component') {
+            if (in_array($content['component_id'], $component_ids, true)) {
+                $kept[] = $row;
+            }
+
+            continue;
+        }
+
+        if (isset($row['url']) && pg_address_opens_as_web($row['url'])) {
             $kept[] = $row;
         }
     }
 
     return $kept;
+}
+
+/**
+ * The shared components the designed pop-ups among the rows name that exist
+ * and are no system widget (a widget is drawn by its page's context, not on
+ * its own). No query without a designed pop-up.
+ *
+ * @param array $rows  auto_dialogs rows
+ * @return array  component ids
+ */
+function pg_auto_dialog_components_found($rows)
+{
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        $content = is_array($row) ? pg_auto_dialog_content($row) : array('content' => 'url');
+
+        if (($content['content'] === 'component') && ($content['component_id'] > 0)) {
+            $ids[$content['component_id']] = $content['component_id'];
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $found = db_values(
+        "SELECT id FROM shared_components
+        WHERE id IN (" . implode(', ', $ids) . ")
+        AND (system_region_config IS NULL OR system_region_config = '')");
+
+    return array_map('intval', (array) $found);
+}
+
+/**
+ * The shared components a designed pop-up may show, by name: every one that
+ * is no system widget. The create and edit screens offer them.
+ *
+ * @return array  rows of id, name; an empty array when the query failed
+ */
+function pg_auto_dialog_component_rows()
+{
+    $rows = db_items(
+        "SELECT id, name FROM shared_components
+        WHERE system_region_config IS NULL OR system_region_config = ''
+        ORDER BY name, id");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * What an auto dialog shows, read from a row or from the values the API
+ * sends: content url (its address in an iframe, as always) or component (a
+ * shared component designed in the visual designer), and component_id, the
+ * shared component's id (0 for none). A missing or unknown content reads as
+ * url, so a row stored before the columns keeps its address. Pure.
+ *
+ * @param array $row
+ * @return array  content, component_id
+ */
+function pg_auto_dialog_content($row)
+{
+    $row = (array) $row;
+    $content = isset($row['content']) && is_scalar($row['content']) ? strtolower(trim((string) $row['content'])) : '';
+    $component = isset($row['component_id']) && is_scalar($row['component_id']) ? trim((string) $row['component_id']) : '';
+
+    return array(
+        'content' => in_array($content, pg_auto_dialog_content_choices(), true) ? $content : 'url',
+        'component_id' => (preg_match('/^[0-9]{1,10}$/', $component) === 1) && ((int) $component <= 4294967295) ? (int) $component : 0,
+    );
+}
+
+/**
+ * The values content takes, the default first.
+ *
+ * @return array
+ */
+function pg_auto_dialog_content_choices()
+{
+    return array('url', 'component');
+}
+
+/**
+ * Whether the content columns are on auto_dialogs: the files land before
+ * the upgrade adds them, and until then a save leaves them out.
+ *
+ * @return bool
+ */
+function pg_auto_dialog_content_ready()
+{
+    return pg_schema_has('auto_dialogs', 'component_id');
+}
+
+/**
+ * The <template> of each designed pop-up among the rows a page prints: its
+ * shared component drawn once, at the end of the body, for the script to
+ * copy into the dialog when it opens (software.show_auto_dialog()). No
+ * iframe, so the component's form, bindings and offer code work as on the
+ * page itself. Pure but for $draw.
+ *
+ * @param array    $rows  as pg_auto_dialogs_on_page() returns them
+ * @param callable $draw  component id => its HTML
+ * @return string HTML
+ */
+function pg_auto_dialog_templates($rows, $draw)
+{
+    $html = '';
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && (($row['content'] ?? '') === 'component') && ((int) ($row['component_id'] ?? 0) > 0)) {
+            $html .= '<template id="pg-popup-' . (int) $row['id'] . '">' . call_user_func($draw, (int) $row['component_id']) . '</template>';
+        }
+    }
+
+    return $html;
 }
 
 /**
@@ -165,7 +310,8 @@ function pg_auto_dialogs_for_page($rows)
  * @param string $page_name  the page being drawn
  * @param bool   $has_cart   whether this visitor's order holds a line
  * @return array a JSON list of id, url, width, height, delay, frequency,
- *               open_on, open_scroll, audience, place
+ *               content, component_id, open_on, open_scroll, audience,
+ *               place; a designed pop-up's url is '' (it opens none)
  */
 function pg_auto_dialogs_on_page($rows, $page_name, $has_cart = false)
 {
@@ -189,14 +335,16 @@ function pg_auto_dialogs_on_page($rows, $page_name, $has_cart = false)
             continue;
         }
 
+        $content = pg_auto_dialog_content($row);
+
         $kept[] = array(
             'id' => (int) ($row['id'] ?? 0),
-            'url' => (string) ($row['url'] ?? ''),
+            'url' => ($content['content'] === 'url') ? (string) ($row['url'] ?? '') : '',
             'width' => (int) ($row['width'] ?? 0),
             'height' => (int) ($row['height'] ?? 0),
             'delay' => (int) ($row['delay'] ?? 0),
             'frequency' => (int) ($row['frequency'] ?? 0),
-        ) + $open;
+        ) + $content + $open;
     }
 
     return $kept;

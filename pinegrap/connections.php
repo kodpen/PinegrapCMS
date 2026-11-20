@@ -56,9 +56,26 @@ function connections_check_account($account, $liveform) {
 
 	} else {
 
-		$liveform->add_error(lang(array('string' => '{var:1} does not work: {var:2}', 'vars' => array(h($account['label']), h($check['error'])))));
+		$liveform->add_error(lang(array('string' => '{var:1} does not work: {var:2}', 'vars' => array(h($account['label']), connections_error_html($check['error'])))));
 
 	}
+
+}
+
+// An error text as the screen shows it: Google's answer for an API the
+// project has not turned on reads as a plain sentence with the API's enable
+// page, Google's own words kept under Details.
+function connections_error_html($text) {
+
+	$disabled = pg_google_cloud_api_disabled($text);
+
+	if ($disabled === null) {
+		return h($text);
+	}
+
+	return h(lang(array('string' => 'The {var:1} is not turned on in your Google Cloud project.', 'vars' => $disabled['name']))) . '
+		<a href="' . h($disabled['url']) . '" target="_blank" rel="noopener noreferrer">' . h(lang('Turn it on')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+		<details class="mt-2"><summary>' . h(lang('Details')) . '</summary><div class="text-break">' . h($text) . '</div></details>';
 
 }
 
@@ -97,6 +114,20 @@ function connections_ai_may_manage($user) {
 	$viewer = connections_workspace_viewer($user);
 
 	return is_array($viewer) && ((int) $viewer['role'] === 0) && function_exists('ws_model_providers');
+
+}
+
+// May the user change the Sign in with Google application? It came from
+// the Accounts and sign-in card, so it keeps that category's gate.
+function connections_signin_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('security', $user);
 
 }
 
@@ -208,6 +239,34 @@ if ($_POST) {
 			}
 
 		}
+
+	}
+
+	// The Sign in with Google application, saved on Google's page under the
+	// gate of the sign-in settings it came from. The switch that shows the
+	// button stays there.
+	if ($action === 'signin_google_save') {
+
+		if (connections_signin_may_manage($user)) {
+
+			$signin_client_id = (isset($_POST['oauth_google_client_id']) && is_string($_POST['oauth_google_client_id'])) ? trim($_POST['oauth_google_client_id']) : '';
+			$signin_client_secret = (isset($_POST['oauth_google_client_secret']) && is_string($_POST['oauth_google_client_secret'])) ? trim($_POST['oauth_google_client_secret']) : '';
+
+			if (mb_strlen($signin_client_id) > 255) {
+				$liveform->add_error(lang('The client ID is too long.'));
+			} elseif (mb_strlen($signin_client_secret) > 160) {
+				$liveform->add_error(lang('The client secret is too long.'));
+			} elseif (pg_signin_google_app_save($signin_client_id, $signin_client_secret)) {
+				$liveform->add_notice(lang('The Sign in with Google application was saved.'));
+				log_activity(lang('changed the Sign in with Google application'), $_SESSION['sessionusername']);
+			} else {
+				$liveform->add_error(lang('This site has no encryption key, so it cannot keep the secret.'));
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?service=google#connections-signin');
+		exit();
 
 	}
 
@@ -835,6 +894,54 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 		return h($name . '_' . $provider_key);
 	};
 
+	$copy_status = '<div class="pg-field-help connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>';
+
+	// On Google's and Microsoft's pages both return addresses are listed:
+	// Sign in with the provider comes back to its own script, the connected
+	// accounts to connect.php, and the provider refuses an address its
+	// application does not list.
+	$addresses = (($return_service !== '') && in_array($provider_key, array('google', 'microsoft'), true))
+		? pg_google_cloud_redirect_addresses($provider_key)
+		: array();
+
+	if (count($addresses) > 1) {
+
+		$redirect_html = '
+			<div>
+				<div class="pg-field-label">' . h(($provider_key === 'google') ? lang('Redirect addresses to add in Google Cloud') : lang('Redirect addresses to add to the Microsoft application')) . '</div>
+				<p class="pg-field-help mt-0">' . h(($provider_key === 'google')
+					? lang('Add both addresses to the application\'s OAuth client in Google Cloud, under Authorized redirect URIs:')
+					: lang('Add both addresses to the Microsoft application as Web redirect URIs:')) . '</p>';
+
+		foreach ($addresses as $index => $address) {
+			$redirect_html .= '
+				<div class="d-flex align-items-center gap-2 mt-2">
+					<input type="text" class="pg-input flex-grow-1 min-w-0" id="' . $field_id('redirect_' . ($index + 1)) . '" value="' . h($address) . '" readonly aria-label="' . h(lang('Redirect address')) . '">
+					<button type="button" class="pg-button pg-button-quiet pg-button-sm connections-copy" data-target="' . $field_id('redirect_' . ($index + 1)) . '">
+						<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+				</div>
+				' . $copy_status;
+		}
+
+		$redirect_html .= '
+				<p class="pg-field-help mb-0">' . h(lang('Both must be added: signing in and connecting an account come back to different addresses.')) . '</p>
+			</div>';
+
+	} else {
+
+		$redirect_html = '
+			<div>
+				<label class="pg-field-label" for="' . $field_id('redirect') . '">' . h(lang('Redirect address')) . '</label>
+				<div class="d-flex align-items-center gap-2">
+					<input type="text" class="pg-input flex-grow-1 min-w-0" id="' . $field_id('redirect') . '" value="' . h($redirect_uri) . '" readonly>
+					<button type="button" class="pg-button pg-button-quiet pg-button-sm connections-copy" data-target="' . $field_id('redirect') . '">
+						<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+				</div>
+				<div class="pg-field-help connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
+			</div>';
+
+	}
+
 	// On a service's page Save is the one filled button and Save and try
 	// checks the site's accounts after the save; in the drawer Connect is.
 	$buttons = ($return_service !== '')
@@ -853,20 +960,12 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 				<label class="pg-text-2" for="' . $field_id('enabled') . '">' . h(lang('Connections through this application are allowed')) . '</label>
 			</div>
 			' . ((is_array($app) && ($app['source'] === 'signin'))
-				? '<div class="alert theme-info small py-3 mb-0">' . h(lang('This is the application of Sign in with Google (Security settings). Add the redirect address below to it in Google Cloud Console, or save an application of its own here.')) . '</div>'
+				? '<div class="alert theme-info small py-3 mb-0">' . h(lang('Google features use the Sign in with Google application now, as no application of their own is saved. Add both redirect addresses to it in Google Cloud, or save an application of their own here.')) . '</div>'
 				: '') . '
 			' . ($ready
 				? '<details><summary class="pg-text-2">' . h(lang('How to set it up')) . '</summary><ol class="pg-text-2 ps-5 mt-3 mb-0">' . $setup_steps . '</ol></details>'
 				: '<ol class="pg-text-2 ps-5 mb-0">' . $setup_steps . '</ol>') . '
-			<div>
-				<label class="pg-field-label" for="' . $field_id('redirect') . '">' . h(lang('Redirect address')) . '</label>
-				<div class="d-flex align-items-center gap-2">
-					<input type="text" class="pg-input flex-grow-1 min-w-0" id="' . $field_id('redirect') . '" value="' . h($redirect_uri) . '" readonly>
-					<button type="button" class="pg-button pg-button-quiet pg-button-sm connections-copy" data-target="' . $field_id('redirect') . '">
-						<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
-				</div>
-				<div class="pg-field-help connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
-			</div>
+			' . $redirect_html . '
 			<div>
 				<label class="pg-field-label" for="' . $field_id('client_id') . '">' . h(lang('Client ID')) . '</label>
 				<input type="text" class="pg-input' . ($client_id_bad ? ' is-invalid' : '') . '" id="' . $field_id('client_id') . '" name="client_id"
@@ -888,7 +987,7 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 					<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Open the {var:1} console', 'vars' => $provider['label']))) . '</a>
 				' . ($can_fall_back
 					? '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-action" data-action="remove_app" data-id="0"
-						data-confirm="' . h(lang('The application saved here is removed and Google features use the Sign in with Google application of the Security settings again. Connected accounts stay.')) . '">
+						data-confirm="' . h(lang('The application saved here is removed and Google features use the Sign in with Google application above again. Connected accounts stay.')) . '">
 						<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Use the Sign in with Google application')) . '</button>'
 					: '') . '
 			</div>
@@ -896,17 +995,10 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 
 }
 
-/* A provider's drawer: its application and its accounts, with the buttons
-   that connect, check and end them. */
+/* A provider's accounts as list items: purposes, when connected and last
+   used, the last error, and Check or Connect again and Disconnect. */
 
-function connections_provider_drawer($provider_key, $provider, $app, $accounts, $provider_draft, $can_seal, $redirect_uri) {
-
-	$ready = pg_connect_app_ready($app);
-
-	// What connecting asks for: the base account, or for a provider that is
-	// only of use to one feature (GitHub: channel links) that feature's
-	// permission, so the account is not connected without it.
-	$connect_purpose = !empty($provider['connect_purpose']) ? (string) $provider['connect_purpose'] : 'account';
+function connections_account_items($provider_key, $accounts, $connect_purpose, $ready) {
 
 	$account_rows = '';
 
@@ -936,7 +1028,7 @@ function connections_provider_drawer($provider_key, $provider, $app, $accounts, 
 						<div class="pg-text-meta">' . h(implode(' · ', $purpose_labels)) . '</div>
 						<div class="pg-text-meta">' . h(implode(' · ', $meta)) . '</div>
 						' . (($account['last_error'] !== '')
-							? '<div class="alert theme-warning small py-3 mt-2 mb-0 text-break">' . h($account['last_error']) . '</div>'
+							? '<div class="alert theme-warning small py-3 mt-2 mb-0 text-break">' . connections_error_html($account['last_error']) . '</div>'
 							: '') . '
 					</div>
 				</div>
@@ -956,6 +1048,24 @@ function connections_provider_drawer($provider_key, $provider, $app, $accounts, 
 			</li>';
 
 	}
+
+	return $account_rows;
+
+}
+
+/* A provider's drawer: its application and its accounts, with the buttons
+   that connect, check and end them. */
+
+function connections_provider_drawer($provider_key, $provider, $app, $accounts, $provider_draft, $can_seal, $redirect_uri) {
+
+	$ready = pg_connect_app_ready($app);
+
+	// What connecting asks for: the base account, or for a provider that is
+	// only of use to one feature (GitHub: channel links) that feature's
+	// permission, so the account is not connected without it.
+	$connect_purpose = !empty($provider['connect_purpose']) ? (string) $provider['connect_purpose'] : 'account';
+
+	$account_rows = connections_account_items($provider_key, $accounts, $connect_purpose, $ready);
 
 	$app_form = connections_app_form($provider_key, $provider, $app, $provider_draft, $can_seal, $redirect_uri);
 	$hint = connections_app_hint($app);
@@ -1077,7 +1187,7 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 			<div class="mt-4">
 				<div class="pg-field-label">' . h(lang('Last error')) . '</div>
 				' . (($error !== '')
-					? '<div class="alert theme-warning small py-3 mb-0 text-break">' . h($error) . '</div>'
+					? '<div class="alert theme-warning small py-3 mb-0 text-break">' . connections_error_html($error) . '</div>'
 					: '<div class="pg-text-2">' . h(lang('No error on file')) . '</div>') . '
 			</div>';
 
@@ -1090,6 +1200,10 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 					data-purpose="' . h($state['purpose']) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 					<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $providers[$provider_key]['label']))) . '</button>
 			</div>';
+		} elseif (isset($providers[$provider_key]) && in_array($provider_key, pg_connections_screen_page_providers(), true)) {
+			$extra .= '
+			<p class="pg-text-meta mt-4 mb-0">' . h(lang(array('string' => 'Accounts are connected on the {var:1} page of Connections, where its application is set up.', 'vars' => $providers[$provider_key]['label']))) . '
+				<a href="' . h(pg_connections_screen_page_url(array_search($provider_key, pg_connections_screen_page_providers(), true))) . '">' . h(lang('Connections')) . ' › ' . h($providers[$provider_key]['label']) . '</a></p>';
 		} elseif (isset($providers[$provider_key])) {
 			$extra .= '
 			<p class="pg-text-meta mt-4 mb-0">' . h(lang(array('string' => 'Accounts are connected in the {var:1} panel of the Connections list.', 'vars' => $providers[$provider_key]['label']))) . '
@@ -1161,6 +1275,178 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 	}
 
 	return $html;
+
+}
+
+/* An account provider's own page (Google, Microsoft): "Status" with the
+   application's state and every account of the site's own, "Connection
+   details" with the application, its redirect addresses and, on Google's,
+   the APIs to turn on and Google's verification warning, then "Where it is
+   used": each service of the registry the provider serves, linking to its
+   page. */
+
+function connections_provider_page($provider_key, $provider, $row, $app, $accounts, $uses, $rows, $registry, $details, $can_seal) {
+
+	$ready = pg_connect_app_ready($app);
+	$connect_purpose = !empty($provider['connect_purpose']) ? (string) $provider['connect_purpose'] : 'account';
+
+	if ($ready) {
+		$app_pill = '<span class="pg-pill pg-tone-teal">' . h(lang('Ready')) . '</span>';
+	} elseif (is_array($app) && !$app['enabled']) {
+		$app_pill = '<span class="pg-pill pg-tone-gray">' . h(lang('Off')) . '</span>';
+	} else {
+		$app_pill = '<span class="pg-pill pg-tone-gray">' . h(lang('Not set up')) . '</span>';
+	}
+
+	$account_rows = connections_account_items($provider_key, $accounts, $connect_purpose, $ready && $can_seal);
+	$hint = connections_app_hint($app);
+
+	$html = '
+		<section class="pg-card p-5 mb-6" aria-labelledby="connections-page-status">
+			<div class="d-flex align-items-center gap-3 mb-4">
+				<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi ' . h($provider['icon']) . '"></i></span>
+				<h2 class="pg-title-section mb-0" id="connections-page-status">' . h(lang('Status')) . '</h2>
+			</div>
+			<dl class="pg-kv mb-0">
+				<dt>' . h(lang('Status')) . '</dt><dd>' . connections_state_pill($row['state']) . '</dd>
+				<dt>' . h(lang('Application')) . '</dt><dd>' . $app_pill . '</dd>
+			</dl>
+			' . (($hint === '') ? '' : '<p class="pg-field-help mt-3 mb-0">' . h($hint) . '</p>') . '
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Connected accounts')) . '<span class="pg-count">' . count($accounts) . '</span></div>
+				' . (($account_rows !== '')
+					? '<ul class="list-group list-group-flush mb-0">' . $account_rows . '</ul>'
+					: '<p class="pg-text-2 mb-0">' . h(lang(array('string' => 'No {var:1} account is connected.', 'vars' => $provider['label']))) . '</p>') . '
+			</div>
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-connect"
+					data-provider="' . h($provider_key) . '" data-purpose="' . h($connect_purpose) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
+					<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>
+			</div>
+		</section>';
+
+	$html .= $details;
+
+	$use_rows = '';
+
+	foreach ($uses as $id) {
+		$use_rows .= '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_connections_screen_page_url($id)) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h($rows[$id]['name']) . '</span>
+						<span class="pg-text-meta d-block">' . h($rows[$id]['uses']) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($rows[$id]['state']) . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+	}
+
+	$html .= '
+		<section class="pg-card p-5 mb-6" aria-labelledby="connections-page-uses">
+			<h2 class="pg-title-section mb-4" id="connections-page-uses">' . h(lang('Where it is used')) . '</h2>
+			' . (($use_rows !== '')
+				? '<div class="pg-card-inner connections-list">' . $use_rows . '</div>'
+				: '<p class="pg-text-2 mb-0">' . h(lang('No feature you may open uses it.')) . '</p>') . '
+		</section>';
+
+	return $html;
+
+}
+
+/* The Sign in with Google application on Google's page: its client ID and
+   secret (config.oauth_google_*, the columns it always had), saved by
+   signin_google_save. The secret is shown back in the field as it was on
+   the sign-in settings, and an empty field clears it; the return address
+   is google_auth.php, listed among the redirect addresses below. */
+
+function connections_signin_google_part() {
+
+	$app = pg_signin_google_app();
+	$client_id = is_array($app) ? $app['client_id'] : '';
+	$client_secret = is_array($app) ? $app['client_secret'] : '';
+	$ready = is_array($app) && ($client_secret !== '');
+
+	if ($ready) {
+		$pill = '<span class="pg-pill pg-tone-teal">' . h(lang('Ready')) . '</span>';
+	} else {
+		$pill = '<span class="pg-pill pg-tone-gray">' . h(lang('Not set up')) . '</span>';
+	}
+
+	return '
+			<div id="connections-signin">
+				<div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+					<h3 class="pg-group-label mb-0">' . h(lang('Sign in with Google application')) . '</h3>
+					' . $pill . '
+				</div>
+				<p class="pg-field-help mt-0">' . h(lang('Visitors and staff sign in with this application. Whether the button is shown is switched in Site Settings › Accounts and sign-in. Google features use it too until an application of their own is saved below.')) . '</p>
+				<form method="post" action="connections.php" class="connections-app-form">
+					' . get_token_field() . '
+					<input type="hidden" name="connections_action" value="signin_google_save">
+					<div>
+						<label class="pg-field-label" for="oauth_google_client_id">' . h(lang('Client ID')) . '</label>
+						<input type="text" class="pg-input" id="oauth_google_client_id" name="oauth_google_client_id"
+							value="' . h($client_id) . '" maxlength="255" autocomplete="off">
+					</div>
+					<div>
+						<label class="pg-field-label" for="oauth_google_client_secret">' . h(lang('Client secret')) . '</label>
+						<input type="text" class="pg-input" id="oauth_google_client_secret" name="oauth_google_client_secret"
+							value="' . h($client_secret) . '" maxlength="160" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true">
+						<div class="pg-field-help">' . h(lang('Shown as plain text on purpose: a password-type box invites the browser\'s password manager to overwrite it, which silently replaces the key on save.')) . '</div>
+					</div>
+					<div class="d-flex flex-wrap align-items-center gap-3">
+						<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+						<a class="pg-button pg-button-sm pg-button-quiet" href="' . h(pg_settings_link('security', 'pgset-signin')) . '">
+							' . h(lang('Accounts and sign-in')) . ' ›</a>
+					</div>
+				</form>
+			</div>';
+
+}
+
+/* Google's parts of "Connection details": the APIs each Google feature
+   calls, read from the registry, with the page that turns each on, and
+   Google's verification warning. */
+
+function connections_google_cloud_parts($registry, $rows) {
+
+	$in_use = array('connected' => true, 'attention' => true);
+	$api_rows = '';
+
+	foreach (pg_google_cloud_apis($registry) as $api => $entry) {
+
+		$names = array();
+		$used = false;
+
+		foreach ($entry['features'] as $feature) {
+			$names[] = isset($rows[$feature]) ? $rows[$feature]['name'] : lang($registry[$feature]['name']);
+			$used = $used || (isset($rows[$feature]) && isset($in_use[$rows[$feature]['state']]));
+		}
+
+		$api_rows .= '
+				<div class="pg-card-inner-row connections-row">
+					<span class="connections-row-main">
+						<span class="connections-row-name" lang="en">' . h($entry['name']) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang(array('string' => 'Used by: {var:1}', 'vars' => implode(', ', $names)))) . '</span>
+					</span>
+					<span class="connections-row-side">
+						' . ($used ? '<span class="pg-pill pg-tone-teal">' . h(lang('In use')) . '</span>' : '') . '
+						<a class="pg-button pg-button-sm pg-button-quiet" href="' . h(pg_google_cloud_enable_url($api)) . '" target="_blank" rel="noopener noreferrer">'
+							. h(lang('Turn on')) . ' <i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i></a>
+					</span>
+				</div>';
+
+	}
+
+	return '
+			<div class="mt-5">
+				<h3 class="pg-group-label mb-1">' . h(lang('APIs to turn on in the project')) . '</h3>
+				<p class="pg-field-help mt-0">' . h(lang('Each Google feature calls its API in the Google Cloud project of the application; Google refuses the call until the API is turned on there.')) . '</p>
+				<div class="pg-card-inner connections-list">' . $api_rows . '</div>
+			</div>
+			<div class="mt-5">
+				<h3 class="pg-group-label mb-1">' . h(lang('Google\'s verification warning')) . '</h3>
+				<ul class="pg-text-2 mb-0 ps-4"><li>' . implode('</li><li>', array_map('h', pg_google_cloud_verification_notes())) . '</li></ul>
+			</div>';
 
 }
 
@@ -1251,7 +1537,7 @@ foreach ($order as $group_key => $ids) {
 
 		$page_service = ($row['kind'] === 'provider') ? array_search($row['provider'], pg_connections_screen_page_providers(), true) : false;
 
-		if (($page_service !== false) && isset($rows[$page_service])) {
+		if (($page_service !== false) && (isset($rows[$page_service]) || (pg_connections_screen_provider_page($page_service, $rows) !== ''))) {
 
 			// The provider's application is set up on its service's page.
 			$group_rows .= '
@@ -1387,7 +1673,78 @@ $messages = '
 			: '<div class="alert theme-danger">' . h(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.')) . '</div>') . '
 	</div></div>';
 
-if ($page_id !== '') {
+$provider_page = ($page_id !== '') ? pg_connections_screen_provider_page($page_id, $rows) : '';
+
+if ($provider_page !== '') {
+
+	// An account provider's own page: its application and its accounts.
+	$page_row = $rows['provider_' . $provider_page];
+	$provider = $providers[$provider_page];
+
+	$shell = pg_page_shell(array(
+		'title'               => $page_row['name'] . ' - ' . lang('Connections'),
+		'extra classes'       => 'pg-measure-edit',
+		'icon'                => 'settings',
+		'heading'             => $page_row['name'],
+		'heading_description' => $group_labels['providers'] . (($page_row['uses'] !== '') ? ' · ' . $page_row['uses'] : ''),
+		'breadcrumb'          => array(
+			array('label' => lang('System tools'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/system_tools.php'),
+			array('label' => lang('Connections'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php'),
+			array('label' => $page_row['name']),
+		),
+	));
+
+	$details = '';
+	$page_cards = pg_connections_screen_page_cards($page_id, array(
+		'manager' => $is_manager,
+		'signin'  => ($provider_page === 'google') && connections_signin_may_manage($user),
+	));
+
+	// Google's two applications are shown together: the connected accounts'
+	// one falls back to the Sign in with Google application.
+	$signin_part = in_array('signin', $page_cards, true) ? connections_signin_google_part() : '';
+
+	if (in_array('details', $page_cards, true)) {
+
+		$hint = connections_app_hint($provider_apps[$provider_page]);
+
+		$details = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(($signin_part !== '')
+				? lang('The Google applications the site signs people in and connects its accounts through.')
+				: lang(array('string' => 'The {var:1} application the site connects its accounts through.', 'vars' => $provider['label']))) . '</p>
+			' . $signin_part . '
+			' . (($signin_part !== '') ? '<h3 class="pg-group-label mt-5 mb-1">' . h(lang('Connected accounts application')) . '</h3>' : '') . '
+			' . (($hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($hint) . '</p>') . '
+			' . connections_app_form($provider_page, $provider, $provider_apps[$provider_page],
+				(is_array($draft) && ($draft['provider'] === $provider_page)) ? $draft : null, $can_seal, $redirect_uri, $page_id) . '
+			' . (($provider_page === 'google') ? connections_google_cloud_parts($registry, $rows) : '') . '
+		</section>';
+
+	} elseif ($signin_part !== '') {
+
+		$details = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-4" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			' . $signin_part . '
+		</section>';
+
+	}
+
+	$main = $messages . '
+	<div class="row g-5">
+		<div class="col-12 lg:col-8 2xl:col-9">
+			' . connections_provider_page($provider_page, $provider, $page_row, $provider_apps[$provider_page],
+				isset($site_accounts[$provider_page]) ? $site_accounts[$provider_page] : array(),
+				pg_connections_screen_provider_uses($provider_page, $registry, $rows), $rows, $registry, $details, $can_seal) . '
+		</div>
+	</div>';
+
+	$drawers = '';
+	$connect_return = pg_connections_screen_page_url($page_id);
+
+} elseif ($page_id !== '') {
 
 	$page_row = $rows[$page_id];
 	$page_group = $page_row['group'];
@@ -1512,6 +1869,15 @@ if ($page_id !== '') {
 
 }
 
+// The drawer addresses of the providers whose application is on a page.
+$moved_drawers = array();
+
+foreach (pg_connections_screen_page_providers() as $moved_page => $moved_provider) {
+	if (isset($rows['provider_' . $moved_provider]) && (isset($rows[$moved_page]) || (pg_connections_screen_provider_page($moved_page, $rows) !== ''))) {
+		$moved_drawers['connections-' . $moved_provider] = pg_connections_screen_page_url($moved_page);
+	}
+}
+
 echo $shell . '
 
 <main id="content" class="container-fluid">
@@ -1547,10 +1913,16 @@ echo $shell . '
 		return true;
 	};
 
-	// The drawer a refused save, an address (#connections-google) or the
-	// return from a provider names opens with the screen.
+	// The drawer a refused save, an address (#connections-dropbox) or the
+	// return from a provider names opens with the screen; a provider whose
+	// application moved onto its page (#connections-google) goes there.
+	var pages = ' . json_encode($moved_drawers, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ';
 	var openNamed = function () {
 		var named = window.location.hash.match(/^#(connections-[a-z0-9_]+)$/);
+		if (named && pages[named[1]]) {
+			window.location.replace(pages[named[1]]);
+			return;
+		}
 		document.querySelectorAll("dialog.connections-drawer").forEach(function (drawer) {
 			if (drawer.dataset.open === "1" || (named && drawer.id === named[1])) {
 				delete drawer.dataset.open;

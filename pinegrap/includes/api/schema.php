@@ -2113,7 +2113,7 @@ function api_schema() {
 			'handler' => 'api_store_feeds_list',
 			'returns' => array('list' => 'StoreFeed'),
 			'summary' => 'Product feeds',
-			'description' => 'The product feeds the store publishes for shopping platforms: openai_jsonl and openai_csv (the OpenAI product feed) and google_tsv (Google Merchant Center), always in that order. url is the private address a platform reads the feed from (null until the feed has one); give it to the platform, never publish it. The feeds are switched on and set up under Settings, SEO, Product Feeds and rebuilt once a day. state is off, ok, stale (never built, or not for two days) or failing (the last build failed with error; the file built before is still served). products counts the products in the last good build; skipped says how many were left out and why (no_address, donation, recurring, no_price, not_in_catalog, excluded_group, no_title, no_brand, no_image). One page.',
+			'description' => 'The product feeds the store publishes for shopping platforms: openai_jsonl and openai_csv (the OpenAI product feed), google_tsv and google_xml (Google Merchant Center, as a tab-separated file and as RSS 2.0 XML), always in that order. url is the private address a platform reads the feed from (null until the feed has one); give it to the platform, never publish it. The feeds are switched on and set up under Settings, Ecommerce, Product Feeds and rebuilt once a day. state is off, ok, stale (never built, or not for two days) or failing (the last build failed with error; the file built before is still served). products counts the products in the last good build; skipped says how many were left out and why (no_address, donation, recurring, no_price, not_in_catalog, excluded_group, no_title, no_brand, no_image). One page.',
 			'params'  => array()
 		),
 
@@ -5826,10 +5826,10 @@ function api_schema() {
 			'returns' => 'DesignAutoDialog',
 			'status'  => 201,
 			'summary' => 'Create an auto dialog',
-			'description' => 'Adds an auto dialog, as the create auto dialog screen does. Like there it starts disabled unless enabled is sent: preview it on the site with ?preview_auto_dialog={id}, then enable it. Name and URL are required; no other auto dialog may have the name (409 name_taken).',
+			'description' => 'Adds an auto dialog, as the create auto dialog screen does. Like there it starts disabled unless enabled is sent: preview it on the site with ?preview_auto_dialog={id}, then enable it. A name is required, and a URL unless it shows a designed pop-up (content component); no other auto dialog may have the name (409 name_taken).',
 			'params'  => array(
 				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The dialog\'s name, which no other auto dialog has.'),
-				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'The address the dialog shows: an http or https address or a path on this site, as a short link destination (no other scheme, no //host, no backslash or space; 422 otherwise).'),
+				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The address the dialog shows: an http or https address or a path on this site, as a short link destination (no other scheme, no //host, no backslash or space; 422 otherwise). Required unless content is component; kept beside a component, for switching back.'),
 				array('name' => 'enabled',   'in' => 'body', 'type' => 'bool', 'description' => 'It opens for visitors. false when left out.'),
 				array('name' => 'width',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
 				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
@@ -5839,7 +5839,9 @@ function api_schema() {
 				array('name' => 'open_on',   'in' => 'body', 'type' => 'enum', 'values' => array('delay', 'scroll', 'leave'), 'nullable' => true, 'description' => 'When it opens: delay (after delay seconds, the default), scroll (when open_scroll percent of the page is scrolled), leave (when the pointer leaves the window; on a touch screen after the delay).'),
 				array('name' => 'open_scroll', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100, 'nullable' => true, 'description' => 'Percent of the page scrolled before it opens, read with open_on scroll; null for 50.'),
 				array('name' => 'audience',  'in' => 'body', 'type' => 'enum', 'values' => array('all', 'cart'), 'nullable' => true, 'description' => 'Who sees it: all visitors (the default) or only visitors whose cart holds a product (cart).'),
-				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.')
+				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.'),
+				array('name' => 'content',   'in' => 'body', 'type' => 'enum', 'values' => array('url', 'component'), 'nullable' => true, 'description' => 'What it shows: url (its address in a frame, the default) or component (the shared component component_id, designed in the visual designer and drawn into the page).'),
+				array('name' => 'component_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The shared component a designed pop-up shows; required with content component and one that exists and is no system widget (422 otherwise). 0 or null for none.')
 			)
 		),
 
@@ -5867,7 +5869,9 @@ function api_schema() {
 				array('name' => 'open_on',   'in' => 'body', 'type' => 'enum', 'values' => array('delay', 'scroll', 'leave'), 'nullable' => true, 'description' => 'When it opens: delay (after delay seconds, the default), scroll (when open_scroll percent of the page is scrolled), leave (when the pointer leaves the window; on a touch screen after the delay).'),
 				array('name' => 'open_scroll', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 100, 'nullable' => true, 'description' => 'Percent of the page scrolled before it opens, read with open_on scroll; null for 50.'),
 				array('name' => 'audience',  'in' => 'body', 'type' => 'enum', 'values' => array('all', 'cart'), 'nullable' => true, 'description' => 'Who sees it: all visitors (the default) or only visitors whose cart holds a product (cart).'),
-				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.')
+				array('name' => 'place',     'in' => 'body', 'type' => 'enum', 'values' => array('centre', 'top', 'bottom', 'corner'), 'nullable' => true, 'description' => 'Where it opens: centre over the page, which waits (the default), or a bar at the top or bottom or a card in the corner, beside a page that stays usable.'),
+				array('name' => 'content',   'in' => 'body', 'type' => 'enum', 'values' => array('url', 'component'), 'nullable' => true, 'description' => 'What it shows: url (its address in a frame, the default) or component (the shared component component_id, designed in the visual designer and drawn into the page).'),
+				array('name' => 'component_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The shared component a designed pop-up shows; required with content component and one that exists and is no system widget (422 otherwise). 0 or null for none.')
 			)
 		),
 

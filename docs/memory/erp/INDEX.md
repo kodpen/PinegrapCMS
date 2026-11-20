@@ -25,7 +25,7 @@
 - erp-bank-statement-lines.md: ERP bank statement lines: each line once (line_hash), recording a line; what a refused step keeps, the send-once forms.
 - erp-bank-statement-matching.md: ERP bank statement matching: which till movements a line matches, cancels left out, undoing a match, which tills take a statement.
 - erp-bank-statement-suggestions.md: ERP bank statement suggestions worked out once per statement (erp_bank_statement_suggestions): one line per open invoice, the per-line buttons, the count and Record the N suggested lines.
-- erp-bank-statements.md: ERP bank statement import (4.102): readers, the PHPExcel libxml trap, title-block cut, CSV separator, amount sign and decimals; the lines are in erp-bank-statement-lines.md.
+- erp-bank-statements.md: ERP bank statement import (4.102): readers (the sheet reader for workbooks), title-block cut, CSV separator, amount sign and decimals; the lines are in erp-bank-statement-lines.md.
 - erp-bundle-lines.md: A product bundle on an ERP invoice (#2727): one line, the component snapshot in erp_invoice_item_components, one stock move per component on issue, return and cancel, the profit report.
 - erp-cash-forecast.md: ERP cash forecast: what counts as money in and out over 30, 60 or 90 days, the item shape, cheque tills left out of today's cash, how a new source is added, the API's scope.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
@@ -109,7 +109,7 @@
 - erp-parasut-legacy-buyer-card.md: The Paraşüt card the order screen's buttons put an order on: the one Paraşüt holds for the buyer's VKN/TCKN (#1543), else a new one with the order's identity (#1408) and address (#1518)
 - erp-parasut-legacy-buyer-number.md: The buyer's VKN/TCKN the order screen's Paraşüt buttons send: a Turkish buyer's digits, and Create Invoice refuses a number that fails the check digits instead of issuing an e-Archive (#7674, #8371)
 - erp-parasut-legacy-export-discount.md: Orders > Export for Paraşüt Selected: the order discount in İNDİRİM TUTARI (column Q) of the product lines, spread by line value, so the invoice is what was paid (#9139)
-- erp-parasut-legacy-export-text-cells.md: Orders > Export for Paraşüt writes typed text (names, e-mail, address, identity number, product name) as explicit text cells, never through PHPExcel's default binder.
+- erp-parasut-legacy-export-text-cells.md: Orders > Export for Paraşüt writes typed text (names, e-mail, address, identity number, product name) as text cells, never a formula, through the shared xlsx writer.
 - erp-parasut-legacy-inbox.md: Legacy Paraşüt inbox (view_parasut_inbox.php): what its tabs read, the list query (gteq/lteq, #1505), the totals it shows and the VKN/TCKN it refuses (#1600), flaky purchase_bills
 - erp-parasut-legacy-invoice-shipment.md: The order screen's Paraşüt Create Invoice and E-Shipment on one order: shipment_included, the link between the two records, which press is refused, and the stock counted out twice before #1506
 - erp-parasut-legacy-invoice.md: What the order screen's legacy Paraşüt "Create Invoice" sends: its lines and refusals (#1268), an unanswered create (#1416), the buyer card (#1408), its e-document (#1278), after E-Shipment (#1506)
@@ -168,3 +168,4 @@
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, the carrier columns, and what a return copies. [decision: here]
 - erp-waybill-save-checks.md: What a delivery note's save checks and fills (named invoice, empty recipient, field-level refusals), the one unit list, the list's three invoice states and the shipment-date term (PR #5708).
+- parasut-import-sheets.md: Paraşüt's two import sheets written from code by pg_xlsx_write_layout(): the head as data, the column formats, what the old template files had that the new file has not

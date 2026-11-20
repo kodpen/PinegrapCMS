@@ -12,7 +12,7 @@ description: Word and Excel previews (includes/fn/office.php, pg_office_view.js)
 ## What are the limits?
 - A part may unpack to 64 MB and a package to 256 MB (measured with `statIndex()` first); past that it is refused with "too large to show here". A sheet shows 2000 rows and 200 columns, a workbook 120000 cells; a document 600000 characters of HTML, pictures of 2 MB each and 8 MB together (the rest "[picture]"); `truncated` and `images_lost` make the viewer print a note.
 - Not read: .doc, .ppt, charts, shapes, headers and footers, comments, other styles, merged cells (a merged area shows its first cell), formulas without a cached value (empty, marked ƒx).
-- XML is loaded with `LIBXML_NONET` and never `LIBXML_NOENT`. `pg_office_zip_stream()` restores the built-in `zip://` wrapper and libxml's loader once, because PHPExcel (the .xls/.ods importers) replaces both for the rest of a request and XMLReader cannot open a part through them.
+- XML is loaded with `LIBXML_NONET` and never `LIBXML_NOENT`.
 - `get_file.php` gives docx, docm, dotx, xlsx, xlsm, xltx and pptx their MIME type without `attachment`; unlisted forms (dotm, xltm, pptm, …) go as octet-stream attachments.
 - A part read as a stream (shared strings, sheet rows) stops at the size the package declares for it, and the shared string table at 500,000 strings or 32 MB: `zip-entry-declared-size.md`.
 - A part built into a DOM may declare 8 MB; a longer document is read from its beginning, rows and strings node by node: `office-dom-ceiling.md`.

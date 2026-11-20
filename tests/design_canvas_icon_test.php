@@ -18,14 +18,19 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-function test_design_canvas_icon_is_the_artboard_with_the_pen_curve()
+function test_design_canvas_icon_is_two_sheets_and_a_wave()
 {
 	$svg = pg_design_canvas_icon();
 
 	pg_assert_contains('class="pg-mi pg-mi-design_canvas design-color pg-dc-icon"', $svg, 'no margin class, the design colour and the outside-menu class');
-	pg_assert_contains('<g class="pg-mi-a pg-mi-pen">', $svg, 'the pen curve is the second colour');
-	pg_assert_contains('M8.3 15.7C9 11 15 13 15.7 8.3', $svg, 'the pen curve');
-	pg_assert_same(4, substr_count($svg, 'width="2" height="2"'), 'two anchors, each a tint and an outline');
+	pg_assert_contains('<path d="M17 7V6.1A3.6 3.6 0 0 0 13.4 2.5H6.1A3.6 3.6 0 0 0 2.5 6.1v7.3A3.6 3.6 0 0 0 6.1 17H7"/>', $svg, 'the back sheet\'s outline stops at the front sheet');
+	pg_assert_contains('<path class="pg-mi-2" fill="currentColor" fill-opacity=".3" stroke="none" d="M17 7V6.1A3.6 3.6 0 0 0 13.4 2.5H6.1A3.6 3.6 0 0 0 2.5 6.1v7.3A3.6 3.6 0 0 0 6.1 17H7v-6.4A3.6 3.6 0 0 1 10.6 7z"/>', $svg, 'the back sheet carries the module tint');
+	pg_assert_contains('<rect x="7" y="7" width="14.5" height="14.5" rx="3.6"/>', $svg, 'the front sheet, outline only');
+	pg_assert_same(1, substr_count($svg, '<rect'), 'one rect: the front sheet has no tint');
+	pg_assert_contains('<g class="pg-mi-a pg-mi-wave"><path d="M9.9 18.7C10.8 15.2 11.8 13 13.2 13C14.6 13 14.4 14.9 15.8 14.9C17.3 14.9 18 12.4 18.7 9.8"/></g>', $svg, 'the wave in the accent hue');
+	pg_assert_false(strpos($svg, 'pg-mi-pen') !== false, 'no pen curve');
+	pg_assert_false(strpos($svg, 'pg-mi-at') !== false, 'no anchors');
+	pg_assert_false(strpos($svg, 'M2.5 5H3.6') !== false, 'no crop marks');
 	pg_assert_contains('aria-hidden="true"', $svg, 'decoration beside its name');
 }
 
@@ -79,11 +84,44 @@ function test_design_canvas_icon_one_colour_takes_its_neighbours_colour()
 {
 	$css = file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 
-	pg_assert_contains(".pg-mi.pg-dc-icon.pg-dc-mono,\n.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-a {\n  color: inherit;", $css, 'outline and pen curve take the text colour around it');
+	pg_assert_contains(".pg-mi.pg-dc-icon.pg-dc-mono,\n.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-a {\n  color: inherit;", $css, 'outline and wave take the text colour around it');
 	pg_assert_contains(".pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-2,\n.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-at {\n  fill: none;", $css, 'no tint');
 	pg_assert_contains('.pg-dc-mono', file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.min.css'), 'the served stylesheet has it');
 	pg_assert_contains(".ws-ctx .ws-ctx-item .bi,\n.ws-ctx .ws-ctx-item .pg-dc-mono {", $css, 'the Workspace menu gives it its icons\' box');
 
 	$folders = file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
 	pg_assert_contains('#explorer_menu .menu-item .bi, #explorer_menu .menu-item .pg-dc-mono {', $folders, 'the File Manager menu gives it its icons\' box');
+}
+
+function test_design_canvas_icon_on_the_buttons_that_open_the_canvas()
+{
+	$mono = 'pg_design_canvas_icon_one_colour(';
+
+	// The panel's "Edit this image in the Artifact Canvas" buttons.
+	foreach (array('edit_design_file.php', 'edit_file.php', 'includes/fn/design_file_list_edit.php', 'includes/dashboard/widgets/widget_18.php') as $file) {
+		$code = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		$at = strpos($code, 'data-pg-image-edit=');
+
+		pg_assert_true($at !== false, $file . ' has its edit button');
+		pg_assert_contains($mono, substr($code, $at, 300), $file . ' draws the canvas icon on it');
+		pg_assert_false(strpos($code, 'bi-flower2') !== false, $file . ' has no flower glyph left');
+		pg_assert_false(strpos($code, 'bi-brush') !== false, $file . ' has no brush glyph left');
+	}
+
+	// Workspace: the joined canvas card's head.
+	$card = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_page_card.js');
+	pg_assert_contains("head.appendChild(h.icon('pg-design-canvas'));", $card, 'the canvas card head uses it');
+	pg_assert_false(strpos($card, 'bi-easel2') !== false, 'no easel glyph left on the canvas card');
+
+	// A guest's waiting canvas, from the guest page's own config.
+	$guest_page = file_get_contents(PG_FUNCTIONS_DIR . '/workspace_guest.php');
+	pg_assert_contains("'canvas_icon' => pg_design_canvas_icon_one_colour(),", $guest_page, 'the guest config carries the one-colour form');
+
+	$guest = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_guest.js');
+	pg_assert_contains("waiting.appendChild(icon('pg-design-canvas'));", $guest, 'the waiting canvas uses it');
+	pg_assert_contains('holder.innerHTML = CONF.canvas_icon;', $guest, 'drawn from the config');
+	pg_assert_false(strpos($guest, "icon('bi-easel')") !== false, 'no easel glyph left on the waiting canvas');
+
+	$guest_css = file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/workspace_guest.css');
+	pg_assert_contains(".pg-guest-canvas-wait .pg-dc-mono .pg-mi-2,\n.pg-guest-canvas-wait .pg-dc-mono .pg-mi-at {\n  fill: none;", $guest_css, 'the guest page drops the tint itself');
 }

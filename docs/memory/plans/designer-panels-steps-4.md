@@ -32,7 +32,7 @@ description: Plan designer-panels, steps DP17 to DP25: the page strip (the desig
 
 - DP23 (S) after DP22: the Preview menu (`#sd-vb-preview`, `#sd-vb-live`, `#sd-view-page`). Features: D58 Done in #10244.
 
-- DP24 (M) after DP23; the plan prototype-canvas has ended with its close-out PV12 (#10307). Prototype mode in the same bar. The Prototype bar's Play, zoom, Fit, "Read the links again" and Close (designer/prototype-view.md) move here; its Close button gives way to the switch, as `canvas-bar.jpg` shows. Features: D59, D60. Keeps K11.
+- DP24 (M) after DP23; the plan prototype-canvas has ended with its close-out PV12 (#10307). Prototype mode in the same bar. The Prototype bar's Play, zoom, Fit, "Read the links again" and Close (designer/prototype-view.md) move here; its Close button gives way to the switch, as `canvas-bar.jpg` shows. Features: D59, D60. Keeps K11. Done in #10507 (`designer/designer-canvas-bar-prototype.md`); its pictures beside `canvas-bar.jpg` not taken.
 
 ## How does the plan end?
 - DP25 (S) close-out: every D and K number checked against the code with its PR; the measures and the rules that last move to `designer/` (the chrome's tokens, the Options panel, the Overview, the page strip, the canvas bar, with an overview file); this plan's files and its folder are deleted.

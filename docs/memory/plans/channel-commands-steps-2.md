@@ -16,7 +16,7 @@ description: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluşt
   - Tests: the card shows the old numbers beside the new; Save writes `tracking_numbers` only if the value is still the one the card showed; no mail is sent; the order right.
   - Picture: the card. Feature: K25.
 
-- CC10 (M) after CC2: application arguments. Schema, the owner's yes of poll 97.
+- CC10 (M) after CC2: application arguments. Done: #10322. Schema, the owner's yes of poll 97.
   - The draft PR's body gives the column (name, type, default) and the definition's shape; the architect confirms them there before the code. One migration step in the open version with `install_add_column()`, run twice on a development database.
   - Existing: `includes/workspace/app_commands.php`, the API call that registers a command, the event's payload in `includes/workspace/api.php`, the argument list of `assets/js/workspace.js`.
   - Tests: an unknown kind and one argument too many refused; the values in the event by name; a command without a definition as today; the limit of twenty commands unchanged.

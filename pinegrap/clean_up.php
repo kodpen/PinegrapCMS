@@ -227,6 +227,10 @@ $file_list = array(
     // The rich text editor's old image window; the Image dialog, the product
     // builder's pictures and a contact's photo choose through the picker.
     'editor_select_image.php',
+    // The spreadsheet library the importers and the Paraşüt exports used
+    // before the sheet reader (includes/fn/sheet_read.php) and the xlsx
+    // writer (includes/fn/xlsx_write.php) took its place.
+    'includes/phpexcel',
 );
 
 // Everything the software drops in data/temp is a cache or a scratch file that is written

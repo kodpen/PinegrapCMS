@@ -249,13 +249,17 @@ if ($audit_retention_ready) {
 }
 
 // ── Sign in with Google, Microsoft and Apple ──
-// One card, a switch per provider. Google's application and switch are the
-// config columns it always had, and its return address is still
-// google_auth.php. The other switches go to config.signin_providers, their
+// One card, a switch per provider. Google's switch is the config column it
+// always had; its application (config.oauth_google_*) is typed on Google's
+// page of Connections, where this card points, and its return address is
+// still google_auth.php. The other switches go to config.signin_providers, their
 // applications to connect_apps: Microsoft's is the one of Connected
 // accounts (mail and the other features use it too), Apple's is entered
 // here because Apple only signs people in. Until the 10.74 upgrade has run
-// the card says so and only Google's fields are there.
+// the card says so and only Google's switch is there.
+$signin_google_app = function_exists('pg_signin_google_app') ? pg_signin_google_app() : null;
+$signin_google_app_ready = is_array($signin_google_app) && ($signin_google_app['client_secret'] !== '');
+
 $signin_google_body = '
                                         <div class="col-12 ">
                                             <div class="form-field">' . pg_settings_tile('google', 'system') . '
@@ -267,17 +271,10 @@ $signin_google_body = '
                                                 <div class="popover-body">
                                                     <div class="row gy-5">
                                                         <div class="col-12">
-                                                            <label class="form-label" for="oauth_google_client_id">' . lang('Google Client ID') . '</label>
-                                                            <input class="form-control" type="text" id="oauth_google_client_id" name="oauth_google_client_id" value="' . h($oauth_google_client_id) . '" autocomplete="off"/>
-                                                        </div>
-                                                        <div class="col-12">
-                                                            <label class="form-label" for="oauth_google_client_secret">' . lang('Google Client Secret') . '</label>
-                                                            <input class="form-control" type="text" id="oauth_google_client_secret" name="oauth_google_client_secret" value="' . h($oauth_google_client_secret_value) . '" autocomplete="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true"/>
-                                                            <div class="form-text">' . lang('Shown as plain text on purpose: a password-type box invites the browser\'s password manager to overwrite it, which silently replaces the key on save.') . '</div>
-                                                        </div>
-                                                        <div class="col-12">
-                                                            <label class="form-label" for="oauth_google_redirect">' . lang('Authorized redirect URI (add this to your Google Cloud OAuth client)') . '</label>
-                                                            <input class="form-control font-monospace" type="text" id="oauth_google_redirect" readonly onclick="this.select()" value="' . h(URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/google_auth.php') . '"/>
+                                                            ' . ($signin_google_app_ready
+                                                                ? '<div class="alert theme-success py-3 small mb-3">' . h(lang('Visitors and staff sign in through the Sign in with Google application set up on Google\'s page of Connections.')) . '</div>'
+                                                                : '<div class="alert theme-warning py-3 small mb-3">' . h(lang('Set up the Sign in with Google application on Google\'s page of Connections first. Until then the button stays hidden.')) . '</div>') . '
+                                                            <a href="connections.php?service=google#connections-signin" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Connections')) . ' › Google</a>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -327,7 +324,7 @@ if ($signin_ready) {
                                                             ' . ($signin_microsoft_app_ready
                                                                 ? '<div class="alert theme-success py-3 small mb-3">' . h(lang('Work, school and personal Microsoft accounts sign in through the Microsoft application of Connected accounts.')) . '</div>'
                                                                 : '<div class="alert theme-warning py-3 small mb-3">' . h(lang('Set up the Microsoft application on Connected accounts first. Until then the button stays hidden.')) . '</div>') . '
-                                                            <a href="connections.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Connected accounts')) . '</a>
+                                                            <a href="connections.php?service=microsoft" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Connections')) . ' › Microsoft</a>
                                                         </div>'
                                                         . $signin_redirect_field('signin_microsoft_redirect', lang('Redirect URI (add this as a further Web redirect URI to the Microsoft application)')) . '
                                                         <div class="col-12">

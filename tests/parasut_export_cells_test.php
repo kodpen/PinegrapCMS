@@ -4,9 +4,10 @@
  *
  * Tests that Orders > Export for Paraşüt Selected writes the text a customer
  * or staff member typed (name, e-mail, address, city, state, identity number,
- * product name) as explicit text cells. PHPExcel's default binder stores a
- * string that starts with '=' as a formula and '#N/A' as an error, so a
- * checkout name like '=HYPERLINK(...)' would run when the workbook is opened.
+ * product name) as text. pg_xlsx_write_layout() writes every string as an
+ * inline text cell and never a formula (parasut_sheet_xlsx_test.php); the
+ * export hands it those values as strings, so a checkout name like
+ * '=HYPERLINK(...)' or a number-like identity number stays as typed.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -28,48 +29,36 @@ function parasut_export_cells_block()
 	return substr($source, $start, $end - $start);
 }
 
-// Every typed text column goes through setCellValueExplicit(..., TYPE_STRING).
+// Every typed text column is handed to the writer as a string.
 function test_parasut_export_typed_text_is_text_cell()
 {
 	$block = parasut_export_cells_block();
 	$cells = array(
-		"'A'. \$i_obj_2 ,\$customer_billing_name",
-		"'D' . \$i_obj_2,\$billing_email_address",
-		"'F' . \$i_obj_2,\$billing_combined_address",
-		"'G' . \$i_obj_2,\$billing_city",
-		"'H' . \$i_obj_2,\$billing_state",
-		"'I' . \$i_obj_2,\$billing_phone_number",
-		"'J' . \$i_obj_2,\$billing_fax_number",
-		"'M' . \$i_obj_2,\$identification_number",
-		"'A'. \$i_obj_1 ,\$customer_billing_name",
-		"'B' . \$i_obj_1, \$organization_name . ' - ' . \$order_number",
-		"'L' . \$i_obj_1,\$product_name",
+		"'A' => (string) \$customer_billing_name,",
+		"'D' => (string) \$billing_email_address,",
+		"'F' => (string) \$billing_combined_address,",
+		"'G' => (string) \$billing_city,",
+		"'H' => (string) \$billing_state,",
+		"'I' => (string) \$billing_phone_number,",
+		"'J' => (string) \$billing_fax_number,",
+		"'M' => (string) \$identification_number,",
+		"'B' => \$organization_name . ' - ' . \$order_number,",
+		"'L' => (string) \$product_name,",
 	);
 	foreach ($cells as $cell) {
-		pg_assert_true(
-			strpos($block, '->setCellValueExplicit(' . $cell . ',PHPExcel_Cell_DataType::TYPE_STRING)') !== false,
-			'text cell: ' . $cell
-		);
-		pg_assert_true(strpos($block, '->setCellValue(' . $cell) === false, 'no bound cell: ' . $cell);
+		pg_assert_true(strpos($block, $cell) !== false, 'text cell: ' . $cell);
 	}
+	pg_assert_same(2, substr_count($block, "'A' => (string) \$customer_billing_name,"), 'the name on both sheets');
 }
 
-// No variable reaches a plain setCellValue() except the dates and numbers.
-function test_parasut_export_bound_cells_are_dates_and_numbers()
+// The sheets are written by the shared writer under Paraşüt's heads, with
+// no template file.
+function test_parasut_export_uses_the_shared_writer()
 {
 	$block = parasut_export_cells_block();
-	preg_match_all('/->setCellValue\(\s*\'([A-Z])\'\s*\.\s*\$i_obj_(\d)\s*,\s*([^\n]*)/', $block, $matches, PREG_SET_ORDER);
-	pg_assert_true(count($matches) > 0, 'bound cells found');
-	$allowed = array('C', 'E', 'F', 'H', 'K', 'L', 'O', 'P', 'Q', 'R', 'S');
-	foreach ($matches as $match) {
-		$column = $match[1];
-		$value = $match[3];
-		pg_assert_true(in_array($column, $allowed, true), 'bound column ' . $column . ' is a fixed or numeric column');
-		if ($column === 'L') {
-			pg_assert_true(strpos($value, 'lang(') === 0, 'bound L holds only a translated fee label');
-		}
-		if ($column === 'F' && $match[2] === '2') {
-			pg_assert_true(false, 'contacts F (address) is a text cell');
-		}
-	}
+	pg_assert_same(1, substr_count($block, 'pg_xlsx_write_layout($invoice_layout, '), 'the invoice workbook');
+	pg_assert_same(1, substr_count($block, "pg_xlsx_write_layout(pg_parasut_sheet_layout('contacts'), "), 'the contacts workbook');
+	pg_assert_true(strpos($block, "pg_parasut_sheet_layout('invoices')") !== false, 'invoice sheet head');
+	pg_assert_true(strpos($block, "pg_parasut_sheet_layout('contacts')") !== false, 'contacts sheet head');
+	pg_assert_true(strpos($block, "array(2 => 'd.mm.yyyy', 5 => 'd.mm.yyyy', 15 => '#,##0.00', 16 => '#,##0.00', 17 => '#,##', 18 => '#,##0.00')") !== false, 'the column formats');
 }

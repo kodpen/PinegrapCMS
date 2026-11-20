@@ -434,6 +434,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-80.md: Where are the rules and the earlier parts?
 - decisions-made-product-80.md: Does the Design Canvas group layers, and may a layer follow another layer? (owner, 2026-11-20, in the architect's window, channel message 9832)
 - decisions-made-product-80.md: How is the Workspace writing box laid out on a phone? (owner, 2026-11-20, in the architect's window, channel message 9832)
+- decisions-made-product-80.md: Does a product form take a shopper's file? (owner, 2026-11-20, agent channel poll 160, channel message 9994)
+- decisions-made-product-80.md: When are an unordered cart's uploaded files deleted? (owner, 2026-11-20, poll 162, channel message 10010)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -510,9 +512,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-28.md: Where are the rules and the earlier parts?
 - decisions-made-schema-28.md: Is schema the open version added and then gave up kept? (owner, 2026-11-19, in the architect's window, agent channel message 9493)
 - decisions-made-schema-28.md: Where is a person's Incoming e-mail menu pin kept? (owner, 2026-11-19, agent channel poll 154, message 9495)
+- decisions-made-schema-28.md: Which columns does PU6 add to `auto_dialogs`? (architect, 2026-11-19, agent channel message 9861, confirmed in PU6's draft, #10450)
 - decisions-made-schema-29.md: Where are the rules and the earlier parts?
 - decisions-made-schema-29.md: Which tables do Workspace calls add? (owner, 2026-11-20, poll 158, channel message 9839)
 - decisions-made-schema-29.md: Which columns does PU6 add to `auto_dialogs`? (architect, 2026-11-20, agent channel, answer to K2's request 1584)
+- decisions-made-schema-29.md: Does `prototype_links` get a column for a release bundle's share link? (owner, 2026-11-20, poll 159, channel message 9931)
+- decisions-made-schema-29.md: Which columns does the tickets table get? (architect, 2026-11-20, agent channel message 10086, answer to K1's request 1671)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -837,6 +842,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/content-proposals-bell.md: Waiting content changes, who is told: the designers' bell line (once an hour per page), the editor's lines on apply, dismiss and stale, and the count above the page list
 - designer/content-proposals-compare-markup.md: Compare on Waiting Content Changes when a text's HTML changes (link address, bold, style), alone or with its words, or past the 600-character cut: differing values never print the same
 - designer/content-proposals.md: Content changes that wait for approval: the switch, which content-level saves are held, the operations kept in design_proposals, the assistant's readers skipping editor rows
+- designer/course-progress.md: Start file of courses: ordered and timed lessons on a private folder's pages, progress, quiz lessons, the learner's blocks, the certificate, the Courses screen; decisions, PRs, files, left out
 - designer/custom-form-overview.md: Start file for the custom-form-* files: what a designed form is, the decisions that bind it, its parts by the panel label, which file holds what, how a new control or field setting is added
 - designer/custom-form-translate-switch.md: Per-field "Include in translation" switch of custom forms (form_fields.translate_values, step 11.0.26): three-state _cf.translate, extraction and render skip, legacy screens, stale store and pages
 - designer/custom-style.md: Per-element custom style: a User Styles rule keyed by a pgs- class, pg_custom_style.js, the Styles "This element" card and Attributes css row, Split, where it is off
@@ -854,6 +860,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values
 - designer/designer-block-motion.md: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns, the hero video rule.
 - designer/designer-blocks-overview.md: Start file for the designer-blocks-* files: what a block family is, the rule that binds it, every family by its palette group label, which file holds what, how a new family is added
+- designer/designer-canvas-bar-prototype.md: The canvas bar's Prototype mode (DP24, #10507): its zones, where each control of the Prototype view's old bar went, zoom per mode, keys, folding, and the room kept for the Comments button
 - designer/designer-canvas-toolbar-in-cards.md: The selected element's toolbar in a card (#9217, #9246): the ratio rule skips chrome, room counts inside the clip, it shows in see-through wrappers
 - designer/designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
 - designer/designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
@@ -864,7 +871,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer
 - designer/designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft), the bundle's label and text, the toast and box title naming the bundle
 - designer/designer-right-column.md: The designer's right column (Options and Design tabs, 336 px default, kept width, narrow form under 300 px) and the bottom panel's closed strip and remembered state
-- designer/editor-turkish-terms.md: The names Page Design Studio, Design Canvas, Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test
+- designer/editor-turkish-terms.md: The names Page Design Studio, Artifact Canvas (was Design Canvas), Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test
 - designer/form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - designer/form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - designer/layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
@@ -885,6 +892,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/page-revisions.md: Page revisions (page_revisions, 11.0.15): what a row holds, when a save writes one, the lazy first row of a page without one, source labels, retention and the daily sweep, what is not covered
 - designer/page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves
 - designer/prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up
+- designer/prototype-badge-list.md: The Prototype view's amber count on a frame's head as a button (PX3, #10531): it lists the frame's links without a target, each opened in the links panel
+- designer/prototype-comments.md: Prototype comments start file: which file covers each part, Delete comments in the Share prototype dialog, P1 to P16 checked, where the Comments button sits still open
 - designer/prototype-drawing.md: The Prototype view's drawing from a mark (PV10, #10101): a mark's drag draws its arrow, an arrow head's drag re-points it, the marks' keys, the pointer lifting an arrow, a link named by its children
 - designer/prototype-focus.md: The Prototype view draws only the selected frame's arrows: the core's focus, opening on the open tab, All arrows, row marks, a shared part's link as an amber note, arrow colours and heads
 - designer/prototype-grip.md: The Prototype view's "+" handle beside a drawable mark (PL4, #10444): when it shows, where it goes, 20 px at any zoom, a press on it is the mark's; a small mark's 4 px reach
@@ -893,12 +902,15 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/prototype-page-whole.md: The Prototype view's selected page opened whole (PL3): the foot as a button, Show the whole page and Show less, the 6400 px limit, pinned viewport heights, the frames below moved, one open at a time
 - designer/prototype-picture-check.md: The prototype canvas page picture (PV7, architect 2026-11-16): the Preview document in a script-free readable frame, its sandbox and CSP, the link marker, the cap on live pictures
 - designer/prototype-problems.md: The Prototype view's problems (PV11a): links without a target, pages no link leads to, "N to check", the three groups, the amber count and badge
+- designer/prototype-row-drag.md: The Prototype view's links panel row dragged onto a frame or chip (PX2, #10505): which rows, the ghost and the lit target, what a drop writes (the arrow's own path), what writes nothing
 - designer/prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes
 - designer/prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
-- designer/prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part
+- designer/prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its controls in the canvas bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part
 - designer/prototype-zoom.md: The Prototype view's zoom to a frame (PX1, #10476): a double-click or Enter on a frame shows it whole; Esc or "All" goes back to the view from before; what forgets the zoom
 - designer/release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: what they post, the "changed since" choice, Publish disabled until chosen, focus on Cancel, their words
 - designer/release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its three dialogs, Remove and Delete, what later steps add
+- designer/release-bundle-share-link.md: A release bundle's preview shared by a prototype link (prototype_links.bundle_id, RB6 #10518): who makes it, what it opens, when it stops, the frame signed for the bundle
+- designer/release-bundle.md: Start file of release bundles (Bundles screen, page_bundles.php): decisions, parts, which file holds what, B1-B18 as built, the gaps
 - designer/rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff.
 - designer/shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
 - designer/shared-component-opened-alone.md: A shared component opened on its own in the designer (edit_system_style.php ?component=): who may, which design draws it, the one synthetic tab, Save writing only the component, the edit links
@@ -942,11 +954,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - platform/panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913)
 - platform/place-coordinates.md: Coordinates of a collection's places: fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon
-- platform/place-list.md: The "Map of places" block's list (place-map MP3): places.php and its gate, the records and fields an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block
+- platform/place-list.md: The "Map of places" block's list (place-map MP3, MP3b): places.php and its gate, the records an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block
 - platform/proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which.
 - platform/search-and-audits-screen.md: Search and audits screen (search_audits.php): engine cards, state, progress and failure sources, the job switch, Run now, where it is linked
 - platform/secure-mode-proxy-offer.md: Turning Secure Mode on through a proxy not yet trusted: the Add this proxy to Trusted Proxies box, what the save lists and checks, the log line, what test_secure_mode.php reports.
 - platform/share-card.md: The share card (og:image drawn from the title, logo and site name for a page with no share picture): what it is, each feature with the PR that built it, the decisions, what was left out
+- platform/sheet-reader.md: The importers' own sheet reader (pg_sheet_rows(), includes/fn/sheet_read.php, #10466): .xlsx, .ods and .xls rows one at a time as typed cells, its limits, how it differs from PHPExcel
 - platform/short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - platform/sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left
 - platform/visitor-push-app-mode.md: Visitor notifications' App mode (VP7, N17): its own switch, the manifest's standalone display, the worker's offline page for a lost page load
@@ -973,7 +986,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/dashboard-v2-overview.md: The new dashboard as a whole: the per-person switch beside the untouched old dashboard, welcome.php's page branch, its files and bundles, SVG charts, refresh rules, string card ids
 - ui/dashboard-v2-visitmap-world.md: The Visitor map card's world map when no city can be placed (#8713): countries shaded in four steps, why shading, tips and keys, the card's hue, countries the map file has no outline for
 - ui/dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
-- ui/design-canvas-icon.md: The Design Canvas's own icon (drawing B, #8903): pg_design_canvas_icon() in two colours, pg_design_canvas_icon_one_colour() (#9250), and where each form is shown
+- ui/design-canvas-icon.md: The canvas's own icon (two sheets and a wave, owner 2026-11-20): pg_design_canvas_icon() in two colours, pg_design_canvas_icon_one_colour() (#9250), and where each form is shown
 - ui/details-panel-rule.md: The one structure rule of a list's details panel ("Detaylar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it
 - ui/dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card
 - ui/email-campaign-create-refusals.md: New campaign (add_email_campaign.php): a refusal stays on the form with what was written (#10086, PR #10096); Create stores the campaign paused and opens Edit Campaign (#10085, PR #10109)
@@ -986,7 +999,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames
 - ui/image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b)
 - ui/image-editor-eraser.md: The Design Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place
-- ui/image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker in a worker; the method's numbers, its limits and how it was checked
+- ui/image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
 - ui/image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
 - ui/image-editor-layers.md: The Design Canvas's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 - ui/image-editor-menu.md: The Design Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
@@ -994,6 +1007,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-picture-to-layer.md: Convert to a layer in the Design Canvas (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
 - ui/image-editor-rail.md: The Design Canvas rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
 - ui/image-editor-subject.md: The Design Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
+- ui/image-editor-touch.md: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()) for points and a selected layer, the phone's nudge arrows, a typed text Animate did not pick
 - ui/image-editor-upload-setting.md: The Design Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
 - ui/image-editor-video-files.md: Design Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
@@ -1063,7 +1077,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
-- workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named: one per coordinator at a time; since 2026-11-19 it fixes what it finds in its own PR and opens a bug issue only for the rest
+- workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps

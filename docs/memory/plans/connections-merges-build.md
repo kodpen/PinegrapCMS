@@ -18,6 +18,7 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - CX9 was cut in two, done. CX9a, the connections, their pages and the data step: #10470 (`api/ai-connections.md`). CX9b, the feature cards without a key, voice's key in the data step: #10493 (`api/ai-connections-feature-cards.md`).
 - CX10 Google and Microsoft: the application and each connected account on the provider's page. It answers CX4 (a provider's client is typed on its page).
 - CX10 also shows the redirect addresses, the APIs to enable, a plain "API not enabled" error and Google's verification warning: `connections-merges-cx10-google.md`.
+- CX10 done, cut in two (`ui/connections-provider-page.md`). CX10a #10512: Google's and Microsoft's pages, application, accounts, the four parts. CX10b #10529: the Sign in with Google application on Google's page under its card's gate.
 - CX11 The other groups, one step each in the census's order (`integrations-census-screens.md`: SEO, Visitors and privacy, Languages and Translation, Communication, Mailboxes, Accounts and sign-in, Ecommerce, Accounting, Integrations, Updates and maintenance, the Workspace's categories), on the same cards: CX11a, CX11b… cut when the step before lands.
 
 ## What binds CX9 already?

@@ -28,4 +28,6 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 - OS1 (done, #10483), one "Export to Excel" for panel lists: a helper over the shared xlsx writer (typed columns, a frozen bold head) and one toolbar action. The step's first commit is a census in this file of the panel lists that export CSV today; each gets the Excel export beside its CSV, in the census's order, a and b if it passes the size.
 
 - OS1 census: `plans/office-own-code-os1-census.md`.
-- OS2, one import reader: every importer that takes only CSV today (census first, as OS1) also takes .xlsx, .ods and .xls through XL1's reader, and a workbook with more than one sheet asks which sheet. The product and bank statement imports get the sheet question too.
+- OS2 census: `plans/office-own-code-os2-census.md`.
+- OS2 (done, #10523, #10548), one import reader: every importer that takes only CSV today (census first, as OS1) also takes .xlsx, .ods and .xls through XL1's reader, and a workbook with more than one sheet asks which sheet. The product and bank statement imports get the sheet question too.
+  - Cut in two (`plans/office-own-code-os2-census.md`): OS2a (done, #10523), the shared helper and sheet question with all nine CSV-only importers (`platform/sheet-import-upload.md`); OS2c (done, #10548), the sheet question for the product and bank statement imports after XL5.

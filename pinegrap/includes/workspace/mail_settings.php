@@ -341,7 +341,7 @@ function ws_mail_connect_form($viewer, $form = null, $ready = null, $provider = 
     if (!(($ready === null) ? ws_mail_connect_ready($provider) : $ready)) {
         return '
                 <div class="pg-field-help mt-3">' . $icon . ' '
-                    . '<a href="connections.php#connections-' . $provider . '">' . h($google ? lang('Set up the Google application first') : lang('Set up the Microsoft application first')) . '</a>'
+                    . '<a href="connections.php?service=' . $provider . '">' . h($google ? lang('Set up the Google application first') : lang('Set up the Microsoft application first')) . '</a>'
                     . ($google ? ' ' . h(lang('Until it is set up, Google cannot be asked for the account.')) : '') . '</div>';
     }
 
@@ -404,13 +404,7 @@ function ws_mail_connect_ready($provider = 'microsoft')
  */
 function ws_mail_google_parts($viewer, $form)
 {
-    $addresses = array();
-
-    if (function_exists('pg_signin_redirect_uri') && function_exists('pg_connect_redirect_uri')) {
-        $addresses = array_values(array_unique(array(pg_signin_redirect_uri('google'), pg_connect_redirect_uri())));
-    }
-
-    return array('connect' => ws_mail_connect_form($viewer, $form, null, 'google'), 'addresses' => $addresses);
+    return array('connect' => ws_mail_connect_form($viewer, $form, null, 'google'), 'addresses' => pg_google_cloud_redirect_addresses('google'));
 }
 
 /**
@@ -1174,7 +1168,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings, $google = array())
                     <input class="pg-input" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['smtp_port'] ?? 0, $provider, 'smtp_port') . '">
                 </div>
                 <div class="md:col-8">
-                    <div class="form-field mt-2">
+                    <div class="d-flex align-items-center gap-3 mt-2">
                         <input class="pg-checkbox" type="checkbox" name="sent_copy" value="1" id="' . $prefix . 'sent_copy"' . ($copy ? ' checked' : '') . '>
                         <label for="' . $prefix . 'sent_copy">' . h(lang('Keep a copy of each answer in the mailbox\'s sent folder')) . '</label>
                     </div>
@@ -1253,13 +1247,7 @@ function ws_mail_google_steps($provider, $prefix = 'ws_mail_0_', $way = 'connect
         lang('App passwords are not offered when 2-Step Verification uses only security keys, when the account has Advanced Protection, or for a work or school account whose organisation does not allow them: ask its administrator.'),
         lang('When the account\'s Google password changes, Google revokes its app passwords: create a new one and type it here.'),
     );
-    $warning = array(
-        lang('Reading a mailbox asks for full access to Gmail, one of Google\'s restricted scopes: until Google has verified the application, Google shows "Google hasn\'t verified this app" before the account allows it.'),
-        lang('While the application\'s publishing status is Testing, only the accounts listed under Test users can connect, and they pass that warning to go on.'),
-        lang('In Testing, Google ends the access seven days after it was given: the account is then connected again.'),
-        lang('In a Google Workspace organisation, an application whose user type is Internal serves only the organisation\'s accounts and needs no verification.'),
-        lang('For any other account, publish the application and have it verified by Google; for this scope Google also asks for a security assessment.'),
-    );
+    $warning = pg_google_cloud_verification_notes('gmail');
     $addresses = '';
 
     foreach (array_values((array) ($google['addresses'] ?? array())) as $index => $address) {
@@ -1290,7 +1278,7 @@ function ws_mail_google_steps($provider, $prefix = 'ws_mail_0_', $way = 'connect
                             <ol class="pg-text-2 mb-2 ps-4"><li>' . implode('</li><li>', $connected) . '</li></ol>
                             ' . (string) ($google['connect'] ?? '') . '
                             <details class="mt-3"><summary class="pg-text-2">' . h(lang('Setting up the Google application')) . '</summary>' . $addresses . '
-                                <p class="pg-text-2 mt-3 mb-0">' . lang(array('string' => 'Turn on the Gmail API in the same Google Cloud project; answers are sent through it: {var:1}.', 'vars' => $link('https://console.cloud.google.com/apis/library/gmail.googleapis.com', lang('Gmail API')))) . '</p>
+                                <p class="pg-text-2 mt-3 mb-0">' . lang(array('string' => 'Turn on the Gmail API in the same Google Cloud project; answers are sent through it: {var:1}.', 'vars' => $link(pg_google_cloud_enable_url('gmail.googleapis.com'), lang('Gmail API')))) . '</p>
                                 <h5 class="pg-group-label mt-3 mb-2">' . h(lang('Google\'s verification warning')) . '</h5>
                                 <ul class="pg-field-help mb-0 ps-4"><li>' . implode('</li><li>', array_map('h', $warning)) . '</li></ul>
                             </details>
@@ -1445,7 +1433,8 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
         $test = '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Test connection'));
 
         // In Site Settings each box is a list row with its icon tile, its
-        // place and last mail, its last check, and its buttons under them.
+        // place and last mail, its last check, and its buttons under them;
+        // the buttons wrap, or on a 320 px screen Edit ran past the card.
         if ($form !== null) {
             $rows .= '
             <div class="pg-list-row' . ((int) $box['enabled'] === 1 ? '' : ' opacity-50') . '"><span class="pg-icon-tile pg-tone-team" aria-hidden="true"><span class="bi bi-inbox"></span></span>
@@ -1453,7 +1442,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
                     <div class="pg-list-row-head"><span class="pg-list-row-title">' . h((string) $box['name']) . '</span></div>
                     <div class="pg-list-row-text">' . h((string) $box['address']) . ' · ' . $place . ' · ' . h(((int) $box['last_mail_at'] > 0) ? lang(array('string' => 'Last e-mail {var:1}', 'vars' => date('d.m.Y H:i', (int) $box['last_mail_at']))) : lang('No e-mail yet')) . '</div>
                     <div class="pg-list-row-text">' . ws_mail_box_check_line($box) . '</div>
-                    <div class="pg-list-row-actions">
+                    <div class="pg-list-row-actions flex-wrap">
                         ' . ($reads ? '<button type="submit" name="ws_mail_test" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-quiet pg-button-sm">' . $test . '</button>' : '') . '
                         <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-mail-' . $id . '" aria-controls="pgset-ws-mail-' . $id . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
                     </div>
