@@ -279,5 +279,6 @@
 - whatsapp-webhook-events.md: whatsapp_webhook.php events (WA4, #9351): delivery states, template changes, a customer's message into whatsapp_inbox (11.0.198), its bell notice and customer-history line
 - windows-folder-is-writable.md: Ask pg_dir_writable(), never is_writable(), about a folder: PHP on Windows reads its read-only attribute (OneDrive, Explorer), which stops nothing; where it bit, how each check asks now
 - x-rewrite-url-iis-only.md: The request's address is read by pg_request_uri_from_server(): X-Rewrite-URL counts on IIS only, else a client header could replace the routed address and slip past the firewall
+- xlsx-workbook-part.md: Where .xlsx readers and editors find the workbook part: through _rels/.rels (pg_sheet_xlsx_workbook(), PR #10905), else xl/workbook.xml; which editor refuses one kept elsewhere [decision: here]
 - zip-entry-declared-size.md: A zip entry is read no further than its archive declares: streams via pg_zip_entry_uri(), whole entries via pg_zip_entry_contents(), ZIP imports via pg_zip_import_open(), .ods checked
 - zip-entry-php-versions.md: Why pg_zip_entry_contents() watches the read's warning and compares the CRC itself: fread() and getFromIndex() answer a damaged entry differently by PHP version
