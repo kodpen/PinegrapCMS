@@ -99,7 +99,8 @@ function test_mcp_tool_from_route()
 	$tool = pg_mcp_tool_from_route(mcp_test_route());
 
 	pg_assert_same('products_update', $tool['name']);
-	pg_assert_same('Change a product. Only the fields present are written.', $tool['description']);
+	// The store topic's guide line closes a product tool's description.
+	pg_assert_same('Change a product. Only the fields present are written. Guide: store.', $tool['description']);
 	pg_assert_same(array('id'), $tool['inputSchema']['required']);
 
 	$properties = (array)$tool['inputSchema']['properties'];

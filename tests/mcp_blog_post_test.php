@@ -80,7 +80,7 @@ function test_mcp_blog_post_form_tools_say_to_read_the_fields()
 	pg_assert_same('forms_fields', pg_mcp_tool_name('forms.fields'));
 	pg_assert_true(mcp_blog_post_test_route('forms.fields') !== null, 'forms.fields exists');
 
-	pg_assert_same('', pg_mcp_tool_guidance('products.list'), 'no guidance elsewhere');
+	pg_assert_same('Guide: store.', pg_mcp_tool_guidance('products.list'), 'only the area\'s guide line elsewhere');
 	pg_assert_same('', pg_mcp_tool_guidance(''));
 }
 
