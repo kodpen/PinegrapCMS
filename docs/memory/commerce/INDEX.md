@@ -113,6 +113,7 @@
 - customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR [decision: here]
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
+- delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
@@ -399,6 +400,8 @@
 - subscriptions-renewal.md: Renewals of store-run subscriptions (PR #3290, decided in #3183): job branch, per-row lock, renewal order, next date, 1/3/7 ladder, held rows and Stripe's paid report [decision: decisions-made-product-5.md]
 - subscriptions-stripe.md: Stripe store-run subscriptions (PR #3270, decided in #3183): Customer and setup_future_usage on the first payment, card_ref, off-session charge_renewal, Checkout setup page, detach on cancel [decision: decisions-made-product-5.md]
 - subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref [decision: decisions-made-product-5.md]
+- supplier-feed-price-rule.md: Supplier feed amounts (Turkish and English separators, stock text, net of VAT) and the F4 price rule: margin, fixed, rate, ,90 or ,99 endings, floor, category and brand rules
+- supplier-feed-readers.md: Supplier feed tables (11.0.255) and readers: format from the first bytes, record path, XML/CSV/JSON with a resumable cursor, flat keys, the field proposal (SF1, PR #10771)
 - tax-zone-commission-reward-boxes.md: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 - tr-district-carriers.md: What sends and writes ship_tos.district (#3654): the four Turkish carrier drivers (district first, city fallback), the needs-district hook, the n11 and Trendyol imports [decision: decisions-made-product-12.md]
 - tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far [decision: here]
