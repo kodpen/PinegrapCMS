@@ -846,7 +846,8 @@ function test_prototype_links_log_lines_name_id_and_hint_never_the_token()
 	}
 
 	// Each line names the link as "#id (hint…)", from the row's hint.
-	pg_assert_same(4, substr_count($source, "#{var:1} ({var:2}…)"), 'shared with anyone, with the team, revoked, locked');
+	// Each in a design's wording and a bundle's.
+	pg_assert_same(8, substr_count($source, "#{var:1} ({var:2}…)"), 'shared with anyone, with the team, revoked, locked');
 	pg_assert_true(substr_count($source, "(string) \$row['token_hint']") >= 3);
 }
 

@@ -19,7 +19,7 @@ priority: 4
   - The writer escapes through one XML helper; its test feeds it what breaks XML in a product's name and description: `&`, `<`, control bytes, `]]>`.
   - State in `config.product_feeds` as the other formats: no schema change. The card's new switch is the architect's look.
   - It needs no account. A third party states that Cimri reads this format from an address; whether Cimri and Akakçe take it as it is, is TS2's.
-- TS1b (S) when no open PR holds `includes/api/schema.php`: the store feeds description names google_xml.
+- TS1b (S, done #10527) the store feeds description names google_xml.
 
 ## What waits for the release of 2026.11.0?
 - TS2 (S, with the owner's or a customer's store account) Akakçe and Cimri. No document of either's own format was found in public; both take a shop only after an application with company papers. With an account at each, the format it asks is read from its own document and a feed is handed in: `google_xml` as it is where that is taken, else a format of its own in the builder. Needs of him: a store application at each, or a customer who has one.

@@ -496,7 +496,7 @@ if (!$_POST) {
                 <div class="row">
                     <div class="col-12 xl:col-6">
                         <div class="card mb-7">
-                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 <label for="find" class="mb-0">' . lang('Find') . '</label>
                             </h2>
                             <div class="card-body pt-0">
@@ -513,7 +513,7 @@ if (!$_POST) {
                     </div>
                     <div class="col-12 xl:col-6">
                         <div class="card mb-7">
-                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 <label for="replace" class="mb-0">' . lang('Replace') . '</label>
                             </h2>
                             <div class="card-body pt-0">
@@ -533,7 +533,7 @@ if (!$_POST) {
                 <div class="card mb-7">
                     <button type="button" class="card-header bg-reset fg-reset border-0 w-100 text-start d-flex justify-content-between align-items-center"
                         data-bs-toggle="collapse" data-bs-target="#scope_panel" aria-controls="scope_panel" aria-expanded="true">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Scope') . '</span>
+                        <span class="pg-title-section">' . lang('Scope') . '</span>
                         <span class="material-icons" aria-hidden="true">expand_more</span>
                     </button>
                     <div class="collapse show" id="scope_panel">
@@ -557,7 +557,7 @@ if (!$_POST) {
                 <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                 <div class="position-sticky" style="top:3.3rem;">
                     <div class="card mb-7">
-                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        <h2 class="card-header bg-reset border-0 pg-title-section">
                             ' . lang('Options') . '
                         </h2>
                         <div class="card-body pt-0">
@@ -773,15 +773,15 @@ if (!$_POST) {
 
             $results_html .= '
             <div class="card mb-7">
-                <div class="card-header bg-reset border-0 text-uppercase h6 fg-primary fw-bold d-flex align-items-center gap-3">
-                    ' . h($group['label']) . '
+                <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                    <h2 class="pg-title-section mb-0">' . h($group['label']) . '</h2>
                     <span class="badge theme-primary fw-normal">' . h(lang(array(
                         'string' => count($group['results']) === 1 ? '{var:1} record' : '{var:1} records',
                         'vars'   => pg_format_number(count($group['results']), 0),
                     ))) . '</span>
                 </div>
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover table-sm pg-find-results">
+                    <table class="table table-hover table-sm pg-find-results pg-card-table">
                         <thead class="pg-table-light">
                             <tr>
                                 <th>' . lang('Name') . '</th>

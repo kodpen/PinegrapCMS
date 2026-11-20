@@ -8,7 +8,7 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 
 ## Previews
 - OP1, .csv and .tsv open as a sheet: the delimiter (comma, semicolon, tab) and the encoding (UTF-8 with or without a mark, Windows-1254) are detected, a choice above the sheet corrects a wrong guess; view only. Done: PR #10484 (`platform/office-csv-preview.md`).
-- OP2, .ods opens as a workbook through XL1's reader, with its cell ceiling; view only.
+- OP2, .ods opens as a workbook through XL1's reader, with its cell ceiling; view only. Done: PR #10519 (`platform/office-ods-preview.md`).
 - OP3, .xls opens as a workbook through XL1's reader; view only, with "Save a copy as .xlsx" (written by the shared writer beside the file, or as a new message's file in a channel), which the user then edits.
 - OP4, .pptx opens as a list of slides: each slide's title, text in reading order, pictures and speaker notes; no slide layout, no animation; the picture limits of the .docx preview apply.
 
@@ -29,5 +29,5 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 
 - OS1 census: `plans/office-own-code-os1-census.md`.
 - OS2 census: `plans/office-own-code-os2-census.md`.
-- OS2, one import reader: every importer that takes only CSV today (census first, as OS1) also takes .xlsx, .ods and .xls through XL1's reader, and a workbook with more than one sheet asks which sheet. The product and bank statement imports get the sheet question too.
-  - Cut in two (`plans/office-own-code-os2-census.md`): OS2a (done, #10523), the shared helper and sheet question with all nine CSV-only importers (`platform/sheet-import-upload.md`); OS2c, the sheet question for the product and bank statement imports after XL5.
+- OS2 (done, #10523, #10548), one import reader: every importer that takes only CSV today (census first, as OS1) also takes .xlsx, .ods and .xls through XL1's reader, and a workbook with more than one sheet asks which sheet. The product and bank statement imports get the sheet question too.
+  - Cut in two (`plans/office-own-code-os2-census.md`): OS2a (done, #10523), the shared helper and sheet question with all nine CSV-only importers (`platform/sheet-import-upload.md`); OS2c (done, #10548), the sheet question for the product and bank statement imports after XL5.

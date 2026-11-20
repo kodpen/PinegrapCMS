@@ -88,6 +88,20 @@ function pg_place_map_name($name)
  */
 function pg_place_map_field_roles($fields)
 {
+    $roles = pg_place_map_field_roles_found($fields);
+
+    return (($roles['lat'] > 0) && ($roles['lng'] > 0) && $roles['address']) ? $roles : null;
+}
+
+/**
+ * The address and coordinate fields found by name, the ones not found left
+ * 0 (or no address). Pure.
+ *
+ * @param array $fields rows in form order: id, name, type, kind
+ * @return array lat, lng (field ids or 0), address (field ids in order)
+ */
+function pg_place_map_field_roles_found($fields)
+{
     $names = pg_place_map_names();
     $roles = array('lat' => 0, 'lng' => 0, 'address' => array());
 
@@ -116,7 +130,7 @@ function pg_place_map_field_roles($fields)
         }
     }
 
-    return (($roles['lat'] > 0) && ($roles['lng'] > 0) && $roles['address']) ? $roles : null;
+    return $roles;
 }
 
 /**

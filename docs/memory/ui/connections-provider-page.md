@@ -26,7 +26,8 @@ module: google_cloud
 - support.google.com/cloud/answer/15549945: Testing limits use to test users, who see a warning before they grant the scopes; their authorisation ends seven days after consent; Internal limits it to the organisation; In production completes verification.
 - developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification: reading Google Calendar events is a sensitive scope; Internal and Testing need no verification.
 
-## What is left for CX10b?
-- The Sign in with Google application (`config.oauth_google_*`) is still typed in Accounts and sign-in; CX10b moves it onto Google's page under that card's gate. Microsoft's sign-in switch already points to `connections.php?service=microsoft`.
+## Where is the Sign in with Google application typed? (CX10b, #10529)
+- On Google's page, first in "Connection details" (`connections_signin_google_part()`, `#connections-signin`), then "Connected accounts application", which falls back to it. Gate: Accounts and sign-in (`pg_settings_may_open('security')`, card `signin` of `pg_connections_screen_page_cards()`).
+- Saved by `signin_google_save` into `config.oauth_google_*` (`pg_signin_google_app_save()`). The switch stays on the sign-in card, whose row leads here, like Microsoft's; `oauth_google_row` is a legacy anchor to it.
 
 Tests: `tests/google_cloud_test.php`, `tests/connections_layout_test.php`, `tests/workspace_mail_google_steps_test.php`.

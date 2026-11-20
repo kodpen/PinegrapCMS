@@ -50,10 +50,16 @@ function test_required_boxes_forms_marked_required()
 		'includes/forms/calendar_event_location_form.php' => array('name'),
 		'includes/forms/menu_item_form.php' => array('name'),
 		'includes/forms/product_attribute_form.php' => array('name'),
-		'includes/templates/edit_auto_dialog.php' => array('name', 'url'),
+		'includes/templates/edit_auto_dialog.php' => array('name'),
 		'includes/templates/edit_key_code.php' => array('offer_code', 'quantity'),
 		'edit_ad_region.php' => array('name'),
 	);
+
+	// The auto dialog URL swaps with the shared component box by kind: it is
+	// required while the address kind is shown, on the server and the page.
+	$auto_dialog = required_boxes_forms_source('includes/templates/edit_auto_dialog.php');
+	pg_assert_contains("\$url_field['required'] = 'required';", $auto_dialog, 'the URL box is required with the address kind');
+	pg_assert_contains('url.required = !designed;', $auto_dialog, 'and follows the kind on the page');
 
 	foreach ($fields as $path => $names) {
 		$source = required_boxes_forms_source($path);

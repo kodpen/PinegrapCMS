@@ -156,7 +156,18 @@ if (!$_POST) {
 // Else, the form has been submitted, so process submitted data.
 } else {
     validate_token_field();
-    
+
+    // An answer to the sheet question puts the kept workbook back in the
+    // field, so the checks below see it as on the first post.
+    $import_sheet = pg_sheet_import_workbook_answer('file', $sheet_refusal);
+
+    if ($sheet_refusal !== '') {
+        $liveform->mark_error('file', h($sheet_refusal));
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
+        exit();
+    }
+
     // No file chosen, or a request that carries no file field at all.
     if (empty($_FILES['file']['name'])) {
         $liveform->mark_error('file', lang('Please select a file.'));
@@ -170,6 +181,16 @@ if (!$_POST) {
 
     if ($upload_refusal !== '') {
         $liveform->mark_error('file', h($upload_refusal));
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
+        exit();
+    }
+
+    // A workbook with more than one sheet asks which one to import.
+    $sheet_refusal = pg_sheet_import_workbook_ask('file', lang('Import Products'));
+
+    if ($sheet_refusal !== '') {
+        $liveform->mark_error('file', h($sheet_refusal));
 
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
         exit();
@@ -199,7 +220,7 @@ if (!$_POST) {
     if (pg_products_import_is_spreadsheet($_FILES['file']['name'])) {
 
         $import_error = '';
-        $import_temp_path = pg_products_import_to_csv($import_path, $_FILES['file']['name'], $import_error);
+        $import_temp_path = pg_products_import_to_csv($import_path, $_FILES['file']['name'], $import_error, $import_sheet);
 
         if ($import_temp_path == '') {
             $liveform->mark_error('file', $import_error);

@@ -61,7 +61,7 @@
 - cart-offer-code-refused.md: Special Offer Code box of the classic Shopping Cart and Express Order: a mistyped or not running code is refused and the order keeps the code already applied, with its discount (#9069)
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), why the designer cart and express order widgets create none on view, and which page they record as the cart page.
 - cart-posted-quantity.md: How storefront forms (cart, checkout, order form, product page, cart widget) read a typed quantity: pg_cart_posted_quantity(), site separators, "2,5" refused (#6803, #9068)
-- cart-product-form-file-field.md: Why the cart's product form has no file upload path: product forms cannot hold a file upload field and the cart form posts urlencoded; the file branch of the cart form renderer is unreachable
+- cart-product-form-file-field.md: Why the cart's product form has no file upload path: product forms cannot hold a file upload field and the cart form posts urlencoded; the file branch of the cart form renderer is unreachable [decision: decisions-made-product-80.md]
 - cart-quotes-api.md: Cart quotes in the external API (PR #3298): the five routes, orders scopes, dry run, the shared *_check() functions with the screens, the link answered once, the cart_quote.* webhook events
 - cart-quotes-screens.md: Cart quote list and new-quote form details: the products cell, New link confirmation, a deleted contact, quantity checks and redraw
 - cart-quotes.md: Cart quotes (Sepet teklifi): cart_quotes / cart_quote_items, the hashed link, cart_quote.php (GET confirm, POST fills the cart), plan rules, ordered on completion, contact holder, export and erasure

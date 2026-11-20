@@ -132,11 +132,13 @@ function test_image_editor_follow_lost()
 	foreach (array('covered' => 20, 'gone' => 25) as $key => $at) {
 		pg_assert_same($at, $r[$key]['lost']['at'], $key . ': lost at the frame it happened');
 		pg_assert_same($at - 1, $r[$key]['lost']['last'], $key . ': the last good frame');
+		pg_assert_same('match', $r[$key]['lost']['why'], $key . ': lost as no longer matching');
 		pg_assert_same($at - 1, $r[$key]['last'], $key . ': no point after it');
 		pg_assert_true($r[$key]['miss'] <= 1.5, $key . ': right up to there, the largest miss ' . $r[$key]['miss']);
 	}
 
 	pg_assert_true(is_array($r['leaves']['lost']) && ($r['leaves']['lost']['at'] <= 17) && ($r['leaves']['lost']['at'] >= 10), 'leaves: lost by the frame its centre is out: ' . json_encode($r['leaves']['lost']));
+	pg_assert_same('edge', $r['leaves']['lost']['why'], 'leaves: lost at the edge');
 	pg_assert_true($r['leaves']['miss'] <= 1.5, 'leaves: no wrong point at the edge, the largest miss ' . $r['leaves']['miss']);
 }
 
@@ -255,8 +257,8 @@ function test_image_editor_follow_mapping()
 	pg_assert_same(array(10, 5), $r['move'], 'a source move at half size');
 	pg_assert_same(array(-5, 10), $r['turnedMove'], 'a turned clip turns the move');
 	pg_assert_same(array(-10, 5), $r['mirroredMove'], 'a mirrored clip mirrors the move');
-	pg_assert_same(array('w' => 320, 'h' => 180, 'k' => 1 / 6), $r['size'], 'frames read at 320 px on the longer side');
-	pg_assert_same(array('w' => 200, 'h' => 100, 'k' => 1), $r['small'], 'a small source is not enlarged');
+	pg_assert_same(array('w' => 320, 'h' => 180, 'k' => 1 / 6, 'region' => false, 'small' => false), $r['size'], 'frames read at 320 px on the longer side');
+	pg_assert_same(array('w' => 200, 'h' => 100, 'k' => 1, 'region' => false, 'small' => false), $r['small'], 'a small source is not enlarged');
 }
 
 // F4, F5: the span from the playhead to the first of the clip's end, the
@@ -336,11 +338,13 @@ function test_image_editor_follow_part()
 
 	$strings = pg_image_editor_strings_follow();
 
-	foreach (array('followFollow', 'followCancel', 'followPick', 'followNote', 'followHint', 'followHintRun', 'followNoVideo', 'followShort', 'followBusy', 'followCancelRun', 'followLost', 'followFlat', 'followError') as $key) {
+	foreach (array('followFollow', 'followCancel', 'followPick', 'followNote', 'followHint', 'followHintRun', 'followNoVideo', 'followShort', 'followBusy', 'followCancelRun', 'followLost', 'followFlat', 'followError', 'followLostSmall', 'followLostMatch', 'followLostEdge', 'followTiny') as $key) {
 		pg_assert_true(isset($strings[$key]), 'string ' . $key);
 	}
 
-	pg_assert_contains('{var:1}', $strings['followLost'], 'the lost message names the time');
+	foreach (array('followLost', 'followLostSmall', 'followLostMatch', 'followLostEdge') as $key) {
+		pg_assert_contains('{var:1}', $strings[$key], $key . ' names the time');
+	}
 }
 
 // F5, F16: the fixture (a textured square moving on a curve, VP9, 10 s at
@@ -421,4 +425,118 @@ function test_image_editor_follow_hint()
 		pg_assert_true(isset($strings[$key]), 'string ' . $key);
 		pg_assert_false(strpos($strings[$key], 'Esc') !== false, $key . ' names no key');
 	}
+}
+
+// GC3: the owner's case rebuilt: a ship about 2 % of a 1280 x 720 frame's
+// width (26 x 16 px) sailing over water whose waves move and glitter. Read
+// as whole frames at 320 px it is a few pixels and is lost; read at the
+// scale M.followSize() gives for its box (the shorter side at least 24 px,
+// never above the source's pixels) and only in the region the tracker
+// wants, it is held to the end within 1.5 source px. Both through the
+// message session, as the page drives it.
+function test_image_editor_follow_small_thing()
+{
+	$r = image_editor_follow_node(
+		'var W = 1280, H = 720, SW = 26, SH = 16, N = 90, wave = texture(6, 0.01, 0.05, 30), ripple = texture(6, 0.15, 0.35, 14);' . "\n"
+		// The ship's top left at frame i: sailing right, bobbing.
+		. 'var ship = function (i) { return [600 + 1.7 * i, 400 + 1.5 * Math.sin(i * 0.2)]; };' . "\n"
+		// The source's grey at x, y in frame i: the ship (a dark hull with a
+		// light stripe under a light sail) over water drifting with its
+		// waves, ripples moving the other way and a glitter of noise.
+		. 'var src = function (i, x, y) { var s = ship(i), u = x - s[0], v = y - s[1];'
+		. ' if (u >= 0 && u < SW && v >= 0 && v < SH) { if (v >= 10) { return (v === 12) ? 200 : 55; } if (u >= 9 && u < 9 + v * 1.4) { return 225; } if (u >= 11 && u < 13) { return 90; } }'
+		. ' return 95 + wave(x + i * 0.8, y + i * 0.3) + ripple(x - i * 1.3, y) + (rnd() - 0.5) * 24; };' . "\n"
+		// A region [x0, y0, x1, y1] of frame i read at k: each pixel the mean
+		// of a few source samples under it, as a canvas draws a scaled frame.
+		. 'var read = function (i, k, g) { var w = g[2] - g[0], h = g[3] - g[1], out = new Uint8Array(w * h), n = Math.max(1, Math.round(1 / k)), x, y, a, b, sum;'
+		. ' for (y = 0; y < h; y++) { for (x = 0; x < w; x++) { sum = 0; for (b = 0; b < n; b++) { for (a = 0; a < n; a++) { sum += src(i, Math.floor((g[0] + x) / k + (a + 0.5) / (n * k)), Math.floor((g[1] + y) / k + (b + 0.5) / (n * k))); } } out[y * w + x] = Math.max(0, Math.min(255, Math.round(sum / (n * n)))); } } return out; };' . "\n"
+		// Follow from the ship's box as the page does with size: the first
+		// frame in followRegion() (or whole), the next in each answer's want.
+		. 'var follow = function (size) { var got = [], ses = T.session(function (m) { got.push(m); }), s = ship(0), box = [s[0] * size.k, s[1] * size.k, (s[0] + SW) * size.k, (s[1] + SH) * size.k], i, g, m, last, miss = 0;'
+		. ' g = size.region ? M.followRegion(box, size) : [0, 0, size.w, size.h]; m = { type: "start", frame: read(0, size.k, g).buffer, width: g[2] - g[0], height: g[3] - g[1], box: box, t: 0 };'
+		. ' if (size.region) { m.at = [g[0], g[1]]; m.full = [size.w, size.h]; } ses.receive(m);'
+		. ' for (i = 1; i < N && got.length && (got[got.length - 1].type !== "lost") && (got[got.length - 1].type !== "error"); i++) { last = got[got.length - 1];'
+		. ' g = size.region ? last.want : [0, 0, size.w, size.h]; m = { type: "frame", frame: read(i, size.k, g).buffer, t: i };'
+		. ' if (size.region) { m.width = g[2] - g[0]; m.height = g[3] - g[1]; m.at = [g[0], g[1]]; } ses.receive(m); }'
+		. ' var pts = got.filter(function (q) { return q.type === "point"; }); pts.forEach(function (q) { var e = ship(q.t); miss = Math.max(miss, Math.hypot(q.x / size.k - e[0] - SW / 2, q.y / size.k - e[1] - SH / 2)); });'
+		. ' var end = got[got.length - 1]; return { points: pts.length, end: end.type, why: end.why || end.code || null, miss: r2(miss), wants: got.filter(function (q) { return q.want; }).length }; };' . "\n"
+		. 'var whole = M.followSize(W, H), near = M.followSize(W, H, SH);' . "\n"
+		. 'console.log(JSON.stringify({ whole: whole, near: near, before: follow(whole), now: follow(near), side: M.followSize(W, H, 8), big: M.followSize(W, H, 200), uhd: M.followSize(3840, 2160, 48) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('w' => 320, 'h' => 180, 'k' => 0.25, 'region' => false, 'small' => false), $r['whole'], 'no box: whole frames at 320 px');
+	pg_assert_same(array('w' => 1280, 'h' => 720, 'k' => 1, 'region' => true, 'small' => true), $r['near'], 'a 16 px box: the source\'s own pixels (24 / 16 is capped at 1), read in regions, still small');
+	pg_assert_same(array('w' => 1280, 'h' => 720, 'k' => 1, 'region' => true, 'small' => true), $r['side'], 'an 8 px box: never above the source\'s pixels');
+	pg_assert_same(array('w' => 320, 'h' => 180, 'k' => 0.25, 'region' => false, 'small' => false), $r['big'], 'a large box: as before');
+	pg_assert_same(array('w' => 1920, 'h' => 1080, 'k' => 0.5, 'region' => true, 'small' => false), $r['uhd'], 'a 48 px box in a 3840 px clip: read at half, its side 24 px');
+	pg_assert_true(($r['before']['end'] === 'lost') || ($r['before']['end'] === 'error'), 'whole frames at 320 px: the ship is lost: ' . json_encode($r['before']));
+	pg_assert_true($r['before']['points'] < 89, 'whole frames at 320 px: not held to the end: ' . json_encode($r['before']));
+	pg_assert_same(89, $r['now']['points'], 'read near: every frame found: ' . json_encode($r['now']));
+	pg_assert_same('point', $r['now']['end'], 'read near: not lost');
+	pg_assert_true($r['now']['miss'] <= 1.5, 'read near: within 1.5 source px, the largest miss ' . $r['now']['miss']);
+	pg_assert_same(90, $r['now']['wants'], 'each answer names the next region');
+}
+
+// GC3: a frame sent as the region the tracker wants gives the same points
+// as the whole frame; the wanted region holds the search and stays inside
+// the frame; a box outside the pixels sent is refused.
+function test_image_editor_follow_regions()
+{
+	$r = image_editor_follow_node(
+		'var w = 200, h = 150, s = 32, frames = [], i, x, y;' . "\n"
+		. 'for (i = 0; i < 60; i++) { x = 10 + 3.4 * i; y = 20 + 1.2 * i; frames.push(frame(w, h, x, y, s, 1, 8)); }' . "\n"
+		. 'var cut = function (f, g) { var o = new Uint8Array((g[2] - g[0]) * (g[3] - g[1])), a, b; for (b = g[1]; b < g[3]; b++) { for (a = g[0]; a < g[2]; a++) { o[(b - g[1]) * (g[2] - g[0]) + a - g[0]] = f[b * w + a]; } } return o; };' . "\n"
+		. 'var box = [10, 20, 42, 52], a = new T.Tracker(frames[0], w, h, box), first = [8, 18, 44, 54], b = new T.Tracker(cut(frames[0], first), w, h, box, first), same = true, inside = true, holds = true, wants = [], ra, rb, g;' . "\n"
+		. 'for (i = 1; i < 60; i++) { g = b.want(); wants.push(g); inside = inside && g[0] >= 0 && g[1] >= 0 && g[2] <= w && g[3] <= h;'
+		. ' var px = Math.round(b.x + b.vx * b.gap), py = Math.round(b.y + b.vy * b.gap); holds = holds && (g[0] <= Math.max(0, px - b.radius)) && (g[2] >= Math.min(w, px + b.radius + b.tw));'
+		. ' ra = a.next(frames[i]); rb = b.next(cut(frames[i], g), g); same = same && ra.state === rb.state && (ra.state !== "ok" || (Math.abs(ra.x - rb.x) < 1e-6 && Math.abs(ra.y - rb.y) < 1e-6)); }' . "\n"
+		. 'var outside = null; try { new T.Tracker(cut(frames[0], [0, 0, 30, 30]), w, h, box, [0, 0, 30, 30]); } catch (e) { outside = e.code; }' . "\n"
+		. 'console.log(JSON.stringify({ same: same, inside: inside, holds: holds, end: rb.state, why: rb.why || null, size: wants[10][2] - wants[10][0], outside: outside }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_true($r['same'], 'regions give the same points as whole frames');
+	pg_assert_true($r['inside'], 'the wanted region stays inside the frame');
+	pg_assert_true($r['holds'], 'the wanted region holds the search round the predicted place');
+	pg_assert_same('lost', $r['end'], 'the square leaves the frame');
+	pg_assert_same('edge', $r['why'], 'lost at the edge says so');
+	pg_assert_same(32 + 2 * 16, $r['size'], 'the region: the box and the search radius each side');
+	pg_assert_same('box', $r['outside'], 'a box outside the pixels sent is refused');
+}
+
+// GC3: why it was lost, in full the first time only: a later try with the
+// same reason gets the short line; leaving the picture is no fault and is
+// always said plainly; the first region is the box with a pixel round it.
+function test_image_editor_follow_lost_once()
+{
+	$r = image_editor_follow_node(
+		'var told = {};' . "\n"
+		. 'console.log(JSON.stringify({ first: M.followLostText("match", true, told), again: M.followLostText("match", true, told), match: M.followLostText("match", false, told),'
+		. ' matchAgain: M.followLostText("match", false, told), edge: M.followLostText("edge", true, told), edgeAgain: M.followLostText("edge", false, told), none: M.followLostText("match", false, null),'
+		. ' region: M.followRegion([10.4, 20.6, 40.2, 30], { w: 100, h: 31 }), corner: M.followRegion([0, 0, 5, 5], { w: 100, h: 100 }) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same('followLostSmall', $r['first'], 'a small thing: why and what helps');
+	pg_assert_same('followLost', $r['again'], 'the same again: the short line');
+	pg_assert_same('followLostMatch', $r['match'], 'another reason: said once too');
+	pg_assert_same('followLost', $r['matchAgain'], 'then the short line');
+	pg_assert_same('followLostEdge', $r['edge'], 'leaving the picture');
+	pg_assert_same('followLostEdge', $r['edgeAgain'], 'always said as it is');
+	pg_assert_same('followLostMatch', $r['none'], 'with nothing told: in full');
+	pg_assert_same(array(9, 19, 42, 31), $r['region'], 'the box in whole pixels with one round it, inside the frame');
+	pg_assert_same(array(0, 0, 6, 6), $r['corner'], 'not past the frame\'s corner');
 }

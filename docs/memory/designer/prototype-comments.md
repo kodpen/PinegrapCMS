@@ -27,7 +27,7 @@ module: prototype_comments
 - P11's "Delete this link's comments" is the button **Delete comments**; its question names the link's count.
 
 ## What is still open?
-- Where the Comments button and the list sit for good. They keep their first place: the button in the top bar's actions beside the Assistant, the list floating over the right column. The architect decides the final place now that DP22 (the canvas bar, #10205) and DP2 (the right column, #10210) have landed; until then nothing moves.
+- Where the Comments button and the list sit for good. They keep their first place: the button in the top bar's actions beside the Assistant, the list floating over the right column. Decided (architect, 2026-11-20, agent channel message 9873): the button into the canvas bar's Prototype mode, the list as a Comments tab beside the links panel; step PN6 of `plans/prototype-comments-place.md` moves them after DP24 (#10507). Until it lands nothing moves.
 
 ## What was left out?
 - A picture attached to a comment, comments on a live page, an e-mail to the customer when the designer answers: each waits for a later yes of the owner.
