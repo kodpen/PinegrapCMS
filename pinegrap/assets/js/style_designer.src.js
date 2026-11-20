@@ -74370,7 +74370,7 @@ const StyleDesigner = (function () {
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
     var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null,
-        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null, suggest: null,
+        link: null, lifted: '', drawing: false, broken: { list: [], count: {} }, issues: null, problems: null, problemsFrame: null, suggest: null,
         edgeTo: {},
         // The "+" handle (_sdProtoGrip()): the mark it stands beside, the
         // mark under the pointer, the zoom the marks' reach was set at.
@@ -74664,8 +74664,9 @@ const StyleDesigner = (function () {
             },
             items: function () { return _sdProto.items; },
             // The selected page's foot button ("Show the whole page",
-            // "Show less") keeps its own clicks and keys.
-            ownClicks: '.sd-proto-pic-foot-on',
+            // "Show less") and a frame's amber count keep their own clicks
+            // and keys.
+            ownClicks: '.sd-proto-pic-foot-on, .sd-proto-badge-empty',
             // A link's mark on a picture: a click picks its link, a drag
             // draws its arrow (F21). The head of a drawn arrow: a drag
             // points it elsewhere (F22). Either becomes the core's own
@@ -74768,8 +74769,12 @@ const StyleDesigner = (function () {
         // A press outside the target menu closes it.
         ui.root.addEventListener('pointerdown', function (event) {
             if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
-            if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target) && !ui.check.contains(event.target)) _sdProtoProblemsClose(false);
+            if (_sdProto.problems && !_sdProto.problems.contains(event.target) && !ui.broken.contains(event.target) && !ui.check.contains(event.target) && !(_sdProto.problemsAnchor && _sdProto.problemsAnchor.contains(event.target))) _sdProtoProblemsClose(false);
         }, true);
+        // A frame's list stands by its badge: a zoom of the canvas closes it.
+        ui.root.addEventListener('wheel', function (event) {
+            if (_sdProto.problems && _sdProto.problemsFrame && !_sdProto.problems.contains(event.target)) _sdProtoProblemsClose(false);
+        }, { capture: true, passive: true });
         return ui;
     }
 
@@ -74922,11 +74927,23 @@ const StyleDesigner = (function () {
         }
         // An amber count of the frame's links without a target (F29), and
         // on a page no link leads to the amber "No link leads here" (F27).
+        // The count is a button listing those links; the canvas leaves its
+        // clicks and keys to it (ownClicks).
         var issues = _sdProto.issues;
         var emptyHere = issues ? (issues.empty.count[item.id] || 0) : 0;
         if (emptyHere) {
-            var amber = _sdProtoEl('span', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));
+            var amber = _sdProtoEl('button', 'sd-proto-badge sd-proto-badge-empty', String(emptyHere));
+            amber.type = 'button';
+            amber.tabIndex = -1;
             amber.title = _sdT('{var:1} without a target', emptyHere);
+            amber.setAttribute('aria-label', amber.title);
+            amber.setAttribute('aria-haspopup', 'dialog');
+            amber.setAttribute('aria-expanded', 'false');
+            amber.addEventListener('click', function () {
+                var again = !!_sdProto.problems && _sdProto.problemsAnchor === amber;
+                _sdProtoProblemsClose(again);
+                if (!again) _sdProtoProblemsOpen(amber, item.id);
+            });
             head.appendChild(amber);
         }
         if (issues && issues.unreached.indexOf(item.id) >= 0) head.appendChild(_sdProtoEl('span', 'sd-proto-unreached', _sdT('No link leads here')));
@@ -75307,6 +75324,12 @@ const StyleDesigner = (function () {
         Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-hot')).forEach(function (r) {
             r.classList.remove('sd-proto-hot-own', 'sd-proto-hot-lit', 'sd-proto-hot-shared');
             r.tabIndex = -1;
+        });
+        // Tab reaches the selected frame's amber count after its frame,
+        // before its marks; a press reaches any frame's.
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.sd-proto-badge-empty')).forEach(function (b) {
+            var box = b.closest('[data-node]');
+            b.tabIndex = (id !== null && id !== undefined && box && box.getAttribute('data-node') === String(id)) ? 0 : -1;
         });
         _sdProtoGrip(null);
         _sdProto.layout.frames.forEach(function (item) { _sdProtoPicFoot(item, id); });
@@ -75697,16 +75720,20 @@ const StyleDesigner = (function () {
     // The design's problems (F19, F28), under the bar's "N broken" or "N to
     // check" (anchor): broken links, pages no link leads to, links without
     // a target, a group with none left out. A link's row picks it; a page's
-    // row selects its frame and brings it into view.
-    function _sdProtoProblemsOpen(anchor) {
+    // row selects its frame and brings it into view. With frameId, under
+    // that frame's amber count: only its links without a target, each
+    // opened in the links panel at its target box (_sdProtoEmptyGo()).
+    function _sdProtoProblemsOpen(anchor, frameId) {
         var ui = _sdProto.ui;
         var issues = _sdProto.issues;
         _sdProtoProblemsClose(false);
-        if (!ui || !issues || !(issues.broken.list.length || issues.check)) return;
+        var only = (frameId && issues) ? window.PGProtoHotspots.emptyOf(issues, frameId) : null;
+        if (!ui || !issues || !(only ? only.length : (issues.broken.list.length || issues.check))) return;
         anchor = anchor || ui.broken;
         var el = _sdProtoEl('div', 'sd-proto-problems');
         el.setAttribute('role', 'dialog');
-        el.setAttribute('aria-label', anchor === ui.check ? _sdT('{var:1} to check', issues.check) : _sdT('Broken links'));
+        if (only) el.setAttribute('aria-label', _sdT('Links without a target on {var:1}', _sdProtoFrameName(_sdProto.byId[frameId])));
+        else el.setAttribute('aria-label', anchor === ui.check ? _sdT('{var:1} to check', issues.check) : _sdT('Broken links'));
         var group = function (title, cls, rows) {
             if (!rows.length) return;
             el.appendChild(_sdProtoEl('div', 'sd-proto-menu-head ' + cls, title));
@@ -75722,16 +75749,21 @@ const StyleDesigner = (function () {
                 el.appendChild(b);
             });
         };
-        group(_sdT('Broken links'), 'sd-proto-problem-broken', issues.broken.list.map(function (one) {
+        if (only) {
+            group(_sdProtoFrameName(_sdProto.byId[frameId]) + ' · ' + _sdT('Links without a target'), 'sd-proto-problem-empty', only.map(function (one) {
+                return { label: one.label, to: _sdT('No target'), go: function () { _sdProtoEmptyGo(one.frame, one.port); } };
+            }));
+        }
+        if (!only) group(_sdT('Broken links'), 'sd-proto-problem-broken', issues.broken.list.map(function (one) {
             return { label: _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label, to: _sdProtoWhy(one.why) + (one.href ? ' (' + one.href + ')' : ''), go: function () { _sdProtoPick(one.frame, one.port, true); } };
         }));
-        group(_sdT('Pages no link leads to'), 'sd-proto-problem-unreached', issues.unreached.map(function (id) {
+        if (!only) group(_sdT('Pages no link leads to'), 'sd-proto-problem-unreached', issues.unreached.map(function (id) {
             return { label: _sdProtoFrameName(_sdProto.byId[id]), to: '', go: function () {
                 _sdProto.canvas.focus(id);
                 _sdProto.canvas.view.reveal(_sdProto.byId[id]);
             } };
         }));
-        group(_sdT('Links without a target'), 'sd-proto-problem-empty', issues.empty.list.map(function (one) {
+        if (!only) group(_sdT('Links without a target'), 'sd-proto-problem-empty', issues.empty.list.map(function (one) {
             return { label: _sdProtoFrameName(_sdProto.byId[one.frame]) + ' · ' + one.label, to: _sdT('No target'), go: function () { _sdProtoPick(one.frame, one.port, true); } };
         }));
         el.addEventListener('keydown', function (event) {
@@ -75749,10 +75781,15 @@ const StyleDesigner = (function () {
         ui.root.appendChild(el);
         _sdProto.problems = el;
         _sdProto.problemsAnchor = anchor;
+        _sdProto.problemsFrame = only ? String(frameId) : null;
         anchor.setAttribute('aria-expanded', 'true');
         var r = anchor.getBoundingClientRect();
         var o = ui.root.getBoundingClientRect();
-        el.style.top = (r.bottom - o.top + 2) + 'px';
+        // Under its button, above it where the view has no room below.
+        var top = r.bottom - o.top + 2;
+        var above = r.top - o.top - 2 - el.offsetHeight;
+        if (top + el.offsetHeight > o.height - 4 && above >= 4) top = above;
+        el.style.top = top + 'px';
         el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
         el.querySelector('.sd-proto-problem').focus({ preventScroll: true });
     }
@@ -75761,6 +75798,7 @@ const StyleDesigner = (function () {
         var el = _sdProto.problems;
         if (!el) return;
         _sdProto.problems = null;
+        _sdProto.problemsFrame = null;
         if (el.parentNode) el.parentNode.removeChild(el);
         var anchor = _sdProto.problemsAnchor || (_sdProto.ui ? _sdProto.ui.broken : null);
         _sdProto.problemsAnchor = null;
@@ -75768,6 +75806,22 @@ const StyleDesigner = (function () {
             anchor.setAttribute('aria-expanded', 'false');
             if (refocus) anchor.focus({ preventScroll: true });
         }
+    }
+
+    // A link without a target chosen in its frame's list: picked, the links
+    // panel opened on it and the focus on its target box, where Enter opens
+    // the target menu; a link that may not be drawn has none and its row
+    // takes the focus. The panel opened so stays a choice of this visit.
+    function _sdProtoEmptyGo(frameId, port) {
+        var ui = _sdProto.ui;
+        _sdProtoPick(frameId, port, true);
+        if (!ui) return;
+        if (!ui.root.classList.contains('sd-proto-list-open')) _sdProtoListShow(true, false);
+        var li = ui.list.querySelector('.sd-proto-li[data-link="' + (String(frameId) + '|' + port).replace(/"/g, '') + '"]');
+        var to = li ? (li.querySelector('.sd-proto-li-target') || li.querySelector('.sd-proto-li-main')) : null;
+        if (!to) return;
+        li.scrollIntoView({ block: 'nearest' });
+        to.focus({ preventScroll: true });
     }
 
     // Where Play opens the viewer: the selected page, else the first page
