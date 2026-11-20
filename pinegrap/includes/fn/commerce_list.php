@@ -69,13 +69,15 @@ function pg_commerce_list_open_link($url, $html)
 /**
  * The orders list's columns: the order (its number, or the billing name of
  * a cart that has none), then the columns the list always had. Affiliate
- * Code only while the affiliate program is on.
+ * Code only while the affiliate program is on; Profit (the order's net
+ * profit) only for a user who may see it (erp_order_profit_shown()).
  *
  * @param bool   $affiliate    whether the affiliate program is on
  * @param string $member_label the site's name for the member id
+ * @param bool   $profit       whether the profit column is drawn
  * @return array key => spec
  */
-function pg_order_list_columns($affiliate, $member_label)
+function pg_order_list_columns($affiliate, $member_label, $profit = false)
 {
     $specs = array(
         'order_number' => array('heading' => lang('Order Number'), 'kind' => 'link'),
@@ -84,6 +86,7 @@ function pg_order_list_columns($affiliate, $member_label)
         'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
         'type' => array('heading' => lang('Type')),
         'total' => array('heading' => lang('Total'), 'kind' => 'money'),
+        'profit' => array('heading' => lang('Profit'), 'kind' => 'money'),
         'user' => array('heading' => lang('User')),
         'tracking_code' => array('heading' => lang('Tracking Code')),
         'member_id' => array('heading' => (string) $member_label),
@@ -95,6 +98,10 @@ function pg_order_list_columns($affiliate, $member_label)
 
     if (!$affiliate) {
         unset($specs['affiliate_code']);
+    }
+
+    if (!$profit) {
+        unset($specs['profit']);
     }
 
     return $specs;

@@ -2576,6 +2576,19 @@ if (!$_POST) {
         }
     }
 
+    // The order's costs and net profit (includes/erp/order_profit_view.php):
+    // only with Accounting on and ERP access, as product cost is seen nowhere
+    // else; nothing is read otherwise.
+    $output_order_profit = '';
+    if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp']))) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_profit_view.php');
+
+        if (erp_order_profit_shown($user)) {
+            $output_order_profit = erp_order_profit_card((int) $_GET['id'], (string) $status);
+        }
+    }
+
     // The order's documents in the order they are made - invoice, its
     // e-document, delivery note, e-delivery note - each with where it
     // stands and the next one as a single button. It replaces the ERP
@@ -2765,6 +2778,7 @@ if (!$_POST) {
                                         $output_affiliate,
                                         pg_legal_documents_panel_card((int) $_GET['id']),
                                         pg_returns_panel_card((int) $_GET['id']),
+                                        $output_order_profit,
                                     )) . '
                                 </div>
                             </div>

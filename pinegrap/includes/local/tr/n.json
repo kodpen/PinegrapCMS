@@ -2684,6 +2684,7 @@
     "Not checked yet: the page has not been drawn in {var:1} since its translations last changed. It is checked the next time it is opened in this language.": "Henüz denetlenmedi: çevirileri son değiştiğinden beri sayfa {var:1} dilinde açılmadı. Bu dilde bir sonraki açılışında denetlenir.",
     "Not checked yet: the page has not been opened in this language since its translations last changed": "Henüz denetlenmedi: çevirileri son değiştiğinden beri sayfa bu dilde açılmadı",
     "Not chosen": "Seçilmedi",
+    "Not computed yet: the general job works out each finished order's profit within the hour.": "Henüz hesaplanmadı: genel görev, tamamlanan her siparişin kârını bir saat içinde hesaplar.",
     "Not confirmed": "Onaylanmadı",
     "Not connected": "Bağlı değil",
     "Not connected to Paraşüt yet.": "Henüz Paraşüt'e bağlı değil.",
