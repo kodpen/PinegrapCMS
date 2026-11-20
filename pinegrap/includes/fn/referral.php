@@ -103,7 +103,10 @@ function pg_referral_code_contact($code, $key)
     list($number, $signature) = explode('-', substr($code, 1), 2);
     $contact_id = (int) base_convert($number, 36, 10);
 
-    if (($contact_id <= 0) || !hash_equals(pg_referral_code_sign($contact_id, $key), $signature)) {
+    // Only the spelling pg_referral_code_make() writes: a zero before the
+    // number reads as the same contact, but the month's room counts rows by
+    // the exact code, so another spelling would have a month of its own.
+    if (($contact_id <= 0) || ($number !== strtoupper(base_convert((string) $contact_id, 10, 36))) || !hash_equals(pg_referral_code_sign($contact_id, $key), $signature)) {
         return 0;
     }
 

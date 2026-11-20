@@ -311,3 +311,19 @@ function test_referral_mail_wired_after_the_lock()
 	pg_assert_true(($release !== false) && ($mail !== false) && ($mail > $release), 'the mail is sent once the referrer\'s lock is let go');
 	pg_assert_contains("'queue'              => true", $source, 'through the mail queue');
 }
+
+// A referral link written with zeros before the contact's number passed its
+// signature (the number reads the same), but the month's room counts the
+// rows by the exact code, so each such spelling of one customer's code had
+// a month of its own.
+function test_referral_code_refuses_another_spelling_of_the_number()
+{
+	$code = pg_referral_code_make(41, referral_test_key());
+	$padded = 'R0' . substr($code, 1);
+	$padded_more = 'R00' . substr($code, 1);
+
+	pg_assert_true(pg_referral_code_shaped($padded), 'the padded spelling has the referral shape');
+	pg_assert_same(0, pg_referral_code_contact($padded, referral_test_key()), 'a zero before the number is not the customer\'s code');
+	pg_assert_same(0, pg_referral_code_contact($padded_more, referral_test_key()), 'nor two zeros');
+	pg_assert_same(41, pg_referral_code_contact(' ' . strtolower($code) . ' ', referral_test_key()), 'the code itself still reads, in any case');
+}
