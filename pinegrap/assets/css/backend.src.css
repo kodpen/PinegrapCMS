@@ -17440,6 +17440,18 @@ a.ws-chip-message:hover,
   tab-size: 4;
   resize: vertical;
 }
+/* iOS Safari zooms the page in when a field under 16px takes the focus and
+   leaves it zoomed: on a touch screen the emoji search, the poll window's
+   fields and the code and calculation areas are 16px. After .ws-code-edit,
+   whose own size it has to outrank. */
+@media (pointer: coarse) {
+  .ws-emoji-search,
+  #ws-poll-form .form-control,
+  #ws-poll-form .form-select,
+  .ws-code-edit {
+    font-size: 16px;
+  }
+}
 
 /* A block of code in a message: its own box, scrolled inside rather than
    stretching the conversation. */
