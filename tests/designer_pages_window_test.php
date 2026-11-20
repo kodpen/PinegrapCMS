@@ -218,7 +218,7 @@ function test_designer_pages_window_is_a_part_opened_by_ctrl_p()
 
 	pg_assert_true(strpos($part, "StyleDesigner.definePart('pages', function (K) {") !== false, 'the part registers');
 	pg_assert_same('assets/js/style_designer_pages.min.js', pg_designer_parts()['pages'], 'and is a part of its own');
-	pg_assert_true(strpos($screen, "'treesearch', 'pages')") !== false, 'handed to every editor');
+	pg_assert_true(strpos($screen, "'pages'), !empty(" . '$sd_ai') !== false, 'handed to every editor');
 
 	foreach (array('_pgTabsAllToggle', '_pgTabsAllFill', '_pgTabsAllPageMenu') as $name) {
 		pg_assert_false(strpos($core, 'function ' . $name . '(') !== false, $name . ' is gone');

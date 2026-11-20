@@ -1491,6 +1491,7 @@ function pg_image_editor_strings_layers()
         'distributeX'    => lang('Distribute horizontally'),
         'distributeY'    => lang('Distribute vertically'),
         'opacity'        => lang('Layer opacity'),
+        'groupOpacity'   => lang('Group opacity'),
         'duplicate'      => lang('Duplicate'),
         'delete'         => lang('Delete'),
         'groups'         => lang('Groups'),
@@ -4246,6 +4247,7 @@ function pg_image_editor_strings_keyframes()
     return array(
         'keysTab'     => lang('Path'),
         'keysNote'    => lang('Move the playhead, then drag the layer on the stage: where you put it becomes its place at that moment.'),
+        'keysGroupNote' => lang('Keys here move the whole group; each layer keeps its own keys inside it.'),
         'keysOne'     => lang('Select one layer to give it a path.'),
         'keysList'    => lang('Keyframes'),
         'keysAdd'     => lang('Add a keyframe at {time}'),

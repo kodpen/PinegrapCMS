@@ -31,7 +31,7 @@ assets/js/backend.src.js         pgSettingsModal, window.pgOpenSettings(), pgIni
 - General › Organization holds the organization's identity (`settings-organization-card.md`).
 - Accounts and sign-in, Firewall and HTTPS: `settings-security-cards.md` (encryption key from Payment Methods).
 - `seo`: Site Icon, Social Sharing, Structured Data, AI Crawlers; Product Feeds went to `commerce`.
-- `privacy`: Visitor Tracking (`privacy_analytics.php`), Cookie Consent, Legal Documents.
+- `privacy`: Visitor Tracking, Cookie Consent, Legal Documents.
 - `accounting`: ERP, E-Invoice (hidden outside Turkey, `pg_edoc_settings_shown()`), the `erp_settings.php` cards (`erp/erp-settings-cards.md`).
 - `api`: Google Reviews (from Communication), Related screens (`pg_settings_integration_links()`).
 - `maintenance`: Update Channel, Cron Jobs, Backups, Alerts, Maintenance Mode (out of General).

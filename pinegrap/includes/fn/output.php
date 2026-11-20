@@ -4272,11 +4272,14 @@ function output_menu($properties = false)
         $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-data bi-me-2\'>' . lang('Saved reports') . '</a>';
         $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Visitor Report'))) . '</a>';
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS) {
-            // ECOMMERCE > Order Reports
+            // ECOMMERCE > Order Reports. The menu's link look, one string for
+            // the group's links followed by each one's icon.
+            $report_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-me-2 ';
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('All Order Reports') . '</a>';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Order Report'))) . '</a>';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_customer_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-people bi-me-2\'>' . lang('Customers Report') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'' . $report_link_class . 'bi-graph-up-arrow\'>' . lang('All Order Reports') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_report.php\'' . $output_parent_target . ' class=\'' . $report_link_class . 'bi-plus-lg\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Order Report'))) . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_customer_report.php\'' . $output_parent_target . ' class=\'' . $report_link_class . 'bi-people\'>' . lang('Customers Report') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_referral_report.php\'' . $output_parent_target . ' class=\'' . $report_link_class . 'bi-person-plus\'>' . lang('Referrals Report') . '</a>';
         }
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
             // ECOMMERCE > Shipping Reports
@@ -8120,6 +8123,7 @@ function pg_js_bundles()
         'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
         'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
         'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
+        'assets/js/style_designer_move.min.js'     => array('assets/js/style_designer_move.js'),
         'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
@@ -8198,6 +8202,9 @@ function pg_designer_parts()
         // The Overview's tree search: the page's elements found by name,
         // text, class and id, listed with their path.
         'treesearch' => 'assets/js/style_designer_treesearch.min.js',
+        // The "Move…" window: an element moved without dragging, its
+        // target searched by name, Before, Into or After.
+        'move' => 'assets/js/style_designer_move.min.js',
         // The prototype comments of the design: the pins on the canvas and
         // the Comments list, for designers.
         'comments' => 'assets/js/style_designer_comments.min.js',

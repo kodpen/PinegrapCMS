@@ -22,7 +22,7 @@ description: Plan referral-programme, steps RF1 to RF5: the census of commission
   - Pictures: the part with no referral yet, with some in each state, a customer who cannot refer yet, a phone. To the owner; not marked ready before his look.
   - Features: E12.
 
-- RF4 (S) after RF1: the report and the event.
+- RF4 (S) after RF1: the report and the event. Done (#10571): `commerce/referral-report-and-event.md`.
   - Existing files: `includes/fn/output.php` (one menu link), `includes/api/outbound/webhooks.php` (the event's name).
   - New: the report screen. Pictures to the owner.
   - Features: E13, E14 (the event).
