@@ -4,8 +4,8 @@
  *
  * Workspace - the illustrated steps for connecting Claude.
  *
- * The "How to connect it" part of the Claude card in the workspace settings
- * (ws_claude_settings_card()): every step has its words and a picture. The
+ * The drawer "Set up on claude.ai" of Claude's row in Site Settings
+ * (ws_settings_claude_setup_drawer()): every step has its words and a picture. The
  * names of buttons and fields on claude.ai are written as claude.ai shows
  * them, in English, whatever the language of the panel: they are put into the
  * translated sentence afterwards, so a translation cannot change them.
@@ -230,7 +230,7 @@ function ws_claude_setup_credentials_text()
  * @param string   $host   this site's domain
  * @param string   $prompt the routine's short prompt (ws_claude_bootstrap_prompt())
  * @param callable $copy   ($id, $value, $rows): a read-only field with a copy button
- * @return string HTML: the items of an <ol>
+ * @return string HTML: the items of the drawer's stepper
  */
 function ws_claude_setup_guide($base, $host, $prompt, $copy)
 {
@@ -238,7 +238,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
         array(
             'art'   => 'app',
             'title' => h(lang('An application for Claude')),
-            'text'  => h(lang('Press Create Claude\'s key above: the window that opens shows its key, its secret and the prompt, once. To use another application, make it in Application Access and choose it under Use another application.')),
+            'text'  => h(lang('Press Create Claude\'s key in Claude\'s row: what opens shows its key, its secret and the prompt, once. To use another application, make it in Application Access and choose it under Use another application.')),
             'extra' => '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($base . 'api_settings.php') . '"><i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Application Access')) . '</a>',
         ),
         array(
@@ -275,7 +275,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
             'art'   => 'token',
             'title' => h(lang('The address and the token')),
             'text'  => ws_claude_setup_text(
-                lang(array('string' => 'Open the routine, choose {var:1} in the menu next to its name and open its {var:2} trigger. Copy the URL, press {var:3} and copy the token at once: it is shown only once. Enter both on this card and save.', 'vars' => ws_claude_setup_marks(3))),
+                lang(array('string' => 'Open the routine, choose {var:1} in the menu next to its name and open its {var:2} trigger. Copy the URL, press {var:3} and copy the token at once: it is shown only once. Enter both in Claude\'s row and save.', 'vars' => ws_claude_setup_marks(3))),
                 array('Edit', 'API', 'Generate token')
             ),
             'extra' => '',
@@ -283,7 +283,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
         array(
             'art'   => 'try',
             'title' => h(lang('Try it')),
-            'text'  => h(lang('Try the connection here, then write @Claude in a channel. The answer comes back under the request in a few minutes; the eyes reaction (👀) on the request means Claude has taken it.')),
+            'text'  => h(lang('Press Try the connection in Claude\'s row, then write @Claude in a channel. The answer comes back under the request in a few minutes; the eyes reaction (👀) on the request means Claude has taken it.')),
             'extra' => '',
         ),
     );
@@ -292,7 +292,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
 
     foreach ($steps as $step) {
         $html .= '
-            <li class="ws-claude-step">
+            <li class="stepper-item active ws-claude-step">
                 <div class="pg-field-label">' . $step['title'] . '</div>
                 <div class="pg-text-2 fg-secondary mb-3">' . $step['text'] . '</div>
                 ' . (!empty($step['more']) ? '<div class="pg-text-2 fg-secondary mb-3">' . $step['more'] . '</div>' : '') . '

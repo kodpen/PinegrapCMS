@@ -12,4 +12,4 @@ module: github_links
 - `pg_github_day_counts()`: pull requests opened (a reopened one counts as opened), merged, closed; checks green and red; the newest lines with their address (a label line, or a check with no run address, links to its pull request).
 - `ws_channel_activity_repo()` (`includes/workspace/channel_activity_repo.php`): null without a link the reader may see; counts only the GitHub application's messages, not deleted, since local midnight, within the channel's newest 5,000 messages; at most 5 lines. It reads the `github_channel_app` service entry and never makes the application.
 
-Related: docs/memory/api/api-github-channel-links.md, docs/memory/plans/channel-activity.md
+Related: docs/memory/api/api-github-channel-links.md, docs/memory/workspace/channel-activity-tab.md

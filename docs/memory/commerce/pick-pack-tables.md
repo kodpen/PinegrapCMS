@@ -4,7 +4,7 @@ description: Pick and pack's four tables and their keys, the reserved `lines` co
 ---
 
 ## Where do the tables come from?
-- Step `upgrade_2026_11_0_pick_pack()` (11.0.260, `includes/migrations/2026.11.0.php`), PR #10873; all four on `get_tables()`. Columns and keys exactly as `workflow/decisions-made-schema-41.md`. InnoDB, utf8mb4_unicode_ci, every column NOT NULL DEFAULT 0 or '' but the TEXT ones (NULL).
+- Step `upgrade_2026_11_0_pick_pack()` (11.0.264, `includes/migrations/2026.11.0.php`), PR #10873; all four on `get_tables()`. Columns and keys exactly as `workflow/decisions-made-schema-41.md`. InnoDB, utf8mb4_unicode_ci, every column NOT NULL DEFAULT 0 or '' but the TEXT ones (NULL).
 - Rules on top of them: `pick-pack-rules.md` (`includes/fn/pick_pack.php`). No customer data in any of the four.
 
 ## What does each table hold?

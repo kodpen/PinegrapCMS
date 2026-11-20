@@ -17,8 +17,11 @@ module: image_editor
 - It multiplies per layer: overlapping members show through each other, as at their own opacity. Used by the stage, the still and animated export (`paintLayers()`), the SVG save and the scene thumbnails.
 
 ## How do Animate's keys work on a group?
-- With a group picked, the Path tab keys the group (`keyTarget()`, `M.groupKeyLayer()`, id `group:<gid>`; `setKey()` and `editKeys()` take it); a drag on a member at a moment sets the group's key. The diamonds on the tracks show layers' own keys only.
+- With a group picked, the Path tab keys the group (`keyTarget()`, `M.groupKeyLayer()`, id `group:<gid>`; `setKey()` and `editKeys()` take it); a drag on a member at a moment sets the group's key; Record with a group picked records the group's keys (`image-editor-record.md`). The tracks give a group a row of its own above its members with the group's diamonds (`image-editor-tracks.md`).
 - `M.groupMotionAt()` composes the group's keys over a member's own motion, the innermost group first: move, turn and scale round the group's centre at rest, opacity multiplied; the result is a state round the member's centre, so the stage, export, SVG motion and a press's `restPoint()` read it unchanged. At rest nothing moves. `M.hasMotion()` counts group keys.
+
+## What if the members move on their own paths too?
+- Their own keys stay under the group's (the owner's case of #10857: two grouped paths with own keys looked like two motions). With such a group picked the Path tab says "Members also move on their own paths" with a quiet "Remove their paths" (`groupOwnLine()`, `M.groupOwnPaths()`, `M.groupDropPaths()`): their keys go, their In, Loop and Out stay, one undo step. Nothing else removes a member's keys.
 
 ## Where are Group and Ungroup on a phone?
 - The bar over the object and the phone's bar (`M.actionList()` with `s.group`, `s.ungroup` from `groupState()`): Group for several layers, Ungroup for a picked group, before Duplicate; the phone's bar scrolls, so each stays reachable.

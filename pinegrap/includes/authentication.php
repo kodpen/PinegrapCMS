@@ -128,7 +128,7 @@ function pg_user_has_erp_readonly_column()
 }
 
 /**
- * Does the user table carry the "Packing only" right yet (2026.11.0, 11.0.260)?
+ * Does the user table carry the "Packing only" right yet (2026.11.0, 11.0.264)?
  * Asked for the same reason as pg_user_has_erp_columns(), by exact name.
  *
  * @return bool
@@ -356,7 +356,7 @@ function pg_load_user_row($user_id)
     // The ERP's read-only right (4.78), under the same rule.
     $erp_columns .= pg_user_has_erp_readonly_column() ? " user.manage_erp_readonly," : " 0 AS manage_erp_readonly,";
 
-    // The "Packing only" right (11.0.260), under the same rule.
+    // The "Packing only" right (11.0.264), under the same rule.
     $erp_columns .= pg_user_has_packing_column() ? " user.manage_packing," : " 0 AS manage_packing,";
 
     // The workspace rights, under the same rule.

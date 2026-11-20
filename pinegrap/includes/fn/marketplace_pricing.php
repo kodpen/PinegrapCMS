@@ -56,6 +56,12 @@ define('MP_PRICING_ROBOT_TRY', 1);
 /** marketplace_price_rules.robot: the robot sends its prices. */
 define('MP_PRICING_ROBOT_ON', 2);
 
+/** marketplace_price_rules.step_unit: the step is an amount in minor units. */
+define('MP_PRICING_STEP_AMOUNT', 0);
+
+/** marketplace_price_rules.step_unit: the step is hundredths of a percent. */
+define('MP_PRICING_STEP_PERCENT', 1);
+
 /** product_price_history.source of a channel price from the rules. */
 define('MP_PRICING_HISTORY_SOURCE', 'rule');
 
@@ -150,6 +156,43 @@ function mp_pricing_round_up($price, $rounding)
     $up = (int) ceil(($price - $ending) / 100) * 100 + $ending;
 
     return ($up < 0) ? $ending : $up;
+}
+
+/**
+ * The robot's step in minor units from the price it moves from (the buybox
+ * price for Win, the listing's own price for Grow while winning): an amount
+ * as stored, a percent of that price rounded half away from zero, never
+ * under one minor unit.
+ *
+ * @param int $from  minor units
+ * @param int $step  marketplace_price_rules.step
+ * @param int $unit  marketplace_price_rules.step_unit
+ * @return int
+ */
+function mp_pricing_step($from, $step, $unit)
+{
+    if ((int) $unit === MP_PRICING_STEP_PERCENT) {
+        return max(1, (int) pg_percent_of(max(0, (int) $from), (int) $step / 100));
+    }
+
+    return max(1, (int) $step);
+}
+
+/**
+ * Whether marketplace_price_rules has its step_unit column (2026.11.0,
+ * 11.0.259).
+ *
+ * @return bool
+ */
+function mp_pricing_step_unit_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('marketplace_price_rules', 'step_unit');
+    }
+
+    return $ready;
 }
 
 /**
@@ -444,7 +487,8 @@ function mp_pricing_account_rules($account_id)
 
     if (!isset($cache[$account_id])) {
         $cache[$account_id] = ($account_id > 0) && mp_pricing_ready()
-            ? (array) db_items("SELECT scope, scope_id, scope_key, percent, fixed, rounding, robot, step, min_margin, grow_cap
+            ? (array) db_items("SELECT scope, scope_id, scope_key, percent, fixed, rounding, robot, step,
+                " . (mp_pricing_step_unit_ready() ? 'step_unit' : '0 AS step_unit') . ", min_margin, grow_cap
                 FROM marketplace_price_rules WHERE account_id = '" . $account_id . "'")
             : array();
     }
@@ -576,21 +620,31 @@ function mp_pricing_tax_off_rate($product)
  * The price an account sends for a product, with what it was worked out
  * from.
  *
- * Reads only when the account has a rule: its groups when a category rule
- * is among them, and its cost, listing commission and typed floor in one
- * statement.
+ * A price typed on the listing comes first (the account's typed prices are
+ * read once a request). Otherwise reads only when the account has a rule:
+ * its groups when a category rule is among them, and its cost, listing
+ * commission and typed floor in one statement.
  *
  * @param array $account     marketplace_accounts row
  * @param array $product     products row: id, brand
  * @param int   $site_price  mp_product_price()
  * @param float $vat_rate    the rate inside the site price
- * @return array ['price' => int, 'rule' => bool, 'floor' => int|null]
+ * @return array ['price' => int, 'rule' => bool, 'own' => bool, 'floor' => int|null]
  */
 function mp_pricing_product_price($account, $product, $site_price, $vat_rate)
 {
-    $answer = array('price' => (int) $site_price, 'rule' => false, 'floor' => null);
+    $answer = array('price' => (int) $site_price, 'rule' => false, 'own' => false, 'floor' => null);
     $account_id = (int) ($account['id'] ?? 0);
     $product_id = (int) ($product['id'] ?? 0);
+
+    // A price typed on the listing wins over the rules (R2) and is sent as
+    // typed: the person chose it, floor or not.
+    $own_prices = mp_pricing_account_own_prices($account_id);
+
+    if (($product_id > 0) && isset($own_prices[$product_id])) {
+        return array('price' => $own_prices[$product_id], 'rule' => false, 'own' => true, 'floor' => null);
+    }
+
     $rules = mp_pricing_account_rules($account_id);
 
     if (!$rules || ($product_id <= 0)) {
@@ -614,7 +668,28 @@ function mp_pricing_product_price($account, $product, $site_price, $vat_rate)
         return $answer;
     }
 
-    $figures = mp_pricing_product_figures($account_id, $product_id);
+    $floor = mp_pricing_product_floor($account_id, $rules, mp_pricing_product_figures($account_id, $product_id), $vat_rate);
+
+    return array(
+        'price' => mp_pricing_channel_price($site_price, $rule, $floor),
+        'rule' => true,
+        'own' => false,
+        'floor' => $floor,
+    );
+}
+
+/**
+ * A listing's floor: the one worked out from its cost (Accounting on and a
+ * cost known), raised by the one typed on it; null when neither is there.
+ *
+ * @param int   $account_id
+ * @param array $rules     mp_pricing_account_rules()
+ * @param array $figures   mp_pricing_product_figures()
+ * @param float $vat_rate  the rate inside the site price
+ * @return int|null
+ */
+function mp_pricing_product_floor($account_id, $rules, $figures, $vat_rate)
+{
     $rates = mp_pricing_cost_rates();
     $computed = null;
 
@@ -632,28 +707,49 @@ function mp_pricing_product_price($account, $product, $site_price, $vat_rate)
             'fee_fixed' => 0,
             'shipping' => 0,
             'margin' => $margin,
-        ), mp_pricing_floor_rates($figures['commission'], $rates['marketplace'][(string) $account_id] ?? null)));
+        ), mp_pricing_floor_rates($figures['commission'], $rates['marketplace'][(string) (int) $account_id] ?? null)));
     }
 
-    $floor = mp_pricing_floor_final($computed, $figures['own_floor']);
-
-    return array(
-        'price' => mp_pricing_channel_price($site_price, $rule, $floor),
-        'rule' => true,
-        'floor' => $floor,
-    );
+    return mp_pricing_floor_final($computed, $figures['own_floor']);
 }
 
 /**
- * A listing's cost, commission and typed floor, in one statement.
+ * The prices typed on an account's listings, read once a request.
+ *
+ * @param int $account_id
+ * @return array  product id => own price, minor units
+ */
+function mp_pricing_account_own_prices($account_id)
+{
+    static $cache = array();
+
+    $account_id = (int) $account_id;
+
+    if (!isset($cache[$account_id])) {
+        $cache[$account_id] = array();
+
+        if (($account_id > 0) && mp_pricing_ready()) {
+            foreach ((array) db_items("SELECT product_id, own_price FROM marketplace_price_state
+                WHERE (account_id = '" . $account_id . "') AND (own_price > 0)") as $row) {
+                $cache[$account_id][(int) $row['product_id']] = (int) $row['own_price'];
+            }
+        }
+    }
+
+    return $cache[$account_id];
+}
+
+/**
+ * A listing's cost, commission, typed floor, typed price and strategy, in
+ * one statement.
  *
  * @param int $account_id
  * @param int $product_id
- * @return array ['cost' => int, 'commission' => float|null, 'own_floor' => int]
+ * @return array ['cost' => int, 'commission' => float|null, 'own_floor' => int, 'own_price' => int, 'strategy' => int]
  */
 function mp_pricing_product_figures($account_id, $product_id)
 {
-    $select = array("0 AS cost", "NULL AS commission", "0 AS own_floor");
+    $select = array("0 AS cost", "NULL AS commission", "0 AS own_floor", "0 AS own_price", "0 AS strategy");
     $joins = array();
 
     if (pg_schema_has('erp_product_costs', 'avg_cost')) {
@@ -666,6 +762,8 @@ function mp_pricing_product_figures($account_id, $product_id)
     }
 
     $select[2] = "COALESCE(state.own_floor, 0) AS own_floor";
+    $select[3] = "COALESCE(state.own_price, 0) AS own_price";
+    $select[4] = "COALESCE(state.strategy, 0) AS strategy";
     $joins[] = "LEFT JOIN marketplace_price_state AS state
             ON (state.account_id = map.account_id) AND (state.product_id = map.product_id)";
 
@@ -678,6 +776,8 @@ function mp_pricing_product_figures($account_id, $product_id)
         'cost' => is_array($row) ? (int) $row['cost'] : 0,
         'commission' => (is_array($row) && ($row['commission'] !== null)) ? (float) $row['commission'] : null,
         'own_floor' => is_array($row) ? (int) $row['own_floor'] : 0,
+        'own_price' => is_array($row) ? (int) $row['own_price'] : 0,
+        'strategy' => is_array($row) ? (int) $row['strategy'] : 0,
     );
 }
 
@@ -687,11 +787,12 @@ function mp_pricing_product_figures($account_id, $product_id)
  * shield of the sales watch and the reference price read. Never stops the
  * send: a failure goes to the error log and the next send catches up.
  *
- * @param int   $account_id
- * @param array $prices  product id => channel price, minor units
+ * @param int    $account_id
+ * @param array  $prices  product id => channel price, minor units
+ * @param string $source  'rule', or 'panel' for prices typed on the listing
  * @return int  the rows written
  */
-function mp_pricing_history_record($account_id, $prices)
+function mp_pricing_history_record($account_id, $prices, $source = MP_PRICING_HISTORY_SOURCE)
 {
     $account_id = (int) $account_id;
 
@@ -722,7 +823,7 @@ function mp_pricing_history_record($account_id, $prices)
     }
 
     $changes = pg_price_history_changes($prices, $newest, $currency);
-    $insert = pg_price_history_insert_sql($changes, $channel, $currency, MP_PRICING_HISTORY_SOURCE, time());
+    $insert = pg_price_history_insert_sql($changes, $channel, $currency, pg_price_history_source($source), time());
 
     if ($insert === '') {
         return 0;

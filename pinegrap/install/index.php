@@ -9144,6 +9144,7 @@ function get_tables() {
 		'pick_waves',
 		'pregion',
 		'preview_styles',
+		'privacy_requests',
 		'product_attribute_options',
 		'product_attributes',
 		'product_bins',
@@ -9384,6 +9385,7 @@ function get_tables() {
 		'page_revisions',
 		'record_revisions',
 		'shipment_labels',
+		'shipment_problems',
 		'prototype_links',
 		'prototype_comments',
 	);

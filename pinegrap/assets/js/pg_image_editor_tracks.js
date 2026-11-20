@@ -8,7 +8,9 @@
  * its length; ends snap to a tenth of a second and to the other layers'
  * ends (Shift: a hundredth, no snap). On a phone the panel's fields do it.
  * A row's name cell ends in a Motion button that selects the layer and
- * opens the bar's Motion popover at it (M.trackMotionOn()).
+ * opens the bar's Motion popover at it (M.trackMotionOn()). A group has a
+ * row of its own above its members (M.groupTrackRows()) with the group's
+ * keyframes, which move all its members as one.
  *
  * The drag shows on the bar and is one change on release (M.trackEdit()), so
  * the play bar is not drawn again under the pointer.
@@ -65,7 +67,8 @@
             return this.trackKeyNow;
         }
 
-        this.trackKeyNow = this.tracksShown() ? JSON.stringify([this.sel, this.doc.layers.map(function (l) { return [l.id, self.layerName(l), l.hidden ? 1 : 0, l.locked ? 1 : 0]; })]) : '';
+        // A layer's groups and their keys (l.gfx) draw the group rows.
+        this.trackKeyNow = this.tracksShown() ? JSON.stringify([this.sel, this.doc.layers.map(function (l) { return [l.id, self.layerName(l), l.hidden ? 1 : 0, l.locked ? 1 : 0, l.grp || 0, l.gfx || 0]; })]) : '';
 
         return this.trackKeyNow;
     };
@@ -113,12 +116,19 @@
         head = el('div', { class: 'pgie-trhead' }, [el('span', { class: 'pgie-trname', text: t('tracksLayers') }), el('div', { class: 'pgie-trlane' }, [ruler])]);
         rows = el('div', { class: 'pgie-trrows' });
 
-        // The top layer first, as in the layers list; a hidden layer and a
-        // redaction (which never moves) have no row.
-        this.doc.layers.slice().reverse().forEach(function (l) {
-            var own;
+        // The top layer first, as in the layers list, a group's row above
+        // its members; a hidden layer and a redaction (which never moves)
+        // have no row, a group none when none of its members has one.
+        M.groupTrackRows(this.doc.layers).forEach(function (r) {
+            var l = r.group ? null : self.layer(r.id), own;
 
-            if (!l.hidden && (l.type !== 'redact')) {
+            if (r.group) {
+                own = self.trackGroupRow(r.group, end);
+
+                if (own) {
+                    rows.appendChild(own);
+                }
+            } else if (l && !l.hidden && (l.type !== 'redact')) {
                 Editor.trackRowMakers.some(function (fn) {
                     own = fn.call(self, l, end);
 
@@ -197,6 +207,36 @@
 
         // A screen reader hears the layer's name before its bars and keys.
         return el('div', { class: 'pgie-trrow' + (on ? ' on' : '') + (l.anim ? '' : ' pgie-trstill'), role: 'group', 'aria-label': name }, [pick, lane]);
+    };
+
+    // Group gid's row: its name picks its members (Shift adds them), its
+    // lane holds the group's own keys as diamonds (the keyframes part's
+    // marks on M.groupKeyLayer()), dragged and deleted as a layer's; null
+    // when none of its members is shown.
+    Editor.prototype.trackGroupRow = function (gid, end) {
+        var self = this, ids = M.groupMembers(this.doc.layers, gid), g = M.groupKeyLayer(this.doc.layers, gid), name = this.attachLabel('group:' + gid);
+        var on = ids.every(function (id) { return self.sel.indexOf(id) >= 0; });
+        var lane = el('div', { class: 'pgie-trlane' }, [el('span', { class: 'pgie-trline' })]);
+        var pickAll = function (e) {
+            var rest = self.sel.filter(function (id) { return ids.indexOf(id) < 0; });
+
+            self.select(e.shiftKey ? (on ? rest : rest.concat(ids)) : ids);
+        };
+        var pick = el('button', { type: 'button', class: 'pgie-trname', title: name, 'aria-pressed': on ? 'true' : 'false', onclick: pickAll }, [icon('group'), el('span', { text: name })]);
+
+        if (!ids.some(function (id) { var l = self.layer(id); return l && !l.hidden && (l.type !== 'redact'); })) {
+            return null;
+        }
+
+        Editor.trackMarks.forEach(function (mark) { mark.call(self, lane, g, end, on); });
+
+        lane.addEventListener('pointerdown', function (e) {
+            if (e.target === lane || e.target.classList.contains('pgie-trline')) {
+                pickAll(e);
+            }
+        });
+
+        return el('div', { class: 'pgie-trrow pgie-trgroup' + (on ? ' on' : '') + (M.keyList(g).length ? '' : ' pgie-trstill'), role: 'group', 'aria-label': name }, [pick, lane]);
     };
 
     // The row's Motion button, at the right end of its name cell: a press

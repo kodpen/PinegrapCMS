@@ -25,5 +25,5 @@ description: Plan app-access-redraw, step AA7 (U15 to U18): a Claude Console age
 - Why: the owner said on 2026-11-20 that he has credit in the Claude Console to use on development once the connection works.
 
 ## What binds the step?
-- `includes/mcp/tools.php` is entered by AG7 and AG9 of `plans/ai-guide.md`, `includes/workspace/agent_instructions.php` by AW1 of `plans/agent-writing-rules.md`, and it and `api_agent_requests.php` by KA3 of `plans/channel-activity.md`: AA7a enters none while such a PR is open.
+- `includes/mcp/tools.php` is entered by AG7 and AG9 of `plans/ai-guide.md`, `includes/workspace/agent_instructions.php` by AW1 of `plans/agent-writing-rules.md`, and it and `api_agent_requests.php` by KA3 of channel-activity (landed, #10810): AA7a enters none while such a PR is open.
 - Nobody but the owner can try it with a Console agent: the PR says so under "Could not verify", and AA8 closes the plan only after his try on dev.

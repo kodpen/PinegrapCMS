@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for pick and pack's schema step (upgrade_2026_11_0_pick_pack(),
- * 11.0.260): it is called once under its own label, the four tables are on
+ * 11.0.264): it is called once under its own label, the four tables are on
  * get_tables(), each table has exactly its columns and keys, and run twice
  * against an in-memory schema the second run writes nothing. Also the
  * "Packing only" right (user.manage_packing): every role-3 ladder file and
@@ -70,8 +70,8 @@ function test_pick_pack_schema_step_is_called_once_under_a_label_of_its_own()
 
 	preg_match_all('#// (11\.0\.\d+)\n#', isset($entry[1]) ? $entry[1] : '', $labels);
 
-	pg_assert_same(1, count(array_keys($labels[1], '11.0.260', true)), 'no other step carries 11.0.260');
-	pg_assert_same(1, preg_match('/upgrade_2026_11_0_pick_pack\(\);\s+\/\/ 11\.0\.260\n/', $source), 'the label is beside the call');
+	pg_assert_same(1, count(array_keys($labels[1], '11.0.264', true)), 'no other step carries 11.0.264');
+	pg_assert_same(1, preg_match('/upgrade_2026_11_0_pick_pack\(\);\s+\/\/ 11\.0\.264\n/', $source), 'the label is beside the call');
 }
 
 function test_pick_pack_schema_tables_are_on_get_tables()

@@ -50,6 +50,9 @@ function delete_order($request) {
         db("DELETE FROM order_documents WHERE order_id = '" . e($order['id']) . "'");
     }
 
+    // The problems found on the order's parcels (the delivery problem desk).
+    pg_delivery_tower_delete_for_order($order['id']);
+
     // The order's shipping labels: the rows and the documents, which hold
     // the recipient's address.
     pg_shipment_labels_delete_for_order($order['id']);

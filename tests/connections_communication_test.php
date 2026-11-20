@@ -65,7 +65,7 @@ function test_connections_communication_registry_and_anchors_follow_the_move()
 		pg_assert_same('#settings/contact/pgset-sms', $registry[$id]['found_at'], 'the SMS card still finds ' . $id);
 		pg_assert_same(array('contact', 'pgset-sms'), pg_settings_legacy_anchors()['sms_' . $id . '_user'], 'an old link to ' . $id . '\'s fields lands on the SMS card');
 	}
-	pg_assert_same(79, pg_connections_count(), 'the figure stays');
+	pg_assert_same(81, pg_connections_count(), 'the figure stays');
 
 	$anchors = pg_settings_legacy_anchors();
 	pg_assert_same(array('contact', 'pgset-whatsapp'), $anchors['whatsapp_app_id'], 'an old link to the WhatsApp fields lands on the card');

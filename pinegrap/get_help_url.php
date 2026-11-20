@@ -292,6 +292,8 @@ function get_help_url($properties = array())
             'seo_struct_error_products' => 'seo#seo-checks',
         ),
         'duplicate_products'          => 'commerce#products',
+        'view_supplier_feeds'         => 'commerce#products',
+        'edit_supplier_feed'          => 'commerce#products',
         'product_builder'             => 'commerce#variant-sets',
         'add_product'                 => 'commerce#create-edit-product',
         'edit_product'                => 'commerce#create-edit-product',
