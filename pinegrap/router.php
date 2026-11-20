@@ -405,6 +405,12 @@ if ($item_name_lowercase == 'mcp.php') {
     exit();
 }
 
+// The same server with its compact tool list (mcp_compact.php).
+if ($item_name_lowercase == 'mcp_compact.php') {
+    require(dirname(__FILE__) . '/mcp_compact.php');
+    exit();
+}
+
 // If item is "robots.txt", then run that script.
 if ($item_name_lowercase == 'robots.txt') {
     require(dirname(__FILE__) . '/get_robots.txt.php');

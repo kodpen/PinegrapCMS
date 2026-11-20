@@ -205,7 +205,9 @@ function pg_oauth_endpoint($name) {
 // which the router hands to the file in the software directory, where it
 // answers too. A client checks that the resource its metadata names is the
 // address it connected to, so either address is a resource of its own name
-// with the same key.
+// with the same key. The compact list (mcp_compact.php) is the same server
+// with its tools behind five, so it is the same resource as well: a token
+// issued for one of the four MCP addresses is good on all of them.
 function pg_oauth_resource_addresses() {
 
 	$site = pg_oauth_scheme() . pg_oauth_host() . PATH;
@@ -214,8 +216,38 @@ function pg_oauth_resource_addresses() {
 
 	return array(
 		'integration' => array($base . '/integration.php'),
-		'mcp'         => array($site . 'mcp.php', $base . '/mcp.php')
+		'mcp'         => array_merge(array($site . 'mcp.php', $base . '/mcp.php'), pg_oauth_mcp_compact_addresses())
 	);
+
+}
+
+// The compact list's two addresses: the site's own, which the router hands
+// to the file, and the file in the software directory, which answers on every
+// server.
+function pg_oauth_mcp_compact_addresses() {
+
+	$site = pg_oauth_scheme() . pg_oauth_host() . PATH;
+
+	return array($site . 'mcp_compact.php', $site . SOFTWARE_DIRECTORY . '/mcp_compact.php');
+
+}
+
+// Whether a resource address is one of the compact list's.
+function pg_oauth_resource_is_compact($resource) {
+
+	$resource = rtrim((string)$resource, '/');
+
+	foreach (pg_oauth_mcp_compact_addresses() as $url) {
+
+		if (strcasecmp($url, $resource) === 0) {
+
+			return true;
+
+		}
+
+	}
+
+	return false;
 
 }
 
@@ -501,7 +533,7 @@ function pg_oauth_resource_metadata($resource) {
 		'authorization_servers'    => array(pg_oauth_issuer()),
 		'scopes_supported'         => ($app !== null) ? pg_oauth_ceiling($app) : array(),
 		'bearer_methods_supported' => array('header'),
-		'resource_name'            => $name . (($key === 'mcp') ? ' MCP' : ' API')
+		'resource_name'            => $name . (($key === 'mcp') ? (pg_oauth_resource_is_compact($resource) ? ' MCP (compact)' : ' MCP') : ' API')
 	);
 
 }
