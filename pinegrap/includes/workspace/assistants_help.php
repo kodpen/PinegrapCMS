@@ -218,7 +218,7 @@ function ws_assistants_help_html($key)
  * @param bool   $in_dialog drawn in the settings dialog
  * @return string HTML; '' for a part without a guide
  */
-function ws_assistants_guide_drawer($key, $in_dialog)
+function ws_settings_assistants_guide_drawer($key, $in_dialog)
 {
     $steps = ws_assistants_guide_steps($key);
 

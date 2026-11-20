@@ -161,7 +161,7 @@ if ($ws_card !== '') {
 // "How does this work?" under a part's line opens its numbered steps.
 foreach (ws_assistants_help_keys() as $ws_key) {
     if (isset($ws_parts[$ws_key])) {
-        $pg_settings_modals[] = ws_assistants_guide_drawer($ws_key, !empty($pg_settings_in_dialog));
+        $pg_settings_modals[] = ws_settings_assistants_guide_drawer($ws_key, !empty($pg_settings_in_dialog));
     }
 }
 

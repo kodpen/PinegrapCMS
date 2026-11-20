@@ -69,11 +69,11 @@ function test_settings_assistants_help_markup()
 	pg_assert_contains(h(lang('How does this work?')), $html, 'the button\'s words');
 	pg_assert_contains(h(ws_assistants_help_line('ws-mcp')), $html, 'the line');
 
-	$drawer = ws_assistants_guide_drawer('ws-ai', true);
+	$drawer = ws_settings_assistants_guide_drawer('ws-ai', true);
 	pg_assert_contains('id="pgset-ws-ai-guide"', $drawer, 'the drawer\'s id');
 	pg_assert_contains('<ol class="ws-claude-steps', $drawer, 'numbered steps');
 	pg_assert_contains('href="api_settings.php"', $drawer, 'a step leads to Application Access');
-	pg_assert_same('', ws_assistants_guide_drawer('ws-claude', true), 'no drawer for a part without a guide');
+	pg_assert_same('', ws_settings_assistants_guide_drawer('ws-claude', true), 'no drawer for a part without a guide');
 }
 
 function test_settings_assistants_help_cards()
@@ -103,6 +103,6 @@ function test_settings_assistants_help_cards()
 		}
 	}
 
-	pg_assert_contains('ws_assistants_guide_drawer(', settings_assistants_help_test_source('includes/settings/workspace_assistants.php'), 'the pane draws the guides');
+	pg_assert_contains('ws_settings_assistants_guide_drawer(', settings_assistants_help_test_source('includes/settings/workspace_assistants.php'), 'the pane draws the guides');
 	pg_assert_contains("lang('Start from an application')", settings_assistants_help_test_source('includes/workspace/agents_settings.php'), 'Add an agent offers an application');
 }
