@@ -72,27 +72,18 @@ function test_return_key_buttons_marketplace_drawer_starts_with_a_nameless_submi
 	pg_assert_true(($delete !== false) && ($at < $delete), 'the hidden submit button stands before Remove marketplace');
 }
 
-// Return in a SMTP Settings box must save: Send Test (SMTP ready) or
-// Generate DKIM Key (not ready) would otherwise be the default button.
+// Return in an E-mail sending box must save: the cards hold Save and send a
+// test and Save and generate a DKIM key, so they bring no submit button of
+// their own before them; the dialog saves on Return and the page path's form
+// starts with its hidden Save (includes/settings/screen.php).
 function test_return_key_buttons_smtp_settings_start_with_a_hidden_save()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/smtp_settings.php');
-	$from = strpos($source, '<form name="form" action="smtp_settings.php"');
-	$to = ($from === false) ? false : strpos($source, '</form>', $from);
-	$form = (($from === false) || ($to === false)) ? '' : substr($source, $from, $to - $from);
-	list($at, $button) = return_key_buttons_test_first_submit($form);
+	$cards = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/screen.php');
 
-	pg_assert_true($at !== false, 'the SMTP Settings form has a submit button');
-	pg_assert_contains('visually-hidden', $button, 'the first submit button of the SMTP Settings form is hidden');
-	pg_assert_contains('name="submit_save"', $button, 'the hidden submit button posts submit_save, which the save branch needs');
-	pg_assert_contains('value="Save"', $button, 'the hidden submit button posts the value Save');
-	pg_assert_false(strpos($button, 'id=') !== false, 'the hidden submit button leaves id submit_save to the visible Save');
-
-	$system = strpos($form, '$system_buttons');
-	$dkim = strpos($form, '$dkim_txt_preview');
-
-	pg_assert_true(($system !== false) && ($at < $system), 'the hidden submit button stands before Send Test');
-	pg_assert_true(($dkim !== false) && ($at < $dkim), 'the hidden submit button stands before Generate DKIM Key');
+	pg_assert_false(strpos($cards, 'visually-hidden" tabindex="-1"') !== false, 'the cards bring no hidden button of their own');
+	pg_assert_false(strpos($cards, '<form') !== false && strpos($cards, '<form method="post" action="connect.php"') === false, 'the cards open no form but the Connect forms');
+	pg_assert_contains('class="visually-hidden" tabindex="-1" aria-hidden="true"', $screen, 'the page path\'s form starts with its hidden Save');
 }
 
 // onKey() of the tour, up to the next function.

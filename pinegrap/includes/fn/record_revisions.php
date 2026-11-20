@@ -868,6 +868,9 @@ function pg_record_revision_load($liveform, $form_id, $page_id, $revision, $fill
         }
     }
 
+    // A rows field's list goes to its rows editor, as far as its rows exist.
+    $notes = array_merge($notes, pg_coll_rows_revision_load($liveform, $form_id, $page_id, $values, $fill));
+
     return $notes;
 }
 
@@ -1184,7 +1187,17 @@ function pg_record_revision_restore_values($form_id, $page_id, $revision)
     $names   = pg_record_revision_file_names(array($values));
     $plan    = pg_record_revision_restore_plan($fields, $values, pg_record_revision_current_values($form_id), array_keys($names));
 
-    foreach (pg_record_revision_restore_rows($fields, $values, $plan) as $field_id => $rows) {
+    // A rows field is written by pg_coll_rows_revision_restore() below, from
+    // the list stored now.
+    $writes = pg_record_revision_restore_rows($fields, $values, $plan);
+
+    foreach (pg_coll_rows_fields($page_id) as $rows_field_id => $rows_item) {
+        if ($rows_item['spec']['ok']) {
+            unset($writes[(string) (int) $rows_field_id]);
+        }
+    }
+
+    foreach ($writes as $field_id => $rows) {
         db("DELETE FROM form_data WHERE form_id = '$form_id' AND form_id != '0' AND form_field_id = '" . (int) $field_id . "'");
 
         foreach ($rows as $row) {
@@ -1201,6 +1214,10 @@ function pg_record_revision_restore_values($form_id, $page_id, $revision)
     }
 
     pg_record_revision_restore_files($form_id, $page_id, $revision, array());
+
+    // A rows field keeps the revision's rows that still exist; the rows it
+    // no longer lists are deleted, as the rows editor's save deletes them.
+    pg_coll_rows_revision_restore($form_id, $page_id, $values);
 
     return $plan;
 }

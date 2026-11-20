@@ -197,7 +197,7 @@ function test_workspace_mail_room_in_the_box_form()
 
 	$script = ws_mail_settings_script();
 
-	pg_assert_contains('(after_fetch|reply_via|kept_in|support)', $script, 'the choice shows and hides its fields');
+	pg_assert_contains('(after_fetch|reply_via|kept_in|support|provider|google_way)', $script, 'the choice shows and hides its fields');
 	pg_assert_contains("channel.required = (kept.value !== \\'mailbox\\');", pg_test_function_source('ws_mail_settings_script'), 'a hidden channel is not asked for');
 }
 
@@ -256,6 +256,7 @@ function test_workspace_mail_room_on_the_emails_screen()
 	pg_assert_contains('Ayşe &lt;ayse@example.com&gt; · Support</div>', $html, 'the customer and the mailbox, no channel');
 	pg_assert_same(false, strpos($html, 'workspace.php?channel='), 'nothing leads into the room');
 	pg_assert_same(false, strpos($html, h(lang('Open in channel'))));
+	pg_assert_same(false, strpos($html, 'ws-mail-pane-channel'), 'no channel pill');
 
 	$pane['items'] = array_fill(0, WS_MAIL_PANE_MAX, $item);
 

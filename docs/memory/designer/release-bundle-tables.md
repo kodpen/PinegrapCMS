@@ -18,8 +18,8 @@ module: page_bundles
 
 ## Which drafts are held, and where is it refused?
 - An item `waiting` in an open, scheduled or partial bundle (`pg_page_bundle_hold()`). `pg_experiment_variant_hold_message()` answers it after the experiment's own hold, so the page save (published alone), both bin paths and `DELETE /pages/{id}` refuse it, naming the bundle; `pg_experiment_sheet_variant_choices()` leaves it out, so it is never made a variant.
-- The API's delete answers it with the same `409 experiment_variant_held` code for now.
-- The Publish sheet does not mark a bundled draft as held yet; the server refuses it with the bundle's name. The sheet's row is its own step, RB2b (architect, agent channel message 6621), not RB2.
+- The API's delete answers it with 409 `release_bundle_held` (`api/api-design-bundles.md`).
+- The Publish sheet shows a bundled draft as held (RB2b, #10191): `pg_experiment_editor_config()` adds the bundle's state for a tab page no open experiment holds (`designer-publish-sheet.md`); the server refuses its publish with the bundle's name either way.
 
 ## How is a page added?
 - One open bundle per draft and per live page: `pg_page_bundle_add_conflict()` over `pg_page_bundle_open_items()`, checked in code because closed bundles keep their rows.

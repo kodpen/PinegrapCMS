@@ -216,10 +216,23 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_auto_dialog_daily();       // 11.0.223
 	upgrade_2026_11_0_page_click_daily();        // 11.0.224
 	upgrade_2026_11_0_prototype_comments();      // 11.0.225
+	upgrade_2026_11_0_courses();                 // 11.0.234
 	upgrade_2026_11_0_content_review();          // 11.0.226
+	upgrade_2026_11_0_erp_price_account();       // 11.0.235
 	upgrade_2026_11_0_site_push();               // 11.0.227
 	upgrade_2026_11_0_page_bundle();             // 11.0.228
 	upgrade_2026_11_0_site_push_watch();         // 11.0.229
+	upgrade_2026_11_0_ws_meeting_url();          // 11.0.232
+	upgrade_2026_11_0_file_translation();        // 11.0.231
+	upgrade_2026_11_0_ws_memory_project();       // 11.0.236
+	upgrade_2026_11_0_whatsapp_inbox_read_drop(); // 11.0.237
+	upgrade_2026_11_0_ws_saved_replies_cleanup(); // 11.0.238
+	upgrade_2026_11_0_ws_mail_menu_pin();         // 11.0.239
+	upgrade_2026_11_0_ws_task_app();             // 11.0.230
+	upgrade_2026_11_0_ai_connections();          // 11.0.240
+	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
+	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
+	upgrade_2026_11_0_ws_calls();                // 11.0.243
 
 }
 
@@ -3468,7 +3481,8 @@ function upgrade_2026_11_0_workspace_thread_follow() {
 // composer, each under its shortcut. scope is 'personal' for every row this
 // release writes; it is there now so that team replies come later without a
 // second change to this table or a rebuild of uq_shortcut, which keeps a
-// shortcut once per person and scope. body keeps {customer} and {order} as
+// shortcut once per person and scope; its left column user_id also finds a
+// person's rows, so the table has no index of user_id alone. body keeps {customer} and {order} as
 // typed: they are filled when the reply is put in, so no customer data is
 // stored. The rows go with their user (delete_users.php, edit_user.php).
 function upgrade_2026_11_0_workspace_saved_replies() {
@@ -3483,11 +3497,23 @@ function upgrade_2026_11_0_workspace_saved_replies() {
 		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
 		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
-		KEY idx_user (user_id),
 		UNIQUE KEY uq_shortcut (user_id, scope, shortcut)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: the table for saved replies is added: texts a person keeps under a short word and puts into a message. It stays empty until somebody saves a reply.');
+
+}
+
+// ws_saved_replies without idx_user (2026.11.0, 11.0.238). A database that
+// ran 11.0.114 before the index left that step has KEY idx_user (user_id);
+// uq_shortcut (user_id, scope, shortcut) starts with the same column and
+// answers every lookup it served, so the duplicate is dropped. Nothing is
+// done where the table or the index is absent.
+function upgrade_2026_11_0_ws_saved_replies_cleanup() {
+
+	if (install_table_exists('ws_saved_replies') && install_index_exists('ws_saved_replies', 'uq_shortcut')) {
+		install_drop_index('ws_saved_replies', 'idx_user');
+	}
 
 }
 
@@ -5657,6 +5683,23 @@ function upgrade_2026_11_0_ws_channel_memory() {
 }
 
 
+// The general memory and a memory record's project (2026.11.0, 11.0.236;
+// includes/workspace/channel_memory.php).
+//
+// ws_channel_memory.project: the project a record is filed under (80
+// characters, '' for none), so the Memory tab can group records under
+// project headings. A record with channel_id 0 belongs to no channel: it is
+// the general memory every agent channel shares, read and written by whoever
+// may post in an agent channel. The channels' records stay where they are,
+// with no project.
+function upgrade_2026_11_0_ws_memory_project() {
+
+	install_add_column('ws_channel_memory', 'project', "VARCHAR(80) NOT NULL DEFAULT '' AFTER channel_id");
+
+	install_note('Workspace: memory records can be filed under a project, and a general memory is shared by the agent channels. Existing records stay in their channels with no project.');
+
+}
+
 // The undo journal of an agent's applied change (2026.11.0, 11.0.174;
 // includes/workspace/agent_tiers.php).
 //
@@ -6445,8 +6488,6 @@ function upgrade_2026_11_0_whatsapp_inbox() {
 		media_id          VARCHAR(64) NOT NULL DEFAULT '',
 		media_mime        VARCHAR(100) NOT NULL DEFAULT '',
 		context_wamid     VARCHAR(128) NOT NULL DEFAULT '',
-		read_user_id      INT UNSIGNED NOT NULL DEFAULT 0,
-		read_at           INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
 		UNIQUE KEY uq_wamid (wamid),
 		KEY idx_contact (contact_id, received_at),
@@ -6570,6 +6611,155 @@ function upgrade_2026_11_0_ws_personal_plans() {
 	}
 
 	install_note('Workspace: a person can add their own private plans to My calendar.');
+
+}
+
+// One connection per AI provider (11.0.240, includes/fn/ai_connections.php):
+// no table or column. Where a provider has no connection yet, the first key
+// its model assistants hold (by id) becomes it, kept sealed among the
+// connected accounts' service entries (ai_<provider>); an assistant's key
+// equal to its provider's connection is emptied, so it calls with the
+// connection's key, the same key as before; a key that differs stays and
+// goes on working. Run again it finds nothing to move.
+function upgrade_2026_11_0_ai_connections() {
+
+	if (!install_table_exists('ws_agents') || !install_column_exists('ws_agents', 'key_sealed')) {
+
+		install_skipped('ws_agents does not exist, skipped');
+
+		return;
+
+	}
+
+	if (!function_exists('pg_ai_connection_move') || !function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready()) {
+
+		install_skipped('AI connections: the assistants\' keys were not moved, because includes/fn/ai_connections.php is out of date. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	if (!pg_connect_can_seal()) {
+
+		install_skipped('AI connections: this site has no encryption key, so the assistants keep their own keys.');
+
+		return;
+
+	}
+
+	$moved = 0;
+	$emptied = 0;
+
+	$registry = pg_connections_registry();
+
+	foreach (pg_ai_connection_services() as $service => $provider) {
+
+		$agents = array();
+
+		foreach ((array) db_items("SELECT id, key_sealed FROM ws_agents
+			WHERE kind = 'model' AND provider = '" . e($provider) . "' AND key_sealed IS NOT NULL AND key_sealed <> ''
+			ORDER BY id") as $row) {
+
+			$sealed = (string) $row['key_sealed'];
+			$key = '';
+
+			if (strpos($sealed, ':') !== false) {
+				list($cipher, $iv) = explode(':', $sealed, 2);
+				$key = trim((string) decode_ssl_keys($cipher, $iv));
+			}
+
+			$agents[] = array('id' => (int) $row['id'], 'key' => $key);
+
+		}
+
+		$move = pg_ai_connection_move(pg_ai_connection_key($provider), $agents);
+
+		if ($move['store']) {
+
+			if (!pg_ai_connection_save($provider, isset($registry[$service]) ? $registry[$service]['name'] : $provider, $move['connection'])) {
+				continue;
+			}
+
+			$moved++;
+
+		}
+
+		foreach ($move['empty'] as $id) {
+
+			db("UPDATE ws_agents SET key_sealed = NULL WHERE id = '" . (int) $id . "' AND kind = 'model'");
+			$emptied++;
+
+		}
+
+	}
+
+	if ($moved > 0) {
+		install_note('Connections: ' . $moved . ' AI provider key(s) became the provider\'s connection; ' . $emptied . ' assistant(s) now use it.');
+	}
+
+}
+
+// The voice feature's keys join OpenAI's connection (11.0.241,
+// includes/fn/ai_connections.php), after the assistants' (11.0.240), by the
+// same rule: where OpenAI has no connection yet, the transcripts' key (or
+// the spoken answers', when they go to OpenAI too) becomes it; a key equal
+// to the connection's is emptied, so the feature calls with the same key
+// from the connection; a key that differs, or one of another address, stays.
+// Run again it finds nothing to move.
+function upgrade_2026_11_0_ai_connections_voice() {
+
+	if (!function_exists('pg_ai_connection_voice_move') || !function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready() || !function_exists('pg_config_text')) {
+
+		install_skipped('AI connections: the voice keys were not moved, because includes/fn/ai_connections.php is out of date. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	$open = function ($name) {
+
+		$sealed = pg_config_text($name);
+
+		if (strpos($sealed, ':') === false) {
+			return '';
+		}
+
+		list($cipher, $iv) = explode(':', $sealed, 2);
+
+		return trim((string) decode_ssl_keys($cipher, $iv));
+
+	};
+
+	if ((strpos(pg_config_text('ws_voice_key'), ':') === false) && (strpos(pg_config_text('ws_voice_speech_key'), ':') === false)) {
+		return;
+	}
+
+	if (!pg_connect_can_seal()) {
+
+		install_skipped('AI connections: this site has no encryption key, so voice transcripts keep their own key.');
+
+		return;
+
+	}
+
+	$move = pg_ai_connection_voice_move(pg_ai_connection_key('openai'), array(
+		'url'        => pg_config_text('ws_voice_url'),
+		'key'        => $open('ws_voice_key'),
+		'speech_url' => pg_config_text('ws_voice_speech_url'),
+		'speech_key' => $open('ws_voice_speech_key'),
+	));
+
+	if ($move['store'] && !pg_ai_connection_save('openai', 'OpenAI', $move['connection'])) {
+		return;
+	}
+
+	foreach ($move['empty'] as $name) {
+		pg_config_text_save($name, '');
+	}
+
+	if ($move['store'] || $move['empty']) {
+		install_note('Connections: voice transcripts now use OpenAI\'s connection' . ($move['store'] ? ', made from their key' : '') . '.');
+	}
 
 }
 
@@ -7091,6 +7281,29 @@ function upgrade_2026_11_0_auto_dialog_open() {
 
 }
 
+// What an auto dialog shows (11.0.242, includes/fn/auto_dialogs.php):
+// content url (its address in an iframe) or component (a shared component
+// designed in the visual designer), and component_id, that component's id
+// (0 none). The default reads as an auto dialog always was: an address. A
+// row keeps its address while it shows a component, so it can switch back.
+// No index (a handful of rows), no foreign key, no backfill.
+function upgrade_2026_11_0_auto_dialog_content() {
+
+	if (!install_table_exists('auto_dialogs')) {
+
+		install_skipped('auto_dialogs does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('auto_dialogs', 'content', "VARCHAR(10) NOT NULL DEFAULT 'url' AFTER place");
+	install_add_column('auto_dialogs', 'component_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER content");
+
+	install_note('Auto dialogs: a dialog can show a pop-up designed in the visual designer instead of a web address.');
+
+}
+
 // A reader's highlights on a message (11.0.222, includes/workspace/
 // highlights.php): one row per marked place, kept by its text (quote) and
 // which occurrence of it in the message's plain text it is. scope is 'me'
@@ -7201,6 +7414,66 @@ function upgrade_2026_11_0_content_review() {
 
 }
 
+// Courses (11.0.234, includes/fn/courses.php). course: a private folder a
+// product already opens, its classroom page, "Lessons in order" (in_order)
+// and "Certificate" (certificate); idx_folder finds a folder's courses
+// (one folder may hold several).
+// course_lesson: a page of that folder, its place (sort_order), the days
+// after enrolment it opens (open_days, 0 at once) and an optional quiz form
+// page with the score it needs (quiz_pass_score, 0-100, 0 with no quiz;
+// forms.quiz_score is the score a member got). idx_page keeps a page a
+// lesson of one course only and serves the page's access gate; idx_course
+// lists a course's lessons in order. course_progress: one
+// row per fact, written once by its key with INSERT IGNORE: kind 1 a lesson
+// done, 2 the first open of a course given by hand (lesson_id 0), 3 the
+// completion (lesson_id 0); idx_course serves the course's learners list.
+// No row names an order: the enrolment day is read from the orders. No
+// backfill: no course existed before this step. Columns confirmed by the
+// architect.
+function upgrade_2026_11_0_courses() {
+
+	install_create_table('course', "CREATE TABLE course (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name              VARCHAR(255) NOT NULL DEFAULT '',
+		folder_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		classroom_page_id INT UNSIGNED NOT NULL DEFAULT 0,
+		in_order          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		certificate       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_folder (folder_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('course_lesson', "CREATE TABLE course_lesson (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		course_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		page_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		sort_order      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		open_days       SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		quiz_page_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		quiz_pass_score TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_page (page_id),
+		KEY idx_course (course_id, sort_order)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('course_progress', "CREATE TABLE course_progress (
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		course_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		lesson_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, course_id, kind, lesson_id),
+		KEY idx_course (course_id, kind)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Courses: the tables for courses, their lessons and each member\'s progress are ready; nothing changes on the site until a course is made.');
+
+}
+
 // Visitor notifications (11.0.227, includes/fn/site_push.php): a site
 // visitor's browser subscribed to the site's news without an account, the
 // messages sent from the panel and one queue row per message and browser.
@@ -7269,6 +7542,31 @@ function upgrade_2026_11_0_site_push() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visitor notifications: the tables for browsers subscribed to the site\'s news and the messages sent to them are ready; nothing is offered to visitors until the switch is turned on in Features.');
+
+}
+
+// An ERP account that uses another account's prices (11.0.235,
+// includes/erp/price_lists.php): price_account_id names the account whose
+// rows and discount it buys at instead of its own; 0 uses its own, as every
+// account did before. One hop only, checked at the save
+// (erp_account_price_pointer_refusal()). idx_price_account finds the
+// accounts that use an account's prices, for that check and for the
+// refusal to delete an account others point at. No backfill: no account
+// uses another's prices until one is chosen.
+function upgrade_2026_11_0_erp_price_account() {
+
+	if (!install_table_exists('erp_accounts')) {
+
+		install_skipped('erp_accounts does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('erp_accounts', 'price_account_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('erp_accounts', 'idx_price_account', "INDEX idx_price_account (price_account_id)");
+
+	install_note('ERP: an account can now use another account\'s prices; every account keeps its own until one is chosen.');
 
 }
 
@@ -7355,5 +7653,173 @@ function upgrade_2026_11_0_site_push_watch() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Visitor notifications: a browser can now wait for one product to come back or one order to ship; nothing changes until the switch is turned on in Features.');
+
+}
+
+// A booking staff member's meeting address (11.0.232,
+// includes/fn/booking_links.php): the one address a member pastes for the
+// bookings made through their meeting link, cleaned by
+// ws_meeting_url_clean(). NULL is no address; an emptied field is stored as
+// NULL. The length is ws_events.meeting_url's. No backfill: until a member
+// sets one, nothing changes.
+function upgrade_2026_11_0_ws_meeting_url() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'meeting_url', 'VARCHAR(500) NULL');
+
+	install_note('Bookings: a staff member can keep a meeting address for the bookings made through their meeting link.');
+
+}
+
+// A language's picture of a Design Canvas picture (11.0.231, includes/fn/
+// picture_translation.php): one row per source file and language. state 0
+// waiting, 1 drawn, 2 out of date; only a drawn row is shown to a visitor.
+// picture_file_id is the language's picture, a files row of its own (0 until
+// drawn); fit 1 marks a text that did not fit at the smallest size; doc_hash
+// names the source document it was drawn from. idx_picture finds the row of
+// a language's picture, idx_state the rows to draw per language. No backfill:
+// no picture had a language's version before this step. Columns confirmed by
+// the architect.
+function upgrade_2026_11_0_file_translation() {
+
+	install_create_table('file_translation', "CREATE TABLE file_translation (
+		file_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		language        VARCHAR(10) CHARACTER SET ascii NOT NULL DEFAULT '',
+		picture_file_id INT UNSIGNED NOT NULL DEFAULT 0,
+		state           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		fit             TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		doc_hash        CHAR(40) CHARACTER SET ascii NOT NULL DEFAULT '',
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		drawn_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		drawn_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (file_id, language),
+		KEY idx_picture (picture_file_id),
+		KEY idx_state (state, language)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Picture texts: the table for a picture\'s versions in the site\'s other languages is ready; nothing changes on the site until one is drawn.');
+
+}
+
+// whatsapp_inbox.read_user_id and read_at were created by an earlier form of
+// 11.0.198 and never written or read; a read mark is added by the step that
+// builds one. 11.0.198 no longer creates them; this step drops them from
+// databases that ran the earlier form and does nothing where they are absent.
+function upgrade_2026_11_0_whatsapp_inbox_read_drop() {
+
+	install_drop_column('whatsapp_inbox', 'read_user_id');
+	install_drop_column('whatsapp_inbox', 'read_at');
+
+}
+
+// Incoming e-mail pinned to a person's own main menu (Pin to main menu on
+// the tab, includes/workspace/mail_menu.php), as My Notes is with
+// notes_pinned: 0 is not pinned, so nobody's menu changes until they pin it.
+// The person's ws_profiles row is made on the first pin when they have none.
+function upgrade_2026_11_0_ws_mail_menu_pin() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'mail_pinned', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('Communication: a person can pin Incoming e-mail to their own main menu.');
+
+}
+
+// The application that created a task (11.0.230, includes/workspace/tasks.php,
+// ws_task_create()): an API key, an OAuth connection, a flow run one started,
+// an assistant's proposal; 0 for a person. It only says who created the task,
+// never who may read or change it; a deleted application's id stays and reads
+// "Made by an application". idx_app serves the "Made by agents" filter, which
+// the task lists combine with status, as idx_delegate and idx_department do.
+// No backfill: earlier tasks do not know their application.
+function upgrade_2026_11_0_ws_task_app() {
+
+	if (!install_table_exists('ws_tasks')) {
+
+		install_skipped('ws_tasks does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_tasks', 'app_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER creator_id");
+	install_add_index('ws_tasks', 'idx_app', "INDEX idx_app (app_id, status)");
+
+	install_note('Workspace: a task an application creates from now on says "Made by" that application, and My Tasks can show or leave out the tasks agents made. Earlier tasks read as made by a person.');
+
+}
+
+// Voice and video calls in the Workspace (11.0.243, includes/workspace/
+// calls.php). Sound and picture go from browser to browser; these tables
+// hold only who is in a call and the browsers' connection messages.
+// ws_calls: one call of a channel, who started it, voice or video, live or
+// ended, start and end time; idx_channel_state finds a channel's live call,
+// idx_state the live calls the clean-up looks at, idx_started_by the starts
+// of the last minute. ws_call_members: one row per join, a person (user_id)
+// or a guest (guest_id), with its join and leave time (0 while in the
+// call). ws_call_signals: a connection message from one member to another
+// (offer, answer, candidate) or a keep-alive (ping, to nobody), deleted when
+// the call ends and after two minutes; idx_to is the addressee's read,
+// idx_from the sender's count of the last minute. Tables approved by the
+// owner; no backfill, as no call existed before this step.
+function upgrade_2026_11_0_ws_calls() {
+
+	install_create_table('ws_calls', "CREATE TABLE ws_calls (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		started_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind        ENUM('voice','video') NOT NULL DEFAULT 'voice',
+		state       ENUM('live','ended') NOT NULL DEFAULT 'live',
+		started_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_channel_state (channel_id, state),
+		KEY idx_state (state),
+		KEY idx_started_by (started_by, started_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_call_members', "CREATE TABLE ws_call_members (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		call_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		guest_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		joined_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		left_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_call (call_id, left_at),
+		KEY idx_user (user_id),
+		KEY idx_guest (guest_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_call_signals', "CREATE TABLE ws_call_signals (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		call_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		from_member_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		to_member_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            VARCHAR(16) CHARACTER SET ascii NOT NULL DEFAULT '',
+		body            TEXT NULL,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_to (to_member_id, id),
+		KEY idx_from (from_member_id, created_at),
+		KEY idx_call (call_id, created_at),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the tables for voice and video calls are ready; nothing changes on the site until calls are switched on.');
 
 }

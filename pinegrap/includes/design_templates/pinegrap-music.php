@@ -208,7 +208,7 @@ $music_css = implode("\n", array(
 
 return array(
     'name'        => lang('Music Artist'),
-    'version'     => '2.0.2',
+    'version'     => '2.0.3',
     'framework'   => 'bootstrap5',
     'order'       => 91,
     'icon'        => 'bi-music-note-beamed',

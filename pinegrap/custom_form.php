@@ -329,7 +329,15 @@ foreach ($fields as $field) {
         $_FILES[$field['id']] = array('name' => '', 'type' => '', 'tmp_name' => '', 'error' => UPLOAD_ERR_NO_FILE, 'size' => 0);
     }
     $liveform->assign_field_value($field['id'], '');
+    if ($liveform->field_in_session('rows_' . $field['id'])) {
+        $liveform->assign_field_value('rows_' . $field['id'], '');
+    }
 }
+
+// A collection's rows fields (includes/fn/collection_rows.php): the posted
+// list of each is checked here and written once the record exists; the
+// field's own value is set by that write, never taken from the post.
+$rows_field_ids = pg_coll_rows_site_check($liveform, is_string($_POST['page_id'] ?? null) ? (int) $_POST['page_id'] : 0, $action == 'submit', $office_use_only);
 
 // loop through all fields in order to validate fields
 foreach ($fields as $field_key => $field) {
@@ -346,7 +354,8 @@ foreach ($fields as $field_key => $field) {
     ) {
         // if field is required and visitor clicked submit button,
         // then validate field
-        if ($field['required'] and ($action == 'submit')) {
+        // A rows field's own check is pg_coll_rows_site_check() above.
+        if ($field['required'] and ($action == 'submit') and !in_array((int) $field['id'], $rows_field_ids, true)) {
             // if field is a file upload type
             if ($field['type'] == 'file upload') {
                 if (empty($_FILES[$field['id']]['name'])) {
@@ -992,6 +1001,12 @@ if ($liveform->check_form_errors() == false) {
                 }
             }
         }
+    }
+
+    // The rows of its rows fields, now that the record exists; the save was
+    // checked above, so only a failed write is left, and the record stays.
+    if (pg_coll_rows_screen_write($liveform, is_string($_POST['page_id'] ?? null) ? (int) $_POST['page_id'] : 0, $form_id, $complete == 1, $user_id, $office_use_only)) {
+        log_activity(pg_log_lang(array('string' => 'the rows of submitted form ({var:1}) could not be saved', 'vars' => $reference_code)), $_SESSION['sessionusername'] ?? '');
     }
 
     if ($signature_pending) {

@@ -20,7 +20,7 @@ module: site_icon
 
 ## Which addresses answer?
 - `router.php` hands `site.webmanifest`, `apple-touch-icon.png` and `site-icon-<48|192|512>.png` to `get_site_icon.php` before the files table is asked, only while `router_site_icon_set()` reads a value (raw query, no functions.php: [[router-no-functions-php]]). Without a setting those names go on to a file or a page as before.
-- No session, a day's cache with an ETag; the manifest is `application/manifest+json` with `display: browser`.
+- No session, a day's cache with an ETag; the manifest is `application/manifest+json` with `display: browser`, or `standalone` in visitor notifications' App mode (`visitor-push-app-mode.md`; the ETag then ends in `-app`).
 
 ## When does a page get the links?
 - `get_page_content()` adds them before `</head>` (`pg_site_icon_page_head()`), not in e-mail and not for an output without `</head>`. What the page's own head already declares (`icon`, `apple-touch-icon`, `manifest`: `pg_site_icon_declared()`) is not added again: the design's links win. Hrefs carry `?v=<stamp>` so a long-cached icon is asked again when the picture changes.

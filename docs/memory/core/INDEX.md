@@ -27,6 +27,7 @@
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which paths are not hooked
 - auto-campaign-group-opt-out.md: A commercial "joined a contact group" campaign profile skips a contact whose opt_in row for that subscription group is 0, as a manual campaign to the group does (#7596)
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
+- boxpacker-embedding.md: The bundled BoxPacker (includes/boxpacker, 1.x): which code loads it, and the local patch that keeps it quiet on PHP 8.5 (#10323)
 - build-url-host-parts.md: build_url() keeps the port and user information of the URL it is given unless a hostname property replaces the host.
 - campaign-profile-flow-converter.md: Campaign profiles into flows, the converter and dry-run report (MA9d, #9458): profile to boxes, when a chain stays, owner, limits, tools/campaign_profile_flow_report.php
 - campaign-profile-flow-dry-run.md: The dry-run report of turning e-mail campaign profiles into flows (MA9a, #9077): what it lists per chain and per profile left, where it is shown, the starting sites' profiles by hand
@@ -34,7 +35,7 @@
 - campaign-profile-flow-gaps.md: What no flow box covers of an e-mail campaign profile (MA9a, #9077), and what is decided: the e-mail box, the Wait box and the events gain it first (MA9b, MA9c); the profiles that keep running, listed [decision: here]
 - campaign-profile-flow-map.md: An e-mail campaign profile's action, delay and send time laid against the flow boxes that would do their work (MA9a, #9077): which action has a start box, what the Wait box covers
 - campaign-profile-flow-switch.md: How e-mail campaign profiles become flows with no mail lost or sent twice (MA9a, #9077): one flow per chain, the switch moment, campaigns already waiting, followers drained, the owner [decision: here]
-- campaign-profile-screens-left.md: Campaign profile screens after the switch to flows (MA9f): only profiles left, converted ones lead to their flow, screens leave with none, report on Automatic sends, reasons as specs [decision: here]
+- campaign-profile-screens-left.md: Profile screens after the switch to flows (MA9f): only profiles left, converted ones lead to their flow, screens leave with none, the report and who reads what of it, reasons as specs [decision: here]
 - campaign-profile-switch-writer.md: The code that switches e-mail campaign profiles to their flows (MA9e2): update step marks due, general job converts, the file in data/, the window on events, the report notice and bell, a second run [decision: here]
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
 - code-editor-completion.md: Code editor completion (pg_code_editor.js): css/js sources inside an HTML editor, addCompletionRanker, colour swatches, the slot sources and the lezer lookup-cache reset
@@ -55,7 +56,7 @@
 - contact-merge-columns.md: pg_contact_merge_select(), the one SELECT list of both merge screens (#5325); the blank-column fill and the group opt-in rule of both merge branches
 - contact-merge-role.md: Who may merge duplicate contacts: a role above user (3) on both merge paths; view_contacts.php checks it itself (#5124)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
-- content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): why translate-on-save opens no second job while one is open, and why a job skips texts translated meanwhile
+- content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): no second translate-on-save job while one is open, texts translated meanwhile skipped, one run at a time per server job
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
 - content-translation-record-save-jobs.md: Translate on save for form records: who opens a translation job by saving a record (never a visitor), the records scope, and the save paths that are not hooked [decision: decisions-made-product-38.md]
 - content-translation-result-check.md: pg_tr_result_check(): when a translation of a site text is refused or marked suspicious, and why a brand name the glossary keeps is not suspicious
@@ -83,7 +84,9 @@
 - email-campaign-send-claims.md: Send now and the campaign job claim recipients with one conditional UPDATE, so overlapping runs never deliver twice; follow-ups only from the run that finished the campaign
 - email-campaign-send.md: Send now and the campaign job share includes/fn/email_campaign_send.php: mail properties with purpose, refused deliveries stored as attempts, finish counts only deliveries
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
+- error-reporting.md: How PHP errors are reported (SET_ERROR_REPORTING, php_errors.log on Site Log), how a PHP error log is read and its warnings fixed by cause, never with @; what the 2026 PHP 8.5 log clean-up left
 - error-screen-language-and-status.md: The error screen output_error() draws: a site error in the site's language (pg_tr_finalize()), a panel screen's error in the panel's own frame (#9024); which "not found" screens answer 404
+- excel-reader2-embedding.md: The bundled excel_reader2.php (php-excel-reader 2.22) that reads an uploaded .xls for the site search index, and the local patch that makes it run and stay quiet on PHP 8
 - explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
 - explorer-restore-notes.md: What a File Manager restore says about items that came back changed (root folder, new name, page without its style) and what the bin badge names as the origin
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
@@ -113,6 +116,7 @@
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - lang-loader.md: Where lang() lives (includes/fn/lang.php), how get_file.php loads it without functions.php, the software language a request outside init.php speaks
 - lang-placeholders.md: How lang() fills {var:N}, its case modifiers and {suffix}: one strtr() pass, values never re-scanned, plain {var} left for JavaScript
+- log-warnings-forms-default-screens.md: Form, calendar and default screen warnings of the PHP 8.5 error log fixed by cause (#10304, `error-reporting.md`): what each screen now does when a row, a page or a posted key is missing
 - login-as-sign-out.md: Sign-out after Login as User: the operator lands on Edit User of that account, signed back in by their cookie, with a notice; without one the logout page (#9007)
 - mail-bounce-screens.md: Where the bounce record is shown: campaign delivery counts, the Suppressed contact view and export column, the contact card badge with Allow again, personal data export and erasure
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them
@@ -121,9 +125,10 @@
 - mail-merge-values-once.md: replace_variables() fills every ^^field^^ in one pass; a filled-in value is never read again as a field.
 - mail-queue-outcome.md: The mail queue's outcome hook (PR #8607): a queued row names a handler (on_outcome) and a reference (outcome_ref); after sent, given up or blocked the queue calls it; where it does not
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
-- mail-transport-failure.md: PHP mail() failing with no SMTP server set is permanent, stores the product sentence, sends no sender notice, and the mail queue screen warns with a link to SMTP Settings
+- mail-settings-module.md: includes/fn/mail_settings.php: what E-mail sending saves and runs (config.php defines, kept password, DKIM, test e-mail), moved out of the screen (CX3a) [decision: here]
+- mail-transport-failure.md: PHP mail() failing with no SMTP server set is permanent, stores the product sentence, sends no sender notice, and the mail queue screen warns with a link to E-mail sending
 - mail-transport-webhooks.md: mail_webhook.php — bounce, complaint and delivery reports of the API mail transports into the bounce record; URL key, Mailgun/Resend signatures, replays, SES subscription
-- mail-transports.md: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend, Amazon SES): the driver contract, where the account is kept, when email() uses one, the SMTP Settings card
+- mail-transports.md: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend, Amazon SES): the driver contract, where the account is kept, when email() uses one, the E-mail sending card
 - mailchimp-key-kept.md: Mailchimp API key on the Communication settings card: never printed, empty box keeps it, remove tick, data center checked as a plain host label before any request
 - membership-day-in-get-file.md: Which calendar day ends a membership or private access in get_file.php (site zone set before USER_MEMBER) and in the recurring job (the calendar day before)
 - message-carried-values.md: Values a liveform message carries (records, panel input, service and database texts) go in through h(); the connect flash, upload values, logs and PHP-escaped warnings
@@ -142,13 +147,28 @@
 - passkey-sessions.md: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (11.0.46), the sign-in mark, the session row on the account page, removing a passkey ends its sessions [decision: here]
 - passkey-without-totp.md: An account without TOTP (PR #2226): the e-mailed code (passkey.php email_code) and its purposes, recovery codes from the first passkey and new ones later, removing the last one [decision: here]
 - password-min-length.md: A chosen password needs 8 characters while Require Strong Password is off: pg_password_refusal() on sign-up, Set/Change Password, the installer
-- permission-columns.md: Adding a user right: column type and naming, the role-3 ladder files that must learn it, column probes, drawing it on the user screens, exact stored values, separate gates for a card and its links.
+- permission-columns.md: Adding a user right: column type and naming, the role-3 ladder files that must learn it, column probes, drawing it on the user screens, exact stored values, separate gates for a card and its links. [decision: decisions-made-product-74.md]
 - personal-data-erasure.md: privacy_erase.php (PR #1706): erasing one person after a dry run; whose records are taken, what is deleted and what is kept with personal fields replaced, the checks, the audit lines [decision: decisions-made-product.md, decisions-made-workspace-28.md]
 - personal-data-export.md: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules. [decision: decisions-made-product-39.md]
 - php-warning-causes-report-screens.md: PHP 8.5 warnings logged by the Visitor Report, Order Report, Edit Form List View and workspace rights: which cause is fixed where; the missing collection B row
 - php85-log-warnings-already-fixed.md: Four files of the owner's PHP 8.5 error log (duplicate_products, get_file, view_order, designer_ai) whose warnings were already fixed on development between 4 and 13 November 2026, with the PR of each
+- phpexcel-embedding.md: The bundled PHPExcel (includes/phpexcel, 1.8.x, no longer maintained): which screens load it, and the local patch that keeps it quiet on PHP 8.5
 - phpmailer-embedding.md: Which PHPMailer the product loads (6.12.0 from includes/phpmailer/src), the unloaded 5.2.22 files beside it, and why both are quiet on PHP 8.5 (#9470)
+- picture-text-auto-draw.md: Translated Design Canvas pictures drawn by themselves (#10409 to #10448): how rows, text jobs, the waiting mark, the panel's and the server's draw fit; the architect's rules; what is left out [decision: decisions-made-product-75.md]
+- picture-text-auto-panel.md: Pictures drawn by an open panel page in the background (picture_auto.js): the footer's tag, the lock, the order, the stop, a failed row, the draw after a Save, the shared drawing
+- picture-text-auto-rows.md: A translated picture's waiting rows written at a page save, its texts' translate-on-save job (scope file:<id>), the waiting mark in data/temp, the keep shared by every draw
+- picture-text-auto-server.md: Translated canvas pictures drawn by the server with nobody there: the job's draw, PHP twins of the language document and fit, what waits for a panel, budget and mark
+- picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, #10028 to #10448): what it does, its binding decisions, what it leaves out and why, where each part is [decision: decisions-made-product-63.md, decisions-made-product-64.md]
+- picture-text-translation-doors.md: The file doors of a language's picture: it follows its source on a move, goes with it on a delete, is never swapped while the source is binned, counts in Disk Usage, the daily sweep's catch-up
+- picture-text-translation-draw-photo.md: A photo with text layers drawn per language from the Design Canvas Languages list (PT4b): the browser's overlay and parts, the server drawing on the base row as a save does, format kept
+- picture-text-translation-draw-server.md: The Design Canvas Languages list's server side (#10208): what a language's draw is checked by, where its picture is kept, how it is hidden from file lists, tests
+- picture-text-translation-draw.md: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save [decision: here]
+- picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points [decision: here]
+- picture-text-translation-group.md: Pictures group of the Translations screen (#10102): file texts bounded to pictures with a file_translation row, whole site alike, extraction, Design Canvas link
+- picture-text-translation-page.md: Picture text translation's page pass: a page in another language shows a Design Canvas picture's drawn language version in src, srcset, og:image, links and style url(); waiting rows, one query
+- picture-text-translation-queue.md: The picture drawing queue (#10266): "Draw the waiting pictures" on the Pictures group, the draw=1 view, which rows it draws, Stop and Continue
+- picture-text-translation-store.md: A Design Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do [decision: decisions-made-schema-25.md]
 - preg-replace-replacement-escaping.md: Text put into a page through preg_replace() goes through pg_regex_replacement(): $NN and \N in it are back references, "$400'dan" printed as "0'dan"; where it applies and the guard test
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())
@@ -169,7 +189,7 @@
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
 - sms-consent-box.md: The SMS marketing box beside the e-mail box (PR #3660, #3694 checkout, #3715 custom forms): when it is drawn, how it starts, the consent_log sms rows it writes [decision: decisions-made-customers.md, decisions-made-product-8.md]
 - sms-consent-custom-form.md: The SMS marketing question on custom forms (PR #3715): the opt_in_sms binding, which is no contacts column, when it is drawn, how it starts, the sms:marketing row it writes
-- smtp-kept-password.md: SMTP Settings: an empty password box keeps the saved SMTP password only for the same host and port; a new server drops it and a save that would sign in there is refused
+- smtp-kept-password.md: E-mail sending: an empty password box keeps the saved SMTP password only for the same host and port; a new server drops it and a save that would sign in there is refused
 - social-sign-in-address-match.md: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
 - social-sign-in-buttons.md: Where the social sign-in buttons come from (pg_signin_buttons()), when a provider shows, the Settings and designer hints, starter layouts, and what an old browser does.
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it

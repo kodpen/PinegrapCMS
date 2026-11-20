@@ -26,7 +26,7 @@ module: prototype_comments
 - Resolve and Reopen change the thread's first comment and its answers together, so the open count leaves the whole thread. Deleting a first comment deletes its answers.
 
 ## When are comments deleted?
-- With their design: every style delete path calls `pg_proto_comments_delete_design()` beside `pg_proto_links_revoke_design()` (a later design may get the id). The Recycle Bin's delete is one of them, so a restored design comes back without its links and comments. A revoked or expired link keeps its comments; `pg_proto_comments_delete_link()` is the links list's "Delete this link's comments".
+- With their design: every style delete path calls `pg_proto_comments_delete_design()` beside `pg_proto_links_revoke_design()` (a later design may get the id). The Recycle Bin's delete is one of them, so a restored design comes back without its links and comments. A revoked or expired link keeps its comments until the designer presses Delete comments on it in the Share prototype dialog (`prototype-comments.md`).
 
 ## What does the designer's side read?
 - `pg_proto_comments_of_page()` (all links), `pg_proto_comments_of_link_page()` (the viewer: one page of one link, idx_page), `pg_proto_comments_of_link()`, and `pg_proto_comments_page_stamp()`: the newest id (`MAX(id)`, idx_page is `page_id, id`) over the open pages, for the presence heartbeat. Not the newest time: a second comment in the same second would not change it.

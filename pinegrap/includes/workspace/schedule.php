@@ -490,6 +490,8 @@ function ws_plan_grid($user_ids, $from, $to, $extra = null, $exclude_task_id = 0
                     'moved_from' => (string) ($task['_moved'] ?? ''),
                     'waits_for' => (string) ($task['_waits'] ?? ''),
                     'series_latest' => empty($task['_upcoming']) && isset($newest[(int) ($task['id'] ?? 0)]),
+                    // "Made by <application>" for a task an application created.
+                    'made_by'  => ((int) ($task['app_id'] ?? 0) > 0) ? ws_task_app_label(ws_task_app_present((int) $task['app_id'], ws_task_app_names(array((int) $task['app_id'])))) : '',
                 );
             }
         }

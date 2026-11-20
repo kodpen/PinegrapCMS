@@ -35,10 +35,15 @@ if (($site_icon_size < 0) || ($site_icon_source === '') || (($site_icon_size > 0
 }
 
 $site_icon_stamp = pg_site_icon_stamp($site_icon_name, $site_icon_source);
+// App mode (includes/fn/site_push.php) turns the manifest's display to
+// standalone; it is part of the validator, so a switch changes the answer.
+$site_icon_display = (($site_icon_size === 0) && function_exists('pg_site_push_app_mode'))
+    ? pg_site_push_app_display(pg_site_push_app_mode())
+    : 'browser';
 
 if ($site_icon_size === 0) {
     $site_icon_body = json_encode(
-        pg_site_icon_manifest($site_icon_kind, defined('TITLE') ? TITLE : '', PATH, PATH . encode_url_path(pg_basename($site_icon_name)), $site_icon_stamp),
+        pg_site_icon_manifest($site_icon_kind, defined('TITLE') ? TITLE : '', PATH, PATH . encode_url_path(pg_basename($site_icon_name)), $site_icon_stamp, $site_icon_display),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $site_icon_type = 'application/manifest+json';
 } else {
@@ -53,7 +58,7 @@ if ($site_icon_size === 0) {
 
 // The addresses carry no version of their own (a browser asks for
 // /apple-touch-icon.png by name), so a day's cache and a validator.
-$site_icon_tag = '"' . substr($site_icon_stamp, 0, 16) . '-' . $site_icon_size . '"';
+$site_icon_tag = '"' . substr($site_icon_stamp, 0, 16) . '-' . $site_icon_size . (($site_icon_display === 'standalone') ? '-app' : '') . '"';
 
 header('Content-Type: ' . $site_icon_type);
 header('Cache-Control: public, max-age=86400');

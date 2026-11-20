@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - what Assistants and agents writes: Claude's and Pinegrap
- * AI's connections and the bulk delete switch with the pane's Save, an agent
+ * AI's connections, the voice message transcripts and spoken answers
+ * (ws_voice_*) and the bulk delete switch with the pane's Save, an agent
  * from its drawer
  * (ws_agent_save, value its id, 0 for a new one), then the job of the card
  * button that asked for the save: Claude's (ws_claude_test,
@@ -19,9 +20,10 @@
  * (ws_claude_settings_save(), ws_claude_settings_post(),
  * ws_bulk_settings_save(), ws_agents_settings_check() and _write(),
  * ws_agents_settings_act(), ws_agent_activity_post(), ws_ai_settings_check()
- * and _write(), ws_ai_settings_post(), ws_mcp_settings_post()), so a form still open
+ * and _write(), ws_ai_settings_post(), ws_voice_settings_check() and
+ * _write(), ws_mcp_settings_post()), so a form still open
  * there saves the same way.
- * Both cards are an administrator's: for anybody else their fields are drawn
+ * Those cards are an administrator's: for anybody else their fields are drawn
  * disabled and not posted, and a posted one is left alone. Everything is
  * checked before anything is written: a refused value is marked on its field
  * and nothing is stored.
@@ -107,6 +109,26 @@ if ($ws_admin && function_exists('ws_ai_schema_ready') && ws_ai_schema_ready() &
     }
 }
 
+// The voice card: written only when its fields came and differ from what
+// is stored, as a write clears the services' last errors and the wait.
+$ws_voice = null;
+
+if ($ws_admin && ws_voice_schema_ready() && isset($_POST['ws_voice_url'])) {
+    $ws_voice = ws_voice_settings_input($_POST, 'ws_');
+
+    if (ws_voice_settings_changed($ws_voice, ws_voice_config(true), ws_voice_speech_config(true))) {
+        foreach (ws_voice_settings_check($ws_voice, ws_voice_config()) as $ws_field => $ws_sentence) {
+            $liveform->mark_error('ws_voice_' . $ws_field, $ws_sentence);
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+    } else {
+        $ws_voice = null;
+    }
+}
+
 if ($ws_claude !== null) {
     $ws_refused = ws_claude_settings_save($ws_claude);
 
@@ -142,6 +164,10 @@ $ws_warn = function ($sentence) use ($liveform) {
 
 if ($ws_ai !== null) {
     ws_ai_settings_write($ws_ai, $liveform, $ws_warn);
+}
+
+if ($ws_voice !== null) {
+    ws_voice_settings_write($ws_voice, $liveform, $ws_warn);
 }
 
 // Pinegrap AI's Create key or Try the connection.

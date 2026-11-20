@@ -21,7 +21,7 @@ description: ERP account CSV import wizard (steps, matching, batches, defaults) 
 `erp_export.php`, profiles in `includes/erp/export.php`.
 - Profile = columns + row mapper + formatting (`erp_export_amount/rate/date/currency()`, the single formatting point).
 - Default is generic CSV (BOM, `;`, ISO dates).
-- Paraşüt profiles open the repo templates `includes/phpexcel/templates/parasut_*.xlsx` as a zip and write only from row 4 (no library).
+- Paraşüt profiles carry `sheet` (`invoices` or `contacts`) and `first_row` 4: `erp_export_write_xlsx()` writes Paraşüt's head from code and the rows from row 4 (`parasut-import-sheets.md`); no template file is read since #10502.
 - `erp_export_log` (4.52: entity, doc_id, profile, run_token) records what was exported. `erp_parasut_log` was the API call trace (renamed `erp_edoc_log` in 4.62); never mix the two.
 - Cancelled documents never export; returns count as returns and are skipped; drafts are optional.
 - Currency mapping is only TRY→TRL.

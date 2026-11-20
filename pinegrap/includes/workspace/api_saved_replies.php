@@ -136,8 +136,8 @@ function ws_api_saved_reply_schema()
         'shortcut'   => 'string',
         'title'      => 'string',
         'body'       => 'string',
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 

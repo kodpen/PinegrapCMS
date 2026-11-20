@@ -1041,7 +1041,7 @@ function api_stock_move_schema() {
 		'ref'            => 'string',
 		'note'           => 'string',
 		'user_id'        => 'integer?',
-		'created_at'     => 'string?'
+		'created_at'     => 'datetime?'
 	);
 
 }
@@ -1069,7 +1069,7 @@ function api_inventory_schema() {
 		'tracked'      => 'boolean',
 		'quantity'     => 'integer',
 		'out_of_stock' => 'boolean',
-		'updated_at'   => 'string?',
+		'updated_at'   => 'datetime?',
 		'location_id'       => 'integer?',
 		'location_quantity' => 'integer?'
 	);

@@ -1141,6 +1141,13 @@ function pg_purge_caches()
  * of the software were most of the seconds those screens took to open. A
  * full scan already made in the request answers a folders-only call too.
  *
+ * The walk runs inside the request that asks (the dashboard's System Status
+ * card among them), so it has a time budget as well as an entry ceiling
+ * (pg_write_permission_time_budget()): on a slow file system (a checkout in
+ * a OneDrive folder) every is_writable() took long enough for the walk to
+ * outlast max_execution_time and the dashboard never answered. Out of time,
+ * it answers what it reached, 'truncated' and 'timed_out' set.
+ *
  * Compatibility: PHP 7.0 - 8.5
  * Returns: array(
  *     'directories'         => array relative path => octal mode, the folders that refuse (at most 200)
@@ -1149,7 +1156,8 @@ function pg_purge_caches()
  *     'files_count'         => int
  *     'checked_directories' => int
  *     'checked_files'       => int
- *     'truncated'           => bool  the walk stopped at its ceiling
+ *     'truncated'           => bool  the walk stopped at its entry ceiling or its time budget
+ *     'timed_out'           => bool  it stopped at its time budget
  * )
  */
 function pg_write_permission_scan($fresh = false, $files = true)
@@ -1167,10 +1175,62 @@ function pg_write_permission_scan($fresh = false, $files = true)
     $key = $files ? 'full' : 'folders';
 
     if (!isset($results[$key])) {
-        $results[$key] = pg_write_permission_walk(rtrim(str_replace('\\', '/', PG_FUNCTIONS_DIR), '/'), $files);
+        $results[$key] = pg_write_permission_walk(
+            rtrim(str_replace('\\', '/', PG_FUNCTIONS_DIR), '/'),
+            $files,
+            pg_write_permission_time_budget(ini_get('max_execution_time'))
+        );
     }
 
     return $results[$key];
+}
+
+/**
+ * Function: pg_write_permission_time_budget
+ * ------------------------------------------
+ * Seconds the write permission walk may take in one request: a quarter of
+ * PHP's max_execution_time, at least one second and at most ten. No limit
+ * (0, or a value that does not read as a number) gets the ten seconds, so a
+ * dashboard still answers in a few seconds whatever the setting says.
+ *
+ * Compatibility: PHP 7.0 - 8.5
+ * Returns: float seconds
+ */
+function pg_write_permission_time_budget($max_execution_time)
+{
+    $limit = is_numeric($max_execution_time) ? (float) $max_execution_time : 0.0;
+
+    if ($limit <= 0) {
+        return 10.0;
+    }
+
+    return max(1.0, min(10.0, $limit / 4));
+}
+
+/**
+ * Function: pg_write_permission_walk_stop
+ * ------------------------------------------
+ * Whether the walk stops before its next entry: 'entries' past the entry
+ * ceiling (40,000), 'time' once $elapsed seconds reach $budget (a budget of
+ * 0 never stops it), '' to go on. The entry ceiling is named first when both
+ * apply.
+ *
+ * Compatibility: PHP 7.0 - 8.5
+ * Returns: string '', 'entries' or 'time'
+ */
+function pg_write_permission_walk_stop($seen, $elapsed, $budget)
+{
+    // The software directory holds a few thousand entries; a site whose
+    // data/ folder has grown past this is answered from what was seen.
+    if ($seen > 40000) {
+        return 'entries';
+    }
+
+    if ($budget > 0 && $elapsed >= $budget) {
+        return 'time';
+    }
+
+    return '';
 }
 
 /**
@@ -1179,12 +1239,16 @@ function pg_write_permission_scan($fresh = false, $files = true)
  * The walk behind pg_write_permission_scan(), over any folder: every folder
  * under $root (itself included) asked through pg_dir_writable(), and, when
  * $files is true, every file outside data/ asked through is_writable().
+ * $budget is the time it may take in seconds (0: no limit); the root is
+ * always asked, the rest until pg_write_permission_walk_stop() says stop.
  *
  * Compatibility: PHP 7.0 - 8.5
  * Returns: the array pg_write_permission_scan() describes
  */
-function pg_write_permission_walk($root, $files = true)
+function pg_write_permission_walk($root, $files = true, $budget = 0.0)
 {
+    $started = microtime(true);
+
     $result = array(
         'directories' => array(),
         'files' => array(),
@@ -1193,6 +1257,7 @@ function pg_write_permission_walk($root, $files = true)
         'checked_directories' => 0,
         'checked_files' => 0,
         'truncated' => false,
+        'timed_out' => false,
     );
 
     // is_writable() answers from the stat cache, and the repair runs in the
@@ -1228,10 +1293,11 @@ function pg_write_permission_walk($root, $files = true)
         foreach ($iterator as $path => $entry) {
             $seen++;
 
-            // The software directory holds a few thousand entries; a site whose
-            // data/ folder has grown past this is answered from what was seen.
-            if ($seen > 40000) {
+            $stop = pg_write_permission_walk_stop($seen, microtime(true) - $started, $budget);
+
+            if ($stop !== '') {
                 $result['truncated'] = true;
+                $result['timed_out'] = ($stop === 'time');
                 break;
             }
 
@@ -3097,6 +3163,23 @@ function get_system_status_checks()
         );
         $score -= $weights['permissions'] * 0.3;
 
+    } elseif ($permissions['truncated']) {
+        // Nothing it reached refuses, but it did not reach everything (its
+        // time budget on a slow disk, or the entry ceiling), so green would
+        // claim folders it never asked about. Not scored down: nothing failed.
+        $output .= $makeIcon(
+            'bi-folder',
+            'fg-secondary',
+            'Write Permissions',
+            'The check stopped before it reached every folder of the software (it has a time limit, and this disk answers slowly). The web server can write to everything it reached; it checks again when this status is next refreshed.',
+            lang(array(
+                'string' => '{var:1} folders',
+                'vars'   => pg_format_number($permissions['checked_directories'], 0),
+            )),
+            '',
+            array()
+        );
+
     } else {
         $output .= $makeIcon(
             'bi-folder-check',
@@ -3183,22 +3266,54 @@ function get_system_status_checks()
     // 🎨 Canvas drawing (includes/fn/image_draw.php)
     //
     // Reported, not scored: a canvas an agent writes is drawn by a member's
-    // browser wherever the server cannot draw it, so nothing is broken without
-    // it. The probe behind it runs once per PHP / Imagick build and is kept
-    // in data/temp, so this tile does not draw anything on its own. Yellow only
+    // browser, and the languages of a translated Artifact Canvas picture by an
+    // open panel, wherever the server cannot draw them, so nothing is broken
+    // without it. Shown where either one happens: the Workspace is on, or the
+    // site has a target language (includes/fn/picture_server_draw.php). The
+    // probe behind it runs once per PHP / Imagick build and is kept in
+    // data/temp, so this tile does not draw anything on its own. Yellow only
     // while drawing is paused after a drawing that never finished.
-    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && is_file(PG_FUNCTIONS_DIR . '/includes/fn/image_draw.php')) {
+    $draw_agents = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED;
+    $draw_pictures = false;
+
+    if (function_exists('pg_tr_ready') && pg_tr_ready()) {
+        pg_tr_load();
+        $draw_pictures = (bool) pg_tr_target_languages();
+    }
+
+    if (($draw_agents || $draw_pictures) && is_file(PG_FUNCTIONS_DIR . '/includes/fn/image_draw.php')) {
 
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_draw.php');
 
         $draw_can = pg_image_draw_can();
+
+        // Each state's sentence names what the drawing is for here: the
+        // canvases agents write, the translated pictures, or both.
+        $draw_for = $draw_pictures ? ($draw_agents ? 'both' : 'pictures') : 'agents';
+        $draw_texts = array(
+            'paused' => array(
+                'agents'   => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Members\' browsers draw the canvases agents write until then.',
+                'pictures' => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. An open panel draws the languages of translated Artifact Canvas pictures until then.',
+                'both'     => 'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Until then members\' browsers draw the canvases agents write, and an open panel the languages of translated Artifact Canvas pictures.',
+            ),
+            'off' => array(
+                'agents'   => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write.',
+                'pictures' => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. An open panel draws the languages of translated Artifact Canvas pictures.',
+                'both'     => 'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write, and an open panel the languages of translated Artifact Canvas pictures.',
+            ),
+            'on' => array(
+                'agents'   => 'This server draws the canvases agents write at once, wherever it draws every part of one faithfully. A member\'s browser then draws each again with the image editor.',
+                'pictures' => 'With nobody in the panel, this server draws the languages of translated Artifact Canvas pictures wherever it draws every part of one faithfully. An open panel draws the others.',
+                'both'     => 'This server draws the canvases agents write at once, and the languages of translated Artifact Canvas pictures with nobody in the panel, wherever it draws every part of one faithfully. Browsers draw the others, and a member\'s browser draws an agent\'s canvas again with the image editor.',
+            ),
+        );
 
         if (!empty($draw_can['paused'])) {
             $output .= $makeIcon(
                 'bi-palette-fill',
                 'fg-warning',
                 'Canvas Drawing',
-                'A canvas drawing on this server did not finish, so the server draws no canvas for a day. Members\' browsers draw the canvases agents write until then.',
+                $draw_texts['paused'][$draw_for],
                 lang('Paused')
             );
         } elseif (empty($draw_can['shapes'])) {
@@ -3206,7 +3321,7 @@ function get_system_status_checks()
                 'bi-palette-fill',
                 'fg-secondary',
                 'Canvas Drawing',
-                'This server does not draw canvases itself: Imagick is missing or does not draw the test pictures faithfully. Members\' browsers draw the canvases agents write.',
+                $draw_texts['off'][$draw_for],
                 lang('Off')
             );
         } else {
@@ -3233,7 +3348,7 @@ function get_system_status_checks()
                 'bi-palette-fill',
                 'fg-success',
                 'Canvas Drawing',
-                'This server draws the canvases agents write at once, wherever it draws every part of one faithfully. A member\'s browser then draws each again with the image editor.',
+                $draw_texts['on'][$draw_for],
                 lang('On'),
                 '',
                 $draw_detail

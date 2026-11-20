@@ -20,6 +20,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_campaigns.php');
+// functions.php does not load it; without it no SMS campaign is drawn.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
 
 /**
  * How many runs of one flow a calendar draws at most: a flow repeating every

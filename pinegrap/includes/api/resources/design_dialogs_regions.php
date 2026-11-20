@@ -40,9 +40,22 @@ function api_design_auto_dialog_present($row) {
 		'delay'      => (int)$row['delay'],
 		'frequency'  => (int)$row['frequency'],
 		'page'       => (string)$row['page']
-	) + pg_auto_dialog_open_settings($row) + array(
+	) + pg_auto_dialog_open_settings($row) + api_design_auto_dialog_content_present($row) + array(
 		'created_at' => api_time($row['created_timestamp']),
 		'updated_at' => api_time($row['last_modified_timestamp'])
+	);
+
+}
+
+// What it shows: content url or component, and the shared component's id,
+// null for none.
+function api_design_auto_dialog_content_present($row) {
+
+	$content = pg_auto_dialog_content($row);
+
+	return array(
+		'content'      => $content['content'],
+		'component_id' => ($content['component_id'] > 0) ? $content['component_id'] : null
 	);
 
 }
@@ -63,8 +76,10 @@ function api_design_auto_dialog_schema() {
 		'open_scroll' => 'integer',
 		'audience'   => 'string',
 		'place'      => 'string',
-		'created_at' => 'string?',
-		'updated_at' => 'string?'
+		'content'    => 'string',
+		'component_id' => 'integer?',
+		'created_at' => 'datetime?',
+		'updated_at' => 'datetime?'
 	);
 
 }
@@ -169,6 +184,13 @@ function api_design_auto_dialog_values($row, $params) {
 
 	}
 
+	// What it shows, the same way: checked in the prepare step.
+	foreach (pg_auto_dialog_content(($row === null) ? array() : $row) as $field => $value) {
+
+		$values[$field] = array_key_exists($field, $params) ? $params[$field] : $value;
+
+	}
+
 	return $values;
 
 }
@@ -176,16 +198,38 @@ function api_design_auto_dialog_values($row, $params) {
 // The screen's checks (pg_auto_dialog_form_validate()): a name and a URL,
 // within their columns (422), the URL a web address or a path on this site
 // (422), the numbers within the screen's limits (422), a name no other auto
-// dialog has (409 name_taken).
+// dialog has (409 name_taken). A designed pop-up needs its shared component
+// (422) and no URL; one it keeps is still checked when sent.
 function api_design_auto_dialog_prepare($params, $row) {
 
 	$values = api_design_auto_dialog_values($row, $params);
 
 	$id = ($row === null) ? 0 : (int)$row['id'];
 
+	// What it shows first: whether a URL is needed hangs on it.
+	$content = array();
+
+	foreach (array('content', 'component_id') as $field) {
+
+		$sent = $values[$field];
+
+		$content[$field] = ($sent === null) ? '' : ((is_scalar($sent) && !is_bool($sent)) ? (string)$sent : array());
+
+	}
+
+	foreach (pg_auto_dialog_form_content_problems($content) as $field => $problem) {
+
+		api_fail_validation($problem, $field);
+
+	}
+
+	$content = pg_auto_dialog_content($content);
+
+	$values['url'] = trim((string)$values['url']);
+
 	foreach (array('name' => 100, 'url' => 255) as $field => $max) {
 
-		if ($values[$field] === '') {
+		if (($values[$field] === '') && (($field === 'name') || ($content['content'] === 'url'))) {
 
 			api_fail_validation(lang(array('string' => '{var:1} is required.', 'vars' => lang(($field === 'name') ? 'Name' : 'URL'))), $field);
 
@@ -204,7 +248,7 @@ function api_design_auto_dialog_prepare($params, $row) {
 	// out keeps a stored one saved before the rule, so that the dialog can
 	// still be disabled or renamed; the site never opens such an address
 	// (pg_auto_dialogs_for_page()).
-	$problem = (($row === null) || array_key_exists('url', $params)) ? pg_auto_dialog_url_problem($values['url']) : '';
+	$problem = ((($row === null) || array_key_exists('url', $params)) && (($values['url'] !== '') || ($content['content'] === 'url'))) ? pg_auto_dialog_url_problem($values['url']) : '';
 
 	if ($problem !== '') {
 
@@ -268,6 +312,12 @@ function api_design_auto_dialog_prepare($params, $row) {
 
 	}
 
+	foreach ($content as $field => $value) {
+
+		$values[$field] = $value;
+
+	}
+
 	return array('id' => $id, 'values' => $values);
 
 }
@@ -280,7 +330,9 @@ function api_design_auto_dialog_commit($prepared) {
 
 	$open = array_intersect_key($values, pg_auto_dialog_open_settings(array()));
 
-	$saved = pg_auto_dialog_save($prepared['id'], array_diff_key($values, $open), (int)$app['owner']['id'], $open);
+	$content = array_intersect_key($values, pg_auto_dialog_content(array()));
+
+	$saved = pg_auto_dialog_save($prepared['id'], array_diff_key($values, $open, $content), (int)$app['owner']['id'], $open, $content);
 
 	if ($saved <= 0) {
 
@@ -373,7 +425,7 @@ function api_design_common_region_schema() {
 		'tag'                 => 'string',
 		'content'             => 'string',
 		'shared_component_id' => 'integer?',
-		'updated_at'          => 'string?'
+		'updated_at'          => 'datetime?'
 	);
 
 }

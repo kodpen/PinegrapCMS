@@ -206,6 +206,9 @@ function ws_message_payloads($viewer, $rows, $options = array())
         // propose.
         'claude'     => function_exists('ws_claude_requests_map') ? ws_claude_requests_map($ids) : array(),
         'drafts'     => function_exists('ws_claude_drafts_map') ? ws_claude_drafts_map($viewer, $ids) : array(),
+        // Right or Wrong on an agent's reply, for the asker and the
+        // channel's managers only (agent_feedback.php).
+        'feedback'   => function_exists('ws_agent_feedback_map') ? ws_agent_feedback_map($viewer, $ids) : array(),
         'changes'    => function_exists('ws_changes_map') ? ws_changes_map($viewer, $ids) : array(),
         // Page changes the answers propose (includes/designer_ai.php).
         'design'     => (function_exists('ws_design_ai') && ws_design_ai()) ? pg_design_ai_proposals_map($viewer, $ids) : array(),
@@ -404,6 +407,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // A WhatsApp conversation is not answered by e-mail (mail_phone.php).
         'mail_reply'  => ($mail && !$deleted && function_exists('ws_mail_reply_offer') && !(function_exists('ws_mail_item_is_phone') && ws_mail_item_is_phone($extra['mail'][(int) $row['sender_id']] ?? null)))
             ? ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
+        // Why that box cannot send now, '' when it can: the offer is drawn disabled with it.
+        'mail_reply_off' => ($mail && !$deleted) ? (string) ($extra['mail'][(int) $row['sender_id']]['reply_off'] ?? '') : '',
         // The WhatsApp conversation the card answers by WhatsApp, and the
         // seconds left of the customer's 24 hours (mail_phone.php); 0 for none.
         'whatsapp_reply'  => ($mail && !$deleted && function_exists('ws_mail_phone_reply_offer')) ? ws_mail_phone_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
@@ -444,6 +449,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
             return ws_claude_request_state($viewer, $row);
         }, $extra['claude'][$id]) : null,
         'drafts'      => $deleted ? array() : ($extra['drafts'][$id] ?? array()),
+        // The mark on an agent's reply, null for a reader who may not mark it.
+        'feedback'    => $deleted ? null : ($extra['feedback'][$id] ?? null),
         'changes'     => $deleted ? array() : ($extra['changes'][$id] ?? array()),
         'design'      => $deleted ? array() : ($extra['design'][$id] ?? array()),
         // Mentioned, but not in the channel (see ws_message_mention_invite()).
@@ -495,6 +502,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 'id'       => (int) $row['file_id'],
                 'name'     => (string) $row['file_name'],
                 'url'      => ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas),
+                // A picture's 320 px copy for a tile (the Files tab's
+                // gallery); '' for any other file.
+                'thumb'    => ($kind === 'image') ? ws_file_thumb_url(ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas)) : '',
                 // The version a browser draws and posts (canvas_picture), 0 for none.
                 'canvas_pending' => ($canvas && ($canvas['pending'] || $canvas['server']) && $can_post) ? $canvas['version_no'] : 0,
                 // A person's canvas an agent edited: "Edited by @handle", and
@@ -516,8 +526,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 // the versions it replaced.
                 'text'     => function_exists('ws_file_is_text') && ws_file_is_text($row['file_name']),
                 // A Word or Excel file opens in the preview window, read on
-                // the server (ws_file_office).
-                'office'   => function_exists('pg_office_kind') && (pg_office_kind($row['file_name']) !== ''),
+                // the server (ws_file_office); a .csv or .tsv too, as a
+                // sheet only looked at, beside its text window.
+                'office'   => function_exists('pg_office_preview_kind') && (pg_office_preview_kind($row['file_name']) !== ''),
                 'message_id' => (int) $id,
                 'versions' => (int) ($extra['versions'][$id] ?? 0),
                 // A recording's length, waveform and transcript (voice.php).
@@ -2719,19 +2730,27 @@ function ws_message_mark($viewer, $message, $kind, $app_id = 0)
  * The decisions and notes of a channel, newest first, with its answered
  * agent questions among them by the time they were answered.
  *
- * @param array $viewer
- * @param int   $channel_id
+ * @param array      $viewer
+ * @param int        $channel_id
+ * @param int[]|null $channel_ids the channels read instead of the one alone
+ *                                (an agent channel's All agent channels)
  * @return array[]
  */
-function ws_channel_decisions($viewer, $channel_id)
+function ws_channel_decisions($viewer, $channel_id, $channel_ids = null)
 {
+    $ids = array_values(array_unique(array_map('intval', ($channel_ids === null) ? array($channel_id) : (array) $channel_ids)));
+
+    if (!$ids) {
+        return array();
+    }
+
     $rows = (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel_id . "' AND kind IN ('decision', 'note') AND deleted_at = 0
+        WHERE channel_id IN (" . implode(',', $ids) . ") AND kind IN ('decision', 'note') AND deleted_at = 0
         ORDER BY marked_at DESC, id DESC
         LIMIT 300");
 
     if (function_exists('ws_agent_question_decision_messages')) {
-        $rows = ws_agent_question_decisions_merge($rows, ws_agent_question_decision_messages($channel_id, 300), 300);
+        $rows = ws_agent_question_decisions_merge($rows, ws_agent_question_decision_messages($ids, 300), 300);
     }
 
     return ws_message_payloads($viewer, $rows);
@@ -2750,18 +2769,81 @@ function ws_channel_files($viewer, $channel_id)
 }
 
 /**
+ * One page of the files posted in a channel, newest first, for the panel's
+ * Files tab: a channel with thousands of files is read a page at a time, so
+ * none is left out and none is read before the reader asks for it.
+ *
+ * @param array $viewer
+ * @param int   $channel_id
+ * @param int   $before the id the previous page ended at, 0 for the first
+ * @return array messages, more (older files are left), before (the cursor
+ *               of the next page)
+ */
+function ws_channel_files_page($viewer, $channel_id, $before = 0)
+{
+    $limit = ws_channel_files_page_size();
+    $page = ws_channel_files_page_cut(ws_channel_file_rows($channel_id, $before, $limit + 1), $limit);
+
+    return array(
+        'messages' => ws_message_payloads($viewer, $page['rows']),
+        'more'     => $page['more'],
+        'before'   => $page['before'],
+    );
+}
+
+/**
+ * How many files one page of the Files tab reads. Pure.
+ *
+ * @return int
+ */
+function ws_channel_files_page_size()
+{
+    return 200;
+}
+
+/**
+ * Cuts the rows read for a page (one more than the page holds, to know
+ * whether older ones are left) to the page. The cursor is the id of the last
+ * row kept, not of the last message drawn: a row whose payload is left out
+ * must not make the next page read it again. Pure.
+ *
+ * @param array[] $rows  ws_messages rows, newest first
+ * @param int     $limit the rows a page holds
+ * @return array rows, more, before
+ */
+function ws_channel_files_page_cut($rows, $limit)
+{
+    $rows = array_values((array) $rows);
+    $limit = max(1, (int) $limit);
+    $more = count($rows) > $limit;
+    $rows = array_slice($rows, 0, $limit);
+    $last = end($rows);
+
+    return array(
+        'rows'   => $rows,
+        'more'   => $more,
+        'before' => is_array($last) ? (int) $last['id'] : 0,
+    );
+}
+
+/**
  * The rows of the messages with a file posted in a channel, newest first:
  * the Files tab's, read by the panel and the API alike.
  *
  * @param int $channel_id
+ * @param int $before only rows older than this message id; 0 for the newest
+ * @param int $limit  the most rows read
  * @return array[] ws_messages rows
  */
-function ws_channel_file_rows($channel_id)
+function ws_channel_file_rows($channel_id, $before = 0, $limit = 300)
 {
+    $before = (int) $before;
+
     return (array) db_items("SELECT * FROM ws_messages
-        WHERE channel_id = '" . (int) $channel_id . "' AND file_id > 0 AND deleted_at = 0
+        WHERE channel_id = '" . (int) $channel_id . "' AND file_id > 0 AND deleted_at = 0"
+        . (($before > 0) ? " AND id < '" . $before . "'" : '') . "
         ORDER BY id DESC
-        LIMIT 300");
+        LIMIT " . max(1, (int) $limit));
 }
 
 /**

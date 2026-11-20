@@ -29,7 +29,7 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="col-12">
-                                            <a class="btn btn-sm btn-outline theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_audits.php"><i class="bi bi-activity me-1" aria-hidden="true"></i>' . lang('Search and audits') . '</a>
+                                            <a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_audits.php"><i class="bi bi-activity" aria-hidden="true"></i>' . lang('Search and audits') . '</a>
                                             <div class="form-text">' . lang('The search index and the SEO, structure and accessibility checks: their last runs, progress, schedule and Run now.') . '</div>
                                         </div>
                                         <div class="pg-f-lg">
@@ -42,7 +42,7 @@ $pg_settings_cards[] = '
                                             <textarea name="meta_description" id="setting_meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
                                             <div id="setting_seo_c_meta_description"></div>
                                         </div>
-                                        <div id="pgsub-sitemap" class="col-12  mb-0"><h6 class="fg-secondary">' . lang('Site Map and Crawling') . '</h6></div>
+                                        <div id="pgsub-sitemap" class="col-12  mb-0"><h6 class="pg-group-label">' . lang('Site Map and Crawling') . '</h6></div>
                                         <div class="pg-f-lg">
                                             <label for="additional_sitemap_content" class="form-label">' . lang('Additional sitemap.xml Content') . '</label>
                                             <textarea name="additional_sitemap_content" id="additional_sitemap_content" class="form-control" >' . h($additional_sitemap_content) . '</textarea>
@@ -53,7 +53,7 @@ $pg_settings_cards[] = '
                                             <textarea name="additional_robots_content" id="additional_robots_content" class="form-control" >' . h($additional_robots_content) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'additional_robots_content', 'code_type' => 'plain')) . '
                                             <div class="">
-                                                <button type="button" class="btn btn-sm btn-outline theme-secondary" onclick="pgRobotsNoIndex()" title="' . lang('Adds the rule that closes the entire site to search engines.') . '"><i class="bi bi-slash-circle me-1"></i>' . lang('Block All Search Engines') . '</button>
+                                                <button type="button" class="pg-button pg-button-quiet pg-button-sm" onclick="pgRobotsNoIndex()" title="' . lang('Adds the rule that closes the entire site to search engines.') . '"><i class="bi bi-slash-circle" aria-hidden="true"></i>' . lang('Block All Search Engines') . '</button>
                                                 <div class="form-text fg-warning d-none" id="robots_noindex_hint"></div>
                                             </div>
                                         </div>
@@ -74,9 +74,9 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="indexnow_key" class="form-label">' . lang('IndexNow Key') . '</label>
-                                            <div class="input-group">
+                                            <div class="d-flex align-items-center gap-2">
                                                 <input type="text" name="indexnow_key" id="indexnow_key" class="form-control" value="' . h($indexnow_key) . '"/>
-                                                <button type="button" class="btn btn-sm btn-outline theme-secondary" onclick="generateIndexNowKey()"><i class="bi bi-key-fill me-1"></i>' . lang('Generate') . '</button>
+                                                <button type="button" class="pg-button pg-button-quiet pg-button-sm text-nowrap" onclick="generateIndexNowKey()"><i class="bi bi-key-fill" aria-hidden="true"></i>' . lang('Generate') . '</button>
                                             </div>
                                             <div class="form-text">' . lang('If you provide an IndexNow Key, search engines that support IndexNow will be automatically notified when your sitemap.xml file is updated.') . ' 
                                                 <a class="pg-link-secondary" href="https://www.indexnow.org/" target="_blank">' . lang('Learn more about IndexNow') . '</a>
@@ -209,11 +209,11 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . h(lang(array('string' => 'Lets {var:1} use the pages to train AI models. Turned off, robots.txt asks them to stay away and says ai-train=no. The firewall turns GPTBot, ClaudeBot and CCBot away either way, unless they are listed under Allowed Bots.', 'vars' => array(implode(', ', $ai_crawlers_catalog['train']))))) . '</div>
                                             </div>
                                         </div>
-                                        ' . (($output_waf_ai_block !== '') ? '<div class="col-12 mb-0"><h6 class="fg-secondary">' . lang('Firewall') . '</h6></div>
+                                        ' . (($output_waf_ai_block !== '') ? '<div class="col-12 mb-0"><h6 class="pg-group-label">' . lang('Firewall') . '</h6></div>
                                         <div class="col-12">
                                             <div class="form-text">' . lang('Whether the firewall lets assistants and AI search in; robots.txt says the same for them.') . '</div>
                                         </div>' . $output_waf_ai_block : '') . '
-                                        <div class="col-12 mb-0"><h6 class="fg-secondary">llms.txt</h6></div>
+                                        <div class="col-12 mb-0"><h6 class="pg-group-label">llms.txt</h6></div>
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($ai_crawlers['llms'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="llms_txt" name="llms_txt"/></div>
@@ -227,9 +227,9 @@ $pg_settings_cards[] = '
                                             ' . pg_code_editor_attach(array('id' => 'additional_llms_content', 'code_type' => 'plain')) . '
                                             <div class="form-text">' . lang('Markdown, written after the description. A part that starts with a ## heading gives AI tools a list of links of your own.') . '</div>
                                         </div>
-                                        <div class="col-12">
-                                            <a class="btn btn-sm btn-outline theme-secondary" href="' . h(PATH . 'robots.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>robots.txt</a>' . ($ai_crawlers['llms'] ? '
-                                            <a class="btn btn-sm btn-outline theme-secondary" href="' . h(PATH . 'llms.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>llms.txt</a>' : '') . '
+                                        <div class="col-12 d-flex flex-wrap gap-2">
+                                            <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(PATH . 'robots.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>robots.txt</a>' . ($ai_crawlers['llms'] ? '
+                                            <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(PATH . 'llms.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>llms.txt</a>' : '') . '
                                         </div>
                                    </div>
                                 </div>

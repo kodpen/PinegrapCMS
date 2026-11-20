@@ -94,6 +94,10 @@ $where = "";
 
 // If user requested to export gift cards, then export them.
 if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
+    pg_list_excel_capture(array(
+        'balance' => 'money', 'amount' => 'money', 'expiration_date' => 'date', 'order_number' => 'number',
+        'delivery_date' => 'date', 'created' => 'date', 'last_modified' => 'date',
+    ), lang('Gift Cards'));
     pg_csv_download_start('gift_cards.csv');
 
     // Output column headings for CSV data.
@@ -272,7 +276,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                
                 ' . pg_screen_toolbar(array(
                     'primary'   => array('label' => lang('Create'), 'url' => 'add_gift_card.php', 'icon' => 'bi-plus-circle'),
-                    'secondary' => '<form id="export_form" class="disable_shortcut" method="get"><button type="submit" name="submit_data" value="Export Gift Cards" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button></form>',
+                    'secondary' => '<form id="export_form" class="disable_shortcut" method="get"><button type="submit" name="submit_data" value="Export Gift Cards" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button></form>' . pg_list_excel_link('view_gift_cards.php?submit_data=' . urlencode('Export Gift Cards')),
                     'search'    => array(pg_list_table_search_box('view_gift_cards'), pg_list_sort_menu('view_gift_cards.php', $sort_columns, $sort_levels, $sort_default)),
                 )) . '
                 <div class="d-flex flex-wrap gap-5 mb-3 small">

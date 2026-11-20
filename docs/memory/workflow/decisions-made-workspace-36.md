@@ -18,10 +18,10 @@ description: Decisions made, workspace part 36 (2026-11-16 on): the two plan dra
 
 ## Where does a question's picture stand? (owner, 2026-11-16, to the architect)
 - In the question's own box. His words, with a picture of a question whose sheet was a message of its own above it: "çizimlerimizde ajan sorusu tek görsel de sorunun solunda, her seçenek için görsel de seçenek içinde olacaktı. ancak sen resmi atıp mesaj etiketi ile soruya dahil ediyorsun".
-- The architect's reading, not his words: the approved drawing draws the large picture only from the options' own pictures, so a question gets a picture of its own, large at the left of the options, with the options' thumbnails in their rows. Plan: `plans/agent-question-picture.md`; his look at the built box follows.
+- The architect's reading, not his words: the approved drawing draws the large picture only from the options' own pictures, so a question gets a picture of its own, large at the left of the options, with the options' thumbnails in their rows. Built: #9948, #9964, #10001 (`workspace/poll-question-picture-box.md`); his look: poll 92.
 
 ## Are agents' tasks kept apart from the team's? (owner, 2026-11-16, agent channel poll 80)
 - Yes, both parts. He had asked the architect to find out whether agent questions and tasks, which pile up in the Workspace's general Decisions and Tasks, should be kept apart from the team's.
 - Asked "… ajan kanalının görevleri de (kararları gibi) genel görev listelerinden ayrılsın ve bir ajanın açtığı görev "ajan açtı" diye işaretlensin mi?" (channel message 6423), his own vote: "Evet, ikisi de; planını yaz", over "Yalnız ajan kanalının görevleri ayrılsın" and "Hayır, şimdilik kalsın".
 - The option he chose said: an agent channel's tasks open apart with the "Agent channels" toggle on My Tasks, the Planning Board and the Work Calendar; a task an agent created is marked and can be filtered; one column on the task table for it (`decisions-made-schema-23.md`).
-- No second concept: the agent channel switch of 2026-11-08 is widened (`workspace/agent-channel-flag.md`). Plan: `plans/agent-work-apart.md`.
+- No second concept: the agent channel switch of 2026-11-08 is widened (`workspace/agent-channel-flag.md`). Built in #9941, #9960, #9994 and #10473: `workspace/agent-channel-readers.md`.

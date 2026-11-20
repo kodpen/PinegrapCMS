@@ -725,10 +725,10 @@ function api_device_schema() {
 		'app_version'     => 'string',
 		'current'         => 'boolean',
 		'application'     => array('id' => 'integer', 'name' => 'string'),
-		'created_at'      => 'string',
-		'last_used_at'    => 'string?',
+		'created_at'      => 'datetime',
+		'last_used_at'    => 'datetime?',
 		'last_used_ip'    => 'string',
-		'signed_in_until' => 'string?'
+		'signed_in_until' => 'datetime?'
 	);
 
 }

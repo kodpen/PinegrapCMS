@@ -80,7 +80,7 @@ function test_api_comment_review_declared()
 
 	pg_assert_same('boolean', $schema['verified'], 'verified');
 	pg_assert_same('string?', $schema['store_reply'], 'store_reply');
-	pg_assert_same('string?', $schema['store_reply_at'], 'store_reply_at');
+	pg_assert_same('datetime?', $schema['store_reply_at'], 'store_reply_at');
 
 	$select = pg_test_function_source('api_comment_select');
 	pg_assert_contains("pg_reviews_ready() ? 'comments.verified_order_id,' : '0 AS verified_order_id,'", $select, 'verified behind its probe');

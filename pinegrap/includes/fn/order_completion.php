@@ -1074,7 +1074,8 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
  * @param array $order the order's variables (pg_order_line_variable_fields():
  *                     billing columns, total, order_number, order_date) and
  *                     user_id, contact_id, reference_code, created_user_id,
- *                     actor
+ *                     actor; stock_source (default checkout) names the sale
+ *                     on the stock moves, local_sale for a counter sale
  * @return array reward_points (summed over the lines), contact_groups (each
  *               line's product group and the membership group, once each)
  */
@@ -1106,7 +1107,7 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
         $contact_group_id = $product['contact_group_id'];
 
         // Stock and a calendar event's spots.
-        pg_order_complete_line_stock($product, $stock_left, $actor, $stock_location_id, $stock_ref);
+        pg_order_complete_line_stock($product, $stock_left, $actor, $stock_location_id, $stock_ref, (string) ($order['stock_source'] ?? 'checkout'));
         pg_order_complete_line_reservation($product, $contact_id, array('order_id' => $order_id, 'order_number' => $order['order_number'] ?? 0));
 
         // if contact group has not already been added to array, add it to array
@@ -1677,9 +1678,11 @@ function pg_order_folder_access_extends($rights, $expiration_date)
  * @param string $actor      user name on the out-of-stock notification
  * @param int    $location_id the order's location, 0 without locations
  * @param string $ref        the order number, kept on the stock move
+ * @param string $source     checkout, or local_sale for a counter sale: the
+ *                           source the stock move and the announcement carry
  * @return void
  */
-function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $location_id = 0, $ref = '')
+function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $location_id = 0, $ref = '', $source = 'checkout')
 {
     $product_id = $line['product_id'];
 
@@ -1687,7 +1690,7 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $
     // sold with (includes/fn/bundles.php); its own cached stock follows from
     // the refresh the components' announcements run.
     if (pg_bundle_sale_takes_components($product_id, $line['order_item_id'] ?? 0, pg_bundle_ids_among(array($product_id)))) {
-        pg_bundle_take_stock($line['order_item_id'], $product_id, $line['quantity'], 'checkout', $stock_left, $location_id);
+        pg_bundle_take_stock($line['order_item_id'], $product_id, $line['quantity'], $source, $stock_left, $location_id);
         return;
     }
 
@@ -1710,7 +1713,7 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $
         return;
     }
 
-    $sale = pg_stock_sale_take($product_id, $line['quantity'], $location_id, 'checkout', $ref);
+    $sale = pg_stock_sale_take($product_id, $line['quantity'], $location_id, $source, $ref);
 
     if ($sale === null) {
         db_q("UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?",
@@ -1751,7 +1754,7 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $
         $product_id,
         (int) $inventory_quantity,
         null,
-        'checkout',
+        $source,
         ($sale === null) ? null : $sale['location']);
 }
 
@@ -1867,7 +1870,8 @@ function pg_order_reservation_event(array $line, $contact_id, array $order, $sta
  */
 function pg_order_complete_line_membership(array $line, $contact_id, $reference_code)
 {
-    if (!$line['membership_renewal']) {
+    // A counter sale to a walk-in has no contact to make a member.
+    if (!$line['membership_renewal'] || ((int) $contact_id <= 0)) {
         return false;
     }
 
@@ -1906,11 +1910,14 @@ function pg_order_complete_line_membership(array $line, $contact_id, $reference_
  */
 function pg_order_complete_line_folder_access(array $line, $user_id)
 {
-    if (!$line['grant_private_access']) {
+    $user_id = (int) $user_id;
+
+    // A counter sale to a walk-in or to a contact without an account has
+    // nobody to grant the access to (pg_order_rights_user_id()).
+    if (!$line['grant_private_access'] || ($user_id <= 0)) {
         return;
     }
 
-    $user_id = (int) $user_id;
     $private_folder = (int) $line['private_folder'];
 
     $row = db_item(
@@ -2090,7 +2097,7 @@ function pg_order_folder_access_other_order_holds($user_id, $folder, $order_id)
         INNER JOIN orders ON orders.id = order_items.order_id
         INNER JOIN products ON products.id = order_items.product_id
         WHERE
-            (orders.user_id = '" . (int) $user_id . "')
+            " . pg_order_rights_orders_sql($user_id) . "
             AND (orders.id <> '" . (int) $order_id . "')
             AND (orders.status NOT IN ('incomplete', 'cancelled'))
             AND (products.grant_private_access = '1')
@@ -2173,7 +2180,7 @@ function pg_order_folder_access_take_back(array $lines, $user_id, $order_id = 0)
  */
 function pg_order_folder_access_cancelled(array $order)
 {
-    $changed = pg_order_folder_access_take_back(pg_order_folder_access_lines($order['id']), $order['user_id'] ?? 0, $order['id']);
+    $changed = pg_order_folder_access_take_back(pg_order_folder_access_lines($order['id']), pg_order_rights_user_id($order), $order['id']);
 
     if ($changed > 0) {
         log_activity(pg_log_lang(array(
@@ -2194,7 +2201,7 @@ function pg_order_folder_access_cancelled(array $order)
  */
 function pg_order_folder_access_restored(array $order)
 {
-    $user_id = (int) ($order['user_id'] ?? 0);
+    $user_id = pg_order_rights_user_id($order);
     $granted = 0;
 
     if ($user_id <= 0) {
@@ -2263,13 +2270,14 @@ function pg_order_folder_access_return_lines(array $lines, array $quantities)
 function pg_order_folder_access_lines_refunded($order_id, array $quantities)
 {
     $order = db_item("SELECT id, user_id, status, order_number FROM orders WHERE id = '" . (int) $order_id . "'");
+    $user_id = is_array($order) ? pg_order_rights_user_id($order) : 0;
 
-    if (!is_array($order) || ((int) $order['user_id'] <= 0) || in_array((string) $order['status'], array('incomplete', 'cancelled'), true)) {
+    if (($user_id <= 0) || in_array((string) $order['status'], array('incomplete', 'cancelled'), true)) {
         return 0;
     }
 
     $lines = pg_order_folder_access_return_lines(pg_order_folder_access_lines($order['id']), $quantities);
-    $changed = pg_order_folder_access_take_back($lines, $order['user_id'], $order['id']);
+    $changed = pg_order_folder_access_take_back($lines, $user_id, $order['id']);
 
     if ($changed > 0) {
         log_activity(pg_log_lang(array(
@@ -3612,7 +3620,9 @@ function pg_order_email_page_bcc($product_bcc, $store_address)
  */
 function pg_order_complete_line_email_page(array $line, $billing_email_address, array $variable_fields, array $product_forms, array $forms)
 {
-    if (!$line['email_page']) {
+    // A counter sale to a walk-in, or to a contact without an e-mail
+    // address, has nobody to send the page to.
+    if (!$line['email_page'] || (trim((string) $billing_email_address) === '')) {
         return;
     }
 
@@ -3709,6 +3719,63 @@ function pg_order_complete_line_campaigns(array $line, $contact_id)
         'action' => 'product_ordered',
         'action_item_id' => $line['product_id'],
         'contact_id' => $contact_id));
+}
+
+/**
+ * The account an order's rights belong to: what its lines grant (folder
+ * access, the store's private folder, reward points) and what a
+ * cancellation or a refunded return takes back. A site order's is its
+ * user_id, the buyer who checked out. A counter sale's user_id is the
+ * operator who rang it up, so its rights go to the buyer's account instead:
+ * the account of the order's contact (user.user_contact), none for a
+ * walk-in sale or a contact without an account.
+ *
+ * @param array $order user_id, type and contact_id; type and contact_id are
+ *                     read by id when the row given lacks them
+ * @return int the account, 0 for none
+ */
+function pg_order_rights_user_id(array $order)
+{
+    if (!array_key_exists('type', $order) || !array_key_exists('contact_id', $order)) {
+        $row = pg_schema_has('orders', 'type')
+            ? db_item("SELECT type, contact_id FROM orders WHERE id = '" . (int) ($order['id'] ?? 0) . "' LIMIT 1")
+            : null;
+        $order += is_array($row) ? $row : array('type' => '', 'contact_id' => 0);
+    }
+
+    if ((string) $order['type'] !== 'local') {
+        return max(0, (int) ($order['user_id'] ?? 0));
+    }
+
+    $contact_id = (int) $order['contact_id'];
+
+    return ($contact_id > 0)
+        ? (int) db_value("SELECT user_id FROM user WHERE user_contact = '" . $contact_id . "' ORDER BY user_id ASC LIMIT 1")
+        : 0;
+}
+
+/**
+ * The SQL condition on orders matching every order whose rights belong to
+ * the account (pg_order_rights_user_id()): its site orders, and the counter
+ * sales made to its contact.
+ *
+ * @param int $user_id
+ * @return string
+ */
+function pg_order_rights_orders_sql($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (!pg_schema_has('orders', 'type')) {
+        return "(orders.user_id = '" . $user_id . "')";
+    }
+
+    $contact_id = (int) db_value("SELECT user_contact FROM user WHERE user_id = '" . $user_id . "' LIMIT 1");
+    $site = "((orders.user_id = '" . $user_id . "') AND NOT (orders.type <=> 'local'))";
+
+    return ($contact_id > 0)
+        ? "(" . $site . " OR ((orders.type = 'local') AND (orders.contact_id = '" . $contact_id . "')))"
+        : $site;
 }
 
 /**
@@ -3912,6 +3979,7 @@ function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order
     if (
         (ECOMMERCE_REWARD_PROGRAM_EMAIL == true)
         && (ECOMMERCE_REWARD_PROGRAM_EMAIL_PAGE_ID != 0)
+        && (trim((string) $billing_email_address) !== '')
     ) {
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
 

@@ -15,11 +15,12 @@ module: booking_deposits
 - `pg_booking_deposit_order_write($booking_id)`: the form fee's one-line order (`pg_form_payment_order_columns()` + `pg_form_payment_order_insert()`, shared with `forms`), billing from the booking's name (split on the last space), e-mail, phone, user. Offline payment is allowed when the store allows it ("paid on arrival"). A booking with an order keeps it, so a retry charges the same order.
 
 ## How is it marked paid?
-- `pg_booking_deposit_mark_paid($order_id)`, called beside `pg_form_payment_mark_paid()` by `pg_order_complete()` (only when the completion wrote `paid_at`) and `pg_order_mark_paid()`. One UPDATE joined on `orders.paid_at > 0`, `bookings.paid_at = 0`: held/requested with a live or no hold → confirmed; a held row whose hold ran out → requested (its time may be taken, staff decide); cancelled/no_show/done only record the payment. An offline completion marks nothing.
-- A held row gets its manage token here and `pg_booking_created()` (created + confirmed mails); requested → confirmed calls `pg_booking_changed($id, 'confirmed')`.
+- `pg_booking_deposit_mark_paid($order_id)`, called beside `pg_form_payment_mark_paid()` by `pg_order_complete()` (only when the completion wrote `paid_at`) and `pg_order_mark_paid()`. Under the staff lock, one UPDATE joined on `orders.paid_at > 0`, `bookings.paid_at = 0` and the status it read. An offline completion marks nothing.
+- Held/requested with a live or no hold → confirmed; a hold that ran out → confirmed again while its time is free, else an open request awaiting a refund ([[booking-deposit-late-payment]]); confirmed/no_show/done and a booking someone cancelled only record the payment.
+- A row never announced (a hold) gets its manage token here and `pg_booking_created()` (created + confirmed mails); requested → confirmed calls `pg_booking_changed($id, 'confirmed')`.
 
 ## How does the visitor pay?
 - The widget's payment, the hold kept during it and paid on the screens: [[booking-deposit-payment]] (BK9b).
 
 ## Tested?
-- `tests/booking_deposit_test.php`: the boxes, what is due, the order columns, the paid statement and its event, the wiring. No database run.
+- `tests/booking_deposit_test.php`: the boxes, what is due, the order columns, the outcomes, the paid statement and its event, the lock, the wiring. No database run.

@@ -178,9 +178,9 @@ function api_commission_schema() {
 		'product_name'         => 'string?',
 		'product_description'  => 'string?',
 		'created_by'           => 'string?',
-		'created_at'           => 'string?',
+		'created_at'           => 'datetime?',
 		'updated_by'           => 'string?',
-		'updated_at'           => 'string?',
+		'updated_at'           => 'datetime?',
 		'updated_at_unix'      => 'integer'
 	);
 
@@ -439,9 +439,9 @@ function api_commission_recurring_profile_schema() {
 		'product_description'  => 'string?',
 		'disabled_by_cancel'   => 'boolean',
 		'created_by'           => 'string?',
-		'created_at'           => 'string?',
+		'created_at'           => 'datetime?',
 		'updated_by'           => 'string?',
-		'updated_at'           => 'string?',
+		'updated_at'           => 'datetime?',
 		'updated_at_unix'      => 'integer'
 	);
 

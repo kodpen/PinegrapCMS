@@ -3634,6 +3634,66 @@ function pg_shortcuts_dialog()
         </dialog>';
 }
 
+/**
+ * The panel's background draw of translated Design Canvas pictures
+ * (assets/js/picture_auto.js): its tag with the rows this person may draw,
+ * after the Design Canvas's loader it draws with. Printed only while the
+ * mark says a row may wait (no query while it is clear) and the person's
+ * queue is not empty; never for a visitor.
+ *
+ * @return string HTML
+ */
+function pg_picture_tr_auto_tag()
+{
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN || !function_exists('pg_picture_tr_marked')) {
+        return '';
+    }
+
+    return pg_picture_tr_auto_tag_with('pg_picture_tr_marked', 'pg_picture_tr_queue', function ($rows) {
+        $file = 'assets/js/picture_auto.js';
+
+        return pg_image_editor_includes() . pg_picture_tr_auto_script(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/' . $file), $rows);
+    });
+}
+
+/**
+ * The tag with the mark, the queue and the drawing of the tag handed in:
+ * nothing while $marked() is false ($queue is not asked) or the queue is
+ * empty; else $render() with each row's picture and language.
+ *
+ * @param callable $marked () => bool
+ * @param callable $queue  () => rows of pg_picture_tr_queue()
+ * @param callable $render (rows of file_id, language) => HTML
+ * @return string HTML
+ */
+function pg_picture_tr_auto_tag_with($marked, $queue, $render)
+{
+    if (!call_user_func($marked)) {
+        return '';
+    }
+
+    $rows = call_user_func($queue);
+    $list = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $list[] = array('file_id' => (int) $row['file_id'], 'language' => (string) $row['language']);
+    }
+
+    return $list ? (string) call_user_func($render, $list) : '';
+}
+
+/**
+ * The script's tag: deferred, the rows in its data-rows. Pure.
+ *
+ * @param string $src
+ * @param array  $rows of file_id, language
+ * @return string HTML
+ */
+function pg_picture_tr_auto_script($src, $rows)
+{
+    return '<script src="' . h($src) . '" id="pg_picture_auto" data-rows="' . h(json_encode(array_values($rows))) . '" defer></script>';
+}
+
 function output_footer($properties = false)
 {
     $output_software_labeling = '';
@@ -3658,6 +3718,7 @@ function output_footer($properties = false)
         </div>
         </div>
         ' . $output_chat_launcher . '
+        ' . pg_picture_tr_auto_tag() . '
         ' . pg_output_email_off_close() . '
         </body>
         </html>';
@@ -3769,6 +3830,24 @@ function pg_menu_icon($name, $color_class = '', $space = 'me-3')
                 '<path class="pg-mi-a" d="M9 8.5h6M9 12h6M9 15.5h3.5" stroke-width="1.6"/>';
             break;
 
+        case 'mail':
+            // Incoming e-mail pinned to the menu: an envelope with a letter
+            // coming out of it. The back is a tint, the letter and the
+            // pocket's front are opaque, so the pocket hides the letter's
+            // foot; on hover the letter comes up (backend.src.css).
+            $pocket = 'M3 10.5l9 6 9-6v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5z';
+            $letter = 'M6.5 14V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9';
+            $body =
+                '<path' . $d . ' d="M3 10.5h18v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5z"/>' .
+                '<g class="pg-mi-a pg-mi-sheet">' .
+                '<path class="pg-mi-at pg-mi-solid"' . $tint . ' d="' . $letter . 'z"/>' .
+                '<path d="' . $letter . '" stroke-width="1.5"/>' .
+                '<path d="M9.5 7.5h5M9.5 10h3" stroke-width="1.5"/>' .
+                '</g>' .
+                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $pocket . '"/>' .
+                '<path d="M3 10.5v8A2.5 2.5 0 0 0 5.5 21h13a2.5 2.5 0 0 0 2.5-2.5v-8M3 10.5h3.5M17.5 10.5H21M3 10.5l9 6 9-6"/>';
+            break;
+
         case 'folders':
             $flap = 'M3 17.5v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
             $body =
@@ -3785,19 +3864,14 @@ function pg_menu_icon($name, $color_class = '', $space = 'me-3')
             break;
 
         case 'design_canvas':
-            // An artboard with crop marks; the pen curve and its two anchors
-            // are the second colour.
+            // Two sheets: the back one, tinted, ends where the front one
+            // covers it; a wave on the front sheet is the second colour.
+            $back = 'M17 7V6.1A3.6 3.6 0 0 0 13.4 2.5H6.1A3.6 3.6 0 0 0 2.5 6.1v7.3A3.6 3.6 0 0 0 6.1 17H7';
             $body =
-                '<rect' . $d . ' x="5" y="5" width="14" height="14" rx="1.2"/>' .
-                '<rect x="5" y="5" width="14" height="14" rx="1.2"/>' .
-                '<path d="M2.5 5H3.6M5 2.5v1.1M20.4 5h1.1M19 2.5v1.1M2.5 19h1.1M5 20.4v1.1M20.4 19h1.1M19 20.4v1.1" stroke-width="1.5"/>' .
-                '<g class="pg-mi-a pg-mi-pen">' .
-                '<path d="M8.3 15.7C9 11 15 13 15.7 8.3" stroke-width="1.6"/>' .
-                '<rect' . $a . ' x="7.3" y="14.7" width="2" height="2" rx=".4"/>' .
-                '<rect x="7.3" y="14.7" width="2" height="2" rx=".4" stroke-width="1.1"/>' .
-                '<rect' . $a . ' x="14.7" y="7.3" width="2" height="2" rx=".4"/>' .
-                '<rect x="14.7" y="7.3" width="2" height="2" rx=".4" stroke-width="1.1"/>' .
-                '</g>';
+                '<path' . $d . ' d="' . $back . 'v-6.4A3.6 3.6 0 0 1 10.6 7z"/>' .
+                '<path d="' . $back . '"/>' .
+                '<rect x="7" y="7" width="14.5" height="14.5" rx="3.6"/>' .
+                '<g class="pg-mi-a pg-mi-wave"><path d="M9.9 18.7C10.8 15.2 11.8 13 13.2 13C14.6 13 14.4 14.9 15.8 14.9C17.3 14.9 18 12.4 18.7 9.8"/></g>';
             break;
 
         case 'pages':
@@ -4081,6 +4155,11 @@ function output_menu($properties = false)
         if (function_exists('pg_content_review_ready') && pg_content_review_ready()) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_content_review.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Content review') . '</a>';
         }
+        // PAGES > Courses (view_courses.php): managers and up, while the
+        // Courses switch is on.
+        if (($user['role'] < 3) && function_exists('pg_course_switch_on') && pg_course_ready() && pg_course_switch_on()) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_courses.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-mortarboard bi-me-2\'>' . lang('Courses') . '</a>';
+        }
         // PAGES > Search and audits (search_audits.php: the search index and
         // the SEO, structure and accessibility passes, managers and up)
         if ($user['role'] < 3) {
@@ -4197,6 +4276,7 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up-arrow bi-me-2\'>' . lang('All Order Reports') . '</a>';
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Order Report'))) . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_customer_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-people bi-me-2\'>' . lang('Customers Report') . '</a>';
         }
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
             // ECOMMERCE > Shipping Reports
@@ -4284,6 +4364,23 @@ function output_menu($properties = false)
         if (in_array('mail', $messages_tabs, true)) {
             $menu_items[9]['badge'] = pg_messages_mail_unread($user);
             $menu_items[9]['badge_title'] = lang(array('string' => '{var:1} unread e-mail conversation(s)', 'vars' => $menu_items[9]['badge']));
+        }
+
+        // Incoming e-mail pinned to the menu by the person (Pin to main menu
+        // on the tab, includes/workspace/mail_menu.php): a row of its own
+        // under the Workspace and My Notes (pg_menu_categories()), slot 27,
+        // the next free one, never reused. One screen, so no panel; it
+        // carries the unread count Communication's row has, counted once.
+        // Communication keeps its row and its tab. The tab's gate is asked
+        // above, so nobody gets a row that leads to a refusal.
+        if (in_array('mail', $messages_tabs, true) && function_exists('ws_mail_menu_pinned') && ws_mail_menu_pinned((int) $user['id'])) {
+            $menu_items[27]['id'] = 27;
+            $menu_items[27]['href'] = 'messages_mail.php';
+            $menu_items[27]['menu_icon'] = 'mail';
+            $menu_items[27]['color_class'] = 'campaigns-color';
+            $menu_items[27]['title'] = 'Incoming e-mail';
+            $menu_items[27]['badge'] = $menu_items[9]['badge'];
+            $menu_items[27]['badge_title'] = $menu_items[9]['badge_title'];
         }
     }
 
@@ -4863,6 +4960,8 @@ function output_menu($properties = false)
         case 'view_not_found_log.php':
         case 'view_accessibility.php':
         case 'view_content_review.php':
+        case 'view_courses.php':
+        case 'edit_course.php':
         case 'view_auto_dialogs.php':
         case 'add_auto_dialog.php':
         case 'edit_auto_dialog.php':
@@ -4932,8 +5031,11 @@ function output_menu($properties = false)
         case 'messages_sends.php':
         case 'messages_channels.php':
         case 'messages_notifications.php':
-        case 'messages_mail.php':
             $active_menu = 9;
+            break;
+        case 'messages_mail.php':
+            // Pinned to the menu, Incoming e-mail lights its own row.
+            $active_menu = isset($menu_items[27]) ? 27 : 9;
             break;
         case 'erp_dashboard.php':
         case 'erp_accounts.php':
@@ -5197,7 +5299,6 @@ function output_menu($properties = false)
         case 'system_tools.php':
         case 'view_log.php':
         case 'view_audit_log.php':
-        case 'smtp_settings.php':
         case 'api_settings.php':
         case 'connections.php':
         case 'marketplace_settings.php':
@@ -5425,8 +5526,10 @@ function pg_menu_categories()
 {
     return array(
         // Automation flows (26) between the Dashboard and the Workspace: they
-        // reach every part of the site, so they sit under no heading.
-        ''           => array('label' => '', 'slots' => array(0, 26, 23, 24)),
+        // reach every part of the site, so they sit under no heading. A
+        // person's pinned Incoming e-mail (27) comes after the Workspace and
+        // My Notes.
+        ''           => array('label' => '', 'slots' => array(0, 26, 23, 24, 27)),
         'content'    => array('label' => 'Content', 'slots' => array(2, 1, 4, 5)),
         'design'     => array('label' => 'Design', 'slots' => array(21)),
         'ecommerce'  => array('label' => 'Ecommerce', 'slots' => array(10, 11, 12, 14, 15)),
@@ -7957,6 +8060,9 @@ function pg_js_bundles()
         'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js', 'assets/js/pg_list_table_edit.js'),
         // The Prototype view's hotspot collector (window.PGProtoHotspots).
         'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
+        // The comment mode of a share link's prototype viewer
+        // (window.PGProtoComments, prototype.php).
+        'assets/js/pg_proto_comments.min.js'       => array('assets/js/pg_proto_comments.js'),
         // Live pictures of designs and templates (window.PGLivePicture,
         // includes/fn/design_previews.php).
         'assets/js/pg_live_picture.min.js'         => array('assets/js/pg_live_picture.js'),
@@ -7977,7 +8083,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_area.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
-            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_fonts.js',
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_follow.js', 'assets/js/pg_image_editor_fonts.js',
             'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
             'assets/js/pg_image_editor_video.js', 'assets/js/pg_image_editor_clip.js', 'assets/js/pg_image_editor_mix.js', 'assets/js/pg_image_editor_upload.js', 'assets/js/pg_image_editor_phone.js', 'assets/js/pg_image_editor_actions.js', 'assets/js/pg_image_editor_menu.js'),
         // The image editor's animation encoder, started as a worker (or on the
@@ -8012,11 +8118,13 @@ function pg_js_bundles()
         'assets/js/style_designer_theme.min.js'    => array('assets/js/style_designer_theme.js'),
         'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
         'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
+        'assets/js/style_designer_treesearch.min.js' => array('assets/js/style_designer_treesearch.js'),
+        'assets/js/style_designer_comments.min.js' => array('assets/js/style_designer_comments.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
         // card frame first, then each card group's renderers.
-        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js', 'assets/js/pg_dash_cards_assistant.js', 'assets/js/pg_dash_brief.js'),
+        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js', 'assets/js/pg_dash_cards_assistant.js', 'assets/js/pg_dash_brief.js', 'assets/js/pg_dash_cards_mail.js'),
         // The Visitors overview (visitors.php): its period bar and charts.
         'assets/js/pg_visitors.min.js'            => array('assets/js/pg_visitors.src.js'),
         // The picker dialog (window.pgPicker, includes/fn/picker.php), printed
@@ -8085,6 +8193,12 @@ function pg_designer_parts()
         // The Interactions section's rows of the properties panel: the
         // effect, trigger and timing fields and the Play button.
         'interactions' => 'assets/js/style_designer_interactions.min.js',
+        // The Overview's tree search: the page's elements found by name,
+        // text, class and id, listed with their path.
+        'treesearch' => 'assets/js/style_designer_treesearch.min.js',
+        // The prototype comments of the design: the pins on the canvas and
+        // the Comments list, for designers.
+        'comments' => 'assets/js/style_designer_comments.min.js',
     );
 }
 

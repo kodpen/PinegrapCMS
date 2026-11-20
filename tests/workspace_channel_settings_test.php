@@ -58,7 +58,7 @@ function workspace_channel_settings_test_run($expression, $cases)
 
 	$script = "'use strict';\n";
 
-	foreach (array('channelSettingsTabs', 'eraRows') as $name) {
+	foreach (array('channelSettingsTabs', 'eraRows', 'decisionScope', 'agentChannelSwitchShown') as $name) {
 		$text = workspace_channel_settings_test_function($name);
 		pg_assert_true($text !== '', $name . '() is found');
 		$script .= $text;
@@ -208,4 +208,54 @@ function test_workspace_channel_settings_info_moves()
 	pg_assert_true(strpos($source, "'ws-info-manage'") === false && strpos($source, ' ws-info-manage') === false, 'no Manage in Channel info');
 	pg_assert_true(strpos($source, 'channelForm(channel, { agents: true }') === false, 'no drawer opened scrolled to the agents');
 	pg_assert_contains('!channel.can_manage && channel.can_post', $source, 'Add people stays in Channel info only for a member who is not a manager');
+}
+
+// The Agent channel switch shows once the column is there: to a channel's
+// manager, never on a discussion, and on a new channel (its maker manages
+// it), not on the form that turns a note into a channel.
+function test_workspace_channel_settings_agent_switch_shown()
+{
+	$answer = workspace_channel_settings_test_run('agentChannelSwitchShown(one[0], one[1], one[2])', array(
+		array(null, true, false),
+		array(null, false, false),
+		array(null, true, true),
+		array(array('can_manage' => true, 'kind' => 'public'), true, false),
+		array(array('can_manage' => false, 'kind' => 'public'), true, false),
+		array(array('can_manage' => true, 'kind' => 'thread'), true, false),
+	));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, false, false, true, false, false), $answer);
+}
+
+// The form sends agent_channel only when the switch is drawn; the server
+// writes it through the command's own function, for a manager only.
+function test_workspace_channel_settings_agent_switch_wiring()
+{
+	$body = workspace_channel_settings_test_function('channelForm');
+
+	pg_assert_contains('agentChannelSwitchShown(channel, !!CFG.agent_channels, !!defaults.note_id)', $body);
+	pg_assert_contains("t('agent_channel_label')", $body);
+	pg_assert_contains('data.agent_channel = agentSwitch.checked ? 1 : 0;', $body);
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	pg_assert_same(2, substr_count($actions, 'ws_agent_channel_set($viewer, ws_channel('), 'create and update switch it the command\'s way');
+	pg_assert_contains("\$channel = ws_action_channel(\$viewer, \$request, 'manage');", $actions, 'update is a manager\'s');
+	pg_assert_true(ws_js_strings()['agent_channel_label'] !== '', 'the switch has its words');
+	pg_assert_contains("'agent_channels' => ws_agent_channel_ready(),", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php'), 'the screen says whether the column is there');
+}
+
+// The Decisions tab's choice: anything but agents reads this channel.
+function test_workspace_channel_settings_decision_scope()
+{
+	$answer = workspace_channel_settings_test_run('decisionScope(one)', array('agents', 'channel', '', null, 'all'));
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array('agents', 'channel', 'channel', 'channel', 'channel'), $answer);
 }

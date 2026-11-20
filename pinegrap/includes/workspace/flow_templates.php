@@ -62,13 +62,16 @@ function ws_flow_template_categories()
 /**
  * The kinds of value a template asks for: a channel id, people (a list of
  * ids), a time of day (HH:MM), a web address, e-mail addresses, the id of a
- * workflow table (a saved template's row boxes), a message's words.
+ * workflow table (a saved template's row boxes), a message's words, the id
+ * of a list page a records box reads, the id of a contact group an e-mail
+ * box sends to, an e-mail's subject, a day of the week (1 Monday - 7
+ * Sunday) a weekly start runs on.
  *
  * @return string[]
  */
 function ws_flow_template_setting_types()
 {
-    return array('channel', 'person', 'time', 'url', 'address', 'table', 'text');
+    return array('channel', 'person', 'time', 'url', 'address', 'table', 'text', 'page', 'group', 'subject', 'day');
 }
 
 /**
@@ -81,7 +84,9 @@ function ws_flow_template_setting_types()
  *                    person may read), recap_ai (Pinegrap AI is set up:
  *                    it may sum up what was missed and sort forms), join
  *                    (a flow may start when somebody joins a channel),
- *                    events (keys of the events the person may wait for)
+ *                    events (keys of the events the person may wait for),
+ *                    records_mail (the person may send a list's records
+ *                    to a contact group: the digest of new posts)
  * @return array[] see the file's docblock
  */
 function ws_flow_templates($fill)
@@ -577,6 +582,23 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'wait', 'next'), array('wait', 'read', 'done'), array('read', 'open', 'done'), array('open', 'call', 'yes')));
     }
 
+    // A page or collection record past its review date: a task for the
+    // item's person, the one the event names; the person asked in the setup
+    // gets it when the item has nobody on the team.
+    if (in_array('content.review_due', $events, true)) {
+        $out[] = array('key' => 'content_review_due', 'category' => 'site', 'icon' => 'bi-calendar-check',
+            'title' => lang('A page is due for review'),
+            'help' => lang('When a page or collection record passes its review date, a task to read it again opens for its person.'),
+            'boxes' => array(
+                'start'  => $on('content.review_due'),
+                'review' => array('kind' => 'task', 'config' => array('title' => lang('Review {{trigger.name}}'),
+                    'description' => lang('Read it again and mark it reviewed on the Content review screen. Its review date was {{trigger.review_on}}.') . "\n" . '{{record_link}}',
+                    'assign' => 'event_person', 'fallback' => array($me), 'due_in' => 7, 'priority' => 'normal'),
+                    'setting' => array('person', 'fallback')),
+            ),
+            'edges' => array(array('start', 'review', 'next')));
+    }
+
     // Incoming forms sorted by Pinegrap AI from their answers: a task for a
     // sales question, another for a support request, spam ends, and a form
     // it cannot place is told to the person so none is lost. The AI box
@@ -710,6 +732,28 @@ function ws_flow_templates($fill)
                     'setting' => array('person', 'user_ids')),
             ),
             'edges' => array(array('start', 'ask', 'next'), array('ask', 'check', 'approved'), array('check', 'off', 'yes'), array('ask', 'late', 'expired')));
+    }
+
+    // Once a week the records a list page shows that are new since the last
+    // run, sent to a contact group as one e-mail campaign; a week with no
+    // new record ends before the e-mail box, so nothing is sent. Offered
+    // while the person may send to a group and the site has a list page
+    // open to everyone and a contact group (records_mail).
+    if (!empty($fill['records_mail'])) {
+        $out[] = array('key' => 'post_digest', 'category' => 'site', 'icon' => 'bi-newspaper',
+            'title' => lang('Digest of new posts'),
+            'help' => lang('Once a week the new posts of a list go to a contact group in one e-mail; a week with none sends nothing.'),
+            'boxes' => array(
+                'start' => $start($tomorrow, '09:00', 'weekly', 1, array(1)) + array('settings' => array(array('day', 'days'), array('time', 'time'))),
+                'read'  => array('kind' => 'list_records', 'config' => array('page_id' => 0, 'only_new' => 1), 'setting' => array('page', 'page_id')),
+                'none'  => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{node.read.count}}', 'op' => 'eq', 'value' => '0'))),
+                'stop'  => array('kind' => 'end', 'config' => array()),
+                'mail'  => array('kind' => 'email', 'config' => array('to' => '', 'subject' => lang('New on our site this week'),
+                    'body' => lang('Here is what is new on our site this week.'), 'page_id' => 0, 'recipient' => 'group', 'purpose' => 'marketing',
+                    'group_id' => 0, 'records' => 'read'),
+                    'settings' => array(array('group', 'group_id'), array('subject', 'subject'))),
+            ),
+            'edges' => array(array('start', 'read', 'next'), array('read', 'none', 'done'), array('none', 'stop', 'yes'), array('none', 'mail', 'no')));
     }
 
     return array_map('ws_flow_template_build', $out);
@@ -865,7 +909,10 @@ function ws_flow_template_motion($graph)
  * The setup panel's answers checked, one for each setting of the template,
  * and given back as the boxes keep them: a channel id, people ids (at most
  * 20, each once), a time HH:MM, a web address, e-mail addresses joined by
- * ", ", a table id (its reach is checked by ws_flow_template_setup()). Answers to settings the template does not have are dropped. Pure
+ * ", ", a table id (its reach is checked by ws_flow_template_setup()), a
+ * list page id, a contact group id, a subject of at most 250 characters,
+ * a day of the week as a list of one (1-7). Answers to settings the
+ * template does not have are dropped. Pure
  * but for the address check (validate_email_address()).
  *
  * @param array $template ws_flow_templates() entry
@@ -938,6 +985,34 @@ function ws_flow_template_answers_check($template, $answers)
                 $value = is_string($given) ? trim($given) : '';
                 $error = ($value === '') ? lang('Write the message to post.')
                     : ((mb_strlen($value) > 4000) ? lang(array('string' => 'The message is longer than {var:1} characters.', 'vars' => 4000)) : '');
+                break;
+
+            // Whether the page is open to everyone, and the group one the
+            // person may send to, is checked when the flow is published.
+            case 'page':
+                $value = is_scalar($given) ? (int) $given : 0;
+                $error = ($value > 0) ? '' : lang('Choose the list page whose records it sends.');
+                break;
+
+            case 'group':
+                $value = is_scalar($given) ? (int) $given : 0;
+                $error = ($value > 0) ? '' : lang('Choose a contact group');
+                break;
+
+            // As long as an e-mail box keeps its subject
+            // (ws_step_config_normalize()).
+            case 'subject':
+                $value = is_string($given) ? trim(preg_replace('/\s+/u', ' ', $given)) : '';
+                $error = ($value === '') ? lang('Write the subject of the e-mail.')
+                    : ((mb_strlen($value) > 250) ? lang(array('string' => 'The subject is longer than {var:1} characters.', 'vars' => 250)) : '');
+                break;
+
+            // Kept as a weekly start keeps its days: a list.
+            case 'day':
+                $day = is_array($given) ? reset($given) : $given;
+                $day = (is_scalar($day) && preg_match('/^[1-7]$/', trim((string) $day))) ? (int) $day : 0;
+                $value = array($day);
+                $error = ($day > 0) ? '' : lang('Choose the day of the week it runs on.');
                 break;
 
             default:
@@ -1109,6 +1184,10 @@ function ws_flow_templates_for($viewer, $scheduled = null)
         'recap_ai' => !empty($scheduled['recap_ai']),
         'join'     => !empty($scheduled['join']),
         'events'   => array_keys((array) ($scheduled['events']['list'] ?? array())),
+        // The digest of new posts: a contact group the person may send to
+        // (role below 3) and a list page open to everyone.
+        'records_mail' => function_exists('ws_flow_mail_groups') && function_exists('ws_flow_records_pages')
+            && !empty(ws_flow_mail_groups($viewer)) && !empty(ws_flow_records_pages()),
     ));
 
     $templates = function_exists('ws_flow_templates_saved') ? array_merge($templates, ws_flow_templates_saved($viewer)) : $templates;

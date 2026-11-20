@@ -28,7 +28,7 @@ if (!defined('PG_INIT_LOADED')) {
                 'primary'   => array('label' => lang('Create'), 'url' => 'add_key_code.php', 'icon' => 'bi-plus-circle'),
                 'secondary' => array(
                     array('label' => lang('Import'), 'url' => 'import_key_codes.php', 'icon' => 'bi-box-arrow-in-right'),
-                    '<form class="disable_shortcut" method="get"><button type="submit" name="submit_data" value="Export Key Codes" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button></form>',
+                    '<form class="disable_shortcut" method="get"><button type="submit" name="submit_data" value="Export Key Codes" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button></form>' . pg_list_excel_link('view_key_codes.php?submit_data=' . urlencode('Export Key Codes')),
                     '<a href="delete_key_codes.php" class="btn btn-sm btn-outline theme-warning"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete All Key Codes') . '</a>',
                 ),
                 'search'    => array(pg_list_table_search_box('view_key_codes'), pg_list_sort_menu('view_key_codes.php', $sort_columns, $sort_levels, $sort_default)),

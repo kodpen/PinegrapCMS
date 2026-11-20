@@ -4,7 +4,7 @@ description: Model assistants (ws_agents kind 'model'): providers and their data
 ---
 
 ## What is a model assistant?
-- A `ws_agents` row of kind `model` (`includes/workspace/model_agents.php`): handle, name, avatar, `provider` (openai, anthropic, gemini, mistral, deepseek, openrouter, azure, custom), `model`, `key_sealed` (`ws_agent_seal()`), `app_id`. The door is the site itself: no knock goes out; `door_url` holds the chat API's base for azure and custom (the others have a fixed one). `door_failures`, `door_error` and `door_last_knock` hold its failures and hold. No schema change.
+- A `ws_agents` row of kind `model` (`includes/workspace/model_agents.php`): handle, name, avatar, `provider` (openai, anthropic, gemini, mistral, deepseek, openrouter, azure, custom), `model`, `key_sealed` (its own key, else the connection's: `ws_model_agent_key()`), `app_id`. The door is the site itself; `door_url` holds the chat API's base for azure and custom (the others have a fixed one). `door_failures`, `door_error` and `door_last_knock` hold its failures and hold. No schema change.
 - Its requests are `ws_ai_requests.agent = 'model:<id>'` (fits VARCHAR(16)), made by a message that wakes it in a channel it was added to (`agent-doors.md`).
 
 ## How is it answered?
@@ -14,11 +14,12 @@ description: Model assistants (ws_agents kind 'model'): providers and their data
 - A failure holds the assistant for `ws_model_hold_seconds()` (1 min doubled, 1 h at most). Stale running requests fail, queued ones are cancelled after a day (`ws_model_watchdog()`).
 
 ## Who sets it up?
-- The Agents card of A3b (`agents_settings.php`) keeps the row: handle, name, provider, model, sealed key, application. `ws_model_base_problem()` checks the chat API address (only azure and custom take one, in `door_url`; only custom may be http). `ws_model_agent_test($id)` gives the card's Try a sentence; `ws_model_agent_missing()` says what still keeps it from answering (paused, address, key, application).
-- On the card (step A6b): the provider is a select of `ws_model_providers()` with the model hints under the model field; its own Address field (`agent_base`, saved to `door_url` for a model agent, so it never clashes with a push door's address on the new-agent form); the provider's terms under the select; Try (`agent_test`). `ws_agent_save_check()` refuses an unknown provider and an address `ws_model_base_problem()` refuses; a provider whose `key` is true needs a stored or typed key.
+- The Agents card of A3b (`agents_settings.php`) keeps the row: handle, name, provider, model, sealed key, application. `ws_model_base_problem()` checks the chat API address (only azure and custom take one, in `door_url`; only custom may be http). `ws_model_agent_test($id)` gives the card's Try a sentence; `ws_model_agent_missing()` says what keeps it from answering.
+- On the card (step A6b): the provider is a select of `ws_model_providers()` with the model hints under the model field; its own Address field (`agent_base`, saved to `door_url` for a model agent, so it never clashes with a push door's address on the new-agent form); the provider's terms under the select; Try (`agent_test`).
+- `ws_agent_save_check()` refuses an unknown provider and an address `ws_model_base_problem()` refuses; a provider with a connection takes no key on the form (`api/ai-connections-feature-cards.md`).
 
 ## What do the providers do with the words? (checked 2026-11-08; Anthropic 2026-11-12)
-- On the card per provider (`ws_model_providers()['terms']`; `ws_model_provider_terms()` gives one provider's sentence, and no channel screen shows it: adding an assistant to a channel asks nothing).
+- On the card per provider (`ws_model_providers()['terms']`, one provider's: `ws_model_provider_terms()`); no channel screen shows it.
 - OpenAI no training by default, 30 days abuse log; Anthropic no training unless allowed, deleted in 30 days; Gemini free tier may train and be read by people, paid not; Mistral free Experiment plan may train; DeepSeek stores in the PRC; OpenRouter passes to the model's provider; Azure no training, the resource's region; custom unknown.
 
 ## What is not done yet?

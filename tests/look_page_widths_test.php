@@ -84,7 +84,7 @@ function test_reports_take_the_report_measure()
 
 function test_settings_tool_and_import_pages_take_the_edit_measure()
 {
-	$two = array('api_settings', 'smtp_settings', 'marketplace_settings', 'erp_settings', 'connections', 'database_engine', 'clean_up', 'page_experiments', 'create_file', 'find_and_replace', 'mass_edit', 'privacy_erase', 'privacy_export', 'barcode_increase_inventory', 'barcode_decrease_inventory', 'import', 'import_contacts', 'import_email_campaign_profiles', 'import_key_codes', 'import_products', 'import_shipments', 'import_short_links', 'import_submitted_forms', 'import_zip', 'erp_export', 'erp_accounts_import', 'erp_account_sync_item', 'erp_bank_statement', 'erp_inbox_document', 'erp_reconciliation', 'erp_stock_count');
+	$two = array('api_settings', 'marketplace_settings', 'erp_settings', 'connections', 'database_engine', 'clean_up', 'page_experiments', 'create_file', 'find_and_replace', 'mass_edit', 'privacy_erase', 'privacy_export', 'barcode_increase_inventory', 'barcode_decrease_inventory', 'import', 'import_contacts', 'import_email_campaign_profiles', 'import_key_codes', 'import_products', 'import_shipments', 'import_short_links', 'import_submitted_forms', 'import_zip', 'erp_export', 'erp_accounts_import', 'erp_account_sync_item', 'erp_bank_statement', 'erp_inbox_document', 'erp_reconciliation', 'erp_stock_count');
 	$one = array('connected_apps', 'device_pairing', 'developer_lock', 'system_tools', 'migration', 'experiments', 'api_docs', 'import_users', 'erp_accountant', 'approve_affiliate');
 
 	foreach (array_merge($two, $one) as $screen) {
@@ -98,4 +98,49 @@ function test_settings_tool_and_import_pages_take_the_edit_measure()
 	}
 	pg_assert_contains("body.pg-measure-edit:has(#pg-chat-root) .row > .order-3 > nav.buttons.navigation > .container {\n    margin-inline-end: var(--pg-chat-clearance);", look_page_widths_test_source('assets/css/backend.src.css'), 'the save bar buttons end before the chat launcher');
 	pg_assert_contains("body.pg-measure-edit.pg-measure-single #content {\n  max-width: calc(var(--pg-measure-form) + 2rem);", look_page_widths_test_block(), 'a one-column page is the form column wide');
+}
+
+function test_communication_tab_strip_sits_centred_in_the_window()
+{
+	$css = look_page_widths_test_source('assets/css/backend.src.css');
+
+	pg_assert_contains(".pg-area-tabs {\n  display: flex;", $css, 'the strip is a flex row');
+	pg_assert_contains(".pg-area-tabs > .pg-seg {\n  margin-inline: auto;\n}", $css, 'the segmented control is centred in it, still scrollable from its first tab');
+	pg_assert_contains('<nav class="pg-area-tabs pg-messages-tabs"', look_page_widths_test_source('includes/fn/messages_area.php'), 'Communication takes the shared class');
+	pg_assert_contains("  .pg-messages-tabs .pg-seg {\n    display: flex;\n    flex: 1 1 auto;", $css, 'on a phone the strip fills the line as before');
+	pg_assert_contains("body.pg-measure-list #content {\n  width: fit-content;", $css, 'a list box is fit-content');
+	pg_assert_contains("  max-width: 100%;\n  margin-inline: auto;\n}", $css, 'and centred, so its centre is the window\'s');
+
+	// Every screen printing the strip has a #content centred in the window:
+	// the full width, or the list measure (fit-content, auto margins). An edit
+	// measure with a section rail would shift the centre, so none is allowed.
+	$screens = array('messages_mail', 'view_email_campaigns', 'messages_sends', 'view_email_campaign_profiles');
+
+	foreach ($screens as $screen) {
+		$source = look_page_widths_test_source($screen . '.php');
+		pg_assert_contains('pg_messages_tab_strip_for(', $source, $screen . ' prints the strip');
+		pg_assert_true(strpos($source, 'pg-measure-edit') === false && strpos($source, 'pg-has-rail') === false, $screen . ' keeps its content box centred');
+	}
+	pg_assert_true(strpos(look_page_widths_test_source('includes/fn/messages_area.php'), 'pg-measure-') === false, 'a new tab screen fills the window');
+}
+
+function test_area_tab_strips_share_one_class()
+{
+	$css = look_page_widths_test_source('assets/css/backend.src.css');
+
+	// The place is the shared class's alone: no area strip centres itself.
+	pg_assert_true(strpos($css, '.pg-messages-tabs > .pg-seg {') === false, 'Communication has no rule of its own for the place');
+	pg_assert_true(preg_match('/\.pg-area-tabs[^{]*\{[^}]*justify-content:\s*center/', $css) === 0, 'no centring that cuts off a scrolled strip\'s start');
+
+	// The marketplace products screen's views (the store area): the strip,
+	// then the messages, on a list box centred in the window.
+	$source = look_page_widths_test_source('marketplace_products.php');
+	pg_assert_contains('<nav class="pg-area-tabs mpp-modes" aria-label="\' . h(lang(\'Display\')) . \'"><div class="pg-seg pg-list-seg">', $source, 'the store views take the shared class');
+	pg_assert_true(strpos($source, '.mpp-modes { margin-bottom: 14px; }') !== false, 'the screen only spaces its strip');
+	$strip = strpos($source, '<nav class="pg-area-tabs mpp-modes"');
+	$flash = strpos($source, '<div id="mpp-flash"');
+	pg_assert_true($strip !== false && $flash !== false && $strip < $flash, 'the messages come under the strip');
+	pg_assert_true(strpos(substr($source, strpos($source, '<main id="content"'), $strip - strpos($source, '<main id="content"')), 'alert') === false, 'nothing is printed above the strip');
+	pg_assert_contains("'extra classes'       => 'mp-screen pg-measure-list'", $source, 'a list box, centred');
+	pg_assert_true(strpos($source, 'pg-measure-edit') === false && strpos($source, 'pg-has-rail') === false, 'no edit measure or rail shifts the centre');
 }

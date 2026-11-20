@@ -276,6 +276,7 @@ if (!$translations_is_import && !$translations_is_export) {
                 // again and the text is pending once more.
                 db("DELETE FROM translations WHERE string_id = '$string_id' AND language = '" . e($language) . "'");
                 pg_tr_invalidate_pages($language);
+                pg_picture_tr_translations_removed($language);
 
                 translations_respond(array('status' => 'success', 'string_id' => $string_id, 'text' => '', 'engine' => '', 'state' => 'pending', 'suspicious' => 0));
             }
@@ -454,6 +455,7 @@ if ($translations_is_export) {
 
     $csv = pg_tr_csv_export($language, $scope, $pending);
     $file_name = 'translations-' . preg_replace('/[^a-z0-9-]/i', '', $language) . '-' . date('Ymd-His') . '.csv';
+    pg_list_excel_capture(array(), lang('Translations'));
 
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $file_name . '"');
@@ -590,8 +592,8 @@ if ($summary['error'] !== '') {
 log_activity(lang(array('string' => 'translations were imported from a CSV file ({var:1}, {var:2} text(s))', 'vars' => array($language, $summary['written']))), $_SESSION['sessionusername']);
 
 $liveform->add_notice(lang(array(
-    'string' => 'CSV import: {var:1} translation(s) written, {var:2} empty row(s) skipped, {var:3} row(s) whose text has since changed, {var:4} row(s) rejected.',
-    'vars'   => array($summary['written'], $summary['skipped'], $summary['stale'], $summary['rejected']))));
+    'string' => 'CSV import: {var:1} translation(s) written, {var:2} unchanged, {var:3} empty row(s) skipped, {var:4} row(s) whose text has since changed, {var:5} row(s) rejected.',
+    'vars'   => array($summary['written'], $summary['unchanged'], $summary['skipped'], $summary['stale'], $summary['rejected']))));
 
 // The first rejected rows, each with its file line and reason.
 if ($summary['problems']) {

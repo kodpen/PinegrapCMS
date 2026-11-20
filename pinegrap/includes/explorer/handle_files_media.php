@@ -59,11 +59,15 @@ function pg_explorer_webp_base_name($name)
 // says which may be changed and carries the version a save must hand
 // back -- only for someone who may change the file, never for an ERP
 // document. The changes are written by explorer_file_save.
+//
+// A .csv or .tsv is drawn as a sheet and only looked at; the choice
+// above it sends the separator and character set to read it with
+// (delimiter, encoding).
 function pg_explorer_handle_office_preview($type, $request, $user)
 {
     $office_file = pg_explorer_file_row((int) (isset($request['id']) ? $request['id'] : 0));
 
-    if (!$office_file || (pg_office_kind($office_file['name']) === '')) {
+    if (!$office_file || (pg_office_preview_kind($office_file['name']) === '')) {
         respond(array('status' => 'error', 'message' => lang('There is no preview for this kind of file.')));
     }
 
@@ -82,7 +86,7 @@ function pg_explorer_handle_office_preview($type, $request, $user)
 
     $office_edit = !empty($request['edit']) && !$office_erp && pg_explorer_file_editable_by($office_file, $user);
 
-    $office = pg_office_read(pg_file_reader_path($office_file['name']), $office_file['name'], $office_edit);
+    $office = pg_office_read(pg_file_reader_path($office_file['name']), $office_file['name'], $office_edit, pg_office_csv_choice($request));
 
     if (!$office['ok']) {
         respond(array('status' => 'error', 'message' => $office['error']));

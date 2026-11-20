@@ -163,7 +163,7 @@ function test_ws_channel_fields_settings_present()
 {
 	$schema = ws_api_channel_schema();
 
-	foreach (array('watch' => 'boolean?', 'claude_allowed' => 'boolean?', 'ai_allowed' => 'boolean?', 'voice_allowed' => 'boolean?', 'summary' => 'string?', 'summary_updated_at' => 'string?') as $field => $type) {
+	foreach (array('watch' => 'boolean?', 'claude_allowed' => 'boolean?', 'ai_allowed' => 'boolean?', 'voice_allowed' => 'boolean?', 'summary' => 'string?', 'summary_updated_at' => 'datetime?') as $field => $type) {
 		pg_assert_same($type, $schema[$field] ?? null, $field . ' is on the channel object');
 	}
 

@@ -13,13 +13,14 @@ description: How controls of the visual editor's Options/Appearance panel get th
 
 ## How do section headers and the screen-size chevrons work from the keyboard?
 - `sect()`, `as()` and the background-image group print `role="button" tabindex="0" aria-expanded`; the three header click handlers (options, multi-selection, text inner panel) keep `aria-expanded` in step. One delegated keydown on `#sd-properties` turns Enter / Space on a `.sd-sect-hdr` into a click.
-- `.sd-sp-toggle` gets `aria-label` "More settings for {var}" (row label), `aria-controls` and `aria-expanded` from the pass; both toggle click handlers update `aria-expanded`.
+- `.sd-sp-toggle` gets `aria-label` "More settings for {var}" (row label), `aria-controls` and `aria-expanded` from the pass; a screen-size badge keeps its own name ("Screen sizes for {var}: MD"); both toggle click handlers update `aria-expanded`.
+- A button group (`.sd-seg-grp`) is named by its row's label in `_sdSegSync()`; its hidden select is named by the pass as before.
 
 ## What about the Styles inspector?
 - Its inputs carry `_sdT('Property')`, `_sdT('Value')`, `_sdT('Selector')` as placeholder and `aria-label`; a declaration checkbox is named `Apply {var}` (`_stylesToggleName()`); the `inline` / `overlay` section tags go through `_sdT()`.
 - Borders inside the dark options panel use `var(--sd-panel-border)`, never `#e5e7eb`.
 
 ## What is not covered?
-- The Overview/HTML tree is mouse-only; the modified label's click-to-reset is mouse-only; the `disk` / `inline` tags of the extract list are English.
+- The Overview/HTML tree is mouse-only; the `disk` / `inline` tags of the extract list are English. A changed row resets from its dot's button, a keyboard button (`designer-options-controls.md`).
 
 Test: `tests/designer_panel_names_test.php`.

@@ -107,14 +107,14 @@ function api_cart_quote_schema() {
 		'state'           => 'string',
 		'contact_id'      => 'integer?',
 		'contact_name'    => 'string?',
-		'valid_until'     => 'string?',
+		'valid_until'     => 'datetime?',
 		'order_id'        => 'integer?',
 		'token_hint'      => 'string',
 		'link'            => 'string?',
 		'lines'           => 'CartQuoteLine[]',
 		'created_by'      => 'integer?',
-		'created_at'      => 'string?',
-		'updated_at'      => 'string?',
+		'created_at'      => 'datetime?',
+		'updated_at'      => 'datetime?',
 		'updated_at_unix' => 'integer'
 	);
 

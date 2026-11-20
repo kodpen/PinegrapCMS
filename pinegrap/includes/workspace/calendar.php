@@ -67,9 +67,9 @@ function ws_calendar_month_label($month)
  * @param string $month         Y-m
  * @param int    $person_id     only this person's work (0: everyone in view)
  * @param int    $department_id only this department's (0: all)
- * @param string|null $agent_channels '' leaves agent channels' tasks out,
- *                    include takes them too, only takes them alone; null
- *                    shows every task
+ * @param string|null $agent_channels '' leaves agent channels' tasks and
+ *                    conversations out, include takes them too, only takes
+ *                    them alone; null shows every one
  * @return array
  */
 function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0, $agent_channels = null)
@@ -321,6 +321,11 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0, $agent
         $readable[$channel['id']] = $channel;
     }
 
+    // An agent channel's conversations stay apart as its tasks do: the
+    // channels opened, the day's talk, the message figure and Most active
+    // channels all read this one list.
+    $readable = ws_calendar_channels_kept($readable, $agent_rule);
+
     $channel_filter = function ($channel) use ($department_id) {
         return ((int) $department_id <= 0) || ((int) $channel['department_id'] === (int) $department_id);
     };
@@ -515,6 +520,29 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0, $agent
         'scope'        => ($scope === true) ? 'all' : 'limited',
         'agent_channels' => ($agent_channels === null) ? 0 : ws_tasks_agent_count(ws_tasks_agent_readable($viewer)),
     );
+}
+
+/**
+ * The readable channels the Conversations layer counts, narrowed by the
+ * agent channel rule of the task layer (tasks.php, ws_tasks_agent_rule()):
+ * left out by default, alone under only, all under include or with no rule.
+ * Pure.
+ *
+ * @param array[]    $readable channel rows keyed by id
+ * @param array|null $rule     ws_tasks_agent_rule(), null keeps every one
+ * @return array[]
+ */
+function ws_calendar_channels_kept($readable, $rule)
+{
+    $out = array();
+
+    foreach ((array) $readable as $id => $channel) {
+        if (ws_tasks_agent_keeps($rule, (int) $id)) {
+            $out[$id] = $channel;
+        }
+    }
+
+    return $out;
 }
 
 /**

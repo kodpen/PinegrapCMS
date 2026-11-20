@@ -25,6 +25,9 @@ warning and the HTML is the same as before:
   did not post (product, quantity, amount, recipient, new recipient name) as
   `''` in `shopping_cart.php` / `express_order.php`: a hand-made request or a
   designed layout without that field gets the same messages, no warning.
+- Custom express order with an empty cart (the SEO job renders it so):
+  `$opt_in_sms` starts `false` (no SMS box) beside `$opt_in`; only the
+  recipients branch sets it (#10097).
 - Product form fields get `titles[<qty>]` and a field-level `title` /
   `title_label` of `''`: the recurring area of the starter layouts
   (`248.php`, `497.php`, `476.php`) reads `$field['title']`, which nothing
@@ -46,8 +49,7 @@ express order has no `billing_information_page_id`), and starts the card
 type/number and each recipient's `$output_shipping` as `''`. Same text.
 
 ## How was it checked?
-Sandbox (`tools/setup_sandbox.sh`), cart, quote cart and express order in
-both layouts, quick add groups with and without recipient/quantity/donation
+Sandbox: cart, quote cart and express order in both layouts, quick add groups with and without recipient/quantity/donation
 products, product-form and recurring items, rejected and filled submits,
 signed in with and without a contact, and a deleted gift card: 942 warning
 lines on the old code, 0 after; HTML equal except ids and cart codes.

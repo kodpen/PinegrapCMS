@@ -123,6 +123,7 @@ $bm_facts = array(
     lang('With')    => (string) $bm_row['staff_name'],
     lang('Date')    => $bm_times['date'],
     lang('Time')    => $bm_times['time'],
+    lang('Time zone') => $bm_times['zone'],
     lang('Place')   => (string) $bm_context['place'],
     lang('Status')  => pg_booking_customer_status_label($bm_status),
     lang('Deposit') => pg_booking_deposit_label(pg_booking_deposit_view($bm_row)),
@@ -186,7 +187,7 @@ if ($bm_engine !== null) {
         $bm_starts = pg_booking_manage_times($bm_row, $bm_engine, $bm_day, $bm_now);
         $bm_content .= '<form method="post" action="' . h($bm_page) . '" class="mb-12">' . $bm_hidden
             . '<input type="hidden" name="action" value="move">'
-            . '<p class="mb-5">' . h(lang('Choose the new time:')) . '</p><div class="d-flex flex-wrap gap-3">';
+            . '<p class="mb-5">' . h(lang('Choose the new time:')) . ' ' . h(str_replace('{zone}', $bm_times['zone'], lang('Times are in {zone}.'))) . '</p><div class="d-flex flex-wrap gap-3">';
 
         foreach ($bm_starts as $bm_start) {
             $bm_content .= '<button type="submit" name="start" value="' . (int) $bm_start . '" class="btn btn-sm btn-outline theme-primary">'

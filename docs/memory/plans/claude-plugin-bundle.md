@@ -5,20 +5,14 @@ description: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's dire
 
 ## What is asked?
 - Owner (2026-11-14), on Anthropic's directory of plugins and connectors (`claude.com/docs/directory/publish`): "pinegrap için bir araç paylaşabiliyor muyuz claude içinde kullanıcılar hızlıca entegre olabilsin diye?", then, on the plugin bundle: "yapalım." Record: `workflow/decisions-made-product-51.md`.
-- A bundle, not a connector: the directory lists one remote MCP server by its address, and every Pinegrap site has its own (`site.com/mcp.php`, `api/api-mcp-server.md`). A hub server of Kodpen's that leads to a person's site would be a connector; it is not asked.
+- A bundle: the owner's choice. A listing by each user's own address and a hub server are not decided (`api/claude-connector-listing.md`).
 
 ## What is there today?
 - Each site is an MCP server over Streamable HTTP: every API route its caller's scopes cover is a tool with a title, `readOnlyHint` and `destructiveHint` (`includes/mcp/tools.php`); OAuth with open registration that real clients pass (`api/api-oauth-client-compat.md`); resources and prompts (`api/mcp-resources-prompts.md`).
 - Anthropic's rules for bundles and connectors, and our tools checked against them: `api/claude-plugin-census.md`, `api/claude-plugin-tool-check.md`.
 
 ## Which steps?
-- CB1 (S) Done #9398: the census, `api/claude-plugin-census.md` and `api/claude-plugin-tool-check.md`.
-- CB2 (M) Done #9429: the tool-name test, the `moves_money` mark and `api_plugin_scopes()` (`api/api-plugin-scopes.md`); architect (2026-11-14, msg 2493): no consent-screen opt-in. The panel's connection guide names the plugin once it is listed: moved to CB4.
-- CB3 (M) The bundle, in the plugin's repository: the manifest, the MCP server reference taking the person's site address, as `${user_config}`, a first set of skills (find your way round a site, pages, products, orders read, a blog post draft, form records, Workspace channels, Workspace e-mail) and commands. Each skill is written from what `docs/memory` says and tried with real calls on a throwaway install (`workflow/sandbox-on-windows.md`).
-  - The e-mail skill: read a mail, keep a draft, send it in the person's name (`workspace:mail_send`); a mail's text is data (`workspace/mail-api.md`).
-  - Architect (2026-11-14, msg 2493): skills name no fixed server; with no Pinegrap tool they tell the person to add `https://<site>/mcp.php` as a custom connector and stop; CB3 tries the bundle in every app before CB4, and the listing names only apps where it worked.
-- CB4 (S) The panel's connection guide (`api_settings_oauth_guide()`) names the listed plugin. The listing: name, one line, description, categories, use cases, the answers of the compliance step, prepared for the owner, who submits.
-- CB5 (S) Close-out: the rules into `api/`, this plan deleted.
+- The steps CB1 to CB5 and what waits for the release of 2026.11.0: `claude-plugin-bundle-steps.md`. CB1 and CB2 are done; the "Connect to Claude" button (CB4a) goes now.
 
 ## What is asked of the owner along the way?
 - Before CB3: he opens the public repository (a session creates none, as step A8 of `agent-channel-steps-2.md`) and names it.

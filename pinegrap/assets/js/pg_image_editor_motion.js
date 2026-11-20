@@ -198,7 +198,21 @@
             return;
         }
 
-        var kinds = (phase === 'loop') ? M.MOTION_LOOP : M.MOTION_IN;
+        body.appendChild(this.motionKinds(l, phase, cur));
+
+        if (cur) {
+            this.motionFields(body, l, phase, cur);
+        }
+
+        this.motionWhole(body);
+    };
+
+    // The tiles of one phase's kinds, None first, the one in use marked: a
+    // pick sets the phase on the selected layers (one undo step) and plays
+    // its preview. The panel and the bar's Motion popover both draw them;
+    // after(), when given, runs after a pick.
+    Editor.prototype.motionKinds = function (l, phase, cur, after) {
+        var self = this, kinds = (phase === 'loop') ? M.MOTION_LOOP : M.MOTION_IN;
         var grid = el('div', { class: 'pgie-tiles pgie-mkinds', role: 'group', 'aria-label': t('motion_' + phase + 'Kinds') });
 
         ['none'].concat(kinds).forEach(function (kind) {
@@ -207,6 +221,11 @@
             var b = X.tile('m_' + kind, t('motion_' + kind), function () {
                 if (kind === 'none') {
                     self.setMotion(phase, null);
+
+                    if (after) {
+                        after(phase);
+                    }
+
                     return;
                 }
 
@@ -223,6 +242,10 @@
 
                 self.setMotion(phase, fresh);
                 self.motionPreview(phase);
+
+                if (after) {
+                    after(phase);
+                }
             });
 
             b.classList.toggle('on', on);
@@ -236,13 +259,163 @@
             grid.appendChild(b);
         });
 
-        body.appendChild(grid);
+        return grid;
+    };
 
-        if (cur) {
-            this.motionFields(body, l, phase, cur);
+    // ---- Motion from the bar over the object ----
+
+    // A popover at the bar's Motion button (opener): In, Loop and Out, each
+    // a row of the panel's own tiles. It stays open after a pick; More
+    // options opens the panel on the phase last picked (a video's on the
+    // clip panel's Motion tab); Escape or a press outside closes it, the
+    // focus going back to Motion. Opens on the bar's side away from the
+    // object, so it never covers the object's middle. refind(), when given,
+    // answers the opener anew after a redraw replaced it (a track row's
+    // button).
+    Editor.prototype.openMotionPop = function (opener, refind) {
+        var self = this, l = this.motionLayers()[0];
+
+        this.closeMotionPop();
+
+        if (!l) {
+            return;
         }
 
-        this.motionWhole(body);
+        var pop = el('div', { class: 'pgie-mpop', role: 'dialog', 'aria-label': t('actMotion') });
+
+        this.motionPop = { el: pop, opener: opener, id: l.id, phase: 'in', refind: refind || null };
+        ['pointerdown', 'pointerup', 'dblclick', 'wheel'].forEach(function (type) {
+            pop.addEventListener(type, function (e) { e.stopPropagation(); });
+        });
+        pop.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                self.closeMotionPop(true);
+            } else if (!/^(Tab|Enter| )$/.test(e.key)) {
+                // The stage's keys (arrows nudge, Delete removes) stay out.
+                e.stopPropagation();
+            }
+        });
+        this.fillMotionPop();
+        this.root.appendChild(pop);
+        this.placeMotionPop();
+
+        this.motionPopOutside = function (e) {
+            if (self.motionPop && !self.motionPop.el.contains(e.target) && (e.target !== self.motionPop.opener) && !(self.motionPop.opener && self.motionPop.opener.contains(e.target))) {
+                self.closeMotionPop();
+            }
+        };
+        document.addEventListener('pointerdown', this.motionPopOutside, true);
+
+        var first = pop.querySelector('button:not(:disabled)');
+
+        if (first) {
+            first.focus();
+        }
+    };
+
+    Editor.prototype.fillMotionPop = function () {
+        var self = this, p = this.motionPop, l = p ? this.layer(p.id) : null, a = (l && l.anim) || {}, at = document.activeElement;
+        var keep = (at && p && p.el.contains(at)) ? Array.prototype.indexOf.call(p.el.querySelectorAll('button'), at) : -1;
+
+        if (!l) {
+            this.closeMotionPop();
+            return;
+        }
+
+        p.el.textContent = '';
+        [['in', 'motionIn'], ['loop', 'motionLoop'], ['out', 'motionOut']].forEach(function (ph) {
+            p.el.appendChild(el('div', { class: 'pgie-mpoprow' }, [
+                el('span', { class: 'pgie-mpopname', text: t(ph[1]) }),
+                self.motionKinds(l, ph[0], a[ph[0]] || null, function (phase) {
+                    p.phase = phase;
+                    self.fillMotionPop();
+                })
+            ]));
+        });
+        p.el.appendChild(el('div', { class: 'pgie-mpopfoot' }, [
+            el('button', { type: 'button', class: 'pgie-btn', text: t('actMoreOptions'), onclick: function () {
+                var phase = p.phase, video = (l.type === 'video');
+
+                self.closeMotionPop();
+                self.motionTab = phase;
+
+                if (video) {
+                    self.clipTab = 'motion';
+                }
+
+                self.render();
+            } })
+        ]));
+
+        if (keep >= 0) {
+            var bs = p.el.querySelectorAll('button');
+
+            if (bs[keep]) {
+                bs[keep].focus();
+            }
+        }
+    };
+
+    // Above the bar when the bar is above the object, below it when the
+    // bar is below; the other side when that one has no room; kept inside
+    // the window. Opened elsewhere (a track row), above its button.
+    Editor.prototype.placeMotionPop = function () {
+        var p = this.motionPop, b = p.opener.getBoundingClientRect(), r = p.el.getBoundingClientRect();
+        var inBar = !!(this.actBar && this.actBar.contains(p.opener)), gap = 8;
+        var below = inBar && this.actWrap.classList.contains('pgie-actbelow');
+        var bar = inBar ? this.actBar.getBoundingClientRect() : b;
+        var up = bar.top - gap - r.height, down = bar.bottom + gap, y;
+
+        if (below) {
+            y = (down + r.height <= window.innerHeight - gap) ? down : up;
+        } else {
+            y = (up >= gap) ? up : down;
+        }
+
+        p.el.style.left = Math.round(Math.max(gap, Math.min(b.left + b.width / 2 - r.width / 2, window.innerWidth - r.width - gap))) + 'px';
+        p.el.style.top = Math.round(Math.max(gap, y)) + 'px';
+    };
+
+    // focus true takes the focus back to the bar's Motion button.
+    Editor.prototype.closeMotionPop = function (focus) {
+        var p = this.motionPop;
+
+        if (!p) {
+            return;
+        }
+
+        this.motionPop = null;
+        document.removeEventListener('pointerdown', this.motionPopOutside, true);
+
+        if (p.el.parentNode) {
+            p.el.parentNode.removeChild(p.el);
+        }
+
+        if (focus && p.opener && p.opener.isConnected) {
+            p.opener.focus();
+        }
+    };
+
+    // Whether the play bar plays: a change's preview (previewEnd set) is
+    // not playing, so the bar and its popover stay for the next pick.
+    Editor.prototype.playsAll = function () {
+        return !!this.playing && (this.previewEnd === null);
+    };
+
+    // Closed when its layer is no longer the one selected, outside Animate,
+    // or while the bar is hidden (a drag, playing, recording).
+    Editor.prototype.renderMotionPop = function () {
+        var p = this.motionPop;
+
+        if (p && p.refind && !p.opener.isConnected) {
+            p.opener = p.refind() || p.opener;
+        }
+
+        if (p && ((this.tool !== 'motion') || (this.sel.length !== 1) || (this.sel[0] !== p.id) || this.drag || this.playsAll() || this.recording || !p.opener.isConnected)) {
+            this.closeMotionPop();
+        }
     };
 
     // Nothing that may move is selected: the layers to pick from, or, with
@@ -916,7 +1089,7 @@
 
         if ((this.time !== null) && !h && this.keyHit) {
             p = this.toDoc(e.clientX, e.clientY);
-            hit = this.keyHit(p);
+            hit = this.keyHit(p, 0, e.pointerType);
 
             if (hit) {
                 if (this.playing) {
@@ -990,6 +1163,7 @@
         this.stageBar = null;
         this.stageBarKey = '';
         this.stageInset = 0;
+        this.motionPop = null;
     });
 
     Editor.panels.motion = Editor.prototype.motionPanel;
@@ -1002,4 +1176,5 @@
     Editor.keys.unshift(Editor.prototype.motionKey);
     Editor.escapes.unshift(Editor.prototype.motionEscape);
     Editor.views.push(Editor.prototype.renderMotion);
+    Editor.views.push(Editor.prototype.renderMotionPop);
 }(window.PgImageEditor.parts));

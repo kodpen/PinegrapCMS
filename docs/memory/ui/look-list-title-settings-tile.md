@@ -21,5 +21,5 @@ module: look_list
 
 ## How does a settings row get its icon tile?
 - `pg_settings_tile($icon, $tone)` printed as the first child of the row's `.form-field` (switch row) or of the cell (label and field row). The settings grid gives it a 34 px column left of the name and description, centred on them, 13 px from the text; on a narrow card it stays left and tops.
-- Tone by the category's module: Commerce and Legal Documents `shop`, Contact `team`, Security and Firewall `system`, Appearance and Languages `content`.
-- Architect (2026-11-15, channel message 4851): a tile only in a card whose rows all carry one; a card mixing rows with and without keeps none, or the labels lose their shared left edge. So 13 rows have it: Private Label, Shipping, Affiliate Program, Live Chat, Mailchimp, Firewall, Unknown Bots, Language Redirect, Legal Documents, Device, the three sign-in providers. Mixed cards wait until all their rows get a tile.
+- Tone by the category's module: Commerce and Legal Documents `shop`, Contact `team`, Security, Firewall and Application API `system`, Appearance and Languages `content`.
+- Architect (2026-11-15, channel message 4851): a tile only in a card whose rows all carry one; a card mixing rows with and without keeps none, or the labels lose their shared left edge. So these rows have it: Private Label, Shipping, Affiliate Program, Live Chat, Mailchimp, Firewall, Unknown Bots, Language Redirect, Legal Documents, Device, the three sign-in providers, and the four Application API switches (S5c). Mixed cards wait until all their rows get a tile.

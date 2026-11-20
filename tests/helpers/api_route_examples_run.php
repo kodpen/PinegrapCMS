@@ -36,6 +36,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/log.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/time.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/router.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/openapi.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
@@ -71,43 +72,6 @@ function api_route_examples_refusal($call)
 	}
 
 	return null;
-}
-
-// One value a client would send for the parameter, read only from its
-// declaration: the smallest accepted number, the first enum value, one item.
-function api_route_examples_value($param)
-{
-	$type = isset($param['type']) ? $param['type'] : 'string';
-
-	switch ($type) {
-		case 'int':
-		case 'money':
-			return isset($param['min']) ? (int) $param['min'] : (isset($param['max']) ? min(1, (int) $param['max']) : 1);
-		case 'decimal':
-			return isset($param['min']) ? $param['min'] : (isset($param['max']) ? min(1, $param['max']) : 1);
-		case 'bool':
-			return true;
-		case 'enum':
-			return isset($param['values'][0]) ? $param['values'][0] : '';
-		case 'datetime':
-			return '2026-11-07';
-		case 'object':
-			return array('key' => 'value');
-		case 'list':
-			$of = isset($param['of']) ? $param['of'] : null;
-
-			if ($of === 'integer') {
-				return array(1);
-			}
-
-			if ($of === 'string') {
-				return array('a');
-			}
-
-			return array(array());
-		default:
-			return 'a';
-	}
 }
 
 $result = array('routes' => 0, 'defaults' => array(), 'enums' => array(), 'requests' => array(), 'harness' => array());
@@ -149,7 +113,7 @@ foreach (array_merge(api_schema(), erp_api_routes(), ws_api_routes(), translate_
 		}
 
 		$where = isset($param['in']) ? $param['in'] : 'query';
-		$value = api_route_examples_value($param);
+		$value = api_openapi_example_value($param);
 
 		if ($where === 'path') {
 			$path_values[$param['name']] = (string) $value;

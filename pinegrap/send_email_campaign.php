@@ -698,9 +698,9 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
     $summary = pg_email_campaign_send_summary($number_of_email_recipients, $number_of_delivered_email_recipients, $number_of_failed_email_recipients, $number_of_waiting_email_recipients, $number_of_suppressed_email_recipients, email_campaign_job_enabled(), $next_attempt_text);
     $problem_line = $summary['all_sent'] ? '' : pg_email_campaign_problem_line($delivery_problem['error'], $delivery_problem['count']);
 
-    // SMTP Settings is where a refused delivery is usually fixed; it opens
-    // for a manager and above.
-    $smtp_link = (($problem_line !== '') && ($user['role'] <= 2)) ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/smtp_settings.php' : '';
+    // Site Settings › E-mail sending is where a refused delivery is usually
+    // fixed; it opens for a manager and above.
+    $smtp_link = (($problem_line !== '') && ($user['role'] <= 2)) ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link('mail_sending', 'pgset-mail-campaign') : '';
 
     // A campaign that was already complete was finished by an earlier run:
     // it is not finished, logged or followed up again.
@@ -908,7 +908,7 @@ function send_email_campaign_json($answer, $status = 200)
 }
 
 // The delivery problem under the finish message: the most frequent stored
-// error and, for a manager, a link to SMTP Settings.
+// error and, for a manager, a link to the E-mail sending settings.
 function send_email_campaign_problem_html($problem_line, $smtp_link)
 {
     $html = '';
@@ -918,7 +918,7 @@ function send_email_campaign_problem_html($problem_line, $smtp_link)
     }
 
     if ($smtp_link !== '') {
-        $html .= '<p class="mb-0"><a href="' . h($smtp_link) . '" target="_blank" rel="noopener">' . lang('SMTP Settings') . '</a></p>';
+        $html .= '<p class="mb-0"><a href="' . h($smtp_link) . '" target="_blank" rel="noopener">' . lang('E-mail sending') . '</a></p>';
     }
 
     return $html;

@@ -422,25 +422,40 @@ function ws_agent_question_wake($viewer, $poll)
 }
 
 /**
+ * The SQL that keeps the polls of these channels (alias p). Pure.
+ *
+ * @param int[] $channel_ids
+ * @return string
+ */
+function ws_agent_question_channels_sql($channel_ids)
+{
+    $ids = array_values(array_unique(array_map('intval', (array) $channel_ids)));
+
+    return $ids ? "p.channel_id IN (" . implode(',', $ids) . ")" : '0 = 1';
+}
+
+/**
  * The answered agent questions of a channel as decision lines for the
  * memory index, newest first.
  *
- * @param array $viewer
- * @param array $channel
- * @param int   $limit
- * @return array lines (body, marked_at), total
+ * @param array      $viewer
+ * @param array      $channel
+ * @param int        $limit
+ * @param int[]|null $channel_ids the channels read instead of $channel alone
+ *                                (an agent channel's brief reads every agent channel)
+ * @return array lines (body, marked_at, channel_id), total
  */
-function ws_agent_question_decisions($viewer, $channel, $limit)
+function ws_agent_question_decisions($viewer, $channel, $limit, $channel_ids = null)
 {
     if (!ws_interact_ready() || !ws_agent_question_ready()) {
         return array('lines' => array(), 'total' => 0);
     }
 
-    $where = "p.channel_id = '" . (int) $channel['id'] . "' AND p.agent_question = 1 AND p.closed_at > 0"
+    $where = ws_agent_question_channels_sql(($channel_ids === null) ? array((int) $channel['id']) : $channel_ids) . " AND p.agent_question = 1 AND p.closed_at > 0"
         . (ws_poll_again_ready() ? ' AND p.withdrawn_at = 0' : '') . " AND m.deleted_at = 0";
     $lines = array();
 
-    foreach ((array) db_items("SELECT p.id, p.closed_at, p.closed_by, m.body FROM ws_polls p
+    foreach ((array) db_items("SELECT p.id, p.channel_id, p.closed_at, p.closed_by, m.body FROM ws_polls p
         INNER JOIN ws_messages m ON m.id = p.message_id
         WHERE " . $where . "
         ORDER BY p.closed_at DESC, p.id DESC
@@ -450,6 +465,7 @@ function ws_agent_question_decisions($viewer, $channel, $limit)
         $lines[] = array(
             'body'      => ws_agent_question_decision_line(ws_plain_text($viewer, (string) $row['body']), ws_agent_question_answer_text($answer), $who),
             'marked_at' => (int) $row['closed_at'],
+            'channel_id' => (int) $row['channel_id'],
         );
     }
 
@@ -464,8 +480,8 @@ function ws_agent_question_decisions($viewer, $channel, $limit)
  * it was answered, so it sorts among the decisions
  * (ws_agent_question_decisions_merge()).
  *
- * @param int $channel_id
- * @param int $limit
+ * @param int|int[] $channel_id one channel, or several (every agent channel)
+ * @param int       $limit
  * @return array[] ws_messages rows
  */
 function ws_agent_question_decision_messages($channel_id, $limit)
@@ -478,7 +494,7 @@ function ws_agent_question_decision_messages($channel_id, $limit)
 
     foreach ((array) db_items("SELECT m.*, p.closed_at AS answered_at FROM ws_polls p
         INNER JOIN ws_messages m ON m.id = p.message_id
-        WHERE p.channel_id = '" . (int) $channel_id . "' AND p.agent_question = 1 AND p.closed_at > 0"
+        WHERE " . ws_agent_question_channels_sql((array) $channel_id) . " AND p.agent_question = 1 AND p.closed_at > 0"
         . (ws_poll_again_ready() ? ' AND p.withdrawn_at = 0' : '') . " AND m.deleted_at = 0
         ORDER BY p.closed_at DESC, p.id DESC
         LIMIT " . max(1, (int) $limit)) as $row) {

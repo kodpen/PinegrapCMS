@@ -9,7 +9,7 @@ description: Plan wholesale, steps WS1 to WS7: the offers' group condition, an a
   - Tests, red first: a member, a non-member and a guest; a break for a group; an offer without the condition judged as before.
   - Features: J1, J2, J10.
 
-- WS2 (M) Shared prices, server and data only.
+- WS2 (M) Shared prices, server and data only. Done in #10103.
   - A migration step adds one column to `erp_accounts`; the draft PR's body carries it for the architect.
   - Existing files: where the ERP reads an account's prices (`erp_account_price_terms()` in `includes/erp/price_lists.php`) and its save's check. `includes/fn/ecommerce.php` only if `pg_erp_member_prices()` itself must follow the pointer, and then last in that file's order (`plans/more-features-shared-files.md`).
   - Tests: an account buying at another's prices and discount; a second hop refused at the save; a pointed-at account's delete refused; the recorded rule against a campaign; retail in the feed, the structured data and the kept page copy; an account that uses nobody's prices priced as today.
@@ -19,7 +19,7 @@ description: Plan wholesale, steps WS1 to WS7: the offers' group condition, an a
 
 - WS4 Done (#9987): the minimum order (`commerce/minimum-order.md`): one settings text group → amount, the highest of a customer's groups, the cart's warning (designer widget and classic cart) and the refusal at submit from one function, the field on the contact group edit screen. Look: architect, agent channel message 6895. Features: J8, J9.
 
-- WS5 (S) after WS1: quantity prices on a product page. Existing files: `includes/fn/widgets_catalog.php` (the part), the designer's token list in `assets/js/style_designer.src.js` (held by other open PRs). Pictures to the owner. Features: J3.
+- WS5 (S) after WS1: quantity prices on a product page. Existing files: `includes/fn/widgets_catalog.php` (the part), the designer's token list in `assets/js/style_designer.src.js` (held by other open PRs). Pictures to the owner. Features: J3.  Done: #10165.
 
 - WS6 (S) after WS3: the API. The API schema's row for the account's pointer and its resource file; `php tools/check_api_schema.php`. Features: J11.
 

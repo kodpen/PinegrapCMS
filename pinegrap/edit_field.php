@@ -188,6 +188,11 @@ if ($page_id != 0) {
     $pg_breadcrumb_parent = array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php');
     $output_form_designer_content_heading = lang('Edit Product Form Field');
     $output_form_designer_content_subheading = lang('View or update this product form field.');
+
+// A field left without its form (no page, product or variant set template)
+// has no access check to pass and nothing to go back to.
+} else {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
 include_once('liveform.class.php');
@@ -588,7 +593,7 @@ if (!$_POST) {
         if (
             ($form_type == 'custom')
             && ($old_rss_field != 'title')
-            && ($_POST['rss_field'] == 'title')
+            && (($_POST['rss_field'] ?? '') == 'title')
             && (check_if_pretty_urls_are_enabled($page_id) == true)
         ) {
             update_multiple_submitted_form_address_names($page_id);

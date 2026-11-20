@@ -105,6 +105,9 @@ function designer_audit_rules_test_run($script, $page_level = false)
 				. 'function _cfControlName() { return ""; }'
 			: 'function _pageLevelIssues() { return []; }')
 		. 'function _sdCanvasAuditIssues() { return []; }'
+		// The cases are web pages; the e-mail rule set has its own test
+		// (email_design_check_rules_test.php).
+		. 'function _sdActivePageIsEmail() { return false; }'
 		// Every case is one tree under a root; the result is the names of
 		// the nodes the given rule flags.
 		. 'function flagged(rule, kids) {'

@@ -26,13 +26,28 @@ function test_workspace_mail_read_purpose()
 	$purpose = include(PG_FUNCTIONS_DIR . '/includes/connect/purposes/mail_read.php');
 
 	pg_assert_same('site', $purpose['owner']);
-	pg_assert_same(array('microsoft'), array_keys($purpose['scopes']), 'Microsoft only (owner answer 2)');
+	pg_assert_same(array('microsoft', 'google'), array_keys($purpose['scopes']), 'Microsoft (owner answer 2) and Google (channel poll 155)');
 	pg_assert_true(in_array('https://outlook.office.com/IMAP.AccessAsUser.All', $purpose['scopes']['microsoft'], true), 'reads over IMAP');
 	pg_assert_true(in_array('https://graph.microsoft.com/Mail.Send', $purpose['scopes']['microsoft'], true), 'answers as the site mail does');
 	pg_assert_same(array('https://outlook.office.com/IMAP.AccessAsUser.All'), $purpose['imap_scopes']['microsoft'], 'one resource per token');
 
 	$mail = include(PG_FUNCTIONS_DIR . '/includes/connect/purposes/mail.php');
 	pg_assert_same($mail['send']['microsoft']['scopes'], array_values(array_intersect($purpose['scopes']['microsoft'], $mail['send']['microsoft']['scopes'])), 'the sending call\'s scopes are consented');
+
+	// Gmail's IMAP takes only the full mail scope, which also covers the
+	// Gmail API's send call answers go through.
+	pg_assert_same(array('https://mail.google.com/'), $purpose['scopes']['google']);
+	pg_assert_same(array('https://mail.google.com/'), $purpose['imap_scopes']['google']);
+	pg_assert_same(array(), $mail['send']['google']['scopes'], 'Google sends with the token it has');
+	pg_assert_contains('gmail.googleapis.com', $mail['send']['google']['url']);
+}
+
+function test_workspace_mail_google_registry_covers_reading()
+{
+	$rows = pg_connections_registry();
+
+	pg_assert_same(array('mail', 'mail_read'), $rows['gmail']['covers']['purpose'], 'Gmail serves sending and reading');
+	pg_assert_same('google', $rows['gmail']['state']['provider']);
 }
 
 function test_workspace_mail_reply_route_through_a_connection()
@@ -100,8 +115,8 @@ function test_workspace_mail_box_form_connection()
 
 function test_workspace_mail_connect_button()
 {
-	pg_assert_contains('name="purpose" value="mail_read"', ws_mail_connect_form(array('role' => 2)), 'a manager connects');
-	pg_assert_contains('value="settings_mailboxes.php#pgset-ws-mail"', ws_mail_connect_form(array('role' => 0)), 'back to the card');
+	pg_assert_contains('name="purpose" value="mail_read"', ws_mail_connect_form(array('role' => 2), null, true), 'a manager connects');
+	pg_assert_contains('value="settings_mailboxes.php#pgset-ws-mail"', ws_mail_connect_form(array('role' => 0), null, true), 'back to the card');
 	pg_assert_true(strpos(ws_mail_connect_form(array('role' => 3)), 'connect.php') === false, 'a member is told who can');
 }
 

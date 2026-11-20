@@ -89,16 +89,16 @@ function api_booking_schema() {
 		'email'        => 'string?',
 		'phone'        => 'string?',
 		'notes'        => 'string?',
-		'start_at'     => 'string?',
-		'end_at'       => 'string?',
+		'start_at'     => 'datetime?',
+		'end_at'       => 'datetime?',
 		'status'       => 'string',
 		'source'       => 'string',
-		'hold_until'   => 'string?',
+		'hold_until'   => 'datetime?',
 		'order_id'     => 'integer?',
 		'order_number' => 'string?',
-		'paid_at'      => 'string?',
-		'created_at'   => 'string?',
-		'updated_at'   => 'string?',
+		'paid_at'      => 'datetime?',
+		'created_at'   => 'datetime?',
+		'updated_at'   => 'datetime?',
 	);
 
 }
@@ -109,8 +109,8 @@ function api_booking_slot_schema() {
 	return array(
 		'staff_id'   => 'integer',
 		'staff_name' => 'string',
-		'start_at'   => 'string',
-		'end_at'     => 'string',
+		'start_at'   => 'datetime',
+		'end_at'     => 'datetime',
 	);
 
 }

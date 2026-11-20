@@ -17,7 +17,7 @@ module: image_editor
 
 ## How is a key set?
 - Part `keyframes` (`pg_image_editor_keyframes.js`, bundled after `tracks`, labels `pg_image_editor_strings_keyframes()`).
-- Stage: with the playhead standing away from 0 (scrubbed, not playing) a press on a layer where it shows at that moment (`keyHit()`: its motion offset taken off the press) drags its place there: one change on release (`'drag'` key, one undo step). The rest place never moves.
+- Stage: with the playhead standing away from 0 (scrubbed, not playing) a press on a layer where it shows at that moment (`keyHit()`: the press taken back through the moment's move, scale and turn, `M.restPoint()`; a finger reaches a selected layer 22 px outside its box and any other to its edge, a mouse 4 px inside; #10500) drags its place there: one change on release (`'drag'` key, one undo step). The rest place never moves.
   - Shift, the turning handle, a box handle not well inside the layer, or the playhead at 0 or at rest: `motionDown()`: a click on a layer where it shows selects it and keeps the playhead, a drag or a handle edits at rest (`image-editor-select.md`, #9965).
   - On touch a box handle's 44 px target covers a small layer's middle: a press 10 px inside the box sets a key.
 - Path tab (the motion part's `Editor.motionPanes`), one layer selected: the keys as chips (a press seeks), at the playhead either Add a keyframe or the key's fields (across, down, size %, turn °, opacity %), its ease (not on the first key), Remove; Remove all keyframes.

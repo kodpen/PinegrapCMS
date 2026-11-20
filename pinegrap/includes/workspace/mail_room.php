@@ -503,9 +503,9 @@ function ws_mail_room_fields_html($prefix, $box, $options, $ready, $people, $dep
     $room = $ready && ($rooms_only || (ws_mail_box_kept_in($box) === 'mailbox'));
     $channel = '
                 <div class="md:col-6' . ($room ? ' d-none' : '') . '" data-ws-mail-when="kept_in=channel">
-                    <label class="form-label" for="' . $prefix . 'channel">' . h(lang('Channel')) . '</label>
-                    <select class="form-control form-control-sm" name="channel_id" id="' . $prefix . 'channel"' . ($room ? '' : ' required') . '>' . $options . '</select>
-                    <div class="form-text">' . h(lang('Each new conversation becomes a card here; its answers go under the card.')) . '</div>
+                    <label class="pg-field-label" for="' . $prefix . 'channel">' . h(lang('Channel')) . '</label>
+                    <select class="pg-input" name="channel_id" id="' . $prefix . 'channel"' . ($room ? '' : ' required') . '>' . $options . '</select>
+                    <div class="pg-field-help">' . h(lang('Each new conversation becomes a card here; its answers go under the card.')) . '</div>
                 </div>';
 
     if (!$ready) {
@@ -516,15 +516,15 @@ function ws_mail_room_fields_html($prefix, $box, $options, $ready, $people, $dep
     $html = $rooms_only ? '
                 <div class="md:col-12">
                     <input type="hidden" name="kept_in" value="mailbox">
-                    <div class="form-text">' . h(lang('With the Workspace off a mailbox keeps its mail itself: the people chosen here read and answer it in Incoming e-mail.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('With the Workspace off a mailbox keeps its mail itself: the people chosen here read and answer it in Incoming e-mail.')) . '</div>
                 </div>' : '
                 <div class="md:col-6">
-                    <label class="form-label" for="' . $prefix . 'kept_in">' . h(lang('Kept in')) . '</label>
-                    <select class="form-control form-control-sm" name="kept_in" id="' . $prefix . 'kept_in">
+                    <label class="pg-field-label" for="' . $prefix . 'kept_in">' . h(lang('Kept in')) . '</label>
+                    <select class="pg-input" name="kept_in" id="' . $prefix . 'kept_in">
                         <option value="channel"' . ($room ? '' : ' selected') . '>' . h(lang('A channel')) . '</option>
                         <option value="mailbox"' . ($room ? ' selected' : '') . '>' . h(lang('The mailbox itself')) . '</option>
                     </select>
-                    <div class="form-text">' . h(lang('Kept in the mailbox itself, its mail is in no channel: the people chosen here read and answer it on the E-mails screen.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('Kept in the mailbox itself, its mail is in no channel: the people chosen here read and answer it on the E-mails screen.')) . '</div>
                 </div>' . $channel;
 
     foreach (array('room_people' => array(lang('People'), $people), 'room_departments' => array(lang('Departments'), $departments)) as $name => $list) {
@@ -533,8 +533,8 @@ function ws_mail_room_fields_html($prefix, $box, $options, $ready, $people, $dep
 
         foreach ((array) $list[1] as $id => $label) {
             $rows .= '
-                        <div class="form-field mb-0">
-                            <input class="check" type="checkbox" name="' . $name . '[]" value="' . (int) $id . '" id="' . $prefix . $name . '_' . (int) $id . '"' . (in_array((int) $id, $chosen, true) ? ' checked' : '') . '>
+                        <div class="d-flex align-items-center gap-3">
+                            <input class="pg-checkbox" type="checkbox" name="' . $name . '[]" value="' . (int) $id . '" id="' . $prefix . $name . '_' . (int) $id . '"' . (in_array((int) $id, $chosen, true) ? ' checked' : '') . '>
                             <label for="' . $prefix . $name . '_' . (int) $id . '">' . h($label) . '</label>
                         </div>';
         }
@@ -542,8 +542,8 @@ function ws_mail_room_fields_html($prefix, $box, $options, $ready, $people, $dep
         $html .= '
                 <div class="md:col-6' . ($room ? '' : ' d-none') . '" data-ws-mail-when="kept_in=mailbox">
                     <fieldset>
-                        <legend class="form-label">' . h($list[0]) . '</legend>
-                        <div class="ws-dept-people">' . (($rows !== '') ? $rows : '<div class="form-text">' . h(lang('None yet')) . '</div>') . '</div>
+                        <legend class="pg-field-label">' . h($list[0]) . '</legend>
+                        <div class="ws-dept-people">' . (($rows !== '') ? $rows : '<div class="pg-field-help">' . h(lang('None yet')) . '</div>') . '</div>
                     </fieldset>
                 </div>';
     }

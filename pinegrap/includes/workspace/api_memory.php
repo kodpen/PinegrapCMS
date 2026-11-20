@@ -6,7 +6,10 @@
  * and MCP (includes/workspace/channel_memory.php): list a channel's entries
  * (the index: titles and tags), read one, write, change and delete them,
  * and mark a message as a decision or a note. Whoever may post in the
- * channel writes its memory and marks its messages; an application key or an
+ * channel writes its memory and marks its messages; a general record
+ * (channel_id 0, the memory the agent channels share) is read, changed and
+ * deleted by whoever may post in an agent channel, who also lists it, writes
+ * into it and moves an agent channel's record into it. An application key or an
  * OAuth connection writes as the application (an agent), a team devices
  * session as the person.
  *
@@ -35,6 +38,7 @@ function ws_memory_api_routes()
     $who = ' An application key or an OAuth connection writes as the application, a team devices session (POST /auth/login) as the person.';
     $errors = ' A refused value answers 422 validation_failed naming the field; a channel the owner may not post in 403 forbidden; the database not updated yet 503 service_unavailable.';
     $fields = array(
+        array('name' => 'project', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MEMORY_PROJECT_MAX, 'description' => 'The project the entry is filed under, its heading in the Memory tab; empty for none.'),
         array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MEMORY_TITLE_MAX, 'description' => 'What the entry is about, in a few words: agents choose what to read by it.'),
         array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MEMORY_TEXT_MAX, 'description' => 'What is to be remembered, plain text.'),
         array('name' => 'tags', 'in' => 'body', 'type' => 'string', 'max_length' => 400, 'description' => 'Up to 10 one-word tags, separated by commas or spaces; stored in lower case without #.'),
@@ -77,6 +81,51 @@ function ws_memory_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.memory.general.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/memory/general',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_memory_general_list',
+            'returns'     => array('list' => 'WorkspaceMemoryIndexEntry'),
+            'summary'     => 'The index of the general memory',
+            'description' => 'The general memory the agent channels share (channel_id 0), for whoever may post in an agent channel: pinned first and then the most recently changed, without their texts: read the ones needed with GET /workspace/memory/{id}. The brief of an agent asked in an agent channel carries the same index before the channel\'s own. Expired entries are left out unless expired is true; tag keeps the entries with that tag, project those filed under that project. 403 forbidden for an owner who may post in no agent channel; 503 service_unavailable before the database update.',
+            'params'      => array(
+                array('name' => 'expired', 'in' => 'query', 'type' => 'bool', 'description' => 'The expired entries too.'),
+                array('name' => 'tag', 'in' => 'query', 'type' => 'string', 'max_length' => WS_MEMORY_TAG_MAX),
+                array('name' => 'project', 'in' => 'query', 'type' => 'string', 'max_length' => WS_MEMORY_PROJECT_MAX, 'description' => 'Only the entries filed under this project, as written (case kept).'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.memory.general.create',
+            'method'      => 'POST',
+            'path'        => '/workspace/memory/general',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_memory_general_create',
+            'dry_run'     => true,
+            'status'      => 201,
+            'returns'     => 'WorkspaceMemoryEntry',
+            'summary'     => 'Write an entry into the general memory',
+            'description' => 'Adds an entry to the general memory the agent channels share, for an owner who may post in an agent channel: what every agent channel should keep knowing, filed under a project. Something only one channel needs goes into that channel\'s memory (POST /workspace/channels/{id}/memory). Keep one topic per entry and a title that says it.' . $who . $errors,
+            'params'      => array_map(function ($field) {
+                return ($field['name'] === 'title') ? $field + array('required' => true) : $field;
+            }, $fields),
+        ),
+
+        array(
+            'id'          => 'workspace.memory.move_general',
+            'method'      => 'POST',
+            'path'        => '/workspace/memory/{id}/general',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_memory_move_general',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMemoryEntry',
+            'summary'     => 'Move a channel\'s memory entry to the general memory',
+            'description' => 'Moves an entry of an agent channel\'s memory into the general memory the agent channels share, with its id, project, tags and text: every agent channel\'s brief then lists it. The owner must be able to post in the channel and in an agent channel. 422 validation_failed for an entry already general or of a channel that is no agent channel; 403 forbidden otherwise; 503 service_unavailable before the database update.' . $who,
+            'params'      => array($id),
+        ),
+
+        array(
             'id'          => 'workspace.memory.get',
             'method'      => 'GET',
             'path'        => '/workspace/memory/{id}',
@@ -84,7 +133,7 @@ function ws_memory_api_routes()
             'handler'     => 'ws_api_memory_get',
             'returns'     => 'WorkspaceMemoryEntry',
             'summary'     => 'Read a memory entry',
-            'description' => 'One entry of a channel\'s memory with its text, in a channel the owner of the application may read; an id from the brief\'s index (#12 is 12) or from GET /workspace/channels/{id}/memory.',
+            'description' => 'One entry of a channel\'s memory with its text, in a channel the owner of the application may read; an id from the brief\'s index (#12 is 12) or from GET /workspace/channels/{id}/memory. A general entry (general true, channel_id 0) is read by whoever may post in an agent channel.',
             'params'      => array($id),
         ),
 
@@ -114,7 +163,7 @@ function ws_memory_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceMemoryEntry',
             'summary'      => 'Change a memory entry',
-            'description'  => 'Changes an entry of a channel the owner of the application may post in; fields left out keep their value. Correct a stale entry rather than writing a second one beside it. PATCH is accepted beside POST.' . $who . $errors,
+            'description'  => 'Changes an entry of a channel the owner of the application may post in, or a general entry when the owner may post in an agent channel; fields left out keep their value. Correct a stale entry rather than writing a second one beside it. PATCH is accepted beside POST.' . $who . $errors,
             'params'       => array_merge(array($id), $fields),
         ),
 
@@ -127,7 +176,7 @@ function ws_memory_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceMemoryDeletion',
             'summary'     => 'Delete a memory entry',
-            'description' => 'Deletes an entry of a channel the owner of the application may post in. It cannot be undone. POST /workspace/memory/{id}/delete does the same for servers that refuse DELETE.',
+            'description' => 'Deletes an entry of a channel the owner of the application may post in, or a general entry when the owner may post in an agent channel. It cannot be undone. POST /workspace/memory/{id}/delete does the same for servers that refuse DELETE.',
             'params'      => array($id),
         ),
 
@@ -151,15 +200,17 @@ function ws_api_memory_index_entry_schema()
     return array(
         'id'         => 'integer',
         'channel_id' => 'integer',
+        'general'    => 'boolean',
+        'project'    => 'string',
         'title'      => 'string',
         'tags'       => array('string'),
         'pinned'     => 'boolean',
-        'expires_at' => 'string?',
+        'expires_at' => 'datetime?',
         'expired'    => 'boolean',
         'author'     => 'WorkspaceMemoryWriter',
         'updated_by' => 'WorkspaceMemoryWriter',
-        'created_at' => 'string?',
-        'updated_at' => 'string?',
+        'created_at' => 'datetime?',
+        'updated_at' => 'datetime?',
     );
 }
 
@@ -221,13 +272,22 @@ function ws_api_memory_ready_or_503()
  *
  * @param array $viewer
  * @param int   $id
- * @return array row, channel
+ * @return array row, channel (ws_memory_general_channel() for a general entry)
  */
 function ws_api_memory_or_404($viewer, $id)
 {
     ws_api_memory_ready_or_503();
 
     $row = ws_memory_row($id);
+
+    if ($row && ws_memory_is_general($row)) {
+        if (!ws_memory_general_can($viewer)) {
+            api_fail_not_found(lang('Memory entry'));
+        }
+
+        return array('row' => $row, 'channel' => ws_memory_general_channel());
+    }
+
     $channel = $row ? ws_channel($row['channel_id']) : null;
 
     if (!$row || !$channel || !ws_can_read_channel($viewer, $channel)) {
@@ -247,7 +307,7 @@ function ws_api_memory_input($params)
 {
     $input = array();
 
-    foreach (array('title', 'text', 'tags', 'pinned', 'expires_at') as $key) {
+    foreach (array('project', 'title', 'text', 'tags', 'pinned', 'expires_at') as $key) {
         if (array_key_exists($key, $params)) {
             $input[$key] = $params[$key];
         }
@@ -302,6 +362,92 @@ function ws_api_memory_list($params)
     api_ok_list($out, count($out));
 }
 
+/**
+ * The general memory for this owner, or the refusal: 503 before the update,
+ * 403 for an owner who may post in no agent channel.
+ *
+ * @param array $viewer
+ * @return array ws_memory_general_channel()
+ */
+function ws_api_memory_general_or_403($viewer)
+{
+    ws_api_memory_ready_or_503();
+
+    if (!ws_memory_project_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    if (!ws_memory_general_can($viewer)) {
+        api_fail(403, 'forbidden', lang('The general memory is kept by whoever may post in an agent channel.'));
+    }
+
+    return ws_memory_general_channel();
+}
+
+function ws_api_memory_general_list($params)
+{
+    $viewer = ws_api_viewer();
+    ws_api_memory_general_or_403($viewer);
+    $tag = mb_strtolower(ltrim(trim((string) ($params['tag'] ?? '')), '#'));
+    $project = ws_memory_project($params['project'] ?? '');
+    $out = array();
+
+    foreach (ws_memory_rows(0, !empty($params['expired'])) as $row) {
+        if (($tag !== '') && !in_array($tag, ws_memory_tags((string) $row['tags']), true)) {
+            continue;
+        }
+
+        if (($project !== '') && (ws_memory_project($row['project'] ?? '') !== $project)) {
+            continue;
+        }
+
+        $out[] = ws_api_memory_present($row, false);
+    }
+
+    api_ok_list($out, count($out));
+}
+
+function ws_api_memory_general_create($params)
+{
+    $viewer = ws_api_viewer();
+    $general = ws_api_memory_general_or_403($viewer);
+    $values = ws_api_memory_checked($viewer, $general, $params);
+    $writer = ws_api_memory_writer($viewer);
+
+    api_dry_run_stop('created', 'workspace_memory_entry', array('channel_id' => 0) + $values);
+
+    $id = ws_memory_save(0, $values, $writer['kind'], $writer['id']);
+
+    api_ok(ws_api_memory_present(ws_memory_row($id)), 201);
+}
+
+function ws_api_memory_move_general($params)
+{
+    $viewer = ws_api_viewer();
+    $found = ws_api_memory_or_404($viewer, $params['id']);
+    $check = ws_memory_move_check($viewer, $found['row']);
+
+    if (!$check['ok']) {
+        if ($check['forbidden']) {
+            api_fail(403, 'forbidden', $check['error']);
+        }
+
+        if ($check['unavailable']) {
+            api_fail(503, 'service_unavailable', $check['error']);
+        }
+
+        api_fail_validation($check['error'], 'id');
+    }
+
+    $writer = ws_api_memory_writer($viewer);
+
+    api_dry_run_stop('moved', 'workspace_memory_entry', array('id' => (int) $found['row']['id'], 'channel_id' => (int) $found['row']['channel_id'], 'general' => true));
+
+    ws_memory_move_general($found['row'], $writer['kind'], $writer['id']);
+
+    api_ok(ws_api_memory_present(ws_memory_row($found['row']['id'])));
+}
+
 function ws_api_memory_get($params)
 {
     $viewer = ws_api_viewer();
@@ -344,7 +490,7 @@ function ws_api_memory_delete($params)
     $viewer = ws_api_viewer();
     $found = ws_api_memory_or_404($viewer, $params['id']);
 
-    if (!ws_can_post_channel($viewer, $found['channel'])) {
+    if (!ws_memory_can_write($viewer, $found['channel'])) {
         api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
     }
 

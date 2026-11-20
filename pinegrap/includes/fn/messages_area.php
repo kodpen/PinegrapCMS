@@ -231,7 +231,7 @@ function pg_messages_tab_strip($active, $keys, $prefix = '')
         return '';
     }
 
-    return '<nav class="pg-messages-tabs" aria-label="' . h(lang('Communication')) . '"><div class="pg-seg">' . $items . '</div></nav>';
+    return '<nav class="pg-area-tabs pg-messages-tabs" aria-label="' . h(lang('Communication')) . '"><div class="pg-seg">' . $items . '</div></nav>';
 }
 
 /**

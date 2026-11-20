@@ -846,7 +846,7 @@ function get_email_campaign_profile_options($exclude_ids = array(), $keep_id = 0
  *                       subscription_confirm_url (subscription payment failed)
  * @return string
  */
-function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url', 'booking_manage_url', 'credit_account_url'))
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url', 'booking_manage_url', 'booking_meeting_url', 'credit_account_url'))
 {
     $body = (string) $body;
     $names = array();

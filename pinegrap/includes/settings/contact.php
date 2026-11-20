@@ -2,8 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Communication cards: e-mail campaigns, live chat,
- * MailChimp, SMS, WhatsApp and İYS.
+ * Site Settings - the Communication cards: live chat, SMS, WhatsApp and
+ * İYS. The campaign texts and MailChimp are E-mail sending's
+ * (includes/settings/mail_sending.php).
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -23,28 +24,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
-
-// ── Campaigns ──
-$pg_settings_cards[] = '
-                        <div id="pgset-campaigns" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Campaigns') . '
-                                </div>
-                                <div class="card-body">
-                                   <div class="row gy-5">
-                                        <div class="pg-f-md">
-                                            <label for="opt_in_label" class="form-label">' . lang('Opt-In Label') . '</label>
-                                            <input type="text" name="opt_in_label" id="opt_in_label" class="form-control" value="' . h($opt_in_label) . '" maxlength="255"/>
-                                        </div>
-                                        <div class="col-12">
-                                            <label for="plain_text_email_campaign_footer" class="form-label">' . lang('Plain Text Footer') . '</label>
-                                            <textarea name="plain_text_email_campaign_footer" id="plain_text_email_campaign_footer" class="form-control">' . h($plain_text_email_campaign_footer) . '</textarea>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>';
 
 // ── Chat ──
 $pg_settings_cards[] = '
@@ -149,69 +128,6 @@ $pg_settings_cards[] = '
                                             </div>
                                         </div>
                                    </div>
-                                </div>
-                            </div>
-                        </div>';
-
-// ── MailChimp ──
-$pg_settings_cards[] = '
-                        <div id="pgset-mailchimp" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    <span lang="en">' . lang('MailChimp') . '</span>
-                                </div>
-                                <div class="card-body">
-                                   <div class="row gy-5">
-                                        <div class="col-12">
-                                            <div class="form-field">' . pg_settings_tile('envelope-paper', 'team') . '
-                                                <div class="switch"><input type="checkbox" name="mailchimp" id="mailchimp" value="1"' . $mailchimp_checked . ' class="collapse-switcher" data-bs-target="#mailchimp_row"/></div>
-                                                <label class="" for="mailchimp">' . lang('MailChimp Sync') . '</label><div class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</div>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0" id="mailchimp_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">
-                                                        <div class="pg-f-lg">
-                                                            <label for="mailchimp_key" class="form-label">' . lang('API Key') . '</label>
-                                                            <input type="text" name="mailchimp_key" id="mailchimp_key" class="form-control" value="" maxlength="100" autocomplete="off" spellcheck="false" placeholder="' . ($mailchimp_key_stored ? h(lang('Leave blank to keep the stored key')) : '') . '"/>' . ($mailchimp_key_stored ? '
-                                                            <div class="form-text">' . lang('A secret is saved (never shown here). Type a new value only to replace it.') . '</div>
-                                                            <div class="form-field mt-2">
-                                                                <input value="1" class="check" type="checkbox" id="mailchimp_key_clear" name="mailchimp_key_clear"/>
-                                                                <label class="" for="mailchimp_key_clear">' . lang('Remove the stored key') . '</label>
-                                                            </div>' : '') . '
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label for="mailchimp_list_id" class="form-label">' . lang('List ID') . '</label>
-                                                            <input type="text" name="mailchimp_list_id" id="mailchimp_list_id" class="form-control" value="' . h($mailchimp_list_id) . '" maxlength="100"/>
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label for="mailchimp_store_id" class="form-label">' . lang('Store ID') . '</label>
-                                                            <input type="text" name="mailchimp_store_id" id="mailchimp_store_id" class="form-control" value="' . h($mailchimp_store_id) . '" maxlength="100"/>
-                                                        </div>
-                                                        <div class="pg-f-xs">
-                                                            <label for="mailchimp_sync_days" class="form-label">' . lang('Historical Sync') . '</label>
-                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('days in the past') . '</span>
-                                                                <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-ghost text-end" value="' . h($mailchimp_sync_days ? $mailchimp_sync_days : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
-                                                            </label>
-                                                            <div class="form-text">' . lang('Set how far in the past to sync orders. Leave blank to sync all historical orders.') . '</div>
-                                                        </div>
-                                                        <div class="pg-f-xs">
-                                                            <label for="mailchimp_sync_limit" class="form-label">' . lang('Limit Sync') . '</label>
-                                                            <input type="text" name="mailchimp_sync_limit" id="mailchimp_sync_limit" class="form-control text-end" value="' . h($mailchimp_sync_limit ? $mailchimp_sync_limit : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
-                                                            <div class="form-text">' . lang('max number of orders to sync each time cron job runs') . '</div>
-                                                        </div>
-                                                        <div class="col-12">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input type="checkbox" name="mailchimp_automation" id="mailchimp_automation" value="1"' . $mailchimp_automation_checked . ' class=""/></div>
-                                                                <label class="" for="mailchimp_automation">' . lang('Automation') . '</label><div class="form-text fg-danger">' . lang('only enable after all historical orders have been synced, to start sending MailChimp automation campaigns') . '</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>';

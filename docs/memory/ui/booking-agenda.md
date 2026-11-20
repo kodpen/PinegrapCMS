@@ -14,7 +14,7 @@ module: booking_agenda
 - `pg_booking_agenda_scope($role, $staff_id)`: roles 0-2 every staff member (null), a role-3 user with an enabled `booking_staff` row only their own (`staff_id`), anyone else nothing (false: 403). The screens, the list action and the search all go through `pg_booking_agenda_user_scope()`; `edit_booking.php` reads the row with `pg_booking_agenda_scope_sql()` (another's is "not found").
 
 ## How is a staff-made booking written?
-- A GET step chooses staff, service (only those the staff member gives) and the day; `pg_booking_agenda_free_slots()` runs `pg_booking_slots()` over the staff member's hours, other bookings and Workspace busy times (`pg_booking_agenda_ws_busy()`: own, department, company `ws_events`; all-day +1 s). Staff are not held to the visitors' lead time or horizon; policy is only the zone (step = service length).
+- A GET step chooses staff, service (only those the staff member gives) and the day; `pg_booking_agenda_free_slots()` runs `pg_booking_slots()` over the staff member's hours, other bookings and Workspace busy times (`pg_booking_agenda_ws_busy()`: own, department, company `ws_events`; all-day +1 s; a skipped holiday day none, #10399). Staff are not held to the visitors' lead time or horizon; policy is only the zone (step = service length).
 - The POST checks `pg_booking_agenda_check()` (staff gives the service, a time, a name, a valid e-mail or a phone), that the start is still offered, then `pg_booking_confirm()` with no id (source `panel`, status confirmed or requested): `'taken'` is "This time has just been taken".
 - A choice change reloads the page; the typed details wait in sessionStorage `pg_booking_draft` (read once). No reschedule here.
 

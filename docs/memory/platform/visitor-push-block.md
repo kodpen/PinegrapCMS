@@ -1,0 +1,34 @@
+---
+name: visitor-push-block
+description: Visitor notifications on the site (VP3, #10288): the Features switch, the "Notify me" block, its script pg_site_push.js, the worker site_push_sw.php, where the secret is kept for other forms
+module: site_push_block
+---
+
+## What turns it on?
+- Site Settings, Features, card "Visitor notifications" (`pgset-site-push`), shown once the 11.0.227 step has run; through the switch's one saver and reader (`visitor-push-rules.md`). Off on every site.
+
+## How does the block reach a page?
+- Palette, Forms & Access, "Newsletter: Notify Me" (`newsletter-notify`, `style_designer_blocks_push.js`). A section marked `data-pg-push` and `hidden`, holding `data-pg-push-ask` (button `data-pg-push-on`), `data-pg-push-done` (button `data-pg-push-stop`), `data-pg-push-blocked` and `data-pg-push-failed`, the last three `hidden`.
+- `get_page_content.php` loads `includes/fn/site_push_block.php` only for a page holding `data-pg-push` (not in an e-mail); `pg_site_push_block_inject()` adds `window.pgSitePushConfig` (door, worker, scope = the site's path, public VAPID key) and `assets/js/pg_site_push.js` before the last `</body>`, once, and only while `pg_site_push_enabled()` and a key exist. Off, it draws nothing.
+- The Preview's `_SD_PAGE_SCRIPTS` row uses `pg_site_push_block_pattern()`'s expression (`tests/designer_page_scripts_test.php`). The Preview shows nothing.
+- The canvas (`IFRAME_CSS` rule) and the palette sketch draw the root; other states stay hidden.
+
+## What does the script do?
+- Shows the root only with a secure page, `serviceWorker`, `PushManager`, `Notification`, IndexedDB and a key (an iPhone's Safari tab has none: App mode).
+- States (`data-pg-push-state`): off (ask), on (permission granted, a browser subscription and a stored secret), blocked (permission denied: the hint), none. A failed try shows the failed line beside ask.
+- No worker before the press. The press asks the browser's question, registers `site_push_sw.php` with the site's path as scope, subscribes (`userVisibleOnly`, the VAPID key; a subscription made with another key is replaced), posts `subscribe` with the keys as base64url and `<html lang>` without its `-x-` tail. The secret is stored in IndexedDB `pg-site-push`, store `kv`, key `secret`. A door refusal unsubscribes the browser again.
+- Stop posts `stop` with the secret, unsubscribes, unregisters the worker and forgets the secret. In the block pressed, focus moves to Stop after a yes and back to the button after Stop.
+- "Notifications are on.", the blocked hint and the failed line carry `role="status"`; a line that newly shows in the block pressed is spoken (content taken out, put back after 100 ms). Nothing is spoken on load.
+- Stop is `btn border border-secondary text-body-emphasis` (`btn-outline-secondary` read 2.8:1 on the dark band).
+
+## How do other forms name this device?
+- `window.pgSitePush.secret()` answers a Promise of the stored secret ('' without one), on any page the script runs on. The back-in-stock form (`push_secret`, `visitor-push-stock.md`) reads it there.
+- The order pages' button (`data-pg-push-order`) runs on this script too (`visitor-push-order.md`).
+
+## What does the worker do?
+- `site_push_sw.php` (no session) answers `assets/js/pg_site_push_sw.js` after `self.pgSitePushWorker` (door, `TITLE`, the fixed text "Open the site to see what is new.", the site icon's `apple-touch-icon.png` when one is set), with `Service-Worker-Allowed: PATH` and `Cache-Control: private, no-cache`. It is answered while the switch is off too.
+- Handlers: install (skipWaiting), push, notificationclick; fetch in App mode only (`visitor-push-app-mode.md`). A push posts `message` with the secret and shows title, body and the link; with no secret or no message it shows the fixed notice named after the site (tag `pg-site-push`).
+- A click opens the link resolved on the scope (another origin or a path outside it opens the scope), in an open tab of the site, else a new window.
+
+## How is it tested?
+- `tests/site_push_block_test.php`, under Node with `tests/fixtures/site_push/fake.js`.

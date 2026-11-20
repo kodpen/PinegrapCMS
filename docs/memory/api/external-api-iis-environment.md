@@ -1,6 +1,6 @@
 ---
 name: external-api-iis-environment
-description: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, the webhooks exception, first-match routing
+description: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, older deletes on a plain POST, first-match routing
 ---
 
 ## How does waf_is_api_request() detect API requests?
@@ -19,8 +19,8 @@ description: What IIS and the WAF impose on the external API: path-based API det
 ## How are routes written for it?
 - An update: `'method' => 'POST', 'also_accepts' => array('PATCH')` (other servers may still send PATCH).
 - A delete: the `'method' => 'DELETE'` route plus a twin route `POST /x/{id}/delete` whose id ends in `_post` (`products.delete_post`); the MCP server skips `_post` ids, so the action stays one tool.
-- Exception: `POST /webhooks/{id}` has been the delete since the first version (`webhooks.delete`, DELETE with `also_accepts` POST). A webhook is updated with `PATCH /webhooks/{id}` or `POST /webhooks/{id}/update`.
-- Likewise `POST /workspace/scheduled-messages/{id}` is the delete: a scheduled message is changed with `POST …/{id}/update` and sent now with `POST …/{id}/send` (CA9 #9786).
+- Every DELETE has that twin since #10283; `tests/api_delete_twins_test.php` fails one without it (same handler, scope, dry run; no second MCP tool).
+- Six older deletes also take a plain POST on their own address (`also_accepts` POST), kept for running clients: webhooks, Workspace scheduled messages, channel members, channel group access, task time entries, channel agents. Their cards name the twin. So a change has its own path: `POST /webhooks/{id}/update`, `…/scheduled-messages/{id}/update`.
 - The router takes the FIRST route whose path and method match (`api_route_match()`), so a new route's path must not collide with an older route's `also_accepts`. Path placeholders are typed (an int `{id}` matches digits only), which keeps `/products/inventory` off `/products/{id}`. A path that exists under another verb answers 405 with `Allow`.
 
 Related: `external-api-authorization.md`, `api-endpoint-rules.md`.

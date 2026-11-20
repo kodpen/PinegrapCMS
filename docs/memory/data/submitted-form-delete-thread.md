@@ -16,6 +16,9 @@ attachment `files` unless a comment outside the thread shares the `file_id`
 (duplicated pages copy it), `watchers`, `allow_new_comments_for_items`, and
 `submitted_form_info` by `submitted_form_id`.
 
+The rows its Record rows fields list are deleted with it, each the same
+way (`designer/collection-rows-delete-history.md`).
+
 ## Which paths delete a form record?
 
 `edit_submitted_form.php` (Delete button), `delete_submitted_forms.php` (bulk),

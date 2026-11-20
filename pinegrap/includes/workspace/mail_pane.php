@@ -26,8 +26,10 @@ define('WS_MAIL_PANE_MAX', 200);
 
 /**
  * The columns of a mail the pane reads. Its kept HTML (up to 1 MB each) is
- * never read here: only whether there is one and whether it names pictures
- * from outside; the frame's own request reads it (ws_mail_frame()).
+ * not read here: only whether there is one and whether it sets aside a
+ * picture's address; ws_mail_pane() then reads the marked mails' HTML for
+ * the addresses' hosts, and the frame's own request reads it to show it
+ * (ws_mail_frame()).
  *
  * @param bool $html ws_mail_html_ready()
  * @return string SQL
@@ -44,6 +46,79 @@ function ws_mail_pane_columns($html)
             : '0 AS has_html, 0 AS outside_pictures')
         // An invitation's event for its card (personal_plan_mail.php), once the column is there.
         . ((function_exists('ws_mail_invitation_ready') && ws_mail_invitation_ready()) ? ', invitation' : '');
+}
+
+/**
+ * The site's own host names as a URL's hostname gives them: lower case,
+ * without a port, an IPv6 address in brackets, each once. The frame's
+ * script never loads a picture from the host it is served on
+ * (pg_guarded_frame_mail_script()), which is one of these. Pure when the
+ * names are given.
+ *
+ * @param array|null $names host names, with or without a port; null reads
+ *                          HOSTNAME, HOSTNAME_SETTING and the request's Host
+ * @return array
+ */
+function ws_mail_own_hosts($names = null)
+{
+    if ($names === null) {
+        $names = array(
+            defined('HOSTNAME') ? (string) HOSTNAME : '',
+            defined('HOSTNAME_SETTING') ? (string) HOSTNAME_SETTING : '',
+            isset($_SERVER['HTTP_HOST']) ? (string) $_SERVER['HTTP_HOST'] : '',
+        );
+    }
+
+    $hosts = array();
+
+    foreach ((array) $names as $name) {
+        $name = trim((string) $name);
+
+        if (($name === '') || preg_match('#[\s/?\#@]#', $name)) {
+            continue;
+        }
+
+        $host = parse_url('http://' . $name, PHP_URL_HOST);
+
+        if (is_string($host) && ($host !== '')) {
+            $hosts[] = strtolower($host);
+        }
+    }
+
+    return array_values(array_unique($hosts));
+}
+
+/**
+ * Which pictures a cleaned mail HTML keeps aside (data-pg-src,
+ * data-pg-background; includes/fn/mail_html.php) Show pictures would load:
+ * 'outside' when one names another host, 'own' when one names a host of
+ * the site, which the frame never loads, so the mail cannot call the panel
+ * with the reader's cookies. An address without a host loads nowhere and
+ * counts as neither. Pure.
+ *
+ * @param string $html pg_mail_html_clean()
+ * @param array  $own  ws_mail_own_hosts()
+ * @return array outside => bool, own => bool
+ */
+function ws_mail_picture_hosts($html, $own)
+{
+    $found = array('outside' => false, 'own' => false);
+
+    if (!preg_match_all('/<[a-z][a-z0-9]*\s[^>]*?\bdata-pg-(?:src|background)="(https?:\/\/[^"]*)"/i', (string) $html, $matches)) {
+        return $found;
+    }
+
+    foreach ($matches[1] as $address) {
+        $host = parse_url(html_entity_decode($address, ENT_QUOTES | ENT_HTML5, 'UTF-8'), PHP_URL_HOST);
+
+        if (!is_string($host) || ($host === '')) {
+            continue;
+        }
+
+        $found[in_array(strtolower($host), (array) $own, true) ? 'own' : 'outside'] = true;
+    }
+
+    return $found;
 }
 
 /**
@@ -81,6 +156,27 @@ function ws_mail_pane($viewer, $conversation_id)
     }
 
     $at = array_flip($ids);
+
+    // The column only marks a set-aside address; whether Show pictures would
+    // load any of them depends on its host (ws_mail_picture_hosts()), so the
+    // HTML of the marked mails alone is read once.
+    $marked = array();
+
+    foreach ($items as $item) {
+        if (!empty($item['outside_pictures'])) {
+            $marked[] = (int) $item['id'];
+        }
+    }
+
+    if ($marked) {
+        $own = ws_mail_own_hosts();
+
+        foreach ((array) db_items("SELECT id, body_html FROM ws_mail_items WHERE id IN (" . implode(',', $marked) . ")") as $row) {
+            $hosts = ws_mail_picture_hosts((string) $row['body_html'], $own);
+            $items[$at[(int) $row['id']]]['outside_pictures'] = $hosts['outside'] ? 1 : 0;
+            $items[$at[(int) $row['id']]]['own_pictures'] = $hosts['own'] ? 1 : 0;
+        }
+    }
 
     // MySQL 8 reserves STORED: the stored name is aliased stored_name.
     if ($ids) {
@@ -175,10 +271,17 @@ function ws_mail_pane_page_html($pane, $base, $close, $channels = true)
 
 /**
  * The pane: the conversation's heading and its mails. Pure but for the
- * words and the time labels. A conversation of a mailbox kept in no channel
+ * words and the time labels. The heading names the customer and the mailbox
+ * on its muted line and the channel as a pill under it, a link to the
+ * conversation's card there (ws_mail_pane_channel_pill()), as its tools'
+ * "Open in channel" does. A conversation of a mailbox kept in no channel
  * names its mailbox only and has no "Open in channel": this screen is the
  * one place it opens. With the Workspace off ($channels false) no channel
  * opens either, so no conversation has the link, and none names a channel.
+ * The subject and the muted line break a run with no space in it (an order
+ * number, a link, a long address) with text-break, as each mail below does;
+ * without it such a run stayed on one line past the pane's edge, off a
+ * phone's screen. The pill and the tools keep their own one-line rules.
  *
  * @param array  $pane     ws_mail_pane()
  * @param string $base     the panel's address, ending in /
@@ -194,9 +297,10 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
     $url = $base . 'workspace.php?channel=' . (int) $conversation['channel_id'] . '&message=' . (int) $conversation['message_id'];
     $room = ws_channel_is_mailbox($pane['channel']) || !$channels;
 
-    $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
-        . '<div class="small fg-secondary">' . h($customer)
-        . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . ($room ? '' : ' · ' . h('#' . (string) $pane['channel']['name'])) . '</div>'
+    $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1 text-break" tabindex="-1">' . h($subject) . '</h2>'
+        . '<div class="small fg-secondary text-break">' . h($customer)
+        . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . '</div>'
+        . ($room ? '' : '<div class="mt-1">' . ws_mail_pane_channel_pill((string) $pane['channel']['name'], $url) . '</div>')
         . ((!empty($pane['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? '<div class="mt-1">' . ws_mail_no_answer_badge_html() . '</div>' : '')
         . '<div class="ws-mail-pane-tools">' . ($room ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>') . $tools . '</div>'
         . '</header>';
@@ -212,6 +316,24 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
     }
 
     return $html;
+}
+
+/**
+ * The channel a conversation is written into, in the pane's head: a pill
+ * reading "In #name" that leads to the conversation's card in the channel.
+ * A long name is cut with an ellipsis inside the pane's width; the whole
+ * words are in its title. Pure but for the words.
+ *
+ * @param string $name the channel's name, without the #
+ * @param string $url  the card's address in its channel, not escaped
+ * @return string HTML
+ */
+function ws_mail_pane_channel_pill($name, $url)
+{
+    $text = lang(array('string' => 'In #{var:1}', 'vars' => (string) $name));
+
+    return '<a class="pg-pill pg-tone-blue ws-mail-pane-channel" href="' . h($url) . '" title="' . h($text) . '">'
+        . '<span class="ws-mail-pane-channel-text">' . h($text) . '</span></a>';
 }
 
 /**
@@ -302,11 +424,12 @@ function ws_mail_pane_item_html($item, $base = '')
 /**
  * A mail's words: its kept HTML in the guarded frame, with Plain text to
  * switch to its text and, while its pictures from outside wait, Show
- * pictures; else its text. The frame's height follows the mail once the
+ * pictures (a line says when some are on the site's own address, which are
+ * never shown); else its text. The frame's height follows the mail once the
  * screen's script hears it (workspace_mail.js); Show pictures loads the
  * frame's second address and is remembered for the sender in the browser.
  *
- * @param array  $item ws_mail_pane() item (has_html, outside_pictures)
+ * @param array  $item ws_mail_pane() item (has_html, outside_pictures, own_pictures)
  * @param string $name who wrote it, for the frame's name
  * @param string $base the panel's address, ending in /
  * @return string HTML
@@ -327,6 +450,12 @@ function ws_mail_pane_body_html($item, $name, $base)
         $tools .= '<span class="ws-mail-pictures" data-ws-mail-pictures><i class="bi bi-image me-1" aria-hidden="true"></i>'
             . h(lang('Pictures from outside are not shown.'))
             . ' <button type="button" class="btn btn-sm btn-text theme-primary px-1" data-ws-mail-show-pictures>' . h(lang('Show pictures')) . '</button></span>';
+    }
+
+    // A picture on the site's own address is never loaded in the frame.
+    if (!empty($item['own_pictures'])) {
+        $tools .= '<span class="ws-mail-pictures-own" data-ws-mail-pictures-own><i class="bi bi-image me-1" aria-hidden="true"></i>'
+            . h(lang('Pictures on this site\'s own address are not shown in an e-mail.')) . '</span>';
     }
 
     $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-1 ms-auto" data-ws-mail-plain aria-pressed="false">'
@@ -390,7 +519,8 @@ function ws_mail_frame($viewer, $item_id)
  * @param array $pane   ws_mail_pane()
  * @param array $viewer
  * @return array reply (the conversation id, 0 when the person may not
- *               write), to, channel_id, state, members, others (how many
+ *               write), reply_off (why the box cannot send, '' when it
+ *               can), to, channel_id, state, members, others (how many
  *               Reply to all adds, mail_reply.php)
  */
 function ws_mail_pane_tools($pane, $viewer)
@@ -417,6 +547,8 @@ function ws_mail_pane_tools($pane, $viewer)
 
     return array(
         'reply'      => $pane['can_post'] ? (int) $conversation['id'] : 0,
+        // Why the box cannot send now: Reply is drawn disabled with it.
+        'reply_off'  => $pane['can_post'] ? ws_mail_reply_off($box, (string) $conversation['customer_email'], ws_mail_reply_site_domain()) : '',
         'to'         => (string) $conversation['customer_email'],
         'channel_id' => (int) $pane['channel']['id'],
         'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation, 'support' => ws_mail_box_is_support($box)), (int) $conversation['id'], (int) $viewer['id']) : null,
@@ -446,5 +578,7 @@ function ws_mail_screen_js_strings()
         'delete'        => lang('Delete'),
         'checking'   => lang('Checking e-mail…'),
         'not_found'  => lang('This conversation cannot be opened.'),
+        'state_saved'  => lang('The conversation\'s status was saved.'),
+        'holder_saved' => lang('The conversation\'s holder was saved.'),
     );
 }

@@ -16,7 +16,7 @@ description: Decisions list, panel part 6 (2026-11-12 on): the panel's design la
 - Reference: `plans/panel-design-language/bell-drawer-dark.jpg` and `-light.jpg` (redrawn in the second pass, #8860); the numbers in `plans/panel-design-language-look.md`; the steps in `plans/panel-design-language-steps.md`.
 
 ## What are the image editor and the visual page editor called? (owner, 2026-11-12, #8849)
-- The Image Editor ("Görsel Düzenleyici") is Design Canvas ("Tasarım Tuvali") and gets an icon of its own. The Visual Page Editor, in texts the visual designer, is Page Design Studio ("Sayfa Tasarım Stüdyosu"). Designs are Designs ("Tasarımlar"), not Visual Designs.
+- The Image Editor ("Görsel Düzenleyici") became Design Canvas ("Tasarım Tuvali") with an icon of its own; since 2026-11-20 its name is Artifact Canvas (`decisions-made-panel-10.md`). The Visual Page Editor, in texts the visual designer, is Page Design Studio ("Sayfa Tasarım Stüdyosu"). Designs are Designs ("Tasarımlar"), not Visual Designs.
 - Owner (2026-11-12): "Görsel tasarımcının adını "Tasarım Tuvali" olarak güncelleyelim ve kendine özgün bir ikonu olsun. Görsel Sayfa Tasarımcısının adını "Sayfa Tasarım Stüdyosu" olarak güncelleyebiliriz. yine tasarımlar "Tasarım" olarak anılır, ama menüdeki adı ve kavramı netleşmiş olur."
 - The architect showed which screen gets which name; owner (2026-11-12): "eşleşme doğru, kaydet ve plana çevir".
 - The architect's reading: the English names; only texts change, no address, file or API name. Done: the names #8894, the icon #8902, the menu #8987; where they stand: `designer/editor-turkish-terms.md`, `ui/main-menu-design-studio-row.md`.
