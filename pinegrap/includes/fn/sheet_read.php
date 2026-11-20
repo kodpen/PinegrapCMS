@@ -786,25 +786,24 @@ function pg_sheet_ods_time_serial($text)
  */
 function pg_sheet_xls_rows($path, $sheet, &$error)
 {
-    $book = pg_sheet_xls_load($path, $sheet);
+    $reader = pg_sheet_xls_load($path, $sheet);
 
-    if (!is_array($book)) {
-        $error = ($book === 'sheet') ? 'sheet' : 'read';
+    if (!is_object($reader)) {
+        $error = ($reader === 'sheet') ? 'sheet' : 'read';
         return;
     }
 
-    foreach ($book as $number => $row) {
-        yield $number => $row;
-    }
+    yield from $reader->pg_each_row();
 }
 
 /**
- * The cells of one .xls sheet, row number => row (pg_sheet_rows()), or
- * 'read' when the file could not be read, 'sheet' when it has no such sheet.
+ * One .xls sheet read, its cells held compactly by the reader
+ * (Pg_Sheet_Xls_Reader::pg_each_row() gives the rows), or 'read' when the
+ * file could not be read, 'sheet' when it has no such sheet.
  *
  * @param string $path
  * @param int    $sheet
- * @return array|string
+ * @return Pg_Sheet_Xls_Reader|string
  */
 function pg_sheet_xls_load($path, $sheet)
 {
@@ -828,5 +827,8 @@ function pg_sheet_xls_load($path, $sheet)
         return 'read';
     }
 
-    return $reader->pg_rows();
+    $error = $reader->pg_error();
+    $reader->pg_release();
+
+    return ($error === '') ? $reader : $error;
 }
