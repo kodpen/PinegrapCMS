@@ -11905,6 +11905,10 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // Once, like the steps above; a restore grants it again.
     pg_order_folder_access_cancelled($order);
 
+    // ── Void the order's event tickets ─────────────────────────────────
+    // One conditional UPDATE; a restore makes them valid again.
+    pg_event_tickets_order_cancelled($order_id);
+
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
     // order's payment has a driver that can cancel (pg_payment_cancel_driver():
@@ -12362,6 +12366,9 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
 
     // The folder access the cancellation took back.
     pg_order_folder_access_restored($cancelled_order);
+
+    // The event tickets the cancellation voided.
+    pg_event_tickets_order_restored($order_id);
 
     log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 

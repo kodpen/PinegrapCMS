@@ -6,7 +6,8 @@
  * document as the safe HTML the server made, a .csv or .tsv as a sheet under
  * the choice of its separator and character set, an .ods as a workbook only
  * looked at (kind 'ods', options not taken), an .xls the same way under the
- * button that saves a copy as .xlsx (kind 'xls'). Loaded on first use by the
+ * button that saves a copy as .xlsx (kind 'xls'), a presentation as a list
+ * of its slides, only looked at (kind 'pptx'). Loaded on first use by the
  * file manager and the Workspace; nothing here reads a file itself.
  *
  *   var view = window.pgOfficeView.render(container, office, strings, options)
@@ -1609,6 +1610,85 @@
         return null;
     }
 
+    // A presentation: its slides as a list, each with its number and title,
+    // its text and pictures in reading order and its speaker notes; only
+    // looked at. Every text is set as text; a picture's source is only ever
+    // a data: URL of an image the server read from the file.
+    function renderSlides(container, office, strings) {
+        var list = el('ol', 'office-doc office-slides');
+        var slides = office.slides || [];
+
+        list.setAttribute('aria-label', strings.slides || '');
+        list.tabIndex = 0;
+
+        slides.forEach(function (slide) {
+            var item = el('li', 'office-slide');
+            var head = el('h3', 'office-slide-title');
+            var number = fill(strings.slide || '', slide.n);
+
+            head.appendChild(el('span', 'office-slide-n pg-text-meta', number));
+
+            if (slide.title) {
+                head.appendChild(document.createTextNode(' ' + slide.title));
+            }
+
+            if (slide.hidden) {
+                head.appendChild(el('span', 'office-slide-hidden', strings.slide_hidden || ''));
+            }
+
+            item.appendChild(head);
+
+            (slide.items || []).forEach(function (part) {
+                if (part.type === 'picture' && /^data:image\//.test(String(part.src || ''))) {
+                    var img = el('img', 'office-img');
+
+                    img.src = part.src;
+                    img.alt = part.alt || '';
+                    item.appendChild(img);
+                    return;
+                }
+
+                if (part.type === 'picture' || part.type === 'lost') {
+                    item.appendChild(el('div', 'office-lost', '[' + (strings.picture || '') + ']'));
+                    return;
+                }
+
+                var line = el('p', 'office-slide-text' + (part.type === 'row' ? ' office-slide-row' : '') + (part.level > 0 ? ' office-lvl-' + Math.min(8, part.level) : ''));
+
+                line.textContent = part.text || '';
+                item.appendChild(line);
+            });
+
+            if (slide.notes && slide.notes.length) {
+                var notes = el('div', 'office-slide-notes');
+
+                notes.appendChild(el('div', 'pg-text-meta', strings.slide_notes || ''));
+                slide.notes.forEach(function (text) {
+                    notes.appendChild(el('p', 'office-slide-text', text));
+                });
+                item.appendChild(notes);
+            }
+
+            list.appendChild(item);
+        });
+
+        container.appendChild(list);
+
+        if (!slides.length) {
+            list.appendChild(el('li', 'office-note', strings.slide_none || ''));
+        }
+
+        if (office.images_lost > 0) {
+            container.appendChild(el('div', 'office-note', fill(strings.images_lost || '', office.images_lost)));
+        }
+
+        if (office.truncated) {
+            container.appendChild(el('div', 'office-note', strings.truncated || ''));
+        }
+
+        return null;
+    }
+
     window.pgOfficeView = {
         render: function (container, office, strings, options) {
             strings = strings || {};
@@ -1636,6 +1716,11 @@
 
             if (office && office.kind === 'docx') {
                 return renderDocument(container, office, strings, options || null);
+            }
+
+            // A presentation takes no options: it is only looked at.
+            if (office && office.kind === 'pptx') {
+                return renderSlides(container, office, strings);
             }
 
             return null;

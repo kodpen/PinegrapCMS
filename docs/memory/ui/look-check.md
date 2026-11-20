@@ -11,7 +11,7 @@ description: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colour
 
 ## What does it count in panel markup?
 - Per file of the panel's PHP screens and script sources (`bs6_scope_kind()` = `panel`, `.php` or `.js`): `button` = each `btn btn-`, `tabs` = each `nav-tabs`, `nav-pills` or `nav-underline` class, JavaScript selectors such as `.nav-tabs` included (`pg_look_markup_counts()` in `tools/look_rules.php`).
-- Why: every newly designed panel screen uses look A, `pg-button` for buttons and `pg-seg` for tabs (`look-new-parts.md`); the count stops a new old-class line in CI while old screens move on the plan panel-old-screens.
+- Why: every newly designed panel screen uses look A, `pg-button` for buttons and `pg-seg` for tabs (`look-new-parts.md`); the count stops a new old-class line in CI; the old screens moved with the plan panel-old-screens (`look-overview.md`), what is left is `look-open-work.md`.
 - Skipped: comments, site output (`site` and `shared` files, `@pg-site-output` ranges; Bootstrap 5.3.8), the visual designer (`style_designer*` and the `editor` files), `.min.js` bundles, `assets/lib`.
 - Only files holding an old class are in the baseline; a file missing from it counts as 0, so a new file or a renamed one with a `btn btn-` fails. A rename moves its entry in `check_look_baseline.json` by hand.
 - First counts (2026-11-17, from `origin/development`): 1,865 buttons (`workspace.js` 259), 6 tab strips.

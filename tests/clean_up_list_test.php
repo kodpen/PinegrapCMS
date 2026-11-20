@@ -91,11 +91,12 @@ function test_clean_up_summary_counts()
 	pg_assert_true(strpos($with, lang('Folders')) !== false, 'folders row');
 	pg_assert_true(strpos($with, lang('Expired payment records')) !== false, 'records row');
 	pg_assert_true(strpos($with, '>' . pg_format_number(1234, 0) . '</dd>') !== false, 'file count');
-	pg_assert_same(3, substr_count($with, '<dt '), 'three rows');
-	pg_assert_same(2, substr_count($with, 'border-bottom'), 'no rule under the last row');
+	pg_assert_same(3, substr_count($with, '<dt>'), 'three rows');
+	pg_assert_same(1, substr_count($with, '<dl class="pg-kv'), 'one label and value list');
+	pg_assert_true(strpos($with, 'pg-title-section') !== false, 'the look title');
 
 	$without = pg_clean_up_summary(0, 3, null);
 	pg_assert_false(strpos($without, lang('Expired payment records')) !== false, 'no records row');
-	pg_assert_same(2, substr_count($without, '<dt '), 'two rows');
+	pg_assert_same(2, substr_count($without, '<dt>'), 'two rows');
 	pg_assert_true(strpos($without, lang('Everything listed here is deleted permanently.')) !== false, 'warning');
 }
