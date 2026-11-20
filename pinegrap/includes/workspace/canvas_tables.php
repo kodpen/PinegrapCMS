@@ -477,3 +477,53 @@ function ws_canvas_tables_js_strings()
         'page_unbind'       => lang('Remove'),
     );
 }
+
+/**
+ * A table's rows as a data layer of the Design Canvas reads them: each
+ * column by its name, each row's cells by column id, in the table's order,
+ * 5000 rows at most (pg_image_draw_data_max()). Pure.
+ *
+ * @param array $columns ws_wtable_columns()
+ * @param array $rows    ws_wtable_rows(), lookups filled for the reader
+ * @return array columns {id: {name}}, rows [{cells}]
+ */
+function ws_canvas_data_rows_shape($columns, $rows)
+{
+    $out = array('columns' => array(), 'rows' => array());
+
+    foreach ((array) $columns as $id => $column) {
+        $out['columns'][(string) $id] = array('name' => (string) ($column['name'] ?? ''));
+    }
+
+    foreach (array_slice(array_values((array) $rows), 0, 5000) as $row) {
+        $out['rows'][] = array('cells' => (is_array($row) && is_array($row['cells'] ?? null)) ? $row['cells'] : array());
+    }
+
+    return $out;
+}
+
+/**
+ * The one read of a data layer's rows, with the reader's rights: a table
+ * they may not read (or that is gone) gives state refused, which the layer
+ * draws as an empty board that says so. Lookups and rollups are worked
+ * out for the reader, as on the table's own screen. A data layer writes
+ * nothing to its table. Whether a canvas may name the table is its
+ * caller's question.
+ *
+ * @param array $viewer
+ * @param int   $table_id
+ * @return array columns, rows (ws_canvas_data_rows_shape()); or state refused
+ */
+function ws_canvas_data_rows($viewer, $table_id)
+{
+    $table = (function_exists('ws_wtables_ready') && ws_wtables_ready() && ((int) $table_id > 0)) ? ws_wtable_for($viewer, (int) $table_id, 'view') : null;
+
+    if (!$table) {
+        return array('state' => 'refused');
+    }
+
+    $columns = ws_wtable_columns((int) $table['id']);
+    $rows = array_slice(ws_wtable_rows((int) $table['id'], $columns), 0, 5000);
+
+    return ws_canvas_data_rows_shape($columns, ws_wtable_joined_fill($viewer, $columns, $rows));
+}
