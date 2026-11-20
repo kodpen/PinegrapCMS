@@ -245,3 +245,32 @@ function test_workspace_agent_instructions_version_changed()
 	pg_assert_true($poll['instructions_version'] !== '3cb2fbb0', 'the poll text\'s version before the second form');
 	pg_assert_true($push['instructions_version'] !== '4f91c786', 'the webhook text\'s version before the second form');
 }
+
+// A plan or a long explanation is a note shared in the channel, changed in
+// place with its revision: the block sits after the writing lines and before
+// the never-list, speaks of the API's note routes only, and its version is
+// not the version of the text without it.
+function test_workspace_agent_instructions_note_lines()
+{
+	$text = workspace_agent_instructions_test_text('poll');
+	$block = implode("\n", ws_agent_instructions_note_lines());
+
+	pg_assert_contains($block, $text, 'the block is in the instructions');
+	pg_assert_true(strpos($text, $block) > strpos($text, implode("\n", ws_agent_instructions_writing_lines())), 'after the writing lines');
+	pg_assert_true(strpos($text, $block) < strpos($text, "\nNever:"), 'before the never-list');
+
+	foreach (array('POST /workspace/channels/{id}/notes', 'GET /workspace/notes/{id}', 'POST /workspace/notes/{id}', '"revision"', '409 changed_meanwhile', 'first line', 'never post it again') as $part) {
+		pg_assert_contains($part, $block, 'the block says: ' . $part);
+	}
+
+	foreach (array('tools/', 'ws_note', '.php') as $word) {
+		pg_assert_true(strpos($block, $word) === false, 'no repository tool: ' . $word);
+	}
+
+	pg_assert_same(0, preg_match('/\bgit\b/', $block), 'no repository tool: git');
+
+	$before = str_replace("\n" . $block . "\n", "\n", $text);
+
+	pg_assert_true($before !== $text, 'the block comes out whole');
+	pg_assert_false(ws_agent_instructions_version($before) === ws_agent_instructions_version($text), 'the version changes');
+}

@@ -378,6 +378,24 @@ function ws_agent_instructions_writing_lines()
 }
 
 /**
+ * The part of the text that says where a plan or a long explanation goes:
+ * a note shared in the channel, changed in place with its revision, never
+ * posted again as new messages. It names only the API's note routes. Pure.
+ *
+ * @return string[]
+ */
+function ws_agent_instructions_note_lines()
+{
+    return array(
+        'A plan or a long explanation (more than a few paragraphs, or a text you will keep up to date) is a note shared in the channel, not a message:',
+        '- Write it once with POST /workspace/channels/{id}/notes with {"title": "...", "body": "..."} (Markdown; headings are drawn in a note). Add "channel_edit": true when the channel\'s people should change it too. The answer gives note_id and "revision". Its card in the channel always shows the note as it is now.',
+        '- Its first line says up to which PR or message it is written, for example "Written up to [#12](https://github.com/o/r/pull/12)" or "Written up to <#message:ID>". Change that line with every update.',
+        '- Change it in place, never post it again as new messages: GET /workspace/notes/{id} gives its body and "revision"; send the whole new body with that revision to POST /workspace/notes/{id}. A 409 changed_meanwhile answer means somebody changed it since you read it: read it again, merge, send again. Nothing was written.',
+        '- A request is still closed with the answer route: answer in one short line that points at the note\'s card with <#message:ID>.',
+    );
+}
+
+/**
  * The brief's line that points to the instructions and names their version,
  * so an agent that follows an older text reads them again. Pure.
  *
@@ -406,7 +424,8 @@ function ws_agent_instructions_brief_line_for($agent)
 /**
  * The instructions an application agent follows: who it is, its channels
  * and what wakes it, how it waits, each request, how a message is written,
- * the never-list and the assistant rules. English, as the routine's are.
+ * where a plan or a long explanation goes, the never-list and the
+ * assistant rules. English, as the routine's are.
  * It names nothing of this repository and never the key or the secret,
  * only the environment variables that hold them. Pure.
  *
@@ -425,6 +444,8 @@ function ws_agent_instructions_text($agent, $channels, $base)
     $lines = array_merge($lines, ws_agent_instructions_request_lines());
     $lines[] = '';
     $lines = array_merge($lines, ws_agent_instructions_writing_lines());
+    $lines[] = '';
+    $lines = array_merge($lines, ws_agent_instructions_note_lines());
     $lines[] = '';
     $lines = array_merge($lines, ws_agent_instructions_never_lines());
     $lines[] = '';

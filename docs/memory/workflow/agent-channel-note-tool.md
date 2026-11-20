@@ -5,6 +5,7 @@ description: tools/ws_note.php new|read|update: a session keeps a plan or a long
 
 ## What is it for?
 - A plan or a long explanation goes into a note shared in the channel and is changed in place, never posted again as new messages (plan `channel-documents`, KD4a). Its first line says up to which PR or message it is written.
+- An application agent learns the same rule from the site's instructions, which speak of the API's note routes only (`workspace/agent-instructions-note-lines.md`, KD4b).
 - Settings: `PG_WS_SITE`, `PG_WS_KEY`, `PG_WS_SECRET`, and `PG_WS_CHANNEL` (or `--channel`) for `new` (`tools/ws_client.php`). Nothing secret is printed.
 
 ## What do the commands do?
