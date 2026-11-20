@@ -37,7 +37,7 @@
 - decisions-made-files.md: Decisions list, files part: form files no view shows stay refused; RSS media counts as shown with its record; folders and files live in the File Manager; chat attachments open only for the sides
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
-- decisions-made-panel-10.md: Decisions list, panel part 10 (2026-11-17 on): every newly drawn screen is built in the design language, tabs and buttons above all; an area's tab strip sits centred in the window
+- decisions-made-panel-10.md: Decisions list, panel part 10 (2026-11-17 on): new screens in the design language; an area's tab strip centred in the window; the Design Canvas renamed Artifact Canvas, its new icon
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened

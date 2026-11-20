@@ -28,6 +28,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-10.md: Where are the rules and the earlier parts?
 - decisions-made-panel-10.md: Is every newly drawn screen built in the design language? (owner, 2026-11-17, agent channel message 8553)
 - decisions-made-panel-10.md: Where does an area's tab strip sit? (owner, 2026-11-19, agent channel poll 153, message 9494)
+- decisions-made-panel-10.md: Is the Design Canvas renamed Artifact Canvas? (owner, 2026-11-20)
+- decisions-made-panel-10.md: Which drawing is the Artifact Canvas icon? (owner, 2026-11-20)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
