@@ -1,6 +1,6 @@
 ---
 name: designer-panels-differences
-description: The Page Design Studio's differences from the accepted designer-panels drawings (Options, Overview, page strip, canvas bar): one list the owner sees, fixes cut from it once higher-priority work runs out
+description: Differences between the Page Design Studio as built and its accepted designer-panels drawings: one list for the owner, fixes cut from it later
 ---
 
 # Designer panels: differences from the accepted pictures
