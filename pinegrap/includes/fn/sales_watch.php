@@ -799,3 +799,336 @@ function pg_sales_watch_check($now)
 
     return array_values($found);
 }
+
+// ----------------------------------------------------------------------------
+// The price error shield
+// ----------------------------------------------------------------------------
+//
+// A product sold on the site or a marketplace in the last 6 hours at a price
+// under half its usual one (or under the goods' cost with Accounting on), in
+// units well above its norm: a price typed 100 for 1,000 that buyers found.
+// Told as one bell row per pass; with the setting on, up to 5 products a pass
+// and 20 a day are taken off sale (enabled = 0) through the API's product
+// writer. More than 5 at once looks like a campaign: none is closed and the
+// alert asks. The products closed are kept in the config_text row
+// sales_watch_closed; one enabled again, by anyone, leaves it and is left
+// alone for 24 hours.
+
+/**
+ * The hours a pass looks back over for sales at a wrong price.
+ */
+define('PG_SALES_WATCH_PRICE_HOURS', 6);
+
+/**
+ * The days the usual price and the units' norm are learnt over.
+ */
+define('PG_SALES_WATCH_PRICE_DAYS', 30);
+
+/**
+ * The settings of the shield, with their defaults until the Sales watch part
+ * of Settings › Alerts stores them in pg_sales_watch_settings().
+ *
+ * - price_error     the alert on or off
+ * - close_products  take a product off sale (off by default)
+ * - price_share     the share of the usual price under which a price is wrong
+ *
+ * @return array
+ */
+function pg_sales_watch_price_settings()
+{
+    $settings = pg_sales_watch_settings();
+    $share = isset($settings['price_share']) ? (float) $settings['price_share'] : 0.5;
+
+    return array(
+        'price_error'    => isset($settings['price_error']) ? (bool) $settings['price_error'] : true,
+        'close_products' => isset($settings['close_products']) ? (bool) $settings['close_products'] : false,
+        'price_share'    => (($share > 0) && ($share < 1)) ? $share : 0.5,
+    );
+}
+
+/**
+ * The usual price between two times: the median of the prices that applied,
+ * each weighted by how long it applied, so a few hours of a typo do not move
+ * it. A product younger than the window counts the time it has.
+ *
+ * @param array $rows  array('changed_at' => int, 'price' => int), oldest
+ *                     first; the newest row before $start says the price then
+ * @param int   $start
+ * @param int   $end
+ * @return int|null minor units; null with no row
+ */
+function pg_sales_watch_price_usual(array $rows, $start, $end)
+{
+    $start = (int) $start;
+    $end = (int) $end;
+    $spans = array();
+    $count = count($rows);
+
+    for ($i = 0; $i < $count; $i++) {
+
+        $from = max($start, (int) $rows[$i]['changed_at']);
+        $to = ($i + 1 < $count) ? min($end, (int) $rows[$i + 1]['changed_at']) : $end;
+
+        if ($to > $from) {
+            $price = (int) $rows[$i]['price'];
+            $spans[$price] = (isset($spans[$price]) ? $spans[$price] : 0) + ($to - $from);
+        }
+    }
+
+    if (!$spans) {
+        return $count ? (int) $rows[$count - 1]['price'] : null;
+    }
+
+    ksort($spans);
+
+    $half = array_sum($spans) / 2;
+    $seen = 0;
+
+    foreach ($spans as $price => $seconds) {
+        $seen += $seconds;
+        if ($seen >= $half) {
+            return (int) $price;
+        }
+    }
+
+    return (int) $price;
+}
+
+/**
+ * Why a product's sales look like a price error, or '' when they do not.
+ *
+ * @param int      $price the price it sells at now, minor units
+ * @param int|null $usual pg_sales_watch_price_usual()
+ * @param int|null $cost  erp_product_costs.avg_cost with Accounting on, else null
+ * @param float    $units units sold in the hours looked back over
+ * @param float    $norm  units usually sold in as many hours
+ * @param float    $share the share of the usual price under which a price is wrong
+ * @return string 'half' (under the share of the usual price), 'cost' or ''
+ */
+function pg_sales_watch_price_reason($price, $usual, $cost, $units, $norm, $share)
+{
+    if (((float) $units < 5) || ((float) $units < (3 * (float) $norm))) {
+        return '';
+    }
+
+    $price = (int) $price;
+
+    if (($usual !== null) && ((int) $usual > 0) && ($price < ((int) $usual * (float) $share))) {
+        return 'half';
+    }
+
+    if (($cost !== null) && ((int) $cost > 0) && ($price < (int) $cost)) {
+        return 'cost';
+    }
+
+    return '';
+}
+
+/**
+ * The sales_watch_closed record as read from its config_text row.
+ *
+ * - closed  product id => array('at', 'price', 'reason'), at most 200
+ * - back    product id => when it was found on sale again
+ * - times   when each of the last 24 hours' closings was made
+ *
+ * @param mixed $raw the stored JSON, or an array
+ * @return array
+ */
+function pg_sales_watch_closed_normalize($raw)
+{
+    $data = is_array($raw) ? $raw : json_decode((string) $raw, true);
+    $data = is_array($data) ? $data : array();
+    $record = array('closed' => array(), 'back' => array(), 'times' => array());
+
+    foreach ((isset($data['closed']) && is_array($data['closed'])) ? $data['closed'] : array() as $id => $entry) {
+        if (((int) $id > 0) && is_array($entry)) {
+            $record['closed'][(int) $id] = array(
+                'at'     => isset($entry['at']) ? (int) $entry['at'] : 0,
+                'price'  => isset($entry['price']) ? (int) $entry['price'] : 0,
+                'reason' => isset($entry['reason']) ? (string) $entry['reason'] : '',
+            );
+        }
+    }
+
+    foreach ((isset($data['back']) && is_array($data['back'])) ? $data['back'] : array() as $id => $at) {
+        if ((int) $id > 0) {
+            $record['back'][(int) $id] = (int) $at;
+        }
+    }
+
+    foreach ((isset($data['times']) && is_array($data['times'])) ? $data['times'] : array() as $at) {
+        $record['times'][] = (int) $at;
+    }
+
+    return $record;
+}
+
+/**
+ * Bring the record up to date: a closed product on sale again (enabled by
+ * anyone, any way) leaves it and is left alone for 24 hours; one that is gone
+ * leaves it too. Times older than a day are dropped.
+ *
+ * @param array $record  pg_sales_watch_closed_normalize()
+ * @param array $enabled product id => whether it is on sale now, for the
+ *                       closed products that still exist
+ * @param int   $now
+ * @return array
+ */
+function pg_sales_watch_closed_reconcile(array $record, array $enabled, $now)
+{
+    $now = (int) $now;
+
+    foreach ($record['closed'] as $id => $entry) {
+
+        if (!array_key_exists($id, $enabled)) {
+            unset($record['closed'][$id]);
+        } elseif ($enabled[$id]) {
+            unset($record['closed'][$id]);
+            $record['back'][$id] = $now;
+        }
+    }
+
+    foreach ($record['back'] as $id => $at) {
+        if ($at <= ($now - 86400)) {
+            unset($record['back'][$id]);
+        }
+    }
+
+    $times = array();
+
+    foreach ($record['times'] as $at) {
+        if ($at > ($now - 86400)) {
+            $times[] = $at;
+        }
+    }
+
+    $record['times'] = $times;
+
+    return $record;
+}
+
+/**
+ * Record the products closed by a pass. The oldest entries go beyond 200.
+ *
+ * @param array $record
+ * @param array $entries product id => array('price', 'reason')
+ * @param int   $now
+ * @return array
+ */
+function pg_sales_watch_closed_add(array $record, array $entries, $now)
+{
+    foreach ($entries as $id => $entry) {
+        unset($record['back'][(int) $id]);
+        $record['closed'][(int) $id] = array(
+            'at'     => (int) $now,
+            'price'  => (int) $entry['price'],
+            'reason' => (string) $entry['reason'],
+        );
+        $record['times'][] = (int) $now;
+    }
+
+    if (count($record['closed']) > 200) {
+        uasort($record['closed'], function ($a, $b) {
+            return $a['at'] - $b['at'];
+        });
+        $record['closed'] = array_slice($record['closed'], -200, null, true);
+    }
+
+    return $record;
+}
+
+/**
+ * What a pass does with the products it found: which it tells of and which
+ * it takes off sale.
+ *
+ * A product a person put back in the last 24 hours, or one already closed,
+ * is left alone. More than 5 found at once closes none (a campaign looks the
+ * same). At most 5 close a pass and 20 a day.
+ *
+ * @param array $flagged product id => details, most units first
+ * @param array $record  pg_sales_watch_closed_reconcile()
+ * @param int   $now
+ * @param bool  $close   the setting that allows taking products off sale
+ * @return array array('told' => ids, 'close' => ids, 'campaign' => bool)
+ */
+function pg_sales_watch_price_plan(array $flagged, array $record, $now, $close)
+{
+    $told = array();
+
+    foreach (array_keys($flagged) as $id) {
+
+        if (isset($record['closed'][$id])) {
+            continue;
+        }
+
+        if (isset($record['back'][$id]) && ($record['back'][$id] > ((int) $now - 86400))) {
+            continue;
+        }
+
+        $told[] = (int) $id;
+    }
+
+    $campaign = (count($told) > 5);
+    $closing = array();
+
+    if ($close && !$campaign) {
+
+        $today = 0;
+
+        foreach ($record['times'] as $at) {
+            if ($at > ((int) $now - 86400)) {
+                $today++;
+            }
+        }
+
+        $closing = array_slice($told, 0, max(0, min(5, 20 - $today)));
+    }
+
+    return array('told' => $told, 'close' => $closing, 'campaign' => $campaign);
+}
+
+/**
+ * The alert's text: the products counted, the first three named with their
+ * price, usual price and units. No cost figure: the text also goes by e-mail
+ * and chat, to people who may not read the books.
+ *
+ * @param array $flagged product id => array('name', 'price', 'usual', 'units', 'reason')
+ * @param array $plan    pg_sales_watch_price_plan()
+ * @return string
+ */
+function pg_sales_watch_price_detail(array $flagged, array $plan)
+{
+    $symbol = defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '';
+    $money = function ($minor) use ($symbol) {
+        return function_exists('pg_money_text')
+            ? pg_money_text((int) $minor / 100, $symbol)
+            : number_format((int) $minor / 100, 2);
+    };
+
+    $parts = array();
+
+    foreach (array_slice($plan['told'], 0, 3) as $id) {
+
+        $item = $flagged[$id];
+
+        $parts[] = lang(array(
+            'string' => '{var:1}: {var:2} sold at {var:3}, usually {var:4}',
+            'vars'   => array($item['name'], (int) $item['units'], $money($item['price']), $money($item['usual'])),
+        )) . (($item['reason'] === 'cost') ? ' (' . lang('under its cost') . ')' : '');
+    }
+
+    $count = count($plan['told']);
+    $text = $plan['campaign']
+        ? lang(array('string' => 'Price drop on {var:1} products; a campaign?', 'vars' => array($count)))
+        : lang(array('string' => '{var:1} products sell well below their usual price in the last {var:2} hours', 'vars' => array($count, PG_SALES_WATCH_PRICE_HOURS)));
+
+    $text .= '. ' . implode('; ', $parts) . (($count > 3) ? '; …' : '') . '.';
+
+    if ($plan['close']) {
+        $text .= ' ' . lang(array('string' => 'Taken off sale: {var:1}. Enabling a product again puts it back.', 'vars' => array(count($plan['close']))));
+    } elseif ($plan['campaign']) {
+        $text .= ' ' . lang('None was taken off sale.');
+    }
+
+    return $text;
+}

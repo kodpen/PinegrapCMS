@@ -2411,6 +2411,7 @@
     "A product question is waiting for an answer.": "Bir ürün sorusu yanıt bekliyor.",
     "A product review is written": "Bir ürün değerlendirmesi yazılır",
     "A product runs low in stock": "Ürünün stoğu azaldı",
+    "A product sells at a wrong price": "Bir ürün yanlış fiyatla satılıyor",
     "A product shoot for an online shop: forty items on a white background, and a short turntable video of each.": "Bir internet mağazası için ürün çekimi: beyaz fonda kırk ürün ve her biri için kısa bir döner tabla videosu.",
     "A product stock level changed: a sale, a scan, a screen, the API, the Workspace or an ERP document (not product imports, marketplace order imports or a stock count; those products are listed by GET /products?updated_since=). quantity is the total; on a site with stock locations location_id, location_name and location_quantity name the location that changed. A transfer between locations is not announced: the total stays the same": "Bir ürünün stok miktarı değişti: bir satış, bir okutma, bir ekran, API, Çalışma alanı ya da bir ERP belgesiyle (ürün içe aktarımları, pazaryeri sipariş içe aktarımları ya da stok sayımı değil; bu ürünler GET /products?updated_since= ile listelenir). quantity toplam miktardır; stok konumları kullanan bir sitede location_id, location_name ve location_quantity değişen konumu belirtir. Konumlar arası transfer bildirilmez: toplam aynı kalır",
     "A product that falls to the site's low-stock threshold becomes a task to restock it.": "Sitenin düşük stok eşiğine inen ürün için stok yenileme görevi açılır.",

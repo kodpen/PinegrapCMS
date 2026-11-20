@@ -183,6 +183,7 @@
     "Taken in from {var:1} (card {var:2}).": "{var:1} tarafından alındı (kart {var:2}).",
     "Taken in on": "Alınma zamanı",
     "Taken into the ERP": "ERP'ye alındı",
+    "Taken off sale: {var:1}. Enabling a product again puts it back.": "Satıştan kaldırılan: {var:1}. Ürünü yeniden etkinleştirmek onu satışa geri koyar.",
     "Taken off the calculated VAT, since the buyer declares that part": "Hesaplanan KDV'den düşülür, çünkü o kısmı alıcı beyan eder",
     "Taken off the list": "Listeden çıkarıldı",
     "Taken out after {var:1} days": "{var:1} gün sonra siliniyor",
