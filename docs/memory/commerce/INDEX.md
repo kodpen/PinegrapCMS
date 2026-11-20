@@ -313,6 +313,7 @@
 - recurring-calendar-days.md: Recurring start dates are counted in calendar days with pg_calendar_days_later(), never time() + 86400 * N, so a clock change does not shift the date
 - referral-commission-readers.md: Every reader and writer of commissions and what each does with a referral's row: Commissions screen totals (affiliates only), Edit Commission read-only, GET /commissions kind [decision: here]
 - referral-rules.md: Referral programme rules (RF1): the signed code, the checks of a friend's order, the reward as a paid commissions row and referral store credit, the month's cap under a lock, take-back, settings [decision: decisions-made-product-25.md]
+- referral-settings-card.md: Referral programme settings card (RF2): Settings › Ecommerce › Referral programme, its six config_text rows, what the save refuses, the referrer's reward mail and its texts
 - refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
 - shipment-api-fields.md: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split
