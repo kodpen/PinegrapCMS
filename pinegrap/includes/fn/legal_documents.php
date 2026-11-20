@@ -279,7 +279,7 @@ function pg_legal_document_city_line($zip, $district, $city, $state)
  * so [[...]] can drop a discount, tax or shipping row the order does not
  * have. The total is always printed.
  *
- * @param array    $order      orders row fields (billing_*, subtotal, discount, gift_card_discount, tax, shipping, surcharge, total, order_number)
+ * @param array    $order      orders row fields (billing_*, subtotal, discount, gift_card_discount, tax, shipping, surcharge, installment_charges, total, order_number)
  * @param array    $lines      see pg_legal_document_lines_html()
  * @param array    $ship_tos   each: name, address (text), method, arrival_date
  * @param array    $seller     name, address, email, tax_office, tax_number, website
@@ -319,6 +319,10 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
     ));
 
     $discount = (int) round($order['discount'] ?? 0) + (int) round($order['gift_card_discount'] ?? 0);
+    // The instalment difference a card payment adds to the total is an
+    // added cost like the card surcharge: printed with it, so the parts add
+    // up to the total (an order paid at once stores '').
+    $surcharge = (int) round((float) ($order['surcharge'] ?? 0)) + (int) round((float) ($order['installment_charges'] ?? 0));
 
     $text = array(
         'seller_name'       => (string) ($seller['name'] ?? ''),
@@ -341,7 +345,7 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
         'discount'          => ($discount === 0) ? '' : (string) $money($discount),
         'tax'               => $amount('tax'),
         'shipping'          => $amount('shipping'),
-        'surcharge'         => $amount('surcharge'),
+        'surcharge'         => ($surcharge === 0) ? '' : (string) $money($surcharge),
         'total'             => $amount('total', true),
         'payment_method'    => (string) ($extra['payment_method'] ?? ''),
         'order_number'      => (string) ($order['order_number'] ?? ''),
@@ -457,6 +461,9 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
     // The card surcharge depends on the payment method chosen at the very
     // end; the total shown is the one without it.
     $order['surcharge'] = 0;
+    // So is an instalment difference, which a payment attempt may have
+    // left on the cart's row.
+    $order['installment_charges'] = 0;
     $order['total'] = $total;
     $order['order_number'] = '';
 
@@ -1064,6 +1071,7 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             orders.tax,
             orders.shipping,
             orders.surcharge,
+            orders.installment_charges,
             orders.total,
             orders.payment_method
         FROM orders

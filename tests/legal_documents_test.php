@@ -972,3 +972,27 @@ function test_legal_documents_city_line_drops_a_repeated_state()
 	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_for_order');
 	pg_assert_contains("pg_legal_document_city_line(\$ship_to['zip_code'], \$ship_to['district'] ?? '', \$ship_to['city'], \$ship_to['state'])", $section, 'the delivery address too');
 }
+
+// A card payment in instalments keeps the instalment difference in the
+// order's total (orders.installment_charges); the documents print it with the
+// surcharge, so the parts add up to the total the customer paid. A cart has
+// none yet: whatever an earlier attempt left on its row is not counted.
+function test_legal_documents_installment_charges_print_with_the_surcharge()
+{
+	$values = pg_legal_document_values(
+		array('subtotal' => 12350, 'surcharge' => 100, 'installment_charges' => '755', 'total' => 13205),
+		array(), array(), array(), array(), 'legal_documents_test_money'
+	);
+
+	pg_assert_same('8.55 TL', $values['text']['surcharge']);
+	pg_assert_same('132.05 TL', $values['text']['total']);
+
+	$none = pg_legal_document_values(array('subtotal' => 100, 'installment_charges' => '', 'total' => 100), array(), array(), array(), array(), 'legal_documents_test_money');
+	pg_assert_same('', $none['text']['surcharge'], 'an order paid at once stores an empty text');
+
+	$cart = pg_legal_document_cart_order(array('installment_charges' => 755), array(array('line_total' => 1000, 'tax' => 0)), array(), array());
+	pg_assert_same(0, $cart['installment_charges']);
+
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_for_order');
+	pg_assert_contains('orders.installment_charges,', $section, 'read with the order');
+}
