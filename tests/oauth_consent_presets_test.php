@@ -33,7 +33,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/oauth/rules.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 
 // Permission groups the way api_scope_groups() writes them on a site with
-// the Workspace and ERP modules switched on (no module is loaded here).
+// the Workspace, ERP and Translations modules switched on (no module is loaded here).
 function oauth_consent_presets_test_groups()
 {
 	return array(
@@ -53,6 +53,15 @@ function oauth_consent_presets_test_groups()
 		'system'         => array('label' => 'System',         'read' => 'system:read',         'write' => ''),
 		'site_log'       => array('label' => 'Site Log',       'read' => 'site_log:read',       'write' => ''),
 		'account'        => array('label' => 'Own account',    'read' => 'account:read',        'write' => 'account:write'),
+		'pages'          => array('label' => 'Pages',          'read' => 'pages:read',          'write' => 'pages:write'),
+		'design'         => array('label' => 'Page design',    'read' => 'design:read',         'write' => 'design:write'),
+		'experiments'    => array('label' => 'Experiments',    'read' => 'experiments:read',    'write' => 'experiments:write'),
+		'files'          => array('label' => 'Files',          'read' => 'files:read',          'write' => 'files:write'),
+		'calendars'      => array('label' => 'Calendars',      'read' => 'calendars:read',      'write' => 'calendars:write'),
+		'forms'          => array('label' => 'Forms',          'read' => 'forms:read',          'write' => 'forms:write'),
+		'seo'            => array('label' => 'SEO',            'read' => 'seo:read',            'write' => ''),
+		'content_review' => array('label' => 'Content review', 'read' => 'content_review:read', 'write' => 'content_review:write'),
+		'translations'   => array('label' => 'Translations',   'read' => 'translations:read',   'write' => 'translations:write'),
 		'workspace'      => array('label' => 'Workspace',      'read' => 'workspace:read',      'write' => 'workspace:write'),
 		'tasks'          => array('label' => 'Tasks',          'read' => 'tasks:read',          'write' => 'tasks:write'),
 		'erp'            => array('label' => 'ERP',            'read' => 'erp:read',            'write' => 'erp:write'),
@@ -68,10 +77,10 @@ function oauth_consent_presets_test_site($groups = null)
 	return pg_oauth_consent_presets($groups, api_assistant_scopes($groups, api_assistant_scopes_left_out()));
 }
 
-// Four presets, in the order the screen shows them.
+// Six presets, in the order the screen shows them.
 function test_oauth_consent_presets_keys_and_order()
 {
-	pg_assert_same(array('workspace', 'store', 'accounting', 'all'), array_keys(oauth_consent_presets_test_site()), 'presets');
+	pg_assert_same(array('workspace', 'design', 'content', 'store', 'accounting', 'all'), array_keys(oauth_consent_presets_test_site()), 'presets');
 }
 
 // The propose route needs workspace:write; every preset ticks it, and the
@@ -116,14 +125,24 @@ function test_oauth_consent_presets_name_known_scopes()
 	}
 }
 
-// The store groups are core groups of the site with a read, so a renamed
-// group cannot drop out of the preset unnoticed.
+// The store, design and content groups are groups of the site with a read,
+// so a renamed group cannot drop out of a preset unnoticed. Translations is
+// a module's group, read from its own file.
 function test_oauth_consent_presets_store_groups_exist()
 {
-	$groups = api_scope_groups();
+	require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
 
-	foreach (pg_oauth_consent_store_groups() as $key) {
-		pg_assert_true(isset($groups[$key]) && ($groups[$key]['read'] !== ''), $key . ' is a group with a read');
+	$groups = api_scope_groups() + translate_scope_groups();
+	$lists = array(
+		'store'   => pg_oauth_consent_store_groups(),
+		'design'  => pg_oauth_consent_design_groups(),
+		'content' => pg_oauth_consent_content_groups(),
+	);
+
+	foreach ($lists as $preset => $keys) {
+		foreach ($keys as $key) {
+			pg_assert_true(isset($groups[$key]) && ($groups[$key]['read'] !== ''), $preset . ': ' . $key . ' is a group with a read');
+		}
 	}
 }
 
@@ -133,6 +152,10 @@ function test_oauth_consent_presets_contents()
 	$presets = oauth_consent_presets_test_site();
 
 	pg_assert_same(array('workspace:read', 'workspace:write', 'tasks:read', 'tasks:write'), $presets['workspace']['scopes'], 'workspace');
+
+	pg_assert_same(array('workspace:read', 'workspace:write', 'tasks:read', 'tasks:write', 'design:read', 'pages:read', 'files:read', 'experiments:read'), $presets['design']['scopes'], 'design');
+
+	pg_assert_same(array('workspace:read', 'workspace:write', 'tasks:read', 'tasks:write', 'pages:read', 'files:read', 'calendars:read', 'forms:read', 'seo:read', 'content_review:read', 'comments:read', 'translations:read'), $presets['content']['scopes'], 'content');
 
 	pg_assert_contains('orders:read', $presets['store']['scopes'], 'store reads orders');
 	pg_assert_contains('products:read', $presets['store']['scopes'], 'store reads products');
@@ -160,6 +183,8 @@ function test_oauth_consent_preset_key()
 	pg_assert_same('all', pg_oauth_consent_preset_key('everything', $presets), 'unknown');
 	pg_assert_same('all', pg_oauth_consent_preset_key(array('store'), $presets), 'not a string');
 	pg_assert_same('store', pg_oauth_consent_preset_key('store', $presets), 'store');
+	pg_assert_same('design', pg_oauth_consent_preset_key('design', $presets), 'design');
+	pg_assert_same('content', pg_oauth_consent_preset_key('content', $presets), 'content');
 }
 
 // The ticked boxes: what the preset ticks of what was asked, in the asked
