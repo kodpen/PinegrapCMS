@@ -238,6 +238,7 @@
     "Gift Wrap Kit": "Hediye Paketleme Seti",
     "Gift arrived": "Bağış ulaştı",
     "Gift card": "Hediye Kartı",
+    "Gift card (1 or empty)": "Hediye kartı (1 veya boş)",
     "Gift card ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Hediye kartı ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden değiştirildi.",
     "Gift card ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Hediye kartı ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden oluşturuldu.",
     "Gift card ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Hediye kartı ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden silindi.",

@@ -14081,7 +14081,7 @@ const StyleDesigner = (function () {
             { __option_label: _sdT('Cream'), __option_value: 'cream', __option_id: 'thread-cream', __option_checked: '' }
         ],
         'order.return_delivery_lines': [
-            { __return_item_id: '2', __return_item_name: _sdT('Ceramic Mug'), __return_item_ordered: '1', __return_item_left: '1',
+            { __return_item_id: '2', __return_item_name: _sdT('Ceramic Mug'), __return_item_ordered: '1', __return_item_left: '1', __return_item_gift_card: '',
               __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Ceramic Mug')) }
         ],
         // The rest of a week after the card's Monday: a month grid draws its
@@ -16963,7 +16963,7 @@ const StyleDesigner = (function () {
             __return_line_name: _sdT('Linen Shirt'), __return_line_qty: '1',
             __return_delivery_id: '1', __return_delivery_label: _sdT('Delivery 1'), __return_delivery_several: '',
             __return_delivery_deadline: day, __return_item_id: '1', __return_item_name: _sdT('Linen Shirt'),
-            __return_item_ordered: '2', __return_item_left: '2',
+            __return_item_ordered: '2', __return_item_left: '2', __return_item_gift_card: '',
             __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Linen Shirt'))
         };
         _sdOrderSampleMap = out;
@@ -48218,10 +48218,15 @@ const StyleDesigner = (function () {
     function _sdPartOrderReturnQtyCell() {
         var box = _sdPartWhen('__return_item_left', 'gt', '0');
         box._bindings.value = 'return_qty';
+        var gift = _sdPartWhen('__return_item_gift_card', 'not_empty');
+        gift.text = _sdT('Gift cards cannot be returned');
         var done = _sdPartWhen('__return_item_left', 'eq', '0');
         done.text = _sdT('Already in a return');
+        done._bindings.show_if_2 = '__return_item_gift_card';
+        done._bindParams.show_if_2 = { op: 'empty' };
         return _sdPartEl('td', 'text-end', _sdT('To return'), {}, [
             _sdPartEl('input', 'form-control form-control-sm text-end', _sdT('Quantity'), box),
+            _sdPartEl('span', 'small text-muted', _sdT('Gift card'), gift),
             _sdPartEl('span', 'small text-muted', _sdT('Already in a return'), done)
         ]);
     }
@@ -65719,6 +65724,7 @@ const StyleDesigner = (function () {
                 ['__return_item_name',      _sdT('Product name')],
                 ['__return_item_ordered',   _sdT('Ordered')],
                 ['__return_item_left',      _sdT('How many may go back')],
+                ['__return_item_gift_card', _sdT('Gift card (1 or empty)')],
                 ['__return_item_qty_label', _sdT('Label of the quantity box')]
             ]
         },
