@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-7
-description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and dialogs page as reference (#8860); add, edit, list widths, no pager; Design Canvas icon (#8903); dashboard keeps its look (#8938)
+description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and dialogs page as reference (#8860); add, edit, list widths; Artifact Canvas icon (#8903); dashboard keeps its look (#8938)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -24,7 +24,7 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 - Yes: the confirm, form and settings dialogs and the drawer as drawn (`plans/panel-design-language-dialogs.md`).
 - Owner (2026-11-12), shown the page in both themes: "tasarımlarını onaylıyorum bu arada plana koyabilirsin".
 
-## Which drawing is the Design Canvas icon? (owner, 2026-11-12, #8903)
+## Which drawing is the Artifact Canvas icon? (owner, 2026-11-12, #8903)
 - Drawing B: an artboard with crop marks and a pen curve with its two anchors, the curve in the accent hue. Drawn into the code in #8902 (`ui/design-canvas-icon.md`).
 - Owner (2026-11-12), shown the sheet of the three candidates: "B". Not chosen: A (an easel), C (a canvas and a brush); the architect had recommended A.
 - Withdrawn by the owner on 2026-11-20 for a new drawing under the name Artifact Canvas (`decisions-made-panel-10.md`).

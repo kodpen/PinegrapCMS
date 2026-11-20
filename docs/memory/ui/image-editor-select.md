@@ -1,6 +1,6 @@
 ---
 name: image-editor-select
-description: How the Design Canvas picks layers: Select's click, Shift, box, Select all, groups, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
+description: How the Artifact Canvas picks layers: Select's click, Shift, box, Select all, groups, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
 ---
 
 ## How are several layers selected?

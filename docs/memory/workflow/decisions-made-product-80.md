@@ -1,12 +1,12 @@
 ---
 name: decisions-made-product-80
-description: Decisions list, product part 80 (2026-11-20 on): Design Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
+description: Decisions list, product part 80 (2026-11-20 on): Artifact Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
 ---
 
 ## Where are the rules and the earlier parts?
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries. The part before: `decisions-made-product-79.md`.
 
-## Does the Design Canvas group layers, and may a layer follow another layer? (owner, 2026-11-20, in the architect's window, channel message 9832)
+## Does the Artifact Canvas group layers, and may a layer follow another layer? (owner, 2026-11-20, in the architect's window, channel message 9832)
 - "tasarım tuvalinde gruplama gelecekti o özellik atlanmış."
 - "yerleşmiş bir vektör, nesne veya resim takip edilir olsun. yani bir vektör diğerini takip edebilsin (bir nesne yol olarak kaydırıldığında. videodakinden farklı olarak gruplandırılmış mantığı manuel olabilir nesne takibinde)".
 - Of Follow on a video: "takip yapılamıyor diye defalarca uyarı aldım küçük bir gemiyi takip edemedi."

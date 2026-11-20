@@ -22,7 +22,7 @@ description: Decisions list, panel part 10 (2026-11-17 on): new screens in the d
 ## Is the Design Canvas renamed Artifact Canvas? (owner, 2026-11-20)
 - Yes: Artifact Canvas, in Turkish "Yapıt Tuvali", wherever a screen names it. It replaces Design Canvas ("Tasarım Tuvali") of 2026-11-12 (`decisions-made-panel-6.md`); Page Design Studio and Designs keep their names.
 - Owner (2026-11-20): "Adını ayrıca "Artifact Canvas" yani Yapıt Tuvali olarak güncellemek istiyorum." Told that in picture editing "artifact" also names a compression fault, he went on with the name.
-- The plan writer's reading: only texts change, as in #8894, and the short word "canvas" stays. Built by `plans/artifact-canvas-rename.md`; until its step AC2 lands the screens say Design Canvas.
+- The plan writer's reading: only texts change, as in #8894, and the short word "canvas" stays. Built by `plans/artifact-canvas-rename.md`; the screens say it since step AC2 (#10517, #10669).
 
 ## Which drawing is the Artifact Canvas icon? (owner, 2026-11-20)
 - Drawing A of the sheet of 2026-11-20 (`plans/artifact-canvas-rename/icon-candidates.png`): two round-cornered sheets, the back one hidden behind the front one and tinted, a wave in the accent hue on the front sheet. It replaces drawing B (`decisions-made-panel-7.md`); the one-colour rule of #9250 stays.

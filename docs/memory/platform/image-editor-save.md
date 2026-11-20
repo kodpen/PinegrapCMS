@@ -1,6 +1,6 @@
 ---
 name: image-editor-save
-description: The Design Canvas's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
+description: The Artifact Canvas's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape): replace, copy, new
 module: image_editor
 ---
 

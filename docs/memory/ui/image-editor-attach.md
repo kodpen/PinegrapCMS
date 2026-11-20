@@ -1,6 +1,6 @@
 ---
 name: image-editor-attach
-description: Design Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
+description: Artifact Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
 module: image_editor
 ---
 
