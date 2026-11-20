@@ -823,3 +823,4 @@ function pg_ad_conversion_dispatch($budget)
 // The services' senders.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions_meta.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions_tiktok.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions_ga4.php');

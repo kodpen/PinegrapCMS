@@ -1,4 +1,5 @@
 {
+    "GA4 Measurement Protocol is disconnected: no event goes to Google Analytics, and the events waiting are given up.": "GA4 Measurement Protocol bağlantısı kesilir: Google Analytics'e hiçbir olay gitmez ve bekleyen olaylardan vazgeçilir.",
     "GA4 figures and traffic sources": "GA4 rakamları ve trafik kaynakları",
     "GBP/TRY": "Sterlin/TL",
     "GD": "AV",
@@ -563,7 +564,9 @@
     "Google Analytics figures": "Google Analytics rakamları",
     "Google Analytics figures are no longer read. The Google account stays connected until you disconnect it under Status.": "Google Analytics rakamları artık okunmuyor. Google hesabı, Durum bölümünden bağlantısını kesene kadar bağlı kalır.",
     "Google Analytics figures are no longer read. The Google account stays connected until you remove it under Connected accounts.": "Google Analytics rakamları artık okunmuyor. Google hesabı, Bağlı hesaplar altından kaldırılana kadar bağlı kalır.",
+    "Google Analytics found the test event valid. The validation endpoint does not check the API secret, and the event does not show in the reports.": "Google Analytics test olayını geçerli buldu. Doğrulama adresi API gizli anahtarını denetlemez ve olay raporlarda görünmez.",
     "Google Analytics property": "Google Analytics mülkü",
+    "Google Analytics › Admin › Data streams › your stream › Measurement Protocol API secrets › Create. It is stored encrypted and never shown again.": "Google Analytics › Yönetici › Veri akışları › akışınız › Measurement Protocol API gizli anahtarları › Oluştur. Şifreli saklanır ve bir daha gösterilmez.",
     "Google Analytics: tells visits apart to measure how the site is used.": "Google Analytics: sitenin nasıl kullanıldığını ölçmek için ziyaretleri birbirinden ayırır.",
     "Google Calendar": "Google Takvim",
     "Google Calendar could not be written: {var:1}": "Google Takvim'e yazılamadı: {var:1}",

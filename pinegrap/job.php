@@ -1118,6 +1118,9 @@ if (pg_cron_job_is_enabled('api_webhook_job')) {
 // The ad services' events (includes/fn/ad_conversions.php): the 30-day sweep
 // once a day, then the due rows. Its own small budget, apart from the
 // webhook queue, so a slow ad service never holds back an order webhook.
+// GA4's refund rows are written first, from order_refunds, so every place
+// that records a refund is covered (includes/fn/ad_conversions_ga4.php).
+pg_ad_conversion_ga4_queue_refunds();
 pg_ad_conversion_dispatch(10);
 
 // Device notifications, when the operator has switched them on. Same shape and
