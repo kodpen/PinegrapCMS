@@ -24,7 +24,7 @@ module: marketplace_repricer
 
 ## What is kept per listing and in the log?
 - `marketplace_price_state.state` (`mp_repricer_state()`): 0 not read, 1 winning, 2 losing, 3 losing at the floor, 4 no floor; written for every listing the pass reads. `changed_at` on a change.
-- Log row: old and new price, floor, buybox price, currency, reason (`lost`, `floor`, `raised`, `back`; `mp_repricer_reasons()`, codes proposed to the architect, channel message 11212), sent, time; swept after 90 days by `mp_sync_sweep()`.
+- Log row: old and new price, floor, buybox price, currency, reason (`lost`, `floor`, `raised`, `back`; `mp_repricer_reasons()`; architect, channel message 11220: plain strings, RP3b maps its own labels), sent, time; swept after 90 days by `mp_sync_sweep()`.
 
 ## Which alerts?
 - `repricer_losing`: more than half the Win listings read in one account's pass are held by another seller. `buybox_failing`: the read failed 3 passes in a row (`buybox_failures` per account in the operations alerts' state file; a good read clears it). Both once a day per account (subject `account_<id>`), no `group` (`mp_repricer_alerts()`).
