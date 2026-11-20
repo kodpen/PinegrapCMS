@@ -2528,6 +2528,7 @@ function validate_user()
     $manage_erp_cash = $row['manage_erp_cash'] ?? 0;
     $manage_erp_settings = $row['manage_erp_settings'] ?? 0;
     $manage_erp_readonly = $row['manage_erp_readonly'] ?? 0;
+    $manage_packing = $row['manage_packing'] ?? 0;
     $manage_workspace = $row['manage_workspace'] ?? 0;
     $manage_workspace_assign = $row['manage_workspace_assign'] ?? 0;
     $manage_workspace_board = $row['manage_workspace_board'] ?? 0;
@@ -2603,6 +2604,7 @@ function validate_user()
     settype($manage_erp_cash, 'boolean');
     settype($manage_erp_settings, 'boolean');
     settype($manage_erp_readonly, 'boolean');
+    settype($manage_packing, 'boolean');
     settype($manage_workspace, 'boolean');
     settype($manage_workspace_assign, 'boolean');
     settype($manage_workspace_board, 'boolean');
@@ -2644,6 +2646,7 @@ function validate_user()
         "manage_erp_cash" => $manage_erp_cash,
         "manage_erp_settings" => $manage_erp_settings,
         "manage_erp_readonly" => $manage_erp_readonly,
+        "manage_packing" => $manage_packing,
         "manage_workspace" => $manage_workspace,
         "manage_workspace_assign" => $manage_workspace_assign,
         "manage_workspace_board" => $manage_workspace_board,
