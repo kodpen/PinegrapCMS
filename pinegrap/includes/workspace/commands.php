@@ -984,12 +984,18 @@ function ws_command_unknown($body)
  * equally near, the one with its Turkish letters, as the help writes it.
  * The one-letter shortcuts (/g, /t) are never suggested.
  *
- * @param string     $word   without its slash
- * @param array|null $viewer only the commands this person may use
+ * The word itself is never named: it reaches here only refused (an
+ * application's command its application may not run in this channel, a
+ * command that does not run in a discussion), and naming it back reads as
+ * "Did you mean" what was typed.
+ *
+ * @param string     $word    without its slash
+ * @param array|null $viewer  only the commands this person may use
  * @param int        $limit
+ * @param array|null $channel only the commands that run there
  * @return string[] names with their slash
  */
-function ws_command_closest($word, $viewer = null, $limit = 3)
+function ws_command_closest($word, $viewer = null, $limit = 3, $channel = null)
 {
     $typed = ws_command_fold($word);
     $length = strlen($typed);
@@ -999,12 +1005,12 @@ function ws_command_closest($word, $viewer = null, $limit = 3)
         return array();
     }
 
-    foreach (ws_commands($viewer) as $order => $entry) {
+    foreach (ws_commands($viewer, false, $channel) as $order => $entry) {
         foreach ($entry['names'] as $name) {
             $plain = ltrim($name, '/');
             $folded = ws_command_fold($plain);
 
-            if (mb_strlen($plain, 'UTF-8') < 2) {
+            if ((mb_strlen($plain, 'UTF-8') < 2) || ($folded === $typed)) {
                 continue;
             }
 
@@ -1039,12 +1045,13 @@ function ws_command_closest($word, $viewer = null, $limit = 3)
  *
  * @param array|null $viewer
  * @param string     $word as typed, without its slash
+ * @param array|null $channel where it was typed: the closest names run there
  * @return array type ephemeral, keep (the box keeps the text), html, unknown,
  *               closest
  */
-function ws_command_unknown_answer($viewer, $word)
+function ws_command_unknown_answer($viewer, $word, $channel = null)
 {
-    $closest = ws_command_closest($word, $viewer);
+    $closest = ws_command_closest($word, $viewer, 3, $channel);
     $html = '<div class="ws-ephemeral-title">' . h(lang(array('string' => '{var:1} is not a command.', 'vars' => '/' . $word))) . '</div>';
 
     if (!empty($closest)) {
@@ -1558,7 +1565,7 @@ function ws_command_run($viewer, $channel, $body, $options = array())
             }
         }
 
-        return ws_command_unknown_answer($viewer, $unknown);
+        return ws_command_unknown_answer($viewer, $unknown, $channel);
     }
 
     $entry = ws_command_registry()[$split['command']] ?? null;
@@ -2066,7 +2073,7 @@ function ws_command_help_one($viewer, $channel, $word)
         }
     }
 
-    $closest = ws_command_closest($word, $viewer);
+    $closest = ws_command_closest($word, $viewer, 3, $channel);
     $html = '<div class="ws-ephemeral-title">' . h(lang(array('string' => 'There is no {var:1} command.', 'vars' => '/' . $word))) . '</div>';
 
     if (!empty($closest)) {
