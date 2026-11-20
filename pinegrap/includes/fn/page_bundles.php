@@ -1620,6 +1620,27 @@ function pg_page_bundle_publish_ops($items, $write_item, $undo_item)
 }
 
 /**
+ * The drafts of the replacements a published bundle wrote onto their live
+ * pages: written items of a live page with the state written kept. A claim
+ * with no state (a publish that died part-way) keeps its draft. Pure.
+ *
+ * @param array $items page_bundle_item rows
+ * @return int[] draft page ids
+ */
+function pg_page_bundle_used_replacements($items)
+{
+    $out = array();
+
+    foreach ((array) $items as $item) {
+        if (((string) $item['status'] === 'written') && ((int) $item['live_page_id'] > 0) && ((string) $item['written_state'] !== '')) {
+            $out[] = (int) $item['draft_page_id'];
+        }
+    }
+
+    return $out;
+}
+
+/**
  * Takes one written page back: a new page goes back to Drafts; a replaced
  * page gets the tree, title and description of its revision before, saved
  * as a new publish with the source 'restore'. After a failed publish the
@@ -1775,13 +1796,13 @@ function pg_page_bundle_publish_locked($bundle, $user, $choices = array())
             db_q("UPDATE page_bundle_item SET status = 'left_out' WHERE id = ? AND status = 'waiting'", array((int) $id));
         }
 
-        // The used replacements: their live pages carry them now.
+        // The used replacements: their live pages carry them now. Read
+        // again, so "Publish the rest" also bins those of the run that left
+        // the bundle partly published.
         pg_page_bundle_load_recycle();
 
-        foreach ($run['written'] as $id) {
-            if ((int) $items[$id]['live_page_id'] > 0) {
-                pg_recycle_page((int) $items[$id]['draft_page_id'], $user);
-            }
+        foreach (pg_page_bundle_used_replacements(pg_page_bundle_items($bundle['id'])) as $draft_id) {
+            pg_recycle_page($draft_id, $user);
         }
 
         log_activity(lang(array('string' => 'release bundle ({var:1}) was published', 'vars' => array((string) $bundle['name']))),
