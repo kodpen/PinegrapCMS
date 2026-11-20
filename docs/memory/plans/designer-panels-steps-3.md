@@ -31,7 +31,7 @@ description: Plan designer-panels, steps DP11 to DP16 of the Overview chain: row
   - Pictures: a drag from the page's foot to its head on the 500-row page, four frames.
   - Features: D40.
 
-- DP16 (M) after DP15: moving without dragging.
+- DP16 (M) after DP15: moving without dragging. Done: #10588.
   - New: the "Move…" window as a part; the row buttons; the keys on a focused row.
   - Tests: each key's move through `canDrop()`; one undo step; the moved element selected and in view; a refused move saying why.
   - Pictures: the window, the row buttons; the window on a 390 px phone beside `phone-pages-move.jpg` (`designer-panels-measures-6.md`).
