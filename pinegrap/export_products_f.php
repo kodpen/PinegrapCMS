@@ -405,17 +405,15 @@ function pg_products_export_csv($table, $file_name = 'products.csv')
 
 // The same table as a workbook.
 //
-// Written straight into the file rather than through PHPExcel. PHPExcel builds
-// an object per cell, and this catalog is thirty thousand products across
+// Written straight into the file rather than through a spreadsheet library.
+// A library builds an object per cell, and this catalog is thirty thousand products across
 // eighty-seven columns -- two and a half million of them. It ran out of memory
 // and returned nothing at all, which is the worst way for an export to fail:
 // the browser has already been told a file is coming. A worksheet is XML in a
 // zip, and XML written a row at a time costs one row of memory.
 //
-// The import reads a .xlsx the same way, and keeps PHPExcel for the older
-// Excel format and OpenDocument -- see import_products_f.php. Reading a format
-// somebody else wrote is what a library is worth carrying for; writing one
-// this file controls end to end is not.
+// The import reads a .xlsx the same way, and the older Excel format and
+// OpenDocument through the sheet reader (includes/fn/sheet_read.php).
 
 // A column number as a spreadsheet names it: 0 is A, 26 is AA.
 function pg_products_export_column_letter($index)
@@ -580,10 +578,9 @@ function pg_products_export_parts($sheet_title)
 
 function pg_products_export_xlsx($table, $file_name = 'products.xlsx')
 {
-    // Zipping is the one part not written here. ZipArchive is what PHPExcel
-    // itself needs to write a workbook, so an installation that has ever
-    // exported one has it; an installation that does not is told which file to
-    // ask for rather than handed a broken one.
+    // Zipping is the one part not written here. ZipArchive is what every
+    // workbook this software writes or reads needs; an installation without it
+    // is told which extension to ask for rather than handed a broken file.
     if (!class_exists('ZipArchive')) {
         output_error(lang('The file could not be read.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }

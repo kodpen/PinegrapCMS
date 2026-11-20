@@ -9,7 +9,7 @@
  * a large .xlsx or .ods is never held whole. A .xlsx is walked with the
  * preview's node-by-node helpers (includes/fn/office.php) but without its
  * row, column and string limits; an .ods has its content.xml streamed the
- * same way and keeps the cell ceilings PHPExcel's reader was given; an .xls
+ * same way and keeps the importers' long-standing cell ceilings; an .xls
  * is a binary record stream, read whole by excel_reader2.php through the
  * guarded reader in includes/sheet_read_xls.php.
  *
@@ -32,8 +32,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * The most an .ods file's content.xml may declare it unpacks to, in bytes:
- * the size PHPExcel's reader was allowed to hold whole, so a file the
- * importers took before is still taken.
+ * the size the importers' earlier reader was allowed to hold whole, so a
+ * file the importers took before is still taken.
  */
 define('PG_SHEET_ODS_MAX_PART', 8 * 1024 * 1024);
 
@@ -53,7 +53,7 @@ define('PG_SHEET_ODS_MAX_CELLS', PG_SHEET_ODS_MAX_PART / 64);
 define('PG_SHEET_ODS_MAX_RANGE', 1024 * 1024);
 
 /**
- * The last column a cell reference may name (ZZZ), as PHPExcel took them: a
+ * The last column a cell reference may name (ZZZ, past Excel's XFD): a
  * reference past it is a damaged file, not a row to pad out to millions of
  * cells.
  */
@@ -248,8 +248,6 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
     }
 
     $part = $sheets[$sheet]['part'];
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -457,8 +455,6 @@ function pg_sheet_ods_rows($path, $sheet, &$error)
         $error = 'large';
         return;
     }
-
-    pg_office_zip_stream();
 
     $reader = new XMLReader();
 
@@ -774,9 +770,9 @@ function pg_sheet_ods_time_serial($text)
  * excel_reader2.php reads the file, through Pg_Sheet_Xls_Reader
  * (includes/sheet_read_xls.php), which reads only the sheet asked for,
  * refuses a damaged stream before the library walks it, and gives each cell
- * its exact type: a number as PHPExcel gave it ((string) of the float), a
- * date by its cell's number format, a boolean, an error, text decoded from
- * the workbook's code page. The library holds the sheet whole: a BIFF8 sheet
+ * its exact type: a number as the importers always took it ((string) of
+ * the float), a date by its cell's number format, a boolean, an error, text
+ * decoded from the workbook's code page. The library holds the sheet whole: a BIFF8 sheet
  * stops at 65,536 rows and 256 columns.
  *
  * @param string $path

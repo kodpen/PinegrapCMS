@@ -2,12 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests the importers' sheet reader (includes/fn/sheet_read.php): the same
- * fixture files read with the bundled PHPExcel, as the product and bank
- * statement importers read them today, and with the new reader, compared
- * cell by cell; then the reader's own rules: typed cells, the product
- * importer's text, no preview limits on a .xlsx, the .ods ceilings and a
- * damaged .xls refused without hanging.
+ * Tests the importers' sheet reader (includes/fn/sheet_read.php): the
+ * fixture files read with the new reader, compared cell by cell with what
+ * PHPExcel read from them when the importers used it (frozen in
+ * tests/fixtures/sheet_read/phpexcel_cells.json); then the reader's own
+ * rules: typed cells, the product importer's text, no preview limits on a
+ * .xlsx, the .ods ceilings and a damaged .xls refused without hanging.
  *
  * The fixtures (tests/fixtures/sheet_read/) were written by LibreOffice
  * 24.2 from one openpyxl workbook (book.*: text, numbers, booleans, dates,
@@ -44,63 +44,22 @@ function sheet_read_test_all($path, $kind, $sheet = 0)
 }
 
 /**
- * A sheet as PHPExcel reads it, in its own PHP process (it replaces the zip
- * stream wrapper for the rest of the request): row => column => [type,
- * value], type s, n, b or d (a date by its cell format, as a Unix time).
+ * A sheet as PHPExcel read it, frozen in tests/fixtures/sheet_read/
+ * phpexcel_cells.json before the library was removed: row => column =>
+ * [type, value], type s, n, b or d (a date by its cell format, as a Unix
+ * time); keyed file#sheet.
  */
-function sheet_read_test_phpexcel($path, $sheet)
+function sheet_read_test_phpexcel($file, $sheet)
 {
-	$library = PG_FUNCTIONS_DIR . '/includes/phpexcel';
-	$readers = array('xlsx' => 'Excel2007', 'ods' => 'OOCalc', 'xls' => 'Excel5');
-	$script = tempnam(sys_get_temp_dir(), 'pg_sheet_read');
-	$code = '<?php
-error_reporting(0);
-require ' . var_export($library . '/PHPExcel.php', true) . ';
-$reader = PHPExcel_IOFactory::createReader(' . var_export($readers[pg_sheet_kind($path)], true) . ');
-$book = $reader->load(' . var_export($path, true) . ');
-$sheet = $book->getSheet(' . (int) $sheet . ');
-$last_row = $sheet->getHighestDataRow();
-$last_column = PHPExcel_Cell::columnIndexFromString($sheet->getHighestDataColumn()) - 1;
-$out = array();
-for ($row = 1; $row <= $last_row; $row++) {
-	for ($column = 0; $column <= $last_column; $column++) {
-		$cell = $sheet->getCellByColumnAndRow($column, $row, false);
-		if ($cell === null) {
-			continue;
-		}
-		try {
-			$value = $cell->getCalculatedValue();
-		} catch (Exception $exception) {
-			$value = $cell->getValue();
-		}
-		if ($value instanceof PHPExcel_RichText) {
-			$value = $value->getPlainText();
-		}
-		if (($value === null) || ($value === "")) {
-			continue;
-		}
-		if (is_bool($value)) {
-			$entry = array("b", $value ? "1" : "0");
-		} elseif ((is_int($value) || is_float($value)) && PHPExcel_Shared_Date::isDateTime($cell)) {
-			$entry = array("d", PHPExcel_Shared_Date::ExcelToPHP((float) $value));
-		} elseif (is_int($value) || is_float($value)) {
-			$entry = array("n", (float) $value);
-		} else {
-			$entry = array("s", (string) $value);
-		}
-		$out[$row][$column] = $entry;
-	}
-}
-echo serialize($out);
-';
-	file_put_contents($script, $code);
-	// cmd.exe has no /dev/null: a redirect there stops the command.
-	$null = (DIRECTORY_SEPARATOR === '\\') ? 'NUL' : '/dev/null';
-	$output = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>' . $null);
-	unlink($script);
-	$read = @unserialize($output);
+	static $frozen = null;
 
-	return is_array($read) ? $read : null;
+	if ($frozen === null) {
+		$frozen = json_decode((string) file_get_contents(dirname(__FILE__) . '/fixtures/sheet_read/phpexcel_cells.json'), true);
+	}
+
+	$key = basename($file) . '#' . (int) $sheet;
+
+	return (is_array($frozen) && isset($frozen[$key])) ? $frozen[$key] : null;
 }
 
 /**
@@ -177,10 +136,10 @@ function sheet_read_test_pairs($row)
 	return $out;
 }
 
-// -- the same files, PHPExcel and the new reader ---------------------------
+// -- the same files, PHPExcel (frozen) and the new reader ------------------
 
-// The cells PHPExcel reads wrong, and the new reader right: an .ods
-// paragraph's text:s spaces are dropped by PHPExcel (it reads only the
+// The cells PHPExcel read wrong, and the new reader right: an .ods
+// paragraph's text:s spaces are dropped by PHPExcel (it read only the
 // paragraph's own text nodes).
 function sheet_read_test_known_differences()
 {
@@ -214,7 +173,7 @@ function test_sheet_read_matches_phpexcel_cell_by_cell()
 
 		for ($sheet = 0; $sheet < $sheets; $sheet++) {
 			$label = basename($file) . '#' . $sheet;
-			$expected = sheet_read_test_phpexcel($path, $sheet);
+			$expected = sheet_read_test_phpexcel($file, $sheet);
 
 			if (!pg_assert_true(is_array($expected) && !empty($expected), $label . ' read by PHPExcel')) {
 				continue;

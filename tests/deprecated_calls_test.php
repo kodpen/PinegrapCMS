@@ -273,7 +273,6 @@ function deprecated_calls_test_files()
 		'/pinegrap/includes/phpmailer/',
 		'/pinegrap/includes/stripe/',
 		'/pinegrap/includes/iyzipay-php/',
-		'/pinegrap/includes/phpexcel/',
 		'/pinegrap/includes/boxpacker/',
 		'/pinegrap/includes/dompdf/',
 		'/pinegrap/includes/qrcode/',

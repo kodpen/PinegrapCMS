@@ -7,9 +7,8 @@
  * Selected and the ERP export's Paraşüt profiles. From the same input, the
  * cells - values, types and number formats - equal those the earlier writers
  * produced: PHPExcel filling the template for the orders export, the
- * template's zip filled from row 4 for the ERP export. PHPExcel is loaded
- * here only, in a process of its own; without includes/phpexcel the
- * comparison is skipped.
+ * template's zip filled from row 4 for the ERP export, as read back when
+ * those writers were removed (tests/fixtures/parasut_sheet/).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -74,13 +73,106 @@ function parasut_sheet_test_invoice_layout()
 	return $layout;
 }
 
-// Every cell of the sheets, read back by PHPExcel: written the way the
-// product wrote them before and the way it writes them now.
+/**
+ * Every cell of a .xlsx's first sheet that holds a value, as PHPExcel read
+ * the files written before: reference => array(v, t, f), t s for text, n for
+ * a number, f the number format of a number ('' for text). Reads only what
+ * pg_xlsx_write_layout() writes: inline or shared strings and numbers.
+ */
+function parasut_sheet_test_cells($path)
+{
+	$zip = new ZipArchive();
+
+	if ($zip->open($path) !== true) {
+		return null;
+	}
+
+	$workbook = simplexml_load_string((string) $zip->getFromName('xl/workbook.xml'));
+	$sheet = simplexml_load_string((string) $zip->getFromName('xl/worksheets/sheet1.xml'));
+	$styles = simplexml_load_string((string) $zip->getFromName('xl/styles.xml'));
+	$shared = $zip->getFromName('xl/sharedStrings.xml');
+	$zip->close();
+
+	if (!$workbook || !$sheet || !$styles) {
+		return null;
+	}
+
+	$strings = array();
+
+	if (is_string($shared) && ($shared !== '')) {
+		foreach (simplexml_load_string($shared)->si as $item) {
+			$text = (string) $item->t;
+			foreach ($item->r as $run) {
+				$text .= (string) $run->t;
+			}
+			$strings[] = $text;
+		}
+	}
+
+	$codes = array(0 => 'General', 3 => '#,##0', 4 => '#,##0.00', 14 => 'mm-dd-yy', 22 => 'm/d/yy h:mm');
+
+	if (isset($styles->numFmts)) {
+		foreach ($styles->numFmts->numFmt as $format) {
+			$codes[(int) $format['numFmtId']] = (string) $format['formatCode'];
+		}
+	}
+
+	$xfs = array();
+
+	foreach ($styles->cellXfs->xf as $xf) {
+		$id = (int) $xf['numFmtId'];
+		$xfs[] = isset($codes[$id]) ? $codes[$id] : 'General';
+	}
+
+	$cells = array();
+
+	foreach ($sheet->sheetData->row as $row) {
+		foreach ($row->c as $cell) {
+			$type = (string) $cell['t'];
+
+			if ($type === 'inlineStr') {
+				$value = (string) $cell->is->t;
+				foreach ($cell->is->r as $run) {
+					$value .= (string) $run->t;
+				}
+			} elseif ($type === 's') {
+				$value = isset($strings[(int) $cell->v]) ? $strings[(int) $cell->v] : '';
+			} elseif (isset($cell->v)) {
+				$value = (string) $cell->v;
+			} else {
+				continue;
+			}
+
+			if ($value === '') {
+				continue;
+			}
+
+			$number = !in_array($type, array('inlineStr', 's', 'str'), true);
+			$cells[(string) $cell['r']] = array(
+				'v' => $value,
+				't' => $number ? 'n' : 's',
+				'f' => $number ? (isset($xfs[(int) $cell['s']]) ? $xfs[(int) $cell['s']] : 'General') : '',
+			);
+		}
+	}
+
+	return array('title' => (string) $workbook->sheets->sheet[0]['name'], 'cells' => $cells);
+}
+
+// Every cell of the sheets: written the way the product writes them now,
+// and the way it wrote them before - PHPExcel filling the templates for the
+// orders export, the template's zip filled from row 4 for the ERP export -
+// as PHPExcel read those back (tests/fixtures/parasut_sheet/
+// written_before.json, frozen before the library was removed).
 function test_parasut_sheets_match_the_cells_written_before()
 {
-	$library = PG_FUNCTIONS_DIR . '/includes/phpexcel';
+	if (!class_exists('ZipArchive')) {
+		return;
+	}
 
-	if (!is_file($library . '/PHPExcel.php') || !is_dir($library . '/templates') || !class_exists('ZipArchive') || !class_exists('XMLReader')) {
+	$before = json_decode((string) file_get_contents(dirname(__FILE__) . '/fixtures/parasut_sheet/written_before.json'), true);
+
+	if (!pg_assert_true(is_array($before), 'the cells written before')) {
 		return;
 	}
 
@@ -90,123 +182,35 @@ function test_parasut_sheets_match_the_cells_written_before()
 	$orders = parasut_sheet_test_order_cells();
 	$erp = parasut_sheet_test_erp_rows();
 
-	pg_assert_true(pg_xlsx_write_layout(parasut_sheet_test_invoice_layout(), pg_parasut_sheet_rows($orders['invoices'], 4), $dir . '/new_orders_invoices.xlsx'));
-	pg_assert_true(pg_xlsx_write_layout(pg_parasut_sheet_layout('contacts'), pg_parasut_sheet_rows($orders['contacts'], 4), $dir . '/new_orders_contacts.xlsx'));
+	pg_assert_true(pg_xlsx_write_layout(parasut_sheet_test_invoice_layout(), pg_parasut_sheet_rows($orders['invoices'], 4), $dir . '/orders_invoices.xlsx'));
+	pg_assert_true(pg_xlsx_write_layout(pg_parasut_sheet_layout('contacts'), pg_parasut_sheet_rows($orders['contacts'], 4), $dir . '/orders_contacts.xlsx'));
 
 	foreach (array('invoices' => 'parasut_invoices', 'contacts' => 'parasut_contacts') as $kind => $profile_id) {
 		$profile = array('id' => $profile_id, 'sheet' => $kind, 'first_row' => 4, 'label' => $profile_id);
-		pg_assert_true(erp_export_write_xlsx($profile, erp_export_columns($profile), $erp[$kind], $dir . '/new_erp_' . $kind . '.xlsx'));
-
-		// The ERP export before: the template's zip with its worksheet's rows
-		// from row 4 replaced by pg_xlsx_sheet_rows().
-		$template = $library . '/templates/' . (($kind === 'invoices') ? 'parasut_satis_faturalari.xlsx' : 'parasut_musteri_ve_tedarikciler.xlsx');
-		$old = $dir . '/old_erp_' . $kind . '.xlsx';
-		copy($template, $old);
-		$zip = new ZipArchive();
-		$zip->open($old);
-		$sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
-		$kept = '';
-		preg_match_all('/<row\b[^>]*?(?:\/>|>.*?<\/row>)/s', $sheet, $matches);
-		foreach ($matches[0] as $row_xml) {
-			if (preg_match('/\br="(\d+)"/', $row_xml, $r) && ((int) $r[1] < 4)) {
-				$kept .= $row_xml;
-			}
-		}
-		$sheet = preg_replace('/<sheetData\b[^>]*?(?:\/>|>.*?<\/sheetData>)/s', '<sheetData>' . $kept . pg_xlsx_sheet_rows($erp[$kind], 4) . '</sheetData>', $sheet, 1);
-		$zip->addFromString('xl/worksheets/sheet1.xml', $sheet);
-		$zip->close();
+		pg_assert_true(erp_export_write_xlsx($profile, erp_export_columns($profile), $erp[$kind], $dir . '/erp_' . $kind . '.xlsx'));
 	}
 
-	// The orders export before: PHPExcel fills the templates as edit_orders.php
-	// did, text columns as explicit text cells, the rest through setCellValue().
-	$text_columns = array('invoices' => array('A', 'B', 'L'), 'contacts' => array('A', 'D', 'F', 'G', 'H', 'I', 'J', 'M'));
-	$script = $dir . '/run.php';
-	$code = '<?php
-error_reporting(E_ALL);
-date_default_timezone_set("UTC");
-require ' . var_export($library . '/PHPExcel.php', true) . ';
-$library = ' . var_export($library, true) . ';
-$dir = ' . var_export($dir, true) . ';
-$orders = ' . var_export($orders, true) . ';
-$text = ' . var_export($text_columns, true) . ';
-$border = array("borders" => array("allborders" => array("style" => PHPExcel_Style_Border::BORDER_THIN, "color" => array("rgb" => "b8b8b8"))));
-foreach (array("invoices" => "parasut_satis_faturalari.xlsx", "contacts" => "parasut_musteri_ve_tedarikciler.xlsx") as $kind => $file) {
-	$book = PHPExcel_IOFactory::load($library . "/templates/" . $file);
-	$sheet = $book->getActiveSheet();
-	foreach ($orders[$kind] as $row => $cells) {
-		foreach ($cells as $column => $value) {
-			if (is_array($value)) {
-				$value = PHPExcel_Shared_Date::PHPToExcel(date("j.m.Y H:i", strtotime($value["date"])));
-			}
-			if (in_array($column, $text[$kind], true)) {
-				$sheet->setCellValueExplicit($column . $row, $value, PHPExcel_Cell_DataType::TYPE_STRING);
-			} else {
-				$sheet->setCellValue($column . $row, $value);
-			}
-		}
-		$last = ($kind === "invoices") ? "T" : "Q";
-		$sheet->getStyle("A" . $row . ":" . $last . $row)->applyFromArray($border);
-		$sheet->getStyle("A" . $row . ":" . $last . $row)->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_LEFT);
-		if ($kind === "invoices") {
-			foreach (array("C", "F") as $c) {
-				$sheet->getStyle($c . $row)->getNumberFormat()->setFormatCode(PHPExcel_Style_NumberFormat::FORMAT_DATE_PARASUT);
-			}
-			foreach (array("P", "Q", "S") as $c) {
-				$sheet->getStyle($c . $row)->getNumberFormat()->setFormatCode(PHPExcel_Style_NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED_PARASUT);
-			}
-			$sheet->getStyle("R" . $row)->getNumberFormat()->setFormatCode(PHPExcel_Style_NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED_PARASUT1);
-		}
-	}
-	PHPExcel_IOFactory::createWriter($book, "Excel2007")->save($dir . "/old_orders_" . $kind . ".xlsx");
-	$book->disconnectWorksheets();
-}
-$out = array();
-foreach (glob($dir . "/*.xlsx") as $path) {
-	$book = PHPExcel_IOFactory::createReader("Excel2007")->load($path);
-	$sheet = $book->getSheet(0);
-	$cells = array();
-	foreach ($sheet->getCellCollection() as $reference) {
-		$cell = $sheet->getCell($reference);
-		$value = $cell->getValue();
-		if ($value instanceof PHPExcel_RichText) {
-			$value = $value->getPlainText();
-		}
-		if (($value === null) || ($value === "")) {
-			continue;
-		}
-		$type = $cell->getDataType();
-		$cells[$reference] = array(
-			"v" => $value,
-			"t" => ($type === "inlineStr") ? "s" : $type,
-			"f" => is_numeric($value) && !is_string($value) ? $sheet->getStyle($reference)->getNumberFormat()->getFormatCode() : "",
-		);
-	}
-	$out[basename($path, ".xlsx")] = array("title" => $sheet->getTitle(), "cells" => $cells);
-	$book->disconnectWorksheets();
-}
-echo json_encode($out);
-';
-	file_put_contents($script, $code);
-	$output = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>&1');
-	$read = json_decode($output, true);
-
-	foreach (glob($dir . '/*') as $file) {
-		unlink($file);
-	}
-	rmdir($dir);
-
-	pg_assert_true(is_array($read), 'PHPExcel read the files: ' . substr($output, 0, 400));
+	$compared = 0;
 
 	foreach (array('orders_invoices', 'orders_contacts', 'erp_invoices', 'erp_contacts') as $name) {
-		$old = $read['old_' . $name];
-		$new = $read['new_' . $name];
+		$old = $before['old_' . $name];
+		$new = parasut_sheet_test_cells($dir . '/' . $name . '.xlsx');
+
+		if (!pg_assert_true(is_array($new), $name . ' read back')) {
+			continue;
+		}
 
 		pg_assert_same($old['title'], $new['title'], $name . ' sheet name');
 		pg_assert_same(array_keys($old['cells']), array_keys($new['cells']), $name . ' the same cells hold a value');
 
 		foreach ($old['cells'] as $reference => $cell) {
+			if (!isset($new['cells'][$reference])) {
+				continue;
+			}
+
 			$other = $new['cells'][$reference];
 			$label = $name . ' ' . $reference;
+			$compared++;
 
 			if ($reference === 'A1') {
 				// The help note: the template's line breaks are \n or \r\n.
@@ -217,6 +221,7 @@ echo json_encode($out);
 			pg_assert_same($cell['t'], $other['t'], $label . ' type');
 
 			if ($cell['t'] === 'n') {
+				// PHPExcel kept 14 significant digits of a float.
 				pg_assert_true(abs((float) $cell['v'] - (float) $other['v']) < 1e-9, $label . ' number ' . $cell['v'] . ' / ' . $other['v']);
 				pg_assert_same($cell['f'], $other['f'], $label . ' number format');
 			} else {
@@ -225,6 +230,13 @@ echo json_encode($out);
 			}
 		}
 	}
+
+	foreach (glob($dir . '/*') as $file) {
+		unlink($file);
+	}
+	rmdir($dir);
+
+	pg_assert_true($compared > 150, 'cells compared: ' . $compared);
 }
 
 // Typed text is a text cell however it starts: never a formula.
@@ -260,7 +272,6 @@ function test_erp_parasut_profiles_name_their_sheet()
 
 	pg_assert_true(strpos($source, "'sheet' => 'invoices'") !== false, 'invoices profile');
 	pg_assert_true(strpos($source, "'sheet' => 'contacts'") !== false, 'contacts profile');
-	pg_assert_true(strpos($source, 'phpexcel') === false, 'no template from includes/phpexcel');
 	pg_assert_same(20, count(erp_export_columns(array('id' => 'parasut_invoices'))));
 	pg_assert_same('FİRMA ADI *', erp_export_columns(array('id' => 'parasut_contacts'))[0]);
 }
