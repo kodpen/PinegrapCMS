@@ -23,7 +23,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 - `agent-channel-*`: 7 files.
 - `bug-hunt-*`: 18 files; start at `bug-hunt.md`.
-- `decisions-made-*`: 178 files; start at `decisions-made.md`.
+- `decisions-made-*`: 182 files; start at `decisions-made.md`.
 
 ## Files
 

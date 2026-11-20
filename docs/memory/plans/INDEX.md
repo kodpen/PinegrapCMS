@@ -16,6 +16,11 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- ai-guide-features-2.md: Plan ai-guide, features G11 to G19: the panel's door for a browser agent, the plugin, the compact tool list, the Design and Content presets, size budgets, hints on refusals, the refused calls report
+- ai-guide-features.md: Plan ai-guide, features G1 to G10: the guide's registry, its text built from code, sizes, version and digest, the topics (start, designer, the design's values, panel) and who reads it where
+- ai-guide-steps-2.md: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the Design and Content presets, the size budget, the description diet by area, hints on refusals, the refused calls report, close-out
+- ai-guide-steps.md: Plan ai-guide, steps AG1 to AG7 of fourteen: the guide's engine with the API and MCP doors, the designer topic, the other topics, the panel's door, the compact tool list, presets
+- ai-guide.md: Plan (owner 2026-11-20, agent channel poll 170): the site explains itself to AI agents cheaply: a guide generated from code, read over MCP, API and the panel; a compact tool list; AG1 to AG14
 - artifact-canvas-rename-steps.md: Plan artifact-canvas-rename, steps AC1 to AC5: the new drawing, the name in every text, memory's label, the canvas's icon on the buttons that open it, close-out
 - artifact-canvas-rename.md: Plan (owner 2026-11-20): the Design Canvas is renamed Artifact Canvas ("Yapıt Tuvali") and gets a new icon, two sheets and a wave; the name and the icon on every screen that shows them; AC1-AC5
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
@@ -115,6 +120,9 @@
 - sales-watch-features.md: Plan sales-watch, features W1 to W12: the norm per channel, orders stopped, payment broken, the price error shield and taking a product off sale, the return spike, delivery, settings, API
 - sales-watch-steps.md: Plan sales-watch, steps SW1 to SW6: the norm and the flow alerts, the settings part, the price error shield, the return spike, the API reader, close-out
 - sales-watch.md: Plan (owner 2026-11-20, poll 165): the store learns its order rhythm and alerts on orders stopped, a silent channel, broken payment, a price error, a return spike; SW1 to SW6
+- stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see
+- stock-holds-steps.md: Plan stock-holds, steps SH1 to SH5: the table and its functions, the checkout's check, placing and releasing around the payment, what people see, close-out; which files other work holds
+- stock-holds.md: Plan (owner 2026-11-20, agent channel poll 172): units are held for an order while its payment runs, so two orders cannot both take the last unit; SH1 to SH5
 - stock-planning-features.md: Plan stock-planning, features P1 to P14: the daily record, sales speed, season, lead time, supplier, order quantity, states, dead stock, the screen, the supplier order, bell and API
 - stock-planning-steps.md: Plan stock-planning, steps SP1 to SP5: the daily record first (its history starts when it lands), the forecast, the screen and supplier order, the bell and API, close-out
 - stock-planning.md: Plan (owner 2026-11-20, agent channel poll 163): a nightly stock plan per product (days left, run-out day, order quantity, dead stock), its screen, supplier orders, bell and API; SP1 to SP5
