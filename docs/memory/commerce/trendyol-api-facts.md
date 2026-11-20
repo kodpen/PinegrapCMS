@@ -4,7 +4,7 @@ description: Trendyol seller API (V2) facts for the connector: hosts, Basic auth
 ---
 
 ## Where were these facts read, and how sure are they?
-- developers.trendyol.com (TR and EN Türkiye pages, last modified 2026-04..10), read 2026-10-20. No call made with real credentials: tests use fixtures shaped after the docs (`tests/fixtures/trendyol/`). The `/v3.0/` pages are Trendyol International (`storeFrontCode` header), not Türkiye.
+- developers.trendyol.com (Türkiye pages, modified 2026-04..10), read 2026-10-20. No call made with real credentials: tests use fixtures shaped after the docs (`tests/fixtures/trendyol/`). `/v3.0/` pages are Trendyol International (`storeFrontCode`), not Türkiye.
 
 ## Which hosts and paths?
 - Live `https://apigw.trendyol.com`, test `https://stageapigw.trendyol.com` (panel `stagepartner.trendyol.com`); stage credentials are separate. Paths start `/integration/`. The old base URL closed from 26 May 2025 (only third-party sources name it `api.trendyol.com/sapigw`). Product V1 was supported until 15 Sep 2026 and order V1 until 15 Oct 2026 (changelog entries of 21.07 and 30.07.2026): use only V2 paths or ones marked "V1-V2".
@@ -34,6 +34,6 @@ description: Trendyol seller API (V2) facts for the connector: hosts, Basic auth
 - Not fully documented. Read `errors[].message`, `title`, `key` (also under `error`, the common label's), then `message`, `exception` (`mp_trendyol_error_message()`).
 
 ## What is still unknown?
-- Status for a valid key with a wrong seller id (401 or 403). Whether stage has the same category ids as live (the cache is per provider, not per environment).
+- Status for a valid key with a wrong seller id (401 or 403). Whether stage has live's category ids (the cache is per provider).
 
-Related: docs/memory/commerce/trendyol-listings.md, docs/memory/commerce/marketplace-outbound-layer.md
+Related: docs/memory/commerce/trendyol-listings.md, docs/memory/commerce/marketplace-outbound-layer.md, docs/memory/commerce/trendyol-finance-facts.md
