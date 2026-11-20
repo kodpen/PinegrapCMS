@@ -11,7 +11,7 @@ description: Plan sales-watch, steps SW1 to SW6: the norm and the flow alerts, t
 - SW2 (S) after SW1: the Sales watch part of Settings › Alerts (`pgset-alerts`), the `config_text` rows, the pause, the chat targets listing the new codes. Features: W8, W9.
 - SW3 (M) after SW1: the price error shield.
   - `includes/fn/sales_watch.php` reads `product_price_history`, `erp_product_costs` and the units; taking a product off sale through the API's product writer (`includes/api/resources/products.php`); `sales_watch_closed`; the bell row with its link. Tests: a typo price that sells, a real sale price that does not trip, a cost above the price, the 24 hours after a person puts it back, six products in one pass (none closed), the 20 a day. Features: W4, W5, W5b, W7.
-- SW4 (S) after SW1: the return spike, nightly, from `order_returns` and `order_return_items`. Feature: W6.
+- SW4 (S) after SW1: the return spike, nightly, from `order_returns` and `order_return_items`. Feature: W6. Done: #10777.
 - SW5 (S) after SW3 and SW4: `GET /reports/sales-watch` in `includes/api/resources/reports.php`, its type, `php tools/check_api_schema.php`. Feature: W11.
 - SW6 (S) close-out: every W number checked against the code with its PR; `platform/ops-alerts.md` updated and `commerce/sales-watch.md` written; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
