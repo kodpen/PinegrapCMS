@@ -1,6 +1,6 @@
 ---
 name: designer-blocks-map
-description: The map of the "Map of places" block (place-map MP4): the Maps switch and its tiles in Site Settings, Features, consent before any tile, the vendored Leaflet, the Firewall copy line, headers unchanged
+description: The map of the "Map of places" block (#10581): the Maps switch and its tiles in Site Settings, Features, consent before any tile, the vendored Leaflet, the Firewall copy line, headers unchanged
 module: place_tiles
 ---
 
@@ -20,8 +20,8 @@ module: place_tiles
 - What a page carries is the same for every visitor (`pg_place_tiles_page()` in `window.pgMap.map`), so the page cache keeps it.
 
 ## What about the security headers?
-- Unchanged with the switch on and off (X14): the built-in policy's `img-src https:` lets tiles through, Leaflet is `'self'`. `tests/place_tiles_test.php` checks `waf.php` and `init.php` read nothing of the switch.
-- Firewall settings, under Policy: while Maps is on and the site's own policy would refuse the tile host (`img-src`, else `default-src`), a warning gives `img-src https://<host>` to copy (`pg_place_tiles_firewall_note()`), like the CAPTCHA's line.
+- Architect (2026-11-16, message 6794): unchanged with the switch on and off: the built-in policy's `img-src https:` lets tiles through, Leaflet is `'self'`. `tests/place_tiles_test.php` checks `waf.php` and `init.php` read nothing of the switch.
+- Firewall settings, under Policy: while Maps is on and the site's own policy would refuse the tile host (`img-src`, else `default-src`), a warning gives `img-src https://<host>` to copy (`pg_place_tiles_firewall_note()`), like the CAPTCHA's line. Keep `Referrer-Policy` off `no-referrer` on a map page: OpenStreetMap's tiles ask for a Referer (`platform/place-provider-terms.md`).
 
 ## Which Leaflet?
 - 1.9.4 (BSD-2-Clause), `assets/lib/leaflet/`: `leaflet.js`, `leaflet.css`, `LICENSE` and the five pictures of `dist/images`, byte for byte from the npm package, no local change. `pg_map.js` adds its two tags once, only when the map may load. An update copies the same files and changes the hashes in `tests/leaflet_library_test.php`.

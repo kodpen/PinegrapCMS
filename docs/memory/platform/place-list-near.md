@@ -1,13 +1,14 @@
 ---
 name: place-list-near
-description: Near me and the typed-address box of the Map of places block (MP5, X11, X12): position kept in the browser, the POST lookup in places.php, 10 a minute, nothing typed kept
+description: Near me and the typed-address box of the Map of places block (#10613): position kept in the browser, the POST lookup in places.php, 10 a minute, nothing typed kept
 module: place_list
 ---
 
 ## When are "Near me" and the address box drawn?
 - Only when places.php gave the whole list (`cut` false) and at least one place has coordinates (`nearOffered()` in `pg_map.js`): in a cut list the nearest place could be among those left out. The block then carries `data-pg-map-near`.
 - `pg_map.js` builds both under the search box (the block's markup is unchanged): "Near me" while the browser has `navigator.geolocation`; the box ("Address or postcode", Find) while `window.pgMap.find` is true.
-- `find` is `pg_place_list_find_on()`: cURL is there and the Photon geocode file is there. Always Photon, as "Find from the address" (`platform/place-coordinates.md`): the site's Photon server while its account is on, else the public instance; never Google or Mapbox.
+- `find` is `pg_place_list_find_on()`: cURL is there and the Photon geocode file is there.
+- Architect (2026-11-16, message 6794): always Photon, as "Find from the address" (`platform/place-coordinates.md`, why: `place-provider-terms.md`): the site's Photon server while its account is on, else the public instance; never Google or Mapbox.
 
 ## What does "Near me" send?
 - Nothing. The browser's own location question; the position stays in the page, where `arrange()` orders the places nearest first and each card shows its distance (`formatKm()`: one decimal under 10 km). A refusal says "Your browser did not give a position."

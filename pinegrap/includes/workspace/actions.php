@@ -2172,6 +2172,12 @@ function ws_handle_action($action, $request)
                         $out['call'] = $call_part;
                     }
 
+                    // Applications' answers to the reader's own / commands
+                    // here, after the last one the window has (app_answers.php).
+                    if (isset($request['answer_after']) && function_exists('ws_app_answers_for')) {
+                        $out['answers'] = ws_app_answers_for($viewer, $channel_id, (int) $request['answer_after']);
+                    }
+
                     $out['messages'] = ws_message_payloads($viewer, $rows);
                     $out['changed'] = ws_message_payloads($viewer, $news['changed'], array('hidden_as_deleted' => true));
 

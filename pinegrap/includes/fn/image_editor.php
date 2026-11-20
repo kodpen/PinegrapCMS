@@ -62,7 +62,7 @@ function pg_image_editor_strings()
 function pg_image_editor_strings_core()
 {
     return array(
-        'dialog'         => lang('Design Canvas'),
+        'dialog'         => lang('Artifact Canvas'),
         'newImage'       => lang('New image'),
         'close'          => lang('Close'),
         'undo'           => lang('Undo'),
@@ -695,7 +695,7 @@ function pg_image_editor_file($file_id, $user)
     $types = array_diff(pg_image_supported_types(), array(IMAGETYPE_TIFF_II, IMAGETYPE_TIFF_MM));
 
     if (!$size || !in_array((int) $size[2], $types, true)) {
-        return array('refusal' => pg_image_editor_refusal(lang('This file cannot be opened in the Design Canvas.')));
+        return array('refusal' => pg_image_editor_refusal(lang('This file cannot be opened in the Artifact Canvas.')));
     }
 
     $animated = pg_image_is_animated($path);
@@ -970,7 +970,7 @@ function pg_image_editor_record($mode, $name, $folder, $type, $replaced, $user)
         }
 
         pg_audit_record('update', 'files', $id, $before);
-        log_activity(lang(array('string' => 'file ({var:1}) was updated in the Design Canvas', 'vars' => $name)), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+        log_activity(lang(array('string' => 'file ({var:1}) was updated in the Artifact Canvas', 'vars' => $name)), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
     } else {
         $saved = $dimensions
@@ -985,7 +985,7 @@ function pg_image_editor_record($mode, $name, $folder, $type, $replaced, $user)
         $id = (int) mysqli_insert_id(db::$con);
 
         pg_audit_record('create', 'files', $id);
-        log_activity(lang(array('string' => 'file ({var:1}) was created in the Design Canvas', 'vars' => $name)), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+        log_activity(lang(array('string' => 'file ({var:1}) was created in the Artifact Canvas', 'vars' => $name)), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
     }
 
     return array(array(
@@ -2096,7 +2096,7 @@ function pg_image_editor_strings_versions()
         'versionN'          => lang('Version {n}'),
         'versionLatest'     => lang('Latest'),
         'versionOriginal'   => lang('Original upload'),
-        'versionSaved'      => lang('Saved in the Design Canvas'),
+        'versionSaved'      => lang('Saved in the Artifact Canvas'),
         'versionRestored'   => lang('Restored from an earlier version'),
         'versionRedacted'   => lang('Saved with redaction'),
         'versionYou'        => lang('You'),
@@ -3683,7 +3683,7 @@ function pg_image_editor_strings_svg()
 {
     return array(
         'layer_svg'         => lang('SVG element'),
-        'svgOpenError'      => lang('This SVG file cannot be opened in the Design Canvas.'),
+        'svgOpenError'      => lang('This SVG file cannot be opened in the Artifact Canvas.'),
         'svgKeptNote'       => lang('This part of the SVG is kept as it was written. It can be moved, but not edited here.'),
         'svgFill'           => lang('Fill'),
         'svgStroke'         => lang('Outline'),
@@ -3761,7 +3761,7 @@ function pg_image_editor_svg_open($file_id, $user)
     $svg = (($bytes > 0) && ($bytes <= pg_svg_sanitize_max_bytes())) ? pg_svg_sanitize((string) @file_get_contents($file['path'])) : '';
 
     if ($svg === '') {
-        return pg_image_editor_refusal(lang('This SVG file cannot be opened in the Design Canvas.'));
+        return pg_image_editor_refusal(lang('This SVG file cannot be opened in the Artifact Canvas.'));
     }
 
     return array(array(
@@ -3835,7 +3835,7 @@ function pg_image_editor_action_svg_save($request, $user)
     $file = pg_image_editor_svg_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
 
     if ($file === null) {
-        return pg_image_editor_refusal(lang('This file cannot be opened in the Design Canvas.'));
+        return pg_image_editor_refusal(lang('This file cannot be opened in the Artifact Canvas.'));
     }
 
     if ($file['refusal']) {
@@ -5628,7 +5628,7 @@ function pg_image_editor_action_content($request, $user)
     }
 
     if (!pg_image_editor_content_allowed($type, $id, $user)) {
-        log_activity(lang('access denied to update content with image from the Design Canvas because user does not have access to edit it'), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+        log_activity(lang('access denied to update content with image from the Artifact Canvas because user does not have access to edit it'), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
         return pg_image_editor_refusal(lang('Access denied'), 403);
     }
 

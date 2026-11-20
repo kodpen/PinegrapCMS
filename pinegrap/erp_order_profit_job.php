@@ -2,9 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Scheduled job: each finished order's costs and net profit. Computes the
- * orders a real cost marked, the finished orders not computed yet, then
- * rechecks the computed ones whose figures changed. The work lives in
+ * Scheduled job: each finished order's costs and net profit. Reads the
+ * marketplaces' real deductions, computes the orders a real cost marked, the
+ * finished orders not computed yet, then rechecks the computed ones whose
+ * figures changed. The work lives in
  * includes/erp/order_profit.php; this script only decides who may start it
  * and when a tick stops.
  *
@@ -50,10 +51,23 @@ $result = array('reason' => 'off', 'done' => 0);
 if (defined('ERP_ENABLED') && ERP_ENABLED) {
     require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_profit.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_profit_deductions.php');
 
-    $result = erp_order_profit_run(function () {
+    $time_left = function () {
         return pg_cron_time_left(60);
-    }, true);
+    };
+
+    // The marketplaces' real deductions first, so the orders they mark are
+    // computed in the same run.
+    $deductions = erp_order_profit_deductions_run($time_left, true);
+
+    $result = erp_order_profit_run($time_left, true);
+
+    if ($deductions['reason'] === 'error') {
+        log_activity(lang('The marketplace deductions could not be read; the next run tries again.'), 'UNKNOWN');
+    } elseif (($deductions['reason'] === 'more') && ($result['reason'] === 'done')) {
+        $result['reason'] = 'more';
+    }
 }
 
 if ($result['reason'] === 'more') {

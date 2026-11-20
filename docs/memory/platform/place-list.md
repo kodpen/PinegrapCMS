@@ -1,6 +1,6 @@
 ---
 name: place-list
-description: The "Map of places" block's list (place-map MP3, MP3b): places.php and its gate, the records an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block
+description: The "Map of places" block's list (#10062, #10535): places.php and its gate, the records an answer carries, the cut at 500, the designer's note, pg_map.js, the locations-map block
 module: place_list
 ---
 
@@ -8,8 +8,9 @@ module: place_list
 - `GET places.php?page=<id>`: the places of that page's first form list (`pg_sw_page_widget($page_id, 'form_list_view')`), as `{ok, places: [{name, address, hours, phone, lat, lng, url}], cut, note}`. The request carries the page id only (architect, 2026-11-16, agent channel message 7423); `tests/place_list_test.php` checks no other request value is read.
 - Gate (`pg_place_list_page_reason()`): the page exists, its folder is open to everyone (`get_access_control_type()` = `public`) and not in the bin, and the list is public (`pg_sw_form_widget_public()`). Otherwise no places.
 - Records: complete only, the list's and its detail view's filters (`pg_sw_list_record_filter_clause()`, no URL filters), in the list's order (`pg_place_list_order()`: id, date or a form field; a statistic order falls back to the date), at most `PG_PLACE_LIST_MAX` (500).
+- Architect (2026-11-16, message 6590): the bound and the cut stand; with a cut list "Near me" is not drawn and the designer is told both.
 - Same origin only (`pg_request_cross_site()`, 403), then 30 answers a minute per address (`pg_place_list_throttled()`, rule `rate-place-list`, 429), `Cache-Control: private, no-store`.
-- `POST places.php` with `find` is the typed-address lookup (X12): `place-list-near.md`.
+- `POST places.php` with `find` is the typed-address lookup: `place-list-near.md`.
 
 ## Which fields does an answer carry?
 - From the saved page, never from the request: the block's own choice, else the name rule (`place-list-fields.md`).
@@ -24,6 +25,6 @@ module: place_list
 - Without `window.pgMap` (the editor's Preview) the block keeps its picture and samples. The module `includes/fn/places.php` is another one (country place lists).
 
 ## What is the block?
-- `locations-map` in `style_designer_blocks_locations.js` ("Locations: Map of Places", Hours & Locations group): an intro, a search box (`data-pg-map-search`), a still SVG map with three markers in the text colour (X15), a status line and two sample cards; rules `pg-map-list` (cards fill the row) and `pg-map-picture`.
+- `locations-map` in `style_designer_blocks_locations.js` ("Locations: Map of Places", Hours & Locations group): an intro, a search box (`data-pg-map-search`), a still SVG map with three markers in the text colour (a still picture: the canvas fetches no tile), a status line and two sample cards; rules `pg-map-list` (cards fill the row) and `pg-map-picture`.
 
 Tests: `tests/place_list_test.php`, `tests/designer_blocks_general_test.php`, `tests/designer_page_scripts_test.php`.

@@ -477,6 +477,83 @@ function pg_label_kargonomi_offer($data, $provider)
 }
 
 /**
+ * An offer's price as a plain decimal: "24.10 + KDV" is 24.10, the price
+ * before VAT. A separator followed by one or two digits at the end is the
+ * decimal one, any other a thousands one ("1.250,50" is 1250.50). '' when
+ * the offer has no price ("Hizmet Dışı Bölge"). Pure.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_label_kargonomi_price_value($text)
+{
+    if (preg_match('/\d[\d.,]*/', (string) $text, $match) !== 1) {
+        return '';
+    }
+
+    $number = rtrim($match[0], '.,');
+    $decimals = '';
+
+    if (preg_match('/^(.*)[.,](\d{1,2})$/', $number, $parts) === 1) {
+        $number = $parts[1];
+        $decimals = $parts[2];
+    }
+
+    $whole = ltrim(str_replace(array('.', ','), '', $number), '0');
+    $whole = ($whole === '') ? '0' : $whole;
+
+    return ($decimals !== '') ? $whole . '.' . $decimals : $whole;
+}
+
+/**
+ * What a confirmed shipment cost: the price of the offer confirmed. With
+ * -1 Kargonomi took the cheapest carrier: the offer of the carrier the
+ * shipment names, else the cheapest priced one. Prices are in Turkish lira
+ * before VAT. Pure.
+ *
+ * @param array  $offers   the answer of GET /shipment-price-comparison/{id}
+ * @param string $choice   the shipping_provider_id confirmed
+ * @param array  $shipment the shipment read after the confirmation
+ * @return array pg_label_answer() price, empty when no offer had one
+ */
+function pg_label_kargonomi_price($offers, $choice, $shipment)
+{
+    $list = (isset($offers['shipping_provider_with_price']) && is_array($offers['shipping_provider_with_price'])) ? $offers['shipping_provider_with_price'] : array();
+    $slug = strtolower(pg_label_kargonomi_text($shipment, 'shipping_provider_slug'));
+    $cheapest = '';
+    $named = '';
+
+    foreach ($list as $offer) {
+        $id = pg_label_kargonomi_text($offer, 'id');
+        $value = pg_label_kargonomi_price_value(pg_label_kargonomi_text($offer, 'price'));
+
+        if (($id === '-1') || ($value === '')) {
+            continue;
+        }
+
+        if ($id === (string) $choice) {
+            return array('value' => $value, 'currency' => 'TRY');
+        }
+
+        if (($slug !== '') && (strtolower(pg_label_kargonomi_text($offer, 'slug')) === $slug)) {
+            $named = $value;
+        }
+
+        if (($cheapest === '') || ((float) $value < (float) $cheapest)) {
+            $cheapest = $value;
+        }
+    }
+
+    if ((string) $choice !== '-1') {
+        return array();
+    }
+
+    $value = ($named !== '') ? $named : $cheapest;
+
+    return ($value !== '') ? array('value' => $value, 'currency' => 'TRY') : array();
+}
+
+/**
  * The shipment in an answer: the answer itself, its data or its shipment.
  * Pure.
  *
@@ -825,6 +902,12 @@ function pg_label_kargonomi_create($shipment, $account)
         'log'             => $log,
         'raw'             => array('request' => 'GET /shipments/' . $id, 'answer' => $data),
     );
+
+    $price = pg_label_kargonomi_price($offers['data'], $choice, $data);
+
+    if ($price) {
+        $answer['price'] = $price;
+    }
 
     // The label is fetched again by label() when it cannot be had now: the
     // shipment is bought either way.

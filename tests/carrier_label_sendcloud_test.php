@@ -183,6 +183,7 @@ function test_carrier_label_sendcloud_create_announces_the_cheapest_option()
 	pg_assert_same('pdf', $answer['label_format']);
 	pg_assert_same(0, strpos($answer['label'], '%PDF-'), 'the label file of the answer');
 	pg_assert_false(strpos(json_encode($answer['raw']), 'JVBERi0'), 'the base64 label is not logged');
+	pg_assert_same(array('value' => '6.10', 'currency' => 'EUR'), $answer['price'], 'the price of the option chosen');
 
 	$parcel = array('dimensions' => array('length' => '30.00', 'width' => '20.00', 'height' => '10.50', 'unit' => 'cm'), 'weight' => array('value' => '1.250', 'unit' => 'kg'));
 	pg_assert_same(array(
@@ -248,6 +249,7 @@ function test_carrier_label_sendcloud_create_takes_the_asked_option_and_zpl()
 	pg_assert_contains('Accept: application/zpl', $sent[2]['headers']);
 	pg_assert_same('zpl', $answer['label_format']);
 	pg_assert_contains('^XA', $answer['label']);
+	pg_assert_same(array(), $answer['price'], 'an option the shop set is not priced');
 
 	pg_assert_true($account_option['success'], 'a failed download does not fail create');
 	pg_assert_same('postnl:standard', $second[4]['body']['ship_with']['properties']['shipping_option_code'], 'else the account\'s');

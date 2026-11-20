@@ -606,7 +606,7 @@ if ($timing) {
                         <p class="small fg-secondary mb-0">' . h(lang('No delivery date is known for this delivery, so the return period cannot be worked out.')) . '</p>';
 }
 
-$refund_due = pg_return_refund_due($return);
+$refund_due = pg_return_refund_due($return, $order ? (string) $order['status'] : '');
 
 // The refund the return keeps (11.0.34), once it was refunded: how much, how
 // it was made, the reference and a warning when the payment service gave no

@@ -8,6 +8,7 @@ module: widgets_lists_order, legal_documents
 - Before the city, left out when it repeats the city (`pg_order_view_district()`), as the panel's order screen, printed order and packing slip print it: "34710 Moda Kadıköy İstanbul".
 - One helper builds the line: `_pg_sw_list_order_city_line($zip, $city, $state, $district = '')` (`includes/fn/widgets_lists_order.php`). The Order Summary widget's `__shipping_address_html` / `__shipping_full_address` and each `order.shipments` row's `__shipping_full_address` use it.
 - Both `ship_tos` queries of the widget and the legal documents' query read `ship_tos.district` only when `pg_ship_to_district_ready()` says the column exists.
+- The legal documents build the line with `pg_legal_document_city_line()`: the province left out when it is the city again, as the widget does ("06100 Ankara"); before #10663 they printed "Ankara Ankara".
 - Before #4568 none of them selected the column: the customer's own district was missing from the summary page, the receipt e-mail and the Pre-information Form / Distance Sales Contract (#4536).
 
 ## Which country name do the legal documents print?

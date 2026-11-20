@@ -83,7 +83,7 @@ function pg_shipment_tracking_drivers()
  * @param int    $limit
  * @param int    $now
  * @return array list of id (the label's), order_id, order_number,
- *               ship_to_id, driver, reference, number (as the parcel row
+ *               order_type, ship_to_id, driver, reference, number (as the parcel row
  *               keeps it), carrier, tracking_url, status
  */
 function pg_shipment_tracking_open($driver, $after, $limit, $now)
@@ -93,6 +93,7 @@ function pg_shipment_tracking_open($driver, $after, $limit, $now)
             shipment_labels.id,
             shipment_labels.order_id,
             orders.order_number,
+            orders.type AS order_type,
             shipment_labels.ship_to_id,
             shipment_labels.driver,
             shipment_labels.reference,
@@ -361,11 +362,27 @@ function pg_shipment_tracking_state_save($state)
 }
 
 /**
+ * Whether an arrival a carrier reports starts the customer's delivered
+ * e-mail and text message. Not for an order a marketplace sold: its address
+ * is the marketplace's relay for the buyer, whom the marketplace tells, as
+ * the order screen's save keeps them back (update_order.php). The event
+ * order.delivered is announced either way. Pure.
+ *
+ * @param string $order_type orders.type
+ * @return bool
+ */
+function pg_shipment_tracking_notify($order_type)
+{
+    return pg_order_cancellation_mails_customer(array('type' => (string) $order_type));
+}
+
+/**
  * Writes what a track() answer changes onto the parcel, through the shipment
  * write path only: its status, carrier and tracking page by
  * pg_shipment_record(), which updates the row and never adds one, then an
  * arrival by pg_shipment_delivered(), so its mail-merge fields already carry
- * the carrier's tracking page. A parcel removed from the order screen since
+ * the carrier's tracking page; the customer's notice only for an order the
+ * shop sold itself (pg_shipment_tracking_notify()). A parcel removed from the order screen since
  * the run read it takes nothing: an arrival recorded for it would stamp the
  * address's other parcels.
  *
@@ -394,7 +411,12 @@ function pg_shipment_tracking_apply($row, $decision)
         return true;
     }
 
-    pg_shipment_delivered((int) $row['ship_to_id'], $decision['at']);
+    // A carrier webhook's row does not carry the order type: read it here.
+    $type = isset($row['order_type'])
+        ? (string) $row['order_type']
+        : (string) db_value("SELECT type FROM orders WHERE id = '" . (int) $row['order_id'] . "'");
+
+    pg_shipment_delivered((int) $row['ship_to_id'], $decision['at'], array('notify' => pg_shipment_tracking_notify($type)));
 
     log_activity(lang(array(
         'string' => '{var:1}: {var:2}',

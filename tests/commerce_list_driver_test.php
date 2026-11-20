@@ -62,6 +62,10 @@ function test_commerce_lists_columns_name_their_record_first()
 
 	pg_assert_false(isset(pg_order_list_columns(false, 'Member ID')['affiliate_code']), 'no affiliate code without the program');
 	pg_assert_same('Member ID', pg_order_list_columns(false, 'Member ID')['member_id']['heading'], 'the member id keeps the site\'s label');
+	pg_assert_false(isset(pg_order_list_columns(true, 'Member ID')['profit']), 'no profit column without ERP access');
+	$with_profit = pg_order_list_columns(true, 'Member ID', true);
+	pg_assert_same('money', $with_profit['profit']['kind'], 'the profit column with ERP access, as money');
+	pg_assert_same(count($with_profit), count(pg_list_table_columns($with_profit)), 'the profit key is a valid column key');
 	$shipping = pg_shipping_method_list_columns(false);
 	pg_assert_false(isset($shipping['service']) || isset($shipping['realtime_rate']), 'no service columns without a service');
 }

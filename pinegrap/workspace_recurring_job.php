@@ -114,6 +114,12 @@ if (ws_enabled() && function_exists('ws_wtable_bin_purge')) {
     ws_wtable_bin_purge();
 }
 
+// Applications' answers to a command's writer older than a day
+// (includes/workspace/app_answers.php).
+if (ws_enabled() && function_exists('ws_app_answers_sweep')) {
+    ws_app_answers_sweep();
+}
+
 // Channel memory entries expired more than 30 days ago
 // (includes/workspace/channel_memory.php).
 if (ws_enabled() && function_exists('ws_memory_sweep')) {

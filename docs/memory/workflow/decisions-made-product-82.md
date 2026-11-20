@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-82
-description: Decisions list, product part 82 (2026-11-20 on): a referred friend is known by account and folded e-mail together; no address match in the self check; a reward met by a busy lock is tried again
+description: Decisions list, product part 82 (2026-11-20 on): the referral programme's friend check, address rule and busy lock; a line's reward points taken back once
 ---
 
 ## Where are the rules and the earlier parts?
@@ -21,3 +21,8 @@ description: Decisions list, product part 82 (2026-11-20 on): a referred friend 
 - It is tried again (#10631). Only an order whose first try answered `busy` is tried: its id goes into the `config_text` row `referral_pending` (written with `pg_config_text_claim()`), and a scheduled job that exists calls `pg_referral_order_completed()` for each; any answer but `busy` takes the order off the list.
 - Not a pass over every referred order without a reward row: an order a check refused at completion would pass later (the month's cap in a new month, a programme switched on afterwards, a referrer's later first order).
 - The list holds at most 200 orders and drops an entry after 7 days. No new cron entry; `order_completion.php` is not changed.
+
+## Are a line's reward points taken back twice by a refund and a return? (architect, 2026-11-20, agent channel message 10437, answer to K1's request 1789)
+- No (#10671): each unit of a line gives its points back once. Per line, the units already taken are those of its refunded returns plus those the order screen refunded by lines; a new take-back takes points only for units above that, never past the line's quantity.
+- A return recorded as refunded with amount 0 ("a refund made another way") is matched first against the order screen's refunds by lines of that line not matched by another return: no points for a matched unit, points for the rest (the screen refunded by amount).
+- It follows the owner's #6306 (`decisions-made-product-25.md`): points go back on a cancellation and on a full or line refund. The cancellation's own count is unchanged; records already written are not corrected. No table, no column.
