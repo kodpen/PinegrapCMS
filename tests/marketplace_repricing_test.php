@@ -5,7 +5,7 @@
  * Tests for the Repricing view of a marketplace account
  * (includes/fn/marketplace_repricing.php): a listing's buybox state, the
  * four figure cards' counts, the filter behind each card, the log's reason
- * names, the "Try first" line and the rank's words.
+ * names, the "Try first" line and the rank on a product's row.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,7 +24,7 @@ function marketplace_repricing_test_listing($changes = array())
 {
 	return array_merge(array(
 		'product_id' => 1, 'title' => 'Mug', 'code' => 'MUG-1',
-		'price' => 10000, 'floor' => 8000, 'rounding' => 'none', 'buybox_ours' => 0,
+		'price' => 10000, 'floor' => 8000, 'buybox_ours' => 0,
 	), $changes);
 }
 
@@ -48,17 +48,14 @@ function test_marketplace_repricing_state_rank()
 	pg_assert_false($state['winning'] || $state['losing'], 'a listing never read neither wins nor loses');
 }
 
-// At the floor: the price is the lowest the floor lets the rounding reach,
-// or under it (a typed own price may be). No floor is "No cost".
+// At the floor: the price going out is not above the floor (a typed own
+// price under it counts too). No floor is "No cost".
 function test_marketplace_repricing_state_floor()
 {
 	pg_assert_true(mp_repricing_state(marketplace_repricing_test_listing(array('price' => 8000)))['at_floor'], 'price equals the floor');
-	pg_assert_true(mp_repricing_state(marketplace_repricing_test_listing(array('price' => 7000)))['at_floor'], 'under the floor');
-	pg_assert_false(mp_repricing_state(marketplace_repricing_test_listing(array('price' => 8001)))['at_floor'], 'a minor unit over it, no rounding');
-
-	// Floor 80.10 with ,90: the lowest price the rules may send is 80.90.
-	pg_assert_true(mp_repricing_state(marketplace_repricing_test_listing(array('floor' => 8010, 'price' => 8090, 'rounding' => '90')))['at_floor'], 'held at the floor by its ending');
-	pg_assert_false(mp_repricing_state(marketplace_repricing_test_listing(array('floor' => 8010, 'price' => 8190, 'rounding' => '90')))['at_floor'], 'the next ending up is over it');
+	pg_assert_true(mp_repricing_state(marketplace_repricing_test_listing(array('price' => 7000)))['at_floor'], 'an own price under the floor');
+	pg_assert_false(mp_repricing_state(marketplace_repricing_test_listing(array('price' => 8001)))['at_floor'], 'a minor unit over it');
+	pg_assert_false(mp_repricing_state(marketplace_repricing_test_listing(array('floor' => 8010, 'price' => 8090)))['at_floor'], 'held over the floor by a rounding ending');
 
 	$state = mp_repricing_state(marketplace_repricing_test_listing(array('floor' => null)));
 	pg_assert_true($state['no_cost'], 'no floor is no cost');
@@ -78,32 +75,21 @@ function test_marketplace_repricing_counts()
 	pg_assert_same(array('all' => 4, 'winning' => 1, 'losing' => 1, 'floor' => 1, 'no_cost' => 1),
 		mp_repricing_counts($listings), 'counts');
 
-	pg_assert_same(array(2), array_column(mp_repricing_filter($listings, 'losing', ''), 'product_id'), 'losing only');
-	pg_assert_same(array(2), array_column(mp_repricing_filter($listings, 'floor', ''), 'product_id'), 'at the floor');
-	pg_assert_same(array(1, 2, 3, 4), array_column(mp_repricing_filter($listings, 'all', ''), 'product_id'), 'all');
-	pg_assert_same(array(1, 2, 3, 4), array_column(mp_repricing_filter($listings, 'bogus', ''), 'product_id'), 'an unknown card is all');
-}
-
-// The search box finds a listing by its title or code, without case.
-function test_marketplace_repricing_filter_search()
-{
-	$listings = array(
-		marketplace_repricing_test_listing(array('product_id' => 1, 'title' => 'Blue Mug', 'code' => 'BM-1')),
-		marketplace_repricing_test_listing(array('product_id' => 2, 'title' => 'Plate', 'code' => 'PL-2')),
-	);
-
-	pg_assert_same(array(1), array_column(mp_repricing_filter($listings, 'all', 'blue'), 'product_id'), 'by title');
-	pg_assert_same(array(2), array_column(mp_repricing_filter($listings, 'all', 'pl-2'), 'product_id'), 'by code');
-	pg_assert_same(array(), mp_repricing_filter($listings, 'all', 'cup'), 'nothing found');
+	pg_assert_same(array(2), mp_repricing_card_ids($listings, 'losing'), 'losing only');
+	pg_assert_same(array(2), mp_repricing_card_ids($listings, 'floor'), 'at the floor');
+	pg_assert_same(array(3), mp_repricing_card_ids($listings, 'no_cost'), 'no cost');
+	pg_assert_same(array(1, 2, 3, 4), mp_repricing_card_ids($listings, 'all'), 'all');
 }
 
 // Every reason the robot writes has a name; an unknown code is shown as itself.
 function test_marketplace_repricing_reasons()
 {
-	foreach (array(MP_REPRICING_REASON_LOST, MP_REPRICING_REASON_FLOOR, MP_REPRICING_REASON_RAISED, MP_REPRICING_REASON_BACK) as $code) {
-		pg_assert_true(strlen($code) <= 20, $code . ' fits marketplace_price_log.reason');
-		pg_assert_true(mp_repricing_reason_label($code) !== $code, $code . ' has a name');
-	}
+	pg_assert_same(array('lost', 'floor', 'raised', 'back'), array_keys(mp_repricing_reasons()), 'the four strings the robot writes');
+	pg_assert_same(lang('Buybox lost'), mp_repricing_reason_label('lost'), 'lost');
+	pg_assert_same(lang('Floor reached'), mp_repricing_reason_label('floor'), 'floor');
+	pg_assert_same(lang('Raised while winning'), mp_repricing_reason_label('raised'), 'raised');
+	pg_assert_same(lang('Stepped back'), mp_repricing_reason_label('back'), 'back');
+	pg_assert_same('gray', mp_repricing_reason_tone('odd_code'), 'unknown code in grey');
 
 	pg_assert_same('odd_code', mp_repricing_reason_label('odd_code'), 'unknown code');
 }
@@ -118,10 +104,34 @@ function test_marketplace_repricing_try_first()
 	pg_assert_true(mp_repricing_try_first(array(array('scope' => MP_PRICING_SCOPE_BRAND, 'robot' => 0))), 'a brand rule alone: the account row is the default');
 }
 
-// The rank in words: ours, a place, or not read yet.
-function test_marketplace_repricing_rank_text()
+// The rank as the product's row shows it: Winning in green, the number
+// without an ordinal ending, Not read yet in grey.
+function test_marketplace_repricing_rank_pill()
 {
-	pg_assert_same(lang('Ours'), mp_repricing_rank_text(1), 'ours');
-	pg_assert_same(lang(array('string' => 'Rank {var:1}', 'vars' => array(3))), mp_repricing_rank_text(3), 'third');
-	pg_assert_same(lang('Not read yet'), mp_repricing_rank_text(0), 'no read');
+	pg_assert_contains('pg-tone-teal', mp_repricing_rank_html(1), 'winning is green');
+	pg_assert_contains(h(lang('Winning')), mp_repricing_rank_html(1), 'winning');
+	pg_assert_contains(h(lang(array('string' => 'Buybox rank: {var:1}', 'vars' => array(3)))), mp_repricing_rank_html(3), 'rank 3');
+	pg_assert_contains('pg-tone-gray', mp_repricing_rank_html(0), 'not read is grey');
+	pg_assert_contains(h(lang('Not read yet')), mp_repricing_rank_html(0), 'not read');
+}
+
+// The filters behind the segment row: the five product views and the log;
+// anything else is All.
+function test_marketplace_repricing_view_key()
+{
+	pg_assert_same('losing', mp_repricing_view_key('losing'), 'a card');
+	pg_assert_same('log', mp_repricing_view_key('log'), 'the price log');
+	pg_assert_same('all', mp_repricing_view_key('bogus'), 'unknown');
+	pg_assert_same('all', mp_repricing_view_key(array('x')), 'not a string');
+}
+
+// A card's SQL condition on the listing: winning and losing by the stored
+// rank, the floor and no cost by the ids worked out in PHP.
+function test_marketplace_repricing_view_condition()
+{
+	pg_assert_same('(COALESCE(state.buybox_ours, 0) & 127) = 1', mp_repricing_view_condition('winning', array()), 'winning');
+	pg_assert_same('(COALESCE(state.buybox_ours, 0) & 127) > 1', mp_repricing_view_condition('losing', array()), 'losing');
+	pg_assert_same('map.product_id IN (3, 7)', mp_repricing_view_condition('floor', array(3, '7')), 'ids');
+	pg_assert_same('1 = 0', mp_repricing_view_condition('no_cost', array()), 'no ids: nothing');
+	pg_assert_same('1 = 1', mp_repricing_view_condition('all', array()), 'all');
 }

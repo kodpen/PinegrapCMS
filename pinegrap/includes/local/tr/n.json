@@ -2123,7 +2123,6 @@
     "No product image": "Ürün görseli yok",
     "No product is marked as not sold here.": "Burada satılmıyor olarak işaretlenmiş ürün yok.",
     "No product is matched yet. Nothing is sent until at least one is.": "Henüz eşleşmiş ürün yok. En az bir tane olmadan hiçbir şey gönderilmez.",
-    "No product is under this card.": "Bu kartta ürün yok.",
     "No product matches the filters.": "Filtrelere uyan ürün yok.",
     "No product matches “{var:1}”. Try another name or code.": "“{var:1}” ile eşleşen ürün yok. Başka bir ad ya da kod deneyin.",
     "No product of the group can be ordered": "Grubun hiçbir ürünü sipariş edilemez",

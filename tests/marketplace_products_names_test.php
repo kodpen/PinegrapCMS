@@ -56,7 +56,7 @@ function test_marketplace_products_disabled_pager_arrow_is_a_span()
 	$source = marketplace_products_names_test_source();
 
 	pg_assert_true(strpos($source, "' disabled' : '') . '\" href=") === false, 'no disabled arrow is a link');
-	pg_assert_same(8, substr_count($source, '. mp_products_pager_arrow('), 'all four pagers draw their arrows through the helper');
+	pg_assert_same(6, substr_count($source, '. mp_products_pager_arrow('), 'all three pagers draw their arrows through the helper');
 
 	$start = strpos($source, 'function mp_products_pager_arrow(');
 	$helper = substr($source, $start, (int) strpos($source, "\n}\n", $start) - $start);

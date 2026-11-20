@@ -840,16 +840,16 @@ function mp_products_pricing_html($account, $row) {
 
 		$rank = mp_repricing_state(array('buybox_ours' => $buybox['buybox_ours']))['rank'];
 
-		$watch .= '<span>' . h(lang('Buybox')) . ': ' . h(mp_repricing_rank_text($rank))
-			. ((($rank > 1) && ($buybox['buybox_price'] > 0)) ? ' · <span class="pg-tabular">' . pg_format_money($buybox['buybox_price'] / 100, BASE_CURRENCY_SYMBOL) . '</span>' : '') . '</span>';
+		$watch .= '<span>' . mp_repricing_rank_html($rank)
+			. ((($rank > 1) && ($buybox['buybox_price'] > 0)) ? ' · ' . mp_repricing_money($buybox['buybox_price']) : '') . '</span>';
 
 	}
 
-	$change = mp_repricing_last_change($account_id, $id);
+	$changes = mp_repricing_last_changes($account_id, array($id));
 
-	if ($change !== null) {
+	if (isset($changes[$id])) {
 
-		$watch .= '<span>' . h(lang('Last change')) . ': ' . mp_products_repricing_change_html($change) . '</span>';
+		$watch .= '<span>' . h(lang('Last change')) . ': ' . mp_repricing_change_html($changes[$id]) . '</span>';
 
 	}
 
@@ -871,18 +871,6 @@ function mp_products_pricing_html($account, $row) {
 			. '<select class="pg-input" id="mpp-strategy-' . $id . '" data-mp-strategy' . ((count($strategies) < 2) ? ' disabled' : '') . '>' . $options . '</select></div>'
 		. '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="shop_pricing">' . h(lang('Save')) . '</button>'
 		. '</div></div>';
-
-}
-
-// A change of the robot's log: old and new price, the reason as a pill, and
-// when, or "Try first" for a change only written down.
-function mp_products_repricing_change_html($change) {
-
-	return '<span class="pg-tabular">' . pg_format_money($change['old_price'] / 100, BASE_CURRENCY_SYMBOL) . ' → '
-		. pg_format_money($change['new_price'] / 100, BASE_CURRENCY_SYMBOL) . '</span> '
-		. '<span class="pg-pill pg-tone-' . mp_repricing_reason_tone($change['reason']) . '">' . h(mp_repricing_reason_label($change['reason'])) . '</span> '
-		. ($change['sent'] ? '' : '<span class="pg-pill pg-tone-gray">' . h(lang('Try first')) . '</span> ')
-		. '<span class="pg-text-meta">' . get_relative_time(array('timestamp' => $change['at'])) . '</span>';
 
 }
 
@@ -1576,157 +1564,27 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 
 /* ---------------------------------------------------------------------------
    The repricing view: the account's listed products with their buybox and
-   floor, filtered by four figure cards, and the robot's log
+   floor, filtered by four figure cards, and the robot's price log
    --------------------------------------------------------------------------- */
 
-// A price of the view in the base currency, or a dash for none.
-function mp_products_repricing_money($amount) {
-
-	return ((int) $amount > 0) ? '<span class="pg-tabular">' . pg_format_money($amount / 100, BASE_CURRENCY_SYMBOL) . '</span>' : '&mdash;';
-
-}
-
-// The Products part's list: one line a listing, its price, the buybox read,
-// the strategy, the floor and the last change.
-function mp_products_repricing_products($account, $listings) {
-
-	$strategies = mp_pricing_strategies($account['provider']);
-
-	$all = mp_pricing_strategies('trendyol');
-
-	$output = '<div class="mpr-scroll"><table class="table table-hover mb-0 pg-embedded-table mpr-table">'
-		. '<thead><tr>'
-		. '<th scope="col">' . h(lang('Product')) . '</th>'
-		. '<th scope="col" class="text-end">' . h(lang('Our price')) . '</th>'
-		. '<th scope="col" class="text-end">' . h(lang('Buybox price')) . '</th>'
-		. '<th scope="col">' . h(lang('Rank')) . '</th>'
-		. '<th scope="col">' . h(lang('Strategy')) . '</th>'
-		. '<th scope="col" class="text-end">' . h(lang('Floor price')) . '</th>'
-		. '<th scope="col">' . h(lang('Last change')) . '</th>'
-		. '</tr></thead><tbody>';
-
-	foreach ($listings as $listing) {
-
-		$state = mp_repricing_state($listing);
-
-		// A strategy the marketplace lacks is sent as Fixed.
-		$strategy = isset($strategies[$listing['strategy']]) ? $strategies[$listing['strategy']]
-			: (isset($all[MP_PRICING_STRATEGY_FIXED]) ? $all[MP_PRICING_STRATEGY_FIXED] : '');
-
-		$by = array('own' => lang('Own price'), 'rule' => lang('by the rules'), 'site' => lang('the site price'));
-
-		$output .= '<tr>'
-			. '<td><a class="mpr-title" href="marketplace_products.php?account=' . (int) $account['id'] . '&amp;mode=shop&amp;q=' . h(rawurlencode($listing['code'] !== '' ? $listing['code'] : $listing['title'])) . '">'
-				. h($listing['title']) . '</a><div class="pg-text-meta"><code>' . h($listing['code']) . '</code></div></td>'
-			. '<td class="text-end">' . mp_products_repricing_money($listing['price'])
-				. '<div class="pg-text-meta">' . h($by[$listing['by']]) . '</div></td>'
-			. '<td class="text-end">' . mp_products_repricing_money($listing['buybox_price']) . '</td>'
-			. '<td>' . h(mp_repricing_rank_text($state['rank']))
-				. ($listing['buybox_at'] ? '<div class="pg-text-meta">' . get_relative_time(array('timestamp' => $listing['buybox_at'])) . '</div>' : '') . '</td>'
-			. '<td>' . h($strategy) . '</td>'
-			. '<td class="text-end">' . (($listing['floor'] !== null) ? mp_products_repricing_money($listing['floor']) : '<span class="pg-text-meta">' . h(lang('No cost')) . '</span>') . '</td>'
-			. '<td>' . (($listing['change'] !== null) ? mp_products_repricing_change_html($listing['change']) : '<span class="pg-text-meta">' . h(lang('No change yet')) . '</span>') . '</td>'
-			. '</tr>';
-
-	}
-
-	return $output . '</tbody></table></div>';
-
-}
-
-// The Log part's list: the robot's changes, newest first.
-function mp_products_repricing_log($rows) {
-
-	$output = '<div class="mpr-scroll"><table class="table table-hover mb-0 pg-embedded-table mpr-table">'
-		. '<thead><tr>'
-		. '<th scope="col">' . h(lang('Time')) . '</th>'
-		. '<th scope="col">' . h(lang('Product')) . '</th>'
-		. '<th scope="col" class="text-end">' . h(lang('Old price')) . '</th>'
-		. '<th scope="col" class="text-end">' . h(lang('New price')) . '</th>'
-		. '<th scope="col">' . h(lang('Reason')) . '</th>'
-		. '<th scope="col">' . h(lang('Sent')) . '</th>'
-		. '</tr></thead><tbody>';
-
-	foreach ($rows as $row) {
-
-		// A product deleted since keeps its log rows; its number names it.
-		$name = ($row['name'] !== null) ? mp_remote_products_shop_name($row)
-			: lang(array('string' => 'Product {var:1}', 'vars' => array((int) $row['product_id'])));
-
-		$output .= '<tr>'
-			. '<td class="text-nowrap">' . get_relative_time(array('timestamp' => (int) $row['at'])) . '</td>'
-			. '<td>' . h($name) . '</td>'
-			. '<td class="text-end">' . mp_products_repricing_money($row['old_price']) . '</td>'
-			. '<td class="text-end">' . mp_products_repricing_money($row['new_price']) . '</td>'
-			. '<td><span class="pg-pill pg-tone-' . mp_repricing_reason_tone($row['reason']) . '">' . h(mp_repricing_reason_label($row['reason'])) . '</span></td>'
-			. '<td>' . ((int) $row['sent'] === 1
-				? '<span class="pg-pill pg-tone-teal">' . h(lang('Sent')) . '</span>'
-				: '<span class="pg-pill pg-tone-gray">' . h(lang('Try first')) . '</span>') . '</td>'
-			. '</tr>';
-
-	}
-
-	return $output . '</tbody></table></div>';
-
-}
-
-// The repricing view: the "Try first" line, the Products and Log parts as
-// link segments, then the part asked for.
-function mp_products_repricing_view($account, $part, $card, $search, $page, $per_page, $data) {
+// The repricing view: the "Try first" notice, the four figure cards, one
+// row of link segments (All, the four cards, Price log) with the search box,
+// and the list it chose, on the list table driver.
+function mp_products_repricing_view($account, $view, $data) {
 
 	$account_id = (int) $account['id'];
 
-	$query = function ($changes) use ($account_id, $part, $card, $search) {
+	$link = function ($key) use ($account_id) {
 
-		$params = array_merge(array('account' => $account_id, 'mode' => 'repricing', 'part' => $part, 'view' => $card, 'q' => $search), $changes);
-
-		return 'marketplace_products.php?' . http_build_query(array_filter($params, function ($value) { return $value !== '' && $value !== null; }));
+		return 'marketplace_products.php?account=' . $account_id . '&mode=repricing' . (($key !== 'all') ? '&view=' . rawurlencode($key) : '');
 
 	};
 
 	if ($data['try_first']) {
 
 		echo '
-	<div class="pg-card pg-card-inner-row mpr-try mb-5">
-		<span class="pg-icon-tile pg-tone-amber" aria-hidden="true"><i class="bi bi-eye"></i></span>
-		<div class="mpr-try-text"><strong class="pg-list-row-title">' . h(lang('Try first is on: nothing is sent')) . '</strong>
-			<div class="pg-text-meta">' . h(lang('The robot writes what it would send to the log.')) . '</div></div>
-		<a class="pg-button pg-button-quiet pg-button-sm" href="marketplace_settings.php?account=' . $account_id . '&amp;settings=pricing">'
-			. '<i class="bi bi-sliders" aria-hidden="true"></i>' . h(lang('Pricing')) . '</a>
-	</div>';
-
-	}
-
-	$parts = array('products' => lang('Products'), 'log' => lang('Log'));
-
-	echo '
-	<nav class="pg-seg pg-list-seg mb-5" aria-label="' . h(lang('Repricing')) . '">';
-
-	foreach ($parts as $key => $label) {
-
-		echo '
-		<a class="pg-seg-item' . ($key === $part ? ' is-active' : '') . '" href="' . h($query(array('part' => ($key === 'products') ? null : $key, 'view' => null, 'q' => null, 'page' => null))) . '"'
-			. ($key === $part ? ' aria-current="true"' : '') . '>' . h($label) . '</a>';
-
-	}
-
-	echo '
-	</nav>';
-
-	if ($part === 'log') {
-
-		$log = $data['log'];
-
-		echo '
-	<div class="card pg-card">'
-		. ($log['rows']
-			? mp_products_repricing_log($log['rows'])
-			: '<div class="ws-empty py-5"><i class="bi bi-journal-text" aria-hidden="true"></i>' . h(lang('The robot has changed no price yet.')) . '</div>');
-
-		echo mp_products_repricing_pager($log['total'], $page, $per_page, $query) . '
-	</div>';
-
-		return;
+	<div class="alert theme-info small mb-5"><i class="bi bi-eye me-1" aria-hidden="true"></i>' . h(lang('Try first is on: nothing is sent')) . ' '
+		. '<a href="marketplace_settings.php?account=' . $account_id . '&amp;settings=pricing">' . h(lang('Pricing')) . '</a></div>';
 
 	}
 
@@ -1739,80 +1597,63 @@ function mp_products_repricing_view($account, $part, $card, $search, $page, $per
 
 	foreach (mp_repricing_cards() as $key => $label) {
 
+		$tone = '';
+
+		if (($key === 'winning') && $counts[$key]) {
+
+			$tone = ' is-good';
+
+		} elseif (($key === 'losing') && $counts[$key]) {
+
+			$tone = ' is-bad';
+
+		}
+
 		echo '
 		<div class="pg-card pg-figure position-relative">
 			<div class="pg-figure-label"><i class="bi ' . $icons[$key] . '" aria-hidden="true"></i>'
-				. '<a class="stretched-link pg-link-body-emphasis text-decoration-none" href="' . h($query(array('view' => $key, 'page' => null))) . '"'
-				. ($key === $card ? ' aria-current="true"' : '') . '>' . h($label) . '</a></div>
-			<div class="pg-figure-value' . ((($key === 'losing') && $counts[$key]) ? ' is-bad' : (($key === 'winning') && $counts[$key] ? ' is-good' : '')) . '">' . pg_format_number($counts[$key], 0) . '</div>
+				. '<a class="stretched-link pg-link-body-emphasis text-decoration-none" href="' . h($link($key)) . '">' . h($label) . '</a></div>
+			<div class="pg-figure-value' . $tone . '">' . pg_format_number($counts[$key], 0) . '</div>
 		</div>';
 
 	}
+
+	$list = ($view === 'log') ? 'marketplace_repricing_log' : 'marketplace_repricing';
 
 	echo '
 	</div>
-	<div class="card pg-card">
-		<div class="mpp-list-head">
-			<nav class="pg-seg pg-list-seg" aria-label="' . h(lang('Filters')) . '">';
+	<div class="mpr-head">
+		<nav class="pg-seg pg-list-seg" aria-label="' . h(lang('Repricing')) . '">';
 
-	foreach (array('all' => lang('All')) + mp_repricing_cards() as $key => $label) {
+	foreach (array('all' => lang('All')) + mp_repricing_cards() + array('log' => lang('Price log')) as $key => $label) {
 
 		echo '
-				<a class="pg-seg-item' . ($key === $card ? ' is-active' : '') . '" href="' . h($query(array('view' => ($key === 'all') ? null : $key, 'page' => null))) . '"'
-					. ($key === $card ? ' aria-current="true"' : '') . '>' . h($label)
-					. '<span class="pg-seg-count pg-tabular">' . pg_format_number($counts[$key], 0) . '</span></a>';
+			<a class="pg-seg-item' . ($key === $view ? ' is-active' : '') . '" href="' . h($link($key)) . '"'
+				. ($key === $view ? ' aria-current="true"' : '') . '>' . h($label)
+				. (isset($counts[$key]) ? '<span class="pg-seg-count pg-tabular">' . pg_format_number($counts[$key], 0) . '</span>' : '') . '</a>';
 
 	}
 
 	echo '
-			</nav>
-			<div class="flex-grow-1"></div>
-			<form method="get" action="marketplace_products.php" class="d-flex gap-3 disable_shortcut" role="search">
-				<input type="hidden" name="account" value="' . $account_id . '">
-				<input type="hidden" name="mode" value="repricing">
-				' . (($card !== 'all') ? '<input type="hidden" name="view" value="' . h($card) . '">' : '') . '
-				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm mpp-search"'
-					. ' placeholder="' . h(lang('Search by name or code')) . '" aria-label="' . h(lang('Search')) . '">
-				<button type="submit" class="pg-icon-button" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
-			</form>
-		</div>';
-
-	$rows = array_slice($data['listings'], max(0, $page - 1) * $per_page, $per_page);
-
-	if ($rows) {
-
-		echo mp_products_repricing_products($account, $rows);
-
-	} else {
-
-		echo '
-		<div class="ws-empty py-5 border-top"><i class="bi bi-graph-down-arrow" aria-hidden="true"></i>'
-			. h(($search !== '') ? lang('Nothing found.') : ($counts['all'] ? lang('No product is under this card.') : lang('No product is matched yet. Nothing is sent until at least one is.'))) . '</div>';
-
-	}
-
-	echo mp_products_repricing_pager(count($data['listings']), $page, $per_page, $query) . '
+		</nav>
+		' . pg_list_table_search_box($list) . '
 	</div>';
 
-}
+	$source = $data['source'];
 
-// The pages of a repricing list, when it has more than one.
-function mp_products_repricing_pager($total, $page, $per_page, $query) {
+	$page = pg_list_table_page($source, array(), null);
 
-	$pages = (int) ceil($total / $per_page);
+	if ($page === false) {
 
-	if ($pages < 2) {
+		echo '
+	<div class="alert theme-warning">' . h(lang('Query failed.')) . '</div>';
 
-		return '';
+		return;
 
 	}
 
-	return '
-		<nav class="d-flex justify-content-center align-items-center gap-3 py-5 border-top" aria-label="' . h(lang('Pages')) . '">
-			' . mp_products_pager_arrow($page <= 1, $query(array('page' => max(1, $page - 1))), lang('Previous page'), 'bi-chevron-left') . '
-			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
-			' . mp_products_pager_arrow($page >= $pages, $query(array('page' => min($pages, $page + 1))), lang('Next page'), 'bi-chevron-right') . '
-		</nav>';
+	echo pg_list_table_html($source, $page, ($view === 'log') ? lang('Price log') : lang('Products'))
+		. pg_js_bundle_tags('assets/js/pg_list_table.min.js');
 
 }
 
@@ -1945,41 +1786,18 @@ if ($account && ($mode === 'listings')) {
 
 $repricing = array();
 
-$part = (isset($_GET['part']) && ($_GET['part'] === 'log')) ? 'log' : 'products';
-
 if ($account && ($mode === 'repricing')) {
 
-	if (($view !== 'all') && !isset(mp_repricing_cards()[$view])) {
-
-		$view = 'all';
-
-	}
+	$view = mp_repricing_view_key($view);
 
 	$repricing['try_first'] = mp_repricing_try_first(mp_pricing_account_rules($account_id));
 
-	if ($part === 'log') {
+	$repricing['counts'] = mp_repricing_counts(mp_repricing_listings($account));
 
-		$repricing['log'] = mp_repricing_log_page($account_id, $page, $per_page);
+	$repricing_params = array('account' => $account_id, 'view' => $view);
 
-		if (mp_products_page_past_end($repricing['log'], $page)) {
-
-			$page = pg_list_page_clamp($page, $repricing['log']['total'], $per_page);
-
-			$repricing['log'] = mp_repricing_log_page($account_id, $page, $per_page);
-
-		}
-
-	} else {
-
-		$listings = mp_repricing_listings($account);
-
-		$repricing['counts'] = mp_repricing_counts($listings);
-
-		$repricing['listings'] = mp_repricing_filter($listings, $view, $search);
-
-		$page = pg_list_page_clamp($page, count($repricing['listings']), $per_page);
-
-	}
+	$repricing['source'] = ($view === 'log') ? mp_repricing_log_list_source($user, $repricing_params)
+		: mp_repricing_product_list_source($user, $repricing_params);
 
 }
 
@@ -2107,13 +1925,9 @@ a.mpp-title:hover { text-decoration: underline; }
    look A segments and centred as an area tab strip (.pg-area-tabs); it
    scrolls sideways on a phone (.pg-list-seg). */
 .mpp-modes { margin-bottom: 14px; }
-/* The lists of the repricing view scroll sideways on a narrow screen. */
-.mpr-scroll { overflow-x: auto; border-top: 1px solid var(--pg-border-color); }
-.mpr-table th, .mpr-table td { white-space: nowrap; }
-.mpr-table td { font-size: var(--pg-text-base); }
-.mpr-try { flex-wrap: wrap; }
-.mpr-try-text { flex: 1 1 14rem; min-width: 0; }
-.mpr-title { color: inherit; font-weight: var(--pg-weight-strong); }
+/* The segment row and search box of the repricing view share one line, the box
+   under the row on a phone. */
+.mpr-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .mpp-row.is-error { background: color-mix(in srgb, var(--pg-danger) 6%, transparent); }
 .mpp-code code { font-size: var(--pg-text-base); font-weight: var(--pg-weight-strong); color: var(--pg-fg-emphasis); }
 .mpp-err { margin-top: 4px; font-size: var(--pg-text-meta); color: var(--pg-danger-fg-emphasis); word-break: break-word; }
@@ -2227,7 +2041,7 @@ if (!$account) {
 
 } elseif ($mode === 'repricing') {
 
-	mp_products_repricing_view($account, $part, $view, $search, $page, $per_page, $repricing);
+	mp_products_repricing_view($account, $view, $repricing);
 
 } elseif ($mode === 'listings') {
 

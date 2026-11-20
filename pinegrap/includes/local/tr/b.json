@@ -1808,6 +1808,7 @@
     "Buybox": "Buybox",
     "Buybox lost": "Buybox kaybedildi",
     "Buybox price": "Buybox fiyatı",
+    "Buybox rank: {var:1}": "Buybox sırası: {var:1}",
     "Buyer": "Alıcı",
     "Buyer Adviser": "Alıcı Danışmanı",
     "Buyer's Guide": "Alıcı Rehberi",
