@@ -248,6 +248,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_marketplace_pricing();     // 11.0.256
 	upgrade_2026_11_0_ws_note_app();             // 11.0.257
 	upgrade_2026_11_0_application_review();      // 11.0.258
+	upgrade_2026_11_0_shipment_problems();       // 11.0.259
 
 }
 
@@ -8513,5 +8514,41 @@ function upgrade_2026_11_0_application_review() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Forms: the tables of the application review desk (programmes, reviewers, entries and reviews) were added; nothing changes until a form is made a programme.');
+
+}
+
+// The problems found on a parcel (2026.11.0, 11.0.259; includes/fn/
+// delivery_tower_passes.php): one row per problem a parcel shows over time,
+// read by the delivery problem desk. kind: 1 stuck, 2 not handed over,
+// 3 delivery problem, 4 returned. closed_at is 0 while the problem is open;
+// the unique (shipment_id, kind, closed_at) key refuses a second open row of
+// one kind on a parcel, so the hourly pass writes with INSERT IGNORE and can
+// run again. close_reason: 0 open, 1 settled by a later status, 2 sent again,
+// 3 refunded, 4 found, 5 other; closed_by is the user, 0 when a status closed
+// it. No name or address: the desk reads them from the order, and deleting
+// the order removes its rows. No column is added to shipping_tracking_numbers.
+function upgrade_2026_11_0_shipment_problems() {
+
+	install_create_table('shipment_problems', "CREATE TABLE shipment_problems (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		shipment_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		order_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		kind          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		found_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		assigned_to   INT UNSIGNED NOT NULL DEFAULT 0,
+		note          VARCHAR(500) NOT NULL DEFAULT '',
+		closed_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		close_reason  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_shipment_kind_closed (shipment_id, kind, closed_at),
+		KEY idx_closed_kind (closed_at, kind),
+		KEY idx_order (order_id),
+		KEY idx_found (found_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Shipping: parcels long in transit, never handed to the carrier, with a delivery problem or returned are found every hour and kept as delivery problems.');
 
 }

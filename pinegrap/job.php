@@ -173,6 +173,23 @@ if (ECOMMERCE && function_exists('pg_customer_value_job_run')) {
 
 }
 
+// Delivery tower (includes/fn/delivery_tower_passes.php): the measured
+// delivery times rebuilt once a night, and the problem pass once an hour
+// that opens and closes the parcels' delivery problems; both inside
+// PG_DELIVERY_TOWER_TICK_SECONDS of this tick, going on from their place
+// next tick. A tick with nothing due reads two small config_text rows.
+if (ECOMMERCE) {
+
+    $delivery_tower = pg_delivery_tower_job_run(pg_cron_time_left(PG_DELIVERY_TOWER_TICK_SECONDS));
+
+    if (!empty($delivery_tower['pass']['opened'])) {
+
+        log_activity(lang(array('string' => 'general job found {var:1} new delivery problem(s)', 'vars' => array(pg_format_number($delivery_tower['pass']['opened'], 0)))), 'UNKNOWN');
+
+    }
+
+}
+
 // Shipping label documents whose time is up (includes/fn/shipment_labels.php):
 // 30 days after delivery or cancellation, 90 days after creation at the
 // latest. Once a day; the rows stay with their orders.
