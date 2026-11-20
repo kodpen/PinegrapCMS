@@ -1,0 +1,4 @@
+{"meta": {"count": 2, "tags": ["a", "b"]}, "data": {"products": [
+  {"code": "W1", "ean": "8690000000079", "name": "Masa", "cost": "1.500,00", "stock": 2, "variants": [{"color": "Kırmızı"}, {"color": "Mavi"}]},
+  {"code": "W2", "ean": "8690000000086", "name": "Sandalye", "cost": "300", "stock": 9}
+]}}
