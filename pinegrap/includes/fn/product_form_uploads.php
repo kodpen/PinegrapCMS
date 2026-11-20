@@ -579,3 +579,168 @@ function pg_pfu_access_verdict($lines, $viewer)
 
     return false;
 }
+
+/**
+ * What a product form answer shows in a list or an export: the name of the
+ * file it holds, else its own text (a file deleted from Files since keeps
+ * the name the answer was given). Pure.
+ *
+ * @param string      $data      form_data.data
+ * @param string|null $file_name files.name of form_data.file_id, null for none
+ * @return string
+ */
+function pg_pfu_answer_text($data, $file_name)
+{
+    return (($file_name !== null) && ((string) $file_name !== '')) ? (string) $file_name : (string) $data;
+}
+
+/**
+ * The product form field a submit-form value names for a File Upload field:
+ * a value that is one variable alone (^^photo^^) names that field; anything
+ * else names none. Pure.
+ *
+ * @param string $value product_submit_form_fields.value
+ * @return string the field's name, '' for none
+ */
+function pg_pfu_submit_form_source_name($value)
+{
+    return preg_match('/^\s*\^\^([^\^]+)\^\^\s*$/', (string) $value, $match) ? trim($match[1]) : '';
+}
+
+/**
+ * The file a submit-form value takes from a unit's product form answers:
+ * the file of the answer whose field the value names, matched without case
+ * as variables are; 0 for none. Pure.
+ *
+ * @param string $value   product_submit_form_fields.value
+ * @param array  $answers the unit's answers: name, file_id
+ * @return int
+ */
+function pg_pfu_submit_form_file_id($value, $answers)
+{
+    $name = mb_strtolower(pg_pfu_submit_form_source_name($value));
+
+    if ($name === '') {
+        return 0;
+    }
+
+    foreach ((array) $answers as $answer) {
+        if ((mb_strtolower(trim((string) ($answer['name'] ?? ''))) === $name) && ((int) ($answer['file_id'] ?? 0) > 0)) {
+            return (int) $answer['file_id'];
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Copies a file into a folder as a file of its own: a new unique name, its
+ * bytes copied (from storage when they are not on this disk), and a files
+ * row marked as an attachment. Deleting either copy never takes the other.
+ * Nothing is left behind when the copy fails.
+ *
+ * @param int $file_id
+ * @param int $folder_id the destination field's upload_folder_id
+ * @param int $user_id   files.user of the copy
+ * @return array|false id, name, size
+ */
+function pg_pfu_copy_file($file_id, $folder_id, $user_id = 0)
+{
+    $source = db_item("SELECT name, type FROM files WHERE id = '" . (int) $file_id . "'");
+
+    if (empty($source['name']) || ((int) $folder_id <= 0)) {
+        return false;
+    }
+
+    $path = function_exists('pg_file_reader_path') ? pg_file_reader_path($source['name']) : FILE_DIRECTORY_PATH . '/' . $source['name'];
+
+    if (($path === '') || !is_file($path)) {
+        return false;
+    }
+
+    $name = get_unique_name(array('name' => $source['name'], 'type' => 'file'));
+    $destination = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (!@copy($path, $destination)) {
+        @unlink($destination);
+
+        return false;
+    }
+
+    $size = (int) @filesize($destination);
+
+    $result = db_q(
+        "INSERT INTO files (name, folder, type, size, user, design, attachment, timestamp)
+        VALUES (?, ?, ?, ?, ?, '0', '1', UNIX_TIMESTAMP())",
+        array($name, (string) (int) $folder_id, (string) $source['type'], (string) $size, (string) (int) $user_id));
+
+    if ($result === false) {
+        @unlink($destination);
+
+        return false;
+    }
+
+    return array('id' => (int) mysqli_insert_id(db::$con), 'name' => $name, 'size' => $size);
+}
+
+/**
+ * Gives a submitted form created at order completion the file a unit's
+ * product form answer holds: a copy of its own in the form field's folder,
+ * as the field's answer. Does nothing when the value names no answer with a
+ * file or the copy fails.
+ *
+ * @param int    $form_id         the new submitted form
+ * @param array  $field           the form's File Upload field: form_field_id, name, upload_folder_id
+ * @param string $value           product_submit_form_fields.value (^^field^^)
+ * @param int    $order_item_id
+ * @param int    $quantity_number the unit whose product form fills the form, 0 for none
+ * @param int    $user_id         the order's user, files.user of the copy
+ * @return bool whether a file was given
+ */
+function pg_pfu_copy_to_submission($form_id, $field, $value, $order_item_id, $quantity_number, $user_id = 0)
+{
+    if (((int) $form_id <= 0) || ((int) $order_item_id <= 0) || ((int) $quantity_number <= 0)) {
+        return false;
+    }
+
+    $answers = db_items(
+        "SELECT " . pg_form_data_name_sql() . " AS name, form_data.file_id
+        FROM form_data
+        WHERE
+            (form_data.order_item_id = '" . (int) $order_item_id . "')
+            AND (form_data.form_id = '0')
+            AND (form_data.quantity_number = '" . (int) $quantity_number . "')
+            AND (form_data.file_id > 0)
+        ORDER BY form_data.id ASC");
+
+    $file_id = pg_pfu_submit_form_file_id($value, (array) $answers);
+
+    if ($file_id <= 0) {
+        return false;
+    }
+
+    $copy = pg_pfu_copy_file($file_id, (int) ($field['upload_folder_id'] ?? 0), $user_id);
+
+    if ($copy === false) {
+        return false;
+    }
+
+    $saved = db_q(
+        "INSERT INTO form_data (form_id, form_field_id, file_id, data, name, type)
+        VALUES (?, ?, ?, ?, ?, 'standard')",
+        array(
+            (string) (int) $form_id,
+            (string) (int) $field['form_field_id'],
+            (string) $copy['id'],
+            (string) $copy['name'],
+            (string) ($field['name'] ?? '')));
+
+    if ($saved === false) {
+        db("DELETE FROM files WHERE id = '" . (int) $copy['id'] . "'");
+        pg_pfu_unlink_files(array($copy['name']), FILE_DIRECTORY_PATH);
+
+        return false;
+    }
+
+    return true;
+}

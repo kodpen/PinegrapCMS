@@ -620,6 +620,8 @@ function api_order_full($id) {
 
 	$items = array();
 
+	$answers = api_order_item_answers($id);
+
 	foreach ($item_rows as $item) {
 
 		$items[] = array(
@@ -634,12 +636,112 @@ function api_order_full($id) {
 			// which is what a caller needs to show a line; multiplying this by
 			// the quantity would count it again.
 			'tax'            => api_money($item['tax_total']),
-			'shipping'       => api_money($item['shipping'])
+			'shipping'       => api_money($item['shipping']),
+			'answers'        => isset($answers[(int)$item['id']]) ? $answers[(int)$item['id']] : array()
 		);
 
 	}
 
 	return api_order_present($row, $items, api_order_shipments($id));
+
+}
+
+// The product form answers of an order's lines, by line id
+// (api_order_item_answers_present()), in one query. A file's row is joined
+// for its name, size and type; a file deleted from Files since leaves the
+// answer's text and no file. Empty on a site whose files table lacks a column
+// the query names, as api_rows() answers a failed query with no rows.
+function api_order_item_answers($order_id) {
+
+	$rows = api_rows("SELECT form_data.order_item_id, form_data.quantity_number,
+			form_data.form_field_id, form_data.data, form_data.file_id,
+			IF(form_data.name = '', COALESCE(form_fields.name, ''), form_data.name) AS name,
+			form_fields.label,
+			files.name AS file_name, files.size AS file_size, files.type AS file_type
+		FROM form_data
+		LEFT JOIN form_fields ON form_fields.id = form_data.form_field_id
+		LEFT JOIN files ON (files.id = form_data.file_id) AND (form_data.file_id > 0)
+		WHERE (form_data.order_id = '" . (int)$order_id . "')
+			AND (form_data.order_item_id > 0)
+			AND (form_data.form_id = '0')
+		ORDER BY form_data.id ASC");
+
+	$base = (defined('URL_SCHEME') ? URL_SCHEME : 'https://')
+		. (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '')
+		. (defined('PATH') ? PATH : '/');
+
+	return api_order_item_answers_present($rows, $base);
+
+}
+
+// Product form answer rows (form_data with its field's name and label and its
+// file's name, size and type) as each line's answers: one per unit and field
+// in the order they were stored, a check box group's values joined by commas
+// as the order screen and the CSV show them. A file is its id, name, size,
+// type and its address on the site, the one get_file.php serves; that address
+// opens for order staff and the buyer, not for the API key, which reads the
+// file's bytes nowhere else. Pure.
+function api_order_item_answers_present($rows, $base_url) {
+
+	$lines = array();
+
+	foreach ((array)$rows as $row) {
+
+		$line_id = (int)$row['order_item_id'];
+		$key = (int)$row['quantity_number'] . ':' . (int)$row['form_field_id'];
+
+		if (isset($lines[$line_id][$key])) {
+
+			$lines[$line_id][$key]['value'] .= ', ' . (string)$row['data'];
+
+			continue;
+
+		}
+
+		$file = null;
+
+		if (((int)$row['file_id'] > 0) && isset($row['file_name']) && ((string)$row['file_name'] !== '')) {
+
+			$file = array(
+				'id'   => (int)$row['file_id'],
+				'name' => (string)$row['file_name'],
+				'size' => (int)$row['file_size'],
+				'type' => (string)$row['file_type'],
+				'url'  => $base_url . encode_url_path((string)$row['file_name'])
+			);
+
+		}
+
+		$lines[$line_id][$key] = array(
+			'unit'     => (int)$row['quantity_number'],
+			'field_id' => ((int)$row['form_field_id'] > 0) ? (int)$row['form_field_id'] : null,
+			'name'     => (string)$row['name'],
+			'label'    => (isset($row['label']) && ($row['label'] !== null)) ? (string)$row['label'] : null,
+			'value'    => ($file !== null) ? $file['name'] : (string)$row['data'],
+			'file'     => $file
+		);
+
+	}
+
+	foreach ($lines as $line_id => $answers) {
+
+		$lines[$line_id] = array_values($answers);
+
+	}
+
+	return $lines;
+
+}
+
+function api_order_item_file_schema() {
+
+	return array(
+		'id'   => 'integer',
+		'name' => 'string',
+		'size' => 'integer',
+		'type' => 'string',
+		'url'  => 'string'
+	);
 
 }
 
@@ -1797,7 +1899,15 @@ function api_order_schema() {
 			'quantity'       => 'integer',
 			'price'          => 'integer',
 			'tax'            => 'integer',
-			'shipping'       => 'integer'
+			'shipping'       => 'integer',
+			'answers'        => array(array(
+				'unit'     => 'integer',
+				'field_id' => 'integer?',
+				'name'     => 'string',
+				'label'    => 'string?',
+				'value'    => 'string',
+				'file'     => 'OrderItemFile?'
+			))
 		)),
 		'shipments' => array(array(
 			'id'   => 'integer',
