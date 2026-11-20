@@ -83,7 +83,7 @@ if ($method === 'GET') {
 
             if ($access) {
                 $progress = pg_course_member_progress((int) USER_ID, $course['id']);
-                $state = pg_course_lesson_state(pg_course_lessons($course['id']), $lesson_id, $progress['done_ids'],
+                $state = pg_course_lesson_state(pg_course_member_lessons($course), $lesson_id, $progress['done_ids'],
                     pg_course_member_enrolment_day((int) USER_ID, $course, $progress), !empty($course['in_order']), date('Y-m-d'),
                     (bool) check_edit_access($course['folder_id']));
                 $open = !empty($state['open']);
