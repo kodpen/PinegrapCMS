@@ -243,6 +243,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_order_profit();        // 11.0.250
 	upgrade_2026_11_0_erp_stock_plan();          // 11.0.251
 	upgrade_2026_11_0_stock_holds();             // 11.0.253
+	upgrade_2026_11_0_supplier_feeds();          // 11.0.255
 
 }
 
@@ -8190,5 +8191,87 @@ function upgrade_2026_11_0_stock_holds() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Checkout: units can be held for an order for a few minutes while its payment runs.');
+
+}
+
+// Supplier feeds: the store pulls a supplier's XML, CSV or JSON list and keeps
+// price and stock in step (includes/fn/supplier_feed.php). supplier_feeds holds
+// one feed: the host shown, one encrypted blob with the address and the
+// credentials, the mapping and price rules as JSON, and the running pull's
+// cursor in state. supplier_feed_items holds one row per feed and supplier
+// record with its buy price (minor units of its currency, net of VAT) and the
+// product it matched. supplier_feed_runs logs each pull. No products column.
+function upgrade_2026_11_0_supplier_feeds() {
+
+	install_create_table('supplier_feeds', "CREATE TABLE supplier_feeds (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name            VARCHAR(150) NOT NULL DEFAULT '',
+		host            VARCHAR(255) NOT NULL DEFAULT '',
+		secret          TEXT NULL,
+		allow_http      TINYINT(1) NOT NULL DEFAULT 0,
+		format          VARCHAR(10) NOT NULL DEFAULT '',
+		interval_hours  TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		currency        VARCHAR(3) NOT NULL DEFAULT '',
+		vat_included    TINYINT(1) NOT NULL DEFAULT 0,
+		erp_account_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		mapping         TEXT NULL,
+		rules           TEXT NULL,
+		state           TEXT NULL,
+		status          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		pause_reason    VARCHAR(500) NOT NULL DEFAULT '',
+		next_run_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		last_run_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status_next_run (status, next_run_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('supplier_feed_items', "CREATE TABLE supplier_feed_items (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		feed_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		supplier_key    VARCHAR(100) NOT NULL DEFAULT '',
+		product_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		barcode         VARCHAR(50) NOT NULL DEFAULT '',
+		buy_price       INT UNSIGNED NOT NULL DEFAULT 0,
+		currency        VARCHAR(3) NOT NULL DEFAULT '',
+		held_price      INT UNSIGNED NOT NULL DEFAULT 0,
+		stock           INT NOT NULL DEFAULT 0,
+		follow_price    TINYINT(1) NOT NULL DEFAULT 1,
+		closed_by_feed  TINYINT(1) NOT NULL DEFAULT 0,
+		active          TINYINT(1) NOT NULL DEFAULT 0,
+		dismissed       TINYINT(1) NOT NULL DEFAULT 0,
+		seen_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		changed_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_feed_supplier_key (feed_id, supplier_key),
+		KEY idx_product (product_id),
+		KEY idx_barcode (barcode),
+		KEY idx_feed_seen (feed_id, seen_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('supplier_feed_runs', "CREATE TABLE supplier_feed_runs (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		feed_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		status          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		started_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		records         INT UNSIGNED NOT NULL DEFAULT 0,
+		added           INT UNSIGNED NOT NULL DEFAULT 0,
+		changed         INT UNSIGNED NOT NULL DEFAULT 0,
+		closed          INT UNSIGNED NOT NULL DEFAULT 0,
+		reopened        INT UNSIGNED NOT NULL DEFAULT 0,
+		held            INT UNSIGNED NOT NULL DEFAULT 0,
+		failed          INT UNSIGNED NOT NULL DEFAULT 0,
+		detail          MEDIUMTEXT NULL,
+		PRIMARY KEY (id),
+		KEY idx_feed_started (feed_id, started_at),
+		KEY idx_started (started_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Products: supplier feeds can be kept, ready for price and stock to follow a supplier\'s list.');
 
 }
