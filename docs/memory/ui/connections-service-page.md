@@ -5,13 +5,13 @@ module: connections_screen
 ---
 
 ## What is a service's page?
-- `connections.php?service=<registry key>`, built in CX7 (plan `plans/connections-merges-build.md`) as the owner accepted it in poll 149 (`workflow/decisions-made-product-77.md`). Breadcrumb System tools › Connections › the service; heading its name, under it the group and its uses.
+- `connections.php?service=<registry key>`, built in CX7 (plan `plans/connections-merges-build.md`) as the owner accepted it in poll 149 (`workflow/decisions-made-product-77.md`). Breadcrumb System tools › Connections › the service; heading its name, then group and uses.
 - Every registry service the user may see has one; `pg_connections_screen_page_id()` refuses any other key (an account provider, hidden, unknown): back to the list.
 
 ## What does it show?
 - "Status" ("Durum"): the state pill, why no state is read, and for an account reader the accounts with Connect again (the service's purpose) and Disconnect for the site's own, the last error on file, a link to the provider's drawer. Then where its settings are and "Open its settings".
 - "Where it is used" ("Kullanıldığı yerler"): one row from the registry's `uses` and place, with the state, a link to the place.
-- A service whose settings are still elsewhere has only those two cards; its step adds "Bağlantı bilgileri" with its fields (`plans/connections-merges-panel-rules.md`).
+- A service set elsewhere has only those two cards; its step adds "Bağlantı bilgileri" (`plans/connections-merges-panel-rules.md`).
 
 ## Which cards does GitHub's page have? (CX8, #10418)
 - `pg_connections_screen_page_cards()` gives the order and gates: Status, "Connection details" ("Bağlantı bilgileri", manager), Where it is used, "Repository links" ("Depo bağlantıları", only with `ws_github_links_can_manage()`, the Workspace settings right). A card the viewer may not open is not drawn.
@@ -28,7 +28,7 @@ module: connections_screen
 
 ## Which pages did CX11 give a key service? (Status, "Connection details" under the card's gate, Where it is used)
 - IndexNow (CX11a): the key, SEO gate, `connections-indexnow-page.md`. Google Analytics (CX11b): tag and GA4 property, Visitors and privacy gate, `connections-google-analytics-page.md`.
-- Google Cloud Translation (CX11c): the API key, Languages and Translation gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers (CX11d2): `connections-sms-providers-page.md`.
+- Google Cloud Translation (CX11c): the API key, Languages and Translation gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers (CX11d2): `connections-sms-providers-page.md`. Meta Conversions API: `api/ad-conversions-meta.md`.
 
 ## Where does a write from it return?
 - The page's hidden `connections_return` sends Check/Disconnect back to `?service=<key>`; Connect again returns there through `pg_connect_start_fields()`'s return path.

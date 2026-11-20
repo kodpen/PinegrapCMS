@@ -1,0 +1,205 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for includes/fn/ad_conversions_meta.php: the server event and body
+ * Meta's documents ask for (hashed e-mail and phone, plain browser ids, the
+ * person only with consent), Meta's recorded answers read as a send's
+ * outcome, the refusals made without a call, the settings the page writes,
+ * the field shapes, and the places outside the module that reach it.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+if (!defined('PG_INIT_LOADED')) {
+	define('PG_INIT_LOADED', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions_meta.php');
+
+function ad_conversions_meta_test_source($path)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+}
+
+// A due purchase row as SC1 leaves it, with the person.
+function ad_conversions_meta_test_event($person = true)
+{
+	$row = array(
+		'event' => 'purchase',
+		'event_id' => 'R7K2Q9',
+		'person' => $person ? 1 : 0,
+		'ids' => $person ? json_encode(array('fbp' => 'fb.1.1700000000000.123456789', 'fbc' => 'fb.1.1700000000000.AbCdEf', 'ip' => '203.0.113.9', 'user_agent' => 'Mozilla/5.0')) : null,
+		'detail' => json_encode(array('value' => 12550, 'currency' => 'try', 'order_number' => '1042', 'time' => 1763600000,
+			'contents' => array(array('id' => 'SKU-1', 'quantity' => 2, 'price' => 5000), array('id' => 'SKU-2', 'quantity' => 1, 'price' => 2550)))),
+	);
+
+	return pg_ad_conversion_event($row, array('billing_email_address' => ' Buyer@Example.com ', 'billing_phone_number' => '+90 (532) 111 22 33'));
+}
+
+// The server event with the person: Meta's names, hashed contact, plain ids.
+function test_ad_conversions_meta_server_event_person()
+{
+	$server = pg_ad_conversion_meta_server_event(ad_conversions_meta_test_event(), 'https://shop.example/');
+
+	pg_assert_same('Purchase', $server['event_name'], 'standard event name');
+	pg_assert_same(1763600000, $server['event_time'], 'unix seconds');
+	pg_assert_same('R7K2Q9', $server['event_id'], 'the dedup id is the order reference');
+	pg_assert_same('website', $server['action_source'], 'action source');
+	pg_assert_same('https://shop.example/', $server['event_source_url'], 'source url required for website events');
+	pg_assert_same(array(hash('sha256', 'buyer@example.com')), $server['user_data']['em'], 'e-mail trimmed, lower-cased, SHA-256');
+	pg_assert_same(array(hash('sha256', '905321112233')), $server['user_data']['ph'], 'phone digits with country code, SHA-256');
+	pg_assert_same('fb.1.1700000000000.123456789', $server['user_data']['fbp'], 'fbp never hashed');
+	pg_assert_same('fb.1.1700000000000.AbCdEf', $server['user_data']['fbc'], 'fbc never hashed');
+	pg_assert_same('203.0.113.9', $server['user_data']['client_ip_address'], 'address never hashed');
+	pg_assert_same('Mozilla/5.0', $server['user_data']['client_user_agent'], 'browser name');
+	pg_assert_same(125.5, $server['custom_data']['value'], 'value as a number');
+	pg_assert_same('TRY', $server['custom_data']['currency'], 'ISO 4217 upper case');
+	pg_assert_same(array('id' => 'SKU-1', 'quantity' => 2, 'item_price' => 50.0), $server['custom_data']['contents'][0], 'contents line');
+	pg_assert_same('product', $server['custom_data']['content_type'], 'content type');
+	pg_assert_same('1042', $server['custom_data']['order_id'], 'order id');
+}
+
+// Without the person: no contact, no id, an empty user_data object.
+function test_ad_conversions_meta_server_event_without_person()
+{
+	$server = pg_ad_conversion_meta_server_event(ad_conversions_meta_test_event(false), '');
+	$json = json_encode($server);
+
+	pg_assert_same('{}', json_encode($server['user_data']), 'user_data is an empty object');
+	pg_assert_false(strpos($json, 'fbp') !== false || strpos($json, '203.0.113.9') !== false || strpos($json, 'Mozilla') !== false, 'no id, address or browser');
+	pg_assert_false(isset($server['event_source_url']), 'no empty source url');
+	pg_assert_same(125.5, $server['custom_data']['value'], 'the amount still goes');
+}
+
+// The body: one event, the token in the body, the test code only for a test.
+function test_ad_conversions_meta_body()
+{
+	$server = pg_ad_conversion_meta_server_event(ad_conversions_meta_test_event(), '');
+	$real = pg_ad_conversion_meta_body($server, 'EAAtoken');
+	$test = pg_ad_conversion_meta_body($server, 'EAAtoken', 'TEST123');
+
+	pg_assert_same(1, count($real['data']), 'one event per row');
+	pg_assert_same('EAAtoken', $real['access_token'], 'token as a body parameter');
+	pg_assert_false(isset($real['test_event_code']), 'no test code on a real event');
+	pg_assert_same('TEST123', $test['test_event_code'], 'test code at the top level');
+	pg_assert_same('https://graph.facebook.com/v27.0/1234567890/events', pg_ad_conversion_meta_url('1234567890'), 'the address');
+	pg_assert_false(strpos(pg_ad_conversion_meta_url('1234567890'), 'token') !== false, 'no token in the address');
+}
+
+// Meta's recorded answers.
+function test_ad_conversions_meta_answers()
+{
+	$sent = pg_ad_conversion_meta_answer(array('ok' => true, 'status' => 200, 'body' => '{"events_received":1,"messages":[],"fbtrace_id":"AbC123"}'));
+	pg_assert_true($sent['ok'], 'events_received 1 is sent');
+
+	$none = pg_ad_conversion_meta_answer(array('ok' => true, 'status' => 200, 'body' => '{"events_received":0,"messages":[]}'));
+	pg_assert_false($none['ok'], 'nothing received is not sent');
+	pg_assert_same(400, $none['status'], 'and not tried again');
+
+	$bad = pg_ad_conversion_meta_answer(array('ok' => false, 'status' => 400, 'body' => '{"error":{"message":"Invalid parameter","type":"OAuthException","code":100,"error_subcode":2804003,"error_user_msg":"The event time is too old.","fbtrace_id":"Xyz789"}}'));
+	pg_assert_same(400, $bad['status'], 'a refusal stays 400');
+	pg_assert_same('The event time is too old. (code 100, 2804003) fbtrace_id Xyz789', $bad['error'], 'Meta\'s words, code and trace id');
+	pg_assert_false(api_http_should_retry(array('ok' => false, 'status' => $bad['status'])), 'a refusal is not retried');
+
+	$token = pg_ad_conversion_meta_answer(array('ok' => false, 'status' => 400, 'body' => '{"error":{"message":"Error validating access token","type":"OAuthException","code":190,"fbtrace_id":"T1"}}'));
+	pg_assert_same(400, $token['status'], 'an expired token is given up');
+
+	$throttled = pg_ad_conversion_meta_answer(array('ok' => false, 'status' => 400, 'body' => '{"error":{"message":"Application request limit reached","type":"OAuthException","code":4,"fbtrace_id":"T2"}}'));
+	pg_assert_same(429, $throttled['status'], 'throttling is tried again');
+	pg_assert_true(api_http_should_retry(array('ok' => false, 'status' => $throttled['status'])), 'retried');
+
+	$down = pg_ad_conversion_meta_answer(array('ok' => false, 'status' => 500, 'body' => '{"error":{"message":"An unknown error occurred","code":1}}'));
+	pg_assert_same(429, $down['status'], 'downtime is tried again');
+
+	$silent = pg_ad_conversion_meta_answer(array('ok' => false, 'status' => 0, 'body' => '', 'error' => 'Operation timed out'));
+	pg_assert_same(0, $silent['status'], 'no answer holds the service');
+	pg_assert_same('Operation timed out', $silent['error'], 'the transport error');
+
+	$html = pg_ad_conversion_meta_answer(array('ok' => false, 'status' => 502, 'body' => '<html>Bad gateway</html>'));
+	pg_assert_same('HTTP 502', $html['error'], 'a body that is not JSON');
+}
+
+// The refusals made without a call.
+function test_ad_conversions_meta_refusals()
+{
+	$keys = array('pixel_id' => '1234567890', 'token' => 'EAAtoken');
+	$event = ad_conversions_meta_test_event();
+	$now = 1763600000 + 3600;
+
+	pg_assert_same('', pg_ad_conversion_meta_refusal($event, $keys, $now), 'a fresh purchase goes');
+	pg_assert_same('The pixel ID or the access token is missing.', pg_ad_conversion_meta_refusal($event, array('pixel_id' => '1', 'token' => ''), $now), 'no token');
+	pg_assert_same('Meta takes events up to 7 days old.', pg_ad_conversion_meta_refusal($event, $keys, 1763600000 + 7 * 86400), 'too old');
+	pg_assert_same('Meta has no event for this.', pg_ad_conversion_meta_refusal(array('event' => 'refund') + $event, $keys, $now), 'no refund event at Meta');
+	pg_assert_same('', pg_ad_conversion_meta_event_name('refund'), 'refund has no name');
+	pg_assert_same('InitiateCheckout', pg_ad_conversion_meta_event_name('begin_checkout'), 'begin checkout');
+}
+
+// The settings the page writes.
+function test_ad_conversions_meta_settings()
+{
+	$stored = pg_ad_conversion_meta_stored(json_encode(array('connected' => true, 'pixel_id' => '111111', 'token' => 'sealed:iv', 'events' => array('purchase'), 'person_notice_off' => true)));
+
+	pg_assert_same('sealed:iv', $stored['token'], 'stored token read');
+	pg_assert_true($stored['person_notice_off'], 'box read');
+
+	$kept = pg_ad_conversion_meta_settings_merge($stored, array('pixel_id' => ' 222222 ', 'events' => array('purchase', 'evil'), 'without_person' => array('purchase')), '');
+	pg_assert_same('sealed:iv', $kept['token'], 'empty field keeps the token');
+	pg_assert_same('222222', $kept['pixel_id'], 'pixel trimmed');
+	pg_assert_same(array('purchase'), $kept['events'], 'unknown events dropped');
+	pg_assert_same(array('purchase'), $kept['without_person'], 'without the person');
+	pg_assert_false($kept['person_notice_off'], 'a cleared box is cleared');
+	pg_assert_true($kept['connected'], 'connected with pixel and token');
+
+	$parsed = pg_ad_conversion_settings_parse(json_encode($kept));
+	pg_assert_same(array('purchase'), $parsed['events'], 'the queue reads the same row');
+
+	$new = pg_ad_conversion_meta_settings_merge(pg_ad_conversion_meta_stored(''), array('pixel_id' => '333333'), 'new:iv');
+	pg_assert_same('new:iv', $new['token'], 'a new token');
+	pg_assert_same(array(), $new['events'], 'nothing ticked, nothing sent');
+	pg_assert_false(pg_ad_conversion_meta_settings_merge(pg_ad_conversion_meta_stored(''), array('pixel_id' => '1'), '')['connected'], 'no token, not connected');
+}
+
+function test_ad_conversions_meta_field_shapes()
+{
+	pg_assert_true(pg_ad_conversion_meta_pixel_valid('123456789012345'), 'pixel digits');
+	pg_assert_false(pg_ad_conversion_meta_pixel_valid('12a45'), 'pixel letters');
+	pg_assert_true(pg_ad_conversion_meta_token_valid(str_repeat('EAAB', 40)), 'token');
+	pg_assert_false(pg_ad_conversion_meta_token_valid('EAA token with spaces here'), 'token spaces');
+	pg_assert_true(pg_ad_conversion_meta_test_code_valid('TEST12345'), 'test code');
+	pg_assert_true(pg_ad_conversion_meta_test_code_valid(''), 'empty test code');
+	pg_assert_false(pg_ad_conversion_meta_test_code_valid('TEST-1'), 'test code dash');
+
+	$test = pg_ad_conversion_meta_test_event(1763600000, 'TRY');
+	pg_assert_same(array(), $test['user'], 'the test event has no person');
+	pg_assert_same('pg-test-1763600000', $test['event_id'], 'its own id');
+}
+
+// The places outside the module.
+function test_ad_conversions_meta_places()
+{
+	pg_assert_same('pg_ad_conversion_send_meta_capi', pg_ad_conversion_sender('meta_capi'), 'the dispatcher finds the sender');
+
+	$connections = ad_conversions_meta_test_source('connections.php');
+	pg_assert_true(strpos($connections, "pg_ad_conversion_meta_post_page(\$action, \$_POST, \$liveform)") !== false, 'the write');
+	pg_assert_true(strpos($connections, "pg_ad_conversion_meta_page(\$page, connections_privacy_may_manage(\$user), \$can_seal)") !== false, 'the page, under the Visitors and privacy gate');
+	pg_assert_true(strpos($connections, "array('meta_capi_save', 'meta_capi_remove')") !== false && strpos($connections, '&& connections_privacy_may_manage($user)') !== false, 'the write under the same gate');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_registry.php');
+	$registry = pg_connections_registry();
+	pg_assert_true(isset($registry['meta_capi']), 'the registry row');
+	pg_assert_same('connections.php', $registry['meta_capi']['place'], 'its page');
+	pg_assert_same('pg_ad_conversion_meta_connected', $registry['meta_capi']['state']['function'], 'its state reader');
+
+	$reseal = ad_conversions_meta_test_source('includes/fn/reseal.php');
+	pg_assert_true(strpos($reseal, "'ad_conversions_meta_capi', 'connect', array('fields' => array('token'))") !== false, 'the token is sealed again on a key reset');
+}
