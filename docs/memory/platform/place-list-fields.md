@@ -1,6 +1,6 @@
 ---
 name: place-list-fields
-description: Fields of a "Map of places" answer: the block's pickers in its Options panel, data-pg-map-fields on the saved page, fit and office-use rules, name-rule fallback
+description: Fields of a "Map of places" answer (#10535): the block's pickers in its Options panel, data-pg-map-fields on the saved page, fit and office-use rules, name-rule fallback
 module: place_list
 ---
 
