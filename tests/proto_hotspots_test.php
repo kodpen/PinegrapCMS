@@ -1387,6 +1387,67 @@ function test_proto_hotspots_canvas_marks()
 	pg_assert_same(array('hrefs' => array(), 'page_ids' => array(), 'menus' => array(), 'regions' => array()), $out['nothing'], 'no design, nothing asked');
 }
 
+// The link counts of a page tab's tip, as the Prototype view's links
+// panel counts them: the page's own links (a menu's items each), the links
+// of the other pages and of the shared components opening it (never its
+// own link to itself), and its own broken links; a shared component's
+// links are its own frame's, not a page's.
+function test_proto_hotspots_tab_counts()
+{
+	$tab = function ($node, $label, $key) {
+		return array('nodeId' => $node, 'source' => 'href', 'href' => '/' . $key, 'label' => $label, 'mark' => 'tab', 'tab' => $key, 'draft' => false);
+	};
+	$marked = array(
+		'pages' => array(
+			array('key' => 'p1', 'name' => 'home', 'shared' => array(5), 'hotspots' => array(
+				$tab('a', 'About', 'p2'),
+				array('nodeId' => 'b', 'source' => 'btn', 'href' => 'https://x.org/', 'label' => '', 'mark' => 'external', 'tab' => '', 'draft' => false),
+				array('nodeId' => 'm', 'source' => 'menu', 'name' => 'Top', 'links' => array(
+					array('href' => '/home', 'label' => 'Home', 'mark' => 'tab', 'tab' => 'p1'),
+					array('href' => '/about', 'label' => 'About', 'mark' => 'tab', 'tab' => 'p2'),
+				)),
+				array('nodeId' => 'g', 'source' => 'menu', 'name' => 'Gone', 'links' => null),
+				array('nodeId' => 'e', 'source' => 'href', 'href' => '#', 'label' => 'Soon', 'mark' => 'empty', 'tab' => '', 'draft' => false),
+			)),
+			array('key' => 'p2', 'name' => 'about', 'shared' => array(5), 'hotspots' => array()),
+			array('key' => 'p3', 'name' => '', 'shared' => array(), 'hotspots' => array($tab('c', 'Back', 'p2'), $tab('d', 'Lost', 'p9'))),
+		),
+		'shared' => array(
+			array('id' => 5, 'name' => 'Header', 'pages' => 2, 'loaded' => true, 'shared' => array(), 'hotspots' => array(
+				$tab('h', 'Contact', 'p2'),
+				array('nodeId' => 'i', 'source' => 'href', 'href' => '/old', 'label' => 'Old', 'mark' => 'broken', 'tab' => '', 'draft' => false),
+			)),
+		),
+	);
+	$link = function ($id, $text, $href) {
+		return array('_id' => $id, 'type' => 'content', 'props' => array('contentType' => 'link', 'text' => $text, 'href' => $href), 'children' => array());
+	};
+	$home = array('_id' => 'r', 'type' => 'root', 'props' => array(), 'children' => array($link('x1', 'About', '/about'), $link('x2', 'Old', '/old'), $link('x3', 'Lost', '/nothing'), $link('x4', 'Mail', 'mailto:a@b.c')));
+	$about = array('_id' => 'r', 'type' => 'root', 'props' => array(), 'children' => array($link('y1', 'Home', '/home'), $link('y2', 'Home again', '/home'), $link('y3', 'Self', '/about')));
+	$out = proto_hotspots_test_node('var m = ' . proto_hotspots_test_js($marked) . ', l = H.layout(m, {}), b = H.brokenOf(l);'
+		. ' var panel = {}; ["p1", "p2", "p3"].forEach(function (k) { var one = H.listOf(l, "p:" + k); panel[k] = { out: one.outgoing.length, "in": one.incoming.length, broken: b.count["p:" + k] || 0 }; });'
+		. ' var tabs = [{ key: "t1", page_id: 1, page_name: "home" }, { key: "t2", page_id: 2, page_name: "about" }];'
+		. ' var d = H.design([{ key: "t1", page_id: 1, page_name: "home", tree: ' . proto_hotspots_test_js($home) . ' }, { key: "t2", page_id: 2, page_name: "about", tree: ' . proto_hotspots_test_js($about) . ' }], {});'
+		. ' out = { counts: H.tabCounts(m), panel: panel, design: H.tabCounts(H.mark(d, ' . proto_hotspots_test_js(proto_hotspots_test_read()) . ', tabs)),'
+		. ' none: [H.tabCounts(null), H.tabCounts({ pages: [], shared: [] })] };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'p1' => array('out' => 6, 'in' => 0, 'broken' => 1),
+		'p2' => array('out' => 0, 'in' => 4, 'broken' => 0),
+		'p3' => array('out' => 2, 'in' => 0, 'broken' => 0),
+	), $out['counts'], 'a menu\'s items each, no link to itself, the shared part\'s link in and its broken one its own, a link to no tab counted out only');
+	pg_assert_same($out['panel'], $out['counts'], 'the counts of the Prototype view\'s links panel and its broken count');
+	pg_assert_same(array(
+		't1' => array('out' => 4, 'in' => 2, 'broken' => 2),
+		't2' => array('out' => 3, 'in' => 1, 'broken' => 0),
+	), $out['design'], 'from trees and the map read: a binned and an unknown page broken, two links in from one page counted each');
+	pg_assert_same(array(array(), array()), $out['none'], 'no design, no counts');
+}
+
 // The editor's key back to the Prototype view: P alone, Shift and
 // Caps Lock allowed; never with Ctrl, Alt or Meta, held down, in an IME
 // composition or taken already, and never where it is typed or kept: a
@@ -1495,6 +1556,39 @@ function test_proto_hotspots_view_back_from_the_editor()
 	pg_assert_contains('if (goTo && goTo.seq === _sdProto.seq) _sdProtoBackPick(goTo.spot);', $draw, 'the drawing of that load picks it');
 	pg_assert_contains('_sdProto.back = window.PGProtoHotspots.linkSpot(_sdProto.layout, frameId, port);', $row, 'the link opened in the editor is kept');
 	pg_assert_contains("['P',                   _sdT('Show the selected link in the Prototype view')]", $source, 'the key in the shortcuts sheet');
+}
+
+// The tab's tip in the editor: counted from the Prototype view's own
+// data (design() over every tab, the prototype_map read, mark(),
+// tabCounts()), only with the read's answer, never for an e-mail design or
+// a page without content rights; the strip keeps the tip without the
+// counts as data-title and gets the counts in place; a redraw or a change
+// of the strip counts again on the next rest.
+function test_proto_hotspots_view_tab_counts()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+	$run = proto_hotspots_test_designer_fn('_sdTabLinksRun');
+	$off = proto_hotspots_test_designer_fn('_sdTabLinksOff');
+	$title = proto_hotspots_test_designer_fn('_sdTabLinksTitle');
+	$word = proto_hotspots_test_designer_fn('_sdTabLinksWord');
+	$tab = proto_hotspots_test_designer_fn('_pgTabHtml');
+	$strip = proto_hotspots_test_designer_fn('_pgTabsRender');
+
+	pg_assert_true($run !== '' && $off !== '' && $title !== '' && $word !== '' && $tab !== '' && $strip !== '', 'the functions are found');
+	pg_assert_contains('var designed = H.design(tabs, _sharedCache);', $run, 'every tab, as the Prototype view walks them');
+	pg_assert_contains("_pgApiPost('prototype_map', request)", $run, 'the Prototype view\'s read, no endpoint of its own');
+	pg_assert_contains('H.tabCounts(H.mark(designed, read, tabs))', $run, 'counted by the pure module');
+	pg_assert_contains('count(null);', $run, 'a failed read shows no counts');
+	pg_assert_contains("document.body.classList.contains('sd-email-design')", $off, 'no counts in an e-mail design');
+	pg_assert_contains('!locked', $title, 'none on a page without content rights');
+	pg_assert_contains("join('\\n')", $title, 'one line per count under the tip');
+	foreach (array('1 outgoing link', '{var:1} outgoing links', 'No outgoing links', '1 incoming link', '{var:1} incoming links', 'No incoming links', '1 broken link', '{var:1} broken links', 'No broken links') as $key) {
+		pg_assert_contains("_sdT('" . $key . "'", $word, 'the words: ' . $key);
+	}
+	pg_assert_contains('data-title="\' + esc(title) + \'" title="\' + esc(_sdTabLinksTitle(title, p.key, locked))', $tab, 'the tab keeps its tip and carries the counts');
+	pg_assert_contains('_sdTabLinksStale();', $strip, 'a change of the strip counts again');
+	pg_assert_contains("_sdLinkMarksSoon();\n        _sdTabLinksStale();", $source, 'a redraw counts again');
+	pg_assert_contains("list.addEventListener('mouseover', counts);\n            list.addEventListener('focusin', counts);", $source, 'counted when the pointer or the focus rests on a tab');
 }
 
 // A system widget leads to pages its settings name (the login widget's

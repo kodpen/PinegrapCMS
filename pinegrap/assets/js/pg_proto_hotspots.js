@@ -2219,6 +2219,45 @@
         };
     }
 
+    // The link counts a page tab's tip shows, from a design marked by
+    // mark(), as the Prototype view's links panel counts them (listOf(),
+    // brokenOf()): by tab key { out, in, broken }. `out` is the page's own
+    // links, one per row (a classic menu's or a region's items each);
+    // `in` the links of the other pages and of the shared components that
+    // open the tab, a page's link to itself not counted; `broken` its own
+    // broken links. A shared component's links are its own frame's, never
+    // those of the pages placing it.
+    function tabCounts(marked) {
+        var out = {};
+        var pages = (marked && Array.isArray(marked.pages)) ? marked.pages : [];
+        var shared = (marked && Array.isArray(marked.shared)) ? marked.shared : [];
+
+        pages.forEach(function (page) {
+            out[str(page.key)] = { out: 0, 'in': 0, broken: 0 };
+        });
+
+        function frame(item, key) {
+            rowsOf(item).forEach(function (row) {
+                if (key !== null) {
+                    out[key].out++;
+
+                    if (row.mark === 'broken') {
+                        out[key].broken++;
+                    }
+                }
+
+                if (row.mark === 'tab' && row.tab !== key && has(out, row.tab)) {
+                    out[row.tab]['in']++;
+                }
+            });
+        }
+
+        pages.forEach(function (page) { frame(page, str(page.key)); });
+        shared.forEach(function (one) { frame(one, null); });
+
+        return out;
+    }
+
     // The editor's key back to the Prototype view: P alone (Shift and Caps
     // Lock allowed). Nothing else uses a bare P in the editor; the palette's
     // Ctrl+Shift+P and the preview's Ctrl+Alt+P carry modifiers.
@@ -2798,6 +2837,7 @@
         emptyOf: emptyOf,
         canvasMarks: canvasMarks,
         canvasRequest: canvasRequest,
+        tabCounts: tabCounts,
         BACK_KEY: BACK_KEY,
         backKey: backKey,
         linkSpot: linkSpot,
