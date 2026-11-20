@@ -205,6 +205,7 @@
     "ETag and If-Match": "ETag ve If-Match",
     "EU VAT ID": "AB KDV numarası",
     "EUR/TRY": "Euro/TL",
+    "Each Google feature calls its API in the Google Cloud project of the application; Google refuses the call until the API is turned on there.": "Her Google özelliği, uygulamanın Google Cloud projesindeki kendi API'sini çağırır; API orada açılana kadar Google çağrıyı reddeder.",
     "Each Period": "Her Periyotta",
     "Each additional driver's licence": "Her ek sürücünün ehliyeti",
     "Each app does one thing and does it well. Choose one to see it on the phone.": "Her uygulama tek bir işi iyi yapar. Telefonda görmek için birini seçin.",

@@ -20,6 +20,9 @@ module: connections_screen
 - Repository links: `ws_github_links_page_card()`, its forms post `ws_action` to the page, `ws_github_links_settings_post()` writes. Under Where it is used a line names the GitHub MCP connector as a connection of its own, with its own token.
 - The Channels card `pgset-ws-github` keeps its address and anchors (`ws-github`, `pgset-ws-github`) and says how many repositories are linked, with "Manage in Connections".
 
+## Which pages do Google and Microsoft have? (CX10a)
+- Pages of their own (`?service=google`, `microsoft`), not a registry service's: `ui/connections-provider-page.md`.
+
 ## Which cards does an AI provider's page have? (CX9a)
 - Status, "Connection details" (the provider's key), Where it is used (its model assistants, own key or the connection's); gates and rows in `api/ai-connections.md`. `pg_connections_screen_page_cards()` adds details with `$can['ai']`.
 

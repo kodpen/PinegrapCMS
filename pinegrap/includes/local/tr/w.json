@@ -1753,6 +1753,7 @@
     "When a customer stops ordering": "Bir müşteri sipariş vermeyi bıraktığında",
     "When a customer writes to the site's WhatsApp number": "Bir müşteri sitenin WhatsApp numarasına yazdığında",
     "When a customer's invoices pass the threshold, a short reminder listing them goes to the e-mail address on their account, from the store address, with a second one a month later. Off for a single account on its card.": "Bir müşterinin faturaları eşiği geçince, bunları listeleyen kısa bir hatırlatma mağaza adresinden carinin e-posta adresine gider; bir ay sonra ikincisi. Tek bir cari için kartından kapatılır.",
+    "When a feature asks for a sensitive or restricted scope, such as reading events in Google Calendar or full access to Gmail, Google shows a warning that it has not verified the application until Google has.": "Bir özellik hassas ya da kısıtlı bir izin istediğinde (Google Takvim'deki etkinlikleri okumak ya da Gmail'e tam erişim gibi), Google uygulamayı doğrulayana kadar uygulamanın doğrulanmadığını söyleyen bir uyarı gösterir.",
     "When a figure needs a doctor, we tell you so plainly and write a note for your visit.": "Bir değer doktor gerektirdiğinde bunu açıkça söyler, muayeneniz için bir not yazarız.",
     "When a fix is on its way, the status says which update brings it.": "Bir düzeltme yoldaysa, durum hangi güncellemeyle geleceğini söyler.",
     "When a flickering light means you should call an electrician": "Titreyen bir ışık ne zaman elektrikçi çağırmanız gerektiğini gösterir",
