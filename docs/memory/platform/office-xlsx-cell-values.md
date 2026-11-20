@@ -9,7 +9,7 @@ description: How the Excel preview reads workbooks not written by Excel: prefixe
 
 ## Where are the date styles read from?
 - `pg_office_xlsx_date_styles()` reads the styles part the workbook's relationships name (`pg_sheet_xlsx_part($zip, 'styles', 'xl/styles.xml')`, PR #10765), `xl/styles.xml` when they name none. Before, a writer naming it `/xl/Styles2.xml` had every date read as its day count (`46343`) in the preview and in every importer, and the bank statement import found no dated line (#10544).
-- The workbook part itself is still only `xl/workbook.xml` (#10764), and the editor's `pg_office_xlsx_style_kinds()` reads its text and unlocked styles from `xl/styles.xml` only.
+- The workbook part is found through `_rels/.rels` and the editor's `pg_office_xlsx_style_kinds()` takes the same styles part (#10764, `xlsx-workbook-part.md`).
 
 ## How is a time or a duration shown?
 - `pg_office_xlsx_date_styles()` gives each date-like style a kind from `pg_office_xlsx_format_kind()` instead of `true`: `date` (a day, month or year, with or without a time), `time` / `time_s` (a time of day), `hours` / `hours_s` (`[h]`, elapsed), `minutes` (`mm:ss`). Built-ins: 14–17 and 22 date, 18/20 time, 19/21 time with seconds, 45/47 minutes, 46 elapsed hours.

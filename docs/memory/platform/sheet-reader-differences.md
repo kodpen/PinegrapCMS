@@ -13,7 +13,7 @@ module: sheet_read
 - Memory (#10537): `addcell()` keeps each cell as its type letter and value in one string, the workbook's bytes are let go after the read and rows are made as given. The library's cell, text and details took 3 to 5 times PHPExcel's memory (60,000 cells: over 100 MB against 24.5 MB).
 
 ## Which .xlsx parts are found through the relationships?
-- The shared strings (sheet reader and product import) and the product import's styles: `pg_sheet_xlsx_part()` (#10537), as PHPExcel found them; before, a writer naming them otherwise lost every text cell. The sheet reader's date and zero styles too (#10765, `office-xlsx-cell-values.md`); the workbook part is still `xl/workbook.xml` (#10764).
+- The shared strings (sheet reader and product import) and the product import's styles: `pg_sheet_xlsx_part()` (#10537), as PHPExcel found them; before, a writer naming them otherwise lost every text cell. The sheet reader's date and zero styles too (#10765, `office-xlsx-cell-values.md`); the workbook part through `_rels/.rels` (#10764, `xlsx-workbook-part.md`).
 
 ## Where does it differ from PHPExcel? (on purpose)
 - .ods text keeps `text:s` spaces, tabs, line breaks and link text (PHPExcel kept only a paragraph's own text: `  spaced  ` read `spaced `); a boolean comes from `office:boolean-value` (PHPExcel compared the shown text with TRUE, so a Turkish DOĞRU read false); a value cell with no paragraph keeps its value.
