@@ -170,96 +170,6 @@ function pg_xlsx_sheet_title($title)
 }
 
 /**
- * A one-sheet workbook from nothing: heading row in bold and frozen, data
- * underneath.
- *
- * @param array  $columns     The heading texts
- * @param array  $rows        Lists of values (pg_xlsx_sheet_rows())
- * @param string $path        Where to write the .xlsx
- * @param string $sheet_title
- * @return bool
- */
-function pg_xlsx_write_plain($columns, $rows, $path, $sheet_title)
-{
-    if (!class_exists('ZipArchive')) {
-        return false;
-    }
-
-    $ns = 'http://schemas.openxmlformats.org/';
-    $head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n";
-
-    $last_cell = pg_xlsx_column_letter(max(0, count($columns) - 1)) . (count($rows) + 1);
-
-    $sheet = $head .
-        '<worksheet xmlns="' . $ns . 'spreadsheetml/2006/main">' .
-        '<dimension ref="A1:' . $last_cell . '"/>' .
-        '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' .
-        '<sheetData>' .
-        pg_xlsx_sheet_rows(array($columns), 1, 1) .
-        pg_xlsx_sheet_rows($rows, 2) .
-        '</sheetData></worksheet>';
-
-    $parts = array(
-        '[Content_Types].xml' => $head .
-            '<Types xmlns="' . $ns . 'package/2006/content-types">' .
-            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' .
-            '<Default Extension="xml" ContentType="application/xml"/>' .
-            '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' .
-            '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' .
-            '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' .
-            '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' .
-            '</Types>',
-        '_rels/.rels' => $head .
-            '<Relationships xmlns="' . $ns . 'package/2006/relationships">' .
-            '<Relationship Id="rId1" Type="' . $ns . 'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' .
-            '</Relationships>',
-        'xl/workbook.xml' => $head .
-            '<workbook xmlns="' . $ns . 'spreadsheetml/2006/main" xmlns:r="' . $ns . 'officeDocument/2006/relationships">' .
-            '<bookViews><workbookView activeTab="0"/></bookViews>' .
-            '<sheets><sheet name="' . pg_xlsx_xml(pg_xlsx_sheet_title($sheet_title)) . '" sheetId="1" r:id="rId1"/></sheets>' .
-            '</workbook>',
-        'xl/_rels/workbook.xml.rels' => $head .
-            '<Relationships xmlns="' . $ns . 'package/2006/relationships">' .
-            '<Relationship Id="rId1" Type="' . $ns . 'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' .
-            '<Relationship Id="rId2" Type="' . $ns . 'officeDocument/2006/relationships/styles" Target="styles.xml"/>' .
-            '<Relationship Id="rId3" Type="' . $ns . 'officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>' .
-            '</Relationships>',
-        // Text is carried inline, so the shared strings table is empty; it is
-        // present because some readers look for it before the sheet.
-        'xl/sharedStrings.xml' => $head .
-            '<sst xmlns="' . $ns . 'spreadsheetml/2006/main" count="0" uniqueCount="0"/>',
-        // Five cell formats: 0 plain, 1 the bold heading, 2 a date (built-in
-        // format 14), 3 a date and time (built-in 22), 4 money (built-in 4,
-        // #,##0.00). Fills and borders are
-        // required by Excel even when nothing uses them.
-        'xl/styles.xml' => $head .
-            '<styleSheet xmlns="' . $ns . 'spreadsheetml/2006/main">' .
-            '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' .
-            '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' .
-            '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' .
-            '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' .
-            '<cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' .
-            '<xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="22" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' .
-            '<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' .
-            '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' .
-            '</styleSheet>',
-        'xl/worksheets/sheet1.xml' => $sheet,
-    );
-
-    $zip = new ZipArchive();
-
-    if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-        return false;
-    }
-
-    foreach ($parts as $name => $part) {
-        $zip->addFromString($name, $part);
-    }
-
-    return $zip->close();
-}
-
-/**
  * One cell of the sheet reader (pg_sheet_rows(): t s, n, b, d or e, and v)
  * as a <c> element of pg_xlsx_write_book(): text inline, a number as it is
  * written, a boolean, an error, a date (style 1), a date and time (style 2)
@@ -471,4 +381,94 @@ function pg_xlsx_write_book($sheets, $rows_of, $path)
     }
 
     return $written;
+}
+
+/**
+ * A one-sheet workbook from nothing: heading row in bold and frozen, data
+ * underneath.
+ *
+ * @param array  $columns     The heading texts
+ * @param array  $rows        Lists of values (pg_xlsx_sheet_rows())
+ * @param string $path        Where to write the .xlsx
+ * @param string $sheet_title
+ * @return bool
+ */
+function pg_xlsx_write_plain($columns, $rows, $path, $sheet_title)
+{
+    if (!class_exists('ZipArchive')) {
+        return false;
+    }
+
+    $ns = 'http://schemas.openxmlformats.org/';
+    $head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n";
+
+    $last_cell = pg_xlsx_column_letter(max(0, count($columns) - 1)) . (count($rows) + 1);
+
+    $sheet = $head .
+        '<worksheet xmlns="' . $ns . 'spreadsheetml/2006/main">' .
+        '<dimension ref="A1:' . $last_cell . '"/>' .
+        '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' .
+        '<sheetData>' .
+        pg_xlsx_sheet_rows(array($columns), 1, 1) .
+        pg_xlsx_sheet_rows($rows, 2) .
+        '</sheetData></worksheet>';
+
+    $parts = array(
+        '[Content_Types].xml' => $head .
+            '<Types xmlns="' . $ns . 'package/2006/content-types">' .
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' .
+            '<Default Extension="xml" ContentType="application/xml"/>' .
+            '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' .
+            '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' .
+            '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' .
+            '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' .
+            '</Types>',
+        '_rels/.rels' => $head .
+            '<Relationships xmlns="' . $ns . 'package/2006/relationships">' .
+            '<Relationship Id="rId1" Type="' . $ns . 'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' .
+            '</Relationships>',
+        'xl/workbook.xml' => $head .
+            '<workbook xmlns="' . $ns . 'spreadsheetml/2006/main" xmlns:r="' . $ns . 'officeDocument/2006/relationships">' .
+            '<bookViews><workbookView activeTab="0"/></bookViews>' .
+            '<sheets><sheet name="' . pg_xlsx_xml(pg_xlsx_sheet_title($sheet_title)) . '" sheetId="1" r:id="rId1"/></sheets>' .
+            '</workbook>',
+        'xl/_rels/workbook.xml.rels' => $head .
+            '<Relationships xmlns="' . $ns . 'package/2006/relationships">' .
+            '<Relationship Id="rId1" Type="' . $ns . 'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' .
+            '<Relationship Id="rId2" Type="' . $ns . 'officeDocument/2006/relationships/styles" Target="styles.xml"/>' .
+            '<Relationship Id="rId3" Type="' . $ns . 'officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>' .
+            '</Relationships>',
+        // Text is carried inline, so the shared strings table is empty; it is
+        // present because some readers look for it before the sheet.
+        'xl/sharedStrings.xml' => $head .
+            '<sst xmlns="' . $ns . 'spreadsheetml/2006/main" count="0" uniqueCount="0"/>',
+        // Five cell formats: 0 plain, 1 the bold heading, 2 a date (built-in
+        // format 14), 3 a date and time (built-in 22), 4 money (built-in 4,
+        // #,##0.00). Fills and borders are
+        // required by Excel even when nothing uses them.
+        'xl/styles.xml' => $head .
+            '<styleSheet xmlns="' . $ns . 'spreadsheetml/2006/main">' .
+            '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' .
+            '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' .
+            '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' .
+            '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' .
+            '<cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>' .
+            '<xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="22" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' .
+            '<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' .
+            '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' .
+            '</styleSheet>',
+        'xl/worksheets/sheet1.xml' => $sheet,
+    );
+
+    $zip = new ZipArchive();
+
+    if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        return false;
+    }
+
+    foreach ($parts as $name => $part) {
+        $zip->addFromString($name, $part);
+    }
+
+    return $zip->close();
 }
