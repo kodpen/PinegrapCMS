@@ -324,6 +324,47 @@
   background: var(--pgie-hover);
 }
 
+/* The channels a canvas may be sent to, inside the same menu */
+
+.pgie-menu.pgie-sendmenu {
+  width: 280px;
+  max-width: calc(100vw - 24px);
+}
+
+.pgie-menuhead {
+  padding: 6px 12px 8px;
+  color: var(--pgie-muted);
+}
+
+.pgie-sendnote {
+  margin: 0;
+  padding: 4px 12px 8px;
+  color: var(--pgie-muted);
+}
+
+.pgie-sendfind {
+  height: 36px;
+  margin: 0 4px 6px;
+  padding: 0 10px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 8px;
+  background: var(--pgie-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.pgie-sendlist {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.pgie-sendlist button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* While a save runs nothing on the stage moves. */
 
 .pgie-busy .pgie-body {

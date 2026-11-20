@@ -10,6 +10,7 @@ module: look_examples
 
 ## Where does the markup live?
 - `includes/fn/look_examples.php`, loaded only by the screen: `pg_look_examples($prefix)` gives the sections (type, buttons, segmented control and status, icon tiles and people, fields, cards, rows and gathered rows), each with its title, its classes and its live markup; `$prefix` keeps the field ids of the two panes apart. `pg_look_examples_pane($theme)` draws one pane; `pg_look_examples_not_done()` the two lists at the top.
+- Buttons include the split button (`.pg-button-split`, `.pg-button-split-more`: the main action and a chevron flush on its right, outer corners rounded, a hairline between; #10858).
 - A screen step copies its markup from a section; the look itself stays in the recipe block of `backend.src.css`. The screen's own classes (`.pg-look-*`, before the `.alert p.notice` rules) only place the examples.
 
 ## What does the top card say is not done?
