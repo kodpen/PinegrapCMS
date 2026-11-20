@@ -873,6 +873,9 @@ function pg_sms_reachable($number, $provider)
  * @param string $kind one of pg_sms_kinds()
  * @param bool   $queued the text is a queued body (pg_sms_queue_run()),
  *                       already carrying a marketing message's footer
+ * @param string $provider the provider to send through when it is
+ *                       connected (a test from its page of Connections);
+ *                       '' for the one SMS sends with
  * @return array ok, id (the provider's id for the message), code (the
  *               provider's result code), error (a sentence for the operator),
  *               retry (whether sending it again cannot deliver it twice, so
@@ -880,7 +883,7 @@ function pg_sms_reachable($number, $provider)
  *               taken it although no success came back: sending it again
  *               could deliver it twice)
  */
-function pg_sms_send($to, $text, $kind, $queued = false)
+function pg_sms_send($to, $text, $kind, $queued = false, $provider = '')
 {
     $check = pg_sms_check($to, $text, $kind, null, $queued);
 
@@ -908,7 +911,11 @@ function pg_sms_send($to, $text, $kind, $queued = false)
         return pg_sms_failure(lang('No text message is sent from a demonstration site.'));
     }
 
-    $provider = pg_sms_provider();
+    if ($provider === '') {
+        $provider = pg_sms_provider();
+    } elseif (!pg_sms_app_complete(pg_sms_app($provider))) {
+        $provider = '';
+    }
 
     if ($provider === '') {
         return pg_sms_failure(lang('SMS is not set up.'));
@@ -1609,8 +1616,8 @@ function pg_sms_sender_typed($sender, $provider)
 }
 
 /**
- * The provider whose account the SMS card shows: the one sending, otherwise
- * the first with a stored account, otherwise the first.
+ * The provider the SMS card's select shows: the one sending, otherwise the
+ * first with a stored account, otherwise the first.
  *
  * @return string
  */
@@ -1634,23 +1641,77 @@ function pg_sms_settings_provider()
 }
 
 /**
- * The fields of the SMS card: the switch, the provider and its account (the
- * password never drawn back) and the test message.
+ * The address of a provider's page on Connections, where its account is
+ * kept.
+ *
+ * @param string $provider
+ * @return string
+ */
+function pg_sms_connections_url($provider)
+{
+    return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
+        . '/connections.php?service=' . rawurlencode((string) $provider);
+}
+
+/**
+ * One provider's connection on the SMS card: its state and the way to its
+ * page on Connections. A provider is connected when its account has what a
+ * message needs; only then can the card's switch send through it. Pure.
+ *
+ * @param string $provider
+ * @param array  $definition pg_sms_providers() entry
+ * @param array  $app        pg_sms_app()
+ * @param bool   $shown      the select names it
+ * @return string HTML
+ */
+function pg_sms_settings_connection_html($provider, $definition, $app, $shown)
+{
+    $connected = pg_sms_app_complete($app);
+
+    if ($connected) {
+        $line = lang('The account is kept on the provider\'s page of Connections.');
+    } elseif (($app['user'] !== '') && $app['password_stored'] && ($app['password'] === '')) {
+        $line = lang('The stored password cannot be read with this site\'s encryption key. Enter it again on the provider\'s page of Connections.');
+    } else {
+        $line = lang('This provider is not connected, so SMS cannot be switched on with it. Connect it on its page of Connections.');
+    }
+
+    return '
+                                        <div class="col-12" id="pgsub-sms-' . h($provider) . '-connection" data-sms-provider="' . h($provider) . '" data-sms-connected="' . ($connected ? '1' : '0') . '"' . ($shown ? '' : ' hidden') . '>
+                                            <div class="d-flex flex-column align-items-start gap-2">
+                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => $definition['label']))) . '</span>' . ($connected
+                                                    ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                    : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                <div class="form-text mt-0">' . h($line) . '</div>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(pg_sms_connections_url($provider)) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                            </div>
+                                        </div>';
+}
+
+/**
+ * The fields of the SMS card: the switch, the provider it sends through and
+ * that provider's connection, the Workspace channel. No account: each
+ * provider's is kept on its page of Connections. The switch cannot be
+ * turned on while the chosen provider is not connected
+ * (pg_sms_settings_script()).
  *
  * @return string
  */
 function pg_sms_settings_fields()
 {
     $shown = pg_sms_settings_provider();
-    $app = pg_sms_app($shown);
-    $enabled = $app['enabled'];
+    $apps = array();
 
-    $warning = pg_sms_settings_refusal();
+    foreach (array_keys(pg_sms_providers()) as $provider) {
+        $apps[$provider] = pg_sms_app($provider);
+    }
 
-    if (($warning === '') && $enabled && !pg_sms_app_complete($app)) {
-        $warning = $app['password_stored'] && ($app['password'] === '')
-            ? lang('SMS is switched on but cannot send: the stored password cannot be read with this site\'s encryption key. Enter it again.')
-            : lang('SMS is switched on but cannot send until the account is complete.');
+    $enabled = $apps[$shown]['enabled'];
+    $connected = pg_sms_app_complete($apps[$shown]);
+    $warning = '';
+
+    if ($enabled && !$connected) {
+        $warning = lang('SMS is switched on but cannot send: the provider is not connected. Connect it in Connections.');
     }
 
     // Messages go out through the general job; without it they only wait.
@@ -1667,37 +1728,24 @@ function pg_sms_settings_fields()
     $html = '
                                         <div class="col-12">
                                             <div class="form-field">
-                                                <div class="switch"><input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#sms_row"/></div>
+                                                <div class="switch"><input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ((!$enabled && !$connected) ? ' disabled="disabled"' : '') . '/></div>
                                                 <label class="" for="sms_enabled">' . lang('Send SMS') . '</label><div class="form-text">' . lang('Text messages through an SMS provider account of the site. Transactional messages carry no promotion; a marketing message goes only to a number whose owner consented to it, with the sender identity and type label set on the SMS Messages card.') . '</div>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0" id="sms_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">';
+                                        </div>';
 
     if ($warning !== '') {
         $html .= '
-                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . h($warning) . '</div></div>';
+                                        <div class="col-12"><div class="alert theme-warning mb-0">' . h($warning) . '</div></div>';
     }
 
     $html .= '
-                                                        <div class="pg-f-md">
-                                                            <label for="sms_provider" class="form-label">' . lang('Provider') . '</label>
-                                                            <select name="sms_provider" id="sms_provider" class="form-control">' . $options . '</select>
-                                                        </div>';
+                                        <div class="pg-f-md">
+                                            <label for="sms_provider" class="form-label">' . lang('Provider') . '</label>
+                                            <select name="sms_provider" id="sms_provider" class="form-control">' . $options . '</select>
+                                        </div>';
 
-    // Every provider's fields are drawn and posted, so switching the select
-    // back loses nothing typed; only the chosen one's are shown
-    // (pg_sms_settings_script()).
     foreach (pg_sms_providers() as $key => $definition) {
-        $html .= '
-                                                        <div class="col-12" data-sms-provider="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>
-                                                            <div class="row gy-5">' . pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key))
-                                                                // The address a provider that posts customers' SMS is
-                                                                // given (includes/fn/sms_inbox.php).
-                                                                . (function_exists('pg_sms_webhook_field') ? pg_sms_webhook_field($key) : '') . '
-                                                            </div>
-                                                        </div>';
+        $html .= pg_sms_settings_connection_html($key, $definition, $apps[$key], $key === $shown);
     }
 
     // Customers' SMS into a channel: one field, whichever provider brings
@@ -1708,32 +1756,20 @@ function pg_sms_settings_fields()
 
     if (pg_sms_queue_ready()) {
         $html .= '
-                                                        <div class="col-12 form-text">' . lang(array(
-                                                            'string' => 'Messages wait in a queue that the scheduled general job sends; they are listed on the SMS tab of the {var:1}.',
-                                                            'vars'   => array('<a href="' . h(PATH . SOFTWARE_DIRECTORY . '/mail_queue.php?tab=sms') . '">' . h(lang('Mail queue')) . '</a>'))) . '</div>';
+                                        <div class="col-12 form-text">' . lang(array(
+                                            'string' => 'Messages wait in a queue that the scheduled general job sends; they are listed on the SMS tab of the {var:1}.',
+                                            'vars'   => array('<a href="' . h(PATH . SOFTWARE_DIRECTORY . '/mail_queue.php?tab=sms') . '">' . h(lang('Mail queue')) . '</a>'))) . '</div>';
     }
-
-    $html .= '
-                                                        <div class="pg-f-md">
-                                                            <label for="sms_test_to" class="form-label">' . lang('Test Number') . '</label>
-                                                            <input type="tel" name="sms_test_to" id="sms_test_to" class="form-control" value="" maxlength="30" autocomplete="off" inputmode="tel"/>
-                                                            <div class="form-text">' . lang('A mobile number. The message goes out at once and the provider charges it.') . '</div>
-                                                        </div>
-                                                        <div class="col-12">
-                                                            <button type="submit" name="sms_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Save and send a test message') . '</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>';
 
     return $html;
 }
 
 /**
- * The SMS card's script: shows the account fields of the provider the select
- * names (data-sms-provider) and hides the others. It knows no provider, so a
- * new one needs nothing here.
+ * The SMS card's script: shows the connection of the provider the select
+ * names (data-sms-provider) and hides the others; the switch cannot be
+ * turned on while that provider is not connected, and one that is on can
+ * always be turned off. It knows no provider, so a new one needs nothing
+ * here.
  *
  * @return string
  */
@@ -1743,25 +1779,169 @@ function pg_sms_settings_script()
     <script>
         (function () {
             var select = document.getElementById("sms_provider");
+            var toggle = document.getElementById("sms_enabled");
 
             if (!select) {
                 return;
             }
 
             function sync() {
+                var connected = false;
+
                 Array.prototype.forEach.call(document.querySelectorAll("[data-sms-provider]"), function (pane) {
-                    pane.hidden = pane.getAttribute("data-sms-provider") !== select.value;
+                    var chosen = pane.getAttribute("data-sms-provider") === select.value;
+
+                    pane.hidden = !chosen;
+
+                    if (chosen) {
+                        connected = pane.getAttribute("data-sms-connected") === "1";
+                    }
                 });
+
+                if (toggle) {
+                    toggle.disabled = !connected && !toggle.checked;
+                }
             }
 
             select.addEventListener("change", sync);
+
+            if (toggle) {
+                toggle.addEventListener("change", sync);
+            }
+
             sync();
         })();
     </script>';
 }
 
 /**
- * One provider's account fields.
+ * What a post of the SMS card asks for: the switch and the provider it
+ * sends through, decided from the post and the stored accounts alone. No
+ * account is written or removed here: each is kept on its provider's page
+ * of Connections, and one not chosen stays stored, off.
+ *
+ * Only a change is written, so a site whose SMS is on keeps it on whatever
+ * else the Communication pane saves, an account this site can no longer
+ * read included.
+ *
+ * @param array $post
+ * @param array $apps provider => pg_sms_app()
+ * @return array|null provider, enabled, action ('none' or 'switch'), marks
+ *                    (field => sentence); null when the post has no SMS
+ *                    card
+ */
+function pg_sms_switch_decide($post, $apps)
+{
+    if (!isset($post['sms_provider'])) {
+        return null;
+    }
+
+    $provider = pg_sms_post($post, 'sms_provider');
+
+    if (($provider === '') || !isset($apps[$provider]) || (pg_sms_provider_definition($provider) === null)) {
+        return null;
+    }
+
+    $decision = array(
+        'provider' => $provider,
+        'enabled'  => !empty($post['sms_enabled']),
+        'action'   => 'none',
+        'marks'    => array(),
+    );
+
+    $others_on = false;
+
+    foreach ($apps as $key => $app) {
+        if (($key !== $provider) && !empty($app['enabled'])) {
+            $others_on = true;
+        }
+    }
+
+    if (!$decision['enabled']) {
+        if (!empty($apps[$provider]['enabled']) || $others_on) {
+            $decision['action'] = 'switch';
+        }
+
+        return $decision;
+    }
+
+    if (!empty($apps[$provider]['enabled']) && !$others_on) {
+        return $decision;
+    }
+
+    if (!pg_sms_app_complete($apps[$provider])) {
+        $decision['marks']['sms_enabled'] = lang(array(
+            'string' => '{var:1} is not connected. Connect it in Connections, then switch SMS on.',
+            'vars'   => array(h(pg_sms_provider_definition($provider)['label']))));
+
+        return $decision;
+    }
+
+    $decision['action'] = 'switch';
+
+    return $decision;
+}
+
+/**
+ * Checks the SMS card's switch before the Communication settings are
+ * written; a refusal is marked on the switch, so nothing of the category is
+ * written.
+ *
+ * @param array    $post     $_POST
+ * @param liveform $liveform
+ * @return array|null what pg_sms_switch_save() writes; null when the posted
+ *                    pane had no SMS card
+ */
+function pg_sms_switch_check($post, $liveform)
+{
+    $apps = array();
+
+    foreach (array_keys(pg_sms_providers()) as $provider) {
+        $apps[$provider] = pg_sms_app($provider);
+    }
+
+    $decision = pg_sms_switch_decide($post, $apps);
+
+    if ($decision === null) {
+        return null;
+    }
+
+    foreach ($decision['marks'] as $field => $sentence) {
+        $liveform->mark_error($field, $sentence);
+    }
+
+    return $decision;
+}
+
+/**
+ * Writes the SMS card's switch: the chosen provider on, every other one
+ * off. Only the switch is written; every stored account stays.
+ *
+ * @param array|null $decision pg_sms_switch_check()
+ * @param int        $user_id
+ */
+function pg_sms_switch_save($decision, $user_id)
+{
+    if (!is_array($decision) || ($decision['action'] !== 'switch')) {
+        return;
+    }
+
+    foreach (array_keys(pg_sms_providers()) as $provider) {
+        $on = ($decision['enabled'] && ($provider === $decision['provider'])) ? 1 : 0;
+
+        db("UPDATE connect_apps
+            SET
+                enabled = '" . $on . "',
+                updated_user_id = '" . (int) $user_id . "',
+                updated_timestamp = UNIX_TIMESTAMP()
+            WHERE
+                provider = '" . e(pg_sms_app_key($provider)) . "'
+                AND enabled <> '" . $on . "'");
+    }
+}
+
+/**
+ * One provider's account fields, in the look of its page on Connections.
  *
  * @param string $provider
  * @param array  $definition
@@ -1772,72 +1952,91 @@ function pg_sms_settings_account_fields($provider, $definition, $app)
 {
     $name = 'sms_' . $provider . '_';
 
-    // "Stored" only for a password this site can still read; the card's
+    // "Stored" only for a password this site can still read; the page's
     // warning says what to do with one it cannot.
     $placeholder = ($app['password_stored'] && ($app['password'] !== ''))
         ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"'
         : '';
 
     return '
-                                                        <div class="col-12 form-text">' . $definition['help'] . '</div>
-                                                        <div class="pg-f-md">
-                                                            <label for="' . h($name) . 'user" class="form-label">' . h($definition['user_label']) . '</label>
-                                                            <input type="text" name="' . h($name) . 'user" id="' . h($name) . 'user" class="form-control" value="' . h($app['user']) . '" maxlength="255" autocomplete="off"/>
-                                                        </div>
-                                                        <div class="pg-f-md">
-                                                            <label for="' . h($name) . 'password" class="form-label">' . h($definition['password_label']) . '</label>
-                                                            <input type="password" name="' . h($name) . 'password" id="' . h($name) . 'password" class="form-control" value="" maxlength="255" autocomplete="new-password"' . $placeholder . '/>
-                                                        </div>
-                                                        <div class="pg-f-sm">
-                                                            <label for="' . h($name) . 'sender" class="form-label">' . h($definition['sender_label']) . '</label>
-                                                            <input type="text" name="' . h($name) . 'sender" id="' . h($name) . 'sender" class="form-control" value="' . h($app['sender']) . '" maxlength="' . (int) $definition['sender_maxlength'] . '" autocomplete="off"/>
-                                                        </div>';
+				<p class="pg-field-help mt-0 mb-0">' . $definition['help'] . '</p>
+				<div>
+					<label class="pg-field-label" for="' . h($name) . 'user">' . h($definition['user_label']) . '</label>
+					<input type="text" name="' . h($name) . 'user" id="' . h($name) . 'user" class="pg-input" value="' . h($app['user']) . '" maxlength="255" autocomplete="off">
+				</div>
+				<div>
+					<label class="pg-field-label" for="' . h($name) . 'password">' . h($definition['password_label']) . '</label>
+					<input type="password" name="' . h($name) . 'password" id="' . h($name) . 'password" class="pg-input" value="" maxlength="255" autocomplete="new-password"' . $placeholder . '>
+				</div>
+				<div>
+					<label class="pg-field-label" for="' . h($name) . 'sender">' . h($definition['sender_label']) . '</label>
+					<input type="text" name="' . h($name) . 'sender" id="' . h($name) . 'sender" class="pg-input" value="' . h($app['sender']) . '" maxlength="' . (int) $definition['sender_maxlength'] . '" autocomplete="off">
+				</div>';
 }
 
 /**
- * The provider a post of the SMS card is about.
+ * The fields of "Connection details" on a provider's page of Connections,
+ * drawn inside the page's form: the account (the password never drawn
+ * back), the address Twilio posts customers' messages to, the test number,
+ * "Save" and "Save and try".
  *
- * @param array $post
- * @return string|null null when the post has no SMS card, or not the fields
- *                     of the provider it names (a pane that does not draw
- *                     them says nothing about that account)
+ * @param string $provider
+ * @return string
  */
-function pg_sms_settings_posted_provider($post)
+function pg_sms_settings_page_fields($provider)
 {
-    if (!isset($post['sms_provider'])) {
-        return null;
+    $definition = pg_sms_provider_definition($provider);
+    $app = pg_sms_app($provider);
+    $warning = pg_sms_settings_refusal();
+
+    if (($warning === '') && $app['password_stored'] && ($app['password'] === '')) {
+        $warning = lang('The stored password cannot be read with this site\'s encryption key. Enter it again.');
     }
 
-    $provider = pg_sms_post($post, 'sms_provider');
+    $html = ($warning !== '') ? '
+				<div class="alert theme-warning small py-3 mb-0 text-break">' . h($warning) . '</div>' : '';
 
-    if (pg_sms_provider_definition($provider) === null) {
-        return null;
-    }
+    $html .= pg_sms_settings_account_fields($provider, $definition, $app)
+        // The address a provider that posts customers' SMS is given
+        // (includes/fn/sms_inbox.php).
+        . (function_exists('pg_sms_webhook_field') ? pg_sms_webhook_field($provider) : '');
 
-    return isset($post['sms_' . $provider . '_user']) ? $provider : null;
+    $html .= '
+				<div>
+					<label class="pg-field-label" for="sms_test_to">' . h(lang('Test Number')) . '</label>
+					<input type="tel" name="sms_test_to" id="sms_test_to" class="pg-input" value="" maxlength="30" autocomplete="off" inputmode="tel">
+					<div class="pg-field-help">' . h(lang('Save and try checks the account with the provider and, with a mobile number here, sends it a test message at once, which the provider charges.')) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet">' . h(lang('Save and try')) . '</button>
+				</div>';
+
+    return $html;
 }
 
 /**
- * What a post of the SMS card asks for, decided from the post and the stored
- * account alone: no database, no provider. pg_sms_settings_check() marks what
- * this refuses and asks the provider when this says so.
+ * What a post of a provider's page asks for, decided from the post and the
+ * stored account alone: no database, no provider. pg_sms_account_check()
+ * marks what this refuses and asks the provider when this says so.
  *
- * Only a change is written. An account left as it was is not written again,
- * whatever else the Communication pane saves, so an account this site can no
- * longer read does not stop the chat or campaign settings from being saved.
+ * The switch is the SMS card's: an account saved here keeps it as it was,
+ * so a provider not chosen stays off and the one sending keeps sending. A
+ * changed account is asked about at the provider; "Save and try" asks about
+ * an unchanged one too and reads the test number.
  *
  * @param array  $post
- * @param string $provider pg_sms_settings_posted_provider()
+ * @param string $provider a pg_sms_providers() key
  * @param array  $before   pg_sms_app() of that provider
  * @param string $refusal  why no account can be kept here now (database not
  *                         upgraded, no encryption key), '' when one can
- * @return array provider, user, password (as typed), sender, enabled,
- *               action ('none', 'save', 'disable' or 'forget'), ask (whether
- *               the provider is to check the account), password_effective
+ * @return array provider, user, password (as typed), sender, enabled (as
+ *               stored), action ('none' or 'save'), ask (whether the
+ *               provider is to check the account), try, password_effective
  *               (the typed or the stored one), test_to (E.164 digits or ''),
  *               marks (field => sentence), notices
  */
-function pg_sms_settings_decide($post, $provider, $before, $refusal)
+function pg_sms_account_decide($post, $provider, $before, $refusal)
 {
     $name = 'sms_' . $provider . '_';
 
@@ -1846,19 +2045,19 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
         'user'               => pg_sms_post($post, $name . 'user'),
         'password'           => pg_sms_post($post, $name . 'password'),
         'sender'             => pg_sms_sender_typed(pg_sms_post($post, $name . 'sender'), $provider),
-        'enabled'            => !empty($post['sms_enabled']),
+        'enabled'            => (bool) $before['enabled'],
         'action'             => 'none',
         'ask'                => false,
+        'try'                => !empty($post['submit_try']),
         'password_effective' => '',
         'test_to'            => '',
         'marks'              => array(),
         'notices'            => array(),
     );
 
-    // The test number is read only when its button was pressed. Enter in any
-    // field of the pane presses it too (it is the form's only submit button),
-    // so an empty number is a plain save.
-    if (!empty($post['sms_test']) && (pg_sms_post($post, 'sms_test_to') !== '')) {
+    // The test number is read only by "Save and try"; Enter in a field
+    // presses "Save", the form's first button.
+    if ($decision['try'] && (pg_sms_post($post, 'sms_test_to') !== '')) {
         $decision['test_to'] = pg_sms_number(pg_sms_post($post, 'sms_test_to'));
 
         if ($decision['test_to'] === '') {
@@ -1866,42 +2065,16 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
         }
     }
 
-    $stored = ($before['user'] !== '') || $before['password_stored'];
-
-    if (!$decision['enabled'] && ($decision['user'] === '')) {
-        // Off with no user code: the stored account, if any, is removed.
-        $decision['action'] = $stored ? 'forget' : 'none';
-        return $decision;
-    }
-
     $unchanged = ($decision['user'] === $before['user'])
         && ($decision['password'] === '')
         && ($decision['sender'] === $before['sender']);
 
-    if ($unchanged && ($decision['enabled'] === $before['enabled'])) {
-        return $decision;
-    }
-
-    // Switching off writes the switch alone, which needs no sealing.
-    if ($unchanged && !$decision['enabled']) {
-        $decision['action'] = 'disable';
+    if ($unchanged && !$decision['try']) {
         return $decision;
     }
 
     if ($refusal !== '') {
-        if ($decision['enabled']) {
-            $decision['marks']['sms_enabled'] = $refusal;
-        } else {
-            $decision['action'] = $before['enabled'] ? 'disable' : 'none';
-            $decision['notices'][] = lang(array('string' => 'The SMS account was not saved: {var:1}', 'vars' => array($refusal)));
-        }
-
-        return $decision;
-    }
-
-    $decision['action'] = 'save';
-
-    if (!$decision['enabled']) {
+        $decision['marks'][$name . 'user'] = $refusal;
         return $decision;
     }
 
@@ -1914,7 +2087,7 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
 
     if ($decision['password_effective'] === '') {
         $decision['marks'][$name . 'password'] = $before['password_stored']
-            ? lang('SMS is switched on but cannot send: the stored password cannot be read with this site\'s encryption key. Enter it again.')
+            ? lang('The stored password cannot be read with this site\'s encryption key. Enter it again.')
             : lang(array('string' => '{var:1} is required.', 'vars' => array(h($definition['password_label']))));
     }
 
@@ -1922,6 +2095,10 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
         $decision['marks'][$name . 'sender'] = lang(array('string' => '{var:1} is required.', 'vars' => array(h($definition['sender_label']))));
     } elseif (!pg_sms_sender_valid($decision['sender'], $provider)) {
         $decision['marks'][$name . 'sender'] = $definition['sender_error'];
+    }
+
+    if (!$unchanged) {
+        $decision['action'] = 'save';
     }
 
     $decision['ask'] = !$decision['marks'];
@@ -1954,31 +2131,23 @@ function pg_sms_settings_refusal()
 }
 
 /**
- * Checks the SMS card's fields before the Communication settings are
- * written, and asks the provider about a changed account. A refusal is marked
- * on its field, so nothing of the category is written.
+ * Checks a post of a provider's page and asks the provider about the
+ * account when pg_sms_account_decide() says so. A refusal is marked on its
+ * field, so nothing is written.
  *
  * @param array    $post     $_POST
+ * @param string   $provider a pg_sms_providers() key
  * @param liveform $liveform
- * @return array|null what pg_sms_settings_save() writes; null when the
- *                    posted pane had no SMS card
+ * @return array what pg_sms_account_save() writes
  */
-function pg_sms_settings_check($post, $liveform)
+function pg_sms_account_check($post, $provider, $liveform)
 {
-    $provider = pg_sms_settings_posted_provider($post);
-
-    if ($provider === null) {
-        return null;
-    }
-
-    $decision = pg_sms_settings_decide($post, $provider, pg_sms_app($provider), pg_sms_settings_refusal());
+    $decision = pg_sms_account_decide($post, $provider, pg_sms_app($provider), pg_sms_settings_refusal());
 
     foreach ($decision['marks'] as $field => $sentence) {
         $liveform->mark_error($field, $sentence);
     }
 
-    // A category another card already refused is not written, so the
-    // provider is not kept waiting for.
     if (!$decision['ask'] || $liveform->check_form_errors()) {
         return $decision;
     }
@@ -1995,7 +2164,19 @@ function pg_sms_settings_check($post, $liveform)
         $approved = pg_sms_sender_approved($provider, $decision['sender'], $check['senders'], $decision['user']);
 
         if ($approved !== '') {
+            // An approved spelling that differs from the stored one is
+            // written, also by "Save and try" on an unchanged account.
+            if ($approved !== $decision['sender']) {
+                $decision['action'] = 'save';
+            }
+
             $decision['sender'] = $approved;
+
+            if ($decision['try']) {
+                $decision['notices'][] = lang(array(
+                    'string' => '{var:1} accepted the account and the sender {var:2}.',
+                    'vars'   => array($label, h($approved))));
+            }
         } elseif ($check['senders']) {
             $liveform->mark_error($name . 'sender', lang(array(
                 'string' => 'The sender name {var:1} is not approved on this {var:2} account. Approved sender names: {var:3}',
@@ -2007,12 +2188,16 @@ function pg_sms_settings_check($post, $liveform)
         }
     } elseif ($check['refused']) {
         $liveform->mark_error($name . pg_sms_refused_field($provider, $check['code']), h($check['error']));
-    } else {
+    } elseif ($decision['action'] === 'save') {
         // The provider could not be asked (no answer, an unreadable one, an
-        // outage, a limit): the account is kept unchecked rather than the
-        // settings refused for it.
+        // outage, a limit): the account is kept unchecked rather than
+        // refused for it.
         $decision['notices'][] = lang(array(
             'string' => 'The SMS account was saved without being checked: {var:1}',
+            'vars'   => array(h($check['error']))));
+    } else {
+        $decision['notices'][] = lang(array(
+            'string' => 'The account could not be checked: {var:1}',
             'vars'   => array(h($check['error']))));
     }
 
@@ -2020,48 +2205,27 @@ function pg_sms_settings_check($post, $liveform)
 }
 
 /**
- * Writes what pg_sms_settings_check() decided, then sends the test message
- * when its button was pressed. Runs after the Communication settings were
- * written, and only when nothing was refused.
+ * Writes what pg_sms_account_check() decided, keeping the switch as it was,
+ * then sends the test message when one was asked for. Runs only when
+ * nothing was refused.
  *
- * @param array|null $decision
- * @param int        $user_id
- * @param liveform   $liveform
+ * @param array    $decision
+ * @param int      $user_id
+ * @param liveform $liveform
+ * @return bool whether the account was written
  */
-function pg_sms_settings_save($decision, $user_id, $liveform)
+function pg_sms_account_save($decision, $user_id, $liveform)
 {
-    if (!is_array($decision)) {
-        return;
-    }
+    $saved = false;
 
-    $key = pg_sms_app_key($decision['provider']);
-
-    if ($decision['action'] === 'forget') {
-        db("DELETE FROM connect_apps WHERE provider = '" . e($key) . "'");
-    } elseif ($decision['action'] === 'disable') {
-        db("UPDATE connect_apps
-            SET
-                enabled = 0,
-                updated_user_id = '" . (int) $user_id . "',
-                updated_timestamp = UNIX_TIMESTAMP()
-            WHERE provider = '" . e($key) . "'");
-    } elseif ($decision['action'] === 'save') {
-        pg_connect_app_save(
-            $key,
+    if ($decision['action'] === 'save') {
+        $saved = (bool) pg_connect_app_save(
+            pg_sms_app_key($decision['provider']),
             $decision['user'],
             ($decision['password'] !== '') ? $decision['password'] : null,
             array('sender' => $decision['sender']),
             $decision['enabled'],
             $user_id);
-
-        // One provider sends: another one's account stays stored, off.
-        if ($decision['enabled']) {
-            foreach (array_keys(pg_sms_providers()) as $provider) {
-                if (($provider !== $decision['provider']) && pg_sms_app($provider)['enabled']) {
-                    db("UPDATE connect_apps SET enabled = 0 WHERE provider = '" . e(pg_sms_app_key($provider)) . "'");
-                }
-            }
-        }
     }
 
     foreach ($decision['notices'] as $notice) {
@@ -2069,19 +2233,41 @@ function pg_sms_settings_save($decision, $user_id, $liveform)
     }
 
     if ($decision['test_to'] !== '') {
-        pg_sms_settings_test($decision['test_to'], $liveform);
+        pg_sms_settings_test($decision['test_to'], $liveform, $decision['provider']);
+    }
+
+    return $saved;
+}
+
+/**
+ * Removes a provider's account from this site (Disconnect on its page).
+ * When it was the one sending, SMS stops.
+ *
+ * @param string $provider
+ */
+function pg_sms_account_forget($provider)
+{
+    if (pg_sms_provider_definition($provider) !== null) {
+        db("DELETE FROM connect_apps WHERE provider = '" . e(pg_sms_app_key($provider)) . "'");
     }
 }
 
 /**
- * Sends the settings' test message.
+ * Sends a test message.
  *
- * @param string   $number pg_sms_number()
+ * @param string   $number   pg_sms_number()
  * @param liveform $liveform
+ * @param string   $provider the provider to send through, connected
+ *                           whether or not it is the one SMS sends with;
+ *                           '' for that one
  */
-function pg_sms_settings_test($number, $liveform)
+function pg_sms_settings_test($number, $liveform, $provider = '')
 {
-    $provider = pg_sms_provider();
+    if ($provider === '') {
+        $provider = pg_sms_provider();
+    } elseif (!pg_sms_app_complete(pg_sms_app($provider))) {
+        $provider = '';
+    }
 
     if ($provider === '') {
         $liveform->add_notice(lang('The test message was not sent: SMS is not set up.'));
@@ -2099,7 +2285,7 @@ function pg_sms_settings_test($number, $liveform)
 
     $result = pg_sms_send(pg_sms_dial($number), lang(array(
         'string' => 'Test message from {var:1}. SMS sending works.',
-        'vars'   => array(HOSTNAME_SETTING))), 'test');
+        'vars'   => array(HOSTNAME_SETTING))), 'test', false, $provider);
 
     if ($result['ok']) {
         $liveform->add_notice(lang(array(
