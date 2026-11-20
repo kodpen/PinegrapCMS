@@ -450,6 +450,7 @@
     "/tracking #1042 1Z999AA10123456784": "/kargo #1042 1Z999AA10123456784",
     "/update at-risk The supplier is a week late": "/güncelleme riskte Tedarikçi bir hafta gecikti",
     "/wake @ci every 30m Look at the queue": "/uyandır @ci her 30dk Kuyruğa bak",
+    "/{var:1} needs {var:2}. Nothing was sent to the application.": "/{var:1} için {var:2} gerekli. Uygulamaya bir şey gönderilmedi.",
     "; the controls drawn now will be deleted": "; şu an çizili olan kontroller silinecek",
     "<a href=\"http://php.net/manual/en/function.date.php\" target=\"_blank\">PHP date format</a>": "<a href=\"http://php.net/manual/tr/function.date.php\" target=\"_blank\">PHP tarih formatı</a>",
     "<b> or <i> used instead of <strong> or <em>": "<strong>/<em> yerine <b>/<i> kullanılmış",
