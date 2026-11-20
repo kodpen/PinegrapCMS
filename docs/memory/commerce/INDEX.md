@@ -401,5 +401,6 @@
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
 - verified-shipping-address-screens.md: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, state filter fit to the bar (#9080), Turkish name
 - visitor-currency-zero-rate.md: init.php uses a visitor's chosen currency only while its exchange rate is above zero (pg_visitor_currency_row()); a 0 rate falls back to the base currency
+- wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch [decision: decisions-made-product-64.md, decisions-made-product-65.md]
 - wishlist-heart.md: Favourite heart in the catalog widgets: catalog_wishlist / wishlist actions, the binding pass, pg_wishlist.js and its injection, the variant event, why pages stay cacheable
 - wishlist.md: Favourites core (includes/fn/wishlist.php, wishlist.php): owner model, the pg_wishlist cookie, lazy merge at sign-in, the toggle and state endpoint, rate limit, trim, privacy export
