@@ -1006,6 +1006,10 @@ function pg_settings_legacy_anchors()
         'google_analytics_web_property_id' => array('privacy', 'pgset-analytics'),
         'stats_url'        => array('privacy',    'pgset-analytics'),
         'ga_property'      => array('privacy',    'pgset-analytics'),
+        // The Google Cloud Translation key moved onto its page of
+        // Connections; an old link to its field lands on the card that shows
+        // the connection.
+        'translation_google_key' => array('languages', 'pgset-translation-engines'),
         'pgset-cookies'    => array('privacy',    'pgset-cookies'),
         'pgset-legal'      => array('privacy',    'pgset-legal'),
         // Communication's campaign texts and MailChimp moved into E-mail

@@ -605,6 +605,19 @@ function pg_tr_google_key()
 }
 
 /**
+ * Whether a typed Google Cloud API key has a key's shape: 1 to 200 letters,
+ * digits, dashes and underscores. Google's keys are 39 such characters; the
+ * looser rule only keeps spaces, quotes and line breaks out. Pure.
+ *
+ * @param mixed $plain
+ * @return bool
+ */
+function pg_tr_google_key_valid($plain)
+{
+    return is_string($plain) && (preg_match('/^[A-Za-z0-9_-]{1,200}$/', $plain) === 1);
+}
+
+/**
  * Stores the Google Cloud key encrypted (cipher:iv), or clears it.
  */
 function pg_tr_google_key_store($plain)
