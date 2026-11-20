@@ -9,7 +9,7 @@ module: look_examples
 - It draws every recipe of `look-type-and-recipes.md` twice, in a pane with `data-bs-theme="light"` and one with `data-bs-theme="dark"`, so both themes show at once whatever the reader's own theme. The panel's tokens and the recipes' tint strengths flip on `[data-bs-theme]`, so a subtree theme works.
 
 ## Where does the markup live?
-- `includes/fn/look_examples.php`, loaded only by the screen: `pg_look_examples($prefix)` gives the sections (type, buttons, segmented control and status, icon tiles and people, fields, cards, rows and gathered rows, drawer), each with its title, its classes and its live markup; `$prefix` keeps the field ids of the two panes apart. `pg_look_examples_pane($theme)` draws one pane; `pg_look_examples_not_done()` the two lists at the top.
+- `includes/fn/look_examples.php`, loaded only by the screen: `pg_look_examples($prefix)` gives the sections (type, buttons, segmented control and status, icon tiles and people, fields, cards, rows and gathered rows, drawer, menus), each with its title, its classes and its live markup; `$prefix` keeps the field ids of the two panes apart. `pg_look_examples_pane($theme)` draws one pane; `pg_look_examples_not_done()` the two lists at the top.
 - A screen step copies its markup from a section; the look itself stays in the recipe block of `backend.src.css`. The screen's own classes (`.pg-look-*`, before the `.alert p.notice` rules) only place the examples.
 
 ## What does the top card say is not done?
@@ -18,6 +18,7 @@ module: look_examples
 - The list table is drawn by the driver itself (`list-table-layout.md`, #8921), so it left the list.
 - A new recipe adds its section here in the same PR; a part that is done leaves the list.
 - Drawer (#10851, architect channel message 11006): drawn in place without the dialog, as `#privacy_request` and Application Access' `#api_new` build it; the Bootstrap classes are named without a dot (they are not rules of `backend.src.css`). DX3 adds to this section; the numbered steps come with KV4b.
+- Menus (SF2, #10852): a row's "more" menu, `pg-icon-button-sm` opening a Bootstrap `.menu.pg-menu-end` in `.pg-menu-wrap`; a danger item `fg-emphasis-danger` last under `.menu-divider`. No new CSS (architect, 2026-11-20, channel message 11049).
 
 ## What keeps it honest?
 - `tests/look_examples_test.php`: every class a section names is a rule of `backend.src.css` and is drawn in that section's markup; no id twice on the page; the gate and the System tools link.

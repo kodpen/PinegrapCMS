@@ -1817,6 +1817,7 @@
     "{var:1} record(s) of the old table could not be copied to the new one": "eski tablonun {var:1} kaydı yenisine kopyalanamadı",
     "{var:1} records": "{var:1} kayıt",
     "{var:1} records checked in this request.": "Bu istekte {var:1} kayıt denetlendi.",
+    "{var:1} records read. Nothing was written.": "{var:1} kayıt okundu. Hiçbir şey yazılmadı.",
     "{var:1} record{suffix:1}": "{var:1} kayıt",
     "{var:1} record{suffix:1} of the form now open at their own address.": "Formun {var:1} kaydı artık kendi adresinde açılıyor.",
     "{var:1} recovered": "{var:1} kurtarıldı",

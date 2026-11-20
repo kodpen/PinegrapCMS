@@ -1175,6 +1175,7 @@
     "Only the first of them are listed.": "Yalnızca ilk bulunanlar listelendi.",
     "Only the first rows are shown; the whole file is checked the same way when the import runs.": "Yalnız ilk satırlar gösterilir; içe aktarma çalışırken dosyanın tamamı aynı şekilde denetlenir.",
     "Only the first {var:1} orders of this period are counted; choose a shorter period.": "Bu dönemin yalnızca ilk {var:1} siparişi sayıldı; daha kısa bir dönem seçin.",
+    "Only the first {var:1} records were read.": "Yalnızca ilk {var:1} kayıt okundu.",
     "Only the first {var:1} rows were read. Please upload the rest in another file.": "Yalnızca ilk {var:1} satır okundu. Lütfen kalanını başka bir dosyayla yükleyin.",
     "Only the first {var:1} ticked documents are handled per click; {var:2} were left for the next one.": "Bir tıklamada ilk {var:1} işaretli belge işlenir; {var:2} belge sonrakine kaldı.",
     "Only the first {var:1} ticked rows are handled per click; {var:2} were left for the next one.": "Bir tıklamada ilk {var:1} işaretli satır işlenir; {var:2} satır sonrakine kaldı.",

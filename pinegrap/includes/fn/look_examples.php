@@ -194,6 +194,21 @@ function pg_look_examples($prefix = 'light')
             . '</div><p class="pg-text-meta">' . h(lang('One form in a dialog.drawer opened through pgUI; tabs as the segmented control with role tab; the danger button at the left of the foot, Save last. A closed record shows plain text and Close only.')) . '</p>',
     );
 
+    $sections[] = array(
+        'id'      => 'menus',
+        'title'   => lang('Menus'),
+        'classes' => array('.pg-menu-wrap', '.menu', '.pg-menu-end', '.menu-item', '.menu-divider'),
+        'html'    => '<div class="pg-look-line">'
+            . '<button type="button" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Edit')) . '</button>'
+            . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" aria-expanded="false" aria-label="' . h(lang('More actions')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>'
+            . '<ul class="menu pg-menu-end">'
+            . '<li><button type="button" class="menu-item"><i class="bi bi-files me-3" aria-hidden="true"></i>' . h(lang('Duplicate')) . '</button></li>'
+            . '<li><hr class="menu-divider"></li>'
+            . '<li><button type="button" class="menu-item fg-emphasis-danger"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Delete')) . '</button></li>'
+            . '</ul></span>'
+            . '</div><p class="pg-text-meta">' . h(lang('A row\'s "more" menu sits last in its actions, after the quiet buttons; a danger item is last, under a divider, and asks a confirm.')) . '</p>',
+    );
+
     return $sections;
 }
 

@@ -1248,6 +1248,7 @@ function pg_list_table_printed_lists()
         'view_offers',
         'view_bookings', 'view_products_variant_sets',
         'view_courses', 'edit_course_learners',
+        'view_supplier_feeds',
         'workspace_wtables',
         'messages_automatic',
         'privacy_requests',
