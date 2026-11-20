@@ -560,64 +560,6 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
     }
 
     /**
-     * The worksheets in their order, as the reader counts them: the
-     * BOUNDSHEET records of the workbook globals, a chart, macro or dialog
-     * sheet left out by its own BOF, as _parsesheet() leaves it out. Each
-     * gives its name in UTF-8 (a BIFF8 short unicode string, or bytes in the
-     * code page) and whether it is hidden (1 hidden, 2 very hidden); 'read'
-     * when the workbook could not be read or holds no worksheet.
-     *
-     * @return array|string
-     */
-    public function pg_sheet_list()
-    {
-        if ($this->pg_broken || ($this->_ole->error !== 0)) {
-            return 'read';
-        }
-
-        $data = (string) $this->data;
-        $length = strlen($data);
-        $biff8 = ($length >= 6) && ((ord($data[4]) | (ord($data[5]) << 8)) === SPREADSHEET_EXCEL_READER_BIFF8);
-        $pos = 0;
-        $out = array();
-
-        // _parse() has found an EOF inside the stream before the globals'
-        // end, so this walk ends there.
-        while ($pos + 4 <= $length) {
-            $code = ord($data[$pos]) | (ord($data[$pos + 1]) << 8);
-            $size = ord($data[$pos + 2]) | (ord($data[$pos + 3]) << 8);
-
-            if (($code === SPREADSHEET_EXCEL_READER_TYPE_EOF) || ($pos + 4 + $size > $length)) {
-                break;
-            }
-
-            $record = substr($data, $pos + 4, $size);
-            $pos += 4 + $size;
-
-            if (($code !== SPREADSHEET_EXCEL_READER_TYPE_BOUNDSHEET) || ($size < 8)) {
-                continue;
-            }
-
-            $at = ord($record[0]) | (ord($record[1]) << 8) | (ord($record[2]) << 16) | (ord($record[3]) << 24);
-
-            if (($at < 0) || ($at + 8 > $length) || ((ord($data[$at + 6]) | (ord($data[$at + 7]) << 8)) !== SPREADSHEET_EXCEL_READER_WORKSHEET)) {
-                continue;
-            }
-
-            if ($biff8) {
-                $wide = (ord($record[7]) & 0x01) !== 0;
-                $name = $this->pg_convert(substr($record, 8, ord($record[6]) * ($wide ? 2 : 1)), $wide ? 'UTF-16LE' : 'ISO-8859-1');
-            } else {
-                $name = $this->pg_bytes(substr($record, 7, ord($record[6])));
-            }
-
-            $out[] = array('name' => $name, 'hidden' => (ord($record[4]) & 0x03) !== 0);
-        }
-
-        return empty($out) ? 'read' : $out;
-    }
-
-    /**
      * The cells read, row number => row (pg_sheet_rows()), or 'read' when
      * the file could not be read, 'sheet' when it has no such worksheet.
      *
@@ -845,5 +787,63 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
         $errors = array(0x00 => '#NULL!', 0x07 => '#DIV/0!', 0x0F => '#VALUE!', 0x17 => '#REF!', 0x1D => '#NAME?', 0x24 => '#NUM!', 0x2A => '#N/A');
 
         return isset($errors[$code]) ? $errors[$code] : '#N/A';
+    }
+
+    /**
+     * The worksheets in their order, as the reader counts them: the
+     * BOUNDSHEET records of the workbook globals, a chart, macro or dialog
+     * sheet left out by its own BOF, as _parsesheet() leaves it out. Each
+     * gives its name in UTF-8 (a BIFF8 short unicode string, or bytes in the
+     * code page) and whether it is hidden (1 hidden, 2 very hidden); 'read'
+     * when the workbook could not be read or holds no worksheet.
+     *
+     * @return array|string
+     */
+    public function pg_sheet_list()
+    {
+        if ($this->pg_broken || ($this->_ole->error !== 0)) {
+            return 'read';
+        }
+
+        $data = (string) $this->data;
+        $length = strlen($data);
+        $biff8 = ($length >= 6) && ((ord($data[4]) | (ord($data[5]) << 8)) === SPREADSHEET_EXCEL_READER_BIFF8);
+        $pos = 0;
+        $out = array();
+
+        // _parse() has found an EOF inside the stream before the globals'
+        // end, so this walk ends there.
+        while ($pos + 4 <= $length) {
+            $code = ord($data[$pos]) | (ord($data[$pos + 1]) << 8);
+            $size = ord($data[$pos + 2]) | (ord($data[$pos + 3]) << 8);
+
+            if (($code === SPREADSHEET_EXCEL_READER_TYPE_EOF) || ($pos + 4 + $size > $length)) {
+                break;
+            }
+
+            $record = substr($data, $pos + 4, $size);
+            $pos += 4 + $size;
+
+            if (($code !== SPREADSHEET_EXCEL_READER_TYPE_BOUNDSHEET) || ($size < 8)) {
+                continue;
+            }
+
+            $at = ord($record[0]) | (ord($record[1]) << 8) | (ord($record[2]) << 16) | (ord($record[3]) << 24);
+
+            if (($at < 0) || ($at + 8 > $length) || ((ord($data[$at + 6]) | (ord($data[$at + 7]) << 8)) !== SPREADSHEET_EXCEL_READER_WORKSHEET)) {
+                continue;
+            }
+
+            if ($biff8) {
+                $wide = (ord($record[7]) & 0x01) !== 0;
+                $name = $this->pg_convert(substr($record, 8, ord($record[6]) * ($wide ? 2 : 1)), $wide ? 'UTF-16LE' : 'ISO-8859-1');
+            } else {
+                $name = $this->pg_bytes(substr($record, 7, ord($record[6])));
+            }
+
+            $out[] = array('name' => $name, 'hidden' => (ord($record[4]) & 0x03) !== 0);
+        }
+
+        return empty($out) ? 'read' : $out;
     }
 }
