@@ -212,7 +212,8 @@ function ws_assistants_help_html($key)
 }
 
 /**
- * A part's guide drawer: its steps numbered, each with its link.
+ * A part's guide drawer: its steps numbered, each with its link, in the
+ * same stepper as Claude's set-up drawer (ws_claude_setup_drawer_html()).
  *
  * @param string $key       one of ws_assistants_help_keys()
  * @param bool   $in_dialog drawn in the settings dialog
@@ -236,14 +237,16 @@ function ws_settings_assistants_guide_drawer($key, $in_dialog)
         }
 
         $items .= '
-                        <li class="ws-claude-step">
-                            <div class="pg-field-label">' . h($step['title']) . '</div>
-                            <div class="pg-text-2 fg-secondary' . (($link !== '') ? ' mb-3' : '') . '">' . h($step['text']) . '</div>
-                            ' . $link . '
+                        <li class="stepper-item active ws-claude-step">
+                            <div>
+                                <div class="pg-field-label">' . h($step['title']) . '</div>
+                                <div class="pg-text-2 fg-secondary' . (($link !== '') ? ' mb-3' : '') . '">' . h($step['text']) . '</div>
+                                ' . $link . '
+                            </div>
                         </li>';
     }
 
     $close = '<button type="button" class="pg-button pg-button-quiet pg-button-sm ms-auto" ' . ($in_dialog ? 'data-pgdrawer-close' : 'data-bs-dismiss="drawer"') . '>' . h(lang('Close')) . '</button>';
 
-    return pg_settings_drawer('pgset-' . $key . '-guide', h(ws_assistants_guide_title($key)), '<ol class="ws-claude-steps mb-0">' . $items . '</ol>', $in_dialog, $close);
+    return pg_settings_drawer('pgset-' . $key . '-guide', h(ws_assistants_guide_title($key)), '<ol class="stepper pg-stepper-cards ws-claude-setup-steps mb-0">' . $items . '</ol>', $in_dialog, $close);
 }
