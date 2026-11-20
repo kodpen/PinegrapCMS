@@ -467,6 +467,7 @@
     "Marketplace Notice": "Pazaryeri Duyurusu",
     "Marketplace Products": "Pazaryeri Ürünleri",
     "Marketplace Staff Bar": "Pazaryeri Personel Çubuğu",
+    "Marketplace account #{var:1}": "Pazaryeri hesabı #{var:1}",
     "Marketplace account added: {var:1} ({var:2}).": "Pazaryeri hesabı eklendi: {var:1} ({var:2}).",
     "Marketplace account changed: {var:1}.": "Pazaryeri hesabı değiştirildi: {var:1}.",
     "Marketplace account removed: {var:1}.": "Pazaryeri hesabı kaldırıldı: {var:1}.",
