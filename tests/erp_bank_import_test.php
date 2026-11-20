@@ -263,7 +263,9 @@ for ($row = 1; $row <= $sheet->getHighestDataRow(); $row++) {
 }
 echo serialize($out);
 ');
-	$output = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>/dev/null');
+	// cmd.exe has no /dev/null: a redirect there stops the command.
+	$null = (DIRECTORY_SEPARATOR === '\\') ? 'NUL' : '/dev/null';
+	$output = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>' . $null);
 	unlink($script);
 	$sheet = @unserialize($output);
 

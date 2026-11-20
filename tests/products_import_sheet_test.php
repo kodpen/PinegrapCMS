@@ -103,7 +103,9 @@ for ($row_number = 1; $row_number <= $last_row; $row_number++) {
 echo serialize($out);
 ';
 	file_put_contents($script, $code);
-	$output = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>/dev/null');
+	// cmd.exe has no /dev/null: a redirect there stops the command.
+	$null = (DIRECTORY_SEPARATOR === '\\') ? 'NUL' : '/dev/null';
+	$output = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' 2>' . $null);
 	unlink($script);
 	$read = @unserialize($output);
 
