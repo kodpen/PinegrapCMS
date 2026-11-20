@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the waiting list of a full event date and the places a cancelled
- * order gives back (2026.11.0, 11.0.247; includes/fn/stock_notify.php,
+ * order gives back (2026.11.0, 11.0.248; includes/fn/stock_notify.php,
  * includes/fn/ecommerce.php): one request per address and date, a product's
  * notice and an event's never reading each other's requests, places back
  * only with tickets on, a request claimed before its mail, the wiring, and

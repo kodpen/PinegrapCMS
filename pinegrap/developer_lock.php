@@ -76,9 +76,9 @@ if (!$_POST) {
                     <div class="row">
                         <div class="col-12 md:col-6 mx-auto">
                             <div class="card my-7">
-                                <div class="card-header bg-transparent border-0  text-center">
-                                    <label for="pin" class="form-label">' . lang('PIN CODE') . '</label>
-                                </div>
+                                <h2 class="card-header bg-reset border-0 pg-title-section text-center">
+                                    <label for="pin" class="mb-0">' . lang('PIN CODE') . '</label>
+                                </h2>
                                 <div class="card-body">
                                     ' . $pin_inputs . '
                                     <div id="pin_hint" class="form-text text-center mt-3">' . lang('The page opens as soon as every digit is entered.') . '</div>

@@ -5822,6 +5822,12 @@ function pg_image_editor_strings_follow()
         'followBusy'      => lang('Following…'),
         'followCancelRun' => lang('Cancel'),
         'followLost'      => lang('Lost it at {var:1}. The move up to there is kept; move the playhead there and follow again.'),
+        // Why it was lost and what helps: said in full the first time only,
+        // then followLost (M.followLostText()).
+        'followLostSmall' => lang('Lost it at {var:1}: in this video it is only a few pixels across. The move up to there is kept. A thing that shows larger follows better: a clip filmed closer or at a higher resolution.'),
+        'followLostMatch' => lang('Lost it at {var:1}: what the box holds changed too much there, or the box holds background that moves differently. The move up to there is kept. Draw the box inside the thing, over its clearest part, and follow again from there.'),
+        'followLostEdge'  => lang('It left the picture at {var:1}. The move up to there is kept.'),
+        'followTiny'      => lang('The box is too small in this video\'s own pixels. Draw a larger box.'),
         'followFlat'      => lang('There is nothing in the box to follow. Draw it over a part with some detail.'),
         'followError'     => lang('The video could not be followed.'),
     );

@@ -28,7 +28,7 @@
  * request, so fewer are taken there and the rest wait for the product's
  * next announcement.
  *
- * The waiting list of a full event date (11.0.247) lives in the same table:
+ * The waiting list of a full event date (11.0.248) lives in the same table:
  * a row with product_id 0 and the event and its date (recurrence_number) is
  * a request to be told when a place frees (pg_stock_notify_event_request()).
  * A product's notice reads only rows of its product id, an event's only rows
@@ -939,7 +939,7 @@ function pg_stock_notify_waiting_where($kind, $id, $recurrence = 0)
 }
 
 /**
- * Whether the waiting list's columns of 2026.11.0 (11.0.247) are there.
+ * Whether the waiting list's columns of 2026.11.0 (11.0.248) are there.
  *
  * @return bool
  */

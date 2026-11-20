@@ -160,7 +160,7 @@ if (!$_POST && $backup_s3_on) {
 			}
 
 			$output_remote_body = '
-	                            <table class="table table-hover mb-0">
+	                            <table class="table table-hover mb-0 pg-card-table">
 	                                <thead>
 	                                    <tr>
 	                                        <th>' . lang('Action') . '</th>
@@ -178,9 +178,7 @@ if (!$_POST && $backup_s3_on) {
 
 	$output_remote_card = '
 	                    <div class="card my-7" id="backup-remote">
-	                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-	                            ' . lang('Copies in the bucket') . '
-	                        </div>
+	                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Copies in the bucket') . '</h2>
 	                        <div class="card-body p-0">' . $output_remote_body . '
 	                        </div>
 	                    </div>';

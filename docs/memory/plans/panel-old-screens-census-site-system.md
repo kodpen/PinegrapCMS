@@ -15,6 +15,7 @@ description: Census LM1b against look A: visitors and logs (S4: Site Log, Audit 
 
 ## Which tools, and what is old? (445; 8,500 lines, in S6)
 - Translations `translations.php` 1,027 / 70 / 4 / 7 / 10 → 116, the oldest here: 22 Bootstrap buttons, its own toolbar and dialogs, an 11-line `<style>`.
+- S6a done in #10533 (`ui/look-system-tools.md`): Database engine, Find and Replace, Mass Edit, Repair Software, Backups, Experiments, Import and the small ones. Translations and `clean_up.php` wait for S6c: open PRs #10523 and #10528 change them.
 - Database engine `database_engine.php` 1,415 / 34 / 0 / 8 / 14 → 78: six `text-uppercase h5 fg-primary fw-bold` card headers, two own tables.
 - Find and Replace `find_and_replace.php` 1,017 → 49; Mass Edit `mass_edit.php` 811 → 45; Repair Software `software_repair.php` 440 → 30 (no measure class); Backups `backups.php` 451 → 29 (not on the driver, #9230); Experiments `experiments.php` 297 → 25 (three own tables); Import `import.php` 762 → 23.
 - Small: `migration.php` → 17, `api_docs.php` → 13, `clean_up.php` → 8, `developer_lock.php` → 5, `software_update.php` → 5 (opens in the settings dialog); `system_tools.php` clean.
@@ -23,4 +24,5 @@ description: Census LM1b against look A: visitors and logs (S4: Site Log, Audit 
 - API `api_settings.php` 2,653 / 92 / 6 / 11 / 8 → 130: 18 Bootstrap buttons, `small text-uppercase` labels, a 116-line `<style>` with 24 font or colour literals.
 - Cloudflare `cloudflare.php` 1,482 / 41 / 1 / 32 / 14 → 133: no measure class (it opens in the settings dialog), `fs-xl fw-bold` figures, a striped table, upper-case titles.
 - SMTP `smtp_settings.php` 726 → 59 (16 fields); `connected_apps.php` → 12; `device_pairing.php` → 11.
+- S6b done (#10534): API, Cloudflare, Connected applications, Pair a device in look A (`ui/look-settings-pages-outside.md`); SMTP is a redirect to Site Settings › E-mail sending now. S6a, the tools above, is still open.
 - Connected accounts `connections.php` 595 → 37, still counted in the figures above: not S6's, it was redrawn once as the Connections screen, #10200 and #10237 (architect 2026-11-17, agent channel message 7524; `ui/connections-screen-layout.md`).

@@ -14,6 +14,10 @@ description: The channel's writing box in one row (C5 of workspace-channel-scree
 - While the keyboard is up (`body.ws-keyboard`, `bindFit()`), the catch-up and pinned strip and the tabs hide too: the conversation keeps the height between the header and the box.
 - On an iPhone 13 viewport (390 × 664) the message list measured 415 px of 664 with the keyboard down and 222 of 385 with it up, with the earlier one-row box; the row of tools now under the field takes one line more.
 
+## Why are the tips' fields full size on a phone?
+- iOS Safari zooms the page in when a field under 16px takes the focus and leaves it zoomed; `form-control-sm` is 14px. `tipFieldClass(touchScreen())` in `workspace_editor.js` gives the link tip, the find tip and the insert menu's windows (block title, table formula, code language, calculation decimals and unit) the full-size field on a touch screen, the small one under a mouse. Test: `tests/workspace_editor_tip_fields_test.php`.
+- Still 14px, held by another PR when found: the emoji search, the poll window, the code areas (#10552).
+
 ## Why?
 - Owner (2026-11-20, `workflow/decisions-made-product-80.md`): on a phone the field on top and the tools row with Send under it, as on a wide screen, replacing the one row with the tools switch.
 - Owner (2026-10-31, `workflow/decisions-made-workspace-5.md`): on a phone the box has to ride on the keyboard and the messages keep the screen; this stays.

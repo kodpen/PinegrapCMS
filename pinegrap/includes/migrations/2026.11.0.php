@@ -235,8 +235,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
 	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
+	upgrade_2026_11_0_ws_app_command_args();     // 11.0.246
 	upgrade_2026_11_0_event_tickets();           // 11.0.246
-	upgrade_2026_11_0_event_waiting_list();      // 11.0.247
+	upgrade_2026_11_0_event_waiting_list();      // 11.0.248
 
 }
 
@@ -2063,6 +2064,8 @@ function upgrade_2026_11_0_workspace_note_sources() {
 // holds, even when both register at once. Deleting the application deletes
 // its commands; renaming it keeps them. usage_text, since USAGE is a
 // reserved word.
+// args, the arguments' definition, is added by 11.0.246 on a database that
+// ran this step before it; a new install creates it here.
 function upgrade_2026_11_0_workspace_app_commands() {
 
 	install_create_table('ws_app_commands', "CREATE TABLE ws_app_commands (
@@ -2073,6 +2076,7 @@ function upgrade_2026_11_0_workspace_app_commands() {
 		usage_text VARCHAR(200) NOT NULL DEFAULT '',
 		created_at INT UNSIGNED NOT NULL DEFAULT 0,
 		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		args TEXT NULL,
 		PRIMARY KEY (id),
 		UNIQUE KEY idx_name (name),
 		KEY idx_app (app_id)
@@ -7886,6 +7890,21 @@ function upgrade_2026_11_0_prototype_link_bundles() {
 
 }
 
+// An application command's arguments (2026.11.0, 11.0.246;
+// includes/workspace/app_commands.php). ws_app_commands.args keeps the
+// definition the application registered, as a JSON list in the shape of the
+// built-in commands' arguments (at most eight), so the composer offers values
+// for them and workspace.app.command carries them by name. NULL is a command
+// without a definition, which takes free text as before; existing rows stay
+// NULL. A new install has the column from 11.0.87.
+function upgrade_2026_11_0_ws_app_command_args() {
+
+	install_add_column('ws_app_commands', 'args', "TEXT NULL");
+
+	install_note('Workspace: an application\'s / command can name its arguments, offered in the channels like a built-in command\'s.');
+
+}
+
 // Event tickets (11.0.246, includes/fn/event_tickets.php): one event_tickets
 // row per unit of a completed order line that gives tickets (a calendar
 // event's reservation, or a product marked "Gives tickets"), and that mark
@@ -7931,7 +7950,7 @@ function upgrade_2026_11_0_event_tickets() {
 
 }
 
-// The waiting list of a full event date (11.0.247, includes/fn/stock_notify.php):
+// The waiting list of a full event date (11.0.248, includes/fn/stock_notify.php):
 // a request to be told when a place frees is a stock_notify row with the
 // event and its date (recurrence_number, 0 for a single event or shared
 // spots) beside product_id 0, so a product's notice never reads it and an

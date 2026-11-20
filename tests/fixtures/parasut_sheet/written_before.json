@@ -1,0 +1,872 @@
+{
+    "old_erp_contacts": {
+        "title": "Musteri ve Tedarikciler",
+        "cells": {
+            "A1": {
+                "v": "Müşteri ve Tedarikçiler\n\n- Yıldız ile belirlenen alanları doldurmanız yeterlidir.\n- Firmalar için Vergi Dairesi ve Vergi Numarasını yazın.\n- Kişiler için T.C. Kimlik Numarasını yazın.\n- Tablonun sütun yapısını bozmayın.\n- Bu yardım metnini silmeyin.\n- Açılış bakiyesi girişi yapılırken müşteri/tedarikçinin bakiye türünü iki harfli kodlardan biri olarak belirtin:\n-- Müşteri/tedarikçinin Borcu Var: BV\n-- Müşteri/tedarikçinin Alacağı Var: AV\n-- Müşteri/tedarikçiye Verilmiş Avans var: VA\n-- Müşteri/tedarikçiden Alınmış Avans var: AA\n- Açılış bakiyesi döviz cinsi TRL, USD, EUR veya GBP olabilir. Döviz cinsi belirtilmediği takdirde TRL olarak kabul edilir.\n- Şirketlerin müşteriniz mi tedarikçiniz mi olduğunu \"Müşteri/Tedarikçi\" kolonunda \"M\" veya \"T\" olarak belirtin. İkisi de geçerliyse bir tanesini yazmanız yeterlidir.\n\n- Destek için destek@parasut.com veya 0212 292 04 94",
+                "t": "s",
+                "f": ""
+            },
+            "A3": {
+                "v": "FİRMA ADI * ",
+                "t": "s",
+                "f": ""
+            },
+            "B3": {
+                "v": "KISA ADI",
+                "t": "s",
+                "f": ""
+            },
+            "C3": {
+                "v": "MÜŞTERİ/TEDARİKÇİ *",
+                "t": "s",
+                "f": ""
+            },
+            "D3": {
+                "v": "E-POSTA",
+                "t": "s",
+                "f": ""
+            },
+            "E3": {
+                "v": "KATEGORİ",
+                "t": "s",
+                "f": ""
+            },
+            "F3": {
+                "v": "ADRES",
+                "t": "s",
+                "f": ""
+            },
+            "G3": {
+                "v": "İLÇE",
+                "t": "s",
+                "f": ""
+            },
+            "H3": {
+                "v": "İL",
+                "t": "s",
+                "f": ""
+            },
+            "I3": {
+                "v": "TELEFON",
+                "t": "s",
+                "f": ""
+            },
+            "J3": {
+                "v": "FAKS",
+                "t": "s",
+                "f": ""
+            },
+            "K3": {
+                "v": "VERGİ DAİRESİ",
+                "t": "s",
+                "f": ""
+            },
+            "L3": {
+                "v": "VERGİ NUMARASI",
+                "t": "s",
+                "f": ""
+            },
+            "M3": {
+                "v": "TC KİMLİK NO",
+                "t": "s",
+                "f": ""
+            },
+            "N3": {
+                "v": "AÇILIŞ BAKİYESİ TARİHİ",
+                "t": "s",
+                "f": ""
+            },
+            "O3": {
+                "v": "AÇILIŞ BAKİYESİ DÖVİZ CİNSİ",
+                "t": "s",
+                "f": ""
+            },
+            "P3": {
+                "v": "AÇILIŞ BAKİYESİ TUTARI",
+                "t": "s",
+                "f": ""
+            },
+            "Q3": {
+                "v": "AÇILIŞ BAKİYESİ TÜRÜ",
+                "t": "s",
+                "f": ""
+            },
+            "A4": {
+                "v": "Acme A.Ş.",
+                "t": "s",
+                "f": ""
+            },
+            "C4": {
+                "v": "M",
+                "t": "s",
+                "f": ""
+            },
+            "D4": {
+                "v": "acme@x.test",
+                "t": "s",
+                "f": ""
+            },
+            "F4": {
+                "v": "Cad. 1 06000",
+                "t": "s",
+                "f": ""
+            },
+            "G4": {
+                "v": "Çankaya",
+                "t": "s",
+                "f": ""
+            },
+            "H4": {
+                "v": "Ankara",
+                "t": "s",
+                "f": ""
+            },
+            "I4": {
+                "v": "0312",
+                "t": "s",
+                "f": ""
+            },
+            "K4": {
+                "v": "Kavaklıdere",
+                "t": "s",
+                "f": ""
+            },
+            "L4": {
+                "v": "1234567890",
+                "t": "s",
+                "f": ""
+            },
+            "A5": {
+                "v": "Şule Öztürk",
+                "t": "s",
+                "f": ""
+            },
+            "C5": {
+                "v": "T",
+                "t": "s",
+                "f": ""
+            },
+            "M5": {
+                "v": "00012345678",
+                "t": "s",
+                "f": ""
+            }
+        }
+    },
+    "old_erp_invoices": {
+        "title": "Satış Faturaları",
+        "cells": {
+            "A1": {
+                "v": "Satış Faturaları\n\n- Yıldız ile belirlenen alanları doldurmanız yeterlidir.\n- Faturalar ile beraber Paraşüt’te kayıtlı olmayan Müşteriler ve Hizmet/Ürünler de oluşturulur.\n- Paraşütte kayıtlı olan müşteriler içeri alınan faturalar ile ilişkilendirilir.\n- Fatura Türü, “Fatura”, \"Taslak\" (ya da “Proforma”) veya \"Konaklama\" olabilir. Boş bırakmanız halinde “Fatura” olarak kaydedilir.\n- Fatura döviz cinsi TRL, USD, EUR veya GBP olabilir. Döviz cinsi belirtilmediği takdirde TRL olarak kabul edilir.\n- Proforma faturalarda fatura döviz kuru boş bırakılmalıdır. Eğer bir kur belirtilmişse göz ardı edilir. Faturalarda ise döviz kuru zorunludur.\n- Vade tarihi olmayan veya ileri bir tarihe denk gelen faturalar açık fatura olarak içeri alınır. Geçmiş tarihli tahsilatlar gerçekleşti olarak varsayılır ve kasa hesabınıza eklenir.\n- Yabancı döviz cinsinden kesilen faturalar için yapılan tahsilatların Türk Lirası karşılıklarınin girilmesi zorunludur. TL faturalarda ve diğer açık faturalarda bu alan boş bırakılmalıdır.\n- Bir faturaya birden fazla hizmet/ürün eklemek için faturayı takip eden satırlarda sadece hizmet/ürün detaylarını doldurun.\n- KDV Oranı 10 Temmuz 2023 itibariyle 0, 1, 10 veya 20 olmalıdır.\n- Fatura Sıra Numarasının başına sıfır eklemenize gerek yoktur.\n- Deponun belirtilmemesi durumunda ürünler varsayılan deponuzan çıkmış olarak kabul edilir.\n- Konaklama Vergisi Oranı belirtilmemiş ise Konaklama Vergisi yok, oran 0 ise Konaklama Vergisi istisna kabul edilir.\n- Tablonun sütun yapısını bozmayın.\n- Bu yardım metnini silmeyin.\n\n- Destek için destek@parasut.com veya 0212 292 04 94",
+                "t": "s",
+                "f": ""
+            },
+            "A3": {
+                "v": "MÜŞTERİ ÜNVANI *",
+                "t": "s",
+                "f": ""
+            },
+            "B3": {
+                "v": "FATURA İSMİ",
+                "t": "s",
+                "f": ""
+            },
+            "C3": {
+                "v": "FATURA TARİHİ",
+                "t": "s",
+                "f": ""
+            },
+            "D3": {
+                "v": "DÖVİZ CİNSİ",
+                "t": "s",
+                "f": ""
+            },
+            "E3": {
+                "v": "DÖVİZ KURU",
+                "t": "s",
+                "f": ""
+            },
+            "F3": {
+                "v": "VADE TARİHİ",
+                "t": "s",
+                "f": ""
+            },
+            "G3": {
+                "v": "TAHSİLAT TL KARŞILIĞI",
+                "t": "s",
+                "f": ""
+            },
+            "H3": {
+                "v": "FATURA TÜRÜ",
+                "t": "s",
+                "f": ""
+            },
+            "I3": {
+                "v": "FATURA SERİ",
+                "t": "s",
+                "f": ""
+            },
+            "J3": {
+                "v": "FATURA SIRA NO",
+                "t": "s",
+                "f": ""
+            },
+            "K3": {
+                "v": "KATEGORİ",
+                "t": "s",
+                "f": ""
+            },
+            "L3": {
+                "v": "HİZMET/ÜRÜN *",
+                "t": "s",
+                "f": ""
+            },
+            "M3": {
+                "v": "HİZMET/ÜRÜN AÇIKLAMASI",
+                "t": "s",
+                "f": ""
+            },
+            "N3": {
+                "v": "ÇIKIŞ DEPOSU *",
+                "t": "s",
+                "f": ""
+            },
+            "O3": {
+                "v": "MİKTAR *",
+                "t": "s",
+                "f": ""
+            },
+            "P3": {
+                "v": "BİRİM FİYATI *",
+                "t": "s",
+                "f": ""
+            },
+            "Q3": {
+                "v": "İNDİRİM TUTARI",
+                "t": "s",
+                "f": ""
+            },
+            "R3": {
+                "v": "KDV ORANI *",
+                "t": "s",
+                "f": ""
+            },
+            "S3": {
+                "v": "ÖİV ORANI",
+                "t": "s",
+                "f": ""
+            },
+            "T3": {
+                "v": "KONAKLAMA VERGİSİ ORANI",
+                "t": "s",
+                "f": ""
+            },
+            "A4": {
+                "v": "Acme A.Ş.",
+                "t": "s",
+                "f": ""
+            },
+            "B4": {
+                "v": "SF2026000001 #1001",
+                "t": "s",
+                "f": ""
+            },
+            "C4": {
+                "v": "19.11.2026",
+                "t": "s",
+                "f": ""
+            },
+            "D4": {
+                "v": "USD",
+                "t": "s",
+                "f": ""
+            },
+            "E4": {
+                "v": 32.5125,
+                "t": "n",
+                "f": "General"
+            },
+            "F4": {
+                "v": "19.12.2026",
+                "t": "s",
+                "f": ""
+            },
+            "G4": {
+                "v": 1625.63,
+                "t": "n",
+                "f": "General"
+            },
+            "H4": {
+                "v": "Fatura",
+                "t": "s",
+                "f": ""
+            },
+            "I4": {
+                "v": "SF",
+                "t": "s",
+                "f": ""
+            },
+            "J4": {
+                "v": 1,
+                "t": "n",
+                "f": "General"
+            },
+            "L4": {
+                "v": "Danışmanlık",
+                "t": "s",
+                "f": ""
+            },
+            "O4": {
+                "v": 1.5,
+                "t": "n",
+                "f": "General"
+            },
+            "P4": {
+                "v": 1000,
+                "t": "n",
+                "f": "General"
+            },
+            "Q4": {
+                "v": 25.5,
+                "t": "n",
+                "f": "General"
+            },
+            "R4": {
+                "v": 20,
+                "t": "n",
+                "f": "General"
+            },
+            "L5": {
+                "v": "Kurulum",
+                "t": "s",
+                "f": ""
+            },
+            "O5": {
+                "v": 1,
+                "t": "n",
+                "f": "General"
+            },
+            "P5": {
+                "v": 250,
+                "t": "n",
+                "f": "General"
+            },
+            "R5": {
+                "v": 10,
+                "t": "n",
+                "f": "General"
+            },
+            "A6": {
+                "v": "Şule Öztürk",
+                "t": "s",
+                "f": ""
+            },
+            "B6": {
+                "v": "=1+1",
+                "t": "s",
+                "f": ""
+            },
+            "C6": {
+                "v": "01.01.2026",
+                "t": "s",
+                "f": ""
+            },
+            "D6": {
+                "v": "TRL",
+                "t": "s",
+                "f": ""
+            },
+            "H6": {
+                "v": "Taslak",
+                "t": "s",
+                "f": ""
+            },
+            "L6": {
+                "v": "#N/A",
+                "t": "s",
+                "f": ""
+            },
+            "O6": {
+                "v": 2,
+                "t": "n",
+                "f": "General"
+            },
+            "P6": {
+                "v": 0.1,
+                "t": "n",
+                "f": "General"
+            },
+            "R6": {
+                "v": 0,
+                "t": "n",
+                "f": "General"
+            }
+        }
+    },
+    "old_orders_contacts": {
+        "title": "Musteri ve Tedarikciler",
+        "cells": {
+            "A1": {
+                "v": "Müşteri ve Tedarikçiler\n\n- Yıldız ile belirlenen alanları doldurmanız yeterlidir.\n- Firmalar için Vergi Dairesi ve Vergi Numarasını yazın.\n- Kişiler için T.C. Kimlik Numarasını yazın.\n- Tablonun sütun yapısını bozmayın.\n- Bu yardım metnini silmeyin.\n- Açılış bakiyesi girişi yapılırken müşteri/tedarikçinin bakiye türünü iki harfli kodlardan biri olarak belirtin:\n-- Müşteri/tedarikçinin Borcu Var: BV\n-- Müşteri/tedarikçinin Alacağı Var: AV\n-- Müşteri/tedarikçiye Verilmiş Avans var: VA\n-- Müşteri/tedarikçiden Alınmış Avans var: AA\n- Açılış bakiyesi döviz cinsi TRL, USD, EUR veya GBP olabilir. Döviz cinsi belirtilmediği takdirde TRL olarak kabul edilir.\n- Şirketlerin müşteriniz mi tedarikçiniz mi olduğunu \"Müşteri/Tedarikçi\" kolonunda \"M\" veya \"T\" olarak belirtin. İkisi de geçerliyse bir tanesini yazmanız yeterlidir.\n\n- Destek için destek@parasut.com veya 0212 292 04 94",
+                "t": "s",
+                "f": ""
+            },
+            "A3": {
+                "v": "FİRMA ADI * ",
+                "t": "s",
+                "f": ""
+            },
+            "B3": {
+                "v": "KISA ADI",
+                "t": "s",
+                "f": ""
+            },
+            "C3": {
+                "v": "MÜŞTERİ/TEDARİKÇİ *",
+                "t": "s",
+                "f": ""
+            },
+            "D3": {
+                "v": "E-POSTA",
+                "t": "s",
+                "f": ""
+            },
+            "E3": {
+                "v": "KATEGORİ",
+                "t": "s",
+                "f": ""
+            },
+            "F3": {
+                "v": "ADRES",
+                "t": "s",
+                "f": ""
+            },
+            "G3": {
+                "v": "İLÇE",
+                "t": "s",
+                "f": ""
+            },
+            "H3": {
+                "v": "İL",
+                "t": "s",
+                "f": ""
+            },
+            "I3": {
+                "v": "TELEFON",
+                "t": "s",
+                "f": ""
+            },
+            "J3": {
+                "v": "FAKS",
+                "t": "s",
+                "f": ""
+            },
+            "K3": {
+                "v": "VERGİ DAİRESİ",
+                "t": "s",
+                "f": ""
+            },
+            "L3": {
+                "v": "VERGİ NUMARASI",
+                "t": "s",
+                "f": ""
+            },
+            "M3": {
+                "v": "TC KİMLİK NO",
+                "t": "s",
+                "f": ""
+            },
+            "N3": {
+                "v": "AÇILIŞ BAKİYESİ TARİHİ",
+                "t": "s",
+                "f": ""
+            },
+            "O3": {
+                "v": "AÇILIŞ BAKİYESİ DÖVİZ CİNSİ",
+                "t": "s",
+                "f": ""
+            },
+            "P3": {
+                "v": "AÇILIŞ BAKİYESİ TUTARI",
+                "t": "s",
+                "f": ""
+            },
+            "Q3": {
+                "v": "AÇILIŞ BAKİYESİ TÜRÜ",
+                "t": "s",
+                "f": ""
+            },
+            "A4": {
+                "v": "=HYPERLINK(\"http://x.test\",\"a\")",
+                "t": "s",
+                "f": ""
+            },
+            "C4": {
+                "v": "M",
+                "t": "s",
+                "f": ""
+            },
+            "D4": {
+                "v": "a@b.test",
+                "t": "s",
+                "f": ""
+            },
+            "E4": {
+                "v": "Pinegrap CMS",
+                "t": "s",
+                "f": ""
+            },
+            "F4": {
+                "v": "Atatürk Cd. 5 34000",
+                "t": "s",
+                "f": ""
+            },
+            "G4": {
+                "v": "Kadıköy",
+                "t": "s",
+                "f": ""
+            },
+            "H4": {
+                "v": "İstanbul",
+                "t": "s",
+                "f": ""
+            },
+            "I4": {
+                "v": "0212 000 00 00",
+                "t": "s",
+                "f": ""
+            },
+            "M4": {
+                "v": "00012345678",
+                "t": "s",
+                "f": ""
+            },
+            "A5": {
+                "v": "Şule Öztürk",
+                "t": "s",
+                "f": ""
+            },
+            "C5": {
+                "v": "M",
+                "t": "s",
+                "f": ""
+            },
+            "D5": {
+                "v": "sule@b.test",
+                "t": "s",
+                "f": ""
+            },
+            "E5": {
+                "v": "Pinegrap CMS",
+                "t": "s",
+                "f": ""
+            },
+            "G5": {
+                "v": "Çankaya",
+                "t": "s",
+                "f": ""
+            },
+            "H5": {
+                "v": "Ankara",
+                "t": "s",
+                "f": ""
+            },
+            "I5": {
+                "v": "+90 312",
+                "t": "s",
+                "f": ""
+            }
+        }
+    },
+    "old_orders_invoices": {
+        "title": "Satış Faturaları",
+        "cells": {
+            "A1": {
+                "v": "Satış Faturaları\n\n- Yıldız ile belirlenen alanları doldurmanız yeterlidir.\n- Faturalar ile beraber Paraşüt’te kayıtlı olmayan Müşteriler ve Hizmet/Ürünler de oluşturulur.\n- Paraşütte kayıtlı olan müşteriler içeri alınan faturalar ile ilişkilendirilir.\n- Fatura Türü, “Fatura”, \"Taslak\" (ya da “Proforma”) veya \"Konaklama\" olabilir. Boş bırakmanız halinde “Fatura” olarak kaydedilir.\n- Fatura döviz cinsi TRL, USD, EUR veya GBP olabilir. Döviz cinsi belirtilmediği takdirde TRL olarak kabul edilir.\n- Proforma faturalarda fatura döviz kuru boş bırakılmalıdır. Eğer bir kur belirtilmişse göz ardı edilir. Faturalarda ise döviz kuru zorunludur.\n- Vade tarihi olmayan veya ileri bir tarihe denk gelen faturalar açık fatura olarak içeri alınır. Geçmiş tarihli tahsilatlar gerçekleşti olarak varsayılır ve kasa hesabınıza eklenir.\n- Yabancı döviz cinsinden kesilen faturalar için yapılan tahsilatların Türk Lirası karşılıklarınin girilmesi zorunludur. TL faturalarda ve diğer açık faturalarda bu alan boş bırakılmalıdır.\n- Bir faturaya birden fazla hizmet/ürün eklemek için faturayı takip eden satırlarda sadece hizmet/ürün detaylarını doldurun.\n- KDV Oranı 10 Temmuz 2023 itibariyle 0, 1, 10 veya 20 olmalıdır.\n- Fatura Sıra Numarasının başına sıfır eklemenize gerek yoktur.\n- Deponun belirtilmemesi durumunda ürünler varsayılan deponuzan çıkmış olarak kabul edilir.\n- Konaklama Vergisi Oranı belirtilmemiş ise Konaklama Vergisi yok, oran 0 ise Konaklama Vergisi istisna kabul edilir.\n- Tablonun sütun yapısını bozmayın.\n- Bu yardım metnini silmeyin.\n\n- Destek için destek@parasut.com veya 0212 292 04 94",
+                "t": "s",
+                "f": ""
+            },
+            "A3": {
+                "v": "MÜŞTERİ ÜNVANI *",
+                "t": "s",
+                "f": ""
+            },
+            "B3": {
+                "v": "FATURA İSMİ",
+                "t": "s",
+                "f": ""
+            },
+            "C3": {
+                "v": "FATURA TARİHİ",
+                "t": "s",
+                "f": ""
+            },
+            "D3": {
+                "v": "DÖVİZ CİNSİ",
+                "t": "s",
+                "f": ""
+            },
+            "E3": {
+                "v": "DÖVİZ KURU",
+                "t": "s",
+                "f": ""
+            },
+            "F3": {
+                "v": "VADE TARİHİ",
+                "t": "s",
+                "f": ""
+            },
+            "G3": {
+                "v": "TAHSİLAT TL KARŞILIĞI",
+                "t": "s",
+                "f": ""
+            },
+            "H3": {
+                "v": "FATURA TÜRÜ",
+                "t": "s",
+                "f": ""
+            },
+            "I3": {
+                "v": "FATURA SERİ",
+                "t": "s",
+                "f": ""
+            },
+            "J3": {
+                "v": "FATURA SIRA NO",
+                "t": "s",
+                "f": ""
+            },
+            "K3": {
+                "v": "KATEGORİ",
+                "t": "s",
+                "f": ""
+            },
+            "L3": {
+                "v": "HİZMET/ÜRÜN *",
+                "t": "s",
+                "f": ""
+            },
+            "M3": {
+                "v": "HİZMET/ÜRÜN AÇIKLAMASI",
+                "t": "s",
+                "f": ""
+            },
+            "N3": {
+                "v": "ÇIKIŞ DEPOSU *",
+                "t": "s",
+                "f": ""
+            },
+            "O3": {
+                "v": "MİKTAR *",
+                "t": "s",
+                "f": ""
+            },
+            "P3": {
+                "v": "BİRİM FİYATI *",
+                "t": "s",
+                "f": ""
+            },
+            "Q3": {
+                "v": "İNDİRİM TUTARI",
+                "t": "s",
+                "f": ""
+            },
+            "R3": {
+                "v": "KDV ORANI *",
+                "t": "s",
+                "f": ""
+            },
+            "S3": {
+                "v": "ÖİV ORANI",
+                "t": "s",
+                "f": ""
+            },
+            "T3": {
+                "v": "KONAKLAMA VERGİSİ ORANI",
+                "t": "s",
+                "f": ""
+            },
+            "A4": {
+                "v": "=HYPERLINK(\"http://x.test\",\"a\")",
+                "t": "s",
+                "f": ""
+            },
+            "B4": {
+                "v": "Mağaza - 1001",
+                "t": "s",
+                "f": ""
+            },
+            "C4": {
+                "v": 46345.604166667,
+                "t": "n",
+                "f": "d.mm.yyyy"
+            },
+            "F4": {
+                "v": 46344.378472222,
+                "t": "n",
+                "f": "d.mm.yyyy"
+            },
+            "H4": {
+                "v": "Fatura",
+                "t": "s",
+                "f": ""
+            },
+            "K4": {
+                "v": "Pinegrap CMS",
+                "t": "s",
+                "f": ""
+            },
+            "L4": {
+                "v": "Çay bardağı",
+                "t": "s",
+                "f": ""
+            },
+            "O4": {
+                "v": 2,
+                "t": "n",
+                "f": "General"
+            },
+            "P4": {
+                "v": 8.3333333333333,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "Q4": {
+                "v": 1,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "R4": {
+                "v": 20,
+                "t": "n",
+                "f": "#,##"
+            },
+            "S4": {
+                "v": 0,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "L5": {
+                "v": "#N/A",
+                "t": "s",
+                "f": ""
+            },
+            "O5": {
+                "v": 1,
+                "t": "n",
+                "f": "General"
+            },
+            "P5": {
+                "v": 25.5,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "Q5": {
+                "v": 0,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "R5": {
+                "v": 20,
+                "t": "n",
+                "f": "#,##"
+            },
+            "S5": {
+                "v": 0,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "L6": {
+                "v": "Order shipping fee",
+                "t": "s",
+                "f": ""
+            },
+            "O6": {
+                "v": 1,
+                "t": "n",
+                "f": "General"
+            },
+            "P6": {
+                "v": 41.658333333333,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "Q6": {
+                "v": 0,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "R6": {
+                "v": 20,
+                "t": "n",
+                "f": "#,##"
+            },
+            "S6": {
+                "v": 0,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "A7": {
+                "v": "Şule Öztürk",
+                "t": "s",
+                "f": ""
+            },
+            "B7": {
+                "v": "Mağaza - 1002",
+                "t": "s",
+                "f": ""
+            },
+            "C7": {
+                "v": 46345.604166667,
+                "t": "n",
+                "f": "d.mm.yyyy"
+            },
+            "F7": {
+                "v": 46023,
+                "t": "n",
+                "f": "d.mm.yyyy"
+            },
+            "H7": {
+                "v": "Fatura",
+                "t": "s",
+                "f": ""
+            },
+            "K7": {
+                "v": "Pinegrap CMS",
+                "t": "s",
+                "f": ""
+            },
+            "L7": {
+                "v": "Kupa",
+                "t": "s",
+                "f": ""
+            },
+            "O7": {
+                "v": 3,
+                "t": "n",
+                "f": "General"
+            },
+            "P7": {
+                "v": 12,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "Q7": {
+                "v": 0,
+                "t": "n",
+                "f": "#,##0.00"
+            },
+            "R7": {
+                "v": 0,
+                "t": "n",
+                "f": "#,##"
+            },
+            "S7": {
+                "v": 0,
+                "t": "n",
+                "f": "#,##0.00"
+            }
+        }
+    }
+}
