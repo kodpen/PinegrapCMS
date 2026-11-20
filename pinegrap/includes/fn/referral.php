@@ -217,8 +217,9 @@ function pg_referral_refund_takes_back($value, $smallest)
  *
  * @param array $facts on (bool), contact_id (from the signed code, 0 for
  *                     none), affiliate (an approved affiliate has the code),
- *                     referrer (user_id, contact_id, email,
+ *                     referrer (user_id, contact_id, email, contact_email,
  *                     affiliate_approved, orders; null without an account),
+ *                     the buyer's e-mail matched against both addresses,
  *                     buyer (user_id, contact_id, email), friend_orders
  *                     (earlier orders that count), value
  *                     (pg_referral_order_value()), smallest, month_count
@@ -253,7 +254,7 @@ function pg_referral_check(array $facts)
     if (
         (((int) ($buyer['user_id'] ?? 0) > 0) && ((int) $buyer['user_id'] === (int) $referrer['user_id']))
         || (((int) ($buyer['contact_id'] ?? 0) > 0) && ((int) $buyer['contact_id'] === (int) $referrer['contact_id']))
-        || (($buyer_email !== '') && ($buyer_email === pg_referral_fold_email($referrer['email'] ?? '')))
+        || (($buyer_email !== '') && in_array($buyer_email, array(pg_referral_fold_email($referrer['email'] ?? ''), pg_referral_fold_email($referrer['contact_email'] ?? '')), true))
     ) {
         return 'self';
     }
@@ -424,6 +425,7 @@ function pg_referral_referrer($contact_id, $order_id = 0)
         'user_id'            => (int) $row['user_id'],
         'contact_id'         => (int) $row['contact_id'],
         'email'              => ((string) $row['user_email'] !== '') ? (string) $row['user_email'] : (string) $row['email_address'],
+        'contact_email'      => (string) $row['email_address'],
         'affiliate_approved' => (int) $row['affiliate_approved'],
         'orders'             => (int) db_value(
             "SELECT COUNT(*) FROM orders
