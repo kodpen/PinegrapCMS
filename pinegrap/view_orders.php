@@ -1931,7 +1931,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         "SELECT
                             form_field_id,
                             data,
-                            name,
+                            " . pg_form_data_name_sql() . " AS name,
                             count(*) as number_of_values
                         FROM form_data
                         WHERE

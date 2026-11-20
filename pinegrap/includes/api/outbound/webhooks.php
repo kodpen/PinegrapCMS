@@ -118,7 +118,7 @@ function api_webhook_core_events() {
 		// the card's (GET /gift-cards/{id}); account_id, customer_id, kind,
 		// reason, amount, balance, expires_at, source (the kind's name) and
 		// name (the customer's) follow, never the code.
-		'credit.issued'  => 'Store credit was given to a customer: reward points converted, a refund paid as credit, or issued by staff on the customer\'s screen or through the API; GET /customers/{id}/credit lists the cards',
+		'credit.issued'  => 'Store credit was given to a customer: reward points converted, a refund paid as credit, a referral\'s reward, or issued by staff on the customer\'s screen or through the API; GET /customers/{id}/credit lists the cards',
 		'credit.used'    => 'An order spent a customer\'s store credit card; order_id and amount_used name the order and what it took, balance what is left (giving it back when the order is cancelled is not announced)',
 		'credit.expired' => 'A store credit card reached its end with money left and was closed by the scheduled job; expired_amount is what was left (a card voided by staff, through the API or by an erasure is not announced)',
 		// An affiliate commission's status (includes/fn/commission_list.php,

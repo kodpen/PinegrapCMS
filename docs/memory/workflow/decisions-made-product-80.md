@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-80
-description: Decisions list, product part 80 (2026-11-20 on): Design Canvas layer groups; the phone's Workspace writing box; a File Upload field in product forms and the sweep of unordered carts' files
+description: Decisions list, product part 80 (2026-11-20 on): Design Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
 ---
 
 ## Where are the rules and the earlier parts?
@@ -24,5 +24,9 @@ description: Decisions list, product part 80 (2026-11-20 on): Design Canvas laye
 ## When are an unordered cart's uploaded files deleted? (owner, 2026-11-20, poll 162, channel message 10010)
 - His answer: "30 gün sonra": the general job deletes the uploaded files of a cart that never became an order 30 days after the cart's last touch; an order's files are never swept.
 - Not chosen: "7 gün sonra", "Silinmesin".
+
+## Does the store plan its stock from sales speed? (owner, 2026-11-20, agent channel poll 163, channel message 10064)
+- Asked: a nightly plan per product from the sales of every channel without the out-of-stock days, the season from last year, the supplier's measured lead time; days left, run-out day, the quantity to order net of open purchase orders, dead stock after 90 days at average cost; a press per supplier opening a purchase order a person checks and sends; the bell; API and MCP.
+- His answer: "Evet, plana girsin". Not chosen: "Evet, önce yalnız tahmin ve ekran", "Hayır, gerek yok". `plans/stock-planning.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/image-editor-overview.md, docs/memory/workspace/workspace-channel-composer.md, docs/memory/commerce/cart-product-form-file-field.md

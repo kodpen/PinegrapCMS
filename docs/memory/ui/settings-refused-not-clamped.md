@@ -13,7 +13,7 @@ description: Site Settings boxes a save refuses instead of clamping or blanking:
 ## What else does a settings save refuse rather than change?
 - Membership expiration warning switched on: a page and 1-999 days are required (`security.save.php`); 0 or negative days warned members already expired, no page sent nothing.
 - Merchant country not two letters, return window not a whole number: refused (`seo.save.php`). Before, the country was blanked (no shipping or return markup site-wide) and "abc" days became 0, "returns not permitted" on every product.
-- IndexNow: the trimmed key is stored, the key file uses the same; a stored key is trimmed when read, so its old file is removed on change.
+- IndexNow: the trimmed key is stored, the key file uses the same; a stored key is trimmed when read, so its old file is removed on change (`pg_indexnow_key_save()`, on IndexNow's page of Connections since CX11a).
 
 ## How are the analytics settings checked and printed?
 - `pg_ga_tag_id()` (`includes/fn/consent.php`, always loaded): G-, GT-, AW-, DC- or UA- plus letters, digits, dashes, else ''. The save refuses anything else; `get_page_content.php` prints no gtag tag for a stored value it refuses, and prints the ID `rawurlencode()`d in the address and `escape_javascript()`d in the script.

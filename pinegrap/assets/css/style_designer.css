@@ -7509,6 +7509,26 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 }
 .sd-proto[hidden] { display: none; }
 /* Its controls are in the canvas bar's Prototype mode (_sdProtoBuild()). */
+/* The search over the map, under the canvas bar (Ctrl+F, _sdProtoSearchBuild()): the box, the
+   count, the match before and after, Close; the frames with a match ringed
+   in yellow, the one gone to more strongly, beside the selection's outline. */
+.sd-proto { --sd-proto-found: #e8c547; }
+.sd-proto-search {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-bottom: 1px solid var(--sd-panel-border);
+}
+.sd-proto-search[hidden] { display: none; }
+.sd-proto-search-input { flex: 0 1 280px; min-width: 0; }
+.sd-proto-search-count { min-width: 4.5em; font-size: .75rem; color: var(--sd-text-muted); white-space: nowrap; }
+.sd-proto-search-none .sd-proto-search-input { border-color: var(--pgc-in); }
+.sd-proto-search .sd-vb-btn:last-child { margin-left: auto; }
+@media (max-width: 767.98px) {
+    .sd-proto-search-input { flex: 1 1 auto; }
+}
+.sd-proto .pgc-node.sd-proto-found { box-shadow: 0 0 0 3px var(--sd-proto-found), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto .pgc-node.sd-proto-found-on { box-shadow: 0 0 0 6px var(--sd-proto-found), 0 2px 8px rgba(0,0,0,.35); }
+.sd-proto-li.sd-proto-found { box-shadow: inset 3px 0 0 var(--sd-proto-found); }
+.sd-proto-li.sd-proto-found-on { box-shadow: inset 3px 0 0 var(--sd-proto-found); background: color-mix(in srgb, var(--sd-proto-found) 14%, transparent); }
 .sd-proto-stage { flex: 1; border: 0; border-radius: 0; background: #1b1e22; }
 .sd-proto-stage .pgc-viewport { background-image: radial-gradient(circle, rgba(255,255,255,.14) 1px, transparent 1.25px); }
 /* A double-click on a frame zooms to it, never picks up its words. */
@@ -7923,3 +7943,39 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 /* The picked link (F16): its mark on the picture and its arrow. */
 .sd-proto-hot.sd-proto-hot-picked { border-width: 3px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--sd-accent) 35%, transparent); }
 .sd-proto .pgc-edge.sd-proto-edge-picked .pgc-edge-line { stroke-width: 3; }
+/* Content changes that wait for approval, on a page's tab, after its name:
+   the editor's waiting change (the draft pill's shape with the hourglass),
+   the answer to one of their changes (a 13 px icon: applied, dismissed,
+   cannot be applied), a designer's count (the same pill with the number).
+   The tab's own mark opens a note; its target is at least 24 by 24. */
+.sd-tab-cc {
+    position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 3px;
+    height: 15px; padding: 0 5px; border-radius: 6px;
+    font-size: 9.5px; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer;
+}
+.sd-tab-cc[data-cc]::after { content: ""; position: absolute; top: 50%; left: 50%; width: max(100%, 24px); height: 24px; transform: translate(-50%, -50%); }
+.sd-tab-cc:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 1px; }
+.sd-tab-cc-wait, .sd-tab-cc-count { background: var(--sd-warning-soft); color: var(--sd-warning); }
+.sd-tab-cc-applied, .sd-tab-cc-dismissed, .sd-tab-cc-stale { height: auto; padding: 0; background: transparent; font-size: 13px; }
+.sd-tab-cc-applied { color: var(--sd-success); }
+.sd-tab-cc-dismissed { color: var(--sd-danger); }
+.sd-tab-cc-stale { color: var(--sd-warning); }
+/* A mark that climbed to a chip or the Pages button is part of it. On a
+   narrow strip (step 4 on) and there, the pill keeps its hourglass only. */
+.sd-tab-cc-up { margin-left: 4px; cursor: inherit; }
+.sd-tab-cc-up .sd-tab-cc-word,
+#sd-tabs-list:is([data-step="4"], [data-step="5"], [data-step="6"]) .sd-tab-cc-word { display: none; }
+.sd-cc-pop {
+    position: fixed; z-index: 1090; width: 300px; max-width: calc(100vw - 16px);
+    padding: 10px 12px; border: 1px solid var(--sd-border-strong); border-radius: 6px;
+    background: var(--sd-raised-bg); color: var(--sd-text); box-shadow: 0 6px 18px color-mix(in srgb, var(--sd-shadow) 45%, transparent); font-size: .8rem;
+}
+.sd-cc-pop-title { margin-bottom: 4px; font-weight: 600; }
+.sd-cc-pop p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.sd-cc-pop-acts { display: flex; justify-content: flex-end; gap: 6px; }
+.sd-cc-pop-acts .sd-vb-btn { padding: .35rem .7rem; border: 1px solid var(--sd-text-muted); color: var(--sd-text); }
+.sd-cc-pop-acts .sd-vb-btn:hover, .sd-cc-pop-acts .sd-vb-btn:focus-visible { border-color: var(--sd-text); background: var(--sd-raised-bg-2); outline: none; }
+/* In a list the mark stands after the row's name and pills. */
+.sd-tabs-all-item .sd-tab-cc, .sd-tabs-list .sd-tab-cc { margin-left: .4rem; cursor: inherit; }
+/* A tab with a waiting change keeps room for its name beside the pill. */
+.sd-tab:has(.sd-tab-cc-wait) { max-width: 320px; }

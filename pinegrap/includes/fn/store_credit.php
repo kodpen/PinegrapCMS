@@ -60,6 +60,7 @@ function pg_credit_kinds()
         'points' => lang('Reward points'),
         'refund' => lang('Refund'),
         'manual' => lang('Issued by staff'),
+        'referral' => lang('Referral'),
     );
 }
 
@@ -372,7 +373,7 @@ function pg_credit_issue_check($user_id, $amount, $kind, $expires, $now)
  *
  * @param int    $user_id    the customer (user.user_id)
  * @param int    $amount     minor units, above zero
- * @param string $kind       points | refund | manual
+ * @param string $kind       points | refund | manual | referral
  * @param string $reason     shown to staff and the customer
  * @param int    $expires    unix time the credit stops, 0 = never
  * @param int    $issued_by  the user who issued it, 0 = the shop itself
