@@ -3938,10 +3938,32 @@
         }
         node.appendChild(facts);
 
-        if (data.windows && data.windows.length) {
+        if ((data.windows && data.windows.length) || data.context) {
             var windows = el('div', 'ws-agent-card-box' + (data.stale ? ' is-stale' : ''));
 
-            data.windows.forEach(function (window) {
+            // The reported context, "Context 412k of 1M tokens (41%)", with
+            // its bar, marked from 90% as a plan window is.
+            if (data.context) {
+                var held = Math.max(0, Math.min(100, data.context.percent));
+                var ctxItem = el('div', 'ws-agent-card-window' + (held >= 90 ? ' is-high' : ''));
+                var ctxTop = el('div', 'ws-agent-card-row');
+                var ctxBar = el('div', 'ws-agent-card-bar');
+                var ctxFill = el('span', '');
+
+                ctxTop.appendChild(el('span', 'ws-agent-card-value pg-tabular', data.context.words));
+                ctxItem.appendChild(ctxTop);
+                ctxFill.style.width = held + '%';
+                ctxBar.appendChild(ctxFill);
+                ctxBar.setAttribute('role', 'meter');
+                ctxBar.setAttribute('aria-valuemin', '0');
+                ctxBar.setAttribute('aria-valuemax', '100');
+                ctxBar.setAttribute('aria-valuenow', String(held));
+                ctxBar.setAttribute('aria-label', data.context.words);
+                ctxItem.appendChild(ctxBar);
+                windows.appendChild(ctxItem);
+            }
+
+            (data.windows || []).forEach(function (window) {
                 var item = el('div', 'ws-agent-card-window' + (window.high ? ' is-high' : ''));
                 var top = el('div', 'ws-agent-card-row');
                 var label = el('span', 'ws-agent-card-value', window.label);

@@ -6,7 +6,7 @@ priority: 6
 
 ## What is asked?
 - Owner (2026-11-20, agent channel message 10569): what the Markdown button adds comes out in the channel drawn as Markdown, while ordinary messages stay as they are; agents explain a subject with it, a plan for one, and change that document when the plan changes.
-- Owner (poll 179, message 10572): "İkisi de plana girsin"; after the Activity tab (`plans/channel-activity.md`). Recorded in `workflow/decisions-made-workspace-42.md`.
+- Owner (poll 179, message 10572): "İkisi de plana girsin"; after the Activity tab (`workspace/channel-activity-tab.md`, landed). Recorded in `workflow/decisions-made-workspace-42.md`.
 
 ## What is there today?
 - A note shared in a channel is a card that draws the note as it is now: headings, tables, checklists, lists (`ws_note_cards_map()`, `ws_render_body()` with `$note`), in a box 18rem high that scrolls, with Read and, for who may edit, Edit, which leaves for the notes screen.
