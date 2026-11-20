@@ -585,12 +585,12 @@ function api_assistant_scopes(array $groups, array $leave_out = array()) {
 // The reads an assistant's key is made without. Neither assistant needs them:
 // the owner's own bell and devices, codes a shopper could redeem, spendable
 // gift card codes, who did what from which address, the firewall and file
-// integrity state with the audit trail, and the panel's accounts with their
-// rights. An administrator can still add any of them to the key in
+// integrity state with the audit trail, the panel's accounts with their
+// rights, and the Privacy centre's inventory and requests. An administrator can still add any of them to the key in
 // Application Access.
 function api_assistant_scopes_left_out() {
 
-	return array('account:read', 'key_codes:read', 'gift_cards:read', 'site_log:read', 'system:read', 'users:read');
+	return array('account:read', 'key_codes:read', 'gift_cards:read', 'site_log:read', 'system:read', 'users:read', 'privacy:read');
 
 }
 

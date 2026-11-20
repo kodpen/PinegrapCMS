@@ -23,23 +23,48 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
 
 /* ----- Inventory ---------------------------------------------------------- */
 
+// Keys as answered, pure: each with its English label; a key the label list
+// lacks keeps itself as its label.
+function api_privacy_labelled($keys, array $labels) {
+
+	$out = array();
+
+	foreach ((array)$keys as $key) {
+
+		$key = (string)$key;
+
+		$out[] = array('key' => $key, 'label' => isset($labels[$key]) ? (string)$labels[$key] : $key);
+
+	}
+
+	return $out;
+
+}
+
 // The inventory as answered, pure: one line per catalogue table with its
-// keys and live counts (null when not known, never 0), and the transfers.
+// keys and labels and live counts (null when not known, never 0), and the
+// transfers.
 function api_privacy_inventory_present(array $inventory, array $counts, array $transfers, $site_country) {
+
+	$categories = pg_privacy_inventory_categories();
+	$subjects = pg_privacy_inventory_subjects();
+	$grounds = pg_privacy_inventory_grounds();
+	$retentions = pg_privacy_inventory_retentions();
 
 	$lines = array();
 
 	foreach ($inventory as $table => $line) {
 
 		$count = isset($counts[$table]) ? $counts[$table] : array();
+		$ground = api_privacy_labelled(array($line['ground']), $grounds);
 
 		$lines[] = array(
 			'table'      => (string)$table,
-			'categories' => array_values(array_map('strval', (array)$line['categories'])),
-			'subjects'   => array_values(array_map('strval', (array)$line['subjects'])),
+			'categories' => api_privacy_labelled($line['categories'], $categories),
+			'subjects'   => api_privacy_labelled($line['subjects'], $subjects),
 			'purpose'    => (string)$line['purpose'],
-			'ground'     => (string)$line['ground'],
-			'retention'  => array_values(array_map('strval', (array)$line['retention'])),
+			'ground'     => $ground[0],
+			'retention'  => api_privacy_labelled($line['retention'], $retentions),
 			'records'    => isset($count['records']) ? (int)$count['records'] : null,
 			'people'     => isset($count['people']) ? (int)$count['people'] : null
 		);
@@ -56,7 +81,7 @@ function api_privacy_inventory_present(array $inventory, array $counts, array $t
 			'group'         => (string)$row['group'],
 			'uses'          => (string)$row['uses'],
 			'country'       => (string)$row['country'],
-			'data'          => array_values(array_map('strval', (array)$row['data'])),
+			'data'          => api_privacy_labelled($row['data'], $categories),
 			'personal'      => (bool)$row['personal'],
 			'abroad'        => (bool)$row['abroad'],
 			'state_unknown' => (bool)$row['unknown']
@@ -76,15 +101,17 @@ function api_privacy_inventory_present(array $inventory, array $counts, array $t
 
 function api_privacy_inventory_schema() {
 
+	$labelled = array('key' => 'string', 'label' => 'string');
+
 	return array(
 		'site_country' => 'string?',
 		'lines'        => array(array(
 			'table'      => 'string',
-			'categories' => 'string[]',
-			'subjects'   => 'string[]',
+			'categories' => array($labelled),
+			'subjects'   => array($labelled),
 			'purpose'    => 'string',
-			'ground'     => 'string',
-			'retention'  => 'string[]',
+			'ground'     => $labelled,
+			'retention'  => array($labelled),
 			'records'    => 'integer?',
 			'people'     => 'integer?'
 		)),
@@ -94,7 +121,7 @@ function api_privacy_inventory_schema() {
 			'group'         => 'string',
 			'uses'          => 'string',
 			'country'       => 'string',
-			'data'          => 'string[]',
+			'data'          => array($labelled),
 			'personal'      => 'boolean',
 			'abroad'        => 'boolean',
 			'state_unknown' => 'boolean'
@@ -193,8 +220,9 @@ function api_privacy_request_schema() {
 }
 
 // One request with its text and steps, pure. A step is an audit line of the
-// request: its action, when, who, and the kind, status and result it left;
-// nothing else of the line is read.
+// request (audit_log: created_at, action, user_id, username, after_json): its
+// action, when, the panel user by id and name, and the kind, status and
+// result it left; nothing else of the line, never its address.
 function api_privacy_request_detail_present($row, array $history, $now) {
 
 	$steps = array();
@@ -203,12 +231,13 @@ function api_privacy_request_detail_present($row, array $history, $now) {
 
 		$after = json_decode((string)$line['after_json'], true);
 		$after = is_array($after) ? $after : array();
-		$actor = trim((string)$line['actor_name']);
+		$name = trim((string)$line['username']);
 
 		$step = array(
-			'action' => (string)$line['action'],
-			'at'     => api_time($line['created_at']),
-			'actor'  => ($actor === '') ? null : $actor
+			'action'    => (string)$line['action'],
+			'at'        => api_time($line['created_at']),
+			'user_id'   => ((int)$line['user_id'] > 0) ? (int)$line['user_id'] : null,
+			'user_name' => ($name === '') ? null : $name
 		);
 
 		foreach (array('kind', 'status', 'result') as $key) {
@@ -235,14 +264,37 @@ function api_privacy_request_detail_schema() {
 		'message' => 'string',
 		'answer'  => 'string',
 		'steps'   => array(array(
-			'action' => 'string',
-			'at'     => 'datetime?',
-			'actor'  => 'string?',
-			'kind'   => 'string?',
-			'status' => 'string?',
-			'result' => 'string?'
+			'action'    => 'string',
+			'at'        => 'datetime?',
+			'user_id'   => 'integer?',
+			'user_name' => 'string?',
+			'kind'      => 'string?',
+			'status'    => 'string?',
+			'result'    => 'string?'
 		))
 	);
+
+}
+
+// A request's steps as read, newest first, pure: its audit lines, only the
+// columns a step shows.
+function api_privacy_request_steps_sql($id) {
+
+	return "SELECT created_at, action, user_id, username, after_json FROM audit_log"
+		. " WHERE (entity_type = 'privacy_request') AND (entity_id = '" . (int)$id . "')"
+		. " ORDER BY created_at DESC, id DESC LIMIT 200";
+
+}
+
+// Before the migration step that adds the request box, every request route
+// answers 503: an empty list would read as a box with nothing in it.
+function api_privacy_requests_require_table() {
+
+	if (!pg_privacy_requests_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+
+	}
 
 }
 
@@ -267,11 +319,7 @@ function api_privacy_requests_list($params) {
 
 	}
 
-	if (!pg_privacy_requests_ready()) {
-
-		api_ok_list(array(), $limit, null);
-
-	}
+	api_privacy_requests_require_table();
 
 	$now = time();
 	$result = api_query(api_privacy_requests_sql($view, $after, $limit, $now));
@@ -299,6 +347,8 @@ function api_privacy_requests_list($params) {
 // GET /privacy/requests/{id}
 function api_privacy_request_read($params) {
 
+	api_privacy_requests_require_table();
+
 	$row = pg_privacy_request_get((int)$params['id']);
 
 	if ($row === null) {
@@ -307,6 +357,8 @@ function api_privacy_request_read($params) {
 
 	}
 
-	api_ok(api_privacy_request_detail_present($row, pg_privacy_request_history((int)$row['id']), time()));
+	$history = pg_schema_has('audit_log') ? db_items(api_privacy_request_steps_sql((int)$row['id'])) : array();
+
+	api_ok(api_privacy_request_detail_present($row, is_array($history) ? $history : array(), time()));
 
 }

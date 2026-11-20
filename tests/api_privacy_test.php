@@ -42,32 +42,54 @@ function _api_privacy_test_route($id)
 	return null;
 }
 
-// The inventory: every catalogue line with its keys and counts (null when not
-// known), the retention always a list, the transfers with their marks.
+// The inventory: every catalogue line with its keys and English labels and
+// counts (null when not known), the retention always a list, the transfers
+// with their marks.
 function test_api_privacy_inventory_present()
 {
 	$inventory = array(
 		'contacts' => array('categories' => array('identity', 'contact'), 'subjects' => array('customer'), 'purpose' => 'Customers', 'ground' => 'legitimate_interest', 'retention' => 'passive_contact', 'person' => array('id', 'int')),
-		'orders'   => array('categories' => array('order'), 'subjects' => array('customer'), 'purpose' => 'Orders', 'ground' => 'contract', 'retention' => array('orders', 'carts')),
+		'orders'   => array('categories' => array('order_payment'), 'subjects' => array('customer'), 'purpose' => 'Orders', 'ground' => 'contract', 'retention' => array('orders', 'incomplete_carts')),
 	);
 	$counts = array('contacts' => array('records' => 12, 'people' => 10), 'orders' => array('records' => null, 'people' => null));
-	$transfers = array('stripe' => array('name' => 'Stripe', 'group' => 'payments', 'uses' => 'Card payments', 'country' => 'US', 'data' => array('order'), 'personal' => true, 'abroad' => true, 'unknown' => false));
+	$transfers = array('stripe' => array('name' => 'Stripe', 'group' => 'payments', 'uses' => 'Card payments', 'country' => 'US', 'data' => array('order_payment', 'new_key'), 'personal' => true, 'abroad' => true, 'unknown' => false));
 
-	$out = api_privacy_inventory_present($inventory, $counts, $transfers, 'TR');
+	$out = api_privacy_inventory_present($inventory, $counts, $transfers, 'tr');
 
 	pg_assert_same('TR', $out['site_country']);
 	pg_assert_same(2, count($out['lines']));
-	pg_assert_same(array('table' => 'contacts', 'categories' => array('identity', 'contact'), 'subjects' => array('customer'), 'purpose' => 'Customers', 'ground' => 'legitimate_interest', 'retention' => array('passive_contact'), 'records' => 12, 'people' => 10), $out['lines'][0]);
-	pg_assert_same(array('orders', 'carts'), $out['lines'][1]['retention']);
+	pg_assert_same(array(
+		'table'      => 'contacts',
+		'categories' => array(array('key' => 'identity', 'label' => 'Identity'), array('key' => 'contact', 'label' => 'Contact')),
+		'subjects'   => array(array('key' => 'customer', 'label' => 'Customers')),
+		'purpose'    => 'Customers',
+		'ground'     => array('key' => 'legitimate_interest', 'label' => 'Legitimate interest'),
+		'retention'  => array(array('key' => 'passive_contact', 'label' => 'Rule: passive contacts')),
+		'records'    => 12,
+		'people'     => 10,
+	), $out['lines'][0]);
+	pg_assert_same(array(array('key' => 'orders', 'label' => 'Rule: orders'), array('key' => 'incomplete_carts', 'label' => 'Rule: incomplete carts')), $out['lines'][1]['retention']);
 	pg_assert_same(null, $out['lines'][1]['records'], 'not known stays null');
 	pg_assert_same(null, $out['lines'][1]['people']);
-	pg_assert_same(array('service' => 'stripe', 'name' => 'Stripe', 'group' => 'payments', 'uses' => 'Card payments', 'country' => 'US', 'data' => array('order'), 'personal' => true, 'abroad' => true, 'state_unknown' => false), $out['transfers'][0]);
+	pg_assert_same(array('service' => 'stripe', 'name' => 'Stripe', 'group' => 'payments', 'uses' => 'Card payments', 'country' => 'US',
+		'data' => array(array('key' => 'order_payment', 'label' => 'Order and payment'), array('key' => 'new_key', 'label' => 'new_key')),
+		'personal' => true, 'abroad' => true, 'state_unknown' => false), $out['transfers'][0], 'a key without a label keeps itself');
 
 	// A line missing from the counts is not known either.
 	$out = api_privacy_inventory_present($inventory, array(), array(), '');
 	pg_assert_same(null, $out['lines'][0]['records']);
 	pg_assert_same(null, $out['site_country']);
 	pg_assert_same(array(), $out['transfers']);
+
+	// The real catalogue: every key has its label.
+	$out = api_privacy_inventory_present(pg_privacy_inventory(), array(), array(), 'TR');
+	pg_assert_same(count(pg_privacy_inventory()), count($out['lines']));
+
+	foreach ($out['lines'] as $line) {
+		foreach (array_merge($line['categories'], $line['subjects'], array($line['ground']), $line['retention']) as $item) {
+			pg_assert_true($item['label'] !== $item['key'], $line['table'] . ' ' . $item['key'] . ' has a label');
+		}
+	}
 }
 
 // The list's views are the screen's; the cursor pages by id, newest first,
@@ -122,24 +144,47 @@ function test_api_privacy_request_present()
 	pg_assert_same(api_time(950000), $out['closed_at']);
 }
 
-// One request: the text and its steps, each step's kind, status and result
-// from the audit line, with nothing else of it.
+// One request: the text and its steps, each step's user and the kind,
+// status and result from the audit line, with nothing else of it (no
+// address, no e-mail).
 function test_api_privacy_request_detail()
 {
 	$row = array('id' => '5', 'kind' => 'information', 'status' => 'answered', 'source' => 'form', 'result' => 'sent', 'contact_id' => '0', 'user_id' => '0', 'assigned_user_id' => '0',
-		'email' => 'b@example.com', 'name' => '', 'message' => 'What do you hold?', 'answer' => 'This.', 'verified_at' => '1', 'received_at' => '2', 'due_at' => '3', 'closed_at' => '4');
+		'email' => 'b@example.com', 'name' => '', 'message' => 'What do you hold?', 'answer' => 'This.', 'verified_at' => '1', 'received_at' => '2', 'due_at' => '3', 'closed_at' => '4', 'proof_hash' => 'x');
 	$history = array(
-		array('created_at' => '200', 'action' => 'answer', 'actor_name' => 'admin', 'after_json' => '{"kind":"information","status":"answered","result":"sent","email":"x@example.com"}'),
-		array('created_at' => '100', 'action' => 'create', 'actor_name' => '', 'after_json' => 'not json'),
+		array('created_at' => '200', 'action' => 'answer', 'user_id' => '4', 'username' => 'admin', 'ip' => '10.0.0.1', 'after_json' => '{"kind":"information","status":"answered","result":"sent","email":"x@example.com"}'),
+		array('created_at' => '100', 'action' => 'create', 'user_id' => '0', 'username' => '', 'after_json' => 'not json'),
 	);
 
 	$out = api_privacy_request_detail_present($row, $history, 10);
 
 	pg_assert_same('What do you hold?', $out['message']);
 	pg_assert_same('This.', $out['answer']);
-	pg_assert_same(array('action' => 'answer', 'at' => api_time(200), 'actor' => 'admin', 'kind' => 'information', 'status' => 'answered', 'result' => 'sent'), $out['steps'][0]);
-	pg_assert_same(array('action' => 'create', 'at' => api_time(100), 'actor' => null, 'kind' => null, 'status' => null, 'result' => null), $out['steps'][1]);
+	pg_assert_same(array('action' => 'answer', 'at' => api_time(200), 'user_id' => 4, 'user_name' => 'admin', 'kind' => 'information', 'status' => 'answered', 'result' => 'sent'), $out['steps'][0]);
+	pg_assert_same(array('action' => 'create', 'at' => api_time(100), 'user_id' => null, 'user_name' => null, 'kind' => null, 'status' => null, 'result' => null), $out['steps'][1]);
 	pg_assert_same(array_keys(api_privacy_request_detail_schema()), array_keys($out));
+	pg_assert_true(strpos(json_encode($out), '10.0.0.1') === false, 'no address');
+	pg_assert_true(strpos(json_encode($out), 'proof') === false, 'no proof');
+
+	// The steps read audit_log's own columns, never its address.
+	$sql = api_privacy_request_steps_sql(5);
+	pg_assert_contains('SELECT created_at, action, user_id, username, after_json FROM audit_log', $sql);
+	pg_assert_contains("(entity_type = 'privacy_request') AND (entity_id = '5')", $sql);
+}
+
+// Before the table exists the request routes answer 503, not an empty list.
+function test_api_privacy_requests_503_before_the_table()
+{
+	$file = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/privacy.php');
+
+	foreach (array('function api_privacy_requests_list(', 'function api_privacy_request_read(') as $head) {
+		$handler = substr($file, strpos($file, $head));
+		$handler = substr($handler, 0, strpos($handler, "\n}\n"));
+		pg_assert_contains('api_privacy_requests_require_table();', $handler, $head);
+		pg_assert_true(strpos($handler, 'api_privacy_requests_require_table();') < strpos($handler, 'api_ok'), $head . ' checks first');
+	}
+
+	pg_assert_contains("api_fail(503, 'service_unavailable'", $file);
 }
 
 // Three read routes under privacy:read, offered to manager and up; no write.
@@ -162,5 +207,23 @@ function test_api_privacy_routes_and_scope()
 	foreach (array(0 => true, 1 => true, 2 => true, 3 => false) as $role => $offered) {
 		$owner = array('role' => $role, 'manage_ecommerce' => false, 'manage_contacts' => true, 'manage_forms' => false);
 		pg_assert_same($offered, in_array('privacy:read', api_owner_scopes($owner), true), 'role ' . $role);
+	}
+
+	// A role-3 owner, even with the contacts right, is answered 403: the
+	// scope granted is capped away, and the route asks for it.
+	$owner = array('role' => 3, 'manage_ecommerce' => true, 'manage_contacts' => true, 'manage_forms' => true);
+	pg_assert_false(api_has_scope(api_effective_scopes(array('privacy:read'), $owner), 'privacy:read'), 'role 3 holds no privacy:read');
+	pg_assert_true(in_array('customers:read', api_owner_scopes($owner), true), 'though it reads customers');
+	$owner['role'] = 2;
+	pg_assert_true(api_has_scope(api_effective_scopes(array('privacy:read'), $owner), 'privacy:read'), 'a manager holds it');
+
+	// Not on an assistant's key, nor in an assistant plugin's reads.
+	pg_assert_contains('privacy:read', api_assistant_scopes_left_out());
+	pg_assert_false(in_array('privacy:read', api_assistant_scopes(api_scope_groups(), api_assistant_scopes_left_out()), true));
+	pg_assert_false(in_array('privacy:read', api_plugin_scopes(api_scope_groups()), true));
+
+	// The MCP tools say read only.
+	foreach ($expect as $id => $path) {
+		pg_assert_contains('Read only', _api_privacy_test_route($id)['description'], $id);
 	}
 }
