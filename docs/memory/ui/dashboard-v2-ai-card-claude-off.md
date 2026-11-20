@@ -12,5 +12,6 @@ description: Dashboard Assistant card while Claude is not connected: the pitch a
 
 ## When is the agent note drawn?
 - Last in the body while no application agent is active (`pg_dashboard_v2_ai_agent_active()` over `ws_agents_list()`: kind `app`, status `active`), Claude ready or not: grey block "Workspace agents", two lines, a quiet small "Connect an agent" (`pg_settings_workspace_link('ws-agents')`) for who may open the Workspace settings, else "An administrator connects agents in the Workspace settings."
+- Its two lines, as built: "An agent is an application with its own key. It answers under its own name in the channels it is added to." / "A channel takes an agent from its menu, Agents in this channel. A channel for agents shows what each does."
 
 Related: docs/memory/ui/dashboard-v2-ai-card.md

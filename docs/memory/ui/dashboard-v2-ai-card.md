@@ -11,6 +11,7 @@ description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant
 
 ## What does the card show while Claude is off?
 - The notice, the pitch and the agent note: `dashboard-v2-ai-card-claude-off.md`.
+- Agent note as built (architect, 2026-11-20; lines under 110 characters): "An agent is an application with its own key. It answers under its own name in the channels it is added to." / "A channel takes an agent from its menu, Agents in this channel. A channel for agents shows what each does."
 
 ## Which proposals are counted?
 - Agent questions sit above them: `workspace/poll-agent-question-reach.md`.
@@ -24,10 +25,10 @@ description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant
 ## How does the chat box work?
 - A8b, #8575: a section under the job box, "Chat with an assistant", on the same catalogue: no list, store or tool of its own.
 - Who: the `ws_assistants()` entries a message can ask (`pg_dashboard_v2_ai_chat_askable()`): Claude and Pinegrap AI by their tag and channel switch, an MCP alias as `@alias` where Pinegrap AI may be asked, a registry agent by `<@app:N>` where the channel allows it. A picker shows "name · #channel" when there are several.
-- Where: per assistant the first channel of `pg_dashboard_v2_ai_channels()` (the one the person last asked any assistant in, then the oldest public ones; unarchived, may post) where it may be asked. The note says everybody who reads the channel sees the talk. Its note keeps the job box's 8 px under the field: `.pg-dash-ai-talk` has no flex gap to absorb the job box's -.375rem pull-up, so `.pg-dash-ai-chat-form + .pg-dash-ai-status` sets .5rem (#8625).
+- Where: per assistant the first channel of `pg_dashboard_v2_ai_channels()` (the one the person last asked any assistant in, then the oldest public ones; unarchived, may post) where it may be asked. The note says everybody who reads the channel sees the talk. Its note sits 8 px under the field: `.pg-dash-ai-talk` has no flex gap, so `.pg-dash-ai-chat-form + .pg-dash-ai-status` sets .5rem (#8625).
 - How: the first line is a new message `<tag> text` through `ws_send`, the next ones reply to it (`parent_id`), each with the tag; then the kick the answer names (`claude`, `ai`, `agent`). Text limit `pg_dashboard_v2_ai_chat_max()`: 2000, or `WS_MESSAGE_MAX` less the tag.
 - Answers: `ws_sync` (`since_id`, `panel`) every 8 s for 10 minutes after the last line; a message replying to one of the chain joins it and shows as plain text (DOMParser) with an Open link. Only what the person may read comes back. Then "No answer yet…".
-- After a reload, "Open it": `dashboard-v2-ai-chat-keep.md`. While Claude is off it offers the other assistants (Claude left out by `pg_dashboard_v2_ai_chat_askable()`).
+- After a reload, "Open it": `dashboard-v2-ai-chat-keep.md`. While Claude is off it offers the other assistants.
 
 ## Where is the daily summary?
 - Above the proposals when it is on (question 3: a setting with an hour, off by default; #5080): `workspace/workspace-claude-daily-summary.md`.
