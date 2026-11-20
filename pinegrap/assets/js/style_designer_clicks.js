@@ -67,9 +67,22 @@ StyleDesigner.definePart('clicks', function (K) {
         return Array.from ? Array.from(text).slice(0, length).join('') : text.slice(0, length);
     }
 
-    // A path part that looks like a code (pg_page_clicks_code_like()).
+    // A path part that looks like a code (pg_page_clicks_code_like()),
+    // judged as the word it encodes; one that does not decode as it stands.
     function codeLike(part) {
-        return (part.length > 16) && (part.indexOf('-') < 0) && /[A-Za-z]/.test(part) && /[0-9]/.test(part);
+        var text = part;
+
+        if (part.indexOf('%') >= 0) {
+            try {
+                text = decodeURIComponent(part);
+            } catch (e) {
+                text = part;
+            }
+        }
+
+        var length = Array.from ? Array.from(text).length : text.length;
+
+        return (length > 16) && (text.indexOf('-') < 0) && /[A-Za-z]/.test(text) && /[0-9]/.test(text);
     }
 
     // The twin of pg_page_clicks_fold_url() and the script's foldUrl().
