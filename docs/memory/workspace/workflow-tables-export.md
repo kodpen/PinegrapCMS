@@ -19,6 +19,7 @@ module: xlsx_write
 ## Where is the workbook written?
 - `includes/fn/xlsx_write.php` (module `xlsx_write`, loaded by `functions.php`): `pg_xlsx_write_plain()`, `pg_xlsx_sheet_rows()`, `pg_xlsx_date_serial()`, `pg_xlsx_column_letter()`, `pg_xlsx_xml()`. Made from the ERP export's writer, which could not be shared as `includes/erp/export.php` stops without `PG_ERP_ENTRY`.
 - `erp_export_write_plain_xlsx()`, `erp_export_sheet_rows()`, `erp_export_column_letter()` and `erp_export_xml()` stay as thin wrappers (the accountant pack calls them); the styles sheet gained the two date formats only.
+- `pg_xlsx_write_book()` writes several sheets of the sheet reader's typed cells, one sheet at a time through a temporary file: the .xls copy as .xlsx (`platform/office-xls-preview.md`).
 - A cell value `array('date' => 'Y-m-d' | 'Y-m-d H:i')` is a date; int/float a number; anything else inline text; '' and null leave the cell out.
 - The download writes to a `tempnam()` file under `data/temp`, sends it and deletes it.
 

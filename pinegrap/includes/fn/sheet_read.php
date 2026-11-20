@@ -857,3 +857,32 @@ function pg_sheet_xls_load($path, $sheet)
 
     return ($error === '') ? $reader : $error;
 }
+
+/**
+ * The worksheets of an .xls file in the order pg_sheet_rows() counts them:
+ * name and whether it is hidden; or 'read' when the file could not be read.
+ * No sheet's cells are read.
+ *
+ * @param string $path
+ * @return array|string
+ */
+function pg_sheet_xls_sheets($path)
+{
+    if (!is_file($path)) {
+        return 'read';
+    }
+
+    @require_once(PG_FUNCTIONS_DIR . '/excel_reader2.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/sheet_read_xls.php');
+
+    // A sheet past any the file can hold: every worksheet is walked past.
+    $reader = new Pg_Sheet_Xls_Reader(PHP_INT_MAX);
+
+    try {
+        @$reader->read($path);
+    } catch (Throwable $exception) {
+        return 'read';
+    }
+
+    return $reader->pg_sheet_list();
+}
