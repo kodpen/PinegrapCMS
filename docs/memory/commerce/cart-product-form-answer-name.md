@@ -1,12 +1,12 @@
 ---
 name: cart-product-form-answer-name
-description: Designer cart product form answers keep their field name in form_data.name; readers fall back to form_fields.name for older rows (#10541)
+description: Designer cart product form answers keep their field name in form_data.name; readers fall back to form_fields.name for older rows (#10541, PR #10574)
 module: forms
 ---
 
 ## What does the designer cart write for a product form answer?
 
-`cart_action.php` builds the row with `pg_product_form_answer_row()` (`includes/fn/forms.php`) and inserts it with `db_q()`. `form_data.name` is the field's `form_fields.name`, as `shopping_cart.php` and `express_order.php` write it. Before #10541 the cart wrote `''`.
+`cart_action.php` builds the row with `pg_product_form_answer_row()` (`includes/fn/forms.php`) and inserts it with `db_q()`. `form_data.name` is the field's `form_fields.name`, as `shopping_cart.php` and `express_order.php` write it. Before PR #10574 (#10541) the cart wrote `''`.
 
 ## What did the empty name break?
 
