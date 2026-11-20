@@ -314,6 +314,14 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
         $pos = 0;
         $ended = false;
         $version = ($length >= 6) ? (ord($data[4]) | (ord($data[5]) << 8)) : 0;
+        // The shared string table and its CONTINUE records, read here: the
+        // library loses its place in a string whose formatting runs or
+        // phonetic data a CONTINUE record cuts (and refuses the file), and
+        // keeps only the last character of a string that goes on two bytes
+        // a character after a split.
+        $sst_at = -1;
+        $sst = array();
+        $in_sst = false;
 
         while ($pos + 4 <= $length) {
             $code = ord($data[$pos]) | (ord($data[$pos + 1]) << 8);
@@ -328,6 +336,16 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
             if ($code === SPREADSHEET_EXCEL_READER_TYPE_EOF) {
                 $ended = true;
                 break;
+            }
+
+            if ($code === SPREADSHEET_EXCEL_READER_TYPE_SST) {
+                $sst_at = ($sst_at < 0) ? $pos : $sst_at;
+                $sst[] = $record;
+                $in_sst = true;
+            } elseif (($code === SPREADSHEET_EXCEL_READER_TYPE_CONTINUE) && $in_sst) {
+                $sst[] = $record;
+            } else {
+                $in_sst = false;
             }
 
             if (($code === 0x42) && ($size >= 2)) {
@@ -354,7 +372,128 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
             return false;
         }
 
+        if ($sst_at >= 0) {
+            $this->sst = $this->pg_shared_strings($sst);
+            // The library passes over a record it does not know: the table
+            // is not read a second time.
+            $this->data[$sst_at] = "\xFF";
+            $this->data[$sst_at + 1] = "\xFF";
+        }
+
         return parent::_parse();
+    }
+
+    /**
+     * The shared string table (SST) as UTF-8 strings, from its record and
+     * the CONTINUE records after it.
+     *
+     * A string's head (character count, option flags, run and phonetic
+     * counts) is never split; its characters may be, and the part in the
+     * next record starts with an option byte saying whether it is one or two
+     * bytes a character; its formatting runs and phonetic data may be split
+     * anywhere, with no byte added.
+     *
+     * @param string[] $records the SST record's data, then each CONTINUE's
+     * @return string[]
+     */
+    public function pg_shared_strings($records)
+    {
+        $records = array_values($records);
+        $strings = array();
+
+        if (!isset($records[0]) || (strlen($records[0]) < 8)) {
+            return $strings;
+        }
+
+        $unique = unpack('V', substr($records[0], 4, 4));
+        $unique = (int) $unique[1];
+        $record = 0;
+        $pos = 8;
+        $count = count($records);
+
+        // Bytes taken across records with no option byte between them.
+        $take = function ($bytes) use (&$records, &$record, &$pos, $count) {
+            $out = '';
+
+            while ($bytes > 0) {
+                if ($pos >= strlen($records[$record])) {
+                    if (++$record >= $count) {
+                        return null;
+                    }
+
+                    $pos = 0;
+                    continue;
+                }
+
+                $part = substr($records[$record], $pos, $bytes);
+                $out .= $part;
+                $pos += strlen($part);
+                $bytes -= strlen($part);
+            }
+
+            return $out;
+        };
+
+        for ($index = 0; $index < $unique; $index++) {
+            $head = $take(3);
+
+            if ($head === null) {
+                break;
+            }
+
+            $chars = ord($head[0]) | (ord($head[1]) << 8);
+            $flags = ord($head[2]);
+            $runs = 0;
+            $phonetic = 0;
+
+            if ($flags & 0x08) {
+                $runs = $take(2);
+                $runs = ($runs === null) ? 0 : (ord($runs[0]) | (ord($runs[1]) << 8));
+            }
+
+            if ($flags & 0x04) {
+                $phonetic = $take(4);
+                $phonetic = ($phonetic === null) ? 0 : (ord($phonetic[0]) | (ord($phonetic[1]) << 8) | (ord($phonetic[2]) << 16) | (ord($phonetic[3]) << 24));
+            }
+
+            $wide = ($flags & 0x01) !== 0;
+            $utf16 = '';
+
+            while ($chars > 0) {
+                if ($pos >= strlen($records[$record])) {
+                    // The characters go on in the next record, after its
+                    // option byte.
+                    if ((++$record >= $count) || ($records[$record] === '')) {
+                        break 2;
+                    }
+
+                    $wide = (ord($records[$record][0]) & 0x01) !== 0;
+                    $pos = 1;
+                    continue;
+                }
+
+                $room = strlen($records[$record]) - $pos;
+                $n = min($chars, $wide ? (int) floor($room / 2) : $room);
+
+                if ($n < 1) {
+                    // Half a two-byte character left: a damaged table.
+                    break 2;
+                }
+
+                $part = substr($records[$record], $pos, $wide ? $n * 2 : $n);
+                $utf16 .= $wide ? $part : implode("\0", str_split($part)) . "\0";
+                $pos += strlen($part);
+                $chars -= $n;
+            }
+
+            $strings[] = $this->pg_convert($utf16, 'UTF-16LE');
+
+            if (($runs * 4 + $phonetic > 0) && ($take($runs * 4 + $phonetic) === null)) {
+                break;
+            }
+        }
+
+        return $strings;
     }
 
     /**
