@@ -236,6 +236,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
 	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
 	upgrade_2026_11_0_event_tickets();           // 11.0.246
+	upgrade_2026_11_0_event_waiting_list();      // 11.0.247
 
 }
 
@@ -7927,5 +7928,34 @@ function upgrade_2026_11_0_event_tickets() {
 	}
 
 	install_note('Event tickets: the table for tickets with a QR code is ready; nothing changes on the site until Tickets is switched on in Site Settings, Features.');
+
+}
+
+// The waiting list of a full event date (11.0.247, includes/fn/stock_notify.php):
+// a request to be told when a place frees is a stock_notify row with the
+// event and its date (recurrence_number, 0 for a single event or shared
+// spots) beside product_id 0, so a product's notice never reads it and an
+// event's never reads a product's. Both columns default to 0, which every
+// existing row is: a product's request. The index is the sender's and the
+// "already waiting" read: the date's waiting rows. stock_notify is small,
+// so a plain ALTER is fine where an instant one is refused.
+function upgrade_2026_11_0_event_waiting_list() {
+
+	$columns = array(
+		'calendar_event_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+		'recurrence_number' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('stock_notify', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('stock_notify', $column, $definition);
+
+		}
+
+	}
+
+	install_add_index('stock_notify', 'idx_event_sent', "INDEX idx_event_sent (calendar_event_id, recurrence_number, sent_at)");
 
 }
