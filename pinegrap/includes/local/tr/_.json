@@ -1837,6 +1837,7 @@
     "{var:1} report": "{var:1} raporu",
     "{var:1} reports {var:2} for payment {var:3}": "{var:1}, {var:3} ödemesi için {var:2} durumunu bildiriyor",
     "{var:1} requests": "{var:1} istek",
+    "{var:1} requests end within 7 days": "{var:1} başvurunun süresi 7 gün içinde doluyor",
     "{var:1} request{suffix:1}": "{var:1} istek",
     "{var:1} request{suffix:1} recorded": "{var:1} istek kaydedildi",
     "{var:1} request{suffix:1} · peak {var:2} ms": "{var:1} istek · tepe {var:2} ms",

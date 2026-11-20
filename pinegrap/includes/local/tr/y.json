@@ -511,6 +511,7 @@
     "You may not delete this page style because it is being used by at least one folder or page.": "En az bir klasör veya sayfa tarafından kullanıldığı için bu sayfa stilini silemezsiniz.",
     "You may not edit a completed campaign.": "Tamamlanmış bir kampanyayı düzenleyemezsiniz.",
     "You may not edit that folder.": "O klasörü düzenleme yetkiniz yok.",
+    "You may not erase this person: they hold a role equal to or above yours.": "Bu kişiyi silemezsiniz: sizinkiyle aynı veya daha yüksek bir rolü var.",
     "You may not hand this task to an assistant.": "Bu görevi bir asistana veremezsiniz.",
     "You may not publish calendar events.": "Takvim etkinliği yayınlama yetkiniz yok.",
     "You may not remove yourself as a watcher because you are not currently a watcher. <a href=\"javascript:history.go(-1);\">Go back</a>.": "Şu anda izleyici olmadığınız için kendinizi izleyicilerden kaldıramazsınız. <a href=\"javascript:history.go(-1);\">Geri git</a>.",

@@ -93,6 +93,7 @@ function test_privacy_request_view_where()
 	pg_assert_same("(status IN ('answered', 'refused'))", pg_privacy_request_view_where('answered'), 'answered');
 	pg_assert_same("(status <> 'unproven')", pg_privacy_request_view_where('all'), 'all');
 	pg_assert_same("(status = 'open')", pg_privacy_request_view_where('other'), 'unknown: open');
+	pg_assert_same("(status = 'open') AND (due_at < '" . (1700000000 + (7 * 86400)) . "')", pg_privacy_request_view_where('ending', 1700000000), 'ending within 7 days');
 }
 
 // A request typed in by staff: a kind, an address, open from now.
