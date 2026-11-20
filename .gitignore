@@ -60,3 +60,6 @@ config.local.php
 
 # Local agent outputs - never published
 /Claude outputs/
+
+# The note id and revision tools/ws_note.php keeps beside a file
+*.ws_note
