@@ -53,3 +53,39 @@ function test_product_form_uploads_submit_form_file_is_the_units_file()
 	pg_assert_same(0, pg_pfu_submit_form_file_id('photo', $answers), 'a value with no variable gave a file');
 	pg_assert_same(0, pg_pfu_submit_form_file_id('^^photo^^', array()), 'a unit with no answers gave a file');
 }
+
+function test_product_form_uploads_order_reader_shows_the_file()
+{
+	// No file: the caller prints the answer's own text.
+	pg_assert_same('', pg_pfu_order_file_html(null, '/', 'link'), 'an answer without a file drew a file');
+	pg_assert_same('', pg_pfu_order_file_html('', '/', 'thumbnail'), 'an empty file name drew a file');
+
+	// A link get_file.php serves, its name escaped in the address and the text.
+	$link = pg_pfu_order_file_html('my "photo" <1>.pdf', '/shop/', 'link');
+	pg_assert_same(
+		'<a href="/shop/my%20%22photo%22%20%3C1%3E.pdf" target="_blank" rel="noopener">my &quot;photo&quot; &lt;1&gt;.pdf</a>',
+		$link,
+		'the file link was not drawn or not escaped');
+
+	// The panel's thumbnail comes with an image only.
+	$image = pg_pfu_order_file_html('mug.JPG', '/', 'thumbnail');
+	pg_assert_true(strpos($image, '<img src="/mug.JPG"') !== false, 'an image got no thumbnail in the panel');
+	pg_assert_true(strpos($image, '>mug.JPG</a>') !== false, 'the thumbnail lost the file name link');
+	pg_assert_true(strpos(pg_pfu_order_file_html('print.pdf', '/', 'thumbnail'), '<img') === false, 'a PDF got a thumbnail');
+	pg_assert_true(strpos(pg_pfu_order_file_html('mug.jpg', '/', 'link'), '<img') === false, 'a link-only reader got a thumbnail');
+
+	// An e-mail names the file and carries no address.
+	pg_assert_same('mug &lt;1&gt;.jpg', pg_pfu_order_file_html('mug <1>.jpg', '/', 'name'), 'the e-mail did not name the file alone');
+
+	// A name with a folder part is cut to the file's own name.
+	pg_assert_same('evil.jpg', pg_pfu_order_file_html('../x/evil.jpg', '/', 'name'), 'a path in the name was printed');
+}
+
+function test_product_form_uploads_order_reader_mode()
+{
+	pg_assert_same('name', pg_pfu_order_file_mode('customer', 'backend'), 'a customer e-mail carried a link');
+	pg_assert_same('name', pg_pfu_order_file_mode('store', 'link'), 'the store copy carried a link');
+	pg_assert_same('thumbnail', pg_pfu_order_file_mode('screen', 'backend'), 'the panel lost its thumbnail');
+	pg_assert_same('link', pg_pfu_order_file_mode('screen', 'print'), 'a print showed a thumbnail');
+	pg_assert_same('link', pg_pfu_order_file_mode('screen', 'frontend'), 'a site page did not link the file');
+}

@@ -1766,6 +1766,7 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
     if ($product_id === NULL || $product_id === '' || (int) $product_id <= 0) {
         return '';
     }
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
     // get all fields for this form
     $query = "SELECT
 
@@ -1821,7 +1822,8 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
             // else field does not have an information type, so get data for field
         } else {
             $data = '';
-            $query = "SELECT data
+            $file_html = '';
+            $query = "SELECT data, " . pg_pfu_order_file_name_sql() . " AS file_name
 
                 FROM form_data
 
@@ -1839,6 +1841,8 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
             if (mysqli_num_rows($result) == 1) {
                 $row = mysqli_fetch_assoc($result);
                 $data = $row['data'];
+                // A File Upload answer prints its file (a link, or its name in an e-mail).
+                $file_html = pg_pfu_order_answer_html($row['file_name'], 'frontend');
                 // else if there is more than one value, then set data for multiple values
             } elseif (mysqli_num_rows($result) > 1) {
                 while ($row = mysqli_fetch_assoc($result)) {
@@ -1849,8 +1853,10 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
                     $data .= $row['data'];
                 }
             }
-            // if this form field is wysiwyg, then do not prepare for html; the markup is filtered instead
-            if ($form_field['wysiwyg'] == 1) {
+            // A file prints as drawn; if this form field is wysiwyg, then do not prepare for html; the markup is filtered instead
+            if ($file_html !== '') {
+                $data = $file_html;
+            } elseif ($form_field['wysiwyg'] == 1) {
                 $data = prepare_form_data_for_output(pg_sanitize_rich_text($data), $form_field['type'], $prepare_for_html = false);
                 // else this form field is not wysiwyg, so prepare for html
             } else {
@@ -1878,12 +1884,15 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
 // get the table rows of content for a submitted product form but do not use data from form fields (e.g. label) because they might not exist
 function get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, $interface)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
     // get form data items for order item
     $query = "SELECT
 
             form_field_id,
 
             data,
+
+            " . pg_pfu_order_file_name_sql() . " AS file_name,
 
             " . pg_form_data_name_sql() . " AS name,
 
@@ -1939,8 +1948,13 @@ function get_submitted_product_form_content_without_form_fields($order_item_id, 
         } else {
             $data = $form_data_item['data'];
         }
-        // if form data item type is html, then don't prepare output for html, because data is already html
-        if ($form_data_item['type'] == 'html') {
+        // A File Upload answer (one value) prints its file: a link, a panel
+        // thumbnail for an image, or its name in an e-mail.
+        $file_html = ($form_data_item['number_of_values'] > 1) ? '' : pg_pfu_order_answer_html($form_data_item['file_name'], (string) $interface);
+        // A file prints as drawn; if form data item type is html, then don't prepare output for html, because data is already html
+        if ($file_html !== '') {
+            $output_data = $file_html;
+        } elseif ($form_data_item['type'] == 'html') {
             $output_data = prepare_form_data_for_output($data, $form_data_item['type'], $prepare_for_html = false);
             // else form data item type is not html, so prepare output for html
         } else {
@@ -2316,6 +2330,7 @@ function get_form_review_info($properties)
             break;
         case 'product_form':
             $sql_field_where = "product_id = '" . e($product_id) . "' AND form_type = 'product'";
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
             break;
     }
     // Get all fields for this form.
@@ -2349,7 +2364,8 @@ function get_form_review_info($properties)
         // If this is not an information field, then get data that customer entered.
         if ($field['type'] != 'information') {
             $field['data'] = '';
-            $query = "SELECT data
+            $file_html = '';
+            $query = "SELECT data" . (($type == 'product_form') ? ", " . pg_pfu_order_file_name_sql() . " AS file_name" : "") . "
 
                 FROM form_data
 
@@ -2365,6 +2381,10 @@ function get_form_review_info($properties)
             if (mysqli_num_rows($result) == 1) {
                 $row = mysqli_fetch_assoc($result);
                 $field['data'] = $row['data'];
+                // A product form's File Upload answer prints its file (a link, or its name in an e-mail).
+                if ($type == 'product_form') {
+                    $file_html = pg_pfu_order_answer_html($row['file_name'], 'frontend');
+                }
                 // Otherwise there is more than one value, so set data for multiple values.
             } elseif (mysqli_num_rows($result) > 1) {
                 while ($row = mysqli_fetch_assoc($result)) {
@@ -2378,8 +2398,10 @@ function get_form_review_info($properties)
             if ($field['data'] != '') {
                 $data = true;
             }
-            // If this form field is wysiwyg, then do not prepare for html; the markup is filtered instead.
-            if ($field['wysiwyg'] == 1) {
+            // A file prints as drawn; if this form field is wysiwyg, then do not prepare for html; the markup is filtered instead.
+            if ($file_html !== '') {
+                $field['data_info'] = $file_html;
+            } elseif ($field['wysiwyg'] == 1) {
                 $field['data_info'] = prepare_form_data_for_output(pg_sanitize_rich_text($field['data']), $field['type'], $prepare_for_html = false);
                 // Otherwise this form field is not wysiwyg, so prepare for html.
             } else {
