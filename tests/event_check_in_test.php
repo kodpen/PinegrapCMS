@@ -350,3 +350,14 @@ function test_check_in_product_label()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/event_check_in.php');
 	pg_assert_contains('pg_check_in_product_label(db_item(', $source, 'the wrong-event answer reads the label');
 }
+
+function test_check_in_typed_code_kept_while_a_check_runs()
+{
+	// A code typed and sent while a camera scan is still being answered was
+	// not checked, yet the field was emptied: the code was lost.
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/event_check_in.js');
+
+	pg_assert_contains('return Promise.resolve(false);', $script, 'a check refused while one runs says so');
+	pg_assert_contains("check('scan', { code: code }).then(function (ran) {", $script, 'the typed code waits for the answer');
+	pg_assert_contains('if (ran) {', $script, 'and is cleared only when it was checked');
+}

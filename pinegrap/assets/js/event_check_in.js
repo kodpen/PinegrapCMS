@@ -120,9 +120,11 @@
         showCounts(data);
     }
 
+    // Resolves true once the ticket was sent and answered, false when another
+    // check was still running and this one was not sent.
     function check(request, values) {
         if (busy) {
-            return Promise.resolve();
+            return Promise.resolve(false);
         }
 
         busy = true;
@@ -133,6 +135,8 @@
             showAnswer({ message: texts.failed });
         }).then(function () {
             busy = false;
+
+            return true;
         });
     }
 
@@ -330,8 +334,12 @@
             return;
         }
 
-        check('scan', { code: code }).then(function () {
-            codeInput.value = '';
+        // A code sent while a camera scan is answered stays in the field.
+        check('scan', { code: code }).then(function (ran) {
+            if (ran) {
+                codeInput.value = '';
+            }
+
             codeInput.focus();
         });
     });
