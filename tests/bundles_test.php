@@ -289,3 +289,36 @@ function test_bundle_saving()
 	pg_assert_same(549, pg_bundle_saving($components, 2000.6), 'an offer price is rounded, not cut');
 	pg_assert_same(0, pg_bundle_saving(array(), 100), 'no contents, no saving');
 }
+
+// A bundle whose own Backorder switch is off sells only what its components
+// hold, even when each of them takes back orders on its own; a component
+// bought alone first takes its stock before the bundle line. A line without
+// the key (a bundle that takes back orders) is limited as before.
+function test_bundle_cart_allowance_bundle_without_backorder()
+{
+	$stock = array(
+		7 => array('tracked' => true, 'quantity' => 3, 'backorder' => true),
+		8 => array('tracked' => true, 'quantity' => 10, 'backorder' => true),
+	);
+	$bundle = array(array('product_id' => 7, 'quantity' => 1), array('product_id' => 8, 'quantity' => 2));
+
+	pg_assert_same(array(
+		1 => array('allowed' => 2, 'unavailable' => false),
+		2 => array('allowed' => 1, 'unavailable' => false),
+	), pg_bundle_cart_allowance(array(
+		array('id' => 1, 'product_id' => 7, 'quantity' => 2),
+		array('id' => 2, 'product_id' => 50, 'quantity' => 4, 'backorder' => false, 'components' => $bundle),
+	), $stock), 'the plain line takes two of three; the bundle gets the one left, no back order');
+
+	pg_assert_same(array(
+		1 => array('allowed' => 0, 'unavailable' => true),
+	), pg_bundle_cart_allowance(array(
+		array('id' => 1, 'product_id' => 50, 'quantity' => 1, 'backorder' => false, 'components' => $bundle),
+	), array(7 => array('tracked' => true, 'quantity' => 0, 'backorder' => true))), 'none in stock');
+
+	pg_assert_same(array(
+		1 => array('allowed' => 4, 'unavailable' => false),
+	), pg_bundle_cart_allowance(array(
+		array('id' => 1, 'product_id' => 50, 'quantity' => 4, 'backorder' => true, 'components' => $bundle),
+	), $stock), 'a bundle that takes back orders is not limited');
+}
