@@ -23,6 +23,6 @@ module: delivery_scorecard
 
 ## And the carrier order? (T13)
 - `pg_delivery_tower_carrier_order()` (pure): options by the province's on-time share from the summary (the country's where the province has none), unmeasured last; equal shares by the lower `rate()` price, a price before none.
-- The Create Label dialog that would show it is not built: today Create Label is a button with a confirm, no carrier select; the part was asked of the architect in #10890.
+- Not yet on a screen: today Create Label is a button with a confirm, no carrier choice. The chooser that shows the order is step DT4b (architect, agent channel message 11258; `plans/delivery-tower-screens-label.md`).
 
 Tests: `tests/delivery_scorecard_test.php`.

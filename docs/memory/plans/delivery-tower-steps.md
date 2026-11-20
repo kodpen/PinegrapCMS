@@ -1,6 +1,6 @@
 ---
 name: delivery-tower-steps
-description: Plan delivery-tower, steps DT1a to DT6: the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
+description: Plan delivery-tower, steps DT1a to DT6 (with DT4b): the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
 ---
 
 ## Which steps are there?
@@ -10,9 +10,10 @@ description: Plan delivery-tower, steps DT1a to DT6: the pure rules, measured ti
   - Timed on a copy with 100k parcels; the figure in the PR body. Features: T1 to T7 (the passes).
 - DT2 (S) after DT1b: the `shipping` codes in `includes/fn/ops_alerts.php` (shared with sales-watch SW1: check the open PRs), the two events through `pg_announce()`, the catalogue, fixtures, API reference, flow start box. Features: T9, T10.
 - DT3 (M) after DT1b: the Delivery problems screen under Orders, assign, note, close. Feature: T8.
-- DT4 (M) after DT1b, built in #10890 but for the Create Label dialog (asked of the architect there): the scorecard screen and Excel, the arrival suggestion on the method's screen, the carrier order in the Create Label dialog. Features: T11, T12, T13.
-- DT5 (S) after DT3 and DT4: `GET /reports/delivery` (in `includes/api/resources/reports.php`, shared with sales-watch SW5) and `GET /shipments/problems`, their types, `php tools/check_api_schema.php`; the settings. Feature: T14.
-- DT6 (S) close-out: every T number checked against the code with its PR; `commerce/delivery-tower.md` written, `commerce/shipment-tracking.md` pointing to it; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
+- DT4 (M) done (#10890), after DT1b: the scorecard screen and Excel, the arrival suggestion on the scorecard and the method's screen, the carrier ordering rule `pg_delivery_tower_carrier_order()` (tested, not yet on a screen). Features: T11, T12, the ordering rule of T13.
+- DT4b (S) after DT4: the Create Label chooser on the order screen, `plans/delivery-tower-screens-label.md`; `view_order.php`, `includes/fn/shipment_labels.php` (one optional argument), a new action, the dialog's script. Feature: T13.
+- DT5 (S) after DT3, DT4 and DT4b: `GET /reports/delivery` (in `includes/api/resources/reports.php`, shared with sales-watch SW5) and `GET /shipments/problems`, their types, `php tools/check_api_schema.php`; the settings. Feature: T14.
+- DT6 (S) close-out, after DT4b: every T number checked against the code with its PR; `commerce/delivery-tower.md` written, `commerce/shipment-tracking.md` pointing to it; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
 - DT1a can start before the poll's answer. After DT1b: DT2, DT3 and DT4. `includes/fn/ops_alerts.php` is also entered by `commerce/sales-watch.md` SW1 and `includes/api/resources/reports.php` by SW5: check the open PRs before claiming.
