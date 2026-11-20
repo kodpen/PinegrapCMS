@@ -419,13 +419,20 @@ function pg_picture_tr_live($file_id, $name)
 /**
  * Drops the texts and rows of every picture that was deleted, binned or
  * changed outside the editor, within a time budget. The daily sweep calls
- * it; a picture not reached is looked at on the next run.
+ * it; each run goes on after the picture the last one stopped at, so every
+ * picture is looked at in turn however many there are.
  *
  * @param float $deadline microtime(true) to stop after
  * @return int pictures dropped
  */
 function pg_picture_tr_prune($deadline)
 {
+    // What a door that does not call the module left, first: a picture
+    // still in the folder its source moved out of, a row whose picture is
+    // gone. Two queries, so a budget spent on the pictures never skips them.
+    pg_picture_tr_follow(null);
+    $lost = pg_picture_tr_lost();
+
     $ids = array();
 
     if (pg_picture_tr_store_ready()) {
@@ -444,10 +451,15 @@ function pg_picture_tr_prune($deadline)
         }
     }
 
+    $cursor_path = pg_picture_tr_prune_cursor_path();
+    $after = (int) @file_get_contents($cursor_path);
+    $checked = array();
+    $through = true;
     $dropped = 0;
 
-    foreach (array_keys($ids) as $file_id) {
+    foreach (pg_picture_tr_prune_order(array_keys($ids), $after) as $file_id) {
         if (microtime(true) > $deadline) {
+            $through = false;
             break;
         }
 
@@ -460,22 +472,82 @@ function pg_picture_tr_prune($deadline)
             pg_picture_tr_forget($file_id);
             $dropped++;
         }
+
+        $checked[] = $file_id;
     }
 
-    // What a door that does not call the module left: a picture still in
-    // the folder its source moved out of, a row whose picture is gone.
-    if (microtime(true) <= $deadline) {
-        pg_picture_tr_follow(null);
-        pg_picture_tr_lost();
+    if ($ids) {
+        @file_put_contents($cursor_path, (string) pg_picture_tr_prune_cursor($checked, $after, $through), LOCK_EX);
+    }
+
+    // A page kept by the file cache may name a language's picture just
+    // deleted; this runs in the job, which no signed-in request follows.
+    if (($dropped > 0) || ($lost > 0)) {
+        pg_page_cache_mark_dirty();
     }
 
     // The mark as the queue finds the rows now: a mark lost with a swept
     // data/temp is set again, one left by rows the prune dropped clears.
-    if (microtime(true) <= $deadline) {
-        pg_picture_tr_mark_check();
-    }
+    pg_picture_tr_mark_check();
 
     return $dropped;
+}
+
+/**
+ * The order the prune looks at the pictures in: those after the one the
+ * last run stopped at, then from the start. Pure.
+ *
+ * @param array $ids   file ids
+ * @param int   $after the last id the previous run looked at, 0 for none
+ * @return array ids
+ */
+function pg_picture_tr_prune_order($ids, $after)
+{
+    $ids = array_values(array_unique(array_map('intval', (array) $ids)));
+    sort($ids);
+
+    $later = array();
+    $earlier = array();
+
+    foreach ($ids as $id) {
+        if ($id > (int) $after) {
+            $later[] = $id;
+        } else {
+            $earlier[] = $id;
+        }
+    }
+
+    return array_merge($later, $earlier);
+}
+
+/**
+ * Where the next run starts: from the start after a whole pass, else after
+ * the last picture looked at (where it was when none was). Pure.
+ *
+ * @param array $checked ids looked at, in order
+ * @param int   $after   where this run started
+ * @param bool  $through every picture was looked at
+ * @return int
+ */
+function pg_picture_tr_prune_cursor($checked, $after, $through)
+{
+    if ($through) {
+        return 0;
+    }
+
+    return $checked ? (int) end($checked) : (int) $after;
+}
+
+/**
+ * The file that keeps where the prune stopped (data/temp, per database).
+ *
+ * @return string
+ */
+function pg_picture_tr_prune_cursor_path()
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : '';
+
+    return PG_FUNCTIONS_DIR . '/data/temp/picture_prune_' . md5($database) . '.txt';
 }
 
 /* ---------------------------------------------------------------------------
@@ -566,17 +638,21 @@ function pg_picture_tr_follow($file_ids)
 /**
  * Rows whose language picture is gone (deleted with a folder, say) wait to
  * be drawn again instead of naming a file that is not there.
+ *
+ * @return int rows changed
  */
 function pg_picture_tr_lost()
 {
     if (!pg_picture_tr_ready()) {
-        return;
+        return 0;
     }
 
-    db("UPDATE file_translation ft
+    $done = db("UPDATE file_translation ft
         LEFT JOIN files p ON p.id = ft.picture_file_id
         SET ft.picture_file_id = 0, ft.state = 0
         WHERE ft.picture_file_id > 0 AND p.id IS NULL");
+
+    return $done ? (int) mysqli_affected_rows(db::$con) : 0;
 }
 
 /* ---------------------------------------------------------------------------
