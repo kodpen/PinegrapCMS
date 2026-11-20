@@ -24,4 +24,5 @@ description: The designer's Prototype view (_sdProtoOpen()): what it is, its bar
 
 ## How does a link open in the editor?
 - The panel's "Open in the editor" (`_sdProtoOpenRow()`) closes the view, opens the tab (a shared frame: the open tab if it places it, else the first that does; a locked tab gets the folder-rights toast), selects the node (`findNodeById()`), `renderSelectionOnly()`, `renderProperties()`, `scrollCanvasToNode()`.
+- Back: P in the editor opens the view with the selected element's link picked (designer/prototype-back-key.md).
 - What a later change must keep: designer/prototype-view-rules.md.

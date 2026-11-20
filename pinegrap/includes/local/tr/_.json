@@ -2206,6 +2206,7 @@
     "{var:1}: the inventory quantity is now {var:2}.": "{var:1}: stok miktarı artık {var:2}.",
     "{var:1}: the last check could not run on the table": "{var:1}: son denetim bu tabloda çalışamadı",
     "{var:1}: the last check found an error in the table": "{var:1}: son denetim tabloda bir hata buldu",
+    "{var:1}: the link “{var:2}” is picked": "{var:1}: “{var:2}” bağlantısı seçildi",
     "{var:1}: the server cannot read the table's definition": "{var:1}: sunucu tablonun tanımını okuyamıyor",
     "{var:1}: the service code below, or the cheapest offer": "{var:1}: aşağıdaki servis kodu ya da en ucuz teklif",
     "{var:1}: the tables stay on MyISAM: {var:2}": "{var:1}: tablolar MyISAM'da kalıyor: {var:2}",

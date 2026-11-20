@@ -1386,6 +1386,116 @@ function test_proto_hotspots_canvas_marks()
 	pg_assert_same(array('hrefs' => array(), 'page_ids' => array(), 'menus' => array(), 'regions' => array()), $out['nothing'], 'no design, nothing asked');
 }
 
+// The editor's key back to the Prototype view: P alone, Shift and
+// Caps Lock allowed; never with Ctrl, Alt or Meta, held down, in an IME
+// composition or taken already, and never where it is typed or kept: a
+// field, a text written in, a dialog, a menu or list, a note, the code
+// editor, the view itself.
+function test_proto_hotspots_back_key()
+{
+	$out = proto_hotspots_test_node('function el(tag, inside, editable) { return { tagName: tag, isContentEditable: !!editable, closest: function (sel) { return (inside && sel.split(", ").indexOf(inside) >= 0) ? {} : null; } }; }'
+		. ' var body = el("BODY"), keys = function (e) { e.target = e.target || body; return H.backKey(e); };'
+		. ' out = { key: H.BACK_KEY, yes: [{ key: "p" }, { key: "P", shiftKey: true }, { key: "p", target: el("DIV", ".sd-panel-left") }, { key: "p", target: { tagName: "DIV" } }].map(keys),'
+		. ' no: [{ key: "p", ctrlKey: true }, { key: "p", altKey: true }, { key: "p", metaKey: true }, { key: "p", repeat: true }, { key: "p", isComposing: true }, { key: "p", defaultPrevented: true },'
+		. ' { key: "o" }, { key: "n" }, { key: "l" }, { key: "Process" },'
+		. ' { key: "p", target: el("INPUT") }, { key: "p", target: el("textarea") }, { key: "p", target: el("SELECT") }, { key: "p", target: el("P", "", true) },'
+		. ' { key: "p", target: el("DIV", "dialog") }, { key: "p", target: el("DIV", "[role=\"dialog\"]") }, { key: "p", target: el("BUTTON", "[role=\"menu\"]") }, { key: "p", target: el("LI", "[role=\"listbox\"]") },'
+		. ' { key: "p", target: el("DIV", ".sd-note-overlay") }, { key: "p", target: el("DIV", ".cm-editor") }, { key: "p", target: el("SPAN", "#sd-proto") }].map(keys),'
+		. ' bad: [H.backKey(null), H.backKey({ key: "p" }), H.backKey({ key: "p", target: null })] };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same('p', $out['key'], 'the key is P');
+	pg_assert_same(array(true, true, true, true), $out['yes'], 'P alone or with Shift, in the editor outside a field');
+	pg_assert_same(array_fill(0, 21, false), $out['no'], 'never with a modifier, held, composed, taken, another key, or where it is typed or kept');
+	pg_assert_same(array(false, false, false), $out['bad'], 'no event or no target: no key');
+}
+
+// Where the key back takes the Prototype view: the selected
+// element's row in its frame (a text's link by its index there, else the
+// node's first row; a menu's item by its place among the node's rows), its
+// frame alone for an element that is no link, nothing for a frame the view
+// does not draw. linkSpot() of a row is found again as that row.
+function test_proto_hotspots_back_to_the_link()
+{
+	$tab = function ($id, $href, $label, $tab, $source = 'href', $index = 0) {
+		return array('nodeId' => $id, 'source' => $source, 'index' => $index, 'href' => $href, 'label' => $label, 'mark' => $tab === '' ? 'broken' : 'tab', 'tab' => $tab, 'draft' => false);
+	};
+	$marked = array(
+		'pages' => array(
+			array('key' => 'p1', 'name' => 'home', 'hotspots' => array(
+				$tab('a', '/about', 'About', 'p2'),
+				$tab('t', '/about', 'one', 'p2', 'text', 0),
+				$tab('t', '/x', 'three', '', 'text', 2),
+				array('nodeId' => 'm', 'source' => 'menu', 'name' => 'Top', 'links' => array(
+					array('href' => '/home', 'label' => 'Home', 'mark' => 'tab', 'tab' => 'p1'),
+					array('href' => '/about', 'label' => 'About us', 'mark' => 'tab', 'tab' => 'p2'),
+				)),
+			)),
+			array('key' => 'p2', 'name' => 'about', 'hotspots' => array()),
+		),
+		'shared' => array(
+			array('id' => 5, 'name' => 'Header', 'pages' => 2, 'loaded' => true, 'hotspots' => array($tab('h', '/home', 'Logo', 'p1'))),
+		),
+	);
+	$out = proto_hotspots_test_node('var l = H.layout(' . proto_hotspots_test_js($marked) . ', {});'
+		. ' var at = function (frame, nodeId, index, nth) { var to = H.backTo(l, { frame: frame, nodeId: nodeId, index: index, nth: nth }); return to ? to.frame + " " + to.port : to; };'
+		. ' var trip = []; l.frames.forEach(function (f) { f.rows.forEach(function (r) { var to = H.backTo(l, H.linkSpot(l, f.id, r.port)); trip.push(f.id + " " + r.port + (to && to.frame === f.id && to.port === r.port ? " ok" : " lost")); }); });'
+		. ' out = { rows: l.frames[0].rows.map(function (r) { return r.port + " " + r.nodeId + " " + r.label; }),'
+		. ' to: [at("p:p1", "a", -1, -1), at("p:p1", "t", -1, -1), at("p:p1", "t", 2, -1), at("p:p1", "t", 1, -1), at("p:p1", "t", 0, 1),'
+		. ' at("p:p1", "m", -1, 1), at("p:p1", "m", -1, 7), at("p:p1", "m", 0, -1), at("s:5", "h", -1, -1)],'
+		. ' frameOnly: [H.backTo(l, { frame: "p:p1", nodeId: "zz", index: -1, nth: -1 }), H.backTo(l, { frame: "p:p2", nodeId: "", index: -1, nth: -1 }), H.backTo(l, { frame: "p:p1" })],'
+		. ' none: [H.backTo(l, { frame: "p:gone", nodeId: "a" }), H.backTo(l, null), H.backTo(null, { frame: "p:p1", nodeId: "a" }), H.backTo({}, { frame: "p:p1", nodeId: "a" })],'
+		. ' spots: [H.linkSpot(l, "p:p1", "h2"), H.linkSpot(l, "p:p1", "h4"), H.linkSpot(l, "s:5", "h0"), H.linkSpot(l, "p:p1", "h9"), H.linkSpot(l, "p:gone", "h0"), H.linkSpot(null, "p:p1", "h0")], trip: trip };');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('h0 a About', 'h1 t one', 'h2 t three', 'h3 m Home', 'h4 m About us'), $out['rows'], 'the page frame\'s rows');
+	pg_assert_same(array('p:p1 h0', 'p:p1 h1', 'p:p1 h2', 'p:p1 h1', 'p:p1 h1', 'p:p1 h4', 'p:p1 h3', 'p:p1 h3', 's:5 h0'), $out['to'], 'a link, a text\'s first or picked link, a menu\'s item, a shared part\'s link');
+	pg_assert_same(array(array('frame' => 'p:p1', 'port' => null), array('frame' => 'p:p2', 'port' => null), array('frame' => 'p:p1', 'port' => null)), $out['frameOnly'], 'an element that is no link: its frame alone');
+	pg_assert_same(array(null, null, null, null), $out['none'], 'a frame the view does not draw, or nothing asked: nothing');
+	pg_assert_same(array(
+		array('frame' => 'p:p1', 'nodeId' => 't', 'index' => 2, 'nth' => 1),
+		array('frame' => 'p:p1', 'nodeId' => 'm', 'index' => -1, 'nth' => 1),
+		array('frame' => 's:5', 'nodeId' => 'h', 'index' => -1, 'nth' => 0),
+		null, null, null,
+	), $out['spots'], 'a row\'s spot: its node, a text link\'s index, its place among the node\'s rows');
+	pg_assert_same(array('p:p1 h0 ok', 'p:p1 h1 ok', 'p:p1 h2 ok', 'p:p1 h3 ok', 'p:p1 h4 ok', 's:5 h0 ok'), $out['trip'], 'every row is found again from its spot');
+}
+
+// The editor's side of the key back: both key listeners (the
+// editor's document and the canvas frame's) ask backKey() and open the
+// view through _sdProtoBack(); the selection's spot, the link opened in
+// the editor from the view kept, the pick once the load it opened draws,
+// and the key in the shortcuts sheet.
+function test_proto_hotspots_view_back_from_the_editor()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+	$back = proto_hotspots_test_designer_fn('_sdProtoBack');
+	$spot = proto_hotspots_test_designer_fn('_sdProtoBackSpot');
+	$pick = proto_hotspots_test_designer_fn('_sdProtoBackPick');
+	$draw = proto_hotspots_test_designer_fn('_sdProtoDraw');
+	$row = proto_hotspots_test_designer_fn('_sdProtoOpenRow');
+
+	pg_assert_true($back !== '' && $spot !== '' && $pick !== '' && $draw !== '' && $row !== '', 'the functions are found');
+	pg_assert_same(2, substr_count($source, 'if (window.PGProtoHotspots && window.PGProtoHotspots.backKey(e) && _sdProtoBack()) {'), 'the editor\'s document and the canvas frame take the key');
+	pg_assert_contains("if (document.body.classList.contains('sd-email-design')) return false;", $back, 'an e-mail design has no Prototype view: the key is left alone');
+	pg_assert_contains('if (_sdProto.open) _sdProto.goTo = { spot: spot, seq: _sdProto.seq };', $back, 'the pick waits for the load the key opened');
+	pg_assert_contains('_sdProtoBackPick(spot);', $back, 'in an open view the link is picked at once');
+	pg_assert_contains('var s = _sdInnerSel();', $spot, 'a link picked inside a text');
+	pg_assert_contains("return { frame: sid ? 's:' + sid : 'p:' + _activeKey, nodeId: String(node._id), index: index, nth: -1 };", $spot, 'the open page\'s frame or the shared component\'s');
+	pg_assert_contains('window.PGProtoHotspots.backTo(_sdProto.layout, spot)', $pick, 'the row found by the pure module');
+	pg_assert_contains('_sdProtoPick(to.frame, to.port, true);', $pick, 'picked as a click on its mark picks it');
+	pg_assert_contains('canvas.view.reveal(item);', $pick, 'its frame brought into view');
+	pg_assert_contains('if (goTo && goTo.seq === _sdProto.seq) _sdProtoBackPick(goTo.spot);', $draw, 'the drawing of that load picks it');
+	pg_assert_contains('_sdProto.back = window.PGProtoHotspots.linkSpot(_sdProto.layout, frameId, port);', $row, 'the link opened in the editor is kept');
+	pg_assert_contains("['P',                   _sdT('Show the selected link in the Prototype view')]", $source, 'the key in the shortcuts sheet');
+}
+
 // A system widget leads to pages its settings name (the login widget's
 // "Giriş Yap" to the login page): those pages are reached as by a shared
 // part's link. A form's data page and an e-mail's page are no links; a
