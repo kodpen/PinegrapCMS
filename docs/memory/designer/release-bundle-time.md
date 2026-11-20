@@ -6,7 +6,7 @@ module: page_bundles
 
 ## What does the general job do with a bundle's time?
 - `pg_page_bundle_job_run()` in `job.php`, every tick: first a publish that died is finished (`release-bundle-publish-errors.md`), then scheduled bundles with `publish_at` due, 5 a tick, the oldest time first. With none due it is one indexed read (`idx_status_publish`) and one for stuck bundles.
-- A person's publish of a due bundle still running (its lock held) leaves it to that publish.
+- A due bundle whose lock is held (a person's publish, a page being added or removed) gets its time back (`publish_at` read, `WHERE status = 'scheduled' AND publish_at = 0`), so the next pass publishes it unless that action moved the bundle; before #10614 it stayed scheduled with no time, never published and with no bell.
 - The time is cleared first (`publish_at = 0` with the time read in the WHERE), so two overlapping runs never publish one bundle and nothing is retried by itself.
 - Then `pg_page_bundle_publish()` with no choices: the same checks and writes as a person's publish (`release-bundle-publish.md`). A page changed since needs a person's choice, so it holds the bundle.
 
