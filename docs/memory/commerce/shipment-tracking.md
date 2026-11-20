@@ -14,7 +14,7 @@ module: shipment_tracking
 
 ## What is written back?
 - Only through `shipment-write-path.md`: `pg_shipment_tracking_decide()` (pure) takes a status other than delivered, and the carrier and tracking page the row lacks; `pg_shipment_tracking_apply()` writes them by `pg_shipment_record()` with `existing_only` (a parcel removed meanwhile is not added back and gets no arrival), then for delivered calls `pg_shipment_delivered($ship_to_id, <the carrier's time>)`: `order.delivered`, the `order_delivered` e-mail and the SMS, once per address.
-- The e-mail, SMS, WhatsApp and push go only to an order the shop sold itself (`pg_shipment_tracking_notify()`, `orders.type` not `marketplace`), as the order screen's save keeps them back (#PRNUM); the event is announced either way. Each arrival is logged ("Shipment Tracking: Order N (number) was delivered", existing texts); the run's counts take only parcels written.
+- The e-mail, SMS, WhatsApp and push go only to an order the shop sold itself (`pg_shipment_tracking_notify()`, `orders.type` not `marketplace`), as the order screen's save keeps them back (#10661); the event is announced either way. Each arrival is logged ("Shipment Tracking: Order N (number) was delivered", existing texts); the run's counts take only parcels written.
 - The parcel keeps the label's number: a carrier number given later (Geliver's `trackingNumber` beside the barcode) is not swapped in, which would cut the row from its label; its tracking page is written.
 - A failed answer writes nothing; a driver's failures are logged once a day.
 
