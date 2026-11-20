@@ -369,26 +369,38 @@ function pg_booking_wall_time($day, $time, $zone)
 }
 
 /**
- * Whether a slot, widened by the service's buffers, meets a busy range.
- * Ranges are half-open: one that ends where the buffer starts is free.
+ * Whether a slot, widened by the buffers, meets a busy range. Ranges are
+ * half-open: one that ends where the buffer starts is free.
+ *
+ * A booked range may carry its own service's buffers as a third and fourth
+ * element (seconds before and after it). Buffers do not add up: between two
+ * bookings the gap is the larger of the earlier one's buffer after and the
+ * later one's buffer before, whichever was booked first. A range without
+ * them (a Workspace event, a holiday) keeps only the new service's buffers.
  *
  * @param int   $start   unix start of the slot
  * @param array $service array with length_minutes, buffer_before, buffer_after
- * @param array $busy    list of array(start, end)
+ * @param array $busy    list of array(start, end[, before, after])
  * @return bool
  */
 function pg_booking_overlaps($start, $service, $busy)
 {
-    $from = (int) $start - (isset($service['buffer_before']) ? (int) $service['buffer_before'] * 60 : 0);
-    $until = (int) $start + ((int) $service['length_minutes'] * 60) + (isset($service['buffer_after']) ? (int) $service['buffer_after'] * 60 : 0);
+    $start = (int) $start;
+    $end = $start + ((int) $service['length_minutes'] * 60);
+    $before = isset($service['buffer_before']) ? (int) $service['buffer_before'] * 60 : 0;
+    $after = isset($service['buffer_after']) ? (int) $service['buffer_after'] * 60 : 0;
 
     foreach ((array) $busy as $range) {
 
         if (is_array($range) && (count($range) >= 2)) {
 
             $range = array_values($range);
+            $range_before = isset($range[2]) ? max(0, (int) $range[2]) : 0;
+            $range_after = isset($range[3]) ? max(0, (int) $range[3]) : 0;
 
-            if (($from < (int) $range[1]) && ($until > (int) $range[0])) {
+            // The slot's start keeps the larger of its buffer before and the
+            // range's buffer after from the range's end, and the other way round.
+            if ((($start - max($before, $range_after)) < (int) $range[1]) && (($end + max($after, $range_before)) > (int) $range[0])) {
                 return true;
             }
 
@@ -401,11 +413,14 @@ function pg_booking_overlaps($start, $service, $busy)
 
 /**
  * The busy ranges of booking rows: a cancelled booking and a hold past its
- * hold_until take no time.
+ * hold_until take no time. A row read with its service's buffer_before and
+ * buffer_after (minutes) carries them in seconds as the range's third and
+ * fourth element (pg_booking_overlaps()).
  *
- * @param array $rows rows with start_at, end_at, status, hold_until
+ * @param array $rows rows with start_at, end_at, status, hold_until and
+ *                    optionally buffer_before, buffer_after
  * @param int   $now
- * @return array list of array(start, end)
+ * @return array list of array(start, end[, before, after])
  */
 function pg_booking_busy_from_rows($rows, $now)
 {
@@ -414,7 +429,14 @@ function pg_booking_busy_from_rows($rows, $now)
     foreach ((array) $rows as $row) {
 
         if (pg_booking_slot_holder($row, $now) === 'taken') {
-            $busy[] = array((int) $row['start_at'], (int) $row['end_at']);
+            $range = array((int) $row['start_at'], (int) $row['end_at']);
+
+            if (array_key_exists('buffer_before', $row) || array_key_exists('buffer_after', $row)) {
+                $range[] = isset($row['buffer_before']) ? (int) $row['buffer_before'] * 60 : 0;
+                $range[] = isset($row['buffer_after']) ? (int) $row['buffer_after'] * 60 : 0;
+            }
+
+            $busy[] = $range;
         }
 
     }
@@ -581,6 +603,37 @@ function pg_booking_clear_expired_hold($staff_id, $start, $now)
 }
 
 /**
+ * A staff member's live bookings near a slot, each with its service's
+ * buffers: those whose time, widened by the larger buffer of either side,
+ * meets the slot. The row being moved is left out.
+ *
+ * @param int   $staff_id
+ * @param int   $start    unix start of the slot
+ * @param int   $end      unix end of the slot
+ * @param array $service  the new slot's service, with buffer_before, buffer_after
+ * @param int   $except   a booking id to leave out (0: none)
+ * @return array rows with start_at, end_at, status, hold_until, buffer_before, buffer_after
+ */
+function pg_booking_rows_near($staff_id, $start, $end, $service, $except)
+{
+    $before = isset($service['buffer_before']) ? (int) $service['buffer_before'] * 60 : 0;
+    $after = isset($service['buffer_after']) ? (int) $service['buffer_after'] * 60 : 0;
+
+    return (array) db_items(
+        "SELECT bookings.start_at, bookings.end_at, bookings.status, bookings.hold_until,
+            COALESCE(booking_services.buffer_before, 0) AS buffer_before,
+            COALESCE(booking_services.buffer_after, 0) AS buffer_after
+        FROM bookings
+        LEFT JOIN booking_services ON booking_services.id = bookings.service_id
+        WHERE
+            bookings.staff_id = '" . (int) $staff_id . "'
+            " . (((int) $except > 0) ? "AND bookings.id <> '" . (int) $except . "'" : '') . "
+            AND bookings.start_at < '" . (int) $end . "' + GREATEST(" . $after . ", COALESCE(booking_services.buffer_before, 0) * 60)
+            AND bookings.end_at + GREATEST(" . $before . ", COALESCE(booking_services.buffer_after, 0) * 60) > '" . (int) $start . "'
+            AND bookings.status <> 'cancelled'");
+}
+
+/**
  * Writes one booking row under the staff member's lock: an expired hold on
  * the same start is removed first, a live booking that overlaps the slot with
  * the service's buffers refuses it, and the INSERT itself is refused by the
@@ -614,18 +667,7 @@ function pg_booking_insert($booking, $status, $hold_until, $source, $now)
 
     pg_booking_clear_expired_hold($staff_id, $start, $now);
 
-    $before = isset($service['buffer_before']) ? (int) $service['buffer_before'] * 60 : 0;
-    $after = isset($service['buffer_after']) ? (int) $service['buffer_after'] * 60 : 0;
-
-    $rows = db_items(
-        "SELECT start_at, end_at, status, hold_until FROM bookings
-        WHERE
-            staff_id = '" . $staff_id . "'
-            AND start_at < '" . ($end + $after) . "'
-            AND end_at > '" . ($start - $before) . "'
-            AND status <> 'cancelled'");
-
-    if (pg_booking_overlaps($start, $service, pg_booking_busy_from_rows($rows, $now))) {
+    if (pg_booking_overlaps($start, $service, pg_booking_busy_from_rows(pg_booking_rows_near($staff_id, $start, $end, $service, 0), $now))) {
         db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
         return array('answer' => 'taken', 'id' => 0);
     }

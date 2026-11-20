@@ -267,6 +267,28 @@ function test_booking_agenda_ws_ranges_leave_out_skipped_days()
 	pg_assert_contains("pg_schema_has('ws_events', 'skipped')", $source, 'the agenda reads ws_events.skipped where it exists');
 }
 
+// A Workspace holiday marked "Every year" closes its day in the later years
+// too, as the Workspace calendar shows it; a one-off holiday does not.
+function test_booking_agenda_ws_busy_holds_yearly_holidays()
+{
+	$zone = 'Europe/Istanbul';
+	$yearly = array('starts_at' => booking_agenda_test_at('2026-01-01 00:00:00', $zone),
+		'ends_at' => booking_agenda_test_at('2026-01-01 23:59:59', $zone), 'all_day' => 1, 'skipped' => 0, 'yearly' => 1);
+	$once = array_merge($yearly, array('yearly' => 0));
+	$from = booking_agenda_test_at('2027-01-01 00:00:00', $zone);
+	$until = booking_agenda_test_at('2027-01-02 00:00:00', $zone);
+
+	pg_assert_same(
+		array(array($from, $until)),
+		pg_booking_agenda_ws_ranges(pg_booking_ws_yearly(array($yearly, $once), $from, $until, new DateTimeZone($zone))),
+		'1 January 2027 is taken by the yearly holiday only');
+
+	$reflection = new ReflectionFunction('pg_booking_agenda_ws_busy');
+	$source = implode('', array_slice(file($reflection->getFileName()), $reflection->getStartLine() - 1, $reflection->getEndLine() - $reflection->getStartLine() + 1));
+	pg_assert_contains('pg_booking_ws_yearly(', $source, 'the agenda adds the later years of yearly holidays');
+	pg_assert_contains("pg_schema_has('ws_events', 'yearly')", $source, 'the agenda reads ws_events.yearly where it exists');
+}
+
 function test_booking_agenda_list_columns_and_row()
 {
 	$columns = pg_booking_agenda_list_columns();

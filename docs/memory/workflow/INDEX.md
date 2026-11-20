@@ -11,7 +11,7 @@
 - agent-channel-request-wait.md: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): which request wakes it, the printed line, the interval, exits, restarting
 - agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed [decision: here]
 - api-answer-check-run.md: Working rule: who runs tools/check_api_answers.php, when and how: a running site with a database, settings from the environment only, never in CI, findings filed as bug issues
-- architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends [decision: here]
+- architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20 [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
 - architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19) [decision: here]
@@ -42,7 +42,7 @@
 - bug-hunt-customer-reviews.md: Bug hunt of the store's customer reviews (architect, agent channel message 10333, 2026-11-20): the fault fixed, the issue opened, what was read clean
 - bug-hunt-event-tickets.md: Bug hunt of event tickets, a ticket's lifetime and the door (architect 2026-11-20, agent channel message 10668, #10754): what was read, the five faults fixed, the two issues, what was found clean [decision: here]
 - bug-hunt-mail-sending.md: Bug hunt of Site Settings › E-mail sending (architect, agent channel message 10151, 2026-11-20): the five faults fixed, the issue opened, what was read clean
-- bug-hunt-place-map.md: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), what was read clean [decision: here]
+- bug-hunt-place-map.md: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), both fixed in #10838, what was read clean [decision: here]
 - bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean [decision: here]
 - bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean [decision: decisions-made-schema-26.md]
 - bug-hunt-wishlist.md: Bug hunt of the wishlist (Favourites), visitor and member side (architect, agent channel message 10334, 2026-11-20): the two faults fixed, no issue opened, what was read clean
@@ -67,6 +67,7 @@
 - decisions-made-panel-10.md: Decisions list, panel part 10 (2026-11-17 on): new screens in the design language; an area's tab strip centred in the window; the Design Canvas renamed Artifact Canvas, its new icon
 - decisions-made-panel-11.md: Decisions list, panel part 11 (2026-11-20 on): the Site Settings dialog wider and taller, the Assistants and agents category tidied
 - decisions-made-panel-12.md: Decisions list, panel part 12 (2026-11-20 on): the owner's yes to three drawings: Application Access New application (poll 188), Edit application (poll 189), Assistants and agents (poll 190)
+- decisions-made-panel-13.md: Decisions list, panel part 13 (2026-11-21 on): the dashboard's Assistant card keeps the agent chat while Claude is off, with a notice at its top and a short note when no agent is connected
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened

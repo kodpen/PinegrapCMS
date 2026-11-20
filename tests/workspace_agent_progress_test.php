@@ -120,7 +120,7 @@ function test_workspace_agent_progress_route()
 	}
 
 	pg_assert_true(is_array($found), 'the route is listed');
-	pg_assert_same(array('POST', '/workspace/agent-requests/{id}/progress', 'workspace:write', false, true), array($found['method'], $found['path'], $found['scope'], $found['mcp'], $found['dry_run']), 'off MCP, with a dry run');
+	pg_assert_same(array('POST', '/workspace/agent-requests/{id}/progress', 'workspace:write', 'agent', true), array($found['method'], $found['path'], $found['scope'], $found['mcp'], $found['dry_run']), 'a tool for the agent\'s own key, with a dry run');
 
 	$text = array_values(array_filter($found['params'], function ($param) {
 		return $param['name'] === 'text';

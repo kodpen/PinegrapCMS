@@ -9,7 +9,7 @@ description: An agent concludes a discussion when a person in it asks (conclude,
 - Any channel whose discussions the agent may answer in, not only an agent channel.
 
 ## How does an agent ask for it?
-- Application agent: `POST /workspace/agent-requests/{id}/answer` with `conclude` true, beside `text` or `no_answer`. The check runs before the dry run stops; the answer object carries `conclude {asked, done, error}`. The route stays `'mcp' => false`, so there is no MCP tool.
+- Application agent: `POST /workspace/agent-requests/{id}/answer` with `conclude` true, beside `text` or `no_answer`. The check runs before the dry run stops; the answer object carries `conclude {asked, done, error}`. The route is an MCP tool for the agent's own key only (`'mcp' => 'agent'`, `api/mcp-agent-own-tools.md`).
 - Model agent: its `answer` tool takes `conclude` in an open discussion (`ws_ai_answer_takes_conclude()`, model_agents.php); words, an emoji alone or nothing (its no_answer) close the request, then `ws_model_conclude_after()`.
 - The answer is always written first: an answer is refused in a concluded discussion.
 

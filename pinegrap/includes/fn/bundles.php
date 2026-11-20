@@ -953,6 +953,8 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
         }
 
         db("UPDATE order_items SET quantity = '" . (int) $answer['allowed'] . "' WHERE id = '" . (int) $row['id'] . "'");
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_form_uploads.php');
+        pg_pfu_quantity_lowered($row['id'], $row['quantity'], $answer['allowed']);
 
         if (($row['ship_to_id'] != '') && ($row['ship_to_complete'] == 1)) {
             require_once(PG_FUNCTIONS_DIR . '/shipping.php');

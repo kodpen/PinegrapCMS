@@ -575,6 +575,8 @@ function mp_order_return_stock($order_id) {
 		INNER JOIN products ON products.id = order_items.product_id
 		WHERE order_items.order_id = '" . e((int)$order_id) . "'");
 
+	$order_ref = (string) db_value("SELECT order_number FROM orders WHERE id = '" . e((int)$order_id) . "'");
+
 	foreach ($items as $item) {
 
 		// A bundle line puts back the components it took, as recorded when
@@ -593,12 +595,24 @@ function mp_order_return_stock($order_id) {
 
 		$product_id = (int) $item['product_id'];
 
+		// With stock locations the units go back to the default location
+		// through the writer, which keeps the total the sum of the rows.
+		$written = pg_stock_total_write($product_id, 'adjust', max(1, (int)$item['quantity']), 0, 'cancel', $order_ref);
+
 		// The stamp lets a system syncing with GET /products?updated_since=
 		// list the product; this path announces no webhook event.
-		db("UPDATE products
-			SET inventory_quantity = inventory_quantity + " . max(1, (int)$item['quantity']) . ",
-				timestamp = UNIX_TIMESTAMP()
-			WHERE id = '" . e($product_id) . "'");
+		if ($written === null) {
+
+			db("UPDATE products
+				SET inventory_quantity = inventory_quantity + " . max(1, (int)$item['quantity']) . ",
+					timestamp = UNIX_TIMESTAMP()
+				WHERE id = '" . e($product_id) . "'");
+
+		} else {
+
+			db("UPDATE products SET timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($product_id) . "'");
+
+		}
 
 		db("UPDATE products SET out_of_stock = '0'
 			WHERE (id = '" . e($product_id) . "') AND (inventory_quantity > 0)");
@@ -767,7 +781,7 @@ function mp_order_write($account, $package, $map_id) {
 
 	}
 
-	mp_order_take_stock($matched);
+	mp_order_take_stock($matched, (string)$order_number);
 
 	log_activity(lang(array(
 		'string' => 'Order {var:1} was imported from {var:2}.',
@@ -1127,7 +1141,7 @@ function mp_order_number() {
 // down to zero rather than through it - a marketplace can sell what this shop
 // thinks it does not have, and a negative quantity would then be pushed back
 // out to every other marketplace as if it meant something.
-function mp_order_take_stock($matched) {
+function mp_order_take_stock($matched, $order_ref = '') {
 
 	$product_ids = array();
 
@@ -1163,12 +1177,24 @@ function mp_order_take_stock($matched) {
 
 		$product_id = (int) $product['id'];
 
+		// With stock locations the units come off the default location
+		// through the writer: what it holds, nothing from another location.
+		$written = pg_stock_total_write($product_id, 'adjust', -$quantity, 0, 'marketplace', $order_ref);
+
 		// The stamp lets a system syncing with GET /products?updated_since=
 		// list the product; this path announces no webhook event.
-		db("UPDATE products
-			SET inventory_quantity = GREATEST(0, CAST(inventory_quantity AS SIGNED) - " . (int)$quantity . "),
-				timestamp = UNIX_TIMESTAMP()
-			WHERE id = '" . e($product_id) . "'");
+		if ($written === null) {
+
+			db("UPDATE products
+				SET inventory_quantity = GREATEST(0, CAST(inventory_quantity AS SIGNED) - " . (int)$quantity . "),
+					timestamp = UNIX_TIMESTAMP()
+				WHERE id = '" . e($product_id) . "'");
+
+		} else {
+
+			db("UPDATE products SET timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($product_id) . "'");
+
+		}
 
 		$left = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
 

@@ -19,7 +19,7 @@ module: ad_conversions
 - Marketplace orders (`type = 'marketplace'`) are never sent; counter sales (`local`) not until their setting exists.
 
 ## Where do the settings live?
-- `config_text` row `ad_conversions_<service>`, JSON: `connected`, `events` (missing → `purchase`), `person_notice_off` (the box), `without_person` (events sent without the person). Written by each service's Connections page (Meta: `ad-conversions-meta.md`); a service with no page queues nothing.
+- `config_text` row `ad_conversions_<service>`, JSON: `connected`, `events` (missing → `purchase`), `person_notice_off` (the box), `without_person` (events sent without the person). Written by each service's Connections page (Meta: `ad-conversions-meta.md`; GA4: `ad-conversions-ga4.md`, which also writes refund rows); a service with no page queues nothing.
 
 ## How is a row sent?
 - `pg_ad_conversion_dispatch(10)` in `job.php`, apart from the webhook queue: sweep once a day (rows over 30 days, any status), then up to 50 due rows. Each row is claimed (`next_attempt_at` moved on), its event built at send (`pg_ad_conversion_event()`: amounts to decimals, e-mail and phone normalised and SHA-256 hashed then, ids only with the person) and handed to `pg_ad_conversion_send_<service>($event, $settings)` when that function exists; a service without a sender leaves its rows due.
@@ -29,5 +29,5 @@ module: ad_conversions
 ## Privacy?
 - `pg_privacy_erase_tables()`: `ad_conversion_events` found by `order_id` → `order_ids`, deleted. Export section `ad_conversions` ("Ad service events") after `consents`.
 
-## What is not in SC1?
-- The click ids of the landing address (`fbclid`, `gclid`, `ttclid`) are not captured yet: the plan wants them held in the session before consent; no step names it so far.
+## Click ids?
+- The landing address's `fbclid`, `gclid`, `ttclid` join a consenting buyer's `ids` at the payment step: `ad-conversions-click-ids.md`.

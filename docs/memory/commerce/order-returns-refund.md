@@ -20,14 +20,15 @@ description: Refund of a received return (PR #936): driver or recorded, suggeste
 ## What is written?
 - Money moved (amount > 0): `orders.refunded_amount += amount`, `order_refunds` row (`refund_type` `return` or `return_manual`, `transaction_id` = the driver's `refund_reference` (never the typed one) or a manual refund's typed reference, `notes` "Return request #N"). Order status and totals stay (a return is not a cancellation; the order screen's full refund still cancels).
 - The refund on the return itself (`refund_*`, 11.0.34): order-returns-refund-columns.md.
-- `pg_audit('update', 'order_return', …)` with refund_amount, refund_method, refund_reference; one activity line; the customer's mail `pg_return_send_refund_mail()` (amount > 0; "the money goes back the way you paid" only for a driver).
+- `pg_audit('update', 'order_return', …)` with the refund fields; one activity line; the mail `pg_return_send_refund_mail()` (amount > 0; "the money goes back the way you paid" only for a driver).
+- Tickets of the returned units: voided, places back (#10773, event-tickets-returns.md).
 
 ## What about the ERP return invoice?
 - An order with an issued invoice and a person with ERP rights (`pg_return_erp_hand_off($user)`: ERP on and role < 3 or `manage_erp`) go on to `add_erp_return.php?invoice_id=…&back_order=…&qty[line]=…`, filled in with the same lines, as the order screen's refund does; nothing is issued until they save.
-- The note under the Payment Refund card asks the same helper (PR #1135, issue #973): only they are promised the invoice screen; anyone else reads that an ERP user must issue the return invoice after the refund (before, everyone was promised a screen only ERP users could open).
+- The note under the Payment Refund card asks the same helper (PR #1135, issue #973): only they are promised the invoice screen; anyone else reads that an ERP user must issue the return invoice after the refund.
 
 ## How are staff reminded?
 - The daily job, its two stages, the once-only stamps on the return and the test: order-returns-reminders.md.
 
 ## Tests?
-- `tests/returns_test.php` (amount, estimate, line map, refund mail). Sandbox runs, the iyzico driver with a stand-in HTTP client and the ERP hand-off: PR #936 body.
+- `tests/returns_test.php` (amount, estimate, line map, refund mail). Sandbox runs (iyzico with a stand-in HTTP client, ERP hand-off): PR #936 body.

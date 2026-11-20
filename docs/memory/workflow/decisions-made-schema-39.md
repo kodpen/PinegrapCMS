@@ -14,6 +14,7 @@ description: Decisions list, schema part 39 (2026-11-20 on): the three tables of
 - One row per account and scope. `id` INT UNSIGNED AUTO_INCREMENT; `account_id` INT UNSIGNED; `scope` TINYINT (0 the account, 1 a category, 2 a brand); `scope_id` INT UNSIGNED, the category, 0 on the other rows; `scope_key` VARCHAR(100), the brand as `products.brand` holds it (there is no brand table), '' on the other rows.
 - `percent` INT, signed hundredths of a percent; `fixed` INT, signed minor units; `rounding` VARCHAR(10).
 - Read on the account's row only: `robot` TINYINT (0 off, 1 try first, 2 on); `step` INT UNSIGNED, minor units; `min_margin` INT UNSIGNED, hundredths of a percent; `grow_cap` INT UNSIGNED default 1000.
+- `step_unit` TINYINT UNSIGNED default 0, on the account's row only: 0 reads `step` as an amount in minor units, 1 as hundredths of a percent (feature R7, "an amount or a percent"). Added on RP2 (architect, 2026-11-20, agent channel request 2091): a percent step is taken of the price it moves from (the buybox price for Win, the own price for Grow while winning), `round()` to minor units, never under 1; saved from 0.01 to 10.00.
 - `updated_at`, `updated_by` INT UNSIGNED.
 - Keys: unique (`account_id`, `scope`, `scope_id`, `scope_key`). The rule pick in PHP matches a brand as the column compares it: trimmed, whatever the case.
 

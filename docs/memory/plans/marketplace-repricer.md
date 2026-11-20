@@ -17,7 +17,7 @@ priority: 6
 - Prices leave only through the marketplace queue; the channel price is worked out in `mp_product_row()`, so every send carries it.
 - The robot never sets a price under the floor; a listing with no floor (no cost and none typed) is never repriced.
 - A robot price carries no struck-through price: `listPrice` equals `salePrice`, since the price before a discount must be the lowest of the last 30 days (price label regulation).
-- Each channel price queued goes into `product_price_history` on the account's channel, so the sales watch's price shield sees it (`plans/sales-watch.md`).
+- Each channel price queued goes into `product_price_history` on the account's channel, so the sales watch's price shield sees it (`commerce/sales-watch.md`).
 - The site's own price is never changed by the robot.
 
 ## What did the architect decide? (2026-11-20, agent channel message 10697)

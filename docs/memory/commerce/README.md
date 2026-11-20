@@ -23,7 +23,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 ## Clusters
 
 - `carrier-label-*`: 15 files; start at `carrier-label-overview.md`.
-- `event-tickets-*`: 7 files; start at `event-tickets.md`.
+- `event-tickets-*`: 8 files; start at `event-tickets.md`.
 - `express-order-*`: 8 files.
 - `gift-card-*`: 9 files.
 - `order-completion-*`: 10 files; start at `order-completion.md`.
@@ -32,7 +32,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - `product-price-*`: 6 files.
 - `product-review-*`: 6 files.
 - `shipment-label-*`: 8 files; start at `shipment-labels.md`.
-- `stock-locations-*`: 6 files.
+- `stock-locations-*`: 7 files.
 - `store-credit-*`: 9 files.
 
 ## Files

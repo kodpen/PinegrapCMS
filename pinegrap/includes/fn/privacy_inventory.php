@@ -94,6 +94,7 @@ function pg_privacy_inventory_retentions()
         'form_submissions' => 'Rule: form submissions',
         'incomplete_carts' => 'Rule: incomplete carts',
         'orders'           => 'Rule: orders',
+        'closed_requests'  => 'Rule: closed requests',
     );
 }
 
@@ -190,6 +191,12 @@ function pg_privacy_inventory()
             'purpose' => 'What people typed into forms', 'ground' => 'legitimate_interest', 'retention' => 'form_submissions'),
         'form_signatures' => array('categories' => array('signature'), 'subjects' => array('customer', 'applicant'),
             'purpose' => 'Signatures on forms', 'ground' => 'contract', 'retention' => 'form_submissions'),
+        'application_entries' => array('categories' => array('identity'), 'subjects' => array('applicant'),
+            'purpose' => 'Applications and their decisions', 'ground' => 'legitimate_interest', 'retention' => 'until_erased'),
+        'application_reviews' => array('categories' => array('messages'), 'subjects' => array('applicant', 'staff'),
+            'purpose' => 'Reviewers\' scores and notes on applications', 'ground' => 'legitimate_interest', 'retention' => 'until_erased'),
+        'application_reviewers' => array('categories' => array('identity', 'contact'), 'subjects' => array('staff'),
+            'purpose' => 'Reviewers and jurors of application programmes', 'ground' => 'legitimate_interest', 'retention' => 'until_erased', 'person' => array('email', 'text')),
         'files' => array('categories' => array('uploads'), 'subjects' => array('customer', 'visitor', 'applicant'),
             'purpose' => 'Files sent with forms', 'ground' => 'legitimate_interest', 'retention' => 'form_submissions',
             'where' => '`id` IN (SELECT `file_id` FROM `form_data` WHERE `file_id` > 0)'),
@@ -233,6 +240,10 @@ function pg_privacy_inventory()
             'purpose' => 'Rows of workflow tables', 'ground' => 'legitimate_interest', 'retention' => 'until_erased'),
         'ws_wtable_row_bin' => array('categories' => array('identity', 'contact'), 'subjects' => array('customer'),
             'purpose' => 'Rows in a workflow table\'s bin', 'ground' => 'legitimate_interest', 'retention' => 'until_erased'),
+
+        // Requests about personal data (includes/fn/privacy_requests.php).
+        'privacy_requests' => array('categories' => array('identity', 'contact', 'messages'), 'subjects' => array('customer', 'visitor'),
+            'purpose' => 'Requests about personal data and their answers', 'ground' => 'legal_obligation', 'retention' => 'closed_requests', 'person' => array('email', 'text')),
 
         // Logs.
         'consent_log' => array('categories' => array('ip_cookie'), 'subjects' => array('customer', 'visitor'),

@@ -46,9 +46,6 @@
 - canvas-data-views-screens.md: Plan canvas-data-views, how the Data menu and the data layer's panel are put together in the Design Canvas (DV2) and the Data screen's "Show on a canvas" (DV3)
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
 - canvas-group-motion-send.md: Plan (owner 2026-11-20): Artifact Canvas: a group recorded and shown as one, Attach to and Detach sound where the hand is, the main button as a split button with send and save choices; CS1 to CS5
-- channel-activity-features.md: Plan channel-activity, features E1 to E13: the Activity tab of Channel info, what it shows of agents, requests, polls, decisions and the repository, the report's context, project and branch
-- channel-activity-steps.md: Plan channel-activity, steps KA1 to KA5: the activity read with its API route, the Activity tab's script, the report's context, project and branch, the repository numbers, close-out
-- channel-activity.md: Plan (owner 2026-11-20, agent channel poll 179): an Activity tab in Channel info that tells a channel's state: agents, requests, polls, decisions, repository numbers, reported context; KA1 to KA5
 - channel-documents-features.md: Plan channel-documents, features N1 to N10: a note written in a channel from the composer or by an agent's route, the folded card, edits in place, versions, who may change it, the agent's name
 - channel-documents-steps.md: Plan channel-documents, steps KD1 to KD5: the server (write in a channel, the route, access by channel, the touch), the card and its windows, the agent's name, the session tool, close-out
 - channel-documents.md: Plan (owner 2026-11-20, agent channel poll 179): a document in a channel is a note written there, drawn as it reads and changed in place by people and agents, with versions; KD1 to KD5
@@ -61,6 +58,7 @@
 - customer-rhythm-features.md: Plan customer-rhythm, features H1 to H16: product rhythm, customer rhythm and chance, stages, reorder due, the link, events, group rule, measuring, report, card, settings, API
 - customer-rhythm-steps.md: Plan customer-rhythm, steps RY1a to RY6: the pure rules, the store and nightly pass, the events with the brake, the reorder link, report and card, API and group rule, close-out
 - customer-rhythm.md: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; RY1a to RY6
+- dashboard-assistant-agents.md: Plan (owner 2026-11-21): the dashboard's Assistant card with Claude off: a notice at the top, the agent chat, questions and proposals kept, a short note when no agent is connected; one step, DA1
 - delivery-tower-features.md: Plan delivery-tower, features T1 to T14: measured times, the four problem kinds, the desk, alerts, events, the scorecard, arrival and carrier suggestions, settings, API
 - delivery-tower-screens.md: Plan delivery-tower, how its screens are put together (DT3 to DT5): the Delivery problems list, a problem's drawer, the carrier scorecard, the two suggestions, the settings drawer
 - delivery-tower-steps.md: Plan delivery-tower, steps DT1a to DT6: the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
@@ -70,7 +68,6 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
-- discussion-everyone-hint.md: Plan (owner 2026-11-20, poll 184): in a discussion a person's @herkes that woke no agent says why under the message, and the channel's agents are added to a discussion in one go; one step, DE1
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - feedback-loop-features.md: Plan feedback-loop, features Q1 to Q16: surveys, touchpoints, periodic NPS, timing, fatigue, the signed one-click answer, review invitation, follow-up, report, group rule, API, privacy
@@ -124,9 +121,6 @@
 - privacy-centre-steps.md: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers, the screen and downloads, the retention rules, the request record, the public form, API, close-out
 - privacy-centre.md: Plan (owner 2026-11-20, poll 167): KVKK centre: a live personal data inventory with transfers abroad, opt-in retention and destruction rules, a request box with the 30-day clock; KV1 to KV7
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- sales-watch-features.md: Plan sales-watch, features W1 to W12: the norm per channel, orders stopped, payment broken, the price error shield, taking a product off sale, the return spike, delivery, settings, API
-- sales-watch-steps.md: Plan sales-watch, steps SW1 to SW6: the norm and the flow alerts, the settings part, the price error shield, the return spike, the API reader, close-out
-- sales-watch.md: Plan (owner 2026-11-20, poll 165): the store learns its order rhythm and alerts on orders stopped, a silent channel, broken payment, a price error, a return spike; SW1 to SW6
 - stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see
 - stock-holds-steps.md: Plan stock-holds, steps SH1 to SH5: the table and its functions, the checkout's check, placing and releasing around the payment, what people see, close-out; which files other work holds
 - stock-holds.md: Plan (owner 2026-11-20, agent channel poll 172): units are held for an order while its payment runs, so two orders cannot both take the last unit; SH1 to SH5

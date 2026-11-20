@@ -915,7 +915,7 @@ function ws_agent_brief_tool_lines($mcp, $scopes, $request_id)
     sort($scopes);
 
     return array(
-        'Tools: the site\'s MCP server at ' . $mcp . ' and the same routes over HTTP, both with your own key. Your own routes (/workspace/agent-requests, /workspace/agent-wake, /workspace/agent-report) are HTTP only: they are not MCP tools.',
+        'Tools: the site\'s MCP server at ' . $mcp . ' and the same routes over HTTP, both with your own key. Your own routes (/workspace/agent-instructions, /workspace/agent-requests, /workspace/agent-wake, /workspace/agent-report) are tools there for your own key only, named after the route (workspace_agent_requests_answer for POST /workspace/agent-requests/{id}/answer); GET /workspace/agent-feedback is HTTP only.',
         'Your key\'s scopes: ' . ($scopes ? implode(', ', $scopes) : 'none') . '.',
         'Close this request with POST /workspace/agent-requests/' . (int) $request_id . '/answer (text, or no_answer true; emoji adds one emoji to the asking message, with either), or give it up with POST /workspace/agent-requests/' . (int) $request_id . '/fail (reason).',
     );
@@ -1168,3 +1168,6 @@ function ws_agent_brief($agent, $row, $scopes)
 
     return ws_ai_briefing_text($lines, ws_ai_request_language($request));
 }
+
+// The @herkes hint of a discussion, written after the wake (everyone_hint.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/everyone_hint.php');

@@ -11448,13 +11448,64 @@
         return { id: 'group:' + gid, type: 'group', x: b.x, y: b.y, w: b.w, h: b.h, rot: 0, anim: { keys: groupFx(layers, gid).keys } };
     }
 
+    // A move recorded with group gid picked (recordApply() on the group's
+    // keys): the group's keys replaced in the recorded span, one motion
+    // for every member; the members' own keys stay as they are.
+    // { layers, end }.
+    function groupRecordApply(layers, gid, samples, end, px) {
+        var res = recordApply(groupKeyLayer(layers, gid), samples, end, px);
+
+        return { layers: groupFxSet(layers, gid, { keys: res.keys }), end: res.end };
+    }
+
+    // The ids of group gid's members that move on keys of their own.
+    function groupOwnPaths(layers, gid) {
+        return (layers || []).filter(function (l) {
+            return (groupPath(l).indexOf(gid) >= 0) && (keyList(l).length > 0);
+        }).map(function (l) { return l.id; });
+    }
+
+    // The layers with the own keys of group gid's members removed (an
+    // anim left with nothing goes); the group's keys and every other
+    // motion stay.
+    function groupDropPaths(layers, gid) {
+        return (layers || []).map(function (l) {
+            if ((groupPath(l).indexOf(gid) < 0) || !l.anim || !l.anim.keys) {
+                return l;
+            }
+
+            var c = clone(l);
+
+            delete c.anim.keys;
+
+            if (!Object.keys(c.anim).length) {
+                delete c.anim;
+            }
+
+            return c;
+        });
+    }
+
+    // The tracks' rows, the top first: every group open (groupRows()), a
+    // group's row above its members.
+    function groupTrackRows(layers) {
+        var open = {};
+
+        (layers || []).forEach(function (l) {
+            groupPath(l).forEach(function (g) { open[g] = true; });
+        });
+
+        return groupRows(layers, open);
+    }
+
     var GROUP = {
         groupPath: groupPath, groupMembers: groupMembers, groupItem: groupItem, groupScope: groupScope, groupPick: groupPick,
         groupDeeper: groupDeeper, groupToggle: groupToggle, groupExpand: groupExpand, groupNewId: groupNewId, groupTidy: groupTidy,
         groupMake: groupMake, groupBreak: groupBreak, groupOfSelection: groupOfSelection, groupReorder: groupReorder,
         groupCopy: groupCopy, groupRows: groupRows, groupNumber: groupNumber, groupCan: groupCan,
         groupFx: groupFx, groupFxSet: groupFxSet, groupAlpha: groupAlpha, groupLook: groupLook, groupPicked: groupPicked, groupBox: groupBox,
-        groupScale: groupScale, groupTurn: groupTurn, groupMotionAt: groupMotionAt, groupKeySet: groupKeySet, groupKeyLayer: groupKeyLayer
+        groupScale: groupScale, groupTurn: groupTurn, groupMotionAt: groupMotionAt, groupKeySet: groupKeySet, groupKeyLayer: groupKeyLayer,
+        groupRecordApply: groupRecordApply, groupOwnPaths: groupOwnPaths, groupDropPaths: groupDropPaths, groupTrackRows: groupTrackRows
     };
 
     // ---- ATTACH (pg_image_editor_layers.js, the menu, the Path tab) ----

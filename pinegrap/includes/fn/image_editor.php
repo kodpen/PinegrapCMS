@@ -4278,6 +4278,8 @@ function pg_image_editor_strings_keyframes()
         'keysTab'     => lang('Path'),
         'keysNote'    => lang('Move the playhead, then drag the layer on the stage: where you put it becomes its place at that moment.'),
         'keysGroupNote' => lang('Keys here move the whole group; each layer keeps its own keys inside it.'),
+        'keysGroupOwn'  => lang('Members also move on their own paths'),
+        'keysGroupDrop' => lang('Remove their paths'),
         'keysOne'     => lang('Select one layer to give it a path.'),
         'keysList'    => lang('Keyframes'),
         'keysAdd'     => lang('Add a keyframe at {time}'),
@@ -5850,7 +5852,7 @@ function pg_image_editor_strings_record()
         'recTitle'     => lang('Recording a move'),
         'recRate'      => lang('Recording speed'),
         'recNote'      => lang('While you drag the layer the time runs; letting go stops the recording and its path becomes keyframes with its speed. The keyframes inside the recorded span are replaced.'),
-        'recPick'      => lang('Select one layer to record its move.'),
+        'recPick'      => lang('Select one layer or a group to record its move.'),
         'recHint'      => lang('Recording: drag the layer, letting go stops it · Esc cancels the recording'),
         'recHintPhone' => lang('Drag the layer; letting go stops the recording.'),
     );

@@ -1,11 +1,11 @@
 ---
 name: sales-watch-returns
-description: Sales watch return spike (W6, SW4): the nightly pass over order_returns, the rate a product is held to, the binomial upper tail, the one bell row return_spike
+description: Sales watch return spike (#10777): the nightly pass over order_returns, the rate a product is held to, the binomial upper tail, the one bell row return_spike
 module: sales_watch_returns
 ---
 
 ## Where is it?
-- `includes/fn/sales_watch_returns.php`, its own module beside `sales_watch.php` (the norm and flow alerts of SW1), loaded from `functions.php`. Called from `pg_ops_alerts_run()` as the source `returns` (`pg_sales_watch_check_returns()`). Tests: `tests/sales_watch_returns_test.php`. Built in the PR of plan step SW4 (`plans/sales-watch-steps.md`).
+- `includes/fn/sales_watch_returns.php`, its own module beside `sales_watch.php` (the norm and flow alerts, #10735), loaded from `functions.php`. Called from `pg_ops_alerts_run()` as the source `returns` (`pg_sales_watch_check_returns()`). Tests: `tests/sales_watch_returns_test.php`. Built by #10777 (overview `sales-watch.md`).
 
 ## When does it run?
 - Once a night: the first operations alert pass from 03:00 on, once a calendar day (`pg_sales_watch_returns_due()`); a night missed runs at the next pass that day. The day is claimed in the operations alert state file under `returns` before the read, so two processes do not both run it.

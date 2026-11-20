@@ -64,6 +64,14 @@ foreach (array('page', 'a', 'o', 't', 'utm_source', 'utm_medium', 'utm_campaign'
 // look) is no visit: no visitor record, no page view.
 $pg_panel_preview = pg_request_is_panel_preview($_GET, isset($_SESSION['sessionusername']));
 
+// An ad's click id on the landing address (fbclid, gclid, ttclid) waits in
+// the session only, used at the payment step if the visitor consents. An
+// address with a query is never served from the page cache, so this runs.
+if (!$pg_panel_preview)
+{
+	pg_ad_click_ids_capture($_GET);
+}
+
 // if visitor tracking is on, initialize tracking
 if (defined('VISITOR_TRACKING') && VISITOR_TRACKING && !$pg_panel_preview)
 {

@@ -1,6 +1,6 @@
 ---
 name: discussion-agents-panel
-description: A discussion's people panel lists its agents (own, the channel's by name, the one it follows) and "Agents in this discussion" for whoever may change them; ws_channel_member_agent_rows()
+description: A discussion's people panel lists its agents and "Agents in this discussion" for whoever may change them, with the channel's agents added in one go; ws_channel_member_agent_rows()
 ---
 
 ## What does a discussion's people panel show?
@@ -17,6 +17,8 @@ description: A discussion's people panel lists its agents (own, the channel's by
 - Under the list, `PGWsChannelAgents.mount(body, channel, { discussion: true, changed })` draws "Agents in this discussion" with each own agent's settings, only when the server's `can_edit` is true (`ws_channel_agent_add_problem()`); anybody else sees no control and no refusal line.
 - "Add an agent" shows only with `can_add`: `can_edit` and `ws_channel_agent_enter_problem($viewer, $channel, null)` passes, so in a private channel's discussion only that channel's manager is offered it. The same holds in Channel settings.
 - The rights are unchanged (`channel-agent-rights.md`); an add or a removal reads the discussion again and redraws Agents here.
+- With `can_add`, above "Add an agent", "The channel's agents" lists the channel's active allowed agents not yet the discussion's own (`from_channel`, `ws_channel_agents_from_channel()`), all ticked, with "Add all" and "Add the chosen" (DE1).
+- One request, `ws_channel_agents_add_many` with `agent_ids`, adds each through `ws_channel_agent_set_one()`, the single add's checks and defaults; a refused one is named in a toast ("Not added: name: reason"). An agent added later does not read earlier messages: the tag is written again.
 
 ## How does an agent row hold in a narrow column?
 - In `.ws-info-agents` (Channel info and this panel; people's rows unchanged) the name line wraps: name and role stay on the first line with the last seen at its right, the role is the part cut, the badges move whole to the next line, and the line under it wraps between words. Architect (2026-11-17): the badge is the point and is never dropped (`workflow/look-narrowest-column.md`).

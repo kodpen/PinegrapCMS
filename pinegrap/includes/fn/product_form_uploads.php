@@ -1055,6 +1055,28 @@ function pg_pfu_drop_units_above($order_item_id, $quantity)
 }
 
 /**
+ * A cart line whose quantity the cart itself changed (the stock check, the
+ * fixed or maximum quantity, a reservation's remaining spots, a bundle's
+ * stock pool): when it went down, the files and File Upload answers of the
+ * units above the new quantity go, as when the shopper lowers it.
+ *
+ * @param int $order_item_id
+ * @param int $was the quantity before the update
+ * @param int $now the quantity written
+ * @return bool the units above $now were dropped
+ */
+function pg_pfu_quantity_lowered($order_item_id, $was, $now)
+{
+    if (((int) $order_item_id <= 0) || ((int) $now >= (int) $was)) {
+        return false;
+    }
+
+    pg_pfu_drop_units_above($order_item_id, (int) $now);
+
+    return true;
+}
+
+/**
  * A cart save of one unit's File Upload answer (the designer cart and express
  * order widgets, cart_action.php): the file sent is checked against the
  * field's rule and placed, the kept one stays when none comes, the Remove

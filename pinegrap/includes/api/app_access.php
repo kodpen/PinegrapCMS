@@ -339,3 +339,68 @@ function api_app_event_area($name, $module_label = '') {
 	return isset($areas[$first]) ? lang($areas[$first]) : (string)$module_label;
 
 }
+
+// What one of the picker's bulk buttons gives every row of $groups
+// (api_scope_groups()): group key => '' (None), 'read' or 'write'. $which:
+//   all   - the highest level of every row (write where offered, else read);
+//   none  - nothing;
+//   read  - read where the row offers it, nothing where it has only write;
+//   write - write where the row offers it, nothing where it has only read.
+// Its twin is pgAppAccess.bulkChoice() in assets/js/api_app_access.js. Pure.
+function api_app_bulk_choice($groups, $which) {
+
+	$choices = array();
+
+	foreach ((array)$groups as $key => $group) {
+
+		$read = !empty($group['read']);
+
+		$write = !empty($group['write']);
+
+		if ($which === 'all') {
+
+			$choices[$key] = $write ? 'write' : ($read ? 'read' : '');
+
+		} elseif ($which === 'read') {
+
+			$choices[$key] = $read ? 'read' : '';
+
+		} elseif ($which === 'write') {
+
+			$choices[$key] = $write ? 'write' : '';
+
+		} else {
+
+			$choices[$key] = '';
+
+		}
+
+	}
+
+	return $choices;
+
+}
+
+// How many of $choices hold a scope that moves money. $money is group key =>
+// api_app_permission_money() of the row ('read', 'write' or ''): a row whose
+// read moves money holds it at either level, one whose write does only at
+// write. Its twin is pgAppAccess.moneyCount(). Pure.
+function api_app_bulk_money_count($choices, $money) {
+
+	$count = 0;
+
+	foreach ((array)$choices as $key => $choice) {
+
+		$level = isset($money[$key]) ? (string)$money[$key] : '';
+
+		if ((($choice === 'write') && ($level !== '')) || (($choice === 'read') && ($level === 'read'))) {
+
+			$count++;
+
+		}
+
+	}
+
+	return $count;
+
+}

@@ -36,7 +36,13 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/agent_guide.php');
 // address an app polls to stay in step with the screen, not an action. A
 // route that needs credentials but no scope is a tool only when it says
 // 'mcp' => true: the guide (guide.read), which every caller may read.
-function pg_mcp_route_is_offered($route) {
+//
+// A route that says 'mcp' => 'agent' is an application agent's own (its
+// instructions, its request queue, its report and its wakes): a tool only
+// when $agent says the caller is an active application agent's own key
+// (pg_mcp_agent_routes_open()). A person's OAuth connection or devices
+// session must never answer, claim or report as the agent.
+function pg_mcp_route_is_offered($route, $agent = false) {
 
 	$id = isset($route['id']) ? (string)$route['id'] : '';
 
@@ -53,6 +59,12 @@ function pg_mcp_route_is_offered($route) {
 	}
 
 	if (isset($route['mcp']) && ($route['mcp'] === false)) {
+
+		return false;
+
+	}
+
+	if (isset($route['mcp']) && ($route['mcp'] === 'agent') && ($agent !== true)) {
 
 		return false;
 
@@ -259,6 +271,39 @@ function pg_mcp_tool_from_route($route) {
 
 }
 
+// The size budget of one tool on tools/list: its description in characters
+// and the whole tool as JSON in bytes. A route's 'details' key is never read
+// here: reference detail goes there and only the OpenAPI document shows it.
+function pg_mcp_tool_budgets() {
+
+	return array('description' => 600, 'tool' => 4096);
+
+}
+
+// Which budgets of pg_mcp_tool_budgets() a tool from pg_mcp_tool_from_route()
+// passes: an empty list, or 'description' and/or 'tool'.
+function pg_mcp_tool_over_budget($tool) {
+
+	$budgets = pg_mcp_tool_budgets();
+
+	$over = array();
+
+	if (mb_strlen(isset($tool['description']) ? (string)$tool['description'] : '') > $budgets['description']) {
+
+		$over[] = 'description';
+
+	}
+
+	if (strlen((string)pg_mcp_json_encode($tool)) > $budgets['tool']) {
+
+		$over[] = 'tool';
+
+	}
+
+	return $over;
+
+}
+
 // The arguments of a call, sorted into what the route reads from its path and
 // what it reads from the query and the body. Answers array('path' => name =>
 // value, 'input' => name => value, 'body_keys' => list, 'dry_run' => true,
@@ -348,13 +393,15 @@ function pg_mcp_route_path($route, $path_values) {
 // The routes of $schema a caller holding $scopes may use, by tool name. The
 // resources and prompts (resources.php, prompts.php) are offered from the
 // same list, so a route that is no tool for the caller is no resource either.
-function pg_mcp_routes_for($schema, $scopes) {
+// $agent is true only for an active application agent's own key
+// (pg_mcp_agent_routes_open()): its own routes join the list then.
+function pg_mcp_routes_for($schema, $scopes, $agent = false) {
 
 	$routes = array();
 
 	foreach ($schema as $route) {
 
-		if (!pg_mcp_route_is_offered($route) || !api_has_scope($scopes, $route['scope'])) {
+		if (!pg_mcp_route_is_offered($route, $agent) || !api_has_scope($scopes, $route['scope'])) {
 
 			continue;
 
@@ -402,11 +449,45 @@ function pg_mcp_routes() {
 
 	if ($routes === null) {
 
-		$routes = pg_mcp_routes_for(api_schema(), api_current_scopes());
+		$routes = pg_mcp_routes_for(api_schema(), api_current_scopes(), pg_mcp_caller_is_agent());
 
 	}
 
 	return $routes;
+
+}
+
+// Whether the routes marked 'mcp' => 'agent' are open to a caller: only to an
+// application's key used as itself ($device null) whose application has an
+// active application agent. An OAuth connection and a team devices session
+// are device rows and act as their person; a key with no active agent, a
+// paused one or a model agent has no queue to work. Pure.
+function pg_mcp_agent_routes_open($device, $agent) {
+
+	if (($device !== null) || !is_array($agent)) {
+
+		return false;
+
+	}
+
+	return (isset($agent['kind']) && ($agent['kind'] === 'app') && isset($agent['status']) && ($agent['status'] === 'active'));
+
+}
+
+// Whether this request's caller is an active application agent's own key,
+// read once a request. False on a site without the Workspace module.
+function pg_mcp_caller_is_agent() {
+
+	static $is = null;
+
+	if ($is === null) {
+
+		$is = function_exists('ws_api_agent_caller_row')
+			&& pg_mcp_agent_routes_open(function_exists('api_current_device') ? api_current_device() : null, ws_api_agent_caller_row());
+
+	}
+
+	return $is;
 
 }
 

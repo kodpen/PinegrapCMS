@@ -37,7 +37,20 @@ function test_workspace_agent_start_text_names_the_route_and_basic()
 	pg_assert_contains('"text"', $text, 'follows the answer\'s text');
 	pg_assert_contains('instructions_version', $text, 'reads again on another version');
 	pg_assert_contains('cannot be read, stop', $text);
-	pg_assert_contains('If they are not set, ask the person who set you up', $text, 'unset variables: ask, never guess');
+	pg_assert_contains('If none of them is set, ask the person who set you up', $text, 'unset variables: ask, never guess');
+}
+
+// The second sending form, for an environment that puts a secret into a
+// request only when it is sent word for word; -u stays the first.
+function test_workspace_agent_start_text_names_the_second_form()
+{
+	$text = ws_agent_start_text('https://example.test/pinegrap/integration.php');
+
+	pg_assert_contains('-H "X-Pinegrap-Key: $PINEGRAP_KEY"', $text, 'the key header');
+	pg_assert_contains('-H "X-Pinegrap-Secret: $PINEGRAP_SECRET"', $text, 'the secret header');
+	pg_assert_contains('-H "Authorization: Bearer $PINEGRAP_TOKEN"', $text, 'the single token');
+	pg_assert_contains('word for word', $text, 'when to use it');
+	pg_assert_true(strpos($text, '-u "$PINEGRAP_KEY:$PINEGRAP_SECRET"') < strpos($text, 'X-Pinegrap-Key'), '-u stays the default');
 }
 
 function test_workspace_agent_start_text_holds_no_credential()

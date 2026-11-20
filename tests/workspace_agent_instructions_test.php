@@ -127,7 +127,7 @@ function test_workspace_agent_instructions_parts_in_order()
 	pg_assert_contains('- #all-talk (id 40): every message.', $text, 'all');
 	pg_assert_contains('- #review (id 41): a message that names @mimar, or a reply to one of your own messages.', $text, 'replies');
 
-	$order = array('You are ', 'Your channels', 'How you wait', '/claim', '/brief', '{"no_answer": true}', '/fail', '409 edited', 'A wake request', 'Never:', 'two sessions on one key', 'GET /workspace/agent-instructions', 'Rules:');
+	$order = array('You are ', 'Your channels', 'How you wait', '1. POST /workspace/agent-requests/{id}/claim', '/brief', '{"no_answer": true}', '/fail', '409 edited', 'A wake request', 'Never:', 'two sessions on one key', 'GET /workspace/agent-instructions', 'Rules:');
 	$at = -1;
 
 	foreach ($order as $part) {
@@ -202,7 +202,7 @@ function test_workspace_agent_instructions_route()
 	pg_assert_same('GET', $routes[0]['method'], 'method');
 	pg_assert_same('/workspace/agent-instructions', $routes[0]['path'], 'path');
 	pg_assert_same('workspace:read', $routes[0]['scope'], 'scope');
-	pg_assert_same(false, $routes[0]['mcp'], 'not an MCP tool');
+	pg_assert_same('agent', $routes[0]['mcp'], 'an MCP tool for the agent\'s own key only');
 	pg_assert_true(in_array('workspace.agent_instructions.get', array_column(ws_api_routes(), 'id'), true), 'merged into the routes');
 }
 
@@ -217,4 +217,31 @@ function test_workspace_agent_instructions_brief_line()
 	pg_assert_contains('read them again', $line, 'what an older version means');
 	pg_assert_true(strpos($line, "\n") === false, 'one line');
 	pg_assert_contains('When a brief names another version, read them again', $present['text'], 'the text says the same');
+}
+
+// The second sending form beside -u, and the agent's own routes as MCP
+// tools for its own key.
+function test_workspace_agent_instructions_second_form_and_mcp()
+{
+	$text = workspace_agent_instructions_test_text('poll');
+
+	pg_assert_contains('curl -sS -u "$PINEGRAP_KEY:$PINEGRAP_SECRET"', $text, '-u stays');
+	pg_assert_contains('-H "X-Pinegrap-Key: $PINEGRAP_KEY" -H "X-Pinegrap-Secret: $PINEGRAP_SECRET"', $text, 'the two headers');
+	pg_assert_contains('-H "Authorization: Bearer $PINEGRAP_TOKEN"', $text, 'the single token');
+	pg_assert_contains('word for word', $text, 'when to use it');
+	pg_assert_true(strpos($text, '-u "$PINEGRAP_KEY') < strpos($text, 'X-Pinegrap-Key'), '-u is named first');
+	pg_assert_contains('https://shop.example/pinegrap/mcp.php', $text, 'the MCP address');
+	pg_assert_contains('workspace_agent_requests_claim', $text, 'a tool named after its route');
+	pg_assert_same('https://shop.example/pinegrap/mcp.php', ws_agent_instructions_mcp('https://shop.example/pinegrap/integration.php/'), 'the MCP address beside the Site API');
+}
+
+// The text changed with the second form, so its version did: an agent that
+// follows the text before it reads the instructions again.
+function test_workspace_agent_instructions_version_changed()
+{
+	$poll = ws_agent_instructions_present(workspace_agent_instructions_test_agent('poll'), workspace_agent_instructions_test_channels(), workspace_agent_instructions_test_base());
+	$push = ws_agent_instructions_present(workspace_agent_instructions_test_agent('push', 'https://hooks.example/pinegrap'), workspace_agent_instructions_test_channels(), workspace_agent_instructions_test_base());
+
+	pg_assert_true($poll['instructions_version'] !== '3cb2fbb0', 'the poll text\'s version before the second form');
+	pg_assert_true($push['instructions_version'] !== '4f91c786', 'the webhook text\'s version before the second form');
 }

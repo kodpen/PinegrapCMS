@@ -424,7 +424,7 @@
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new root.URLSearchParams({ find: text }).toString()
+                    body: new root.URLSearchParams({ find: text, page: config.page }).toString()
                 }).then(function (response) {
                     return response.json().then(function (answer) {
                         return { status: response.status, answer: answer };

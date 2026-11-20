@@ -78,10 +78,11 @@ function test_api_settings_theme_new_application_fields_named()
 
 function test_api_settings_theme_permission_groups_named()
 {
-	$source = api_settings_theme_source();
+	// The rows are drawn by the permission picker (app_permissions_view.php).
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/app_permissions_view.php');
 
 	pg_assert_contains("<b id=\"' . \$id . '_label\">", $source);
-	pg_assert_contains("role=\"group\" aria-labelledby=\"' . \$id . '_label\"", $source);
+	pg_assert_contains("role=\"radiogroup\" aria-labelledby=\"' . \$id . '_label\"", $source);
 }
 
 function test_api_settings_theme_dialogs_named()
