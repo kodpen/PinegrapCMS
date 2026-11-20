@@ -7,7 +7,7 @@ module: marketplace_pricing_settings
 ## What does the Pricing tab hold?
 - A tab of the account's Settings drawer (`marketplace_settings.php`), beside Connection, under the drawer's one Save; drawn once `mp_pricing_ready()`.
 - Channel price: percent, fixed amount, rounding (None, Whole, ,90, ,99) on the account's own `marketplace_price_rules` row. Rules by category or brand: one row each, scope picked from the categories (`c:<id>`) and the brands products carry (`b:<brand>`).
-- Robot: Try first (`robot` 1, on by default; off is 2), step (an amount, minor units), minimum margin; Grow while winning's limit (`grow_cap`) folded under Advanced.
+- Robot: Try first (`robot` 1, on by default; off is 2), step with its unit as segments (Amount: minor units, at least 1; Percent: 0.01 to 10.00), minimum margin; Grow while winning's limit (`grow_cap`) folded under Advanced, open when it is not 10% or was refused.
 - Read by `mp_pricing_settings_parse()`; a figure out of range refuses the whole drawer's save, the drawer opens again on the Pricing tab.
 
 ## When is nothing written?
@@ -27,9 +27,10 @@ module: marketplace_pricing_settings
 - `mp_pricing_product_price()` sends `marketplace_price_state.own_price` as typed, before any rule and without the floor; the account's own prices are read once a request (`mp_pricing_account_own_prices()`). `mp_product_row()` marks it `price_own`, and the price history row is source `panel` (`mp_sync_record_channel_prices()`).
 
 ## What is tested?
-- `tests/marketplace_pricing_settings_test.php`: parsing and units, defaults, refusals, the price-moving check, the requeue state, strategies, own price.
+- `tests/marketplace_pricing_settings_test.php`: parsing and units, defaults, refusals, the price-moving check, the requeue state, strategies, own price, the step's unit and `mp_pricing_step()`.
 
-## What is still open?
-- Step as a percent (R7 "an amount or a percent"): the table keeps an amount only; asked of the architect with RP2.
+## How is the step's unit kept? (architect, 2026-11-20, agent channel message 11005)
+- `marketplace_price_rules.step_unit` TINYINT (step 11.0.259), read on the account's row: 0 `step` is minor units, 1 hundredths of a percent. Decision: `workflow/decisions-made-schema-39.md`.
+- `mp_pricing_step($from, $step, $unit)` works the step out: a percent of the price it moves from (the buybox price for Win, the own price for Grow while winning), rounded, never under 1 minor unit. Before the step has run, the column is read as 0 and not written.
 
 Related: docs/memory/commerce/marketplace-channel-price.md, docs/memory/plans/marketplace-repricer.md
