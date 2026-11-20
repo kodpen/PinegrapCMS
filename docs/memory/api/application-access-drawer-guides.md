@@ -9,13 +9,13 @@ description: Application Access's edit drawer (head, tabs, Overview, Connect) an
 - Tabs (`pg-seg`, role=tab): Overview, Connect, Permissions (its count beside it), Events, Devices (Connections on OAuth), Logs. The Agent tab comes with AA5. The old Security tab is gone: its fields are Overview's Advanced row.
 
 ## What is on Overview?
-- Four facts (`.pg-facts`): Status, Last used, Errors in 24 hours, Owner. Then Details, a card with the Active switch and the key, Summary (Permissions "n of m chosen" with Go to permissions; Advanced folded: IP list, end date, rate limit) and Danger at the foot: New secret ("Issue a new one", the old works a day) and Delete with its confirm.
+- Four facts, the figure cards' compact form (`.pg-figures.pg-figures-sm`, Active `.is-good`, errors above 0 `.is-bad`): Status, Last used, Errors in 24 hours, Owner. Then Details, a card with the Active switch and the key, Summary (Permissions with Go to permissions; Advanced folded: IP list, end date, rate limit) and Danger at the foot: New secret (the old works a day) and Delete with its confirm.
 - Foot: "For the services the site reaches: Connections" and Save. On Connect the foot is "API Documentation" and Close: Connect saves nothing.
 - A locked row hides Save, New secret and Danger (`application-access-keys.md`).
 
 ## Which guides are there?
 - `api_app_guides($at)` (pure; the site's addresses come in), in order: key_secret, token, mcp_signin, devices, agent. Each: icon, tone, title, line, acts (application or person), kinds, secret, steps (title, text, a value with Copy or a link), clients, notes.
-- MCP with sign-in: the MCP file address, the compact list's "for AI assistants" (`mcp-compact-list.md`), Connect to Claude (`claude-connect-button.md`). The short and discovery addresses are no longer shown.
+- MCP with sign-in: the MCP file address, the compact list's (`mcp-compact-list.md`), Connect to Claude (`claude-connect-button.md`); no short or discovery address.
 - One token: the API and the MCP address and `Authorization: Bearer TOKEN` (`application-access-keys.md`). Agent in a channel: PINEGRAP_KEY and PINEGRAP_SECRET, the start text (`ws_agent_start_text()`, English as written, only with the Workspace), how it waits.
 - Id `console` is kept for the Claude Console guide (AA7b), after token.
 - Guide texts go through `lang()`; the start text an agent reads stays English (`workflow/decisions-made-product-92.md`).
@@ -28,8 +28,8 @@ description: Application Access's edit drawer (head, tabs, Overview, Connect) an
 - The foot: "I have copied the secret" and Close; while a secret shows, the drawer's hide is refused until it is ticked. Closing removes step 3 from the page. A new secret shows step 3 without the step line.
 - It replaced the three centred sheets.
 
-## Which parts did it add to Design examples?
-- `.pg-facts` / `.pg-facts-item` in `backend.src.css` beside `.pg-card-inner`; numbered steps are `.stepper.pg-stepper-cards` (`ui/step-rail.md`); shown under "Facts and numbered steps". A fold row in `.pg-card-inner` gets a top border.
+## Which parts does it use?
+- Architect (2026-11-20): no new facts recipe; `.pg-figures-sm` added in "Look A: figure cards". Steps: `.stepper.pg-stepper-cards` (`ui/step-rail.md`). Design examples draws both (DX2, DX3). A fold row in `.pg-card-inner` gets a top border.
 - `includes/settings/fold.php` opens under `PG_API_PANEL` too.
 
 Related: docs/memory/api/application-access-new-sheet.md, docs/memory/api/application-access-keys.md, docs/memory/ui/screen-composition-rules.md

@@ -170,7 +170,8 @@ function test_api_app_drawer_overview_parts()
 	$overview = substr($overview, 0, strpos($overview, "\n}\n"));
 
 	pg_assert_same(4, substr_count($overview, "\$fact('"), 'four facts');
-	pg_assert_contains('<div class="pg-facts mb-5">', $overview);
+	pg_assert_contains('<div class="pg-figures pg-figures-sm mb-5">', $overview, 'the facts are the figure cards\' compact form');
+	pg_assert_contains('<div class="pg-card pg-figure"><div class="pg-figure-label">', $overview);
 	pg_assert_contains('id="d_status"', $overview, 'the Active switch');
 	pg_assert_contains('class="pg-switch"', $overview);
 	pg_assert_contains("'key'  => 'd-advanced'", $overview, 'Advanced is a folded row');

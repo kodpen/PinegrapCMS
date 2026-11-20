@@ -2174,9 +2174,13 @@ echo '
 		var state = document.getElementById("d_state");
 		state.className = "pg-pill pg-tone-" + app.state_tone;
 		state.textContent = app.state;
-		document.getElementById("d_fact_state").textContent = app.state;
+		var factState = document.getElementById("d_fact_state");
+		factState.textContent = app.state;
+		factState.classList.toggle("is-good", app.state_tone === "teal");
 		document.getElementById("d_fact_used").textContent = app.used;
-		document.getElementById("d_fact_errors").textContent = app.errors;
+		var factErrors = document.getElementById("d_fact_errors");
+		factErrors.textContent = app.errors;
+		factErrors.classList.toggle("is-bad", app.errors > 0);
 		document.getElementById("d_fact_owner").textContent = app.owner;
 		document.getElementById("d_name").value = app.name;
 		document.getElementById("d_description").value = app.description || "";

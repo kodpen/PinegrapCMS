@@ -29261,36 +29261,6 @@ body.pg-measure-edit .row > .order-2 > .position-sticky > .card,
 .pg-card-inner > .pg-card-inner-row + .pg-set-fold-item {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
-/* Facts: a few figures read at a glance at the top of a drawer, each a
-   small label over its value. Two columns on a phone. */
-.pg-facts {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-.pg-facts-item {
-  min-width: 0;
-  padding: 9px 12px;
-  border: 1px solid var(--pg-border-color-translucent);
-  border-radius: var(--pg-radius-lg);
-  background: var(--pg-surface-1);
-}
-.pg-facts-item > small {
-  display: block;
-  color: var(--pg-fg-2);
-  font-size: var(--pg-text-meta);
-}
-.pg-facts-item > b {
-  display: block;
-  overflow: hidden;
-  font-size: var(--pg-text-base);
-  font-weight: var(--pg-weight-strong);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-@media (max-width: 575.98px) {
-  .pg-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 /* Floating bar (the save bar's surface), also an add or edit screen's
    save bar. */
 .pg-floatbar,
@@ -31904,6 +31874,28 @@ textarea.pg-campaign-text {
   }
   .pg-figures > .pg-figure:last-child:nth-child(odd) {
     grid-column: 1 / -1;
+  }
+}
+/* The compact form (.pg-figures-sm): a few facts at the top of a drawer.
+   The value in the strong weight, not the Display cut; four a row from
+   576 px up whatever the viewport, two a row on a phone. */
+.pg-figures.pg-figures-sm {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.pg-figures-sm > .pg-figure {
+  padding: 10px 12px;
+}
+.pg-figures-sm .pg-figure-value {
+  margin: 3px 0 0;
+  font-size: 0.9375rem;
+  font-weight: var(--pg-weight-strong);
+  letter-spacing: 0;
+  font-variation-settings: normal;
+}
+@media (max-width: 575.98px) {
+  .pg-figures.pg-figures-sm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

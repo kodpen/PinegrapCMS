@@ -269,18 +269,18 @@ function api_app_drawer_view($parts) {
 
 }
 
-// The Overview tab: the facts, the details, the switch and the key, a
+// The Overview tab: the facts (the figure cards' compact form), the details, the switch and the key, a
 // summary that leads to the other tabs with Advanced folded in it, and the
 // danger rows at the foot.
 function api_app_drawer_overview_html($fields_script) {
 
 	$fact = function ($id, $label) {
-		return '<div class="pg-facts-item"><small>' . h($label) . '</small><b id="' . $id . '"></b></div>';
+		return '<div class="pg-card pg-figure"><div class="pg-figure-label">' . h($label) . '</div><b class="pg-figure-value" id="' . $id . '"></b></div>';
 	};
 
 	return '
 			<div class="tab-pane fade show active" id="d_general" role="tabpanel" aria-labelledby="d_general_label">
-				<div class="pg-facts mb-5">'
+				<div class="pg-figures pg-figures-sm mb-5">'
 					. $fact('d_fact_state', lang('Status'))
 					. $fact('d_fact_used', lang('Last used'))
 					. $fact('d_fact_errors', lang('Errors in 24 hours'))
