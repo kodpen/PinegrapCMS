@@ -22,8 +22,9 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `fonts` (#8268, D5 part 6): the Google Fonts browser, `designer-fonts-part.md`.
 - `interactions` (#8281, D5 part 7): the Interactions section's rows and fields, `designer-interactions-part.md`.
 - `treesearch` (DP13), `move` (DP16): the Overview's search and "Move…" window: `overview-search-map.md`, `overview-move-without-drag.md`.
+- `optsearch` (DP8): `designer-options-search.md`; `spacing` was left out of `sdDesign.parts` until then (#10658).
 - `comments` (#10042): prototype comments, `designer-prototype-comments-list.md`.
-- `spacing` (DP7; handed over since #10658), `optsearch` (DP8): `designer-spacing-box.md`, `designer-options-search.md`.
+- `spacing` (DP7): Style › Spacing's box, `designer-spacing-box.md`.
 - Assistant code kept in the core for open: `_sdAiBridge()`, the "Write with AI" marks (`_pgAiMarks*`), `_sdAiAltButton()`.
 
 ## What is not measured?
