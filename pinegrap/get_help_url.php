@@ -443,6 +443,7 @@ function get_help_url($properties = array())
         'erp_account_sync_item'   => 'erp#account-sync',
         'erp_aging'               => 'erp#aging-report',
         'erp_profit'              => 'erp#profit-and-loss',
+        'erp_profitability'       => 'erp#profitability',
         'erp_vat_report'          => 'erp#vat-report',
 
         // ERP, continued
