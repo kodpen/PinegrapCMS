@@ -526,6 +526,7 @@
 - workspace-my-calendar.md: My calendar (workspace_my_calendar.php, PC2): the Work Calendar opened on the reader alone by month, week and list; what it reads, its gate, its ways in from the E-mails toolbar and the Workspace menu
 - workspace-nested-controls.md: Why the channel list's pin and the search palette's account link are aria-hidden mouse shortcuts inside their link/option, and the keyboard routes to the same actions (Shift+F10 menu, Shift+Enter)
 - workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done
+- workspace-note-changed-by-app.md: The application that changed a Workspace note: ws_notes.updated_app_id and ws_note_versions.app_id (11.0.257), the save, "Changed by @handle", the API's changed_by (KD3)
 - workspace-note-group-shares.md: Shared note groups (note_group_shares.php, G5): group shares written as ws_note_shares rows with via_group, the sync, who puts notes in, leaving, bell lines, the hooks the lock calls
 - workspace-note-groups-api.md: Note groups in the external API and MCP (includes/workspace/api_note_groups.php): routes, access, refusals, dry run, group_id on note objects; sharing stays on the screen
 - workspace-note-groups-screen.md: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, drag and drop, search, closed folders in the browser) and its hooks in startNotes()
@@ -643,4 +644,4 @@
 - workspace-voice-transcripts.md: Voice message transcripts (V3a #2674): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap
 - workspace-voice-unheard.md: Why nobody heard a voice message (VA1): the recorder's hint while transcripts are off or the channel keeps its recordings, ws_voice_unheard_reason() in the assistants' briefings, Claude's instruction
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does
-- workspace-writing-rules.md: How every AI is told to write a Workspace message (bold, code, lists, tables, quotes, links, no headings): one English text in code for the agent instructions and the guide [decision: here]
+- workspace-writing-rules.md: How every AI is told to write a Workspace message (bold, code, lists, tables, quotes, links, no headings): one English text in code for the agent instructions and the guide [decision: decisions-made-product-92.md]

@@ -5,8 +5,8 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 
 ## What is recorded and why?
 - `product_price_history` (product_id, channel, price minor units, currency, changed_at, source): one row each time the price a product sells at changes, its own or an offer's (offer rows: product-price-history-offers.md). The "price before the discount" (TR: lowest of 30 days, 10 days for discount ads from 2026-08-01; EU Omnibus: 30 days) is read from it, so it must see every change.
-- `channel` is `web` for `products.price`, the shop's own price. `pos` / `marketplace:<code>` are reserved for prices kept per channel (a marketplace account selling at its own prices).
-- `source`: `initial` (upgrade), `panel` (screens, Workspace included), `import`, `api` (API and MCP tools), `offer` (the general job), `erp` (reserved). VARCHAR, not ENUM, so a later label never turns into `''`.
+- `channel` is `web` for `products.price`, the shop's own price. `marketplace:<account id>`: an account's own price (two stores on one marketplace sell at their own; `marketplace-channel-price.md`); `pos` reserved.
+- `source`: `initial` (upgrade), `panel` (screens, Workspace included), `import`, `api` (API and MCP tools), `offer` (the general job), `erp` (reserved), `rule` (a marketplace channel price by rules), `repricer` (the robot's). VARCHAR, not ENUM, so a later label never turns into `''`.
 - `products.compare_at_price` (INT NULL), same step: the merchant's "was" price, never in the history.
 
 ## How do writers record a change?
@@ -26,7 +26,6 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 ## What does the upgrade write?
 - One `initial` row per product at its current price, stamped with the upgrade time (PHP clock); a product with a `web` row is skipped, so a rerun adds nothing. A fresh install loads the starter data first, so its products get the row too.
 - `products` is in `install_heavy_tables()` for 2026.11.0: the column goes in INSTANT where possible, by copy otherwise (MyISAM, MySQL 5.7).
-- A dev database already at `config.version` 2026.11.0 skips the step until the version is set back to 2026.4.10 (release-status.md).
 
 ## What are the known limits?
 - Offer prices arrive within the hour (offer rows file).

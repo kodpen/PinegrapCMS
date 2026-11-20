@@ -152,7 +152,7 @@ function pg_booking_day_times($service, $staff, $day, $busy, $now, $policy)
     try {
         $zone = new DateTimeZone(!empty($policy['zone']) ? (string) $policy['zone'] : date_default_timezone_get());
         $from = (new DateTime($day . ' 00:00:00', $zone))->getTimestamp();
-        $until = (new DateTime($day . ' 00:00:00', $zone))->modify('+1 day')->getTimestamp();
+        $until = pg_booking_wall_time($day, '24:00', $zone);
     } catch (Exception $exception) {
         return array();
     }
@@ -271,6 +271,57 @@ function pg_booking_ws_busy($events, $staff, $departments)
     }
 
     return $busy;
+}
+
+/**
+ * The later years' copies of Workspace events marked yearly (a holiday on
+ * the same day every year) that meet a range, as the Workspace calendar
+ * brings them into every year after their own (ws_events_between()): the
+ * same day and time, 29 February on the 28th in a year without one. The
+ * event's own year is its row, read with the other events.
+ *
+ * @param array        $rows  ws_events rows with yearly, starts_at, ends_at
+ * @param int          $from
+ * @param int          $until
+ * @param DateTimeZone $zone  the site's zone
+ * @return array copies of the rows with their times moved
+ */
+function pg_booking_ws_yearly($rows, $from, $until, $zone)
+{
+    $year_of = function ($time) use ($zone) {
+        return (int) (new DateTime('@' . (int) $time))->setTimezone($zone)->format('Y');
+    };
+    $move = function ($time, $years) use ($zone) {
+        $moment = (new DateTime('@' . (int) $time))->setTimezone($zone);
+        $year = (int) $moment->format('Y') + (int) $years;
+        $month = (int) $moment->format('n');
+        $days = (int) (new DateTime(sprintf('%04d-%02d-01 12:00:00', $year, $month), $zone))->format('t');
+        $moment->setDate($year, $month, min((int) $moment->format('j'), $days));
+
+        return $moment->getTimestamp();
+    };
+
+    $copies = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || empty($row['yearly'])) {
+            continue;
+        }
+
+        $base = $year_of($row['starts_at']);
+
+        for ($year = max($year_of($from) - 1, $base + 1); $year <= $year_of($until); $year++) {
+            $copy = $row;
+            $copy['starts_at'] = $move($row['starts_at'], $year - $base);
+            $copy['ends_at'] = $move($row['ends_at'], $year - $base);
+
+            if (($copy['starts_at'] < (int) $until) && ($copy['ends_at'] >= (int) $from)) {
+                $copies[] = $copy;
+            }
+        }
+    }
+
+    return $copies;
 }
 
 /**
@@ -550,6 +601,14 @@ function pg_booking_busy_between($staff, $from, $until, $now)
     $events = (array) db_items(
         "SELECT id, scope, department_id, starts_at, ends_at, all_day, " . $skipped . " FROM ws_events
         WHERE starts_at < '" . (int) $until . "' AND ends_at >= '" . (int) $from . "'");
+
+    // A holiday marked "Every year" is a day off in every later year too.
+    if (pg_schema_has('ws_events', 'yearly')) {
+        $yearly = (array) db_items(
+            "SELECT id, scope, department_id, starts_at, ends_at, all_day, yearly, " . $skipped . " FROM ws_events
+            WHERE yearly = 1 AND starts_at < '" . (int) $until . "'");
+        $events = array_merge($events, pg_booking_ws_yearly($yearly, $from, $until, new DateTimeZone(date_default_timezone_get())));
+    }
 
     if ($events) {
         $event_ids = array();

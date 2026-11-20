@@ -10,6 +10,7 @@
 - ai-prompt-version.md: pg_ai_prompt_version() (r + 8 hex of the rules' SHA-1), ws_ai_requests.prompt_version (11.0.112, #2829), the insert helper and its scan test, where the version is shown
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
+- application-review-rules.md: Pure rules of application review: eligibility codes, weighted sums, leniency correction, spread flag, balanced assignment, shortlist tie rule
 - asset-paths-and-inline-escaping.md: Local asset paths decoded before the parent-folder check, design asset files written under a plain name only, the hero's typed style escaped, the variant payload script with \u-escaped tags
 - audiences-door-join.md: pg_audience_door_join(): storefront sign-up doors put a contact into the registration, membership or a ticked group and announce the join for flows, campaign profiles and webhooks [decision: decisions-made-product-27.md]
 - audiences-doors.md: Hand doors of a contact group filled by rules: which paths refuse or skip a dynamic group, API/MCP 409 contact_group_by_rule, the guard functions, readers and erasure [decision: decisions-made-product-25.md]
@@ -172,6 +173,7 @@
 - privacy-centre-screen.md: Contacts › Privacy centre (privacy_centre.php, KV2): the inventory and transfers on screen, the Excel with the VERBİS columns, the PDF with the destruction records, the Site Settings link card
 - privacy-inventory.md: Personal data inventory (privacy_inventory.php): the catalogue beside the erase table list, live counts, transfers from the registry rows' country and data, the tests
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
+- privacy-retention-rules.md: Privacy centre retention rules (P6-P9): rules and bounds, config_text settings, dry run and yes, the nightly pass through the erase entries, the skips, privacy_rule audit lines and their 3-year keep
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())
 - qr-code-generator.md: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg), its limits, forbidden library paths, and why secret QRs are inline SVG only.
 - record-gate-request-id.md: A record screen's access gate checks the id its handlers read ($_POST on a submit, $_GET on the form), never $_REQUEST, which a cookie of the same name can feed
@@ -203,7 +205,7 @@
 - submitted-form-content-helpers.md: pg_submitted_form_page() fills the page row keys of submitted billing/shipping forms; pg_form_reference_title_row() escapes the reference code title row; faults fixed.
 - submitter-email-access.md: How a member gets a submitted form's rights by e-mail address (submitter or watcher) and why a blank address never matches
 - translation-attribute-texts.md: Translating worded attributes (alt, title, placeholder, aria-label, aria-description, tooltips): one list, every path that extracts them, the pass that draws them
-- translation-rules.md: Every visible string uses lang() (designer: _sdT()), English source as the key; keys added only with tools/tr_add.php; exact keys, placeholders, duplicates, misleading keys, check_lang
+- translation-rules.md: Every visible string uses lang() (designer: _sdT()), English source as the key; keys added only with tools/tr_add.php; exact keys, placeholders, duplicates, misleading keys, check_lang [decision: decisions-made-product-92.md]
 - translation-sign-in-redirects.md: Sign-in redirects and Log Out keep the language of a page in /en/: pg_tr_script_url() adds pg_lang, _pg_sw_page_base() gives LANGUAGE_PATH (#9052)
 - translation-source-lang-mark.md: A node drawn untranslated on a page in another language carries lang="<source>" so the browser applies the source language's letter rules
 - translation-translatable-text.md: What pg_tr_translatable() counts as text to translate and what it leaves out as data (tokens, codes, Lorem ipsum, data: URIs, JSON, whole-value code); lone addresses stay
