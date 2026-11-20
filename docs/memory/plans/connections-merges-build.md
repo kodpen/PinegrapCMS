@@ -20,7 +20,7 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - CX10 also shows the redirect addresses, the APIs to enable, an "API not enabled" error, Google's verification warning: `connections-merges-cx10-google.md`.
 - CX10 done in two (`ui/connections-provider-page.md`). CX10a #10512: Google's and Microsoft's pages, application, accounts, the four parts. CX10b #10529: the Sign in with Google application on Google's page under its card's gate.
 - CX11 The other groups, one step each in the census's order (`integrations-census-screens.md`: SEO, Visitors and privacy, Languages and Translation, Communication, Mailboxes, Accounts and sign-in, Ecommerce, Accounting, Integrations, Updates and maintenance, the Workspace's categories), cut when the step before lands.
-- Done (pages in `ui/connections-service-page.md`): CX11a SEO #10553, CX11b Visitors and privacy #10562, CX11c Languages #10576 (message 10151), CX11d Communication #PR (WhatsApp, İYS); the SMS card's three providers are a step of their own after the architect's answer.
+- Done (pages in `ui/connections-service-page.md`): CX11a SEO #10553, CX11b Visitors and privacy #10562, CX11c Languages #10576 (message 10151), CX11d Communication #10621 (WhatsApp, İYS); the SMS card's three providers are a step of their own after the architect's answer.
 
 ## What binds CX9 already?
 - Architect (2026-11-17, message 9391): one connection per provider, no table and no column, stored where the registry's key services keep theirs.
