@@ -521,6 +521,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-29.md: Which columns does the tickets table get? (architect, 2026-11-20, agent channel message 10086, answer to K1's request 1671)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
+- decisions-made-schema-30.md: Where are the rules and the earlier parts?
+- decisions-made-schema-30.md: Which columns does an event's waiting list add to `stock_notify`? (architect, 2026-11-20, agent channel message 10143, answer to K1's request 1691)
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?

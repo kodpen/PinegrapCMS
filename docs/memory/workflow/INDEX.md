@@ -153,6 +153,7 @@
 - decisions-made-schema-28.md: Decisions list, schema part 28 (2026-11-19 on): schema the open version added and then gave up is removed where it was added; ws_profiles.mail_pinned for a person's Incoming e-mail menu pin
 - decisions-made-schema-29.md: Decisions list, schema part 29 (2026-11-20 on): Workspace calls tables; content and component_id on auto_dialogs; prototype_links.bundle_id; the event_tickets columns
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
+- decisions-made-schema-30.md: Decisions list, schema part 30 (2026-11-20 on): the event and its date on stock_notify for an event's waiting list
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
