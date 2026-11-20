@@ -150,3 +150,126 @@ function test_products_import_xlsx_parts_from_the_relationships()
 	pg_assert_same('', $error, 'the file is read');
 	pg_assert_same(array(array('Ürün adı', 'Tarih', '00123'), array('Çay bardağı', '2026-11-17', '12.5')), $rows, 'the CSV');
 }
+
+/**
+ * A workbook kept at $workbook (book/main.xml, xl/Workbook2.xml) as the
+ * package's relationships name it, counting its days from 1904, with its
+ * relationships beside it and its sheet and styles named relative to its
+ * folder; with $root_rels false, a package without _rels/.rels keeping it
+ * at xl/workbook.xml. A heading row and a date (44881 from 1904, 2026-11-17)
+ * in B2, a text-formatted C2. Its path.
+ *
+ * @param string $workbook
+ * @param bool   $root_rels
+ * @return string
+ */
+function sheet_read_xlsx_workbook_test_file($workbook, $root_rels = true)
+{
+	$main = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+	$relationships = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+	$package = 'http://schemas.openxmlformats.org/package/2006/relationships';
+	$slash = strrpos($workbook, '/');
+	$folder = substr($workbook, 0, $slash + 1);
+	$parts = array(
+		'[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+			. '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+			. '<Override PartName="/' . $workbook . '" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>',
+		$workbook => '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="' . $main . '" xmlns:r="' . $relationships . '">'
+			. '<workbookPr date1904="1"/><sheets><sheet name="Hareketler" sheetId="1" r:id="rId1"/></sheets></workbook>',
+		$folder . '_rels/' . substr($workbook, $slash + 1) . '.rels' => '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="' . $package . '">'
+			. '<Relationship Id="rId1" Type="' . $relationships . '/worksheet" Target="sheets/one.xml"/>'
+			. '<Relationship Id="rId2" Type="' . $relationships . '/styles" Target="looks.xml"/></Relationships>',
+		$folder . 'looks.xml' => '<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="' . $main . '">'
+			. '<cellXfs count="3"><xf numFmtId="0"/><xf numFmtId="14" applyNumberFormat="1"/><xf numFmtId="49" applyNumberFormat="1"/></cellXfs></styleSheet>',
+		$folder . 'sheets/one.xml' => '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="' . $main . '"><sheetData>'
+			. '<row r="1"><c r="A1" t="inlineStr"><is><t>Tarih</t></is></c></row>'
+			. '<row r="2"><c r="A2" t="inlineStr"><is><t>Kira</t></is></c><c r="B2" s="1"><v>44881</v></c><c r="C2" s="2" t="inlineStr"><is><t>00123</t></is></c></row>'
+			. '</sheetData></worksheet>',
+	);
+
+	if ($root_rels) {
+		$parts['_rels/.rels'] = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="' . $package . '">'
+			. '<Relationship Id="rId1" Type="' . $relationships . '/officeDocument" Target="/' . $workbook . '"/></Relationships>';
+	}
+
+	$path = tempnam(sys_get_temp_dir(), 'pg_sheet_book') . '.xlsx';
+	$zip = new ZipArchive();
+	$zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+	foreach ($parts as $name => $content) {
+		$zip->addFromString($name, $content);
+	}
+
+	$zip->close();
+
+	return $path;
+}
+
+/**
+ * What the reader takes from a workbook file: its sheets, its rows, the
+ * part and the styles the editor sees.
+ *
+ * @param string $path
+ * @return array
+ */
+function sheet_read_xlsx_workbook_test_read($path)
+{
+	$error = 'not run';
+	$rows = array();
+
+	foreach (pg_sheet_rows($path, 'xlsx', $error) as $number => $row) {
+		$rows[$number] = $row;
+	}
+
+	$zip = new ZipArchive();
+	$zip->open($path);
+	$sheets = pg_office_xlsx_sheets($zip, $refused);
+	$kinds = pg_office_xlsx_style_kinds($zip, $kinds_refused);
+	$workbook = pg_sheet_xlsx_workbook($zip);
+	$zip->close();
+	unlink($path);
+
+	return array('error' => $error, 'rows' => $rows, 'sheets' => $sheets, 'refused' => $refused . $kinds_refused, 'kinds' => $kinds, 'workbook' => $workbook);
+}
+
+// A package naming its workbook otherwise than xl/workbook.xml in
+// _rels/.rels, as PHPExcel found it: it read as having no sheets ("The
+// file could not be read."), its 1904 dates were four years early and its
+// styles were looked for at xl/styles.xml.
+function test_sheet_read_xlsx_workbook_from_the_package_relationships()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	foreach (array('book/main.xml' => 'book/', 'xl/Workbook2.xml' => 'xl/') as $workbook => $folder) {
+		$read = sheet_read_xlsx_workbook_test_read(sheet_read_xlsx_workbook_test_file($workbook));
+
+		pg_assert_same(array('part' => $workbook, 'folder' => $folder, 'rels' => $folder . '_rels/' . basename($workbook) . '.rels'), $read['workbook'], $workbook . ': the workbook part');
+		pg_assert_same('', $read['error'], $workbook . ': the file is read');
+		pg_assert_same('', $read['refused'], $workbook . ': nothing refused');
+		pg_assert_same(1, count($read['sheets']), $workbook . ': one sheet');
+		pg_assert_same(array('Hareketler', $folder . 'sheets/one.xml'), array($read['sheets'][0]['name'], $read['sheets'][0]['part']), $workbook . ': the sheet beside the workbook');
+		pg_assert_same(array('t' => 's', 'v' => 'Kira'), isset($read['rows'][2][0]) ? $read['rows'][2][0] : null, $workbook . ': A2');
+		pg_assert_same(array('t' => 'd', 'v' => '46343'), isset($read['rows'][2][1]) ? $read['rows'][2][1] : null, $workbook . ': a 1904 date moved to the 1900 count');
+		pg_assert_same(array(1 => 'date'), $read['kinds']['date'], $workbook . ': the date styles of the named styles part');
+		pg_assert_same(array(2 => true), $read['kinds']['text'], $workbook . ': the text styles of the named styles part');
+	}
+}
+
+// A package without _rels/.rels keeps its workbook at xl/workbook.xml and
+// reads as before.
+function test_sheet_read_xlsx_workbook_without_package_relationships()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	$read = sheet_read_xlsx_workbook_test_read(sheet_read_xlsx_workbook_test_file('xl/workbook.xml', false));
+
+	pg_assert_same(array('part' => 'xl/workbook.xml', 'folder' => 'xl/', 'rels' => 'xl/_rels/workbook.xml.rels'), $read['workbook'], 'the usual workbook part');
+	pg_assert_same('', $read['error'], 'the file is read');
+	pg_assert_same('xl/sheets/one.xml', $read['sheets'][0]['part'], 'the sheet');
+	pg_assert_same(array('t' => 'd', 'v' => '46343'), isset($read['rows'][2][1]) ? $read['rows'][2][1] : null, 'the 1904 date');
+	pg_assert_same(array(2 => true), $read['kinds']['text'], 'the text styles');
+}

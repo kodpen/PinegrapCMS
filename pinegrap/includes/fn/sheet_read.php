@@ -264,7 +264,8 @@ function pg_sheet_xlsx_rows($path, $sheet, &$error)
 
     $date_styles = ($refused === '') ? pg_office_xlsx_date_styles($zip, $refused) : array();
     $zero_styles = ($refused === '') ? pg_sheet_xlsx_zero_styles($zip, pg_sheet_xlsx_part($zip, 'styles', 'xl/styles.xml')) : array();
-    $workbook_xml = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
+    $workbook = pg_sheet_xlsx_workbook($zip);
+    $workbook_xml = (string) pg_zip_entry_contents($zip, $workbook['part'], PG_OFFICE_MAX_DOM, $unread);
     $date1904 = pg_office_xlsx_date1904($workbook_xml);
     $strings_part = pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml');
     $zip->close();
@@ -432,8 +433,46 @@ function pg_sheet_xlsx_zero_styles($zip, $part = 'xl/styles.xml')
 }
 
 /**
+ * Where a .xlsx keeps its workbook: the part the package's relationships
+ * (_rels/.rels) name as its officeDocument, as Excel and PHPExcel find it;
+ * xl/workbook.xml when they name none that is in the package. Its folder is
+ * the base its own relationship targets are read against, and its
+ * relationships part sits beside it (book/main.xml: book/_rels/main.xml.rels).
+ *
+ * @param ZipArchive $zip
+ * @return array part, folder ('xl/', or '' for a part at the root), rels
+ */
+function pg_sheet_xlsx_workbook($zip)
+{
+    $part = 'xl/workbook.xml';
+
+    foreach (pg_office_rels($zip, '_rels/.rels') as $relationship) {
+        if (($relationship['type'] !== 'officedocument') || $relationship['external']) {
+            continue;
+        }
+
+        $named = pg_office_part_name('', $relationship['target']);
+
+        if (($named !== '') && ($zip->locateName($named) !== false)) {
+            $part = $named;
+        }
+
+        break;
+    }
+
+    $slash = strrpos($part, '/');
+    $folder = ($slash === false) ? '' : substr($part, 0, $slash + 1);
+
+    return array(
+        'part'   => $part,
+        'folder' => $folder,
+        'rels'   => $folder . '_rels/' . substr($part, strlen($folder)) . '.rels',
+    );
+}
+
+/**
  * A workbook-level part of a .xlsx (its shared strings, its styles) where
- * the workbook's relationships name it, as Excel and PHPExcel find it; the
+ * the workbook's relationships (pg_sheet_xlsx_workbook()) name it, as Excel and PHPExcel find it; the
  * usual name when they name none that is in the package; '' when there is
  * neither. Writers other than Excel and LibreOffice name these parts
  * otherwise (xl/SharedStrings.xml, xl/strings/Shared.xml).
@@ -445,12 +484,14 @@ function pg_sheet_xlsx_zero_styles($zip, $part = 'xl/styles.xml')
  */
 function pg_sheet_xlsx_part($zip, $type, $default)
 {
-    foreach (pg_office_rels($zip, 'xl/_rels/workbook.xml.rels') as $relationship) {
+    $workbook = pg_sheet_xlsx_workbook($zip);
+
+    foreach (pg_office_rels($zip, $workbook['rels']) as $relationship) {
         if (($relationship['type'] !== $type) || $relationship['external']) {
             continue;
         }
 
-        $part = pg_office_part_name('xl/', $relationship['target']);
+        $part = pg_office_part_name($workbook['folder'], $relationship['target']);
 
         if ($zip->locateName($part) !== false) {
             return $part;

@@ -785,7 +785,7 @@ function pg_office_xlsx_format_parts($zip, $format, $fail, $spool)
         return array('ok' => false, 'code' => 'read', 'error' => pg_office_refusal_error($refused), 'size' => 0, 'version' => '', 'changed' => 0);
     }
 
-    if (pg_office_xlsx_write_reserved((string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread))) {
+    if (pg_office_xlsx_write_reserved((string) pg_zip_entry_contents($zip, pg_sheet_xlsx_workbook($zip)['part'], PG_OFFICE_MAX_DOM, $unread))) {
         return $fail('password');
     }
 

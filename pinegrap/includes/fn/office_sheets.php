@@ -587,6 +587,14 @@ function pg_office_xlsx_sheets_parts($zip, $op, $fail, $spool)
         return array('ok' => false, 'code' => 'read', 'error' => pg_office_refusal_error($refused), 'size' => 0, 'version' => '', 'changed' => 0);
     }
 
+    // Adding, deleting and renaming write xl/workbook.xml, its relationships
+    // and xl/worksheets/ by those names; a workbook the package keeps
+    // elsewhere (book/main.xml) is shown and its cells edited, but its sheets
+    // are changed in a spreadsheet program.
+    if (pg_sheet_xlsx_workbook($zip)['part'] !== 'xl/workbook.xml') {
+        return $fail('sheets_unusual');
+    }
+
     $workbook = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
 
     if (pg_office_xlsx_write_reserved($workbook)) {
