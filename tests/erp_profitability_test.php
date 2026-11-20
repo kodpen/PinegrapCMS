@@ -185,3 +185,14 @@ function test_erp_profitability_below_target()
 	pg_assert_same(false, erp_profitability_below_target(20.0, 20.0), 'at the target');
 	pg_assert_same(false, erp_profitability_below_target(null, 20.0), 'no margin, not marked');
 }
+
+function test_erp_profitability_rate_changed()
+{
+	$kept = array('percent' => 2.49, 'fixed' => 25);
+	pg_assert_same(false, erp_profitability_rate_changed($kept, erp_profitability_rate_in('2,49', '0,25')), 'the same rate typed again');
+	pg_assert_same(true, erp_profitability_rate_changed($kept, erp_profitability_rate_in('2,5', '0,25')), 'another percent');
+	pg_assert_same(true, erp_profitability_rate_changed($kept, erp_profitability_rate_in('2,49', '')), 'another fixed part');
+	pg_assert_same(true, erp_profitability_rate_changed($kept, erp_profitability_rate_in('', '')), 'removed');
+	pg_assert_same(false, erp_profitability_rate_changed(null, erp_profitability_rate_in('', '')), 'none kept, none typed');
+	pg_assert_same(true, erp_profitability_rate_changed(null, erp_profitability_rate_in('0', '')), 'a new rate of 0 percent');
+}

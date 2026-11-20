@@ -472,6 +472,7 @@
     "Marketplace account changed: {var:1}.": "Pazaryeri hesabı değiştirildi: {var:1}.",
     "Marketplace account removed: {var:1}.": "Pazaryeri hesabı kaldırıldı: {var:1}.",
     "Marketplace account {var:1} was removed with its webhook {var:2} still registered on {var:3}; remove it in the seller panel.": "{var:1} pazaryeri hesabı, {var:2} webhook'u {var:3} üzerinde kayıtlı kalırken kaldırıldı; webhook'u satıcı panelinden kaldırın.",
+    "Marketplace accounts": "Pazaryeri hesapları",
     "Marketplace added. Test the connection, match some products, then switch it on.": "Pazaryeri eklendi. Bağlantıyı deneyin, ürünleri eşleştirin, sonra açın.",
     "Marketplace category": "Pazaryeri kategorisi",
     "Marketplace connections are managed from the manager role up.": "Pazaryeri bağlantıları yönetici rolü ve üstünden yönetilir.",

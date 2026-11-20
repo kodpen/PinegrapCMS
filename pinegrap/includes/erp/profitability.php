@@ -15,8 +15,8 @@
  * period.
  *
  * Only reads the order profit tables; the settings card writes erp_cost_rates
- * and the target margin (config_text) and marks nothing: the general job
- * rechecks the orders and takes a changed rate in on its rolling pass.
+ * and the target margin (config_text), and marks the orders a changed rate
+ * applies to so the general job works them out again.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -492,6 +492,50 @@ function erp_profitability_rate_rows()
 }
 
 /**
+ * Whether a rate as sent differs from the one kept. Pure.
+ *
+ * @param array|null $before  erp_order_profit_rates() entry: percent, fixed; null for none
+ * @param array      $sent    erp_profitability_rate_in()
+ * @return bool
+ */
+function erp_profitability_rate_changed($before, $sent)
+{
+    if ($before === null) {
+        return empty($sent['empty']);
+    }
+
+    return !empty($sent['empty'])
+        || (round((float) $before['percent'], 3) !== round((float) $sent['percent'], 3))
+        || ((int) $before['fixed'] !== (int) $sent['fixed']);
+}
+
+/**
+ * Mark the computed orders a rate applies to, so the general job works them
+ * out again: its recheck compares only the order's own figures, never the
+ * rates. A shop order paid with the method, an order with a recipient on the
+ * shipping method, an order of the marketplace account.
+ *
+ * @param string $kind  payment, shipping, marketplace
+ * @param string $key   the rate's key
+ * @return bool
+ */
+function erp_profitability_mark_rate($kind, $key)
+{
+    if ($kind === 'payment') {
+        $result = db_q("UPDATE erp_order_profit INNER JOIN orders ON orders.id = erp_order_profit.order_id
+            SET erp_order_profit.stale = 1
+            WHERE orders.payment_method = ? AND erp_order_profit.channel = 'web'", array((string) $key));
+    } elseif ($kind === 'shipping') {
+        $result = db_q("UPDATE erp_order_profit SET stale = 1
+            WHERE order_id IN (SELECT order_id FROM ship_tos WHERE shipping_method_id = ?)", array((int) $key));
+    } else {
+        $result = db_q("UPDATE erp_order_profit SET stale = 1 WHERE channel = ?", array('marketplace:' . (int) $key));
+    }
+
+    return $result !== false;
+}
+
+/**
  * Save the settings card: every rate it sent and the target margin. Nothing
  * is written when one field is refused.
  *
@@ -538,15 +582,22 @@ function erp_profitability_settings_save($post, $user_id)
     }
 
     $now = time();
+    $old = erp_order_profit_rates();
 
     foreach ($writes as $write) {
+        $before = $old[$write['kind']][$write['key']] ?? null;
+
+        if (!erp_profitability_rate_changed($before, $write)) {
+            continue;
+        }
+
         $ok = $write['empty']
             ? db_q("DELETE FROM erp_cost_rates WHERE kind = ? AND rate_key = ?", array($write['kind'], $write['key']))
             : db_q("INSERT INTO erp_cost_rates (kind, rate_key, percent, fixed, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE percent = VALUES(percent), fixed = VALUES(fixed), updated_by = VALUES(updated_by), updated_at = VALUES(updated_at)",
                 array($write['kind'], $write['key'], number_format($write['percent'], 3, '.', ''), (int) $write['fixed'], (int) $user_id, $now));
 
-        if ($ok === false) {
+        if (($ok === false) || !erp_profitability_mark_rate($write['kind'], $write['key'])) {
             return array('success' => false, 'error' => lang('The settings could not be saved.'), 'field' => '');
         }
     }

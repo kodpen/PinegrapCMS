@@ -4746,6 +4746,9 @@ function output_menu($properties = false)
 
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_aging.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-steps bi-me-2\'>' . lang('Aging report') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_profit.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-graph-up bi-me-2\'>' . lang('Profit and loss') . '</a>';
+        // Accounting > Profitability: each product's net profit by channel
+        // (includes/erp/profitability.php).
+        $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_profitability.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-pie-chart-fill bi-me-2\'>' . lang('Profitability') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_vat_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-bar-graph bi-me-2\'>' . h(pg_erp_tax_report_label()) . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-pie-chart bi-me-2\'>' . lang('Stock and cost') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_expenses.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-wallet2 bi-me-2\'>' . lang('Expenses') . '</a>';
@@ -5069,6 +5072,7 @@ function output_menu($properties = false)
         case 'edit_erp_expense.php':
         case 'erp_expense_categories.php':
         case 'erp_profit.php':
+        case 'erp_profitability.php':
         case 'erp_vat_report.php':
         case 'add_erp_invoice.php':
         case 'add_erp_manual_invoice.php':
