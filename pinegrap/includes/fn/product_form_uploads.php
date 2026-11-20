@@ -13,7 +13,8 @@
 // the check of a shopper's file against it, placing the file as an
 // attachment in the field's folder, keeping it on the cart line's answer
 // (form_data.file_id), who may open it (get_file.php), and removing it with
-// the line, the unit or the order it belongs to.
+// the line, the unit or the order it belongs to, and the general job's
+// sweep of the files of carts that never became an order.
 //
 // Not in the functions.php manifest: loaded with require_once by the places
 // that need it (the field editor, the cart and order paths, get_file.php).
@@ -22,6 +23,26 @@
 // escape() and PHP itself.
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
+}
+
+// A cart's uploaded files are deleted this many days after its last touch.
+if (!defined('PG_PFU_SWEEP_DAYS')) {
+    define('PG_PFU_SWEEP_DAYS', 30);
+}
+
+// How often a sweep starts, in seconds; one under way carries on every tick.
+if (!defined('PG_PFU_SWEEP_EVERY')) {
+    define('PG_PFU_SWEEP_EVERY', 86400);
+}
+
+// Seconds the sweep may work in one tick of the general job.
+if (!defined('PG_PFU_SWEEP_BUDGET')) {
+    define('PG_PFU_SWEEP_BUDGET', 5);
+}
+
+// Carts read per chunk of the sweep.
+if (!defined('PG_PFU_SWEEP_CHUNK')) {
+    define('PG_PFU_SWEEP_CHUNK', 200);
 }
 
 /**
@@ -578,4 +599,296 @@ function pg_pfu_access_verdict($lines, $viewer)
     }
 
     return false;
+}
+
+/**
+ * A cart's last touch, pure: the newest of the time it was started, its last
+ * change and the newest file uploaded into its answers.
+ *
+ * @param array $cart order_date, last_modified_timestamp, file_touch
+ * @return int unix time, 0 when nothing is known
+ */
+function pg_pfu_sweep_last_touch($cart)
+{
+    return max(
+        0,
+        (int) ($cart['order_date'] ?? 0),
+        (int) ($cart['last_modified_timestamp'] ?? 0),
+        (int) ($cart['file_touch'] ?? 0));
+}
+
+/**
+ * The newest last touch a cart may have for its files to be swept at a
+ * moment: PG_PFU_SWEEP_DAYS before it.
+ *
+ * @param int $now
+ * @return int
+ */
+function pg_pfu_sweep_before($now)
+{
+    return (int) $now - PG_PFU_SWEEP_DAYS * 86400;
+}
+
+/**
+ * Whether a cart's uploaded files are swept, pure: the cart never became an
+ * order (still incomplete) and its last touch is PG_PFU_SWEEP_DAYS days ago
+ * or more. A cart with no known time is kept.
+ *
+ * @param array $cart status, order_date, last_modified_timestamp, file_touch
+ * @param int   $now
+ * @return bool
+ */
+function pg_pfu_sweep_chosen($cart, $now)
+{
+    if ((string) ($cart['status'] ?? '') !== 'incomplete') {
+        return false;
+    }
+
+    $touch = pg_pfu_sweep_last_touch($cart);
+
+    return ($touch > 0) && ($touch <= pg_pfu_sweep_before($now));
+}
+
+/**
+ * The carts of a chunk whose files are swept, pure.
+ *
+ * @param array $carts pg_pfu_sweep_carts_sql() rows
+ * @param int   $now
+ * @return int[] order ids
+ */
+function pg_pfu_sweep_pick($carts, $now)
+{
+    $out = array();
+
+    foreach ((array) $carts as $cart) {
+        $id = (int) ($cart['id'] ?? 0);
+
+        if (($id > 0) && pg_pfu_sweep_chosen($cart, $now) && !in_array($id, $out, true)) {
+            $out[] = $id;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The sweep's marker: where a pass under way stands and when the last one
+ * finished.
+ *
+ * @return string
+ */
+function pg_pfu_sweep_marker()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/product_form_upload_sweep.json';
+}
+
+/**
+ * The marker as it is used, pure. Anything unreadable is a sweep that never
+ * ran.
+ *
+ * @param mixed $raw the decoded marker
+ * @return array after_id (int), done_at (int)
+ */
+function pg_pfu_sweep_state($raw)
+{
+    $raw = is_array($raw) ? $raw : array();
+
+    return array(
+        'after_id' => isset($raw['after_id']) ? max(0, (int) $raw['after_id']) : 0,
+        'done_at' => isset($raw['done_at']) ? max(0, (int) $raw['done_at']) : 0,
+    );
+}
+
+/**
+ * Whether a sweep is due at a moment, pure: one is under way, or the last
+ * one finished PG_PFU_SWEEP_EVERY seconds ago or more.
+ *
+ * @param array $state pg_pfu_sweep_state()
+ * @param int   $now
+ * @return bool
+ */
+function pg_pfu_sweep_due_at($state, $now)
+{
+    return ($state['after_id'] > 0) || ($state['done_at'] <= ((int) $now - PG_PFU_SWEEP_EVERY));
+}
+
+/**
+ * Whether the general job runs the sweep on this tick: one read of a small
+ * file.
+ *
+ * @return bool
+ */
+function pg_pfu_sweep_due()
+{
+    return pg_pfu_sweep_due_at(pg_pfu_sweep_state(@json_decode((string) @file_get_contents(pg_pfu_sweep_marker()), true)), time());
+}
+
+/**
+ * The query for the next carts the sweep walks: the orders whose product
+ * form answers hold a file, after the last one done, in order (form_data's
+ * order_id index).
+ *
+ * @param int $after_id
+ * @param int $rows
+ * @return string
+ */
+function pg_pfu_sweep_walk_sql($after_id, $rows)
+{
+    return "SELECT DISTINCT order_id
+        FROM form_data
+        WHERE
+            (order_id > '" . max(0, (int) $after_id) . "')
+            AND (form_id = '0')
+            AND (order_item_id > 0)
+            AND (file_id > 0)
+        ORDER BY order_id
+        LIMIT " . max(1, (int) $rows);
+}
+
+/**
+ * The query for a chunk's carts with what their last touch is made of: the
+ * order's status and times, and the newest file in its answers. An answer
+ * whose order row is gone has no row here and is never swept.
+ *
+ * @param int[] $ids
+ * @return string '' without an id
+ */
+function pg_pfu_sweep_carts_sql($ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids), function ($id) { return $id > 0; })));
+
+    if (!$ids) {
+        return '';
+    }
+
+    return "SELECT
+            orders.id,
+            orders.status,
+            orders.order_date,
+            orders.last_modified_timestamp,
+            MAX(files.timestamp) AS file_touch
+        FROM orders
+        LEFT JOIN form_data ON
+            (form_data.order_id = orders.id)
+            AND (form_data.form_id = '0')
+            AND (form_data.order_item_id > 0)
+            AND (form_data.file_id > 0)
+        LEFT JOIN files ON files.id = form_data.file_id
+        WHERE orders.id IN (" . implode(', ', $ids) . ")
+        GROUP BY orders.id, orders.status, orders.order_date, orders.last_modified_timestamp";
+}
+
+/**
+ * The form_data condition of the answers whose files a sweep deletes: the
+ * picked carts' product form answers, while the cart is still incomplete and
+ * still untouched since the cutoff, read again at the delete so a cart that
+ * became an order or came back meanwhile keeps its files.
+ *
+ * @param int[] $ids    pg_pfu_sweep_pick()
+ * @param int   $before pg_pfu_sweep_before()
+ * @return string '' without an id
+ */
+function pg_pfu_sweep_where($ids, $before)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids), function ($id) { return $id > 0; })));
+
+    if (!$ids) {
+        return '';
+    }
+
+    $before = (int) $before;
+
+    return "(form_data.order_item_id > 0) AND form_data.order_id IN (
+            SELECT orders.id
+            FROM orders
+            WHERE
+                (orders.id IN (" . implode(', ', $ids) . "))
+                AND (orders.status = 'incomplete')
+                AND (orders.last_modified_timestamp <= '" . $before . "')
+                AND (orders.order_date <= '" . $before . "'))";
+}
+
+/**
+ * Sweeps the uploaded files of carts that never became an order,
+ * PG_PFU_SWEEP_DAYS days after their last touch, for the general job: a
+ * chunk of carts at a time until the time is up, the place kept in the
+ * marker so the next tick carries on. Files go through
+ * pg_pfu_remove_files_where(), so a file another answer still holds stays;
+ * the swept answers then lose their file, so a required file is asked for
+ * again if the shopper comes back. An order is never swept.
+ *
+ * @param int $seconds
+ * @return array state (skipped, more, done), carts, files
+ */
+function pg_pfu_sweep_run($seconds)
+{
+    $result = array('state' => 'skipped', 'carts' => 0, 'files' => 0);
+
+    if (!class_exists('db', false) || empty(db::$con)) {
+        return $result;
+    }
+
+    $marker = pg_pfu_sweep_marker();
+    $state = pg_pfu_sweep_state(@json_decode((string) @file_get_contents($marker), true));
+    $now = time();
+    $before = pg_pfu_sweep_before($now);
+    $deadline = microtime(true) + max(1, (int) $seconds);
+    $result['state'] = 'more';
+
+    while (microtime(true) < $deadline) {
+        // A failed read ends the tick without marking the pass done.
+        $walk = @mysqli_query(db::$con, pg_pfu_sweep_walk_sql($state['after_id'], PG_PFU_SWEEP_CHUNK));
+
+        if (!$walk) {
+            break;
+        }
+
+        $ids = array();
+
+        while ($row = mysqli_fetch_row($walk)) {
+            $ids[] = (int) $row[0];
+        }
+
+        if (!$ids) {
+            $state = array('after_id' => 0, 'done_at' => $now);
+            $result['state'] = 'done';
+            break;
+        }
+
+        $carts_result = @mysqli_query(db::$con, pg_pfu_sweep_carts_sql($ids));
+
+        if (!$carts_result) {
+            break;
+        }
+
+        $carts = array();
+
+        while ($row = mysqli_fetch_assoc($carts_result)) {
+            $carts[] = $row;
+        }
+
+        $picked = pg_pfu_sweep_pick($carts, $now);
+
+        if ($picked) {
+            $where = pg_pfu_sweep_where($picked, $before);
+            $result['files'] += pg_pfu_remove_files_where($where);
+
+            // The answers stay with their cart; the file they named is gone.
+            db("UPDATE form_data
+                SET file_id = '0', data = ''
+                WHERE
+                    (form_data.form_id = '0')
+                    AND (form_data.file_id > 0)
+                    AND (" . $where . ")
+                    AND NOT EXISTS (SELECT 1 FROM files WHERE files.id = form_data.file_id)");
+
+            $result['carts'] += count($picked);
+        }
+
+        $state['after_id'] = max($ids);
+    }
+
+    @file_put_contents($marker, json_encode($state), LOCK_EX);
+
+    return $result;
 }
