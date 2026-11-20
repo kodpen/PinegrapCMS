@@ -258,7 +258,8 @@ function test_field_form_types()
 	pg_assert_true(in_array('signature', pg_field_form_types('custom', true), true), 'signature column: signature');
 
 	$product = pg_field_form_types('product', true);
-	pg_assert_true(!in_array('file upload', $product, true), 'product form: no file upload');
+	pg_assert_true(in_array('file upload', $product, true), 'product form: file upload');
+	pg_assert_true(!in_array('file upload', pg_field_form_types('billing', true), true), 'billing form: no file upload');
 	pg_assert_true(!in_array('signature', $product, true), 'product form: no signature');
 	pg_assert_true(in_array('time', $product, true), 'product form: time');
 	pg_assert_true(!in_array('', $product, true), 'no empty type');

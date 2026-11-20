@@ -20,6 +20,7 @@ module: auto_dialogs
 ## What does the script do?
 - `frontend.src.js` (and the hand-patched `frontend.min.js`) `show_auto_dialog()`: for content component a copy of the template (`importNode`) goes to `open_dialog({content})`; no template, no dialog.
 - `open_dialog()` with `content`: a `div.pg-dialog-body` in place of the iframe, class `pg-dialog-content` (no padding, the page's own font and colour, only the close button over the top right corner); a side left out, or a mobile device, sizes it to the content within the window. A press on `[data-pg-popup-close]` inside closes it.
+- Content holding a `[data-pg-popup-close]` gets `pg-dialog-own-close`, which hides the frame's own close button; a press on `[data-pg-popup-copy]` runs `software.popup_copy()` (`designer/designer-blocks-popup.md`).
 - Taken is counted on a press on `[data-pg-popup-take]` or a form sent inside (`visitors/auto-dialog-counts.md`).
 
 ## Who can set it?
@@ -30,4 +31,4 @@ module: auto_dialogs
 - Links under the select, in a new tab: "Open in the visual designer" (`edit_system_style.php?component=<id>`, follows the select, hidden with none) and "Design a new pop-up" (the lowest visual design's id, only for `pg_designer_is_full()`); `pg_auto_dialog_form_designer_links()`.
 
 ## Tested?
-- `tests/auto_dialog_content_test.php` (the screens' helpers too), `tests/auto_dialog_form_test.php`, `tests/api_design_dialogs_regions_test.php`. The step ran twice on MariaDB 10.11 with the starter table (added, then skipped). Both scripts ran in Chromium (#10450): a designed pop-up opened, counted and closed; an address one kept its size.
+- `tests/auto_dialog_content_test.php` (the screens' helpers too), `tests/auto_dialog_form_test.php`, `tests/api_design_dialogs_regions_test.php`. Both scripts ran in Chromium (#10450): a designed pop-up opened, counted and closed; an address one kept its size.

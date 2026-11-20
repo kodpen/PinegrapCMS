@@ -144,6 +144,10 @@ function pg_reseal_registry()
     $registry[] = $rows('workspace', 'ws_agents', 'door_secret_sealed', 'id', 'iv');
     $registry[] = $config_text('workspace', 'ws_voice_key', 'iv');
     $registry[] = $config_text('workspace', 'ws_voice_speech_key', 'iv');
+    // The calls relay's shared secret (workspace/calls_settings.php).
+    $registry[] = $config_text('workspace', 'ws_calls_turn_secret', 'iv');
+    // The event tickets' own key (event_tickets.php): their codes and links.
+    $registry[] = $config_text('event_tickets', 'event_tickets_key', 'iv');
 
     return $registry;
 }

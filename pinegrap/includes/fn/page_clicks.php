@@ -12,8 +12,9 @@
  * with the device class, the deepest tenth of the page the window's bottom
  * reached and at most PG_PAGE_CLICKS_BEACON elements clicked, each named by
  * four parts (the part of the page, link or button, the address, the label).
- * page_view.php drops it for staff, a signed-in member, a crawler or a
- * visitor who refused statistics in the cookie notice, checks the signature, folds every
+ * page_view.php drops it while the switch is off, for staff, a signed-in
+ * member, a crawler or a visitor who refused statistics in the cookie notice,
+ * checks the signature, folds every
  * address and label again (pg_page_clicks_fold_url(),
  * pg_page_clicks_fold_label()) and raises one row per page, day and device
  * of each kind with one INSERT ... ON DUPLICATE KEY UPDATE: the views, the
@@ -223,6 +224,12 @@ function pg_page_clicks_fold_url($url, $site_host = '')
 
         if (isset($messaging['schemes'][$scheme])) {
             return $messaging['schemes'][$scheme];
+        }
+
+        // A kind the script already folded to ("telegram:") stays itself:
+        // the server folds the script's address a second time.
+        if (in_array($scheme . ':', $messaging['schemes'], true) || in_array($scheme . ':', $messaging['hosts'], true)) {
+            return $scheme . ':';
         }
 
         if (($scheme !== 'http') && ($scheme !== 'https')) {
@@ -534,24 +541,39 @@ function pg_page_clicks_rate_exceeded()
 }
 
 /**
- * Whether this request may count: no crawler or script, nobody signed in
- * (staff, or a member whose view can carry a name), and not a visitor who
- * refused statistics in the cookie notice (the one check of the anonymous
- * counts, pg_consent_statistics_not_refused()).
+ * Whether a beacon may count: the "Clicks and scrolling" switch on, no
+ * crawler or script, nobody signed in, statistics not refused. The switch is
+ * asked here and not only when the script is drawn: a stored copy of a page
+ * carries the script up to the page cache's hour after the switch is turned
+ * off, and a signature stays good until the next day. Pure.
+ *
+ * @param bool $switch_on   pg_page_clicks_switch_on()
+ * @param bool $automated   pg_request_is_automated()
+ * @param bool $signed_in   USER_LOGGED_IN
+ * @param bool $not_refused pg_consent_statistics_not_refused()
+ * @return bool
+ */
+function pg_page_clicks_may_count($switch_on, $automated, $signed_in, $not_refused)
+{
+    return (bool) $switch_on && !$automated && !$signed_in && (bool) $not_refused;
+}
+
+/**
+ * Whether this request may count: the switch on, no crawler or script,
+ * nobody signed in (staff, or a member whose view can carry a name), and not
+ * a visitor who refused statistics in the cookie notice (the one check of
+ * the anonymous counts, pg_consent_statistics_not_refused()).
  *
  * @return bool
  */
 function pg_page_clicks_allowed()
 {
-    if (function_exists('pg_request_is_automated') && pg_request_is_automated()) {
-        return false;
-    }
-
-    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN) {
-        return false;
-    }
-
-    return !function_exists('pg_consent_statistics_not_refused') || pg_consent_statistics_not_refused();
+    return pg_page_clicks_may_count(
+        pg_page_clicks_switch_on(),
+        function_exists('pg_request_is_automated') && pg_request_is_automated(),
+        defined('USER_LOGGED_IN') && USER_LOGGED_IN,
+        !function_exists('pg_consent_statistics_not_refused') || pg_consent_statistics_not_refused()
+    );
 }
 
 /**

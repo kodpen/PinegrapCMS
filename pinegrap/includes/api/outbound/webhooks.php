@@ -127,6 +127,13 @@ function api_webhook_core_events() {
 		// Announced where a person or an application moves it; an order's
 		// cancellation voiding its commissions, and a restore giving them
 		// back, are not (order.cancelled is), nor is a new commission.
+		// A referral's reward (includes/fn/referral.php,
+		// pg_referral_order_completed()): id is the referral's commission row;
+		// reference_code, affiliate_code (the referral code), order_id (the
+		// friend's order), amount, customer_id and account_id (the referrer)
+		// and card_id (the store credit card) follow. Once per reward, after
+		// the order's completion; a restore giving it again is credit.issued.
+		'referral.rewarded' => 'A friend\'s completed order earned its referrer the referral reward as store credit (once per reward: a reward taken back by a cancel or a refund, and one given again when the order is restored, are not announced; credit.issued is)',
 		'commission.status_changed' => 'A commission was moved to another status on the commissions screen or through the API (not the voiding by an order\'s cancellation or its restore; a new commission is not announced)',
 		// An affiliate approved (includes/fn/contacts.php, pg_affiliate_approve()
 		// and the contact form's tick): id is the contact's; affiliate_code and

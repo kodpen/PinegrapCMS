@@ -19,6 +19,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// pg_mail_dkim_key(): the p= key of a DKIM record.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
+
 /**
  * The config.php defines E-mail sending writes, in the order they are saved.
  *
@@ -36,18 +39,34 @@ function pg_mail_settings_keys()
 }
 
 /**
- * Whether the saved settings name a way to send: an SMTP account, a
+ * Whether the saved settings name a way to send: an SMTP server, a
  * connected account or a sending service.
  *
  * @return bool
  */
 function pg_mail_settings_ready()
 {
-    return (
-        defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '' &&
-        defined('SYSTEM_SMTP_USERNAME') && SYSTEM_SMTP_USERNAME !== '' &&
-        defined('SYSTEM_SMTP_PASSWORD') && SYSTEM_SMTP_PASSWORD !== ''
+    return pg_mail_settings_smtp_ready(
+        defined('SYSTEM_SMTP_HOSTNAME') ? (string) SYSTEM_SMTP_HOSTNAME : '',
+        defined('SYSTEM_SMTP_USERNAME') ? (string) SYSTEM_SMTP_USERNAME : '',
+        defined('SYSTEM_SMTP_PASSWORD') ? (string) SYSTEM_SMTP_PASSWORD : ''
     ) || (pg_mail_connection('system') !== null) || (pg_mail_transport() !== 'smtp');
+}
+
+/**
+ * Whether the system SMTP server is one email() can send through: a host,
+ * and a password when a username asks it to sign in. A relay without a
+ * username (localhost, a server that trusts the site's address) signs in to
+ * nothing and sends.
+ *
+ * @param string $host
+ * @param string $user
+ * @param string $password
+ * @return bool
+ */
+function pg_mail_settings_smtp_ready($host, $user, $password)
+{
+    return ((string) $host !== '') && (((string) $user === '') || ((string) $password !== ''));
 }
 
 /**
@@ -131,6 +150,116 @@ function pg_mail_settings_connect_buttons(array $providers, array $accounts)
 }
 
 /**
+ * The TXT record the DKIM card shows: the generated key under the selector
+ * and domain mail is signed with now (email() falls back to "pinegrap" and the
+ * domain of the site's address). The stored record keeps the names the key
+ * was generated with, and a selector changed since would send the operator to
+ * publish it where no signature points.
+ *
+ * @param string $stored the generated record (files.description of dkim.key)
+ * @param string $selector DKIM_SELECTOR
+ * @param string $domain DKIM_DOMAIN
+ * @param string $email_address EMAIL_ADDRESS
+ * @return string '' when no key was generated
+ */
+function pg_mail_settings_dkim_shown_record($stored, $selector, $domain, $email_address)
+{
+    $key = pg_mail_dkim_key($stored);
+
+    if ($key === '') {
+        return '';
+    }
+
+    $selector = ((string) $selector !== '') ? (string) $selector : 'pinegrap';
+    $at = strrchr((string) $email_address, '@');
+    $domain = ((string) $domain !== '') ? (string) $domain : (($at !== false) ? substr($at, 1) : '');
+
+    return pg_dkim_txt_record($selector, $domain, $key);
+}
+
+/**
+ * Whether one of the TXT records published for the selector carries the whole
+ * generated key. A record cut short (a DNS panel stopping at 255 characters)
+ * holds only the key's start and signs nothing, so it does not pass.
+ *
+ * @param string $txt_record the generated record (files.description of dkim.key)
+ * @param array $records dns_get_record() answers, each with its 'txt'
+ * @return bool
+ */
+function pg_mail_settings_dkim_matches($txt_record, array $records)
+{
+    $key = pg_mail_dkim_key($txt_record);
+
+    if ($key === '') {
+        return false;
+    }
+
+    foreach ($records as $record) {
+        if (is_array($record) && isset($record['txt']) && (pg_mail_dkim_key($record['txt']) === $key)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * What is wrong with a number box, '' when nothing is. A port is 1 to 65535;
+ * the campaign job's Max. is 1 or more, because email_campaign_job.php puts
+ * it into its LIMIT, where 0 sends nothing and anything but digits fails the
+ * query on every run. A blank box keeps the default (587, 25).
+ *
+ * @param string $key the define (pg_mail_settings_keys())
+ * @param string $value the box as it is saved
+ * @return string
+ */
+function pg_mail_settings_number_problem($key, $value)
+{
+    $value = (string) $value;
+
+    if (($value === '') || !in_array($key, array('SYSTEM_SMTP_PORT', 'CAMPAIGN_SMTP_PORT', 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS'), true)) {
+        return '';
+    }
+
+    $whole = (preg_match('/^[0-9]{1,9}$/D', $value) === 1) ? (int) $value : 0;
+
+    if ($key === 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS') {
+        return ($whole >= 1) ? '' : lang('Enter a whole number of 1 or more, or leave the box blank for 25.');
+    }
+
+    return (($whole >= 1) && ($whole <= 65535)) ? '' : lang('The sending server is a host name such as smtp.gmail.com, with a port from 1 to 65535.');
+}
+
+/**
+ * Mailchimp's reason for refusing the MailChimp card, as the field shows it.
+ * mailchimp_request() appends the response and the request to its message,
+ * and the request carries the API key, which the card never prints back: a
+ * wrong List ID would show the stored key to whoever saved.
+ *
+ * @param string $message mailchimp_request()'s message
+ * @param string $key the key the request was sent with
+ * @return string plain text
+ */
+function pg_mail_settings_mailchimp_reason($message, $key)
+{
+    $reason = (string) $message;
+
+    foreach (array(lang('Response'), lang('Request')) as $label) {
+        $at = strpos($reason, "\n" . $label . ': ');
+
+        if ($at !== false) {
+            $reason = substr($reason, 0, $at);
+        }
+    }
+
+    if ((string) $key !== '') {
+        $reason = str_replace((string) $key, '***', $reason);
+    }
+
+    return trim($reason);
+}
+
+/**
  * Writes the posted boxes to config.php. A refusal marks its field or adds
  * an error to the form and writes nothing.
  *
@@ -169,6 +298,26 @@ function pg_mail_settings_save(array $post, $liveform)
         if (($posted['password'] === '') && ($stored['password'] !== '') && ($kept_passwords[$prefix . 'PASSWORD'] === '')
             && ($posted['host'] !== '') && ($posted['user'] !== '')) {
             $liveform->mark_error($kind . '_smtp_password', lang('The SMTP server or its port changed. Enter the password again.'));
+
+            return false;
+        }
+    }
+
+    // A number box that would stop the mail or the campaign job is refused
+    // before anything is written. The campaign boxes are folded away while
+    // the job is off, where a mark could not be seen or put right.
+    $job_on = (isset($post['email_campaign_job']) && ($post['email_campaign_job'] === 'true'));
+
+    foreach (array('SYSTEM_SMTP_PORT', 'CAMPAIGN_SMTP_PORT', 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS') as $key) {
+        $field = strtolower($key);
+
+        if (!$job_on && ($key !== 'SYSTEM_SMTP_PORT')) {
+            continue;
+        }
+        $problem = pg_mail_settings_number_problem($key, (isset($post[$field]) && is_string($post[$field])) ? trim(preg_replace('/[\x00-\x1F\x7F]/', '', $post[$field])) : '');
+
+        if ($problem !== '') {
+            $liveform->mark_error($field, h($problem));
 
             return false;
         }
@@ -377,18 +526,10 @@ function pg_mail_settings_dkim_test(array $saved, $liveform)
         return;
     }
 
-    $records = dns_get_record($selector . '._domainkey.' . $domain, DNS_TXT);
-    $dns_txt = '';
+    // A failed lookup is a failed test, not a PHP warning on the pane.
+    $records = @dns_get_record($selector . '._domainkey.' . $domain, DNS_TXT);
 
-    if ($records) {
-        foreach ($records as $record) {
-            $dns_txt .= $record['txt'] . ' ';
-        }
-
-        $dns_txt = trim($dns_txt);
-    }
-
-    if ($dns_txt && (strpos($txt_record, $dns_txt) !== false)) {
+    if (pg_mail_settings_dkim_matches((string) $txt_record, is_array($records) ? $records : array())) {
         $liveform->add_notice(lang('DKIM test successful. DNS record matches generated key.'));
         log_activity(lang('DKIM test successful.'), $_SESSION['sessionusername']);
     } else {

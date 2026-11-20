@@ -216,7 +216,7 @@ function test_workspace_command_picker_js_wiring()
 	// The composer passes whether it is a discussion's, and groups only an
 	// untyped list longer than it shows.
 	pg_assert_contains("var inThread = !!self.isThread || !!(self.channel && (self.channel.kind === 'thread'));", $source, 'the list knows a discussion\'s box');
-	pg_assert_contains("commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap), flowsHere)", $source, 'and where the catch-up line sums up');
+	pg_assert_contains("commandPickerRows(BOOT.commands, query, inThread, !inThread && !!(self.briefing && self.briefing.catchup && self.briefing.recap), flowsHere, hereIds)", $source, 'and where the catch-up line sums up');
 	pg_assert_contains("if ((query === '') && shown && (shown.scrollHeight > shown.clientHeight + 1)) {", $source, 'headers only when nothing is typed and the list is longer than it shows');
 	pg_assert_contains('commandPickerGroups(commands, BOOT.command_groups)', $source, 'the groups in the server\'s order');
 
@@ -228,4 +228,35 @@ function test_workspace_command_picker_js_wiring()
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 
 	pg_assert_contains('.ws-picker-group {', $css, 'the header has its rule');
+}
+
+// An agent's command (agent_channels) is listed only in a box whose channel,
+// or whose discussion's channel, allows the agent; an application's command
+// without an agent and a box that names no channel list it as before.
+function test_workspace_command_picker_js_agent_command_where_allowed()
+{
+	$fold = workspace_command_picker_js_test_function('foldText');
+	$rows = workspace_command_picker_js_test_function('commandPickerRows');
+
+	$result = workspace_command_picker_js_test_node($fold . $rows . '
+var COMMANDS = [
+	{ command: "/report · App", name: "/report", names: ["/report"], description: "d", example: "e", group: "agents", where: "any", agent_channels: [4, 9] },
+	{ command: "/sum · App", name: "/sum", names: ["/sum"], description: "d", example: "e", group: "agents", where: "any", agent_channels: null }
+];
+function labels(rows) { return rows.map(function (row) { return row.label; }); }
+console.log(JSON.stringify({
+	allowed: labels(commandPickerRows(COMMANDS, "", false, null, null, [4, 0])),
+	other: labels(commandPickerRows(COMMANDS, "", false, null, null, [5, 0])),
+	thread: labels(commandPickerRows(COMMANDS, "", true, null, null, [70, 9])),
+	untold: labels(commandPickerRows(COMMANDS, "", false))
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('/report', '/sum'), $result['allowed'], 'offered where the agent is allowed');
+	pg_assert_same(array('/sum'), $result['other'], 'an agent not allowed in the channel is not offered there');
+	pg_assert_same(array('/report', '/sum'), $result['thread'], 'a discussion of an allowing channel offers it');
+	pg_assert_same(array('/report', '/sum'), $result['untold'], 'no channel told: as before');
 }
