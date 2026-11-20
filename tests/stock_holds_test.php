@@ -176,3 +176,68 @@ function test_stock_holds_callers()
 	pg_assert_false(strpos($module, 'UPDATE products') !== false, 'no stock write');
 	pg_assert_false(strpos($module, 'product_stock') !== false, 'no location stock read or write');
 }
+
+// Other orders' live holds summed per product; own and expired rows left out.
+function test_stock_holds_held_by_others()
+{
+	$holds = array(
+		array('product_id' => '4', 'order_id' => '7', 'quantity' => '2', 'expires_at' => '1500'),
+		array('product_id' => '4', 'order_id' => '8', 'quantity' => '1', 'expires_at' => '1200'),
+		array('product_id' => '5', 'order_id' => '9', 'quantity' => '3', 'expires_at' => '1500'),
+		array('product_id' => '6', 'order_id' => '7', 'quantity' => '4', 'expires_at' => '1000'));
+
+	pg_assert_same(array(4 => 3), pg_stock_hold_held_by_others($holds, 9, 1000), 'own and expired rows left out');
+	pg_assert_same(array(4 => 3, 5 => 3), pg_stock_hold_held_by_others($holds, 0, 1000), 'no order: every live hold');
+	pg_assert_same(array(), pg_stock_hold_held_by_others(array(), 9, 1000), 'no holds');
+}
+
+// The stock a check counts: unchanged with nothing held, else less the held units.
+function test_stock_holds_less_held()
+{
+	pg_assert_same(5, pg_stock_hold_less_held(5, 0), 'nothing held: the stock');
+	pg_assert_same(-2, pg_stock_hold_less_held(-2, 0), 'nothing held: the stock as it is');
+	pg_assert_same(2, pg_stock_hold_less_held('5', 3), 'three held');
+	pg_assert_same(0, pg_stock_hold_less_held(2, 3), 'never below 0');
+}
+
+// A bundle cart's stock pool less what other orders hold, tracked products only.
+function test_stock_holds_bundle_stock_less_held()
+{
+	$stock = array(
+		1 => array('tracked' => true, 'quantity' => 5, 'backorder' => false),
+		2 => array('tracked' => false, 'quantity' => 0, 'backorder' => false),
+		3 => array('tracked' => true, 'quantity' => 1, 'backorder' => false));
+
+	$less = pg_bundle_stock_less_held($stock, array(1 => 2, 2 => 4, 3 => 3));
+
+	pg_assert_same(3, $less[1]['quantity'], 'five less two held');
+	pg_assert_same(0, $less[2]['quantity'], 'an untracked product is left as it is');
+	pg_assert_same(0, $less[3]['quantity'], 'never below 0');
+	pg_assert_same($stock, pg_bundle_stock_less_held($stock, array()), 'nothing held: the pool as it is');
+}
+
+// Both checks count the units free; the no-holds path keeps its statements.
+function test_stock_holds_checks_read_units_free()
+{
+	$ecommerce = stock_holds_test_source('includes/fn/ecommerce.php');
+	$start = strpos($ecommerce, 'function check_inventory(');
+	$check = substr($ecommerce, $start, strpos($ecommerce, 'function check_reservations(') - $start);
+
+	pg_assert_contains('$held = pg_stock_hold_held_for(array_column($products, \'id\'), $stock_location_id, $cart_order_id);', $check, 'other orders\' holds read once');
+	pg_assert_contains('$product[\'inventory_quantity\'] = pg_stock_hold_less_held($product[\'inventory_quantity\'], isset($held[$product[\'id\']]) ? $held[$product[\'id\']] : 0);', $check, 'counted after the location');
+	pg_assert_contains('$at_location = pg_stock_quantity_at($product[\'id\'], $stock_location_id, $product[\'inventory_quantity\']);', $check, 'the location read stays');
+	pg_assert_contains('pg_bundle_check_inventory($liveform, $cart_order_id, $bundle_ids);', $check, 'a bundle cart goes to its check');
+	pg_assert_contains('if ($product[\'inventory_quantity\'] == 0) {', $check, 'nothing left: the line goes');
+	pg_assert_contains('if ($order_item[\'quantity\'] > $product[\'inventory_quantity\']) {', $check, 'too many: the line is cut');
+	pg_assert_contains('$product[\'inventory_quantity\'] = $product[\'inventory_quantity\'] - $order_item[\'quantity\'];', $check, 'lines share the units');
+	pg_assert_true(strpos($check, '$at_location = pg_stock_quantity_at(') < strpos($check, 'pg_stock_hold_less_held('), 'holds come off the location\'s stock');
+
+	$bundles = stock_holds_test_source('includes/fn/bundles.php');
+	$start = strpos($bundles, 'function pg_bundle_check_inventory(');
+	$check = substr($bundles, $start, strpos($bundles, 'function pg_bundle_return_stock(') - $start);
+
+	pg_assert_contains('$stock = pg_bundle_stock_at_location($stock, $at_location);', $check, 'the location read stays');
+	pg_assert_contains('$stock = pg_bundle_stock_less_held($stock, pg_stock_hold_held_for(array_keys($stock), $location_id, $order_id));', $check, 'other orders\' holds come off the pool');
+	pg_assert_contains('$allowance = pg_bundle_cart_allowance($lines, $stock);', $check, 'one pool for the lines');
+	pg_assert_true(strpos($check, 'pg_bundle_stock_at_location(') < strpos($check, 'pg_bundle_stock_less_held(') && strpos($check, 'pg_bundle_stock_less_held(') < strpos($check, 'pg_bundle_cart_allowance('), 'location, then holds, then the allowance');
+}

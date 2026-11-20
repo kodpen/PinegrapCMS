@@ -296,6 +296,93 @@ function pg_stock_hold_free_now($product_id, $location_id, $total, $order_id)
 }
 
 /**
+ * Units other orders hold now, product id => units: rows of the order asking
+ * and rows that ran out are left out. Pure.
+ *
+ * @param array $holds    rows with product_id, order_id, quantity, expires_at
+ * @param int   $order_id the order asking; 0 counts every hold
+ * @param int   $now      Unix time
+ * @return array
+ */
+function pg_stock_hold_held_by_others(array $holds, $order_id, $now)
+{
+    $held = array();
+    $order_id = (int) $order_id;
+
+    foreach ($holds as $hold) {
+        $product_id = (int) $hold['product_id'];
+        $units = max(0, (int) $hold['quantity']);
+
+        if (($order_id > 0) && ((int) $hold['order_id'] === $order_id)) {
+            continue;
+        }
+
+        if (((int) $hold['expires_at'] <= (int) $now) || ($units === 0)) {
+            continue;
+        }
+
+        $held[$product_id] = (isset($held[$product_id]) ? $held[$product_id] : 0) + $units;
+    }
+
+    return $held;
+}
+
+/**
+ * The stock a cart check counts: the stock as it is when nothing is held, so
+ * a site with no holds checks exactly as before; else the stock less the
+ * held units, never below 0. Pure.
+ *
+ * @param int $stock units in stock (at the location, with locations)
+ * @param int $held  units other orders hold
+ * @return int
+ */
+function pg_stock_hold_less_held($stock, $held)
+{
+    if ((int) $held <= 0) {
+        return (int) $stock;
+    }
+
+    return max(0, (int) $stock - (int) $held);
+}
+
+/**
+ * Units other orders hold now of the given products at a location, product
+ * id => units, read in one query for check_inventory() and
+ * pg_bundle_check_inventory(). Empty before the upgrade.
+ *
+ * @param array $product_ids
+ * @param int   $location_id 0 without locations
+ * @param int   $order_id    the cart's order
+ * @return array
+ */
+function pg_stock_hold_held_for(array $product_ids, $location_id, $order_id)
+{
+    $ids = array();
+
+    foreach ($product_ids as $product_id) {
+        if ((int) $product_id > 0) {
+            $ids[(int) $product_id] = (int) $product_id;
+        }
+    }
+
+    if (!$ids || !pg_stock_holds_ready()) {
+        return array();
+    }
+
+    $now = time();
+
+    $rows = db_items(
+        "SELECT product_id, order_id, quantity, expires_at
+        FROM stock_holds
+        WHERE
+            (product_id IN (" . implode(',', $ids) . "))
+            AND (location_id = '" . pg_stock_hold_location($location_id) . "')
+            AND (expires_at > '" . $now . "')");
+
+    return pg_stock_hold_held_by_others($rows ? $rows : array(), $order_id, $now);
+}
+
+/**
  * Hold the units an order needs for PG_STOCK_HOLD_MINUTES. Each product is
  * taken in id order under its own lock, held for the read of its free units
  * and the write of the row only. When any product cannot be covered, or its

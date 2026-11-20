@@ -9325,13 +9325,19 @@ function check_inventory($liveform)
     // order will take its units from: what that location cannot cover is
     // refused as the total's shortfall is, and nothing counts from another
     // location. Without locations the total is counted as before.
-    $stock_location_id = pg_stock_order_location((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+    $cart_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+    $stock_location_id = pg_stock_order_location($cart_order_id);
+    // Units other checkouts hold for their payment are not free for this
+    // cart (includes/fn/stock_holds.php): read once for every product and
+    // taken off the stock at the location. With no holds nothing changes.
+    $held = pg_stock_hold_held_for(array_column($products, 'id'), $stock_location_id, $cart_order_id);
     // loop through products in order to check inventory for order items
     foreach ($products as $product) {
         $at_location = pg_stock_quantity_at($product['id'], $stock_location_id, $product['inventory_quantity']);
         if ($at_location !== null) {
             $product['inventory_quantity'] = $at_location;
         }
+        $product['inventory_quantity'] = pg_stock_hold_less_held($product['inventory_quantity'], isset($held[$product['id']]) ? $held[$product['id']] : 0);
         // set the starting inventory quantity
         // so later we know if the product was completely out of stock to begin with before we started looking at order items
         $product['starting_inventory_quantity'] = $product['inventory_quantity'];

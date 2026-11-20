@@ -782,6 +782,26 @@ function pg_bundle_stock_at_location($stock, $at_location)
 }
 
 /**
+ * A bundle cart's stock pool less the units other checkouts hold: a tracked
+ * product's quantity drops by its held units, never below 0; with nothing
+ * held the pool is returned as it is. Pure.
+ *
+ * @param array $stock product_id => array(tracked, quantity, backorder)
+ * @param array $held  product_id => units other orders hold
+ * @return array
+ */
+function pg_bundle_stock_less_held($stock, $held)
+{
+    foreach ($stock as $product_id => $entry) {
+        if ($entry['tracked'] && isset($held[$product_id])) {
+            $stock[$product_id]['quantity'] = pg_stock_hold_less_held($entry['quantity'], $held[$product_id]);
+        }
+    }
+
+    return $stock;
+}
+
+/**
  * check_inventory() for a cart that holds a bundle: every line is checked
  * against one stock pool (pg_bundle_cart_allowance()), so a component bought
  * alone and inside a bundle cannot be sold twice. A line the stock cannot
@@ -861,6 +881,10 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
     }
 
     $stock = pg_bundle_stock_at_location($stock, $at_location);
+
+    // Units other checkouts hold for their payment are not free for this
+    // cart (includes/fn/stock_holds.php); with no holds the pool is as read.
+    $stock = pg_bundle_stock_less_held($stock, pg_stock_hold_held_for(array_keys($stock), $location_id, $order_id));
 
     $allowance = pg_bundle_cart_allowance($lines, $stock);
 

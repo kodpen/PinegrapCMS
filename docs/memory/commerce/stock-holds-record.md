@@ -1,6 +1,6 @@
 ---
 name: stock-holds-record
-description: The stock_holds table (11.0.253) and includes/fn/stock_holds.php: units free, units an order needs, placing under a per-product lock, release, the daily sweep (SH1, PR #10711)
+description: The stock_holds table (11.0.253) and stock_holds.php: units free, the cart checks reading them, placing under a per-product lock, release, the daily sweep (SH1 #10711, SH2)
 module: stock_holds
 ---
 
@@ -12,8 +12,13 @@ module: stock_holds
 ## What do the functions answer?
 - `pg_stock_hold_units_free($stock, $holds, $order_id, $now)`, pure: stock less other orders' rows whose `expires_at` is after now, never below 0; the order's own rows are not counted. Order 0 counts every hold.
 - `pg_stock_hold_order_needs($lines, $stock)`, pure: product id => units in id order. A plain line holds its product; a bundle line (`components`) holds each component for quantity per bundle times the line's quantity, added to the same product bought alone (one pool, as `pg_bundle_cart_allowance()`). Untracked, back-order or unknown products are never held.
-- `pg_stock_hold_free_now($product_id, $location_id, $total, $order_id)`: the stock at the location (`pg_stock_quantity_at()`), else the total, less live holds. Meant for SH2's checks.
+- `pg_stock_hold_free_now($product_id, $location_id, $total, $order_id)`: the stock at the location (`pg_stock_quantity_at()`), else the total, less live holds; the read placing does under its lock.
 - `pg_stock_hold_order_lines($order_id)`: the order's active lines (`pg_order_item_active_sql()`) with bundle components and the stock flags.
+
+## Which checks read the holds? (SH2)
+- `check_inventory()` (`ecommerce.php`) and `pg_bundle_check_inventory()` (`bundles.php`): the stock at the order's location less other orders' live holds there. Nothing else reads a hold; a held unit is still in stock elsewhere.
+- `pg_stock_hold_held_for($ids, $location_id, $order_id)`: one query per check, product id => units, empty before the upgrade. Pure parts: `pg_stock_hold_held_by_others()`, `pg_stock_hold_less_held()` (nothing held: the stock exactly as read, so a site with no holds checks as before), `pg_bundle_stock_less_held()` after `pg_bundle_stock_at_location()`.
+- A line short of free units is cut or removed with the notices the checks already give; the held-by-a-checkout notice is SH4.
 
 ## How is a hold placed?
 - `pg_stock_hold_place($order_id)` → `array(placed, product_id)`. Location: `pg_stock_order_location()`. Rows of products the order no longer needs go first. Each product in id order under `GET_LOCK(pg_stock_hold_lock_name(), 5)` for the read and the upsert only (`ON DUPLICATE KEY UPDATE`), then `RELEASE_LOCK`.
@@ -27,4 +32,4 @@ module: stock_holds
 - `pg_stock_hold_sweep_daily()` from `job.php`: once a day (marker `data/temp/stock_holds_swept.txt`), rows with `expires_at` a day past, 1,000 a statement, 20 statements a run.
 
 ## What guards it?
-- `tests/stock_holds_test.php`: units free with other orders, expired and own rows; plain and bundle needs; a location; the lock name; the sweep's statement; source pins of the callers, the step and `get_tables()`.
+- `tests/stock_holds_test.php`: units free with other orders, expired and own rows; held by others and less held; plain and bundle needs; a location; the lock name; the sweep's statement; source pins of the callers, the step, `get_tables()` and both checks' statements.
