@@ -70,6 +70,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_message_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_thread_close.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_channel_access.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_meeting_link.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_calls.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -241,6 +242,9 @@ function ws_openapi_objects()
         'WorkspacePersonCardClock'      => 'ws_api_person_card_clock_schema',
         'WorkspaceMeetingLink'          => 'ws_api_meeting_link_schema',
         'WorkspaceMeetingLinkService'   => 'ws_api_meeting_link_service_schema',
+        'WorkspaceChannelCall'          => 'ws_api_channel_call_schema',
+        'WorkspaceCall'                 => 'ws_api_call_schema',
+        'WorkspaceCallMember'           => 'ws_api_call_member_schema',
         'WorkspaceQuietHours'           => 'ws_api_quiet_hours_schema',
         'WorkspaceQuietHoursRange'      => 'ws_api_quiet_hours_range_schema',
         'WorkspaceChannelKindChange'    => 'ws_api_channel_kind_change_schema',
@@ -3165,6 +3169,7 @@ function ws_api_routes()
     // files in a message (api_message_files.php), concluding a discussion
     // and closing an approval request (api_thread_close.php), and who reads
     // a channel and the versions of its conversation (api_channel_access.php), and
-    // the caller's own meeting link (api_meeting_link.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes(), ws_thread_close_api_routes(), ws_channel_access_api_routes(), ws_meeting_link_api_routes());
+    // the caller's own meeting link (api_meeting_link.php), and a channel's
+    // live call, read only (api_calls.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes(), ws_thread_close_api_routes(), ws_channel_access_api_routes(), ws_meeting_link_api_routes(), ws_call_api_routes());
 }

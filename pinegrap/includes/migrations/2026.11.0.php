@@ -231,6 +231,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_task_app();             // 11.0.230
 	upgrade_2026_11_0_ai_connections();          // 11.0.240
 	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
+	upgrade_2026_11_0_ws_calls();                // 11.0.243
 
 }
 
@@ -7735,5 +7736,66 @@ function upgrade_2026_11_0_ws_task_app() {
 	install_add_index('ws_tasks', 'idx_app', "INDEX idx_app (app_id, status)");
 
 	install_note('Workspace: a task an application creates from now on says "Made by" that application, and My Tasks can show or leave out the tasks agents made. Earlier tasks read as made by a person.');
+
+}
+
+// Voice and video calls in the Workspace (11.0.243, includes/workspace/
+// calls.php). Sound and picture go from browser to browser; these tables
+// hold only who is in a call and the browsers' connection messages.
+// ws_calls: one call of a channel, who started it, voice or video, live or
+// ended, start and end time; idx_channel_state finds a channel's live call,
+// idx_state the live calls the clean-up looks at, idx_started_by the starts
+// of the last minute. ws_call_members: one row per join, a person (user_id)
+// or a guest (guest_id), with its join and leave time (0 while in the
+// call). ws_call_signals: a connection message from one member to another
+// (offer, answer, candidate) or a keep-alive (ping, to nobody), deleted when
+// the call ends and after two minutes; idx_to is the addressee's read,
+// idx_from the sender's count of the last minute. Tables approved by the
+// owner; no backfill, as no call existed before this step.
+function upgrade_2026_11_0_ws_calls() {
+
+	install_create_table('ws_calls', "CREATE TABLE ws_calls (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		started_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind        ENUM('voice','video') NOT NULL DEFAULT 'voice',
+		state       ENUM('live','ended') NOT NULL DEFAULT 'live',
+		started_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_channel_state (channel_id, state),
+		KEY idx_state (state),
+		KEY idx_started_by (started_by, started_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_call_members', "CREATE TABLE ws_call_members (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		call_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		guest_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		joined_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		left_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_call (call_id, left_at),
+		KEY idx_user (user_id),
+		KEY idx_guest (guest_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_call_signals', "CREATE TABLE ws_call_signals (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		call_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		from_member_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		to_member_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            VARCHAR(16) CHARACTER SET ascii NOT NULL DEFAULT '',
+		body            TEXT NULL,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_to (to_member_id, id),
+		KEY idx_from (from_member_id, created_at),
+		KEY idx_call (call_id, created_at),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the tables for voice and video calls are ready; nothing changes on the site until calls are switched on.');
 
 }
