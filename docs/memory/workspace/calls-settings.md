@@ -1,6 +1,6 @@
 ---
 name: calls-settings
-description: The Calls card of Workspace settings (CL6, #PRNUM): off until turned on, STUN addresses, the TURN relay with its sealed secret, member-only time-limited credentials, the browser's connection test
+description: The Calls card of Workspace settings (CL6, #10608): off until turned on, STUN addresses, the TURN relay with its sealed secret, member-only time-limited credentials, the browser's connection test
 ---
 
 ## Where is the card and who changes it?
