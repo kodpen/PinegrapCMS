@@ -97,3 +97,32 @@ function test_sheet_import_doors_unanswered_workbooks_are_swept_by_age()
 	@unlink($other);
 	@rmdir($directory);
 }
+
+function test_sheet_import_doors_content_decides_the_reader()
+{
+	$copy = function ($fixture, $name) {
+		$path = sys_get_temp_dir() . '/pg_doors_' . bin2hex(random_bytes(4)) . '_' . $name;
+		copy(dirname(PG_FUNCTIONS_DIR) . '/tests/fixtures/sheet_import/' . $fixture, $path);
+
+		return $path;
+	};
+
+	$text = sys_get_temp_dir() . '/pg_doors_' . bin2hex(random_bytes(4)) . '_report.xls';
+	file_put_contents($text, "email_address\tfirst_name\nali@example.com\tAli\n");
+
+	$xlsx_as_csv = $copy('rows.xlsx', 'rows.csv');
+	$ods = $copy('rows.ods', 'rows.ods');
+	$xls = $copy('rows.xls', 'rows.xls');
+	$csv = $copy('rows.csv', 'rows.csv');
+
+	pg_assert_same('', pg_sheet_import_content_kind($text, 'report.xls'), 'a tab text saved as .xls goes on as a CSV file');
+	pg_assert_same('xlsx', pg_sheet_import_content_kind($xlsx_as_csv, 'rows.csv'), 'a workbook named .csv is read as the workbook');
+	pg_assert_same('ods', pg_sheet_import_content_kind($ods, 'rows.ods'), 'an .ods file');
+	pg_assert_same('ods', pg_sheet_import_content_kind($ods, 'rows.xlsx'), 'an .ods file named .xlsx');
+	pg_assert_same('xls', pg_sheet_import_content_kind($xls, 'rows.xls'), 'an .xls file');
+	pg_assert_same('', pg_sheet_import_content_kind($csv, 'rows.csv'), 'a CSV file');
+
+	foreach (array($text, $xlsx_as_csv, $ods, $xls, $csv) as $file) {
+		@unlink($file);
+	}
+}
