@@ -245,7 +245,7 @@ function test_mcp_resources_templates_match_their_routes()
 		}
 
 		pg_assert_same('GET', $route['method'], $key . ': read by a GET');
-		pg_assert_true($route['scope'] !== '', $key . ': its route has a scope');
+		pg_assert_true(($route['scope'] !== '') || (isset($route['mcp']) && ($route['mcp'] === true)), $key . ': its route has a scope, or is a tool without one');
 
 		preg_match_all('#\{([a-z_]+)\}#', isset($kind['uri_template']) ? $kind['uri_template'] : $kind['uri'], $found);
 

@@ -5,12 +5,12 @@ module: picture_translation
 ---
 
 ## What does it do?
-- A Design Canvas picture whose words stand as text layers (or a sticker's label) has them translated with the site; a page opened in another language shows that language's drawn picture in place of the source. Its alt and title are translated apart (`translation-attribute-texts.md`).
+- A Artifact Canvas picture whose words stand as text layers (or a sticker's label) has them translated with the site; a page opened in another language shows that language's drawn picture in place of the source. Its alt and title are translated apart (`translation-attribute-texts.md`).
 - Each language's picture is drawn by itself once its texts are translated (`picture-text-auto-draw.md`).
 
 ## Which decisions bind it?
 - Owner (2026-11-17, poll 143, `workflow/decisions-made-product-75.md`): drawn by itself, by an open panel or, with nobody there, by the server (`picture-text-auto-draw.md`).
-- Owner (2026-11-16): Design Canvas pictures shown by a page in another language; the source picture shown while a language's is not drawn or out of date; a table of its own (`workflow/decisions-made-product-64.md`, columns `workflow/decisions-made-schema-25.md`).
+- Owner (2026-11-16): Artifact Canvas pictures shown by a page in another language; the source picture shown while a language's is not drawn or out of date; a table of its own (`workflow/decisions-made-product-64.md`, columns `workflow/decisions-made-schema-25.md`).
 - Owner (2026-11-17): drawn only once every counted text is translated (`workflow/decisions-made-product-71.md`, poll 131). Looks accepted: the Pictures group (poll 118, `decisions-made-product-70.md`), the Languages list (poll 130), the queue (poll 140, `decisions-made-product-74.md`).
 - Architect (2026-11-16, message 6748): no right-to-left language at first; no box or size per language, a text shrinks to the source box down to 70% and is marked "Look by hand" below it (`picture-text-translation-fit-letters.md`); texts as owner type `file`, so a page's same words are one string; only a picture a page has shown is counted, sent and drawn (a banner nobody shows would cost engine calls).
 - Architect (2026-11-16): a language's picture is a `files` row in the source's folder, found only through `file_translation`, never by name, in no file list.
@@ -30,6 +30,6 @@ module: picture_translation
 - The page pass (the swap, waiting rows, one query): `picture-text-translation-page.md`.
 - The automatic draw as a whole: `picture-text-auto-draw.md`; rows, jobs, mark, keep: `picture-text-auto-rows.md`; the panel's draw: `picture-text-auto-panel.md`; the server's: `picture-text-auto-server.md`.
 - The Pictures group of the Translations screen: `picture-text-translation-group.md`.
-- The Design Canvas Languages list and the fit: `picture-text-translation-draw.md`; its server side, the hidden lists: `picture-text-translation-draw-server.md`; a photo with text layers: `picture-text-translation-draw-photo.md`.
+- The Artifact Canvas Languages list and the fit: `picture-text-translation-draw.md`; its server side, the hidden lists: `picture-text-translation-draw-server.md`; a photo with text layers: `picture-text-translation-draw-photo.md`.
 - "Draw the waiting pictures": `picture-text-translation-queue.md`. Moves, deletes, the bin, Disk Usage, the sweep: `picture-text-translation-doors.md`.
 - The `[NEW]` changelog line: named by #10208, reworded by #10474.

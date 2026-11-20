@@ -9,7 +9,7 @@ description: Decisions list, schema part 25 (2026-11-16 on): the second study's 
 ## May the second feature study's tables and columns be added? (owner, 2026-11-16, agent channel polls 84 and 91)
 - Poll 84 (message 6513), asked about the first draft's fourteen tables: "mimara soralım bunu yazılımdaki bir özelliği geliştirererek yapabiliyormuyuz değerlendirsin."
 - The architect weighed each plan against what exists (messages 6553 and 6554): most tables fell away. Poll 91 (message 6584), asked with that view: "Evet, Mimar'ın görüşüyle; sütunları Mimar onaylasın".
-- What stays, plan by plan, and the order of the schema steps: `plans/more-features.md` and `plans/more-features-shared-files.md`. Each column is confirmed by the architect in its step's draft PR.
+- What stayed is in each plan's topic file (tickets: `commerce/event-tickets.md`). Each column is confirmed by the architect in its step's draft PR.
 - Reading for later: when a table is proposed, the architect first says whether something that exists can be grown, then asks him with that view.
 
 ## Which table do an order's and a stock notice's visitor notifications share? (owner, 2026-11-16, agent channel poll 94, message 6781)

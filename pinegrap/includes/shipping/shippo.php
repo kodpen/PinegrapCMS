@@ -1013,7 +1013,27 @@ function pg_label_shippo_track($reference, $account)
         return pg_label_shippo_failure($read, false);
     }
 
+    if (pg_label_shippo_not_scanned($read['data'])) {
+        return pg_label_track_not_scanned($id);
+    }
+
     return pg_label_shippo_track_answer($read['data'], $read['raw']);
+}
+
+/**
+ * Whether a transaction's label has not been scanned by the carrier yet: no
+ * tracking status or Shippo's UNKNOWN. A code Shippo adds later is not read
+ * as created. Pure.
+ *
+ * @param array $data a transaction
+ * @return bool
+ */
+function pg_label_shippo_not_scanned($data)
+{
+    $tracking = (is_array($data) && isset($data['tracking_status'])) ? $data['tracking_status'] : '';
+    $code = is_array($tracking) ? pg_label_shippo_text($tracking, 'status') : (is_string($tracking) ? $tracking : '');
+
+    return is_array($data) && in_array(strtoupper(trim($code)), array('', 'UNKNOWN'), true);
 }
 
 /**

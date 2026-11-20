@@ -289,3 +289,73 @@ function test_bundle_saving()
 	pg_assert_same(549, pg_bundle_saving($components, 2000.6), 'an offer price is rounded, not cut');
 	pg_assert_same(0, pg_bundle_saving(array(), 100), 'no contents, no saving');
 }
+
+// A bundle whose own Backorder switch is off sells only what its components
+// hold, even when each of them takes back orders on its own; a component
+// bought alone first takes its stock before the bundle line. A line without
+// the key (a bundle that takes back orders) is limited as before.
+function test_bundle_cart_allowance_bundle_without_backorder()
+{
+	$stock = array(
+		7 => array('tracked' => true, 'quantity' => 3, 'backorder' => true),
+		8 => array('tracked' => true, 'quantity' => 10, 'backorder' => true),
+	);
+	$bundle = array(array('product_id' => 7, 'quantity' => 1), array('product_id' => 8, 'quantity' => 2));
+
+	pg_assert_same(array(
+		1 => array('allowed' => 2, 'unavailable' => false),
+		2 => array('allowed' => 1, 'unavailable' => false),
+	), pg_bundle_cart_allowance(array(
+		array('id' => 1, 'product_id' => 7, 'quantity' => 2),
+		array('id' => 2, 'product_id' => 50, 'quantity' => 4, 'backorder' => false, 'components' => $bundle),
+	), $stock), 'the plain line takes two of three; the bundle gets the one left, no back order');
+
+	pg_assert_same(array(
+		1 => array('allowed' => 0, 'unavailable' => true),
+	), pg_bundle_cart_allowance(array(
+		array('id' => 1, 'product_id' => 50, 'quantity' => 1, 'backorder' => false, 'components' => $bundle),
+	), array(7 => array('tracked' => true, 'quantity' => 0, 'backorder' => true))), 'none in stock');
+
+	pg_assert_same(array(
+		1 => array('allowed' => 4, 'unavailable' => false),
+	), pg_bundle_cart_allowance(array(
+		array('id' => 1, 'product_id' => 50, 'quantity' => 4, 'backorder' => true, 'components' => $bundle),
+	), $stock), 'a bundle that takes back orders is not limited');
+}
+
+// A product inside a bundle cannot be switched into a bundle, even with no
+// contents yet: the bundle holding it would hold a bundle. A bundle that
+// already was one, or a product in no bundle, may be saved.
+function test_bundle_switch_on_problem()
+{
+	pg_assert_same('A product that is part of a bundle cannot be a bundle itself.', pg_bundle_switch_on_problem(false, true));
+	pg_assert_same('', pg_bundle_switch_on_problem(false, false));
+	pg_assert_same('', pg_bundle_switch_on_problem(true, true), 'a bundle already: its contents are checked on their own');
+}
+
+// The saving is measured against what the visitor would pay for the
+// components one by one: a component on offer, or at the visitor's account
+// price, counts at that price (rounded), never above its own.
+function test_bundle_saving_at_the_visitors_component_prices()
+{
+	$components = array(
+		array('product_id' => 7, 'price' => 1000, 'quantity' => 2),
+		array('product_id' => 8, 'price' => 550, 'quantity' => 1),
+	);
+
+	pg_assert_same(150, pg_bundle_saving($components, 2000, array(7 => 800.4)), 'two of 7 at 800 and 8 at 550');
+	pg_assert_same(0, pg_bundle_saving($components, 2000, array(7 => 700, 8 => 500)), 'cheaper one by one: no saving');
+	pg_assert_same(550, pg_bundle_saving($components, 2000, array(8 => 600)), 'a dearer figure is not the visitor\'s price');
+	pg_assert_same(550, pg_bundle_saving($components, 2000, array()), 'no visitor prices: their own');
+}
+
+// The field asks for a percentage, so a typed per cent sign is read, not
+// taken as no discount at all.
+function test_bundle_discount_bp_from_input_with_the_sign()
+{
+	pg_assert_same(1000, pg_bundle_discount_bp_from_input('10%'));
+	pg_assert_same(1250, pg_bundle_discount_bp_from_input('%12,5'));
+	pg_assert_same(500, pg_bundle_discount_bp_from_input(' 5 % '));
+	pg_assert_same(0, pg_bundle_discount_bp_from_input('%'));
+	pg_assert_same(0, pg_bundle_discount_bp_from_input('10%%5'), 'two signs are no number');
+}

@@ -9273,6 +9273,40 @@ function check_quantity($liveform)
         }
     }
 }
+/**
+ * How much of a cart line with no bundle the stock lets through, for
+ * check_inventory(). A line the stock would cut below its product's minimum
+ * quantity allows 0 and is removed, so its units go to the lines after it;
+ * cut under the minimum, check_quantity() would raise it back on the next
+ * submit and the order would never go through. Same rule as a cart with a
+ * bundle (pg_bundle_cart_allowance()).
+ *
+ * @param int $wanted   the line's quantity
+ * @param int $left     stock left after the lines before it
+ * @param int $starting stock before any line
+ * @param int $minimum  products.minimum_quantity (0 for none)
+ * @return array allowed (int), remove (bool) and unavailable (bool: the stock
+ *               alone could not cover the line, so "not currently available"
+ *               rather than "limited")
+ */
+function pg_cart_line_stock_allowance($wanted, $left, $starting, $minimum)
+{
+    $wanted = max(0, (int) $wanted);
+    $left = max(0, (int) $left);
+    $minimum = max(1, (int) $minimum);
+    $allowed = min($wanted, $left);
+
+    if (($allowed < $wanted) && ($allowed < $minimum)) {
+        $allowed = 0;
+    }
+
+    return array(
+        'allowed' => $allowed,
+        'remove' => ($left === 0) || (($allowed === 0) && ($wanted > 0)),
+        'unavailable' => ((int) $starting < max(1, min($wanted, $minimum))),
+    );
+}
+
 // create function for checking if order items are still valid based on inventory levels
 function check_inventory($liveform)
 {
@@ -9301,6 +9335,8 @@ function check_inventory($liveform)
             products.short_description,
 
             products.inventory_quantity,
+
+            products.minimum_quantity,
 
             products.out_of_stock_message
 
@@ -9389,37 +9425,32 @@ function check_inventory($liveform)
             if ($product_description == '') {
                 $product_description = lang('an item');
             }
-            // if there is no more inventory, then remove order item and add notice
-            if ($product['inventory_quantity'] == 0) {
+            $stock = pg_cart_line_stock_allowance($order_item['quantity'], $product['inventory_quantity'], $product['starting_inventory_quantity'], $product['minimum_quantity']);
+            if ($stock['remove']) {
                 remove_order_item($order_item['id']);
-                // if the product is completely out of stock, then add a certain notice
-                if ($product['starting_inventory_quantity'] == 0) {
+                if ($stock['unavailable']) {
                     $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because it is not currently available.', 'vars' => h($product_description))) . $product['out_of_stock_message']);
-                    // else the product is only out of stock between there are other order items in the order that are using up inventory quantity, so add different notice
                 } else {
                     $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because the availabilty of the item is currently limited.', 'vars' => h($product_description))));
                 }
-                // else there is remaining inventory, so check if quantity needs to be reduced
-            } else {
-                // if the order item quantity is greater than the inventory quantity, then reduce it by setting it to the inventory quantity
-                // Eventually we need to deal with the fact that we might be reducing the quantity below the
-                // minimum quantity property below.  This is a current bug when using minimum quantity with inventory tracking enabled.
-                if ($order_item['quantity'] > $product['inventory_quantity']) {
-                    $order_item['quantity'] = $product['inventory_quantity'];
-                    $query = "UPDATE order_items SET quantity = ? WHERE id = ?";
-                    $result = db_q($query, array((string) $order_item['quantity'], (string) $order_item['id'])) or output_error(lang('Query failed.'));
-                    // if there is a ship to and it is complete, then update shipping cost for ship to
-                    if (($order_item['ship_to_id'] != '') && ($order_item['ship_to_complete'] == 1)) {
-                        require_once(PG_FUNCTIONS_DIR . '/shipping.php');
-                        update_shipping_cost_for_ship_to($order_item['ship_to_id']);
-                    }
-                    $liveform->add_notice(lang(array('string' => 'We\'re sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.', 'vars' => h($product_description))));
-                }
-                // decrement the inventory quantity for the product,
-                // so as we loop through these order items we can dynamically know how much inventory quantity is left
-                // based on order items that we have already looped through
-                $product['inventory_quantity'] = $product['inventory_quantity'] - $order_item['quantity'];
+                continue;
             }
+            // if the stock cannot cover the whole quantity, then reduce it to what the stock allows
+            if ($stock['allowed'] < $order_item['quantity']) {
+                $order_item['quantity'] = $stock['allowed'];
+                $query = "UPDATE order_items SET quantity = ? WHERE id = ?";
+                $result = db_q($query, array((string) $order_item['quantity'], (string) $order_item['id'])) or output_error(lang('Query failed.'));
+                // if there is a ship to and it is complete, then update shipping cost for ship to
+                if (($order_item['ship_to_id'] != '') && ($order_item['ship_to_complete'] == 1)) {
+                    require_once(PG_FUNCTIONS_DIR . '/shipping.php');
+                    update_shipping_cost_for_ship_to($order_item['ship_to_id']);
+                }
+                $liveform->add_notice(lang(array('string' => 'We\'re sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.', 'vars' => h($product_description))));
+            }
+            // decrement the inventory quantity for the product,
+            // so as we loop through these order items we can dynamically know how much inventory quantity is left
+            // based on order items that we have already looped through
+            $product['inventory_quantity'] = $product['inventory_quantity'] - $order_item['quantity'];
         }
     }
 }

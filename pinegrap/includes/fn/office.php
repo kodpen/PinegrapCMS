@@ -1138,6 +1138,11 @@ function pg_office_xlsx_read($path, $edit = false)
 
     if ($edit) {
         $book['version'] = $version;
+
+        // Whether the sheet tabs offer to add, rename, delete and move sheets.
+        if (function_exists('pg_office_sheets_edit_info')) {
+            $book['sheets_edit'] = pg_office_sheets_edit_info($signed, $reserved, $workbook_xml);
+        }
     }
 
     return $book;
@@ -3128,6 +3133,25 @@ function pg_office_view_strings()
         'changed'           => lang('{1} cell(s) changed.'),
         'recalc'            => lang('Formulas are worked out again when the file is opened in a spreadsheet program.'),
         'formula_text'      => lang('Kept as text: formulas are not worked out here.'),
+        'shift_hint'        => lang('Click a row\'s number or a column\'s letter to insert or delete it.'),
+        'shift_menu'        => lang('Rows and columns'),
+        'head_row'          => lang('Row {1}: insert or delete'),
+        'head_column'       => lang('Column {1}: insert or delete'),
+        'row_before'        => lang('Insert a row above'),
+        'row_after'         => lang('Insert a row below'),
+        'row_delete'        => lang('Delete row {1}'),
+        'column_before'     => lang('Insert a column on the left'),
+        'column_after'      => lang('Insert a column on the right'),
+        'column_delete'     => lang('Delete column {1}'),
+        'shift_undo'        => lang('Undo the row or column change'),
+        'shift_first'       => lang('Save the changed cells first, then insert or delete rows and columns.'),
+        'shift_row_before'  => lang('A row is inserted above row {1} when you save.'),
+        'shift_row_after'   => lang('A row is inserted below row {1} when you save.'),
+        'shift_row_delete'  => lang('Row {1} is deleted when you save.'),
+        'shift_column_before' => lang('A column is inserted left of column {1} when you save.'),
+        'shift_column_after'  => lang('A column is inserted right of column {1} when you save.'),
+        'shift_column_delete' => lang('Column {1} is deleted when you save.'),
+        'shift_sheet'       => lang('Sheet: {1}.'),
         'locked_formula'    => lang('Worked out by a formula. Change it in a spreadsheet program.'),
         'locked_formula_is' => lang('Worked out by a formula: {1}'),
         'locked_value'      => lang('A linked value or a picture in the cell. Change it in a spreadsheet program.'),

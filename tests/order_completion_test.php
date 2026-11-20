@@ -985,3 +985,17 @@ function test_order_completion_shipping_less_step()
 	pg_assert_true(strpos($body, 'shipping_cost = shipping_cost -') === false, 'no relative decrement a second callback would repeat');
 	pg_assert_true(preg_match('/UPDATE ship_tos SET shipping_cost = \?\s+WHERE id = \? AND order_id = \? AND shipping_cost = \?/', $body) === 1, 'the write only lands while the row still holds the value read');
 }
+
+function test_order_completion_keeps_legal_documents()
+{
+	pg_assert_true(pg_order_complete_keeps_legal_documents(array()), 'a checkout keeps the documents');
+	pg_assert_true(pg_order_complete_keeps_legal_documents(array('legal_acceptance' => array('ip' => '10.0.0.1'))), 'a payment message keeps them');
+	pg_assert_true(pg_order_complete_keeps_legal_documents(array('renewal' => false)), 'not a renewal');
+	pg_assert_false(pg_order_complete_keeps_legal_documents(array('renewal' => true)), 'a renewal showed no documents: none kept');
+
+	$completion = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete');
+	pg_assert_contains('if (pg_order_complete_keeps_legal_documents($context)) {', $completion, 'the store is skipped by the rule');
+
+	$renewal = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/subscription_renewal.php', 'pg_subscription_renewal_order_write');
+	pg_assert_contains("'renewal'        => true,", $renewal, 'the renewal tells the completion');
+}

@@ -46,6 +46,7 @@ require_once($pg_api_directory . '/console.php');
 require_once($pg_api_directory . '/seo.php');
 
 require_once($pg_api_directory . '/resources/meta.php');
+require_once($pg_api_directory . '/resources/guide.php');
 require_once($pg_api_directory . '/resources/discovery.php');
 require_once($pg_api_directory . '/resources/forms.php');
 require_once($pg_api_directory . '/resources/seo.php');
@@ -90,6 +91,7 @@ require_once($pg_api_directory . '/resources/files.php');
 require_once($pg_api_directory . '/resources/offers.php');
 require_once($pg_api_directory . '/resources/offers_create.php');
 require_once($pg_api_directory . '/resources/calendars.php');
+require_once($pg_api_directory . '/resources/event_tickets.php');
 require_once($pg_api_directory . '/resources/webhooks.php');
 require_once($pg_api_directory . '/resources/design.php');
 require_once($pg_api_directory . '/resources/design_ads.php');

@@ -19,7 +19,7 @@ module: shipment_tracking
 - A failed answer writes nothing; a driver's failures are logged once a day.
 
 ## What are the budgets?
-- At most 100 parcels a run (`PG_SHIPMENT_TRACKING_BATCH`), no question after 90 s (`PG_SHIPMENT_TRACKING_SECONDS`; the script sets the time limit 120 s above). Drivers are asked in turn (`pg_shipment_tracking_queue()`); one that fails 3 times in a row (`PG_SHIPMENT_TRACKING_FAILURES`) is asked nothing more in that run and the others go on.
+- At most 100 parcels a run (`PG_SHIPMENT_TRACKING_BATCH`), no question after 90 s (`PG_SHIPMENT_TRACKING_SECONDS`; the script sets the time limit 120 s above). Drivers are asked in turn (`pg_shipment_tracking_queue()`); one that fails 3 times in a row (`PG_SHIPMENT_TRACKING_FAILURES`) is asked nothing more in that run and the others go on. A label its carrier has not scanned yet is no failure: the drivers answer it `created` (`carrier-label-drivers.md`, #10660).
 - Each driver keeps its place (the last label id asked) in `data/temp/shipment_tracking.json` with the time its failures were last logged, saved after every parcel, so a run the server stops still moves on. The next run reads after the place, so every open parcel takes its turn and a stopped driver's parcels wait after it; a run that reached the last open parcel starts the round again (`pg_shipment_tracking_next_place()`).
 
 ## How is it tested?

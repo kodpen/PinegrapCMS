@@ -754,6 +754,22 @@ function pg_label_sendcloud_carrier($code)
 }
 
 /**
+ * Whether a tracking event says nothing yet: no event, or one without a
+ * phase or exception of its own (none, unknown). A phase Sendcloud adds
+ * later is not read as created. Pure.
+ *
+ * @param array $event the latest event, array() for none
+ * @return bool
+ */
+function pg_label_sendcloud_not_scanned($event)
+{
+    $empty = array('', 'none', 'unknown');
+
+    return in_array(strtolower(pg_label_sendcloud_text($event, 'phase')), $empty, true)
+        && in_array(strtolower(pg_label_sendcloud_text($event, 'exception')), $empty, true);
+}
+
+/**
  * The shipment status of the latest tracking event: its phase, else its
  * exception. Pure.
  *
@@ -1405,8 +1421,9 @@ function pg_label_sendcloud_track($reference, $account)
     $first = pg_label_sendcloud_first_parcel($read['data']);
     $number = pg_label_sendcloud_text($first, 'tracking_number');
 
+    // No carrier number yet: the carrier has not scanned the parcel.
     if ($number === '') {
-        return array('success' => false, 'error' => lang('Sendcloud gives no status for this shipment yet.'), 'raw' => $read['raw']);
+        return pg_label_track_not_scanned($id);
     }
 
     $read = pg_label_sendcloud_api('GET', '/parcels/tracking/' . rawurlencode($number), $account);
@@ -1419,6 +1436,10 @@ function pg_label_sendcloud_track($reference, $account)
     $events = (isset($data['events']) && is_array($data['events'])) ? $data['events'] : array();
     $event = $events ? reset($events) : array();
     $status = pg_label_sendcloud_status($event);
+
+    if (($status === '') && pg_label_sendcloud_not_scanned($event)) {
+        return pg_label_track_not_scanned($id);
+    }
 
     if ($status === '') {
         return array('success' => false, 'error' => lang('Sendcloud gives no status for this shipment yet.'), 'raw' => $read['raw']);

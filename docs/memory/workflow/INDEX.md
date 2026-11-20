@@ -29,10 +29,13 @@
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean
 - bug-hunt-areas.md: The areas given to a bug hunt on 2026-11-15 and 2026-11-16, the issues each ended with and what it read and found clean; the hunts from 2026-11-17 on are in bug-hunt-areas-2.md
+- bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean [decision: here]
+- bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean [decision: here]
 - bug-hunt-customer-returns.md: Bug hunt of customer returns, the request and the refund (architect 2026-11-20, agent channel message 10330): faults fixed, issues opened, what was read clean [decision: here]
 - bug-hunt-customer-reviews.md: Bug hunt of the store's customer reviews (architect, agent channel message 10333, 2026-11-20): the fault fixed, the issue opened, what was read clean
 - bug-hunt-mail-sending.md: Bug hunt of Site Settings › E-mail sending (architect, agent channel message 10151, 2026-11-20): the five faults fixed, the issue opened, what was read clean
-- bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues, what read clean [decision: decisions-made-schema-26.md]
+- bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean [decision: here]
+- bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean [decision: decisions-made-schema-26.md]
 - bug-hunt-wishlist.md: Bug hunt of the wishlist (Favourites), visitor and member side (architect, agent channel message 10334, 2026-11-20): the two faults fixed, no issue opened, what was read clean
 - bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
@@ -53,13 +56,14 @@
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel-10.md: Decisions list, panel part 10 (2026-11-17 on): new screens in the design language; an area's tab strip centred in the window; the Design Canvas renamed Artifact Canvas, its new icon
+- decisions-made-panel-11.md: Decisions list, panel part 11 (2026-11-20 on): the Site Settings dialog wider and taller, the Assistants and agents category tidied
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
 - decisions-made-panel-5.md: Decisions list, panel part 5 (2026-11-11 on): the dashboard's notes card as a My Notes shortcut, last online times, the world map without city names (#8672); the report screens' renewal (#8673)
 - decisions-made-panel-6.md: Decisions list, panel part 6 (2026-11-12 on): the panel's design language from look A (#8842); the names Design Canvas and Page Design Studio, the design menu with Other (#8849)
-- decisions-made-panel-7.md: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and dialogs page as reference (#8860); add, edit, list widths, no pager; Design Canvas icon (#8903); dashboard keeps its look (#8938)
-- decisions-made-panel-8.md: Decisions list, panel part 8 (2026-11-12 on): report page reference (#8955); switch thumb (#9070); Design Canvas icon in one colour (#9250); form column cards (#9271); the Communication row's drawing
+- decisions-made-panel-7.md: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and dialogs page as reference (#8860); add, edit, list widths; Artifact Canvas icon (#8903); dashboard keeps its look (#8938)
+- decisions-made-panel-8.md: Decisions list, panel part 8 (2026-11-12 on): report page reference (#8955); switch thumb (#9070); Artifact Canvas icon in one colour (#9250); form column cards (#9271); the Communication row drawing
 - decisions-made-panel-9.md: Decisions list, panel part 9 (2026-11-14 on): assistant chat after a reload; a link that opens reads "Aç"; kept screens' two buttons and widths; Site Settings keeps its place after a save
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
@@ -101,7 +105,7 @@
 - decisions-made-product-43.md: Decisions list, product part 43 (2026-11-11 on): classic styles sharing a CSS/JS set move as one "Legacy" design, its badge "Legacy" / "Eski", what follows the move (#8671)
 - decisions-made-product-44.md: Decisions list, product part 44 (2026-11-11 on): a muted, looping hero video may play by itself, with a pause button; a colour mode (light, dark, follow the system) for a whole design
 - decisions-made-product-45.md: Decisions list, product part 45 (2026-11-11 on): the Kodpen API client goes on before its release keys exist; the api2 client branches leave in the next open version; the api2 server stays open
-- decisions-made-product-46.md: Decisions list, product part 46 (2026-11-12 on): a picture saved again from the Design Canvas shows at once; the Legacy helper after its census (#8942); a plan for the custom layouts
+- decisions-made-product-46.md: Decisions list, product part 46 (2026-11-12 on): a picture saved again from the Artifact Canvas shows at once; the Legacy helper after its census (#8942); a plan for the custom layouts
 - decisions-made-product-47.md: Decisions list, product part 47 (2026-11-12 on): WhatsApp as a channel, templates, offer codes (#8950); one messages area, campaign profiles turned into flows (#8961)
 - decisions-made-product-48.md: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstrap helper (#8967), the picker's list of everything (#9070), designer canvas samples (#9076), WhatsApp marketing consent (#9087)
 - decisions-made-product-49.md: Decisions list, product part 49 (2026-11-13 on): a customer's WhatsApp message and SMS land in a channel and are answered as an e-mail is (#9151); the image editor's phone rows approved (#8863)
@@ -112,7 +116,7 @@
 - decisions-made-product-53.md: Decisions made, product part 53: a team device gets the person's own plans scope; the Team devices ceiling gains four read scopes; M7 native push is moved forward with its one column
 - decisions-made-product-54.md: Decisions made, product part 54: the designer's closed blocks are opened in the proposed order, most met first; the visitor AI assistant does not start now
 - decisions-made-product-55.md: Decisions made, product part 55 (2026-11-15): a Send later e-mail of a writer who lost the right turns back into its draft; the star rating input as five stars; message boxes' width on a wide screen
-- decisions-made-product-56.md: Decisions made, product part 56 (2026-11-15): a left cart recovered within 7 days of its last touch; pop-ups built by growing Auto Dialogs, the jQuery dialog gone; Design Canvas on a video in Files
+- decisions-made-product-56.md: Decisions made, product part 56 (2026-11-15): a left cart recovered within 7 days of its last touch; pop-ups built by growing Auto Dialogs, the jQuery dialog gone; Artifact Canvas on a video in Files
 - decisions-made-product-57.md: Decisions made, product part 57 (2026-11-15 on): the Recovered carts section (poll 55); the record count on All Offers (poll 46); the Prototype view rebuilt on the graph canvas core
 - decisions-made-product-58.md: Decisions list, product part 58 (2026-11-16 on): a reader's highlight on a part of a message; who writes the website feature plans, multi-site waits; the owner's looks of 2026-11-16
 - decisions-made-product-59.md: Decisions list, product part 59 (2026-11-16): the owner's answers to the questions of the website feature plans (agent channel polls 63 to 74; the click and scroll map is in part 60)
@@ -120,13 +124,13 @@
 - decisions-made-product-60.md: Decisions list, product part 60 (2026-11-16): the click and scroll map's handling of visitors' data and its start on a new install (agent channel polls 67 and 75)
 - decisions-made-product-61.md: Decisions list, product part 61 (2026-11-16 on): the owner's looks at built screens from poll 76 on (highlight on a message, link card under a message, the Planning Board's two drawers)
 - decisions-made-product-62.md: Decisions list, product part 62 (2026-11-16 on): the owner's looks at built screens from poll 79 on (the "Clicks and scrolling" section of Visitors, the share card, My highlights)
-- decisions-made-product-63.md: Decisions list, product part 63 (2026-11-16 on): the owner's looks of polls 89 (prototype view, No with what he wants) and 90 (waiting content changes, Yes), and his Design Canvas requests
+- decisions-made-product-63.md: Decisions list, product part 63 (2026-11-16 on): the owner's looks of polls 89 (prototype view, No with what he wants) and 90 (waiting content changes, Yes), and his Artifact Canvas requests
 - decisions-made-product-64.md: Decisions list, product part 64 (2026-11-16 on): the second study's eight features and his answers, picture text translation's first version, the architect's rules for DG1, MP1 and VP5
 - decisions-made-product-65.md: Decisions list, product part 65 (2026-11-16 on): the place map default tiles (poll 99), his look at the Content review screen (poll 100), the amount a minimum order compares
 - decisions-made-product-66.md: Decisions list, product part 66 (2026-11-16 on): his looks of polls 101 to 104 (VP4, the Content review row "Make a task", QR3, AF5b), the architect's rules for CH3, CH4, MP2 and RB2
-- decisions-made-product-67.md: Decisions list, product part 67 (2026-11-16 on): the owner's looks of polls 103 (Design Canvas bar), 105 (MP2), 106 (RB3); the mention tag, the highlight toolbar, RB3's words
+- decisions-made-product-67.md: Decisions list, product part 67 (2026-11-16 on): the owner's looks of polls 103 (Artifact Canvas bar), 105 (MP2), 106 (RB3); the mention tag, the highlight toolbar, RB3's words
 - decisions-made-product-68.md: Decisions list, product part 68 (2026-11-16 late): the Bundles screen and the digest mail accepted; the highlight bar as one sentence; a picture count on a poll's box; squeezes; RF1's part refund
-- decisions-made-product-69.md: Decisions list, product part 69 (2026-11-17 on): campaign Create stores it paused; integration packages at priority 4; the Options panel in a 240 px column; the Design Canvas's Follow
+- decisions-made-product-69.md: Decisions list, product part 69 (2026-11-17 on): campaign Create stores it paused; integration packages at priority 4; the Options panel in a 240 px column; the Artifact Canvas's Follow
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-70.md: Decisions list, product part 70 (2026-11-17): nine looks accepted in the agent channel; the Translations group is "Görseller", the hub screen is Connections, no platform names before the apps
 - decisions-made-product-71.md: Decisions list, product part 71 (2026-11-17): designer additions wait for the four areas; three designer drawings and the Languages list accepted; a picture is drawn once every text is translated
@@ -139,13 +143,15 @@
 - decisions-made-product-78.md: Decisions list, product part 78 (2026-11-19 on): Prototype view edits links; Incoming e-mail pinned and as a card; Gmail read by a connected account; Google set-up guidance
 - decisions-made-product-79.md: Decisions list, product part 79 (2026-11-19 on): the own Office code replaces PHPExcel and grows to full scope: more previews, wider editing, shared Excel export and import
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
-- decisions-made-product-80.md: Decisions list, product part 80 (2026-11-20 on): Design Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
+- decisions-made-product-80.md: Decisions list, product part 80 (2026-11-20 on): Artifact Canvas groups; the phone's Workspace writing box; product form uploads and their sweep; a nightly stock plan per product
 - decisions-made-product-81.md: Decisions list, product part 81 (2026-11-20 on): the Google Cloud Translation key moves to its own Connections page (the reading of polls 146, 147 and 149); each order's net profit
 - decisions-made-product-82.md: Decisions list, product part 82 (2026-11-20 on): the referral programme's friend check, address rule and busy lock; a line's reward points taken back once
 - decisions-made-product-83.md: Decisions list, product part 83 (2026-11-20 on): a subscription renewal order keeps no legal document copies; a NULL legal_acceptance stays read as accepted
 - decisions-made-product-84.md: Decisions list, product part 84 (2026-11-20 on): the sales watch, where the store learns its order rhythm and says when it breaks
 - decisions-made-product-85.md: Decisions list, product part 85 (2026-11-20 on): the site explains itself to AI agents (plan ai-guide): who builds it, the guide's language and doors, the compact tool list, hints on refusals
 - decisions-made-product-86.md: Decisions list, product part 86 (2026-11-20 on): an order sold beyond the stock is flagged now; holding units during payment enters a plan; no lock and no automatic refund
+- decisions-made-product-87.md: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok, personal data only with consent; a KVKK privacy centre and a supplier feed enter plans
+- decisions-made-product-88.md: Decisions list, product part 88 (2026-11-20 on): Application Access drawn again, with starting points, bulk permission choices, a guide per way to connect and an agent set up from the application
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
@@ -175,6 +181,9 @@
 - decisions-made-schema-32.md: Decisions list, schema part 32 (2026-11-20 on): ws_app_answers, an application's answer shown to the writer of a command alone
 - decisions-made-schema-33.md: Decisions list, schema part 33 (2026-11-20 on): the stock_taken columns on order_items and order_item_components, so a marketplace cancel puts back only what the sale took
 - decisions-made-schema-34.md: Decisions list, schema part 34 (2026-11-20 on): the stock_holds table of plan stock-holds, units held for an order while its payment runs
+- decisions-made-schema-35.md: Decisions list, schema part 35 (2026-11-20 on): the ad_conversion_events table of plan ad-conversions, the send queue, the event log and the buyer's ids until sent
+- decisions-made-schema-36.md: Decisions list, schema part 36 (2026-11-20 on): the privacy_requests table of plan privacy-centre, its columns, and destruction records kept as audit_log lines
+- decisions-made-schema-37.md: Decisions list, schema part 37 (2026-11-20 on): the application that saved a note, kept on the note and on its versions
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
@@ -221,6 +230,7 @@
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-40.md: Decisions list, workspace part 40 (2026-11-20 on): voice and video calls in the Workspace, staged: two people and small groups browser to browser first, large meetings later
 - decisions-made-workspace-41.md: Decisions list, workspace part 41 (2026-11-20 on): a Data table shown on a canvas as a chart or a table that follows the data
+- decisions-made-workspace-42.md: Decisions list, workspace part 42 (2026-11-20 on): an Activity tab in Channel info and documents written in a channel, both planned
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
 - decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel: an agent's own messages, how far an unattended flow goes, decision marks, the loop-guard text, agents woken from the channel

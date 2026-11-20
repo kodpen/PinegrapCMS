@@ -444,6 +444,24 @@ if (erp_efatura_threshold_ready()) {
     </div>';
 }
 
+// ── Stock Planning ──
+// Drawn once the upgrade added the plan; the save writes it only then.
+$erp_stock_plan_fields = erp_settings_stock_plan_fields();
+
+if ($erp_stock_plan_fields !== '') {
+    $pg_settings_cards[] = '
+    <div id="pgset-stock-plan" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Stock Planning') . '
+            </div>
+            <div class="card-body">
+                        ' . $erp_stock_plan_fields . '
+            </div>
+        </div>
+    </div>';
+}
+
 // ── Document Templates ──
 // The editor, with its preview and reset, stays on the ERP Settings screen.
 $pg_settings_cards[] = '

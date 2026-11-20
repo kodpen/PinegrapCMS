@@ -53,3 +53,61 @@ function test_product_form_uploads_submit_form_file_is_the_units_file()
 	pg_assert_same(0, pg_pfu_submit_form_file_id('photo', $answers), 'a value with no variable gave a file');
 	pg_assert_same(0, pg_pfu_submit_form_file_id('^^photo^^', array()), 'a unit with no answers gave a file');
 }
+
+function test_product_form_uploads_order_reader_shows_the_file()
+{
+	// No file: the caller prints the answer's own text.
+	pg_assert_same('', pg_pfu_order_file_html(null, '/', 'link'), 'an answer without a file drew a file');
+	pg_assert_same('', pg_pfu_order_file_html('', '/', 'thumbnail'), 'an empty file name drew a file');
+
+	// A link get_file.php serves, its name escaped in the address and the text.
+	$link = pg_pfu_order_file_html('my "photo" <1>.pdf', '/shop/', 'link');
+	pg_assert_same(
+		'<a href="/shop/my%20%22photo%22%20%3C1%3E.pdf" target="_blank" rel="noopener">my &quot;photo&quot; &lt;1&gt;.pdf</a>',
+		$link,
+		'the file link was not drawn or not escaped');
+
+	// The panel's thumbnail comes with an image only.
+	$image = pg_pfu_order_file_html('mug.JPG', '/', 'thumbnail');
+	pg_assert_true(strpos($image, '<img src="/mug.JPG"') !== false, 'an image got no thumbnail in the panel');
+	pg_assert_true(strpos($image, '>mug.JPG</a>') !== false, 'the thumbnail lost the file name link');
+	pg_assert_true(strpos(pg_pfu_order_file_html('print.pdf', '/', 'thumbnail'), '<img') === false, 'a PDF got a thumbnail');
+	pg_assert_true(strpos(pg_pfu_order_file_html('mug.jpg', '/', 'link'), '<img') === false, 'a link-only reader got a thumbnail');
+
+	// An e-mail names the file and carries no address.
+	pg_assert_same('mug &lt;1&gt;.jpg', pg_pfu_order_file_html('mug <1>.jpg', '/', 'name'), 'the e-mail did not name the file alone');
+
+	// A name with a folder part is cut to the file's own name.
+	pg_assert_same('evil.jpg', pg_pfu_order_file_html('../x/evil.jpg', '/', 'name'), 'a path in the name was printed');
+}
+
+function test_product_form_uploads_order_reader_mode()
+{
+	pg_assert_same('name', pg_pfu_order_file_mode('customer', 'backend'), 'a customer e-mail carried a link');
+	pg_assert_same('name', pg_pfu_order_file_mode('store', 'link'), 'the store copy carried a link');
+	pg_assert_same('thumbnail', pg_pfu_order_file_mode('screen', 'backend'), 'the panel lost its thumbnail');
+	pg_assert_same('link', pg_pfu_order_file_mode('screen', 'print'), 'a print showed a thumbnail');
+	pg_assert_same('link', pg_pfu_order_file_mode('screen', 'frontend'), 'a site page did not link the file');
+}
+
+function test_product_form_uploads_designed_order_view_shows_the_file()
+{
+	$item = array('id' => 7, 'qty' => 1, 'form_name' => '', 'form_quantity_type' => 'One Form per Product');
+	$fields = array(
+		array('id' => 1, 'label' => 'Photo', 'type' => 'file upload', 'information' => '', 'wysiwyg' => 0),
+		array('id' => 2, 'label' => 'Name', 'type' => 'text box', 'information' => '', 'wysiwyg' => 0),
+	);
+	$data = array(
+		array('form_field_id' => 1, 'data' => 'mug.jpg', 'quantity_number' => 1, 'file_html' => '<a href="/mug1.jpg">mug1.jpg</a>'),
+		array('form_field_id' => 2, 'data' => 'Ada <b>', 'quantity_number' => 1, 'file_html' => ''),
+	);
+	$rows = pg_sw_list_order_item_form_rows($item, $fields, $data);
+	$cells = $rows['order.item_form_fields']['7001'];
+	pg_assert_same('<a href="/mug1.jpg">mug1.jpg</a>', $cells[0]['__field_value_html'], 'the designed order view did not draw the file');
+	pg_assert_same('Ada &lt;b&gt;', $cells[1]['__field_value_html'], 'a text answer was not escaped as before');
+
+	// A file deleted from Files since: the answer's text stays.
+	$data[0]['file_html'] = '';
+	$rows = pg_sw_list_order_item_form_rows($item, $fields, $data);
+	pg_assert_same('mug.jpg', $rows['order.item_form_fields']['7001'][0]['__field_value_html'], 'a deleted file lost the answer text');
+}

@@ -9,13 +9,13 @@ description: ERP's only door into the external API, includes/erp/api.php: five h
 - On a name clash the API wins: events, objects and scope groups are `$api + $module`, module routes come after the API's own, so a module never replaces a core name (`order.created`).
 
 ## What is the load chain, and what must stay true?
-- API entry, the panel (`api_settings.php`) or `api_webhook_enqueue()` → `api_modules_load()` → `includes/erp/api.php`, which loads `bootstrap.php` and its handler files (`api_<name>.php`: resources, documents, stock, cash, reports, purchase_orders) itself; the API entry loads none of them.
+- API entry, the panel (`api_settings.php`) or `api_webhook_enqueue()` → `api_modules_load()` → `includes/erp/api.php`, which loads `bootstrap.php` and its handler files (`api_<name>.php`: resources, documents, stock, stock_plan, cash, reports, purchase_orders) itself; the API entry loads none of them.
 - Only while the module is on (`api_modules()` `enabled` = `ERP_ENABLED`): off, it has no endpoints, events or permissions.
 - So every caller of `api_webhook_enqueue()` (checkout included) loads the ERP bootstrap when ERP is on: `includes/erp/*` files only define functions; keep it so. Gate: `PG_API_ENTRY || PG_API_PANEL || PG_INIT_LOADED`.
 
 ## How are server and schema kept in step?
 - Next to `erp_api_<object>_present()` sits `erp_api_<object>_schema()`, one line per field (`'string?'` = may be null, `'number'` = decimal, an inner object is an array, a list is `array(array(...))`). A new server field goes into the schema too.
-- `tools/check_api_schema.php` reads the modules' `includes/*/api.php` and `api_*.php` too (returns, objects, 201s, error codes), but compares a presenter with its schema only for pairs in its `$presenters` map (ERP: quote, purchase order, cheque, stock, cash transfer, late fee, reports, dashboard). Account, invoice, receipt, expense, waybill and the rest are kept by hand; a new pair goes into the map.
+- `tools/check_api_schema.php` reads the modules' `includes/*/api.php` and `api_*.php` too (returns, objects, 201s, error codes), but compares a presenter with its schema only for pairs in its `$presenters` map (ERP: quote, purchase order, cheque, stock, stock plan, cash transfer, late fee, reports, dashboard). Others (account, invoice, receipt...): by hand; a new pair goes into the map.
 
 ## How does paging work?
 - `erp_api_page($select, $where, $sort, $id, $params, $count_from)`: `$select` supplies a `_sort` column (`updated_at`, `UNIX_TIMESTAMP(doc_date)` or `''` → id only); cursor `api_cursor_encode(v, i)`. `$count_from` is the main table only (WHEREs use that alias).

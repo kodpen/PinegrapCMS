@@ -39,6 +39,12 @@ define('PG_REFERRAL_CODE_PATTERN', '^R[0-9A-Z]{1,7}-[0-9A-Z]{10}$');
 /** How long a reward waits for its referrer's month (seconds). */
 define('PG_REFERRAL_LOCK_WAIT', 10);
 
+/** At most this many busy orders wait for the general job's retry. */
+define('PG_REFERRAL_PENDING_MAX', 200);
+
+/** A busy order is retried for this many days, then dropped. */
+define('PG_REFERRAL_PENDING_DAYS', 7);
+
 /**
  * The signature part of a contact's code: the first 48 bits of an HMAC
  * with the site's key, in base 36, ten characters. Pure.
@@ -436,39 +442,131 @@ function pg_referral_referrer($contact_id, $order_id = 0)
 }
 
 /**
- * The condition that finds the friend's other orders that count: by
- * account, else by the billing e-mail; '' for a guest without an e-mail.
- * Every other completed order counts, not only those of a lower id: of two
- * orders by the same link, the one placed first may be completed last.
+ * The buyer's e-mail addresses for the friend check, folded
+ * (pg_referral_fold_email()) and each once: the order's billing e-mail and
+ * the e-mail of the buyer's account, if any. Pure.
  *
- * @param array $order id, user_id, billing_email_address
- * @return string
+ * @param mixed $billing_email
+ * @param mixed $account_email '' without an account
+ * @return string[]
  */
-function pg_referral_friend_orders_sql(array $order)
+function pg_referral_buyer_emails($billing_email, $account_email)
 {
-    if ((int) $order['user_id'] > 0) {
-        $who = "user_id = '" . (int) $order['user_id'] . "'";
-    } elseif (trim((string) $order['billing_email_address']) !== '') {
-        $who = "LOWER(TRIM(billing_email_address)) = '" . e(strtolower(trim((string) $order['billing_email_address']))) . "'";
-    } else {
-        return '';
+    $emails = array();
+
+    foreach (array($billing_email, $account_email) as $email) {
+        $folded = pg_referral_fold_email($email);
+
+        if (($folded !== '') && !in_array($folded, $emails, true)) {
+            $emails[] = $folded;
+        }
     }
 
-    return "(" . $who . ") AND (status IN ('complete', 'exported')) AND (id <> '" . (int) $order['id'] . "')";
+    return $emails;
 }
 
 /**
- * How many other orders that count the friend has
- * (pg_referral_friend_orders_sql()).
+ * A LIKE pattern (escaped for LIKE, not for SQL) that every address folding
+ * to $folded matches, and a few more: the +tag may follow the local part,
+ * and for Gmail dots may stand between its characters on either of its two
+ * domains. It only narrows; pg_referral_friend_orders_count() compares with
+ * pg_referral_fold_email(), the one fold rule. Pure.
  *
- * @param array $order id, user_id, billing_email_address
+ * @param string $folded a pg_referral_fold_email() result
+ * @return string
+ */
+function pg_referral_email_like($folded)
+{
+    $at = strrpos($folded, '@');
+    $local = substr($folded, 0, $at);
+    $domain = substr($folded, $at + 1);
+
+    if ($domain === 'gmail.com') {
+        $chars = preg_split('//u', $local, -1, PREG_SPLIT_NO_EMPTY);
+
+        return implode('%', array_map('escape_like', $chars)) . '%@g%mail.com';
+    }
+
+    return escape_like($local) . '%@' . escape_like($domain);
+}
+
+/**
+ * The condition that finds the friend's candidate other orders that count:
+ * by account or by an address that may fold to one of the buyer's e-mails
+ * (pg_referral_email_like()); '' for a guest without an e-mail. Every other
+ * completed order counts, not only those of a lower id: of two orders by the
+ * same link, the one placed first may be completed last. Pure.
+ *
+ * @param array    $order   id
+ * @param int      $user_id the buyer's account, 0 for none
+ * @param string[] $emails  pg_referral_buyer_emails()
+ * @return string
+ */
+function pg_referral_friend_orders_sql(array $order, $user_id, array $emails)
+{
+    $who = array();
+
+    if ((int) $user_id > 0) {
+        $who[] = "(user_id = '" . (int) $user_id . "')";
+    }
+
+    foreach ($emails as $email) {
+        $who[] = "(LOWER(TRIM(billing_email_address)) LIKE '" . e(pg_referral_email_like($email)) . "')";
+    }
+
+    if (!$who) {
+        return '';
+    }
+
+    return "(" . implode(' OR ', $who) . ") AND (status IN ('complete', 'exported')) AND (id <> '" . (int) $order['id'] . "')";
+}
+
+/**
+ * How many candidate rows are the friend's: the same account, or a billing
+ * e-mail that folds to one of the buyer's e-mails. Pure.
+ *
+ * @param array    $rows    user_id, billing_email_address
+ * @param int      $user_id the buyer's account, 0 for none
+ * @param string[] $emails  pg_referral_buyer_emails()
  * @return int
  */
-function pg_referral_friend_orders(array $order)
+function pg_referral_friend_orders_count(array $rows, $user_id, array $emails)
 {
-    $where = pg_referral_friend_orders_sql($order);
+    $count = 0;
 
-    return ($where === '') ? 0 : (int) db_value("SELECT COUNT(*) FROM orders WHERE " . $where);
+    foreach ($rows as $row) {
+        if ((((int) $user_id > 0) && ((int) $row['user_id'] === (int) $user_id))
+            || in_array(pg_referral_fold_email($row['billing_email_address']), $emails, true)
+        ) {
+            $count++;
+        }
+    }
+
+    return $count;
+}
+
+/**
+ * How many other orders that count the friend has: by the buyer's account
+ * and by the folded billing and account e-mails together.
+ *
+ * @param array $order   id, billing_email_address
+ * @param int   $user_id the buyer's account (pg_order_rights_user_id())
+ * @return int
+ */
+function pg_referral_friend_orders(array $order, $user_id)
+{
+    $user_id = (int) $user_id;
+    $account_email = ($user_id > 0) ? (string) db_value("SELECT user_email FROM user WHERE user_id = '" . $user_id . "'") : '';
+    $emails = pg_referral_buyer_emails($order['billing_email_address'], $account_email);
+    $where = pg_referral_friend_orders_sql($order, $user_id, $emails);
+
+    if ($where === '') {
+        return 0;
+    }
+
+    $rows = db_items("SELECT user_id, billing_email_address FROM orders WHERE " . $where);
+
+    return pg_referral_friend_orders_count(is_array($rows) ? $rows : array(), $user_id, $emails);
 }
 
 /**
@@ -570,6 +668,7 @@ function pg_referral_order_completed($order_id, $code)
 
     if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', " . PG_REFERRAL_LOCK_WAIT . ")") !== 1) {
         log_activity(pg_log_lang(array('string' => 'The referral reward of order #{var:1} was not given: its referrer\'s rewards were busy.', 'vars' => array(pg_order_log_number($order)))));
+        pg_referral_pending_note($order_id);
 
         return 'busy';
     }
@@ -591,6 +690,185 @@ function pg_referral_order_completed($order_id, $code)
     }
 
     return $answer;
+}
+
+/**
+ * The orders whose reward try came back busy, kept in the config_text row
+ * referral_pending as {"order id": first busy time}. Only a busy try is kept:
+ * an order the checks refused must never pass later (a full month, the
+ * programme off at completion). Pure.
+ *
+ * @param mixed $text
+ * @return array order id => unix time
+ */
+function pg_referral_pending_parse($text)
+{
+    $data = json_decode((string) $text, true);
+    $list = array();
+
+    if (is_array($data)) {
+        foreach ($data as $order_id => $at) {
+            if (((int) $order_id > 0) && ((int) $at > 0)) {
+                $list[(int) $order_id] = (int) $at;
+            }
+        }
+    }
+
+    return $list;
+}
+
+/**
+ * The row's text of a list; never '' (pg_config_text_claim() writes no
+ * empty value), an empty list is '{}'. Pure.
+ *
+ * @param array $list order id => unix time
+ * @return string
+ */
+function pg_referral_pending_text(array $list)
+{
+    return $list ? (string) json_encode((object) $list) : '{}';
+}
+
+/**
+ * The list without entries older than PG_REFERRAL_PENDING_DAYS and, past
+ * PG_REFERRAL_PENDING_MAX, without its oldest. Pure.
+ *
+ * @param array $list order id => unix time
+ * @param int   $now
+ * @return array
+ */
+function pg_referral_pending_prune(array $list, $now)
+{
+    $since = (int) $now - PG_REFERRAL_PENDING_DAYS * 86400;
+
+    foreach ($list as $order_id => $at) {
+        if ($at < $since) {
+            unset($list[$order_id]);
+        }
+    }
+
+    asort($list);
+
+    return array_slice($list, -PG_REFERRAL_PENDING_MAX, null, true);
+}
+
+/**
+ * The list with an order added; one already there keeps its first time, so
+ * an order that stays busy still drops after PG_REFERRAL_PENDING_DAYS. Pure.
+ *
+ * @param array $list order id => unix time
+ * @param int   $order_id
+ * @param int   $now
+ * @return array
+ */
+function pg_referral_pending_add(array $list, $order_id, $now)
+{
+    if (!isset($list[(int) $order_id])) {
+        $list[(int) $order_id] = (int) $now;
+    }
+
+    return pg_referral_pending_prune($list, $now);
+}
+
+/**
+ * The list after a retry's answer: any answer but busy removes the order.
+ * Pure.
+ *
+ * @param array  $list order id => unix time
+ * @param int    $order_id
+ * @param string $answer pg_referral_order_completed()'s answer
+ * @return array
+ */
+function pg_referral_pending_after(array $list, $order_id, $answer)
+{
+    if ($answer !== 'busy') {
+        unset($list[(int) $order_id]);
+    }
+
+    return $list;
+}
+
+/**
+ * Change the referral_pending row with $change (list => list), read fresh
+ * and written only while it still holds what was read, so a completion and
+ * the general job never lose each other's change. A few tries, then given
+ * up: a busy order missed is logged as busy already.
+ *
+ * @param callable $change
+ * @return bool
+ */
+function pg_referral_pending_change($change)
+{
+    for ($try = 0; $try < 5; $try++) {
+        $text = pg_schema_has('config_text') ? (string) db_value("SELECT value FROM config_text WHERE name = 'referral_pending'") : '';
+        $value = pg_referral_pending_text($change(pg_referral_pending_parse($text)));
+
+        if (($value === $text) || (($text === '') && ($value === '{}'))) {
+            return true;
+        }
+
+        if (pg_config_text_claim('referral_pending', $text, $value)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Keep an order whose reward try came back busy for the general job.
+ *
+ * @param int $order_id
+ * @return bool
+ */
+function pg_referral_pending_note($order_id)
+{
+    $now = time();
+
+    return pg_referral_pending_change(function (array $list) use ($order_id, $now) {
+        return pg_referral_pending_add($list, $order_id, $now);
+    });
+}
+
+/**
+ * Try the busy orders again, called by the general job (job.php): the same
+ * pg_referral_order_completed() as at completion, so every check is made
+ * again and its done guard keeps an order from a second reward. A single
+ * read when the list is empty.
+ *
+ * @param int $limit orders tried in one run
+ * @return int orders tried
+ */
+function pg_referral_pending_run($limit = 10)
+{
+    $text = pg_schema_has('config_text') ? (string) db_value("SELECT value FROM config_text WHERE name = 'referral_pending'") : '';
+    $list = pg_referral_pending_parse($text);
+
+    if (!$list) {
+        return 0;
+    }
+
+    $tried = 0;
+    $now = time();
+    $kept = pg_referral_pending_prune($list, $now);
+
+    foreach (array_slice(array_keys($kept), 0, max(1, (int) $limit)) as $order_id) {
+        $code = (string) db_value("SELECT affiliate_code FROM orders WHERE id = '" . (int) $order_id . "'");
+        $answer = pg_referral_order_completed($order_id, $code);
+        $tried++;
+
+        pg_referral_pending_change(function (array $list) use ($order_id, $answer, $now) {
+            return pg_referral_pending_prune(pg_referral_pending_after($list, $order_id, $answer), $now);
+        });
+    }
+
+    if (count($kept) !== count($list)) {
+        pg_referral_pending_change(function (array $list) use ($now) {
+            return pg_referral_pending_prune($list, $now);
+        });
+    }
+
+    return $tried;
 }
 
 /**
@@ -633,6 +911,7 @@ function pg_referral_order_reward(array $order, $code, $contact_id, array $setti
     }
 
     $referrer = pg_referral_referrer($contact_id, (int) $order['id']);
+    $buyer_user_id = pg_order_rights_user_id($order);
 
     $answer = pg_referral_check(array(
         'on'            => true,
@@ -640,11 +919,11 @@ function pg_referral_order_reward(array $order, $code, $contact_id, array $setti
         'affiliate'     => pg_referral_code_is_affiliate($code),
         'referrer'      => $referrer,
         'buyer'         => array(
-            'user_id'    => pg_order_rights_user_id($order),
+            'user_id'    => $buyer_user_id,
             'contact_id' => (int) $order['contact_id'],
             'email'      => (string) $order['billing_email_address'],
         ),
-        'friend_orders' => pg_referral_friend_orders($order),
+        'friend_orders' => pg_referral_friend_orders($order, $buyer_user_id),
         'value'         => pg_referral_order_value($order, pg_referral_refunded_total($order['id'])),
         'smallest'      => $settings['smallest'],
         'month_count'   => (int) db_value(

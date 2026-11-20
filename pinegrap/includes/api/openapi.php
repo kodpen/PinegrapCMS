@@ -526,6 +526,7 @@ function api_openapi_tag_sentences()
 {
     return array(
         'Meta'               => 'What this site is: the API version, the software, its time zone, the store\'s currency and order statuses.',
+        'Guide'              => 'How to work on this site, written for AI agents: the topic list, a topic, or one section of it.',
         'Products'           => 'Products of the store: read, create, change, delete, and set prices in bulk.',
         'Inventory'          => 'Stock of the products: levels by location, moves between locations, and the history of every change.',
         'Product_groups'     => 'Product groups, which show several products on one page, and their variant sets.',
@@ -543,7 +544,7 @@ function api_openapi_tag_sentences()
         'Gift_cards'         => 'Gift cards: their balance, expiry and redemptions.',
         'Commissions'        => 'Affiliate commissions and their recurring profiles.',
         'Affiliates'         => 'Affiliates: approving a contact as one.',
-        'Calendars'          => 'Calendars, their events, locations and reservations.',
+        'Calendars'          => 'Calendars, their events, locations, reservations and tickets.',
         'Webhooks'           => 'Webhook subscriptions: the events the site sends to an address, signed, with their deliveries.',
         'Subscriptions'      => 'Subscriptions the store charges from a stored card.',
         'Users'              => 'The site\'s users: their accounts, roles and permissions.',
@@ -1179,6 +1180,8 @@ function api_openapi_objects()
         'CalendarLocation'   => 'api_calendar_location_schema',
         'CalendarReservation' => 'api_calendar_reservation_schema',
         'CalendarReservationCustomer' => 'api_calendar_reservation_customer_schema',
+        'EventTicket'        => 'api_event_ticket_schema',
+        'EventTicketCounts'  => 'api_event_ticket_counts_schema',
         'SmsCampaign'        => 'api_sms_campaign_schema',
         'SmsCampaignOutbox'  => 'api_sms_campaign_outbox_schema',
         'DesignAd'           => 'api_design_ad_schema',
