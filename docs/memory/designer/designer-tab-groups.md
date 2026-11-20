@@ -21,7 +21,5 @@ description: Page tab order and named coloured groups in the designer (style.sty
 - With `_pgTabsInsertAfterActive(p)`, not `_pages.push`: right of the active tab, in its group.
 - Dragging uses pointer events (`_pgTabsDragBind()`), over the box's head and tabs and the chips in strip order; "Other" is not dragged. It is off at content level and without the column.
 
-## How is the "All pages" list built?
-- `#sd-tabs-all` (`designer_screen.php`) is a Bootstrap 6 menu (`data-bs-toggle="menu"`); `_pgTabsAllToggle()` finds that button for `isOpen`/`hide`. It looked for `data-bs-toggle="dropdown"` before #2600, so a picked page left the list open.
-- Rows are `menu-item sd-tabs-all-item` buttons (they were v5 `dropdown-item`, unstyled under 6: grey native boxes). They sit in `#sd-tabs-all-list`, not directly in `.menu`, so the search box stays while the list scrolls; Bootstrap's arrow keys walk only direct children, so `_pgTabsBind()` walks the rows itself (ArrowDown from the search box, Home/End).
-- Right-click, the context-menu key or Shift+F10 on a row runs `_pgTabsAllPageMenu()`: closes the list, switches to the page, opens the strip's page menu (`_pgTabsOpenMenu`, body-level, z-index 1060 above `--bs-z-menu` 1000). A locked row opens nothing.
+## Where is every page listed?
+- In the Pages window (DP20): the Pages button `#sd-tabs-all-btn` after the strip and Ctrl+P open it; it took the place of the "All pages" menu (`designer-pages-window.md`).

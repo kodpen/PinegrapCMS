@@ -4824,6 +4824,8 @@ const StyleDesigner = (function () {
 
             // Command Palette (Ctrl+Shift+P) — forward from iframe to main document handler
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p' && !isInput) { e.preventDefault(); openCommandPalette(); }
+            // The Pages window (Ctrl+P), from the canvas too.
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p' && !isInput) { e.preventDefault(); _pgPagesOpen(); }
 
             // Ctrl+G — exit designer back to send_to URL (mirror of the
             // frontend "open designer" shortcut in frontend.src.js). Works
@@ -43917,7 +43919,8 @@ const StyleDesigner = (function () {
             ['__address_book_url',      _sdT('Address book page (shop sites; the link drops when there is none)')],
             ['__my_account_wishlist_url', _sdT('Favourites page (shop sites; the link drops when there is none)')],
             ['__logout_url',            _sdT('Log out (the logout page, or signs out at once)')],
-            ['__staff_url',             _sdT('Staff page address (only for visitors the page lets in)')]
+            ['__staff_url',             _sdT('Staff page address (only for visitors the page lets in)')],
+            ['__referral_url',          _sdT('Referral link (shop sites; the link drops while the member cannot refer)')]
         ]},
         { label: _sdT('Form Submissions (loop_area)'), tokens: [
             ['form_name',               _sdT('Form name')],
@@ -44490,6 +44493,8 @@ const StyleDesigner = (function () {
             ['__price_formatted',          _sdT('Price (with symbol)')],
             ['__original_price_formatted', _sdT('Original price (with symbol, to be struck through)')],
             ['__discount_percent',         _sdT('Discount percentage (number, without the % sign)')],
+            ['__reference_price',          _sdT('Price before the discount (the reference price rule, with symbol)')],
+            ['__reference_label',          _sdT('Reference price label (e.g. lowest price of the last 30 days)')],
             ['__image_url',                _sdT('Image URL')],
             ['__image_alt',                _sdT('Image alt text')],
             ['__out_of_stock_label',       _sdT('Out of stock label')],
@@ -45499,6 +45504,7 @@ const StyleDesigner = (function () {
             out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
             out.push(['store_credit_convert', _sdT('Reward points conversion form (hidden when the member cannot convert)')]);
             out.push(['tickets',              _sdT('My tickets (shop sites; hidden when there are none)')]);
+            out.push(['referral',             _sdT('Refer a friend (shop sites; hidden while the referral programme is off)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
         } else if (type === 'calendar_event_view') {
@@ -47333,6 +47339,31 @@ const StyleDesigner = (function () {
         ])]);
     }
 
+    // pg_referral_account_html() for a member who can refer, with one
+    // reward kept and one taken back.
+    /* @pg-site-output */
+    function _sdAccountReferralHtml() {
+        var link = 'https://example.com/?a=R15-ABCDE12345';
+        var rows = [
+            { friend: 'A. K.', date: _sdDateSample(false), amount: '₺50,00', tone: 'success', label: _sdT('Rewarded') },
+            { friend: 'M. Y.', date: _sdDateSample(false), amount: '₺50,00', tone: 'secondary', label: _sdT('Taken back') }
+        ];
+        return '<div class="pg-sw-referral"><p class="mb-2">'
+            + esc(_sdT('Share your link. When a friend\'s first order is complete, you earn {var:1} in store credit.').replace('{var:1}', '₺50,00'))
+            + '</p><div class="input-group mb-2"><input type="text" class="form-control" value="' + esc(link) + '" readonly>'
+            + '<button type="button" class="btn btn-outline-primary">' + esc(_sdT('Copy')) + '</button></div>'
+            + '<div class="d-flex flex-wrap gap-2 mb-3">' + [_sdT('WhatsApp'), _sdT('E-mail'), _sdT('X'), _sdT('Facebook')].map(function (l) {
+                return '<a href="#" class="btn btn-sm btn-outline-secondary">' + esc(l) + '</a>';
+            }).join('') + '</div>'
+            + '<p class="mb-2">' + esc(_sdT('Rewards earned: {var:1}').replace('{var:1}', '1')) + '<span class="text-body-secondary mx-2">·</span>'
+            + esc(_sdT('Store credit earned: {var:1}').replace('{var:1}', '₺50,00')) + '</p>'
+            + '<div class="list-group pg-sw-referrals">' + rows.map(function (r) {
+                return '<div class="list-group-item d-flex justify-content-between align-items-center gap-2">'
+                    + '<span><span class="fw-semibold">' + esc(r.friend) + '</span><span class="text-body-secondary small ms-2">' + esc(r.date) + '</span></span>'
+                    + '<span><span class="me-2">' + esc(r.amount) + '</span><span class="badge text-bg-' + r.tone + '">' + esc(r.label) + '</span></span></div>';
+            }).join('') + '</div></div>';
+    }
+
     // pg_booking_customer_view_html(); view { upcoming: rows, past: rows }
     // in pg_booking_customer_view_rows()' shape.
     /* @pg-site-output */
@@ -47495,6 +47526,7 @@ const StyleDesigner = (function () {
         }
         if (section === 'store_credit_convert') return _sdAccountCreditConvertHtml('120', '₺12,00');
         if (section === 'tickets') return _sdAccountTicketsHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.tickets']));
+        if (section === 'referral') return _sdAccountReferralHtml();
         if (section === 'store_credit') {
             var use = function (u) {
                 return { order_number: u.__credit_use_order_no, view_url: u.__credit_use_order_url, date_info: u.__credit_use_date, amount_info: u.__credit_use_amount };
@@ -47523,7 +47555,8 @@ const StyleDesigner = (function () {
             subscriptions: _sdT('The site lists the signed-in member\'s subscriptions, newest first, with the actions each one allows.'),
             store_credit: _sdT('The site shows the signed-in member\'s balance, the reward points conversion form when they have points enough, and their cards.'),
             store_credit_convert: _sdT('The site shows this form when the member has points enough to convert; it posts with the form token.'),
-            tickets: _sdT('The site lists the signed-in member\'s orders that hold event tickets, each linking to its tickets page.')
+            tickets: _sdT('The site lists the signed-in member\'s orders that hold event tickets, each linking to its tickets page.'),
+            referral: _sdT('The site shows the member\'s referral link with Copy and share links, their referrals and the store credit earned; a member without a completed order, or an affiliate, is told why they cannot refer.')
         };
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(notes[section]) + '</div>';
         return box;
@@ -48835,7 +48868,9 @@ const StyleDesigner = (function () {
             ['has_store_credit', _sdT('The member has store credit or points to convert')],
             ['has_store_credit_cards', _sdT('The member has store credit cards')],
             ['has_subscriptions', _sdT('The member has subscriptions')],
-            ['has_tickets', _sdT('The member has orders with event tickets')]
+            ['has_tickets', _sdT('The member has orders with event tickets')],
+            ['has_referral', _sdT('The referral programme is on for the member')],
+            ['can_refer', _sdT('The member can refer friends (has a completed order, is no affiliate)')]
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
@@ -81266,7 +81301,7 @@ const StyleDesigner = (function () {
             var gives = [[body, 'sd-strip-noadd'], [body, 'sd-strip-nopagecount'], [list, 'sd-strip-draftshort']];
             for (var g = 0; g < gives.length; g++) {
                 if (g > 0 && nameEl.scrollWidth <= nameEl.clientWidth + 1) break;
-                // With one page there is no Pages list to carry Add Page.
+                // With one page there is no Pages button to reach Add Page.
                 if (g === 0 && _pages.length < 2) continue;
                 gives[g][0].classList.add(gives[g][1]);
                 hold();
@@ -81275,7 +81310,7 @@ const StyleDesigner = (function () {
         list.setAttribute('data-step', String(plan.step));
         // At step 6 no chip is left: the pages not open lend their mark to
         // the Pages button, which carries one at this step only.
-        var allBtn = _pgTabsAllToggle();
+        var allBtn = _pgPagesButton();
         if (allBtn) _pgContentClimbOn(allBtn, plan.cut ? others : []);
         // As an icon, the design's name is in the button's tip.
         if (designBtn) {
@@ -81394,10 +81429,11 @@ const StyleDesigner = (function () {
         btns[(i + btns.length) % btns.length].focus();
     }
 
-    // ── All pages ──
-    // A design with many pages does not fit the strip. The button after it
-    // lists every page; it shows only while a page has no tab in view (in
-    // a folded group or behind "+N"), with the number of pages on it.
+    // ── Pages window ──
+    // The Pages button after the strip opens the Pages window (the part
+    // 'pages', style_designer_pages.js), and so does Ctrl+P. The button
+    // shows while a page has no tab in view (in a folded group or behind
+    // "+N"), with the number of pages on it.
     function _pgTabsAllSync() {
         var wrap = document.getElementById('sd-tabs-all');
         var list = document.getElementById('sd-tabs-list');
@@ -81405,152 +81441,131 @@ const StyleDesigner = (function () {
         var count = document.getElementById('sd-tabs-all-count');
         if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
         // The count is in the tip too, for the narrowest strip that hides it.
-        var btn = _pgTabsAllToggle();
+        var btn = _pgPagesButton();
         if (btn) {
             if (!btn.hasAttribute('data-sd-title')) btn.setAttribute('data-sd-title', btn.title || '');
             btn.title = btn.getAttribute('data-sd-title') + (_pages.length > 1 ? ' (' + _pages.length + ')' : '');
         }
         var hidden = list.querySelectorAll('.sd-tab:not(.sd-tab-folded)').length >= _pages.length;
         if (wrap.hidden !== hidden) {
-            if (hidden && pgUI.menu.isOpen(_pgTabsAllToggle())) return;
+            if (hidden && btn && btn.getAttribute('aria-expanded') === 'true') return;
             wrap.hidden = hidden;
         }
     }
-    // The button that opens the list: a Bootstrap 6 menu toggle.
-    function _pgTabsAllToggle() {
-        var wrap = document.getElementById('sd-tabs-all');
-        return wrap ? wrap.querySelector('[data-bs-toggle="menu"]') : null;
+    function _pgPagesButton() { return document.getElementById('sd-tabs-all-btn'); }
+
+    // Opens the Pages window, or closes it when it is open.
+    function _pgPagesOpen() {
+        if (_sdComponentOnly()) return;
+        _sdPartCall('pages', 'open', [_pgPagesHost()]).catch(_sdPartFailed);
     }
-    function _pgTabsAllFill() {
-        var box = document.getElementById('sd-tabs-all-list');
-        if (!box) return;
-        var q = ((document.getElementById('sd-tabs-all-filter') || {}).value || '').trim().toLocaleLowerCase();
-        var html = '';
-        _pages.forEach(function (p) {
-            var name = p.page_name ? p.page_name : _sdT('New Page');
-            if (q && name.toLocaleLowerCase().indexOf(q) === -1) return;
-            var locked = (p.access === 'locked');
-            var gid = (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '';
-            html += '<button type="button" class="menu-item sd-tabs-all-item' + (p.key === _activeKey ? ' active' : '') + '"' +
-                    ' data-key="' + esc(p.key) + '"' + (p.key === _activeKey ? ' aria-current="page"' : '') + (locked ? ' disabled' : '') + '>' +
-                    // A page in a group carries the group's colour.
-                    '<span class="sd-tabs-all-dot' + (gid ? ' sd-tab-color-dot' : '') + '"' + (gid ? ' data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') + ' aria-hidden="true"></span>' +
-                    '<span class="sd-tabs-all-name">' + esc(name) + '</span>' +
-                    (_pgPageDirty(p) ? '<span class="sd-tabs-all-dirty" title="' + esc(_sdT('Unsaved Changes')) + '">●</span>' : '') +
-                    ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge sd-tabs-all-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
-                    _pgContentChangeBadge(p, true) +
-                    (locked ? '<span class="bi bi-lock-fill" aria-hidden="true"></span>' : '') +
-                    '</button>';
-        });
-        // Add Page leads the list while the Add Page button is not in the
-        // toolbar's row (the narrowest strip); it runs the button's New Page.
-        var newPageItem = document.getElementById('sd-tab-new-page');
-        var addRow = (!q && newPageItem && document.body.classList.contains('sd-strip-noadd') && !_sdIsContentLevel())
-            ? '<button type="button" class="menu-item sd-tabs-all-item sd-tabs-all-add" data-add="1"><span class="bi bi-plus-lg sd-tabs-all-plus" aria-hidden="true"></span><span class="sd-tabs-all-name">' + esc(_sdT('Add Page')) + '</span></button>'
-            : '';
-        box.innerHTML = addRow + (html || '<div class="menu-text sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>');
+
+    // A page's address on the site: the home page's is "/".
+    function _pgPageAddress(p) {
+        if (!p) return '';
+        return '/' + (p.page_home ? '' : String(p.savedName || p.page_name || ''));
     }
-    // The page menu of a row, the one a tab of the strip opens: the list
-    // closes first (it is a v6 menu, below the page menu's layer, and
-    // would stay open under it), the row's page becomes the active one,
-    // and the menu opens at the cursor or under the row. A locked row
-    // opens nothing, as its click does.
-    function _pgTabsAllPageMenu(it, at) {
-        it = it && it.closest ? it.closest('.sd-tabs-all-item') : null;
-        if (!it || it.disabled || !it.dataset.key) return false;
-        var key = it.dataset.key;
-        var r = it.getBoundingClientRect();
-        var btn = _pgTabsAllToggle();
-        if (btn) pgUI.menu.hide(btn);
-        if (key !== _activeKey) _pgTabsSwitch(key);
-        _pgTabsOpenMenu(null, key, at || { x: r.left + 12, y: r.bottom });
-        // Opened from the keyboard: the focus goes into the page menu.
-        if (!at && window._pgTabMenuEl) {
-            var first = window._pgTabMenuEl.querySelector('[data-act]:not([disabled])');
-            if (first) first.focus();
-        }
-        return true;
+
+    // "Recently opened" (D52) is kept per browser and design: the ids of
+    // the saved pages last opened, the latest first.
+    var _PG_RECENT_MAX = 12;
+    function _pgPagesRecentPush(list, id, max) {
+        var out = [id];
+        (list || []).forEach(function (x) { if (x !== id && out.length < max) out.push(x); });
+        return out;
+    }
+    function _pgPagesRecentKey() { return 'pg_sd_recent_' + ((_design && _design.styleId) || 0); }
+    function _pgPagesRecentRead() {
+        try {
+            var v = JSON.parse(localStorage.getItem(_pgPagesRecentKey()) || '[]');
+            return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'number' && x > 0; }) : [];
+        } catch (e) { return []; }
+    }
+    function _pgPagesRecentNote(p) {
+        if (!p || !(p.page_id > 0) || !(_design && _design.styleId)) return;
+        try { localStorage.setItem(_pgPagesRecentKey(), JSON.stringify(_pgPagesRecentPush(_pgPagesRecentRead(), p.page_id, _PG_RECENT_MAX))); } catch (e) { /* storage off */ }
+    }
+
+    // A page into a group (gid; '' takes it out of its group), saved with
+    // the strip's layout through designer/tab_layout.
+    function _pgPagesMoveToGroup(key, gid) {
+        var p = _pgPageByKey(key);
+        if (!p || !_pgTabLayoutEditable() || (p.tabGroup || '') === gid) return;
+        if (gid) _pgTabGroupAdd(key, gid);
+        else _pgTabGroupRemove(key);
+    }
+
+    // What the Pages window reads the pages through.
+    function _pgPagesHost() {
+        return {
+            anchor: _pgPagesButton,
+            pages: function () {
+                return _pages.map(function (p) {
+                    var locked = (p.access === 'locked');
+                    return {
+                        key: p.key, id: p.page_id || 0, name: p.page_name || '', address: _pgPageAddress(p),
+                        home: !!p.page_home, active: p.key === _activeKey, locked: locked,
+                        group: (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '',
+                        dirty: !!_pgPageDirty(p), draft: !!(_pgDraftsReady() && p.page_draft),
+                        holder: locked ? '' : _pgTabHolder(p), badge: _pgContentChangeBadge(p, true)
+                    };
+                });
+            },
+            // The groups in strip order, "Other" last.
+            groups: function () {
+                var out = [], seen = {};
+                _pages.forEach(function (p) {
+                    var gid = p.tabGroup;
+                    if (!gid || seen[gid] || !_pgTabGroups[gid]) return;
+                    seen[gid] = true;
+                    out.push({ id: gid, name: _pgTabGroupLabel(gid), color: _pgTabGroups[gid].color });
+                });
+                out.push({ id: '', name: _sdT('Other'), color: 'grey' });
+                return out;
+            },
+            // Page keys, the latest opened first; the open page leads.
+            recent: function () {
+                var byId = {};
+                _pages.forEach(function (p) { if (p.page_id > 0) byId[p.page_id] = p.key; });
+                var keys = [_activeKey];
+                _pgPagesRecentRead().forEach(function (id) { if (byId[id] && keys.indexOf(byId[id]) === -1) keys.push(byId[id]); });
+                return keys;
+            },
+            draftsReady: _pgDraftsReady,
+            canAdd: function () { return !!document.getElementById('sd-tab-new-page') && !_sdIsContentLevel(); },
+            canRename: function () { return !_sdComponentOnly(); },
+            canMove: _pgTabLayoutEditable,
+            open: function (key) { if (key !== _activeKey) _pgTabsSwitch(key); },
+            add: function () { _pgTabsAddNew(); },
+            rename: function (key, val) {
+                var p = _pgPageByKey(key);
+                if (!p) return;
+                _pgPageNameSet(p, val);
+                _pgTabsRender();
+                _pgTabsRefreshDirty();
+            },
+            move: _pgPagesMoveToGroup,
+            // The strip's page menu, at the cursor or under the open tab.
+            pageMenu: function (key, at) {
+                if (key !== _activeKey) _pgTabsSwitch(key);
+                if (key !== _activeKey) return;
+                var tab = document.querySelector('.sd-tab[data-key="' + key + '"]');
+                var r = tab ? tab.getBoundingClientRect() : null;
+                _pgTabsOpenMenu(null, key, at || (r ? { x: r.left + 12, y: r.bottom } : { x: 120, y: 60 }));
+                if (!at && window._pgTabMenuEl) {
+                    var first = window._pgTabMenuEl.querySelector('[data-act]:not([disabled])');
+                    if (first) first.focus();
+                }
+            }
+        };
     }
 
     function _pgTabsBind() {
         var list = document.getElementById('sd-tabs-list');
-        var all = document.getElementById('sd-tabs-all');
+        var all = _pgPagesButton();
         if (all && !all._pgBound) {
             all._pgBound = true;
-            var filter = document.getElementById('sd-tabs-all-filter');
-            pgUI.menu.on(all, 'show', function () {
-                if (filter) filter.value = '';
-                _pgTabsAllFill();
-            });
-            pgUI.menu.on(all, 'shown', function () {
-                // Without scrolling: the toolbar scrolls sideways on a narrow
-                // screen, and the focus would push its start off the screen.
-                if (filter) filter.focus({ preventScroll: true });
-                var act = all.querySelector('.sd-tabs-all-item.active');
-                var rowsBox = document.getElementById('sd-tabs-all-list');
-                if (act && rowsBox) {
-                    // The list scrolls to the open page, nothing around it.
-                    var ar = act.getBoundingClientRect(), br = rowsBox.getBoundingClientRect();
-                    if (ar.top < br.top || ar.bottom > br.bottom) rowsBox.scrollTop += ar.top - br.top - (br.height - ar.height) / 2;
-                }
-            });
-            pgUI.menu.on(all, 'hidden', function () { _pgTabsAllSync(); });
-            if (filter) {
-                filter.addEventListener('input', _pgTabsAllFill);
-                filter.addEventListener('keydown', function (e) {
-                    if (e.key !== 'Enter') return;
-                    e.preventDefault();
-                    var first = all.querySelector('.sd-tabs-all-item[data-key]:not([disabled])');
-                    if (first) first.click();
-                });
-            }
-            all.addEventListener('click', function (e) {
-                var it = e.target.closest('.sd-tabs-all-item');
-                if (!it || it.disabled) return;
-                var btn = _pgTabsAllToggle();
-                if (btn) pgUI.menu.hide(btn);
-                if (it.dataset.add) { _pgTabsAddNew(); return; }
-                if (it.dataset.key !== _activeKey) _pgTabsSwitch(it.dataset.key);
-            });
-            // Right-click on a row: the page menu, as on a tab of the strip.
-            // The keys below also make some browsers send a contextmenu
-            // event of their own; the menu they opened stays where it is.
-            var keyMenuAt = 0;
-            all.addEventListener('contextmenu', function (e) {
-                if (!e.target.closest('.sd-tabs-all-item')) return;
-                e.preventDefault();
-                if (Date.now() - keyMenuAt < 800) return;
-                // A contextmenu event from the keyboard has no cursor.
-                _pgTabsAllPageMenu(e.target, (e.clientX || e.clientY) ? { x: e.clientX, y: e.clientY } : null);
-            });
-            // Keyboard: the arrows walk the rows (Bootstrap's menu walks only
-            // items that are direct children of .menu; these sit in the
-            // scrolling list), ArrowDown leaves the search box for the first
-            // row, and the context-menu key or Shift+F10 opens the page menu.
-            all.addEventListener('keydown', function (e) {
-                var it = e.target.closest('.sd-tabs-all-item');
-                var fromFilter = (filter && e.target === filter);
-                if (it && (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (_pgTabsAllPageMenu(it)) keyMenuAt = Date.now();
-                    return;
-                }
-                if (!it && !fromFilter) return;
-                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
-                if (fromFilter && e.key !== 'ArrowDown') return;
-                var rows = Array.prototype.slice.call(all.querySelectorAll('.sd-tabs-all-item:not([disabled])'));
-                if (!rows.length) return;
-                var i = rows.indexOf(it);
-                var next = e.key === 'Home' ? rows[0]
-                         : e.key === 'End' ? rows[rows.length - 1]
-                         : e.key === 'ArrowDown' ? rows[Math.min(rows.length - 1, i + 1)]
-                         : (i <= 0 ? null : rows[i - 1]);
-                e.preventDefault();
-                e.stopPropagation();
-                if (next) next.focus();
-                else if (filter) filter.focus();
-            });
+            all.addEventListener('click', _pgPagesOpen);
             window.addEventListener('resize', function () { _pgTabsAllSync(); });
         }
         if (list && !list._pgWheelBound) {
@@ -81890,6 +81905,7 @@ const StyleDesigner = (function () {
         }
         // Remember which tab was open so a reload lands on the same page.
         _pgTabsSyncUrl();
+        _pgPagesRecentNote(next);
         if (leaving !== _collabPageId()) _collabHandOver(leaving);
         _sdLivePreviewSchedule();
     }
@@ -82309,12 +82325,7 @@ const StyleDesigner = (function () {
         label.textContent = '';
         label.appendChild(inp);
         var done = false;
-        var apply = function (val) {
-            p.page_name = val;
-            var nameEl = document.getElementById('sd-page-name');
-            if (nameEl && key === _activeKey) nameEl.value = val;
-            if (key === _activeKey) _sdSettingsPageLabel(val);
-        };
+        var apply = function (val) { _pgPageNameSet(p, val); };
         // A click anywhere else commits too. blur alone is not enough: the
         // browser does not fire it while the window itself is unfocused
         // (embedded panes, some multi-window setups), and the box would
@@ -82346,6 +82357,16 @@ const StyleDesigner = (function () {
         inp.addEventListener('mousedown', function (e) { e.stopPropagation(); });
         inp.focus();
         inp.select();
+    }
+
+    // A page's new name, in the page settings' field too when it is the
+    // open page (the strip's rename box and the Pages window's F2).
+    function _pgPageNameSet(p, val) {
+        p.page_name = val;
+        if (p.key !== _activeKey) return;
+        var nameEl = document.getElementById('sd-page-name');
+        if (nameEl) nameEl.value = val;
+        _sdSettingsPageLabel(val);
     }
 
     // Settings modal, opened straight on the "Only this page" panes.
@@ -86011,6 +86032,7 @@ const StyleDesigner = (function () {
                 ]},
                 { title: _sdT('View & Preview'), rows: [
                     ['Ctrl+Shift+P',        _sdT('Command palette')],
+                    ['Ctrl+P',              _sdT('Pages')],
                     ['Ctrl+Alt+P',          _sdT('Preview in a new window')],
                     ['P',                   _sdT('Show the selected link in the Prototype view')],
                     ['Ctrl++  /  Ctrl+-',   _sdT('Zoom the canvas in / out')],
@@ -86124,6 +86146,7 @@ const StyleDesigner = (function () {
                 var b = document.getElementById('sd-ajax-save'); if (b) b.click();
             }},
             { id: 'act_preview', label: _sdT('Preview'), icon: 'bi-box-arrow-up-right', hint: 'Ctrl+Alt+P', action: function() { openPreview(); } },
+            { id: 'act_pages', label: _sdT('Pages'), icon: 'bi-files', hint: 'Ctrl+P', action: function() { _pgPagesOpen(); } },
             { id: 'act_snapshot', label: _sdT('Take a Snapshot'), icon: 'bi-camera', action: function() { var n = window.prompt(_sdT('Snapshot name:')); if (n && n.trim()) saveSnapshot(n.trim()); } },
             // ── Selection ───────────────────────────────────────────
             { id: 'act_select_body', label: _sdT('Select the Body'), icon: 'bi-filetype-html', action: function() {
@@ -90941,6 +90964,9 @@ const StyleDesigner = (function () {
             if (e.target.closest && e.target.closest('.cm-editor')) return;
             // Command palette (Ctrl+Shift+P)
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); e.stopPropagation(); openCommandPalette(); return; }
+            // The Pages window (Ctrl+P); the browser's print is not the
+            // editor's to give.
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') { e.preventDefault(); e.stopPropagation(); _pgPagesOpen(); return; }
             // N — the note key the notes panel has always advertised. Before
             // the view-mode guard on purpose: leaving a note is the one thing
             // a locked-out session is invited to do.

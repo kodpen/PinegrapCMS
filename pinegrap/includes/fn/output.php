@@ -8135,6 +8135,7 @@ function pg_js_bundles()
         // Border and corner: their pure class mappings (window.PGSpacingBox,
         // window.PGCornerBox), then the part that draws both.
         'assets/js/style_designer_spacing.min.js' => array('assets/js/pg_spacing_box.js', 'assets/js/pg_corner_box.js', 'assets/js/style_designer_spacing.js'),
+        'assets/js/style_designer_pages.min.js'    => array('assets/js/style_designer_pages.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -8223,6 +8224,9 @@ function pg_designer_parts()
         // The spacing box of Style › Spacing and the size chooser in its
         // head, drawn when the section is first shown.
         'spacing' => 'assets/js/style_designer_spacing.min.js',
+        // The Pages window: every page by group, searched and filtered,
+        // opened, renamed and moved into a group.
+        'pages' => 'assets/js/style_designer_pages.min.js',
         // "Only what I changed": the list of the changed rows of all three
         // Options tabs with their reset arrows and "Reset all".
         'review' => 'assets/js/style_designer_review.min.js',

@@ -448,6 +448,16 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-83.md: Where are the rules and the earlier parts?
 - decisions-made-product-83.md: Does a subscription renewal order keep copies of the legal documents? (architect, 2026-11-20, agent channel message 10449, answer to K1's request 1793)
 - decisions-made-product-83.md: Is a NULL legal_acceptance still read as both documents accepted? (architect, 2026-11-20, agent channel message 10449)
+- decisions-made-product-84.md: Where are the rules and the earlier parts?
+- decisions-made-product-84.md: Does the store learn its own order rhythm and say when it breaks? (owner, 2026-11-20, agent channel poll 165, channel message 10147)
+- decisions-made-product-85.md: Where are the rules and the earlier parts?
+- decisions-made-product-85.md: Does the site explain itself to AI agents, and who shapes it? (owner, 2026-11-20, agent channel poll 170, message 10442)
+- decisions-made-product-85.md: How is the guide written and read? (architect, 2026-11-20, plan ai-guide)
+- decisions-made-product-85.md: How does the tool list get cheaper without breaking a connection? (architect, 2026-11-20, plan ai-guide)
+- decisions-made-product-85.md: What does a refusal say to an agent? (architect, 2026-11-20, plan ai-guide)
+- decisions-made-product-86.md: Where are the rules and the earlier parts?
+- decisions-made-product-86.md: What is done about two orders taking the last unit? (owner, 2026-11-20, agent channel poll 172, message 10457)
+- decisions-made-product-86.md: How is an order sold beyond the stock flagged? (architect, 2026-11-20, agent channel message 10463)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -540,6 +550,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-32.md: Where are the rules and the earlier parts?
 - decisions-made-schema-32.md: May the Workspace get a table for an application's answer to the writer alone? (owner, 2026-11-20, agent channel poll 169, message 10332)
 - decisions-made-schema-32.md: Which columns does ws_app_answers have? (architect, 2026-11-20, agent channel message 10333, answer to K2's request 1744)
+- decisions-made-schema-33.md: Where are the rules and the earlier parts?
+- decisions-made-schema-33.md: Is what a sale really took from the stock recorded? (owner, 2026-11-20, agent channel poll 171, message 10456)
+- decisions-made-schema-33.md: Which columns, and who writes and reads them? (architect, 2026-11-20, agent channel message 10460, answer to K1's request 1799)
+- decisions-made-schema-34.md: Where are the rules and the earlier parts?
+- decisions-made-schema-34.md: May holding units during payment get a table? (owner, 2026-11-20, agent channel poll 172, message 10457)
+- decisions-made-schema-34.md: Which columns does `stock_holds` have? (architect, 2026-11-20, plan stock-holds)
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
