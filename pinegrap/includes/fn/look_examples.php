@@ -208,10 +208,16 @@ function pg_look_examples_patterns($prefix = 'light')
             . '</div></div>';
     };
 
-    $servers = '<div class="pg-card-inner ws-agset-list">'
+    // The card head's buttons as the screen has them: "Add a server" is quiet
+    // with its plus, since the settings window's Save is the one filled button.
+    $servers = '<div class="d-flex flex-wrap align-items-center justify-content-end gap-3 mb-3">'
+        . '<a class="pg-button pg-button-ghost pg-button-sm" href="workspace_mcp.php"><i class="bi bi-person-gear" aria-hidden="true"></i>' . h(lang('My MCP connections')) . '</a>'
+        . '<button type="button" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a server')) . '</button>'
+        . '</div>'
+        . '<div class="pg-card-inner ws-agset-list">'
         . $server('docs', 'Docs', 'docs.example.com · ' . lang(array('string' => '{var:1} of {var:2} tools on', 'vars' => array(4, 6))), array(lang('Ready'), 'pg-tone-teal'),
             '<button type="button" class="pg-button pg-button-ghost pg-button-sm"><i class="bi bi-x-circle" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>')
-        . $server('crm', 'CRM', 'crm.example.com · ' . lang(array('string' => '{var:1} of {var:2} tools on', 'vars' => array(0, 9))), array(lang('Not connected'), 'pg-tone-amber'),
+        . $server('crm', 'CRM', 'crm.example.com · ' . lang(array('string' => '{var:1} of {var:2} tools on', 'vars' => array(0, 9))), array(lang('Not connected'), 'pg-tone-gray'),
             '<button type="button" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>' . h(lang('Connect')) . '</button>')
         . '</div>';
 

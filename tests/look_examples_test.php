@@ -74,6 +74,10 @@ function test_look_examples_settings_pane_pattern()
 	pg_assert_true(preg_match('/pg-set-fold-item is-open"[^>]*data-pg-fold-attention/', $html) === 1, 'the row that needs attention is the open one');
 	pg_assert_true(substr_count($html, 'class="ws-agset-row') >= 2, 'the open row lists its things as rows');
 	pg_assert_contains('aria-label="' . h(lang('Remove')) . '"', $html, 'a thing that was added can be removed from its row');
+	pg_assert_same(0, substr_count($html, 'pg-button-fill'), 'the settings window\'s Save is the one filled button');
+	pg_assert_true(preg_match('/class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plus-lg" aria-hidden="true"><\/i>' . preg_quote(h(lang('Add a server')), '/') . '</', $html) === 1, 'Add is quiet with its plus');
+	pg_assert_contains('<span class="pg-pill ws-agset-state pg-tone-gray">' . h(lang('Not connected')) . '</span>', $html, 'not connected is gray');
+	pg_assert_true(strpos($html, 'pg-tone-amber">' . h(lang('Not connected'))) === false, 'never amber');
 }
 
 function test_look_examples_connect_row_and_empty_list()
