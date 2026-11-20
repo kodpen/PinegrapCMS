@@ -14,8 +14,8 @@ module: event_tickets
 - Without the table, or when the tickets key is missing or does not open: `pg_event_tickets_on()` asks all three.
 
 ## What does a ticket row keep?
-- Table `event_tickets` (step 11.0.246): order, order line and unit (unique together, written with `INSERT IGNORE`, so a line is never ticketed twice), product, event and its `recurrence_number` (0 for a product's ticket), `code_salt`, `code_hash` (unique), `state` valid / used / void, `used_at`, `used_by`, `voided_at`, `created_at`.
-- Architect (2026-11-20, agent channel message 10086): the columns, the five indexes, `products.gives_tickets` (INSTANT where the server allows it) and step 11.0.246 approved; the table is `event_tickets`, plural like `order_items` and `gift_cards`.
+- Table `event_tickets` (step 11.0.247): order, order line and unit (unique together, written with `INSERT IGNORE`, so a line is never ticketed twice), product, event and its `recurrence_number` (0 for a product's ticket), `code_salt`, `code_hash` (unique), `state` valid / used / void, `used_at`, `used_by`, `voided_at`, `created_at`.
+- Architect (2026-11-20, agent channel message 10086): the columns, the five indexes, `products.gives_tickets` (INSTANT where the server allows it) and the step approved (labelled 11.0.246 then; 11.0.247 since CC10 landed with 11.0.246); the table is `event_tickets`, plural like `order_items` and `gift_cards`.
 
 ## How is the code made and found?
 - `pg_event_ticket_code()`: HMAC-SHA256 of line, unit and salt under the tickets key, 60 bits as twelve Crockford base-32 characters `XXXX-XXXX-XXXX`. Never the order's number; drawn again from the row for the holder's page.

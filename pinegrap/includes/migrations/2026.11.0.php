@@ -236,7 +236,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_calls();                // 11.0.243
 	upgrade_2026_11_0_prototype_link_bundles();  // 11.0.244
 	upgrade_2026_11_0_ws_app_command_args();     // 11.0.246
-	upgrade_2026_11_0_event_tickets();           // 11.0.246
+	upgrade_2026_11_0_event_tickets();           // 11.0.247
 	upgrade_2026_11_0_event_waiting_list();      // 11.0.248
 
 }
@@ -7905,7 +7905,7 @@ function upgrade_2026_11_0_ws_app_command_args() {
 
 }
 
-// Event tickets (11.0.246, includes/fn/event_tickets.php): one event_tickets
+// Event tickets (11.0.247, includes/fn/event_tickets.php): one event_tickets
 // row per unit of a completed order line that gives tickets (a calendar
 // event's reservation, or a product marked "Gives tickets"), and that mark
 // on the product. A ticket keeps its order line and unit (unique, so a line
