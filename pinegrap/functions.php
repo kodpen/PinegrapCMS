@@ -273,6 +273,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/parasut_sheet.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_report.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ready_reports.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_registry.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_inventory.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_connections.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/google_cloud.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/report_view.php');

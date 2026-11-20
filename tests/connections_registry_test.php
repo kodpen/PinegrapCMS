@@ -95,8 +95,10 @@ function test_connections_registry_row_problems_names_what_is_missing()
 		'name'  => 'Example',
 		'group' => 'payments',
 		'place' => '#settings/commerce/pgset-payments',
-		'state' => array('kind' => 'app'),
-		'uses'  => 'Something',
+		'state'   => array('kind' => 'app'),
+		'uses'    => 'Something',
+		'country' => 'TR',
+		'data'    => array('contact'),
 	));
 
 	pg_assert_same(array('state'), $problems, 'a reader without its key is named');
@@ -108,6 +110,8 @@ function test_connections_registry_row_problems_names_what_is_missing()
 		'state'    => null,
 		'no_state' => 'Nothing stored tells whether it is used.',
 		'uses'     => 'Something',
+		'country'  => '*',
+		'data'     => array('none'),
 	));
 
 	pg_assert_same(array(), $problems, 'a row named as stateless is whole');
