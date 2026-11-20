@@ -6871,6 +6871,10 @@ function pg_pb_update_product($product_id)
         }
     }
 
+    // Stock locations: a product that stopped tracking has no rows, one that
+    // started gets its default row from the total, before any change below.
+    pg_stock_tracking_sync(array($product_id));
+
     // The quantities by location, once tracking is written: each change is
     // the difference to the figure the screen opened with, so the total moves
     // by what the operator changed and a sale meanwhile stays sold. A refused
