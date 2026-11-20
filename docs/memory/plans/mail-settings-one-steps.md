@@ -4,22 +4,24 @@ description: Plan mail-settings-one, steps EM1 to EM6: the E-mail category's two
 ---
 
 ## Which steps are there?
-- EM1 (M) first, after MT1 of `plans/mailboxes-tidy.md` has landed: one "E-mail" entry in the settings list, two tabs "Sending" and "Mailboxes" drawn as the architect's design, the tab kept in the address; the old addresses, anchors and search words open their tab (`pg_settings_legacy_anchors()`, `fromUrl()`); each tab keeps today's gate. Tests: every old address lands on its tab; a user without a tab's right sees only the other. Fixes: C1.
+- EM1 (M) first, after MT1 of `plans/mailboxes-tidy.md` and the design files have landed: category `email` with tabs `sending` and `mailboxes` (design A), the tab kept in the address; old addresses, anchors and search words open their tab (`pg_settings_legacy_anchors()`, `fromUrl()`); each tab keeps today's gate, one right shows no tab control. Tests: every old address lands on its tab; a user with one tab's right sees only it. Fixes: C1.
 
-- EM2 (M) after EM1: the Sending tab as folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`): "How e-mail leaves" with one summary line a kind of mail (system, campaigns) naming the way it leaves now, the way chosen as starting points, each opening only its fields; the order of C3 said in that summary, not in a paragraph; "Send a test" with its result line. Field names unchanged. Fixes: C3.
+- EM2 (M) after EM1: the Sending tab as folded rows (`pg_settings_fold()`): "How e-mail leaves" (design A) with one line a kind of mail naming the way it leaves today, Change opening the ways sheet (design B, DX2's `.pg-start`), each way showing only its fields; "Send a test" with its result line. Field names unchanged. Fixes: C3.
 
-- EM3 (S) after EM2: "Sending domain" as the one place for SPF, DKIM and DMARC: the DKIM key's selector, domain and "Generate a key" move into its DKIM row, the DKIM TXT Record card goes; "Campaign mail" row: the job switch, Max. a run, Opt-In Label, Plain Text Footer, the campaign's own server only as the architect answers C4. Fixes: C4, C5.
+- EM3 (S) after EM2: "Sending domain" as the one place for SPF, DKIM and DMARC: selector, domain and "Generate a key" move into its DKIM row, the DKIM TXT Record card goes. "Campaign mail" row: job switch, Max. a run, Opt-In Label, Plain Text Footer. Campaigns' ways: "The same way as system e-mail" first, a new `config_text` setting; the campaign server's fields only under "Your own mail server". Fixes: C4, C5.
+- Before building the Campaigns sentence, EM3's worker reads which layers carry campaigns (the Sending service, a connected account) and writes it in the PR; a running site's campaigns keep leaving as today.
 
-- EM4 (M) after EM2, as the architect answers C2: one Google or Microsoft account serves sending and reading; System's select lists accounts of both purposes; an account connected for sending used by a box asks the wider consent on the same account; the Connect buttons of the Sending tab and of Mailboxes call one helper. Tests: a `mail_read` account is offered for sending, a `mail` account chosen for a box asks again. Fixes: C2.
+- EM4 (M) after EM2: one account for sending and reading: System's select lists `mail` and `mail_read` accounts, a box's account marked "Connected for a mailbox"; a `mail` account chosen for a box asks the wider consent on the same row (login hint, scopes kept); removing a box keeps an account sending uses; Connections' Disconnect names both uses; the Connect buttons of both tabs call one helper.
+- Tests of EM4: a `mail_read` account is offered for sending; a `mail` account chosen for a box asks again and keeps one row. Fixes: C2.
 
-- EM5 (M) after MT3 and EM4: "Sign in with Google" and "Sign in with Microsoft" in Add a mailbox: while the provider's application is set up, one button; the return makes the box from the account's address with its service and account, runs Test connection and opens the box on General for its channel. Not set up: "Set up Google sign-in (once)" and "Use an app password", the two ways that exist. Fixes: C7.
+- EM5 (M) after MT3 and EM4: Add a mailbox as the three-step sheet of design D (Choose, Sign in, Details), the provider buttons of D2 on the site's own Google and Microsoft applications; the return makes the box, runs Test connection and opens Details on "Which channel?"; not set up: "Set up Google sign-in" and "Use an app password". The brand rules are rechecked on the providers' pages. Fixes: C7.
 
-- EM6 (S) close-out: MailChimp moved as the architect answers C6, the addresses of C8 as answered (or named as a next plan); `ui/settings-mail-sending.md`, `ui/look-settings-mail-sending.md`, `ui/look-settings-mailboxes.md`, `ui/connections-mailboxes-accounts.md` and `workspace/mail-google.md` corrected; `ui/settings-mail.md` written; this plan's files deleted.
+- EM6 (S) close-out: MailChimp's key, list and sync to Connections' Mailchimp page, old anchors opening it; `ui/settings-mail-sending.md`, `ui/look-settings-mail-sending.md`, `ui/look-settings-mailboxes.md`, `ui/connections-mailboxes-accounts.md` and `workspace/mail-google.md` corrected; `ui/settings-mail.md` written; this plan's files deleted. Fixes: C6.
 
 ## Which steps run side by side?
 - EM1 first. After EM1: EM2. After EM2: EM3 and EM4. EM5 waits for MT3 and EM4. EM1, EM4 and EM5 enter `includes/workspace/mail_settings.php` or `includes/settings/mailboxes*.php`: never beside a mailboxes-tidy step open on them.
 
 ## How is a step checked?
-- A screen step builds a whole part, renders it at 1440 and 390 px before ready and writes "Screen check" in the PR; a part not on the Design examples screen waits for the architect's design.
+- A screen step builds a whole part from `mail-settings-one-design*.md`, renders it at 1440 and 390 px before ready and writes "Screen check" in the PR.
 
-Related: docs/memory/plans/mail-settings-one.md, docs/memory/plans/mail-settings-one-screens.md
+Related: docs/memory/plans/mail-settings-one.md, docs/memory/plans/mail-settings-one-screens.md, docs/memory/plans/mail-settings-one-design-box.md
