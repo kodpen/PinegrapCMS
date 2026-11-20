@@ -4,9 +4,9 @@ description: Plan app-access-redraw, steps AA1 to AA8: the New application sheet
 ---
 
 ## Which steps are there?
-- AA1 (M) first: the starting points and the sheet.
+- AA1 (M) first: starting points and sheet. Done (#10745).
   - New `includes/api/app_templates.php` (the registry, pure) and `includes/api/app_new_view.php` (the three steps' markup); `api_settings.php` only calls them in place of the New Application dialog and reads the posted starting point in its create branch. The automation start moves into the registry unchanged.
-  - Tests, red first: the registry's shape, the automation card ticks what it ticks today, no starting point ticks a row that moves money, the sign-in card with and without an OAuth app. Features: U1 to U5 (step 3 shows today's sheet until AA3).
+  - Tests, red first: the registry's shape, the automation card ticks what it ticks today, no starting point ticks a row that moves money, the sign-in card with and without an OAuth app. Features: U1 to U5 (step 3: today's sheet until AA3).
 - AA2 (M) after AA1: the permission picker.
   - New `includes/api/app_permissions_view.php` (`api_settings_permission_rows()` moves there, drawn again; an icon and a line for every row of `api_scope_groups()`), new `assets/js/api_app_access.js` (search, counts, the bulk buttons; a plain file, no bundle), `api_app_bulk_choice()` in `includes/api/app_access.php`.
   - Tests: every scope group has its area, icon and line; the bulk rule on rows with read alone, write alone and both; the script twin against the PHP. Features: U6 to U8.
