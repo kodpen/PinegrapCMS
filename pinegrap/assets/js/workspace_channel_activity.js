@@ -425,8 +425,10 @@
         pane.appendChild(list);
     }
 
-    // The repository's numbers of today and its last lines, only with a
-    // link the reader may see (the server leaves it null otherwise).
+    // The repository's numbers of today and its last lines
+    // (channel_activity_repo.php), only with a link the reader may see: the
+    // server leaves it null otherwise. A line's state is said in words for
+    // a pull request and a check; a label line shows its label.
     function drawRepository(h, pane, data) {
         var repo = data.repository;
 
@@ -437,50 +439,61 @@
         section(h, pane, h.t('act_repository'));
 
         if (repo.name) {
-            pane.appendChild(h.el('div', 'pg-text-meta ws-act-project', repo.name));
+            var name = h.el('div', 'pg-text-meta ws-act-project');
+
+            name.appendChild(h.icon('bi-github'));
+            name.appendChild(document.createTextNode(' '));
+            name.appendChild(repo.url ? outLink(h, repo.url, repo.name, '') : h.el('span', '', repo.name));
+            pane.appendChild(name);
         }
 
-        var counts = repo.counts || {};
+        var pulls = repo.pull_requests || {};
+        var checks = repo.checks || {};
         var box = h.el('div', 'ws-act-facts');
 
-        fact(h, box, h.t('act_pr_opened'), counts.opened || 0);
-        fact(h, box, h.t('act_pr_merged'), counts.merged || 0);
-        fact(h, box, h.t('act_pr_closed'), counts.closed || 0);
-        fact(h, box, h.t('act_checks'), h.t('act_checks_value', counts.red || 0, counts.green || 0));
+        fact(h, box, h.t('act_pr_opened'), pulls.opened || 0);
+        fact(h, box, h.t('act_pr_merged'), pulls.merged || 0);
+        fact(h, box, h.t('act_pr_closed'), pulls.closed || 0);
+        fact(h, box, h.t('act_checks'), h.t('act_checks_value', checks.red || 0, checks.green || 0));
         pane.appendChild(box);
 
         var lines = repo.lines || [];
 
-        if (lines.length) {
-            var list = h.el('div', 'ws-act-lines');
-            var icons = { pr: 'bi-git', ci: 'bi-check2-circle' };
-
-            lines.forEach(function (item) {
-                var row = h.el('div', 'ws-act-line');
-                var text = (item.number ? '#' + item.number + ' ' : '') + (item.title || item.branch || '');
-
-                row.appendChild(h.icon(icons[item.kind] || 'bi-github'));
-
-                if (item.address) {
-                    var go = h.el('a', 'ws-act-link ws-act-line-text', text);
-
-                    go.href = item.address;
-                    go.target = '_blank';
-                    go.rel = 'noopener noreferrer';
-                    row.appendChild(go);
-                } else {
-                    row.appendChild(h.el('span', 'ws-act-line-text', text));
-                }
-
-                if (item.state) {
-                    row.appendChild(h.el('span', 'pg-text-meta ws-act-line-side', item.state));
-                }
-
-                list.appendChild(row);
-            });
-
-            pane.appendChild(list);
+        if (!lines.length) {
+            return;
         }
+
+        var list = h.el('div', 'ws-act-lines');
+        var icons = { pr: 'bi-git', ci: 'bi-check2-circle', label: 'bi-tag' };
+        var states = { opened: 1, reopened: 1, merged: 1, closed: 1, green: 1, red: 1 };
+
+        lines.forEach(function (item) {
+            var row = h.el('div', 'ws-act-line');
+            var text = (item.number ? '#' + item.number + ' ' : '') + (item.title || item.branch || '');
+            var state = (item.kind === 'label') ? item.state : (states[item.state] ? h.t('act_state_' + item.state) : '');
+
+            row.appendChild(h.icon(icons[item.kind] || 'bi-github'));
+            row.appendChild(item.url ? outLink(h, item.url, text, 'ws-act-line-text') : h.el('span', 'ws-act-line-text', text));
+
+            if (state) {
+                row.appendChild(h.el('span', 'pg-text-meta ws-act-line-side', state));
+            }
+
+            list.appendChild(row);
+        });
+
+        pane.appendChild(list);
+    }
+
+    // A link out of the site (GitHub), in a new tab.
+    function outLink(h, href, text, extra) {
+        var node = h.el('a', 'ws-act-link' + (extra ? ' ' + extra : ''), text);
+
+        node.href = /^https:\/\//.test(href) ? href : '#';
+        node.target = '_blank';
+        node.rel = 'noopener noreferrer';
+
+        return node;
     }
 
     // Each reported plan window once, with the agents that reported it.

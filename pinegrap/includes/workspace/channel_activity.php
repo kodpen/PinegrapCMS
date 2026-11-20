@@ -572,6 +572,12 @@ function ws_channel_activity_js_strings()
         'act_pr_closed'       => lang('Closed'),
         'act_checks'          => lang('Checks'),
         'act_checks_value'    => ws_js_template('{var:1} red · {var:2} green', 2),
+        'act_state_opened'    => lang('opened'),
+        'act_state_reopened'  => lang('reopened'),
+        'act_state_merged'    => lang('merged'),
+        'act_state_closed'    => lang('closed'),
+        'act_state_green'     => lang('green'),
+        'act_state_red'       => lang('red'),
         'act_usage'           => lang('Plan usage'),
         'act_failed'          => lang('The activity could not be read.'),
     );
