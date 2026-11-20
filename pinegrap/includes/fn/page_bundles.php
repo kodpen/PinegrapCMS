@@ -2676,6 +2676,7 @@ function pg_page_bundle_job_run($now = null, $limit = 5)
             continue;
         }
 
+        $due_at = (int) $bundle['publish_at'];
         $bundle['publish_at'] = 0;
         $person = pg_page_bundle_time_person(db_item((string) pg_db_bind(
             "SELECT user_id, user_role, user_username FROM user WHERE user_id = ? LIMIT 1", array((int) $bundle['scheduled_by']), 'escape')));
@@ -2688,8 +2689,12 @@ function pg_page_bundle_job_run($now = null, $limit = 5)
                 return pg_page_bundle_publish($bundle, $person);
             });
 
-            // A person's publish of the bundle is running: it decides.
+            // Another action holds the bundle (a person's publish, a page
+            // being removed): the time cleared above is given back, so the
+            // next pass publishes it unless that action moved the bundle.
             if (!empty($published['busy'])) {
+                db_q("UPDATE page_bundle SET publish_at = ? WHERE id = ? AND status = 'scheduled' AND publish_at = 0",
+                    array($due_at, (int) $bundle['id']));
                 continue;
             }
 
