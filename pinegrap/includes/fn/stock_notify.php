@@ -1008,6 +1008,40 @@ function pg_stock_notify_event_date(array $event, $recurrence)
 }
 
 /**
+ * Whether a recurring event's dates share their places (separate
+ * reservations off): its waiting rows are on date 0, which names no single
+ * date. Pure.
+ *
+ * @param array $event recurrence, separate_reservations
+ * @return bool
+ */
+function pg_stock_notify_event_shared(array $event)
+{
+    return ((int) ($event['recurrence'] ?? 0) === 1) && ((int) ($event['separate_reservations'] ?? 0) !== 1);
+}
+
+/**
+ * The occurrence a freed place is read on: the date itself, but the last
+ * date of the series (its stored repeat count) for a recurring event whose
+ * dates share their places, since such a place can be taken on any date
+ * until the series ends. Read on date 0, the first date, the list of a
+ * series whose first date was over was never mailed. Pure.
+ *
+ * @param array $event recurrence, separate_reservations,
+ *                     total_recurrence_number
+ * @param int   $date  the date the places are counted on
+ * @return int
+ */
+function pg_stock_notify_event_read_occurrence(array $event, $date)
+{
+    if (pg_stock_notify_event_shared($event)) {
+        return max(0, (int) ($event['total_recurrence_number'] ?? 0));
+    }
+
+    return max(0, (int) $date);
+}
+
+/**
  * What an event's date is for the waiting list: none (it takes no
  * reservations, its product is gone or off, it has ended), full (its places
  * are limited and none is left, while its product could be sold) or open
@@ -1219,6 +1253,11 @@ function pg_stock_notify_event_send($event_id, $date)
     }
 
     $event = get_calendar_event($event_id, $date);
+    $shared = is_array($event) && pg_stock_notify_event_shared($event);
+
+    if ($shared) {
+        $event = get_calendar_event($event_id, pg_stock_notify_event_read_occurrence($event, $date));
+    }
 
     if (pg_stock_notify_event_state($event ? $event : null, time()) !== 'open') {
         return 0;
@@ -1234,7 +1273,9 @@ function pg_stock_notify_event_send($event_id, $date)
         ORDER BY stock_notify.id
         LIMIT " . ($queued ? PG_STOCK_NOTIFY_SEND_QUEUED : PG_STOCK_NOTIFY_SEND_INLINE));
 
-    $start = strtotime((string) $event['start_date_and_time']);
+    // Shared places were asked for on no single date: the mail names the
+    // event alone.
+    $start = $shared ? false : strtotime((string) $event['start_date_and_time']);
     $when = ($start !== false) ? (function_exists('get_absolute_time') ? get_absolute_time(array('timestamp' => $start, 'size' => 'long')) : date('Y-m-d H:i', $start)) : '';
     $mail = pg_stock_notify_event_mail((string) $event['name'], (string) $when, URL_SCHEME . HOSTNAME_SETTING . PATH);
     $mailed = array();
@@ -1378,7 +1419,8 @@ function pg_stock_notify_event_line(array $event, $recurrence, $page_id, $send_t
 
 /**
  * The start of an event's date as get_calendar_event() writes it (the
- * site's zone), '' when the event or the date is gone.
+ * site's zone), '' when the event or the date is gone, or when the event's
+ * dates share their places.
  *
  * @param int $event_id
  * @param int $date
@@ -1388,7 +1430,8 @@ function pg_stock_notify_event_start($event_id, $date)
 {
     $event = ((int) $event_id > 0) ? get_calendar_event((int) $event_id, max(0, (int) $date)) : false;
 
-    return is_array($event) ? (string) $event['start_date_and_time'] : '';
+    // A series sharing its places was asked for on no single date.
+    return (is_array($event) && !pg_stock_notify_event_shared($event)) ? (string) $event['start_date_and_time'] : '';
 }
 
 /**
