@@ -9,6 +9,7 @@ description: Plan ad-conversions, steps SC1 to SC7: the record and queue with th
   - New `includes/fn/ad_conversions.php`: the pure consent reader, the pure event builder (purchase, the hashing of C2, the event id), the status 0 rows at the payment step, the queueing at completion, the general job's pass.
   - Tests red first: the consent reader's three inputs (notice on, stored answer, the service's box): notice off and box off, notice off and box on, notice on and no answer, yes, no; consent taken back; a marketplace order; a payment service's message completing the order; a second completion.
   - Features: C1, C2, C3, C10, C10b. `submit_order.php`: not while a `plans/stock-holds.md` SH3 PR is open.
+- SC1b (S) after SC1, beside SC2: the click ids of the landing address (`fbclid`, `gclid`, `ttclid`), held in the session until consent, into the purchase row's `ids`. Done in #PRNUM (memory: `api/ad-conversions-click-ids.md`).
 - SC2 (M) after SC1: Meta Conversions API.
   - The Connections page and its registry row, the sealed keys, the sender and its answers; the body read from Meta's own document into `api/meta-capi-facts.md`. Tests on recorded answers. Features: C8 (Meta, with the notice-off box), C9.
 - SC3 (S) after SC2: GA4 Measurement Protocol: the API secret on its page, purchase and refund, the validation endpoint; `api/ga4-mp-facts.md`. Features: C4, C8 (GA4).

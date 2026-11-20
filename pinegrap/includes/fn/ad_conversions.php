@@ -589,7 +589,7 @@ function pg_ad_conversion_payment_step($order_id)
             continue;
         }
 
-        $ids = json_encode(pg_ad_conversion_ids_for($service, $_COOKIE, $ip, $user_agent));
+        $ids = json_encode(pg_ad_conversion_ids_for($service, $_COOKIE, $ip, $user_agent) + pg_ad_click_ids_held_for($service));
 
         db_q(pg_ad_conversion_insert_sql(), array($service, 'purchase', $order_id, $event_id, $ids, null, 1, 0, 0, $now));
 

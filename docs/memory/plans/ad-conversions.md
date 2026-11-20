@@ -10,7 +10,7 @@ priority: 6
 ## What is there today?
 - No ad platform receives any event, from the browser or the server. The Google tag (`connections.php?service=google_analytics`, `ui/connections-google-analytics-page.md`) counts page views only. Tag Manager, Google Ads and the Meta Pixel have no field: a pasted script, held by the cookie notice (`plans/integrations-census-today-2.md`, which lists the Conversions API as missing).
 - The Meta Pixel and catalogue of `plans/reverse-oauth-leftovers.md` (model B) wait for Meta business verification; this plan does not.
-- Cookie notice with Consent Mode v2 (`platform/cookie-consent-notice.md`); `pg_consent_allows('marketing')` answers true while the notice is off. No click or browser id (`_fbp`, `_fbc`, `_ga`, `ttclid`, `gclid`) is read anywhere.
+- Cookie notice with Consent Mode v2 (`platform/cookie-consent-notice.md`); `pg_consent_allows('marketing')` answers true while the notice is off. Browser ids are read by SC1 (`api/ad-conversions-queue.md`), click ids by SC1b (`api/ad-conversions-click-ids.md`).
 - An order completed by a payment service's own message carries no visitor (`commerce/order-completion-after-lines.md`), so cookies read at that moment are not the buyer's.
 - The webhook queue (`api/api-webhook-queue.md`) already carries `webhook_id = 0` rows for Slack, Teams and Telegram: a sealed target, a body sent as built, retries, a claim, a sweep.
 

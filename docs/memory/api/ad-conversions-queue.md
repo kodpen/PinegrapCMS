@@ -29,5 +29,5 @@ module: ad_conversions
 ## Privacy?
 - `pg_privacy_erase_tables()`: `ad_conversion_events` found by `order_id` → `order_ids`, deleted. Export section `ad_conversions` ("Ad service events") after `consents`.
 
-## What is not in SC1?
-- The click ids of the landing address (`fbclid`, `gclid`, `ttclid`) are not captured yet: the plan wants them held in the session before consent; no step names it so far.
+## Click ids?
+- The landing address's `fbclid`, `gclid`, `ttclid` join a consenting buyer's `ids` at the payment step: `ad-conversions-click-ids.md`.
