@@ -231,7 +231,7 @@ description: Generated from the module field of the memory files: each includes/
 - `picture_server_draw`: [[picture-text-auto-draw]], [[picture-text-auto-server]]
 - `picture_translation`: [[picture-text-auto-draw]], [[picture-text-auto-panel]], [[picture-text-auto-rows]], [[picture-text-overview]], [[picture-text-translation-doors]], [[picture-text-translation-draw]], [[picture-text-translation-draw-photo]], [[picture-text-translation-draw-server]], [[picture-text-translation-fit-letters]], [[picture-text-translation-group]], [[picture-text-translation-page]], [[picture-text-translation-queue]], [[picture-text-translation-store]]
 - `place_list`: [[place-list]], [[place-list-fields]], [[place-list-near]]
-- `place_map`: [[place-coordinates]]
+- `place_map`: [[place-coordinates]], [[place-coordinates-fields]]
 - `place_tiles`: [[designer-blocks-map]]
 - `places`: [[place-packs]], [[tr-place-list]]
 - `preorder`: [[product-preorder]]

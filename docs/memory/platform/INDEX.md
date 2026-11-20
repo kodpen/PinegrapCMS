@@ -174,6 +174,7 @@
 - page-rename-redirect.md: A renamed page's old address as a 301 short link to the page (2026.11.0): where it is offered, what is skipped, why a redirect of the page's own gives its name back
 - panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913) [decision: decisions-made-product-46.md]
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
+- place-coordinates-fields.md: Which fields "Find from the address" and "Find missing coordinates" use: the Map of places block's chosen fields first, then the name rule; whose block wins for a form on several pages (#10628)
 - place-coordinates.md: Coordinates of a collection's places: fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon [decision: here]
 - place-list-fields.md: Fields of a "Map of places" answer (#10535): the block's pickers in its Options panel, data-pg-map-fields on the saved page, fit and office-use rules, name-rule fallback
 - place-list-near.md: Near me and the typed-address box of the Map of places block (MP5, X11, X12): position kept in the browser, the POST lookup in places.php, 10 a minute, nothing typed kept

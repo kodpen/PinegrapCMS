@@ -62,7 +62,7 @@
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), why the designer cart and express order widgets create none on view, and which page they record as the cart page.
 - cart-posted-quantity.md: How storefront forms (cart, checkout, order form, product page, cart widget) read a typed quantity: pg_cart_posted_quantity(), site separators, "2,5" refused (#6803, #9068)
 - cart-product-form-answer-name.md: Designer cart product form answers keep their field name in form_data.name; readers fall back to form_fields.name for older rows (#10541, PR #10574)
-- cart-product-form-file-field.md: Where a shopper's File Upload works in the cart (FU2, #10641): the designer cart saves it through cart_action.php; the express order widget posts multipart, its save is express_order.php's (FU3) [decision: decisions-made-product-80.md]
+- cart-product-form-file-field.md: Where a shopper's File Upload works in the cart: designer cart via cart_action.php (FU2); classic cart, classic and designer express order via shopping_cart.php / express_order.php (FU3) [decision: decisions-made-product-80.md]
 - cart-quotes-api.md: Cart quotes in the external API (PR #3298): the five routes, orders scopes, dry run, the shared *_check() functions with the screens, the link answered once, the cart_quote.* webhook events
 - cart-quotes-screens.md: Cart quote list and new-quote form details: the products cell, New link confirmation, a deleted contact, quantity checks and redraw
 - cart-quotes.md: Cart quotes (Sepet teklifi): cart_quotes / cart_quote_items, the hashed link, cart_quote.php (GET confirm, POST fills the cart), plan rules, ordered on completion, contact holder, export and erasure
