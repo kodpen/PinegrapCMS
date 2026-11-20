@@ -12,7 +12,13 @@
  * while the notice can go out as a text message (pg_stock_notify_sms_on()).
  * push_secret, the visitor notification secret this browser holds, is
  * optional: that device is then told too (pg_stock_notify_push_watch()).
+ * withdraw=1 takes a waiting request back instead: the product's, or with
+ * calendar_event_id and recurrence_number an event date's (product_id 0);
+ * the signed-in account's request, else the request of email_address. The
+ * answer is "withdrawn" whether a request was there or not.
  * A POST sent with X-Requested-With: XMLHttpRequest is answered in JSON, {"status": <code>, "ok": bool, "message": <sentence>};
+ * an added or already answer carries "withdraw": {"label", "name", "value"},
+ * the field to post again with the same request to take it back;
  * any other POST is sent back to its send_to field (a path on the site, the
  * home page without one), with the sentence among the product page's
  * messages (the catalog_detail form). A request refused before it is read is
@@ -81,7 +87,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
     stock_notify_refuse('method', lang('Method not allowed.'), 405);
 }
 
-pg_request_single_values(array('product_id', 'email_address', 'phone', 'push_secret', 'token', 'send_to'));
+pg_request_single_values(array('product_id', 'email_address', 'phone', 'push_secret', 'token', 'send_to', 'withdraw', 'calendar_event_id', 'recurrence_number'));
 
 // The token check of validate_token_field(), answered the way the request
 // was asked: that function always prints an HTML page. Without it a page on
@@ -94,8 +100,13 @@ if (($session_token === '') || !hash_equals($session_token, $post_token)) {
 }
 
 $product_id = (int) ($_POST['product_id'] ?? 0);
+$withdraw = ((string) ($_POST['withdraw'] ?? '') === '1');
 
-if ($product_id <= 0) {
+// Only a withdraw names an event's date; a request for one goes through
+// reserve_calendar_event.php.
+$event_id = ($withdraw && ($product_id <= 0)) ? (int) ($_POST['calendar_event_id'] ?? 0) : 0;
+
+if (($product_id <= 0) && ($event_id <= 0)) {
     stock_notify_refuse('request', lang('Invalid request.'), 400);
 }
 
@@ -106,6 +117,43 @@ if (pg_stock_notify_throttled()) {
 }
 
 $user_id = (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ID')) ? (int) USER_ID : 0;
+
+if ($withdraw) {
+    $kind = ($event_id > 0) ? 'event' : 'product';
+
+    try {
+        $status = pg_stock_notify_withdraw($kind, ($kind === 'event') ? $event_id : $product_id, (int) ($_POST['recurrence_number'] ?? 0), (string) ($_POST['email_address'] ?? ''), $user_id);
+    } catch (Throwable $error) {
+        stock_notify_refuse('failed', lang('Something went wrong. Please try again.'), 500);
+    }
+
+    $ok = ($status === 'withdrawn');
+
+    if ($ok) {
+        $message = pg_stock_notify_withdraw_message($kind);
+    } else {
+        $message = ($kind === 'event') ? pg_stock_notify_event_status_message($status) : pg_stock_notify_status_message($status);
+    }
+
+    if ($stock_notify_json) {
+        stock_notify_answer(array('status' => $status, 'ok' => $ok, 'message' => $message));
+    }
+
+    include_once('liveform.class.php');
+    $liveform = ($kind === 'event') ? new liveform('reserve_calendar_event', $event_id) : new liveform('catalog_detail');
+
+    if ($ok) {
+        pg_stock_notify_withdraw_forget();
+        $liveform->add_notice(h($message));
+    } else {
+        $liveform->mark_error('email_address', h($message));
+    }
+
+    session_write_close();
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_POST['send_to'] ?? ''));
+    exit();
+}
 
 try {
     $phone = (string) ($_POST['phone'] ?? '');
@@ -121,7 +169,13 @@ $ok = pg_stock_notify_status_ok($status);
 $message = pg_stock_notify_status_message($status, (pg_stock_notify_phone($phone) !== '') && pg_stock_notify_sms_sends());
 
 if ($stock_notify_json) {
-    stock_notify_answer(array('status' => $status, 'ok' => $ok, 'message' => $message));
+    $answer = array('status' => $status, 'ok' => $ok, 'message' => $message);
+
+    if ($ok) {
+        $answer['withdraw'] = array('label' => lang('Stop waiting'), 'name' => 'withdraw', 'value' => '1');
+    }
+
+    stock_notify_answer($answer);
 }
 
 // A form goes back to the page it was sent from, the sentence among the
@@ -130,7 +184,10 @@ include_once('liveform.class.php');
 $liveform = new liveform('catalog_detail');
 
 if ($ok) {
-    $liveform->add_notice(h($message));
+    // The sentence carries "Stop waiting"; the product page prints the
+    // hidden form it posts (pg_stock_notify_withdraw_form_once()).
+    pg_stock_notify_withdraw_offer('product', $product_id, 0, (string) ($_POST['email_address'] ?? ''));
+    $liveform->add_notice(h($message) . ' ' . pg_stock_notify_withdraw_button_html());
 } else {
     $liveform->mark_error(($status === 'phone') ? 'phone' : 'email_address', h($message));
 }
