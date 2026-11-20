@@ -116,7 +116,7 @@ description: Generated from the module field of the memory files: each includes/
 - `encryption_key`: [[settings-security-cards]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `event_check_in`: [[event-tickets-check-in]]
-- `event_tickets`: [[event-tickets-api]], [[event-tickets-key]], [[event-tickets-model]]
+- `event_tickets`: [[event-tickets]], [[event-tickets-api]], [[event-tickets-key]], [[event-tickets-model]]
 - `event_tickets_page`: [[event-tickets-page]]
 - `events`: [[workspace-flows-event-depth]]
 - `experiments`: [[experiment-goals]], [[page-experiments-model]], [[page-experiments-serving]]

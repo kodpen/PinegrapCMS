@@ -77,9 +77,6 @@
 - designer-panels.md: Plan (owner 2026-11-16): the Page Design Studio's Options panel, Overview tree, page strip and canvas bar redrawn from the approved drawings; features D1 to D62, steps DP1 to DP25
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
-- event-tickets-features.md: Plan event-tickets, features T1 to T15: which order lines give tickets, the ticket and its code, the holder's page and mail, check-in and its answers, cancel, places given back, the waiting list
-- event-tickets-steps.md: Plan event-tickets, steps TK1 to TK6: tickets made and voided, the holder's page, the check-in screen, places given back and the waiting list, the API and the product's mark, close-out
-- event-tickets.md: Plan (owner 2026-11-16, agent channel poll 82): a ticket with a QR code per place of an order, check-in at the door from a phone, and a waiting list when an event is full; steps TK1 to TK6
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
@@ -98,8 +95,6 @@
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
-- more-features-shared-files.md: The existing files that steps of more than one of the eight plans of plans/more-features.md touch, each with its steps and their order; two steps on the same file are never open together
-- more-features.md: Start file of the eight plans the owner chose from the second feature study (owner 2026-11-16, agent channel message 6424 and poll 82): his words, the architect's conditions, the plans
 - office-own-code-os1-census.md: OS1 census of plan office-own-code: the panel lists that export CSV today (screen, file, request, columns), most used first, those left out, the size
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
