@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-87
-description: Decisions list, product part 87 (2026-11-20 on): purchases and other events sent from the server to Meta, GA4 and TikTok, personal data only with marketing consent, enter a plan
+description: Decisions list, product part 87 (2026-11-20 on): server-side events to Meta, GA4 and TikTok enter a plan; personal data only with consent, not by default with the cookie notice off
 ---
 
 ## Where are the rules and the earlier parts?
@@ -11,5 +11,10 @@ description: Decisions list, product part 87 (2026-11-20 on): purchases and othe
 - Personal data (hashed e-mail and phone, browser and click ids) goes only for a buyer who accepted marketing cookies; marketplace orders are never sent.
 - Not chosen: "Evet, önce yalnız Meta ve satın alma" (Meta and the purchase event first), "Hayır, gerek yok".
 - The plan: `plans/ad-conversions.md`.
+
+## Does personal data go to the ad platforms while the cookie notice is off? (owner, 2026-11-20, agent channel poll 175, message 10513)
+- "Varsayılan gitmesin, mağaza açabilsin": with the notice off nobody is asked, so no personal data goes by default; each service's Connections page has "Send personal data while the cookie notice is off", which the shop ticks at its own risk.
+- Why asked: poll 166 says "a buyer who accepted"; `decisions-made-customers.md` (owner, 2026-10-28) counts marketing as the software's feature, and `pg_consent_allows()` answers yes while the notice is off.
+- Not chosen: "Hiç gitmesin" (never), "Hep gitsin" (always, no box).
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/plans/ad-conversions.md, docs/memory/platform/cookie-consent-notice.md

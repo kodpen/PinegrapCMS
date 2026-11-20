@@ -16,18 +16,20 @@ priority: 6
 
 ## What binds it?
 - No network call in a request: an event is a queue row; checkout never waits.
-- Personal data (hashed e-mail and phone, browser and click ids) only for a buyer who accepted marketing cookies; without it, nothing, or with the shop's setting an event without the person.
+- Personal data (hashed e-mail and phone, browser and click ids) only for a buyer who accepted marketing cookies; without it, nothing, or with the shop's setting a purchase or refund without the person.
 - Marketplace orders are never sent; counter sales only with a setting, never with personal data.
 - Keys sealed in `config_text` (`data/config-table-no-varchar.md`); each Connections page under the Visitors and privacy gate, as Google Analytics'.
 - Each service's request format, test mode and limits are read from its own document in its step, written into memory, never from memory.
 - Money in minor units, turned into the service's decimal only in the body.
 - The privacy export and erase (`pg_privacy_erase_tables()`) cover whatever the plan keeps about a person.
 
-## What does the architect decide?
-- Where the buyer's ids and consent at checkout are kept until the order completes: a new table (order, consent, the ids, time; deleted when sent or after 30 days), or a column on `orders`. A schema question outside the ERP: the owner's.
-- The queue: `api_webhook_queue` rows with `webhook_id = 0`, as the chat messages, or a table of its own?
-- With the cookie notice off, does the server treat it as no consent (recommended), though `pg_consent_allows()` answers true?
-- Add to cart and begin checkout: a queue write from `cart_action.php`, or a small first-party beacon the page calls, which keeps the hot path untouched but opens a public endpoint?
+## What did the architect decide? (2026-11-20, agent channel message 10514)
+- Owner, poll 174 (message 10512): one table, `ad_conversion_events`: queue, log and the buyer's ids (C10). Not `api_webhook_queue`: its dispatcher sends in order, 20 s a pass, so a slow ad service would hold webhooks and chat messages. Not a column on `orders`.
+- Owner, poll 175 (message 10513): with the cookie notice off no personal data goes by default; each Connections page has "Send personal data while the cookie notice is off", ticked at the shop's own risk.
+- Consent is read by a pure function from the stored answer (notice on and marketing yes), never `pg_consent_allows()`.
+- Add to cart and begin checkout from the server, no new public endpoint (C6); both only with consent. The architect's reading; the owner may turn it.
+- A click id (`fbclid`, `gclid`, `ttclid`) seen before consent waits in the session, never in the table, used only if consent comes; a new cookie follows `platform/cookie-consent-new-cookies.md`.
+- `submit_order.php` is also entered by `plans/stock-holds.md` SH3: never two open PRs on it.
 
 ## What is built?
 - Features: `ad-conversions-features.md` (C1 to C12). Steps: `ad-conversions-steps.md`. Claim as `[plan:ad-conversions] <step> — <topic>`.
