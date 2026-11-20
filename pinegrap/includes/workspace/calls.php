@@ -1004,7 +1004,8 @@ function ws_call_decline($party, $call)
 }
 
 /**
- * The texts of the call button, the ringing card and the call window
+ * The texts of the call buttons, the Join button, the ringing card and the
+ * call window
  * (assets/js/workspace_calls.js).
  *
  * @return array key => text
@@ -1035,5 +1036,10 @@ function ws_call_js_strings()
         'call_busy'       => lang('You are already in a call.'),
         'call_denied'     => lang('Microphone or camera permission was denied.'),
         'call_unsupported' => lang('Calls are not supported in this browser.'),
+        'call_join'       => lang('Join the call'),
+        'call_join_count' => ws_js_template('Join the call ({var:1}/{var:2})', 2),
+        'call_full'       => lang('This call is full.'),
+        'call_waiting'    => lang('Waiting for others…'),
+        'call_you'        => lang('You'),
     );
 }

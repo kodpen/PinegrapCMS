@@ -8735,6 +8735,7 @@
             me: CFG.me,
             ice: (CFG.calls && CFG.calls.ice) || [],
             ring: (CFG.calls && CFG.calls.ring) || 45,
+            max: (CFG.calls && CFG.calls.max) || 4,
             soundOn: function () { return soundOn(CFG.api_url, CFG.me); },
             openChannel: function (channelId) { app.open(channelId, 0); }
         };
@@ -11542,7 +11543,7 @@
             addTask.addEventListener('click', function () { self.newChannelTask(); });
             actions.appendChild(addTask);
 
-            // A voice or video call, in a conversation of two people.
+            // A voice or video call, in a channel of two people or more.
             var callTools = window.PGWsCalls ? window.PGWsCalls.headButtons(channel, { calls: !!CFG.calls, era: !!self.era, thread: !!self.isThread }, callHooks()) : null;
 
             if (callTools) {
@@ -22671,6 +22672,11 @@
                 if ((data.shares !== undefined) && self.channel && !self.channel.guest && (JSON.stringify(data.shares) !== JSON.stringify(self.channel.shares || null))) {
                     self.channel.shares = data.shares;
                     self.drawShareNotice();
+                }
+
+                // The channel's call: the head's Join button, while one is on.
+                if (window.PGWsCalls && CFG.calls && self.channel && !self.isThread) {
+                    window.PGWsCalls.channelCall(self.channel.id, data.call || null, callHooks());
                 }
 
                 // A guest's link and whether they are here, as they change.
