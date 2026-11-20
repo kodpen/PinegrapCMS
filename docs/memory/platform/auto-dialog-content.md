@@ -23,7 +23,11 @@ module: auto_dialogs
 - Taken is counted on a press on `[data-pg-popup-take]` or a form sent inside (`visitors/auto-dialog-counts.md`).
 
 ## Who can set it?
-- The API since #10450 (`api/api-design-dialogs-regions.md`). The edit screen's "What does it show?" and the designer links are step PU6b; until then the screen saves a row without touching the two columns, and still asks for a URL.
+- The API since #10450 (`api/api-design-dialogs-regions.md`).
+- The Create and Edit screens since PU6b (#10530): "What does it show?" (An address / A designed pop-up) and, for a designed one, Shared Component (every component that is no system widget, `pg_auto_dialog_component_rows()`).
+- Asked only with the columns and at least one visual design (`pg_auto_dialog_form_content_asked()`); a site with no visual design gets no question, keeps the address kind and saves with `$content` null (columns as stored).
+- The URL is required only with the address kind (`pg_auto_dialog_form_url_required()`); a URL typed with a designed pop-up is still checked and kept. The component sent is checked by `pg_auto_dialog_form_content_problems()`; with the address kind the chosen component is kept too.
+- Links under the select, in a new tab: "Open in the visual designer" (`edit_system_style.php?component=<id>`, follows the select, hidden with none) and "Design a new pop-up" (the lowest visual design's id, only for `pg_designer_is_full()`); `pg_auto_dialog_form_designer_links()`.
 
 ## Tested?
-- `tests/auto_dialog_content_test.php`, `tests/auto_dialog_form_test.php`, `tests/api_design_dialogs_regions_test.php`. The step ran twice on MariaDB 10.11 with the starter table (added, then skipped). Both scripts were run in Chromium on a bare page: a designed pop-up opened, counted shown, taken and closed; an address one kept its size.
+- `tests/auto_dialog_content_test.php` (the screens' helpers too), `tests/auto_dialog_form_test.php`, `tests/api_design_dialogs_regions_test.php`. The step ran twice on MariaDB 10.11 with the starter table (added, then skipped). Both scripts ran in Chromium (#10450): a designed pop-up opened, counted and closed; an address one kept its size.
