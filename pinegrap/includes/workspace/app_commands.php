@@ -224,8 +224,9 @@ function ws_app_commands_live()
 
 /**
  * A registered command as a ws_commands() entry: its arguments when it has a
- * definition (free text after the name when not), no live line, the
- * application's name beside it.
+ * definition (free text after the name when not), its usage line written
+ * from them when none is kept, no live line, the application's name beside
+ * it.
  *
  * @param array $row ws_app_commands_rows() row
  * @return array
@@ -235,6 +236,12 @@ function ws_app_command_entry($row)
     $name = '/' . (string) $row['name'];
     $usage = trim((string) $row['usage_text']);
     $args = ws_app_command_args_read($row['args'] ?? null);
+
+    // A change that sent no usage keeps the definition but stores no line
+    // (ws_app_command_save_check() writes one only beside new arguments).
+    if (($usage === '') && !empty($args)) {
+        $usage = ws_app_command_args_usage($args);
+    }
 
     return array(
         'key'         => 'app:' . (string) $row['name'],
