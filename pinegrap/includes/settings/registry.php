@@ -995,6 +995,13 @@ function pg_settings_legacy_anchors()
         'pgsub-structured' => array('seo',        'pgset-structured'),
         'pgset-feeds'      => array('commerce',   'pgset-feeds'),
         'pgset-analytics'  => array('privacy',    'pgset-analytics'),
+        // The Google tag and the Google Analytics figures moved onto Google
+        // Analytics' page of Connections; an old link to one of their fields
+        // lands on the card that shows the connection.
+        'google_analytics' => array('privacy',    'pgset-analytics'),
+        'google_analytics_web_property_id' => array('privacy', 'pgset-analytics'),
+        'stats_url'        => array('privacy',    'pgset-analytics'),
+        'ga_property'      => array('privacy',    'pgset-analytics'),
         'pgset-cookies'    => array('privacy',    'pgset-cookies'),
         'pgset-legal'      => array('privacy',    'pgset-legal'),
         // Communication's campaign texts and MailChimp moved into E-mail

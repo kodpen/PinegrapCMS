@@ -110,14 +110,14 @@ function test_settings_privacy_cards_moved_out_of_seo_and_ecommerce()
 	pg_assert_same(false, strpos($commerce, 'id="pgset-legal"'), 'no Legal Documents card drawn by Ecommerce');
 	pg_assert_contains('<div id="pgset-legal" class="pg-set-card">', $privacy, 'the Legal Documents card');
 	pg_assert_contains('if ($legal_documents_ready) {', $privacy, 'drawn once the schema has its fields, as before');
-	pg_assert_contains("require(PG_FUNCTIONS_DIR . '/includes/settings/privacy_analytics.php');", $privacy, 'the Google Analytics figures go with the card');
+	pg_assert_contains('<div id="pgsub-google-analytics" class="col-12">', $privacy, 'the card shows the Google Analytics connection');
 	pg_assert_same(false, strpos($seo, '_analytics.php'), 'not required by SEO');
 	pg_assert_contains("if (!defined('PG_SETTINGS_ENTRY')) {", $privacy, 'the gate constant');
 	pg_assert_contains('Pinegrap - Enterprise Website Platform', $privacy, 'the header block');
 
 	$moved = settings_privacy_test_names($privacy);
 
-	foreach (array('visitor_tracking', 'tracking_code_duration', 'pay_per_click_flag', 'google_analytics', 'stats_url', 'google_analytics_web_property_id', 'visitor_retention_days', 'visitor_ip_days', 'visitor_summary', 'cookie_consent', 'cookie_consent_policy_url', 'ecommerce_legal_documents', 'ecommerce_kvkk_page_id', 'ecommerce_kvkk_consent_text') as $field) {
+	foreach (array('visitor_tracking', 'tracking_code_duration', 'pay_per_click_flag', 'visitor_retention_days', 'visitor_ip_days', 'visitor_summary', 'cookie_consent', 'cookie_consent_policy_url', 'ecommerce_legal_documents', 'ecommerce_kvkk_page_id', 'ecommerce_kvkk_consent_text') as $field) {
 		pg_assert_true(in_array($field, $moved, true), $field . ' drawn by Visitors and privacy');
 	}
 
@@ -131,7 +131,7 @@ function test_settings_privacy_save_writes_what_the_cards_post()
 	$commerce = settings_privacy_test_source('includes/settings/commerce.save.php');
 	$privacy = settings_privacy_test_source('includes/settings/privacy.save.php');
 
-	foreach (array('visitor_tracking', 'tracking_code_duration', 'pay_per_click_flag', 'stats_url', 'google_analytics', 'google_analytics_web_property_id', 'visitor_retention_days', 'visitor_summary', 'visitor_ip_days', 'cookie_consent', 'cookie_consent_policy_url') as $column) {
+	foreach (array('visitor_tracking', 'tracking_code_duration', 'pay_per_click_flag', 'visitor_retention_days', 'visitor_summary', 'visitor_ip_days', 'cookie_consent', 'cookie_consent_policy_url') as $column) {
 		pg_assert_contains($column . ' = ', $privacy, $column . ' written by Visitors and privacy');
 		pg_assert_same(false, strpos($seo, $column . ' = '), $column . ' no longer written by SEO');
 	}
@@ -150,8 +150,7 @@ function test_settings_privacy_save_writes_what_the_cards_post()
 	}
 
 	pg_assert_true(strpos($privacy, 'mark_error($legal_field') < strpos($privacy, 'pg_visitor_cleanup_reset();'), 'every check before the cleanup reset');
-	pg_assert_contains("array_key_exists('ga_card', \$_POST)", $privacy, 'the Google Analytics figures saved here');
-	pg_assert_same(false, strpos($seo, 'ga_card'), 'not by SEO');
+	pg_assert_same(false, strpos($privacy, 'ga_card'), 'the Google Analytics figures are saved on Connections');
 	pg_assert_contains('last_modified_user_id', $privacy, 'the save stamps who changed it');
 	pg_assert_contains("if (!defined('PG_SETTINGS_ENTRY')) {", $privacy, 'the gate constant');
 }
@@ -166,7 +165,6 @@ function test_settings_privacy_has_a_page()
 
 function test_settings_privacy_links_name_the_new_place()
 {
-	pg_assert_contains("pg_settings_url('privacy') . '?ga_connect=1#pgset-analytics'", settings_privacy_test_source('includes/settings/privacy_analytics.php'), 'Google comes back to the card');
 	pg_assert_contains('settings_privacy.php#pgset-analytics', settings_privacy_test_source('database_engine.php'), 'the Database Engine link');
-	pg_assert_contains("pg_settings_link('privacy', 'pgset-analytics')", settings_privacy_test_source('includes/dashboard/widgets/widget_32.php'), 'the dashboard widget link');
+	pg_assert_contains('connections.php?service=google_analytics', settings_privacy_test_source('includes/dashboard/widgets/widget_32.php'), 'the dashboard widget leads to Google Analytics\' page');
 }

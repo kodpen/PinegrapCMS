@@ -145,6 +145,20 @@ function connections_seo_may_manage($user) {
 
 }
 
+// May the user change Google Analytics' tag and figures? They came from
+// Site Settings › Visitors and privacy, so they keep that category's gate.
+function connections_privacy_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('privacy', $user);
+
+}
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
@@ -291,6 +305,46 @@ if ($_POST) {
 						$liveform->add_error(lang('The key was saved, but its key file could not be written to the files directory.'));
 					}
 
+				}
+			}
+
+		}
+
+	}
+
+	// Google Analytics: the Google tag's settings, or the GA4 property whose
+	// figures the dashboard shows, under the gate of the Visitor Tracking
+	// card they came from; the write returns to the page.
+	if (in_array($action, array('ga_tag_save', 'ga_figures'), true) && connections_privacy_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/google_analytics.php');
+
+		if ($action === 'ga_tag_save') {
+
+			$ga_tag = pg_ga_tag_input($_POST);
+
+			if ($ga_tag['errors']) {
+				foreach ($ga_tag['errors'] as $ga_error) {
+					$liveform->add_error(h($ga_error));
+				}
+			} elseif (pg_ga_tag_save($ga_tag['values'])) {
+				$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => 'Google Analytics')));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Google Analytics')), $_SESSION['sessionusername']);
+			}
+
+		} else {
+
+			// The messages carry Google's own words, so they are escaped whole.
+			foreach (pg_ga_save_from_screen(array(
+				'property' => (isset($_POST['ga_property']) && is_string($_POST['ga_property'])) ? $_POST['ga_property'] : '',
+				'refresh'  => !empty($_POST['ga_refresh']),
+				'unlink'   => !empty($_POST['ga_unlink']),
+			)) as $ga_message) {
+				if ($ga_message[0] === 'error') {
+					$liveform->add_error(h($ga_message[1]));
+				} else {
+					$liveform->add_notice(h($ga_message[1]));
 				}
 			}
 
@@ -947,6 +1001,146 @@ function connections_indexnow_page($page, $may_manage) {
 						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › SEO › ' . h(lang('Search Engine Optimization')) . '</span>
 					</span>
 					<span class="connections-row-side">' . connections_state_pill(($key !== '') ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* Google Analytics' page: "Connection details" holds the Google tag (the
+   switch, its ID, the analytics address) and the GA4 property whose figures
+   the dashboard shows, for who may open Site Settings › Visitors and
+   privacy; Status lists the Google accounts connected for it and has
+   Connect; "Where it is used" leads to the tag's card and the dashboard. */
+
+function connections_ga_page($page, $may_manage) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/google_analytics.php');
+
+	$tag_id = defined('GOOGLE_ANALYTICS_WEB_PROPERTY_ID') ? pg_ga_tag_id(GOOGLE_ANALYTICS_WEB_PROPERTY_ID) : '';
+	$tag_on = defined('GOOGLE_ANALYTICS') && GOOGLE_ANALYTICS && ($tag_id !== '');
+	$stats_url = defined('STATS_URL') ? (string) STATS_URL : '';
+	$ga_state = pg_ga_state();
+	$ga_connection = pg_ga_connection($ga_state);
+	$google_page = '<a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>';
+
+	$page['status_extra'] = '
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Google tag')) . '</div>
+				<div class="pg-text-2">' . h($tag_on
+					? lang(array('string' => 'On the site\'s pages as {var:1}.', 'vars' => $tag_id))
+					: lang('Not on the site\'s pages.')) . '</div>
+			</div>
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Google Analytics property')) . '</div>
+				<div class="pg-text-2">' . h(($ga_state['property'] !== '') ? $ga_state['property_name'] : lang('None chosen')) . '</div>
+			</div>';
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		if (!pg_ga_ready() || !is_array($ga_connection)) {
+
+			$figures = '<p class="pg-text-2 mb-0">' . ((pg_ga_ready() && pg_connect_app_ready(pg_connect_app('google')))
+				? h(lang('Connect a Google account under Status, then choose the property here.'))
+				: h(lang('To show Google Analytics figures, set up the Google application first.')) . ' ' . $google_page) . '</p>';
+
+		} elseif ($ga_state['property'] === '') {
+
+			$offered = pg_ga_properties($ga_connection['id']);
+			$options = '';
+
+			foreach ($offered['properties'] as $property_id => $property_name) {
+				$options .= '<option value="' . h($property_id) . '">' . h($property_name) . '</option>';
+			}
+
+			$figures = ($options !== '') ? '
+				<div>
+					<label class="pg-field-label" for="ga_property">' . h(lang('Google Analytics property')) . '</label>
+					<select class="pg-input" id="ga_property" name="ga_property"><option value="">' . h(lang('Choose')) . '</option>' . $options . '</select>
+					<div class="pg-field-help">' . h(lang(array('string' => 'Connected as {var:1}.', 'vars' => $ga_connection['label']))) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>' : '
+				<div class="alert theme-warning small py-3 mb-0 text-break">' . h(($offered['error'] !== '')
+					? lang(array('string' => 'The Google Analytics properties could not be read: {var:1}', 'vars' => $offered['error']))
+					: lang('The connected Google account has no Google Analytics 4 property.')) . '</div>';
+
+		} else {
+
+			if ($ga_state['fetch_error'] !== '') {
+				$read = '<div class="alert theme-warning small py-3 mb-0 text-break">' . h(lang(array('string' => 'The Google Analytics figures could not be read: {var:1}', 'vars' => $ga_state['fetch_error']))) . '</div>';
+			} elseif ($ga_state['fetched_at'] > 0) {
+				$read = '<p class="pg-text-2 mb-0">' . h(lang(array('string' => 'The figures were read {var:1}; they are read again every few hours.', 'vars' => get_relative_time(array('timestamp' => $ga_state['fetched_at'], 'format' => 'plain_text'))))) . '</p>';
+			} else {
+				$read = '<p class="pg-text-2 mb-0">' . h(lang('The figures have not been read yet.')) . '</p>';
+			}
+
+			$figures = '
+				<dl class="pg-kv mb-0"><dt>' . h(lang('Google Analytics property')) . '</dt><dd class="text-break">' . h($ga_state['property_name']) . '</dd></dl>
+				' . $read . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="ga_refresh" value="1" class="pg-button pg-button-sm pg-button-quiet"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Read the figures now')) . '</button>
+					<button type="submit" name="ga_unlink" value="1" class="pg-button pg-button-sm pg-button-danger" onclick="return confirm(' . h(json_encode(lang('Stop showing the figures of this Google Analytics property?'))) . ')"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Stop using this property')) . '</button>
+				</div>';
+
+		}
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('The Google tag that counts visits on the site\'s pages, and the property whose figures the dashboard shows.')) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="ga_tag_save">
+				<input type="hidden" name="connections_return" value="google_analytics">
+				<div class="d-flex align-items-center gap-3">
+					<input type="checkbox" class="pg-switch" role="switch" name="google_analytics" value="1" id="google_analytics"' . ((defined('GOOGLE_ANALYTICS') && GOOGLE_ANALYTICS) ? ' checked' : '') . '>
+					<label class="pg-text-2" for="google_analytics">' . h(lang('Enable Google Analytics')) . '</label>
+				</div>
+				<div>
+					<label class="pg-field-label" for="google_analytics_web_property_id">' . h(lang('Web Property ID')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="google_analytics_web_property_id" name="google_analytics_web_property_id" value="' . h($tag_id) . '" maxlength="50" autocomplete="off" spellcheck="false">
+					<div class="pg-field-help">' . h(lang('The Google tag ID of the data stream, for example G-XXXXXXXXXX.')) . '</div>
+				</div>
+				<div>
+					<label class="pg-field-label" for="stats_url">' . h(lang('Website Analytics URL')) . '</label>
+					<input type="text" inputmode="url" class="pg-input" id="stats_url" name="stats_url" value="' . h($stats_url) . '" autocomplete="off" spellcheck="false" autocapitalize="off">
+					<div class="pg-field-help">' . h(lang('Shown as a link in the Visitors menu. Start it with https://.')) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>
+			</form>
+			<h3 class="pg-field-label mt-6 mb-1">' . h(lang('Google Analytics figures')) . '</h3>
+			<p class="pg-field-help mt-0 mb-3">' . h(lang('Shows the visitors, sessions and views Google Analytics counted on the dashboard.')) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="ga_figures">
+				<input type="hidden" name="connections_return" value="google_analytics">
+				' . $figures . '
+			</form>
+		</section>';
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('privacy', 'pgset-analytics')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('The Google tag on the site\'s pages')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Visitors and privacy')) . ' › ' . h(lang('Visitor Tracking')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($tag_on ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>
+				<a class="pg-card-inner-row connections-row" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/') . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Google Analytics figures')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Dashboard')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(pg_ga_linked($ga_state) ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
 
@@ -1904,14 +2098,20 @@ if ($provider_page !== '') {
 			'repositories' => is_array($ws_viewer) && ws_github_links_ready() && ws_github_links_can_manage($ws_viewer),
 			'ai'           => isset($ai_services[$page_id]) && connections_ai_may_manage($user),
 			'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
+			'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || ($page_id === 'indexnow'),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics'), true),
 	);
+
+	// Google Analytics' page: its tag, its figures and where both are used.
+	if ($page_id === 'google_analytics') {
+		$page = connections_ga_page($page, connections_privacy_may_manage($user));
+	}
 
 	// IndexNow's page: its key and the SEO card that shows it.
 	if ($page_id === 'indexnow') {
