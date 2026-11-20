@@ -61,6 +61,7 @@ function test_settings_claude_setup_drawer_steps()
 
 	$guide = settings_claude_setup_drawer_test_function('includes/workspace/claude_setup.php', 'ws_claude_setup_guide');
 	pg_assert_contains('<li class="stepper-item active ws-claude-step">', $guide, 'each step a stepper item; the number is the counter');
+	pg_assert_true((bool) preg_match('/<li class="stepper-item active ws-claude-step">\s*<div class="ws-claude-step-body">/', $guide), 'one child an item, or the grid puts the text into the number\'s column');
 
 	$drawer = settings_claude_setup_drawer_test_function('includes/workspace/claude.php', 'ws_settings_claude_setup_drawer');
 	pg_assert_contains("pg_settings_drawer('pgset-ws-claude-setup', h(lang('Set up on claude.ai'))", $drawer, 'the drawer and its title');
