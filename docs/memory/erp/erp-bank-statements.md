@@ -9,7 +9,7 @@ description: ERP bank statement import (4.102): readers (the sheet reader for wo
 - The columns chosen are remembered per bank account (the last statement's `mapping`).
 - Every format goes through `erp_bank_read_file()` and comes out as the same rows of cells: a number cell becomes CSV-like text (`erp_bank_sheet_value()`: a date `Y-m-d` or `Y-m-d H:i`, other numbers with a point and two decimals), and the bank's title block is cut off (`erp_bank_rows_from_heading()`: the row above the first dated amount is the heading).
 - A dated amount is `erp_bank_cells_are_movement()`: a date cell and a non-zero amount cell (digits, at most 3 letters). A date cell holding `;`, tab or `|` is a line split on the wrong separator and does not count; the amount is compared without an `(int)` cast, which wraps to 0 at 2^32 kurus on 32-bit PHP.
-- Before #10503 PHPExcel read .xls/.ods (a 1904 workbook's dates came out four years early). PHPExcel switches libxml's entity loader off for the request; `pg_office_zip_stream()` (`includes/fn/office.php`) switches it back on.
+- Before #10503 PHPExcel read .xls/.ods (a 1904 workbook's dates came out four years early). The library is gone since #10528.
 
 ## How is a CSV's separator chosen? (#1076, PR #1219)
 - `erp_bank_csv_separator()` splits the first 50 non-empty lines with each candidate (`;`, `,`, tab, `|`) as CSV, quotes respected. The one that reads the most lines as dated amounts wins; a tie goes to the one whose most common column width covers more lines, then to the earlier one; `;` is the fallback.

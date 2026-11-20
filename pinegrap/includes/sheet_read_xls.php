@@ -17,7 +17,7 @@
  * - A number is read as the exact double it is stored as (the library's own
  *   arithmetic makes 0 a tiny non-zero number), and a date is known by its
  *   number format read from the file in full (the library cannot decode a
- *   format stored as UTF-16, as PHPExcel and Excel write them).
+ *   format stored as UTF-16, as Excel and other writers store them).
  * - A boolean, an error and the result of a formula are told apart, and a
  *   LABEL or a formula's text is decoded from the workbook's code page.
  *
@@ -376,8 +376,8 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
 
         $substream = ord($data[$spos + 6]) | (ord($data[$spos + 7]) << 8);
 
-        // A chart, macro or dialog sheet holds no cells and is not counted,
-        // as PHPExcel did not count it.
+        // A chart, macro or dialog sheet holds no cells and is not counted
+        // as a sheet.
         if ($substream !== SPREADSHEET_EXCEL_READER_WORKSHEET) {
             return -2;
         }
@@ -637,7 +637,7 @@ class Pg_Sheet_Xls_Reader extends Spreadsheet_Excel_Reader
                 return array('t' => 'd', 'v' => pg_sheet_float_text($this->nineteenFour ? $number + 1462 : $number));
             }
 
-            // As PHPExcel gave it to the importers: the float as PHP writes it.
+            // As the importers always took it: the float as PHP writes it.
             return array('t' => 'n', 'v' => (string) $number);
         }
 

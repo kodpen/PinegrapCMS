@@ -185,7 +185,7 @@ function test_list_closed_every_path_uses_the_decision()
 	pg_assert_contains('pg_sw_list_record_filter_clause($form_page_id, $list_cfg, $record_view[\'cfg\'], $detail_page_id)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/update_search_index.php'));
 
 	// Only those two functions turn filters into SQL.
-	$skip = array('includes/phpmailer', 'includes/stripe', 'includes/iyzipay-php', 'includes/phpexcel', 'includes/boxpacker', 'includes/dompdf', 'assets/lib', 'data');
+	$skip = array('includes/phpmailer', 'includes/stripe', 'includes/iyzipay-php', 'includes/boxpacker', 'includes/dompdf', 'assets/lib', 'data');
 	$root = rtrim(str_replace('\\', '/', PG_FUNCTIONS_DIR), '/') . '/';
 	$calls = array();
 	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
