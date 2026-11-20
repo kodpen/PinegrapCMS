@@ -305,79 +305,99 @@ function ws_mail_box_accounts()
 }
 
 /**
- * The button that connects a Microsoft or Google account for Reading
- * mailboxes, for a person who may connect the site's accounts (connect.php:
- * a manager and above); others are told who can.
+ * The address of a provider's page on Connections, at its Connect an
+ * account for mailboxes action, with the place to come back to once the
+ * account is connected (pg_connections_screen_mail_return()). Pure.
  *
- * While the provider's application is not set up, connect.php can only
- * refuse the sign-in, so no button is drawn: a sentence links to the
- * application's drawer on Connections instead.
- *
- * @param array       $viewer
- * @param string|null $form     the Site Settings form's id: a button of the
- *                              hidden Connect form (ws_mail_connect_form_id())
- *                              instead of a form
- * @param bool|null   $ready    the provider's application is set up; null
- *                              asks ws_mail_connect_ready()
- * @param string      $provider microsoft | google
- * @return string HTML
+ * @param string $provider microsoft | google
+ * @param string $return   a Site Settings address
+ * @return string
  */
-function ws_mail_connect_form($viewer, $form = null, $ready = null, $provider = 'microsoft')
+function ws_mail_connections_url($provider, $return = 'settings_mailboxes.php#pgset-ws-mail')
 {
-    if (!function_exists('pg_connect_start_fields') || !function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
-        return '';
-    }
-
-    $google = ($provider === 'google');
-    $provider = $google ? 'google' : 'microsoft';
-    $icon = '<i class="bi bi-' . $provider . '" aria-hidden="true"></i>';
-
-    if ((int) $viewer['role'] > 2) {
-        return '<div class="pg-field-help mt-3">' . h($google
-            ? lang('A Gmail mailbox can be read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')
-            : lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')) . '</div>';
-    }
-
-    if (!(($ready === null) ? ws_mail_connect_ready($provider) : $ready)) {
-        return '
-                <div class="pg-field-help mt-3">' . $icon . ' '
-                    . '<a href="connections.php?service=' . $provider . '">' . h($google ? lang('Set up the Google application first') : lang('Set up the Microsoft application first')) . '</a>'
-                    . ($google ? ' ' . h(lang('Until it is set up, Google cannot be asked for the account.')) : '') . '</div>';
-    }
-
-    $button = $icon . h($google ? lang('Connect a Google account for mailboxes') : lang('Connect a Microsoft account for mailboxes'));
-    $note = h($google
-        ? lang('Sign in with the mailbox\'s own Google account; it then shows under Connected account.')
-        : lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.'));
-
-    // In Site Settings the card and the box's drawer sit inside the settings
-    // form: the button submits the hidden Connect form the category hands
-    // over (includes/settings/mailboxes.php).
-    if ($form !== null) {
-        return '
-                <div class="mt-3 d-flex flex-wrap align-items-center gap-3">
-                    <button type="submit" form="' . ws_mail_connect_form_id($provider) . '" class="pg-button pg-button-quiet pg-button-sm">' . $button . '</button>
-                    <span class="pg-text-meta">' . $note . '</span>
-                </div>';
-    }
-
-    return '
-                <form method="post" action="connect.php" class="mt-3 d-flex flex-wrap align-items-center gap-3">
-                    ' . pg_connect_start_fields($provider, 'mail_read', pg_settings_workspace_link('ws-mail')) . '
-                    <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . $button . '</button>
-                    <span class="pg-text-meta">' . $note . '</span>
-                </form>';
+    return 'connections.php?service=' . (($provider === 'google') ? 'google' : 'microsoft')
+        . '&mail_return=' . rawurlencode($return) . '#connections-mail';
 }
 
 /**
- * The id of Mailboxes' hidden Connect form for a provider. Pure.
+ * How many of a provider's accounts may read mailboxes (purpose mail_read).
  *
  * @param string $provider microsoft | google
- * @return string
+ * @return int
  */
-function ws_mail_connect_form_id($provider = 'microsoft')
+function ws_mail_connection_count($provider)
 {
-    return ($provider === 'google') ? 'pgset_mail_connect_google' : 'pgset_mail_connect';
+    if (!function_exists('pg_connect_accounts') || !function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
+        return 0;
+    }
+
+    return count(pg_connect_accounts(array('purpose' => 'mail_read', 'provider' => ($provider === 'google') ? 'google' : 'microsoft')));
+}
+
+/**
+ * The state of a provider's accounts for Reading mailboxes, shown on the
+ * Mailboxes card and in a Gmail box's form: Connected or Not connected and
+ * a link to the provider's page on Connections, where the account is
+ * connected. A user below manager cannot open Connections, so they are told
+ * who connects it. Pure but for the words.
+ *
+ * @param array  $viewer
+ * @param string $provider microsoft | google
+ * @param int    $count    ws_mail_connection_count()
+ * @param bool   $ready    the provider's application is set up
+ *                         (ws_mail_connect_ready())
+ * @param bool   $new_tab  open the page in a new tab: a box's drawer, whose
+ *                         form may be half filled
+ * @return string HTML
+ */
+function ws_mail_connection_html($viewer, $provider, $count, $ready, $new_tab = false)
+{
+    $google = ($provider === 'google');
+    $provider = $google ? 'google' : 'microsoft';
+    $connected = ((int) $count > 0);
+    $pill = $connected
+        ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+        : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>';
+
+    if ((int) $viewer['role'] > 2) {
+        $side = '<span class="pg-text-meta">' . h($google
+            ? lang('A Gmail mailbox can be read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')
+            : lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')) . '</span>';
+    } else {
+        $side = '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h(ws_mail_connections_url($provider)) . '"'
+            . ($new_tab ? ' target="_blank" rel="noopener"' : '') . '>'
+            . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>';
+    }
+
+    return '
+                <div class="mt-3 d-flex flex-wrap align-items-center gap-3">
+                    <span class="pg-text-2"><i class="bi bi-' . $provider . '" aria-hidden="true"></i> '
+                        . h($google ? lang('Google account for mailboxes') : lang('Microsoft account for mailboxes')) . '</span>
+                    ' . $pill . '
+                    ' . $side . '
+                </div>' . ($ready ? '' : '
+                <div class="pg-field-help mt-1">' . h($google ? lang('The Google application is not set up yet.') : lang('The Microsoft application is not set up yet.')) . '</div>');
+}
+
+/**
+ * Both providers' states on the Mailboxes card.
+ *
+ * @param array $viewer
+ * @return string HTML
+ */
+function ws_mail_connections_html($viewer)
+{
+    if (!function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
+        return '';
+    }
+
+    $html = '';
+
+    foreach (array('microsoft', 'google') as $provider) {
+        $html .= ws_mail_connection_html($viewer, $provider, ws_mail_connection_count($provider), ws_mail_connect_ready($provider));
+    }
+
+    return $html;
 }
 
 /**
@@ -394,17 +414,22 @@ function ws_mail_connect_ready($provider = 'microsoft')
 }
 
 /**
- * What the Gmail part of a box's form shows beside its words: the Connect
- * button for this person (ws_mail_connect_form()) and the addresses Google
- * Cloud must list as redirect URIs (Sign in with Google's and connect.php's).
+ * What the Gmail part of a box's form shows beside its words: the Google
+ * account's state with a link to Google's page on Connections, opened in a
+ * new tab so the form stays as typed (ws_mail_connection_html()), and the
+ * addresses Google Cloud must list as redirect URIs (Sign in with Google's
+ * and connect.php's).
  *
- * @param array  $viewer
- * @param string $form the Site Settings form's id
+ * @param array $viewer
  * @return array connect (HTML), addresses (string[])
  */
-function ws_mail_google_parts($viewer, $form)
+function ws_mail_google_parts($viewer)
 {
-    return array('connect' => ws_mail_connect_form($viewer, $form, null, 'google'), 'addresses' => pg_google_cloud_redirect_addresses('google'));
+    $connect = (function_exists('pg_connect_purpose') && pg_connect_purpose('mail_read'))
+        ? ws_mail_connection_html($viewer, 'google', ws_mail_connection_count('google'), ws_mail_connect_ready('google'), true)
+        : '';
+
+    return array('connect' => $connect, 'addresses' => pg_google_cloud_redirect_addresses('google'));
 }
 
 /**
@@ -938,8 +963,8 @@ function ws_mail_sent_position_resets($before, $after)
  * @param bool       $rooms_only ws_mail_box_rooms_only(): kept in the mailbox
  *                             itself, so no channel, routing or suggestion
  *                             under a card is offered
- * @param array      $google   ws_mail_google_parts(): the Gmail part's Connect
- *                             button and redirect addresses
+ * @param array      $google   ws_mail_google_parts(): the Gmail part's Google
+ *                             account state and redirect addresses
  * @return string
  */
 function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form = null, $rooms_only = false, $google = array())
@@ -1229,7 +1254,7 @@ function ws_mail_google_steps($provider, $prefix = 'ws_mail_0_', $way = 'connect
     };
     $way = ($way === 'password') ? 'password' : 'connection';
     $connected = array(
-        h(lang('Connect the mailbox\'s own Google account with the button below; Google asks the account to allow reading and sending its mail.')),
+        h(lang('Connect the mailbox\'s own Google account on Google\'s page in Connections (the link below opens it in a new tab); Google asks the account to allow reading and sending its mail.')),
         h(lang('Choose that account as the Connected account below. The user name is the mailbox\'s address; no password is typed.')),
         h(lang('Under Sending answers, choose The connected account: answers leave from the Google account through the Gmail API.')),
         h(lang('Save, then press Test connection on the mailbox\'s row.')),
@@ -1487,7 +1512,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
                     . ' ' . lang(array('string' => 'For sending: {var:1}', 'vars' => '<a href="' . h(pg_settings_url('mail_sending')) . '">' . h(lang('E-mail sending')) . '</a>')) . '</p>
                 ' . $rows . '
                 ' . $intro . '
-                ' . ws_mail_connect_form($viewer, $form) . '
+                ' . ws_mail_connections_html($viewer) . '
                 ' . (function_exists('ws_mail_blocks_html') ? ws_mail_blocks_html(ws_mail_blocks_list(), $form) : '') . '
                 ' . (function_exists('ws_mail_rules_html') ? ws_mail_rules_html($boxes, ws_mail_rule_people(), $form) : '') . '
             </div>
@@ -1505,7 +1530,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
                 <div class="collapse" id="ws-mail-new">' . ws_mail_box_form($self_url, null, $channels, $ai_ready) . '</div>
                 ' . $rows . '
                 ' . $intro . '
-                ' . ws_mail_connect_form($viewer) . '
+                ' . ws_mail_connections_html($viewer) . '
             </div>
         </div>' . ws_mail_settings_script();
 }
@@ -1569,13 +1594,13 @@ function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
     $rooms_only = ws_mail_box_rooms_only($box, ws_enabled());
 
     if (!$box) {
-        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), ws_mail_box_form('', null, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer, $form)), $in_dialog);
+        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), ws_mail_box_form('', null, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer)), $in_dialog);
     }
 
     $id = (int) $box['id'];
 
     return pg_settings_drawer('pgset-ws-mail-' . $id, h((string) $box['name']) . ' · ' . h((string) $box['address']),
-        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer, $form))
+        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer))
         . '<div class="border-top pt-5 mt-5">' . ws_mail_eml_form(pg_settings_url('mailboxes'), $id, true) . '</div>', $in_dialog);
 }
 
