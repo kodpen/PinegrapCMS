@@ -205,6 +205,30 @@ function test_carrier_label_shippo_create_buys_the_cheapest_rate()
 
 	pg_assert_same(array('rate' => 'a7e5b9c39c3b4b9a8e0a4b5b7c5d6e1f', 'label_file_type' => 'PDF_A6', 'async' => false, 'metadata' => 'Order 10042'), $sent[1]['body']);
 	pg_assert_false(strpos(implode("\n", $sent[2]['headers']), 'ShippoToken'), 'the label address is fetched without the token');
+	pg_assert_same(array(), $answer['price'], 'a test label is charged nothing');
+}
+
+// A live label gives the price of the rate bought, in the account's
+// currency when Shippo gives it.
+function test_carrier_label_shippo_create_gives_the_price_of_a_live_label()
+{
+	$live = json_decode(carrier_label_shippo_test_fixture('transaction.json'), true);
+	$live['test'] = false;
+
+	carrier_label_shippo_test_stub(array(
+		'POST /shipments/'                                => array('shipment.json'),
+		'POST /transactions/'                             => array(array(200, json_encode($live))),
+		'GET shippo-delivery-east.s3.amazonaws.com/915d94940ea54c3a80cbfa328722f5a1.pdf' => array('label.pdf'),
+	));
+	$answer = pg_label_call('shippo', 'create', array(carrier_label_shippo_test_shipment(), carrier_label_shippo_test_account()));
+	carrier_label_shippo_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(array('value' => '11.90', 'currency' => 'EUR'), $answer['price'], 'the cheapest rate bought');
+
+	pg_assert_same(array('value' => '9.80', 'currency' => 'GBP'), pg_label_shippo_price(array('amount' => '11.90', 'currency' => 'EUR', 'amount_local' => '9.80', 'currency_local' => 'GBP'), array('test' => false)));
+	pg_assert_same(array('value' => '11.90', 'currency' => 'EUR'), pg_label_shippo_price(array('amount' => '11.90', 'currency' => 'EUR', 'amount_local' => '', 'currency_local' => ''), array()));
+	pg_assert_same(array(), pg_label_shippo_price(array('amount' => 'free', 'currency' => 'EUR'), array()));
 }
 
 function test_carrier_label_shippo_create_takes_the_asked_service_and_zpl()
@@ -396,15 +420,26 @@ function test_carrier_label_shippo_cancel_asks_for_a_refund()
 
 function test_carrier_label_shippo_track_reads_the_transaction_status()
 {
-	carrier_label_shippo_test_stub(array('GET /transactions/915d94940ea54c3a80cbfa328722f5a1' => array('transaction_transit.json', 'transaction.json')));
+	carrier_label_shippo_test_stub(array('GET /transactions/915d94940ea54c3a80cbfa328722f5a1' => array(
+		'transaction_transit.json',
+		'transaction.json',
+		array(200, str_replace('"UNKNOWN"', '"SOMETHING_NEW"', carrier_label_shippo_test_fixture('transaction.json'))),
+	)));
 	$transit = pg_label_call('shippo', 'track', array('915d94940ea54c3a80cbfa328722f5a1', carrier_label_shippo_test_account()));
 	$unknown = pg_label_call('shippo', 'track', array('915d94940ea54c3a80cbfa328722f5a1', carrier_label_shippo_test_account()));
+	$new = pg_label_call('shippo', 'track', array('915d94940ea54c3a80cbfa328722f5a1', carrier_label_shippo_test_account()));
 	carrier_label_shippo_test_done();
 
 	pg_assert_true($transit['success'], $transit['error']);
 	pg_assert_same('in_transit', $transit['status']);
 	pg_assert_same('01234567890123', $transit['tracking_number']);
-	pg_assert_false($unknown['success'], 'UNKNOWN is no status');
+	pg_assert_true($unknown['success'], 'UNKNOWN is a label not scanned yet: created, not a failure');
+	pg_assert_same('created', $unknown['status']);
+	pg_assert_same(0, $unknown['status_at']);
+	pg_assert_same('915d94940ea54c3a80cbfa328722f5a1', $unknown['reference']);
+	pg_assert_false($new['success'], 'a code Shippo added later is not read as created');
+	pg_assert_false($new['unclear']);
+	pg_assert_false(pg_label_shippo_track_answer(array('tracking_status' => 'UNKNOWN'), array())['success'], 'a webhook message without a status moves nothing');
 
 	pg_assert_same('created', pg_label_shippo_status('PRE_TRANSIT'));
 	pg_assert_same('delivered', pg_label_shippo_status(array('status' => 'DELIVERED')));

@@ -6,15 +6,15 @@ description: Plan artifact-canvas-rename, steps AC1 to AC5: the new drawing, the
 ## Which steps are there?
 - AC1 (S) The drawing. Done: #10516 (`pg_menu_icon()`, `tests/design_canvas_icon_test.php`, `ui/design-canvas-icon.md`).
 
-- AC2 (M) The name; may run beside AC1. Cut in two: AC2a (done, #10517) and AC2b.
+- AC2 (M) The name; may run beside AC1. Cut in two: AC2a (done, #10517) and AC2b (done, #10669).
   - AC2a, done (#10517): the panel files of the list below but the held ones, their unused old keys removed; `tests/artifact_canvas_name_test.php`.
-  - AC2b, left: `includes/fn/image_editor.php`, `assets/js/style_designer.src.js`, `get_page_content.php` with `frontend.src.js` (held at AC2a); their old keys stay until AC2b adds the new ones and removes them. Comments in files AC2a did not touch go with AC5.
+  - AC2b, done (#10669): `includes/fn/image_editor.php`, `assets/js/style_designer.src.js`, `get_page_content.php` with both `frontend` twins; every `Design Canvas` key removed; in `tests/artifact_canvas_name_test.php`. Comments in files AC2a did not touch go with AC5.
   - Every text with "Design Canvas" (`grep -rn 'Design Canvas' pinegrap tests`): `lang()`, `_sdT()`, the `lang(array('string' => …))` forms, the plain strings of `includes/fn/system_status.php`. Turkish with `php tools/tr_add.php` (`core/lang-files.md`).
   - Files: `view_folders.php` (File Manager), `includes/workspace/file_edits.php` (channels), `assets/js/style_designer.src.js`, `includes/fn/image_editor.php`, `includes/fn/content.php`, `translations.php`, `includes/settings/features.php`, `edit_file.php`, `edit_design_file.php`, `includes/fn/design_file_list_edit.php`, `includes/dashboard/widgets/widget_18.php`.
   - `get_page_content.php` and `frontend.src.js` with its hand-edited twin change together (the script asks for a text by its English) and are held whole while another PR changes the twin (`workflow/held-file-bundled-sources.md`): a part b then.
   - Memory: `designer/editor-turkish-terms.md`.
 
-- AC3 (S) after AC2, docs only: memory's label.
+- AC3 (S) after AC2, docs only: memory's label. Done: #10697.
   - Each memory file that names the screen says Artifact Canvas (`grep -rl 'Design Canvas' docs/memory`, about 130 files). File names and code names stay, the owner's quoted words stay, a running plan's files are left to its own close-out.
 
 - AC4 (M) after AC1 and AC2: the canvas's own icon, in its one-colour form (owner 2026-11-13, #9250), on the buttons that open it with another icon today.

@@ -229,6 +229,34 @@ function test_carrier_labels_answer_keeps_only_quotes_that_can_be_charged()
 	), $answer['quotes']);
 }
 
+// A label's price is kept as the service wrote it, a plain decimal and a
+// currency code; anything else is no price, never repaired.
+function test_carrier_labels_answer_keeps_a_price_it_can_read()
+{
+	$keep = function ($price) {
+		return pg_label_answer('create', array('success' => true, 'reference' => 'R1', 'tracking_number' => 'TRK12345', 'price' => $price))['price'];
+	};
+
+	pg_assert_same(array('value' => '24.10', 'currency' => 'TRY'), $keep(array('value' => ' 24.10 ', 'currency' => 'try')));
+	pg_assert_same(array('value' => '0', 'currency' => 'EUR'), $keep(array('value' => 0, 'currency' => 'EUR')));
+	pg_assert_same(array('value' => '6.123456', 'currency' => 'EUR'), $keep(array('value' => '6.123456', 'currency' => 'EUR')));
+
+	foreach (array(
+		array('value' => '24,10', 'currency' => 'TRY'),
+		array('value' => '-1.00', 'currency' => 'TRY'),
+		array('value' => 24.1, 'currency' => 'TRY'),
+		array('value' => '1.2345678', 'currency' => 'EUR'),
+		array('value' => '24.10', 'currency' => 'TL'),
+		array('value' => '24.10'),
+		'24.10 TRY',
+	) as $price) {
+		pg_assert_same(array(), $keep($price), json_encode($price));
+	}
+
+	pg_assert_same(array(), pg_label_answer('create', array('success' => true))['price'], 'no price given');
+	pg_assert_same(array(), pg_label_failure('x')['price']);
+}
+
 function test_carrier_labels_rate_without_a_quote_is_a_plain_failure()
 {
 	carrier_labels_test_register();

@@ -183,6 +183,7 @@ function test_carrier_label_sendcloud_create_announces_the_cheapest_option()
 	pg_assert_same('pdf', $answer['label_format']);
 	pg_assert_same(0, strpos($answer['label'], '%PDF-'), 'the label file of the answer');
 	pg_assert_false(strpos(json_encode($answer['raw']), 'JVBERi0'), 'the base64 label is not logged');
+	pg_assert_same(array('value' => '6.10', 'currency' => 'EUR'), $answer['price'], 'the price of the option chosen');
 
 	$parcel = array('dimensions' => array('length' => '30.00', 'width' => '20.00', 'height' => '10.50', 'unit' => 'cm'), 'weight' => array('value' => '1.250', 'unit' => 'kg'));
 	pg_assert_same(array(
@@ -248,6 +249,7 @@ function test_carrier_label_sendcloud_create_takes_the_asked_option_and_zpl()
 	pg_assert_contains('Accept: application/zpl', $sent[2]['headers']);
 	pg_assert_same('zpl', $answer['label_format']);
 	pg_assert_contains('^XA', $answer['label']);
+	pg_assert_same(array(), $answer['price'], 'an option the shop set is not priced');
 
 	pg_assert_true($account_option['success'], 'a failed download does not fail create');
 	pg_assert_same('postnl:standard', $second[4]['body']['ship_with']['properties']['shipping_option_code'], 'else the account\'s');
@@ -409,6 +411,44 @@ function test_carrier_label_sendcloud_track_reads_the_latest_event()
 	pg_assert_same('in_transit', pg_label_sendcloud_status(array('phase' => 'none', 'exception' => 'sorting_delay')));
 	pg_assert_same('exception', pg_label_sendcloud_status(array('phase' => 'none', 'exception' => 'address_error')));
 	pg_assert_same('', pg_label_sendcloud_status(array('phase' => 'unknown', 'exception' => 'unknown')));
+}
+
+// A shipment the carrier has not scanned yet is created, not a failure: the
+// tracking job stops a driver after failures in a row.
+function test_carrier_label_sendcloud_track_not_scanned_is_created()
+{
+	$id = 'f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b';
+	$tracking = json_decode(carrier_label_sendcloud_test_fixture('tracking.json'), true);
+	$quiet = $tracking;
+	$quiet['events'] = array();
+	$unknown = $tracking;
+	$unknown['events'] = array(array('event_at' => '2026-10-28T09:00:00Z', 'phase' => 'unknown', 'exception' => 'unknown'));
+	$new = $tracking;
+	$new['events'] = array(array('event_at' => '2026-10-28T09:00:00Z', 'phase' => 'teleported', 'exception' => 'none'));
+	$unnumbered = str_replace('05212345678901', '', carrier_label_sendcloud_test_fixture('shipment_get.json'));
+
+	carrier_label_sendcloud_test_stub(array(
+		'GET /shipments/' . $id                => array(array(200, $unnumbered), 'shipment_get.json', 'shipment_get.json', 'shipment_get.json'),
+		'GET /parcels/tracking/05212345678901' => array(array(200, json_encode($quiet)), array(200, json_encode($unknown)), array(200, json_encode($new))),
+	));
+	$account = carrier_label_sendcloud_test_account();
+	$answers = array(
+		'no number' => pg_label_call('sendcloud', 'track', array($id, $account)),
+		'no event'  => pg_label_call('sendcloud', 'track', array($id, $account)),
+		'unknown'   => pg_label_call('sendcloud', 'track', array($id, $account)),
+	);
+	$later = pg_label_call('sendcloud', 'track', array($id, $account));
+	carrier_label_sendcloud_test_done();
+
+	foreach ($answers as $name => $answer) {
+		pg_assert_true($answer['success'], $name . ': ' . $answer['error']);
+		pg_assert_same('created', $answer['status'], $name);
+		pg_assert_same(0, $answer['status_at'], $name);
+		pg_assert_same($id, $answer['reference'], $name);
+	}
+
+	pg_assert_false($later['success'], 'a phase Sendcloud added later is not read as created');
+	pg_assert_false($later['unclear']);
 }
 
 function test_carrier_label_sendcloud_carrier_of_a_code()

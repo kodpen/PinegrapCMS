@@ -253,3 +253,33 @@ function test_products_import_sheet_refusals_keep_their_texts()
 
 	rmdir($dir);
 }
+
+// A product code or barcode typed as a number under a format of zeros keeps
+// its leading zeros in the importer's own .xlsx walk; a price stays as it is.
+function test_products_import_xlsx_keeps_a_formats_leading_zeros()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	$path = tempnam(sys_get_temp_dir(), 'pg_products_zeros') . '.xlsx';
+	$zip = new ZipArchive();
+	$zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+	$zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>');
+	$zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="S" sheetId="1" r:id="rId1"/></sheets></workbook>');
+	$zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>');
+	$zip->addFromString('xl/styles.xml', '<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+		. '<numFmts count="1"><numFmt numFmtId="164" formatCode="0000000000000"/></numFmts>'
+		. '<cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="164"/></cellXfs></styleSheet>');
+	$zip->addFromString('xl/worksheets/sheet1.xml', '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+		. '<row r="1"><c r="A1" t="inlineStr"><is><t>barcode</t></is></c><c r="B1" t="inlineStr"><is><t>price</t></is></c></row>'
+		. '<row r="2"><c r="A2" s="1"><v>8690000012345</v></c><c r="B2"><v>12.5</v></c></row>'
+		. '<row r="3"><c r="A3" s="1"><v>12345</v></c><c r="B3"><v>100</v></c></row>'
+		. '</sheetData></worksheet>');
+	$zip->close();
+
+	$rows = products_import_sheet_test_rows($path, 'products.xlsx');
+	unlink($path);
+
+	pg_assert_same(array(array('barcode', 'price'), array('8690000012345', '12.5'), array('0000000012345', '100')), $rows);
+}

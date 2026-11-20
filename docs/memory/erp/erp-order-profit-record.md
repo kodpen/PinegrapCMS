@@ -28,4 +28,4 @@ description: Each order's cost rows and net profit (#10626): the three tables of
 
 ## What is not in it yet?
 - A sales return's goods coming back lower no cost: a refund lowers revenue only.
-- Labels, screens: NP3, NP5. Fees: `erp-order-profit-payment-fee.md`; Trendyol: `erp-order-profit-deductions.md`.
+- Profitability screen: NP5b. Fees, labels, Trendyol, order screens: `erp-order-overview.md`.

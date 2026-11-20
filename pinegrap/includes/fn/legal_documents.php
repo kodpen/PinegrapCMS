@@ -245,13 +245,41 @@ function pg_legal_document_address(array $lines)
 }
 
 /**
+ * The postcode, district, city and province of an address, for one line of
+ * pg_legal_document_address(): the district only when it is not the city
+ * again (pg_order_view_district()), the province only when it is not the
+ * city again, as the order summary and its e-mail print them
+ * (_pg_sw_list_order_city_line()).
+ *
+ * @param string $zip
+ * @param string $district
+ * @param string $city
+ * @param string $state
+ * @return string[]
+ */
+function pg_legal_document_city_line($zip, $district, $city, $state)
+{
+    $city = trim((string) $city);
+    $state = trim((string) $state);
+
+    if (mb_strtolower($state, 'UTF-8') === mb_strtolower($city, 'UTF-8')) {
+        $state = '';
+    }
+
+    return array_values(array_filter(
+        array(trim((string) $zip), pg_order_view_district($district, $city), $city, $state),
+        'strlen'
+    ));
+}
+
+/**
  * The field values for one order: plain text values and the line table.
  *
  * Amounts are integer minor units; an amount of zero leaves its field empty,
  * so [[...]] can drop a discount, tax or shipping row the order does not
  * have. The total is always printed.
  *
- * @param array    $order      orders row fields (billing_*, subtotal, discount, gift_card_discount, tax, shipping, surcharge, total, order_number)
+ * @param array    $order      orders row fields (billing_*, subtotal, discount, gift_card_discount, tax, shipping, surcharge, installment_charges, total, order_number)
  * @param array    $lines      see pg_legal_document_lines_html()
  * @param array    $ship_tos   each: name, address (text), method, arrival_date
  * @param array    $seller     name, address, email, tax_office, tax_number, website
@@ -286,11 +314,15 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
     $buyer_address = pg_legal_document_address(array(
         $order['billing_address_1'] ?? '',
         $order['billing_address_2'] ?? '',
-        array($order['billing_zip_code'] ?? '', $order['billing_city'] ?? '', $order['billing_state'] ?? ''),
+        pg_legal_document_city_line($order['billing_zip_code'] ?? '', '', $order['billing_city'] ?? '', $order['billing_state'] ?? ''),
         $order['billing_country'] ?? '',
     ));
 
     $discount = (int) round($order['discount'] ?? 0) + (int) round($order['gift_card_discount'] ?? 0);
+    // The instalment difference a card payment adds to the total is an
+    // added cost like the card surcharge: printed with it, so the parts add
+    // up to the total (an order paid at once stores '').
+    $surcharge = (int) round((float) ($order['surcharge'] ?? 0)) + (int) round((float) ($order['installment_charges'] ?? 0));
 
     $text = array(
         'seller_name'       => (string) ($seller['name'] ?? ''),
@@ -313,7 +345,7 @@ function pg_legal_document_values(array $order, array $lines, array $ship_tos, a
         'discount'          => ($discount === 0) ? '' : (string) $money($discount),
         'tax'               => $amount('tax'),
         'shipping'          => $amount('shipping'),
-        'surcharge'         => $amount('surcharge'),
+        'surcharge'         => ($surcharge === 0) ? '' : (string) $money($surcharge),
         'total'             => $amount('total', true),
         'payment_method'    => (string) ($extra['payment_method'] ?? ''),
         'order_number'      => (string) ($order['order_number'] ?? ''),
@@ -429,6 +461,9 @@ function pg_legal_document_cart_order(array $order, array $lines, array $ship_to
     // The card surcharge depends on the payment method chosen at the very
     // end; the total shown is the one without it.
     $order['surcharge'] = 0;
+    // So is an instalment difference, which a payment attempt may have
+    // left on the cart's row.
+    $order['installment_charges'] = 0;
     $order['total'] = $total;
     $order['order_number'] = '';
 
@@ -597,6 +632,29 @@ function pg_legal_document_token_matches($session_token, $posted_token)
 {
     return is_string($session_token) && is_string($posted_token)
         && ($session_token !== '') && hash_equals($session_token, $posted_token);
+}
+
+/**
+ * Whether a checkout box (legal_preinfo, legal_contract, legal_kvkk) was
+ * ticked, from the value the form posted. A browser posts a checkbox only
+ * when it is ticked, with the box's value: '1' for the boxes Pinegrap draws,
+ * whatever value a designer gave a box bound to the field. '0' is the value
+ * of no ticked box. The server's refusal and the acceptance kept with the
+ * order both read this, so an order the check lets through is never kept as
+ * not accepted.
+ *
+ * @param mixed $value  the liveform's single value of the field
+ * @return bool
+ */
+function pg_legal_document_ticked($value)
+{
+    if (!is_scalar($value)) {
+        return false;
+    }
+
+    $value = trim((string) $value);
+
+    return ($value !== '') && ($value !== '0');
 }
 
 /**
@@ -1013,6 +1071,7 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             orders.tax,
             orders.shipping,
             orders.surcharge,
+            orders.installment_charges,
             orders.total,
             orders.payment_method
         FROM orders
@@ -1089,7 +1148,7 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
                 $ship_to['address_1'],
                 $ship_to['address_2'],
                 // The district before the city, as the order screens print it.
-                array($ship_to['zip_code'], pg_order_view_district($ship_to['district'] ?? '', $ship_to['city']), $ship_to['city'], $ship_to['state']),
+                pg_legal_document_city_line($ship_to['zip_code'], $ship_to['district'] ?? '', $ship_to['city'], $ship_to['state']),
                 // The country in the site's language, as the order summary names it.
                 pg_geo_country_label_site($ship_to['country']),
             )),

@@ -71,7 +71,7 @@ function cv_groups_test_summary()
 		'unplaced' => 2,
 		'tiles' => array('1' => array(4, 1, 6, 30000, 12.5), 'all' => array(21, 9, 40, 250000, 33.0)),
 		'months' => array('2026-10' => array(2, 1000, 3, 4000), '2026-11' => array(1, 500, 0, 0)),
-		'cohorts' => array('2026-10' => array(2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
+		'cohorts' => array('2026-10' => array(2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), '2026-11' => array(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
 		'cells' => $cells,
 		'top' => array('all' => array(array(1045, 90000, 4), array(1046, 30000, 1)), 'year' => array(array(1045, 50000, 2))),
 		'apart' => array('EUR' => array(3, 4500)),
@@ -226,7 +226,11 @@ function test_customer_value_api_answer()
 	pg_assert_same(2, $shown['not_placed']);
 	pg_assert_same(array(array('currency' => 'EUR', 'orders' => 3, 'value' => 4500)), $shown['apart']);
 	pg_assert_same(array('period' => 'all', 'customers' => 21, 'repeat_customers' => 9, 'orders' => 40, 'value' => 250000, 'days_between_orders' => 33.0), $shown['periods'][1]);
-	pg_assert_same(array('month' => '2026-10', 'customers' => 2, 'ordered_again' => array(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)), $shown['cohorts'][0]);
+	// Worked out in November: of October's cohort only the first month after
+	// has begun, so it is the only one answered (it was eleven more zeros, a
+	// figure for months nobody could have ordered in yet).
+	pg_assert_same(array('month' => '2026-10', 'customers' => 2, 'ordered_again' => array(1)), $shown['cohorts'][0]);
+	pg_assert_same(array('month' => '2026-11', 'customers' => 1, 'ordered_again' => array()), $shown['cohorts'][1], 'a cohort of the running month');
 	pg_assert_same(15, count($shown['groups']), 'every cell');
 	pg_assert_same(array('last_order' => 'within_30_days', 'orders' => '4+', 'group' => 'loyal', 'customers' => 3, 'value' => 90000), $shown['groups'][2]);
 	pg_assert_same(array('last_order' => 'over_365_days', 'orders' => '1', 'group' => 'lost', 'customers' => 5, 'value' => 12000), $shown['groups'][12]);

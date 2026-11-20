@@ -9,7 +9,7 @@ description: The guest page lists the agents' and assistants' messages beside pe
 - An agent's live page: its card, run in the guarded frame from the guest's own address (GP3, `guest-page-content.md`).
 - An agent's task card reads as a person's: title, state and due date (GP2).
 - An agent's file and picture as a person's (GP2): `ws_guest_file_reached()` (pure) decides for the payload and `workspace_guest.php?file=`: a person's, an agent's or an MCP answer's line, in the room, after the clear floor, not deleted, never a live page (`ws_page_is_page()`); anything else 404. HTML and SVG are downloads (`ws_file_type()`), never run.
-- A canvas is its drawn picture only (`ws_guest_canvas_view()`: `file.canvas`, `file.pending`, `&v=<version>` in the address): no Design Canvas, layers, versions or Undo, for a guest who may write too. While an agent's picture is pending: "The preview is not ready yet." in place of the picture.
+- A canvas is its drawn picture only (`ws_guest_canvas_view()`: `file.canvas`, `file.pending`, `&v=<version>` in the address): no Artifact Canvas, layers, versions or Undo, for a guest who may write too. While an agent's picture is pending: "The preview is not ready yet." in place of the picture.
 - `ws_guest_line_sender()` (pure) says person, guest, agent or ''; `ws_guest_lines_sql()` (pure) is the WHERE part; `ws_guest_agent_apps()` gives each application's name, `@tag`, badge, role and model.
 
 ## How is an agent's line drawn?

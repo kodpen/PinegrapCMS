@@ -29,13 +29,15 @@ description: Plan channel-commands, steps CC7 to CC12 and the close-out: /oluşt
   - Picture: the line, the agent's line under it.
   - Memory: `workspace/agent-doors.md`. Feature: K27.
 
-- CC12 (S, no code) after CC11: census for the writer-only answer, one plans memory file (channel-commands-answer-census) answering K28 from the code. Done: #10636. It ends with a shape for the architect; a table or a column in it is asked of the owner by the architect. CC12b builds what was confirmed.
+- CC12 (S, no code) after CC11: census for the writer-only answer (channel-commands-answer-census), K28 from the code. Done: #10636.
+
+- CC12b (M) after CC12: the writer-only answer (`workspace/workspace-app-answers.md`). Done: #10668.
 
 - Close-out, with the last step that lands: every K number checked against the code with its PR; `workspace/workspace-command-registry.md`, `workspace/workspace-app-commands.md` and `workspace/workspace-command-api.md` current; this plan's files deleted.
 
 ## Which steps wait for each other?
 - CC1, then CC2. After CC2 the steps CC3 to CC7 and CC10 may run side by side, at most two at a time, and never two that edit the same function of `assets/js/workspace.js` or the same group function of the registry (PR Merge, agent channel 8073, 8076).
-- CC8 and CC9 after CC7; CC11 after CC10; CC12 after CC11.
+- CC8 and CC9 after CC7; CC11 after CC10; CC12 after CC11; CC12b after CC12.
 - A step that meets another plan's open PR on `assets/js/workspace.js` waits for it and says so in the agent channel.
 
 ## What is outside the plan but near it?

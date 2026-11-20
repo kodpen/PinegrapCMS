@@ -63,12 +63,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-7.md: How wide is an add or edit screen? (owner, 2026-11-13, #9070)
 - decisions-made-panel-7.md: How wide is a list, and how does it page? (owner, 2026-11-13, #9070)
 - decisions-made-panel-7.md: Is the dialogs and drawers page the reference? (owner, 2026-11-12, #8860)
-- decisions-made-panel-7.md: Which drawing is the Design Canvas icon? (owner, 2026-11-12, #8903)
+- decisions-made-panel-7.md: Which drawing is the Artifact Canvas icon? (owner, 2026-11-12, #8903)
 - decisions-made-panel-7.md: Does the dashboard move to look A? (owner, 2026-11-12, #8938)
 - decisions-made-panel-8.md: Where are the rules and the earlier parts?
 - decisions-made-panel-8.md: Is the report screen page the reference for the report screens? (owner, 2026-11-12, #8955)
 - decisions-made-panel-8.md: Is a settings switch without a thumb approved? (owner, 2026-11-12, #9070)
-- decisions-made-panel-8.md: Where is the Design Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
+- decisions-made-panel-8.md: Where is the Artifact Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
 - decisions-made-panel-8.md: How do cards use the form column of an add or edit screen? (owner, 2026-11-13, #9271)
 - decisions-made-panel-8.md: Which drawing does the Communication row of the main menu carry? (owner, 2026-11-14, in the architect's window)
 - decisions-made-panel-9.md: Where are the rules and the earlier parts?
@@ -262,7 +262,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-45.md: Does the Kodpen API client go on before its release keys exist? (owner, 2026-11-11, #8755)
 - decisions-made-product-45.md: Does the api2 server stay open? (owner, 2026-11-11, #8755)
 - decisions-made-product-46.md: Where are the rules and the earlier parts?
-- decisions-made-product-46.md: Does a picture saved again from the Design Canvas show at once? (owner, 2026-11-12, #8882)
+- decisions-made-product-46.md: Does a picture saved again from the Artifact Canvas show at once? (owner, 2026-11-12, #8882)
 - decisions-made-product-46.md: How does the Legacy to Bootstrap helper go on after its census? (owner, 2026-11-12, #8942)
 - decisions-made-product-46.md: Is a plan written for the custom layouts' move to Bootstrap 5.3.8? (owner, 2026-11-12, #8942)
 - decisions-made-product-47.md: Where are the rules and the earlier parts?
@@ -341,7 +341,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-63.md: Where are the rules and the earlier parts?
 - decisions-made-product-63.md: Does the prototype view's arrangement with its arrows go out as built? (owner, 2026-11-16, agent channel poll 89)
 - decisions-made-product-63.md: Do the waiting content changes go out as built? (owner, 2026-11-16, agent channel poll 90)
-- decisions-made-product-63.md: What did the owner ask of the Design Canvas? (owner, 2026-11-16, to the architect)
+- decisions-made-product-63.md: What did the owner ask of the Artifact Canvas? (owner, 2026-11-16, to the architect)
 - decisions-made-product-64.md: Where are the rules and the earlier parts?
 - decisions-made-product-64.md: Which features of the second study are planned, and what did he answer on them? (owner, 2026-11-16, agent channel polls 82 and 85 to 88)
 - decisions-made-product-64.md: How are the texts in pictures translated in the first version? (owner, 2026-11-16, agent channel poll 98, message 6808)
@@ -361,7 +361,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-66.md: Who gets the task of the gallery flow "A page is due for review"? (architect, 2026-11-16, agent channel message 7026)
 - decisions-made-product-66.md: Where do a record's coordinates come from while Google Places or Mapbox is on? (architect, 2026-11-16, agent channel message 6927)
 - decisions-made-product-66.md: When does the Bundles screen get its main menu row? (architect, 2026-11-16, agent channel message 6918)
-- decisions-made-product-67.md: Do the Design Canvas's bar over the object and the Motion popover come out as on the sheet? (owner, 2026-11-16, agent channel poll 103, message 7038)
+- decisions-made-product-67.md: Do the Artifact Canvas's bar over the object and the Motion popover come out as on the sheet? (owner, 2026-11-16, agent channel poll 103, message 7038)
 - decisions-made-product-67.md: Does "Find from the address" come out as on the sheet? (owner, 2026-11-16, agent channel poll 105, message 7114)
 - decisions-made-product-67.md: Do the publish and take-back dialogs come out as on the sheet? (owner, 2026-11-16, agent channel poll 106, message 7125)
 - decisions-made-product-67.md: Which words do RB3's dialogs use? (architect, 2026-11-16, message 7027)
@@ -383,7 +383,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-7.md: Can a merchant request a carrier pickup from the panel? (#3415)
 - decisions-made-product-7.md: Does ShipWorks record tracking numbers through the shipment write path? (#3443)
 - decisions-made-product-70.md: Where are the rules and the earlier parts?
-- decisions-made-product-70.md: Is the Translations screen's group for Design Canvas pictures accepted, and what is it called? (owner, 2026-11-17, agent channel poll 118, message 7635)
+- decisions-made-product-70.md: Is the Translations screen's group for Artifact Canvas pictures accepted, and what is it called? (owner, 2026-11-17, agent channel poll 118, message 7635)
 - decisions-made-product-70.md: Is the Connections screen's drawing accepted, and what is the screen called? (owner, 2026-11-17, agent channel poll 120, message 7720)
 - decisions-made-product-70.md: Are Application Access's four parts for automation platforms accepted, and do they name the platforms? (owner, 2026-11-17, agent channel poll 121, message 7769)
 - decisions-made-product-70.md: Is the "Shared prices" card of an account's prices screen accepted? (owner, 2026-11-17, agent channel poll 123, message 7807)
@@ -395,7 +395,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-71.md: Where are the rules and the earlier parts?
 - decisions-made-product-71.md: Do additions to the visual designer wait for its new interface? (owner, 2026-11-17, agent channel poll 127, message 8168)
 - decisions-made-product-71.md: Are the three drawings the designer-panels plan lacked accepted? (owner, 2026-11-17, agent channel polls 128, 129 and 132)
-- decisions-made-product-71.md: Is the Design Canvas's "Languages" list accepted? (owner, 2026-11-17, agent channel poll 130, message 8312)
+- decisions-made-product-71.md: Is the Artifact Canvas's "Languages" list accepted? (owner, 2026-11-17, agent channel poll 130, message 8312)
 - decisions-made-product-71.md: May a language's picture be drawn while some of its texts are not translated? (owner, 2026-11-17, agent channel poll 131, message 8313)
 - decisions-made-product-72.md: Where are the rules and the earlier parts?
 - decisions-made-product-72.md: Is the "Suggest targets" window of the Prototype view accepted? (owner, 2026-11-17, agent channel poll 137, message 8763)
@@ -432,7 +432,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-8.md: Is marketing SMS built in 2026.11.0? (#3570)
 - decisions-made-product-8.md: Forum template wording: "Guide", the password page addresses, untranslated text on `/en/` (#3622)
 - decisions-made-product-80.md: Where are the rules and the earlier parts?
-- decisions-made-product-80.md: Does the Design Canvas group layers, and may a layer follow another layer? (owner, 2026-11-20, in the architect's window, channel message 9832)
+- decisions-made-product-80.md: Does the Artifact Canvas group layers, and may a layer follow another layer? (owner, 2026-11-20, in the architect's window, channel message 9832)
 - decisions-made-product-80.md: How is the Workspace writing box laid out on a phone? (owner, 2026-11-20, in the architect's window, channel message 9832)
 - decisions-made-product-80.md: Does a product form take a shopper's file? (owner, 2026-11-20, agent channel poll 160, channel message 9994)
 - decisions-made-product-80.md: When are an unordered cart's uploaded files deleted? (owner, 2026-11-20, poll 162, channel message 10010)
@@ -444,6 +444,23 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-82.md: Who is "this friend" in the referral programme's friend check? (architect, 2026-11-20, agent channel message 10330, answer to K1's request 1742)
 - decisions-made-product-82.md: Does the self check compare addresses? (architect, 2026-11-20, agent channel message 10330)
 - decisions-made-product-82.md: What happens to a reward whose referrer's lock was busy? (architect, 2026-11-20, agent channel message 10330)
+- decisions-made-product-82.md: Are a line's reward points taken back twice by a refund and a return? (architect, 2026-11-20, agent channel message 10437, answer to K1's request 1789)
+- decisions-made-product-83.md: Where are the rules and the earlier parts?
+- decisions-made-product-83.md: Does a subscription renewal order keep copies of the legal documents? (architect, 2026-11-20, agent channel message 10449, answer to K1's request 1793)
+- decisions-made-product-83.md: Is a NULL legal_acceptance still read as both documents accepted? (architect, 2026-11-20, agent channel message 10449)
+- decisions-made-product-84.md: Where are the rules and the earlier parts?
+- decisions-made-product-84.md: Does the store learn its own order rhythm and say when it breaks? (owner, 2026-11-20, agent channel poll 165, channel message 10147)
+- decisions-made-product-85.md: Where are the rules and the earlier parts?
+- decisions-made-product-85.md: Does the site explain itself to AI agents, and who shapes it? (owner, 2026-11-20, agent channel poll 170, message 10442)
+- decisions-made-product-85.md: How is the guide written and read? (architect, 2026-11-20, plan ai-guide)
+- decisions-made-product-85.md: How does the tool list get cheaper without breaking a connection? (architect, 2026-11-20, plan ai-guide)
+- decisions-made-product-85.md: What does a refusal say to an agent? (architect, 2026-11-20, plan ai-guide)
+- decisions-made-product-86.md: Where are the rules and the earlier parts?
+- decisions-made-product-86.md: What is done about two orders taking the last unit? (owner, 2026-11-20, agent channel poll 172, message 10457)
+- decisions-made-product-86.md: How is an order sold beyond the stock flagged? (architect, 2026-11-20, agent channel message 10463)
+- decisions-made-product-87.md: Where are the rules and the earlier parts?
+- decisions-made-product-87.md: Are purchases and other events sent from the server to the ad platforms? (owner, 2026-11-20, agent channel poll 166, channel message 10193)
+- decisions-made-product-87.md: Does personal data go to the ad platforms while the cookie notice is off? (owner, 2026-11-20, agent channel poll 175, message 10513)
 - decisions-made-product-9.md: Where are the rules and the earlier parts?
 - decisions-made-product-9.md: Do designed forms refuse a past date and require a field for an answer? (#3669)
 - decisions-made-product-9.md: Are marketplace orders invoiced by the ERP automatically? (#3670)
@@ -536,6 +553,15 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-32.md: Where are the rules and the earlier parts?
 - decisions-made-schema-32.md: May the Workspace get a table for an application's answer to the writer alone? (owner, 2026-11-20, agent channel poll 169, message 10332)
 - decisions-made-schema-32.md: Which columns does ws_app_answers have? (architect, 2026-11-20, agent channel message 10333, answer to K2's request 1744)
+- decisions-made-schema-33.md: Where are the rules and the earlier parts?
+- decisions-made-schema-33.md: Is what a sale really took from the stock recorded? (owner, 2026-11-20, agent channel poll 171, message 10456)
+- decisions-made-schema-33.md: Which columns, and who writes and reads them? (architect, 2026-11-20, agent channel message 10460, answer to K1's request 1799)
+- decisions-made-schema-34.md: Where are the rules and the earlier parts?
+- decisions-made-schema-34.md: May holding units during payment get a table? (owner, 2026-11-20, agent channel poll 172, message 10457)
+- decisions-made-schema-34.md: Which columns does `stock_holds` have? (architect, 2026-11-20, plan stock-holds)
+- decisions-made-schema-35.md: Where are the rules and the earlier parts?
+- decisions-made-schema-35.md: Does the ad conversions plan get a table? (owner, 2026-11-20, agent channel poll 174, channel message 10512)
+- decisions-made-schema-35.md: Which columns does it have? (architect, 2026-11-20, channel message 10514)
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
 - decisions-made-schema-4.md: Which schema was approved on 2026-10-29 (continued)?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
@@ -799,6 +825,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/course-student-hunt.md: Bug hunt of the courses' student side (architect, 2026-11-20, agent channel message 10214): files read, the lesson outside its folder fixed (#10601), the parent-folder enrolment day left as #10603
 - commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, rows written once, the certificate code
 - commerce/customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR
+- commerce/event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets
 - commerce/event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets
 - commerce/event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch
 - commerce/event-tickets-waiting-list.md: Event tickets TK4: a cancelled order's places back (tickets on), taken again on restore; the waiting list of a full date in stock_notify (11.0.248), its line, request, send and the product/event split
@@ -817,10 +844,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country
 - commerce/product-form-upload-field.md: The File Upload field of product forms: its rule in form_fields.rules, the check, place and keep functions, who opens the file in get_file.php, the one remove function
 - commerce/product-form-upload-sweep.md: The general job's sweep of a product form's uploaded files in carts that never became an order: 30 days after the cart's last touch, what counts as a touch, how the pass walks, orders never swept
+- commerce/referral-busy-retry.md: A referral reward whose referrer's lock was busy at completion: kept in config_text referral_pending and tried again by the general job; limits and why only busy orders
 - commerce/referral-commission-readers.md: Every reader and writer of commissions and what each does with a referral's row: Commissions screen totals (affiliates only), Edit Commission read-only, GET /commissions kind
+- commerce/referral-programme.md: Referral programme start file: a customer brings a friend by a personal link on the affiliate link's rails, the friend gets an offer and the customer store credit; its parts, decisions, PRs and files
 - commerce/referral-rules.md: Referral programme rules (RF1): the signed code, the checks of a friend's order, the reward as a paid commissions row and referral store credit, the month's cap under a lock, take-back, settings
 - commerce/shipment-label-auto.md: Automatic carrier label once an order is paid (2026.11.0, #8432): per-driver switch, the general job's run, its limits, the failed row on the order screen and in the API
-- commerce/shipment-tracking-hunt.md: Bug hunt of the parcel status tracking (agent channel message 10333): files read, marketplace delivered notice fixed (#10661), fresh label "no status yet" stop left as #10660
+- commerce/shipment-tracking-hunt.md: Bug hunt of the parcel status tracking (agent channel message 10333): files read, marketplace delivered notice fixed (#10661), fresh label "no status yet" stop fixed in the drivers (#10660)
+- commerce/store-credit-points-take-back.md: An order's reward points taken back on cancel, full refund and line refund (#6256, decision #6306): recomputed from the lines, balance first, the converted rest off the newest points cards
 - commerce/store-credit-rules.md: What binds store credit (owner, 2026-11-02, #5039, #6306): a customer-bound gift card, not a payment method, never pays for a gift card product, the reward goal kept, money in minor units
 - commerce/subscriptions-number-of-payments.md: What a product's Number of Payments (recurring_number_of_payments) counts on store-run subscriptions (#4623): N charges in all, the order's own charge included; legacy gateway profiles differ
 - commerce/tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far
@@ -843,11 +873,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/passkey-sessions.md: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (11.0.46), the sign-in mark, the session row on the account page, removing a passkey ends its sessions
 - core/passkey-without-totp.md: An account without TOTP (PR #2226): the e-mailed code (passkey.php email_code) and its purposes, recovery codes from the first passkey and new ones later, removing the last one
 - core/php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.
-- core/picture-text-auto-draw.md: Translated Design Canvas pictures drawn by themselves (#10409 to #10448): how rows, text jobs, the waiting mark, the panel's and the server's draw fit; the architect's rules; what is left out
+- core/picture-text-auto-draw.md: Translated Artifact Canvas pictures drawn by themselves (#10409 to #10448): how rows, text jobs, the waiting mark, the panel's and the server's draw fit; the architect's rules; what is left out
 - core/picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, #10028 to #10448): what it does, its binding decisions, what it leaves out and why, where each part is
-- core/picture-text-translation-draw.md: The Design Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
+- core/picture-text-translation-draw.md: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
 - core/picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points
-- core/picture-text-translation-store.md: A Design Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
+- core/picture-text-translation-store.md: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
 - core/sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
 - core/software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
 - designer/bound-media-src.md: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211)
@@ -894,6 +924,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-canvas-toolbar-in-cards.md: The selected element's toolbar in a card (#9217, #9246): the ratio rule skips chrome, room counts inside the clip, it shows in see-through wrappers
 - designer/designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
 - designer/designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer/designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added
 - designer/designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows
 - designer/designer-palette-tabs-and-blocks.md: Designer palette Components tab with a Components / Blocks list switch (building blocks vs ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
 - designer/designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design
@@ -940,6 +971,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/prototype-suggest.md: The Prototype view's Suggest targets (PV11b): how a link without a target is matched to a page, the dialog's rows and keys, the dashed proposed arrows, what Apply writes
 - designer/prototype-view-decisions.md: What was decided for the designer's Prototype view (owner 2026-10-24, #2446, 2026-11-01): where it lives, hrefs by name or page id, who draws, read-only sources, breakpoint, how an arrow saves
 - designer/prototype-view.md: The designer's Prototype view (_sdProtoOpen()): what it is, its controls in the canvas bar, how a drawing is built, how an arrow is written and opened in the editor, and which file covers each part
+- designer/prototype-viewer-missed-click.md: The prototype viewer's missed click (PX6): a click on nothing clickable flashes the page's links in the frame; when it does not; Play's start page and its title
 - designer/prototype-zoom.md: The Prototype view's zoom to a frame (PX1, #10476): a double-click or Enter on a frame shows it whole; Esc or "All" goes back to the view from before; what forgets the zoom
 - designer/release-bundle-dialogs.md: The publish and take-back dialogs of a release bundle: where the Bundles screen shows them, what they post and the screen does with it, the "changed since" choice, focus on Cancel, their words
 - designer/release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its dialogs, Publish and Take back, Remove and Delete
@@ -967,6 +999,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - erp/erp-order-overview.md: Start file for the erp-order-* files: an order's ERP documents (invoice, cancel, refund), its charges and VAT, and its cost rows and net profit, which file holds each part
 - erp/erp-order-profit-deductions.md: Marketplace deductions on an order's profit (#10657): Trendyol settlements, one cost row per record (settlement:<id>), currency, the resumable read, what is skipped
 - erp/erp-order-profit-record.md: Each order's cost rows and net profit (#10626): the three tables of 11.0.250, the calculation in includes/erp/order_profit.php, the resumable pass, what it never writes
+- erp/erp-order-profit-screens.md: Where an order's profit is seen (#10664): the Profit card of view_order.php, the order list's Profit column and "Sold at a loss" filter, the gate, includes/erp/order_profit_view.php
 - erp/erp-order-tax-number-difference.md: Contact card's tax number not on the order's ERP account: automatic invoice held, documents card shows both numbers, bell and log neither (owner decision 2026-10-23, #1307)
 - erp/erp-parasut-overview.md: Paraşüt as a whole: connection card, the ERP's e-document driver, the order screen's legacy Create Invoice and E-Shipment, inbox, export; its decisions and which erp-parasut-* file holds each part
 - erp/erp-shared-prices.md: An ERP account using another account's prices (price_account_id, 11.0.235): one hop checked at the save, where the pointer is followed, retail in public
@@ -983,7 +1016,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/content-review-rules.md: Content review (content_review, 11.0.226, #9934): the table, which items count, date states in the site's time, the next date, the person, the daily sweep
 - platform/content-review-screen.md: The Content review screen (view_content_review.php, #9967): the list read as branches, filters, sorts, columns, the row menu, what a user (role 3) sees; actions in content-review-actions.md
 - platform/content-review.md: Content review start file: a person and a "review by" date for a page or collection record, the Content review screen, what binds it, which file holds what, what is left out
-- platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Design Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
+- platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Artifact Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
 - platform/import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
 - platform/iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
 - platform/messages-area-sends-speed.md: How fast Communication › Sends reads 500,000 rows a queue (MA2 #9252, MA2b #9275): the architect's 300 ms, keyset bounds per branch, measured batches, the slow search and heading sorts left open
@@ -1018,6 +1051,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
 - ui/connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection
 - ui/connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate
+- ui/connections-sms-providers-page.md: Netgsm's, İleti Merkezi's and Twilio's pages on Connections (CX11d2): each account typed there under the Communication gate; the SMS card keeps the switch, the Provider select and the connection
 - ui/dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's card: functions, the two palettes, what stays byte for byte, the fixtures test
 - ui/dashboard-v2-brief.md: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js
 - ui/dashboard-v2-drawn-look.md: The new dashboard's drawn look (visual pass V): the --pgd-* palette every part reads, the frame and faces, the drawn Assistant and goals, the differences kept on purpose
@@ -1033,25 +1067,25 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/explorer-context-menu-visible.md: The file manager's right-click menu is a Bootstrap 6 .menu shown by display, not .show, so the screen draws it and its flyouts visible itself; a right click seemed dead before
 - ui/file-manager-replaces-folder-and-file-screens.md: The folder screens (add_folder, edit_folder, their form) and the classic files list (view_files) are retired; where each of their jobs is in the File Manager, what is not there, the links that moved
 - ui/graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas
-- ui/image-editor-actions.md: The Design Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides
-- ui/image-editor-animation.md: The Design Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
-- ui/image-editor-area-cut.md: The Design Canvas's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why the hole an erase leaves is the picture's own, not a piece
-- ui/image-editor-attach.md: Design Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
+- ui/image-editor-actions.md: The Artifact Canvas's selection bar, over the object on the desktop and at the stage's foot on a small screen: its commands (M.actionList()), labels, place and when it hides
+- ui/image-editor-animation.md: The Artifact Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
+- ui/image-editor-area-cut.md: The Artifact Canvas's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why the hole an erase leaves is the picture's own, not a piece
+- ui/image-editor-attach.md: Artifact Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
 - ui/image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames
 - ui/image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b)
-- ui/image-editor-eraser.md: The Design Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place
-- ui/image-editor-follow.md: The Design Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
-- ui/image-editor-groups.md: Design Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
-- ui/image-editor-import.md: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
-- ui/image-editor-layers.md: The Design Canvas's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
-- ui/image-editor-menu.md: The Design Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
-- ui/image-editor-overview.md: The Design Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part
-- ui/image-editor-picture-to-layer.md: Convert to a layer in the Design Canvas (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
-- ui/image-editor-rail.md: The Design Canvas rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
-- ui/image-editor-subject.md: The Design Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
-- ui/image-editor-touch.md: The Design Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick
-- ui/image-editor-upload-setting.md: The Design Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
-- ui/image-editor-video-files.md: Design Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
+- ui/image-editor-eraser.md: The Artifact Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place
+- ui/image-editor-follow.md: The Artifact Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
+- ui/image-editor-groups.md: Artifact Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
+- ui/image-editor-import.md: Import in the Artifact Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
+- ui/image-editor-layers.md: The Artifact Canvas's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
+- ui/image-editor-menu.md: The Artifact Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
+- ui/image-editor-overview.md: The Artifact Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part
+- ui/image-editor-picture-to-layer.md: Convert to a layer in the Artifact Canvas (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
+- ui/image-editor-rail.md: The Artifact Canvas rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
+- ui/image-editor-subject.md: The Artifact Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
+- ui/image-editor-touch.md: The Artifact Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick
+- ui/image-editor-upload-setting.md: The Artifact Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
+- ui/image-editor-video-files.md: Artifact Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - ui/list-seo-details.md: A click on the SEO score of the Pages and Products lists loads the analysis into the Details panel under the SEO line (no drawer); the run buttons and failure lines there
 - ui/list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
@@ -1122,10 +1156,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
+- workflow/bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean
 - workflow/bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
-- workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues, what read clean
+- workflow/bug-hunt-customer-returns.md: Bug hunt of customer returns, the request and the refund (architect 2026-11-20, agent channel message 10330): faults fixed, issues opened, what was read clean
+- workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean
+- workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean
 - workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators

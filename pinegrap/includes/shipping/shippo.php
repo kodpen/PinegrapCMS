@@ -765,6 +765,32 @@ function pg_label_shippo_test($account)
     );
 }
 
+/**
+ * What a bought rate costs: in the account's currency (amount_local) when
+ * Shippo gives it, else the carrier's, as Shippo wrote it. A test label is
+ * charged nothing. Pure.
+ *
+ * @param array $rate        the rate bought
+ * @param array $transaction the transaction that bought it
+ * @return array pg_label_answer() price, empty when there is none
+ */
+function pg_label_shippo_price($rate, $transaction)
+{
+    if (!empty($transaction['test'])) {
+        return array();
+    }
+
+    $amount = pg_label_shippo_text($rate, 'amount_local');
+    $currency = pg_label_shippo_text($rate, 'currency_local');
+
+    if (!is_numeric($amount) || ($currency === '')) {
+        $amount = pg_label_shippo_text($rate, 'amount');
+        $currency = pg_label_shippo_text($rate, 'currency');
+    }
+
+    return pg_label_price_normalize(array('value' => $amount, 'currency' => $currency));
+}
+
 function pg_label_shippo_create($shipment, $account)
 {
     $body = pg_label_shippo_shipment_body($shipment, $account);
@@ -869,6 +895,7 @@ function pg_label_shippo_create($shipment, $account)
         'status'          => 'created',
         'log'             => array('Shippo label ' . $reference . ' bought with ' . $provider . (isset($rate['servicelevel']) ? ' ' . pg_label_shippo_text($rate['servicelevel'], 'name') : '') . (!empty($data['test']) ? ' (test)' : '') . '.'),
         'raw'             => $read['raw'],
+        'price'           => pg_label_shippo_price($rate, $data),
     );
 
     // The label is fetched again by label() when it cannot be had now.
@@ -986,7 +1013,27 @@ function pg_label_shippo_track($reference, $account)
         return pg_label_shippo_failure($read, false);
     }
 
+    if (pg_label_shippo_not_scanned($read['data'])) {
+        return pg_label_track_not_scanned($id);
+    }
+
     return pg_label_shippo_track_answer($read['data'], $read['raw']);
+}
+
+/**
+ * Whether a transaction's label has not been scanned by the carrier yet: no
+ * tracking status or Shippo's UNKNOWN. A code Shippo adds later is not read
+ * as created. Pure.
+ *
+ * @param array $data a transaction
+ * @return bool
+ */
+function pg_label_shippo_not_scanned($data)
+{
+    $tracking = (is_array($data) && isset($data['tracking_status'])) ? $data['tracking_status'] : '';
+    $code = is_array($tracking) ? pg_label_shippo_text($tracking, 'status') : (is_string($tracking) ? $tracking : '');
+
+    return is_array($data) && in_array(strtoupper(trim($code)), array('', 'UNKNOWN'), true);
 }
 
 /**

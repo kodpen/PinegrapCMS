@@ -23,7 +23,7 @@ description: The Prototype view's Links tab: the selected frame's links out and 
 
 ## When is the panel open, and what does Play do?
 - The bar's "Links" button opens the panel at its Links tab or closes it. Open or closed is kept in `localStorage` `pg_proto_list`. Without one it is open from 1,100 px and closed below; under 1,100 px it opens over the stage's right side.
-- "Play" opens `_pgPrototypeUrl()` of the selected tab, else of the first tab that has an address, in a new tab; it is hidden when no tab has one.
+- "Play" opens `_pgPrototypeUrl()` of the selected tab, else of the first tab that has an address in a new tab, its title naming that page; hidden if no tab has one.
 
 ## How is it checked?
 - `test_proto_hotspots_list_and_problems` (the list for pages with links out, in and from a shared part, nothing selected, a chip; every broken link and each count), `test_proto_hotspots_view_list_and_problems` (the wiring and the CSS), `test_proto_hotspots_row_target` (the target control).

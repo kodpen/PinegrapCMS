@@ -200,6 +200,7 @@ function test_carrier_label_kargonomi_create_buys_the_cheapest_and_reads_the_lab
 	pg_assert_same('pdf', $answer['label_format']);
 	pg_assert_same(0, strpos($answer['label'], '%PDF-'));
 	pg_assert_contains('confirmed with the cheapest carrier', implode(' ', $answer['log']));
+	pg_assert_same(array('value' => '24.10', 'currency' => 'TRY'), $answer['price'], 'the cheapest confirmed: the offer of the carrier the shipment names, before VAT');
 }
 
 function test_carrier_label_kargonomi_create_takes_the_asked_carrier_and_reads_places_once()
@@ -227,6 +228,27 @@ function test_carrier_label_kargonomi_create_takes_the_asked_carrier_and_reads_p
 		'POST /shipments', 'GET /shipment-price-comparison/8', 'POST /confirm-shipping-price', 'GET /shipments/8/barcode?format=pdf',
 	), carrier_label_kargonomi_test_sent(), 'the numbers came with the confirmation; places are read once a request');
 	pg_assert_contains('confirmed with surat', implode(' ', $first['log']));
+	pg_assert_same(array('value' => '23.05', 'currency' => 'TRY'), $first['price'], 'the price of the offer confirmed');
+	pg_assert_same(array('value' => '22.90', 'currency' => 'TRY'), $second['price']);
+}
+
+// An offer's price text as a plain decimal; the price of what was confirmed.
+function test_carrier_label_kargonomi_price()
+{
+	pg_assert_same('22.67', pg_label_kargonomi_price_value('22.67 + KDV'));
+	pg_assert_same('1250.50', pg_label_kargonomi_price_value('1.250,50 TL + KDV'));
+	pg_assert_same('1250', pg_label_kargonomi_price_value('1,250'));
+	pg_assert_same('18.5', pg_label_kargonomi_price_value('18,5'));
+	pg_assert_same('', pg_label_kargonomi_price_value('Hizmet Dışı Bölge'));
+	pg_assert_same('', pg_label_kargonomi_price_value(''));
+
+	$offers = json_decode(carrier_label_kargonomi_test_fixture('price_comparison.json'), true);
+
+	pg_assert_same(array('value' => '22.67', 'currency' => 'TRY'), pg_label_kargonomi_price($offers, '-1', array()), 'no carrier named: the cheapest');
+	pg_assert_same(array('value' => '22.90', 'currency' => 'TRY'), pg_label_kargonomi_price($offers, '-1', array('shipping_provider_slug' => 'ptt')));
+	pg_assert_same(array('value' => '24.10', 'currency' => 'TRY'), pg_label_kargonomi_price($offers, '4', array('shipping_provider_slug' => 'ptt')), 'the carrier confirmed wins');
+	pg_assert_same(array(), pg_label_kargonomi_price($offers, '6', array()), 'out of the carrier\'s area: no price');
+	pg_assert_same(array(), pg_label_kargonomi_price(array(), '-1', array()));
 }
 
 function test_carrier_label_kargonomi_refusals_before_a_call()
@@ -449,12 +471,14 @@ function test_carrier_label_kargonomi_track_reads_the_shipment()
 		'shipment_started.json',
 		'shipment_creating.json',
 		array(200, str_replace('webservice_shipment_started', 'some_new_status', carrier_label_kargonomi_test_fixture('shipment_started.json'))),
+		array(200, str_replace('"webservice_shipment_started"', '""', carrier_label_kargonomi_test_fixture('shipment_started.json'))),
 	)));
 	$account = carrier_label_kargonomi_test_account();
 	$delivered = pg_label_call('kargonomi', 'track', array('8', $account));
 	$moving = pg_label_call('kargonomi', 'track', array('8', $account));
 	$creating = pg_label_call('kargonomi', 'track', array('8', $account));
 	$unknown = pg_label_call('kargonomi', 'track', array('8', $account));
+	$none = pg_label_call('kargonomi', 'track', array('8', $account));
 	carrier_label_kargonomi_test_done();
 
 	pg_assert_true($delivered['success'], $delivered['error']);
@@ -473,6 +497,13 @@ function test_carrier_label_kargonomi_track_reads_the_shipment()
 	pg_assert_false($unknown['success']);
 	pg_assert_false($unknown['unclear']);
 	pg_assert_contains('no status for this shipment yet', $unknown['error']);
+
+	// A shipment the carrier has not scanned yet is created, not a failure.
+	pg_assert_true($none['success'], $none['error']);
+	pg_assert_same('created', $none['status']);
+	pg_assert_same(0, $none['status_at']);
+	pg_assert_same('8', $none['reference']);
+	pg_assert_false(pg_label_kargonomi_track_answer(array('id' => 8, 'status' => ''), array())['success'], 'a webhook message without a status moves nothing');
 }
 
 function test_carrier_label_kargonomi_pure_helpers()

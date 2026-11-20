@@ -208,6 +208,13 @@ if ($card_data_cleared > 0) {
 
 }
 
+// Referral rewards whose try at completion found the referrer's rewards busy
+// (includes/fn/referral.php): tried again, ten a tick; one small read while
+// none waits.
+if (ECOMMERCE) {
+    pg_referral_pending_run(10);
+}
+
 // If commerce is enabled and there is at least one enabled campaign profile
 // that creates auto campaigns for abandoned orders, then check if any orders
 // have been abandoned.

@@ -6,7 +6,7 @@ module: connections_screen
 
 ## What is a service's page?
 - `connections.php?service=<registry key>`, built in CX7 (plan `plans/connections-merges-build.md`) as the owner accepted it in poll 149 (`workflow/decisions-made-product-77.md`). Breadcrumb System tools › Connections › the service; heading its name, under it the group and its uses.
-- Every registry service the user may see has one; `pg_connections_screen_page_id()` refuses any other key (an account provider, a hidden or unknown one) and the screen sends it back to the list.
+- Every registry service the user may see has one; `pg_connections_screen_page_id()` refuses any other key (an account provider, hidden, unknown): back to the list.
 
 ## What does it show?
 - "Status" ("Durum"): the state pill, why no state is read, and for an account reader the accounts with Connect again (the service's purpose) and Disconnect for the site's own, the last error on file, a link to the provider's drawer. Then where its settings are and "Open its settings".
@@ -28,7 +28,7 @@ module: connections_screen
 
 ## Which pages did CX11 give a key service? (Status, "Connection details" under the card's gate, Where it is used)
 - IndexNow (CX11a): the key, SEO gate, `connections-indexnow-page.md`. Google Analytics (CX11b): tag and GA4 property, Visitors and privacy gate, `connections-google-analytics-page.md`.
-- Google Cloud Translation (CX11c): the API key, Languages and Translation gate, `connections-google-translate-page.md`. WhatsApp and İYS (CX11d): the accounts, Communication gate, `connections-communication-page.md`.
+- Google Cloud Translation (CX11c): the API key, Languages and Translation gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers (CX11d2): `connections-sms-providers-page.md`.
 
 ## Where does a write from it return?
 - The page's hidden `connections_return` sends Check/Disconnect back to `?service=<key>`; Connect again returns there through `pg_connect_start_fields()`'s return path.

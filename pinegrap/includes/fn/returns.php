@@ -1793,7 +1793,8 @@ function pg_return_label_url($order_id, $return_id)
  * @param string   $today       Y-m-d, or '' for today
  * @return array enabled, deliveries (ship_to_id, label, deadline, lines of
  *               id, name, quantity, returnable), returns
- *               (pg_return_present()), can_request, has_returns
+ *               (pg_return_present()), can_request, has_returns; a line's
+ *               gift_card says it is never returnable
  */
 function pg_return_customer_view($order_id, $format_date = null, $today = '')
 {
@@ -1811,9 +1812,16 @@ function pg_return_customer_view($order_id, $format_date = null, $today = '')
     // A request with an active carrier return label offers its download,
     // whatever the setting: staff made the label for the customer to print.
     $labelled = pg_shipment_label_labelled_returns($order_id);
+    $order_open = pg_return_refund_order_open((string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'"));
 
     foreach (pg_returns_of_order($order_id) as $return) {
         $shown = pg_return_present($return, $enabled, $format);
+
+        // A cancelled order's money went back with the cancellation: no
+        // refund of the return falls due.
+        if (!$order_open) {
+            $shown['refund_deadline'] = '';
+        }
 
         if (pg_shipment_label_customer_offered($shown['status'], in_array($shown['id'], $labelled, true))) {
             $shown['label_url'] = pg_return_label_url($order_id, $shown['id']);
@@ -1824,7 +1832,7 @@ function pg_return_customer_view($order_id, $format_date = null, $today = '')
 
     $view['has_returns'] = !empty($view['returns']);
 
-    if (!$enabled || !in_array((string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "'"), array('complete', 'exported'), true)) {
+    if (!$enabled || !$order_open) {
         return $view;
     }
 
@@ -1850,7 +1858,7 @@ function pg_return_customer_view($order_id, $format_date = null, $today = '')
 
         foreach ($lines as $line) {
             $left += $line['returnable'];
-            $shown[] = array('id' => $line['id'], 'name' => $line['name'], 'quantity' => $line['quantity'], 'returnable' => $line['returnable']);
+            $shown[] = array('id' => $line['id'], 'name' => $line['name'], 'quantity' => $line['quantity'], 'returnable' => $line['returnable'], 'gift_card' => !empty($line['gift_card']));
         }
 
         if ($left > 0) {
@@ -1907,6 +1915,9 @@ function pg_return_form_html($deliveries, $form)
                 $cell = '<input type="number" class="form-control form-control-sm text-end" id="pg-ov-return-qty-' . $id . '"'
                     . ' name="qty[' . $id . ']" min="0" max="' . $left . '" step="1" value="0" inputmode="numeric"'
                     . ' aria-label="' . h(lang(array('string' => 'How many to return: {var:1}', 'vars' => array((string) $line['name'])))) . '">';
+            } elseif (!empty($line['gift_card'])) {
+                // Never returnable (pg_return_returnable()), not in a return.
+                $cell = '<span class="small text-muted">' . h(lang('Gift cards cannot be returned')) . '</span>';
             } else {
                 $cell = '<span class="small text-muted">' . h(lang('Already in a return')) . '</span>';
             }
@@ -2492,6 +2503,7 @@ function pg_returns_panel_rows($statuses, $limit = PG_RETURN_PANEL_LIMIT)
         "SELECT
             order_returns.*,
             orders.order_number,
+            orders.status AS order_status,
             orders.billing_first_name,
             orders.billing_last_name,
             orders.billing_email_address
@@ -2559,14 +2571,23 @@ function pg_return_time_text($stamp)
 
 /**
  * The refund due date of a return, while it is due: from the moment the
- * goods are on their way back until the money is.
+ * goods are on their way back until the money is. A return of an order that
+ * is no longer complete or exported is never refunded (its money goes back
+ * with the cancellation, pg_return_refund_order_open()), so nothing falls
+ * due for it.
  *
- * @param array $return a row of order_returns
+ * @param array       $return       a row of order_returns
+ * @param string|null $order_status orders.status ('' when the order is
+ *                                  gone); null when the caller does not know it
  * @return string Y-m-d, or ''
  */
-function pg_return_refund_due($return)
+function pg_return_refund_due($return, $order_status = null)
 {
     if (!in_array((string) $return['status'], array('shipped', 'received'), true)) {
+        return '';
+    }
+
+    if (($order_status !== null) && !pg_return_refund_order_open($order_status)) {
         return '';
     }
 
@@ -4278,7 +4299,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         $returned_quantities[(int) $item['order_item_id']] = ($returned_quantities[(int) $item['order_item_id']] ?? 0) + (int) $item['quantity'];
     }
 
-    pg_credit_points_lines_refunded($return['order_id'], $returned_quantities);
+    pg_credit_points_lines_refunded($return['order_id'], $returned_quantities, array('id' => (int) $return['id'], 'amount' => (int) $amount));
 
     // A referral's reward, when what is left of the order no longer counts.
     pg_referral_order_refunded($return['order_id']);
@@ -4295,6 +4316,13 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     }
 
     pg_review_refresh_products($returned_products);
+
+    // Nothing of the order left with the customer: no purchase stands, so
+    // the review request still waiting to go out is cancelled, as a
+    // cancellation cancels it (process_order_cancellation()).
+    if (pg_return_order_fully_refunded($return['order_id'])) {
+        pg_review_request_cancel($return['order_id']);
+    }
 
     $release();
 
@@ -4370,6 +4398,59 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         'unclear' => false,
         'credit' => $credit,
     );
+}
+
+/**
+ * Whether refunded returns gave back every unit of an order: each line's
+ * quantity is covered by what its refunded returns took back. A line no
+ * return can reach (a download, a line sent to no address) keeps the
+ * purchase. Pure.
+ *
+ * @param array $lines each: quantity, refunded (units of refunded returns)
+ * @return bool false for an order without lines
+ */
+function pg_return_order_refunded_whole($lines)
+{
+    $any = false;
+
+    foreach ((array) $lines as $line) {
+        $quantity = isset($line['quantity']) ? (int) $line['quantity'] : 0;
+
+        if ($quantity <= 0) {
+            continue;
+        }
+
+        $any = true;
+
+        if ((isset($line['refunded']) ? (int) $line['refunded'] : 0) < $quantity) {
+            return false;
+        }
+    }
+
+    return $any;
+}
+
+/**
+ * Whether refunded returns gave back every unit of an order
+ * (pg_return_order_refunded_whole()), read from its lines; the review rating
+ * reads a purchase the same way (pg_review_purchase_stands_sql()).
+ *
+ * @param int $order_id
+ * @return bool
+ */
+function pg_return_order_fully_refunded($order_id)
+{
+    $lines = db_items(
+        "SELECT
+            order_items.quantity,
+            (SELECT COALESCE(SUM(order_return_items.quantity), 0)
+                FROM order_return_items
+                JOIN order_returns ON order_returns.id = order_return_items.return_id
+                WHERE (order_return_items.order_item_id = order_items.id) AND (order_returns.refunded_at > 0)) AS refunded
+        FROM order_items
+        WHERE (order_items.order_id = '" . (int) $order_id . "') AND (order_items.saved_for_later = 0)");
+
+    return pg_return_order_refunded_whole(is_array($lines) ? $lines : array());
 }
 
 /**
@@ -4655,8 +4736,16 @@ function pg_return_remind_refunds($today = '')
         $today = date('Y-m-d');
     }
 
-    foreach (db_items("SELECT * FROM order_returns WHERE status IN ('shipped', 'received')") as $row) {
-        $stage = pg_return_reminder_stage(pg_return_refund_due($row), $today);
+    // The order's status too: a return of a cancelled order is never refunded,
+    // so no reminder rings for it.
+    $rows = db_items(
+        "SELECT order_returns.*, orders.status AS order_status
+        FROM order_returns
+        LEFT JOIN orders ON orders.id = order_returns.order_id
+        WHERE order_returns.status IN ('shipped', 'received')");
+
+    foreach ($rows as $row) {
+        $stage = pg_return_reminder_stage(pg_return_refund_due($row, (string) $row['order_status']), $today);
         $column = pg_return_reminder_stamp_column($stage);
 
         if (($column === '') || ((int) $row[$column] > 0)) {

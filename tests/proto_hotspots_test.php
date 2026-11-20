@@ -574,7 +574,7 @@ function test_proto_hotspots_view_list_and_problems()
 	pg_assert_contains("ui.broken.textContent = broken ? _sdT('{var:1} broken', broken) : '';", $source, '"N broken" in the bar');
 	pg_assert_contains("window.localStorage.getItem('pg_proto_list')", $source, 'the panel\'s state per browser');
 	pg_assert_contains("window.matchMedia('(min-width: 1100px)').matches", $source, 'closed by default under 1,100 px');
-	pg_assert_contains('var url = page ? _pgPrototypeUrl(page) : \'\';', $source, 'Play opens the viewer at the selected page');
+	pg_assert_contains('if (page && _pgPrototypeUrl(page)) return page;', $source, 'Play opens the viewer at the selected page');
 	pg_assert_contains('ui.play.hidden = !_sdProtoPlayUrl();', $source, 'and is not shown without an address');
 	pg_assert_contains("tools.appendChild(ui.play);", $source, 'Play sits in the canvas bar\'s Prototype mode, which folds and wraps by its width, so every tool stays in reach');
 	foreach (array('.sd-proto-list-open .sd-proto-list', '.sd-proto-broken', '.sd-proto-problems', '.sd-proto-badge', '.sd-proto-hot.sd-proto-hot-picked', '.sd-proto-edge-picked') as $selector) {
@@ -2709,4 +2709,17 @@ function test_proto_hotspots_view_search()
 	pg_assert_contains('if (_sdProto.search) _sdProtoSearchRun(true);', $source, 'a redraw searches again');
 	pg_assert_contains('.sd-proto .pgc-node.sd-proto-found-on {', $css, 'the match gone to is seen');
 	pg_assert_contains('.sd-proto-search[hidden] { display: none; }', $css, 'the row hides');
+}
+
+// Play starts from the selected page when it has an address, else from the
+// first tab that has one, and its title names the page it opens.
+function test_proto_hotspots_view_play_names_its_start()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+
+	pg_assert_contains("var page = (item && item.kind === 'page') ? _pgPageByKey(item.key) : null;\n        if (page && _pgPrototypeUrl(page)) return page;\n        for (var i = 0; i < _pages.length; i++) if (_pgPrototypeUrl(_pages[i])) return _pages[i];\n        return null;", $source, 'the selected page, else the first with an address');
+	pg_assert_contains('return _pgPrototypeUrl(_sdProtoPlayStart());', $source, 'the address is the start page\'s');
+	pg_assert_contains("_sdT('Play the prototype from {var}', start.page_name || _sdT('New Page'))", $source, 'the title names the start page');
+	pg_assert_contains("_sdProto.ui.play.setAttribute('aria-label', label);", $source, 'and so does its accessible name');
+	pg_assert_contains("_sdProtoPicked();\n        _sdProtoListDraw();\n        _sdProtoSearchMark();\n        _sdProtoPlayState();", $source, 'a change of selection updates it');
 }

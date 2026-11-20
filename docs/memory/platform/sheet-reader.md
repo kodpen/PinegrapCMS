@@ -13,7 +13,7 @@ module: sheet_read
 
 ## What is a cell?
 - `array('t' => type, 'v' => string)`: `s` text, `n` number, `b` boolean (`1`/`0`), `d` date (day count from 1899-12-30; a 1904 workbook is moved to that count; a time alone is a fraction of a day), `e` error (`#DIV/0!`).
-- A number's text is the file's: .xlsx its `<v>`, .ods its `office:value` (PHPExcel gave a float's text: `2.5E+15`, `1.0E-7`), .xls `(string)` of the float, as PHPExcel gave it.
+- A number's text is the file's: .xlsx its `<v>`, .ods its `office:value`, .xls `(string)` of the float. A whole number under a format of zeros (post code, phone, tax ID) is text with its leading zeros (#10622, `sheet-reader-leading-zeros.md`).
 - `pg_sheet_cell_text($cell, $time_format = 'Y-m-d H:i:s')` is the product importer's text. The bank import keeps `erp_bank_sheet_value()` (time `Y-m-d H:i`, two decimals) on `v` and the type (`erp_bank_xls_cell()`); its `$error` maps to the import's texts: `large` "The file is too large.", the rest "The file could not be read."
 - Both importers read the first sheet (index 0), or the one the sheet question chose when a workbook has more than one (`sheet-import-upload.md`).
 

@@ -234,6 +234,33 @@ function pg_check_in_run($find, array $pick, array $user, $event_access, $query 
 }
 
 /**
+ * What ticket.checked_in carries for a ticket just marked used: the ticket,
+ * its order and line, what it is for, and when and by whom it was checked
+ * in. Never its code nor the code's hash. Pure.
+ *
+ * @param array $ticket the row as read after the check-in
+ * @return array
+ */
+function pg_check_in_ticket_event(array $ticket)
+{
+    $used_at = (int) ($ticket['used_at'] ?? 0);
+    $product_id = (int) ($ticket['product_id'] ?? 0);
+
+    return array(
+        'id'                => (int) ($ticket['id'] ?? 0),
+        'order_id'          => (int) ($ticket['order_id'] ?? 0),
+        'order_number'      => (int) ($ticket['order_number'] ?? 0),
+        'order_item_id'     => (int) ($ticket['order_item_id'] ?? 0),
+        'unit'              => (int) ($ticket['unit'] ?? 0),
+        'product_id'        => ($product_id > 0) ? $product_id : null,
+        'calendar_event_id' => (int) ($ticket['calendar_event_id'] ?? 0),
+        'recurrence_number' => (int) ($ticket['recurrence_number'] ?? 0),
+        'checked_in_at'     => ($used_at > 0) ? gmdate('Y-m-d\TH:i:s\Z', $used_at) : null,
+        'checked_in_by'     => (int) ($ticket['used_by'] ?? 0),
+    );
+}
+
+/**
  * The guest's name on a ticket: the first and last name the product form
  * asked for that unit, else the buyer's. Pure.
  *

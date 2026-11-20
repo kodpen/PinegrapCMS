@@ -70,8 +70,24 @@
  *                            amount (minor units, VAT included, int >= 0),
  *                            currency (ISO 4217); a quote missing any of
  *                            them is dropped
+ *   price            array   create(): what the service charged for the
+ *                            label, value (a plain decimal as the service
+ *                            wrote it, before VAT where the service says
+ *                            so) and currency (ISO 4217); empty when the
+ *                            service gave none or the label cost nothing
+ *                            (a test label)
  *   log              array   sentences for the activity log, in order
  *   raw              array   the service's answer, for the log only
+ *
+ * track() of a shipment the service knows but the carrier has not scanned
+ * yet (no status given, or the service's own "unknown" code) is a success
+ * with status created, built by pg_label_track_not_scanned(), never a
+ * failure: the tracking job stops a driver after a few failures in a row,
+ * which is meant for a service that refuses or cannot be reached, and the
+ * parcel row already holds created, so nothing is written. A status code the
+ * driver does not know, a refusal and an unreachable service stay failures.
+ * A webhook message without a status stays a failure too, so a message cannot
+ * move a parcel already on its way back to created.
  *
  * An answer never carries the account's secrets: pg_label_call() masks any
  * secret value it finds in the error, the log and the raw answer, so a
@@ -449,6 +465,31 @@ function pg_label_quote_normalize($quote)
 }
 
 /**
+ * The price a service charged for a label, checked: a plain decimal of 0
+ * or more as the service wrote it (a point before the decimals, at most
+ * six), and a currency code. Anything else is no price, never repaired: the
+ * order's shipping cost then stays the rate typed for its method.
+ *
+ * @param mixed $price array with value (string or int) and currency
+ * @return array value (string), currency; empty when there is no price
+ */
+function pg_label_price_normalize($price)
+{
+    if (!is_array($price) || !isset($price['value'], $price['currency'])) {
+        return array();
+    }
+
+    $value = is_int($price['value']) ? (string) $price['value'] : (is_string($price['value']) ? trim($price['value']) : '');
+    $currency = is_string($price['currency']) ? strtoupper(trim($price['currency'])) : '';
+
+    if ((preg_match('/^\d{1,12}(\.\d{1,6})?$/', $value) !== 1) || (preg_match('/^[A-Z]{3}$/', $currency) !== 1)) {
+        return array();
+    }
+
+    return array('value' => $value, 'currency' => $currency);
+}
+
+/**
  * A driver's info.
  *
  * @param string $key
@@ -597,6 +638,25 @@ function pg_label_svg_valid($svg)
 }
 
 /**
+ * The track() answer of a shipment the service knows but the carrier has not
+ * scanned yet: a success with status created and no time, so the tracking
+ * job writes nothing on a parcel that holds created and counts no failure
+ * (see the header of this file). Pure.
+ *
+ * @param string $reference the service's id of the shipment
+ * @return array
+ */
+function pg_label_track_not_scanned($reference)
+{
+    return array(
+        'success'   => true,
+        'reference' => is_scalar($reference) ? (string) $reference : '',
+        'status'    => 'created',
+        'status_at' => 0,
+    );
+}
+
+/**
  * A driver's answer in the fixed shape (see the header of this file). Keys
  * the shape does not have are dropped, so nothing a service adds of its own
  * reaches a caller.
@@ -627,6 +687,7 @@ function pg_label_answer($operation, $answer)
         'barcode'         => '',
         'account'         => '',
         'quotes'          => array(),
+        'price'           => array(),
         'log'             => array(),
         'raw'             => array(),
     );
@@ -679,6 +740,12 @@ function pg_label_answer($operation, $answer)
 
     if (isset($answer['tracking_url'])) {
         $shape['tracking_url'] = pg_shipment_tracking_url_clean($answer['tracking_url']);
+    }
+
+    // What the service charged for the label, as it wrote it: the Accounting
+    // module turns it into minor units of the order's currency.
+    if (isset($answer['price'])) {
+        $shape['price'] = pg_label_price_normalize($answer['price']);
     }
 
     if (!in_array($shape['status'], pg_shipment_statuses(), true)) {

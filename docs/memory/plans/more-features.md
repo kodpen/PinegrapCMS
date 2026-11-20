@@ -23,7 +23,6 @@ priority: 6
 - Architect (2026-11-16, agent channel message 6554): all eight are priority 6. First those that need no schema (the digest, the map, customer value), then the meeting link, wholesale, referral, tickets, courses. When a step starts is the coordinators': the free steps of plans already begun come first.
 
 ## Which plans are there?
-- `referral-programme.md`: a customer brings a friend and earns store credit.
 - `event-tickets.md`: a ticket with a QR code per place, check-in at the door, a waiting list.
 
 ## When is this file deleted?

@@ -777,6 +777,105 @@ function test_prototype_frame_inject_adds_head_tags_and_helper()
 	}
 }
 
+// A click that misses (lands on no link, button or field) flashes the links
+// that lead somewhere; the hotspots switch, a text selection, a page with no
+// such link and a placed comment leave it alone.
+function test_prototype_frame_inject_flashes_the_links_on_a_missed_click()
+{
+	$out = pg_proto_frame_inject('<html><head></head><body><p>x</p></body></html>', array());
+
+	pg_assert_contains('.pg-proto-flash a[data-pg-proto]:not([data-pg-proto="broken"]):not([data-pg-proto="draft"]){animation:pg-proto-flash .9s ease-out}', $out);
+	pg_assert_contains('@keyframes pg-proto-flash{', $out);
+	pg_assert_contains('@media (prefers-reduced-motion:reduce){.pg-proto-flash a[data-pg-proto]', $out);
+	pg_assert_contains('if (!a) { miss(e); return; }', $out);
+	pg_assert_false(strpos($out, 'pgComment.on) return;') !== false, 'no comment mode in a plain frame');
+
+	$comments = pg_proto_frame_inject('<html><head></head><body><p>x</p></body></html>', array('comments' => true));
+	pg_assert_contains('root.classList.contains("pg-proto-hotspots") || pgComment.on) return;', $comments, 'placing a comment is no miss');
+
+	$result = prototype_viewer_test_frame_clicks($out);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'plain' => true,
+		'button' => false,
+		'link' => false,
+		'right' => false,
+		'hotspots' => false,
+		'selecting' => false,
+		'no links' => false,
+	), $result);
+}
+
+/**
+ * Runs the frame's helper script in Node over a minimal document and clicks
+ * it in each case; answers whether each click flashed the links, or null
+ * without Node.
+ */
+function prototype_viewer_test_frame_clicks($html)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$status = 1;
+	@exec('node --version 2>&1', $out, $status);
+
+	if ($status !== 0) {
+		return null;
+	}
+
+	$start = strpos($html, '<script id="pg-proto-frame">');
+	pg_assert_true($start !== false, 'the helper script is there');
+	$start += strlen('<script id="pg-proto-frame">');
+	$code = substr($html, $start, strpos($html, '</script>', $start) - $start);
+
+	$script = 'var listeners = {}, classes = {}, hasLinks = true, collapsed = true;' . "\n"
+		. 'var root = { offsetWidth: 0, classList: {'
+		. ' add: function (c) { classes[c] = 1; }, remove: function (c) { delete classes[c]; },'
+		. ' toggle: function (c, on) { if (on) classes[c] = 1; else delete classes[c]; },'
+		. ' contains: function (c) { return !!classes[c]; } } };' . "\n"
+		. 'var document = { documentElement: root, body: null, baseURI: "http://example.test/",'
+		. ' addEventListener: function (t, f) { (listeners[t] = listeners[t] || []).push(f); },'
+		. ' querySelector: function () { return hasLinks ? {} : null; } };' . "\n"
+		. 'var window = { parent: { postMessage: function () {} }, addEventListener: function () {},'
+		. ' getSelection: function () { return { isCollapsed: collapsed }; } };' . "\n"
+		. 'var setTimeout = function () { return 1; }, clearTimeout = function () {};' . "\n"
+		. $code . "\n"
+		. 'function el(inside) { return { closest: function (sel) { return sel.split(/,\\s*/).indexOf(inside) === -1 ? null : { getAttribute: function () { return null; }, hasAttribute: function () { return false; } }; } }; }' . "\n"
+		. 'function click(target, button) { delete classes["pg-proto-flash"];'
+		. ' var e = { target: target, button: button || 0, preventDefault: function () {}, stopImmediatePropagation: function () {} };'
+		. ' listeners.click.forEach(function (f) { f(e); }); return !!classes["pg-proto-flash"]; }' . "\n"
+		. 'var out = {};' . "\n"
+		. 'out.plain = click(el(""));' . "\n"
+		. 'out.button = click(el("button"));' . "\n"
+		. 'out.link = click(el("a"));' . "\n"
+		. 'out.right = click(el(""), 2);' . "\n"
+		. 'classes["pg-proto-hotspots"] = 1; out.hotspots = click(el("")); delete classes["pg-proto-hotspots"];' . "\n"
+		. 'collapsed = false; out.selecting = click(el("")); collapsed = true;' . "\n"
+		. 'hasLinks = false; out["no links"] = click(el("")); hasLinks = true;' . "\n"
+		. 'console.log(JSON.stringify(out));';
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgpf');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $status);
+	@unlink($file);
+
+	pg_assert_same(0, $status, 'the frame script runs: ' . implode("\n", array_slice($out, 0, 8)));
+
+	return json_decode(implode("\n", $out), true);
+}
+
 function test_prototype_frame_inject_primes_the_cookie_jar_and_hides_the_notice()
 {
 	$out = pg_proto_frame_inject('<html><head></head><body></body></html>', array(), array('pg_consent' => '1.a0.m0'));

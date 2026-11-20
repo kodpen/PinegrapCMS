@@ -1025,6 +1025,11 @@ function pg_settings_legacy_anchors()
         // shows the connection.
         'whatsapp_app_id'  => array('contact',    'pgset-whatsapp'),
         'iys_user'         => array('contact',    'pgset-iys'),
+        // Each SMS provider's account moved onto its page of Connections;
+        // an old link to its fields lands on the SMS card.
+        'sms_netgsm_user'  => array('contact',    'pgset-sms'),
+        'sms_iletimerkezi_user' => array('contact', 'pgset-sms'),
+        'sms_twilio_user'  => array('contact',    'pgset-sms'),
         'pgset-security'   => array('security',   'pgset-session'),
         'pgsub-devices'    => array('security',   'pgset-device'),
         'pgsub-signin'     => array('security',   'pgset-signin'),

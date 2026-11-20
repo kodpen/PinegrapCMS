@@ -16,7 +16,9 @@
  * application's own webhook subscriptions (workspace.app.command), and only
  * where the application may read the channel (ws_app_reads_channel(), as
  * workspace.app.mentioned); the application answers with
- * POST /workspace/channels/{id}/messages and the writer sees "Sent to <app>".
+ * POST /workspace/channels/{id}/messages and the writer sees "Sent to <app>",
+ * or answers the writer alone with POST /workspace/commands/answer and the
+ * event's answer_token (app_answers.php).
  * An application that is disabled, expired, without workspace:commands or
  * unable to read the channel leaves its command answered as unknown.
  *
@@ -291,9 +293,12 @@ function ws_app_command_find($word, $rows = null)
  * @param array|null $values    the arguments by name (ws_app_command_values());
  *                              null for a command without a definition, whose
  *                              payload has no values key
+ * @param string     $answer_token the writer-only answer's token
+ *                              (ws_app_answer_token()); '' before the upgrade,
+ *                              whose payload has no answer_token key
  * @return array
  */
-function ws_app_command_payload($channel, $thread, $app_id, $name, $user_id, $text, $body, $parent_id = 0, $values = null)
+function ws_app_command_payload($channel, $thread, $app_id, $name, $user_id, $text, $body, $parent_id = 0, $values = null, $answer_token = '')
 {
     $payload = array(
         'command'      => '/' . (string) $name,
@@ -310,6 +315,10 @@ function ws_app_command_payload($channel, $thread, $app_id, $name, $user_id, $te
 
     if (is_array($values)) {
         $payload['values'] = $values;
+    }
+
+    if ((string) $answer_token !== '') {
+        $payload['answer_token'] = (string) $answer_token;
     }
 
     return $payload;
@@ -365,7 +374,8 @@ function ws_app_command_send($viewer, $channel, $row, $rest, $parent_id = 0)
 
     $thread = ws_channel_is_thread($channel) ? ws_thread($channel['id']) : null;
     $announce = function () use ($channel, $thread, $row, $viewer, $reader, $rest, $parent_id, $values) {
-        pg_announce('workspace.app.command', ws_app_command_payload($channel, $thread, (int) $row['app_id'], $row['name'], (int) $viewer['id'], ws_plain_text($reader, $rest), (string) $rest, $parent_id, $values));
+        $token = function_exists('ws_app_answer_token_for') ? ws_app_answer_token_for((int) $viewer['id'], (int) $channel['id'], (int) $row['app_id'], (string) $row['name']) : '';
+        pg_announce('workspace.app.command', ws_app_command_payload($channel, $thread, (int) $row['app_id'], $row['name'], (int) $viewer['id'], ws_plain_text($reader, $rest), (string) $rest, $parent_id, $values, $token));
     };
 
     if ($agent !== null) {

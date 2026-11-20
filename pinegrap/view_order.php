@@ -2576,6 +2576,19 @@ if (!$_POST) {
         }
     }
 
+    // The order's costs and net profit (includes/erp/order_profit_view.php):
+    // only with Accounting on and ERP access, as product cost is seen nowhere
+    // else; nothing is read otherwise.
+    $output_order_profit = '';
+    if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp']))) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_profit_view.php');
+
+        if (erp_order_profit_shown($user)) {
+            $output_order_profit = erp_order_profit_card((int) $_GET['id'], (string) $status);
+        }
+    }
+
     // The order's documents in the order they are made - invoice, its
     // e-document, delivery note, e-delivery note - each with where it
     // stands and the next one as a single button. It replaces the ERP
@@ -2765,6 +2778,7 @@ if (!$_POST) {
                                         $output_affiliate,
                                         pg_legal_documents_panel_card((int) $_GET['id']),
                                         pg_returns_panel_card((int) $_GET['id']),
+                                        $output_order_profit,
                                     )) . '
                                 </div>
                             </div>
@@ -3061,12 +3075,16 @@ if (!$_POST) {
         // the notes column nothing could be noted, so nothing is taken here.
         // On an order without an invoice the lines given back are noted too
         // (erp_order_refund_lines_note()), so the next refund by lines does
-        // not give the same line back again.
+        // not give the same line back again; on an invoiced order the order
+        // lines are noted for the points count alone
+        // (pg_credit_points_lines_marker()), so a return of the same lines
+        // does not take their points a second time.
         $refund_points_marker = '';
         if (is_array($refund_by_lines) && pg_schema_has('order_refunds', 'notes')) {
-            $refund_points = pg_credit_points_lines_refunded($order_id, pg_credit_points_erp_quantities($order_id, $refund_source, (array) $refund_by_lines['quantities']));
-            $refund_points_marker = trim(pg_credit_points_marker($refund_points['total'])
-                . ((($refund_source['source'] ?? '') === 'order') ? ' ' . erp_order_refund_lines_note((array) $refund_by_lines['quantities']) : ''));
+            $refund_points_lines = pg_credit_points_erp_quantities($order_id, $refund_source, (array) $refund_by_lines['quantities']);
+            $refund_points = pg_credit_points_lines_refunded($order_id, $refund_points_lines);
+            $refund_points_marker = trim(pg_credit_points_marker($refund_points['total']) . ' '
+                . ((($refund_source['source'] ?? '') === 'order') ? erp_order_refund_lines_note((array) $refund_by_lines['quantities']) : pg_credit_points_lines_marker($refund_points_lines)));
         }
 
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id" . (($refund_points_marker !== '') ? ', notes' : '') . ", created_at)

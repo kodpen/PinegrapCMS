@@ -845,7 +845,7 @@ function test_legal_documents_kvkk_reaches_the_store()
 	$store = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_store');
 	$inject = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_inject');
 
-	pg_assert_contains("'kvkk'     => (\$liveform->get_field_value('legal_kvkk') == 1)", $submit, 'submit passes the answer');
+	pg_assert_contains("'kvkk'     => pg_legal_document_ticked(\$liveform->get_field_value('legal_kvkk'))", $submit, 'submit passes the answer');
 	pg_assert_contains("'legal_contract', 'legal_kvkk'", $submit, 'a single value');
 	pg_assert_contains("'legal_contract', 'legal_kvkk'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/express_order.php'), 'a single value on the express order');
 	pg_assert_contains("array_diff(\$accepted_types, array('kvkk'))", $store, 'no consent without the box');
@@ -925,4 +925,74 @@ function test_legal_document_render_bracket_without_field_stays()
 		pg_legal_document_render('[[a||b]] [[^^tax^^||none]]', array('tax' => '')),
 		'a negative part with no field before it'
 	);
+}
+
+// A box counts as ticked by the value it posts: present and not '0'. The
+// server's refusal and the acceptance kept with the order read the same rule,
+// so an order the check let through is never kept as "Not accepted".
+function test_legal_documents_ticked_rule()
+{
+	pg_assert_true(pg_legal_document_ticked('1'));
+	pg_assert_true(pg_legal_document_ticked('on'));
+	pg_assert_true(pg_legal_document_ticked(1));
+	pg_assert_false(pg_legal_document_ticked(''));
+	pg_assert_false(pg_legal_document_ticked('0'));
+	pg_assert_false(pg_legal_document_ticked(' '));
+	pg_assert_false(pg_legal_document_ticked(null));
+	pg_assert_false(pg_legal_document_ticked(array('1')));
+}
+
+// submit_order.php refuses and keeps by that one rule: no required-field
+// check (which passes '0') and no == 1 (which keeps 'on' as not accepted).
+function test_legal_documents_submit_order_reads_the_ticked_rule()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	pg_assert_false(strpos($source, "validate_required_field('legal_' . \$legal_type") !== false, 'the required-field check passes a posted 0');
+	pg_assert_false((bool) preg_match("/get_field_value\('legal_(preinfo|contract|kvkk)'\) == 1/", $source), 'acceptance read with == 1');
+	pg_assert_same(7, substr_count($source, 'pg_legal_document_ticked('));
+}
+
+// The city line of an address prints the province only when it is not the
+// city again, as the order summary and its e-mail print it: "06100 Ankara",
+// not "06100 Ankara Ankara"; the district before the city unless it repeats it.
+function test_legal_documents_city_line_drops_a_repeated_state()
+{
+	pg_assert_same(array('06100', 'Ankara'), pg_legal_document_city_line('06100', '', 'Ankara', 'ankara'));
+	pg_assert_same(array('34710', 'Moda', 'Kadıköy', 'İstanbul'), pg_legal_document_city_line('34710', 'Moda', 'Kadıköy', 'İstanbul'));
+	pg_assert_same(array('34710', 'Kadıköy', 'İstanbul'), pg_legal_document_city_line('34710', 'Kadıköy', 'Kadıköy', 'İstanbul'));
+
+	$values = pg_legal_document_values(
+		array('billing_zip_code' => '06100', 'billing_city' => 'Ankara', 'billing_state' => 'Ankara', 'total' => 100),
+		array(), array(), array(), array(), 'legal_documents_test_money'
+	);
+
+	pg_assert_same('06100 Ankara', $values['text']['buyer_address']);
+
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_for_order');
+	pg_assert_contains("pg_legal_document_city_line(\$ship_to['zip_code'], \$ship_to['district'] ?? '', \$ship_to['city'], \$ship_to['state'])", $section, 'the delivery address too');
+}
+
+// A card payment in instalments keeps the instalment difference in the
+// order's total (orders.installment_charges); the documents print it with the
+// surcharge, so the parts add up to the total the customer paid. A cart has
+// none yet: whatever an earlier attempt left on its row is not counted.
+function test_legal_documents_installment_charges_print_with_the_surcharge()
+{
+	$values = pg_legal_document_values(
+		array('subtotal' => 12350, 'surcharge' => 100, 'installment_charges' => '755', 'total' => 13205),
+		array(), array(), array(), array(), 'legal_documents_test_money'
+	);
+
+	pg_assert_same('8.55 TL', $values['text']['surcharge']);
+	pg_assert_same('132.05 TL', $values['text']['total']);
+
+	$none = pg_legal_document_values(array('subtotal' => 100, 'installment_charges' => '', 'total' => 100), array(), array(), array(), array(), 'legal_documents_test_money');
+	pg_assert_same('', $none['text']['surcharge'], 'an order paid at once stores an empty text');
+
+	$cart = pg_legal_document_cart_order(array('installment_charges' => 755), array(array('line_total' => 1000, 'tax' => 0)), array(), array());
+	pg_assert_same(0, $cart['installment_charges']);
+
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_for_order');
+	pg_assert_contains('orders.installment_charges,', $section, 'read with the order');
 }

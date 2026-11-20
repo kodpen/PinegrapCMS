@@ -12,7 +12,7 @@ priority: 6
 - Product cost only in the ERP: `erp_product_costs`; an invoiced order's sale moves (`erp_stock_moves`); a bundle's `order_item_components.unit_cost`. A plain line has no cost kept at the sale.
 - Payment: no fee read or kept, no rate per method. iyzico's answer object carries its commission fee; Stripe's balance transaction and PayPal's capture breakdown are not read; `pg_payment_answer()` keeps fixed keys.
 - Marketplace: imported lines carry price only; `marketplace_product_map.commission` is read once at approval, often NULL; no finance call exists.
-- Shipping: `shipment_labels` has no price; `pg_label_answer()` drops a service's fee; `shipping_methods` holds what the shop charges.
+- Shipping: `shipment_labels` has no price; since NP3 a label's price is kept as the order's cost row (`erp/erp-order-profit-label-price.md`); `shipping_methods` holds what the shop charges.
 - No profit per order or per channel anywhere; `erp_profit_report()` gives per month and per product.
 
 ## What binds it?
