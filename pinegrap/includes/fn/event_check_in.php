@@ -202,15 +202,17 @@ function pg_check_in_undo($ticket_id, $query = null)
 
 /**
  * Checks a ticket in: finds it, answers it, and marks a valid one used.
- * When the UPDATE loses to a scan on another phone, the row is read again
- * and the answer is "used".
+ * When the UPDATE changes no row, the row is read again and answered as it
+ * is then: "used" after a scan on another phone, "void" after a cancel,
+ * "unknown" after a deletion, "failed" when the write itself failed.
  *
  * @param callable $find   function (): array|null, the ticket row
  * @param array    $pick   pg_check_in_pick_parse()
  * @param array    $user   id, role, manage_ecommerce, manage_calendars
  * @param callable $event_access function (int $event_id): bool
  * @param callable|null $query pg_event_tickets_query() by default
- * @return array answer, ticket (the row as read after the write, or null)
+ * @return array answer (pg_check_in_answer() or failed), ticket (the row as
+ *               read after the write, or null)
  */
 function pg_check_in_run($find, array $pick, array $user, $event_access, $query = null)
 {
@@ -219,11 +221,17 @@ function pg_check_in_run($find, array $pick, array $user, $event_access, $query 
     $answer = pg_check_in_answer($ticket, $pick, $allowed);
 
     if ($answer === 'valid') {
-        if (!pg_check_in_mark_used((int) $ticket['id'], (int) ($user['id'] ?? 0), $query)) {
-            $answer = 'used';
-        }
-
+        $marked = pg_check_in_mark_used((int) $ticket['id'], (int) ($user['id'] ?? 0), $query);
         $ticket = call_user_func($find);
+
+        // The write lost: the row changed after it was read (another phone
+        // checked it in, its order was cancelled or deleted), so the answer
+        // is the row's as read again. A row that still reads valid was not
+        // marked because the write failed: "failed", never "used".
+        if (!$marked) {
+            $answer = pg_check_in_answer($ticket, $pick, $allowed);
+            $answer = ($answer === 'valid') ? 'failed' : $answer;
+        }
     }
 
     if (($answer === 'unknown') || ($answer === 'denied')) {
@@ -591,6 +599,9 @@ function pg_check_in_answer_text($answer, $ticket, $for = '')
 
         case 'void':
             return array('pill' => lang('Voided'), 'title' => lang('Void ticket'), 'detail' => trim(lang('Its order was cancelled.') . ' ' . $order), 'tone' => 'rose');
+
+        case 'failed':
+            return array('pill' => lang('Not checked in'), 'title' => lang('The ticket could not be checked in'), 'detail' => lang('Scan it again.'), 'tone' => 'rose');
 
         case 'denied':
             return array('pill' => lang('Not allowed'), 'title' => lang('You may not check in this ticket'), 'detail' => lang('Its event or product is not one you manage.'), 'tone' => 'rose');

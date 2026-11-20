@@ -266,3 +266,43 @@ function test_check_in_picks_keep_the_newest_dates_under_the_cap()
 	pg_assert_contains('ORDER BY MAX(id) DESC', $sql, 'the dates sold most lately first');
 	pg_assert_true(strpos($sql, 'ORDER BY') < strpos($sql, 'LIMIT 500'), 'ordered before the cap');
 }
+
+function test_check_in_lost_write_answers_from_the_row_read_again()
+{
+	$pick = check_in_test_pick();
+	$staff = check_in_test_staff();
+
+	// Read valid, then the order is cancelled before the UPDATE: the row is
+	// void, and the guest must hear "void", not "already checked in".
+	check_in_test_store('void');
+	$stale = array_merge($GLOBALS['check_in_test_row'], array('state' => 'valid'));
+	$reads = 0;
+	$find = function () use ($stale, &$reads) {
+		$reads++;
+
+		return ($reads === 1) ? $stale : check_in_test_find();
+	};
+
+	pg_assert_same('void', pg_check_in_run($find, $pick, $staff, 'check_in_test_calendar_yes', 'check_in_test_query')['answer'], 'voided between the read and the write');
+
+	// Read valid, then the order is deleted: no row is left.
+	$reads = 0;
+	$gone = function () use ($stale, &$reads) {
+		$reads++;
+
+		return ($reads === 1) ? $stale : null;
+	};
+	$deleted = pg_check_in_run($gone, $pick, $staff, 'check_in_test_calendar_yes', 'check_in_test_query');
+	pg_assert_same('unknown', $deleted['answer'], 'deleted between the read and the write');
+	pg_assert_same(null, $deleted['ticket'], 'and nothing of it shown');
+
+	// The write fails and the row still reads valid: never "used", never
+	// "valid" (it was not marked); the screen asks for a second scan.
+	check_in_test_store();
+	$failed = pg_check_in_run('check_in_test_find', $pick, $staff, 'check_in_test_calendar_yes', function () {
+		return false;
+	});
+	pg_assert_same('failed', $failed['answer'], 'a failed write is its own answer');
+	pg_assert_same('valid', $GLOBALS['check_in_test_row']['state'], 'the ticket stays valid');
+	pg_assert_true(pg_check_in_answer_text('failed', $failed['ticket'])['title'] !== pg_check_in_answer_text('unknown', null)['title'], 'with its own words');
+}
