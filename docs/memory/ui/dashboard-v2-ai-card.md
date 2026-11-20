@@ -1,14 +1,16 @@
 ---
 name: dashboard-v2-ai-card
-description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, the proposals waiting for the person, giving Claude a job through ws_send, the chat box; the daily summary
+description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, proposals, giving Claude a job through ws_send, the chat box; the daily summary
 ---
 
 ## Where is it?
 - `includes/dashboard/v2/cards/ai.php`; renderer `pgDash.renderers.ai` in `assets/js/pg_dash_cards_assistant.js` (bundle `pg_dash.min.js`); styles in the "Assistant card" section of `pg_dash.src.css`. Tests: `tests/dashboard_v2_ai_test.php`. Gate `workspace` (`pg_dashboard_workspace_rights()`).
 
 ## When is it "connected"?
-- `ws_claude_schema_ready()` and `ws_claude_ready()` (switched on, application, routine URL and token, API on): header chip "Claude · connected". Otherwise "Not connected" (screen 15): Connect Claude (`pg_settings_workspace_link('ws-claude')`) for a person with the Workspace settings right, Connections (`api_settings.php`, the OAuth/MCP connections) for role < 3, a line naming who connects it for everyone else, and the MCP note.
-- The header chip fills the frame's `.pg-dash-card-chip` slot from the renderer.
+- `ws_claude_schema_ready()` and `ws_claude_ready()` (switched on, application, routine URL and token, API on): header chip "Claude · connected". Otherwise "Claude · not connected".
+
+## What does the card show while Claude is off?
+- The notice, the pitch and the agent note: `dashboard-v2-ai-card-claude-off.md`.
 
 ## Which proposals are counted?
 - Agent questions sit above them: `workspace/poll-agent-question-reach.md`.
@@ -25,7 +27,7 @@ description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant
 - Where: per assistant the first channel of `pg_dashboard_v2_ai_channels()` (the one the person last asked any assistant in, then the oldest public ones; unarchived, may post) where it may be asked. The note says everybody who reads the channel sees the talk. Its note keeps the job box's 8 px under the field: `.pg-dash-ai-talk` has no flex gap to absorb the job box's -.375rem pull-up, so `.pg-dash-ai-chat-form + .pg-dash-ai-status` sets .5rem (#8625).
 - How: the first line is a new message `<tag> text` through `ws_send`, the next ones reply to it (`parent_id`), each with the tag; then the kick the answer names (`claude`, `ai`, `agent`). Text limit `pg_dashboard_v2_ai_chat_max()`: 2000, or `WS_MESSAGE_MAX` less the tag.
 - Answers: `ws_sync` (`since_id`, `panel`) every 8 s for 10 minutes after the last line; a message replying to one of the chain joins it and shows as plain text (DOMParser) with an Open link. Only what the person may read comes back. Then "No answer yet…".
-- Not done: the chat when Claude is offline. After a reload, "Open it": `dashboard-v2-ai-chat-keep.md`.
+- After a reload, "Open it": `dashboard-v2-ai-chat-keep.md`. While Claude is off it offers the other assistants (Claude left out by `pg_dashboard_v2_ai_chat_askable()`).
 
 ## Where is the daily summary?
 - Above the proposals when it is on (question 3: a setting with an hour, off by default; #5080): `workspace/workspace-claude-daily-summary.md`.

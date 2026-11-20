@@ -5026,7 +5026,8 @@
     gap: .875rem;
   }
 
-  .pg-dash-ai-off-icon {
+  .pg-dash-ai-off-icon,
+  .pg-dash-ai-notice-icon {
     display: inline-flex;
     flex: 0 0 2.75rem;
     align-items: center;
@@ -5039,7 +5040,8 @@
     font-size: 1.25rem;
   }
 
-  html[data-bs-theme="dark"] .pg-dash-ai-off-icon {
+  html[data-bs-theme="dark"] .pg-dash-ai-off-icon,
+  html[data-bs-theme="dark"] .pg-dash-ai-notice-icon {
     background: rgba(99, 102, 241, .16);
     color: #a5b4fc;
   }
@@ -5048,7 +5050,8 @@
     min-width: 0;
   }
 
-  .pg-dash-ai-off-title {
+  .pg-dash-ai-off-title,
+  .pg-dash-ai-notice-title {
     margin: 0 0 .25rem;
     font-size: .9375rem;
     font-weight: 700;
@@ -5066,6 +5069,79 @@
     flex-wrap: wrap;
     gap: .5rem;
     margin-bottom: .625rem;
+  }
+
+  /* Claude not connected while the card holds something else: one row, a
+     32 px plug tile, the state and what is missing, and a quiet small
+     Connect Claude at the right that drops under the text on a phone. */
+  .pg-dash-ai-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem .75rem;
+    padding: .625rem .75rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .75rem;
+    background: var(--pgd-fill);
+  }
+
+  /* The plug tile of the not connected card, small. */
+  .pg-dash-ai-notice-icon {
+    flex-basis: 2rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: .625rem;
+    font-size: .9375rem;
+  }
+
+  .pg-dash-ai-notice-main {
+    flex: 1 1 14rem;
+    min-width: 0;
+  }
+
+  .pg-dash-ai-notice-title {
+    display: block;
+    margin: 0;
+  }
+
+  .pg-dash-ai-notice-text,
+  .pg-dash-ai-quiet-ask {
+    margin: .125rem 0 0;
+    font-size: .8125rem;
+    color: var(--pgd-soft);
+  }
+
+  .pg-dash .pg-dash-ai-notice > .pg-dash-btn-sm {
+    flex: 0 0 auto;
+    margin-left: auto;
+    text-decoration: none;
+  }
+
+  /* No application agent active: a grey block at the foot, its title, two
+     lines and a quiet small button (or who connects agents). */
+  .pg-dash-ai-agents {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .25rem;
+    padding: .75rem .875rem;
+    border-radius: .75rem;
+    background: var(--pgd-track);
+  }
+
+  .pg-dash-ai-agents > .pg-dash-rows-title {
+    margin: 0;
+  }
+
+  .pg-dash-ai-agents-line {
+    margin: 0;
+    font-size: .8125rem;
+    color: var(--pgd-soft);
+  }
+
+  .pg-dash .pg-dash-ai-agents > .pg-dash-btn-sm {
+    margin-top: .375rem;
+    text-decoration: none;
   }
 
   /* The summary as Claude's message: a round gradient avatar beside a
@@ -5361,7 +5437,9 @@
   @media (forced-colors: active) {
     .pg-dash-ai-chip,
     .pg-dash-ai-bubble,
+    .pg-dash-ai-notice,
     .pg-dash-ai-line { border-color: CanvasText; }
+    .pg-dash-ai-agents { border: 1px solid CanvasText; }
     .pg-dash .pg-dash-ai-send { border: 1px solid ButtonText; background: ButtonFace; color: ButtonText; box-shadow: none; }
   }
 
