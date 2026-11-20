@@ -474,6 +474,7 @@
     "@ someone · # a record · / a command · Ctrl+Enter to send": "@ kişi · # kayıt · / komut · göndermek için Ctrl+Enter",
     "@ someone · # a record · / a command · Shift+Enter for a new line": "@ kişi · # kayıt · / komut · yeni satır için Shift+Enter",
     "@agent": "@ajan",
+    "@herkes woke no agent here. The channel's agents ({var:1}) answer in a discussion only when named: write their name, or add them under Agents in this discussion in the people panel and write the tag again.": "@herkes burada hiçbir ajanı uyandırmadı. Kanalın ajanları ({var:1}) bir tartışmada yalnızca adları yazılınca yanıtlar: adlarını yazın ya da kişiler panelinde Bu tartışmadaki ajanlar altında ekleyip etiketi yeniden yazın.",
     "@people": "@kişiler",
     "@person": "@kişi",
     "@{var:1} answered": "@{var:1} yanıtladı",

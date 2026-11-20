@@ -1168,3 +1168,6 @@ function ws_agent_brief($agent, $row, $scopes)
 
     return ws_ai_briefing_text($lines, ws_ai_request_language($request));
 }
+
+// The @herkes hint of a discussion, written after the wake (everyone_hint.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/everyone_hint.php');

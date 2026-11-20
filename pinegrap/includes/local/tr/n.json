@@ -2675,6 +2675,7 @@
     "Not about one app": "Belirli bir uygulamayla ilgili değil",
     "Not accepted": "Onaylanmadı",
     "Not added yet": "Henüz eklenmedi",
+    "Not added:": "Eklenmedi:",
     "Not allowed": "İzin yok",
     "Not always: you can leave a key for us, and say so in the booking. We send you a message when the work is done.": "Her zaman değil: bize bir anahtar bırakabilir ve bunu talebinizde belirtebilirsiniz. İş bittiğinde size mesaj göndeririz.",
     "Not an IP address or range: {var:1}": "IP adresi ya da aralığı değil: {var:1}",
