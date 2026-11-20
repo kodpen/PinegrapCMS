@@ -24,4 +24,4 @@ description: A page tab's tip on the Page Design Studio's page strip lists its o
 
 ## Which PR, and what was asked?
 - Architect (2026-11-19): the Visual Page Editor's links in three steps without picture approval: canvas marks (designer/canvas-link-marks.md), the P key back to the Prototype view (designer/prototype-back-key.md), link counts on a page tab; any need for a schema change or an endpoint goes to the architect first.
-- DX3, PR #NNNN (2026-11-20). Before it the counts showed only in the Prototype view's Links tab.
+- DX3, PR #10640 (2026-11-20). Before it the counts showed only in the Prototype view's Links tab.
