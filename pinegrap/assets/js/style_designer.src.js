@@ -81011,6 +81011,7 @@ const StyleDesigner = (function () {
         list.innerHTML = html;
         _pgTabsSyncViewButton();
         _pgTabsSyncPublishButton();
+        _pgTabSuggestSync();
         _pgTabsFit();
         _pgContentAnswerAuto();
     }
@@ -82602,6 +82603,217 @@ const StyleDesigner = (function () {
             document.addEventListener('keydown', _pgTabsMenuKey, true);
         }, 0);
         window._pgTabMenuEl = m;
+    }
+
+    // ── Suggested groups ──
+    // A design without groups is offered a grouping (D53), read from the
+    // pages alone: `pages` [{ key, address, kind }] in strip order, `kind`
+    // 'account', 'shop', 'blog', 'email' or ''. A page of a kind joins its
+    // kind's group; any other page whose address starts with the same word
+    // as another's ("/services-web", "/services/seo") joins that word's
+    // group, "/blog…" the blog's; the home page and a page alone stay out
+    // ("Other"). A group needs two pages; one that holds every page is no
+    // grouping; at most eight (one colour each), the smallest left out
+    // first, the later of equals next, strip order kept. A design under
+    // `opts.min` pages (6) gets nothing: the strip holds them. Pure: the
+    // names and colours are the caller's.
+    var _PG_TAB_SUGGEST_KINDS = ['account', 'shop', 'blog', 'email'];
+    var _PG_TAB_SUGGEST_MAX = 8;
+    function _pgTabSuggestWord(address) {
+        var m = /^\/*([^\/\-_.]+)/.exec(String(address || '').toLowerCase());
+        var w = m ? m[1] : '';
+        return (w.length >= 2 && !/^\d+$/.test(w)) ? w : '';
+    }
+    function _pgTabSuggestGroups(pages, opts) {
+        var list = Array.isArray(pages) ? pages : [];
+        var min = (opts && opts.min > 0) ? opts.min : 6;
+        if (list.length < min) return [];
+        var groups = [], byId = {};
+        list.forEach(function (p, i) {
+            if (!p || !p.key) return;
+            var word = _pgTabSuggestWord(p.address);
+            var kind = (_PG_TAB_SUGGEST_KINDS.indexOf(p.kind) !== -1) ? p.kind : (word === 'blog' ? 'blog' : '');
+            var id = kind || (word ? 'w:' + word : '');
+            if (!id) return;
+            if (!byId[id]) {
+                byId[id] = { id: id, kind: kind, word: kind ? '' : word, keys: [], at: i };
+                groups.push(byId[id]);
+            }
+            byId[id].keys.push(String(p.key));
+        });
+        groups = groups.filter(function (g) { return g.keys.length >= 2 && g.keys.length < list.length; });
+        if (groups.length > _PG_TAB_SUGGEST_MAX) {
+            var keep = groups.slice().sort(function (a, b) { return (b.keys.length - a.keys.length) || (a.at - b.at); })
+                .slice(0, _PG_TAB_SUGGEST_MAX);
+            groups = groups.filter(function (g) { return keep.indexOf(g) !== -1; });
+        }
+        return groups.map(function (g) { return { id: g.id, kind: g.kind, word: g.word, keys: g.keys }; });
+    }
+
+    // A page's kind for the suggestion: an e-mail design, a classic page's
+    // type, else the system widget it places.
+    var _PG_TAB_SUGGEST_TYPES = {
+        account: ['my account', 'my account profile', 'login', 'logout', 'registration entrance', 'registration confirmation',
+                  'change password', 'forgot password', 'set password', 'update address book', 'view order',
+                  'email preferences', 'membership entrance', 'membership confirmation'],
+        shop:    ['catalog', 'catalog detail', 'express order', 'order form', 'shopping cart', 'billing information',
+                  'shipping address and arrival', 'order preview', 'order receipt']
+    };
+    var _PG_TAB_SUGGEST_WIDGETS = {
+        account: ['login_form', 'registration', 'my_account', 'account_profile', 'account_email', 'account_security',
+                  'account_invoices', 'address_book', 'change_password', 'forgot_password', 'set_password',
+                  'email_preferences', 'logout', 'order_view', 'wishlist', 'membership'],
+        shop:    ['shopping_cart', 'express_order', 'order_form', 'order_preview', 'billing_information',
+                  'shipping_address_and_arrival', 'shipping_method', 'catalog_listing', 'catalog_item_view'],
+        blog:    ['blog_list']
+    };
+    function _pgTabSuggestKind(p) {
+        var t = _pgTreeOf(p);
+        if (t && t.props && t.props.pgEmail) return 'email';
+        var type = String(p.page_type || 'standard');
+        var kinds = Object.keys(_PG_TAB_SUGGEST_TYPES);
+        for (var i = 0; i < kinds.length; i++) {
+            if (_PG_TAB_SUGGEST_TYPES[kinds[i]].indexOf(type) !== -1) return kinds[i];
+        }
+        if (type !== 'standard' || typeof _swTabHasWidget !== 'function') return '';
+        kinds = Object.keys(_PG_TAB_SUGGEST_WIDGETS);
+        for (var j = 0; j < kinds.length; j++) {
+            if (_swTabHasWidget(p, _PG_TAB_SUGGEST_WIDGETS[kinds[j]])) return kinds[j];
+        }
+        return '';
+    }
+
+    // Worked out again only when a page comes, goes or changes its address.
+    var _pgTabSuggest = null;   // { sig, groups }
+    function _pgTabSuggestOffKey() { return 'pg_sd_tabsuggest_' + ((_design && _design.styleId) || 0); }
+    function _pgTabSuggestIsOff() {
+        try { return window.localStorage.getItem(_pgTabSuggestOffKey()) === '1'; } catch (e) { return false; }
+    }
+    // Refused or accepted, the offer does not come back for this design in
+    // this browser.
+    function _pgTabSuggestSetOff() {
+        try { window.localStorage.setItem(_pgTabSuggestOffKey(), '1'); } catch (e) {}
+    }
+    function _pgTabSuggestCurrent() {
+        if (!_pgTabLayoutEditable() || _sdComponentOnly() || Object.keys(_pgTabGroups).length || _pgTabSuggestIsOff()) return [];
+        var sig = _pages.map(function (p) { return p.key + '|' + _pgPageAddress(p); }).join('\n');
+        if (!_pgTabSuggest || _pgTabSuggest.sig !== sig) {
+            _pgTabSuggest = {
+                sig: sig,
+                groups: _pgTabSuggestGroups(_pages.map(function (p) {
+                    return { key: p.key, address: _pgPageAddress(p), kind: _pgTabSuggestKind(p) };
+                }))
+            };
+        }
+        return _pgTabSuggest.groups;
+    }
+    function _pgTabSuggestName(g) {
+        switch (g.kind) {
+            case 'account': return _sdT('Account');
+            case 'shop':    return _sdT('Shop');
+            case 'blog':    return _sdT('Blog');
+            case 'email':   return _sdT('E-mails');
+        }
+        var lang = document.documentElement.lang || undefined;
+        var w = String(g.word || '');
+        try { return (w.charAt(0).toLocaleUpperCase(lang) + w.slice(1)).slice(0, 60); } catch (e) { return w.slice(0, 60); }
+    }
+    // Grey is left for last: a suggested group wears a colour.
+    function _pgTabSuggestColor(i) {
+        var c = _PG_TAB_GROUP_COLORS.slice(1).concat(_PG_TAB_GROUP_COLORS[0]);
+        return c[i % c.length];
+    }
+
+    // The offer: a button after the Pages button while there is one.
+    function _pgTabSuggestSync() {
+        var groups = _pgTabSuggestCurrent();
+        var btn = document.getElementById('sd-tab-suggest-btn');
+        if (!groups.length) {
+            if (btn) btn.remove();
+            return;
+        }
+        if (btn) return;
+        var all = document.getElementById('sd-tabs-all');
+        if (!all || !all.parentNode) return;
+        var label = _sdT('Suggested groups');
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'sd-tab-suggest-btn';
+        btn.className = 'sd-icon-btn sd-tab-suggest-btn';
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.innerHTML = '<span class="bi bi-magic" aria-hidden="true"></span><span class="sd-tab-suggest-label">' + esc(label) + '</span>';
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            _pgTabSuggestOpen(btn);
+        });
+        all.parentNode.insertBefore(btn, all.nextSibling);
+    }
+
+    // The groups it would make, each with its colour and count, then
+    // "Group the pages" and "No, thanks".
+    function _pgTabSuggestOpen(anchor) {
+        _pgTabsCloseMenu();
+        var groups = _pgTabSuggestCurrent();
+        if (!groups.length) return;
+        var item = function (act, icon, label) {
+            return '<button type="button" class="sd-tab-popmenu-item" data-act="' + act + '">' +
+                   '<span class="bi ' + icon + ' me-3"></span>' + esc(label) + '</button>';
+        };
+        var rows = groups.map(function (g, i) {
+            return '<div class="sd-tab-suggest-row">' +
+                   '<span class="sd-tab-color-dot" data-color="' + _pgTabSuggestColor(i) + '" aria-hidden="true"></span>' +
+                   '<span class="sd-tab-suggest-name">' + esc(_pgTabSuggestName(g)) + '</span>' +
+                   '<span class="sd-tab-suggest-count">' + g.keys.length + '</span></div>';
+        }).join('');
+        var m = document.createElement('div');
+        m.className = 'sd-tab-popmenu sd-tab-suggest-menu';
+        m.setAttribute('role', 'dialog');
+        m.setAttribute('aria-label', _sdT('Suggested groups'));
+        m.innerHTML =
+            '<div class="sd-tab-popmenu-hint">' + esc(_sdT('Group the pages like this? Read from their addresses and kinds; the rest stay under "Other".')) + '</div>' +
+            rows +
+            '<div class="sd-tab-popmenu-sep"></div>' +
+            item('accept', 'bi-check2', _sdT('Group the pages')) +
+            item('refuse', 'bi-x-lg', _sdT('No, thanks'));
+        document.body.appendChild(m);
+        var r = (anchor || document.body).getBoundingClientRect();
+        m.style.left = Math.max(4, Math.min(r.left, window.innerWidth  - m.offsetWidth  - 8)) + 'px';
+        m.style.top  = Math.max(4, Math.min(r.bottom + 4, window.innerHeight - m.offsetHeight - 8)) + 'px';
+        m.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-act]');
+            if (!b) return;
+            var act = b.dataset.act;
+            _pgTabsCloseMenu();
+            if (act === 'accept') _pgTabSuggestAccept();
+            else if (act === 'refuse') { _pgTabSuggestSetOff(); _pgTabSuggestSync(); }
+        });
+        setTimeout(function () {
+            document.addEventListener('mousedown', _pgTabsMenuOutside, true);
+            document.addEventListener('keydown', _pgTabsMenuKey, true);
+        }, 0);
+        window._pgTabMenuEl = m;
+        var first = m.querySelector('[data-act="accept"]');
+        if (first) first.focus();
+    }
+
+    // Written like any other group change: on the tabs, then through
+    // designer/tab_layout (_pgTabsLayoutChanged()).
+    function _pgTabSuggestAccept() {
+        var groups = _pgTabSuggestCurrent();
+        if (!groups.length) return;
+        groups.forEach(function (g, i) {
+            var gid = 'g' + (i + 1);
+            _pgTabGroups[gid] = { name: _pgTabSuggestName(g), color: _pgTabSuggestColor(i) };
+            g.keys.forEach(function (k) {
+                var p = _pgPageByKey(k);
+                if (p && !p.tabGroup) p.tabGroup = gid;
+            });
+        });
+        _pgTabSuggestSetOff();
+        _pgTabsLayoutChanged();
+        sdToast(esc(_sdT('The pages are grouped.')), 'success', 3000);
     }
 
     // Alt+Left / Alt+Right on a tab: one place over. At the end of its group

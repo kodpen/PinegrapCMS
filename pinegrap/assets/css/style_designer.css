@@ -470,6 +470,16 @@
 .sd-tabs-all-btn { width: auto; min-width: 32px; padding: 0 .4rem; gap: .25rem; font-size: .9rem; }
 .sd-tabs-all-count { font-size: .66rem; font-weight: 600; }
 .sd-tabs-all-count:empty { display: none; }
+/* The suggested groups' offer (a design without groups) and its menu.
+   Under 768 px the button keeps its icon only. */
+.sd-tab-suggest-btn { flex: 0 0 auto; width: auto; min-width: 32px; padding: 0 .5rem; gap: .35rem; font-size: .78rem; white-space: nowrap; }
+.sd-tab-suggest-menu { max-width: 300px; }
+.sd-tab-suggest-row { display: flex; align-items: center; gap: .5rem; padding: .3rem .6rem; color: var(--sd-text); font-size: .8rem; }
+.sd-tab-suggest-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-tab-suggest-count { flex: 0 0 auto; color: var(--sd-text-muted); font-size: .72rem; font-weight: 600; }
+@media (max-width: 767.98px) {
+    .sd-tab-suggest-label { display: none; }
+}
 
 /* The Pages window (part 'pages'): under the Pages button; a sheet from
    the bottom on a phone. Above the strip's menus, below the page menu it
