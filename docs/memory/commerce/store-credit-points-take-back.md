@@ -13,10 +13,15 @@ module: store_credit_points
 - Hooks: `process_order_cancellation()` → `pg_credit_points_order_cancelled()` (not a cart, not a guest); `pg_return_refund()` → `pg_credit_points_lines_refunded()` with the return's quantities; `view_order.php`'s refund by lines (ERP) maps the ERP lines back to order lines (`pg_credit_points_erp_quantities()`, `pg_return_erp_line_map()`) and notes `Reward points taken back: N` on its `order_refunds` row (only when the `notes` column exists); without an invoice the lines given back follow it (`lines:<id>=<qty>`, `erp/erp-order-refund-lines-noted.md`).
 
 ## How is a double take-back avoided?
-- No double take-back: a cancellation takes the order's points less the lines of its refunded returns (`refunded_at > 0`) and less the points in those notes (`pg_credit_points_order_refunded()`); a line refund of a cancelled order takes nothing.
+- Cancellation: takes the order's points less the lines of its refunded returns (`refunded_at > 0`) and less the points in those notes (`pg_credit_points_order_refunded()`); a line refund of a cancelled order takes nothing. The cancel count did not change with #10671.
+- Line refunds (architect 2026-11-20, #10671, PR #PRNUM): each unit's points are taken once. `pg_credit_points_units_taken()` counts a line's taken units as min(quantity, paid + max(screen, recorded)): `screen` the order screen's refunds by lines (their `lines:` notes, `pg_credit_points_screen_noted()`), `paid` returns refunded with money, `recorded` returns recorded as refunded with 0, which match the screen's units first.
+- A new refund takes only the units above that count (`pg_credit_points_units_to_take()`), in either order.
+- Symptom fixed: order screen by lines A x 2 (200 points), then the return of A x 2 recorded with 0 took 200 points again.
+- `pg_return_refund()` passes the return's id and amount; the order screen passes none (`view_order.php` unchanged). Counts come from `pg_credit_points_lines_counted()`; before the refund columns (11.0.34) a return counts as paid.
 
 ## What is not covered?
-- Known limits: a restore of a cancelled order does not give the points back (staff edit the balance on the user screen); the same line refunded both on the order screen and through a return is taken twice; returns refunded before this release are still subtracted on a later cancel.
+- An invoiced order's refund by lines notes no lines (its return invoice may never be issued and does not say which refund it came from), so its units count as none: a 0 recorded return of those lines still takes the points again. Open question to the architect in PR #PRNUM.
+- A restore of a cancelled order does not give the points back (staff edit the balance on the user screen); returns refunded before this release are still subtracted on a later cancel.
 
 ## Tests?
 - Tests: `tests/store_credit_points_take_back_test.php`.
