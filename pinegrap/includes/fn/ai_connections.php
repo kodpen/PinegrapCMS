@@ -166,6 +166,37 @@ function pg_ai_connection_key_for($provider, $own)
 }
 
 /**
+ * What the assistants' form does with a model assistant's own key. A key
+ * typed for a provider with a connection is not stored (the form shows the
+ * connection instead of a key field); a key kept for another provider is
+ * dropped when the provider changes, so it is never sent to the new one:
+ * the assistant then reads the new provider's connection, or a key typed
+ * for a provider without one. Pure.
+ *
+ * @param array|null       $current  the stored assistant (ws_agent_shape():
+ *                                   kind, provider, key_set), null for new
+ * @param string           $provider the chosen provider
+ * @param string|null|bool $key      the form's decision: null keeps the
+ *                                   stored key, '' empties it, a sealed key
+ *                                   replaces it (false: it could not be
+ *                                   sealed, passed on)
+ * @return string|null|bool the decision to write
+ */
+function pg_ai_connection_agent_key($current, $provider, $key)
+{
+    if (pg_ai_connection_known($provider) && is_string($key) && ($key !== '')) {
+        $key = null;
+    }
+
+    if (($key === null) && is_array($current) && ((string) ($current['kind'] ?? '') === 'model')
+        && !empty($current['key_set']) && ((string) ($current['provider'] ?? '') !== (string) $provider)) {
+        $key = '';
+    }
+
+    return $key;
+}
+
+/**
  * What the data step does for one provider. Where no connection exists the
  * first stored key (in the order given) becomes it; every key equal to the
  * connection's is emptied; a key that differs is kept and goes on working.
