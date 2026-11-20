@@ -1,0 +1,166 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for the Privacy centre's API (includes/api/resources/privacy.php):
+ * the inventory and transfers as answered, the request list's views and
+ * cursor, a request with its steps, the routes and the scope.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/privacy.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
+
+if (!function_exists('api_time')) {
+	function api_time($unix)
+	{
+		return ((int) $unix > 0) ? gmdate('Y-m-d\\TH:i:s\\Z', (int) $unix) : null;
+	}
+}
+
+function _api_privacy_test_route($id)
+{
+	foreach (api_schema() as $route) {
+		if ($route['id'] === $id) {
+			return $route;
+		}
+	}
+
+	return null;
+}
+
+// The inventory: every catalogue line with its keys and counts (null when not
+// known), the retention always a list, the transfers with their marks.
+function test_api_privacy_inventory_present()
+{
+	$inventory = array(
+		'contacts' => array('categories' => array('identity', 'contact'), 'subjects' => array('customer'), 'purpose' => 'Customers', 'ground' => 'legitimate_interest', 'retention' => 'passive_contact', 'person' => array('id', 'int')),
+		'orders'   => array('categories' => array('order'), 'subjects' => array('customer'), 'purpose' => 'Orders', 'ground' => 'contract', 'retention' => array('orders', 'carts')),
+	);
+	$counts = array('contacts' => array('records' => 12, 'people' => 10), 'orders' => array('records' => null, 'people' => null));
+	$transfers = array('stripe' => array('name' => 'Stripe', 'group' => 'payments', 'uses' => 'Card payments', 'country' => 'US', 'data' => array('order'), 'personal' => true, 'abroad' => true, 'unknown' => false));
+
+	$out = api_privacy_inventory_present($inventory, $counts, $transfers, 'TR');
+
+	pg_assert_same('TR', $out['site_country']);
+	pg_assert_same(2, count($out['lines']));
+	pg_assert_same(array('table' => 'contacts', 'categories' => array('identity', 'contact'), 'subjects' => array('customer'), 'purpose' => 'Customers', 'ground' => 'legitimate_interest', 'retention' => array('passive_contact'), 'records' => 12, 'people' => 10), $out['lines'][0]);
+	pg_assert_same(array('orders', 'carts'), $out['lines'][1]['retention']);
+	pg_assert_same(null, $out['lines'][1]['records'], 'not known stays null');
+	pg_assert_same(null, $out['lines'][1]['people']);
+	pg_assert_same(array('service' => 'stripe', 'name' => 'Stripe', 'group' => 'payments', 'uses' => 'Card payments', 'country' => 'US', 'data' => array('order'), 'personal' => true, 'abroad' => true, 'state_unknown' => false), $out['transfers'][0]);
+
+	// A line missing from the counts is not known either.
+	$out = api_privacy_inventory_present($inventory, array(), array(), '');
+	pg_assert_same(null, $out['lines'][0]['records']);
+	pg_assert_same(null, $out['site_country']);
+	pg_assert_same(array(), $out['transfers']);
+}
+
+// The list's views are the screen's; the cursor pages by id, newest first,
+// over proven rows only.
+function test_api_privacy_requests_sql()
+{
+	$sql = api_privacy_requests_sql('open', 0, 50, 1000000);
+	pg_assert_contains(pg_privacy_request_view_where('open', 1000000), $sql);
+	pg_assert_contains('ORDER BY id DESC LIMIT 51', $sql);
+	pg_assert_true(strpos($sql, 'id <') === false, 'no cursor, no bound');
+
+	$sql = api_privacy_requests_sql('ending', 40, 10, 1000000);
+	pg_assert_contains(pg_privacy_request_view_where('ending', 1000000), $sql);
+	pg_assert_contains("(id < '40')", $sql);
+	pg_assert_contains('LIMIT 11', $sql);
+
+	foreach (array('open', 'ending', 'answered', 'all') as $view) {
+		pg_assert_contains('(received_at > 0)', api_privacy_requests_sql($view, 0, 1, 1), $view . ' reads proven rows only');
+	}
+
+	pg_assert_same(array('open', 'ending', 'answered', 'all'), api_privacy_request_views());
+}
+
+// A request as listed: no message or answer; days_left only while open.
+function test_api_privacy_request_present()
+{
+	$now = 1000000;
+	$row = array('id' => '5', 'kind' => 'erasure', 'status' => 'open', 'source' => 'staff', 'result' => '', 'contact_id' => '3', 'user_id' => '0', 'assigned_user_id' => '2', 'created_by' => '2',
+		'email' => 'a@example.com', 'name' => 'Ayşe', 'message' => 'Please erase me', 'answer' => '', 'verified_at' => '0', 'received_at' => '900000', 'due_at' => (string) ($now + 86400 * 3 - 10), 'closed_at' => '0', 'reminded' => '7');
+
+	$out = api_privacy_request_present($row, $now);
+
+	pg_assert_same(5, $out['id']);
+	pg_assert_same('erasure', $out['kind']);
+	pg_assert_same(null, $out['result'], 'no result yet');
+	pg_assert_same(3, $out['contact_id']);
+	pg_assert_same(null, $out['user_id'], '0 is nobody');
+	pg_assert_same(2, $out['assigned_user_id']);
+	pg_assert_same('a@example.com', $out['email']);
+	pg_assert_same(api_time(900000), $out['received_at']);
+	pg_assert_same(null, $out['verified_at']);
+	pg_assert_same(3, $out['days_left']);
+	pg_assert_true(!array_key_exists('message', $out) && !array_key_exists('answer', $out), 'the list carries no text');
+	pg_assert_same(array_keys(api_privacy_request_schema()), array_keys($out), 'the schema names every field');
+
+	$row['status'] = 'answered';
+	$row['result'] = 'sent';
+	$row['closed_at'] = '950000';
+	$out = api_privacy_request_present($row, $now);
+	pg_assert_same(null, $out['days_left'], 'a closed request has no days left');
+	pg_assert_same('sent', $out['result']);
+	pg_assert_same(api_time(950000), $out['closed_at']);
+}
+
+// One request: the text and its steps, each step's kind, status and result
+// from the audit line, with nothing else of it.
+function test_api_privacy_request_detail()
+{
+	$row = array('id' => '5', 'kind' => 'information', 'status' => 'answered', 'source' => 'form', 'result' => 'sent', 'contact_id' => '0', 'user_id' => '0', 'assigned_user_id' => '0',
+		'email' => 'b@example.com', 'name' => '', 'message' => 'What do you hold?', 'answer' => 'This.', 'verified_at' => '1', 'received_at' => '2', 'due_at' => '3', 'closed_at' => '4');
+	$history = array(
+		array('created_at' => '200', 'action' => 'answer', 'actor_name' => 'admin', 'after_json' => '{"kind":"information","status":"answered","result":"sent","email":"x@example.com"}'),
+		array('created_at' => '100', 'action' => 'create', 'actor_name' => '', 'after_json' => 'not json'),
+	);
+
+	$out = api_privacy_request_detail_present($row, $history, 10);
+
+	pg_assert_same('What do you hold?', $out['message']);
+	pg_assert_same('This.', $out['answer']);
+	pg_assert_same(array('action' => 'answer', 'at' => api_time(200), 'actor' => 'admin', 'kind' => 'information', 'status' => 'answered', 'result' => 'sent'), $out['steps'][0]);
+	pg_assert_same(array('action' => 'create', 'at' => api_time(100), 'actor' => null, 'kind' => null, 'status' => null, 'result' => null), $out['steps'][1]);
+	pg_assert_same(array_keys(api_privacy_request_detail_schema()), array_keys($out));
+}
+
+// Three read routes under privacy:read, offered to manager and up; no write.
+function test_api_privacy_routes_and_scope()
+{
+	$expect = array('privacy.inventory' => '/privacy/inventory', 'privacy.requests' => '/privacy/requests', 'privacy.request' => '/privacy/requests/{id}');
+
+	foreach ($expect as $id => $path) {
+		$route = _api_privacy_test_route($id);
+		pg_assert_true(is_array($route), $id . ' is declared');
+		pg_assert_same('GET', $route['method']);
+		pg_assert_same($path, $route['path']);
+		pg_assert_same('privacy:read', $route['scope']);
+	}
+
+	$groups = api_scope_groups();
+	pg_assert_same('privacy:read', $groups['privacy']['read']);
+	pg_assert_same('', $groups['privacy']['write'], 'writes stay on the panel');
+
+	foreach (array(0 => true, 1 => true, 2 => true, 3 => false) as $role => $offered) {
+		$owner = array('role' => $role, 'manage_ecommerce' => false, 'manage_contacts' => true, 'manage_forms' => false);
+		pg_assert_same($offered, in_array('privacy:read', api_owner_scopes($owner), true), 'role ' . $role);
+	}
+}

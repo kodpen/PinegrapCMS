@@ -121,6 +121,11 @@ function api_scope_groups() {
 		// endpoints filter for.
 		'content_review' => array('label' => 'Content review', 'read' => 'content_review:read', 'write' => 'content_review:write'),
 
+		// The Privacy centre: the personal data inventory with its transfers,
+		// and the requests people sent about their data. Read only: answering,
+		// erasing and refusing stay in the panel, where a person confirms them.
+		'privacy'   => array('label' => 'Privacy',    'read' => 'privacy:read',   'write' => ''),
+
 		'webhooks'  => array('label' => 'Webhooks',   'read' => '',               'write' => 'webhooks:manage'),
 
 		'meta'      => array('label' => 'Site info',  'read' => 'meta:read',      'write' => ''),
@@ -418,6 +423,10 @@ function api_owner_scopes($owner) {
 		// The SEO findings are about those same pages and the catalogue beside
 		// them, so they are the same decision.
 		$scopes[] = 'seo:read';
+
+		// The Privacy centre opens to manager and up, as the export and
+		// erasure screens beside it.
+		$scopes[] = 'privacy:read';
 
 		// Moderating what visitors wrote under those pages is the comments
 		// screen's work, which the same people do.
