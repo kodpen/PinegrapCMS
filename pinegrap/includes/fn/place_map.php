@@ -527,6 +527,26 @@ function pg_place_map_bulk_pause($host, $position)
 }
 
 /**
+ * What a bulk call does with one record's answer: write it (found), report
+ * it and go on (not found, and an address that gave no text to ask: the
+ * list query's TRIM keeps a tab or a line break), or stop the call (the
+ * service asks to wait, or fails). Pure.
+ *
+ * @param array $result pg_place_map_lookup()
+ * @return string found, not_found, stop
+ */
+function pg_place_map_bulk_outcome($result)
+{
+    $state = (is_array($result) && isset($result['state'])) ? (string) $result['state'] : '';
+
+    if ($state === 'found') {
+        return 'found';
+    }
+
+    return in_array($state, array('not_found', 'empty'), true) ? 'not_found' : 'stop';
+}
+
+/**
  * Looks up the next records of a form that lack coordinates and writes what
  * is found. Stops at the first answer that is neither found nor not found
  * (the service asks to wait, or fails), so a busy service is not asked again
@@ -563,8 +583,9 @@ function pg_place_map_bulk($page_id, $roles, $skip, $user_id)
         }
 
         $result = pg_place_map_lookup($text);
+        $outcome = pg_place_map_bulk_outcome($result);
 
-        if ($result['state'] === 'found') {
+        if ($outcome === 'found') {
             pg_place_map_write_value($form_id, $roles['lat'], $result['lat']);
             pg_place_map_write_value($form_id, $roles['lng'], $result['lng']);
             db_q("UPDATE forms SET last_modified_user_id = ?, last_modified_timestamp = UNIX_TIMESTAMP() WHERE id = ?", array((string) (int) $user_id, (string) $form_id));
@@ -572,7 +593,7 @@ function pg_place_map_bulk($page_id, $roles, $skip, $user_id)
             continue;
         }
 
-        if ($result['state'] === 'not_found') {
+        if ($outcome === 'not_found') {
             $summary['not_found'][] = array('id' => $form_id, 'reference' => (string) db_value("SELECT reference_code FROM forms WHERE id = '" . (int) $form_id . "'"), 'address' => $text);
             continue;
         }
