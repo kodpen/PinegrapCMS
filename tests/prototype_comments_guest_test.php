@@ -110,3 +110,14 @@ function test_prototype_comments_guest_typed_text_is_not_dropped_by_another_clic
 	pg_assert_true(($pin !== false) && (strpos($handler, 'holding()', $pin) !== false) && (strpos($handler, 'holding()', $pin) < strpos($handler, 'showThread(')), 'a pin waits too');
 	pg_assert_contains("'held' => lang('Send or close this comment first.')", pg_test_function_source('pg_proto_viewer_comments'));
 }
+
+// The box's fields are .form-control-sm in a .875rem box: under 16px, so
+// iOS zoomed the whole viewer in when a guest tapped Your name or Comment.
+function test_prototype_comments_guest_phone_fields_are_16px()
+{
+	$css = pg_proto_shell_comment_css();
+	$phone = substr($css, strpos($css, '@media (max-width: 575.98px)'));
+
+	pg_assert_true(strpos($css, '@media (max-width: 575.98px)') !== false, 'a phone rule');
+	pg_assert_contains('.pg-proto-box .form-control { font-size: 16px; }', $phone);
+}
