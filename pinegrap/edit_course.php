@@ -85,6 +85,7 @@ $course_lessons = ($course_input !== null) ? $course_input['lessons'] : (($cours
 $course_learners = ($course !== null) ? pg_course_learners($course) : array();
 
 if (($course_view === 'learners') && (($_GET['csv'] ?? '') === '1')) {
+    pg_list_excel_capture(array(2 => 'date', 3 => 'number', 4 => 'number', 5 => 'date', 6 => 'date'), lang('Learners'));
     pg_csv_download_start('course-' . $course_id . '-learners.csv');
 
     foreach (pg_course_learners_csv_rows($course_learners) as $csv_row) {
@@ -106,7 +107,10 @@ if ($course !== null) {
 
 if ($course_view === 'learners') {
     $course_toolbar['search'] = pg_list_table_search_box('edit_course_learners');
-    $course_toolbar['secondary'] = array('label' => lang('Download CSV'), 'url' => 'edit_course.php?id=' . $course_id . '&view=learners&csv=1', 'icon' => 'bi-download');
+    $course_toolbar['secondary'] = array(
+        array('label' => lang('Download CSV'), 'url' => 'edit_course.php?id=' . $course_id . '&view=learners&csv=1', 'icon' => 'bi-download'),
+        pg_list_excel_action('edit_course.php?id=' . $course_id . '&view=learners&csv=1'),
+    );
 }
 
 $course_shell_properties = array(

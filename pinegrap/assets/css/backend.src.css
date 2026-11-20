@@ -19430,6 +19430,28 @@ a.ws-chip-message:hover,
   font-style: italic;
   opacity: .7;
 }
+/* The separator and character set a .csv is read with, above its sheet. */
+.office-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem 1rem;
+  padding: .4rem .5rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  background: var(--pg-bg-1);
+}
+.office-choice-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+}
+.office-choice-problem {
+  margin-top: 0;
+}
+.office-choice-problem:empty {
+  display: none;
+}
 .office-pane {
   flex: 1 1 auto;
   min-height: 0;

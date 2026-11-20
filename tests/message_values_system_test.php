@@ -28,7 +28,7 @@ function test_message_values_system_are_escaped()
 		array('cloudflare.php', '$msg .= \': \' . h($resp[\'json\'][\'errors\'][0][\'message\']);', 3),
 		array('cloudflare.php', '$permission_errors[] = lang(array(\'string\' => \'DNS records request failed: {var:1}\', \'vars\' => h($err)));', 1),
 		array('connections.php', '$liveform->add_error(h($flash[\'text\']));', 1),
-		array('connections.php', '$liveform->add_error(lang(array(\'string\' => \'{var:1} does not work: {var:2}\', \'vars\' => array(h($account[\'label\']), h($check[\'error\'])))));', 1),
+		array('connections.php', '$liveform->add_error(lang(array(\'string\' => \'{var:1} does not work: {var:2}\', \'vars\' => array(h($account[\'label\']), connections_error_html($check[\'error\'])))));', 1),
 		array('connections.php', '$liveform->add_notice(h($flash[\'text\']));', 1),
 		array('connections.php', '$liveform->add_notice(lang(array(\'string\' => \'{var:1} was disconnected.\', \'vars\' => h($account[\'label\']))));', 1),
 		array('connections.php', '$liveform->add_notice(lang(array(\'string\' => \'{var:1} works.\', \'vars\' => h($account[\'label\']))));', 1),

@@ -327,7 +327,7 @@ if ($signin_ready) {
                                                             ' . ($signin_microsoft_app_ready
                                                                 ? '<div class="alert theme-success py-3 small mb-3">' . h(lang('Work, school and personal Microsoft accounts sign in through the Microsoft application of Connected accounts.')) . '</div>'
                                                                 : '<div class="alert theme-warning py-3 small mb-3">' . h(lang('Set up the Microsoft application on Connected accounts first. Until then the button stays hidden.')) . '</div>') . '
-                                                            <a href="connections.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Connected accounts')) . '</a>
+                                                            <a href="connections.php?service=microsoft" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Connections')) . ' › Microsoft</a>
                                                         </div>'
                                                         . $signin_redirect_field('signin_microsoft_redirect', lang('Redirect URI (add this as a further Web redirect URI to the Microsoft application)')) . '
                                                         <div class="col-12">

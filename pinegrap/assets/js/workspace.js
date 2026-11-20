@@ -1363,7 +1363,8 @@
         return officeViewLoading;
     }
 
-    // A PDF, a video, or a Word or Excel file, large, without leaving the screen.
+    // A PDF, a video, a Word or Excel file, or a .csv or .tsv as a sheet,
+    // large, without leaving the screen.
     //
     // An Excel workbook or a Word document is offered for editing to whoever
     // may write in its channel (ws_file_office with edit): the changed cells
@@ -1453,6 +1454,22 @@
                 var writable = editing && !!(data.can_replace || data.can_send);
                 var state = { view: null, saving: false };
                 var save = null;
+
+                // A .csv or .tsv, only looked at, is read again with the
+                // separator and character set chosen above its sheet.
+                if (data.office && data.office.kind === 'csv') {
+                    window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, {
+                        reread: function (choice, done) {
+                            api('ws_file_office', { message_id: file.message_id, delimiter: choice.delimiter, encoding: choice.encoding }).then(function (again) {
+                                done(again.office);
+                            }).catch(function (error) {
+                                done(null, (error && error.message) ? error.message : t('error_generic'));
+                            });
+                        }
+                    });
+
+                    return;
+                }
 
                 state.view = window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, writable ? {
                     editable: true,

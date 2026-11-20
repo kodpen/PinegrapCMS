@@ -72,7 +72,7 @@ function test_settings_workspace_assistants_sections_and_anchors()
 	// The voice card's fields are checked before anything of the pane is
 	// written, and written by this pane's save.
 	$save = settings_workspace_assistants_test_source('includes/settings/workspace_assistants.save.php');
-	pg_assert_true(strpos($save, 'ws_voice_settings_check(') !== false && strpos($save, 'ws_voice_settings_check($ws_voice)') < strpos($save, '= ws_claude_settings_save('), 'voice checked before the first write');
+	pg_assert_true(strpos($save, 'ws_voice_settings_check(') !== false && strpos($save, 'ws_voice_settings_check($ws_voice, ws_voice_config())') < strpos($save, '= ws_claude_settings_save('), 'voice checked before the first write');
 	pg_assert_true(strpos($save, 'ws_voice_settings_write(') !== false, 'and written here');
 	pg_assert_false(strpos($card, "array('ws-claude'") !== false, 'no link to the old Claude card');
 	pg_assert_false(strpos($card, "array('ws-bulk'") !== false, 'no link to the old Bulk changes card');

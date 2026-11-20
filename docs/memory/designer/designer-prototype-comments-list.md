@@ -21,13 +21,10 @@ module: prototype_comments
 - The pins live in a fixed layer over the canvas frame in the editor's document, moved on canvas mutations, scroll and resize; nothing is added to the canvas document.
 
 ## What are the endpoints?
-- `api.php` designer sub-actions `proto_comments`, `proto_comment_answer`, `proto_comment_resolve`, `proto_comment_delete`: designers only (not on the content operator's list), the comment must belong to the design named; each answers the fresh list. "Clean" for the page cache.
+- `api.php` designer sub-actions `proto_comments`, `proto_comment_answer`, `proto_comment_resolve`, `proto_comment_delete`: designers only (not on the content operator's list), the comment must belong to the design named; each answers the fresh list. "Clean" for the page cache. `proto_comment_delete` with `link_id` is the Share prototype dialog's Delete comments (`prototype-comments.md`).
 
 ## What is the bell line?
 - `prototype_comment` to the link's maker (`created_by`) for a guest's comment or answer, written by `prototype_comment.php` (`pg_proto_comment_bell()`), addressed (`target_user_id`), reference the comment. It opens `edit_system_style.php?id=…&page=…&comments=1`, which opens the list.
 - At most one an hour per link. Architect (2026-11-16, agent channel message 6207): a `waf_rate_exceeded()` counter with the link id as subject, limit 1, window 3600, as `note_lock.php`; no column on the link.
 
-## What is not here?
-- "Delete this link's comments" (P11) belongs in the Share prototype dialog's links list (PN5); `pg_proto_comments_delete_link()` is ready.
-
-Related: docs/memory/designer/designer-prototype-comments-door.md, docs/memory/designer/designer-prototype-comments-viewer.md, docs/memory/designer/designer-parts-on-demand.md
+Related: docs/memory/designer/prototype-comments.md, docs/memory/designer/designer-prototype-comments-door.md, docs/memory/designer/designer-prototype-comments-viewer.md, docs/memory/designer/designer-parts-on-demand.md

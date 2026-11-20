@@ -679,6 +679,109 @@ function pg_proto_comments_delete_link($link_id)
 }
 
 /**
+ * The Share prototype dialog's "Delete comments": every comment of one link
+ * of the design the dialog was opened on (open and resolved, with their
+ * answers), whether the link is open, expired or revoked. A Site Log line
+ * names the link by its id and hint, never its token.
+ *
+ * @param int    $link_id
+ * @param int    $style_id
+ * @param string $username for the Site Log
+ * @return int|null how many rows were deleted; null when the link is not one of that design
+ */
+function pg_proto_comments_delete_link_of_design($link_id, $style_id, $username)
+{
+    if (((int) $link_id <= 0) || ((int) $style_id <= 0) || !pg_proto_comments_ready()) {
+        return null;
+    }
+
+    $link = db_item("SELECT id, style_id, token_hint FROM prototype_links WHERE id = '" . (int) $link_id . "' LIMIT 1");
+
+    if (!is_array($link) || ((int) $link['style_id'] !== (int) $style_id)) {
+        return null;
+    }
+
+    $deleted = pg_proto_comments_delete_link($link['id']);
+
+    if ($deleted > 0) {
+        $design = (string) db_value("SELECT style_name FROM style WHERE style_id = '" . (int) $style_id . "'");
+
+        log_activity(lang(array('string' => '{var:1} prototype comments of link #{var:2} ({var:3}…) of design ({var:4}) were deleted', 'vars' => array($deleted, (int) $link['id'], (string) $link['token_hint'], $design))), (string) $username);
+    }
+
+    return $deleted;
+}
+
+/**
+ * The statement that counts a design's comments by link, answers counted;
+ * '' for no design. idx_style (style_id) finds the rows.
+ *
+ * @param int $style_id
+ * @return string
+ */
+function pg_proto_comments_link_counts_sql($style_id)
+{
+    return ((int) $style_id > 0) ? 'SELECT link_id, COUNT(*) AS n FROM prototype_comments WHERE style_id = ' . (int) $style_id . ' GROUP BY link_id' : '';
+}
+
+/**
+ * How many comments each link of a design has, answers counted: link id =>
+ * count, a link without any left out. Empty before the step that keeps
+ * comments.
+ *
+ * @param int $style_id
+ * @return int[]
+ */
+function pg_proto_comments_link_counts($style_id)
+{
+    $sql = pg_proto_comments_link_counts_sql($style_id);
+
+    if (($sql === '') || !pg_proto_comments_ready()) {
+        return array();
+    }
+
+    $rows = db_items($sql);
+    $counts = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        if (((int) $row['link_id'] > 0) && ((int) $row['n'] > 0)) {
+            $counts[(int) $row['link_id']] = (int) $row['n'];
+        }
+    }
+
+    return $counts;
+}
+
+/**
+ * The links with comments that a links list does not show (a revoked link
+ * is not listed, but its comments are kept for the designer), newest first.
+ *
+ * @param array[] $listed the listed links' rows
+ * @param int[]   $counts pg_proto_comments_link_counts()
+ * @return int[] link ids
+ */
+function pg_proto_comments_unlisted_links($listed, $counts)
+{
+    $shown = array();
+
+    foreach ((array) $listed as $row) {
+        $shown[(int) $row['id']] = true;
+    }
+
+    $ids = array();
+
+    foreach ((array) $counts as $id => $count) {
+        if (((int) $id > 0) && ((int) $count > 0) && !isset($shown[(int) $id])) {
+            $ids[] = (int) $id;
+        }
+    }
+
+    rsort($ids);
+
+    return $ids;
+}
+
+/**
  * The statement that deletes the comments of designs; '' for no design.
  *
  * @param int|int[] $style_ids

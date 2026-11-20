@@ -2164,6 +2164,51 @@
         return out;
     }
 
+    // The links the designer's canvas marks, from a design marked by mark():
+    // each drawable link (drawable(): a link of a tree, never a classic
+    // menu's or a region's) that is broken or has no target ('' or '#'),
+    // the page frames' first, then the shared components', in document
+    // order. Each: { nodeId, sharedId (0 on a page), source, index (the
+    // nth link of a text), mark ('broken' or 'empty'), label, href, why
+    // (brokenWhy(), '' for an empty link) }. `known` false: the map read
+    // has not answered, so no link is called broken and only the empty
+    // ones are listed.
+    function canvasMarks(marked, known) {
+        var out = [];
+
+        function frame(item, sharedId) {
+            rowsOf(item).forEach(function (row) {
+                var broken = (row.mark === 'broken' && known !== false);
+
+                if (!drawable(row) || !(broken || row.mark === 'empty')) {
+                    return;
+                }
+
+                out.push({ nodeId: row.nodeId, sharedId: sharedId, source: row.source, index: row.index, mark: row.mark, label: row.label, href: row.href, why: broken ? brokenWhy(row) : '' });
+            });
+        }
+
+        ((marked && Array.isArray(marked.pages)) ? marked.pages : []).forEach(function (page) { frame(page, 0); });
+        ((marked && Array.isArray(marked.shared)) ? marked.shared : []).forEach(function (one) { frame(one, parseInt(one.id, 10) || 0); });
+
+        return out;
+    }
+
+    // What the map read is asked for the canvas marks: the design's
+    // addresses but the empty ones (mark() calls those empty without the
+    // read) and the pages its links are kept by; no menu or region, whose
+    // links get no mark (canvasMarks()).
+    function canvasRequest(designed) {
+        var request = (designed && isObject(designed.request)) ? designed.request : {};
+
+        return {
+            hrefs: (Array.isArray(request.hrefs) ? request.hrefs : []).filter(function (href) { return !emptyHref(href); }),
+            page_ids: Array.isArray(request.page_ids) ? request.page_ids.slice() : [],
+            menus: [],
+            regions: []
+        };
+    }
+
     // Where Fit starts when a design does not fit at the smallest zoom: the
     // start frame's top left corner, raised to its band's heading when that
     // stands right above it; null without a start frame.
@@ -2201,6 +2246,53 @@
         }
 
         return laid.frames.some(function (f) { return String(f.id) === id; }) ? id : null;
+    }
+
+    // ── A links panel row dropped on the canvas ──
+
+    // The item of `items` (frames and chips, { id, x, y, w, h } in canvas
+    // units) whose box holds the point `at` ({ x, y }), edges included; of
+    // two that overlap the later one, drawn on top; null over none.
+    function itemAt(items, at) {
+        if (!Array.isArray(items) || !isObject(at)) {
+            return null;
+        }
+
+        var x = Number(at.x);
+        var y = Number(at.y);
+
+        if (!isFinite(x) || !isFinite(y)) {
+            return null;
+        }
+
+        for (var i = items.length - 1; i >= 0; i--) {
+            var item = items[i];
+            var left = isObject(item) ? Number(item.x) : NaN;
+            var top = isObject(item) ? Number(item.y) : NaN;
+
+            if (x >= left && y >= top && x <= left + (Number(item.w) || 0) && y <= top + (Number(item.h) || 0)) {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    // Where a links panel row dropped at `at` (canvas units) points its
+    // link: { item, href }, the frame or chip under the point (itemAt())
+    // and the href an arrow ending there writes (hrefTo()). null for a row
+    // no arrow is drawn from (drawable()), over nothing, or over what takes
+    // no arrow (a shared part's frame, an anchor's, a hidden or a broken
+    // chip).
+    function rowDrop(row, items, at, env) {
+        if (!drawable(row)) {
+            return null;
+        }
+
+        var item = itemAt(items, at);
+        var href = item ? hrefTo(item, env) : null;
+
+        return (href === null) ? null : { item: item, href: href };
     }
 
     // What the selected frame (its id, null for none) shows of a layout:
@@ -2530,6 +2622,8 @@
         boundTo: boundTo,
         markBound: markBound,
         drawTargets: drawTargets,
+        itemAt: itemAt,
+        rowDrop: rowDrop,
         focusOf: focusOf,
         fitStart: fitStart,
         ZOOM_TAP: ZOOM_TAP,
@@ -2538,6 +2632,8 @@
         rowTarget: rowTarget,
         brokenOf: brokenOf,
         problemsOf: problemsOf,
+        canvasMarks: canvasMarks,
+        canvasRequest: canvasRequest,
         widgetPages: widgetPages,
         widgetKind: widgetKind,
         brokenWhy: brokenWhy,

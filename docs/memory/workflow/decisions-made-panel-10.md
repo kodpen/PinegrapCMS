@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-10
-description: Decisions list, panel part 10 (2026-11-17 on): every newly drawn screen is built in the design language, tabs and buttons above all; an area's tab strip sits centred in the window
+description: Decisions list, panel part 10 (2026-11-17 on): new screens in the design language; an area's tab strip centred in the window; the Design Canvas renamed Artifact Canvas, its new icon
 ---
 
 ## Where are the rules and the earlier parts?
@@ -18,5 +18,16 @@ description: Decisions list, panel part 10 (2026-11-17 on): every newly drawn sc
 - Asked on his words that day (agent channel message 9493), with two pictures of Communication: "tablardan birisi sola dayanıyor. diğeri tabı ortaya çekiyor (tablo genişliği yüzünden) bu başka sayfalarda da fark ettim kullanıcı deneyimini etkiliyor."
 - Not chosen: at the left with every tab of the area as wide as the window; at the window's left with the content left centred.
 - Built in #10390 and #10413: `ui/area-tab-strip-centred.md`.
+
+## Is the Design Canvas renamed Artifact Canvas? (owner, 2026-11-20)
+- Yes: Artifact Canvas, in Turkish "Yapıt Tuvali", wherever a screen names it. It replaces Design Canvas ("Tasarım Tuvali") of 2026-11-12 (`decisions-made-panel-6.md`); Page Design Studio and Designs keep their names.
+- Owner (2026-11-20): "Adını ayrıca "Artifact Canvas" yani Yapıt Tuvali olarak güncellemek istiyorum." Told that in picture editing "artifact" also names a compression fault, he went on with the name.
+- The plan writer's reading: only texts change, as in #8894, and the short word "canvas" stays. Built by `plans/artifact-canvas-rename.md`; until its step AC2 lands the screens say Design Canvas.
+
+## Which drawing is the Artifact Canvas icon? (owner, 2026-11-20)
+- Drawing A of the sheet of 2026-11-20 (`plans/artifact-canvas-rename/icon-candidates.png`): two round-cornered sheets, the back one hidden behind the front one and tinted, a wave in the accent hue on the front sheet. It replaces drawing B (`decisions-made-panel-7.md`); the one-colour rule of #9250 stays.
+- Owner (2026-11-20), who brought two pictures he liked (two see-through squares with a wave, two overlapping cards) and asked what joining them gives, on the sheet: "bunu yapalım".
+- Where, in his words: "özellikle dosya yönetici, kanallar ve sayfa tasarımcısında olmak üzere ikonun ve adının geçtiği alanlarda adı ve ikonu güncellensin".
+- Not chosen: the first picture as it is, the wave with drawing B's pen anchors, portrait cards, one line that turns into the wave. The code draws it since the plan's step AC1.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/look-new-parts.md, docs/memory/ui/look-page-widths.md

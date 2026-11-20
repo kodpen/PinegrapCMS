@@ -225,10 +225,10 @@ function test_auto_dialog_page_and_api_use_the_address_checks()
 	$start = strpos($page, 'if (AUTO_DIALOGS) {');
 	$block = substr($page, $start, strpos($page, '// If there is JS to output', $start) - $start);
 
-	pg_assert_same(2, substr_count($block, '$auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);'), 'the preview and the enabled dialogs both pass the guard');
+	pg_assert_same(2, substr_count($block, '$auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs, pg_auto_dialog_components_found($auto_dialogs));'), 'the preview and the enabled dialogs both pass the guard');
 	pg_assert_same(2, substr_count($block, 'software.init_auto_dialogs('), 'both lists reach the page');
 
-	foreach (array('$auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);' => 'software.init_auto_dialogs(') as $guard => $print) {
+	foreach (array('$auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs, pg_auto_dialog_components_found($auto_dialogs));' => 'software.init_auto_dialogs(') as $guard => $print) {
 		$at = 0;
 
 		while (($at = strpos($block, $print, $at + 1)) !== false) {
@@ -261,7 +261,7 @@ function test_auto_dialog_page_rows_are_the_same_for_every_visitor()
 
 	$home = pg_auto_dialogs_on_page($rows, 'home');
 	pg_assert_same(array(2), array_column($home, 'id'), 'a row without a page belongs everywhere');
-	pg_assert_same(array('id' => 2, 'url' => '/ebook', 'width' => 400, 'height' => 650, 'delay' => 15, 'frequency' => 24, 'open_on' => 'delay', 'open_scroll' => 50, 'audience' => 'all', 'place' => 'centre'), $home[0], 'the values the script needs, without the page; a row stored before the open settings opens as before');
+	pg_assert_same(array('id' => 2, 'url' => '/ebook', 'width' => 400, 'height' => 650, 'delay' => 15, 'frequency' => 24, 'content' => 'url', 'component_id' => 0, 'open_on' => 'delay', 'open_scroll' => 50, 'audience' => 'all', 'place' => 'centre'), $home[0], 'the values the script needs, without the page; a row stored before the open settings opens as before');
 	pg_assert_same(array(2, 3), array_column(pg_auto_dialogs_on_page($rows, 'online-shop-sale'), 'id'), 'a page that is part of the name, case-blind');
 	pg_assert_same(array(2, 4), array_column(pg_auto_dialogs_on_page($rows, 'ÜRÜN-listesi'), 'id'), 'multibyte page names');
 	pg_assert_same(array(), pg_auto_dialogs_on_page(false, 'home'), 'a failed query');

@@ -345,6 +345,8 @@ function ws_flow_event_outputs()
             $value('supplier_title', 'text', lang('Supplier')), $value('supplier_tax_number', 'text', lang('Tax number')), $value('currency', 'text', lang('Currency'))),
         'erp.quote.accepted'     => $quote,
         'erp.quote.rejected'     => $quote,
+        'course.completed'       => array($value('name', 'text', lang('Course')), $value('user_id', 'number', lang('User')), $value('contact_id', 'number', lang('Contact')),
+            $value('completed_at', 'text', lang('Completed on'))),
         'credit.issued'          => $credit,
         'credit.expired'         => $credit,
         'workspace.task.completed'      => array_merge($task, array($value('priority', 'text', lang('Priority')), $channel, $actor)),

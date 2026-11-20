@@ -500,6 +500,17 @@ function api_webhook_event_payloads_site() {
 
 		'file.created' => array('fields' => $named('file', 'GET /files/{id}'), 'sample' => array('id' => 310, 'name' => 'price-list.pdf')),
 
+		'course.completed' => array(
+			'fields' => array(
+				'id'           => array('integer', 'The course.'),
+				'name'         => array('string', 'The course\'s name.'),
+				'user_id'      => array('integer', 'The member who completed it (GET /users/{id}).'),
+				'contact_id'   => array('integer?', 'The member\'s contact, null for none.'),
+				'completed_at' => array('string', 'When the last lesson was marked as done (UTC, ISO 8601); the certificate shows this day.')
+			),
+			'sample' => array('id' => 3, 'name' => 'Watercolour basics', 'user_id' => 41, 'contact_id' => 884, 'completed_at' => '2026-11-19T10:15:00Z')
+		),
+
 		'form.submitted' => array(
 			'fields' => array(
 				'id'             => array('integer', 'The submission (GET /forms/{id}/submissions/{submission_id}).'),

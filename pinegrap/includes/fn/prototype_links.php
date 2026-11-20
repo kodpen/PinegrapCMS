@@ -1085,6 +1085,33 @@ function pg_proto_links_of_design($style_id)
 }
 
 /**
+ * The revoked links of a design among the given ids, newest first: the
+ * ones whose comments are kept (pg_proto_comments_unlisted_links()).
+ *
+ * @param int   $style_id
+ * @param int[] $ids
+ * @return array[]
+ */
+function pg_proto_links_revoked_of_design($style_id, $ids)
+{
+    $list = array();
+
+    foreach ((array) $ids as $id) {
+        if ((int) $id > 0) {
+            $list[(int) $id] = (int) $id;
+        }
+    }
+
+    if (((int) $style_id <= 0) || !$list) {
+        return array();
+    }
+
+    $rows = db_items("SELECT * FROM prototype_links WHERE style_id = '" . (int) $style_id . "' AND revoked_at > 0 AND id IN (" . implode(',', $list) . ") ORDER BY id DESC LIMIT 200");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
  * The name of a visual design; null when there is no such design.
  *
  * @param int $style_id
@@ -1530,9 +1557,26 @@ function pg_proto_links_panel($sub, $request, $user)
         $durations[] = array('seconds' => (int) $seconds, 'label' => (string) $label);
     }
 
+    // Each link's comments, for its "Delete comments". A revoked link keeps
+    // its comments for the designer, so it stays in the list, after the
+    // others, until they are deleted.
+    $rows = pg_proto_links_of_design($style_id);
+    $counts = pg_proto_comments_link_counts($style_id);
+    $kept = pg_proto_comments_unlisted_links($rows, $counts);
+
+    if ($kept) {
+        $rows = array_merge($rows, pg_proto_links_revoked_of_design($style_id, $kept));
+    }
+
+    $links = pg_proto_links_panel_rows($rows, $pages, $now);
+
+    foreach ($links as $i => $link) {
+        $links[$i]['comment_count'] = isset($counts[$link['id']]) ? $counts[$link['id']] : 0;
+    }
+
     return array(
         'status' => 'success',
-        'links' => pg_proto_links_panel_rows(pg_proto_links_of_design($style_id), $pages, $now),
+        'links' => $links,
         'pages' => $page_list,
         'durations' => $durations,
         // Without a key the address is shown once, when the link is made.

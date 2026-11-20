@@ -18,7 +18,7 @@ description: The designer's Prototype view (_sdProtoOpen()): what it is, its con
 - Moved frames and chips: designer/prototype-places.md.
 
 ## How is an arrow written?
-- From a mark, an arrow head, the target menu (L) or Apply of Suggest targets (designer/prototype-drawing.md). Only `drawable()` links: href, attrs, btn, text; never a classic menu or region. To a tab's frame it is kept by that page's id (designer/page-link-by-id.md), to a chip of a site page, another site or a contact address that chip's href (`hrefTo()`).
+- From a mark, an arrow head, the target menu (L) or Apply of Suggest targets (designer/prototype-drawing.md), or a links panel row dragged onto a frame (designer/prototype-row-drag.md). Only `drawable()` links: href, attrs, btn, text; never a classic menu or region. To a tab's frame it is kept by that page's id (designer/page-link-by-id.md), to a chip of a site page, another site or a contact address that chip's href (`hrefTo()`).
 - `_sdProtoConnect()`: the link's tab (`_sdProtoFrameTab()`) opened with `_pgTabsSwitch()`, a `_collabBeatNow()` answers its lock; `hrefPatch()` (null when the node no longer holds the href: the map is read again), `_sdMayEdit(node)` (`'text'` inside text), `saveState()`, the prop written, `_sdSharedMarkEdited()` for a shared frame, `render()`, the map read again. The normal Save writes it.
 - Once per opening: the shared component warning (Save changes it everywhere) and the live page warning (Publish). Ctrl+Z / Ctrl+Y undo the open tab and read the map again; the editor's document shortcuts skip `#sd-proto` and the canvas bar in Prototype mode.
 

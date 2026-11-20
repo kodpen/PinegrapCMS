@@ -11,7 +11,7 @@ module: ai_connections
 - Each row's `found_at` keeps the Agents card (`pgset-ws-agents`, where the provider is chosen) among the settings search hits of its name (`pg_connections_place_keys()`).
 
 ## Which key does an assistant call with?
-- `ws_model_agent_key()`: its own `key_sealed` when it keeps one, else its provider's connection (`pg_ai_connection_key_for()`). `ws_model_http()` and `ws_model_agent_missing()` read it; the agent form's key may be left empty when the connection exists.
+- `ws_model_agent_key()`: its own `key_sealed` when it keeps one, else its provider's connection (`pg_ai_connection_key_for()`). `ws_model_http()` and `ws_model_agent_missing()` read it; the agent form has no key field for a connected provider (CX9b).
 - Azure OpenAI's address stays on each assistant (`door_url`); the connection holds only the key.
 
 ## What did the data step do? (11.0.240, `upgrade_2026_11_0_ai_connections()`)
@@ -27,7 +27,7 @@ module: ai_connections
 - The rows keep the gate of the card the keys came from: shown only to a user who may open Site Settings › Assistants and agents (`pg_ai_connection_category()`).
 - Connection details, Disconnect and "Use the connection's key": that category and the Workspace's administrator (role 0), who alone changes the assistants (`connections_ai_may_manage()`); a manager without it sees the state only. Nobody gains or loses a right.
 
-## What is left for CX9b?
-- The feature cards without a key: Voice message transcripts and the assistants show a "Sağlayıcı" select with the provider's connection and "Bağlantılar'da yönet"; voice's own key joins the data step then.
+## Where do the features show it? (CX9b)
+- The assistants' form and the Voice message transcripts card take no key for a provider with a connection; voice's key joined it in 11.0.241: `ai-connections-feature-cards.md`.
 
 Tests: `tests/ai_connections_test.php`.

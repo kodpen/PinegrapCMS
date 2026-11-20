@@ -10130,6 +10130,7 @@ const StyleDesigner = (function () {
         // element lacks them); the debounced pass below refreshes them.
         applyIssueBadges(_redrawn);
         scheduleValidation();
+        _sdLinkMarksSoon();
         _sdLivePreviewSchedule();
         _sdSharedBaseline();
     }
@@ -74183,6 +74184,9 @@ const StyleDesigner = (function () {
         // Zoomed to a frame (_sdProtoZoomTo()): its id and the view to go
         // back to, null when not; the last tap (_sdProtoTap()).
         zoom: null, tap: null,
+        // A links panel row carried onto the canvas (_sdProtoRowDragStart()),
+        // null when none.
+        rowDrag: null,
         pics: { gen: 0, io: null, boxes: {}, near: {}, live: {}, wait: [], loading: 0, cache: {}, rects: {}, partH: {}, pageH: {}, full: null, settle: 0, refill: 0 } };
 
     // Pictures (_sdProtoPicMake()): at most this many loading at once, the
@@ -74635,6 +74639,9 @@ const StyleDesigner = (function () {
     }
 
     function _sdProtoButtonState() {
+        // The canvas's link marks hide while the view is open and are read
+        // again when it closes (an arrow may have changed a link).
+        _sdLinkMarksSoon();
         var btn = document.getElementById('sd-vb-proto');
         if (!btn) return;
         btn.classList.toggle('active', _sdProto.open);
@@ -74661,6 +74668,7 @@ const StyleDesigner = (function () {
         if (!_sdProto.open) return;
         _sdProtoMenuClose(false);
         _sdProtoProblemsClose(false);
+        _sdProtoRowDragEnd(false);
         _sdProtoSuggestClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
@@ -75468,6 +75476,7 @@ const StyleDesigner = (function () {
                 if (menuKey && row.drawable && change(main)) event.preventDefault();
             });
             var li = line(outBox, data.id + '|' + row.port, main);
+            _sdProtoRowDraggable(li, main, data.id, row.port);
             li.classList.add('sd-proto-li-out');
             if (row.why) li.classList.add('sd-proto-li-broken');
             if (row.mark === 'empty') li.classList.add('sd-proto-li-empty');
@@ -75506,7 +75515,8 @@ const StyleDesigner = (function () {
             if (link.shared) text.appendChild(_sdProtoEl('span', 'sd-proto-li-to', _sdT('shared part')));
             main.appendChild(text);
             main.addEventListener('click', function () { _sdProtoPick(link.frame, link.port, false); });
-            line(inBox, link.frame + '|' + link.port, main);
+            var li = line(inBox, link.frame + '|' + link.port, main);
+            _sdProtoRowDraggable(li, main, link.frame, link.port);
         });
 
         if (data.parts.length) {
@@ -76138,18 +76148,22 @@ const StyleDesigner = (function () {
         return null;
     }
 
-    // The href an arrow from a frame's row to `to` writes, null where none
-    // may go: a link of a tree, to a tab's frame or a chip of a site page,
-    // another site or a contact address, never from a tab that is not
-    // opened to the operator.
-    function _sdProtoArrowHref(from, to, port) {
-        var H = window.PGProtoHotspots;
+    // Whether a frame's link may be pointed elsewhere here (K2): a link of a
+    // tree, never on a tab that is not opened to the operator.
+    function _sdProtoMayDraw(from, port) {
         var row = _sdProtoRow(from, port);
-        if (!row || !H.drawable(row) || !to) return null;
+        if (!row || !window.PGProtoHotspots.drawable(row)) return false;
         var key = _sdProtoFrameTab(from);
         var page = key ? _pgPageByKey(key) : null;
-        if (!page || page.access === 'locked') return null;
-        return H.hrefTo(to, _sdProto.env);
+        return !!(page && page.access !== 'locked');
+    }
+
+    // The href an arrow from a frame's row to `to` writes, null where none
+    // may go: a link _sdProtoMayDraw() allows, to a tab's frame or a chip of
+    // a site page, another site or a contact address.
+    function _sdProtoArrowHref(from, to, port) {
+        if (!to || !_sdProtoMayDraw(from, port)) return null;
+        return window.PGProtoHotspots.hrefTo(to, _sdProto.env);
     }
 
     // An arrow drawn: the row's tab opened first (its lock answered by a
@@ -76215,6 +76229,160 @@ const StyleDesigner = (function () {
         } else {
             sdToast(esc(_sdT('This page is on the site: the changed link goes live when you click Publish.')), 'info', 6000);
         }
+    }
+
+    // ── A links panel row carried onto the canvas ──
+    // A row of a link that may be drawn (out of the selected frame or into
+    // it) pressed and moved past 4 px is carried: a ghost with its label
+    // follows the pointer, the link's arrow is drawn from its frame to the
+    // pointer, and the frame or chip under the pointer that may take it
+    // lights up as for an arrow drawn from a mark. Let go there, the link
+    // is written by _sdProtoConnect() as such an arrow is (K1 to K3); let
+    // go anywhere else, Esc, a cancelled pointer or the view's closing
+    // write nothing. The keyboard keeps L on the row (the target menu).
+    function _sdProtoRowDraggable(li, main, frameId, port) {
+        if (!window.PGProtoHotspots.drawable(_sdProtoRow(_sdProto.byId[frameId], port))) return;
+        li.classList.add('sd-proto-li-drag');
+        main.title = _sdT('Drag onto a page to set the target');
+        li.addEventListener('pointerdown', function (event) { _sdProtoRowDragStart(event, li, frameId, port); });
+    }
+
+    function _sdProtoRowDragStart(event, li, frameId, port) {
+        if (!event.isPrimary || event.button !== 0) return;
+        if (event.target.closest && event.target.closest('.sd-proto-li-act')) return;
+        // A tab that is not opened to the operator draws nothing (K2).
+        if (!_sdProtoMayDraw(_sdProto.byId[frameId], port)) return;
+        _sdProtoRowDragEnd(false);
+        var label = li.querySelector('.sd-proto-li-label');
+        _sdProto.rowDrag = { id: event.pointerId, sx: event.clientX, sy: event.clientY, frame: frameId, port: port, li: li, label: label ? label.textContent : '', moved: false, over: null, ghost: null };
+        window.addEventListener('pointermove', _sdProtoRowDragMove, true);
+        window.addEventListener('pointerup', _sdProtoRowDragUp, true);
+        window.addEventListener('pointercancel', _sdProtoRowDragUp, true);
+        window.addEventListener('keydown', _sdProtoRowDragKey, true);
+    }
+
+    function _sdProtoRowDragMove(event) {
+        var d = _sdProto.rowDrag;
+        var ui = _sdProto.ui;
+        if (!d || !ui || event.pointerId !== d.id) return;
+        if (!d.moved) {
+            if (Math.abs(event.clientX - d.sx) + Math.abs(event.clientY - d.sy) < 4) return;
+            d.moved = true;
+            _sdProtoMenuClose(false);
+            _sdProtoDrawing(true);
+            ui.root.classList.add('sd-proto-row-drag');
+            d.li.classList.add('sd-proto-li-dragged');
+            d.ghost = _sdProtoEl('div', 'sd-proto-ghost');
+            d.ghost.setAttribute('aria-hidden', 'true');
+            ui.root.appendChild(d.ghost);
+            // Held only once it is a drag, so a click still picks the link.
+            try { d.li.setPointerCapture(d.id); } catch (e) {}
+            try { window.getSelection().removeAllRanges(); } catch (e) {}
+        }
+        event.preventDefault();
+        var hit = _sdProtoRowDropAt(d, event.clientX, event.clientY);
+        var to = hit ? hit.to : null;
+        _sdProtoRowDragOver(d, to);
+        d.ghost.textContent = to ? d.label + ' → ' + (to.kind === 'chip' ? _sdProtoChipText(to) : _sdProtoFrameName(to)) : d.label;
+        var box = ui.root.getBoundingClientRect();
+        d.ghost.style.left = Math.max(4, Math.min(event.clientX - box.left + 14, box.width - d.ghost.offsetWidth - 4)) + 'px';
+        d.ghost.style.top = Math.max(4, Math.min(event.clientY - box.top + 14, box.height - d.ghost.offsetHeight - 4)) + 'px';
+        _sdProtoRowDragLine(d, event.clientX, event.clientY);
+    }
+
+    function _sdProtoRowDragUp(event) {
+        var d = _sdProto.rowDrag;
+        if (!d || event.pointerId !== d.id) return;
+        var hit = (d.moved && event.type === 'pointerup') ? _sdProtoRowDropAt(d, event.clientX, event.clientY) : null;
+        _sdProtoRowDragEnd(d.moved);
+        if (hit) _sdProtoConnect(hit.from, hit.to, d.port);
+    }
+
+    function _sdProtoRowDragKey(event) {
+        var d = _sdProto.rowDrag;
+        if (event.key !== 'Escape') return;
+        // A row carried: Esc drops it and leaves the view open.
+        if (d && d.moved) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        _sdProtoRowDragEnd(false);
+    }
+
+    // The drag let go of; `eat` swallows the click its pointer's release
+    // makes, so a row carried back onto the panel picks nothing.
+    function _sdProtoRowDragEnd(eat) {
+        var d = _sdProto.rowDrag;
+        var ui = _sdProto.ui;
+        if (!d) return;
+        _sdProto.rowDrag = null;
+        window.removeEventListener('pointermove', _sdProtoRowDragMove, true);
+        window.removeEventListener('pointerup', _sdProtoRowDragUp, true);
+        window.removeEventListener('pointercancel', _sdProtoRowDragUp, true);
+        window.removeEventListener('keydown', _sdProtoRowDragKey, true);
+        if (!d.moved || !ui) return;
+        _sdProtoRowDragOver(d, null);
+        if (d.ghost && d.ghost.parentNode) d.ghost.parentNode.removeChild(d.ghost);
+        d.li.classList.remove('sd-proto-li-dragged');
+        ui.root.classList.remove('sd-proto-row-drag');
+        ui.temp.classList.add('pgc-hidden');
+        _sdProtoDrawing(false);
+        if (eat) {
+            var swallow = function (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            };
+            window.addEventListener('click', swallow, true);
+            setTimeout(function () { window.removeEventListener('click', swallow, true); }, 0);
+        }
+    }
+
+    // Whether a pointer at (clientX, clientY) is on the canvas itself: not
+    // on the bar, the links panel or a control over the canvas.
+    function _sdProtoOnCanvas(clientX, clientY) {
+        var ui = _sdProto.ui;
+        var under = ui ? document.elementFromPoint(clientX, clientY) : null;
+        return !!(under && ui.viewport.contains(under));
+    }
+
+    // The link of a carried row and the frame or chip under the pointer
+    // that may take it ({ from, to }), else null. The map may have been
+    // read again meanwhile: the frame and its row are found anew.
+    function _sdProtoRowDropAt(d, clientX, clientY) {
+        var from = _sdProto.byId[d.frame];
+        var row = _sdProtoRow(from, d.port);
+        if (!row || !_sdProto.canvas || !_sdProtoOnCanvas(clientX, clientY)) return null;
+        var hit = window.PGProtoHotspots.rowDrop(row, _sdProto.items, _sdProto.canvas.view.point(clientX, clientY), _sdProto.env);
+        return (hit && _sdProtoArrowHref(from, hit.item, d.port) !== null) ? { from: from, to: hit.item } : null;
+    }
+
+    // The frame or chip a carried row would point its link at, lit with
+    // the core's target class (null: none).
+    function _sdProtoRowDragOver(d, item) {
+        var ui = _sdProto.ui;
+        var id = item ? item.id : null;
+        if (!ui || d.over === id) return;
+        d.over = id;
+        Array.prototype.slice.call(ui.boxes.querySelectorAll('.pgc-target')).forEach(function (n) { n.classList.remove('pgc-target'); });
+        var box = id ? ui.boxes.querySelector('[data-node="' + String(id).replace(/"/g, '') + '"]') : null;
+        if (box) box.classList.add('pgc-target');
+    }
+
+    // The carried link's arrow, drawn as the core draws one being drawn:
+    // from its mark's side of its frame facing the pointer, to the pointer;
+    // hidden while the pointer is off the canvas.
+    function _sdProtoRowDragLine(d, clientX, clientY) {
+        var ui = _sdProto.ui;
+        var from = _sdProto.byId[d.frame];
+        if (!from || !_sdProto.canvas || !_sdProtoOnCanvas(clientX, clientY)) {
+            ui.temp.classList.add('pgc-hidden');
+            return;
+        }
+        var at = _sdProto.canvas.view.point(clientX, clientY);
+        var rects = _sdProto.pics.rects[from.id];
+        var p = window.PGProtoHotspots.markPort(from, rects ? (rects[d.port] || null) : undefined, { x: at.x, y: at.y, w: 0, h: 0 });
+        ui.temp.setAttribute('d', window.PGGraphCanvas.curve(from.x + p.x, from.y + p.y, at.x, at.y).d);
+        ui.temp.classList.remove('pgc-hidden');
     }
 
     // ── Suggest targets (F30 to F34) ──
@@ -82158,21 +82326,29 @@ const StyleDesigner = (function () {
                          (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
-                         (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '');
+                         (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '') +
+                         (l.state === 'revoked' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Revoked')) + '</span>' : '');
+            // A revoked link is listed only while its comments are kept:
+            // "Delete comments" is all it offers.
+            var revoked = l.state === 'revoked';
+            var count = l.comment_count > 0 ? l.comment_count : 0;
             var facts = [
                 _sdT('Starts at: {var}', l.start_page ? l.start_page + (l.start_first ? ' (' + _sdT('the first draft') + ')' : '') : '-'),
-                l.expires_at > 0 ? (l.state === 'expired' ? _sdT('Expired: {var}', when(l.expires_at)) : _sdT('Expires: {var}', when(l.expires_at))) : _sdT('Expires: never'),
+                revoked ? _sdT('Revoked: {var}', when(l.revoked_at)) :
+                    (l.expires_at > 0 ? (l.state === 'expired' ? _sdT('Expired: {var}', when(l.expires_at)) : _sdT('Expires: {var}', when(l.expires_at))) : _sdT('Expires: never')),
                 _sdT('Opened {var} times', String(l.uses)),
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
-            var showable = state.canShow && l.can_show;
-            return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '">' +
+            if (count) facts.push(_sdT('Comments: {var}', String(count)));
+            var showable = state.canShow && l.can_show && !revoked;
+            return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '" data-ps-count="' + esc(String(count)) + '">' +
                        '<div class="d-flex flex-wrap align-items-center gap-3">' +
                            '<div class="me-auto">' + badges + '<code class="fg-secondary">' + esc(l.hint) + '…</code></div>' +
                            '<div class="btn-group btn-group-sm" role="group">' +
                                (showable ? '<button type="button" class="btn btn-outline theme-secondary" data-ps-copy><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy address')) + '</button>' +
                                            '<button type="button" class="btn btn-outline theme-secondary" data-ps-show><span class="bi bi-eye me-1" aria-hidden="true"></span>' + esc(_sdT('Show address')) + '</button>' : '') +
-                               '<button type="button" class="btn btn-outline theme-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>' +
+                               (l.comment_count > 0 ? '<button type="button" class="btn btn-outline theme-danger" data-ps-comments-delete><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Delete comments')) + '</button>' : '') +
+                               (revoked ? '' : '<button type="button" class="btn btn-outline theme-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>') +
                            '</div>' +
                        '</div>' +
                        '<div class="fg-secondary mt-1">' + facts.map(esc).join(' · ') +
@@ -82225,9 +82401,36 @@ const StyleDesigner = (function () {
                 return;
             }
             var item = e.target.closest('[data-ps-id]');
-            var btn = e.target.closest('[data-ps-copy],[data-ps-show],[data-ps-revoke]');
+            var btn = e.target.closest('[data-ps-copy],[data-ps-show],[data-ps-revoke],[data-ps-comments-delete]');
             if (!item || !btn || btn.disabled) return;
             var id = parseInt(item.getAttribute('data-ps-id'), 10);
+            // Every comment of the link, open and resolved, with their
+            // answers; asked first.
+            if (btn.hasAttribute('data-ps-comments-delete')) {
+                var drop = function () {
+                    btn.disabled = true;
+                    _pgApiPost('proto_comment_delete', { style_id: styleId, link_id: id }).then(function (res) {
+                        btn.disabled = false;
+                        if (!res || res.status !== 'success') {
+                            sdToast(esc((res && res.message) || _sdT('Sorry, we could not accept your request.')), 'error');
+                            return;
+                        }
+                        sdToast(esc(_sdT('The comments of this link were deleted.')), 'success');
+                        // The editor's Comments list, once loaded, drops them
+                        // too: a deletion need not move the heartbeat's stamp.
+                        if (_sdPartLoaded('comments')) _sdPartCall('comments', 'reload', []).catch(function () { /* read again on the next change */ });
+                        load();
+                    }).catch(function () { btn.disabled = false; sdToast(esc(_sdT('Network error.')), 'error'); });
+                };
+                var ask = _sdT('Delete the {var} comments and answers of this link? They cannot be brought back.', item.getAttribute('data-ps-count') || '0');
+                if (typeof window.pgConfirm === 'function') {
+                    window.pgConfirm({ title: _sdT('Delete comments'), message: ask, confirmText: _sdT('Yes, delete'), cancelText: _sdT('No'), variant: 'danger' })
+                        .then(function (ok) { if (ok) drop(); });
+                } else if (window.confirm(ask)) {
+                    drop();
+                }
+                return;
+            }
             if (btn.hasAttribute('data-ps-revoke')) {
                 var revoke = function () {
                     btn.disabled = true;
@@ -87893,6 +88096,306 @@ const StyleDesigner = (function () {
             if (sbCount) sbCount.textContent = _sdT('Validate');
             sbBtn.title = _sdT('Validate the HTML');
         }
+    }
+
+    // ── Link marks on the canvas ──────────────────────────────────────
+    // A link of the open page that is broken (no page at its address, the
+    // page it was kept by is gone) or has no target ('' or '#') gets a mark
+    // at the right edge of its element; a click on the mark selects the
+    // element (a text's link is picked inside the text) and focuses its
+    // link field in the Options panel. The links and their marks are the
+    // Prototype view's own: PGProtoHotspots.design() over the open tab, the
+    // prototype_map read, mark(), canvasMarks(). The read is asked once the
+    // redraws pause, once per set of addresses, and kept a while; the
+    // answer for a set the open tab no longer has is dropped. The marks are
+    // buttons in the editor's document over the canvas frame: the canvas,
+    // its markup and its chrome stay as they are.
+    // pause: ms after the last redraw; reads: answers kept; ttl: ms an
+    // answer (or a read on its way) counts for.
+    var SD_LINK_MARKS = { pause: 600, reads: 6, ttl: 60000 };
+    // key: the tab `list` is of; list: its canvasMarks(); run: the last
+    // run's { key, tabs, designed, sig }; reads: answers by request, each
+    // { at, read }, order: their requests, oldest first; asking: the
+    // requests on their way, by when they were sent; els: the canvas
+    // elements of `shown`, the list they were found for ({ i, el }), found
+    // again once `dirty` (the list or the canvas changed); drawn: what the
+    // buttons say; layer, doc, area, observer, sizer, raf, resize: the
+    // drawing and what redraws it.
+    var _sdLinkMarks = { timer: 0, key: '', list: [], run: null, reads: {}, order: [], asking: {}, shown: [], els: [], dirty: true, drawn: '', layer: null, doc: null, area: null, observer: null, sizer: null, raf: 0, resize: false };
+
+    function _sdLinkMarksSoon() {
+        clearTimeout(_sdLinkMarks.timer);
+        _sdLinkMarks.timer = setTimeout(_sdLinkMarksRun, SD_LINK_MARKS.pause);
+        _sdLinkMarks.dirty = true;
+        _sdLinkMarksPlace();
+    }
+
+    function _sdLinkMarksRun() {
+        var S = _sdLinkMarks;
+        var H = window.PGProtoHotspots;
+        var key = _activeKey;
+        // The Prototype view reads the links itself; its closing runs this.
+        if (_sdProto.open) return;
+        if (!H || typeof H.canvasMarks !== 'function' || !tree || !key) {
+            S.run = null;
+            S.key = '';
+            S.list = [];
+            _sdLinkMarksPlace();
+            return;
+        }
+        var tabs = _sdProtoTabs();
+        var designed = H.design(tabs.filter(function (t) { return t.key === key; }), _sharedCache);
+        var request = H.canvasRequest(designed);
+        var sig = JSON.stringify(request);
+        var run = S.run = { key: key, tabs: tabs, designed: designed, sig: sig };
+        var kept = S.reads[sig];
+        if (!request.hrefs.length && !request.page_ids.length) {
+            _sdLinkMarksShow(run, {}, true);
+            return;
+        }
+        if (kept && Date.now() - kept.at < SD_LINK_MARKS.ttl) {
+            _sdLinkMarksShow(run, kept.read, true);
+            return;
+        }
+        // Another tab shows its links without a target at once and its
+        // broken ones once the read answers; the same tab keeps its marks
+        // meanwhile.
+        if (S.key !== key) _sdLinkMarksShow(run, {}, false);
+        if (S.asking[sig] && Date.now() - S.asking[sig] < SD_LINK_MARKS.ttl) return;
+        S.asking[sig] = Date.now();
+        var answer = function (read) {
+            delete S.asking[sig];
+            var ok = !!(read && read.status === 'success');
+            if (ok) {
+                if (!S.reads[sig]) S.order.push(sig);
+                S.reads[sig] = { at: Date.now(), read: read };
+                while (S.order.length > SD_LINK_MARKS.reads) delete S.reads[S.order.shift()];
+            }
+            // Without an answer no link is called broken.
+            if (S.run && S.run.sig === sig) _sdLinkMarksShow(S.run, ok ? read : {}, ok);
+        };
+        _pgApiPost('prototype_map', request).then(answer, function () { answer(null); });
+    }
+
+    function _sdLinkMarksShow(run, read, known) {
+        var H = window.PGProtoHotspots;
+        _sdLinkMarks.key = run.key;
+        _sdLinkMarks.list = H.canvasMarks(H.mark(run.designed, read, run.tabs), known);
+        _sdLinkMarks.dirty = true;
+        _sdLinkMarksPlace();
+    }
+
+    function _sdLinkMarksPlace() {
+        if (_sdLinkMarks.raf) return;
+        _sdLinkMarks.raf = requestAnimationFrame(function () {
+            _sdLinkMarks.raf = 0;
+            _sdLinkMarksDraw();
+        });
+    }
+
+    // Drawn again when the canvas is drawn, scrolled, zoomed (a style on
+    // its <html>) or resized, and when the editor's window is resized or
+    // the canvas area scrolled.
+    function _sdLinkMarksBind(area) {
+        var S = _sdLinkMarks;
+        if (!S.resize) {
+            S.resize = true;
+            window.addEventListener('resize', _sdLinkMarksPlace);
+        }
+        if (area !== S.area) {
+            if (S.area) S.area.removeEventListener('scroll', _sdLinkMarksPlace);
+            S.area = area;
+            area.addEventListener('scroll', _sdLinkMarksPlace, { passive: true });
+        }
+        if (canvasDoc === S.doc) return;
+        if (S.observer) S.observer.disconnect();
+        if (S.sizer) S.sizer.disconnect();
+        S.sizer = null;
+        S.doc = canvasDoc;
+        S.dirty = true;
+        S.observer = new MutationObserver(function () {
+            S.dirty = true;
+            _sdLinkMarksPlace();
+        });
+        S.observer.observe(canvasDoc.body, { childList: true, subtree: true });
+        S.observer.observe(canvasDoc.documentElement, { attributes: true, attributeFilter: ['style'] });
+        var win = canvasDoc.defaultView;
+        if (win) {
+            win.addEventListener('scroll', _sdLinkMarksPlace, { passive: true });
+            win.addEventListener('resize', _sdLinkMarksPlace);
+        }
+        if (window.ResizeObserver) {
+            S.sizer = new ResizeObserver(function () { _sdLinkMarksPlace(); });
+            S.sizer.observe(canvasDoc.body);
+            if (win && win.frameElement) S.sizer.observe(win.frameElement);
+        }
+    }
+
+    // The marks of the open tab over the part of the canvas frame the
+    // canvas area shows; none while the Prototype view is open. A mark of
+    // a link being written in is left out. A scroll or a resize measures
+    // the elements found before; the buttons are moved in place while what
+    // they say stays the same, so a focused mark keeps its focus.
+    function _sdLinkMarksDraw() {
+        var S = _sdLinkMarks;
+        var frame = canvasIframe;
+        var area = frame ? frame.closest('.sd-iframe-area') : null;
+        var host = area ? area.closest('.sd-canvas-wrapper') : null;
+        if (!S.list.length || S.key !== _activeKey || _sdProto.open || !canvasDoc || !canvasDoc.body || !host) {
+            if (S.layer) S.layer.hidden = true;
+            return;
+        }
+        _sdLinkMarksBind(area);
+        if (!S.layer) {
+            S.layer = document.createElement('div');
+            S.layer.className = 'sd-lm-layer';
+            S.layer.addEventListener('click', function (e) {
+                var btn = e.target.closest ? e.target.closest('[data-lm]') : null;
+                var link = btn ? S.shown[parseInt(btn.getAttribute('data-lm'), 10)] : null;
+                if (link) _sdLinkMarkOpen(link);
+            });
+        }
+        if (S.layer.parentNode !== host) host.appendChild(S.layer);
+        var fr = frame.getBoundingClientRect();
+        var ar = area.getBoundingClientRect();
+        var hr = host.getBoundingClientRect();
+        var left = Math.max(fr.left, ar.left + area.clientLeft);
+        var top = Math.max(fr.top, ar.top + area.clientTop);
+        var w = Math.min(fr.right, ar.left + area.clientLeft + area.clientWidth) - left;
+        var h = Math.min(fr.bottom, ar.top + area.clientTop + area.clientHeight) - top;
+        if (w <= 0 || h <= 0) {
+            S.layer.hidden = true;
+            return;
+        }
+        S.layer.hidden = false;
+        S.layer.style.left = (left - hr.left) + 'px';
+        S.layer.style.top = (top - hr.top) + 'px';
+        S.layer.style.width = w + 'px';
+        S.layer.style.height = h + 'px';
+        // getBoundingClientRect() inside the frame answers in the canvas's
+        // CSS pixels: the zoom on its <html> (read as the comment pins read
+        // it) and the Fit scale draw them larger or smaller.
+        var docEl = canvasDoc.documentElement;
+        var zoom = parseFloat(docEl.style.zoom) || 1;
+        var k = (frame.clientWidth > 0 && docEl.clientWidth > 0 && Math.abs(docEl.clientWidth * zoom - frame.clientWidth) < 2) ? zoom : 1;
+        if (frame.offsetWidth > 0) k *= fr.width / frame.offsetWidth;
+        if (S.dirty || S.shown !== S.list || S.els.some(function (e) { return !e.el.isConnected; })) {
+            S.dirty = false;
+            S.shown = S.list;
+            S.els = [];
+            S.list.forEach(function (link, i) {
+                _sdLinkMarkEls(link).forEach(function (el) { S.els.push({ i: i, el: el }); });
+            });
+        }
+        var marks = [];
+        S.els.forEach(function (e) {
+            if (e.el.isContentEditable) return;
+            var at = _sdLinkMarkAt(e.el.getBoundingClientRect(), fr.left - left, fr.top - top, k, w, h);
+            if (!at) return;
+            var link = S.shown[e.i];
+            var m = SD_PROTO_MARKS[link.mark] || SD_PROTO_MARKS.broken;
+            var says = _sdT('{var:1} “{var:2}”: open its link field', [m.text(), link.label]);
+            var why = link.why ? _sdProtoWhy(link.why) : '';
+            marks.push({ at: at, html: '<button type="button" class="sd-lm sd-lm-' + esc(link.mark) + '" data-lm="' + e.i + '"' +
+                ' title="' + esc(says + (why ? '\n' + why : '')) + '" aria-label="' + esc(says + (why ? '. ' + why : '')) + '">' +
+                '<span class="bi ' + m.icon + '" aria-hidden="true"></span></button>' });
+        });
+        var drawn = marks.map(function (m) { return m.html; }).join('');
+        if (drawn !== S.drawn) {
+            S.drawn = drawn;
+            S.layer.innerHTML = drawn;
+        }
+        marks.forEach(function (m, j) {
+            var btn = S.layer.children[j];
+            btn.style.left = m.at.x + 'px';
+            btn.style.top = m.at.y + 'px';
+        });
+    }
+
+    // Where a mark goes in a `w` x `h` layer: at the right edge of the
+    // link's box `r` (in canvas pixels, drawn `k` times their size, the
+    // canvas's top left at `fx`, `fy`), 10 px under its top or at its
+    // middle when that is higher, kept 9 px inside the layer; null for a
+    // box with no size or out of view.
+    function _sdLinkMarkAt(r, fx, fy, k, w, h) {
+        if (!(r.right > r.left || r.bottom > r.top)) return null;
+        var left = fx + r.left * k;
+        var right = fx + r.right * k;
+        var top = fy + r.top * k;
+        var bottom = fy + r.bottom * k;
+        if (right <= 0 || bottom <= 0 || left >= w || top >= h) return null;
+        var y = top + Math.min(10, (bottom - top) / 2);
+        return { x: Math.round(Math.min(Math.max(right, 9), w - 9)), y: Math.round(Math.min(Math.max(y, 9), h - 9)) };
+    }
+
+    // The node of a mark's link: in the page's tree, or in the tree of the
+    // shared component it belongs to.
+    function _sdLinkMarkNode(link) {
+        var cached = link.sharedId ? _sharedCache[link.sharedId] : null;
+        var root = link.sharedId ? (cached && cached.tree) : tree;
+        return root ? findNodeById(link.nodeId, root) : null;
+    }
+
+    // The canvas elements a link's mark goes on: its node's element, for a
+    // link inside a text that link (_sdLinkNth()); one for each place a
+    // shared component is drawn at; none while its node is not drawn.
+    function _sdLinkMarkEls(link) {
+        var node = _sdLinkMarkNode(link);
+        return node ? _sdIssueWrapsOf(node).map(function (wrap) {
+            var el = _sdWrapEl(wrap) || wrap;
+            return (link.source === 'text') ? (_sdLinkNth(el, link.index, wrap) || el) : el;
+        }) : [];
+    }
+
+    // The nth <a href> inside `el`, counted as htmlLinks() counts a text's
+    // links; the designer's chrome left out and, given `wrap`, the links of
+    // the child nodes drawn in their own wrappers.
+    function _sdLinkNth(el, index, wrap) {
+        var n = 0;
+        var links = el.querySelectorAll('a[href]');
+        for (var i = 0; i < links.length; i++) {
+            if (wrap && links[i].closest('.sd-wrap') !== wrap) continue;
+            if (links[i].closest(_SD_FX_CHROME)) continue;
+            if (n++ === index) return links[i];
+        }
+        return null;
+    }
+
+    // The link field of the Options panel `panel`: a text's picked link,
+    // the element's own address, the button of a link kept by page id back
+    // to a typed address, or the notice of an address that is bound.
+    function _sdLinkFieldOf(panel) {
+        if (!panel) return null;
+        return panel.querySelector('#sd-inner-href') || panel.querySelector('input[data-prop="href"]') ||
+            panel.querySelector('.sd-bound-href-note [data-sd-page-unlink]') || panel.querySelector('.sd-bound-href-note');
+    }
+
+    // A mark clicked: its link selected (a text's link picked inside the
+    // text), the Options panel shown, a docked one opened, and the link
+    // field drawn (in a closed card or a tab not drawn), shown and focused.
+    function _sdLinkMarkOpen(link) {
+        var node = _sdLinkMarkNode(link);
+        if (!node) return;
+        var path = null;
+        if (link.source === 'text' && _sdTextInnerHost(node) && _sdTextInnerPickable(node)) {
+            var box = document.createElement('div');
+            box.appendChild(_sdIlParse(node.props.text));
+            var a = _sdLinkNth(box, link.index, null);
+            path = a ? _sdTextInnerPathOf(box, a) : null;
+        }
+        _sdTextInnerSelect(node, path);
+        _sdSelectRender();
+        _sdTreeRevealSelection(true);
+        _sdRcolShow('options');
+        _sdDockSetOpen('right', true);
+        var find = function () { return _sdLinkFieldOf(document.getElementById('sd-properties')); };
+        var field = find();
+        if (!field || !field.offsetParent) field = _sdOptReveal(find) || field;
+        if (!field) return;
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        field.classList.add('sd-ctrl-flash');
+        setTimeout(function () { field.classList.remove('sd-ctrl-flash'); }, 1200);
+        field.focus({ preventScroll: true });
     }
 
     // The audit panel: HTML warnings from the tree walk (instant, with a

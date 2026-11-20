@@ -1717,7 +1717,9 @@ function ws_handle_action($action, $request)
         // its cells may be changed, and a document which paragraphs, for
         // someone who may write in the channel, and whether the edited file
         // takes the old one's place (their own message) or goes as an
-        // edited copy.
+        // edited copy. A .csv or .tsv is drawn as a sheet and only looked
+        // at, read with the separator and character set the choice above
+        // it sends (delimiter, encoding).
         case 'ws_file_office':
             $message = ws_message((int) ($request['message_id'] ?? 0));
             $channel = $message ? ws_channel($message['channel_id']) : null;
@@ -1728,14 +1730,14 @@ function ws_handle_action($action, $request)
 
             $stored = ((int) $message['file_id'] > 0) ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'") : '';
 
-            if (($stored === '') || (pg_office_kind($message['file_name']) === '')) {
+            if (($stored === '') || (pg_office_preview_kind($message['file_name']) === '')) {
                 return ws_action_error(lang('There is no preview for this kind of file.'));
             }
 
             // A macro file posted before channels refused them opens read only: its edit would be refused.
-            $editing = !empty($request['edit']) && ws_can_post_channel($viewer, $channel) && !ws_upload_refused($message['file_name']);
+            $editing = !empty($request['edit']) && (pg_office_kind($message['file_name']) !== '') && ws_can_post_channel($viewer, $channel) && !ws_upload_refused($message['file_name']);
             // The file may be in the object store: the reader gets a copy.
-            $office = pg_office_read(pg_file_reader_path($stored), $message['file_name'], $editing);
+            $office = pg_office_read(pg_file_reader_path($stored), $message['file_name'], $editing, pg_office_csv_choice($request));
 
             if (!$office['ok']) {
                 return ws_action_error($office['error']);
@@ -2116,6 +2118,14 @@ function ws_handle_action($action, $request)
                     } elseif (function_exists('ws_channel_shares_state')) {
                         $out['shares'] = ws_channel_shares_state($viewer, $channel);
                     }
+                    // The channel's live call and the reader's signals in it;
+                    // nothing is asked while no call is live (calls.php).
+                    $call_part = ws_call_live_part(ws_call_party_person($viewer, $channel), $channel_id, (int) ($request['call_after'] ?? 0));
+
+                    if ($call_part !== null) {
+                        $out['call'] = $call_part;
+                    }
+
                     $out['messages'] = ws_message_payloads($viewer, $rows);
                     $out['changed'] = ws_message_payloads($viewer, $news['changed'], array('hidden_as_deleted' => true));
 
@@ -5312,6 +5322,45 @@ function ws_handle_action($action, $request)
             $result = ws_meeting_note_transfer($viewer, $note, $channel, (array) ($request['decisions'] ?? array()), (array) ($request['actions'] ?? array()));
 
             return $result['ok'] ? ws_action_ok($result) : ws_action_error($result['error']);
+
+        case 'ws_call_start':
+        case 'ws_call_join':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $party = ws_call_party_person($viewer, $channel);
+            $result = ($action === 'ws_call_start')
+                ? ws_call_start($party, $channel, (string) ($request['kind'] ?? ''))
+                : ws_call_join($party, $channel, (int) ($request['call_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('call_id' => $result['call_id'], 'member_id' => $result['member_id'])) : ws_action_error($result['error']);
+
+        case 'ws_call_leave':
+        case 'ws_call_end':
+        case 'ws_call_signal':
+            $call = ws_calls_ready() ? ws_call((int) ($request['call_id'] ?? 0)) : null;
+            $channel = $call ? ws_channel((int) $call['channel_id']) : null;
+
+            if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+                return ws_action_error(lang('This call has ended.'));
+            }
+
+            $party = ws_call_party_person($viewer, $channel);
+
+            if ($action === 'ws_call_leave') {
+                $result = ws_call_leave($party, (int) $call['id']);
+
+                return ws_action_ok(array('ended' => $result['ended']));
+            }
+
+            $result = ($action === 'ws_call_end')
+                ? ws_call_end($party, $call, ws_can_manage_channel($viewer, $channel))
+                : ws_call_signal_send($party, (int) $call['id'], (int) ($request['to_member_id'] ?? 0), (string) ($request['kind'] ?? ''), (string) ($request['body'] ?? ''));
+
+            return $result['ok'] ? ws_action_ok(array('signal_id' => (int) ($result['signal_id'] ?? 0))) : ws_action_error($result['error']);
 
         case 'ws_inbox':
             return ws_action_ok(array('items' => ws_inbox_list($viewer), 'unread' => ws_inbox_unread_count($viewer['id'])));

@@ -155,7 +155,9 @@ function pg_connections_not_services()
  * of pg_connections_state_kinds(), or null with the reason in 'no_state'),
  * 'uses' (English, a few words), optionally 'covers' (list name => keys)
  * and 'found_at' (a card its name still finds in the settings search after
- * its settings moved to its page on Connections).
+ * its settings moved to its page on Connections); a Google feature names
+ * under 'apis' the Google Cloud APIs it calls (service name => product
+ * name), listed on Google's page (pg_google_cloud_apis()).
  *
  * @param mixed $row
  * @return array list of key names
@@ -431,6 +433,7 @@ function pg_connections_registry()
             'covers' => array('marketplace' => array('trendyol'))),
         'merchant_center' => array('name' => 'Google Merchant Center', 'group' => 'marketplaces', 'place' => '#settings/commerce/pgset-feeds', 'uses' => 'The product feed and each product\'s push',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'merchant_center', 'attention' => true),
+            'apis' => array('merchantapi.googleapis.com' => 'Merchant API'),
             'covers' => array('marketplace' => array('merchant_center'), 'purpose' => array('merchant_center'))),
         'openai_feed' => array('name' => 'OpenAI product feed', 'group' => 'marketplaces', 'place' => '#settings/commerce/pgset-feeds', 'uses' => 'A product feed for ChatGPT shopping',
             'state' => null, 'no_state' => 'A file the service fetches; a format offered is no account.'),
@@ -463,6 +466,7 @@ function pg_connections_registry()
             'covers' => array('mail' => array('ses'))),
         'gmail' => array('name' => 'Gmail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'mail', 'attention' => true),
+            'apis' => array('gmail.googleapis.com' => 'Gmail API'),
             'covers' => array('purpose' => array('mail', 'mail_read'))),
         'microsoft_mail' => array('name' => 'Microsoft 365 mail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
             'state' => array('kind' => 'account', 'provider' => 'microsoft', 'purpose' => 'mail', 'attention' => true),
@@ -497,6 +501,7 @@ function pg_connections_registry()
         // Files and backups.
         'google_drive' => array('name' => 'Google Drive', 'group' => 'storage', 'place' => '#settings/maintenance/pgset-backup', 'uses' => 'Backups and the file picker',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'backup', 'attention' => true),
+            'apis' => array('drive.googleapis.com' => 'Google Drive API'),
             'covers' => array('picker' => array('google'), 'purpose' => array('backup', 'file_picker'))),
         'onedrive' => array('name' => 'OneDrive', 'group' => 'storage', 'place' => '#settings/maintenance/pgset-backup', 'uses' => 'Backups and the file picker',
             'state' => array('kind' => 'account', 'provider' => 'microsoft', 'purpose' => 'backup', 'attention' => true),
@@ -520,6 +525,7 @@ function pg_connections_registry()
         // Calendars and notes: each person connects their own account.
         'google_calendar' => array('name' => 'Google Calendar', 'group' => 'calendar', 'place' => '#settings/workspace_team/pgset-ws-calendar', 'uses' => 'A person\'s tasks in their calendar, and moves back',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'calendar_sync', 'attention' => true),
+            'apis' => array('calendar-json.googleapis.com' => 'Google Calendar API'),
             'covers' => array('purpose' => array('calendar_sync'))),
         'outlook_calendar' => array('name' => 'Outlook Calendar', 'group' => 'calendar', 'place' => '#settings/workspace_team/pgset-ws-calendar', 'uses' => 'A person\'s tasks in their calendar, and moves back',
             'state' => array('kind' => 'account', 'provider' => 'microsoft', 'purpose' => 'calendar_sync', 'attention' => true)),
@@ -530,9 +536,11 @@ function pg_connections_registry()
         // Analytics and search.
         'google_analytics' => array('name' => 'Google Analytics', 'group' => 'analytics', 'place' => '#settings/privacy/pgset-analytics', 'uses' => 'The tag and the GA4 figures',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'google_analytics', 'attention' => true),
+            'apis' => array('analyticsadmin.googleapis.com' => 'Google Analytics Admin API', 'analyticsdata.googleapis.com' => 'Google Analytics Data API'),
             'covers' => array('purpose' => array('google_analytics'))),
         'search_console' => array('name' => 'Google Search Console', 'group' => 'analytics', 'place' => 'search_console.php', 'uses' => 'Search queries and clicks of the site\'s pages',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'search_console', 'attention' => true),
+            'apis' => array('searchconsole.googleapis.com' => 'Google Search Console API', 'siteverification.googleapis.com' => 'Google Site Verification API'),
             'covers' => array('purpose' => array('search_console'))),
         'indexnow' => array('name' => 'IndexNow', 'group' => 'analytics', 'place' => '#settings/seo/pgset-seo', 'uses' => 'Tells search engines a page changed',
             'state' => array('kind' => 'config', 'names' => array('INDEXNOW_KEY'))),

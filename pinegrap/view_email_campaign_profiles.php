@@ -97,6 +97,7 @@ if (USER_ROLE == 3) {
 
 // If user requested to export, then export them.
 if (isset($_GET['export'])) {
+    pg_list_excel_capture(array('action_item_id' => 'number', 'page_id' => 'number', 'schedule_length' => 'number', 'created' => 'date', 'last_modified' => 'date'), lang('Campaign Profiles'));
     pg_csv_download_start('campaign_profiles.csv');
 
     // Output column headings for CSV data.
@@ -347,6 +348,7 @@ if (isset($_GET['export'])) {
                     'secondary' => array(
                         array('label' => lang('Import'), 'url' => 'import_email_campaign_profiles.php', 'icon' => 'bi-box-arrow-in-right'),
                         '<form class="disable_shortcut" method="get"><button type="submit" name="export" value="Export" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button></form>',
+                        pg_list_excel_action('view_email_campaign_profiles.php?export=Export'),
                     ),
                     'search'    => array(pg_list_table_search_box('view_email_campaign_profiles'), pg_list_sort_menu('view_email_campaign_profiles.php', $sort_columns, $sort_levels, $sort_default)),
                 )) . '

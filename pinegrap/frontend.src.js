@@ -2100,6 +2100,20 @@ var software = {
     show_auto_dialog: function(auto_dialog, preview, memory) {
         var dialog = {url: auto_dialog.url};
 
+        // A designed pop-up: its shared component was drawn once into a
+        // <template> at the body's end (pg_auto_dialog_templates()); a copy
+        // goes into the dialog, so its form, bindings and offer code work as
+        // on the page.
+        if (auto_dialog.content === 'component') {
+            var template = document.getElementById('pg-popup-' + auto_dialog.id);
+
+            if (!template || !template.content) {
+                return;
+            }
+
+            dialog = {content: document.importNode(template.content, true)};
+        }
+
         var width = parseInt(auto_dialog.width);
 
         if (width) {
@@ -2138,6 +2152,20 @@ var software = {
             memory.mark(auto_dialog.id, 'c');
             software.count_auto_dialog(auto_dialog, 'closed');
         });
+
+        // A designed pop-up is taken up by a press on its marked action
+        // (data-pg-popup-take) or a form sent inside it.
+        if (dialog.content) {
+            opened.addEventListener('click', function(event) {
+                if (event.target && event.target.closest && event.target.closest('[data-pg-popup-take]')) {
+                    software.count_auto_dialog(auto_dialog, 'taken');
+                }
+            });
+
+            opened.addEventListener('submit', function() {
+                software.count_auto_dialog(auto_dialog, 'taken');
+            });
+        }
     },
 
     // Whether this visitor's answer leaves an anonymous count standing, the
@@ -5802,6 +5830,9 @@ var software = {
     // script. The frame is drawn like the jQuery UI dialog it replaces.
     // With modal false, place top or bottom draws it as a bar across the
     // window's edge and corner as a card in the bottom right corner.
+    // With content (a node: a designed pop-up) it shows that in place of
+    // an address, sized to it where width or height is left out, and a
+    // press on an element marked data-pg-popup-close inside closes it.
     open_dialog: function(properties) {
         var class_name = properties.class_name;
         var modal = properties.modal;
@@ -5810,10 +5841,11 @@ var software = {
         var width = properties.width;
         var height = properties.height;
         var place = properties.place;
+        var content = properties.content;
 
         // The iframe would run a javascript: or data: address in this page's
         // origin; the server leaves such auto dialogs out too.
-        if (!software.is_web_address(url)) {
+        if (!content && !software.is_web_address(url)) {
             return false;
         }
 
@@ -5841,36 +5873,46 @@ var software = {
 
         software.dialog_style();
 
-        // If the height is not set, or the visitor is using a mobile device,
-        // then set height as a percentage of the browser height.
-        // Otherwise add the title bar's 25px to it, as before.
-        if ((height === undefined) || (software_device_type == 'mobile')) {
-            height = window.innerHeight * .75;
+        if (content) {
+            // Designed content takes its own size where a side is left out,
+            // or on a mobile device; the window's edges bound it.
+            height = ((height === undefined) || (software_device_type == 'mobile')) ? '' : height + 'px';
+            width = ((width === undefined) || (software_device_type == 'mobile')) ? '' : width + 'px';
         } else {
-            height = height + 25;
-        }
+            // If the height is not set, or the visitor is using a mobile device,
+            // then set height as a percentage of the browser height.
+            // Otherwise add the title bar's 25px to it, as before.
+            if ((height === undefined) || (software_device_type == 'mobile')) {
+                height = window.innerHeight * .75;
+            } else {
+                height = height + 25;
+            }
 
-        // If the width is not set, or the visitor is using a mobile device,
-        // then set width as a percentage of the browser width.
-        if ((width === undefined) || (software_device_type == 'mobile')) {
-            width = window.innerWidth * .75;
+            // If the width is not set, or the visitor is using a mobile device,
+            // then set width as a percentage of the browser width.
+            if ((width === undefined) || (software_device_type == 'mobile')) {
+                width = window.innerWidth * .75;
+            }
+
+            height += 'px';
+            width += 'px';
         }
 
         // A bar at the top or bottom spans the window.
         if ((place === 'top') || (place === 'bottom')) {
-            width = window.innerWidth;
+            width = window.innerWidth + 'px';
         }
 
         var dialog = document.createElement('dialog');
         var bar = document.createElement('div');
         var heading = document.createElement('span');
         var close = document.createElement('button');
-        var frame = document.createElement('iframe');
+        var frame = document.createElement(content ? 'div' : 'iframe');
         var label = lang('Close');
 
-        dialog.className = 'pg-dialog' + (modal ? '' : ' pg-dialog-plain') + ((!modal && ['top', 'bottom', 'corner'].indexOf(place) !== -1) ? ' pg-dialog-' + place : '') + (class_name ? ' ' + class_name : '');
-        dialog.style.width = width + 'px';
-        dialog.style.height = height + 'px';
+        dialog.className = 'pg-dialog' + (content ? ' pg-dialog-content' : '') + (modal ? '' : ' pg-dialog-plain') + ((!modal && ['top', 'bottom', 'corner'].indexOf(place) !== -1) ? ' pg-dialog-' + place : '') + (class_name ? ' ' + class_name : '');
+        dialog.style.width = width;
+        dialog.style.height = height;
 
         if (title) {
             dialog.setAttribute('aria-label', title);
@@ -5885,10 +5927,15 @@ var software = {
         close.title = label;
         close.setAttribute('aria-label', label);
         close.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M5 5l6 6m0-6l-6 6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>';
-        frame.className = 'pg-dialog-frame';
-        frame.setAttribute('frameborder', '0');
-        frame.setAttribute('allowfullscreen', '');
-        frame.src = url;
+        if (content) {
+            frame.className = 'pg-dialog-body';
+            frame.appendChild(content);
+        } else {
+            frame.className = 'pg-dialog-frame';
+            frame.setAttribute('frameborder', '0');
+            frame.setAttribute('allowfullscreen', '');
+            frame.src = url;
+        }
 
         bar.appendChild(heading);
         bar.appendChild(close);
@@ -5904,6 +5951,15 @@ var software = {
         }
 
         close.addEventListener('click', shut);
+
+        if (content) {
+            frame.addEventListener('click', function(event) {
+                if (event.target && event.target.closest && event.target.closest('[data-pg-popup-close]')) {
+                    event.preventDefault();
+                    shut();
+                }
+            });
+        }
 
         // Closed by its button, Escape or the backdrop: gone with its page.
         dialog.addEventListener('close', function() {
@@ -5970,7 +6026,13 @@ var software = {
             'dialog.pg-dialog .pg-dialog-close{position:absolute;top:50%;right:4px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:20px;height:20px;min-width:0;min-height:0;margin:-10px 0 0;padding:0;border:1px solid #ccc;border-radius:3px;background:#ededed;color:#555;box-shadow:none;line-height:0;text-transform:none;cursor:pointer;-webkit-appearance:none;appearance:none}' +
             'dialog.pg-dialog .pg-dialog-close:hover{border-color:#ccc;background:#ededed;color:#2b2b2b}' +
             'dialog.pg-dialog .pg-dialog-close svg{display:block;width:16px;height:16px}' +
-            'dialog.pg-dialog .pg-dialog-frame{display:block;flex:1 1 auto;box-sizing:border-box;width:100%;max-width:none;min-height:0;height:auto;margin:0;padding:0;border:0}';
+            'dialog.pg-dialog .pg-dialog-frame{display:block;flex:1 1 auto;box-sizing:border-box;width:100%;max-width:none;min-height:0;height:auto;margin:0;padding:0;border:0}' +
+            // Designed content keeps the page's own type and fills the box;
+            // only the close button stays, over its top right corner.
+            'dialog.pg-dialog-content{padding:0;font:inherit;color:inherit;text-align:inherit}' +
+            'dialog.pg-dialog-content .pg-dialog-bar{position:absolute;top:0;right:0;z-index:1;width:32px;min-height:32px;padding:0}' +
+            'dialog.pg-dialog-content .pg-dialog-title{display:none}' +
+            'dialog.pg-dialog .pg-dialog-body{flex:1 1 auto;box-sizing:border-box;min-height:0;overflow:auto}';
 
         (document.head || document.documentElement).appendChild(style);
     },

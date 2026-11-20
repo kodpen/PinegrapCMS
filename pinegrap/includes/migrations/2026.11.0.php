@@ -230,6 +230,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_menu_pin();         // 11.0.239
 	upgrade_2026_11_0_ws_task_app();             // 11.0.230
 	upgrade_2026_11_0_ai_connections();          // 11.0.240
+	upgrade_2026_11_0_ai_connections_voice();    // 11.0.241
+	upgrade_2026_11_0_auto_dialog_content();     // 11.0.242
+	upgrade_2026_11_0_ws_calls();                // 11.0.243
 
 }
 
@@ -6696,6 +6699,70 @@ function upgrade_2026_11_0_ai_connections() {
 
 }
 
+// The voice feature's keys join OpenAI's connection (11.0.241,
+// includes/fn/ai_connections.php), after the assistants' (11.0.240), by the
+// same rule: where OpenAI has no connection yet, the transcripts' key (or
+// the spoken answers', when they go to OpenAI too) becomes it; a key equal
+// to the connection's is emptied, so the feature calls with the same key
+// from the connection; a key that differs, or one of another address, stays.
+// Run again it finds nothing to move.
+function upgrade_2026_11_0_ai_connections_voice() {
+
+	if (!function_exists('pg_ai_connection_voice_move') || !function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready() || !function_exists('pg_config_text')) {
+
+		install_skipped('AI connections: the voice keys were not moved, because includes/fn/ai_connections.php is out of date. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	$open = function ($name) {
+
+		$sealed = pg_config_text($name);
+
+		if (strpos($sealed, ':') === false) {
+			return '';
+		}
+
+		list($cipher, $iv) = explode(':', $sealed, 2);
+
+		return trim((string) decode_ssl_keys($cipher, $iv));
+
+	};
+
+	if ((strpos(pg_config_text('ws_voice_key'), ':') === false) && (strpos(pg_config_text('ws_voice_speech_key'), ':') === false)) {
+		return;
+	}
+
+	if (!pg_connect_can_seal()) {
+
+		install_skipped('AI connections: this site has no encryption key, so voice transcripts keep their own key.');
+
+		return;
+
+	}
+
+	$move = pg_ai_connection_voice_move(pg_ai_connection_key('openai'), array(
+		'url'        => pg_config_text('ws_voice_url'),
+		'key'        => $open('ws_voice_key'),
+		'speech_url' => pg_config_text('ws_voice_speech_url'),
+		'speech_key' => $open('ws_voice_speech_key'),
+	));
+
+	if ($move['store'] && !pg_ai_connection_save('openai', 'OpenAI', $move['connection'])) {
+		return;
+	}
+
+	foreach ($move['empty'] as $name) {
+		pg_config_text_save($name, '');
+	}
+
+	if ($move['store'] || $move['empty']) {
+		install_note('Connections: voice transcripts now use OpenAI\'s connection' . ($move['store'] ? ', made from their key' : '') . '.');
+	}
+
+}
+
 // A mailbox's block list (includes/workspace/mail_blocks.php): an address or
 // a whole domain, for one box or, with box_id 0, for every box. A mail from
 // a blocked sender is kept as an item with blocked_at set, outside every
@@ -7214,6 +7281,29 @@ function upgrade_2026_11_0_auto_dialog_open() {
 
 }
 
+// What an auto dialog shows (11.0.242, includes/fn/auto_dialogs.php):
+// content url (its address in an iframe) or component (a shared component
+// designed in the visual designer), and component_id, that component's id
+// (0 none). The default reads as an auto dialog always was: an address. A
+// row keeps its address while it shows a component, so it can switch back.
+// No index (a handful of rows), no foreign key, no backfill.
+function upgrade_2026_11_0_auto_dialog_content() {
+
+	if (!install_table_exists('auto_dialogs')) {
+
+		install_skipped('auto_dialogs does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('auto_dialogs', 'content', "VARCHAR(10) NOT NULL DEFAULT 'url' AFTER place");
+	install_add_column('auto_dialogs', 'component_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER content");
+
+	install_note('Auto dialogs: a dialog can show a pop-up designed in the visual designer instead of a web address.');
+
+}
+
 // A reader's highlights on a message (11.0.222, includes/workspace/
 // highlights.php): one row per marked place, kept by its text (quote) and
 // which occurrence of it in the message's plain text it is. scope is 'me'
@@ -7670,5 +7760,66 @@ function upgrade_2026_11_0_ws_task_app() {
 	install_add_index('ws_tasks', 'idx_app', "INDEX idx_app (app_id, status)");
 
 	install_note('Workspace: a task an application creates from now on says "Made by" that application, and My Tasks can show or leave out the tasks agents made. Earlier tasks read as made by a person.');
+
+}
+
+// Voice and video calls in the Workspace (11.0.243, includes/workspace/
+// calls.php). Sound and picture go from browser to browser; these tables
+// hold only who is in a call and the browsers' connection messages.
+// ws_calls: one call of a channel, who started it, voice or video, live or
+// ended, start and end time; idx_channel_state finds a channel's live call,
+// idx_state the live calls the clean-up looks at, idx_started_by the starts
+// of the last minute. ws_call_members: one row per join, a person (user_id)
+// or a guest (guest_id), with its join and leave time (0 while in the
+// call). ws_call_signals: a connection message from one member to another
+// (offer, answer, candidate) or a keep-alive (ping, to nobody), deleted when
+// the call ends and after two minutes; idx_to is the addressee's read,
+// idx_from the sender's count of the last minute. Tables approved by the
+// owner; no backfill, as no call existed before this step.
+function upgrade_2026_11_0_ws_calls() {
+
+	install_create_table('ws_calls', "CREATE TABLE ws_calls (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		started_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind        ENUM('voice','video') NOT NULL DEFAULT 'voice',
+		state       ENUM('live','ended') NOT NULL DEFAULT 'live',
+		started_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_channel_state (channel_id, state),
+		KEY idx_state (state),
+		KEY idx_started_by (started_by, started_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_call_members', "CREATE TABLE ws_call_members (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		call_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		guest_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		joined_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		left_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_call (call_id, left_at),
+		KEY idx_user (user_id),
+		KEY idx_guest (guest_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_call_signals', "CREATE TABLE ws_call_signals (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		call_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		from_member_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		to_member_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            VARCHAR(16) CHARACTER SET ascii NOT NULL DEFAULT '',
+		body            TEXT NULL,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_to (to_member_id, id),
+		KEY idx_from (from_member_id, created_at),
+		KEY idx_call (call_id, created_at),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the tables for voice and video calls are ready; nothing changes on the site until calls are switched on.');
 
 }

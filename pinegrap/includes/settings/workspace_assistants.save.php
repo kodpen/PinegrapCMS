@@ -117,7 +117,7 @@ if ($ws_admin && ws_voice_schema_ready() && isset($_POST['ws_voice_url'])) {
     $ws_voice = ws_voice_settings_input($_POST, 'ws_');
 
     if (ws_voice_settings_changed($ws_voice, ws_voice_config(true), ws_voice_speech_config(true))) {
-        foreach (ws_voice_settings_check($ws_voice) as $ws_field => $ws_sentence) {
+        foreach (ws_voice_settings_check($ws_voice, ws_voice_config()) as $ws_field => $ws_sentence) {
             $liveform->mark_error('ws_voice_' . $ws_field, $ws_sentence);
         }
 
