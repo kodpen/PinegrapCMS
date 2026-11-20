@@ -119,3 +119,15 @@ function test_workspace_phone_fields_are_16px_on_touch()
 	$touchAt = strpos($css, '.ws-code-edit {', $base + 1);
 	pg_assert_true($base !== false && $touchAt !== false, 'the code area has a base and a touch rule');
 }
+
+function test_mail_pane_channel_pill_is_a_touch_target()
+{
+	$touch = workspace_phone_touch_test_blocks('(pointer: coarse)');
+	$pill = workspace_phone_touch_test_rule($touch, '.ws-mail-pane-channel');
+
+	pg_assert_true($pill !== null, 'the channel pill has a touch size');
+	pg_assert_contains('min-height: 2rem', (string) $pill, 'the pill is 32 px high on touch');
+
+	$base = workspace_phone_touch_test_rule(workspace_phone_touch_test_css(), '.ws-mail-pane-channel');
+	pg_assert_true($base !== null && strpos($base, 'min-height') === false, 'the pill keeps its look under a mouse');
+}

@@ -17949,6 +17949,13 @@ a.ws-chip-message:hover,
     padding: .5rem;
   }
 }
+/* On touch the conversation's channel pill is a 32 px link, as the pane's
+   other tools; the 22 px status pill stays under a mouse. */
+@media (pointer: coarse) {
+  .ws-mail-pane-channel {
+    min-height: 2rem;
+  }
+}
 /* The "/" list of a note's inserts, under the caret. */
 .ws-picker.ws-slash {
   position: fixed;
