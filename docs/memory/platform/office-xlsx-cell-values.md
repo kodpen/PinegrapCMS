@@ -1,11 +1,15 @@
 ---
 name: office-xlsx-cell-values
-description: How the Excel preview reads workbooks not written by Excel: prefixed elements, rows and cells without r, times and durations by the number format (PR #1118)
+description: How the Excel preview reads workbooks not written by Excel: prefixed elements, cells without r, times and durations (#1118), the styles part the relationships name (#10765)
 ---
 
 ## Which workbooks looked empty or collapsed, and why?
 - Open XML SDK writes every SpreadsheetML element with a prefix (`<x:row>`, `<x:c>`). XMLReader's `name` carries the prefix, so the reader found no rows ("The sheet is empty."). Shared strings, cell parts and rows now match on `localName` (`pg_office_xlsx_strings()`, `pg_office_xlsx_cell_parts()`, `pg_office_xlsx_rows()`); DOM's `getElementsByTagName()` already matched the local name.
 - The `r` attribute is optional on `<row>` and `<c>` (ECMA-376). Without it every cell landed in column A, each overwriting the last, and the rows were numbered 0. A row without `r` is now the one after the last row read; a cell without `r` is the column after the last cell of its row (a referenced cell resets the count, as `includes/erp/bank_import.php` already did).
+
+## Where are the date styles read from?
+- `pg_office_xlsx_date_styles()` reads the styles part the workbook's relationships name (`pg_sheet_xlsx_part($zip, 'styles', 'xl/styles.xml')`, PR #10765), `xl/styles.xml` when they name none. Before, a writer naming it `/xl/Styles2.xml` had every date read as its day count (`46343`) in the preview and in every importer, and the bank statement import found no dated line (#10544).
+- The workbook part itself is still only `xl/workbook.xml` (#10764), and the editor's `pg_office_xlsx_style_kinds()` reads its text and unlocked styles from `xl/styles.xml` only.
 
 ## How is a time or a duration shown?
 - `pg_office_xlsx_date_styles()` gives each date-like style a kind from `pg_office_xlsx_format_kind()` instead of `true`: `date` (a day, month or year, with or without a time), `time` / `time_s` (a time of day), `hours` / `hours_s` (`[h]`, elapsed), `minutes` (`mm:ss`). Built-ins: 14–17 and 22 date, 18/20 time, 19/21 time with seconds, 45/47 minutes, 46 elapsed hours.

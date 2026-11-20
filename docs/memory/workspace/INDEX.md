@@ -77,6 +77,7 @@
 - automation-flows-gate.md: The one gate of automation flows, pg_flows_enabled() (#9109): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - automation-flows-screen.md: The Flows screen with the Workspace off (#9154): its gate, the panel actions the switch lets through, what the screen leaves out that lives in a channel, how it was checked
 - automation-flows-workspace-boxes.md: Which flow boxes and starts need the Workspace (ws_flow_kinds_workspace()): the list, offered only with it, the problem on the canvas, the refusal at run time and in Try [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
+- calls-group.md: A group's Workspace call (CL3): no ring in a group, the head's Join button (n/4, full), the mesh grid of four, the speaking mark, five minutes alone
 - calls-screen.md: Workspace calls of two people on the channel screen (CL2, #10522): head buttons, the ring and Decline, the call window kept across channels, ws_call_sync each second, STUN default
 - calls-server.md: Workspace calls on the server (CL1, #10499, step 11.0.243): tables, start/join/leave/end, signals read by their member only, the 2-minute end, who may, limits, read-only API
 - calls-settings.md: The Calls card of Workspace settings (CL6, #10608): off until turned on, STUN addresses, the TURN relay with its sealed secret, member-only time-limited credentials, the browser's connection test
@@ -642,3 +643,4 @@
 - workspace-voice-transcripts.md: Voice message transcripts (V3a #2674): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap
 - workspace-voice-unheard.md: Why nobody heard a voice message (VA1): the recorder's hint while transcripts are off or the channel keeps its recordings, ws_voice_unheard_reason() in the assistants' briefings, Claude's instruction
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does
+- workspace-writing-rules.md: How every AI is told to write a Workspace message (bold, code, lists, tables, quotes, links, no headings): one English text in code for the agent instructions and the guide [decision: here]

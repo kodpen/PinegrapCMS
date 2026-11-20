@@ -261,3 +261,19 @@ function test_place_map_bulk_notice_lines()
 	pg_assert_same(3, substr_count($notice, '<br>'));
 	pg_assert_contains('<br>BR0003: Nowhere 1<br>BR0004: &lt;b&gt;x&lt;/b&gt;', $notice);
 }
+
+// A record the list query finds with an address (MySQL's TRIM keeps a tab or
+// a line break) can still give no text to ask. It is reported as not found
+// and passed over, never a stop: a stop came back at it on every press.
+function test_place_map_bulk_blank_address_is_not_a_stop()
+{
+	pg_assert_same('found', pg_place_map_bulk_outcome(array('state' => 'found')));
+	pg_assert_same('not_found', pg_place_map_bulk_outcome(array('state' => 'not_found')));
+	pg_assert_same('not_found', pg_place_map_bulk_outcome(array('state' => 'empty')), 'an empty address is passed over');
+	pg_assert_same('stop', pg_place_map_bulk_outcome(array('state' => 'wait')));
+	pg_assert_same('stop', pg_place_map_bulk_outcome(array('state' => 'error')));
+	pg_assert_same('', pg_place_map_address_text(array(12 => "\t", 13 => "\n "), array(12, 13)), 'a tab and a line break are no address');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/place_map.php');
+	pg_assert_contains('pg_place_map_bulk_outcome($result)', $source, 'the bulk call decides by it');
+}

@@ -431,6 +431,15 @@ if (($item_name_lowercase == 'llms.txt') && router_llms_txt_enabled()) {
     exit();
 }
 
+// llms.txt in the software folder: the guide's topic list for an AI agent
+// in a signed-in panel session (agent_guide.php). No file of that name
+// exists there, so the web server sends the request here.
+if ($item_name_lowercase == mb_strtolower(SOFTWARE_DIRECTORY) . '/llms.txt') {
+    define('PG_AGENT_GUIDE_LIST', true);
+    require(dirname(__FILE__) . '/agent_guide.php');
+    exit();
+}
+
 // The site icon's sizes and web manifest (Site Settings, SEO, Site Icon;
 // includes/fn/site_icon.php), while a site icon is set. Without one the
 // names go on as they always have: to a file of that name, or to a page.

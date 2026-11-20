@@ -428,7 +428,7 @@
 
     // Layers whose content a turn or a flip of the picture does not turn:
     // only their place follows it.
-    var UPRIGHT = ['text', 'sticker', 'image', 'glyph'];
+    var UPRIGHT = ['text', 'sticker', 'image', 'glyph', 'data'];
 
     function sourceTurns(doc) {
         var g = doc.geometry, src = doc.source || { width: 0, height: 0 };
@@ -11769,6 +11769,626 @@
         attachKeep: attachKeep, attachRemap: attachRemap, attachMoves: attachMoves
     };
 
+    // ---- DATA ----
+    // A data layer: { type: 'data', x, y, w, h, rot, opacity, data } where
+    // data describes a Workspace table drawn as a chart or a table. It holds
+    // the description and never the rows; the rows are read when the layer
+    // is drawn, and the drawing is a list of marks in the layer's box
+    // (dataMarks()) that the stage, a save and the server's draw paint the
+    // same way. Every number is rounded to hundredths, so the server's port
+    // gives the same list (tests/fixtures/canvas_data/).
+
+    var DATA_KINDS = ['bar', 'stacked_bar', 'line', 'area', 'donut'];
+    var DATA_GROUPS = ['none', 'sum', 'count', 'average'];
+    var DATA_SORTS = ['none', 'label', 'value'];
+    var DATA_MAX = { values: 5, title: 120, colours: 5, labels: 24, slices: 6, tableRows: 50, rows: 5000, cell: 80 };
+
+    // The values of the Workspace canvas guide a data layer draws by
+    // (ws_canvas_guide_values(); tests/image_editor_data_test.php holds the
+    // two alike).
+    var DATA_GUIDE = {
+        base: 675,
+        grid: { margin: 48, gutter: 24, axis: 64 },
+        type: {
+            title: [44, 700, 'ink'], figure: [72, 700, 'ink'], label: [20, 600, 'ink2'], axis: [18, 400, 'ink3'], note: [16, 400, 'ink3']
+        },
+        spacing: { legend: 24, plot: 40 },
+        palettes: {
+            dark: {
+                background: '#14161c', ink: '#eef0f3', ink2: '#a4a9b1', ink3: '#6d737c', grid: '#262930', baseline: '#3a3e47',
+                series: ['#5892ea', '#00ac86', '#9580e0', '#be8700', '#d46d83'], other: '#5d636c'
+            },
+            light: {
+                background: '#ffffff', ink: '#12151a', ink2: '#58606a', ink3: '#8a919b', grid: '#eceef1', baseline: '#c9cdd3',
+                series: ['#2f6fed', '#0e9a74', '#7150e6', '#b7791f', '#d43d6b'], other: '#a3a9b1'
+            }
+        },
+        marks: {
+            barMax: 40, barBand: 56, barRadius: 6, groupGap: 4, stackGap: 2, line: 6, dot: 6, ring: 3, areaMix: 14,
+            grid: 1, baseline: 2, ticksMax: 5, donutOuter: 190, donutInner: 128, row: 44
+        }
+    };
+
+    function dataRound(n) {
+        return Math.round(n * 100) / 100;
+    }
+
+    function dataColumnId(v) {
+        return (typeof v === 'string' || typeof v === 'number') && /^[A-Za-z0-9_-]{1,40}$/.test(String(v));
+    }
+
+    // A description checked and filled with its defaults: { ok, data } or
+    // { ok: false, error } with error data_table, data_show, data_kind,
+    // data_columns, data_group, data_sort, data_format, data_title,
+    // data_colours, data_theme or data_font.
+    function dataCheck(d) {
+        var out = {}, fail = function (code) { return { ok: false, error: code }; };
+
+        if (!d || (typeof d !== 'object') || Array.isArray(d)) {
+            return fail('data_table');
+        }
+
+        out.table = Number(d.table);
+
+        if (!(out.table > 0) || (Math.floor(out.table) !== out.table)) {
+            return fail('data_table');
+        }
+
+        out.show = (d.show === undefined) ? 'chart' : d.show;
+
+        if ((out.show !== 'chart') && (out.show !== 'table')) {
+            return fail('data_show');
+        }
+
+        out.kind = (out.show === 'table') ? 'table' : ((d.kind === undefined) ? 'bar' : d.kind);
+
+        if ((out.show === 'chart') && (DATA_KINDS.indexOf(out.kind) < 0)) {
+            return fail('data_kind');
+        }
+
+        out.group = (d.group === undefined) ? 'none' : d.group;
+
+        if (DATA_GROUPS.indexOf(out.group) < 0) {
+            return fail('data_group');
+        }
+
+        out.values = (d.values === undefined) ? [] : d.values;
+
+        if (!dataColumnId(d.label) || !Array.isArray(out.values) || (out.values.length > DATA_MAX.values) || !out.values.every(dataColumnId)) {
+            return fail('data_columns');
+        }
+
+        out.label = String(d.label);
+        out.values = out.values.map(String).filter(function (v, i, all) { return all.indexOf(v) === i; });
+
+        if (out.group === 'count') {
+            out.values = [];
+        } else if ((out.show === 'chart') && (!out.values.length || ((out.kind === 'donut') && (out.values.length > 1)))) {
+            return fail('data_columns');
+        }
+
+        out.sort = (d.sort === undefined) ? 'none' : d.sort;
+        out.dir = (d.dir === undefined) ? 'asc' : d.dir;
+
+        if ((DATA_SORTS.indexOf(out.sort) < 0) || ((out.dir !== 'asc') && (out.dir !== 'desc'))) {
+            return fail('data_sort');
+        }
+
+        out.format = (d.format === undefined) ? 'en' : d.format;
+
+        if ((out.format !== 'en') && (out.format !== 'tr')) {
+            return fail('data_format');
+        }
+
+        out.title = (d.title === undefined) ? '' : d.title;
+
+        if ((typeof out.title !== 'string') || (out.title.length > DATA_MAX.title) || /[\n\r]/.test(out.title)) {
+            return fail('data_title');
+        }
+
+        out.title = out.title.trim();
+        out.colours = (d.colours === undefined) ? [] : d.colours;
+
+        if (!Array.isArray(out.colours) || (out.colours.length > DATA_MAX.colours) || !out.colours.every(function (c) { return (typeof c === 'string') && /^#[0-9a-fA-F]{6}$/.test(c); })) {
+            return fail('data_colours');
+        }
+
+        out.colours = out.colours.map(function (c) { return c.toLowerCase(); });
+        out.theme = (d.theme === undefined) ? 'light' : d.theme;
+
+        if (!DATA_GUIDE.palettes.hasOwnProperty(out.theme)) {
+            return fail('data_theme');
+        }
+
+        out.font = (d.font === undefined) ? 'g:Inter' : d.font;
+
+        if ((typeof out.font !== 'string') || !(TEXT_FONTS.hasOwnProperty(out.font) || ((out.font.slice(0, 2) === 'g:') && (textFamilyName(out.font.slice(2)) === out.font.slice(2)) && (out.font.length > 2)))) {
+            return fail('data_font');
+        }
+
+        out.legend = (d.legend === undefined) ? true : !!d.legend;
+
+        return { ok: true, data: out };
+    }
+
+    // A cell as a number: a number, or a string that is one ('1250.5');
+    // else null.
+    function dataNumber(v) {
+        if ((typeof v === 'number') && isFinite(v)) {
+            return v;
+        }
+
+        if ((typeof v === 'string') && /^\s*-?(\d+\.?\d*|\.\d+)\s*$/.test(v)) {
+            return parseFloat(v);
+        }
+
+        return null;
+    }
+
+    // A cell as words: a list joined by commas, an object or nothing as ''.
+    function dataText(v) {
+        if (Array.isArray(v)) {
+            return v.map(dataText).filter(function (s) { return s !== ''; }).join(', ');
+        }
+
+        if ((typeof v === 'number') && isFinite(v)) {
+            return String(v);
+        }
+
+        if (typeof v === 'boolean') {
+            return v ? '1' : '0';
+        }
+
+        return (typeof v === 'string') ? v.replace(/\s+/g, ' ').trim() : '';
+    }
+
+    // A number as the chart writes it (ws_canvas_chart_number()): whole
+    // below 10,000 with a decimal when it has one, else in thousands with
+    // one decimal and K (en) or B (tr); a minus kept. Full: a plain
+    // table's cell, every digit with up to two decimals.
+    function dataFormat(n, format, full) {
+        var tr = (format === 'tr'), minus = (n < 0) ? '-' : '', a = Math.abs(n), short = !full && (a >= 10000), places, parts;
+
+        if (full) {
+            a = Math.round(a * 100) / 100;
+            places = (Math.floor(a) === a) ? 0 : ((Math.round(a * 10) / 10 === a) ? 1 : 2);
+        } else {
+            a = short ? Math.round(a / 100) / 10 : Math.round(a * 10) / 10;
+            places = (Math.floor(a) === a) ? 0 : 1;
+        }
+
+        parts = a.toFixed(places).split('.');
+
+        return minus + parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, tr ? '.' : ',') + (parts[1] ? (tr ? ',' : '.') + parts[1] : '') + (short ? (tr ? ' B' : 'K') : '');
+    }
+
+    // The step of a value axis (ws_canvas_chart_step()).
+    function dataStep(max, steps) {
+        var unit, m = [1, 2, 2.5, 5, 10], i;
+
+        if (max <= 0) {
+            return 1;
+        }
+
+        unit = Math.pow(10, Math.floor(Math.log(max / steps) / Math.LN10 + 1e-12));
+
+        for (i = 0; i < m.length; i++) {
+            if (max / (unit * m[i]) <= steps) {
+                return unit * m[i];
+            }
+        }
+
+        return unit * 10;
+    }
+
+    function dataCompare(a, b) {
+        var x = dataNumber(a), y = dataNumber(b);
+
+        if ((x !== null) && (y !== null)) {
+            return x - y;
+        }
+
+        x = String(a).toLowerCase();
+        y = String(b).toLowerCase();
+
+        return (x < y) ? -1 : ((x > y) ? 1 : 0);
+    }
+
+    // The rows of a table as the description shows them: { labels, series
+    // [{ name, values, texts }], cut } where values are numbers (0 for a
+    // cell that is none) and texts the cells' words for a plain table (null
+    // where the value is the number). Rows: [{ cells: { column id: value } }]
+    // in the table's order, 5000 at most taken; columns: { id: { name } }.
+    // Grouping gathers the rows of one label in the order they first come;
+    // count counts them, average is over the cells that are numbers. A chart
+    // keeps 24 labels, a donut 5 and Other, a table 50; cut is how many were
+    // left out. words: count, other.
+    function dataSeries(d, columns, rows, words) {
+        var keys = [], byKey = {}, names, entries, cut = 0, other, i;
+
+        columns = columns || {};
+        words = words || {};
+        rows = (Array.isArray(rows) ? rows : []).slice(0, DATA_MAX.rows);
+        names = (d.group === 'count') ? [words.count || 'Count'] : d.values.map(function (id) { return columns[id] ? String(columns[id].name || '') : ''; });
+
+        rows.forEach(function (r) {
+            var cells = (r && r.cells && (typeof r.cells === 'object')) ? r.cells : {}, label = dataText(cells[d.label]).slice(0, DATA_MAX.cell), key = (d.group === 'none') ? keys.length : '=' + label, e;
+
+            if (!byKey.hasOwnProperty(key)) {
+                byKey[key] = { label: label, n: 0, sums: d.values.map(function () { return 0; }), counts: d.values.map(function () { return 0; }), texts: d.values.map(function () { return null; }) };
+                keys.push(key);
+            }
+
+            e = byKey[key];
+            e.n++;
+            d.values.forEach(function (id, j) {
+                var v = dataNumber(cells[id]);
+
+                if (v !== null) {
+                    e.sums[j] += v;
+                    e.counts[j]++;
+                } else if (d.group === 'none') {
+                    e.texts[j] = dataText(cells[id]).slice(0, DATA_MAX.cell);
+                }
+            });
+        });
+
+        entries = keys.map(function (key) {
+            var e = byKey[key];
+
+            return {
+                label: e.label,
+                values: (d.group === 'count') ? [e.n] : e.sums.map(function (s, j) { return (d.group === 'average') ? (e.counts[j] ? dataRound(s / e.counts[j]) : 0) : dataRound(s); }),
+                texts: (d.group === 'count') ? [null] : e.texts
+            };
+        });
+
+        if (d.sort !== 'none') {
+            entries = entries.map(function (e, i) { return [e, i]; }).sort(function (a, b) {
+                var c = (d.sort === 'label') ? dataCompare(a[0].label, b[0].label)
+                    : a[0].values.reduce(function (s, v) { return s + v; }, 0) - b[0].values.reduce(function (s, v) { return s + v; }, 0);
+
+                return (c ? ((d.dir === 'desc') ? -c : c) : 0) || (a[1] - b[1]);
+            }).map(function (p) { return p[0]; });
+        }
+
+        if ((d.kind === 'donut') && (entries.length > DATA_MAX.slices)) {
+            other = { label: words.other || 'Other', values: [0], texts: [null] };
+
+            for (i = DATA_MAX.slices - 1; i < entries.length; i++) {
+                other.values[0] = dataRound(other.values[0] + entries[i].values[0]);
+            }
+
+            cut = entries.length - DATA_MAX.slices + 1;
+            entries = entries.slice(0, DATA_MAX.slices - 1).concat([other]);
+        } else {
+            i = (d.kind === 'table') ? DATA_MAX.tableRows : DATA_MAX.labels;
+            cut = Math.max(0, entries.length - i);
+            entries = entries.slice(0, i);
+        }
+
+        return {
+            labelName: columns[d.label] ? String(columns[d.label].name || '') : '',
+            labels: entries.map(function (e) { return e.label; }),
+            series: names.map(function (name, j) {
+                return { name: name, values: entries.map(function (e) { return e.values[j]; }), texts: entries.map(function (e) { return e.texts[j]; }) };
+            }),
+            cut: cut
+        };
+    }
+
+    // A colour mixed into the board by the guide's area share, solid.
+    function dataWash(colour, background) {
+        var t = DATA_GUIDE.marks.areaMix / 100, out = '#', i, v;
+
+        for (i = 1; i < 7; i += 2) {
+            v = Math.round(parseInt(colour.substr(i, 2), 16) * t + parseInt(background.substr(i, 2), 16) * (1 - t));
+            out += (v < 16 ? '0' : '') + v.toString(16);
+        }
+
+        return out;
+    }
+
+    // The points of an arc around (cx, cy), from angle a to b, in pieces of
+    // at most three degrees.
+    function dataArc(cx, cy, r, a, b) {
+        var n = Math.max(2, Math.ceil(Math.abs(b - a) / (Math.PI / 60) - 1e-9)), out = [], i, t;
+
+        for (i = 0; i <= n; i++) {
+            t = a + (b - a) * i / n;
+            out.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]);
+        }
+
+        return out;
+    }
+
+    // The drawing of a data layer as marks in its box's frame (0, 0 its top
+    // left corner, in the layer's pixels), drawn in this order:
+    //   { t: 'poly', pts: [[x, y], …], fill }               a filled outline
+    //   { t: 'line', pts: [[x, y], …], stroke, width }      a round-capped line
+    //   { t: 'text', x, y, v, size, weight, fill, anchor }  y the baseline;
+    //                                                       anchor start, middle, end
+    // d is a checked description, w and h the box; read is dataSeries()'s
+    // answer, or { state: 'refused' } when the reader may not read the
+    // table, or null before the rows are read. The board is laid out in the
+    // guide's units (675 on its shorter side) and scaled to the box. words:
+    // empty, refused, more (with %d).
+    function dataMarks(d, w, h, read, words) {
+        var g = DATA_GUIDE, p = g.palettes[d.theme], mk = g.marks, s = Math.max(0.01, Math.min(w, h) / g.base), W = w / s, H = h / s;
+        var marks = [], M0 = g.grid.margin, series = (read && read.series) || [], labels = (read && read.labels) || [], n = labels.length;
+        var colours, legend = [], top, bot, empty;
+
+        words = words || {};
+
+        function pt(x, y) {
+            return [dataRound(x * s), dataRound(y * s)];
+        }
+
+        function poly(pts, fill) {
+            marks.push({ t: 'poly', pts: pts.map(function (q) { return pt(q[0], q[1]); }), fill: fill });
+        }
+
+        function rect(x, y, rw, rh, fill) {
+            if ((rw > 0) && (rh > 0)) {
+                poly([[x, y], [x + rw, y], [x + rw, y + rh], [x, y + rh]], fill);
+            }
+        }
+
+        function line(pts, stroke, width) {
+            marks.push({ t: 'line', pts: pts.map(function (q) { return pt(q[0], q[1]); }), stroke: stroke, width: dataRound(width * s) });
+        }
+
+        function text(x, y, v, role, fill, anchor) {
+            var r = g.type[role];
+
+            if (v !== '') {
+                marks.push({ t: 'text', x: dataRound(x * s), y: dataRound(y * s), v: v, size: dataRound(r[0] * s), weight: r[1], fill: fill || p[r[2]], anchor: anchor || 'start' });
+            }
+        }
+
+        // Words cut to a width, by the guide's average letter of 0.56 em.
+        function fit(v, role, room) {
+            var most = Math.max(1, Math.floor(room / (g.type[role][0] * 0.56)));
+
+            return (v.length > most) ? v.slice(0, Math.max(1, most - 1)) + '…' : v;
+        }
+
+        function dot(x, y, colour) {
+            poly(dataArc(x, y, mk.dot + mk.ring, 0, 2 * Math.PI).slice(0, -1), p.background);
+            poly(dataArc(x, y, mk.dot, 0, 2 * Math.PI).slice(0, -1), colour);
+        }
+
+        function head() {
+            var y = M0, x = M0;
+
+            if (d.title !== '') {
+                y += g.type.title[0] * 0.8;
+                text(M0, y, fit(d.title, 'title', W - 2 * M0), 'title');
+            }
+
+            if (legend.length) {
+                y += ((d.title !== '') ? g.spacing.legend : 0) + g.type.label[0];
+                legend.forEach(function (e) {
+                    rect(x, y - 15, 16, 16, e[1]);
+                    text(x + 24, y, e[0], 'label');
+                    x += 24 + e[0].length * g.type.label[0] * 0.56 + g.grid.gutter;
+                });
+            }
+
+            return y + ((d.title !== '' || legend.length) ? g.spacing.plot : 0);
+        }
+
+        function axis(x0, x1, top, bot, max) {
+            var step = dataStep(max, mk.ticksMax), k = Math.max(1, Math.ceil(max / step - 1e-9)), i, y;
+
+            if (max > step * (k - 0.25)) {
+                k++;
+            }
+
+            for (i = 0; i <= k; i++) {
+                y = bot - (bot - top) * i / k;
+
+                if (i) {
+                    rect(x0, y, x1 - x0, mk.grid, p.grid);
+                } else {
+                    rect(x0, y - mk.baseline / 2, x1 - x0, mk.baseline, p.baseline);
+                }
+
+                text(x0 - 14, y + 6, dataFormat(step * i, d.format), 'axis', null, 'end');
+            }
+
+            return step * k;
+        }
+
+        rect(0, 0, W, H, p.background);
+        colours = d.colours.length ? d.colours : ((series.length === 1) && (d.kind !== 'donut') ? [p.series[0]] : p.series);
+        empty = !read || (read.state === 'refused') || !n;
+
+        if (!empty && d.legend && (series.length > 1) && (d.kind !== 'donut') && (d.kind !== 'table')) {
+            series.forEach(function (one, j) {
+                legend.push([fit(one.name, 'label', W / 3), colours[j % colours.length]]);
+            });
+        }
+
+        top = head();
+        bot = H - M0 - g.type.axis[0] - 14;
+
+        if (empty) {
+            text(W / 2, Math.max(top, (top + H - M0) / 2), fit((read && (read.state === 'refused')) ? (words.refused || '') : (words.empty || ''), 'label', W - 2 * M0), 'label', p.ink3, 'middle');
+
+            return marks;
+        }
+
+        if (d.kind === 'table') {
+            dataTable();
+        } else if (d.kind === 'donut') {
+            dataDonut();
+        } else if ((d.kind === 'line') || (d.kind === 'area')) {
+            dataLine();
+        } else {
+            dataBars();
+        }
+
+        return marks;
+
+        function every() {
+            return Math.max(1, Math.ceil(n / 12));
+        }
+
+        function dataBars() {
+            var x0 = M0 + g.grid.axis, x1 = W - M0, stacked = (d.kind === 'stacked_bar'), totals = [], peak, band, k, bw, r, mark, i;
+            var Y = function (v) { return bot - (bot - top) * v / peak; };
+
+            for (i = 0; i < n; i++) {
+                totals[i] = 0;
+                series.forEach(function (one) {
+                    var v = Math.max(0, one.values[i]);
+
+                    totals[i] = stacked ? totals[i] + v : Math.max(totals[i], v);
+                });
+            }
+
+            peak = axis(x0, x1, top, bot, Math.max(Math.max.apply(null, totals), 1e-9));
+            band = (x1 - x0) / n;
+            k = stacked ? 1 : series.length;
+            bw = Math.min(mk.barMax, band * mk.barBand / 100 / k);
+            r = Math.min(mk.barRadius, bw / 2);
+            mark = totals.indexOf(Math.max.apply(null, totals));
+
+            for (i = 0; i < n; i++) {
+                (function (i) {
+                    var cx = x0 + band * (i + 0.5), acc = 0, last = series.length - 1;
+
+                    series.forEach(function (one, j) {
+                        var v = Math.max(0, one.values[i]), x = stacked ? cx - bw / 2 : cx - (k * bw + (k - 1) * mk.groupGap) / 2 + j * (bw + mk.groupGap);
+                        var y0 = Y(acc) - ((stacked && j) ? mk.stackGap : 0), y1 = Y(acc + v), rr, q;
+
+                        if (y0 - y1 > 0.5) {
+                            if (!stacked || (j === last)) {
+                                rr = Math.min(r, (y0 - y1) / 2);
+                                q = [[x, y0]].concat(dataArc(x + rr, y1 + rr, rr, Math.PI, 1.5 * Math.PI), dataArc(x + bw - rr, y1 + rr, rr, 1.5 * Math.PI, 2 * Math.PI), [[x + bw, y0]]);
+                                poly(q, colours[j % colours.length]);
+                            } else {
+                                rect(x, y1, bw, y0 - y1, colours[j % colours.length]);
+                            }
+                        }
+
+                        if (stacked) {
+                            acc += v;
+                        }
+                    });
+
+                    if ((i % every() === 0) || (i === n - 1)) {
+                        text(cx, bot + 32, fit(labels[i], 'axis', band * every() - 8), 'axis', null, 'middle');
+                    }
+
+                    if (i === mark) {
+                        text(cx, Y(totals[i]) - 14, dataFormat(totals[i], d.format), 'label', p.ink, 'middle');
+                    }
+                }(i));
+            }
+        }
+
+        function dataLine() {
+            var x0 = M0 + g.grid.axis, x1 = W - M0 - 90, max = 1e-9, peak, X, Y, i;
+
+            series.forEach(function (one) {
+                one.values.forEach(function (v) { max = Math.max(max, v); });
+            });
+
+            peak = axis(x0, x1, top, bot, max);
+            X = function (i) { return (n > 1) ? x0 + 12 + (x1 - x0 - 24) * i / (n - 1) : (x0 + x1) / 2; };
+            Y = function (v) { return bot - (bot - top) * Math.max(0, v) / peak; };
+
+            for (i = 0; i < n; i++) {
+                if ((i % every() === 0) || (i === n - 1)) {
+                    text(X(i), bot + 32, fit(labels[i], 'axis', (x1 - x0) / Math.min(n, 12) - 8), 'axis', null, 'middle');
+                }
+            }
+
+            series.forEach(function (one, j) {
+                var c = colours[j % colours.length], pts = one.values.map(function (v, i) { return [X(i), Y(v)]; }), end = one.values[n - 1];
+
+                if (d.kind === 'area') {
+                    poly(pts.concat([[X(n - 1), bot], [X(0), bot]]), dataWash(c, p.background));
+                }
+
+                line(pts, c, mk.line);
+                dot(X(n - 1), Y(end), c);
+                text(X(n - 1) + 18, Y(end) + 7, dataFormat(end, d.format), 'label', p.ink);
+            });
+        }
+
+        function dataDonut() {
+            var values = series[0].values.map(function (v) { return Math.max(0, v); }), total = values.reduce(function (a, b) { return a + b; }, 0);
+            var wide = (W >= 1000), R = Math.max(40, Math.min(mk.donutOuter, (W - 2 * M0) / 2, wide ? (H - M0 - top) / 2 : (H - M0 - top - 64 * n) / 2));
+            var r = R * mk.donutInner / mk.donutOuter, cx = wide ? M0 + R + 90 : W / 2, cy = wide ? Math.max(top + R, (top + H) / 2) : top + R;
+            var a = -Math.PI / 2, live = values.filter(function (v) { return v > 0; }).length, lx = wide ? cx + R + 110 : M0, rx = W - M0;
+            var ly = wide ? cy - (n - 1) * 32 : cy + R + 64, colour = function (i) { return d.colours.length ? d.colours[i % d.colours.length] : ((i < p.series.length) ? p.series[i] : p.other); };
+
+            values.forEach(function (v, i) {
+                var b, gap = (live > 1) ? 0.012 : 0;
+
+                if (v <= 0) {
+                    return;
+                }
+
+                b = a + 2 * Math.PI * v / total;
+                poly(dataArc(cx, cy, R, a + gap, b - gap).concat(dataArc(cx, cy, r, b - gap * R / r, a + gap * R / r)), colour(i));
+                a = b;
+            });
+
+            text(cx, cy + 20, dataFormat(total, d.format), 'figure', null, 'middle');
+
+            values.forEach(function (v, i) {
+                var y = ly + i * 64;
+
+                rect(lx, y - 16, 18, 18, colour(i));
+                text(lx + 32, y, fit(labels[i], 'label', rx - lx - 180), 'label', p.ink);
+                text(rx, y, (total ? Math.round(v / total * 100) : 0) + ' %', 'label', p.ink, 'end');
+                text(rx - 100, y, dataFormat(v, d.format), 'axis', null, 'end');
+            });
+        }
+
+        function dataTable() {
+            var row = mk.row, x0 = M0, x1 = W - M0, cols = series.length, first = cols ? (x1 - x0) * 0.4 : (x1 - x0), each = cols ? (x1 - x0 - first) / cols : 0;
+            var room = Math.floor((H - M0 - top - row) / row), shown = Math.min(n, Math.max(0, room)), more = n + (read.cut || 0) - shown, y = top, i;
+
+            if (more > 0) {
+                shown = Math.max(0, Math.min(n, room - 1));
+                more = n + (read.cut || 0) - shown;
+            }
+
+            text(x0, y + 28, fit(read.labelName || '', 'label', first - 16), 'label');
+            series.forEach(function (one, j) {
+                text(x0 + first + each * (j + 1), y + 28, fit(one.name, 'label', each - 16), 'label', null, 'end');
+            });
+            y += row;
+            rect(x0, y - mk.baseline / 2, x1 - x0, mk.baseline, p.baseline);
+
+            for (i = 0; i < shown; i++) {
+                text(x0, y + 29, fit(labels[i], 'axis', first - 16), 'axis', p.ink);
+                series.forEach(function (one, j) {
+                    var v = (one.texts[i] !== null) ? one.texts[i] : dataFormat(one.values[i], d.format, true);
+
+                    text(x0 + first + each * (j + 1), y + 29, fit(v, 'axis', each - 16), 'axis', p.ink, 'end');
+                });
+                y += row;
+                rect(x0, y, x1 - x0, mk.grid, p.grid);
+            }
+
+            if (more > 0) {
+                text(x0, y + 29, String(words.more || '').replace('%d', String(more)), 'note');
+            }
+        }
+    }
+
+    var DATA = {
+        DATA_KINDS: DATA_KINDS, DATA_GROUPS: DATA_GROUPS, DATA_SORTS: DATA_SORTS, DATA_MAX: DATA_MAX, DATA_GUIDE: DATA_GUIDE,
+        dataCheck: dataCheck, dataNumber: dataNumber, dataText: dataText, dataFormat: dataFormat, dataStep: dataStep,
+        dataSeries: dataSeries, dataMarks: dataMarks
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -11786,7 +12406,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
