@@ -58,6 +58,7 @@
 - customer-rhythm-features.md: Plan customer-rhythm, features H1 to H16: product rhythm, customer rhythm and chance, stages, reorder due, the link, events, group rule, measuring, report, card, settings, API
 - customer-rhythm-steps.md: Plan customer-rhythm, steps RY1a to RY6: the pure rules, the store and nightly pass, the events with the brake, the reorder link, report and card, API and group rule, close-out
 - customer-rhythm.md: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; RY1a to RY6
+- dashboard-assistant-agents.md: Plan (owner 2026-11-21): the dashboard's Assistant card with Claude off: a notice at the top, the agent chat, questions and proposals kept, a short note when no agent is connected; one step, DA1
 - delivery-tower-features.md: Plan delivery-tower, features T1 to T14: measured times, the four problem kinds, the desk, alerts, events, the scorecard, arrival and carrier suggestions, settings, API
 - delivery-tower-screens.md: Plan delivery-tower, how its screens are put together (DT3 to DT5): the Delivery problems list, a problem's drawer, the carrier scorecard, the two suggestions, the settings drawer
 - delivery-tower-steps.md: Plan delivery-tower, steps DT1a to DT6: the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out

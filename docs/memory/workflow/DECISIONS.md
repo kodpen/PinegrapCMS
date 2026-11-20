@@ -38,6 +38,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-12.md: Is Edit application a drawer with three tabs? (owner, 2026-11-20, agent channel poll 189, channel message 10736)
 - decisions-made-panel-12.md: Is Assistants and agents gathered as drawn? (owner, 2026-11-20, agent channel poll 190, channel message 10740)
 - decisions-made-panel-12.md: What do the three have in common?
+- decisions-made-panel-13.md: Where are the rules and the earlier parts?
+- decisions-made-panel-13.md: Does the dashboard's Assistant card keep the agent chat while Claude is off? (owner, 2026-11-21, in the architect's window, with a picture of the card)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
