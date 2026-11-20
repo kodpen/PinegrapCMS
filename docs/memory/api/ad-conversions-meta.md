@@ -9,7 +9,7 @@ module: ad_conversions_meta
 
 ## What does its page hold?
 - `connections.php?service=meta_capi`, under Visitors and privacy's gate (`connections_privacy_may_manage()`), for the page card and the writes `meta_capi_save` / `meta_capi_remove`.
-- "Connection details": "Pixel ID" (digits), "Access token" (password field, never drawn back), "Test event code", "Events sent" ticks (Purchase only until SC5), "Without consent" › "Send events without the person" (C9), "Send personal data while the cookie notice is off" (C8) with its risk line. "Save" filled, "Send a test event" quiet (saves, then tries).
+- "Connection details": "Pixel ID" (digits), "Access token" (password field, never drawn back), "Test event code", "Events sent" ticks (Purchase, Lead, Account opened, Add to cart, Begin checkout: `ad-conversions-visitor-events.md`), "Forms sent as Lead", "Without consent" › "Send events without the person" (C9, the purchase only), "Send personal data while the cookie notice is off" (C8) with its risk line. "Save" filled, "Send a test event" quiet (saves, then tries).
 - Notice off and the box clear: a warning "The cookie notice is off: events go without the person" with a link to Cookie Consent.
 - Ticking or clearing the box writes its own activity log line. "Disconnect" in Status empties the row; due rows are then given up by the job.
 

@@ -396,6 +396,7 @@
     "Layouts copied to backup directory. Creating .htaccess for security reason, please wait...": "Düzenler yedek dizinine kopyalandı. Güvenlik için .htaccess oluşturuluyor, lütfen bekleyin...",
     "Lazy": "Gecikmeli",
     "Lead": "Giriş Paragrafı",
+    "Lead (a form picked below)": "Potansiyel müşteri (aşağıda seçilen form)",
     "Lead Card": "Manşet Kartı",
     "Lead Editor": "Baş Kurgucu",
     "Lead Grid": "Manşet Izgarası",
