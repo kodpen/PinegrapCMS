@@ -1,6 +1,6 @@
 ---
 name: pick-pack
-description: Plan (owner 2026-11-20, poll 181): shelf addresses, pick waves in shelf order, barcode pack checks that stop a wrong or short parcel, label on a checked pack, measures, events; PP1 to PP7
+description: Plan (owner 2026-11-20, poll 181): shelf addresses, pick waves in shelf order, barcode pack checks that stop a wrong or short parcel, label on a checked pack, measures, events; PP1a to PP7
 priority: 6
 ---
 

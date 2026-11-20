@@ -1,6 +1,6 @@
 ---
 name: lead-journey
-description: Plan (owner 2026-11-20, poll 183): visits tied to a known person with consent, the journey, a decaying interest score and interests, hot and returning alerts, lead sources; LJ1 to LJ7
+description: Plan (owner 2026-11-20, poll 183): visits tied to a known person with consent, the journey, a decaying interest score and interests, hot and returning alerts, lead sources; LJ1a to LJ7
 priority: 6
 ---
 

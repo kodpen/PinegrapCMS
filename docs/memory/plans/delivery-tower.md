@@ -1,6 +1,6 @@
 ---
 name: delivery-tower
-description: Plan (owner 2026-11-20, poll 178): delivery times measured per carrier and province, problem parcels found, a problem desk, events, a carrier scorecard; DT1 to DT6
+description: Plan (owner 2026-11-20, poll 178): delivery times measured per carrier and province, problem parcels found, a problem desk, events, a carrier scorecard; DT1a to DT6
 priority: 6
 ---
 

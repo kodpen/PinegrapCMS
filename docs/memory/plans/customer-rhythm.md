@@ -1,6 +1,6 @@
 ---
 name: customer-rhythm
-description: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; CR1 to CR6
+description: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; CR1a to CR6
 priority: 6
 ---
 
