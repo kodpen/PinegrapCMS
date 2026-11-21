@@ -269,7 +269,7 @@ if ($legal_documents_ready) {
                 <div class="row gy-5">
                     <div class="col-12 md:col-6">
                         <label class="form-label" for="ecommerce_kvkk_page_id">' . lang('KVKK Notice Page') . '</label>
-                        ' . pg_picker_field('page', 'ecommerce_kvkk_page_id', $ecommerce_kvkk_page_id ?: '') . pg_picker_script() . '
+                        ' . pg_picker_field('page', 'ecommerce_kvkk_page_id', $ecommerce_kvkk_page_id ?: '', array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
                         <div class="form-text">' . lang('The checkout and the sign-up forms link this page where they explain how personal data is processed.') . '</div>
                     </div>
                     <div class="col-12">

@@ -241,7 +241,7 @@
 - find-and-replace-results.md: What find_and_replace.php searches (no orphan or binned page regions, no binned products) and how its Find Results screen names, counts and caps the records
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
 - focus-after-removal.md: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API sheet, Modify Selected, marketplace bulk bar, product group Load More)
-- form-adorn-settings-cards.md: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the add-on type that keeps the rows 38px tall, what stays an input-group
+- form-adorn-settings-cards.md: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the unit in the field's own type, what stays an input-group
 - form-adorn.md: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups become a label wrapper with the add-on inside the border, the markup, the panel focus rules, the pilot places
 - form-card-headings.md: Create and edit screens on includes/forms/*.php: card titles are h2.h5, group titles inside a card h3.hN, only dialog titles keep h4-h6; why the look did not change
 - form-date-whole-value.md: validate_date() takes a site-format date only when the whole value is one; prepare_form_data_for_input() trims a date before splitting it
@@ -296,6 +296,7 @@
 - image-editor-data-layer.md: The Artifact Canvas's data layer (DV1a, #10752): a Workspace table as a chart or a plain table, the description it holds, its check, grouping, the marks the browser draws, the shared fixture
 - image-editor-data-menu.md: The Artifact Canvas's Data menu (DV2, #10892): Data in Import, the two-step picker (tables, then sample cards of the kinds that fit), the layer's panel groups, the actions data_tables and data_rows
 - image-editor-data-show.md: "Show on a canvas" on a Data table's head (DV3): As a chart / As a table, the picker's step two on the table, a new canvas in the table's channel, the table bound read-only, who may
+- image-editor-detach-sound.md: Artifact Canvas Detach sound where the hand is: the bar over a clip, a clip row's menu on the tracks, Detach from a video under Add sound; the reasons it is refused [decision: here]
 - image-editor-draw.md: The Artifact Canvas's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
 - image-editor-encode.md: The Artifact Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 - image-editor-eraser.md: The Artifact Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place [decision: decisions-made-product-30.md]
@@ -636,6 +637,7 @@
 - save-bar-chat-launcher.md: Look A's floating save bar (edit screens, settings pages) ends its buttons before the chat launcher in the window's bottom right corner (#9330)
 - save-bar-helper.md: pg_save_bar() (SH6a): the framed bar's markup, options, .pg-savebar frame, screens that took it; the buttons' order ghost, quiet, filled and the hidden Return button (SH6b)
 - save-bar-phone.md: The save bar below 576 px (SH6c): three actions share one row with their icons hidden, others two per row, .pg-bar-rows keeps kept screens on two per row
+- screen-composition-nesting.md: Frames and field sizes inside a settings pane's opened row: no card in a card, one frame at most, one field height, unit suffixes, selects that show their value; ask the architect first [decision: here]
 - screen-composition-rules.md: How a settings pane, a form drawer and a connect row are put together in look A so a person understands them: folded rows, one line of help, tabs, a remove button, one state everywhere [decision: here]
 - screen-focus-rings.md: Focus rings drawn by a screen's own styles use the 2px --pg-primary-ink outline, inset inside clipping boxes; which screens were moved and which still wait
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
@@ -647,6 +649,7 @@
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
 - server-paged-lists.md: Lists the server searches and pages (list table driver): which moved off DataTables' server paging, what the search box finds (words, labels, Turkish I), the row cells [decision: decisions-made-product-10.md, decisions-made-product-22.md]
 - settings-ai-voice-rows.md: Pinegrap AI's and Voice's opened rows in Site Settings › Assistants and agents (AT5): one column, the fold Application, their drawers, what a test pins
+- settings-appearance.md: Site Settings › Appearance as folded rows: the four rows and their state lines, what each row holds, who sees which row, what stayed (ids, field names, the save, Reset widgets)
 - settings-assistants-help-lines.md: Site Settings › Assistants and agents, the help (AT3): one line per part with "How does this work?" opening a drawer of numbered steps; Add an agent's "Start from an application" [decision: here]
 - settings-assistants-long-lists.md: Site Settings › Assistants and agents, the long lists (AT6): MCP servers, Workspace agents and Canvas templates show at most five rows, then "Show all N" and the part's drawer [decision: here]
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open), the pg-alert-dismissible padding rule and the gap between cards.
@@ -656,6 +659,7 @@
 - settings-card-own-button.md: A settings card that runs a job beside saving: named type=submit button, pressed handling, why serializers drop it, no save-less button contract.
 - settings-card-row-layout.md: How a settings card lays out one setting per row via stylesheet only: shape-based :has() rule, dividers between rows, name+control grid, single vertical rhythm.
 - settings-card-save-rules.md: Rules for writing settings cards and their save modules: own columns only, $sql_* splice, prep.php $row, balanced divs, registry.php sections.
+- settings-card-shared-style.md: What every Site Settings card shares since the scan of 2026-11-21: text sizes, one 32px field height, the select column and chevron, tag fields, swatch edge, quiet head buttons [decision: here]
 - settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents as drawn: the sentence, the grid, Try and Set up, the fold Key and secret, the five-step drawer Set up on claude.ai [decision: here]
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
@@ -665,6 +669,7 @@
 - settings-firewall.md: Site Settings › Firewall and HTTPS as folded rows: the six firewall rows and their state lines, the Limits row, the bans drawer, the two segmented controls, what stayed (ids, field names, the save)
 - settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows [decision: decisions-made-panel-11.md, decisions-made-panel-12.md]
 - settings-folder-pickers.md: Site Settings and page folder pickers leave out the Workspace (settings also the Recycle Bin); settings saves refuse them; a stored one is shown marked
+- settings-general.md: Site Settings › General as folded rows: the four rows and their state lines, what each row holds, the IP as a line, Outgoing proxy, what stayed (ids, field names, the save, the search words)
 - settings-group-names.md: Site Settings groups, user rights Select / Select All and the other two-list Select All switches (Organize Contacts, calendar event) named by their heading
 - settings-input-keyboards.md: Phone keyboard and auto-capitalisation of the Site Settings and Workspace mailbox boxes for web addresses, hosts, user names, address lists and Merchant numbers.
 - settings-invalid-fields.md: A refused Site Settings save marks its fields by name; the dialog marks and focuses them (#3026), a settings page puts the typed values back (pgSettingsRestore())
@@ -687,9 +692,11 @@
 - settings-modal-search.md: The Site Settings dialog's search box (index, system tools, ranking, Turkish keywords keeping English terms) and how a text names a card's place [decision: decisions-made-product-14.md]
 - settings-organization-card.md: Site Settings General › Organization card: which fields it gathered from where, who saves them, the two support e-mail fields, the ERP Settings pointer. [decision: decisions-made-product-11.md]
 - settings-pane-stale-page.md: A settings pane asked by a page left open across an update: the panel script stamp in the dialog's address, the Reload line instead of the cards, the pure compare (#8787)
+- settings-picker-field.md: The picker field inside Site Settings cards: one 32px line, a 20px thumb, a quiet Browse icon at the end, and placeholders that say what to choose [decision: here]
 - settings-privacy.md: Site Settings › Visitors and privacy as folded rows: the six rows and their state lines, what each row holds, what stayed (ids, field names, the save), the KVKK notice's own row
 - settings-public-image-pickers.md: Site Settings pickers whose picture is shown to everyone (Site Icon, App Icon, Default Share Image, Organization Logo, Fediverse Avatar): search and save keep only files every visitor can open
 - settings-refused-not-clamped.md: Site Settings boxes a save refuses instead of clamping or blanking: firewall and sign-in limits, tracking days, analytics IDs, merchant fields (pg_whole_number_in_range(), pg_ga_tag_id())
+- settings-revealed-groups.md: Fields a switch opens inside a Site Settings card: no frame, tint or arrow, lined up with the label text, the indent dropped under 576 px; the divider over a nested row's first field and .pg-set-ruled [decision: here]
 - settings-security-cards.md: Accounts and sign-in and Firewall and HTTPS (keys security, firewall): where the encryption key, blocked e-mail addresses and trusted proxies sit and which save writes them. [decision: decisions-made-product-25.md]
 - settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups() [decision: decisions-made-product-14.md]
 - settings-window-turkish-texts.md: Site Settings window wording in Turkish (#5029, PR #5079): mid-sentence relative time, Turkish starter dollar name, translated language names, the category-switch question, settled terms

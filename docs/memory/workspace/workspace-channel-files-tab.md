@@ -24,7 +24,8 @@ description: A channel's Files tab (drawFiles() in workspace.js): its groups, th
 - The API's `WorkspaceSyncTabCounts` (`ws_api_sync_tab_counts_present()`) names its fields and does not carry `files`.
 
 ## How is a file row laid out?
-- Extension badge and name (`.ws-file-link`, at most 55 %), then the sender and time in `small.ws-file-meta`: one line, cut with an ellipsis, full text in its title. Then Preview or Play and Show in conversation.
+- Extension badge and name (`.ws-file-link`, at most 55 %), then the sender and time in `small.ws-file-meta`: one line, cut with an ellipsis, full text in its title. Then Play (a sound), Preview and Download in words, and Show in conversation.
+- A file the channel shows opens from its name or its row: `workspace-file-card-preview.md`.
 - With the channel info open the meta used to wrap word by word, so rows had different heights (#5192).
 
 ## Tests
