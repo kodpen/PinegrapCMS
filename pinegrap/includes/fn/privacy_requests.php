@@ -20,6 +20,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The download link an information answer carries.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_request_link.php');
+
 /**
  * The clock and the list's bounds. Pure.
  *
@@ -500,7 +503,8 @@ function pg_privacy_request_save(array $request, array $input)
  * @param array  $operator  role, id
  * @param bool   $refuse
  * @return string  ok | open | unverified | empty | mail | refused (the
- *                 erasure was refused)
+ *                 erasure or the export was refused) | file (the export
+ *                 could not be written)
  */
 function pg_privacy_request_send(array $request, $text, array $operator, $refuse = false)
 {
@@ -528,6 +532,20 @@ function pg_privacy_request_send(array $request, $text, array $operator, $refuse
         }
     }
 
+    // An information answer carries one signed link to the export, never
+    // the file; the link stays out of the answer kept with the request.
+    $link = null;
+
+    if (!$refuse && ($request['kind'] === 'information')) {
+        $link = pg_privacy_link_prepare($request, $operator);
+
+        if (in_array($link['status'], array('refused', 'file'), true)) {
+            return $link['status'];
+        }
+
+        $link = ($link['status'] === 'ok') ? $link : null;
+    }
+
     $site = pg_privacy_request_site();
 
     $sent = (bool) email(array(
@@ -536,11 +554,16 @@ function pg_privacy_request_send(array $request, $text, array $operator, $refuse
         'from_email_address' => EMAIL_ADDRESS,
         'subject'            => lang(array('string' => '{var:1}: your request about your personal data', 'vars' => array($site))),
         'format'             => 'plain_text',
-        'body'               => $text,
+        'body'               => ($link !== null) ? $text . "\n\n" . pg_privacy_link_mail_lines($link['url']) : $text,
         'type'               => 'system',
+        'secret'             => ($link !== null),
     ));
 
     if (!$sent) {
+        if ($link !== null) {
+            pg_privacy_link_delete((int) $request['id']);
+        }
+
         return 'mail';
     }
 
@@ -554,6 +577,10 @@ function pg_privacy_request_send(array $request, $text, array $operator, $refuse
         'answer'    => mb_substr($text, 0, 60000, 'UTF-8'),
         'closed_at' => time(),
     ), $refuse ? 'refuse' : 'answer');
+
+    if ($link !== null) {
+        pg_privacy_link_record($request, $link);
+    }
 
     return 'ok';
 }
@@ -717,7 +744,7 @@ function pg_privacy_request_answer_text($kind, $name, $site, array $lists)
             if ($found) {
                 $parts[] = lang('You asked which personal data we keep about you. We keep these records:');
                 $parts[] = $lines($found);
-                $parts[] = lang('We keep them for the purposes and periods in our privacy notice. Reply to this e-mail if you would like a copy of the records themselves.');
+                $parts[] = lang('We keep them for the purposes and periods in our privacy notice. A copy of the records themselves is linked at the end of this e-mail.');
             } else {
                 $parts[] = lang('You asked which personal data we keep about you.') . ' ' . lang('We keep no personal data about you.');
             }
@@ -856,7 +883,9 @@ function pg_privacy_request_answer_pane(array $request, $gathered)
 
     // 4. Where it goes.
     $send = '<dl class="pg-kv mb-0"><dt>' . h(lang('To')) . '</dt><dd>' . h((string) $request['email']) . '</dd>'
-        . '<dt>' . h(lang('Then')) . '</dt><dd>' . h($erase ? lang('The data is erased and the request closed') : lang('The request is closed')) . '</dd></dl>';
+        . '<dt>' . h(lang('Then')) . '</dt><dd>' . h($erase ? lang('The data is erased and the request closed') : lang('The request is closed')) . '</dd>'
+        . ((($request['kind'] === 'information') && !empty($lists['found'])) ? '<dt>' . h(lang('The data')) . '</dt><dd>' . h(lang('A download link valid 7 days, under the answer; no attachment')) . '</dd>' : '')
+        . '</dl>';
 
     return pg_privacy_request_answer_stepper($state['steps'], $state['open'], array(
         'check'  => array('title' => lang('Check who asks'), 'line' => lang('Make sure the request comes from the person whose data it is.'), 'body' => $check),
@@ -1153,8 +1182,9 @@ function pg_privacy_request_drawer(array $request, array $labels, $now, $tab = '
 
     // History: the request's audit lines, newest first.
     $history = '';
+    $lines = pg_privacy_request_history($id);
 
-    foreach (pg_privacy_request_history($id) as $line) {
+    foreach ($lines as $line) {
         $history .= '<div class="pg-list-row is-read"><div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">'
             . h(pg_audit_view_labels('action')[$line['action']] ?? $line['action']) . '</span><span class="pg-list-row-time">' . get_relative_time(array('timestamp' => (int) $line['created_at'])) . '</span></div>'
             . '<div class="pg-list-row-text">' . h((string) $line['username']) . '</div></div></div>';
@@ -1162,7 +1192,7 @@ function pg_privacy_request_drawer(array $request, array $labels, $now, $tab = '
 
     $panes = array(
         'request' => array(lang('Request'), $facts),
-        'answer'  => array(lang('Answer'), pg_privacy_request_answer_pane($request, $gathered)),
+        'answer'  => array(lang('Answer'), pg_privacy_request_answer_pane($request, $gathered) . ($open ? '' : pg_privacy_link_card($request, $lines, $now))),
         'history' => array(lang('History'), ($history !== '') ? '<div class="pg-look-rows">' . $history . '</div>' : '<p class="pg-text-2">' . h(lang('No step yet.')) . '</p>'),
     );
     $tab = isset($panes[$tab]) ? $tab : 'request';

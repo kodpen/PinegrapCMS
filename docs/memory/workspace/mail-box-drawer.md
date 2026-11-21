@@ -11,7 +11,7 @@ description: A mailbox's drawer in Site Settings › Mailboxes since #10934: hea
 ## What does Reading show?
 - Mail service with the chosen service's one line, then only its sign-in fields (`ws_mail_box_signin_way()`: none, account or password; the card's script works it out again on each change).
 - Server and port fold under "Advanced" with the checking server and Reads bounces, unless the service is Another server or a box has a server and no service (`ws_mail_box_server_own()`); the script moves the one copy between the two places. Test connection is a quiet button at the end (a kept box with a server).
-- The Gmail part (`ws_mail_google_steps()`) still stands in Reading; its steps move to a set-up drawer in MT3.
+- Gmail keeps "Sign in with" and the button of "Set up the Google application", Microsoft that of "Set up the Microsoft application"; the steps are in those drawers (`mail-box-start-setup.md`). Add a mailbox opens on its starting points first.
 
 ## How are routes edited?
 - One row a kept route (address or +tag, channel, Remove), no empty rows; "Add a route" copies the `<template>` row, never past `WS_MAIL_ROUTES_MAX`. Removing every row clears the routes on Save.

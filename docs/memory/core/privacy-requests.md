@@ -23,7 +23,7 @@ module: privacy_requests
 
 ## What does answering do?
 - The Answer tab: `privacy-request-answer.md`. `pg_privacy_request_send()`: the e-mail first; for an erasure, the erase runs after the mail has gone and the answer is written back into the anonymised row. Refuse uses it to send the reason and close the request.
-- `email()` takes no attachment: an information answer cannot carry the export file.
+- An information answer carries a signed download link to the export, never the file (`privacy-request-export-link.md`).
 
 ## How does the erasure treat it?
 - `pg_privacy_erase_tables()` `privacy_requests`: anonymise (name, email as token, message, answer, contact and user links), found by `request_ids`, `contact_ids`, `user_ids`, `emails`. The inventory line keeps it under `closed_requests`; the rule `requests` anonymises closed ones after 3 years (`privacy-retention-rules.md`).

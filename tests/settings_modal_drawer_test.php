@@ -128,7 +128,7 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 		}
 	}
 
-	pg_assert_same(21, $entries, 'Cron Jobs, the three Connect forms (E-mail sending\'s among them), the firewall\'s Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers and the Assistants and agents guides');
+	pg_assert_same(22, $entries, 'Cron Jobs, the three Connect forms (E-mail sending\'s among them), the firewall\'s Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers, the mailboxes\' set-up drawers and the Assistants and agents guides');
 }
 
 function test_settings_modal_drawer_second_dialog_path_is_gone()
@@ -210,7 +210,7 @@ function test_settings_modal_drawer_escape_and_close_shut_it_first()
 	pg_assert_true(($card !== false) && ($list !== false) && ($card < $list), 'the card drawer before the phone list, both before the dialog');
 	pg_assert_contains('event.preventDefault();', $handler, 'the dialog\'s own Escape is cancelled');
 
-	pg_assert_contains("\$(el).on('click', '#pg_settings_modal_pane [data-pgdrawer=\"open\"]'", $js, 'the renamed trigger opens it');
+	pg_assert_contains("\$(el).on('click', '#pg_settings_modal_pane [data-pgdrawer=\"open\"], #pg_settings_modal_drawers [data-pgdrawer=\"open\"]'", $js, 'the renamed trigger opens it, in the pane or in an open drawer');
 	pg_assert_contains("\$(el).on('click', '[data-pgdrawer-close], #pg_settings_modal_dscrim'", $js, 'Close and the scrim shut it');
 }
 

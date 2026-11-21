@@ -23,7 +23,7 @@ description: Plan privacy-centre, how the request box's screens are put together
 - The Answer tab, as numbered steps, one open at a time:
   1. "Check who asks": the proof's state; staff ticks that identity is checked.
   2. "Gather": information runs the personal data export, erasure the erase dry run; the result is a label and value list (`ui/look-kv-list.md`), and for an erasure what will go and what the law keeps.
-  3. "Write the answer": the e-mail's text from the kind's template, editable; the export attached for information.
+  3. "Write the answer": the e-mail's text from the kind's template, editable; for information a signed download link valid 7 days under the text, never an attachment (`plans/privacy-centre-export-link.md`, KV4c).
   4. "Send": the fill "Send the answer"; for an erasure "Erase and send", danger, after the confirm.
 - The sent answer is shown read-only in this tab afterwards.
 

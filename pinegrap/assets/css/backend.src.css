@@ -32571,6 +32571,406 @@ textarea.pg-campaign-text {
 }
 
 /* ==========================================================================
+   Look A: tabs with a state, value rows, choice cards, step line, provider
+   sign-in, result line, confirm with its effects, switch rows.
+   Value for value the approved e-mail settings drawing (boards A to E):
+   .pg-seg-tall is the segmented control as tabs, each with its state pill;
+   .pg-value-row says what a thing does today with Change at its end;
+   .pg-start-choice turns the starting-point cards into a radio group with a
+   ring and a mark; .pg-steps is the stepper as one line of numbers and
+   names; .pg-signin holds a provider's own button; .pg-result is the green
+   line after a sign-in or a test; .pg-effects lists what a removal keeps,
+   deletes and leaves connected; .pg-set-switch-row is a folded-rows row
+   with a switch at its end (the Features settings board).
+   ========================================================================== */
+@layer custom {
+
+/* Tabs with a state: 34 px items, the label strong, a state pill after it.
+   Under 576 px the pill is its dot; the word stays for screen readers and
+   in the pill's title. */
+.pg-seg-tall .pg-seg-item {
+  height: 34px;
+  padding: 0 14px;
+  gap: 9px;
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-seg-tall .pg-pill {
+  height: 20px;
+  font-size: 11.5px;
+}
+@media (max-width: 575.98px) {
+  .pg-seg-tall .pg-seg-item {
+    padding: 0 11px;
+    gap: 7px;
+  }
+  .pg-seg-tall .pg-pill {
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .pg-seg-tall .pg-pill > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Value rows: one inner card, a row a thing: its tile, its name, one
+   sentence saying what happens today, Change at the row's end. */
+.pg-value-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+.pg-value-row + .pg-value-row {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-value-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.pg-value-row-name {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.pg-value-row-line {
+  display: block;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+
+/* Choice cards: the starting-point cards as a radio group. A card is the
+   inner card's surface; the chosen one takes the accent ring and its mark
+   at the head's end is filled with a check. The radio itself stays in the
+   card for the keyboard, drawn by the mark. */
+.pg-start.pg-start-choice {
+  gap: 12px;
+}
+@media (min-width: 576px) {
+  .pg-start.pg-start-choice {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.pg-start-choice .form-field-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px 14px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--pg-surface-inset);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
+}
+.pg-start-choice .form-field-card:has(:checked) {
+  background: color-mix(in srgb, var(--pg-accent) 5%, transparent);
+  box-shadow: inset 0 0 0 2px var(--pg-accent), 0 0 0 4px color-mix(in srgb, var(--pg-accent) 14%, transparent);
+}
+.pg-start-choice .form-field-card:has(.radio:focus-visible) {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 4px;
+}
+.pg-start-choice .radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.pg-start-choice .pg-start-head {
+  align-self: stretch;
+  gap: 10px;
+  font-size: var(--pg-text-base);
+}
+.pg-start-choice .pg-start-head strong {
+  font-weight: 600;
+}
+.pg-start-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--pg-fg-3);
+  color: transparent;
+  font-size: 12px;
+}
+.pg-start-choice .form-field-card:has(:checked) .pg-start-mark {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: none;
+  color: var(--pg-on-accent-fill);
+}
+.pg-start-choice .form-text {
+  margin: 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+  line-height: var(--pg-leading);
+}
+/* A note at the card's end: how long the choice takes. */
+.pg-start-note {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-start-choice + .pg-group-label {
+  margin: 20px 2px 8px;
+}
+
+/* Step line: a number and a name a step on one line, a hairline between.
+   The current step is filled with the accent, a finished one shows the
+   green check. Under 576 px the other steps keep only their numbers. */
+.stepper.pg-steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.pg-steps .stepper-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+  white-space: nowrap;
+}
+.pg-steps .stepper-item:not(:last-child) {
+  flex: 1;
+}
+.pg-steps .stepper-item::before {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-3);
+}
+.pg-steps .stepper-item::after,
+.pg-steps .stepper-item.active::after {
+  position: static;
+  flex: 1;
+  width: auto;
+  height: 1px;
+  margin-left: 2px;
+  background: var(--pg-border-color-translucent);
+}
+.pg-steps .stepper-item:last-child::after {
+  display: none;
+}
+.pg-steps .stepper-item[aria-current="step"] {
+  color: var(--pg-fg-body);
+}
+.pg-steps .stepper-item[aria-current="step"]::before {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: none;
+  color: var(--pg-on-accent-fill);
+}
+.pg-steps .stepper-item.is-done {
+  color: var(--pg-fg-2);
+}
+.pg-steps .stepper-item.is-done::before {
+  content: "\F26E";
+  font-family: "bootstrap-icons";
+  font-size: 14px;
+  font-weight: normal;
+  background: color-mix(in srgb, var(--pg-tone-teal) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone-teal) 26%, transparent);
+  color: var(--pg-tone-teal);
+}
+@media (max-width: 575.98px) {
+  .pg-steps .stepper-item:not([aria-current="step"]) > .pg-steps-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Provider sign-in: an inner card, its content centred, the provider's own
+   button and one line. The two buttons keep their brand values in both
+   panel themes and take no look A button class or tone; their logos are
+   inline SVG, never recoloured. */
+.pg-signin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 26px 16px 22px;
+  text-align: center;
+}
+.pg-signin > p {
+  max-width: 360px;
+  margin: 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+.pg-signin-google,
+.pg-signin-microsoft {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #ffffff;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pg-signin-google {
+  gap: 10px;
+  height: 40px;
+  border: 1px solid #747775;
+  border-radius: 4px;
+  color: #1f1f1f;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+}
+.pg-signin-microsoft {
+  gap: 12px;
+  height: 41px;
+  border: 1px solid #8c8c8c;
+  border-radius: 0;
+  color: #5e5e5e;
+  font: 600 15px/1 "Segoe UI", Arial, sans-serif;
+}
+.pg-signin-google:focus-visible,
+.pg-signin-microsoft:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+/* Result line: green, after a sign-in or a test; a tile and two lines at
+   most. */
+.pg-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--pg-tone-teal) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone-teal) 22%, transparent);
+}
+.pg-result-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.pg-result-line {
+  display: block;
+  font-size: 12.5px;
+  color: var(--pg-fg-2);
+}
+
+/* Switch rows: the folded rows' frame (.pg-set-fold) holding rows that are
+   a div, never a link or a button, so each may hold controls: the icon
+   tile, the name (the switch's label) over one line (its description),
+   then a quiet small Settings or a state pill with Open, and last the
+   switch. A row switched off greys its tile and name; a row the viewer may
+   not change is at half strength. Under 576 px the name and the switch
+   keep one line and the buttons stand under the name. */
+.pg-set-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 16px;
+}
+.pg-set-switch-row + .pg-set-switch-row {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-set-switch-row .pg-set-fold-name {
+  font-weight: 600;
+}
+.pg-set-switch-row .pg-set-fold-line {
+  margin-top: 1px;
+  overflow: visible;
+  white-space: normal;
+}
+.pg-set-switch-row.is-off .pg-icon-tile,
+.pg-set-switch-row:has(> .pg-switch:not(:checked)) .pg-icon-tile {
+  --pg-tone: var(--pg-tone-gray);
+  opacity: .7;
+}
+.pg-set-switch-row.is-off .pg-set-fold-name,
+.pg-set-switch-row:has(> .pg-switch:not(:checked)) .pg-set-fold-name {
+  color: var(--pg-fg-2);
+}
+.pg-set-switch-row.is-locked {
+  opacity: .55;
+}
+.pg-set-switch-row > .pg-switch {
+  flex: none;
+}
+.pg-group-label-count {
+  margin-left: 6px;
+  font-weight: var(--pg-weight-medium);
+}
+@media (max-width: 575.98px) {
+  .pg-set-switch-row {
+    flex-wrap: wrap;
+    gap: 11px;
+    padding: 12px;
+  }
+  .pg-set-switch-row > .pg-set-fold-text {
+    flex-basis: calc(100% - 100px);
+  }
+  .pg-set-switch-row > .pg-pill {
+    order: 4;
+    margin-left: 41px;
+  }
+  .pg-set-switch-row > .pg-button {
+    order: 5;
+    margin-left: 41px;
+  }
+  .pg-set-switch-row > .pg-pill + .pg-button {
+    margin-left: 0;
+  }
+}
+
+/* Confirm with its effects: a line an effect in an inner card, a green
+   check for what stays, a rose cross for what goes, a blue info line for
+   what stays connected; a meta line under where it helps. */
+.pg-effects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pg-effect {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: var(--pg-text-2);
+}
+.pg-effect + .pg-effect {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-effect > .bi {
+  margin-top: 1px;
+  font-size: 15px;
+  line-height: 1;
+}
+.pg-effect-line {
+  display: block;
+  font-size: 12.5px;
+  color: var(--pg-fg-2);
+}
+.pg-effect-keep > .bi { color: var(--pg-tone-teal); }
+.pg-effect-go > .bi { color: var(--pg-tone-rose); }
+.pg-effect-info > .bi { color: var(--pg-tone-blue); }
+
+}
+
+/* ==========================================================================
    Look A: label and value list.
    What a status column reads, one row a fact: <dl class="pg-kv"> with a
    <dt> and a <dd> per row. The label column is as wide as the longest
