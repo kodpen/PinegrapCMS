@@ -7,8 +7,9 @@ description: Claude, Pinegrap AI and Bulk changes in Site Settings (Assistants a
 - PR #8801 (SW3 of the Workspace settings move, [[workspace-settings-overview]]): in Assistants and agents, sections `pgset-ws-claude` and `pgset-ws-bulk`, cards in `includes/settings/workspace_assistants.php`, writes in `workspace_assistants.save.php`. The old screen's address redirects here (PR #8931).
 - `pg_settings_legacy_anchors()` maps `ws-claude` and `ws-bulk` to the new cards. Pinegrap AI (`pgset-ws-ai`, anchor `ws-ai`) followed in PR #8832 (SW4b), the agents in SW4a ([[workspace-agent-settings]]), the MCP servers in SW5 ([[workspace-mcp-settings-dialog]]).
 
-## How are the cards drawn? (#10432)
-- Claude and Pinegrap AI: the head's state a toned pill (`ws_assistant_state_pill()`: Ready teal, Not ready amber, Off gray), the licence a pill (`ws_ai_license_tone()`); fields, switches and buttons by the look's recipes, each part under a `pg-group-label`. Names, texts and keys stay as they were.
+## How are the cards drawn?
+- Each card sits in its folded row (#10807, `ui/settings-fold-rows.md`), whose head carries name, state line and pill (`ws_assistant_state_pill()`: Ready teal, Not ready amber, Off gray); the card has no frame or heading there.
+- Claude's opened row is one column with the fold "Application and key" and two drawers (#10898, `ui/settings-claude-row.md`). Pinegrap AI: one help line (`ui/settings-assistants-help-lines.md`), the licence a pill (`ws_ai_license_tone()`). Names and saves unchanged.
 
 ## How do the two screens share one card and one save?
 - `ws_claude_settings_card($self_url, $viewer, $credentials, $form)` and `ws_bulk_settings_card($self_url, $viewer, $form)` draw both: with `$form` (the settings form's id) no `<form>`, fields named `ws_*`, buttons named submit buttons of the settings form.
@@ -27,7 +28,7 @@ description: Claude, Pinegrap AI and Bulk changes in Site Settings (Assistants a
 - `ws_claude_test`, `ws_claude_key_create`, `ws_claude_key_reset` (value 1): `ws_claude_settings_post(..., true)`, a refusal a warning, as the pane is stored by then. Reset asks with an inline `confirm()`; Cancel posts nothing.
 
 ## How is a new secret shown in the dialog?
-- The pane drawn after Create or Reset reads `ws_assistant_credentials` (Claude's only, role 0, never for the search index) and hands a drawer `pgset-ws-claude-secret` ([[workspace-assistant-keys]]); the card's "Show the new secret" opens it, pressed once by a script as the pane arrives.
+- The pane drawn after Create or Reset reads `ws_assistant_credentials` (Claude's only, role 0, never for the search index) and hands a drawer `pgset-ws-claude-secret` ([[workspace-assistant-keys]]); "Show the new secret" in the fold "Application and key" opens it, pressed once by a script as the pane arrives.
 - The tick and Close stand in the drawer's foot (`ws_claude_credentials_drawer_foot_html()`). Close waits for "I have copied it…", closes it and removes the secret and the button. X, Escape and the scrim only hide it until the pane is drawn again.
 
 Tests: `tests/settings_workspace_assistants_test.php`, `settings_workspace_assistant_cards_look_test.php`.

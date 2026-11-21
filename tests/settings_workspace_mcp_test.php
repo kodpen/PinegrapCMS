@@ -176,3 +176,14 @@ function test_settings_workspace_mcp_add_form_has_no_form_of_its_own()
 	pg_assert_contains('<form method="post" action="workspace_settings.php"', $old, 'the old screen keeps its form');
 	pg_assert_contains('name="mcp_url"', $old, 'and its names');
 }
+
+function test_settings_workspace_mcp_state_tones()
+{
+	// Not connected is a state nobody failed at: gray, never amber.
+	pg_assert_same(array('pg-tone-gray', 'Not connected'), ws_mcp_settings_state_badge('not_connected'), 'not connected is gray');
+	pg_assert_same('pg-tone-gray', ws_mcp_settings_state_badge('off')[0], 'off is gray');
+	pg_assert_same('pg-tone-rose', ws_mcp_settings_state_badge('connect_again')[0], 'a lost sign-in is rose');
+	pg_assert_same('pg-tone-rose', ws_mcp_settings_state_badge('unreachable')[0], 'unreachable is rose');
+	pg_assert_same('pg-tone-amber', ws_mcp_settings_state_badge('no_tool_on')[0], 'tools to turn on wait on the person');
+	pg_assert_same('pg-tone-teal', ws_mcp_settings_state_badge('ready')[0], 'ready is teal');
+}

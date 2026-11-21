@@ -1148,6 +1148,28 @@ function ws_mcp_host($url)
    --------------------------------------------------------------------------- */
 
 /**
+ * The pill a server's state wears in the MCP servers list: a server not
+ * connected yet is gray (nothing failed), one waiting on the person amber,
+ * one that failed rose, a ready one teal.
+ *
+ * @param string $state ws_mcp_server_state()'s state
+ * @return array tone class, label
+ */
+function ws_mcp_settings_state_badge($state)
+{
+    $badges = array(
+        'off'           => array('pg-tone-gray', lang('Off')),
+        'connect_again' => array('pg-tone-rose', lang('Connect again')),
+        'not_connected' => array('pg-tone-gray', lang('Not connected')),
+        'unreachable'   => array('pg-tone-rose', lang('Cannot be reached')),
+        'no_tool_on'    => array('pg-tone-amber', lang('No tool on')),
+        'ready'         => array('pg-tone-teal', lang('Ready')),
+    );
+
+    return $badges[$state] ?? $badges['not_connected'];
+}
+
+/**
  * Where a server stands, for the badge on the card and the API: the state,
  * why it is not ready, and the checklist of what it needs.
  *
@@ -2498,15 +2520,7 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
             }
         }
 
-        $badges = array(
-            'off'           => array('pg-tone-gray', lang('Off')),
-            'connect_again' => array('pg-tone-rose', lang('Connect again')),
-            'not_connected' => array('pg-tone-amber', lang('Not connected')),
-            'unreachable'   => array('pg-tone-rose', lang('Cannot be reached')),
-            'no_tool_on'    => array('pg-tone-amber', lang('No tool on')),
-            'ready'         => array('pg-tone-teal', lang('Ready')),
-        );
-        $badge = $badges[ws_mcp_server_state($server)['state']];
+        $badge = ws_mcp_settings_state_badge(ws_mcp_server_state($server)['state']);
         $state = '<span class="pg-pill ws-agset-state ' . $badge[0] . '">' . h($badge[1]) . '</span>';
 
         $details = array(ws_mcp_host($server['url']));

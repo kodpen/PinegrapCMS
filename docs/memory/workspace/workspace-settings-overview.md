@@ -15,7 +15,7 @@ description: Start file for the Workspace settings: the three categories of the 
 ## What is left of workspace_settings.php?
 - An address (PR #8931): the old gate (`ws_screen_gate()`, "access denied to the workspace settings" logged), then a redirect to the first Workspace category the reader may open. The browser carries an old `#ws-…` fragment over it and `fromHash()` opens the dialog on that card. `?mcp_connected=<id>` goes on to Assistants and agents.
 - A POST is refused with 405 and "The Workspace settings are in the Site Settings now. Nothing was saved."; nothing reads `$_POST` there. `ws_side_screen()` still lights Workspace Settings for it and for the three `settings_workspace_*.php` pages.
-- The card functions still carry the old screen's own forms (their `$form === null` branch, `$self_url`); nothing draws them now. `tests/workspace_settings_lists_test.php` keeps their list names in its allow-list until they are removed.
+- The card functions still carry the old screen's forms (`$form === null`, `$self_url`), drawn by nothing; `tests/workspace_settings_lists_test.php` allow-lists their list names until they go.
 
 ## What does every Workspace card keep?
 - Who may change it: the Workspace settings right (`ws_rights()['settings']`), not the manager role; every save asks again. No schema came with the move.
@@ -25,7 +25,7 @@ description: Start file for the Workspace settings: the three categories of the 
 
 ## Which file holds which card?
 - Team and working hours: [[workspace-team-settings]] (Departments, Team members, Defaults in `ui/settings-workspace-gate.md`), [[workspace-holiday-settings]].
-- Assistants and agents: [[workspace-assistant-settings]] (Claude, Bulk changes, Pinegrap AI), [[workspace-agent-settings]], [[workspace-mcp-settings-dialog]].
+- Assistants and agents, one folded row a part (`ui/settings-fold-rows.md`): [[workspace-assistant-settings]] (Claude, Bulk changes, Pinegrap AI), [[workspace-agent-settings]], [[workspace-mcp-settings-dialog]].
 - Channels, mail and voice: [[workspace-channel-settings]] (templates, voice, GitHub), [[workspace-mail-settings-dialog]].
 - Saves and names: [[workspace-settings-card-saves]], [[workspace-settings-row-names]].
 
