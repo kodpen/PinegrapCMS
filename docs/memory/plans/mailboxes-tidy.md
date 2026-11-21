@@ -32,7 +32,7 @@ priority: 8
 ## Which steps are there?
 - MT1 (M) first, after #10825's fix has landed: the pane's rows, the box row with its pill and menu, Remove (check and write; tests: conversations stay, the box's rules and password go). Done: #10900.
 - MT2 (M) after MT1: the drawer in tabs, Routing as rows, the folds, help cut to a line. Done: #10934.
-- MT3 (S) after MT2: the starting points and the set-up drawers.
+- MT3 (S) after MT2: the starting points and the set-up drawers. Done: #10947.
 - MT4 (S) close-out: `ui/look-settings-mailboxes.md`, `workspace/workspace-mail-settings-dialog.md` and `workspace/mail-google.md` corrected, this plan deleted.
 
 ## What binds it?
