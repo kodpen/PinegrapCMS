@@ -24069,8 +24069,91 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
     overflow: hidden;
     mask-image: linear-gradient(to bottom, var(--pg-bg-1) calc(100% - 3rem), transparent);
 }
-.ws-nb-msg-card .pg-gather-toggle {
-    margin-top: .25rem;
+/* The note card is look A's plain card (.pg-card draws its surface, line
+   and corners) as wide as the message column, on a phone too; these rules
+   only place its parts. */
+.ws-cn-card {
+    padding: 12px 14px;
+}
+.ws-cn-head {
+    gap: 8px;
+}
+.ws-cn-icon {
+    color: var(--pg-fg-2);
+}
+.ws-cn-title {
+    font-weight: var(--pg-weight-strong);
+}
+.ws-cn-card .ws-nb-msg-card-text {
+    margin-top: 6px;
+}
+/* "Show all" / "Show less": a small quiet button centred under the note */
+.ws-cn-more {
+    margin-top: 6px;
+    text-align: center;
+}
+/* The foot: one muted line (.pg-text-meta), Versions at its end */
+.ws-cn-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    margin-top: 8px;
+}
+.ws-cn-foot-words {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.ws-cn-versions-button {
+    flex: none;
+}
+/* On a phone Versions is its icon and count, so the words keep the line */
+@media (max-width: 575.98px) {
+    .ws-cn-versions-button .pg-btn-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+}
+/* Inside the note: headings measured against the text (the first one step
+   bigger), paragraphs and lists close together, the "Written up to …"
+   line as a meta line. */
+.ws-cn-card .ws-heading {
+    margin: 10px 0 2px;
+    font-size: var(--pg-text-base);
+    font-weight: var(--pg-weight-title);
+    line-height: var(--pg-leading);
+    letter-spacing: normal;
+}
+.ws-cn-card h2.ws-heading {
+    font-size: var(--pg-text-status-title);
+}
+.ws-cn-card h4.ws-heading {
+    font-weight: var(--pg-weight-strong);
+}
+.ws-cn-card .ws-cn-fold > :first-child {
+    margin-top: 0;
+}
+.ws-cn-card .ws-text + .ws-text {
+    margin-top: 6px;
+}
+.ws-cn-card .ws-list,
+.ws-cn-card .ws-quote {
+    margin: 4px 0;
+}
+.ws-cn-card .ws-list > li + li {
+    margin-top: 2px;
+}
+.ws-cn-meta {
+    margin-bottom: 6px;
+}
+/* An empty line between paragraphs (workspace_channel_notes.js tightGaps()) */
+.ws-cn-gap {
+    display: block;
+    height: 6px;
 }
 /* The writing box in the Write a note and Edit windows */
 .ws-cn-editor .ws-rich-field {
