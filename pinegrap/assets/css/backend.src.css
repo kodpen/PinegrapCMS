@@ -14910,7 +14910,8 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
    tabs: the card is a grid whose rows span both columns but the tabs' one,
    so the tabs keep their width and the timeline takes what is left. Where
    that is too little the script marks the screen .ws-ctl-narrow and the
-   timeline moves to the foot of Channel info. */
+   timeline moves to the foot of Channel info. The strip never leaves its
+   column: zoomed in, it scrolls inside its own place. */
 .ws-channel-card {
   display: grid;
   grid-template-columns: minmax(0, auto) minmax(0, 1fr);
@@ -14933,6 +14934,9 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-app:not(.ws-ctl-narrow) .ws-info-panel .ws-ctl-section {
   display: none;
 }
+.ws-app.ws-ctl-narrow .ws-channel-card > .ws-ctl {
+  padding: 0;
+}
 .ws-ctl {
   --ws-ctl-rail: color-mix(in srgb, var(--pg-fg-2) 16%, transparent);
   min-width: 0;
@@ -14953,6 +14957,40 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
 .ws-ctl [data-tone="5"], .ws-ctl-card[data-tone="5"] { --ws-ctl-c: color-mix(in srgb, var(--pg-tone-blue) 50%, var(--pg-tone-teal)); }
 .ws-ctl [data-tone="6"], .ws-ctl-card[data-tone="6"] { --ws-ctl-c: color-mix(in srgb, var(--pg-tone-violet) 50%, var(--pg-tone-rose)); }
 .ws-ctl [data-tone="7"], .ws-ctl-card[data-tone="7"] { --ws-ctl-c: color-mix(in srgb, var(--pg-tone-amber) 55%, var(--pg-tone-teal)); }
+/* The strip and the two zoom buttons at its end. The port scrolls a
+   zoomed track sideways; it reaches over and under the track, so a turn's
+   marks and a day's date are not cut, and lets the pointer through there. */
+.ws-ctl-bar {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  min-width: 0;
+}
+.ws-ctl-port {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: -12px 0 -14px;
+  padding: 12px 0 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  pointer-events: none;
+}
+.ws-ctl-port::-webkit-scrollbar {
+  display: none;
+}
+.ws-ctl-port > .ws-ctl-track {
+  pointer-events: auto;
+}
+.ws-ctl-zoom {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+.ws-ctl-zoom .pg-icon-button:disabled {
+  opacity: .4;
+  cursor: default;
+}
 /* The strip: a thin rail a run, each turn a capsule on it. The track is
    taller than what it draws, so the pointer finds it. */
 .ws-ctl-track {
@@ -15051,6 +15089,26 @@ html[data-bs-theme="dark"] .ws-ctl-turn {
 .ws-ctl-turn.is-on[data-mark="decision"]::before {
   top: -11px;
 }
+/* A new day: a hairline in the wider gap before it, its short date beside
+   it where there is room. */
+.ws-ctl-day {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  height: 18px;
+  width: 1px;
+  background: color-mix(in srgb, var(--pg-fg-2) 35%, transparent);
+  pointer-events: none;
+}
+.ws-ctl-day-label {
+  position: absolute;
+  top: 17px;
+  left: 4px;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-count);
+  line-height: 1;
+  white-space: nowrap;
+}
 /* The message under the pointer in a turn of several: a playhead. */
 .ws-ctl-cursor {
   position: absolute;
@@ -15108,14 +15166,14 @@ html[data-bs-theme="dark"] .ws-ctl-turn {
 }
 /* In Channel info: the rail, its first and last time under it, then the
    writers as pills in their colours. */
-.ws-ctl-section .ws-ctl-track {
+.ws-ctl-section .ws-ctl-bar {
   margin-top: .35rem;
 }
 .ws-ctl-ends {
   display: flex;
   justify-content: space-between;
   gap: .5rem;
-  margin-top: .15rem;
+  margin-top: .4rem;
 }
 .ws-ctl-legend {
   display: flex;

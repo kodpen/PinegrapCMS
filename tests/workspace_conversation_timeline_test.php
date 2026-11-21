@@ -291,7 +291,7 @@ console.log(JSON.stringify({
 	pg_assert_same(8, $result['line'], 'its hairline in the middle of the gap');
 	pg_assert_same(array(array(3, true), array(5, true)), $result['marks'], 'each day has its mark and its first message, a date where there is room');
 	pg_assert_same(array(false, false), $result['tight'], 'no date where less than the room is left to the next day or the end');
-	pg_assert_same(array(false, false, false), $result['plain'], 'without a day the runs are as before');
+	pg_assert_same(array(false, false), $result['plain'], 'without a day the runs are as before');
 }
 
 function test_workspace_conversation_timeline_js_zoom()
