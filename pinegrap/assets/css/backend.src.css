@@ -20322,6 +20322,36 @@ a.ws-chip-message:hover,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A file the channel shows (fileShowWay() in workspace.js): its name is a
+   button that opens it, and a click anywhere on its card or row does too. */
+.ws-file-shows {
+  cursor: pointer;
+}
+button.ws-file-name,
+button.ws-file-link {
+  background: none;
+  font-family: inherit;
+  line-height: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+button.ws-file-name {
+  width: 100%;
+  padding: 0;
+  border: 0;
+}
+/* Preview and Download (fileAction()): under 576 px the icon alone, the
+   word kept for a screen reader. */
+@media (max-width: 575.98px) {
+  .ws-file-act .pg-btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 .ws-file-card .ws-file-ext,
 .ws-file-row .ws-file-ext {
   min-width: 2.4rem;
@@ -20499,6 +20529,19 @@ a.ws-chip-message:hover,
 .ws-preview-office {
   height: 78vh;
   background: var(--pg-bg-body);
+}
+/* "Save as data" (previewTableButton()): where the sheet goes, over the
+   footer's own line. */
+.ws-preview-table-form {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .6rem;
+}
+.ws-preview-table-form > .ws-plan-field {
+  flex: 1 1 16rem;
+  min-width: 0;
 }
 
 /* ── Word and Excel previews (assets/js/pg_office_view.js) ──

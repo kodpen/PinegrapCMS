@@ -1376,6 +1376,131 @@
     var previewSheets = null;
     var OFFICE_EDIT_NAME = /\.(xlsx|xlsm|xltx|xltm|docx|docm|dotx|dotm)$/i;
 
+    // How a channel's file opens from its name, its card or its row:
+    // 'window' in the preview window (a PDF, a Word, Excel, OpenDocument or
+    // PowerPoint file, a .csv or .tsv), 'text' in the text window (any other
+    // text file), '' for a file the channel cannot show: its name stays
+    // the link to the file. Pictures, videos and sounds have their own players.
+    function fileShowWay(file) {
+        if (!file || file.image || file.kind === 'image' || file.kind === 'video' || file.kind === 'audio') {
+            return '';
+        }
+
+        if (file.kind === 'pdf' || file.office) {
+            return 'window';
+        }
+
+        return file.text ? 'text' : '';
+    }
+
+    // Preview or Download of a file's card or row: its word beside its icon;
+    // under 576 px the icon alone, the word kept for a screen reader
+    // (.ws-file-act). With file, the link that downloads it.
+    function fileAction(label, iconName, file) {
+        var node = el(file ? 'a' : 'button', 'pg-button pg-button-quiet pg-button-sm ws-file-act');
+
+        if (file) {
+            node.href = file.url;
+            node.setAttribute('download', file.name);
+        } else {
+            node.type = 'button';
+        }
+
+        node.appendChild(icon(iconName));
+        node.appendChild(el('span', 'pg-btn-label', label));
+
+        return node;
+    }
+
+    // The sheet tab the preview shows (pg_office_view.js names each tab
+    // <pane>_tab_<index>), 0 when the file has no tabs.
+    function previewSheetShown(box) {
+        var tab = box.querySelector('.office-tab.active');
+        var at = tab ? /_tab_(\d+)$/.exec(tab.id) : null;
+
+        return at ? parseInt(at[1], 10) : 0;
+    }
+
+    // "Save as data" in a sheet's preview window (offer: ws_file_office's
+    // table_import, sent only to who may post in the channel and make a
+    // table there): the Data tables' import (workspace_wtables.php,
+    // import_read with message and sheet) reads the sheet shown into a new
+    // table of the channel or rows of a table the person may write, and its
+    // screen confirms the columns first. The file stays as it is.
+    function previewTableButton(file, offer, box) {
+        var open = lookButton('pg-button pg-button-quiet pg-button-sm', t('file_table_save'), 'bi-table');
+
+        open.addEventListener('click', function () {
+            var footer = previewModal.querySelector('.dialog-footer');
+            var drawn = footer.querySelector('.ws-preview-table-form');
+
+            if (drawn) {
+                drawn.querySelector('select').focus();
+                return;
+            }
+
+            var form = el('div', 'ws-preview-table-form');
+            var into = formParts.select([['0', t('file_table_new', offer.channel)]], '0', true);
+
+            if ((offer.tables || []).length) {
+                var group = el('optgroup');
+
+                group.label = t('file_table_rows');
+                offer.tables.forEach(function (table) {
+                    var option = el('option', '', table.name);
+
+                    option.value = String(table.id);
+                    group.appendChild(option);
+                });
+                into.appendChild(group);
+            }
+
+            var go = lookButton('pg-button pg-button-fill pg-button-sm', t('file_table_read'), 'bi-arrow-right');
+            var cancel = lookButton('pg-button pg-button-quiet pg-button-sm', t('cancel'), '');
+
+            go.addEventListener('click', function () {
+                var state = previewSheets;
+
+                if (state && state.view && state.view.count() > 0
+                    && !window.confirm(t((state.view.kind === 'docx') ? 'file_paragraphs_unsaved' : 'file_cells_unsaved'))) {
+                    return;
+                }
+
+                var post = el('form', 'd-none');
+
+                post.method = 'post';
+                post.action = offer.url;
+                [['token', CFG.token], ['wt_action', 'import_read'], ['wt_table', into.value], ['message', String(file.message_id)], ['sheet', String(previewSheetShown(box))]].forEach(function (pair) {
+                    var input = el('input');
+
+                    input.type = 'hidden';
+                    input.name = pair[0];
+                    input.value = pair[1];
+                    post.appendChild(input);
+                });
+
+                go.disabled = true;
+                document.body.appendChild(post);
+                post.submit();
+            });
+
+            cancel.addEventListener('click', function () {
+                form.remove();
+                footer.classList.toggle('d-none', !footer.children.length);
+                open.focus();
+            });
+
+            form.appendChild(formParts.field(t('file_table_into'), into, t('file_table_help')));
+            form.appendChild(go);
+            form.appendChild(cancel);
+            footer.insertBefore(form, footer.firstChild);
+            footer.classList.remove('d-none');
+            into.focus();
+        });
+
+        return open;
+    }
+
     function previewFile(file, onSaved) {
         if ((file.kind || '') === 'image' || file.image) {
             viewImages([{ src: file.url, alt: file.name, caption: file.name }], 0);
@@ -1387,7 +1512,8 @@
             previewModal.id = 'ws-preview';
             previewModal.tabIndex = -1;
             previewModal.innerHTML = '<div class="dialog-header py-3"><h5 class="dialog-title text-truncate"></h5>'
-                + '<a class="btn btn-sm btn-text theme-secondary ms-auto" data-ws-open target="_blank" rel="noopener"></a>'
+                + '<span class="ws-preview-table ms-auto"></span>'
+                + '<a class="btn btn-sm btn-text theme-secondary" data-ws-open target="_blank" rel="noopener"></a>'
                 + '<a class="btn btn-sm btn-text theme-secondary" data-ws-download></a>'
                 + '<button type="button" class="btn-close ms-1" data-bs-dismiss="dialog"></button></div>'
                 + '<div class="dialog-body p-0"></div><div class="dialog-footer py-3 d-none"></div>';
@@ -1416,6 +1542,8 @@
 
         previewModal.querySelector('.dialog-title').textContent = file.name;
         previewModal.querySelector('.btn-close').setAttribute('aria-label', t('close'));
+
+        var tableSlot = clear(previewModal.querySelector('.ws-preview-table'));
 
         var open = clear(previewModal.querySelector('[data-ws-open]'));
         open.href = file.url;
@@ -1452,6 +1580,10 @@
 
                 var data = results[0];
                 var writable = editing && !!(data.can_replace || data.can_send);
+
+                if (data.table_import) {
+                    tableSlot.appendChild(previewTableButton(file, data.table_import, box));
+                }
                 var state = { view: null, saving: false };
                 var save = null;
 
@@ -14205,14 +14337,35 @@
                 return box;
             }
 
-            var card = el('div', 'ws-file-card');
+            // A file the channel shows opens from its name or anywhere on
+            // its card (fileShowWay()); any other keeps its name as its link.
+            var way = fileShowWay(file);
+            var show = function () {
+                if (way === 'text') {
+                    self.openText(message);
+                } else {
+                    previewFile(file, function (result) { self.fileEdited(result); });
+                }
+            };
+            var card = el('div', 'ws-file-card' + (way ? ' ws-file-shows' : ''));
             card.appendChild(el('span', 'ws-file-ext ws-ext-' + (file.ext || 'file'), file.ext || '?'));
 
             var text = el('div', 'ws-grow');
-            var name = el('a', 'ws-file-name');
-            name.href = file.url;
-            name.target = '_blank';
-            name.rel = 'noopener';
+            var name = el(way ? 'button' : 'a', 'ws-file-name');
+
+            if (way) {
+                name.type = 'button';
+                card.addEventListener('click', function (event) {
+                    if (!event.target.closest('.ws-file-tools')) {
+                        show();
+                    }
+                });
+            } else {
+                name.href = file.url;
+                name.target = '_blank';
+                name.rel = 'noopener';
+            }
+
             name.textContent = file.name;
             name.title = file.name;
             text.appendChild(name);
@@ -14222,24 +14375,20 @@
             // under it at the right in a narrow column.
             var tools = el('div', 'ws-file-tools');
 
-            if (kind === 'pdf' || file.office) {
-                var look = button('btn btn-sm btn-outline theme-secondary', t('preview'), 'bi-eye');
-                look.addEventListener('click', function () { previewFile(file, function (result) { self.fileEdited(result); }); });
+            if (way) {
+                var look = fileAction(t('preview'), 'bi-eye');
+                look.addEventListener('click', show);
                 tools.appendChild(look);
             }
 
-            if (file.text) {
+            // A .csv or .tsv: its sheet in the preview, its text here.
+            if (file.text && (way === 'window')) {
                 var read = button('btn btn-sm btn-outline theme-secondary', t('file_edit_text'), 'bi-file-earmark-text');
                 read.addEventListener('click', function () { self.openText(message); });
                 tools.appendChild(read);
             }
 
-            var get = el('a', 'btn btn-sm btn-text theme-secondary');
-            get.href = file.url;
-            get.setAttribute('download', file.name);
-            get.title = t('download');
-            get.appendChild(icon('bi-download'));
-            tools.appendChild(get);
+            tools.appendChild(fileAction(t('download'), 'bi-download', file));
             card.appendChild(tools);
 
             return card;
@@ -22623,11 +22772,33 @@
                     var list = el('div', 'ws-file-list');
 
                     rows.forEach(function (message) {
-                        var row = el('div', 'ws-file-row');
-                        var link = el('a', 'ws-file-link');
-                        link.href = message.file.url;
-                        link.target = '_blank';
-                        link.rel = 'noopener';
+                        // A file the channel shows opens from its name or
+                        // its row (fileShowWay()); any other keeps its name
+                        // as its link.
+                        var way = fileShowWay(message.file);
+                        var show = function () {
+                            if (way === 'text') {
+                                self.openText(message);
+                            } else {
+                                previewFile(message.file, function (result) { self.fileEdited(result); });
+                            }
+                        };
+                        var row = el('div', 'ws-file-row' + (way ? ' ws-file-shows' : ''));
+                        var link = el(way ? 'button' : 'a', 'ws-file-link');
+
+                        if (way) {
+                            link.type = 'button';
+                            row.addEventListener('click', function (event) {
+                                if (!event.target.closest('a, audio, button:not(.ws-file-link)')) {
+                                    show();
+                                }
+                            });
+                        } else {
+                            link.href = message.file.url;
+                            link.target = '_blank';
+                            link.rel = 'noopener';
+                        }
+
                         link.appendChild(el('span', 'ws-file-ext', message.file.ext));
                         link.appendChild(el('span', 'text-truncate', message.file.name));
                         row.appendChild(link);
@@ -22636,22 +22807,26 @@
                         meta.title = meta.textContent;
                         row.appendChild(meta);
 
-                        if (message.file.kind === 'pdf' || message.file.kind === 'audio' || message.file.office) {
-                            var look = button('btn btn-sm btn-text theme-secondary', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
-                            look.addEventListener('click', function () {
-                                if (message.file.kind === 'pdf' || message.file.office) {
-                                    previewFile(message.file, function (result) { self.fileEdited(result); });
-                                } else {
-                                    var sound = el('audio');
-                                    sound.src = message.file.url;
-                                    sound.controls = true;
-                                    sound.autoplay = true;
-                                    row.appendChild(sound);
-                                    look.remove();
-                                }
+                        if (message.file.kind === 'audio') {
+                            var play = button('pg-icon-button pg-icon-button-sm', '', 'bi-play-circle', t('preview'));
+                            play.addEventListener('click', function () {
+                                var sound = el('audio');
+                                sound.src = message.file.url;
+                                sound.controls = true;
+                                sound.autoplay = true;
+                                row.appendChild(sound);
+                                play.remove();
                             });
+                            row.appendChild(play);
+                        }
+
+                        if (way) {
+                            var look = fileAction(t('preview'), 'bi-eye');
+                            look.addEventListener('click', show);
                             row.appendChild(look);
                         }
+
+                        row.appendChild(fileAction(t('download'), 'bi-download', message.file));
 
                         var jump = button('btn btn-sm btn-text theme-secondary', '', 'bi-chat-left-text', t('show_in_conversation'));
                         jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
