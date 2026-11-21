@@ -79,6 +79,7 @@
 - automation-flows-screen.md: The Flows screen with the Workspace off (#9154): its gate, the panel actions the switch lets through, what the screen leaves out that lives in a channel, how it was checked
 - automation-flows-workspace-boxes.md: Which flow boxes and starts need the Workspace (ws_flow_kinds_workspace()): the list, offered only with it, the problem on the canvas, the refusal at run time and in Try [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - calls-group.md: A group's Workspace call (CL3): no ring in a group, the head's Join button (n/4, full), the mesh grid of four, the speaking mark, five minutes alone
+- calls-guest.md: A guest in a Workspace call (CL5): the guest page's bar with Join (no start), the call window on the guest page, call_sync, a guest room's call on the staff's side (no ring, no decline)
 - calls-screen.md: Workspace calls of two people on the channel screen (CL2, #10522): head buttons, the ring and Decline, the call window kept across channels, ws_call_sync each second, STUN default
 - calls-server.md: Workspace calls on the server (CL1, #10499, step 11.0.243): tables, start/join/leave/end, signals read by their member only, the 2-minute end, who may, limits, read-only API
 - calls-settings.md: The Calls card of Workspace settings (CL6, #10608): off until turned on, STUN addresses, the TURN relay with its sealed secret, member-only time-limited credentials, the browser's connection test

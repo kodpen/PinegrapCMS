@@ -499,6 +499,8 @@
 - messages-area-rules.md: What binds every change to the Communication area (İletişim): the owner decisions of #8961 and #9295, what a change keeps, the architect's shell and rights rulings [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - messages-area-sends-calendar.md: Communication › Sends › Calendar (MA13 #9575): what waits to be sent by day and hour, its four sources, rights, the same-group-same-hour mark, the Work Calendar's grid reused, read only [decision: decisions-made-workspace-29.md]
 - messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200, MA10b #9453): menu row 9, Incoming e-mail and the five tabs with their gates, its menu pin and dashboard card, the tab strip, doors, the Channels cards [decision: here]
+- messages-area-survey-edit.md: Add and Edit survey (edit_feedback_survey.php, FD2): Question, Sent after, Sent by, Low scores, After the answer cards, status column, the texts JSON and filters, Send me a test
+- messages-area-surveys-tab.md: Communication › Surveys (FD2): the satisfaction survey list, its gate, Add survey's starting points drawer, the row's Send me a test, Delete or Archive [decision: here]
 - messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d) [decision: here]
 - migration-screen.md: The Migration screen (migration.php): source password handling, API URL check, error details, wording
 - money-box-focus.md: A money box that opens focused is focused on document ready after the Inputmask binding, never by an inline script while the page parses (gift card Amount, #9047)

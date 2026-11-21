@@ -41,7 +41,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - `list-table-*`: 50 files; start at `list-table-overview.md`.
 - `look-settings-*`: 7 files.
 - `main-menu-*`: 15 files; start at `main-menu-overview.md`.
-- `messages-area-*`: 9 files; start at `messages-area-overview.md`.
+- `messages-area-*`: 11 files; start at `messages-area-overview.md`.
 - `settings-card-*`: 7 files.
 - `settings-modal-*`: 14 files; start at `settings-modal-overview.md`.
 - `submitted-form-*`: 6 files.
