@@ -811,6 +811,132 @@ if ($_POST) {
 
 	}
 
+	// A carrier label service's keys, saved, tried or removed on its page
+	// under the gate of the Shipping card they came from. A refused box
+	// writes nothing; the switch and the service's other choices are still
+	// set on the card.
+	if (in_array($action, array('label_save', 'label_remove'), true)) {
+
+		$label_id = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$label_definition = in_array($label_id, pg_connections_screen_label_pages(), true) ? pg_label_driver($label_id) : null;
+
+		if (($label_definition !== null) && connections_commerce_may_manage($user)) {
+
+			require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_webhook.php');
+
+			if ($action === 'label_remove') {
+
+				// The status webhook goes first, while the keys can still
+				// reach the service.
+				pg_carrier_webhook_sync($label_id, array('enabled' => false, 'secrets' => array()), $liveform);
+
+				if (pg_label_forget_keys($label_id, $user['id'])) {
+					$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $label_definition['label'])));
+					log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $label_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			} else {
+
+				$label_fields = pg_label_fields($label_id);
+				$label_settings = pg_label_settings($label_id);
+				$label_decision = pg_label_settings_decide($label_id, pg_label_fields_part($label_fields, 'keys'),
+					pg_label_page_post($label_id, $label_fields, $_POST, $label_settings), $label_settings);
+
+				foreach ($label_decision['marks'] as $label_input => $label_mark) {
+					$liveform->mark_error($label_input, $label_mark);
+				}
+
+				if ($label_decision['changed'] && !pg_connect_schema_ready()) {
+					$liveform->add_error(lang('The database has not been upgraded yet. Run the software update first.'));
+				} elseif (($label_decision['secrets'] !== array()) && !pg_connect_can_seal()) {
+					$liveform->mark_error(pg_label_input_name($label_id, (string) key($label_decision['secrets'])), lang('This site has no encryption key, so it cannot keep the keys of a carrier label service.'));
+				}
+
+				if (!$liveform->check_form_errors()) {
+
+					// Stored, then the connection test when Save and try was
+					// pressed, and the status webhook for newly typed keys.
+					pg_label_settings_save(array($label_id => $label_decision), (int) $user['id'], $liveform);
+
+					if ($label_decision['changed']) {
+						$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $label_definition['label'])));
+						log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $label_definition['label'])), $_SESSION['sessionusername']);
+					}
+
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($label_definition !== null) ? '?service=' . $label_id : ''));
+		exit();
+
+	}
+
+	// UPS's, FedEx's or USPS's application, saved, tried or removed on its
+	// page under the gate of the Shipping card it came from. The environment,
+	// the switches and the account numbers are still set on the card.
+	if (in_array($action, array('carrier_save', 'carrier_remove'), true)) {
+
+		$carrier_id = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$carrier_definition = in_array($carrier_id, pg_connections_screen_carrier_pages(), true) ? pg_carrier_api_definition($carrier_id) : null;
+
+		if (($carrier_definition !== null) && connections_commerce_may_manage($user)) {
+
+			if ($action === 'carrier_remove') {
+
+				if (pg_carrier_api_forget($carrier_id, $user['id'])) {
+					$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $carrier_definition['label'])));
+					log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $carrier_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			} else {
+
+				$carrier_app = pg_carrier_api_app($carrier_id);
+				$carrier_decision = pg_carrier_api_keys_decide($carrier_id, $_POST, $carrier_app, pg_carrier_api_switched_on($carrier_id));
+
+				foreach ($carrier_decision['marks'] as $carrier_input => $carrier_mark) {
+					$liveform->mark_error($carrier_input, $carrier_mark);
+				}
+
+				if (!$liveform->check_form_errors() && $carrier_decision['changed']) {
+
+					if (pg_carrier_api_save($carrier_id, $carrier_decision['client_id'], $carrier_decision['client_secret'], $carrier_app['environment'], (int) $user['id'])) {
+						$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $carrier_definition['label'])));
+						log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $carrier_definition['label'])), $_SESSION['sessionusername']);
+					} else {
+						$liveform->add_error(lang(array(
+							'string' => 'The {var:1} credentials were not saved: {var:2}',
+							'vars'   => array($carrier_definition['label'], !pg_connect_schema_ready()
+								? lang('The database has not been upgraded yet. Run the software update first.')
+								: lang('This site has no encryption key, so it cannot keep the client secret of a carrier.')))));
+					}
+
+				}
+
+				// Save and try: a token is asked for with the stored keys.
+				if (!$liveform->check_form_errors() && !empty($_POST['submit_try'])) {
+
+					$carrier_token = pg_carrier_api_token($carrier_id, true);
+
+					if ($carrier_token['token'] !== '') {
+						$liveform->add_notice(lang(array('string' => '{var:1} accepted the credentials.', 'vars' => array($carrier_definition['label']))));
+					} else {
+						$liveform->add_error(lang(array('string' => '{var:1} refused the connection: {var:2}', 'vars' => array($carrier_definition['label'], h($carrier_token['error'])))));
+					}
+
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($carrier_definition !== null) ? '?service=' . $carrier_id : ''));
+		exit();
+
+	}
+
 	// A CAPTCHA provider's keys, saved or removed on its page under the gate
 	// of the Spam Protection card they came from. The card's checks run as
 	// before: changed keys of the provider forms use are asked about first,
@@ -1985,6 +2111,206 @@ function connections_method_page($page, $id, $may_manage) {
 						<span class="pg-text-meta d-block">' . h($active ? lang('It is offered at checkout.') : lang('It is switched off on the card, so it is not offered at checkout.')) . '</span>
 					</span>
 					<span class="connections-row-side">' . connections_state_pill(($connected && $active) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* A carrier label service's page (Geliver, Basit Kargo, Kargonomi, Aras
+   Kargo, Shippo, Sendcloud): "Connection details" holds the keys the
+   Shipping card held (a secret never drawn back), with Save and try where
+   the service has a connection test, for who may open Site Settings ›
+   Ecommerce; Status has Disconnect while any key is stored; "Where it is
+   used" leads to the card, where it is switched on and its other choices
+   are set. */
+
+function connections_label_page($page, $id, $may_manage) {
+
+	$definition = pg_label_driver($id);
+	$fields = pg_label_fields($id);
+	$settings = pg_label_settings($id);
+	$can_seal = pg_connect_can_seal();
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$lines = '';
+
+		if (!$can_seal) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang('This site has no encryption key, so it cannot keep the keys of a carrier label service.')) . '</div>';
+		} elseif (!$settings['readable']) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang(array('string' => 'The stored keys of {var:1} cannot be read with this site\'s encryption key. Enter them again.', 'vars' => $definition['label']))) . '</div>';
+		}
+
+		if ($definition['portal'] !== '') {
+			$lines .= '
+				<p class="pg-text-meta mb-4">' . lang(array('string' => 'The keys are in your {var:1} account.', 'vars' => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</p>';
+		}
+
+		$inputs = '';
+
+		foreach (pg_label_fields_part($fields, 'keys') as $field) {
+
+			$input_id = pg_label_input_name($id, $field['name']);
+			$help = ($field['help'] !== '') ? '<div class="pg-field-help">' . h($field['help']) . '</div>' : '';
+
+			if ($field['type'] === 'secret') {
+				$input = '<input type="password" class="pg-input font-monospace" id="' . h($input_id) . '" name="' . h($input_id) . '" value="" maxlength="' . (int) $field['max_length'] . '" autocomplete="new-password" spellcheck="false"'
+					. (isset($settings['secrets'][$field['name']]) ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>';
+			} else {
+				$value = isset($settings['values'][$field['name']]) ? $settings['values'][$field['name']] : $field['default'];
+				$input = '<input type="text" class="pg-input font-monospace" id="' . h($input_id) . '" name="' . h($input_id) . '" value="' . h($value) . '" maxlength="' . (int) $field['max_length'] . '" autocomplete="off" spellcheck="false">';
+			}
+
+			$inputs .= '
+				<div>
+					<label class="pg-field-label" for="' . h($input_id) . '">' . h($field['label']) . '</label>
+					' . $input . '
+					' . $help . '
+				</div>';
+
+		}
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The site\'s {var:1} keys. Whether labels are made with it, and its other choices, are set on the Shipping card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			' . $lines . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="label_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . $inputs . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>' . (pg_label_can($id, 'test') ? '
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>' : '') . '
+				</div>
+			</form>
+		</section>';
+
+		if (pg_label_keys_stored($fields, $settings)) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="label_remove" data-id="0"
+					data-confirm="' . h($settings['enabled']
+						? lang(array('string' => 'The {var:1} keys are removed from this site: no labels are made with it until they are entered again.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} keys are removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $definition['label']))) . '</button>
+			</div>';
+		}
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-shipping')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Shipping labels')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Shipping')) . '</span>
+						<span class="pg-text-meta d-block">' . h($settings['enabled'] ? lang('The Shipping card has it switched on.') : lang('It is switched off on the card, so no labels are made with it.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(pg_label_ready($id) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* UPS's, FedEx's or USPS's page: "Connection details" holds the client ID
+   and secret of the application made in the carrier's developer portal (the
+   secret never drawn back), with Save and try, for who may open Site
+   Settings › Ecommerce; Status has Disconnect while either is stored;
+   "Where it is used" leads to the Shipping card, where the real-time rates
+   or the address check are switched on and the environment is chosen. */
+
+function connections_carrier_page($page, $id, $may_manage) {
+
+	$definition = pg_carrier_api_definition($id);
+	$app = pg_carrier_api_app($id);
+	$labels = pg_carrier_api_labels($id);
+	$active = pg_carrier_api_switched_on($id);
+	$can_keep = pg_connect_schema_ready() && pg_connect_can_seal();
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$lines = '';
+
+		if (!pg_connect_schema_ready()) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang('The database has not been upgraded yet. Run the software update first.')) . '</div>';
+		} elseif (!pg_connect_can_seal()) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang('This site has no encryption key, so it cannot keep the client secret of a carrier.')) . '</div>';
+		}
+
+		$lines .= '
+				<p class="pg-text-meta mb-4">' . lang(array(
+					'string' => 'Create an application at {var:1} with these APIs: {var:2}. Then enter its {var:3} and {var:4} here.',
+					'vars'   => array(
+						'<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h(preg_replace('#^https://|/$#', '', $definition['portal'])) . '</a>',
+						h($definition['products']),
+						h($labels['id']),
+						h($labels['secret'])))) . '</p>';
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(($id === 'usps')
+				? lang('The site\'s USPS application. Its environment, and whether US addresses are verified with it, are set on the Shipping card of Site Settings › Ecommerce.')
+				: lang(array('string' => 'The site\'s {var:1} application. Whether its real-time rates are used, its environment and account number are set on the Shipping card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			' . $lines . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="carrier_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				<div>
+					<label class="pg-field-label" for="' . h($id) . '_client_id">' . h($labels['id']) . '</label>
+					<input type="text" class="pg-input font-monospace" id="' . h($id) . '_client_id" name="' . h($id) . '_client_id" value="' . h($app['client_id']) . '" maxlength="255" autocomplete="off" spellcheck="false">
+				</div>
+				<div>
+					<label class="pg-field-label" for="' . h($id) . '_client_secret">' . h($labels['secret']) . '</label>
+					<input type="password" class="pg-input font-monospace" id="' . h($id) . '_client_secret" name="' . h($id) . '_client_secret" value="" maxlength="255" autocomplete="new-password" spellcheck="false"'
+						. ($app['secret_stored'] ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill"' . ($can_keep ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_keep ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if (($app['client_id'] !== '') || $app['secret_stored']) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="carrier_remove" data-id="0"
+					data-confirm="' . h($active
+						? lang(array('string' => 'The {var:1} keys are removed from this site: real-time information from it stops until they are entered again.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} keys are removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $definition['label']))) . '</button>
+			</div>';
+		}
+
+	}
+
+	if ($id === 'usps') {
+		$use_name = lang('USPS rates and US address verification');
+		$use_line = $active ? lang('US addresses are verified with it at checkout.') : lang('Shipping methods with USPS services get their rates from it.');
+	} else {
+		$use_name = lang('Live shipping rates at checkout');
+		$use_line = $active ? lang('Its real-time rates are switched on.') : lang('Its real-time rates are switched off on the card.');
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-shipping')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h($use_name) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Shipping')) . '</span>
+						<span class="pg-text-meta d-block">' . h($use_line) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(pg_carrier_api_connected($id) ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
 
@@ -3386,6 +3712,18 @@ if ($provider_page !== '') {
 	// PayPal Express Checkout's keys below PayPal Checkout's, and Givex's page.
 	if (pg_payment_method_connection_for_page($page_id) !== '') {
 		$page = connections_method_page($page, pg_payment_method_connection_for_page($page_id), connections_commerce_may_manage($user));
+	}
+
+	// A carrier label service's page: its keys and the Shipping card that
+	// switches it on.
+	if (in_array($page_id, pg_connections_screen_label_pages(), true) && (pg_label_driver($page_id) !== null)) {
+		$page = connections_label_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// UPS's, FedEx's and USPS's pages: the application and the Shipping card
+	// that puts it to use.
+	if (in_array($page_id, pg_connections_screen_carrier_pages(), true)) {
+		$page = connections_carrier_page($page, $page_id, connections_commerce_may_manage($user));
 	}
 
 	// A CAPTCHA provider's page: its keys and the card that chooses it.

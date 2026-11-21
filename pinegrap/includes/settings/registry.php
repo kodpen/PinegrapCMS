@@ -1060,6 +1060,17 @@ function pg_settings_legacy_anchors()
         'ecommerce_clearcommerce_client_id'                => array('commerce', 'pgset-payments'),
         'ecommerce_first_data_global_gateway_store_number' => array('commerce', 'pgset-payments'),
         'ecommerce_sage_merchant_id'                       => array('commerce', 'pgset-payments'),
+        // So did the shipping services' keys; an old link lands on the
+        // Shipping card that switches them on.
+        'ups_client_id'                => array('commerce', 'pgset-shipping'),
+        'fedex_client_id'              => array('commerce', 'pgset-shipping'),
+        'usps_client_id'               => array('commerce', 'pgset-shipping'),
+        'label_geliver__api_token'     => array('commerce', 'pgset-shipping'),
+        'label_basitkargo__api_token'  => array('commerce', 'pgset-shipping'),
+        'label_kargonomi__api_token'   => array('commerce', 'pgset-shipping'),
+        'label_aras__username'         => array('commerce', 'pgset-shipping'),
+        'label_shippo__api_token'      => array('commerce', 'pgset-shipping'),
+        'label_sendcloud__public_key'  => array('commerce', 'pgset-shipping'),
         'pgset-membership' => array('security',   'pgset-membership'),
         'pgset-waf'        => array('firewall',   'pgset-waf'),
         'pgsub-bots'       => array('firewall',   'pgset-bots'),

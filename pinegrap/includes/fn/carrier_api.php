@@ -14,7 +14,8 @@
  * drawn back into a form), with the environment - production or the
  * carrier's test system - among its options. No provider file exists for
  * these keys, so the Connected accounts screen does not list them: they are
- * edited on the Shipping card of the e-commerce settings. The access token
+ * typed on the carrier's page of Connections, and the environment is chosen
+ * on the Shipping card of the e-commerce settings. The access token
  * is kept among the service tokens (pg_connect_service_get()) until shortly
  * before it expires, so a checkout does not fetch one per rate request.
  *
@@ -163,6 +164,137 @@ function pg_carrier_api_ready($carrier)
     $app = pg_carrier_api_app($carrier);
 
     return ($app['client_id'] !== '') && ($app['client_secret'] !== '');
+}
+
+/**
+ * The Shipping card's switch that puts a carrier's API to use: UPS's and
+ * FedEx's real-time rates, and Verify US Addresses for USPS (whose rates
+ * the shipping methods ask for besides). Its config constant is the column
+ * in capitals. Pure.
+ *
+ * @param string $carrier
+ * @return string config column, '' for no carrier
+ */
+function pg_carrier_api_switch($carrier)
+{
+    $switches = array('ups' => 'ups', 'fedex' => 'fedex', 'usps' => 'ecommerce_address_verification');
+
+    return isset($switches[$carrier]) ? $switches[$carrier] : '';
+}
+
+/**
+ * Whether the card's switch of a carrier is on.
+ *
+ * @param string $carrier
+ * @return bool
+ */
+function pg_carrier_api_switched_on($carrier)
+{
+    $constant = strtoupper(pg_carrier_api_switch($carrier));
+
+    return ($constant !== '') && defined($constant) && (bool) constant($constant);
+}
+
+/**
+ * The registry's state of a carrier: its keys stored and, for UPS and
+ * FedEx, its real-time rates switched on. USPS is connected with its keys
+ * alone, since the shipping methods ask it for rates.
+ *
+ * @param string $carrier
+ * @return bool
+ */
+function pg_carrier_api_connected($carrier)
+{
+    return pg_carrier_api_ready($carrier) && (($carrier === 'usps') || pg_carrier_api_switched_on($carrier));
+}
+
+/**
+ * What a save of a carrier's page of Connections asks for: the client ID
+ * and a newly typed secret (an empty box keeps the stored one), with the
+ * marks of what is refused. Both are required while the card's switch is
+ * on. Pure.
+ *
+ * @param string $carrier
+ * @param array  $post   the page's form
+ * @param array  $app    pg_carrier_api_app()
+ * @param bool   $active the card's switch is on
+ * @return array client_id, client_secret, changed, marks (input => sentence)
+ */
+function pg_carrier_api_keys_decide($carrier, $post, $app, $active)
+{
+    $labels = pg_carrier_api_labels($carrier);
+    $id_input = $carrier . '_client_id';
+    $secret_input = $carrier . '_client_secret';
+    $client_id = (isset($post[$id_input]) && is_string($post[$id_input])) ? trim($post[$id_input]) : '';
+    $client_secret = (isset($post[$secret_input]) && is_string($post[$secret_input])) ? trim($post[$secret_input]) : '';
+    $marks = array();
+
+    if (mb_strlen($client_id) > 255) {
+        $marks[$id_input] = lang(array('string' => '{var:1} is too long.', 'vars' => array(h($labels['id']))));
+    } elseif ($active && ($client_id === '')) {
+        $marks[$id_input] = lang(array('string' => '{var:1} is required.', 'vars' => array(h($labels['id']))));
+    }
+
+    if (mb_strlen($client_secret) > 255) {
+        $marks[$secret_input] = lang(array('string' => '{var:1} is too long.', 'vars' => array(h($labels['secret']))));
+    } elseif ($active && ($client_secret === '') && empty($app['secret_stored'])) {
+        $marks[$secret_input] = lang(array('string' => '{var:1} is required.', 'vars' => array(h($labels['secret']))));
+    }
+
+    return array(
+        'client_id'     => $client_id,
+        'client_secret' => $client_secret,
+        'changed'       => ($client_id !== (string) $app['client_id']) || ($client_secret !== ''),
+        'marks'         => $marks,
+    );
+}
+
+/**
+ * The mark on the Shipping card when a carrier's switch is newly turned on
+ * while its keys are missing on its page of Connections. A switch already
+ * on is never refused, so a running store keeps saving. Pure.
+ *
+ * @param string $carrier
+ * @param bool   $on     the post turns it on
+ * @param bool   $was_on it was on before
+ * @param bool   $ready  pg_carrier_api_ready()
+ * @return string '' or the message
+ */
+function pg_carrier_api_choice_refusal($carrier, $on, $was_on, $ready)
+{
+    $definition = pg_carrier_api_definition($carrier);
+
+    if (($definition === null) || !$on || $was_on || $ready) {
+        return '';
+    }
+
+    return lang(array('string' => 'Set up the {var:1} keys on its page of Connections first.', 'vars' => array(h($definition['label']))));
+}
+
+/**
+ * Removes a carrier's client ID and secret (Disconnect on its page of
+ * Connections) and its cached token; the environment stays.
+ *
+ * @param string $carrier
+ * @param int    $user_id
+ * @return bool false when nothing is kept for it here
+ */
+function pg_carrier_api_forget($carrier, $user_id)
+{
+    if (!pg_connect_schema_ready() || (pg_carrier_api_definition($carrier) === null)) {
+        return false;
+    }
+
+    db("UPDATE connect_apps SET
+        client_id = '',
+        secret = '',
+        updated_user_id = '" . (int) $user_id . "',
+        updated_timestamp = UNIX_TIMESTAMP()
+        WHERE provider = '" . e(pg_carrier_api_key($carrier)) . "'");
+
+    pg_connect_service_delete(pg_carrier_api_key($carrier));
+
+    return true;
 }
 
 /**
@@ -578,9 +710,9 @@ function pg_carrier_api_error_text($data, $status)
 }
 
 /**
- * The application fields of a carrier on the Shipping settings card: client
- * ID, client secret (never drawn back), environment and a connection test,
- * with the reason when they cannot be kept yet.
+ * A carrier on the Shipping settings card: its connection (the client ID
+ * and secret are typed on its page of Connections), why rates stopped when
+ * only the retired credentials are on file, and the environment.
  *
  * @param string $carrier
  * @param bool   $legacy_set the carrier's retired credentials are still on
@@ -591,39 +723,21 @@ function pg_carrier_api_settings_fields($carrier, $legacy_set)
 {
     $definition = pg_carrier_api_definition($carrier);
     $app = pg_carrier_api_app($carrier);
-    $labels = pg_carrier_api_labels($carrier);
+    $ready = pg_carrier_api_ready($carrier);
     $name = $carrier . '_';
     $html = '';
 
-    if (!pg_connect_schema_ready()) {
-        $html .= '
-            <div class="col-12"><div class="alert theme-warning mb-0">' . lang('The database has not been upgraded yet. Run the software update first.') . '</div></div>';
-    } elseif (!pg_connect_can_seal()) {
-        $html .= '
-            <div class="col-12"><div class="alert theme-warning mb-0">' . lang('This site has no encryption key, so it cannot keep the client secret of a carrier.') . '</div></div>';
-    } elseif ($legacy_set && !pg_carrier_api_ready($carrier)) {
+    if ($legacy_set && !$ready) {
         $html .= '
             <div class="col-12"><div class="alert theme-warning mb-0">' . lang(array(
-                'string' => '{var:1} retired the sign-in with the old credentials. Real-time {var:1} information stays off until the new credentials are entered here. The old values are kept but no longer used.',
+                'string' => '{var:1} retired the sign-in with the old credentials. Real-time {var:1} information stays off until the new credentials are entered on its page of Connections. The old values are kept but no longer used.',
                 'vars'   => array(h($definition['label'])))) . '</div></div>';
     }
 
-    $html .= '
-            <div class="col-12 form-text mt-3">' . lang(array(
-                'string' => 'Create an application at {var:1} with these APIs: {var:2}. Then enter its {var:3} and {var:4} here.',
-                'vars'   => array(
-                    '<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h(preg_replace('#^https://|/$#', '', $definition['portal'])) . '</a>',
-                    h($definition['products']),
-                    h($labels['id']),
-                    h($labels['secret'])))) . '</div>
-            <div class="pg-f-md">
-                <label for="' . h($name) . 'client_id" class="form-label">' . h($labels['id']) . '</label>
-                <input type="text" name="' . h($name) . 'client_id" id="' . h($name) . 'client_id" class="form-control" value="' . h($app['client_id']) . '" maxlength="255" autocomplete="off"/>
-            </div>
-            <div class="pg-f-md">
-                <label for="' . h($name) . 'client_secret" class="form-label">' . h($labels['secret']) . '</label>
-                <input type="password" name="' . h($name) . 'client_secret" id="' . h($name) . 'client_secret" class="form-control" value="" maxlength="255" autocomplete="new-password"' . ($app['secret_stored'] ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '/>
-            </div>
+    $html .= pg_payment_connection_block_html('pgsub-carrier-' . $carrier . '-connection', $definition['label'], $ready, $ready
+        ? lang('The keys are kept on its page of Connections.')
+        : lang('The keys are missing, so real-time information from this carrier is off. Enter them on its page of Connections.'),
+        pg_payment_gateway_connections_url($carrier)) . '
             <div class="pg-f-md">
                 <label for="' . h($name) . 'environment" class="form-label">' . lang('Environment') . '</label>
                 <select name="' . h($name) . 'environment" id="' . h($name) . 'environment" class="form-control">
@@ -650,8 +764,9 @@ function pg_carrier_api_test_button($carrier)
 }
 
 /**
- * Saves the application fields of the carriers whose fields were on the
- * posted form, and runs the connection test that was asked for.
+ * Saves the environment of the carriers whose fields were on the posted
+ * form, keeping the client ID and secret typed on their pages of
+ * Connections, and runs the connection test that was asked for.
  *
  * @param array    $post     $_POST
  * @param int      $user_id
@@ -661,22 +776,20 @@ function pg_carrier_api_settings_save($post, $user_id, $liveform)
 {
     foreach (array_keys(pg_carrier_api_definitions()) as $carrier) {
         // A pane without this carrier's fields says nothing about them.
-        if (!isset($post[$carrier . '_client_id'])) {
+        if (!isset($post[$carrier . '_environment'])) {
             continue;
         }
 
-        $client_id = trim((string) $post[$carrier . '_client_id']);
-        $client_secret = isset($post[$carrier . '_client_secret']) ? trim((string) $post[$carrier . '_client_secret']) : '';
-        $environment = (isset($post[$carrier . '_environment']) && ($post[$carrier . '_environment'] === 'test')) ? 'test' : 'production';
-
+        $environment = ($post[$carrier . '_environment'] === 'test') ? 'test' : 'production';
         $before = pg_carrier_api_app($carrier);
 
-        // Nothing to keep and nothing kept: no row for a carrier never set up.
-        if (($client_id === '') && ($client_secret === '') && ($before['client_id'] === '') && !$before['secret_stored']) {
+        // Unchanged, or no row for a carrier never set up (production is
+        // what a missing row reads as).
+        if ($environment === $before['environment']) {
             continue;
         }
 
-        if (!pg_carrier_api_save($carrier, $client_id, $client_secret, $environment, $user_id)) {
+        if (!pg_carrier_api_save($carrier, $before['client_id'], '', $environment, $user_id)) {
             $liveform->add_notice(lang(array(
                 'string' => 'The {var:1} credentials were not saved: {var:2}',
                 'vars'   => array(
