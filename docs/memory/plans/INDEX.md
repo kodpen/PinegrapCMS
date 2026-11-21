@@ -102,6 +102,11 @@
 - lead-journey-screens.md: Plan lead-journey, how its screens are put together (LJ2 to LJ5): the Journey card, the Workspace customer card, the Interest card and its settings, the Hot contacts view, the Lead sources report
 - lead-journey-steps.md: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and the tie, the journey, the scores and interests, alerts and events, lead sources, API, close-out
 - lead-journey.md: Plan (owner 2026-11-20, poll 183): visits tied to a known person with consent, the journey, a decaying interest score and interests, hot and returning alerts, lead sources; LJ1a to LJ7
+- legacy-editable-layouts.md: Plan legacy-editable, layouts: a System region becomes its widget in the run; a stock layout by carried settings, a layout file by a piece map keeping the theme's markup; what stays code
+- legacy-editable-regions.md: Plan legacy-editable, regions: one door through the move screen, the run's new page_parts step, Login, Cart and Comments in the run, the true canvas of every region left, designs moved earlier
+- legacy-editable-screens.md: Plan legacy-editable, its screens in words: the move screen's dry run in three groups, the "Designs moved earlier" card, a part that stays classic on the canvas, the Region panel's dropped pieces
+- legacy-editable-steps.md: Plan legacy-editable, steps LE1 to LE12 with size and order: the measure, page_parts, one door, the true canvas, stock layouts, the layout converter by families, earlier designs, close-out
+- legacy-editable.md: Plan (owner 2026-11-21): a classic page arrives in the visual designer as editable elements, not name boxes: regions as HTML, a true canvas for code, layouts by a piece map; LE1 to LE12
 - mail-settings-one-design-box.md: Plan mail-settings-one, the architect's design of adding and removing a mailbox (boards D, E of the picture): the three-step sheet, the provider sign-in buttons, the Remove dialog
 - mail-settings-one-design.md: Plan mail-settings-one, the architect's design (picture mail-settings-one/email-settings.jpg): the two tabs, how e-mail leaves, the ways sheet, Mailboxes with no box
 - mail-settings-one-screens.md: Plan mail-settings-one, its screens: the E-mail category's two tabs, the Sending tab's rows, Add a mailbox with Sign in with Google, built from the architect's design files
