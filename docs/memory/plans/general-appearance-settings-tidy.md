@@ -18,7 +18,7 @@ priority: 8
 - (G8) Private Label's switch hides its fields (`collapse-switcher`, `appearance.php:284`); five Footer Link pairs, ten boxes, drawn empty or not (`:264`).
 
 ## What does the plan settle itself?
-- Both panes become folded rows (`pg_settings_fold()`); every switch `pg-switch`, Editor version `pg-seg`; no switch hides a field.
+- Both panes become folded rows (`pg_settings_fold()`); every switch `pg-switch`, Editor version `pg-seg`.
 - General's rows: "Organization", "Site address", "Software", "Date and time"; Appearance's: "Panel look", "Dashboard", "Rich-text editor", "Private label branding" (`plans/general-appearance-settings-tidy-screens.md`).
 - "Site address" holds Hostname, the IP as a line and "Outgoing proxy" with its line linking `#settings/firewall/pgset-proxies`; from GA4 two value rows show the host-name redirect (SEO) and Secure Mode (Firewall and HTTPS) with Change: each stays in its pane.
 - Each field says what it reaches: Support E-mail Address, Date format's line on other languages, Custom CSS relabelled "Panel CSS" with the stylesheet URL named, the acrylic line "for everyone who uses the panel".
@@ -29,6 +29,6 @@ priority: 8
 - A refresh time kept per person (a column); the seller identity in Ecommerce's feeds (item 7).
 
 ## What binds it?
-- Field names, ids, columns and what a save stores do not change; card ids and anchors keep working; one Save a pane; no schema change, no new part; the dashboard and private-label gates stay as they are.
+- Field names, ids, columns and what a save stores do not change; card ids and anchors keep working; one Save a pane; no schema change, no new part; the dashboard and private-label gates stay. The architect agreed (message 11506).
 
 Related: docs/memory/plans/general-appearance-settings-tidy-steps.md, docs/memory/plans/general-appearance-settings-tidy-screens.md, docs/memory/plans/general-appearance-settings-tidy-screens-appearance.md, docs/memory/plans/settings-tidy-census-order.md

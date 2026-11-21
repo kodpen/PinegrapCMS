@@ -21,7 +21,7 @@ description: Plan general-appearance-settings-tidy, its first screen: the Genera
 ## What must be true?
 - Every field posts under today's name; `general.save.php` stores what it stored.
 - `#settings/general/pgset-organization`, `…/pgset-server`, `…/pgset-software`, `…/pgset-datetime` open their rows; `proxy_address` and `hostname` open "Site address".
-- The settings search finds "proxy", "hostname", "VKN" and "timezone".
+- The settings search finds "proxy address", "outgoing proxy", "hostname", "VKN" and "timezone".
 - Nothing in "Site address" writes the SEO or Firewall settings.
 
 Related: docs/memory/plans/general-appearance-settings-tidy.md, docs/memory/plans/general-appearance-settings-tidy-steps.md, docs/memory/plans/general-appearance-settings-tidy-screens-appearance.md
