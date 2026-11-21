@@ -740,7 +740,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_site_icon_picker = '
                                         <div class="pg-f-md">
                                             <label for="site_icon" class="form-label">' . lang('Site Icon') . '</label>
-                                            ' . pg_picker_field('site_icon', 'site_icon', pg_site_icon_name(), array('title' => lang('Choose a site icon'), 'describedby' => 'site_icon_help')) . '
+                                            ' . pg_picker_field('site_icon', 'site_icon', pg_site_icon_name(), array('title' => lang('Choose a site icon'), 'placeholder' => lang('Choose a site icon'), 'describedby' => 'site_icon_help')) . '
                                             <div class="form-text" id="site_icon_help">' . lang('Shown in browser tabs, in search results and on home screens. Choose a square PNG of at least 512x512 (the smaller sizes are made from it) or an SVG. Leave it empty to keep the design\'s own icon.') . '</div>
                                         </div>';
     }
@@ -767,7 +767,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                         <div id="pgsub-app" class="col-12  mb-0"><h6 class="pg-group-label">' . lang('Installed Application') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="app_icon" class="form-label">' . lang('Application Icon') . '</label>
-                                            ' . pg_picker_field('public_image', 'app_icon', $app_icon, array('title' => $picture_title, 'describedby' => 'app_icon_help')) . '
+                                            ' . pg_picker_field('public_image', 'app_icon', $app_icon, array('title' => $picture_title, 'placeholder' => $picture_title, 'describedby' => 'app_icon_help')) . '
                                             <div class="form-text" id="app_icon_help">' . lang('Shown on the home screen when the panel is installed as an application. The picture is fitted whole onto a square, so nothing is cropped; a square picture of at least 512x512 looks best.') . '</div>
                                         </div>';
         }
@@ -852,7 +852,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_share_image_pickers = '
                                         <div class="pg-f-md">
                                             <label for="og_default_image" class="form-label">' . lang('Default Share Image') . '</label>
-                                            ' . pg_picker_field('public_image', 'og_default_image', $og_default_image, array('title' => $picture_title, 'describedby' => 'og_default_image_help')) . '
+                                            ' . pg_picker_field('public_image', 'og_default_image', $og_default_image, array('title' => $picture_title, 'placeholder' => $picture_title, 'describedby' => 'og_default_image_help')) . '
                                             <div class="form-text" id="og_default_image_help">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>' . $og_default_forms_notice . '
                                         </div>' . $share_card_part;
 
@@ -861,7 +861,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_organization_logo_picker = '
                     <div class="pg-f-lg">
                         <label for="organization_logo" class="form-label">' . lang('Organization Logo') . '</label>
-                        ' . pg_picker_field('public_image', 'organization_logo', $organization_logo, array('title' => $picture_title, 'describedby' => 'organization_logo_help')) . '
+                        ' . pg_picker_field('public_image', 'organization_logo', $organization_logo, array('title' => $picture_title, 'placeholder' => $picture_title, 'describedby' => 'organization_logo_help')) . '
                         <div class="form-text" id="organization_logo_help">' . lang('Used in the structured data that introduces your organization and as the publisher logo on blog posts.') . '</div>
                     </div>';
 

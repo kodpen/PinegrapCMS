@@ -298,8 +298,10 @@ function test_bs6_form_adorn_settings_row_rules_name_the_wrapper()
 	pg_assert_contains('.pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-adorn,', $css);
 	pg_assert_true(strpos($css, '> .input-group, > .form-range)') === false, 'every settings row shape test names .form-adorn');
 
-	// The add-on keeps the input-group add-on type, so a converted row stays 38px tall.
-	pg_assert_contains(".pg-set-card .form-adorn > .form-adorn-text {\n  font-size: var(--bs-btn-input-font-size);", $css);
+	// The unit reads in the field's own type: never larger than the number,
+	// and the field as tall as a plain one beside it.
+	pg_assert_contains(".pg-set-card .form-adorn > .form-adorn-text {\n  font-size: inherit;\n  line-height: inherit;\n}", $css);
+	pg_assert_true(strpos($css, ".form-adorn-text {\n  font-size: var(--bs-btn-input-font-size);") === false, 'no add-on is drawn at the body size');
 }
 
 function test_bs6_form_adorn_designer_home_search_width_on_the_wrapper()

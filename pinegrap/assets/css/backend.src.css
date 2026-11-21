@@ -5339,6 +5339,49 @@ input[readonly=true], input[readonly=true]:focus {
 .pg-set-card .collapse.popover {
   width: calc(100% - 0.3rem);
 }
+/* Inside a settings card or a folded row the fields a switch opens are no
+   callout: no frame, tint or arrow. They go on under the switch's row on the
+   card's own surface, one row gap below it, lined up with the label text
+   (past the icon tile when the row has one). A group opened inside another
+   adds no second indent; under 576px the fields take the full width. A help
+   sentence that opens the group reads at the help size. */
+.pg-set-card .collapse.popover {
+  width: auto;
+  max-width: none !important;
+  margin: var(--bs-gutter-y, 1rem) 0 0;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.pg-set-card .collapse.popover > .popover-arrow {
+  display: none;
+}
+.pg-set-card .collapse.popover > .popover-body {
+  padding: 0;
+  color: inherit;
+}
+.pg-set-card .collapse.popover > .popover-body > :is(p, .form-text, .pg-field-help):first-child {
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+/* What follows a row with a tile in the same cell (the fields it opens, a
+   warning line, a check, a note) belongs to that row and starts where its
+   text does, so the cell keeps one left edge. */
+.pg-set-card .form-field:has(> .pg-set-tile) ~ * {
+  margin-inline-start: calc(34px + 1.5rem);
+}
+.pg-set-card .collapse.popover .collapse.popover {
+  margin-inline-start: 0;
+}
+@media (max-width: 575.98px) {
+  .pg-set-card .form-field:has(> .pg-set-tile) ~ * {
+    margin-inline-start: 0;
+  }
+}
 body.toolbar {
   background-color: transparent;
   background: linear-gradient(180deg, #0000008c, transparent);
@@ -5643,10 +5686,18 @@ body.pg-code-field-open {
 
 /* The "Format code" button under an editable code field, at its right
    edge, so it does not crowd the form's own buttons below. */
+/* The buttons keep their own height when the hint beside them wraps (on a
+   phone it takes three lines and stretched them into tall boxes). */
 .pg-code-field-tools {
   display: flex;
   justify-content: flex-end;
+  align-items: flex-start;
   margin-top: 0.25rem;
+}
+/* A one-line read-only field (a command to copy) has no tools row, so the
+   help under it keeps the same room from the field. */
+.pg-code-field-ro ~ .form-text:not(.pg-code-field-tools ~ *) {
+  margin-top: .5rem;
 }
 
 /* A long name in a list cell: an inline-block span with .text-truncate,
@@ -9637,6 +9688,15 @@ html:has(.mpp-bulk:not(.d-none)) {
 legend.form-label {
   font-size: 1rem;
 }
+/* A setting's name reads the same wherever its control sits: a name above a
+   picture field, a text area, a tag field or a group of choices is the name
+   of a setting too, and at 13px regular it read as a caption beside the
+   14px bold names of the rows around it. The choices inside a group keep
+   their own smaller labels; a drawer's form keeps its own. */
+:is(.pg-settings-body, #pg_settings_sections) .pg-set-card .form-label:not(.pg-set-drawer *, .drawer *) {
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+}
 
 /* Section rail placement, shared by every screen that has one.
    <main> becomes two columns from xl up: the rail, then everything the page
@@ -10587,6 +10647,18 @@ body.pg-side-panel-open .pg-chat-launcher {
   flex-direction: column;
   gap: 16px;
 }
+/* A settings pane's text reads at the look's base size (14px): what sets no
+   size of its own (a list row's title, a connection's name, a table cell)
+   took the body's 16px and stood larger than the row holding it. A note or
+   warning box reads at the help size. */
+.pg-settings-body,
+#pg_settings_sections {
+  font-size: var(--pg-text-base);
+}
+.pg-settings-body .alert,
+#pg_settings_sections .alert {
+  font-size: var(--pg-text-2);
+}
 
 /* Bootstrap's columns answer to the window, not to the box they are in. That
    is right at full width and wrong on a phone, where a card is the whole of a
@@ -10715,9 +10787,12 @@ body.pg-side-panel-open .pg-chat-launcher {
      opens a block keeps that block in the page while it is shut, so the last
      row on screen is hardly ever the last child. A card with one setting in it
      -- Sign in with Google, when it is off -- then ended with a rule under the
-     only thing in it and a gap under that. */
+     only thing in it and a gap under that. A cell that is not a field but is
+     a decision of its own (IndexNow's connection under SEO) is marked
+     .pg-set-ruled. */
   .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
-  .pg-set-card .row > * + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
+  .pg-set-card .row > * + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)),
+  .pg-set-card .row > * + .pg-set-ruled {
     padding-top: var(--pg-set-row-y);
     border-top: 1px solid var(--pg-border-color-translucent);
   }
@@ -10744,6 +10819,17 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-set-card .row > [class]:has(> h6:first-child) + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
     padding-top: .25rem;
     border-top: 0;
+  }
+
+  /* Settings a switch shows or hides together sit in a cell of their own
+     (one element to hide), so the first of them is the first child of a
+     nested row and the rule above was never drawn on it: under Alerts,
+     "Send alerts by e-mail" read as part of the master switch's
+     description. A cell holding only a nested row hands the line on. */
+  .pg-set-card .row > * + [class]:not(.collapse):has(> .row:only-child) > .row > [class]:first-child:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
+  .pg-set-card .row > * + [class]:not(.collapse):has(> .row:only-child) > .row > [class]:first-child:has(> .form-field > :is(input[type="checkbox"], .switch)) {
+    padding-top: var(--pg-set-row-y);
+    border-top: 1px solid var(--pg-border-color-translucent);
   }
 
   /* The two columns. The control column is given a width rather than left to
@@ -10773,6 +10859,18 @@ body.pg-side-panel-open .pg-chat-launcher {
     column-gap: 1.5rem;
     padding-left: 0;
     min-height: 0;
+  }
+
+  /* A select shows its chosen value whole. The 19rem column cut every option
+     longer than about 250px (a time zone, a mail connection, a folder or an
+     offer by name) whatever width class the cell had, so a select's column
+     is at least 19rem and otherwise as wide as its longest option: the
+     intrinsic width of a select is that option's. The pg-f-* cap on the
+     select still holds it (a max-width clamps the column's measure too), a
+     col-12 cell has none, and the name keeps 12rem. Stated before the phone
+     rule below, which then wins with the same weight. */
+  .pg-set-card .row > [class]:has(> .form-label):has(> select.form-control:not([multiple])) {
+    grid-template-columns: minmax(min(12rem, 100%), 1fr) minmax(min(19rem, 100%), max-content);
   }
 
   /* Anything the two columns were not expecting takes a line of its own under
@@ -10977,17 +11075,15 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-set-card .pg-f-lg > .input-group,
 .pg-set-card .pg-f-lg > .pg-pfield { max-width: 34rem; }
 
-/* A form-adorn add-on keeps the type of the input-group add-on it replaced,
-   the body size rather than the 13px of the field, so a converted row stays
-   as tall as it was (38px) and the unit reads the same. The two sizes meet
-   on one baseline, not on their centres, so the value and its unit read as
-   one line. */
+/* A form-adorn add-on reads in the field's own type: the unit ("minutes",
+   "days") is never larger than the number it follows, and the field is as
+   tall as a plain one beside it. Value and unit meet on one baseline. */
 .pg-set-card .form-adorn {
   align-items: baseline;
 }
 .pg-set-card .form-adorn > .form-adorn-text {
-  font-size: var(--bs-btn-input-font-size);
-  line-height: var(--bs-btn-input-line-height);
+  font-size: inherit;
+  line-height: inherit;
 }
 
 /* ── The hub ──────────────────────────────────────────────────────────────
@@ -18658,12 +18754,37 @@ a.ws-chip-message:hover,
   overflow-wrap: anywhere;
 }
 /* The Add rule form of the incoming mail rules: its fields side by side on
-   a wide card, one under another on a phone; the button sits on their line. */
+   a wide card, one under another on a phone; the button sits on their line.
+   A select is as wide as its longest choice, so "The sender's domain is" is
+   read whole (five equal 10rem columns cut it), and the address field takes
+   what is left. */
 .ws-mail-rule-add {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: .75rem;
-  align-items: end;
+  align-items: flex-end;
+}
+.ws-mail-rule-add > div {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+.ws-mail-rule-add > div:has(> select) {
+  flex: 0 1 auto;
+}
+.ws-mail-rule-add > div > select {
+  width: auto;
+  max-width: 100%;
+}
+.ws-mail-rule-add > .ws-mail-rule-add-end {
+  flex: 0 0 auto;
+}
+@media (max-width: 575.98px) {
+  .ws-mail-rule-add > div:not(.ws-mail-rule-add-end) {
+    flex-basis: 100%;
+  }
+  .ws-mail-rule-add > div > select {
+    width: 100%;
+  }
 }
 .ws-mail-item-head {
   display: flex;
@@ -21955,18 +22076,6 @@ button.ws-cal-more {
 .ws-days .btn {
   padding: .1rem .35rem;
   font-size: .72rem;
-}
-/* The team table runs to the card's edges: its outer cells get the card's
-   side padding, and the job title keeps a usable width when the table
-   scrolls sideways on a narrow screen. */
-#ws-people .table > :not(caption) > * > :first-child {
-  padding-left: var(--bs-card-spacer-x);
-}
-#ws-people .table > :not(caption) > * > :last-child {
-  padding-right: var(--bs-card-spacer-x);
-}
-#ws-people input[name$="[title]"] {
-  min-width: 9rem;
 }
 .ws-task-card-hidden {
   color: var(--pg-fg-2);
@@ -29879,6 +29988,123 @@ select.pg-list-table-field option.private {
     transition: none;
   }
 }
+/* In Site Settings the field is one more 32px line among the others: a 20px
+   thumb, the name, then the meta in the muted small type cut with an
+   ellipsis, clear, the caret, and Browse as a quiet icon button closing the
+   same frame. Beside the other fields the 48px two-line box and its outlined
+   "Browse…" button were the tallest and loudest things in the card. The row
+   draws the frame, so Browse sits inside it; the markup and the tab order
+   (the field, Clear, Browse) are the ones every other screen keeps. */
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-row {
+  gap: 0;
+  height: 32px;
+  color: var(--bs-btn-input-fg);
+  background-color: var(--pg-field-bg);
+  border: var(--bs-border-width) solid var(--pg-field-line);
+  border-radius: 9px;
+  box-shadow: var(--pg-field-shadow);
+}
+@media (prefers-reduced-motion: no-preference) {
+  :is(.pg-settings-body, #pg_settings_sections) .pg-pfield-row {
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-box {
+  gap: 0.5rem;
+  min-height: 0;
+  padding: 0 0.25rem 0 0.375rem;
+  font-size: var(--pg-text-2);
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield.is-empty .pg-pfield-box,
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield.is-typing .pg-pfield-box {
+  padding-left: 0.75rem;
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-box:focus-within {
+  box-shadow: none;
+}
+/* The ring goes round the whole frame while the field or Clear has the
+   focus; Browse draws its own. */
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-row:has(> .pg-pfield-box:focus-within) {
+  border-color: var(--pg-primary);
+  box-shadow: var(--pg-field-shadow), 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield.is-warning .pg-pfield-row {
+  border-color: var(--pg-warning);
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield:is(.is-danger, .is-error) .pg-pfield-row {
+  border-color: var(--pg-danger);
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-thumb {
+  flex-basis: 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  font-size: 0.75rem;
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-text {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+/* The name is as wide as its words, so the meta follows it; a browser
+   without field-sizing gives the input its default width and the meta
+   still follows. */
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-input {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 4ch;
+  max-width: 100%;
+  field-sizing: content;
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-meta {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--pg-text-meta);
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-clear {
+  width: 24px;
+  height: 24px;
+  font-size: 0.7rem;
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-caret {
+  padding-inline: 0.25rem;
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-browse {
+  position: relative;
+  justify-content: center;
+  width: 32px;
+  height: 100%;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--pg-fg-2);
+  background: none;
+  border: 0;
+  border-inline-start: var(--bs-border-width) solid var(--pg-border-color-translucent);
+  border-radius: 0 8px 8px 0;
+  box-shadow: none;
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-browse:hover {
+  color: var(--pg-fg-emphasis);
+  background: var(--pg-bg-1);
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-browse:focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-browse .pg-btn-label {
+  display: none;
+}
+/* The button is 30px inside the frame's border; its touch area reaches
+   the frame's outer edge, 32px high. */
+:is(.pg-settings-body, #pg_settings_sections) .pg-pfield-browse::after {
+  position: absolute;
+  inset: -1px -1px -1px 0;
+  content: "";
+}
 /* The field's phone search: a half sheet from the bottom edge. */
 .dialog.pg-pfield-sheet {
   --bs-dialog-margin: 0;
@@ -30393,6 +30619,30 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
   border-radius: 9px;
   font-size: var(--pg-text-2);
 }
+/* A select drawn as the field itself loses the browser's arrow for the
+   chevron a settings select draws, so no list keeps the browser's own look.
+   (A select inside a .pg-input wrapper is bare and draws its own icon.) */
+select.pg-input {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-inline-end: 36px;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2300000080' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 12px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+[data-bs-theme="dark"] select.pg-input {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff80' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+/* In a settings pane every field is a row's field, 32px (.pg-input-sm);
+   a drawer keeps the look's 36px. */
+:is(.pg-settings-body, #pg_settings_sections) .pg-input:not(textarea, .drawer *, .pg-set-drawer *) {
+  height: 32px;
+  border-radius: 9px;
+  font-size: var(--pg-text-2);
+}
 /* A settings row's Bootstrap field is the field in a row. */
 .pg-set-card .form-control {
   --bs-control-min-height: 32px;
@@ -30403,6 +30653,37 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
   --bs-control-border-color: var(--pg-field-line);
   --bs-control-box-shadow: var(--pg-field-shadow);
   border-radius: 9px;
+}
+/* A tag field is a row's field too: 32px while it holds one line of
+   chips, the chips a notch smaller to fit, growing a line at a time. The
+   66px min-height-tagin box stood twice the height of every field round it. */
+.pg-set-card .pg-chips:not(.drawer *, .pg-set-drawer *) {
+  --bs-chip-input-padding-y: 3px;
+  --bs-chip-input-gap: 4px;
+  --bs-control-bg: var(--pg-field-bg);
+  --bs-control-border-color: var(--pg-field-line);
+  --bs-control-border-radius: 9px;
+  min-height: 32px;
+  font-size: var(--pg-text-2);
+  box-shadow: var(--pg-field-shadow);
+}
+.pg-set-card .pg-chips:not(.drawer *, .pg-set-drawer *) > .chip {
+  --bs-chip-height: 1.5rem;
+  --bs-chip-font-size: var(--pg-text-meta);
+}
+.pg-set-card .pg-chips:not(.drawer *, .pg-set-drawer *) > .form-ghost {
+  min-height: 1.5rem;
+}
+/* A colour field's swatch has an edge of its own: Bootstrap takes the
+   swatch's border off, so a white text colour on the card's white ground
+   (Card Text Color under SEO) showed an empty box. A shadow, as Bootstrap's
+   border rule is important. Each engine's pseudo-element in a rule of its
+   own: one it does not know drops the whole rule. */
+.pg-set-card .form-control-color::-webkit-color-swatch {
+  box-shadow: inset 0 0 0 1px var(--pg-field-line);
+}
+.pg-set-card .form-control-color::-moz-color-swatch {
+  box-shadow: inset 0 0 0 1px var(--pg-field-line);
 }
 .pg-input:focus,
 .pg-input:focus-within {
@@ -33504,6 +33785,82 @@ textarea.pg-campaign-text {
   }
   .pg-embedded-table > tbody > tr > td.pg-embedded-table-text {
     min-width: 10rem;
+  }
+}
+
+}
+
+/* ==========================================================================
+   Site Settings › Team and working hours: the team members' table.
+   The hours field keeps a short column. Under 576 px each member is a list
+   row instead of a table that scrolls sideways: the name across, the job
+   title and the hours side by side, the working days across, then "Not in
+   the team" with its switch at the end; each field sits under its own
+   label (the cell's data-label).
+   ========================================================================== */
+@layer custom {
+
+.ws-people-table .ws-people-cell-hours {
+  width: 6rem;
+}
+
+@media (max-width: 575.98px) {
+  .pg-embedded-table.ws-people-table,
+  .pg-embedded-table.ws-people-table > tbody {
+    display: block;
+  }
+  .pg-embedded-table.ws-people-table > thead {
+    display: none;
+  }
+  .pg-embedded-table.ws-people-table > tbody > tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 6rem;
+    grid-template-areas:
+      "person person"
+      "title hours"
+      "days days"
+      "out out";
+    gap: .5rem .75rem;
+    padding: .75rem 0;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+  }
+  .pg-embedded-table.ws-people-table > tbody > tr:first-child {
+    padding-top: 0;
+  }
+  .pg-embedded-table.ws-people-table > tbody > tr:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  .pg-embedded-table.ws-people-table > tbody > tr > td {
+    display: block;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    text-align: start;
+  }
+  .pg-embedded-table.ws-people-table > tbody > tr > td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: .25rem;
+    font-size: var(--pg-text-meta);
+    color: var(--pg-fg-3);
+  }
+  .ws-people-table .ws-people-cell-person { grid-area: person; }
+  .ws-people-table .ws-people-cell-title { grid-area: title; }
+  .ws-people-table .ws-people-cell-hours { grid-area: hours; }
+  .ws-people-table .ws-people-cell-days { grid-area: days; }
+  .pg-embedded-table.ws-people-table > tbody > tr > td.ws-people-cell-out {
+    grid-area: out;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+  }
+  .pg-embedded-table.ws-people-table > tbody > tr > td.ws-people-cell-out::before {
+    margin-bottom: 0;
   }
 }
 

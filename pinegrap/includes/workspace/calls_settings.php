@@ -267,10 +267,14 @@ function ws_calls_settings_card_html($settings, $admin, $api_url)
             </div>
             <div class="card-body" data-ws-calls-card data-api="' . h($api_url) . '">
                 <input type="hidden" name="ws_calls_card" value="1">
-                <div class="d-flex align-items-start gap-3 mb-5">
-                    <input class="pg-switch" type="checkbox" name="ws_calls_on" value="1" id="ws_calls_on" aria-describedby="ws_calls_on-help"' . ($settings['on'] ? ' checked' : '') . '>
-                    <div><label class="pg-text-2" for="ws_calls_on">' . h(lang('Voice and video calls in the channels')) . '</label>
-                    <div class="pg-field-help" id="ws_calls_on-help">' . h(lang('Sound and picture go from browser to browser; the site carries only who is in a call and the browsers\' connection messages. Nothing is recorded. Off, the call buttons are not shown and no call can be started.')) . '</div></div>
+                <div class="row mb-5">
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input type="checkbox" name="ws_calls_on" value="1" id="ws_calls_on" aria-describedby="ws_calls_on-help"' . ($settings['on'] ? ' checked' : '') . '></div>
+                            <label for="ws_calls_on">' . h(lang('Voice and video calls in the channels')) . '</label>
+                            <div class="form-text" id="ws_calls_on-help">' . h(lang('Sound and picture go from browser to browser; the site carries only who is in a call and the browsers\' connection messages. Nothing is recorded. Off, the call buttons are not shown and no call can be started.')) . '</div>
+                        </div>
+                    </div>
                 </div>
                 <div class="mb-5">
                     <label class="pg-field-label" for="ws_calls_stun">' . h(lang('STUN addresses')) . '</label>

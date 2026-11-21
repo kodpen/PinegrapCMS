@@ -78,7 +78,7 @@ $pg_settings_cards[] = '
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-3 pg-embedded-table">
+                    <table class="table table-hover mb-3 pg-embedded-table ws-people-table">
                         <thead>
                             <tr>
                                 <th>' . h(lang('Team member')) . '</th>

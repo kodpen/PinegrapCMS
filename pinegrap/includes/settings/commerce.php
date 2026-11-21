@@ -469,7 +469,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="ecommerce_reward_program_email_page_id">' . lang('Page') . '</label>
-                                                                                            ' . pg_picker_field('page', 'ecommerce_reward_program_email_page_id', $ecommerce_reward_program_email_page_id) . pg_picker_script() . '
+                                                                                            ' . pg_picker_field('page', 'ecommerce_reward_program_email_page_id', $ecommerce_reward_program_email_page_id, array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -719,7 +719,7 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label class="form-label" for="ecommerce_retrieve_order_next_page_id">'. lang('Reorder/Retrieve Order Next Page') . '</label>
-                                                            ' . pg_picker_field('page', 'ecommerce_retrieve_order_next_page_id', $ecommerce_retrieve_order_next_page_id) . pg_picker_script() . '
+                                                            ' . pg_picker_field('page', 'ecommerce_retrieve_order_next_page_id', $ecommerce_retrieve_order_next_page_id, array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label class="form-label" for="ecommerce_custom_product_field_1_label">'. lang(array('string'=>'Custom Product Field {var:1} Label','vars'=>array('#1') )) . '</label>
@@ -822,7 +822,7 @@ $pg_settings_cards[] = '
                                                             <label for="affiliate_email_address" class="form-label">' . lang('Affiliate Program E-mail Address') . '</label>
                                                             <input type="text" name="affiliate_email_address" id="affiliate_email_address" class="form-control" value="' . h($affiliate_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
                                                         </div>
-                                                        <div class="pg-f-md">
+                                                        <div class="pg-f-lg">
                                                             <label class="form-label" for="affiliate_group_offer_id">'. lang('Group Offer') . '</label>
                                                             <select class="form-control" id="affiliate_group_offer_id" name="affiliate_group_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Offer')) )) . '-</option>' . select_offer($affiliate_group_offer_id) . '</select>
                                                         </div>
@@ -865,7 +865,7 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . lang('A customer with an order shares their own link; when a friend\'s first order is completed, the customer earns store credit. An approved affiliate keeps the commission programme instead. Off, nothing changes.') . '</div>
                                             </div>
                                         </div>
-                                        <div class="pg-f-md">
+                                        <div class="pg-f-lg">
                                             <label class="form-label" for="referral_offer_id">' . lang('Offer for the friend') . '</label>
                                             <select class="form-control" id="referral_offer_id" name="referral_offer_id"><option value="">-' . lang('None') . '-</option>' . select_offer($referral_settings['offer_id']) . '</select>
                                             <div class="form-text">' . lang('Put in the friend\'s cart when they arrive by a referral link, while the offer runs.') . '</div>
