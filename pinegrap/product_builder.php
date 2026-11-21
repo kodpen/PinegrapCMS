@@ -4770,6 +4770,14 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         $output_stock_moves_card = pg_stock_product_moves_card($pg_product_id);
     }
 
+    // The supplier feeds carrying the product and its "Price from the feed".
+    $output_supplier_feed_card = '';
+
+    if (($pg_mode === 'edit') && function_exists('pg_schema_has') && pg_schema_has('supplier_feed_items')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_screen.php');
+        $output_supplier_feed_card = pg_supplier_feed_product_card($pg_product_id);
+    }
+
     $output_barcode_card = '';
 
     if (($pg_mode === 'edit') && defined('BARCODE_ENABLED') && BARCODE_ENABLED) {
@@ -6379,6 +6387,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     ' . $output_workspace_card . '
                     ' . $output_barcode_card . '
                     ' . $output_stock_moves_card . '
+                    ' . $output_supplier_feed_card . '
                     ' . pg_pb_render_preview($pg_mode !== 'edit') . '
                 </div>
             </div>
@@ -6923,6 +6932,14 @@ function pg_pb_update_product($product_id)
     // The price history writes a row only when the stored price differs from
     // its newest one, so a save that left the price alone adds nothing.
     pg_price_history_record($product_id, 'panel');
+
+    // "Price from the feed" on the Supplier feed card, drawn only for a
+    // product a feed carries; written when the switch moved.
+    if (isset($_POST['supplier_feed_follow_was']) && ((int) $_POST['supplier_feed_follow_was'] !== (empty($_POST['supplier_feed_follow_price']) ? 0 : 1))
+        && pg_schema_has('supplier_feed_items')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_screen.php');
+        pg_supplier_feed_follow_save($product_id, !empty($_POST['supplier_feed_follow_price']));
+    }
 
     // The contents were checked by pg_pb_validate_product_post(). Switching
     // the bundle off empties them, so nothing refreshes the row any more.

@@ -106,6 +106,7 @@
     "Off: only signed-in people send requests, from My Account.": "Kapalı: istekleri yalnızca giriş yapmış kişiler Hesabım'dan gönderir.",
     "Off: only titles, dates and a link go out. The calendar service (Google, Microsoft, Apple) keeps a copy of whatever the calendar carries.": "Kapalıyken yalnızca başlık, tarih ve bağlantı gönderilir. Takvim servisi (Google, Microsoft, Apple) takvimde ne varsa bir kopyasını saklar.",
     "Off: reviewers see the whole entry.": "Kapalı: değerlendiriciler başvurunun tamamını görür.",
+    "Off: the price stays as you set it; stock still follows the feed.": "Kapalıyken fiyat sizin girdiğiniz gibi kalır; stok yine beslemeyi izler.",
     "Offcanvas": "Offcanvas",
     "Offcanvas Body": "Offcanvas Gövdesi",
     "Offcanvas Header": "Offcanvas Başlığı",
