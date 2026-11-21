@@ -1095,8 +1095,11 @@ function ws_call_rings_for($viewer)
     $now = time();
     $rings = array();
 
+    // A guest room's call rings nobody: its guest joins from the guest
+    // page, and the team from the room's head, as in a group.
     foreach ((array) db_items("SELECT c.* FROM ws_calls c
         INNER JOIN ws_channel_members me ON me.channel_id = c.channel_id AND me.user_id = '" . (int) $viewer['id'] . "'
+        INNER JOIN ws_channels ch ON ch.id = c.channel_id AND ch.kind <> 'guest'
         WHERE c.state = 'live' AND c.started_by <> '" . (int) $viewer['id'] . "' AND c.started_at > '" . ($now - WS_CALL_RING) . "'
         ORDER BY c.id LIMIT 5") as $call) {
         $live_users = ws_call_live_users(ws_call_members_live($call['id']));
@@ -1131,7 +1134,9 @@ function ws_call_decline($party, $call)
 
     $live_users = ws_call_live_users(ws_call_members_live($call['id']));
 
-    if (!ws_call_may_decline($party, $call, $live_users, ws_call_channel_people($call['channel_id']))) {
+    // A guest room's call is never rung, so never declined: its guest may
+    // be in it while the caller is the room's only person.
+    if (ws_channel_is_guest(ws_channel((int) $call['channel_id'])) || !ws_call_may_decline($party, $call, $live_users, ws_call_channel_people($call['channel_id']))) {
         return array('ok' => false, 'error' => lang('This call is not open to you.'));
     }
 

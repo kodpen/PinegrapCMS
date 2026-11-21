@@ -2418,6 +2418,20 @@ function ws_guest_page_strings()
 }
 
 /**
+ * The texts of the guest page's call: its bar under the head and the call
+ * window's (assets/js/workspace_calls.js).
+ *
+ * @return array key => text
+ */
+function ws_guest_call_strings()
+{
+    return array(
+        'call_on'       => lang('A call is on in this conversation.'),
+        'call_on_video' => lang('A video call is on in this conversation.'),
+    ) + ws_call_js_strings();
+}
+
+/**
  * The texts of the guest room's parts on the channel screen.
  *
  * @return array key => text

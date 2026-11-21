@@ -21,10 +21,13 @@
  * share only puts the screen's track on it and needs no new offer; the
  * server says who shares (the call part's sharer). assets/js/workspace.js
  * draws the head and hands the rings of its look (ws_sync's rings) in here
- * with its own helpers.
+ * with its own helpers. The guest page (assets/js/workspace_guest.js) shows
+ * its room's running call with a Join button only (joinButton()): a guest
+ * never starts a call.
  *
- * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
- * includes/fn/output.php); after editing run `php tools/build_js.php`.
+ * Served minified inside assets/js/workspace.min.js and
+ * assets/js/workspace_guest.min.js (pg_js_bundles(), includes/fn/output.php);
+ * after editing run `php tools/build_js.php`.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -74,24 +77,27 @@
     }
 
     // Does a channel's head carry the call buttons? A channel of two people
-    // or more the viewer is a member of, open in its current version.
+    // or more the viewer is a member of, open in its current version; a
+    // guest room with one of the team in it too, as its guest joins from
+    // the guest page.
     function callable(channel, view) {
         if (!channel || !view || !view.calls || view.era || view.thread) {
             return false;
         }
 
-        if (!channel.joined || channel.archived || (['mailbox', 'thread', 'guest'].indexOf(channel.kind) >= 0)) {
+        if (!channel.joined || channel.archived || (['mailbox', 'thread'].indexOf(channel.kind) >= 0)) {
             return false;
         }
 
-        return (channel.members || []).length >= 2;
+        return (channel.members || []).length >= ((channel.kind === 'guest') ? 1 : 2);
     }
 
-    // Is a channel's call a group's? More than two members: nobody is rung,
-    // the call is joined from the channel's head, and it stays while one
-    // waits alone.
+    // Is a channel's call a group's? More than two members, or a guest
+    // room (its guest is not among the members and is never rung): nobody
+    // is rung, the call is joined from the channel's head or the guest
+    // page, and it stays while one waits alone.
     function isGroup(channel) {
-        return !!channel && ((channel.members || []).length > 2);
+        return !!channel && ((channel.kind === 'guest') || ((channel.members || []).length > 2));
     }
 
     // The head's Join button against the open channel's call (the look's
@@ -437,6 +443,31 @@
         box.appendChild(join);
 
         head = { channelId: channel.id, join: join, starts: starts, state: joinState(null, 0, 0) };
+
+        return box;
+    }
+
+    // The Join button alone, for a page that joins a running call and never
+    // starts one (the guest page); channelCall() shows and labels it.
+    function joinButton(channelId, name, given) {
+        hooks = given;
+        head = null;
+
+        if (!supported()) {
+            return null;
+        }
+
+        var box = h().el('span', 'ws-call-head');
+        var join = makeButton('pg-button pg-button-fill pg-button-sm ws-call-join', t('call_join'), 'bi-telephone-plus');
+
+        join.hidden = true;
+        join.addEventListener('click', function () {
+            if (head && head.state.callId) {
+                begin(channelId, head.state.kind, head.state.callId, name, true);
+            }
+        });
+        box.appendChild(join);
+        head = { channelId: channelId, join: join, starts: [], state: joinState(null, 0, 0) };
 
         return box;
     }
@@ -982,10 +1013,17 @@
         });
 
         var bar = el('div', 'ws-call-bar');
-        var name = makeButton('ws-call-name', mine.name, '', t('call_open'));
 
-        name.addEventListener('click', function () { hooks.openChannel(mine.channelId); });
-        bar.appendChild(name);
+        // The name opens the call's conversation; on a page that is that
+        // conversation (the guest page) it is the name only.
+        if (hooks.openChannel) {
+            var name = makeButton('ws-call-name', mine.name, '', t('call_open'));
+
+            name.addEventListener('click', function () { hooks.openChannel(mine.channelId); });
+            bar.appendChild(name);
+        } else {
+            bar.appendChild(el('span', 'ws-call-name', mine.name));
+        }
         mine.state = el('span', 'ws-call-state');
         bar.appendChild(mine.state);
         win.appendChild(bar);
@@ -1416,6 +1454,7 @@
     window.PGWsCalls = {
         supported: supported,
         headButtons: headButtons,
+        joinButton: joinButton,
         rings: rings,
         channelCall: channelCall,
         busy: function () { return !!call; },
