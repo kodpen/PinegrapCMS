@@ -382,14 +382,35 @@ function pg_waiting_desk_input($post, $services)
 }
 
 /**
- * The address a place's QR poster leads to: the public number page.
+ * The public number page of a place (queue.php); the QR poster's link
+ * carries from=qr, so a number taken through it is known as such.
  *
- * @param int $place_id
+ * @param int    $place_id
+ * @param string $from     'qr' for the poster, '' for the site
  * @return string
  */
-function pg_waiting_place_url($place_id)
+function pg_waiting_place_url($place_id, $from = '')
 {
-    return URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/queue.php?place=' . (int) $place_id;
+    return URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/queue.php?place=' . (int) $place_id . (($from === 'qr') ? '&from=qr' : '');
+}
+
+/**
+ * A place's state as its pill, in the same words on every screen: Open
+ * (teal), Paused (amber), Closed (grey).
+ *
+ * @param string $status
+ * @return string HTML
+ */
+function pg_waiting_place_pill($status)
+{
+    $pills = array(
+        'open'   => array(lang('Open'), 'pg-tone-teal'),
+        'paused' => array(lang('Paused'), 'pg-tone-amber'),
+        'closed' => array(lang('Closed'), 'pg-tone-gray'),
+    );
+    $pill = $pills[$status] ?? $pills['closed'];
+
+    return '<span class="pg-pill ' . $pill[1] . '">' . h($pill[0]) . '</span>';
 }
 
 /**
@@ -485,7 +506,7 @@ function pg_waiting_place_create($name, $service, $user_id)
     $settings = pg_waiting_place_defaults();
     $settings['priority'] = array(
         array('key' => 'p1', 'name' => lang('Elderly')),
-        array('key' => 'p2', 'name' => lang('Disabled')),
+        array('key' => 'p2', 'name' => lang('Disabled person')),
         array('key' => 'p3', 'name' => lang('Pregnant')),
     );
     $services = array(array('key' => 's1', 'name' => $service, 'letter' => 'A', 'minutes' => 10));

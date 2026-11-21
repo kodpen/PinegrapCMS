@@ -4243,6 +4243,16 @@ function output_menu($properties = false)
                 $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_bookings.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Bookings') . '</a>';
             }
         }
+        // CALENDARS > Queue: the walk-in queue's places, roles 0-2
+        // (view_queue_places.php).
+        if (($user['role'] < 3) && pg_waiting_ready()) {
+            // Beside Bookings, or after a line of its own without them.
+            if (strpos($menu_items[4]['data-bs-content'], 'view_bookings.php') === false) {
+                $menu_items[4]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+            }
+
+            $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_queue_places.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-people bi-me-2\'>' . lang('Queue') . '</a>';
+        }
     }
 
     if ((FORMS === true) && (($user['role'] < 3) || ($user['manage_forms'] == true))) {
@@ -5031,6 +5041,8 @@ function output_menu($properties = false)
         case 'edit_calendar_event_location.php':
         case 'view_bookings.php':
         case 'edit_booking.php':
+        case 'view_queue_places.php':
+        case 'edit_queue_place.php':
             $active_menu = 4;
             break;
         case 'view_submitted_forms.php':
