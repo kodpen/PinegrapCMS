@@ -12,7 +12,7 @@ description: Plan marketplace-repricer, steps RP1 to RP6: tables, rules and floo
 - RP3a (M) after RP1: the buybox read as a connector ability in `includes/api/outbound/connectors/trendyol.php` (the documented body and header, checked against the fixture shapes, the limit), the hourly pass in the marketplace job, the stored state. Feature: R5. Done: #10840 (rank and other sellers packed in `buybox_ours`, `commerce/marketplace-buybox-read.md`).
 - RP3b (S) after RP3a: the Repricing screen's lists and the product's marketplace row. Feature: R11. Done: #10902 (`commerce/marketplace-repricing-screen.md`; the log's four reason strings: architect, channel message 11220).
 - RP4 (M) after RP2 and RP3a: the robot pass: strategies, step, the day's limits, try-first, the log, the alert codes in `pg_ops_alert_codes()` (the sales watch's steps enter the same file: check the open PRs); tests for every strategy at and over the floor, the limits and a lost buybox. Features: R6, R7, R8, R9, R10, R12. Done: #10901 (`commerce/marketplace-repricer-robot.md`).
-- RP5 (S) after RP4: the API routes, their types, `php tools/check_api_schema.php`. Feature: R13.
+- RP5 (S) after RP4: the API routes, their types, `php tools/check_api_schema.php`. Feature: R13. Done: #10953 (`api/api-marketplace-repricing.md`).
 - RP6 (S) close-out: every R number checked against the code with its PR; `commerce/marketplace-repricer.md` written, `commerce/marketplace-price.md` updated; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?

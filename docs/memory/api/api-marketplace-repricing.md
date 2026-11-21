@@ -18,6 +18,6 @@ description: GET /marketplaces/{account}/repricing and POST (PATCH) /marketplace
 - The owner below role 3 (`api_product_marketplaces_allowed()`), else 403 `forbidden`, as `GET /products/{id}/marketplaces`. A database without the repricer tables: 503 `service_unavailable`. An unknown account or a product not matched to it: 404.
 
 ## What is tested?
-- `tests/api_marketplace_repricing_test.php`: the presenter (not read, winning and losing, the floor, the own price, the last change, keys against the schema) and the update's field rules; `php tools/check_api_schema.php`.
+- (#10953) `tests/api_marketplace_repricing_test.php`: the presenter (not read, winning and losing, the floor, the own price, the last change, keys against the schema) and the update's field rules; `php tools/check_api_schema.php`.
 
 Related: docs/memory/commerce/marketplace-repricing-lists.md, docs/memory/commerce/marketplace-repricer-robot.md, docs/memory/commerce/marketplace-api-and-events.md
