@@ -152,6 +152,7 @@ description: Generated from the module field of the memory files: each includes/
 - `experiments_results`: [[experiments-screen]]
 - `experiments_sheet`: [[designer-publish-sheet-held-row]], [[page-experiments-sheet]]
 - `explorer_side`: [[explorer-menu-tree]]
+- `features_modules`: [[settings-features]]
 - `feedback`: [[feedback-rules]]
 - `feedback_sends`: [[feedback-send-pass]], [[feedback-sends]]
 - `feedback_surveys`: [[messages-area-survey-edit]], [[messages-area-surveys-tab]]
