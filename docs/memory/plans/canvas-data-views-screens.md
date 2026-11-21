@@ -24,5 +24,14 @@ description: Plan canvas-data-views, how the Data menu and the data layer's pane
 ## How is "Show on a canvas" laid out? (DV3)
 - A menu on the table's head with two entries, "As a chart" and "As a table"; each opens step 2 of the picker with the table already chosen.
 
+## What did the owner not find, and what does DV2b change? (2026-11-21)
+- Owner (agent channel message 11699), with development on dev: "tablo eklerken tuvalde chart dondurme ve tuvalde veri sekmesi şu anda ... yok". Both were built, in places he did not look: "Data" as an entry inside the canvas's Import menu, "Show on a canvas" as a quiet small button on an opened table, drawn only for a table of a channel. The architect's line above ("one entry in the canvas's add menu") misread his "tuvale bir de veri adında bir menü" and "en tepesinde seçenek olarak".
+- DV2b (S), one PR, before DV4:
+  - The canvas's top bar gets its own "Data" button beside Import (icon and word; the icon alone under 576 px), opening the picker; the Import menu's entry goes. Shown wherever the editor has its API.
+  - An opened table's head: "Show on a canvas" is a button with its word in the head's first row, not a quiet small one at the bar's end; its menu keeps "As a chart" and "As a table".
+  - A table of no channel gets the button too: the canvas opens the same way and "Send the canvas" asks for the channel (the channels the person may post in, a search above); the binding is written for the chosen channel.
+  - Where a table comes into being: the Data screen's table created just now opens with the button in place, and a table's card in a channel carries "Show on a canvas" in its menu with the same two entries.
+- `ui/image-editor-data-menu.md` and `ui/image-editor-data-show.md` are corrected in the step; its Screen check names the three places at 1440 and 390 px.
+
 ## What is asked of the architect first?
 - A part the canvas has no model for (the sample card, the segments inside a panel group): a design example, before it is built (`workflow/screen-described-in-plan.md`).
