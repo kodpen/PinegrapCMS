@@ -1499,6 +1499,7 @@
     "No customer is recorded on the order": "Siparişe müşteri yazılmaz",
     "No customer yet.": "Henüz müşteri yok.",
     "No customers found.": "Müşteri bulunamadı.",
+    "No daily summary and no jobs for Claude until it is connected.": "Claude bağlanana kadar günlük özet yok, Claude'a iş de verilemez.",
     "No data available in table": "Veri yok",
     "No data yet for the selected period.": "Seçili dönem için henüz veri yok.",
     "No database connection.": "Veritabanı bağlantısı yok.",

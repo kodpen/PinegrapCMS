@@ -8,9 +8,12 @@
  * a box that gives Claude a job by posting "@Claude …" in a channel where
  * Claude may be asked; above them the first three lines of the daily summary
  * Claude writes at the chosen hour (config.ws_claude_summary_*), when it is
- * on and the person reads its channel. Not connected: what connecting
- * brings, Connect Claude (Workspace settings) and Connections (Application
- * Access) for the people who may open them, and the MCP note.
+ * on and the person reads its channel. Not connected: a notice at the top
+ * above the agent questions, the proposals and the chat while any of them
+ * holds something; else what connecting brings, Connect Claude (Workspace
+ * settings) and Connections (Application Access) for the people who may
+ * open them, and the MCP note. While no application agent is active a
+ * short note at the foot says what an agent is and where one is connected.
  *
  * Beside the job box a chat box talks with any assistant of ws_assistants()
  * that may be asked in a channel the person writes in: its messages are
@@ -588,7 +591,7 @@ function pg_dashboard_v2_ai_offline($settings, $manager)
 
     return array(
         'connected' => false,
-        'chip'      => array('text' => lang('Not connected'), 'tone' => ''),
+        'chip'      => array('text' => lang('Claude · not connected'), 'tone' => ''),
         'title'     => lang('Connect Claude'),
         'text'      => lang('Once connected you see a daily summary here and give Claude jobs with @Claude in the channels. Claude changes nothing by itself; you approve its proposals.'),
         'ask'       => $buttons ? '' : lang('An administrator connects Claude in the Workspace settings.'),
@@ -597,32 +600,148 @@ function pg_dashboard_v2_ai_offline($settings, $manager)
     );
 }
 
-function pg_dashboard_v2_card_ai($user, $period, $compare)
+/**
+ * The line at the top of the card while Claude is not connected and the
+ * card holds something else: Connect Claude, quiet, for who may open the
+ * Workspace settings, else who connects it. Pure.
+ *
+ * @param bool $settings may open the Workspace settings
+ * @return array title, text, button (label, url, main) or null, ask
+ */
+function pg_dashboard_v2_ai_notice($settings)
 {
-    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+    return array(
+        'title'  => lang('Claude is not connected'),
+        'text'   => lang('No daily summary and no jobs for Claude until it is connected.'),
+        'button' => $settings ? array('label' => lang('Connect Claude'), 'url' => pg_settings_workspace_link('ws-claude'), 'main' => false) : null,
+        'ask'    => $settings ? '' : lang('An administrator connects Claude in the Workspace settings.'),
+    );
+}
 
-    if (pg_dashboard_workspace_rights($user) === null) {
-        return array('status' => 'denied');
+/**
+ * The note at the foot of the card while no application agent is active:
+ * what an agent and its channel are, and where one is connected. Pure.
+ *
+ * @param bool $settings may open the Workspace settings
+ * @return array title, lines, button (label, url, main) or null, ask
+ */
+function pg_dashboard_v2_ai_agent_note($settings)
+{
+    return array(
+        'title'  => lang('Workspace agents'),
+        'lines'  => array(
+            lang('An agent is an application with its own key. It answers under its own name in the channels it is added to.'),
+            lang('A channel takes an agent from its menu, Agents in this channel. A channel for agents shows what each does.'),
+        ),
+        'button' => $settings ? array('label' => lang('Connect an agent'), 'url' => pg_settings_workspace_link('ws-agents'), 'main' => false) : null,
+        'ask'    => $settings ? '' : lang('An administrator connects agents in the Workspace settings.'),
+    );
+}
+
+/**
+ * Is any application agent active? Claude's own row is not one. Pure.
+ *
+ * @param array[] $agents ws_agents_list()
+ * @return bool
+ */
+function pg_dashboard_v2_ai_agent_active($agents)
+{
+    foreach ((array) $agents as $agent) {
+        if (((string) ($agent['kind'] ?? '') === 'app') && ((string) ($agent['status'] ?? '') === 'active')) {
+            return true;
+        }
     }
 
-    $viewer = ws_viewer($user);
+    return false;
+}
 
-    if (!ws_claude_schema_ready() || !ws_claude_ready()) {
-        return array('status' => 'success', 'data' => pg_dashboard_v2_ai_offline(!empty($viewer['settings']), ((int) $user['role'] < 3)));
+/**
+ * The questions' and the proposals' parts: their titles with the full
+ * count, the newest chips and how many more wait. "Nothing is waiting" is
+ * said only while Claude is ready. Pure.
+ *
+ * @param array $chips     every proposal chip
+ * @param array $questions every question chip
+ * @param bool  $ready     Claude is ready
+ * @return array proposals, questions
+ */
+function pg_dashboard_v2_ai_chip_parts($chips, $questions, $ready)
+{
+    return array(
+        'proposals' => array(
+            'title' => lang(array('string' => 'Proposals waiting for your approval · {var:1}', 'vars' => pg_format_number(count($chips), 0))),
+            'chips' => pg_dashboard_v2_ai_chips_order($chips),
+            'more'  => (count($chips) > PG_DASHBOARD_V2_AI_CHIPS)
+                ? lang(array('string' => '{var:1} more in the Workspace', 'vars' => pg_format_number(count($chips) - PG_DASHBOARD_V2_AI_CHIPS, 0)))
+                : '',
+            'none'  => $ready ? lang('Nothing is waiting for your approval.') : '',
+        ),
+        'questions' => array(
+            'title' => lang(array('string' => 'Agent questions waiting for your answer · {var:1}', 'vars' => pg_format_number(count($questions), 0))),
+            'chips' => pg_dashboard_v2_ai_chips_order($questions),
+            'more'  => (count($questions) > PG_DASHBOARD_V2_AI_CHIPS)
+                ? lang(array('string' => '{var:1} more in the Workspace', 'vars' => pg_format_number(count($questions) - PG_DASHBOARD_V2_AI_CHIPS, 0)))
+                : '',
+        ),
+    );
+}
+
+/**
+ * The card while Claude is not ready. With nothing else to hold (no chat
+ * option, question or proposal) it is the pitch as before; otherwise the
+ * notice comes first, then the questions and proposals that wait and the
+ * chat. Either way the agent note closes it while no agent is active. Pure.
+ *
+ * @param bool  $settings may open the Workspace settings
+ * @param bool  $manager  may open Application Access
+ * @param array $parts    chips, questions, chat, agent_active
+ * @return array
+ */
+function pg_dashboard_v2_ai_off_data($settings, $manager, $parts)
+{
+    $chat = (array) ($parts['chat'] ?? array());
+    $chips = (array) ($parts['chips'] ?? array());
+    $questions = (array) ($parts['questions'] ?? array());
+
+    if (empty($chat['options']) && empty($chips) && empty($questions)) {
+        $data = pg_dashboard_v2_ai_offline($settings, $manager);
+    } else {
+        $data = array_merge(array(
+            'connected' => false,
+            'chip'      => array('text' => lang('Claude · not connected'), 'tone' => ''),
+            'notice'    => pg_dashboard_v2_ai_notice($settings),
+        ), pg_dashboard_v2_ai_chip_parts($chips, $questions, false));
+
+        if (!empty($chat['options'])) {
+            $data['chat'] = $chat;
+        }
     }
 
-    $chips = pg_dashboard_v2_ai_proposals($viewer);
-    // Agent questions asked of the person (agent_question.php), above the proposals.
-    $questions = pg_dashboard_v2_ai_question_chips(function_exists('ws_agent_questions_for') ? ws_agent_questions_for($viewer, 20) : array());
-    $channel = pg_dashboard_v2_ai_job_channel($viewer);
-    $assistants = ws_assistants();
-    $chat_channels = pg_dashboard_v2_ai_channels($viewer);
+    if (empty($parts['agent_active'])) {
+        $data['agent'] = pg_dashboard_v2_ai_agent_note($settings);
+    }
+
+    return $data;
+}
+
+/**
+ * The card while Claude is ready: the summary, questions, proposals, the
+ * job box and the chat; the agent note last while no agent is active. Pure.
+ *
+ * @param array $parts chips, questions, summary, job_channel (id, name or
+ *                     null), tag (Claude's), chat, agent_active, settings
+ *                     (may open the Workspace settings)
+ * @return array
+ */
+function pg_dashboard_v2_ai_on_data($parts)
+{
+    $channel = $parts['job_channel'] ?? null;
     $job = null;
 
     if ($channel) {
         $job = array(
-            'channel_id'  => $channel['id'],
-            'tag'         => ws_claude_tag(),
+            'channel_id'  => (int) $channel['id'],
+            'tag'         => (string) ($parts['tag'] ?? ''),
             'max'         => PG_DASHBOARD_V2_AI_JOB_MAX,
             'label'       => lang('Give Claude a job'),
             'placeholder' => lang('Give Claude a job: "Prepare this week\'s report"'),
@@ -634,29 +753,57 @@ function pg_dashboard_v2_card_ai($user, $period, $compare)
         );
     }
 
-    return array('status' => 'success', 'data' => array(
+    $chip_parts = pg_dashboard_v2_ai_chip_parts((array) ($parts['chips'] ?? array()), (array) ($parts['questions'] ?? array()), true);
+
+    $data = array(
         'connected' => true,
         'chip'      => array('text' => lang('Claude · connected'), 'tone' => 'good'),
-        'proposals' => array(
-            'title' => lang(array('string' => 'Proposals waiting for your approval · {var:1}', 'vars' => pg_format_number(count($chips), 0))),
-            'chips' => pg_dashboard_v2_ai_chips_order($chips),
-            'more'  => (count($chips) > PG_DASHBOARD_V2_AI_CHIPS)
-                ? lang(array('string' => '{var:1} more in the Workspace', 'vars' => pg_format_number(count($chips) - PG_DASHBOARD_V2_AI_CHIPS, 0)))
-                : '',
-            'none'  => lang('Nothing is waiting for your approval.'),
-        ),
-        'questions' => array(
-            'title' => lang(array('string' => 'Agent questions waiting for your answer · {var:1}', 'vars' => pg_format_number(count($questions), 0))),
-            'chips' => pg_dashboard_v2_ai_chips_order($questions),
-            'more'  => (count($questions) > PG_DASHBOARD_V2_AI_CHIPS)
-                ? lang(array('string' => '{var:1} more in the Workspace', 'vars' => pg_format_number(count($questions) - PG_DASHBOARD_V2_AI_CHIPS, 0)))
-                : '',
-        ),
-        'summary'   => pg_dashboard_v2_ai_summary($viewer),
+        'proposals' => $chip_parts['proposals'],
+        'questions' => $chip_parts['questions'],
+        'summary'   => $parts['summary'] ?? null,
         'job'       => $job,
         'no_job'    => $job ? '' : lang('There is no channel where you may ask Claude. Somebody who manages a channel can allow it from the channel menu.'),
-        'chat'      => pg_dashboard_v2_ai_chat(pg_dashboard_v2_ai_chat_options($assistants, $chat_channels,
+        'chat'      => $parts['chat'] ?? pg_dashboard_v2_ai_chat(array()),
+    );
+
+    if (empty($parts['agent_active'])) {
+        $data['agent'] = pg_dashboard_v2_ai_agent_note(!empty($parts['settings']));
+    }
+
+    return $data;
+}
+
+function pg_dashboard_v2_card_ai($user, $period, $compare)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+
+    if (pg_dashboard_workspace_rights($user) === null) {
+        return array('status' => 'denied');
+    }
+
+    $viewer = ws_viewer($user);
+    $ready = ws_claude_schema_ready() && ws_claude_ready();
+    $settings = !empty($viewer['settings']);
+    $assistants = ws_assistants();
+    $chat_channels = pg_dashboard_v2_ai_channels($viewer);
+    $parts = array(
+        'chips'        => pg_dashboard_v2_ai_proposals($viewer),
+        // Agent questions asked of the person (agent_question.php), above the proposals.
+        'questions'    => pg_dashboard_v2_ai_question_chips(function_exists('ws_agent_questions_for') ? ws_agent_questions_for($viewer, 20) : array()),
+        'chat'         => pg_dashboard_v2_ai_chat(pg_dashboard_v2_ai_chat_options($assistants, $chat_channels,
             pg_dashboard_v2_ai_chat_askable($assistants, $chat_channels), defined('WS_MESSAGE_MAX') ? WS_MESSAGE_MAX : 4000),
             pg_dashboard_v2_ai_chat_store(defined('PATH') ? PATH : '/', (int) $user['id'])),
-    ));
+        'agent_active' => pg_dashboard_v2_ai_agent_active(function_exists('ws_agents_list') ? ws_agents_list() : array()),
+    );
+
+    if (!$ready) {
+        return array('status' => 'success', 'data' => pg_dashboard_v2_ai_off_data($settings, ((int) $user['role'] < 3), $parts));
+    }
+
+    $parts['summary'] = pg_dashboard_v2_ai_summary($viewer);
+    $parts['job_channel'] = pg_dashboard_v2_ai_job_channel($viewer);
+    $parts['tag'] = ws_claude_tag();
+    $parts['settings'] = $settings;
+
+    return array('status' => 'success', 'data' => pg_dashboard_v2_ai_on_data($parts));
 }

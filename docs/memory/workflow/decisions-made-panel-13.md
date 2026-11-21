@@ -11,6 +11,6 @@ description: Decisions list, panel part 13 (2026-11-21 on): the dashboard's Assi
 - So Claude and the agents are two things on the card. Claude off: a notice at the top says so. The chat stays for as long as an assistant other than Claude can be asked.
 - With no agent connected the card says in a few lines what an agent and its channel are and where one is connected.
 - What it replaces: the card drew only "Connect Claude" while Claude was not ready and hid the chat, the agent questions and the proposals with it (`ui/dashboard-v2-ai-card.md`).
-- How each state is laid out: `plans/dashboard-assistant-agents.md`.
+- How each state is laid out: `ui/dashboard-v2-ai-card-claude-off.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/ui/dashboard-v2-ai-card.md
