@@ -555,6 +555,7 @@ function api_openapi_tag_sentences()
         'Product_attributes' => 'Product attributes, such as size or colour, and their options.',
         'Orders'             => 'Orders: read them, change their status, ship them, print their documents and record what was paid.',
         'Returns'            => 'Return requests of orders: read them and decide them.',
+        'Shipments'          => 'Parcels on their way: the delivery problems found on them.',
         'Cart_quotes'        => 'Price quotes for a cart: what checkout would charge for a set of products and an address.',
         'Customers'          => 'The store\'s customers: their accounts, addresses, store credit and consents.',
         'Store'              => 'How checkout charges: shipping methods, shipping and tax zones, countries, currencies and product feeds.',

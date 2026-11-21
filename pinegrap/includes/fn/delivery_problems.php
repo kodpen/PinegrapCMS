@@ -742,7 +742,8 @@ function pg_delivery_problem_list_cells(array $row, array $filters, $now)
  * @param string $head  markup under the title
  * @param string $body
  * @param string $foot
- * @param array  $opts  open (bool), form ('' = its own form posting to $action), action
+ * @param array  $opts  open (bool), form ('' = its own form posting to $action), action,
+ *                      fit (bool: the phone sheet as tall as its content)
  * @return string
  */
 function pg_delivery_problem_drawer_frame($id, $title, $head, $body, $foot, array $opts = array())
@@ -758,7 +759,11 @@ function pg_delivery_problem_drawer_frame($id, $title, $head, $body, $foot, arra
         . '<div class="drawer-body flex-grow-1 overflow-auto">' . $body . '</div>'
         . '<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">' . $foot . '</div>';
 
-    return '<dialog class="drawer drawer-end" id="' . h($id) . '" aria-labelledby="' . h($id) . '_title" style="width:min(480px,100%)"' . (!empty($opts['open']) ? ' data-open="1"' : '') . '>'
+    // A short drawer sizes its phone sheet to its content, up to 88% of the
+    // screen, instead of the 30vh a sheet has by default.
+    $style = 'width:min(480px,100%)' . (!empty($opts['fit']) ? ';--pg-drawer-height:auto;max-height:88vh' : '');
+
+    return '<dialog class="drawer drawer-end" id="' . h($id) . '" aria-labelledby="' . h($id) . '_title" style="' . $style . '"' . (!empty($opts['open']) ? ' data-open="1"' : '') . '>'
         . ($own ? '<form method="post" action="' . h((string) ($opts['action'] ?? 'view_delivery_problems.php')) . '" class="d-flex flex-column h-100">' . get_token_field() . $inner . '</form>' : '<div class="d-flex flex-column h-100">' . $inner . '</div>')
         . '</dialog>';
 }
@@ -1023,5 +1028,5 @@ function pg_delivery_problem_settings_drawer(array $settings, array $filters)
         . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>'
         . '<button type="submit" name="action" value="settings" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>';
 
-    return pg_delivery_problem_drawer_frame('delivery_problems_settings', lang('Delivery problem settings'), h(lang('Which problems the hourly check looks for.')), $body, $foot);
+    return pg_delivery_problem_drawer_frame('delivery_problems_settings', lang('Delivery problem settings'), h(lang('Which problems the hourly check looks for.')), $body, $foot, array('fit' => true));
 }
