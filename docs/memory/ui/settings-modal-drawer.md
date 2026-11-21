@@ -22,7 +22,7 @@ description: A settings card's drawer: a panel that slides in from the Site Sett
 ## How do Escape, Close and focus work?
 - `openCardDrawer()`: shuts the phone list, adds `is-open`, puts `is-drawer-open` on the dialog, makes the list, its scrim and `.pg-sm-main` `inert` (Tab stays in the drawer) and focuses the drawer.
 - Escape (the dialog's capture-phase keydown) closes the card drawer first, then the phone list, then the dialog; an Escape from another open dialog in front is left to that dialog. Close (`data-pgdrawer-close`) and a click on the scrim close it too.
-- `closeCardDrawer()` gives the focus back to the button that opened it. A button inside an open drawer opens another over it: `openCardDrawer()` keeps the first in `below`, and Close or Escape brings it back, focus on that button (a mailbox's set-up drawers, #10947). Nothing in the drawer code touches the pane's values, `baseline` or the unsaved mark.
+- `closeCardDrawer()` gives the focus back to the button that opened it. A button inside an open drawer opens another over it: `openCardDrawer()` keeps the first in `below`, and Close or Escape brings it back, focus on that button (a mailbox's set-up drawers, #10950). Nothing in the drawer code touches the pane's values, `baseline` or the unsaved mark.
 
 ## How does it look?
 - CSS in `backend.src.css`, after the settings modal: `.pg-sm-drawer` is `position: absolute; right: 0`, `width: min(42rem, 100%)`, the whole width below 576px; `.pg-sm-drawer-body` has `min-height: 0; overflow-y: auto`. Visibility is untimed on the way in (focus lands at once), delayed on the way out.

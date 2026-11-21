@@ -19,7 +19,7 @@ description: Site Settings › Mailboxes since MT3: Add a mailbox's four startin
 - On `settings_mailboxes.php` Bootstrap closes the box's drawer when the set-up drawer opens; the card's script opens the box's drawer again, as it was, once the set-up drawer is hidden, its button focused.
 
 ## What was seen?
-- Sandbox at 1440 and 390 px, page and dialog (#10947): cards two a row from 768 px, one a row on a phone; Gmail and Microsoft open Reading with their button; set-up drawers without horizontal scroll; closing one brings the box's drawer back.
+- Sandbox at 1440 and 390 px, page and dialog (#10950): cards two a row from 768 px, one a row on a phone; Gmail and Microsoft open Reading with their button; set-up drawers without horizontal scroll; closing one brings the box's drawer back.
 - In Turkish the steps say "Okuma sekmesinde" while the tab reads "Okuyorum" (`mail-box-drawer.md`).
 
 Tests: `tests/workspace_mail_google_steps_test.php`, `tests/workspace_mail_drawer_test.php`.
