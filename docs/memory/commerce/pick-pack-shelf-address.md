@@ -5,7 +5,7 @@ module: product_bins
 ---
 
 ## Where is a shelf address kept?
-- `product_bins`, one row per product and stock location (`pick-pack-tables.md`); location 0 on a site without locations. An empty address is no row. Every writer goes through `pg_bins_write()` (`includes/fn/product_bins.php`), after `pg_bin_clean()`: control characters and runs of spaces become one space, ends trimmed, at most `PG_BIN_MAX` (40) characters, else refused. PR: the PP2 step of `plans/pick-pack-steps.md`.
+- `product_bins`, one row per product and stock location (`pick-pack-tables.md`); location 0 on a site without locations. An empty address is no row. Every writer goes through `pg_bins_write()` (`includes/fn/product_bins.php`), after `pg_bin_clean()`: control characters and runs of spaces become one space, ends trimmed, at most `PG_BIN_MAX` (40) characters, else refused. PR #10966.
 - An address typed before the first location was added stays at location 0: the stock card shows it in the default location's box, and writing the default location's address deletes the 0 row. The pick list (PP3) reads rows as they are.
 - A bundle has no address: no box, Modify Selected and the import skip it. Nothing is announced, no `audit_log` line.
 
