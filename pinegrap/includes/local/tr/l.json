@@ -211,6 +211,7 @@
     "Last opened: {var}": "Son açılış: {var}",
     "Last order": "Son sipariş",
     "Last order for delivery today": "Bugün teslimat için son sipariş",
+    "Last order number": "Son sipariş numarası",
     "Last orders for the next day": "Ertesi gün için son sipariş",
     "Last page": "Son sayfa",
     "Last plates leave the pass": "Son tabaklar mutfaktan çıkar",
