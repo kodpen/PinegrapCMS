@@ -875,6 +875,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-44.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-44.md: When does a file put into a conversation's writing box go? (owner, 2026-11-21, agent channel message 11680)
 - decisions-made-workspace-44.md: How does the conversation timeline behave when the conversation is long? (owner, 2026-11-21, agent channel message 11680)
+- decisions-made-workspace-45.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-45.md: How does a spreadsheet or document open in a channel? (owner, 2026-11-21, agent channel message 11700)
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?
