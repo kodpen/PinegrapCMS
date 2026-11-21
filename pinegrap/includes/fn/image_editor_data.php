@@ -304,25 +304,34 @@ function pg_image_editor_data_show_config($table, $channel)
 /**
  * "Show on a canvas" on a table's head: the Menus pattern of the Design
  * examples screen (a quiet small pg-button opening .menu) with "As a chart"
- * and "As a table", what the editor is handed, and the editor's loader.
+ * and "As a table" (pg_image_editor_data_show_assets() prints the rest).
  * Each entry opens the Data picker's second step on the table
  * (workspace_wtables.php's script, dataShow in pg_image_editor_data.js).
  *
- * @param array $config pg_image_editor_data_show_config()
  * @return string HTML
  */
-function pg_image_editor_data_show_menu($config)
+function pg_image_editor_data_show_menu()
 {
-    $config['label'] = lang('Send the canvas');
-    $json = json_encode($config, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
-
     return '<span class="pg-menu-wrap" id="ws_wt_canvas_wrap">'
         . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" id="ws_wt_canvas_button" data-bs-toggle="menu" aria-expanded="false">'
         . pg_design_canvas_icon_one_colour('me-1') . h(lang('Show on a canvas')) . '<i class="bi bi-chevron-down ms-1" aria-hidden="true"></i></button>'
         . '<ul class="menu">'
         . '<li><button type="button" class="menu-item" data-ws-wt-canvas="chart"><i class="bi bi-bar-chart me-3" aria-hidden="true"></i>' . h(lang('As a chart')) . '</button></li>'
         . '<li><button type="button" class="menu-item" data-ws-wt-canvas="table"><i class="bi bi-table me-3" aria-hidden="true"></i>' . h(lang('As a table')) . '</button></li>'
-        . '</ul></span>'
-        . '<script type="application/json" id="ws_wt_canvas_config">' . $json . '</script>'
-        . pg_image_editor_includes();
+        . '</ul></span>';
+}
+
+/**
+ * What the menu's entries hand the editor, and the editor's loader, printed
+ * outside the button bar.
+ *
+ * @param array $config pg_image_editor_data_show_config()
+ * @return string HTML
+ */
+function pg_image_editor_data_show_assets($config)
+{
+    $config['label'] = lang('Send the canvas');
+    $json = json_encode($config, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    return '<script type="application/json" id="ws_wt_canvas_config">' . $json . '</script>' . pg_image_editor_includes();
 }

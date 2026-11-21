@@ -1938,7 +1938,8 @@ if (!$table) {
     // "Show on a canvas": a new canvas in the table's channel with the table
     // as one data layer, for whoever reads it and may post there.
     $show = pg_image_editor_data_show_check($viewer, (int) $table['id']);
-    $show_menu = ($show['code'] === '') ? pg_image_editor_data_show_menu(pg_image_editor_data_show_config($show['table'], $show['channel'])) : '';
+    $show_menu = ($show['code'] === '') ? pg_image_editor_data_show_menu() : '';
+    $show_assets = ($show['code'] === '') ? pg_image_editor_data_show_assets(pg_image_editor_data_show_config($show['table'], $show['channel'])) : '';
 
     $toolbar = '
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
@@ -1948,7 +1949,7 @@ if (!$table) {
         <a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&download=xlsx') . '" download><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . h(lang('Download as Excel')) . '</a>
         ' . ($can_manage ? '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
             . h(ws_wtable_screen_delete_confirm('table', (string) $table['name'], $bin_days)) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
-    </nav>' . $flow_window;
+    </nav>' . $flow_window . $show_assets;
 
     $title = (string) $table['name'];
     $cancel = array('enable' => 'true', 'url' => $self_url, 'title' => lang('All tables'));

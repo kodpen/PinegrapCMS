@@ -72,7 +72,8 @@ function test_image_editor_data_show_binding()
 // editor's loader and what it is handed.
 function test_image_editor_data_show_menu()
 {
-	$html = pg_image_editor_data_show_menu(array('table' => array('id' => 7, 'name' => 'Sa<les'), 'channel' => 4, 'save' => '/s', 'open' => '/o'));
+	$html = pg_image_editor_data_show_menu();
+	$assets = pg_image_editor_data_show_assets(array('table' => array('id' => 7, 'name' => 'Sa<les'), 'channel' => 4, 'save' => '/s', 'open' => '/o'));
 
 	pg_assert_same(1, substr_count($html, 'class="pg-menu-wrap"'));
 	pg_assert_same(1, substr_count($html, 'data-bs-toggle="menu"'));
@@ -80,8 +81,10 @@ function test_image_editor_data_show_menu()
 	pg_assert_true(strpos($html, 'data-ws-wt-canvas="chart"') !== false);
 	pg_assert_true(strpos($html, 'data-ws-wt-canvas="table"') !== false);
 	pg_assert_false(strpos($html, 'pg-button-fill') !== false || strpos($html, 'btn-solid') !== false, 'no filled button on the head');
-	pg_assert_false(strpos($html, 'Sa<les') !== false, 'the name is escaped in the JSON');
-	pg_assert_true(strpos($html, '"label":"Send the canvas"') !== false);
+	pg_assert_false(strpos($html, '<script') !== false, 'nothing but the menu in the button bar');
+	pg_assert_false(strpos($assets, 'Sa<les') !== false, 'the name is escaped in the JSON');
+	pg_assert_true(strpos($assets, 'id="ws_wt_canvas_config"') !== false);
+	pg_assert_true(strpos($assets, '"label":"Send the canvas"') !== false);
 }
 
 // The chart kinds only when the columns fit: As a table gives the table

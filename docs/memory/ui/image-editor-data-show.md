@@ -5,8 +5,8 @@ module: image_editor_data
 ---
 
 ## Where is it?
-- On an opened table of the Data screen (`workspace_wtables.php?id=N`), in the head's button bar after Run from table: a quiet "Show on a canvas" button (the Design Canvas's one-colour icon) opening a `.menu` with "As a chart" and "As a table" (Menus pattern of the Design examples screen). Plan: `plans/canvas-data-views.md`, screens `plans/canvas-data-views-screens.md`.
-- Shown only to someone who may use it (`pg_image_editor_data_show_check()`); the screen prints the editor's loader with it.
+- On an opened table of the Data screen (`workspace_wtables.php?id=N`), in the head's button bar after Run from table: a quiet small "Show on a canvas" button (`pg-button-quiet`) (the Design Canvas's one-colour icon) opening a `.menu` with "As a chart" and "As a table" (Menus pattern of the Design examples screen). Plan: `plans/canvas-data-views.md`, screens `plans/canvas-data-views-screens.md`.
+- Shown only to someone who may use it (`pg_image_editor_data_show_check()`); the screen prints the editor's loader and the JSON it hands the editor (`pg_image_editor_data_show_assets()`) after the bar.
 
 ## What does an entry do?
 - Opens the Design Canvas on a blank 1920×1080 white board, no New image dialog, with `dataShow {table, show}`: the Data picker opens at step 2 ("Pick a view") on that table, no Back and no list of tables (`openDataPicker(null, start)`, `pg_image_editor_data.js`). The layer is made by DV2's own code (`dataPlace()`).
