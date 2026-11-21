@@ -1084,6 +1084,7 @@
     "Only for classic Form List View and Form Item View pages that use this design: they keep two layouts, A and B, and show the one chosen here. The widgets of the Page Design Studio draw their own layout and do not follow it.": "Yalnız bu tasarımı kullanan klasik Form Listesi Görünümü ve Form Öğesi Görünümü sayfaları için: bu sayfaların A ve B adında iki düzeni vardır ve burada seçileni gösterirler. Sayfa Tasarım Stüdyosu'nun widget'ları kendi düzenlerini çizer, bu ayarı izlemez.",
     "Only for supporters": "Yalnızca destekçilere",
     "Only for the courier, if nobody opens the door.": "Yalnızca kurye için, kapıyı kimse açmazsa.",
+    "Only for you, until you sign out": "Yalnızca sizin için, oturumu kapatana kadar",
     "Only granted rights": "Yalnız verilen yetkiler",
     "Only groups filled by hand. Adding a contact never changes its marketing consent.": "Yalnızca elle doldurulan gruplar. Bir kişiyi eklemek onun pazarlama iznini asla değiştirmez.",
     "Only growers and makers from the region": "Yalnızca bölgenin üreticileri",
