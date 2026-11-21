@@ -193,6 +193,12 @@
         body.appendChild(tabs);
 
         if (pane) {
+            // What a pane puts first, before what other parts wrap round
+            // its panel.
+            if (pane.top) {
+                pane.top.call(this, body, layers);
+            }
+
             pane.panel.call(this, body, layers);
             this.motionWhole(body);
             return;

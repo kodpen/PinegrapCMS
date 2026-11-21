@@ -734,6 +734,21 @@
   text-overflow: ellipsis;
 }
 
+/* A follower's link and its target's name, after its own name. */
+.pgie-lname .pgie-lfollow {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+  color: var(--pgie-muted);
+}
+
+.pgie-lfollow .pgie-ic {
+  width: 14px;
+  height: 14px;
+}
+
 /* Select all above the list. */
 .pgie-selall {
   margin-bottom: 8px;

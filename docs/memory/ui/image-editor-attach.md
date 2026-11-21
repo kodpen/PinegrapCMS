@@ -1,11 +1,11 @@
 ---
 name: image-editor-attach
-description: Artifact Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab
+description: Artifact Canvas Attach to and Detach: l.att on the follower, the target's motion under its own keys, the rest carry, circles refused; menu, More, Path tab first, layers list mark
 module: image_editor
 ---
 
 ## Where does an attachment live?
-- On the follower: `l.att` is the target layer's id or `group:<gid>`. Nothing elsewhere, no schema; a document without `att` opens and draws as before. The server's draw knows the field (`pg_image_draw_known()`) and draws the follower where it stands.
+- On the follower: `l.att` is the target layer's id or `group:<gid>`. No schema; a document without `att` opens and draws as before. The server's draw knows the field (`pg_image_draw_known()`) and draws the follower where it stands.
 - Code: the ATTACH section of `pg_image_editor_model.js`; the editor side in `pg_image_editor_layers.js` (`attachOffer()`, `attachLabel()`, `attachLayer()`), the menu, the Path tab (`attachField()` in keyframes), the core's `change()`. Labels in `pg_image_editor_strings_layers()`. Built in #10593.
 - Owner (2026-11-20): "bir vektör diğerini takip edebilsin ... gruplandırılmış mantığı manuel olabilir nesne takibinde": a manual follow, nothing searched in pixels (`workflow/decisions-made-product-80.md`).
 
@@ -19,11 +19,11 @@ module: image_editor
 - A group target carries only when every member moved as one (a group drag, size or turn); one member moved alone carries nothing.
 - A deleted target, an ended group, a follower put into its target group or a circle: the follower lets go where it stands.
 
-## Which commands are there?
-- Attach to (the context menu's submenu of targets; the Path tab's select, Not attached detaches) for one free layer: not a picked group, a locked or a fixed layer. Targets in the layers list's order, named as there (`attachLabel()`); refused: itself, a group it is in, a gone target, a circle (`M.attachCan()`, `M.attachTargets()`).
-- Detach (the menu, or Not attached) drops `att`; the layer stays at its own place.
-- One undo step each; no keyboard shortcut. A phone reaches both through the long-press menu and the Path tab in the sheet.
-- Duplicate, copy and paste: a target copied with its follower stays its target (`M.attachRemap()`); a follower copied alone keeps the original target.
+## Where is it offered?
+- Attach to for one free layer (not a picked group, a locked or a fixed layer): the context menu's submenu, the same menu the More button of the bar over one object opens, and first on the Path tab (`keysTop()`, the pane's `top`, above Record), a select whose Not attached detaches. Targets in the layers list's order, named as there (`attachLabel()`); refused: itself, a group it is in, a gone target, a circle (`M.attachTargets()`).
+- A picked group's Path tab: one line on how a layer follows it (`attachGroupNote`). The layers list: a follower's row shows a link and its target's name, titled "Attached to …" (`followMark()`). More, first place, line and mark: #PRNUM.
+- Detach (the menu, or Not attached) drops `att` where the layer stands. One undo step each; no shortcut. A phone uses the long-press menu and the sheet's Path tab.
+- Copies: a target copied with its follower stays its target (`M.attachRemap()`); a follower copied alone keeps the original target.
 
 ## How is it checked?
-- `tests/image_editor_attach_test.php`: every model command under Node (attach, detach, circle refused, deleted target, group as target, keys on top of the target's, the rest carry), the editor's menu, commands, copies and `change()`, and the server's plan equal to the one without `att`. Not run in a browser: the menu's submenu and the Path tab's select on a stage, a playing preview and an animated export.
+- `tests/image_editor_attach_test.php`: every model command under Node (attach, detach, circle refused, deleted target, group as target, keys on top of the target's, the rest carry), the editor's menu, commands, copies and `change()`, and the server's plan equal to the one without `att`. Where it is offered: `tests/image_editor_attach_place_test.php`. Not run in a browser: the menu's submenu and the Path tab's select on a stage, a playing preview and an animated export.

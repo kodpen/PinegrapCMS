@@ -486,7 +486,7 @@
         return bar;
     };
 
-    // The Path tab: recording first, then the keys.
+    // The Path tab: recording after Attach to (keysTop()), then the keys.
     Editor.prototype.recPanel = function (body, layers) {
         var self = this, rates = el('div', { class: 'pgie-seg pgie-recrates', role: 'radiogroup', 'aria-label': t('recRate') });
 
@@ -507,7 +507,7 @@
         });
 
         body.appendChild(section(t('recRate'), rates));
-        body.appendChild(el('p', { class: 'pgie-note', text: t('recNote') }));
+        body.appendChild(el('p', { class: 'pgie-note pgie-recnote', text: t('recNote') }));
     };
 
     Editor.motionPanes.forEach(function (pane) {
