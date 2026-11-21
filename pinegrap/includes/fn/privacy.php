@@ -1000,6 +1000,10 @@ function pg_privacy_erase_tables()
         'watchers'                     => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'wishlist_items'               => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'stock_notify'                 => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
+        // The person's order rhythm, by the Customers Report's key of their
+        // addresses or by their contact; the next nightly pass works it out
+        // again only from orders that still name them.
+        'customer_rhythm'              => array('find' => array('customer_key' => 'customer_keys', 'contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
         // A booking stays on the staff agenda without naming the person; a
         // live one still to come is cancelled first, so its slot opens
         // (_pg_privacy_erase_apply_bookings()).
@@ -1146,6 +1150,7 @@ function pg_privacy_erase_labels()
         'watchers'                     => lang('Watched items'),
         'wishlist_items'               => lang('Favourites'),
         'stock_notify'                 => lang('Back-in-stock requests'),
+        'customer_rhythm'              => lang('Order rhythm'),
         'bookings'                     => lang('Appointment bookings'),
         'feedback_responses'           => lang('Satisfaction survey answers'),
         'course_progress'              => lang('Course progress'),
@@ -1243,6 +1248,29 @@ function pg_privacy_erase_set(array $fields, $name, $token)
 }
 
 /**
+ * The Customers Report's keys of a person (pg_customer_value_key()): one per
+ * address, and one per contact for orders that carry no address. Pure.
+ *
+ * @param array $emails
+ * @param array $contact_ids
+ * @return array
+ */
+function pg_privacy_customer_keys(array $emails, array $contact_ids)
+{
+    $keys = array();
+
+    foreach ($emails as $email) {
+        $keys[] = pg_customer_value_key(array('billing_email_address' => (string) $email));
+    }
+
+    foreach ($contact_ids as $contact_id) {
+        $keys[] = pg_customer_value_key(array('contact_id' => (int) $contact_id));
+    }
+
+    return array_values(array_unique(array_filter($keys, 'strlen')));
+}
+
+/**
  * Everything an erasure works on: the person as pg_privacy_export_find()
  * puts them together, their person tokens and mobile numbers, and the ids
  * of the records tied to them. ERP accounts are the person's only when
@@ -1254,7 +1282,8 @@ function pg_privacy_erase_set(array $fields, $name, $token)
  *                form_ids, account_ids, conversation_ids, file_ids,
  *                return_ids, audit_ids, cell_ids, revision_form_ids,
  *                wtable_row_ids, wtable_bin_ids, application_entry_ids,
- *                feedback_hashes
+ *                feedback_hashes,
+ *                customer_keys
  */
 function pg_privacy_erase_scope(array $found)
 {
@@ -1281,6 +1310,7 @@ function pg_privacy_erase_scope(array $found)
         'application_entry_ids' => array(),
         'request_ids'      => array(),
         'feedback_hashes'  => array(),
+        'customer_keys'    => pg_privacy_customer_keys($person['emails'], $person['contact_ids']),
     );
 
     // A counter sale keeps the cashier in user_id and its buyer in contact_id,

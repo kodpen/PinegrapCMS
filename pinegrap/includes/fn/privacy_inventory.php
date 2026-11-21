@@ -163,6 +163,8 @@ function pg_privacy_inventory()
             'purpose' => 'Order conversions sent to the ad services', 'ground' => 'consent', 'retention' => 'orders'),
         'gift_cards' => array('categories' => array('identity', 'contact', 'order_payment', 'messages'), 'subjects' => array('customer'),
             'purpose' => 'Gift cards and store credit', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => array('recipient_email_address', 'text')),
+        'customer_rhythm' => array('categories' => array('order_payment'), 'subjects' => array('customer'),
+            'purpose' => 'Each customer\'s own order rhythm and stage', 'ground' => 'legitimate_interest', 'retention' => 'orders', 'person' => $contact),
         'cart_quotes' => array('categories' => array('identity'), 'subjects' => array('customer'),
             'purpose' => 'Quotes made from a cart', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => $contact),
         'wishlist_items' => array('categories' => array('identity'), 'subjects' => array('customer'),
