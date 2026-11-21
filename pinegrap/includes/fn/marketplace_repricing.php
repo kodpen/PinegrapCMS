@@ -21,6 +21,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_pricing_settings.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_repricer.php');
 
 /** The rank packed in marketplace_price_state.buybox_ours (its low seven bits). */
 define('MP_REPRICING_RANK_MASK', 127);
@@ -296,7 +297,8 @@ function mp_repricing_load()
  * the last change in the log. Read in four statements whatever the number
  * of listings: the rules once, the listings, their groups when a category
  * rule exists, and the last log rows. It works the price out as
- * mp_pricing_product_price() does, without its query per product.
+ * mp_pricing_product_price() does, the robot's price included, without its
+ * query per product.
  *
  * @param array      $account      marketplace_accounts row
  * @param array|null $product_ids  null for every listing
@@ -330,7 +332,8 @@ function mp_repricing_listings($account, $product_ids = null)
             " . ($cost ? "COALESCE(costs.avg_cost, 0)" : "0") . " AS cost,
             " . ($commission ? "map.commission" : "NULL") . " AS commission,
             COALESCE(state.own_floor, 0) AS own_floor, COALESCE(state.own_price, 0) AS own_price,
-            COALESCE(state.strategy, 0) AS strategy, COALESCE(state.buybox_price, 0) AS buybox_price,
+            COALESCE(state.strategy, 0) AS strategy, COALESCE(state.robot_price, 0) AS robot_price,
+            COALESCE(state.buybox_price, 0) AS buybox_price,
             COALESCE(state.buybox_ours, 0) AS buybox_ours, COALESCE(state.buybox_at, 0) AS buybox_at
         FROM marketplace_product_map AS map
         INNER JOIN products ON products.id = map.product_id
@@ -348,6 +351,7 @@ function mp_repricing_listings($account, $product_ids = null)
     $groups = mp_repricing_groups($account_id, $rules, $product_ids);
     $parents = $groups ? mp_pricing_group_parents() : array();
     $changes = mp_repricing_last_changes($account_id, $product_ids);
+    $own = mp_pricing_account_row($rules);
     $listings = array();
 
     foreach ($rows as $row) {
@@ -361,6 +365,7 @@ function mp_repricing_listings($account, $product_ids = null)
             'own_floor' => (int) $row['own_floor'],
             'own_price' => (int) $row['own_price'],
             'strategy' => (int) $row['strategy'],
+            'robot_price' => (int) $row['robot_price'],
         );
         $floor = mp_pricing_product_floor($account_id, $rules, $figures, $vat_rate);
         $price = $site_price;
@@ -376,6 +381,12 @@ function mp_repricing_listings($account, $product_ids = null)
             if ($rule !== null) {
                 $price = mp_pricing_channel_price($site_price, $rule, $floor);
                 $by = 'rule';
+                $robot = mp_repricer_send_price($own, $figures, $price, $floor);
+
+                if ($robot !== null) {
+                    $price = $robot;
+                    $by = 'robot';
+                }
             }
         }
 
@@ -385,6 +396,7 @@ function mp_repricing_listings($account, $product_ids = null)
             'code' => (string) $row['remote_code'],
             'price' => (int) $price,
             'by' => $by,
+            'own_price' => $figures['own_price'],
             'floor' => $floor,
             'strategy' => $figures['strategy'],
             'buybox_price' => (int) $row['buybox_price'],
@@ -579,7 +591,7 @@ function mp_repricing_product_list_row($account, $listing)
 {
     $strategies = mp_pricing_strategies($account['provider']);
     $state = mp_repricing_state($listing);
-    $by = array('own' => lang('Own price'), 'rule' => lang('by the rules'), 'site' => lang('the site price'));
+    $by = array('own' => lang('Own price'), 'robot' => lang('by the robot'), 'rule' => lang('by the rules'), 'site' => lang('the site price'));
     $product = '<a href="marketplace_products.php?account=' . (int) $account['id'] . '&amp;mode=shop&amp;q='
         . h(rawurlencode(($listing['code'] !== '') ? $listing['code'] : $listing['title'])) . '">' . h($listing['title']) . '</a>'
         . ' <span class="pg-text-meta">' . h($listing['code']) . '</span>';

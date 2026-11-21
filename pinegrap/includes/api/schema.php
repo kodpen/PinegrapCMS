@@ -415,6 +415,43 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'marketplaces.repricing',
+			'method'  => 'GET',
+			'path'    => '/marketplaces/{account}/repricing',
+			'scope'   => 'products:read',
+			'handler' => 'api_marketplace_repricing_list',
+			'returns' => array('list' => 'MarketplaceRepricing', 'try_first' => 'boolean'),
+			'summary' => 'A marketplace account\'s repricing: each listing\'s price, floor, buybox rank and last change',
+			'description' => 'The products matched to the marketplace account (the account ids of GET /products/{id}/marketplaces), by product id and cursor paged, left out while in the Recycle Bin. Per listing: the price it goes out at and price_from, what set it (own: the own price typed on the listing; robot: the repricer; rule: the account\'s price rules; site: the site price with VAT, when no rule applies); the floor, the lowest price that keeps the minimum margin over the cost (null with no cost known and none typed: the robot leaves such a listing alone), and at_floor; the strategy (fixed, win, grow); the last buybox read (rank 1 is winning, null before the first read; Trendyol only) and the robot\'s last change. Prices are minor units with VAT, in the site\'s base currency. try_first true: the robot only writes its log and sends nothing. The marketplace screens are the manager role\'s, so an application whose owner has the user role answers 403 forbidden. A site whose database has not been updated answers 503 service_unavailable.',
+			'details' => 'The last change\'s reason is lost (stepped under the seller holding the buybox), floor (stopped at the floor), raised (Grow while winning went up) or back (stepped back after losing the buybox); sent false is a change written in Try first. filter floor and no_cost work every listing of the account out before the page is read.',
+			'params'  => array(
+				array('name' => 'account', 'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'filter',  'in' => 'query', 'type' => 'enum', 'values' => array('winning', 'losing', 'floor', 'no_cost'), 'description' => 'Only the listings winning the buybox, losing it, at or under the floor, or with no floor.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Listings per page.'),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'           => 'marketplaces.repricing.update',
+			'method'       => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'         => '/marketplaces/{account}/repricing/{product}',
+			'scope'        => 'products:write',
+			'handler'      => 'api_marketplace_repricing_update',
+			'dry_run'      => true,
+			'returns'      => 'MarketplaceRepricing',
+			'summary'      => 'Set a marketplace listing\'s strategy and own price',
+			'description'  => 'Only the fields sent change. strategy: fixed keeps the rules\' price; win goes one step under the seller holding the buybox, never under the floor; grow raises the price one step a day while winning. win and grow need a buybox read, so only a Trendyol account takes them (422 otherwise). own_price is sent as typed, before the rules and without the floor; null or an empty string clears it, and the rules price the listing again. A changed own price goes out on the account\'s next run. Answers the listing as GET /marketplaces/{account}/repricing does; a product not matched to the account answers 404. The site\'s own price is never changed.',
+			'params'       => array(
+				array('name' => 'account',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'product',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'strategy',  'in' => 'body', 'type' => 'enum', 'values' => array('fixed', 'win', 'grow'), 'description' => 'fixed, win or grow (grow while winning).'),
+				array('name' => 'own_price', 'in' => 'body', 'type' => 'money', 'min' => 1, 'max' => 100000000, 'nullable' => true, 'description' => 'The listing\'s own price in minor units with VAT; null to price it by the rules again.')
+			)
+		),
+
+		array(
 			'id'      => 'products.reviews',
 			'method'  => 'GET',
 			'path'    => '/products/{id}/reviews',
