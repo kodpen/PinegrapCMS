@@ -5686,9 +5686,12 @@ body.pg-code-field-open {
 
 /* The "Format code" button under an editable code field, at its right
    edge, so it does not crowd the form's own buttons below. */
+/* The buttons keep their own height when the hint beside them wraps (on a
+   phone it takes three lines and stretched them into tall boxes). */
 .pg-code-field-tools {
   display: flex;
   justify-content: flex-end;
+  align-items: flex-start;
   margin-top: 0.25rem;
 }
 /* A one-line read-only field (a command to copy) has no tools row, so the

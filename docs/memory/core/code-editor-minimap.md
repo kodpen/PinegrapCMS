@@ -16,6 +16,7 @@ description: The code editor's minimap: @replit/codemirror-minimap in the lazy b
 - The code editor dialog (`codemirror_modal.js`): "Minimap" beside "Format code" at the left of the footer, a toggle button (`aria-pressed`, `active` while on), read-only dialogs too. It starts from `hasMinimap()` (on in the designer); the last choice is kept in a page variable and passed as `minimap` to the next open, since each open builds a fresh editor. Not stored in the browser. Label: `PgCodeModalLabels['Minimap']` (`designer_screen.php`).
 - A panel code field (`pg_code_editor_attach()`): every field gets the `.pg-code-field-tools` row with a small "Minimap" toggle (`pg-code-field-minimap`); off at the start. The row goes with `destroy()`.
 - But a read-only field of one line (a cron command under Site Settings › Updates and maintenance) gets no row: a minimap of one line shows nothing. The help under it keeps .5rem from the field (`.pg-code-field-ro ~ .form-text`).
+- The row keeps its buttons at their own height when the hint beside them wraps (`align-items: flex-start` on `.pg-code-field-tools`): on a phone the three-line hint stretched them into tall boxes (Appearance › Panel CSS, SEO's robots fields).
 - The designer's bottom code view (`style_designer.js`) has no toggle; the minimap is always on there.
 
 ## How is it drawn?
