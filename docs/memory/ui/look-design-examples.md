@@ -22,7 +22,7 @@ module: look_examples
 - Menus (SF2, #10852): a row's "more" menu, `pg-icon-button-sm` opening a Bootstrap `.menu.pg-menu-end` in `.pg-menu-wrap`; a danger item `fg-emphasis-danger` last under `.menu-divider`. No new CSS (architect, 2026-11-20, channel message 11049).
 - Patterns (`pg_look_examples_patterns()`, under the parts): the settings pane, the connect row, a list's empty state (DX1 #10859); the starting-point sheet in its three steps and the numbered steps drawer (DX2 #10885), each in the Drawer section's standing frame.
 - The e-mail settings drawing's seven parts close the group (DX2b #10930, `pg_look_examples_mail_patterns()`): `look-mail-patterns.md`.
-- The patterns' frame is no `.drawer`, which sets `--bs-drawer-padding-*`: its head and body take `p-5` (16 px, measured on the real `#api_new`; the sheet's head `p-5 pb-1`), as the Drawer section does since DX2. The sheet's cards use the recipe "Look A: starting-point cards" (`.pg-start*`); the steps drawer draws Claude's own guide (`ws_claude_setup_guide()`).
+- The patterns' frame is no `.drawer`, which sets `--bs-drawer-padding-*`: its head and body take `p-5` (16 px, measured on the real `#api_new`; the sheet's head `p-5 pb-1`), as the Drawer section does since DX2. The sheet's cards use the recipe "Look A: starting-point cards" (`.pg-start*`); the steps drawer draws Claude's own guide (`ws_claude_setup_guide()`) with its tile, line and Close, as the real drawer.
 
 ## What keeps it honest?
 - `tests/look_examples_test.php`: every class a section names is a rule of `backend.src.css` and is drawn in that section's markup; no id twice on the page; the gate and the System tools link.

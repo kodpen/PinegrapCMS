@@ -140,7 +140,9 @@ function test_look_examples_numbered_steps_drawer()
 
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 	pg_assert_contains('.pg-stepper-cards > .stepper-item > * { grid-column: 2; }', $css, 'a step with several children keeps them in the content column');
-	pg_assert_contains('class="drawer-header border-bottom p-5"', $html, 'the standing frame has the real drawer\'s 16 px');
+	pg_assert_true((bool) preg_match('/class="drawer-header border-bottom[^"]*\bp-5"/', $html), 'the standing frame has the real drawer\'s 16 px');
+	pg_assert_contains('pg-icon-tile pg-icon-tile-lg pg-tone-violet', $html, 'Claude\'s tile in the head, as the real drawer');
+	pg_assert_contains('class="drawer-footer', $html, 'Close in the foot');
 }
 
 function test_look_examples_mail_patterns_in_order()

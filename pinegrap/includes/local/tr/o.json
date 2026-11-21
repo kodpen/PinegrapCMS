@@ -475,6 +475,7 @@
     "On {var:1}": "{var:1} üzerinde",
     "On {var:1} at {var:2}": "{var:1} saat {var:2}",
     "On {var:1} pages": "{var:1} sayfada",
+    "On {var:1} press {var:2}, name it {var:3} and paste this text into {var:4} as it is.": "{var:1} adresinde {var:2} düğmesine bas, adını {var:3} koy ve bu metni olduğu gibi {var:4} kutusuna yapıştır.",
     "On {var:1}'s proposal": "{var:1} önerisiyle",
     "On {var:1}, {var:2} wrote:": "{var:1} tarihinde {var:2} şunu yazdı:",
     "On {var} pages": "{var} sayfada",

@@ -1566,6 +1566,7 @@
     "It reads a message only when someone writes @{1} in it.": "Bir mesajı yalnızca biri içine @{1} yazdığında okur.",
     "It reads no records: Claude sees the channels and the tasks only.": "Hiçbir kaydı okumuyor: Claude yalnız kanalları ve görevleri görür.",
     "It reads no records: Pinegrap AI sees the channels and the tasks only.": "Hiçbir kaydı okumaz: Pinegrap AI yalnız kanalları ve görevleri görür.",
+    "It reads the rest of its instructions from this site at every run. If the form asks for a repository, any small private one will do.": "Talimatlarının geri kalanını her çalışmada bu siteden okur. Form bir depo isterse küçük, özel herhangi bir depo yeter.",
     "It reads with the rights of the person who asked, never more.": "Soran kişinin yetkileriyle okur, asla fazlasıyla değil.",
     "It runs every weekend morning; the times are on the Dome Shows page.": "Her hafta sonu sabahı gösteriliyor; seanslar Kubbe Gösterileri sayfasında.",
     "It runs once for each person who joins or is added; {{newcomer}} in a text tags them.": "Katılan ya da eklenen her kişi için bir kez çalışır; metindeki {{newcomer}} o kişiyi etiketler.",
