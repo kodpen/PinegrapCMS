@@ -479,7 +479,7 @@ function api_app_new_connect_html($made, $site_address, $guide, $others) {
 
 	$row = function ($id, $label, $hint, $value, $masked) {
 		return '
-					<div class="pg-card-inner-row">
+					<div class="pg-card-inner-row api-cred-row">
 						<div class="api-cred-name"><div class="pg-list-row-title" id="' . $id . '_label">' . h($label) . '</div><div class="pg-text-meta">' . h($hint) . '</div></div>
 						<div class="flex-grow-1 min-width-0">' . api_app_value_box($id, $value, $id . '_label', $masked) . '</div>
 					</div>';

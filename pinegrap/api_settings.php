@@ -1854,8 +1854,13 @@ echo pg_page_shell(array(
 body.api-drawer-open .pg-chat-launcher { display: none !important; }
 /* On a phone the drawer is a sheet from the bottom, not the full height. */
 #api_drawer.drawer-bottom { --pg-drawer-height: 88vh; }
-/* The one-time values of step 3: the name column of each row. */
+/* The one-time values of step 3: the name column of each row. On a phone
+   the name sits above its value, which then takes the full width of the row. */
 .api-cred-name { flex: 0 0 9.5rem; min-width: 0; }
+@media (max-width: 575.98px) {
+	.api-cred-row { flex-wrap: wrap; gap: 6px; }
+	.api-cred-name { flex-basis: 100%; }
+}
 /* Row titles in the drawers at their recipe size, not the drawer body size. */
 #api_drawer .pg-list-row-title, #api_new .pg-list-row-title { font-size: var(--pg-text-base); }
 /* A guide that does not suit the application: its name in the secondary
