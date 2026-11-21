@@ -26,6 +26,9 @@ module: volunteer_shifts
 - `pg_volunteer_signup_minutes()`: check-in to check-out, else the shift's length, else the row's own `minutes` (hours outside a shift). `pg_volunteer_hours_total()` / `pg_volunteer_hours_by()` count approved rows only, period ends included.
 - `pg_volunteer_document_notice($valid_until, $today, $sent)`: 30 from 30 days before, 7 from 7 days before, each once; in the last 7 days only the 7; a missed day still sends; 0 after the date.
 
+## Who opens a document's file?
+- `pg_volunteer_document_access_verdict($holders, $viewer)`: roles 0-2, a coordinator of the programme, the volunteer signed in (by contact), the volunteer of the session's signed link. Called by `get_file.php` (`core/volunteer-store.md`).
+
 ## How is the signed link's token made?
 - `pg_volunteer_link_token($id, $issued_at, $key)`: HMAC-SHA256 of `volunteer-link:<id>:<issued_at>` under `ENCRYPTION_KEY`, the per-feature pattern of `pg_booking_manage_token()`; no new secret. Only `pg_volunteer_link_token_hash()` (sha256) is stored; a new issue or an emptied hash withdraws the link (`pg_volunteer_link_token_valid()`).
 
