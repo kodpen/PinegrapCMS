@@ -65,6 +65,7 @@
 - delivery-tower-screens.md: Plan delivery-tower, how its screens are put together (DT3 to DT5): the Delivery problems list, a problem's drawer, the carrier scorecard, the two suggestions, the settings drawer
 - delivery-tower-steps.md: Plan delivery-tower, steps DT1a to DT6: the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
 - delivery-tower.md: Plan (owner 2026-11-20, poll 178): delivery times measured per carrier and province, problem parcels found, a problem desk, events, a carrier scorecard; DT1a to DT6
+- design-examples-patterns-mail.md: Step DX2b of the Design examples plan: the parts of the approved e-mail settings drawing as patterns (tabs with a state, choice cards, provider sign-in, effects confirm), before EM1
 - design-examples-patterns.md: Plan (owner 2026-11-20): the Design examples screen finished with whole patterns: folded settings pane, starting-point sheet, form drawer with tabs and foot, connect row, phone width; DX1-DX5
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
@@ -101,6 +102,8 @@
 - lead-journey-screens.md: Plan lead-journey, how its screens are put together (LJ2 to LJ5): the Journey card, the Workspace customer card, the Interest card and its settings, the Hot contacts view, the Lead sources report
 - lead-journey-steps.md: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and the tie, the journey, the scores and interests, alerts and events, lead sources, API, close-out
 - lead-journey.md: Plan (owner 2026-11-20, poll 183): visits tied to a known person with consent, the journey, a decaying interest score and interests, hot and returning alerts, lead sources; LJ1a to LJ7
+- mail-settings-one-design-box.md: Plan mail-settings-one, the architect's design of adding and removing a mailbox (boards D, E of the picture): the three-step sheet, the provider sign-in buttons, the Remove dialog
+- mail-settings-one-design.md: Plan mail-settings-one, the architect's design (picture mail-settings-one/email-settings.jpg): the two tabs, how e-mail leaves, the ways sheet, Mailboxes with no box
 - mail-settings-one-screens.md: Plan mail-settings-one, its screens: the E-mail category's two tabs, the Sending tab's rows, Add a mailbox with Sign in with Google, built from the architect's design files
 - mail-settings-one-steps.md: Plan mail-settings-one, steps EM1 to EM6: the E-mail category's two tabs, the Sending tab's rows, the sending domain in one place, one account for both, Sign in with Google, close-out
 - mail-settings-one.md: Plan (owner 2026-11-21): one E-mail category with Sending and Mailboxes tabs, the e-mail settings' contradictions fixed, one account for sending and reading, Sign in with Google when adding a box
