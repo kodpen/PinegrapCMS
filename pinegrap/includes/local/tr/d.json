@@ -452,6 +452,7 @@
     "Delete the \"{var}\" widget?": "\"{var}\" widget'ı sil?",
     "Delete the Note": "Notu Sil",
     "Delete the Widget Entirely": "Widget'ı Tamamen Sil",
+    "Delete the application": "Uygulamayı sil",
     "Delete the autosave": "Otomatik kaydı sil",
     "Delete the autosave?": "Otomatik kayıt silinsin mi?",
     "Delete the backup {var:1} permanently?": "'{var:1}' yedeği kalıcı olarak silinsin mi?",

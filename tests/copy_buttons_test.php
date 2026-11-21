@@ -35,7 +35,7 @@ function copy_buttons_screens()
 		array('view_log.php', 'includes/fn/site_log_list.php'),
 		array('connections.php', 'connections.php'),
 		array('workspace_calendar_feed.php', 'workspace_calendar_feed.php'),
-		array('api_settings.php', 'api_settings.php'),
+		array('api_settings.php', 'includes/api/app_drawer_view.php'),
 		array('mfa.php', 'mfa.php'),
 	);
 }
@@ -92,15 +92,15 @@ function test_copy_buttons_status_beside_button()
 
 function test_copy_buttons_api_settings_names()
 {
-	$source = copy_buttons_source('api_settings.php');
+	$source = copy_buttons_source('api_settings.php') . copy_buttons_source('includes/api/app_drawer_view.php');
 
 	// Every Copy button reads its own caption: "Copy Key", "Copy Secret".
 	pg_assert_true(strpos($source, 'button.innerHTML') === false, 'the API copy button keeps its label');
 	pg_assert_true(preg_match_all('/class="[^"]*api-copy"/', $source) === 1, 'API copy buttons come from one helper');
 	pg_assert_contains('aria-labelledby="\' . $id . \'_copy \' . $caption_id . \'"', $source);
-	pg_assert_contains('<label class="form-label pg-field-label" id="d_key_label">', $source);
-	pg_assert_contains('<label class="form-label pg-field-label" id="nc_secret_label">', $source);
-	pg_assert_contains('<summary id="\' . $id_prefix . \'_c_\' . $key . \'_label">', $source);
+	pg_assert_contains('<div class="pg-list-row-title" id="d_key_label">', $source);
+	pg_assert_contains("\$row('nc_secret', lang('Secret')", $source);
+	pg_assert_contains('<summary id="\' . $id . \'_label">', $source);
 
 	// A modal drawer or an open sheet makes the rest of the page inert, so
 	// the status sits beside the button inside it.

@@ -4,7 +4,7 @@ description: The "Connect to Claude" button on the panel's OAuth connection guid
 ---
 
 ## Where is the "Connect to Claude" button?
-- At the top of the OAuth connection guide, `api_settings_oauth_guide()` in `api_settings.php`, under the label "Claude". The guide is printed in an OAuth application's drawer and on the sheet shown once OAuth is switched on, so the button is seen by whoever may manage API access there, no one else.
+- A step of the MCP with sign-in guide (`api_app_guides()`, `includes/api/app_guides.php`): "Or connect Claude in one step". The guide is on every application's Connect tab and in step 3 after an OAuth application is made, so the button is seen by whoever may manage API access there, no one else.
 - A link styled as a button; it opens in a new tab with `rel="noopener"`.
 
 ## What does it open?

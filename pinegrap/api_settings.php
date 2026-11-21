@@ -35,6 +35,8 @@ require_once(dirname(__FILE__) . '/includes/api/app_access.php');
 require_once(dirname(__FILE__) . '/includes/api/app_templates.php');
 require_once(dirname(__FILE__) . '/includes/api/app_new_view.php');
 require_once(dirname(__FILE__) . '/includes/api/app_permissions_view.php');
+require_once(dirname(__FILE__) . '/includes/api/app_guides.php');
+require_once(dirname(__FILE__) . '/includes/api/app_drawer_view.php');
 require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
@@ -262,7 +264,10 @@ if ($_POST) {
 				'kind'   => $made['kind'],
 				// The starting point is not stored: it only adds the note
 				// about an automation platform to this one sheet.
-				'automation' => (($made['kind'] === 'server') && ($start === 'automation'))
+				'automation' => (($made['kind'] === 'server') && ($start === 'automation')),
+				// The guide step 3 opens with, and the key as one token.
+				'start'  => $start,
+				'token'  => api_app_token($made['key'], $made['secret'])
 			);
 
 			header('Location: ' . $screen_url);
@@ -406,6 +411,8 @@ if ($_POST) {
 					'name'    => $rotated['name'],
 					'key'     => $rotated['key'],
 					'secret'  => $rotated['secret'],
+					'kind'    => 'server',
+					'token'   => api_app_token($rotated['key'], $rotated['secret']),
 					'rotated' => true
 				);
 
@@ -1265,7 +1272,11 @@ foreach ($apps as $app) {
 		'unused'      => $oauth_unused,
 		'log'         => isset($log_rows[(int)$app['id']]) ? $log_rows[(int)$app['id']]['all'] : array(),
 		'log_errors'  => isset($log_rows[(int)$app['id']]) ? $log_rows[(int)$app['id']]['errors'] : array(),
-		'webhooks'    => isset($webhook_rows[(int)$app['id']]) ? $webhook_rows[(int)$app['id']] : array()
+		'webhooks'    => isset($webhook_rows[(int)$app['id']]) ? $webhook_rows[(int)$app['id']] : array(),
+		'used'        => api_settings_ago($app['last_used_timestamp']),
+		'state'       => $status_label,
+		'state_tone'  => ($status_class === 'on') ? 'teal' : (($status_class === 'warn') ? 'amber' : 'gray'),
+		'errors'      => (int)$stats['failures']
 	);
 
 }
@@ -1276,179 +1287,6 @@ if ($app_rows === '') {
 
 }
 
-/* ---------------------------------------------------------------------------
-   A Copy button for the text of a <code>, with its status beside it
-   --------------------------------------------------------------------------- */
-
-function api_settings_copy_button($id, $caption_id, $button_class) {
-
-	// Every button says only "Copy", so it is named by itself and the caption
-	// of what it copies ("Copy Key"). The status sits in the same box: the
-	// drawer is a modal dialog and the one-time sheet makes everything else
-	// inert, so a region outside them would never be heard.
-	return '<button type="button" class="' . $button_class . ' api-copy" id="' . $id . '_copy" data-copy="#' . $id . '" aria-labelledby="' . $id . '_copy ' . $caption_id . '"><i class="bi bi-clipboard" aria-hidden="true"></i>' . lang('Copy') . '</button>'
-		. '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>';
-
-}
-
-/* ---------------------------------------------------------------------------
-   The OAuth connection guide, drawn in the drawer and in the sheet shown once
-   the application is made
-   --------------------------------------------------------------------------- */
-
-function api_settings_oauth_guide($id_prefix, $button_class) {
-
-	// The MCP server answers at two addresses: the file in the software
-	// directory, reachable on any server, and the site's own address, which
-	// only works where the site's URL rewriting hands unknown paths to the
-	// router. The file comes first because it is the one that never fails.
-	$addresses = pg_oauth_resource_addresses();
-
-	$mcp_file = $addresses['mcp'][1];
-
-	$mcp_short = $addresses['mcp'][0];
-
-	$metadata_url = URL_SCHEME . pg_oauth_host() . PATH . '.well-known/' . ((PATH === '/') ? 'oauth-authorization-server' : 'openid-configuration');
-
-	$box = function ($id, $value) use ($button_class) {
-		return '<div class="api-secret-box"><code id="' . $id . '">' . h($value) . '</code>
-			' . api_settings_copy_button($id, $id . '_label', $button_class) . '</div>';
-	};
-
-	// Each application is set up its own way: a menu, a command or a
-	// configuration file. The steps and the text to paste, with this site's
-	// address already in it, one folded entry per application. Product names
-	// are names and are not translated; the configuration keys are what each
-	// application reads and are written exactly.
-	$json_address = json_encode($mcp_file, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-	$clients = array(
-		'claude' => array(
-			'name'    => lang('Claude (web, desktop and mobile)'),
-			'steps'   => lang('Settings > Connectors > Add custom connector. Paste the address, then press Connect.'),
-			'snippet' => ''
-		),
-		'claude_code' => array(
-			'name'    => 'Claude Code',
-			'steps'   => lang('Run this in a terminal, then type /mcp in Claude Code and choose the server to sign in.'),
-			'snippet' => 'claude mcp add --transport http pinegrap ' . $mcp_file
-		),
-		'chatgpt' => array(
-			'name'    => 'ChatGPT',
-			'steps'   => lang('Settings > Apps & Connectors > Advanced settings: switch developer mode on. Then press Create, paste the address as the MCP server URL and choose OAuth as the authentication.'),
-			'snippet' => ''
-		),
-		'vscode' => array(
-			'name'    => 'VS Code (GitHub Copilot)',
-			'steps'   => lang('Command Palette > MCP: Add Server > HTTP, then paste the address; or put this in .vscode/mcp.json. VS Code asks you to sign in the first time the server starts.'),
-			'snippet' => "{\n  \"servers\": {\n    \"pinegrap\": {\n      \"type\": \"http\",\n      \"url\": " . $json_address . "\n    }\n  }\n}"
-		),
-		'cursor' => array(
-			'name'    => 'Cursor',
-			'steps'   => lang('Add a new MCP server in Cursor\'s settings, or put this in ~/.cursor/mcp.json. Then press Connect next to the server.'),
-			'snippet' => "{\n  \"mcpServers\": {\n    \"pinegrap\": {\n      \"url\": " . $json_address . "\n    }\n  }\n}"
-		),
-		'windsurf' => array(
-			'name'    => 'Windsurf',
-			'steps'   => lang('Put this in ~/.codeium/windsurf/mcp_config.json, refresh the MCP servers and sign in when asked.'),
-			'snippet' => "{\n  \"mcpServers\": {\n    \"pinegrap\": {\n      \"serverUrl\": " . $json_address . "\n    }\n  }\n}"
-		),
-		'gemini' => array(
-			'name'    => 'Gemini CLI',
-			'steps'   => lang('Put this in ~/.gemini/settings.json, then run /mcp auth pinegrap in Gemini CLI.'),
-			'snippet' => "{\n  \"mcpServers\": {\n    \"pinegrap\": {\n      \"httpUrl\": " . $json_address . "\n    }\n  }\n}"
-		),
-		'codex' => array(
-			'name'    => 'Codex',
-			'steps'   => lang('Run these in a terminal. The second opens the sign-in in your browser.'),
-			'snippet' => 'codex mcp add pinegrap --url ' . $mcp_file . "\n" . 'codex mcp login pinegrap'
-		),
-		'other' => array(
-			'name'    => lang('Other applications'),
-			'steps'   => lang('An application that asks for a server address works with the address above. One that can only start a program on the computer reaches the server through the mcp-remote bridge, which needs Node.js and opens the sign-in in the browser: give it this as the command.'),
-			'snippet' => 'npx -y mcp-remote ' . $mcp_file
-		)
-	);
-
-	$client_rows = '';
-
-	foreach ($clients as $key => $client) {
-
-		$client_rows .= '
-			<details class="api-client">
-				<summary id="' . $id_prefix . '_c_' . $key . '_label">' . h($client['name']) . '</summary>
-				<p class="mb-1">' . h($client['steps']) . '</p>'
-				. (($client['snippet'] !== '')
-					? '<div class="api-secret-box api-snippet mb-1"><code id="' . $id_prefix . '_c_' . $key . '">' . h($client['snippet']) . '</code>
-						' . api_settings_copy_button($id_prefix . '_c_' . $key, $id_prefix . '_c_' . $key . '_label', $button_class) . '</div>'
-					: '') . '
-			</details>';
-
-	}
-
-	// Claude's install link opens its "Add custom connector" dialog with the
-	// site's name and the MCP server address filled in. It is built from the
-	// file's address, the one the guide gives first, so it works on every
-	// server; a site that is not on https cannot be a connector at all.
-	$claude_link = pg_oauth_claude_connect_link($mcp_file, defined('ORGANIZATION_NAME') ? (string)ORGANIZATION_NAME : '');
-
-	$claude_row = ($claude_link !== '')
-		? '<div><a class="pg-button pg-button-quiet pg-button-sm" id="' . $id_prefix . '_claude_connect" href="' . h($claude_link) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . lang('Connect to Claude') . '</a></div>
-		<div class="form-text mt-2">' . lang('Opens Claude in a new tab with the Add custom connector dialog filled in with this site\'s address. Sign in to Claude, press Add, then Connect.') . '</div>'
-		: '<div class="form-text">' . lang('Claude connects only to an https address. Switch the site to https to connect it to Claude.') . '</div>';
-
-	return '
-	<div class="form-field mb-5">
-		<label class="form-label pg-field-label">' . lang('Claude') . '</label>
-		' . $claude_row . '
-	</div>
-
-	<div class="form-field mb-5">
-		<label class="form-label pg-field-label" id="' . $id_prefix . '_mcp_label">' . lang('MCP server address') . '</label>
-		' . $box($id_prefix . '_mcp', $mcp_file) . '
-		<div class="form-text">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
-	</div>
-
-	<div class="form-field mb-5">
-		<label class="form-label pg-field-label" id="' . $id_prefix . '_mcp_short_label">' . lang('Short address') . '</label>
-		' . $box($id_prefix . '_mcp_short', $mcp_short) . '
-		<div class="form-text">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
-	</div>
-
-	<div class="form-field mb-5">
-		<label class="form-label pg-field-label" id="' . $id_prefix . '_meta_label">' . lang('Discovery address') . '</label>
-		' . $box($id_prefix . '_meta', $metadata_url) . '
-		<div class="form-text">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
-	</div>
-
-	<div class="api-guide">
-		<div class="api-guide-title"><i class="bi bi-signpost-2 me-1"></i>' . lang('How to connect') . '</div>
-		<ol class="mb-0">
-			<li>' . lang('Add the MCP server address in the application, exactly as shown: the steps for each application are below. The application compares it with the address the site names in its answers, so another spelling of the host, with or without www, does not connect.') . '</li>
-			<li>' . lang('The application opens this site\'s sign-in page. The person signs in with their own panel account; the application never sees the password.') . '</li>
-			<li>' . lang('The site lists what the application asks for, and the person agrees or refuses.') . '</li>
-			<li>' . lang('The tools appear in the application, and the connection is listed on this application\'s Connections tab, where it can be ended.') . '</li>
-		</ol>
-	</div>
-
-	<div class="api-guide">
-		<div class="api-guide-title"><i class="bi bi-window-stack me-1"></i>' . lang('Steps for each application') . '</div>
-		' . $client_rows . '
-	</div>
-
-	<div class="api-guide">
-		<div class="api-guide-title"><i class="bi bi-tools me-1"></i>' . lang('What the application can do') . '</div>
-		<ul class="mb-0">
-			<li>' . lang('Every permission area becomes a set of tools. Read gives the list and view tools; Write also gives the tools that create, change and delete.') . '</li>
-			<li>' . lang('A person gets at most what their own panel account may do, and never more than the permissions chosen here.') . '</li>
-			<li>' . lang('Narrowing the permissions takes effect at once. After widening them, connect again in the application so the person can agree to the new ones.') . '</li>
-			<li>' . lang('Some applications use only a limited number of tools at a time, VS Code and Cursor among them. If one warns about too many tools, untick the areas you do not need on the consent screen, or switch tools off in the application.') . '</li>
-		</ul>
-	</div>';
-
-}
-
-
 $api_base_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/integration.php';
 
 // The site's address, the first of the three values an integration's secret
@@ -1457,6 +1295,23 @@ $api_base_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DI
 $site_address = rtrim(URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH, '/');
 
 $permission_rows = api_settings_permission_rows('scope', 'd_scope');
+
+// The connection guides, built from this site's addresses. The MCP address
+// given is the server's own file, which answers on every server; the compact
+// list is named for AI assistants.
+$mcp_addresses = pg_oauth_resource_addresses();
+
+$mcp_compact = pg_oauth_mcp_compact_addresses();
+
+$guides = api_app_guides(array(
+	'site'        => $site_address,
+	'api'         => $api_base_url,
+	'docs'        => 'api_docs.php',
+	'mcp'         => $mcp_addresses['mcp'][1],
+	'mcp_compact' => $mcp_compact[1],
+	'claude_link' => pg_oauth_claude_connect_link($mcp_addresses['mcp'][1], defined('ORGANIZATION_NAME') ? (string)ORGANIZATION_NAME : ''),
+	'start_text'  => function_exists('ws_agent_start_text') ? ws_agent_start_text($api_base_url) : ''
+));
 
 // New application's "Automation platform" starting point: the rows it ticks
 // (the contract's scopes, api_app_start_choices()) and the line naming them.
@@ -1997,6 +1852,21 @@ echo pg_page_shell(array(
    drawer is a modal context, and a chat bubble floating over the button that
    commits the form is not something to nudge sideways. */
 body.api-drawer-open .pg-chat-launcher { display: none !important; }
+/* On a phone the drawer is a sheet from the bottom, not the full height. */
+#api_drawer.drawer-bottom { --pg-drawer-height: 88vh; }
+/* The one-time values of step 3: the name column of each row. On a phone
+   the name sits above its value, which then takes the full width of the row. */
+.api-cred-name { flex: 0 0 9.5rem; min-width: 0; }
+@media (max-width: 575.98px) {
+	.api-cred-row { flex-wrap: wrap; gap: 6px; }
+	.api-cred-name { flex-basis: 100%; }
+}
+/* Row titles in the drawers at their recipe size, not the drawer body size. */
+#api_drawer .pg-list-row-title, #api_new .pg-list-row-title { font-size: var(--pg-text-base); }
+/* A guide that does not suit the application: its name in the secondary
+   ink and its tile grey, still readable; the reason is the first line inside. */
+.api-guide-off .pg-set-fold-name { color: var(--pg-fg-2); }
+.api-guide-off .pg-icon-tile { --pg-tone: var(--pg-tone-gray); }
 #api_drawer.api-locked .api-hook-acts,
 #api_drawer.api-locked .api-hook-new,
 #api_drawer.api-locked .api-hook-form,
@@ -2113,381 +1983,15 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	</div>
 </main>
 
-<!-- The drawer. One of them, filled from the row that was clicked: a drawer per
-     application would put every application\'s settings into the page at once. -->
-<dialog class="drawer drawer-end" id="api_drawer" aria-labelledby="d_title" style="width:min(520px,100%)">
-	<form method="post" action="api_settings.php" autocomplete="off" class="disable_shortcut d-flex flex-column h-100">
-		<!-- Return in a text field presses the first submit button of the form.
-		     This one stands first and has no name, so Return posts the hidden
-		     api_action=update and saves; it never issues a new secret or deletes
-		     the application. A hidden button would still be the default one. -->
-		<button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
-		' . get_token_field() . '
-		<input type="hidden" name="api_action" value="update" id="d_action">
-		<input type="hidden" name="webhook_id" value="" id="d_webhook_id">
-		<input type="hidden" name="sample_event" value="" id="d_sample_event">
-		<input type="hidden" name="device_id" value="" id="d_device_id">
-		<input type="hidden" name="app_id" id="d_app_id" value="">
+' . api_app_drawer_view(array(
+	'guides'          => $guides,
+	'permission_rows' => $permission_rows,
+	'hook_secret'     => $hook_secret_html,
+	'hook_bounds'     => $hook_bounds,
+	'fields_script'   => get_date_picker_format() . pg_fields_script()
+)) . '
 
-		<div class="drawer-header pb-1 d-block">
-			<div class="d-flex align-items-start">
-				<h5 class="drawer-title mb-0" id="d_title"></h5>
-				<button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
-			</div>
-			<p class="small opacity-75 mb-0 mt-1" id="d_sub"></p>
-		</div>
-
-		<div class="px-5"><div class="pg-seg pg-list-seg" role="tablist">
-			<button class="pg-seg-item active" data-bs-toggle="tab" data-bs-target="#d_general" type="button" id="d_general_label" aria-controls="d_general" aria-selected="true">' . lang('General') . '</button>
-			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_perms" type="button" id="d_perms_label" aria-controls="d_perms" aria-selected="false">' . lang('Permissions') . '</button>
-			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_security" type="button" id="d_security_label" aria-controls="d_security" aria-selected="false">' . lang('Security') . '</button>
-			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_devices" type="button" id="d_devices_label" aria-controls="d_devices" aria-selected="false"
-				data-device="' . h(lang('Devices')) . '" data-oauth="' . h(lang('Connections')) . '">' . lang('Devices') . '</button>
-			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button" id="d_hooks_label" aria-controls="d_hooks" aria-selected="false">' . lang('Webhook events') . '</button>
-			<button class="pg-seg-item" data-bs-toggle="tab" data-bs-target="#d_log" type="button" id="d_log_label" aria-controls="d_log" aria-selected="false">' . lang('Log') . '</button>
-		</div></div>
-
-		<div class="drawer-body tab-content flex-grow-1 overflow-auto">
-
-			<div class="tab-pane fade show active" id="d_general">
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" for="d_name">' . lang('Name') . '</label>
-					<input type="text" class="form-control form-control-sm" name="name" id="d_name" maxlength="190">
-				</div>
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" for="d_description">' . lang('Description') . '</label>
-					<input type="text" class="form-control form-control-sm" name="description" id="d_description" maxlength="500">
-				</div>
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" id="d_key_label">' . lang('API Key') . '</label>
-					<div class="api-secret-box"><code id="d_key"></code>
-						' . api_settings_copy_button('d_key', 'd_key_label', 'pg-button pg-button-quiet pg-button-sm') . '</div>
-					<div class="form-text">' . lang('Public identifier. Safe to share with the integrator.') . '</div>
-				</div>
-				<div class="form-field mb-5" id="d_secret_block">
-					<label class="form-label pg-field-label">' . lang('Secret') . '</label>
-					<div class="api-secret-box"><code id="d_hint" class="fg-2"></code>
-						<button type="submit" class="pg-button pg-button-quiet pg-button-sm" name="api_action" value="rotate" id="d_rotate">
-							<i class="bi bi-arrow-clockwise" aria-hidden="true"></i>' . lang('Issue a new secret') . '</button></div>
-					<div class="form-text">'
-						. lang('Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.') . '</div>
-				</div>
-				<div class="form-field mb-5 d-none" id="d_nosecret_block">
-					<label class="form-label pg-field-label">' . lang('Secret') . '</label>
-					<div class="form-text">' . h(lang('This application was made without a secret and is never given one, so it cannot sign in.')) . '</div>
-				</div>
-				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_locked_note">
-					<i class="bi bi-lock me-1"></i>' . h(lang('This application belongs to an account above yours, so only that account or one above it can change it.')) . '
-				</div>
-				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_unused_note">
-					<i class="bi bi-exclamation-triangle me-1"></i>' . h(lang('Not in use: the oldest OAuth app applies. The site serves one OAuth app, so the scopes chosen here reach no connection; change them on the app in use, or delete this one.')) . '
-				</div>
-				<div class="form-field mb-5" id="d_device_block">
-					<label class="form-label pg-field-label" id="d_login_label">' . lang('Signing in') . '</label>
-					<div class="api-secret-box"><code id="d_login">POST ' . h($api_base_url) . '/auth/login</code>
-						' . api_settings_copy_button('d_login', 'd_login_label', 'pg-button pg-button-quiet pg-button-sm') . '</div>
-					<div class="form-text">'
-						. lang('Staff sign in on the app with their own user name and password. Each person gets at most what their own account may do, and never more than the permissions chosen here. The key is not a secret; the app sends it as client_key, and can leave it out while this is the only team devices application.') . '</div>
-				</div>
-				<div class="mb-5" id="d_oauth_block">
-					' . api_settings_oauth_guide('d_oauth', 'pg-button pg-button-quiet pg-button-sm') . '
-				</div>
-				<div class="form-field mb-5" id="d_auth_block">
-					<label class="form-label pg-field-label" id="d_curl_label">' . lang('Authentication') . '</label>
-					<div class="api-secret-box"><code id="d_curl">curl -u APPLICATION_KEY:SECRET_KEY "'
-						. h($api_base_url) . '/meta"</code>
-						' . api_settings_copy_button('d_curl', 'd_curl_label', 'pg-button pg-button-quiet pg-button-sm') . '</div>
-					<div class="form-text">'
-						. lang('HTTP Basic: the user name is the key above, the password is the secret. This line is the whole handshake - hand it to the integrator with the key.') . '</div>
-				</div>
-				<div class="form-field">
-					<div class="switch"><input class="" type="checkbox" name="status" value="active" id="d_status"></div>
-					<label class="small" for="d_status">' . lang('Active') . '</label>
-				</div>
-			</div>
-
-			<div class="tab-pane fade" id="d_perms">
-				' . $permission_rows . '
-				<div class="alert theme-primary py-3 px-5 small mt-5 mb-3">
-					<i class="bi bi-info-circle me-1"></i>
-					<b>' . lang('Write covers read.') . '</b> '
-					. lang('Choosing Write holds the read position open; the record keeps only what you chose.') . '
-				</div>
-				<div class="alert theme-secondary py-3 px-5 small mb-0">
-					<i class="bi bi-shield-check me-1"></i>'
-					. lang('An application can never do more than the account that owns it. Narrowing the owner narrows the application immediately.') . '
-				</div>
-			</div>
-
-			<div class="tab-pane fade" id="d_security">
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" for="d_ip">' . lang('Allowed addresses') . '</label>
-					<input type="text" class="form-control tagin min-height-tagin" name="ip_allowlist" id="d_ip" data-pg-chips
-						data-placeholder="' . lang('Add an address') . '" value="">' . get_date_picker_format() . pg_fields_script() . '
-					<div class="form-text">'
-						. lang('Leave empty to let this application connect from anywhere. Once an address is added, requests from anywhere else are refused.')
-						. '<br>' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . '</div>
-				</div>
-				<div class="row g-5">
-					<div class="col-12 sm:col-6 form-field">
-						<label class="form-label pg-field-label" for="d_expires">' . lang('Expires on') . '</label>
-						<input type="date" data-pg-date class="form-control form-control-sm" name="expires_at" id="d_expires">
-						<div class="form-text">' . lang('After this date the key stops working. Leave empty for a key that does not expire.') . '</div>
-					</div>
-					<div class="col-12 sm:col-6 form-field">
-						<label class="form-label pg-field-label" for="d_rate">' . lang('Requests per minute') . '</label>
-						<input type="number" class="form-control form-control-sm" name="rate_limit_per_min" id="d_rate" min="1" max="6000">
-						<div class="form-text">' . lang('When an application asks for more than this in one minute, the rest of that minute is refused and it is told how long to wait.') . '</div>
-					</div>
-				</div>
-				<div class="api-danger-zone" id="d_danger_zone">
-					<button type="button" class="pg-button pg-button-danger pg-button-sm" id="d_delete_ask">
-						<i class="bi bi-trash" aria-hidden="true"></i>' . lang('Delete this application') . '</button>
-					<div id="d_delete_confirm" class="d-none">
-						<p class="small mb-3">' . lang('Any integration using this key stops working immediately. This cannot be undone.') . '</p>
-						<button type="submit" class="pg-button pg-button-danger pg-button-sm" name="api_action" value="delete">' . lang('Yes, delete') . '</button>
-						<button type="button" class="pg-button pg-button-quiet pg-button-sm" id="d_delete_no">' . lang('Cancel') . '</button>
-					</div>
-				</div>
-			</div>
-
-			<div class="tab-pane fade" id="d_devices">
-				<div class="d-flex align-items-center mb-3">
-					<span class="small opacity-75">' . lang('Who is signed in through this application') . '</span>
-				</div>
-				<div id="d_device_rows"></div>
-				<div class="alert theme-primary py-3 px-5 small mt-5 mb-0">
-					<i class="bi bi-info-circle me-1"></i>'
-					. lang('Signing a device out ends it at once; the person has to sign in again. A new password, or signing out everywhere, signs out all of that person\'s devices too.') . '
-				</div>
-			</div>
-
-			<div class="tab-pane fade" id="d_hooks">
-				<div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-					<span class="small opacity-75">' . lang('Addresses this application asked to be told at') . ' &middot; <span class="text-nowrap" id="d_hook_count"></span></span>
-					<button type="button" class="pg-button pg-button-quiet pg-button-sm ms-auto api-hook-new" id="d_hook_new" aria-expanded="false" aria-controls="d_hook_form">
-						<i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('New subscription') . '</button>
-				</div>
-				<div id="d_hook_secret_slot">' . $hook_secret_html . '</div>
-				<div class="api-hook-form mb-5 d-none" id="d_hook_form" role="group" aria-labelledby="d_hook_form_title">
-					<div class="d-flex align-items-center mb-3">
-						<b class="small" id="d_hook_form_title">' . lang('New subscription') . '</b>
-						<button type="button" class="pg-icon-button pg-icon-button-sm ms-auto" id="d_hook_form_close" aria-label="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
-					</div>
-					<div class="alert theme-danger py-3 px-5 small mb-3 d-none" id="d_hook_form_error" role="alert"></div>
-					<div class="alert theme-warning py-3 px-5 small mb-3 d-none" id="d_hook_unsaved" role="alert">
-						<i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . lang('The subscription is not created yet: create it or close the form.') . '
-					</div>
-					<div class="mb-5">
-						<label class="pg-field-label" for="d_hook_url">' . lang('Address') . '</label>
-						<textarea class="pg-input api-hook-address" name="hook_url" id="d_hook_url" rows="3" maxlength="' . (int)$hook_bounds['url'] . '"
-							spellcheck="false" autocomplete="off" aria-describedby="d_hook_url_help" placeholder="https://"></textarea>
-						<div class="pg-field-help" id="d_hook_url_help">' . lang('The address the platform gives for incoming webhooks. It is checked when it is saved: an https address that resolves and lies outside this network.') . '</div>
-					</div>
-					<div class="mb-3">
-						<label class="pg-field-label" for="d_hook_search">' . lang('Webhook events') . '</label>
-						<span class="pg-input">
-							<input type="search" id="d_hook_search" autocomplete="off" aria-controls="d_hook_events"
-								placeholder="' . h(lang('Search events')) . '">
-							<span class="pg-input-end"><i class="bi bi-search" aria-hidden="true"></i></span>
-						</span>
-					</div>
-					<div class="api-event-list" id="d_hook_events" role="group" aria-label="' . h(lang('Webhook events')) . '"></div>
-					<div class="d-flex flex-wrap gap-3 small fg-2 mt-2">
-						<span id="d_hook_found" aria-live="polite"
-							data-all="' . h(lang(array('string' => '{var:1} events in the catalogue', 'vars' => '{1}'))) . '"
-							data-some="' . h(lang(array('string' => '{var:1} events for "{var:2}" · {var:3} in the catalogue', 'vars' => array('{1}', '{2}', '{3}')))) . '"></span>
-						<span class="ms-auto" id="d_hook_chosen"
-							data-text="' . h(lang(array('string' => '{var:1} chosen · at most {var:2}', 'vars' => array('{1}', (int)$hook_bounds['events'])))) . '"></span>
-					</div>
-					<div class="api-hook-events mb-3" id="d_hook_chips"></div>
-					<div class="alert theme-primary py-3 px-5 small mb-3">
-						<i class="bi bi-key me-1" aria-hidden="true"></i>' . lang('Once it is saved the subscription\'s signing secret is shown once. Paste it into the platform if it checks the signature.') . '
-					</div>
-					<div class="d-flex gap-3 justify-content-end">
-						<button type="button" class="pg-button pg-button-ghost pg-button-sm" id="d_hook_form_cancel">' . lang('Cancel') . '</button>
-						<button type="button" class="pg-button pg-button-fill pg-button-sm" id="d_hook_create">' . lang('Create the subscription') . '</button>
-					</div>
-				</div>
-				<div id="d_hook_rows"></div>
-				<div class="api-guide mt-5 mb-0">
-					<div class="api-guide-title"><i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>' . lang('Automation platforms') . '</div>
-					<ul class="mb-0">
-						<li>' . lang('With the platform\'s own app: the app connects with the site\'s address, the key and the secret, and opens and removes its subscriptions itself.') . '</li>
-						<li>' . lang('Without an app: paste the address the platform gives for incoming webhooks into New subscription and choose the events it should hear.') . '</li>
-						<li>' . lang('Here you can stop a subscription, send what is waiting again, send a sample or remove it.') . '</li>
-					</ul>
-				</div>
-			</div>
-
-			<div class="tab-pane fade" id="d_log">
-				<div class="d-flex align-items-center mb-3">
-					<span class="small opacity-75">' . lang('Most recent requests') . '</span>
-					<div class="form-field ms-auto">
-						<div class="switch"><input class="" type="checkbox" id="d_log_errors"></div>
-						<label class="small" for="d_log_errors">' . lang('Errors only') . '</label>
-					</div>
-				</div>
-				<div id="d_log_rows"></div>
-				<div class="alert theme-primary py-3 px-5 small mt-5 mb-0">
-					<i class="bi bi-info-circle me-1"></i>'
-					. lang('403 means a permission the application does not hold was tried; 409 means the same operation was sent twice and was not applied again.') . '
-				</div>
-			</div>
-
-		</div>
-
-		<div class="drawer-footer border-top p-5 d-flex gap-3">
-			<span class="flex-grow-1"></span>
-			<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
-			<button type="submit" class="pg-button pg-button-fill" id="d_save">' . lang('Save') . '</button>
-		</div>
-	</form>
-</dialog>
-
-' . api_app_new_view($start_cards, api_settings_permission_rows('scope', 'n_scope'), $start_note);
-
-/* An OAuth application has nothing to reveal either. What the operator needs is
-   the address an outside application is pointed at. */
-if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_credentials['kind'] === 'oauth')) {
-
-	echo '
-<div class="pg-open-sheet" id="api_secret_sheet" style="background: var(--pg-scrim)">
-	<dialog class="dialog dialog-lg pg-dialog-centered" id="api_sheet_oauth" aria-labelledby="api_sheet_oauth_title" open>
-			<div class="dialog-header border-0 pb-0">
-				<h5 class="dialog-title" id="api_sheet_oauth_title"><i class="bi bi-plug me-3 fg-primary"></i>' . lang('Connecting applications with OAuth is switched on') . '</h5>
-			</div>
-			<div class="dialog-body">
-				<p class="mb-5">' . lang('Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.') . '</p>
-
-				' . api_settings_oauth_guide('nc', 'pg-button pg-button-quiet pg-button-sm') . '
-
-				<div class="alert theme-primary py-3 px-5 small mb-0">
-					<i class="bi bi-info-circle me-1"></i>'
-					. lang('Applications register themselves the first time they connect. Each connection appears on this application\'s Connections tab, where it can be ended; a new password, or signing out everywhere, ends a person\'s connections too.') . '
-				</div>
-			</div>
-			<div class="dialog-footer">
-				<button type="button" class="pg-button pg-button-fill" id="nc_close">' . lang('Close') . '</button>
-			</div>
-	</dialog>
-</div>';
-
-	$new_credentials = null;
-
-}
-
-/* A team devices application has nothing to reveal once: its key is not a
-   secret and stays readable in the drawer. What the operator needs on the way
-   out of the form is what to hand the app developer. */
-if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_credentials['kind'] === 'device')) {
-
-	echo '
-<div class="pg-open-sheet" id="api_secret_sheet" style="background: var(--pg-scrim)">
-	<dialog class="dialog dialog-lg pg-dialog-centered" id="api_sheet_device" aria-labelledby="api_sheet_device_title" open>
-			<div class="dialog-header border-0 pb-0">
-				<h5 class="dialog-title" id="api_sheet_device_title"><i class="bi bi-phone me-3 fg-primary"></i>' . lang('Signing in from devices is switched on') . '</h5>
-			</div>
-			<div class="dialog-body">
-				<p class="mb-5">' . lang('Staff can now sign in on the app with their own user name and password. Nothing here has to be kept secret.') . '</p>
-
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" id="nc_login_label">' . lang('Sign-in address') . '</label>
-					<div class="api-secret-box">
-						<code id="nc_login">POST ' . h($api_base_url) . '/auth/login</code>
-						' . api_settings_copy_button('nc_login', 'nc_login_label', 'pg-button pg-button-quiet pg-button-sm') . '
-					</div>
-				</div>
-
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" id="nc_key_label">client_key</label>
-					<div class="api-secret-box">
-						<code id="nc_key">' . h($new_credentials['key']) . '</code>
-						' . api_settings_copy_button('nc_key', 'nc_key_label', 'pg-button pg-button-quiet pg-button-sm') . '
-					</div>
-				</div>
-
-				<div class="alert theme-primary py-3 px-5 small mb-0">
-					<i class="bi bi-info-circle me-1"></i>'
-					. lang('The app can leave client_key out while this is the only team devices application. Signed-in devices appear on its Devices tab, where each can be signed out.') . '
-				</div>
-			</div>
-			<div class="dialog-footer">
-				<button type="button" class="pg-button pg-button-fill" id="nc_close">' . lang('Close') . '</button>
-			</div>
-	</dialog>
-</div>';
-
-	$new_credentials = null;
-
-}
-
-/* The one-time reveal. Rendered only on the request that follows the write that
-   made the secret, and the session entry it came from is already gone. */
-if ($new_credentials !== null) {
-
-	echo '
-<div class="pg-open-sheet" id="api_secret_sheet" style="background: var(--pg-scrim)">
-	<dialog class="dialog dialog-lg pg-dialog-centered" id="api_sheet_secret" aria-labelledby="api_sheet_secret_title" open>
-			<div class="dialog-header border-0 pb-0">
-				<h5 class="dialog-title" id="api_sheet_secret_title"><i class="bi bi-key me-3 fg-warning"></i>'
-					. ((isset($new_credentials['rotated']) && $new_credentials['rotated'])
-						? lang('A new secret was issued')
-						: lang('The application was created')) . '</h5>
-			</div>
-			<div class="dialog-body">
-				<p class="mb-5"><b>' . lang('Once this window is closed the secret is never shown again.') . '</b><br>
-					<span class="small opacity-75">'
-					. lang('Only a verification hash is stored. If it is lost, issue a new one.') . '</span></p>
-
-				' . (!empty($new_credentials['automation']) ? '
-				<div class="alert theme-primary py-3 px-5 small mb-5">
-					<i class="bi bi-lightning me-1" aria-hidden="true"></i>'
-					. lang('An automation platform asks for these three values when it connects: the site\'s address, the key and the secret. Copy them in order into the platform\'s connect window.') . '
-				</div>' : '') . '
-
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" id="nc_site_label">1 &middot; ' . lang('Site address') . '</label>
-					<div class="api-secret-box">
-						<code id="nc_site">' . h($site_address) . '</code>
-						' . api_settings_copy_button('nc_site', 'nc_site_label', 'pg-button pg-button-quiet pg-button-sm') . '
-					</div>
-					<div class="form-text">' . lang('The API is found from this address (/.well-known/pinegrap.json).') . '</div>
-				</div>
-
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" id="nc_key_label">2 &middot; ' . lang('Key') . '</label>
-					<div class="api-secret-box">
-						<code id="nc_key">' . h($new_credentials['key']) . '</code>
-						' . api_settings_copy_button('nc_key', 'nc_key_label', 'pg-button pg-button-quiet pg-button-sm') . '
-					</div>
-				</div>
-
-				<div class="form-field mb-5">
-					<label class="form-label pg-field-label" id="nc_secret_label">3 &middot; ' . lang('Secret') . '</label>
-					<div class="api-secret-box">
-						<code id="nc_secret">' . h($new_credentials['secret']) . '</code>
-						' . api_settings_copy_button('nc_secret', 'nc_secret_label', 'pg-button pg-button-quiet pg-button-sm') . '
-					</div>
-				</div>
-
-				<div class="alert theme-warning py-3 px-5 small mb-0">
-					<i class="bi bi-lock me-1"></i>'
-					. lang('Keep the secret like a password. Do not put it in a URL, an email or a shared file - server logs record those too.') . '
-					<br>' . lang('Connecting:') . ' <code>Authorization: Basic base64(' . lang('key') . ':' . lang('secret') . ')</code>
-				</div>
-			</div>
-			<div class="dialog-footer">
-				<div class="form-field me-auto">
-					<input class="check" type="checkbox" id="nc_ack">
-					<label class="small" for="nc_ack">' . lang('I have copied it and stored it somewhere safe') . '</label>
-				</div>
-				<button type="button" class="pg-button pg-button-fill disabled" id="nc_close">' . lang('Close') . '</button>
-			</div>
-	</dialog>
-</div>';
-
-}
+' . api_app_new_view($start_cards, api_settings_permission_rows('scope', 'n_scope'), $start_note, api_app_connect_step($new_credentials, $site_address, $guides, $start_cards));
 
 echo '
 <script>
@@ -2496,6 +2000,13 @@ echo '
 	var APPS = ' . json_encode($app_data, JSON_UNESCAPED_UNICODE) . ';
 
 	var API_BASE = ' . json_encode($api_base_url, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';
+	// The drawer\'s head for each kind of application.
+	var ACTS_LABEL = ' . json_encode(lang('Acts as:'), JSON_UNESCAPED_UNICODE) . ';
+	var KIND_FACE = ' . json_encode(array(
+		'server' => array('kind' => lang('Integration'), 'auth' => lang('key and secret'), 'acts' => api_app_acts_text('application'), 'tone' => 'blue', 'icon' => 'bi-key'),
+		'oauth'  => array('kind' => lang('Connected apps (OAuth)'), 'auth' => lang('sign-in'), 'acts' => api_app_acts_text('person'), 'tone' => 'violet', 'icon' => 'bi-stars'),
+		'device' => array('kind' => lang('Team devices'), 'auth' => lang('sign-in'), 'acts' => api_app_acts_text('person'), 'tone' => 'rose', 'icon' => 'bi-phone')
+	), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS) . ';
 	// The Events tab: the catalogue the form searches, the limits of POST
 	// /webhooks, and what the last post handed back (no secret: that is in
 	// the page once, in the tab itself).
@@ -2658,15 +2169,31 @@ echo '
 
 		document.getElementById("d_app_id").value = app.id;
 		document.getElementById("d_title").textContent = app.name;
-		document.getElementById("d_sub").innerHTML =
-			' . json_encode(lang('Owner'), JSON_UNESCAPED_UNICODE) . ' + " <b>" + esc(app.owner) + "</b> &middot; " + esc(app.created);
+		// The head: the kind\'s icon, the kind, how it signs in and who it
+		// acts as, the state in the list\'s words.
+		var face = KIND_FACE[app.kind] || KIND_FACE.server;
+		document.getElementById("d_tile").className = "pg-icon-tile pg-icon-tile-lg pg-tone-" + face.tone;
+		document.getElementById("d_tile_icon").className = "bi " + face.icon;
+		document.getElementById("d_sub").innerHTML = esc(face.kind) + " &middot; " + esc(face.auth) + " &middot; " +
+			esc(ACTS_LABEL) + " <b>" + esc(face.acts) + "</b>";
+		var state = document.getElementById("d_state");
+		state.className = "pg-pill pg-tone-" + app.state_tone;
+		state.textContent = app.state;
+		var factState = document.getElementById("d_fact_state");
+		factState.textContent = app.state;
+		factState.classList.toggle("is-good", app.state_tone === "teal");
+		document.getElementById("d_fact_used").textContent = app.used;
+		var factErrors = document.getElementById("d_fact_errors");
+		factErrors.textContent = app.errors;
+		factErrors.classList.toggle("is-bad", app.errors > 0);
+		document.getElementById("d_fact_owner").textContent = app.owner;
 		document.getElementById("d_name").value = app.name;
 		document.getElementById("d_description").value = app.description || "";
 		document.getElementById("d_key").textContent = app.key;
 		// The example carries the real key of the application being looked at,
 		// so only the secret is left to fill in. A line with two placeholders
 		// invites pasting the secret into the wrong one.
-		document.getElementById("d_curl").textContent =
+		document.getElementById("dg_curl").textContent =
 			"curl -u " + app.key + ":SECRET_KEY \"" + API_BASE + "/meta\"";
 		document.getElementById("d_hint").textContent = app.hint
 			? ("•••••••• " + app.hint)
@@ -2701,10 +2228,8 @@ echo '
 		// one, so it gets neither the rotate button nor the curl line.
 		var noSecret = !keyless && !app.has_secret;
 		document.getElementById("d_secret_block").classList.toggle("d-none", keyless || noSecret);
-		document.getElementById("d_auth_block").classList.toggle("d-none", keyless || noSecret);
 		document.getElementById("d_nosecret_block").classList.toggle("d-none", !noSecret);
-		document.getElementById("d_device_block").classList.toggle("d-none", !device);
-		document.getElementById("d_oauth_block").classList.toggle("d-none", !oauth);
+		paintGuides(app.kind, !keyless && app.has_secret);
 		document.getElementById("d_unused_note").classList.toggle("d-none", !app.unused);
 		document.getElementById("d_devices_label").classList.toggle("d-none", !keyless);
 		document.getElementById("d_hooks_label").classList.toggle("d-none", keyless);
@@ -2723,9 +2248,15 @@ echo '
 		document.getElementById("d_save").classList.toggle("d-none", locked);
 		document.getElementById("d_rotate").classList.toggle("d-none", locked);
 		document.getElementById("d_danger_zone").classList.toggle("d-none", locked);
+		document.getElementById("d_danger_label").classList.toggle("d-none", locked);
+		paintPermCount();
 		drawerElement.classList.toggle("api-locked", locked);
 		var firstTab = document.querySelector("#api_drawer .pg-seg-item[data-bs-target=\'" + (back ? "#d_hooks" : "#d_general") + "\']");
 		if (firstTab) { pgUI.tab.show(firstTab); }
+		document.getElementById("d_foot_connections").hidden = false;
+		document.getElementById("d_foot_docs").hidden = true;
+		document.getElementById("d_close").hidden = true;
+		document.getElementById("d_save").hidden = false;
 		if (back && back.form && !locked) {
 			openHookForm();
 			document.getElementById("d_hook_url").value = back.form.url || "";
@@ -2740,8 +2271,75 @@ echo '
 		document.getElementById("d_delete_ask").classList.remove("d-none");
 		document.getElementById("d_delete_confirm").classList.add("d-none");
 
+		// On a phone the drawer is a sheet from the bottom.
+		var phone = window.matchMedia("(max-width: 575.98px)").matches;
+		drawerElement.classList.toggle("drawer-end", !phone);
+		drawerElement.classList.toggle("drawer-bottom", phone);
 		pgUI.drawer.show(drawerElement);
 	}
+
+	// The Connect tab: each guide that does not suit the application is
+	// faded and says why; the first that suits it is open.
+	function paintGuides(kind, hasSecret) {
+		var list = document.getElementById("d_guides");
+		var meta = JSON.parse(list.dataset.guides);
+		var first = null;
+		list.querySelectorAll(".pg-set-fold-item").forEach(function (item) {
+			var guide = meta[item.dataset.pgFold];
+			var off = !guide ? "" : (guide.kinds.indexOf(kind) < 0 ? list.dataset.offKind : ((guide.secret && !hasSecret) ? list.dataset.offSecret : ""));
+			item.classList.toggle("api-guide-off", off !== "");
+			var line = item.querySelector("[data-guide-off]");
+			line.textContent = off;
+			line.hidden = (off === "");
+			if (!off && !first) { first = item; }
+		});
+		if (first) { window.pgSettingsFoldOpen(first); }
+	}
+
+	// The Permissions tab\'s count, beside its name and in the summary.
+	function paintPermCount() {
+		var rows = document.querySelectorAll("#d_perms .api-perm");
+		var on = 0;
+		rows.forEach(function (row) {
+			var picked = row.querySelector("input[type=radio]:checked");
+			if (picked && picked.value !== "") { on++; }
+		});
+		document.getElementById("d_perms_count").textContent = on;
+		var line = document.getElementById("d_sum_perms");
+		line.textContent = line.dataset.text.replace("{1}", on).replace("{2}", rows.length);
+	}
+
+	// Connect is read, not saved: its foot names the API document and
+	// closes; the other tabs keep Save.
+	drawerElement.addEventListener("click", function (e) {
+		var go = e.target.closest("[data-go-tab]");
+		if (go) {
+			var tab = document.querySelector("#api_drawer .pg-seg-item[data-bs-target=\'" + go.dataset.goTab + "\']");
+			if (tab) { pgUI.tab.show(tab); tab.focus(); }
+			return;
+		}
+		var item = e.target.closest("#api_drawer .pg-seg-item");
+		if (!item) { return; }
+		var connect = (item.dataset.bsTarget === "#d_connect");
+		document.getElementById("d_foot_connections").hidden = connect;
+		document.getElementById("d_foot_docs").hidden = !connect;
+		document.getElementById("d_close").hidden = !connect;
+		document.getElementById("d_save").hidden = connect || !!(current && current.locked);
+	});
+	drawerElement.addEventListener("change", function (e) {
+		if (e.target.closest("#d_perms")) { paintPermCount(); }
+	});
+
+	// A masked value (a secret, a token) shows itself while its eye is on.
+	document.addEventListener("click", function (e) {
+		var eye = e.target.closest(".api-reveal");
+		if (!eye) { return; }
+		var shown = eye.getAttribute("aria-pressed") !== "true";
+		eye.setAttribute("aria-pressed", shown ? "true" : "false");
+		document.getElementById(eye.dataset.reveal).hidden = !shown;
+		document.querySelector("[data-mask-of=\'" + eye.dataset.reveal + "\']").hidden = shown;
+		eye.querySelector("i").className = shown ? "bi bi-eye-slash" : "bi bi-eye";
+	});
 
 	pgUI.drawer.on(drawerElement, "show", function () {
 		document.body.classList.add("api-drawer-open");
@@ -2772,7 +2370,7 @@ echo '
 	document.getElementById("d_delete_ask").addEventListener("click", function () {
 		this.classList.add("d-none");
 		document.getElementById("d_delete_confirm").classList.remove("d-none");
-		document.querySelector("#d_delete_confirm .theme-danger").focus();
+		document.querySelector("#d_delete_confirm .pg-button-danger").focus();
 	});
 
 	document.getElementById("d_delete_no").addEventListener("click", function () {
@@ -3054,14 +2652,25 @@ echo '
 	var startPicked = "";
 
 	function newStep(number) {
+		var done = document.getElementById("n_step_3");
+		var rotated = (newSheet.dataset.doneRotated === "1");
 		document.getElementById("n_step_1").hidden = (number !== 1);
 		document.getElementById("n_step_2").hidden = (number !== 2);
+		if (done) { done.hidden = (number !== 3); }
+		["n_done_tile", "n_head_done", "n_done_ack_field", "n_done"].forEach(function (id) {
+			var node = document.getElementById(id);
+			if (node) { node.hidden = (number !== 3); }
+		});
+		document.getElementById("n_head_tile").hidden = (number === 3);
+		document.getElementById("n_head_main").hidden = (number === 3);
+		document.getElementById("n_steps_wrap").hidden = (number === 3) && rotated;
 		backButton.hidden = (number !== 2);
 		nextButton.hidden = (number !== 1);
 		createButton.hidden = (number !== 2);
 		document.getElementById("n_cancel").hidden = (number !== 1);
 		document.getElementById("n_hint_1").hidden = (number !== 1);
 		document.getElementById("n_hint_2").hidden = (number !== 2);
+		document.getElementById("n_x").hidden = (number === 3) && !!document.getElementById("n_done_ack");
 		document.getElementById("n_head_pick").hidden = (number !== 1);
 		document.getElementById("n_head_chosen").hidden = (number !== 2);
 		var card = (number === 2) ? pickedCard() : null;
@@ -3073,7 +2682,8 @@ echo '
 			item.classList.toggle("theme-success", step < number);
 			if (step === number) { item.setAttribute("aria-current", "step"); } else { item.removeAttribute("aria-current"); }
 		});
-		var focus = (number === 2) ? document.getElementById("n_name") : document.querySelector("#api_new input[name=\'start\']:checked");
+		var focus = (number === 3) ? document.querySelector("#n_step_3 button, #n_done")
+			: ((number === 2) ? document.getElementById("n_name") : document.querySelector("#api_new input[name=\'start\']:checked"));
 		if (focus) { focus.focus(); }
 	}
 
@@ -3125,7 +2735,33 @@ echo '
 		nextButton.click();
 	});
 
-	pgUI.drawer.on(newSheet, "show", function () { newStep(1); syncNext(); });
+	pgUI.drawer.on(newSheet, "show", function () { newStep(document.getElementById("n_step_3") ? 3 : 1); syncNext(); });
+
+	/* Step 3, on the request after Create or a new secret: the sheet opens
+	   there by itself. While a secret is shown it closes only once "I have
+	   copied the secret" is ticked; closing takes the values out of the
+	   page, so the next New Application starts at step 1. */
+	var doneAck = document.getElementById("n_done_ack");
+	var doneButton = document.getElementById("n_done");
+	if (doneAck) {
+		doneAck.addEventListener("change", function () { doneButton.disabled = !this.checked; });
+		pgUI.drawer.on(newSheet, "hide", function (e) {
+			if (document.getElementById("n_step_3") && !doneAck.checked) { e.preventDefault(); }
+		});
+	}
+	if (doneButton) {
+		doneButton.addEventListener("click", function () {
+			if (!this.disabled) { pgUI.drawer.hide(newSheet); }
+		});
+		pgUI.drawer.on(newSheet, "hidden", function () {
+			var done = document.getElementById("n_step_3");
+			if (!done) { return; }
+			done.remove();
+			var newButton = document.querySelector("[data-bs-target=\"#api_new\"]");
+			if (newButton) { newButton.focus(); }
+		});
+		window.addEventListener("load", function () { pgUI.drawer.show(newSheet); });
+	}
 
 	// Back from the Events tab\'s form or a sample: the drawer opens there again.
 	if (HOOKS_BACK && APPS[HOOKS_BACK.app_id]) {
@@ -3169,42 +2805,6 @@ echo '
 		} else {
 			fallback();
 		}
-	});
-
-	// The one-time sheet closes only once the operator says they have the secret.
-	// The team devices sheet has no secret and so no acknowledgement to wait for.
-	var ack = document.getElementById("nc_ack");
-	var closeButton = document.getElementById("nc_close");
-	if (closeButton) {
-		if (ack) {
-			ack.addEventListener("change", function () { closeButton.classList.toggle("disabled", !this.checked); });
-		}
-		closeButton.addEventListener("click", function () {
-			if (this.classList.contains("disabled")) { return; }
-			inerted.forEach(function (node) { node.inert = false; });
-			document.getElementById("api_secret_sheet").remove();
-			var newButton = document.querySelector("[data-bs-target=\"#api_new\"]");
-			if (newButton) { newButton.focus(); }
-		});
-	}
-
-	// The sheet is a dialog shown open over a fixed, dimmed layer. Once the
-	// page is parsed, everything beside the sheet is made inert, so Tab
-	// stays inside it until Close, and the sheet takes focus.
-	var inerted = [];
-	document.addEventListener("DOMContentLoaded", function () {
-		var sheet = document.getElementById("api_secret_sheet");
-		if (!sheet) { return; }
-		for (var level = sheet; level.parentNode && level !== document.body; level = level.parentNode) {
-			Array.prototype.forEach.call(level.parentNode.children, function (node) {
-				if ((node !== level) && !node.inert && (node.tagName !== "SCRIPT")) {
-					node.inert = true;
-					inerted.push(node);
-				}
-			});
-		}
-		var first = sheet.querySelector("button:not(.disabled), input, a[href]");
-		if (first) { first.focus(); }
 	});
 
 })();
