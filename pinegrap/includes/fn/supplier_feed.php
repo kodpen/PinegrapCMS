@@ -1026,11 +1026,29 @@ function pg_supplier_feed_lower($text)
  */
 function pg_supplier_feed_price($buy, $rule, $rate, $home_decimals = 2, $feed_decimals = 2)
 {
+    $parts = pg_supplier_feed_price_parts($buy, $rule, $rate, $home_decimals, $feed_decimals);
+
+    return $parts['price'];
+}
+
+/**
+ * pg_supplier_feed_price() with whether the floor lifted the price: the
+ * rounded price was under buy price plus the minimum margin.
+ *
+ * @param int   $buy
+ * @param array $rule
+ * @param float $rate
+ * @param int   $home_decimals
+ * @param int   $feed_decimals
+ * @return array 'price' (minor units of the home currency), 'floor' (bool)
+ */
+function pg_supplier_feed_price_parts($buy, $rule, $rate, $home_decimals = 2, $feed_decimals = 2)
+{
     $buy = (int) $buy;
     $rate = (float) $rate;
 
     if (($buy <= 0) || ($rate <= 0)) {
-        return 0;
+        return array('price' => 0, 'floor' => false);
     }
 
     $margin = isset($rule['margin']) ? (float) $rule['margin'] : 0.0;
@@ -1043,12 +1061,30 @@ function pg_supplier_feed_price($buy, $rule, $rate, $home_decimals = 2, $feed_de
     $floor = ($floor_margin > 0) ? (int) round($buy * (1 + $floor_margin / 100) * $scale) : 0;
 
     $price = pg_supplier_feed_round_price($price, $rounding, (int) $home_decimals, false);
+    $lifted = ($price < $floor);
 
-    if ($price < $floor) {
+    if ($lifted) {
         $price = pg_supplier_feed_round_price($floor, $rounding, (int) $home_decimals, true);
     }
 
-    return max(0, $price);
+    return array('price' => max(0, $price), 'floor' => $lifted);
+}
+
+/**
+ * Whether a buy price is held for a person's yes: under half or over ten
+ * times the last one.
+ *
+ * @param int      $last the item's last buy price, 0 for none
+ * @param int|null $buy
+ * @return bool
+ */
+function pg_supplier_feed_price_held($last, $buy)
+{
+    if (($buy === null) || ((int) $last <= 0)) {
+        return false;
+    }
+
+    return ((int) $buy * 2 < (int) $last) || ((int) $buy > (int) $last * 10);
 }
 
 /**
