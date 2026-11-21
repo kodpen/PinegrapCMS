@@ -279,6 +279,7 @@ description: Generated from the module field of the memory files: each includes/
 - `privacy_export`: [[personal-data-export]]
 - `privacy_inventory`: [[privacy-inventory]]
 - `privacy_request_form`: [[privacy-request-form]]
+- `privacy_request_link`: [[privacy-request-export-link]]
 - `privacy_requests`: [[privacy-request-answer]], [[privacy-requests]]
 - `privacy_retention`: [[privacy-log-retention]], [[privacy-retention-rules]]
 - `product_customs`: [[carrier-label-customs]], [[product-customs-fields]]
