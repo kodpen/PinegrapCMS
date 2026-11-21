@@ -1,6 +1,7 @@
 {
     "KVKK Notice Page": "KVKK Aydınlatma Metni Sayfası",
     "KVKK consent": "KVKK onayı",
+    "KVKK notice": "KVKK aydınlatma metni",
     "Kai Moreno": "Kai Moreno",
     "Kalecik Karası": "Kalecik Karası",
     "Kargonomi could not make the carrier's order for this shipment.": "Kargonomi bu gönderi için kargo firmasının siparişini oluşturamadı.",
@@ -339,5 +340,6 @@
     "kitchen, cook, baker, bakery, chef, job": "mutfak, aşçı, fırıncı, fırın, şef, iş",
     "kitchen, cooking, tableware, food gifts": "mutfak, yemek, sofra, yiyecek hediyeleri",
     "kitchen-journal": "mutfak-gunlugu",
-    "km": "km"
+    "km": "km",
+    "kvkk, kvkk notice, personal data, explicit consent, consent sentence, privacy notice, gdpr": "kvkk, kvkk notice, personal data, explicit consent, consent sentence, privacy notice, gdpr, aydınlatma metni, kişisel veri, açık rıza, rıza metni"
 }
