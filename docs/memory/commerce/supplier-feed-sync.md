@@ -11,7 +11,7 @@ module: supplier_feed_sync
 
 ## What are the phases?
 - Scan: every record read once, nothing written to products; items seen get `seen_at` = the run's start.
-- Apply: the records again. Unknown keys get an item row (product 0 while unmatched). Matched by the code to `products.name`, else `product_barcodes.barcode`. A product no other feed follows makes the item `active`; only an active item writes. Bundles and binned products are skipped.
+- Apply: the records again. Unknown keys get an item row (product 0 while unmatched). Matched by the code to `products.name`, else `product_barcodes.barcode`. Only the `active` item writes; with several feeds: `supplier-feed-several.md`. Bundles and binned products skipped.
 - Close: active matched items not seen in the pull are closed as if their stock were 0.
 - Drafts: the records no product matched become products switched off (`supplier-feed-drafts.md`).
 
@@ -35,4 +35,4 @@ module: supplier_feed_sync
 ## Why does api_inventory_apply() run outside the API?
 - Its queries go through `pg_catalog_query()`: API helpers in a request, `db()` in the job; `$reason`, `$ref` name the stock move's source. `pg_supplier_feed_writers()` loads them with `PG_API_PANEL`.
 
-Related: `commerce/supplier-feed-screen.md`, `commerce/supplier-feed-price-card.md`.
+Related: `supplier-feed-screen.md`, `supplier-feed-price-card.md`, `supplier-feed-several.md`.

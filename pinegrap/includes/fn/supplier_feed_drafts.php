@@ -521,6 +521,9 @@ function pg_supplier_feed_draft_set($feed, $mapping, $model, $drafts, $user_id)
 
 /**
  * The item of a made draft points at it and follows it: buy price, stock.
+ * The draft is a new product, so no other feed's item can be followed yet;
+ * from the next pull of any feed carrying it the choice is made as for any
+ * product (supplier_feed_choice.php).
  *
  * @param array $feed
  * @param array $state
@@ -533,7 +536,7 @@ function pg_supplier_feed_draft_item($feed, &$state, $draft, $product_id)
     $value = $draft['value'];
     $buy = ($draft['buy'] !== null) ? ", buy_price = '" . (int) $draft['buy'] . "'" : '';
 
-    db("UPDATE supplier_feed_items SET product_id = '" . (int) $product_id . "', active = '" . pg_supplier_feed_may_follow($feed['id'], $product_id) . "',
+    db("UPDATE supplier_feed_items SET product_id = '" . (int) $product_id . "', active = 1,
         stock = '" . max(0, (int) $value['stock']) . "', closed_by_feed = 0, changed_at = '" . time() . "'" . $buy . "
         WHERE feed_id = '" . (int) $feed['id'] . "' AND supplier_key = '" . escape($value['key']) . "'");
 

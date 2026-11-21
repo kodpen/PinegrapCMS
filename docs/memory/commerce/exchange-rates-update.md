@@ -7,6 +7,7 @@ module: currency_rates
 ## What does a run write?
 
 - `update_exchange_rates.php` fetches every store currency plus `ERP_FX_CURRENCIES` (`pg_currency_rates_fetch()`), overwrites `currencies.exchange_rate` and stores today's `currency_rates` row per fetched code (`erp/erp-money-and-currency.md`).
+- A changed store rate notes the supplier feeds priced in that currency for a reprice by the job (`pg_supplier_feed_rates_note()`, `supplier-feed-several.md`).
 - Callers: the Update Exchange Rates button on the Currencies screen (signed-in, token-checked) and the `update_exchange_rates` scheduled job (`pg_cron_is_background_run()`, user id 0).
 
 ## Which feed addresses are called?

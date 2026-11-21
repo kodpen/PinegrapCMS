@@ -37,6 +37,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_drafts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_choice.php');
 
 // Records read and written in one step of a pull.
 define('PG_SUPPLIER_FEED_CHUNK', 200);
@@ -279,6 +280,9 @@ function pg_supplier_feed_job_tick($budget)
         pg_supplier_feed_pull((int) $feed['id'], $deadline);
         $answer['pulled']++;
     }
+
+    // Prices after Update Exchange Rates wrote a rate (F10).
+    pg_supplier_feed_reprice_tick($deadline);
 
     if (db("DELETE FROM supplier_feed_runs WHERE started_at < '" . ($now - PG_SUPPLIER_FEED_RUN_DAYS * 86400) . "' LIMIT 1000") !== false) {
         $answer['swept'] = (int) mysqli_affected_rows(db::$con);
@@ -699,19 +703,6 @@ function pg_supplier_feed_match($values)
 }
 
 /**
- * Whether no other feed's item is followed by this product, so this one may be.
- *
- * @param int $feed_id
- * @param int $product_id
- * @return int 1 or 0
- */
-function pg_supplier_feed_may_follow($feed_id, $product_id)
-{
-    return ((int) db_value("SELECT COUNT(*) FROM supplier_feed_items
-        WHERE product_id = '" . (int) $product_id . "' AND active = 1 AND feed_id <> '" . (int) $feed_id . "'") === 0) ? 1 : 0;
-}
-
-/**
  * The apply of one step's records: items made or matched, then each
  * followed product written as pg_supplier_feed_plan_item() says.
  *
@@ -771,7 +762,7 @@ function pg_supplier_feed_apply_chunk($feed, $mapping, &$state, &$context, $reco
 
         if (isset($found[$lower]) && ((int) $items[$lower]['product_id'] === 0)) {
             $items[$lower]['product_id'] = $found[$lower];
-            $items[$lower]['active'] = pg_supplier_feed_may_follow($feed['id'], $found[$lower]);
+            $items[$lower]['active'] = 0;
             $items[$lower]['matched'] = 1;
         }
     }
@@ -785,6 +776,7 @@ function pg_supplier_feed_apply_chunk($feed, $mapping, &$state, &$context, $reco
     $products = pg_supplier_feed_products_of($product_ids);
     $context['rule'] = null;
     $spool = array();
+    pg_supplier_feed_choose($feed, $state, $context, $items, $values, $products);
 
     foreach ($values as $lower => $value) {
         if ($context['rules'] !== null) {
@@ -835,10 +827,17 @@ function pg_supplier_feed_close_chunk($feed, &$state, $context, &$lines)
     }
 
     $products = pg_supplier_feed_products_of($ids);
+    $values = array();
 
-    foreach ($items as $item) {
+    foreach ($items as $key => $item) {
+        $values[$key] = array('key' => $item['supplier_key'], 'buy' => null, 'stock' => 0, 'vat' => null, 'barcode' => '');
+    }
+
+    pg_supplier_feed_choose($feed, $state, $context, $items, $values, $products);
+
+    foreach ($items as $key => $item) {
         $state['after'] = (int) $item['id'];
-        pg_supplier_feed_item_write($feed, $state, $context, $item, $products, array('key' => $item['supplier_key'], 'buy' => null, 'stock' => 0, 'vat' => null, 'barcode' => ''), $lines, false);
+        pg_supplier_feed_item_write($feed, $state, $context, $item, $products, $values[$key], $lines, false);
     }
 
     return true;
