@@ -21,6 +21,7 @@
     "SEO scores were updated for {var:1} page{suffix:1}. {var:2} page{suffix:2} still need to be calculated - click the button again to continue.": "{var:1} sayfanın SEO skoru güncellendi. {var:2} sayfanın hesaplanması gerekiyor - devam etmek için düğmeye tekrar tıklayın.",
     "SEO scoring is not available on this installation.": "Bu kurulumda SEO puanlama kullanılamıyor.",
     "SEO scrapers and AI training crawlers (AhrefsBot, SemrushBot, GPTBot, ClaudeBot, Bytespider and similar) are already on the built-in reject list.": "SEO kazıyıcıları ve yapay zekâ eğitim botları (AhrefsBot, SemrushBot, GPTBot, ClaudeBot, Bytespider ve benzerleri) zaten yerleşik ret listesinde.",
+    "SEO scrapers and other heavy crawlers (AhrefsBot, SemrushBot, PerplexityBot and similar) are already on the built-in reject list.": "SEO kazıyıcıları ve diğer yoğun tarayıcılar (AhrefsBot, SemrushBot, PerplexityBot ve benzerleri) zaten yerleşik ret listesinde.",
     "SEO structure": "SEO yapı incelemesi",
     "SEO structure analysis could not render page {var:1}: {var:2}": "SEO yapı incelemesi {var:1} sayfasını oluşturamadı: {var:2}",
     "SEO structure analysis was skipped because the PHP DOM extension is not available": "PHP DOM eklentisi bulunmadığı için SEO yapı incelemesi atlandı",
