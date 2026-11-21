@@ -35,7 +35,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $tracking_code_duration_input = pg_whole_number_in_range(post_value('tracking_code_duration'), 1, 365);
 
     if ($tracking_code_duration_input === null) {
-        $liveform->mark_error('tracking_code_duration', lang('Tracking Code Duration must be 1 to 365 days.'));
+        $liveform->mark_error('tracking_code_duration', lang('Remember a tracking code for 1 to 365 days.'));
     }
 
     if ($liveform->check_form_errors()) {

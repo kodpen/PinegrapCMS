@@ -107,8 +107,8 @@ function test_settings_card_required_markers_are_not_read()
 	pg_assert_false(strpos($prep, "\$erp_edoc_required ? ' required") !== false, 'the e-document fields carry no required attribute that would refuse the whole save');
 
 	$privacy = settings_card_names_source('privacy.php');
-	pg_assert_false(strpos($privacy, '>*\' . lang(\'Tracking Code Duration\')') !== false, 'Tracking Code Duration has no leading star');
-	pg_assert_contains('lang(\'Tracking Code Duration\') . \'<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>', $privacy, 'Tracking Code Duration has the hidden trailing marker');
+	pg_assert_false(strpos($privacy, '>*\' . lang(\'Remember a tracking code for\')') !== false, 'Remember a tracking code for has no leading star');
+	pg_assert_contains('lang(\'Remember a tracking code for\') . \'<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>', $privacy, 'Remember a tracking code for has the hidden trailing marker');
 }
 
 function test_settings_card_tsa_placeholder_is_neutral()
