@@ -5999,6 +5999,7 @@
     "The period for keeping visitor records arrives with the upgrade steps of this version. Run them again to see the cleanup here.": "Ziyaretçi kayıtlarının saklama süresi bu sürümün yükseltme adımlarıyla gelir. Temizliği burada görmek için adımları yeniden çalıştırın.",
     "The period lock comes with the software update; run the update to use it.": "Dönem kilidi yazılım güncellemesiyle gelir; kullanmak için güncellemeyi çalıştırın.",
     "The period lock was lifted.": "Dönem kilidi kaldırıldı.",
+    "The permission picker opens here, as Application Access draws it.": "İzin seçici burada, Uygulama Erişimi'nin çizdiği gibi açılır.",
     "The permission was not given, so nothing was connected.": "İzin verilmedi, bu yüzden hiçbir şey bağlanmadı.",
     "The permissions could not be changed.": "İzinler değiştirilemedi.",
     "The permissions could not be changed. The server may not allow it.": "İzinler değiştirilemedi. Sunucu buna izin vermiyor olabilir.",

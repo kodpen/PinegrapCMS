@@ -5041,6 +5041,7 @@
     "Starting prices for cleaning, plumbing, electrical work and repairs, and how the final price is agreed.": "Temizlik, tesisat, elektrik ve onarım için başlangıç fiyatları ve son fiyatın nasıl belirlendiği.",
     "Starting soon: {var:1}": "Birazdan başlıyor: {var:1}",
     "Starting stock for every variant; each row can differ.": "Her varyantın başlangıç stoğu; her satır farklı olabilir.",
+    "Starting-point sheet": "Başlangıç noktası paneli",
     "Starts": "Başlangıç",
     "Starts a flow of this channel, as Start a flow does: pick it from the list. Without a flow the list of the channel's flows opens.": "Bu kanalın bir akışını Bir akış başlat gibi başlatır: listeden seçin. Akış verilmezse kanalın akışlarının listesi açılır.",
     "Starts after (days)": "Başlangıç (gün sonra)",
