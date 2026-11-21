@@ -9008,7 +9008,7 @@ function upgrade_2026_11_0_event_ticket_checkins() {
 
 }
 
-// 11.0.269 - What a sale really took from the stock (owner, poll 171):
+// 11.0.268 - What a sale really took from the stock (owner, poll 171):
 // order_items.stock_taken and order_item_components.stock_taken, the units
 // the line (or the bundle line's component) took when it was sold. A sale
 // made with no stock or too little (a back order, a marketplace selling more

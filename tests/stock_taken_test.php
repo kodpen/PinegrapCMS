@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for what a sale took from the stock (order_items.stock_taken and
- * order_item_components.stock_taken, step 11.0.269): how much a cancel puts
+ * order_item_components.stock_taken, step 11.0.268): how much a cancel puts
  * back, the migration step's shape, and that every taker records what it
  * took and every marketplace cancel reads it.
  *
@@ -55,7 +55,7 @@ function test_stock_taken_migration_step()
 	$migration = stock_taken_test_source('includes/migrations/2026.11.0.php');
 	$step = stock_taken_test_function('includes/migrations/2026.11.0.php', 'upgrade_2026_11_0_stock_taken');
 
-	pg_assert_contains("upgrade_2026_11_0_stock_taken();             // 11.0.269", $migration, 'called from the open version with its label');
+	pg_assert_contains("upgrade_2026_11_0_stock_taken();             // 11.0.268", $migration, 'called from the open version with its label');
 	pg_assert_contains("install_add_column('order_items', 'stock_taken', \"INT UNSIGNED NULL DEFAULT NULL\");", $step, 'the order line\'s column');
 	pg_assert_contains("install_add_column('order_item_components', 'stock_taken', \"INT UNSIGNED NULL DEFAULT NULL\");", $step, 'the component line\'s column');
 	pg_assert_contains('install_note(', $step, 'a note for the operator');

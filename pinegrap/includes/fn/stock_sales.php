@@ -103,7 +103,7 @@ function pg_stock_sale_amount($quantity, $at_location)
 
 /**
  * Whether a table records the units a sale took (stock_taken, step
- * 11.0.269): order_items or order_item_components. Before the step the
+ * 11.0.268): order_items or order_item_components. Before the step the
  * takers write nothing and a cancel puts back the whole quantity.
  *
  * @param string $table

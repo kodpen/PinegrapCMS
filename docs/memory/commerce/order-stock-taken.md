@@ -1,6 +1,6 @@
 ---
 name: order-stock-taken
-description: order_items.stock_taken and order_item_components.stock_taken (step 11.0.269, #10684): what a sale took from the stock, who writes it, how a marketplace cancel puts back only that
+description: order_items.stock_taken and order_item_components.stock_taken (step 11.0.268, #10684): what a sale took from the stock, who writes it, how a marketplace cancel puts back only that
 module: stock_sales
 ---
 
@@ -8,7 +8,7 @@ module: stock_sales
 - A marketplace cancel put back a line's whole quantity, and a bundle line's whole quantity of every component. A sale made with no stock or too little (back orders, a marketplace selling more than the shop holds) took less, so the cancel left stock the shop never had and pushed it to every marketplace. Example: C stock 0, bundle = 2 × C, one bundle sold and cancelled → C stock 2.
 
 ## What is stored? (owner, poll 171; `workflow/decisions-made-schema-33.md`)
-- `order_items.stock_taken`, `order_item_components.stock_taken`: INT UNSIGNED NULL, step `upgrade_2026_11_0_stock_taken()`, label 11.0.269. NULL = not recorded (a line from before the step, an untracked product).
+- `order_items.stock_taken`, `order_item_components.stock_taken`: INT UNSIGNED NULL, step `upgrade_2026_11_0_stock_taken()`, label 11.0.268. NULL = not recorded (a line from before the step, an untracked product).
 
 ## Who writes it?
 - `pg_stock_taken_record()` (`includes/fn/stock_sales.php`), each taker with what it took:
