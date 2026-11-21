@@ -68,6 +68,7 @@ $presenters = array(
 	'api_user_two_step_schema' => 'api_user_two_step_present',
 	'api_price_history_entry_schema' => 'api_price_history_entry_present',
 	'api_product_marketplace_schema' => 'api_product_marketplace_present',
+	'api_marketplace_repricing_schema' => 'api_marketplace_repricing_present',
 	'api_product_group_schema' => 'api_product_group_present',
 	'api_order_schema'         => 'api_order_present',
 	'api_order_document_schema' => 'api_order_document_present',

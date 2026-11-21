@@ -1139,6 +1139,31 @@ function pg_ad_conversion_visitor_ids(array $ids, $email)
 }
 
 /**
+ * The condition that finds a person's Lead and sign-up rows for the privacy
+ * erase: they have no order (order_id 0), so they are matched on the e-mail
+ * hash pg_ad_conversion_visitor_ids() writes into ids, as json_encode()
+ * writes it. A row sent or given up has ids NULL and is not matched. Pure.
+ *
+ * @param string[] $emails the person's addresses
+ * @return string '' when no address can be hashed
+ */
+function pg_ad_conversion_person_where(array $emails)
+{
+    $likes = array();
+
+    foreach ($emails as $email) {
+        $hash = pg_ad_conversion_hash_email((string) $email);
+
+        if ($hash !== '') {
+            // The hash is 64 hex digits: nothing in it to escape for SQL or LIKE.
+            $likes[] = "`ids` LIKE '%\"email_sha256\":\"" . $hash . "\"%'";
+        }
+    }
+
+    return $likes ? '((`order_id` = 0) AND (' . implode(' OR ', array_unique($likes)) . '))' : '';
+}
+
+/**
  * The receipt's mark for a browser pixel pasted on the site: the purchase's
  * event id in data-pg-event-id, so the pixel sends the id the server sends
  * and the service counts the purchase once. Pure.

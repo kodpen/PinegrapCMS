@@ -104,11 +104,13 @@ function ws_assistants_guide_steps($key)
                 ),
                 array(
                     'title' => lang('Switch it on'),
-                    'text'  => lang('What is written in a channel where Pinegrap AI is asked is sent to the model at ai.pinegrap.com. Public channels are open to it, private ones only when their manager allows it.'),
+                    'text'  => lang('What is written in a channel where Pinegrap AI is asked is sent to the model at ai.pinegrap.com. Public channels are open to it, private ones only when their manager allows it.')
+                        . ' ' . lang('It reads with the rights of the person who asked, never more.'),
                 ),
                 array(
                     'title' => lang('Try it'),
-                    'text'  => lang('Try the connection here, then write @ai in a channel. The eye on the request means Pinegrap AI has taken it; the answer comes under the request, usually within a minute.'),
+                    'text'  => lang('Try the connection here, then write @ai in a channel. The eye on the request means Pinegrap AI has taken it; the answer comes under the request, usually within a minute.')
+                        . ' ' . lang('Checks the licence and asks the model for a one-word answer; it may take up to a minute.'),
                 ),
             );
 
@@ -160,13 +162,21 @@ function ws_assistants_guide_steps($key)
             return array(
                 array(
                     'title' => lang('Choose the service'),
-                    'text'  => lang('Choose OpenAI, or the address of any service that answers like OpenAI\'s /audio/transcriptions, and give its key.'),
+                    'text'  => lang('Choose OpenAI, or the address of any service that answers like OpenAI\'s /audio/transcriptions, and give its key.')
+                        . ' ' . lang('The site\'s own account at the service pays for the transcripts.'),
                 ),
                 array(
                     'title' => lang('Switch it on'),
                     'text'  => lang(array(
                         'string' => 'The sound of a voice message is sent to the chosen service and its text is kept beside the message. Public channels are written out, private ones only when their manager allows it. Recordings longer than {var:1} minutes are not sent.',
                         'vars'   => (int) ((defined('WS_VOICE_MAX_SECONDS') ? WS_VOICE_MAX_SECONDS : 300) / 60),
+                    )),
+                ),
+                array(
+                    'title' => lang('Spoken answers'),
+                    'text'  => lang(array(
+                        'string' => 'The text of an assistant\'s answer to a voice message is sent to the speech service, and the sound made from it is kept beside the answer as a voice message. Answers longer than {var:1} characters are spoken up to the sentence that fits.',
+                        'vars'   => defined('WS_VOICE_SPEECH_MAX_CHARS') ? WS_VOICE_SPEECH_MAX_CHARS : 1500,
                     )),
                 ),
             );
@@ -205,21 +215,36 @@ function ws_assistants_help_html($key)
         return '';
     }
 
-    $id = 'pgset-' . $key . '-guide';
-
     return '<p class="pg-text-2 fg-secondary d-flex flex-wrap align-items-center gap-2">' . h($line)
-        . ' <button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . h($id) . '" aria-controls="' . h($id) . '">' . h(lang('How does this work?')) . '</button></p>';
+        . ' ' . ws_assistants_help_button($key) . '</p>';
 }
 
 /**
- * A part's guide drawer: its steps numbered, each with its link, in the
- * same stepper as Claude's set-up drawer (ws_claude_setup_drawer_html()).
+ * The button "How does this work?" that opens a part's guide drawer, for a
+ * row that puts its line of help under a field (Pinegrap AI, Voice).
  *
- * @param string $key       one of ws_assistants_help_keys()
- * @param bool   $in_dialog drawn in the settings dialog
+ * @param string $key one of ws_assistants_help_keys()
+ * @return string HTML
+ */
+function ws_assistants_help_button($key)
+{
+    $id = 'pgset-' . $key . '-guide';
+
+    return '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . h($id) . '" aria-controls="' . h($id) . '">' . h(lang('How does this work?')) . '</button>';
+}
+
+/**
+ * A part's guide drawer: what is still missing at its top, then its steps
+ * numbered, each with its link, in the same stepper as Claude's set-up
+ * drawer (ws_claude_setup_drawer_html()).
+ *
+ * @param string   $key       one of ws_assistants_help_keys()
+ * @param bool     $in_dialog drawn in the settings dialog
+ * @param string[] $missing   what is still missing, as sentences (the row's
+ *                            head names the first)
  * @return string HTML; '' for a part without a guide
  */
-function ws_settings_assistants_guide_drawer($key, $in_dialog)
+function ws_settings_assistants_guide_drawer($key, $in_dialog, $missing = array())
 {
     $steps = ws_assistants_guide_steps($key);
 
@@ -248,5 +273,13 @@ function ws_settings_assistants_guide_drawer($key, $in_dialog)
 
     $close = '<button type="button" class="pg-button pg-button-quiet pg-button-sm ms-auto" ' . ($in_dialog ? 'data-pgdrawer-close' : 'data-bs-dismiss="drawer"') . '>' . h(lang('Close')) . '</button>';
 
-    return pg_settings_drawer('pgset-' . $key . '-guide', h(ws_assistants_guide_title($key)), '<ol class="stepper pg-stepper-cards ws-claude-setup-steps mb-0">' . $items . '</ol>', $in_dialog, $close);
+    $list = '';
+
+    foreach ((array) $missing as $sentence) {
+        $list .= '<li>' . h($sentence) . '</li>';
+    }
+
+    $top = ($list !== '') ? '<h4 class="pg-group-label">' . h(lang('Still missing')) . '</h4><ul class="pg-text-2 mb-5 ws-claude-missing">' . $list . '</ul>' : '';
+
+    return pg_settings_drawer('pgset-' . $key . '-guide', h(ws_assistants_guide_title($key)), $top . '<ol class="stepper pg-stepper-cards ws-claude-setup-steps mb-0">' . $items . '</ol>', $in_dialog, $close);
 }

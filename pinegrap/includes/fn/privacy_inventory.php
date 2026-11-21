@@ -95,6 +95,7 @@ function pg_privacy_inventory_retentions()
         'incomplete_carts' => 'Rule: incomplete carts',
         'orders'           => 'Rule: orders',
         'closed_requests'  => 'Rule: closed requests',
+        'lead_journey'     => 'The journey\'s keep period (13 months)',
     );
 }
 
@@ -177,6 +178,16 @@ function pg_privacy_inventory()
             'purpose' => 'Satisfaction survey answers', 'ground' => 'legitimate_interest', 'retention' => 'until_erased', 'person' => $contact),
         'course_progress' => array('categories' => array('identity'), 'subjects' => array('customer'),
             'purpose' => 'Members\' course progress', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => $user),
+        // The visitor journey (lead_journey_store.php), only with the cookie
+        // notice's marketing yes; trimmed after the keep period.
+        'lead_visits' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor', 'customer'),
+            'purpose' => 'Visits of a browser that allowed marketing cookies, tied to its contact', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
+        'contact_journey' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor', 'customer'),
+            'purpose' => 'A contact\'s journey: newsletter, campaign e-mails, downloads', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
+        'contact_scores' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor', 'customer'),
+            'purpose' => 'A contact\'s interest score from their visits', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
+        'lead_browsers' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor', 'customer'),
+            'purpose' => 'Browsers that allowed marketing cookies and the contact each is tied to', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
 
         // Accounting.
         'erp_accounts' => array('categories' => array('identity', 'contact', 'address'), 'subjects' => array('customer'),

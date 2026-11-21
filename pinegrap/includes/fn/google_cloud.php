@@ -4,7 +4,7 @@
  *
  * What setting up the site's Google application in Google Cloud needs,
  * shared by Google's page on Connections (connections.php?service=google)
- * and a Gmail mailbox's form (ws_mail_google_steps()): the redirect
+ * and the mailboxes' set-up drawers (ws_mail_setup_steps()): the redirect
  * addresses the OAuth client must list, the APIs each Google feature calls
  * (read from the registry's 'apis'), Google's "API has not been used in
  * project ... or it is disabled" answer read as a plain sentence, and the

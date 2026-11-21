@@ -46,7 +46,7 @@ function test_settings_workspace_assistant_cards_look_state_pill()
 	pg_assert_same('<span class="pg-pill pg-tone-amber">' . h(lang('Not ready')) . '</span>', ws_assistant_state_pill(array('x'), true));
 	pg_assert_same('<span class="pg-pill pg-tone-gray">' . h(lang('Off')) . '</span>', ws_assistant_state_pill(array('x'), false));
 
-	foreach (array('includes/workspace/claude.php' => 'ws_claude_row_html', 'includes/workspace/ai.php' => 'ws_ai_settings_card') as $file => $card) {
+	foreach (array('includes/workspace/claude.php' => 'ws_claude_row_html', 'includes/workspace/ai.php' => 'ws_ai_row_html') as $file => $card) {
 		pg_assert_contains('ws_assistant_state_pill($missing, $config[\'enabled\'])', settings_workspace_assistant_cards_look_test_function($file, $card), $card . ' draws the pill');
 	}
 }

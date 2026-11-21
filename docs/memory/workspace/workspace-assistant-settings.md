@@ -9,7 +9,7 @@ description: Claude, Pinegrap AI and Bulk changes in Site Settings (Assistants a
 
 ## How are the cards drawn?
 - Each card sits in its folded row (#10807, `ui/settings-fold-rows.md`), whose head carries name, state line and pill (`ws_assistant_state_pill()`: Ready teal, Not ready amber, Off gray); the card has no frame or heading there.
-- Claude's opened row is one column with the fold "Application and key" and two drawers (#10898, `ui/settings-claude-row.md`). Pinegrap AI: one help line (`ui/settings-assistants-help-lines.md`), the licence a pill (`ws_ai_license_tone()`). Names and saves unchanged.
+- Claude's opened row is one column with the fold "Application and key" and two drawers (#10898, `ui/settings-claude-row.md`). Pinegrap AI's and Voice's: `ui/settings-ai-voice-rows.md` (AT5). Names and saves unchanged.
 
 ## How do the two screens share one card and one save?
 - `ws_claude_settings_card($self_url, $viewer, $credentials, $form)` and `ws_bulk_settings_card($self_url, $viewer, $form)` draw both: with `$form` (the settings form's id) no `<form>`, fields named `ws_*`, buttons named submit buttons of the settings form.
@@ -21,7 +21,7 @@ description: Claude, Pinegrap AI and Bulk changes in Site Settings (Assistants a
 - Both cards are role 0's: for others the fields are disabled (not posted) and the save module leaves them alone.
 
 ## How does Pinegrap AI's card save?
-- `ws_ai_settings_card($self_url, $viewer, $form)`; fields `ws_ai_enabled`, `ws_ai_app_id` (old `ai_*`), read by `ws_ai_settings_input()`. `ws_ai_settings_check()` refuses a missing application or Claude's (as stored, or as posted for Claude in the same save); `ws_ai_settings_write()` stores, logs and asks the licence again. Skipped when `ws_ai_settings_changed()` is false.
+- `ws_ai_settings_card($self_url, $viewer, $form)` reads, `ws_ai_row_html($v)` draws; fields `ws_ai_enabled`, `ws_ai_app_id` (old `ai_*`), read by `ws_ai_settings_input()`. `ws_ai_settings_check()` refuses a missing application or Claude's (as stored, or as posted for Claude in the same save); `ws_ai_settings_write()` stores, logs and asks the licence again. Skipped when `ws_ai_settings_changed()` is false.
 - Buttons `ws_ai_test`, `ws_ai_key_create` run after the save (`ws_ai_settings_post(..., true)`). The key has no secret, so no drawer.
 
 ## Which buttons run after the save?

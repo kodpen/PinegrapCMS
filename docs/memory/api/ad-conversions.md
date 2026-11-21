@@ -7,7 +7,7 @@ description: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: t
 - Owner (2026-11-20, poll 166): purchases and other events go from the server to Meta's Conversions API, the GA4 Measurement Protocol and TikTok's Events API; the shop pastes its own keys, with no app review and no middle server (`workflow/decisions-made-product-87.md`). One table, `ad_conversion_events` (`workflow/decisions-made-schema-35.md`).
 
 ## Which file holds which part?
-- Table, consent reader, payment step, completion, the job's pass, sweep, privacy: `ad-conversions-queue.md` (#10732). Click ids: `ad-conversions-click-ids.md` (#10781).
+- Table, consent reader, payment step, completion, the job's pass, sweep: `ad-conversions-queue.md` (#10732). Erase and export: `ad-conversions-privacy.md`. Click ids: `ad-conversions-click-ids.md` (#10781).
 - Meta: `ad-conversions-meta.md`, `meta-capi-facts.md` (#10812). GA4 and refunds: `ad-conversions-ga4.md`, `ga4-mp-facts.md` (#10866). TikTok: `ad-conversions-tiktok.md`, `tiktok-events-facts.md` (#10862).
 - Lead, registration, add to cart, begin checkout, the receipt's `data-pg-event-id`: `ad-conversions-visitor-events.md` (#10868). Events card, alert, `GET /reports/ad-conversions`: `ad-conversions-log.md` (#10907).
 
@@ -27,7 +27,7 @@ description: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: t
 - C8 the three pages and the notice-off box: #10812, #10866, #10862. C9 without the person: same PRs. C10, C10b the table and queue: #10732. C11 log and alert, C12 the report: #10907.
 
 ## What is not built?
-- A Lead or registration row has `order_id` 0, so the privacy erase (by order id) does not find it; its `ids` hold the hashed e-mail until sent or given up, and the row is swept at 30 days.
+- Nothing of C1 to C12 is left open.
 
 ## What was left out?
 - Google Ads' own conversion upload, Pinterest, Snapchat, a browser pixel field, the Meta catalogue (`plans/reverse-oauth-leftovers.md`): each a later yes of the owner.

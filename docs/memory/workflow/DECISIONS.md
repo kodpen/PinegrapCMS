@@ -679,6 +679,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-46.md: What does the set-up journey get? (architect, 2026-11-21)
 - decisions-made-schema-46.md: What does prototype approval get? (architect, 2026-11-21)
 - decisions-made-schema-46.md: Who sets the columns?
+- decisions-made-schema-47.md: Where are the rules and the earlier parts?
+- decisions-made-schema-47.md: Which columns do the walk-in queue's tables have? (architect, 2026-11-21, #10956)
+- decisions-made-schema-47.md: What does the walk-in queue do with personal data? (architect, 2026-11-21)
+- decisions-made-schema-47.md: Which columns do the volunteer tables have? (architect, 2026-11-21, #10949)
+- decisions-made-schema-47.md: How are a volunteer's document file and erasure handled? (architect, 2026-11-21)
+- decisions-made-schema-47.md: Which migration label do two table steps open at once take?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
@@ -1016,6 +1022,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/picture-text-translation-draw.md: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
 - core/picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points
 - core/picture-text-translation-store.md: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
+- core/privacy-request-export-link.md: The signed download link of an information answer (KV4c, #10944): the file in data/privacy_exports, HMAC, 7 days, privacy_download.php 410, Send a new link, Withdraw the link
 - core/privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer
 - core/sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
 - core/software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.

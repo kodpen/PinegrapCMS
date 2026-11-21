@@ -53,6 +53,9 @@
 - channel-documents.md: Plan (owner 2026-11-20, agent channel poll 179): a document in a channel is a note written there, drawn as it reads and changed in place by people and agents, with versions; KD1 to KD5
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
+- communication-settings-tidy-screens.md: Plan communication-settings-tidy, its screen: the Communication pane as folded rows, Chat and Chat on the site with their groups, the words and what must be true
+- communication-settings-tidy-steps.md: Plan communication-settings-tidy, steps CM1 to CM3: the pane as folded rows with Chat split in two, the message cards' switches, close-out
+- communication-settings-tidy.md: Plan (owner 2026-11-21): Communication as folded rows, the Chat card's two popover levels split into "Chat" and "Chat on the site", each field saying whom it binds
 - connections-merges-build.md: Plan connections-merges, the build after poll 149: CX7 the frame, CX8 GitHub, CX9 AI providers, CX10 Google and Microsoft, CX11 the other groups; the architect's cut
 - connections-merges-cx10-google.md: CX10 of plan connections-merges, what Google's and Microsoft's pages add: the two redirect addresses, the APIs to enable, the "API not enabled" error, Google's verification warning
 - connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count (84), gates, card titles
@@ -82,6 +85,10 @@
 - feedback-loop-screens.md: Plan feedback-loop, how its panel screens are put together (FD2): the Surveys tab's list, starting points, a survey's edit screen in cards; each part's Design examples section
 - feedback-loop-steps.md: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, survey settings, touchpoints and sends, the answer page, follow-up, report and group rule, API, close-out
 - feedback-loop.md: Plan (owner 2026-11-20, poll 187): NPS, CSAT and effort surveys after a booking, ticket, course, form, delivery or mail conversation, one-click signed answers, low scores followed up; FD1a to FD8
+- general-appearance-settings-tidy-screens-appearance.md: Plan general-appearance-settings-tidy, its second screen: the Appearance pane as folded rows, the Dashboard row by who it reaches, footer links as list rows in drawers
+- general-appearance-settings-tidy-screens.md: Plan general-appearance-settings-tidy, its first screen: the General pane as folded rows, Organization in three groups, one Site address row, the words and what must be true
+- general-appearance-settings-tidy-steps.md: Plan general-appearance-settings-tidy, steps GA1 to GA5: General as folded rows, Appearance as folded rows, footer links as list rows, the Site address row's value rows, close-out
+- general-appearance-settings-tidy.md: Plan (owner 2026-11-21): General and Appearance as folded rows, one Site address row showing redirect and HTTPS, each field saying what it reaches, footer links as list rows
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
@@ -146,6 +153,10 @@
 - prototype-approval-steps.md: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the link's approval settings, the viewer's verdict, round two, the publish rule, mails, events and API, close-out
 - prototype-approval.md: Plan (owner 2026-11-20, poll 205): what prototype sharing lacks for a customer's sign-off: Approve or Request changes per page sealed to the draft, round two, publish rule, mails, events; PA1a to PA7
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- security-settings-tidy-screens-accounts.md: Plan security-settings-tidy, its second screen: the Accounts and sign-in pane as folded rows, Sign-in attempts and Deleting many at once on rows of their own, the providers as connect rows
+- security-settings-tidy-screens.md: Plan security-settings-tidy, its first screen: the Firewall and HTTPS pane as folded rows, HTTPS first, Limits, Addresses with the bans drawer, Logs; the words and what must be true
+- security-settings-tidy-steps.md: Plan security-settings-tidy, steps SE1 to SE5: Firewall and HTTPS as folded rows in two steps, Accounts and sign-in as folded rows, the Limits row's overview, close-out
+- security-settings-tidy.md: Plan (owner 2026-11-21): Firewall and HTTPS and Accounts and sign-in as folded rows, no popover or plain radio, both logs in one row, every limit on one address shown in one Limits row
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line
 - stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see
