@@ -27,6 +27,9 @@ $requests_operator = array('role' => (int) $user['role'], 'id' => (int) $user['i
 $requests_now = time();
 $requests_ready = pg_privacy_requests_ready();
 
+// The public request form's switch (includes/fn/privacy_request_form.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_request_form.php');
+
 // A change: checked, done, and the screen again on the same request.
 if ($requests_ready && ($_SERVER['REQUEST_METHOD'] === 'POST')) {
     validate_token_field();
@@ -35,7 +38,15 @@ if ($requests_ready && ($_SERVER['REQUEST_METHOD'] === 'POST')) {
     $requests_request = pg_privacy_request_get((int) ($_POST['request'] ?? 0));
     $requests_back = 'privacy_centre.php?view=requests';
 
-    if ($requests_action === 'add') {
+    if ($requests_action === 'public_form') {
+        $requests_switched = pg_privacy_request_form_switch(!empty($_POST['public_form']), $requests_operator);
+
+        if ($requests_switched === 'ok') {
+            $liveform->add_notice(!empty($_POST['public_form']) ? lang('The public request form is on.') : lang('The public request form is off.'));
+        } else {
+            $liveform->add_error(($requests_switched === 'refused') ? lang('You may not switch the public request form.') : lang('The setting could not be saved.'));
+        }
+    } elseif ($requests_action === 'add') {
         $requests_added = pg_privacy_request_add($_POST, $requests_operator);
 
         if ($requests_added['errors']) {
@@ -144,13 +155,18 @@ pg_page_shell(array(
         'primary' => $requests_ready ? '<button type="button" class="pg-button pg-button-fill" data-privacy-drawer="privacy_request_add"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a request')) . '</button>' : '',
         'search'  => $requests_filters,
     )) . '
-    ' . ($requests_ready ? $requests_ending . pg_list_table_html($requests_list['source'], $requests_list['page'], lang('Requests')) : '<p class="pg-text-2">' . h(lang('The request box comes with the software update that adds its table.')) . '</p>') . '
+    ' . ($requests_ready ? pg_privacy_request_form_card(pg_privacy_request_form_on(), pg_privacy_rules_may_change($requests_operator)) . $requests_ending . pg_list_table_html($requests_list['source'], $requests_list['page'], lang('Requests')) : '<p class="pg-text-2">' . h(lang('The request box comes with the software update that adds its table.')) . '</p>') . '
     ' . $requests_drawers . '
 </main>
 ' . get_date_picker_format() . pg_fields_script() . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 <script>
 (function () {
     var phone = window.matchMedia("(max-width: 575.98px)");
+
+    // The switch of the public form saves as it is flipped.
+    document.addEventListener("change", function (event) {
+        if (event.target.matches("[data-privacy-submit]")) { event.target.form.submit(); }
+    });
 
     // A drawer opens through pgUI, from the right or, on a phone, as a
     // sheet from the bottom; one carrying data-open opens with the screen.

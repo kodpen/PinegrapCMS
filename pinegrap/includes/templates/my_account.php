@@ -397,3 +397,14 @@ if (!defined('PG_INIT_LOADED')) {
 </div>
 <?php endif ?>
 <?php endif ?>
+<?php if (!empty($privacy_request['shown'])): ?>
+<div class="privacy_request">
+	<h2>
+		<?=h(lang('Your personal data'))?>
+		<a href="<?=h($privacy_request['url'])?>" class="btn btn-default btn-secondary btn-xs">
+		<?=h(lang('Make a request'))?>
+		</a>
+	</h2>
+	<p><?=h(lang('Ask what personal data we keep about you, or to correct or erase it.'))?></p>
+</div>
+<?php endif ?>

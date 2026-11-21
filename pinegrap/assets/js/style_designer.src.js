@@ -44164,7 +44164,8 @@ const StyleDesigner = (function () {
             ['__my_account_wishlist_url', _sdT('Favourites page (shop sites; the link drops when there is none)')],
             ['__logout_url',            _sdT('Log out (the logout page, or signs out at once)')],
             ['__staff_url',             _sdT('Staff page address (only for visitors the page lets in)')],
-            ['__referral_url',          _sdT('Referral link (shop sites; the link drops while the member cannot refer)')]
+            ['__referral_url',          _sdT('Referral link (shop sites; the link drops while the member cannot refer)')],
+            ['__privacy_request_url',   _sdT('Request about personal data')]
         ]},
         { label: _sdT('Form Submissions (loop_area)'), tokens: [
             ['form_name',               _sdT('Form name')],
