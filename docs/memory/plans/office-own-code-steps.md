@@ -20,7 +20,7 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 - OE3, format of the selected cells: bold, italic, text colour, fill, alignment, number format (general, number, money, percent, date); written as new styles, existing ones untouched.
   - Cut: OE3a (PR #10827), the server's style writer (`platform/office-sheet-format.md`); OE3b (PR #10871), the editor's controls and the preview reading the cells' formats (`platform/office-sheet-format-controls.md`).
   - Done: PR #10827, #10871.
-- OE4, tools of the view, nothing written: sort by a column, filter by value, find in the workbook, and "Download as CSV" of the open sheet.
+- OE4, tools of the view, nothing written: sort by a column, filter by value, find in the workbook, and "Download as CSV" of the open sheet. Done: PR #11033 (`platform/office-sheet-tools.md`).
 - OE5, "New spreadsheet" and "New document" in the File Manager's new menu and a channel's attach menu: an empty .xlsx or .docx written by the product's writer, opened for editing.
 
 ## Document editing (.docx)
