@@ -1,6 +1,6 @@
 ---
 name: event-tickets-series
-description: Series tickets (#10755): a repeating event with shared places, one ticket for the series, entered once per date in event_ticket_checkins (11.0.268); page, .ics, API, export
+description: Series tickets (#10755): a repeating event with shared places, one ticket for the series, entered once per date in event_ticket_checkins (11.0.267); page, .ics, API, export
 module: event_tickets, event_check_in, event_tickets_page
 ---
 
@@ -11,7 +11,7 @@ module: event_tickets, event_check_in, event_tickets_page
 - Before the table exists (`pg_event_ticket_checkins_ready()`) nothing is a series: the door reads date 0 as before.
 
 ## What is the table?
-- `event_ticket_checkins` (step 11.0.268, architect 2026-11-20): `id`, `ticket_id`, `calendar_event_id`, `recurrence_number` (the date entered), `checked_at`, `checked_by`; all INT UNSIGNED NOT NULL DEFAULT 0. Unique (`ticket_id`, `recurrence_number`); key (`calendar_event_id`, `recurrence_number`). In `get_tables()`.
+- `event_ticket_checkins` (step 11.0.267, architect 2026-11-20): `id`, `ticket_id`, `calendar_event_id`, `recurrence_number` (the date entered), `checked_at`, `checked_by`; all INT UNSIGNED NOT NULL DEFAULT 0. Unique (`ticket_id`, `recurrence_number`); key (`calendar_event_id`, `recurrence_number`). In `get_tables()`.
 - An order's deletion removes the entries first, then the tickets (`pg_event_tickets_delete_for_order()`).
 
 ## How does the door treat it?

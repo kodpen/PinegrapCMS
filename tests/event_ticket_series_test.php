@@ -300,7 +300,7 @@ function test_event_ticket_series_table_step()
 {
 	$migration = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 
-	pg_assert_true((bool) preg_match('~\tupgrade_2026_11_0_event_ticket_checkins\(\); +// 11\.0\.268\n~', $migration), 'under 11.0.268');
+	pg_assert_true((bool) preg_match('~\tupgrade_2026_11_0_event_ticket_checkins\(\); +// 11\.0\.267\n~', $migration), 'under 11.0.267');
 	pg_assert_contains("install_create_table('event_ticket_checkins'", $migration, 'the idempotent helper');
 
 	// A fresh install runs every step from the starter site, so it creates

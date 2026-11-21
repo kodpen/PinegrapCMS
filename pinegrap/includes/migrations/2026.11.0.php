@@ -256,7 +256,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_pick_pack();               // 11.0.264
 	upgrade_2026_11_0_lead_journey();            // 11.0.265
 	upgrade_2026_11_0_walk_in_queue();           // 11.0.266
-	upgrade_2026_11_0_event_ticket_checkins();   // 11.0.268
+	upgrade_2026_11_0_event_ticket_checkins();   // 11.0.267
 
 }
 
@@ -8982,7 +8982,7 @@ function upgrade_2026_11_0_walk_in_queue() {
 
 }
 
-// The entries of a series ticket (11.0.268, includes/fn/event_check_in.php):
+// The entries of a series ticket (11.0.267, includes/fn/event_check_in.php):
 // a repeating event whose dates share their places gives a ticket for the
 // whole series, kept on date 0, and the door enters it once on each date. One
 // row per ticket and date: the unique key makes a second scan on the same
