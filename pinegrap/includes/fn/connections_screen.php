@@ -666,6 +666,29 @@ function pg_connections_screen_gateway_pages()
 }
 
 /**
+ * The payment drivers whose keys are typed on their own page
+ * (pg_payment_driver_pages()). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_driver_pages()
+{
+    return array('stripe', 'paypal', 'paytr');
+}
+
+/**
+ * Every page whose keys came from Site Settings › Ecommerce: the card
+ * gateways, the payment drivers, and Givex (pg_payment_method_connections();
+ * PayPal Express Checkout's keys are on PayPal's page). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_commerce_pages()
+{
+    return array_merge(pg_connections_screen_gateway_pages(), pg_connections_screen_driver_pages(), array('givex'));
+}
+
+/**
  * The cards of a service's page, in their order: "status", on Google's
  * and Microsoft's pages "mailboxes" (Connect an account for mailboxes, for
  * a manager who may open the Mailboxes settings, drawn inside Status), on
@@ -679,7 +702,7 @@ function pg_connections_screen_gateway_pages()
  * Translation; the WhatsApp, İYS and SMS providers' accounts, for who may
  * open Communication; Sign in with Apple's application and the CAPTCHA
  * providers' keys, for who may open Accounts and sign-in; a card
- * gateway's keys, for who may open Ecommerce), "uses", then
+ * gateway's or a payment driver's keys, for who may open Ecommerce), "uses", then
  * "repositories" on
  * GitHub's page for a holder of the Workspace settings right. Each card
  * keeps the gate of the place it came from; a card the viewer may not open
@@ -733,7 +756,7 @@ function pg_connections_screen_page_cards($id, $can)
         $cards[] = 'details';
     } elseif (in_array($id, array('turnstile', 'hcaptcha'), true) && !empty($can['security'])) {
         $cards[] = 'details';
-    } elseif (in_array($id, pg_connections_screen_gateway_pages(), true) && !empty($can['commerce'])) {
+    } elseif (in_array($id, pg_connections_screen_commerce_pages(), true) && !empty($can['commerce'])) {
         $cards[] = 'details';
     }
 

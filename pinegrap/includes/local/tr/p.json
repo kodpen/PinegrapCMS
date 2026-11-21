@@ -739,6 +739,7 @@
     "Pay with your PayPal account": "PayPal hesabınızla ödeyin",
     "Pay with your iyzico account": "iyzico hesabınızla ödeyin",
     "PayPal": "PayPal",
+    "PayPal Checkout and PayPal Express Checkout": "PayPal Checkout ve PayPal Express Checkout",
     "PayPal Checkout payment for order #{var:1} is PENDING on PayPal (capture {var:2}, reason {var:3}). Check it on PayPal before shipping: PayPal may still deny it. The order waits as awaiting payment until Payment Received records it.": "#{var:1} numaralı sipariş için PayPal Checkout ödemesi PayPal'da BEKLEMEDE (tahsilat {var:2}, neden {var:3}). Göndermeden önce PayPal'da kontrol edin: PayPal ödemeyi hâlâ reddedebilir. Sipariş, Ödeme Alındı kaydedene kadar ödeme bekliyor olarak kalır.",
     "PayPal Checkout payment for order #{var:1} was not accepted: {var:2}{var:3}.": "#{var:1} numaralı sipariş için PayPal Checkout ödemesi kabul edilmedi: {var:2}{var:3}.",
     "PayPal Checkout payment for order #{var:1} was started (PayPal order {var:2}).": "#{var:1} numaralı sipariş için PayPal Checkout ödemesi başlatıldı (PayPal siparişi {var:2}).",

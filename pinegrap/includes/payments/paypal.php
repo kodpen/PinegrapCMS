@@ -42,7 +42,7 @@ function pg_payment_paypal_fields()
         array(
             'name'       => 'client_id',
             'label'      => lang('Client ID'),
-            'help'       => lang('From the REST API app under Apps & Credentials in the PayPal Developer Dashboard, in the same mode as below.'),
+            'help'       => lang('From the REST API app under Apps & Credentials in the PayPal Developer Dashboard, in the mode chosen on the Payment Methods card.'),
             'required'   => true,
             'max_length' => 255,
         ),

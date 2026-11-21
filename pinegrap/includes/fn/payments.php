@@ -754,9 +754,15 @@ function pg_payment_settings_check($post, $liveform)
     $card_on = isset($post['ecommerce_credit_debit_card']) && ((string) $post['ecommerce_credit_debit_card'] === '1');
 
     foreach (pg_payment_drivers() as $key => $definition) {
-        $fields = pg_payment_fields($key);
+        $all_fields = pg_payment_fields($key);
+        $paged = pg_payment_driver_has_page($key);
 
-        $decision = pg_payment_settings_decide($definition, $fields, $post, pg_payment_settings($key), $card_on && ($definition['gateway'] === $gateway));
+        // The keys of a driver with a page of Connections are written there;
+        // the card decides the store's choices alone.
+        $fields = $paged ? pg_payment_fields_part($all_fields, 'card') : $all_fields;
+        $settings = pg_payment_settings($key);
+
+        $decision = pg_payment_settings_decide($definition, $fields, $post, $settings, $card_on && ($definition['gateway'] === $gateway));
 
         if (!$decision['posted']) {
             continue;
@@ -764,6 +770,19 @@ function pg_payment_settings_check($post, $liveform)
 
         foreach ($decision['marks'] as $input => $sentence) {
             $liveform->mark_error($input, $sentence);
+        }
+
+        // Newly chosen, or switched on, while its keys are missing; an
+        // unchanged choice always saves.
+        if ($paged) {
+            $was_active = ($definition['kind'] === 'card')
+                ? ($gateway === (defined('ECOMMERCE_PAYMENT_GATEWAY') ? (string) ECOMMERCE_PAYMENT_GATEWAY : ''))
+                : $settings['enabled'];
+            $refusal = pg_payment_driver_choice_refusal($definition, $all_fields, $settings, $decision['active'], $was_active);
+
+            if ($refusal !== '') {
+                $liveform->mark_error(($definition['kind'] === 'card') ? 'ecommerce_payment_gateway' : pg_payment_input_name($key, 'enabled'), $refusal);
+            }
         }
 
         $first = $fields ? pg_payment_input_name($key, $fields[0]['name']) : pg_payment_input_name($key, 'enabled');
@@ -821,8 +840,13 @@ function pg_payment_settings_store($key, $values, $secrets, $enabled, $user_id)
     }
 
     $provider = pg_payment_settings_key($key);
-    $existing = db_item("SELECT secret FROM connect_apps WHERE provider = '" . e($provider) . "'");
+    $existing = db_item("SELECT secret, options FROM connect_apps WHERE provider = '" . e($provider) . "'");
     $sealed = is_array($existing) ? (string) $existing['secret'] : '';
+
+    // The card and the driver's page of Connections each write their own
+    // fields: the values of the other are kept.
+    $stored_options = is_array($existing) ? json_decode((string) $existing['options'], true) : null;
+    $values = array_merge(is_array($stored_options) ? array_filter($stored_options, 'is_scalar') : array(), $values);
 
     if ($secrets) {
         $sealed = pg_connect_seal(array_merge(pg_connect_unseal($sealed), $secrets));
@@ -853,14 +877,21 @@ function pg_payment_settings_store($key, $values, $secrets, $enabled, $user_id)
  * @param array $definition pg_payment_driver()
  * @param array $fields     pg_payment_fields()
  * @param array $settings   pg_payment_settings()
+ * @param bool  $with_keys  the keys' lines too (where the keys are, the
+ *                          webhook address); false where the keys are typed
+ *                          on the driver's page of Connections
  * @return string
  */
-function pg_payment_settings_fields_html($definition, $fields, $settings)
+function pg_payment_settings_fields_html($definition, $fields, $settings, $with_keys = true)
 {
     $key = $definition['key'];
 
     $html = '
                                                                                         <input type="hidden" name="' . h(pg_payment_input_name($key, 'present')) . '" value="1"/>';
+
+    if (!$with_keys) {
+        return $html . pg_payment_settings_inputs_html($key, $fields, $settings);
+    }
 
     if (!$settings['readable']) {
         $html .= '
@@ -888,6 +919,21 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
                                                                                                 'vars'   => array($definition['label'])))) . '</div>
                                                                                         </div>';
     }
+
+    return $html . pg_payment_settings_inputs_html($key, $fields, $settings);
+}
+
+/**
+ * A driver's inputs, one per field: a secret is never drawn back.
+ *
+ * @param string $key
+ * @param array  $fields   pg_payment_fields()
+ * @param array  $settings pg_payment_settings()
+ * @return string
+ */
+function pg_payment_settings_inputs_html($key, $fields, $settings)
+{
+    $html = '';
 
     foreach ($fields as $field) {
         $id = pg_payment_input_name($key, $field['name']);
@@ -1006,7 +1052,7 @@ function pg_payment_settings_card_rows($gateway, $card_enabled)
 
         $html .= '
                                                                                         <div class="col-12" data-pg-payment-gateway="' . h($definition['gateway']) . '"' . ($shown ? '' : ' style="display: none"') . '>
-                                                                                            <div class="row gy-5">' . pg_payment_settings_fields_html($definition, $fields, pg_payment_settings($key)) . '
+                                                                                            <div class="row gy-5">' . pg_payment_settings_card_fields_html($definition, $fields, pg_payment_settings($key)) . '
                                                                                             </div>
                                                                                         </div>';
     }
@@ -1041,7 +1087,7 @@ function pg_payment_settings_redirect_rows()
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="' . h($row) . '">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                    <div class="row gy-5">' . pg_payment_settings_fields_html($definition, pg_payment_fields($key), $settings) . '
+                                                                    <div class="row gy-5">' . pg_payment_settings_card_fields_html($definition, pg_payment_fields($key), $settings) . '
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2261,7 +2307,7 @@ function pg_payment_gateway_connection_columns()
 }
 
 /**
- * Whether a gateway's keys are all there. A sealed secret counts as there
+ * Whether a gateway's keys are all there (but an optional one). A sealed secret counts as there
  * when one is stored: whether it still opens is the checkout's concern, as
  * before. Pure.
  *
@@ -2271,7 +2317,11 @@ function pg_payment_gateway_connection_columns()
  */
 function pg_payment_gateway_connected($definition, $stored)
 {
-    foreach (array_keys($definition['fields']) as $column) {
+    foreach ($definition['fields'] as $column => $field) {
+        if (!empty($field['optional'])) {
+            continue;
+        }
+
         if (!isset($stored[$column]) || (trim((string) $stored[$column]) === '')) {
             return false;
         }
@@ -2412,16 +2462,35 @@ function pg_payment_gateway_connection_html($id, $definition, $stored, $shown)
 {
     $connected = pg_payment_gateway_connected($definition, $stored);
 
+    return pg_payment_connection_block_html('pgsub-gateway-' . $id . '-connection', $definition['label'], $connected,
+        $connected
+            ? lang('The keys are kept on the gateway\'s page of Connections.')
+            : lang('The keys are missing, so card payments cannot be taken with this gateway. Enter them on its page of Connections.'),
+        pg_payment_gateway_connections_url($id), ' data-pg-gateway-connection="' . h($definition['gateway']) . '"' . ($shown ? '' : ' style="display: none"'));
+}
+
+/**
+ * A service's connection as the Payment Methods card shows it: its name,
+ * Connected or Not connected, a line, and the way to its page. Pure.
+ *
+ * @param string $block_id   the block's id
+ * @param string $label      the service's name
+ * @param bool   $connected
+ * @param string $line       the line under it, translated
+ * @param string $url        its page of Connections
+ * @param string $attributes more attributes of the block, already escaped
+ * @return string HTML
+ */
+function pg_payment_connection_block_html($block_id, $label, $connected, $line, $url, $attributes = '')
+{
     return '
-                                                                                        <div class="col-12" id="pgsub-gateway-' . h($id) . '-connection" data-pg-gateway-connection="' . h($definition['gateway']) . '"' . ($shown ? '' : ' style="display: none"') . '>
+                                                                                        <div class="col-12" id="' . h($block_id) . '"' . $attributes . '>
                                                                                             <div class="d-flex flex-column align-items-start gap-2">
-                                                                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => $definition['label']))) . '</span>' . ($connected
+                                                                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => $label))) . '</span>' . ($connected
                                                                                                     ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
                                                                                                     : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
-                                                                                                <div class="form-text mt-0">' . h($connected
-                                                                                                    ? lang('The keys are kept on the gateway\'s page of Connections.')
-                                                                                                    : lang('The keys are missing, so card payments cannot be taken with this gateway. Enter them on its page of Connections.')) . '</div>
-                                                                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(pg_payment_gateway_connections_url($id)) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                                                                                <div class="form-text mt-0">' . h($line) . '</div>
+                                                                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
                                                                                             </div>
                                                                                         </div>';
 }
@@ -2476,4 +2545,467 @@ function pg_payment_gateway_ready($id)
     }
 
     return pg_payment_gateway_connected($definitions[$id], pg_payment_gateway_connection_stored());
+}
+
+/* ---------------------------------------------------------------------------
+   The payment drivers' keys, each typed on its page of Connections
+   --------------------------------------------------------------------------- */
+
+/**
+ * The shipped drivers whose keys are typed on their own page of
+ * Connections, the page's key being the driver's. An add-on driver keeps
+ * all its fields on the Payment Methods card. Pure.
+ *
+ * @return array driver keys
+ */
+function pg_payment_driver_pages()
+{
+    return array('stripe', 'paypal', 'paytr');
+}
+
+/**
+ * @param string $key
+ * @return bool
+ */
+function pg_payment_driver_has_page($key)
+{
+    return in_array((string) $key, pg_payment_driver_pages(), true);
+}
+
+/**
+ * One part of a driver's fields: 'keys' (text and secret boxes: what
+ * connects the site to the service, typed on its page of Connections) or
+ * 'card' (selects and switches: the store's choices, such as Mode, kept on
+ * the Payment Methods card). Pure.
+ *
+ * @param array  $fields pg_payment_fields()
+ * @param string $part   'keys' or 'card'
+ * @return array list
+ */
+function pg_payment_fields_part($fields, $part)
+{
+    $part_fields = array();
+
+    foreach ($fields as $field) {
+        if (in_array($field['type'], array('text', 'secret'), true) === ($part === 'keys')) {
+            $part_fields[] = $field;
+        }
+    }
+
+    return $part_fields;
+}
+
+/**
+ * Whether every required key of a driver is stored (a secret only when the
+ * site's key can read it). Pure.
+ *
+ * @param array $fields   pg_payment_fields()
+ * @param array $settings pg_payment_settings()
+ * @return bool
+ */
+function pg_payment_driver_keys_complete($fields, $settings)
+{
+    foreach (pg_payment_fields_part($fields, 'keys') as $field) {
+        if (!$field['required']) {
+            continue;
+        }
+
+        $stored = ($field['type'] === 'secret')
+            ? isset($settings['secrets'][$field['name']])
+            : (isset($settings['values'][$field['name']]) && (trim((string) $settings['values'][$field['name']]) !== ''));
+
+        if (!$stored) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Whether any key of a driver is stored (Disconnect is offered). Pure.
+ *
+ * @param array $fields   pg_payment_fields()
+ * @param array $settings pg_payment_settings()
+ * @return bool
+ */
+function pg_payment_driver_keys_stored($fields, $settings)
+{
+    if (!empty($settings['secret_stored'])) {
+        return true;
+    }
+
+    foreach (pg_payment_fields_part($fields, 'keys') as $field) {
+        if (($field['type'] === 'text') && isset($settings['values'][$field['name']]) && (trim((string) $settings['values'][$field['name']]) !== '')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The mark on the Payment Methods card when a driver with a page of
+ * Connections is newly chosen (a card gateway) or switched on (a payment
+ * method of its own) while its keys are missing there. What was already
+ * taking payments is never refused, so a running store keeps saving. Pure.
+ *
+ * @param array $definition pg_payment_driver()
+ * @param array $fields     pg_payment_fields()
+ * @param array $settings   pg_payment_settings()
+ * @param bool  $active     the post makes it take payments
+ * @param bool  $was_active it was chosen or switched on before
+ * @return string '' or the message
+ */
+function pg_payment_driver_choice_refusal($definition, $fields, $settings, $active, $was_active)
+{
+    if (!$active || $was_active || pg_payment_driver_keys_complete($fields, $settings)) {
+        return '';
+    }
+
+    return lang(array('string' => 'Set up the {var:1} keys on its page of Connections first.', 'vars' => array(h($definition['label']))));
+}
+
+/**
+ * A driver's fields as the Payment Methods card draws them: all of them, or
+ * for a driver with a page of Connections its choices and its connection.
+ *
+ * @param array $definition pg_payment_driver()
+ * @param array $fields     pg_payment_fields()
+ * @param array $settings   pg_payment_settings()
+ * @return string HTML
+ */
+function pg_payment_settings_card_fields_html($definition, $fields, $settings)
+{
+    if (!pg_payment_driver_has_page($definition['key'])) {
+        return pg_payment_settings_fields_html($definition, $fields, $settings);
+    }
+
+    return pg_payment_settings_fields_html($definition, pg_payment_fields_part($fields, 'card'), $settings, false)
+        . pg_payment_driver_connection_html($definition, $fields, $settings);
+}
+
+/**
+ * A driver's connection on the Payment Methods card. Pure.
+ *
+ * @param array $definition pg_payment_driver()
+ * @param array $fields     pg_payment_fields()
+ * @param array $settings   pg_payment_settings()
+ * @return string HTML
+ */
+function pg_payment_driver_connection_html($definition, $fields, $settings)
+{
+    $connected = pg_payment_driver_keys_complete($fields, $settings) && !empty($settings['readable']);
+
+    if ($definition['kind'] === 'card') {
+        $line = $connected
+            ? lang('The keys are kept on the gateway\'s page of Connections.')
+            : lang('The keys are missing, so card payments cannot be taken with this gateway. Enter them on its page of Connections.');
+    } else {
+        $line = $connected
+            ? lang('The keys are kept on its page of Connections.')
+            : lang('The keys are missing, so this payment method cannot be switched on. Enter them on its page of Connections.');
+    }
+
+    return pg_payment_connection_block_html('pgsub-payment-' . $definition['key'] . '-connection', $definition['label'], $connected, $line, pg_payment_gateway_connections_url($definition['key']));
+}
+
+/**
+ * The post a driver's page of Connections gives pg_payment_settings_decide():
+ * its keys as typed, the marker, and for a payment method of its own the
+ * switch as stored, which only the card changes. Pure.
+ *
+ * @param array $definition pg_payment_driver()
+ * @param array $fields     pg_payment_fields()
+ * @param array $post       the page's form
+ * @param array $settings   pg_payment_settings()
+ * @return array
+ */
+function pg_payment_driver_page_post($definition, $fields, $post, $settings)
+{
+    $key = $definition['key'];
+    $page_post = array(pg_payment_input_name($key, 'present') => '1');
+
+    foreach (pg_payment_fields_part($fields, 'keys') as $field) {
+        $input = pg_payment_input_name($key, $field['name']);
+        $page_post[$input] = (isset($post[$input]) && is_string($post[$input])) ? $post[$input] : '';
+    }
+
+    if (!empty($settings['enabled'])) {
+        $page_post[pg_payment_input_name($key, 'enabled')] = '1';
+    }
+
+    return $page_post;
+}
+
+/**
+ * Whether a driver with a page of Connections takes payments: a card
+ * gateway chosen with the Credit/Debit Card method on, or a payment method
+ * switched on, with every required key stored. The registry's state reader
+ * for its row.
+ *
+ * @param string $key
+ * @return bool
+ */
+function pg_payment_driver_ready($key)
+{
+    $definition = pg_payment_driver($key);
+
+    if (($definition === null) || !pg_payment_driver_has_page($key)) {
+        return false;
+    }
+
+    $settings = pg_payment_settings($key);
+
+    if ($definition['kind'] === 'card') {
+        $taking = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD
+            && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY === $definition['gateway']);
+    } else {
+        $taking = $settings['enabled'];
+    }
+
+    return $taking && pg_payment_driver_keys_complete(pg_payment_fields($key), $settings);
+}
+
+/**
+ * Removes a driver's keys (Disconnect on its page of Connections): its key
+ * boxes are emptied and its secrets dropped; the store's choices and the
+ * switch stay.
+ *
+ * @param string $key
+ * @param int    $user_id
+ * @return bool false when nothing is kept for it here
+ */
+function pg_payment_settings_forget_keys($key, $user_id)
+{
+    if (!pg_connect_schema_ready() || (pg_payment_driver($key) === null)) {
+        return false;
+    }
+
+    $provider = pg_payment_settings_key($key);
+    $existing = db_item("SELECT options FROM connect_apps WHERE provider = '" . e($provider) . "'");
+
+    if (!is_array($existing)) {
+        return false;
+    }
+
+    $options = json_decode((string) $existing['options'], true);
+    $options = is_array($options) ? array_filter($options, 'is_scalar') : array();
+
+    foreach (pg_payment_fields_part(pg_payment_fields($key), 'keys') as $field) {
+        unset($options[$field['name']]);
+    }
+
+    // Every secret a driver with a page declares is one of its keys.
+    db("UPDATE connect_apps SET
+        secret = '',
+        options = '" . e(json_encode((object) $options)) . "',
+        updated_user_id = '" . (int) $user_id . "',
+        updated_timestamp = UNIX_TIMESTAMP()
+        WHERE provider = '" . e($provider) . "'");
+
+    pg_payment_settings($key, true);
+
+    return true;
+}
+
+/* ---------------------------------------------------------------------------
+   PayPal Express Checkout's and Givex's keys, typed on a page of Connections
+   --------------------------------------------------------------------------- */
+
+/**
+ * The payment services beside the card whose keys are kept in config
+ * columns, each typed on a page of Connections: the page (PayPal Express
+ * Checkout on PayPal's, beside PayPal Checkout), the name, the card's switch
+ * that offers it, the card's anchor, and its keys as in
+ * pg_payment_gateway_connections(); an 'optional' key is not needed to
+ * connect. Its Transaction Type and Mode stay on the card.
+ *
+ * @return array id => definition
+ */
+function pg_payment_method_connections()
+{
+    return array(
+        'paypal_express' => array('page' => 'paypal', 'label' => 'PayPal Express Checkout', 'switch' => 'ecommerce_paypal_express_checkout', 'card' => 'pgset-payments', 'fields' => array(
+            'ecommerce_paypal_express_checkout_api_username'  => array('label' => lang('API Username'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_paypal_express_checkout_api_password'  => array('label' => lang('API Password'), 'kind' => 'sealed', 'width' => 100),
+            'ecommerce_paypal_express_checkout_api_signature' => array('label' => lang('API Signature'), 'kind' => 'masked', 'width' => 100),
+        )),
+        'givex' => array('page' => 'givex', 'label' => 'Givex', 'switch' => 'ecommerce_givex', 'card' => 'pgset-giftcards', 'fields' => array(
+            'ecommerce_givex_primary_hostname'   => array('label' => lang('Primary Hostname'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_givex_secondary_hostname' => array('label' => lang('Secondary Hostname'), 'kind' => 'text', 'width' => 100, 'optional' => true),
+            'ecommerce_givex_user_id'            => array('label' => lang('User ID'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_givex_password'           => array('label' => lang('Password'), 'kind' => 'masked', 'width' => 100),
+        )),
+    );
+}
+
+/**
+ * The service whose config keys a page of Connections holds. Pure.
+ *
+ * @param string $page page key
+ * @return string id of pg_payment_method_connections(), '' for none
+ */
+function pg_payment_method_connection_for_page($page)
+{
+    foreach (pg_payment_method_connections() as $id => $definition) {
+        if ($definition['page'] === (string) $page) {
+            return $id;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Every config column those pages write; the card no longer draws or
+ * writes them. Pure.
+ *
+ * @return array column names
+ */
+function pg_payment_method_connection_columns()
+{
+    $columns = array();
+
+    foreach (pg_payment_method_connections() as $definition) {
+        $columns = array_merge($columns, array_keys($definition['fields']));
+    }
+
+    return $columns;
+}
+
+/**
+ * What a save on the page writes: as pg_payment_gateway_keys_decide(), and
+ * Givex's password is kept only for the hostnames it was saved for, since
+ * every Givex request carries it. Pure.
+ *
+ * @param string $id         id of pg_payment_method_connections()
+ * @param array  $definition its entry
+ * @param array  $post       the page's form
+ * @param array  $stored     column => config value
+ * @param string $key        the site's ENCRYPTION_KEY
+ * @return array 'values', 'marks'
+ */
+function pg_payment_method_keys_decide($id, $definition, $post, $stored, $key)
+{
+    $decision = pg_payment_gateway_keys_decide($definition, $post, $stored, $key);
+
+    if (($id !== 'givex') || $decision['marks']) {
+        return $decision;
+    }
+
+    $posted = function ($column) use ($post) {
+        return (isset($post[$column]) && is_string($post[$column])) ? $post[$column] : '';
+    };
+
+    $password = pg_givex_password_for_save($posted('ecommerce_givex_password'), isset($stored['ecommerce_givex_password']) ? (string) $stored['ecommerce_givex_password'] : '',
+        array(isset($stored['ecommerce_givex_primary_hostname']) ? (string) $stored['ecommerce_givex_primary_hostname'] : '', isset($stored['ecommerce_givex_secondary_hostname']) ? (string) $stored['ecommerce_givex_secondary_hostname'] : ''),
+        array($posted('ecommerce_givex_primary_hostname'), $posted('ecommerce_givex_secondary_hostname')));
+
+    if ($password['refused']) {
+        return array('values' => array(), 'marks' => array('ecommerce_givex_password' => lang('The Givex hostname changed. Enter the password again.')));
+    }
+
+    unset($decision['values']['ecommerce_givex_password']);
+
+    if ($password['value'] !== (isset($stored['ecommerce_givex_password']) ? (string) $stored['ecommerce_givex_password'] : '')) {
+        $decision['values']['ecommerce_givex_password'] = $password['value'];
+    }
+
+    return $decision;
+}
+
+/**
+ * The mark on the card's switch when PayPal Express Checkout or Givex is
+ * newly switched on while its keys are missing on its page of Connections.
+ * A switch already on is never refused. Pure.
+ *
+ * @param string $id     id of pg_payment_method_connections()
+ * @param bool   $on     the posted switch
+ * @param bool   $was_on the stored switch
+ * @param array  $stored column => config value
+ * @return string '' or the message
+ */
+function pg_payment_method_choice_refusal($id, $on, $was_on, $stored)
+{
+    $definitions = pg_payment_method_connections();
+
+    if (!$on || $was_on || !isset($definitions[$id]) || pg_payment_gateway_connected($definitions[$id], $stored)) {
+        return '';
+    }
+
+    return lang(array('string' => 'Set up the {var:1} keys on its page of Connections first.', 'vars' => array(h($definitions[$id]['label']))));
+}
+
+/**
+ * Its connection on the card, in the switch's box. Pure.
+ *
+ * @param string $id     id of pg_payment_method_connections()
+ * @param array  $stored column => config value
+ * @return string HTML
+ */
+function pg_payment_method_connection_html($id, $stored)
+{
+    $definitions = pg_payment_method_connections();
+    $connected = pg_payment_gateway_connected($definitions[$id], $stored);
+
+    return pg_payment_connection_block_html('pgsub-payment-' . $id . '-connection', $definitions[$id]['label'], $connected,
+        $connected
+            ? lang('The keys are kept on its page of Connections.')
+            : lang('The keys are missing, so this payment method cannot be switched on. Enter them on its page of Connections.'),
+        pg_payment_gateway_connections_url($definitions[$id]['page']));
+}
+
+/**
+ * The stored keys and switches of those services.
+ *
+ * @return array column => config value
+ */
+function pg_payment_method_connection_stored()
+{
+    $switches = array();
+
+    foreach (pg_payment_method_connections() as $definition) {
+        $switches[] = $definition['switch'];
+    }
+
+    $row = db_item("SELECT " . implode(', ', array_merge(pg_payment_method_connection_columns(), $switches)) . " FROM config LIMIT 1");
+
+    return is_array($row) ? $row : array();
+}
+
+/**
+ * Whether PayPal Express Checkout or Givex is offered: switched on with its
+ * keys stored.
+ *
+ * @param string $id id of pg_payment_method_connections()
+ * @return bool
+ */
+function pg_payment_method_ready($id)
+{
+    $definitions = pg_payment_method_connections();
+
+    if (!isset($definitions[$id])) {
+        return false;
+    }
+
+    $stored = pg_payment_method_connection_stored();
+
+    return !empty($stored[$definitions[$id]['switch']]) && pg_payment_gateway_connected($definitions[$id], $stored);
+}
+
+/**
+ * The registry's state reader for Stripe, PayPal, PayTR and Givex: what the
+ * page holds takes payments (on PayPal's page either PayPal Checkout or
+ * PayPal Express Checkout).
+ *
+ * @param string $page page key
+ * @return bool
+ */
+function pg_payment_connection_ready($page)
+{
+    $method = pg_payment_method_connection_for_page($page);
+
+    return (pg_payment_driver_has_page($page) && pg_payment_driver_ready($page))
+        || (($method !== '') && pg_payment_method_ready($method));
 }

@@ -200,13 +200,13 @@ function test_gateway_secret_screen_and_init_source()
 	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
 	$init = (string) file_get_contents(PG_FUNCTIONS_DIR . '/init.php');
 
-	$moved = pg_payment_gateway_connection_columns();
+	$moved = array_merge(pg_payment_gateway_connection_columns(), pg_payment_method_connection_columns());
 
 	foreach (array_keys(pg_gateway_secret_fields()) as $column) {
 		pg_assert_contains('define(\'' . strtoupper($column) . '\', pg_gateway_secret_value($row[\'' . $column . '\']));', $init);
 
-		// A card gateway's secret is typed on its page of Connections, whose
-		// secret boxes are always drawn empty.
+		// A card gateway's or PayPal Express Checkout's secret is typed on its
+		// page of Connections, whose secret boxes are always drawn empty.
 		if (in_array($column, $moved, true)) {
 			continue;
 		}
