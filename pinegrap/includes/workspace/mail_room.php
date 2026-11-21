@@ -482,7 +482,9 @@ function ws_mail_room_fields($prefix, $box, $options, $rooms_only = false)
 }
 
 /**
- * ws_mail_room_fields() drawn. Pure but for the words. The channel shows
+ * ws_mail_room_fields() drawn. Pure but for the words. "Kept in" is the
+ * segmented control of two radios (the Design examples' Segmented control);
+ * the first keeps the id <prefix>kept_in. The channel shows
  * only for a box kept in one and the readers only for a box kept in none
  * (data-ws-mail-when, the card's script); without the choice a hidden
  * kept_in says "channel", so the fields that follow it still show.
@@ -518,13 +520,15 @@ function ws_mail_room_fields_html($prefix, $box, $options, $ready, $people, $dep
                     <input type="hidden" name="kept_in" value="mailbox">
                     <div class="pg-field-help">' . h(lang('With the Workspace off a mailbox keeps its mail itself: the people chosen here read and answer it in Incoming e-mail.')) . '</div>
                 </div>' : '
-                <div class="md:col-6">
-                    <label class="pg-field-label" for="' . $prefix . 'kept_in">' . h(lang('Kept in')) . '</label>
-                    <select class="pg-input" name="kept_in" id="' . $prefix . 'kept_in">
-                        <option value="channel"' . ($room ? '' : ' selected') . '>' . h(lang('A channel')) . '</option>
-                        <option value="mailbox"' . ($room ? ' selected' : '') . '>' . h(lang('The mailbox itself')) . '</option>
-                    </select>
-                    <div class="pg-field-help">' . h(lang('Kept in the mailbox itself, its mail is in no channel: the people chosen here read and answer it on the E-mails screen.')) . '</div>
+                <div class="md:col-12">
+                    <fieldset>
+                        <legend class="pg-field-label">' . h(lang('Kept in')) . '</legend>
+                        <span class="pg-seg">'
+                            . '<label class="pg-seg-item" for="' . $prefix . 'kept_in"><input class="visually-hidden" type="radio" name="kept_in" value="channel" id="' . $prefix . 'kept_in"' . ($room ? '' : ' checked') . '>' . h(lang('A channel')) . '</label>'
+                            . '<label class="pg-seg-item" for="' . $prefix . 'kept_in_mailbox"><input class="visually-hidden" type="radio" name="kept_in" value="mailbox" id="' . $prefix . 'kept_in_mailbox"' . ($room ? ' checked' : '') . '>' . h(lang('The mailbox itself')) . '</label>'
+                        . '</span>
+                        <div class="pg-field-help">' . h(lang('Kept in the mailbox itself, the people chosen here read it on the E-mails screen.')) . '</div>
+                    </fieldset>
                 </div>' . $channel;
 
     foreach (array('room_people' => array(lang('People'), $people), 'room_departments' => array(lang('Departments'), $departments)) as $name => $list) {

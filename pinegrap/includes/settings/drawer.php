@@ -43,20 +43,25 @@ if (!defined('PG_SETTINGS_ENTRY')) {
  * @param string $body the content, as markup
  * @param bool $in_dialog true when drawn inside the Site Settings dialog
  * @param string $foot buttons kept in view under the scrolling body, as markup
+ * @param string $line a line under the title (an address, a state pill), as markup
+ * @param string $bar  a band under the head that does not scroll (the
+ *                     segmented control of the drawer's tabs), as markup
  * @return string
  */
-function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '')
+function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = '', $bar = '')
 {
     $id = (string) $id;
     $close = lang('Close');
+    $under = ($line !== '') ? '<p class="small fg-2 mb-0 mt-1 d-flex flex-wrap align-items-center gap-3">' . $line . '</p>' : '';
 
     if ($in_dialog) {
         return '
                 <div class="pg-sm-drawer" id="' . h($id) . '" role="dialog" aria-modal="true" aria-labelledby="' . h($id . '_title') . '" tabindex="-1">
                     <div class="pg-sm-drawer-head">
-                        <h3 class="pg-sm-drawer-title" id="' . h($id . '_title') . '">' . $title . '</h3>
+                        ' . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h3 class="pg-sm-drawer-title" id="' . h($id . '_title') . '">' . $title . '</h3>' . (($under !== '') ? $under . '</div>' : '') . '
                         <button type="button" class="btn-close" data-pgdrawer-close aria-label="' . h($close) . '" title="' . h($close) . '"></button>
-                    </div>
+                    </div>' . (($bar !== '') ? '
+                    <div class="pg-sm-drawer-bar">' . $bar . '</div>' : '') . '
                     <div class="pg-sm-drawer-body">' . $body . '</div>' . (($foot !== '') ? '
                     <div class="pg-sm-drawer-foot">' . $foot . '</div>' : '') . '
                 </div>';
@@ -65,9 +70,10 @@ function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '')
     return '
                 <dialog class="drawer drawer-end pg-set-drawer" id="' . h($id) . '" aria-labelledby="' . h($id . '_title') . '">
                     <div class="drawer-header border-bottom">
-                        <h5 class="drawer-title" id="' . h($id . '_title') . '">' . $title . '</h5>
+                        ' . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h5 class="drawer-title" id="' . h($id . '_title') . '">' . $title . '</h5>' . (($under !== '') ? $under . '</div>' : '') . '
                         <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h($close) . '"></button>
-                    </div>
+                    </div>' . (($bar !== '') ? '
+                    <div class="pg-sm-drawer-bar border-bottom">' . $bar . '</div>' : '') . '
                     <div class="drawer-body">' . $body . '</div>' . (($foot !== '') ? '
                     <div class="drawer-footer pg-set-drawer-foot">' . $foot . '</div>' : '') . '
                 </dialog>';

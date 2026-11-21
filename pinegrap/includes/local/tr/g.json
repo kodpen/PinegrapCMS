@@ -434,6 +434,7 @@
     "Glyphicons with no Bootstrap Icons twin: they stay as they are and show nothing once Bootstrap 3's sheet is left out.": "Bootstrap Icons'ta karşılığı olmayan Glyphicon simgeleri: oldukları gibi kalır ve Bootstrap 3'ün stil dosyası dışarıda kalınca hiçbir şey göstermez.",
     "Gmail API": "Gmail API",
     "Gmail and Google Workspace take an app password here, not the account's own password.": "Gmail ve Google Workspace burada hesabın kendi şifresini değil, bir uygulama şifresini kabul eder.",
+    "Gmail and Microsoft 365 keep their own copy.": "Gmail ve Microsoft 365 kendi kopyalarını tutar.",
     "Gmail and Microsoft 365 mailboxes are read through a connected account.": "Gmail ve Microsoft 365 posta kutuları bağlı bir hesap üzerinden okunur.",
     "Gmail or Google Workspace": "Gmail veya Google Workspace",
     "Go": "Git",
