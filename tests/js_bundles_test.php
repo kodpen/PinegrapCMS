@@ -38,9 +38,10 @@ function test_js_bundles_name_files_that_exist()
 function test_js_bundles_list_each_source_once()
 {
 	$seen = array();
-	// The Google Fonts catalogue is the one source two bundles share: the
-	// designer's font picker and the image editor's Text tool read it.
-	$shared = array('assets/js/pg_google_fonts.js' => true);
+	// Sources two bundles share: the Google Fonts catalogue (the designer's
+	// font picker and the image editor's Text tool read it) and the call
+	// window (the Workspace and the guest page join calls with it).
+	$shared = array('assets/js/pg_google_fonts.js' => true, 'assets/js/workspace_calls.js' => true);
 
 	foreach (pg_js_bundles() as $bundle => $sources) {
 		foreach ($sources as $source) {
