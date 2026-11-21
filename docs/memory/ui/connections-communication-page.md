@@ -17,7 +17,7 @@ module: connections_screen
 - `#pgsub-whatsapp-connection` and `#pgsub-iys-connection`: "WhatsApp connection" / "İYS connection", Connected when switched on and complete, "Manage in Connections" / "Connect in Connections".
 - The WhatsApp card keeps "Conversations", the Workspace channel field (`pg_whatsapp_channel_check()` stays in `contact.save.php`): it is the site's own setting, not the account.
 - `contact.save.php` no longer checks or writes either account. WhatsApp Messages and SMS Messages stay cards.
-- Old anchors `whatsapp_app_id` and `iys_user` land on their cards (`pg_settings_legacy_anchors()`). Registry: `place` `connections.php`, `found_at` `#settings/contact/pgset-whatsapp` / `pgset-iys`; `pg_connections_count()` stays 78.
+- Old anchors `whatsapp_app_id` and `iys_user` land on their cards (`pg_settings_legacy_anchors()`). Registry: `place` `connections.php`, `found_at` `#settings/contact/pgset-whatsapp` / `pgset-iys`; no service was added (`pg_connections_count()`: `api/connections-registry.md`).
 - "Where it is used": WhatsApp → the WhatsApp card and WhatsApp Messages; İYS → the İYS card (marketing consent records).
 
 ## Why did İYS's mode and switches move too?

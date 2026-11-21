@@ -20,4 +20,4 @@ description: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers,
 
 ## Which steps run side by side?
 - After KV1: KV2 and KV3 side by side. KV6 beside KV5.
-- `includes/fn/connections_registry.php` holds a count test (`tests/connections_registry_test.php`); KV1 adds fields, not rows, so the figure stays 78.
+- `includes/fn/connections_registry.php` holds a count test (`tests/connections_registry_test.php`); KV1 adds fields, not rows; the figure is 84 (`api/connections-registry.md`).

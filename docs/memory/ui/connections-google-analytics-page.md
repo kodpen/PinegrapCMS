@@ -17,7 +17,7 @@ module: google_analytics
 - `#pgsub-google-analytics`: "Google Analytics connection", Connected when the switch is on with a valid tag ID, a line when the dashboard shows figures, and "Manage in Connections" / "Connect in Connections".
 - `privacy.save.php` no longer writes `google_analytics`, `google_analytics_web_property_id` or `stats_url`, so saving the card cannot empty them. `includes/settings/privacy_analytics.php` and its hidden Connect form are gone.
 - Old anchors `google_analytics`, `google_analytics_web_property_id`, `stats_url`, `ga_property` land on `pgset-analytics` (`pg_settings_legacy_anchors()`).
-- Registry: `place` `connections.php`, `found_at` `#settings/privacy/pgset-analytics`. `pg_connections_count()` stays 78. The dashboard's Google Analytics card and widget 32 link to the page.
+- Registry: `place` `connections.php`, `found_at` `#settings/privacy/pgset-analytics`. no service was added (`pg_connections_count()`: `api/connections-registry.md`). The dashboard's Google Analytics card and widget 32 link to the page.
 
 ## What of Visitors and privacy stayed, and why?
 - The site's own settings, no outside account: visitor tracking with its code duration and pay-per-click flag, record retention, IP removal, the daily summary; Cookie Consent (it names Google's consent mode but holds no key); Legal Documents; the Accessibility Statement.

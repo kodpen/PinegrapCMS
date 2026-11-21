@@ -5747,26 +5747,7 @@ function show_or_hide_ecommerce_payment_gateway() {
     // hide all payment gateway fields until we determine which should be displayed
     document.getElementById('ecommerce_payment_gateway_transaction_type_row').style.display = 'none';
     document.getElementById('ecommerce_payment_gateway_mode_row').style.display = 'none';
-    document.getElementById('ecommerce_authorizenet_api_login_id_row').style.display = 'none';
-    document.getElementById('ecommerce_authorizenet_transaction_key_row').style.display = 'none';
-    document.getElementById('ecommerce_clearcommerce_client_id_row').style.display = 'none';
-    document.getElementById('ecommerce_clearcommerce_user_id_row').style.display = 'none';
-    document.getElementById('ecommerce_clearcommerce_password_row').style.display = 'none';
-    document.getElementById('ecommerce_first_data_global_gateway_store_number_row').style.display = 'none';
-    document.getElementById('ecommerce_first_data_global_gateway_pem_file_name_row').style.display = 'none';
-    document.getElementById('ecommerce_paypal_payflow_pro_partner_row').style.display = 'none';
-    document.getElementById('ecommerce_paypal_payflow_pro_merchant_login_row').style.display = 'none';
-    document.getElementById('ecommerce_paypal_payflow_pro_user_row').style.display = 'none';
-    document.getElementById('ecommerce_paypal_payflow_pro_password_row').style.display = 'none';
     document.getElementById('ecommerce_paypal_payments_pro_gateway_mode_row').style.display = 'none';
-    document.getElementById('ecommerce_paypal_payments_pro_api_username_row').style.display = 'none';
-    document.getElementById('ecommerce_paypal_payments_pro_api_password_row').style.display = 'none';
-    document.getElementById('ecommerce_paypal_payments_pro_api_signature_row').style.display = 'none';
-    document.getElementById('ecommerce_sage_merchant_id_row').style.display = 'none';
-    document.getElementById('ecommerce_sage_merchant_key_row').style.display = 'none';
-    document.getElementById('ecommerce_stripe_api_key_row').style.display = 'none';
-    document.getElementById('ecommerce_iyzipay_api_key_row').style.display = 'none';
-    document.getElementById('ecommerce_iyzipay_secret_key_row').style.display = 'none';
     document.getElementById('ecommerce_iyzipay_installment_row').style.display = 'none';
     document.getElementById('ecommerce_iyzipay_threeds_row').style.display = 'none';
     document.getElementById('ecommerce_iyzipay_protected_currency_row').style.display = 'none';
@@ -5780,57 +5761,38 @@ function show_or_hide_ecommerce_payment_gateway() {
             case 'Authorize.Net':
                 document.getElementById('ecommerce_payment_gateway_transaction_type_row').style.display = '';
                 document.getElementById('ecommerce_payment_gateway_mode_row').style.display = '';
-                document.getElementById('ecommerce_authorizenet_api_login_id_row').style.display = '';
-                document.getElementById('ecommerce_authorizenet_transaction_key_row').style.display = '';
                 break;
 
             case 'ClearCommerce':
                 document.getElementById('ecommerce_payment_gateway_transaction_type_row').style.display = '';
                 document.getElementById('ecommerce_payment_gateway_mode_row').style.display = '';
-                document.getElementById('ecommerce_clearcommerce_client_id_row').style.display = '';
-                document.getElementById('ecommerce_clearcommerce_user_id_row').style.display = '';
-                document.getElementById('ecommerce_clearcommerce_password_row').style.display = '';
                 break;
 
             case 'First Data Global Gateway':
                 document.getElementById('ecommerce_payment_gateway_transaction_type_row').style.display = '';
                 document.getElementById('ecommerce_payment_gateway_mode_row').style.display = '';
-                document.getElementById('ecommerce_first_data_global_gateway_store_number_row').style.display = '';
-                document.getElementById('ecommerce_first_data_global_gateway_pem_file_name_row').style.display = '';
                 break;
 
             case 'PayPal Payflow Pro':
                 document.getElementById('ecommerce_payment_gateway_transaction_type_row').style.display = '';
                 document.getElementById('ecommerce_payment_gateway_mode_row').style.display = '';
-                document.getElementById('ecommerce_paypal_payflow_pro_partner_row').style.display = '';
-                document.getElementById('ecommerce_paypal_payflow_pro_merchant_login_row').style.display = '';
-                document.getElementById('ecommerce_paypal_payflow_pro_user_row').style.display = '';
-                document.getElementById('ecommerce_paypal_payflow_pro_password_row').style.display = '';
                 break;
 
             case 'PayPal Payments Pro':
                 document.getElementById('ecommerce_payment_gateway_transaction_type_row').style.display = '';
                 document.getElementById('ecommerce_paypal_payments_pro_gateway_mode_row').style.display = '';
-                document.getElementById('ecommerce_paypal_payments_pro_api_username_row').style.display = '';
-                document.getElementById('ecommerce_paypal_payments_pro_api_password_row').style.display = '';
-                document.getElementById('ecommerce_paypal_payments_pro_api_signature_row').style.display = '';
                 break;
 
             case 'Sage':
                 document.getElementById('ecommerce_payment_gateway_transaction_type_row').style.display = '';
-                document.getElementById('ecommerce_sage_merchant_id_row').style.display = '';
-                document.getElementById('ecommerce_sage_merchant_key_row').style.display = '';
                 break;
 
             case 'Stripe':
                 document.getElementById('ecommerce_payment_gateway_transaction_type_row').style.display = '';
-                document.getElementById('ecommerce_stripe_api_key_row').style.display = '';
                 break;
 
             case 'Iyzipay':
                 document.getElementById('ecommerce_payment_gateway_mode_row').style.display = '';
-                document.getElementById('ecommerce_iyzipay_api_key_row').style.display = '';
-                document.getElementById('ecommerce_iyzipay_secret_key_row').style.display = '';
                 document.getElementById('ecommerce_iyzipay_installment_row').style.display = '';
                 document.getElementById('ecommerce_iyzipay_threeds_row').style.display = '';
                 if (document.getElementById('ecommerce_multicurrency').checked == 1) {
@@ -5839,6 +5801,15 @@ function show_or_hide_ecommerce_payment_gateway() {
                 break;
         }
     }
+
+    // The connection of the chosen gateway whose keys are kept on its page of
+    // Connections (pg_payment_gateway_connections_html()).
+    var card_on = document.getElementById('ecommerce_credit_debit_card').checked == true;
+    var chosen_gateway = document.getElementById('ecommerce_payment_gateway').value;
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-pg-gateway-connection]'), function (row) {
+        row.style.display = (card_on && (row.getAttribute('data-pg-gateway-connection') === chosen_gateway)) ? '' : 'none';
+    });
 
     // The fields of the driver-based gateways name the gateway they belong to
     // (pg_payment_settings_card_rows()), so a new driver needs no case here.

@@ -200,9 +200,21 @@ function test_gateway_secret_screen_and_init_source()
 	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
 	$init = (string) file_get_contents(PG_FUNCTIONS_DIR . '/init.php');
 
+	$moved = pg_payment_gateway_connection_columns();
+
 	foreach (array_keys(pg_gateway_secret_fields()) as $column) {
-		pg_assert_contains('$' . $column . ' = pg_gateway_secret_shown($row[\'' . $column . '\']);', $prep);
 		pg_assert_contains('define(\'' . strtoupper($column) . '\', pg_gateway_secret_value($row[\'' . $column . '\']));', $init);
+
+		// A card gateway's secret is typed on its page of Connections, whose
+		// secret boxes are always drawn empty.
+		if (in_array($column, $moved, true)) {
+			continue;
+		}
+
+		pg_assert_contains('$' . $column . ' = pg_gateway_secret_shown($row[\'' . $column . '\']);', $prep);
 		pg_assert_true(strpos($screen, 'id="' . $column . '"') !== false);
 	}
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/connections.php');
+	pg_assert_contains('<input type="password" class="pg-input font-monospace" id="\' . h($column) . \'" name="\' . h($column) . \'" value=""', $page, 'the page never draws a stored secret back');
 }

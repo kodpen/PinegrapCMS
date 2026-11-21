@@ -23,6 +23,6 @@ module: connections_screen
 - Stays in the box form: server, user, password and the "Connected account" select (which account a box uses is the box's setting), the redirect addresses, the Gmail API line and Google's warning.
 
 ## What did not change?
-- No registry row: `gmail` and `microsoft_mail` stay on E-mail sending (poll 148); `pg_connections_count()` stays 78. No data step, table or column.
+- No registry row: `gmail` and `microsoft_mail` stay on E-mail sending (poll 148); no service was added (`pg_connections_count()`: `api/connections-registry.md`). No data step, table or column.
 
 Tests: `tests/connections_mailboxes_test.php`, `tests/workspace_mail_google_steps_test.php`, `tests/workspace_mail_connection_test.php`.

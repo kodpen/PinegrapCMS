@@ -265,7 +265,8 @@ function test_bs6_form_adorn_commerce_add_ons_name_their_own_field()
 	// The surcharge add-on was a <label> pointing at the affiliate rate; the
 	// installment label pointed at the secret key.
 	pg_assert_same(1, substr_count($source, 'for="affiliate_default_commission_rate"'), 'only the affiliate rate label names the affiliate rate');
-	pg_assert_same(1, substr_count($source, 'for="ecommerce_iyzipay_secret_key"'), 'only the secret key label names the secret key');
+	// The secret key itself is typed on iyzico's page of Connections.
+	pg_assert_same(0, substr_count($source, 'for="ecommerce_iyzipay_secret_key"'), 'no label names the secret key on the card');
 	pg_assert_contains('<label class="form-label" for="ecommerce_iyzipay_installment">', $source);
 }
 
