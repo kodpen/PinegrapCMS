@@ -10,7 +10,7 @@ priority: 6
 ## What is there today?
 - One person at a time: `privacy_export.php` (`core/personal-data-export.md`) and `privacy_erase.php` with its table list `pg_privacy_erase_tables()` (`core/personal-data-erasure.md`), manager and up, from Contacts.
 - Retention only for `audit_log` and `consent_log` (`core/privacy-log-retention.md`, `includes/fn/privacy_retention.php`, a daily pass in slices). Contacts, form submissions and orders: "Not built ... opt-in and off by default".
-- No inventory. The registry of outside services (`api/connections-registry.md`, 78 rows) names no country or data received.
+- No inventory. The registry of outside services (`api/connections-registry.md`, 84 rows) names no country or data received.
 - A request comes by e-mail; nothing counts its 30 days. The checkout KVKK notice exists (`commerce/checkout-kvkk-notice.md`).
 - An xlsx writer (`includes/fn/xlsx_write.php`) and the export's PDF exist.
 

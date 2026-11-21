@@ -1048,6 +1048,16 @@ function pg_settings_legacy_anchors()
         // them lands on the card that chooses the provider.
         'captcha_turnstile_site_key' => array('security', 'pgset-captcha'),
         'captcha_hcaptcha_site_key'  => array('security', 'pgset-captcha'),
+        // The card gateways' keys moved onto their pages of Connections; an
+        // old link to them lands on the card that chooses the gateway.
+        'ecommerce_iyzipay_api_key'                        => array('commerce', 'pgset-payments'),
+        'ecommerce_stripe_api_key'                         => array('commerce', 'pgset-payments'),
+        'ecommerce_paypal_payflow_pro_partner'             => array('commerce', 'pgset-payments'),
+        'ecommerce_paypal_payments_pro_api_username'       => array('commerce', 'pgset-payments'),
+        'ecommerce_authorizenet_api_login_id'              => array('commerce', 'pgset-payments'),
+        'ecommerce_clearcommerce_client_id'                => array('commerce', 'pgset-payments'),
+        'ecommerce_first_data_global_gateway_store_number' => array('commerce', 'pgset-payments'),
+        'ecommerce_sage_merchant_id'                       => array('commerce', 'pgset-payments'),
         'pgset-membership' => array('security',   'pgset-membership'),
         'pgset-waf'        => array('firewall',   'pgset-waf'),
         'pgsub-bots'       => array('firewall',   'pgset-bots'),

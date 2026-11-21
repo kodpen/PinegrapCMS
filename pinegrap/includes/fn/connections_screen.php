@@ -655,6 +655,17 @@ function pg_connections_screen_page_providers()
 }
 
 /**
+ * The card gateways whose keys are typed on their own page (the keys of
+ * pg_payment_gateway_connections()). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_gateway_pages()
+{
+    return array('iyzico', 'stripe_classic', 'payflow_pro', 'payments_pro', 'authorize_net', 'clearcommerce', 'first_data', 'sage');
+}
+
+/**
  * The cards of a service's page, in their order: "status", on Google's
  * and Microsoft's pages "mailboxes" (Connect an account for mailboxes, for
  * a manager who may open the Mailboxes settings, drawn inside Status), on
@@ -667,7 +678,8 @@ function pg_connections_screen_page_providers()
  * privacy; the Google Cloud Translation key, for who may open Languages and
  * Translation; the WhatsApp, İYS and SMS providers' accounts, for who may
  * open Communication; Sign in with Apple's application and the CAPTCHA
- * providers' keys, for who may open Accounts and sign-in), "uses", then
+ * providers' keys, for who may open Accounts and sign-in; a card
+ * gateway's keys, for who may open Ecommerce), "uses", then
  * "repositories" on
  * GitHub's page for a holder of the Workspace settings right. Each card
  * keeps the gate of the place it came from; a card the viewer may not open
@@ -680,7 +692,8 @@ function pg_connections_screen_page_providers()
  *                    (bool: may open Accounts and sign-in: Google's
  *                    sign-in application, Apple's application),
  *                    'security' (bool: may open Accounts and sign-in, the
- *                    CAPTCHA providers' keys), 'seo' (bool: may
+ *                    CAPTCHA providers' keys), 'commerce' (bool: may
+ *                    open Ecommerce, a card gateway's keys), 'seo' (bool: may
  *                    open the SEO settings, IndexNow's key), 'privacy' (bool:
  *                    may open Visitors and privacy, Google Analytics' tag
  *                    and figures), 'languages' (bool: may open Languages
@@ -719,6 +732,8 @@ function pg_connections_screen_page_cards($id, $can)
     } elseif (($id === 'signin_apple') && !empty($can['signin'])) {
         $cards[] = 'details';
     } elseif (in_array($id, array('turnstile', 'hcaptcha'), true) && !empty($can['security'])) {
+        $cards[] = 'details';
+    } elseif (in_array($id, pg_connections_screen_gateway_pages(), true) && !empty($can['commerce'])) {
         $cards[] = 'details';
     }
 

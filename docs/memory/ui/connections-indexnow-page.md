@@ -19,7 +19,7 @@ module: seo
 
 ## What does the SEO card show?
 - In place of the field, `#pgsub-indexnow`: "IndexNow connection" with Connected / Not connected and "Manage in Connections" / "Connect in Connections". The old anchor `indexnow_key` lands on `pgset-seo` (`pg_settings_legacy_anchors()`).
-- Registry: `place` `connections.php`, `found_at` `#settings/seo/pgset-seo` (the settings search still finds it there). `pg_connections_count()` stays 78.
+- Registry: `place` `connections.php`, `found_at` `#settings/seo/pgset-seo` (the settings search still finds it there). no service was added (`pg_connections_count()`: `api/connections-registry.md`).
 
 ## What of SEO stayed, and why?
 - Everything else is the site's own, not an outside account's: title and description, sitemap and robots additions, the image preview and host redirect switches, site icon, social sharing, structured data (the merchant return and shipping figures are the site's policy) and AI crawlers. SEO had no site verification code and no Connect button.

@@ -321,25 +321,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_payment_gateway = $row['ecommerce_payment_gateway'];
     $ecommerce_payment_gateway_transaction_type = $row['ecommerce_payment_gateway_transaction_type'];
     $ecommerce_payment_gateway_mode = $row['ecommerce_payment_gateway_mode'];
-    $ecommerce_authorizenet_api_login_id = $row['ecommerce_authorizenet_api_login_id'];
-    $ecommerce_authorizenet_transaction_key = pg_gateway_secret_shown($row['ecommerce_authorizenet_transaction_key']);
-    $ecommerce_clearcommerce_client_id = $row['ecommerce_clearcommerce_client_id'];
-    $ecommerce_clearcommerce_user_id = $row['ecommerce_clearcommerce_user_id'];
-    $ecommerce_clearcommerce_password = $row['ecommerce_clearcommerce_password'];
-    $ecommerce_first_data_global_gateway_store_number = $row['ecommerce_first_data_global_gateway_store_number'];
-    $ecommerce_first_data_global_gateway_pem_file_name = $row['ecommerce_first_data_global_gateway_pem_file_name'];
-    $ecommerce_paypal_payflow_pro_partner = $row['ecommerce_paypal_payflow_pro_partner'];
-    $ecommerce_paypal_payflow_pro_merchant_login = $row['ecommerce_paypal_payflow_pro_merchant_login'];
-    $ecommerce_paypal_payflow_pro_user = $row['ecommerce_paypal_payflow_pro_user'];
-    $ecommerce_paypal_payflow_pro_password = pg_gateway_secret_shown($row['ecommerce_paypal_payflow_pro_password']);
-    $ecommerce_paypal_payments_pro_api_username = $row['ecommerce_paypal_payments_pro_api_username'];
-    $ecommerce_paypal_payments_pro_api_password = pg_gateway_secret_shown($row['ecommerce_paypal_payments_pro_api_password']);
-    $ecommerce_paypal_payments_pro_api_signature = $row['ecommerce_paypal_payments_pro_api_signature'];
-    $ecommerce_sage_merchant_id = $row['ecommerce_sage_merchant_id'];
-    $ecommerce_sage_merchant_key = $row['ecommerce_sage_merchant_key'];
-    $ecommerce_stripe_api_key = $row['ecommerce_stripe_api_key'];
-	$ecommerce_iyzipay_api_key = $row['ecommerce_iyzipay_api_key'];
-	$ecommerce_iyzipay_secret_key = pg_gateway_secret_shown($row['ecommerce_iyzipay_secret_key']);
+    // The card gateways' keys are typed on their pages of Connections; the
+    // card reads them only for each gateway's connection state.
+    $ecommerce_gateway_connection_stored = array_intersect_key($row, array_flip(pg_payment_gateway_connection_columns()));
 	$ecommerce_iyzipay_threeds = $row['ecommerce_iyzipay_threeds'];
     $ecommerce_pay_with_iyzico = $row['ecommerce_pay_with_iyzico'];
     $ecommerce_surcharge_percentage = $row['ecommerce_surcharge_percentage'];
@@ -1548,29 +1532,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $ecommerce_show_product_images_checked = '';
     }
 
-    // prepare all pem file options for First Data Global Gateway pem file name picklist
-    $query = "SELECT name FROM files WHERE (type = 'pem')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $ecommerce_first_data_global_gateway_pem_file_name_options = '';
-    $pem_file_matched = ((string) $ecommerce_first_data_global_gateway_pem_file_name === '');
-    while ($pem_row = mysqli_fetch_assoc($result)) {
-        // if file is the current selected pem file, select it by default
-        if ($pem_row['name'] == $ecommerce_first_data_global_gateway_pem_file_name) {
-            $selected_or_not = ' selected="selected"';
-            $pem_file_matched = true;
-        } else {
-            $selected_or_not = '';
-        }
-
-        $ecommerce_first_data_global_gateway_pem_file_name_options .= '<option value="' . h($pem_row['name']) . '"' . $selected_or_not . '>' . h($pem_row['name']) . '</option>';
-    }
-
-    // A stored name no pem file carries any more stays chosen, marked, so
-    // saving the commerce settings does not silently clear it.
-    if (!$pem_file_matched) {
-        $ecommerce_first_data_global_gateway_pem_file_name_options .= pg_stored_file_option($ecommerce_first_data_global_gateway_pem_file_name, pg_stored_file_exists($ecommerce_first_data_global_gateway_pem_file_name));
-    }
-
     // initialize variables for holding select information for payment gateway pick list
     $ecommerce_payment_gateway_authorizenet = '';
     $ecommerce_payment_gateway_clearcommerce = '';
@@ -1765,26 +1726,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // initialize variables for determining if e-commerce rows are shown or hidden
     $ecommerce_payment_gateway_transaction_type_row_style = 'display: none';
     $ecommerce_payment_gateway_mode_row_style = 'display: none';
-    $ecommerce_authorizenet_api_login_id_row_style = 'display: none';
-    $ecommerce_authorizenet_transaction_key_row_style = 'display: none';
-    $ecommerce_clearcommerce_client_id_row_style = 'display: none';
-    $ecommerce_clearcommerce_user_id_row_style = 'display: none';
-    $ecommerce_clearcommerce_password_row_style = 'display: none';
-    $ecommerce_first_data_global_gateway_store_number_row_style = 'display: none';
-    $ecommerce_first_data_global_gateway_pem_file_name_row_style = 'display: none';
     $ecommerce_paypal_payments_pro_gateway_mode_row_style = 'display: none';
-    $ecommerce_paypal_payments_pro_api_username_row_style = 'display: none';
-    $ecommerce_paypal_payments_pro_api_password_row_style = 'display: none';
-    $ecommerce_paypal_payments_pro_api_signature_row_style = 'display: none';
-    $ecommerce_paypal_payflow_pro_partner_row_style = 'display: none';
-    $ecommerce_paypal_payflow_pro_merchant_login_row_style = 'display: none';
-    $ecommerce_paypal_payflow_pro_user_row_style = 'display: none';
-    $ecommerce_paypal_payflow_pro_password_row_style = 'display: none';
-    $ecommerce_sage_merchant_id_row_style = 'display: none';
-    $ecommerce_sage_merchant_key_row_style = 'display: none';
-    $ecommerce_stripe_api_key_row_style = 'display: none';
-	$ecommerce_iyzipay_api_key_row_style = 'display: none';
-	$ecommerce_iyzipay_secret_key_row_style = 'display: none';
 	$ecommerce_iyzipay_installment_row_style = 'display: none';
 	$ecommerce_iyzipay_3ds_row_style = 'display: none';
     $ecommerce_iyzipay_protected_currency_row_style = 'display: none';
@@ -1805,53 +1747,30 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 
                 // prepare payment gateway fields depending on which payment gateway is selected
                 switch ($ecommerce_payment_gateway) {
+                    // Their keys are on their pages of Connections; the
+                    // card shows each one's connection.
                     case 'Authorize.Net':
-                        $ecommerce_authorizenet_api_login_id_row_style = '';
-                        $ecommerce_authorizenet_transaction_key_row_style = '';
-                        break;
-                        
                     case 'ClearCommerce':
-                        $ecommerce_clearcommerce_client_id_row_style = '';
-                        $ecommerce_clearcommerce_user_id_row_style = '';
-                        $ecommerce_clearcommerce_password_row_style = '';
-                        break;
-                        
                     case 'First Data Global Gateway':
-                        $ecommerce_first_data_global_gateway_store_number_row_style = '';
-                        $ecommerce_first_data_global_gateway_pem_file_name_row_style = '';
-                        break;
-                        
                     case 'PayPal Payflow Pro':
-                        $ecommerce_paypal_payflow_pro_partner_row_style = '';
-                        $ecommerce_paypal_payflow_pro_merchant_login_row_style = '';
-                        $ecommerce_paypal_payflow_pro_user_row_style = '';
-                        $ecommerce_paypal_payflow_pro_password_row_style = '';
                         break;
-                        
+
                     case 'PayPal Payments Pro':
                         $ecommerce_payment_gateway_mode_row_style = 'display: none';
-                        $ecommerce_paypal_payments_pro_api_username_row_style = '';
-                        $ecommerce_paypal_payments_pro_api_password_row_style = '';
-                        $ecommerce_paypal_payments_pro_api_signature_row_style = '';
                         $ecommerce_paypal_payments_pro_gateway_mode_row_style = '';
                         break;
                         
                     case 'Sage':
                         $ecommerce_payment_gateway_mode_row_style = 'display: none';
-                        $ecommerce_sage_merchant_id_row_style = '';
-                        $ecommerce_sage_merchant_key_row_style = '';
                         break;
 
                     case 'Stripe':
                         $ecommerce_payment_gateway_mode_row_style = 'display: none';
-                        $ecommerce_stripe_api_key_row_style = '';
                         break;
 						
                     case 'Iyzipay':
 						$ecommerce_payment_gateway_transaction_type_row_style = 'display: none';
-                        $ecommerce_iyzipay_api_key_row_style = '';
 						$ecommerce_iyzipay_installment_row_style = '';
-						$ecommerce_iyzipay_secret_key_row_style = '';
 						$ecommerce_iyzipay_3ds_row_style = '';
                         if ($ecommerce_multicurrency == 1) {
                             $ecommerce_iyzipay_protected_currency_row_style = '';

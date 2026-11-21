@@ -5,7 +5,7 @@ module: google_cloud
 ---
 
 ## Which providers have a page of their own?
-- `connections.php?service=google` and `…=microsoft` (CX10a, #10512). No registry service carries these keys, so `pg_connections_screen_page_providers()` maps page key => provider and `pg_connections_screen_provider_page()` answers the provider when the key is no service and the provider's row is on the list. `pg_connections_count()` stays 78.
+- `connections.php?service=google` and `…=microsoft` (CX10a, #10512). No registry service carries these keys, so `pg_connections_screen_page_providers()` maps page key => provider and `pg_connections_screen_provider_page()` answers the provider when the key is no service and the provider's row is on the list. no service was added (`pg_connections_count()`: `api/connections-registry.md`).
 - Their Account providers rows open the page; Dropbox keeps its drawer. The old addresses `connections.php#connections-google` / `#connections-microsoft` are sent to the page by the list's script (`$moved_drawers`).
 
 ## What does the page show?

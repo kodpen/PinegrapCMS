@@ -20,7 +20,7 @@ module: connections_screen, sms
 
 ## Who may change them, and where did the old links go?
 - Who may open Site Settings › Communication (`connections_contact_may_manage()`): card `details` of `pg_connections_screen_page_cards()` with `$can['contact']`; the write checks the same.
-- Registry rows: `place` `connections.php`, `found_at` `#settings/contact/pgset-sms`; `pg_connections_count()` stays 78. Old anchors `sms_<key>_user` land on the SMS card (`pg_settings_legacy_anchors()`). No data step, table or column: the accounts stay in `connect_apps` `sms_<key>`.
+- Registry rows: `place` `connections.php`, `found_at` `#settings/contact/pgset-sms`; no service was added (`pg_connections_count()`: `api/connections-registry.md`). Old anchors `sms_<key>_user` land on the SMS card (`pg_settings_legacy_anchors()`). No data step, table or column: the accounts stay in `connect_apps` `sms_<key>`.
 - "Where it is used": the SMS card and SMS Messages, Connected only for the provider sending.
 
 Tests: `tests/sms_test.php`, `tests/connections_communication_test.php`, `tests/sms_inbox_test.php`.

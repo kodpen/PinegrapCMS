@@ -7,7 +7,7 @@ module: ai_connections
 ## What is an AI connection?
 - One per provider of the registry's AI group that takes a key: OpenAI, Anthropic, Google Gemini, Mistral, DeepSeek, OpenRouter, Azure OpenAI (`pg_ai_connection_services()`, registry key => `ws_model_providers()` key; `azure_openai` => `azure`). A custom address is no service and has none.
 - Architect (2026-11-17, message 9391): no table and no column. The key is sealed among the connected accounts' service entries: `pg_connect_service_put('ai_<provider>', name, array('key' => …))`, read by `pg_ai_connection_key()`.
-- The registry rows' place is `connections.php` and their state the reader `pg_ai_connection_ready(<provider>)`: connected when a key is stored that can be read. `pg_connections_count()` stays 78.
+- The registry rows' place is `connections.php` and their state the reader `pg_ai_connection_ready(<provider>)`: connected when a key is stored that can be read. `pg_connections_count()` is 84 (`connections-registry.md`).
 - Each row's `found_at` keeps the Agents card (`pgset-ws-agents`, where the provider is chosen) among the settings search hits of its name (`pg_connections_place_keys()`).
 
 ## Which key does an assistant call with?

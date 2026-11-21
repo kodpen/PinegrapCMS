@@ -165,8 +165,9 @@ function test_file_picker_screens_wired()
 	pg_assert_contains("\$seo_card[1] .= pg_picker_script();", file_picker_search_test_source('includes/settings/seo.php'));
 	pg_assert_contains("((\$output_organization_logo_picker !== '') ? pg_picker_script() : '')", file_picker_search_test_source('includes/settings/general.php'));
 
-	pg_assert_contains('id="ecommerce_first_data_global_gateway_pem_file_name" data-pg-combobox>', file_picker_search_test_source('includes/settings/commerce.php'), 'the short PEM list searches in the browser');
-	pg_assert_contains('pg_stored_file_option($ecommerce_first_data_global_gateway_pem_file_name, pg_stored_file_exists(', file_picker_search_test_source('includes/settings/prep.php'), 'a stored PEM name stays chosen');
+	// First Data's PEM File is chosen on its page of Connections.
+	pg_assert_contains('name="\' . h($column) . \'" data-pg-combobox>', file_picker_search_test_source('connections.php'), 'the short PEM list searches in the browser');
+	pg_assert_contains('$options .= pg_stored_file_option($value, pg_stored_file_exists($value));', file_picker_search_test_source('connections.php'), 'a stored PEM name stays chosen');
 
 	$form = file_picker_search_test_source('includes/forms/short_link_form.php');
 

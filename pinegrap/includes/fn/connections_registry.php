@@ -411,6 +411,9 @@ function pg_connections_transfer_fields()
         'iyzico' => array('TR', $card),
         'stripe' => array('US', $card),
         'paypal' => array('US', $card),
+        'payflow_pro' => array('US', $card),
+        'payments_pro' => array('US', $card),
+        'stripe_classic' => array('US', $card),
         'paytr' => array('TR', $card),
         'authorize_net' => array('US', $card),
         'clearcommerce' => array('US', $card),
@@ -533,28 +536,37 @@ function pg_connections_registry()
     }
 
     $rows = array(
-        // Payments. The card gateways keep their config columns; the
-        // redirect drivers their connect_apps switch.
-        'iyzico' => array('name' => 'iyzico', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments and Pay with iyzico at checkout',
-            'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_PAYMENT_GATEWAY'), 'equals' => 'Iyzipay'),
+        // Payments. The card gateways keep their config columns, and are
+        // connected while one takes the cards with its keys stored; the
+        // redirect drivers keep their connect_apps switch.
+        'iyzico' => array('name' => 'iyzico', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments and Pay with iyzico at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('iyzico')),
             'covers' => array('payment' => array('iyzico', 'pay_with_iyzico'))),
         'stripe' => array('name' => 'Stripe', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
             'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_PAYMENT_GATEWAY'), 'equals' => 'Stripe PaymentIntents'),
             'covers' => array('payment' => array('stripe'))),
-        'paypal' => array('name' => 'PayPal', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'PayPal Checkout, and the Payflow Pro and Payments Pro gateways',
+        'paypal' => array('name' => 'PayPal', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'PayPal Checkout',
             'state' => array('kind' => 'app', 'key' => 'payment_paypal'),
             'covers' => array('payment' => array('paypal'))),
         'paytr' => array('name' => 'PayTR', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Payments in PayTR\'s page at checkout',
             'state' => array('kind' => 'app', 'key' => 'payment_paytr'),
             'covers' => array('payment' => array('paytr'))),
-        'authorize_net' => array('name' => 'Authorize.Net', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
-            'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_PAYMENT_GATEWAY'), 'equals' => 'Authorize.Net')),
-        'clearcommerce' => array('name' => 'ClearCommerce', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
-            'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_PAYMENT_GATEWAY'), 'equals' => 'ClearCommerce')),
-        'first_data' => array('name' => 'First Data', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
-            'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_PAYMENT_GATEWAY'), 'equals' => 'First Data Global Gateway')),
-        'sage' => array('name' => 'Sage', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
-            'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_PAYMENT_GATEWAY'), 'equals' => 'Sage')),
+        // The older PayPal and Stripe card gateways have keys of their own,
+        // each typed on its own page.
+        'payflow_pro' => array('name' => 'PayPal Payflow Pro', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('payflow_pro'))),
+        'payments_pro' => array('name' => 'PayPal Payments Pro', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('payments_pro'))),
+        'stripe_classic' => array('name' => 'Stripe (classic)', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('stripe_classic'))),
+        'authorize_net' => array('name' => 'Authorize.Net', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('authorize_net'))),
+        'clearcommerce' => array('name' => 'ClearCommerce', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('clearcommerce'))),
+        'first_data' => array('name' => 'First Data', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('first_data'))),
+        'sage' => array('name' => 'Sage', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('sage'))),
         'givex' => array('name' => 'Givex', 'group' => 'payments', 'place' => '#settings/commerce/pgset-giftcards', 'uses' => 'Gift cards at checkout',
             'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_GIVEX', 'ECOMMERCE_GIVEX_PRIMARY_HOSTNAME'))),
 

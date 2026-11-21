@@ -2168,3 +2168,312 @@ function pg_payment_fee_record($order_id, $answer)
 
     return erp_order_profit_record_fee((int) $order_id, $answer, true);
 }
+
+/* ---------------------------------------------------------------------------
+   The card gateways' keys, each typed on its page of Connections
+   --------------------------------------------------------------------------- */
+
+/**
+ * The eight card gateways of the Payment Gateway list whose keys are kept
+ * in config columns, by their Connections page (registry key): the stored
+ * gateway value, the name, and each key's column with its label, kind and
+ * column width. Kinds: 'text' (drawn back), 'sealed' (pg_gateway_secret_
+ * fields(), sealed with the site's key), 'masked' (pg_gateway_masked_
+ * fields(), plain but never drawn back), 'pem' (the name of an uploaded
+ * PEM file). Mode and Transaction Type are store settings: they stay on
+ * the Payment Methods card.
+ *
+ * @return array page key => definition
+ */
+function pg_payment_gateway_connections()
+{
+    return array(
+        'iyzico' => array('gateway' => 'Iyzipay', 'label' => 'iyzico', 'fields' => array(
+            'ecommerce_iyzipay_api_key'    => array('label' => lang('API Key'), 'kind' => 'text', 'width' => 255),
+            'ecommerce_iyzipay_secret_key' => array('label' => lang('Secret Key'), 'kind' => 'sealed', 'width' => 255),
+        )),
+        'stripe_classic' => array('gateway' => 'Stripe', 'label' => 'Stripe (classic)', 'fields' => array(
+            'ecommerce_stripe_api_key' => array('label' => lang('API Key'), 'kind' => 'masked', 'width' => 100, 'help' => lang('Enter the Test or Live Secret Key')),
+        )),
+        'payflow_pro' => array('gateway' => 'PayPal Payflow Pro', 'label' => 'PayPal Payflow Pro', 'fields' => array(
+            'ecommerce_paypal_payflow_pro_partner'        => array('label' => lang('Partner'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_paypal_payflow_pro_merchant_login' => array('label' => lang('Merchant Login'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_paypal_payflow_pro_user'           => array('label' => lang('User'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_paypal_payflow_pro_password'       => array('label' => lang('Password'), 'kind' => 'sealed', 'width' => 100),
+        )),
+        'payments_pro' => array('gateway' => 'PayPal Payments Pro', 'label' => 'PayPal Payments Pro', 'fields' => array(
+            'ecommerce_paypal_payments_pro_api_username'  => array('label' => lang('API Username'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_paypal_payments_pro_api_password'  => array('label' => lang('API Password'), 'kind' => 'sealed', 'width' => 100),
+            'ecommerce_paypal_payments_pro_api_signature' => array('label' => lang('API Signature'), 'kind' => 'masked', 'width' => 100),
+        )),
+        'authorize_net' => array('gateway' => 'Authorize.Net', 'label' => 'Authorize.Net', 'fields' => array(
+            'ecommerce_authorizenet_api_login_id'    => array('label' => lang('API Login ID'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_authorizenet_transaction_key' => array('label' => lang('Transaction Key'), 'kind' => 'sealed', 'width' => 100),
+        )),
+        'clearcommerce' => array('gateway' => 'ClearCommerce', 'label' => 'ClearCommerce', 'fields' => array(
+            'ecommerce_clearcommerce_client_id' => array('label' => lang('Client ID'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_clearcommerce_user_id'   => array('label' => lang('User ID'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_clearcommerce_password'  => array('label' => lang('Password'), 'kind' => 'masked', 'width' => 100),
+        )),
+        'first_data' => array('gateway' => 'First Data Global Gateway', 'label' => 'First Data', 'fields' => array(
+            'ecommerce_first_data_global_gateway_store_number'  => array('label' => lang('Store Number'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_first_data_global_gateway_pem_file_name' => array('label' => lang('PEM File'), 'kind' => 'pem', 'width' => 100),
+        )),
+        'sage' => array('gateway' => 'Sage', 'label' => 'Sage', 'fields' => array(
+            'ecommerce_sage_merchant_id'  => array('label' => lang('Merchant ID'), 'kind' => 'text', 'width' => 100),
+            'ecommerce_sage_merchant_key' => array('label' => lang('Merchant Key'), 'kind' => 'masked', 'width' => 100),
+        )),
+    );
+}
+
+/**
+ * The page of Connections that holds a card gateway's keys.
+ *
+ * @param string $gateway a Payment Gateway value
+ * @return string page key, '' when its keys are not kept there
+ */
+function pg_payment_gateway_connection_for($gateway)
+{
+    foreach (pg_payment_gateway_connections() as $id => $definition) {
+        if ($definition['gateway'] === (string) $gateway) {
+            return $id;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Every config column the gateways' pages write; the Payment Methods
+ * card no longer draws or writes them.
+ *
+ * @return array column names
+ */
+function pg_payment_gateway_connection_columns()
+{
+    $columns = array();
+
+    foreach (pg_payment_gateway_connections() as $definition) {
+        $columns = array_merge($columns, array_keys($definition['fields']));
+    }
+
+    return $columns;
+}
+
+/**
+ * Whether a gateway's keys are all there. A sealed secret counts as there
+ * when one is stored: whether it still opens is the checkout's concern, as
+ * before. Pure.
+ *
+ * @param array $definition pg_payment_gateway_connections() entry
+ * @param array $stored     column => config value
+ * @return bool
+ */
+function pg_payment_gateway_connected($definition, $stored)
+{
+    foreach (array_keys($definition['fields']) as $column) {
+        if (!isset($stored[$column]) || (trim((string) $stored[$column]) === '')) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Whether any of a gateway's keys is stored (Disconnect is offered). Pure.
+ *
+ * @param array $definition
+ * @param array $stored
+ * @return bool
+ */
+function pg_payment_gateway_stored($definition, $stored)
+{
+    foreach (array_keys($definition['fields']) as $column) {
+        if (isset($stored[$column]) && (trim((string) $stored[$column]) !== '')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * What a save on a gateway's page writes. A text or PEM box is written as
+ * typed (trimmed); a secret box left empty or masked keeps the stored one,
+ * a typed one replaces it (sealed in the current form for a sealed column).
+ * A value longer than its column, or a new sealed one that would not fit
+ * sealed, is marked and nothing is written. Only changed columns are
+ * returned. Pure.
+ *
+ * @param array  $definition pg_payment_gateway_connections() entry
+ * @param array  $post       the page's form
+ * @param array  $stored     column => config value
+ * @param string $key        the site's ENCRYPTION_KEY
+ * @return array 'values' (column => value to write), 'marks' (column => message)
+ */
+function pg_payment_gateway_keys_decide($definition, $post, $stored, $key)
+{
+    $decision = array('values' => array(), 'marks' => array());
+
+    foreach ($definition['fields'] as $column => $field) {
+        $posted = (isset($post[$column]) && is_string($post[$column])) ? trim($post[$column]) : '';
+        $was = isset($stored[$column]) ? (string) $stored[$column] : '';
+        $typed = ($posted !== '') && ($posted !== pg_gateway_secret_mask());
+
+        if ($field['kind'] === 'sealed') {
+            if ($typed && !pg_gateway_secret_fits($posted, $field['width'])) {
+                $decision['marks'][$column] = lang(array('string' => 'This secret is too long to be stored encrypted; at most {var:1} characters.', 'vars' => array(pg_gateway_secret_max_length($field['width']))));
+                continue;
+            }
+
+            $value = $typed ? pg_gateway_secret_for_save($posted, $was, $key, $key, $field['width']) : $was;
+        } elseif ($field['kind'] === 'masked') {
+            $value = pg_gateway_masked_for_save($posted, $was);
+        } else {
+            $value = $posted;
+        }
+
+        if (strlen($value) > $field['width']) {
+            $decision['marks'][$column] = lang(array('string' => 'At most {var:1} characters.', 'vars' => array($field['width'])));
+            continue;
+        }
+
+        if ($value !== $was) {
+            $decision['values'][$column] = $value;
+        }
+    }
+
+    if ($decision['marks']) {
+        $decision['values'] = array();
+    }
+
+    return $decision;
+}
+
+/**
+ * The mark on the card's Payment Gateway when a gateway is newly chosen
+ * whose keys are not on its page of Connections yet. An unchanged choice
+ * is never refused, so a running store keeps saving its card. Pure.
+ *
+ * @param string $posted    the gateway chosen on the card
+ * @param string $was       the stored gateway
+ * @param bool   $card_on   the Credit/Debit Card method is switched on
+ * @param array  $stored    column => config value
+ * @return string '' or the message
+ */
+function pg_payment_gateway_choice_refusal($posted, $was, $card_on, $stored)
+{
+    $posted = (string) $posted;
+
+    if (!$card_on || ($posted === (string) $was)) {
+        return '';
+    }
+
+    $id = pg_payment_gateway_connection_for($posted);
+
+    if ($id === '') {
+        return '';
+    }
+
+    $definitions = pg_payment_gateway_connections();
+
+    if (pg_payment_gateway_connected($definitions[$id], $stored)) {
+        return '';
+    }
+
+    return lang(array('string' => 'Set up the {var:1} keys on its page of Connections first.', 'vars' => array(h($definitions[$id]['label']))));
+}
+
+/**
+ * The address of a gateway's page on Connections.
+ *
+ * @param string $id page key
+ * @return string
+ */
+function pg_payment_gateway_connections_url($id)
+{
+    return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
+        . '/connections.php?service=' . rawurlencode((string) $id);
+}
+
+/**
+ * One gateway's connection on the Payment Methods card, shown while the
+ * Payment Gateway select names it (show_or_hide_ecommerce_payment_gateway()
+ * in backend.src.js switches it by data-pg-gateway-connection). Pure.
+ *
+ * @param string $id         page key
+ * @param array  $definition pg_payment_gateway_connections() entry
+ * @param array  $stored     column => config value
+ * @param bool   $shown
+ * @return string HTML
+ */
+function pg_payment_gateway_connection_html($id, $definition, $stored, $shown)
+{
+    $connected = pg_payment_gateway_connected($definition, $stored);
+
+    return '
+                                                                                        <div class="col-12" id="pgsub-gateway-' . h($id) . '-connection" data-pg-gateway-connection="' . h($definition['gateway']) . '"' . ($shown ? '' : ' style="display: none"') . '>
+                                                                                            <div class="d-flex flex-column align-items-start gap-2">
+                                                                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => $definition['label']))) . '</span>' . ($connected
+                                                                                                    ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                                                                    : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                                                                <div class="form-text mt-0">' . h($connected
+                                                                                                    ? lang('The keys are kept on the gateway\'s page of Connections.')
+                                                                                                    : lang('The keys are missing, so card payments cannot be taken with this gateway. Enter them on its page of Connections.')) . '</div>
+                                                                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(pg_payment_gateway_connections_url($id)) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                                                                            </div>
+                                                                                        </div>';
+}
+
+/**
+ * The connection blocks of every gateway kept on Connections, for the
+ * Payment Gateway box.
+ *
+ * @param string $gateway      the stored gateway
+ * @param bool   $card_enabled the Credit/Debit Card method is on
+ * @param array  $stored       column => config value
+ * @return string HTML
+ */
+function pg_payment_gateway_connections_html($gateway, $card_enabled, $stored)
+{
+    $html = '';
+
+    foreach (pg_payment_gateway_connections() as $id => $definition) {
+        $html .= pg_payment_gateway_connection_html($id, $definition, $stored, $card_enabled && ($definition['gateway'] === (string) $gateway));
+    }
+
+    return $html;
+}
+
+/**
+ * The stored keys of every gateway kept on Connections.
+ *
+ * @return array column => config value
+ */
+function pg_payment_gateway_connection_stored()
+{
+    $row = db_item("SELECT " . implode(', ', pg_payment_gateway_connection_columns()) . " FROM config LIMIT 1");
+
+    return is_array($row) ? $row : array();
+}
+
+/**
+ * Whether a card gateway kept on Connections takes the card payments: the
+ * Credit/Debit Card method is on, the Payment Gateway is this one and all
+ * its keys are stored. The registry's state reader for its row.
+ *
+ * @param string $id page key of pg_payment_gateway_connections()
+ * @return bool
+ */
+function pg_payment_gateway_ready($id)
+{
+    $definitions = pg_payment_gateway_connections();
+
+    if (!isset($definitions[$id]) || !defined('ECOMMERCE_CREDIT_DEBIT_CARD') || !ECOMMERCE_CREDIT_DEBIT_CARD
+        || !defined('ECOMMERCE_PAYMENT_GATEWAY') || (ECOMMERCE_PAYMENT_GATEWAY !== $definitions[$id]['gateway'])) {
+        return false;
+    }
+
+    return pg_payment_gateway_connected($definitions[$id], pg_payment_gateway_connection_stored());
+}

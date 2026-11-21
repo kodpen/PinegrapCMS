@@ -86,8 +86,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $label_driver_decisions = pg_label_settings_check($_POST, $liveform);
 
     // A new gateway secret whose sealed form would not fit its column is
-    // refused rather than cut or stored plain.
-    foreach (pg_gateway_secret_fields() as $gateway_secret_column => $gateway_secret_width) {
+    // refused rather than cut or stored plain. The card gateways' keys are
+    // written on their pages of Connections, never here.
+    $gateway_card_moved = array_flip(pg_payment_gateway_connection_columns());
+    $gateway_card_secret_fields = array_diff_key(pg_gateway_secret_fields(), $gateway_card_moved);
+    $gateway_card_masked_fields = array_values(array_diff(pg_gateway_masked_fields(), array_keys($gateway_card_moved)));
+
+    foreach ($gateway_card_secret_fields as $gateway_secret_column => $gateway_secret_width) {
         $gateway_secret_posted = trim((string) post_value($gateway_secret_column));
 
         if (($gateway_secret_posted !== pg_gateway_secret_mask()) && !pg_gateway_secret_fits($gateway_secret_posted, $gateway_secret_width)) {
@@ -98,10 +103,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // The other gateway keys are drawn masked: a blank or masked box keeps
     // the stored one. The Givex password is kept only for the hostnames it
     // was saved for, since every Givex request carries it.
-    $gateway_masked_stored = db_item("SELECT " . implode(', ', pg_gateway_masked_fields()) . ", ecommerce_givex_primary_hostname, ecommerce_givex_secondary_hostname FROM config LIMIT 1");
+    $gateway_masked_stored = db_item("SELECT " . implode(', ', $gateway_card_masked_fields) . ", ecommerce_givex_primary_hostname, ecommerce_givex_secondary_hostname FROM config LIMIT 1");
     $gateway_masked_values = array();
 
-    foreach (pg_gateway_masked_fields() as $gateway_masked_column) {
+    foreach ($gateway_card_masked_fields as $gateway_masked_column) {
         $gateway_masked_values[$gateway_masked_column] = pg_gateway_masked_for_save(post_value($gateway_masked_column), (string) ($gateway_masked_stored[$gateway_masked_column] ?? ''));
     }
 
@@ -114,6 +119,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if ($givex_password['refused']) {
         $liveform->mark_error('ecommerce_givex_password', lang('The Givex hostname changed. Enter the password again.'));
+    }
+
+    // A card gateway newly chosen whose keys are not on its page of
+    // Connections yet is refused; an unchanged choice always saves.
+    $gateway_choice_refusal = pg_payment_gateway_choice_refusal(
+        (string) post_value('ecommerce_payment_gateway'),
+        (string) db_value("SELECT ecommerce_payment_gateway FROM config LIMIT 1"),
+        (post_value('ecommerce_credit_debit_card') == 1),
+        pg_payment_gateway_connection_stored());
+
+    if ($gateway_choice_refusal !== '') {
+        $liveform->mark_error('ecommerce_payment_gateway', $gateway_choice_refusal);
     }
 
     // The order e-mail (also printed on ERP documents), the reward BCC and
@@ -182,10 +199,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // card (security.save.php) seals them again when it resets the key.
     $gateway_secret_key = defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
     $gateway_secret_new_key = $gateway_secret_key;
-    $gateway_secret_stored = db_item("SELECT " . implode(', ', array_keys(pg_gateway_secret_fields())) . " FROM config LIMIT 1");
+    $gateway_secret_stored = db_item("SELECT " . implode(', ', array_keys($gateway_card_secret_fields)) . " FROM config LIMIT 1");
     $gateway_secret_values = array();
 
-    foreach (pg_gateway_secret_fields() as $gateway_secret_column => $gateway_secret_width) {
+    foreach ($gateway_card_secret_fields as $gateway_secret_column => $gateway_secret_width) {
         $gateway_secret_values[$gateway_secret_column] = pg_gateway_secret_for_save(post_value($gateway_secret_column), (string) ($gateway_secret_stored[$gateway_secret_column] ?? ''), $gateway_secret_key, $gateway_secret_new_key, $gateway_secret_width);
     }
 
@@ -272,25 +289,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_payment_gateway = '" . escape(post_value('ecommerce_payment_gateway')) . "',
             ecommerce_payment_gateway_transaction_type = '" . escape(post_value('ecommerce_payment_gateway_transaction_type')) . "',
             ecommerce_payment_gateway_mode = '" . escape($payment_gateway_mode) . "',
-            ecommerce_authorizenet_api_login_id = '" . escape(trim(post_value('ecommerce_authorizenet_api_login_id'))) . "',
-            ecommerce_authorizenet_transaction_key = '" . escape($gateway_secret_values['ecommerce_authorizenet_transaction_key']) . "',
-            ecommerce_clearcommerce_client_id = '" . escape(trim(post_value('ecommerce_clearcommerce_client_id'))) . "',
-            ecommerce_clearcommerce_user_id = '" . escape(trim(post_value('ecommerce_clearcommerce_user_id'))) . "',
-            ecommerce_clearcommerce_password = '" . escape($gateway_masked_values['ecommerce_clearcommerce_password']) . "',
-            ecommerce_first_data_global_gateway_store_number = '" . escape(trim(post_value('ecommerce_first_data_global_gateway_store_number'))) . "',
-            ecommerce_first_data_global_gateway_pem_file_name = '" . escape(trim(post_value('ecommerce_first_data_global_gateway_pem_file_name'))) . "',
-            ecommerce_paypal_payflow_pro_partner = '" . escape(trim(post_value('ecommerce_paypal_payflow_pro_partner'))) . "',
-            ecommerce_paypal_payflow_pro_merchant_login = '" . escape(trim(post_value('ecommerce_paypal_payflow_pro_merchant_login'))) . "',
-            ecommerce_paypal_payflow_pro_user = '" . escape(trim(post_value('ecommerce_paypal_payflow_pro_user'))) . "',
-            ecommerce_paypal_payflow_pro_password = '" . escape($gateway_secret_values['ecommerce_paypal_payflow_pro_password']) . "',
-            ecommerce_paypal_payments_pro_api_username = '" . escape(trim(post_value('ecommerce_paypal_payments_pro_api_username'))) . "',
-            ecommerce_paypal_payments_pro_api_password = '" . escape($gateway_secret_values['ecommerce_paypal_payments_pro_api_password']) . "',
-            ecommerce_paypal_payments_pro_api_signature = '" . escape($gateway_masked_values['ecommerce_paypal_payments_pro_api_signature']) . "',
-            ecommerce_sage_merchant_id = '" . escape(trim(post_value('ecommerce_sage_merchant_id'))) . "',
-            ecommerce_sage_merchant_key = '" . escape($gateway_masked_values['ecommerce_sage_merchant_key']) . "',
-            ecommerce_stripe_api_key = '" . escape($gateway_masked_values['ecommerce_stripe_api_key']) . "',
-            ecommerce_iyzipay_api_key = '" . escape(trim(post_value('ecommerce_iyzipay_api_key'))) . "',
-            ecommerce_iyzipay_secret_key = '" . escape($gateway_secret_values['ecommerce_iyzipay_secret_key']) . "',
             ecommerce_iyzipay_installment = '" . escape(post_value('ecommerce_iyzipay_installment')) . "',
             ecommerce_iyzipay_threeds = '" . escape(post_value('ecommerce_iyzipay_threeds')) . "',
             ecommerce_pay_with_iyzico = '" . escape(post_value('ecommerce_pay_with_iyzico')) . "',
