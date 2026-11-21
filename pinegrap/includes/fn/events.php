@@ -310,6 +310,8 @@ function pg_event_workspace_events()
         'cart_quote.created',
         'cart_quote.ordered',
         'marketplace.order.imported',
+        'shipment.problem',
+        'shipment.problem_resolved',
         'subscription.failed',
         'subscription.renewed',
         'subscription.cancelled',

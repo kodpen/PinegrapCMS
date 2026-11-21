@@ -31,7 +31,3 @@ module: privacy_request_form
 - `tests/privacy_request_form_test.php`: off by default, access (signed in vs visitor, no table), the switch refused below manager, the row of each source, the rate buckets and where the page counts, the proof signature, 48 hours, parse.
 - Seen in a sandbox (2026-11-21): the switch, a signed-in send (open, 30 days), visitor sends (unproven) with the sixth refused 429, the proof link's button, proof, "sent already", expired and a wrong signature.
 
-## What else did this step fix?
-- The Requests view fataled (`pg_list_table_printed()` undefined): `includes/privacy_centre_requests.php` now loads `includes/fn/list_table.php` itself.
-
-Related: [[privacy-requests]], [[form-submission-limits]]

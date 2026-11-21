@@ -27,5 +27,5 @@ module: office_format
 ## What was checked?
 - `tests/office_format_test.php`: the request, the money code, the style writer (reuse, new fonts/fills/formats, existing entries untouched), the sheet splice with new cells and rows, a save read back by `pg_office_read()` (a number shown as a date) with untouched parts compared byte for byte, every refusal. Not opened in Excel or LibreOffice.
 
-## What is left?
-- The editor's controls (OE3b): the preview does not yet read or show cell formats.
+## Where are the editor's controls?
+- `office-sheet-format-controls.md` (OE3b): the format bar and the preview drawing each cell's look.

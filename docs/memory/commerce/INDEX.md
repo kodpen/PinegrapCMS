@@ -115,9 +115,11 @@
 - customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR [decision: here]
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
+- delivery-tower-alerts-events.md: Delivery tower alerts and events: the shipping ops alert codes, shipment.problem and shipment.problem_resolved, payload, flow kind filter, quiet first walk
 - delivery-tower-passes.md: Delivery tower passes from the general job: the nightly measured-times summary (config_text, cursor in data/temp), the hourly problem pass, the lock, the time budget, the 100k-parcel timing
 - delivery-tower-problems-table.md: The shipment_problems table (step 11.0.259): one row per problem found on a parcel, its columns, the unique open-row key, who writes and closes rows, order deletion
 - delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing
+- delivery-tower-scorecard.md: Carrier Scorecard screen (view_carrier_scorecard.php, DT4): month and 12-month figures per carrier and province, Excel, the arrival check, the carrier order rule
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it

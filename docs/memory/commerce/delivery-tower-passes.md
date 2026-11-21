@@ -6,7 +6,7 @@ module: delivery_tower_passes
 
 ## What runs, and from where?
 - `job.php` calls `pg_delivery_tower_job_run(pg_cron_time_left(PG_DELIVERY_TOWER_TICK_SECONDS))` (20 s) when commerce is on and the table is there (`pg_delivery_tower_ready()`). A tick with nothing due reads `delivery_tower_summary` (request cache) and `delivery_tower_pass`; when something is due both passes run under one `GET_LOCK('pg_delivery_tower.<database>')`, so overlapping ticks never walk together.
-- A pass that opened rows logs "general job found {n} new delivery problem(s)". Staff alerts and events are DT2's.
+- A pass that opened rows logs "general job found {n} new delivery problem(s)". Its alerts and events: `delivery-tower-alerts-events.md`.
 
 ## How is the nightly summary built? (T1 to T3)
 - Due when there is none or it was built before the last local 02:00 (`pg_delivery_tower_summary_due()`, `PG_DELIVERY_TOWER_NIGHT_HOUR`).

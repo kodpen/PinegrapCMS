@@ -54,6 +54,21 @@ function api_webhook_event_payloads() {
 		'items'      => array('object[]', 'The returned lines: order_item_id and quantity.')
 	);
 
+	$shipment_problem = $order + array(
+		'order_type'      => array('string', 'The order\'s type; marketplace for an order a marketplace sold, whose buyer the shop must not write to.'),
+		'problem_id'      => array('integer', 'The problem record.'),
+		'shipment_id'     => array('integer', 'The parcel row.'),
+		'number'          => array('string', 'The parcel\'s tracking number.'),
+		'carrier'         => array('string', 'The carrier\'s key, empty when not known.'),
+		'kind'            => array('string', 'stuck (in transit longer than the carrier\'s 90th percentile for the province plus a margin), not_handed_over (the label was not scanned), problem (the carrier reported a delivery problem) or returned.'),
+		'province'        => array('string?', 'The address\'s state, else its city; null when neither is given. Never the street address.'),
+		'days_in_transit' => array('integer?', 'Calendar days since the parcel was shipped; null when it has not been shipped.'),
+		'usual_days'      => array('number?', 'The carrier\'s median calendar days to this province (to the whole country when the province has too few parcels), over the last 90 days; null when there is no figure.')
+	);
+
+	$shipment_problem_sample = $order_sample + array('order_type' => 'web', 'problem_id' => 55, 'shipment_id' => 931, 'number' => '7350012345', 'carrier' => 'yurtici',
+		'kind' => 'stuck', 'province' => 'Ankara', 'days_in_transit' => 9, 'usual_days' => 2.5);
+
 	$return_sample = function ($status) use ($order_sample) {
 		return $order_sample + array('return_id' => 77, 'ship_to_id' => 1290, 'status' => $status, 'source' => 'account', 'reason' => 'damaged', 'items' => array(array('order_item_id' => 5521, 'quantity' => 1)));
 	};
@@ -216,6 +231,15 @@ function api_webhook_event_payloads() {
 				'tracking_url' => array('string', 'The tracking link reported to the marketplace.')
 			),
 			'sample' => $marketplace_sample('Shipped') + array('tracking_url' => 'https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code=7350012345')
+		),
+
+		'shipment.problem'          => array('fields' => $shipment_problem, 'sample' => $shipment_problem_sample),
+
+		'shipment.problem_resolved' => array(
+			'fields' => $shipment_problem + array(
+				'reason' => array('string', 'What settled it: delivered, scanned (a label not handed over was scanned) or status_changed (the status left the kind\'s statuses).')
+			),
+			'sample' => $shipment_problem_sample + array('reason' => 'delivered')
 		),
 
 		'cart_quote.created' => array('fields' => $quote, 'sample' => $quote_sample('open', 0)),

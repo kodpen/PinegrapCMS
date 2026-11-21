@@ -71,6 +71,12 @@ function api_webhook_core_events() {
 		'marketplace.order.imported'  => 'A marketplace package was imported as an order, one event per package (a package cancelled before its first import writes no order and is not announced)',
 		'marketplace.order.cancelled' => 'A marketplace cancelled an imported order and the order was cancelled here; order.cancelled is sent as well (not for one that had already shipped)',
 		'marketplace.order.shipped'   => 'An order the shop ships with its own carrier was reported shipped to the marketplace, with its tracking link (a parcel of the marketplace\'s own carrier arrives as order.shipped)',
+		// A delivery problem on a parcel (includes/fn/delivery_tower_tell.php),
+		// from the hourly problem pass. id is the order's, as in every
+		// order.* event; the parcel, its carrier, the kind and the province
+		// follow, never the street address.
+		'shipment.problem'          => 'The hourly check found a delivery problem on a parcel: stuck in transit longer than its carrier usually takes, not handed over to the carrier, a delivery problem reported by the carrier, or returned; once per parcel and kind while it stays open (the problems already there when the check first ran on a site are not announced). order_type marketplace means the shop must not write to that buyer',
+		'shipment.problem_resolved' => 'A later parcel status settled a delivery problem: the parcel was delivered, scanned by the carrier, or its status moved on (a problem closed by staff, or closed because its order was cancelled or its parcel removed, is not announced)',
 		// A cart quote (includes/fn/cart_quotes.php): products and quantities
 		// sent to a customer as a link. id is the quote's; status, state,
 		// contact_id, order_id, valid_until and the items (product_id,

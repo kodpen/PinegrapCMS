@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - Mailboxes: the mailboxes whose e-mail is read in
- * Communication › Incoming e-mail, each box's form, its .eml upload and Add
- * a mailbox in drawers. Opened by a holder of the Workspace settings right,
+ * Communication › Incoming e-mail as folded rows (the boxes, the accounts
+ * for mailboxes, the rules, the blocked senders, Bring in an .eml file),
+ * each box's form and Add a mailbox in drawers. Opened by a holder of the Workspace settings right,
  * whatever the Workspace's switch (pg_settings_mail_settings_allowed()).
  *
  * Fills $pg_settings_cards and $pg_settings_modals; mailboxes.save.php
@@ -21,6 +22,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 
 $ws_form = !empty($pg_settings_in_dialog) ? 'pg_settings_modal_form' : 'pg_settings_page_form';
 
@@ -42,12 +44,14 @@ if (empty($_GET['search']) && function_exists('pg_connect_flash_take')) {
 $ws_viewer = ws_viewer($user);
 
 // ── Mailboxes ──
-// Each box's form and Add a mailbox open in drawers; Bring in an .eml file
-// is a form of its own in the box's drawer, posting to this category's page.
+// The pane is folded rows (ws_mail_settings_rows()); each box's form and Add
+// a mailbox open in drawers; Bring in an .eml file, the last row, posts a
+// form of its own printed outside the settings form, to this category's page.
 $ws_card = ws_mail_settings_card('', $ws_viewer, $ws_form);
 
 if ($ws_card !== '') {
     $pg_settings_cards[] = $ws_card;
+    $pg_settings_modals[] = ws_mail_eml_pane_form();
 
     foreach (ws_mail_settings_boxes() as $ws_box) {
         $pg_settings_modals[] = ws_settings_mail_drawer($ws_box, $ws_viewer, $ws_form, !empty($pg_settings_in_dialog));

@@ -34,9 +34,10 @@ function test_mail_phone_box_row_buttons_wrap()
 {
 	// Test connection and Edit side by side are about 240 px: on a 320 px
 	// screen Edit ran past the card's right edge, half cut.
-	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php'));
+	$box = array('id' => 4, 'name' => 'Support', 'address' => 'support@example.com', 'enabled' => 1, 'settings' => json_encode(array('host' => 'imap.example.com')), 'checked_at' => 0, 'last_error' => '');
+	$html = ws_mail_settings_box_row($box, '#support', 'f');
 
-	pg_assert_contains("<div class=\"pg-list-row-actions flex-wrap\">\n                        ' . (\$reads ? '<button type=\"submit\" name=\"ws_mail_test\"", $source, 'the box row\'s buttons wrap inside the card');
+	pg_assert_contains('<div class="ws-agset-edit d-flex flex-wrap align-items-center gap-1"><button type="submit" name="ws_mail_test"', $html, 'the box row\'s buttons wrap inside the card');
 }
 
 function test_mail_phone_sent_copy_beside_its_label()

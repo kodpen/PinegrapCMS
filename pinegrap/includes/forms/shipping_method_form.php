@@ -1070,6 +1070,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                 <input value="' . $value('base_transit_days') . '" type="text" name="base_transit_days" id="base_transit_days" class="form-control text-end" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowMinus="false" />
                                                 <span class="input-group-text" title="' . lang('day(s) from order date') . '">' . lang('day(s)') . '</span>
                                             </div>
+                                            ' . ((($values['transit_check'] ?? '') !== '') ? '<div class="form-text">' . h($values['transit_check']) . '</div>' : '') . '
                                         </div>
                                         <div class="w-100"></div>
                                         <div class="col-12 md:col-6 xl:col-4 my-3">

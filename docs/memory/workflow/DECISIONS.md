@@ -916,6 +916,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Design, Content, Store, Accounting, All; #1716, #10709): what each ticks, why record writes are ticked by hand
 - api/api-panel-coverage-channels.md: The API beside the panel for channels and the agent channel (compared 2026-11-15, #9764, #9761; CA2-CA16 by 2026-11-16): each covered part and its topic file
 - api/api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart
+- api/api-privacy-routes.md: The read-only privacy API (KV6, #10897): GET /privacy/inventory, /privacy/requests and /privacy/requests/{id}, the privacy:read scope, views, cursor, steps
 - api/api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows
 - api/api-webhook-subscription-limit.md: How many event subscriptions one application may hold (50), the one function that holds the number, the 409 too_many_webhooks text, and why 50 subscribers of one event drain
 - api/application-access-automation.md: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks
@@ -1007,7 +1008,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/picture-text-translation-draw.md: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
 - core/picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points
 - core/picture-text-translation-store.md: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
-- core/privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer (the Answer tab is KV4b)
+- core/privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer
 - core/sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
 - core/software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
 - designer/bound-media-src.md: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211)
@@ -1163,6 +1164,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/messages-area-sends.md: Communication › Sends (MA2 #9252, MA2b #9275, WA2b #9409): the list of six branches, row ids, filters, buttons, e-mail sources, measured batch times, what the old queue screen left to it
 - platform/notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
 - platform/office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
+- platform/office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, one format change a save, and how the preview draws each cell's look and number format
 - platform/panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913)
 - platform/place-coordinates.md: Coordinates of a collection's places (#10000): fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon
 - platform/place-list-near.md: Near me and the typed-address box of the Map of places block (#10613): position kept in the browser, the POST lookup in places.php, 10 a minute, nothing typed kept
@@ -1406,6 +1408,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-away.md: "I am away" in My e-mail settings (IB12): ws_profiles.mail_away (11.0.211), the text once per sender, the stand-in for conversations given to an away person, the team plan
 - workspace/mail-blocks.md: A mailbox's block list (IB4, IB4b): Block sender under a mail, who may block where, what a blocked mail keeps, the list with Allow again on the Mailboxes card, the 30-day sweep, the schema step
 - workspace/mail-bounce-dev-check.md: Why conversation 48 on dev seemed to get no "Not delivered" line after an answer to a mistyped domain, and why mail_bounces has no row for a Workspace bounce (checked 2026-11-13)
+- workspace/mail-box-remove.md: Removing a mailbox (Site Settings › Mailboxes, MT1 #10900): the row, its settings, password, rules and own blocks go; every conversation stays; the check, posted name and confirm
 - workspace/mail-card-answered.md: The conversation's mail card in a channel since MA10b (#9453): "Answered · who · time" with no column, the Open e-mail link to Communication, what left the card, the touch after an answer
 - workspace/mail-check.md: Check e-mail on Communication › Incoming e-mail (IB2, #9481): which boxes a press reads, the fetch's lock and budget, the 15-second gap, presses a minute, the line over the list
 - workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444), the eleven answers, defaults, scope, the E-mails screen, a mailbox's features (IB), what stays unverified

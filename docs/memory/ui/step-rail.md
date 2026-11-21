@@ -8,6 +8,7 @@ description: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer c
   - `edit_offer.php` (`includes/templates/edit_offer.php`): `.stepper.pg-stepper-cards`, one card per step.
   - The installer (`install/index.php`, `#pg_rail`): each step's text is a `button.pg-install-step` with `data-step` inside the item. Its Continue buttons are `.pg-install-next`, never `.pg-next`: that is the dashboard's next-event pill in backend.src.css (#2237), which the installer also loads, and it turned them into tiny pills.
   - ERP account import (`erp_import_steps()` in `erp_accounts_import.php`): `.stepper-horizontal`.
+  - A privacy request's Answer tab (`pg_privacy_request_answer_stepper()`, `core/privacy-request-answer.md`): `.stepper.pg-stepper-cards`, each step a `<details>` of one name, one open at a time.
 - New screens use `.stepper` too; the scheduled actions form's own `.pg-step` rail went with the form (#2970).
 
 ## How are the states coloured?
@@ -19,6 +20,7 @@ description: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer c
 
 ## What does `.pg-stepper-cards` change, and why?
 - The stepper sizes rows evenly (`grid-auto-rows: 1fr`) and its text column to the content: one tall card would stretch every step and a wide one overflow. The block sets `grid-auto-rows: auto`, a `minmax(0, 1fr)` column, `--bs-stepper-align-items: start`, and moves the node and the line to sit level with the card header.
+- A step with several children (Claude's "Set up on claude.ai": title, text, picture, button) keeps them all in the content column: `.pg-stepper-cards > .stepper-item > * { grid-column: 2; }` (DX2 #10885). Without it the grid put every second child into the number column, one word a line.
 - A theme class on the item would reach every button, switch and badge in the card: each card carries `.theme-reset`.
 
 ## What must stay plain Bootstrap?

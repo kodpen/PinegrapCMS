@@ -121,6 +121,11 @@ function api_scope_groups() {
 		// endpoints filter for.
 		'content_review' => array('label' => 'Content review', 'read' => 'content_review:read', 'write' => 'content_review:write'),
 
+		// The Privacy centre: the personal data inventory with its transfers,
+		// and the requests people sent about their data. Read only: answering,
+		// erasing and refusing stay in the panel, where a person confirms them.
+		'privacy'   => array('label' => 'Privacy',    'read' => 'privacy:read',   'write' => ''),
+
 		'webhooks'  => array('label' => 'Webhooks',   'read' => '',               'write' => 'webhooks:manage'),
 
 		'meta'      => array('label' => 'Site info',  'read' => 'meta:read',      'write' => ''),
@@ -419,6 +424,10 @@ function api_owner_scopes($owner) {
 		// them, so they are the same decision.
 		$scopes[] = 'seo:read';
 
+		// The Privacy centre opens to manager and up, as the export and
+		// erasure screens beside it.
+		$scopes[] = 'privacy:read';
+
 		// Moderating what visitors wrote under those pages is the comments
 		// screen's work, which the same people do.
 		$scopes[] = 'comments:read';
@@ -576,12 +585,12 @@ function api_assistant_scopes(array $groups, array $leave_out = array()) {
 // The reads an assistant's key is made without. Neither assistant needs them:
 // the owner's own bell and devices, codes a shopper could redeem, spendable
 // gift card codes, who did what from which address, the firewall and file
-// integrity state with the audit trail, and the panel's accounts with their
-// rights. An administrator can still add any of them to the key in
+// integrity state with the audit trail, the panel's accounts with their
+// rights, and the Privacy centre's inventory and requests. An administrator can still add any of them to the key in
 // Application Access.
 function api_assistant_scopes_left_out() {
 
-	return array('account:read', 'key_codes:read', 'gift_cards:read', 'site_log:read', 'system:read', 'users:read');
+	return array('account:read', 'key_codes:read', 'gift_cards:read', 'site_log:read', 'system:read', 'users:read', 'privacy:read');
 
 }
 
