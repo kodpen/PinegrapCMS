@@ -647,6 +647,7 @@
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
 - server-paged-lists.md: Lists the server searches and pages (list table driver): which moved off DataTables' server paging, what the search box finds (words, labels, Turkish I), the row cells [decision: decisions-made-product-10.md, decisions-made-product-22.md]
 - settings-ai-voice-rows.md: Pinegrap AI's and Voice's opened rows in Site Settings › Assistants and agents (AT5): one column, the fold Application, their drawers, what a test pins
+- settings-appearance.md: Site Settings › Appearance as folded rows: the four rows and their state lines, what each row holds, who sees which row, what stayed (ids, field names, the save, Reset widgets)
 - settings-assistants-help-lines.md: Site Settings › Assistants and agents, the help (AT3): one line per part with "How does this work?" opening a drawer of numbered steps; Add an agent's "Start from an application" [decision: here]
 - settings-assistants-long-lists.md: Site Settings › Assistants and agents, the long lists (AT6): MCP servers, Workspace agents and Canvas templates show at most five rows, then "Show all N" and the part's drawer [decision: here]
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open), the pg-alert-dismissible padding rule and the gap between cards.

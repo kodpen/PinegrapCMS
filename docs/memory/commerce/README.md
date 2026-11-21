@@ -36,6 +36,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - `shipment-label-*`: 8 files; start at `shipment-labels.md`.
 - `stock-locations-*`: 7 files.
 - `store-credit-*`: 9 files.
+- `supplier-feed-*`: 6 files.
 
 ## Files
 
