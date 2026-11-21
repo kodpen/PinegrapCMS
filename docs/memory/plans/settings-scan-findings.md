@@ -18,7 +18,7 @@ description: Faults found by the 2026-11-21 scan of the Site Settings panes and 
 - Bookings, BT1 (#11008): "New service" is a card in a card and always open, it becomes the drawer the plan names. BT2: the staff list at full width.
 - Communication, CM1: the channel list cut in two places; warning boxes in help size. CM2: WhatsApp's event name and general label in one size; SMS's 11 open text fields folded, one open at a time.
 - Security, SE2: the Turnstile and hCaptcha headings as group labels. SE3: the lock-out fields' white card in a grey card to one surface; the blocked e-mail field's red frame only when refused; the "Device" help that explains itself rewritten or dropped; the key reset as a button with a confirm, not a switch.
-- E-mail, EM2: the sending way drawn once, shown whole. EM3: the DKIM field group as one group with its label.
+- E-mail, EM3: the DKIM field group as one group with its label.
 - Privacy, VP3: the Privacy centre row says what is in it; in the keeping list the three rows without "Change" say why (kept by law, or set elsewhere with a link).
 
 ## Which panes still need a plan?

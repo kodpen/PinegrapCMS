@@ -145,7 +145,7 @@ function test_settings_email_old_addresses_land_on_their_tab()
 
 	// Old anchors.
 	$anchors = pg_settings_legacy_anchors();
-	foreach (array('pgset-campaigns' => 'pgset-mail-campaign', 'pgset-mailchimp' => 'pgset-mailchimp', 'mail_transport_card' => 'pgset-mail-transport', 'mail_domain_card' => 'pgset-mail-domain', 'ws-mail' => 'pgset-ws-mail') as $old => $card) {
+	foreach (array('pgset-campaigns' => 'pgset-mail-campaign', 'pgset-mailchimp' => 'pgset-mailchimp', 'mail_transport_card' => 'pgset-mail-system', 'pgset-mail-transport' => 'pgset-mail-system', 'mail_domain_card' => 'pgset-mail-domain', 'ws-mail' => 'pgset-ws-mail') as $old => $card) {
 		pg_assert_same(array('email', $card), $anchors[$old], $old . ' lands on its card in E-mail');
 	}
 

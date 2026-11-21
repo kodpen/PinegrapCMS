@@ -7,7 +7,7 @@ module: mail_settings
 ## What is in the module?
 - `pg_mail_settings_save($post, $liveform)`: the kept-password check (`smtp-kept-password.md`), then the sending service (`mail-transports.md`), then the fourteen defines of `pg_mail_settings_keys()` written to config.php in one place; a refusal marks its field and writes nothing. Audit label `smtp`. Returns the saved values by lower-case name, or false.
 - `pg_mail_settings_dkim_generate()` and `_dkim_test()` take that answer, so they use the selector and domain just saved; `pg_mail_settings_send_test()` sends when the cards are drawn after the save, whose constants hold the saved settings, and clears its session flag first.
-- `pg_mail_settings_ready()`, `_providers()`, `_connection_field()` and `_connect_buttons()` draw what the System card needs; the Connect buttons submit hidden forms `pgset_mail_connect_<provider>`.
+- `pg_mail_settings_ready()`, `_providers()`, `_connection_field()` (the Campaign mail row's account) and `_connect_buttons()` (one provider's Connect button in the ways sheet of How e-mail leaves, `ui/settings-mail-sending.md`); the Connect buttons submit hidden forms `pgset_mail_connect_<provider>`. `pg_mail_settings_send_test()` keeps the last result in config_text `mail_test_last`.
 
 ## What does the save refuse and the card check?
 - A port outside 1 to 65535 and a campaign Max. that is not a whole number of 1 or more (email_campaign_job.php puts it into its LIMIT); the campaign boxes only while the job is on, because they are folded away otherwise. `pg_mail_settings_number_problem()`, before anything is written.
