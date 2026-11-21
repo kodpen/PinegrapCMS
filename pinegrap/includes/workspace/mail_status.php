@@ -206,7 +206,43 @@ function ws_mail_conversation_set($viewer, $conversation_id, $changes)
         ws_notify($holder, 'mail_assigned', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $conversation['message_id'], 'actor_id' => (int) $viewer['id']));
     }
 
+    // Closed: subscribers and the satisfaction surveys that follow a mail
+    // conversation hear it (ids only, as workspace.mail.received). Opened
+    // again: a survey still waiting for it is not sent.
+    $closed = ws_mail_conversation_closed_event($conversation, $checked['fields'], (int) $viewer['id']);
+
+    if ($closed !== null) {
+        pg_announce('workspace.mail.closed', $closed);
+    } elseif (((string) $conversation['status'] === 'closed') && isset($checked['fields']['status']) && function_exists('pg_feedback_cancel_record')) {
+        pg_feedback_cancel_record('conversation', (int) $conversation['id']);
+    }
+
     return array('ok' => true, 'error' => '');
+}
+
+/**
+ * What workspace.mail.closed carries when a change closes a conversation
+ * that was not closed; null for any other change. Pure.
+ *
+ * @param array $conversation the row before the change
+ * @param array $fields       ws_mail_conversation_changes() fields
+ * @param int   $viewer_id    who closed it
+ * @return array|null
+ */
+function ws_mail_conversation_closed_event($conversation, $fields, $viewer_id)
+{
+    if ((($fields['status'] ?? '') !== 'closed') || ((string) ($conversation['status'] ?? '') === 'closed')) {
+        return null;
+    }
+
+    return array(
+        'conversation_id' => (int) $conversation['id'],
+        'channel_id'      => (int) $conversation['channel_id'],
+        'message_id'      => (int) $conversation['message_id'],
+        'box_id'          => (int) $conversation['box_id'],
+        'assignee_id'     => (int) ($fields['assignee_id'] ?? $conversation['assignee_id']),
+        'closed_by'       => (int) $viewer_id,
+    );
 }
 
 /**

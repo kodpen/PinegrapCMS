@@ -21,6 +21,8 @@
  *   (status exception), returned (status returned).
  * - One open row per parcel and kind; a delivery closes every open kind, any
  *   other status closes the kinds it no longer belongs to.
+ * - The link segments under the head of Delivery problems and the Carrier
+ *   scorecard, each screen drawn only for the person who may open it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -405,4 +407,60 @@ function pg_delivery_tower_pass($status, $open, $found)
         }
     }
     return $result;
+}
+
+/**
+ * The screens the link segments under the head of Delivery problems and the
+ * Carrier scorecard lead to, in their order, each as key => array(label,
+ * file): only those the person may open. Problems takes the orders right
+ * (validate_ecommerce_access()), the scorecard the commerce reports right
+ * (validate_ecommerce_report_access()) and shipping switched on.
+ *
+ * @param array $user     a validate_user() row: role, manage_ecommerce, manage_ecommerce_reports
+ * @param bool  $shipping commerce and its shipping are on
+ * @return array
+ */
+function pg_delivery_tower_segments(array $user, $shipping)
+{
+    $role = isset($user['role']) ? (int) $user['role'] : 3;
+    $segments = array();
+
+    if (($role < 3) || !empty($user['manage_ecommerce'])) {
+        $segments['problems'] = array(lang('Problems'), 'view_delivery_problems.php');
+    }
+
+    if ($shipping && (($role < 3) || !empty($user['manage_ecommerce_reports']))) {
+        $segments['scorecard'] = array(lang('Carrier scorecard'), 'view_carrier_scorecard.php');
+    }
+
+    return $segments;
+}
+
+/**
+ * The link segments themselves (an area strip: the segmented control of
+ * links, printed first in #content): the open screen's segment selected,
+ * the other one its link. Empty when the person may open only one of the
+ * two screens, as one segment leads nowhere.
+ *
+ * @param string $current  'problems' or 'scorecard'
+ * @param array  $user     a validate_user() row
+ * @param bool   $shipping commerce and its shipping are on
+ * @return string
+ */
+function pg_delivery_tower_segments_html($current, array $user, $shipping)
+{
+    $segments = pg_delivery_tower_segments($user, $shipping);
+
+    if (count($segments) < 2) {
+        return '';
+    }
+
+    $items = '';
+
+    foreach ($segments as $key => $segment) {
+        $active = ($key === $current);
+        $items .= '<a class="pg-seg-item' . ($active ? ' is-active' : '') . '" href="' . h($segment[1]) . '"' . ($active ? ' aria-current="page"' : '') . '>' . h($segment[0]) . '</a>';
+    }
+
+    return '<nav class="pg-area-tabs mb-3" aria-label="' . h(lang('Delivery')) . '"><div class="pg-seg">' . $items . '</div></nav>';
 }

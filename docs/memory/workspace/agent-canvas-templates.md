@@ -10,7 +10,7 @@ module: canvas_templates
 - The list is one `config_text` row, `canvas_templates`, a JSON list of file ids (`includes/fn/canvas_templates.php`), no column. At most 50 (`PG_CANVAS_TEMPLATES_MAX`). Marking reads and writes it as one `pg_config_text_claim()`, retried three times, so two people marking at once do not drop each other's template.
 
 ## Where is the list seen and changed?
-- Site Settings › Assistants and agents › Canvas templates (`pgset-ws-canvas-templates`, `canvas_templates_card.php`): each template's file name, size and named layers. An administrator unticks one and saves to take it off; a template whose file is gone or changed outside the editor is not shown and goes on that save (`ws_canvas_templates_settings_keep()`). Marking is only done in the editor.
+- Site Settings › Assistants and agents › Canvas templates (`pgset-ws-canvas-templates`, `canvas_templates_card.php`): each template's switch, file name, size and named layers, five at most, then "Show all N" (`ui/settings-assistants-long-lists.md`). An administrator unticks one and saves to take it off; a template whose file is gone or changed outside the editor is not shown and goes on that save (`ws_canvas_templates_settings_keep()`). Marking is only done in the editor.
 
 ## What does an agent read and make?
 - `GET /workspace/canvas/templates` (workspace:read) answers `templates` and, beside them, `layouts`, the ready layouts shipped with the software (`agent-canvas-layouts.md`). A template: id (the file id), name, width, height, background, and the named layers bottom up: name, kind (`pg_canvas_template_kind()`: text, picture, shape, icon, else the editor's type) and a text layer's words. A layer with no name is not listed and cannot be filled.

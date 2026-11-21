@@ -155,7 +155,7 @@ function test_workspace_mail_gate_api_routes()
 		pg_assert_true(isset($objects[$name]), $name . ' is merged');
 	}
 
-	pg_assert_same(array('workspace.mail.received'), array_keys(ws_mail_alone_webhook_events()), 'its event');
+	pg_assert_same(array('workspace.mail.received', 'workspace.mail.closed'), array_keys(ws_mail_alone_webhook_events()), 'its events');
 	pg_assert_same(array('workspace', 'workspace_mail'), array_keys(ws_mail_alone_scope_groups()), 'the mail row and the row that sends in the person\'s name');
 }
 

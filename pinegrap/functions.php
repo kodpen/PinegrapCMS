@@ -329,6 +329,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit_events.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/referral.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/referral_report.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback_sends.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/event_tickets.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/variant_set_copy.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/text_search.php');

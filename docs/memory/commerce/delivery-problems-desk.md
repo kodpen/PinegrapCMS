@@ -9,6 +9,7 @@ module: delivery_problems
 - The rows come from `shipment_problems`, written by the hourly pass (`includes/fn/delivery_tower_passes.php`). Before the table exists the screen says it comes with the update.
 
 ## How is the list put together?
+- Above the toolbar, the link segments "Problems" / "Carrier scorecard" shared with the scorecard (`delivery-tower-segments.md`).
 - A printed list on the list table driver (`delivery_problems` in `pg_list_table_printed_lists()`), at most 2,000 rows (`PG_DELIVERY_PROBLEMS_LIST`): open ones oldest found first, closed ones newest closed first.
 - Columns: Parcel (opens the drawer), Order (link; a marketplace order carries a grey "Marketplace" pill), Carrier, Kind pill, Since (days since found, to the closing for a closed one), Assignee, the note's first words.
 - Kind pills: Stuck and Not handed over amber, Delivery problem and Returned rose; grey once closed.

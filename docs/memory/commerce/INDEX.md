@@ -110,6 +110,7 @@
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - customer-rhythm-events.md: Customer rhythm events (customer_rhythm_tell.php): stage changed, reorder due, the 7-day brake, when a product stops being named, comparison share, settings row, payload, flow stage filter
+- customer-rhythm-group-rule.md: The contact group rule "Rhythm stage" is / is not (H11, RY5): the stage names it takes, the customer_rhythm rows it reads, contacts with two rows or none
 - customer-rhythm-reorder-link.md: The reorder link of customer.reorder_due (H9): reorder.php, signed products and 30 days, nothing stored, GET shows and POST fills the cart, the ended link, reorder_url
 - customer-rhythm-report.md: Customer rhythm as read: Customers Report's Rhythm part (stages, came back after a reminder, list by stage and CSV, products), the contact card's Order rhythm card, the settings form, who sees names
 - customer-rhythm-rules.md: Customer rhythm's pure rules (customer_rhythm.php): days per unit, own interval, the chance curve, stages and their moves, due products, and the choices the features left open
@@ -127,6 +128,7 @@
 - delivery-tower-problems-table.md: The shipment_problems table (step 11.0.259): one row per problem found on a parcel, its columns, the unique open-row key, who writes and closes rows, order deletion
 - delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing
 - delivery-tower-scorecard.md: Carrier Scorecard screen (view_carrier_scorecard.php, DT4): month and 12-month figures per carrier and province, Excel, the arrival check, the carrier order rule
+- delivery-tower-segments.md: The link segments "Problems" / "Carrier scorecard" under the head of Delivery problems and the Carrier scorecard (DT5b): who sees which, how they are drawn [decision: here]
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
@@ -426,11 +428,12 @@
 - subscriptions-renewal.md: Renewals of store-run subscriptions (PR #3290, decided in #3183): job branch, per-row lock, renewal order, next date, 1/3/7 ladder, held rows and Stripe's paid report [decision: decisions-made-product-5.md]
 - subscriptions-stripe.md: Stripe store-run subscriptions (PR #3270, decided in #3183): Customer and setup_future_usage on the first payment, card_ref, off-session charge_renewal, Checkout setup page, detach on cancel [decision: decisions-made-product-5.md]
 - subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref [decision: decisions-made-product-5.md]
+- supplier-feed-drafts.md: Supplier feed drafts (SF4, F8): records no product matched become switched-off products with pictures, description, brand and group; one model code is one variant set; the spool files; Drafts go into
 - supplier-feed-price-card.md: Supplier feed screens (SF3b): price rule and rules by category or brand, test pull prices and Floor pill, Held prices, Pull now, Pull history, the product's "Price from the feed"
 - supplier-feed-price-rule.md: Supplier feed amounts (Turkish and English separators, stock text, net of VAT) and the F4 price rule: margin, fixed, rate, ,90 or ,99 endings, floor, category and brand rules
 - supplier-feed-readers.md: Supplier feed tables (11.0.255) and readers: format from the first bytes, record path, XML/CSV/JSON with a resumable cursor, flat keys, the field proposal (SF1, PR #10771)
 - supplier-feed-screen.md: Products › Supplier feeds (SF2): the list, Add and Edit supplier feed, the encrypted sign-in, the first read into the Fields mapping, the test pull; what each button writes [decision: here]
-- supplier-feed-sync.md: Supplier feed sync (SF3a, #10895): the job tick, one lock per feed, scan, apply and close phases over one file, matching, price and stock writers, closing and reopening, held prices, brakes, run rows
+- supplier-feed-sync.md: Supplier feed sync (SF3a, #10895): the job tick, one lock per feed, the phases over one file, matching, price and stock writers, closing and reopening, held prices, brakes, run rows
 - tax-zone-commission-reward-boxes.md: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 - tr-district-carriers.md: What sends and writes ship_tos.district (#3654): the four Turkish carrier drivers (district first, city fallback), the needs-district hook, the n11 and Trendyol imports [decision: decisions-made-product-12.md]
 - tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far [decision: here]

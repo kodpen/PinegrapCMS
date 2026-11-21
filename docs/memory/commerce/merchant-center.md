@@ -5,7 +5,7 @@ module: merchant_center
 ---
 
 ## What does it do?
-- A site Google account connected for the purpose `merchant_center` (scope `https://www.googleapis.com/auth/content`, model A) picks one Merchant Center account on Settings › Ecommerce › Product Feeds (`includes/settings/commerce_merchant.php`). Saving registers the Google TSV feed address (`feed.php`) as a primary product data source Google fetches daily at 06:00 site time, and reads the product issues.
+- A site Google account connected for the purpose `merchant_center` (scope `https://www.googleapis.com/auth/content`, model A) picks one Merchant Center account on its page of Connections (CX11g4 #11007, `ui/connections-address-merchant-page.md`); the Product Feeds card only shows it. Saving registers the Google TSV feed address (`feed.php`) as a primary product data source Google fetches daily at 06:00 site time, and reads the product issues.
 - Merchant API only (`merchantapi.googleapis.com`, `datasources/v1`, `issueresolution/v1`, `accounts/v1`); the Content API for Shopping shut on 2026-08-18.
 
 ## Where is the state kept, and why no table?
@@ -16,7 +16,7 @@ module: merchant_center
 - `pg_merchant_register()` lists the account's data sources; `pg_merchant_find_source()` keeps one whose `fetchUri` is the feed address, moves the one registered before (stored name) to a new address with PATCH `updateMask=fileInput.fetchSettings.fetchUri` (a renewed feed token), and only otherwise creates one (`pg_merchant_data_source_body()`). Google needs `contentLanguage` + `feedLabel` for a file input: the language is `TRANSLATION_SOURCE_LANGUAGE` cut to two letters, the label is the target country.
 - Google keeps a data source's `feedLabel` as created, so a later country change on the card does not move it. Registering stores the registered source's label (state `feed_label`, `pg_merchant_source_feed_label()`); the supplemental source, the account row's `country` credential and so every push and `products.get` key use it (`pg_merchant_push_label()`), the card's country only while no label was read. Before, a changed country made pushes name a label no registered source had.
 - Then `pg_merchant_supplement_ensure()` (#4388) creates the push's supplemental API source (state `supplement`), linked into the feed source's `defaultRule`. Push body `pg_merchant_product_input()`, issues `pg_merchant_product_issues()`.
-- The country comes from the card (field `merchant_center_country`, apart from the structured-data `merchant_country`: one shared name overwrote the seller country, #3557; `tests/settings_seo_sharing_test.php` keeps each save to its field), offered first from `ORGANIZATION_COUNTRY` when it is a code, else from the base currency (`pg_merchant_default_country()`).
+- The country comes from that page (field `merchant_center_country`, apart from the structured-data `merchant_country`: one shared name overwrote the seller country, #3557; `tests/settings_seo_sharing_test.php` keeps each save to its field), offered first from `ORGANIZATION_COUNTRY` when it is a code, else from the base currency (`pg_merchant_default_country()`).
 
 ## What is not verified?
 - Tests: `tests/merchant_center_test.php` (pure parts). The live run needs a Merchant Center account and the Merchant API enabled in the Google Cloud project of the site's OAuth client; checked on dev by the owner.

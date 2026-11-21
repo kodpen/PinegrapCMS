@@ -569,6 +569,79 @@ if ($_POST) {
 
 	}
 
+	// An address autocomplete provider's key or server, saved, tried or
+	// removed on its page under the gate of the Address Autocomplete card it
+	// came from. The switch stays the card's: a save keeps it as it was.
+	if (in_array($action, array('addr_save', 'addr_remove'), true) && connections_commerce_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+		$addr_provider = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$addr_definition = in_array($addr_provider, pg_connections_screen_address_pages(), true) ? pg_addr_provider_definition($addr_provider) : null;
+
+		if ($addr_definition !== null) {
+
+			if ($action === 'addr_remove') {
+
+				pg_addr_account_forget($addr_provider);
+
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h($addr_definition['label']))));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $addr_definition['label'])), $_SESSION['sessionusername']);
+
+			} else {
+
+				$addr_app = pg_addr_app($addr_provider);
+				$addr_decision = pg_addr_page_decide($addr_provider, $_POST, $addr_app, pg_addr_settings_refusal());
+
+				foreach ($addr_decision['marks'] as $addr_field => $addr_mark) {
+					$liveform->mark_error($addr_field, h($addr_mark));
+				}
+
+				if (!$liveform->check_form_errors() && pg_addr_page_save($addr_provider, $addr_decision, $addr_app, (int) $user['id'], $liveform)) {
+					$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => h($addr_definition['label']))));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $addr_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			}
+
+		}
+
+	}
+
+	// Google Merchant Center: the account, its country, the feed's data
+	// source and the product issues, on its page under the gate of the
+	// Product Feeds card they came from. The messages carry Google's own
+	// words, so they are escaped whole.
+	if (($action === 'merchant_save') && connections_commerce_may_manage($user)) {
+
+		$merchant_post = function ($name) {
+			return (isset($_POST[$name]) && is_string($_POST[$name])) ? $_POST[$name] : '';
+		};
+
+		$merchant_messages = pg_merchant_save_from_screen(array(
+			'account'  => $merchant_post('merchant_account'),
+			'country'  => $merchant_post('merchant_center_country'),
+			'register' => ($merchant_post('merchant_register') === '1'),
+			'check'    => ($merchant_post('merchant_check') === '1'),
+			'unlink'   => ($merchant_post('merchant_unlink') === '1'),
+		));
+
+		foreach ($merchant_messages as $merchant_message) {
+			if ($merchant_message[0] === 'error') {
+				$liveform->add_error(h($merchant_message[1]));
+			} else {
+				$liveform->add_notice(h($merchant_message[1]));
+			}
+		}
+
+		if (!$merchant_messages) {
+			$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => 'Google Merchant Center')));
+		}
+
+		log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Google Merchant Center')), $_SESSION['sessionusername']);
+
+	}
+
 	// The Sign in with Google application, saved on Google's page under the
 	// gate of the sign-in settings it came from. The switch that shows the
 	// button stays there.
@@ -2690,6 +2763,218 @@ function connections_ga_page($page, $may_manage) {
 
 }
 
+/* An address autocomplete provider's page, Google Places, Mapbox or Photon:
+   "Connection details" holds the key (never drawn back) or Photon's server
+   the Address Autocomplete card of Site Settings › Ecommerce held, with
+   Save and try on a test address, for who may open that category; Status
+   has Disconnect while an account is stored; "Where it is used" leads to the
+   card, which keeps the switch and the provider. */
+
+function connections_addr_page($page, $id, $may_manage) {
+
+	$definition = pg_addr_provider_definition($id);
+	$app = pg_addr_app($id);
+	$on = (pg_addr_provider() === $id);
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$refusal = pg_addr_settings_refusal();
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The site\'s {var:1} connection. Address autocomplete is switched on, and its provider chosen, on the Address Autocomplete card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			' . (($refusal !== '') ? '<div class="alert theme-warning small py-3 mb-4">' . h($refusal) . '</div>' : '') . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="addr_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . pg_addr_page_fields($id, $refusal === '') . '
+			</form>
+		</section>';
+
+		if ($app['exists']) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="addr_remove" data-id="0"
+					data-confirm="' . h($on
+						? lang(array('string' => 'The {var:1} connection is removed from this site: the address forms give no suggestions until a provider is connected and switched on again.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} connection is removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-address-autocomplete')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Address suggestions in the address forms')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Address Autocomplete')) . '</span>
+						<span class="pg-text-meta d-block">' . h($on ? lang('The forms ask it for suggestions.') : lang('It is not the provider switched on on the card.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($on ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* Google Merchant Center's page: "Connection details" holds what the
+   Product Feeds card held, the Merchant Center account, its country, the
+   feed registered as a data source and the product issues, for who may
+   open Site Settings › Ecommerce; Status lists the Google accounts
+   connected for it and has Connect; "Where it is used" leads to the feed's
+   card and the Marketplaces screen, where each product's push runs. */
+
+function connections_merchant_page($page, $may_manage) {
+
+	$state = pg_merchant_state();
+	$connection = pg_merchant_connection($state);
+	$account_name = $state['account_name'] . (($state['account_name'] !== $state['account']) ? ' (' . $state['account'] . ')' : '');
+
+	$page['status_extra'] = '
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Merchant Center account')) . '</div>
+				<div class="pg-text-2 text-break">' . h(($state['account'] !== '') ? $account_name : lang('None chosen')) . '</div>
+			</div>';
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$country = ($state['country'] !== '')
+			? $state['country']
+			: pg_merchant_default_country(defined('ORGANIZATION_COUNTRY') ? ORGANIZATION_COUNTRY : '', defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '');
+
+		$country_field = '
+				<div>
+					<label for="merchant_center_country" class="pg-field-label">' . h(lang('Country')) . '</label>
+					<input type="text" name="merchant_center_country" id="merchant_center_country" class="pg-input text-uppercase" maxlength="2" pattern="[A-Za-z]{2}" value="' . h($country) . '" placeholder="TR" autocomplete="off">
+					<div class="pg-field-help">' . h(lang('Two letters, the country the products are sold in.')) . '</div>
+				</div>';
+
+		if (!pg_merchant_ready()) {
+
+			$body = '<div class="alert theme-warning small py-3 mb-0">' . h(lang('The database has not been upgraded yet. Run the software update first.')) . '</div>';
+
+		} elseif (!is_array($connection)) {
+
+			$body = '<p class="pg-text-2 mb-0">' . (pg_connect_app_ready(pg_connect_app('google'))
+				? h(lang('Connect a Google account under Status, then choose the Merchant Center account here.'))
+				: h(lang('To connect Merchant Center, set up the Google application first.')) . ' <a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>') . '</p>';
+
+		} elseif ($state['account'] === '') {
+
+			$offered = pg_merchant_accounts($connection['id']);
+			$options = '';
+
+			foreach ($offered['accounts'] as $merchant_id => $merchant_name) {
+				$options .= '<option value="' . h($merchant_id) . '">' . h($merchant_name . (($merchant_name !== (string) $merchant_id) ? ' (' . $merchant_id . ')' : '')) . '</option>';
+			}
+
+			$body = ($options !== '') ? '
+				<div>
+					<label class="pg-field-label" for="merchant_account">' . h(lang('Merchant Center account')) . '</label>
+					<select class="pg-input" id="merchant_account" name="merchant_account"><option value="">' . h(lang('Choose')) . '</option>' . $options . '</select>
+					<div class="pg-field-help">' . h(lang(array('string' => 'Connected as {var:1}.', 'vars' => $connection['label']))) . '</div>
+				</div>' . $country_field . '
+				<p class="pg-field-help my-0">' . h(lang('When you save, Google is given the address of the Google Merchant Center feed and fetches it every day.')) . '</p>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>' : '
+				<div class="alert theme-warning small py-3 mb-0 text-break">' . h(($offered['error'] !== '')
+					? lang(array('string' => 'The Merchant Center accounts could not be read: {var:1}', 'vars' => $offered['error']))
+					: lang('The connected Google account has no Merchant Center account.')) . '</div>';
+
+		} else {
+
+			// The data source line: registered, failed, or not yet.
+			if ($state['register_error'] !== '') {
+				$source = '<div class="alert theme-warning small py-3 mb-0 text-break">' . h(lang(array('string' => 'The feed could not be registered in Merchant Center: {var:1}', 'vars' => $state['register_error']))) . '</div>';
+			} elseif ($state['data_source'] !== '') {
+				$source = '<p class="pg-text-2 mb-0">' . h(lang(array('string' => 'Merchant Center fetches the feed every day (registered {var:1}).', 'vars' => get_relative_time(array('timestamp' => $state['registered_at'], 'format' => 'plain_text'))))) . '</p>';
+			} else {
+				$source = '<p class="pg-text-2 mb-0">' . h(lang('The feed is not registered in Merchant Center yet.')) . '</p>';
+			}
+
+			// The issues line: the last reading, or why there is none.
+			$counts = $state['issues']['counts'];
+
+			if ($state['check_error'] !== '') {
+				$issues = '<div class="alert theme-warning small py-3 mb-0 text-break">' . h(lang(array('string' => 'The product issues could not be read: {var:1}', 'vars' => $state['check_error']))) . '</div>';
+			} elseif ($state['checked_at'] > 0) {
+				$list = '';
+
+				foreach ($state['issues']['top'] as $issue) {
+					$text = h($issue['description']) . ' · ' . h(lang(array('string' => '{var:1} product(s)', 'vars' => (int) $issue['products'])));
+
+					$list .= '<li>' . (($issue['help'] !== '')
+						? '<a href="' . h($issue['help']) . '" target="_blank" rel="noopener noreferrer">' . $text . '</a>'
+						: $text) . '</li>';
+				}
+
+				$issues = '<p class="pg-text-2 mb-0">' . h(lang(array('string' => 'Issues: {var:1} disapproving, {var:2} demoting, {var:3} warnings (read {var:4}).', 'vars' => array(
+					(int) $counts['DISAPPROVED'],
+					(int) $counts['DEMOTED'],
+					(int) $counts['NOT_IMPACTED'],
+					get_relative_time(array('timestamp' => $state['checked_at'], 'format' => 'plain_text')),
+				)))) . '</p>' . (($list !== '') ? '<ul class="pg-text-2 mb-0">' . $list . '</ul>' : '');
+			} else {
+				$issues = '<p class="pg-text-2 mb-0">' . h(lang('The product issues have not been read yet.')) . '</p>';
+			}
+
+			$body = '
+				<dl class="pg-kv mb-0"><dt>' . h(lang('Merchant Center account')) . '</dt><dd class="text-break"><a href="' . h(pg_merchant_center_url($state['account'])) . '" target="_blank" rel="noopener noreferrer">' . h($account_name) . '</a></dd></dl>
+				' . $source . '
+				' . $issues . '
+				' . $country_field . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+					<button type="submit" name="merchant_register" value="1" class="pg-button pg-button-sm pg-button-quiet"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang('Register the feed again')) . '</button>
+					<button type="submit" name="merchant_check" value="1" class="pg-button pg-button-sm pg-button-quiet"><i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>' . h(lang('Check issues now')) . '</button>
+					<button type="submit" name="merchant_unlink" value="1" class="pg-button pg-button-sm pg-button-danger" onclick="return confirm(' . h(json_encode(lang('Stop using this Merchant Center account? The data source stays in Merchant Center until you delete it there.'))) . ')"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Stop using this account')) . '</button>
+				</div>';
+
+		}
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('Gives Google the address of the product feed to fetch every day and shows the product problems Merchant Center reports.')) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="merchant_save">
+				<input type="hidden" name="connections_return" value="merchant_center">
+				' . $body . '
+			</form>
+		</section>';
+
+	}
+
+	$registered = ($state['data_source'] !== '') && ($state['register_error'] === '');
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-feeds')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('The Google Merchant Center feed')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Product Feeds')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($registered ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>
+				<a class="pg-card-inner-row connections-row" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/marketplace_settings.php') . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Each product\'s price and stock')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('System tools')) . ' › ' . h(lang('Marketplaces')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($state['account'] !== '') ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
 /* Why a provider's application cannot connect yet; '' when it can. */
 
 function connections_app_hint($app) {
@@ -3724,6 +4009,17 @@ if ($provider_page !== '') {
 	// that puts it to use.
 	if (in_array($page_id, pg_connections_screen_carrier_pages(), true)) {
 		$page = connections_carrier_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// An address autocomplete provider's page: its key or server and the card
+	// that switches it on.
+	if (in_array($page_id, pg_connections_screen_address_pages(), true) && (pg_addr_provider_definition($page_id) !== null)) {
+		$page = connections_addr_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// Google Merchant Center's page: the account, the feed and its issues.
+	if ($page_id === 'merchant_center') {
+		$page = connections_merchant_page($page, connections_commerce_may_manage($user));
 	}
 
 	// A CAPTCHA provider's page: its keys and the card that chooses it.

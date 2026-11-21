@@ -6,8 +6,9 @@
  * opens the commands of the tool and the selection there: the layers'
  * clipboard, order, alignment, lock and visibility and their type's own
  * commands, the picture's and an area's commands, the empty canvas's paste,
- * Import and fit, a group item's modes, a scene's moves. Text fields keep
- * the browser's own menu.
+ * Import and fit, a group item's modes, a scene's moves. On a clip's row
+ * of the tracks it selects that clip and starts with Split clip and Detach
+ * sound. Text fields keep the browser's own menu.
  *
  * A part of window.PgImageEditor, bundled last (pg_js_bundles()); it hangs
  * its code on the editor through PgImageEditor.parts
@@ -48,6 +49,11 @@
         attach: ['attachTo'],
         attachTo: [null, function (ctx, it) { this.attachLayer(this.sel[0], it.att); }],
         detach: ['detach', function () { this.attachLayer(this.sel[0], ''); }],
+        // A clip's row on the tracks, and Detach from a video under Add
+        // sound (pg_image_editor_clip.js).
+        split: ['clipSplit', function (ctx) { this.clipSplitHere(ctx.clip); }],
+        detachSound: ['clipDetach', function (ctx) { this.clipDetachHere(ctx.clip); }],
+        detachClip: [null, function (ctx, it) { this.clipDetachHere(it.clip); }],
         order: ['arrange'],
         front: ['bringFront', function () { this.arrangeLayers('top'); }],
         forward: ['bringForward', function () { this.arrangeLayers('up'); }],
@@ -153,6 +159,12 @@
             return s;
         }
 
+        if (ctx.at === 'detachFrom') {
+            s.clips = ctx.clips;
+
+            return s;
+        }
+
         if (ctx.at === 'scene') {
             var list = M.sceneList(this.doc);
 
@@ -176,6 +188,8 @@
         s.ungroup = !!(picked.length > 1 && this.groupState && this.groupState().ungroup);
         s.attach = this.attachOffer ? this.attachOffer() : [];
         s.attached = !!(one && M.attachOf(one));
+        // Opened on a clip's row: its own commands first.
+        s.clipRow = (ctx.clip && one && (one.id === ctx.clip)) ? { sound: !!M.clipLayer(one).sound } : null;
         s.locked = picked.length > 0 && picked.every(function (l) { return !!l.locked; });
         s.hidden = picked.length > 0 && picked.every(function (l) { return !!l.hidden; });
         s.areas = (picked.length && this.pathfinderItems) ? this.pathfinderItems().length : 0;
@@ -296,7 +310,7 @@
                 return;
             }
 
-            var c = COMMANDS[it.name], text = it.att ? self.attachLabel(it.att) : (c[0] ? t(c[0]) : t((strings['mode_' + it.mode] !== undefined) ? 'mode_' + it.mode : 'tool_' + it.mode));
+            var c = COMMANDS[it.name], text = it.att ? self.attachLabel(it.att) : (it.clip ? self.clipMenuName(it.clip) : (c[0] ? t(c[0]) : t((strings['mode_' + it.mode] !== undefined) ? 'mode_' + it.mode : 'tool_' + it.mode)));
             var b = el('button', {
                 type: 'button',
                 class: (c[2] ? 'pgie-ctx-danger' : '') + (it.sub ? ' pgie-ctxopen' : ''),
@@ -493,7 +507,7 @@
     // ctx for an element of the editor: a rail item, a scene's card or the
     // stage; null elsewhere (the panel, the top bar), and in a text field.
     Editor.prototype.menuPlace = function (target) {
-        var self = this, card, item = null;
+        var self = this, card, row, item = null;
 
         if (!target || !target.closest || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName || '') || target.isContentEditable) {
             return null;
@@ -515,6 +529,14 @@
 
         if (card && card.getAttribute('data-scene')) {
             return { at: 'scene', scene: card.getAttribute('data-scene'), el: card };
+        }
+
+        // A clip's row on the tracks: the clip of the bar under the press,
+        // else the row's (data-clip, pg_image_editor_clip.js).
+        row = this.stage.contains(target) ? target.closest('[data-clip]') : null;
+
+        if (row) {
+            return { at: 'stage', clip: row.getAttribute('data-clip'), el: row };
         }
 
         if (this.stage.contains(target) && !(this.actBar && this.actBar.contains(target))) {
@@ -554,9 +576,22 @@
         this.render();
     };
 
+    // The clip of a row's menu selected alone; the rows drawn again leave
+    // the focus to come back to the stage.
+    Editor.prototype.menuClip = function (ctx) {
+        if ((this.sel.length !== 1) || (this.sel[0] !== ctx.clip)) {
+            this.select([ctx.clip]);
+        }
+
+        ctx.el = (ctx.el && ctx.el.isConnected) ? ctx.el : this.stage;
+    };
+
     // The menu for ctx from a pointer at e (a right click, a long press).
     Editor.prototype.menuAt = function (ctx, e, pick) {
-        if (ctx.at === 'stage') {
+        if (ctx.clip) {
+            // A clip's row: that clip, not what lies under the tracks.
+            this.menuClip(ctx);
+        } else if (ctx.at === 'stage') {
             if (this.cropping()) {
                 return;
             }
@@ -577,7 +612,12 @@
     Editor.prototype.menuFromKey = function () {
         var ctx = this.menuPlace(document.activeElement) || { at: 'stage', el: this.stage }, r, x, y;
 
-        if (ctx.at === 'stage') {
+        if (ctx.clip) {
+            r = ctx.el.getBoundingClientRect();
+            x = r.left + Math.min(24, r.width / 2);
+            y = r.bottom;
+            this.menuClip(ctx);
+        } else if (ctx.at === 'stage') {
             if (this.cropping()) {
                 return;
             }

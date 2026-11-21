@@ -921,6 +921,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 
 - api/ad-conversions-click-ids.md: Ad click ids of the landing address (fbclid, gclid, ttclid, #10781): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache
 - api/ad-conversions-counter-sales.md: The choices block of the Meta, GA4 and TikTok pages (event switches, Lead forms, counter sales) and "Send counter sales": a local order's purchase without any personal data
+- api/ad-conversions-meta.md: Meta Conversions API (#10812): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row
 - api/ad-conversions.md: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: the start file, which file holds each part, the rules every change keeps, C1 to C12 with PRs, what is not built
 - api/ai-connections.md: One connection per AI provider (CX9a): where its key is kept, the key an assistant calls with, the 11.0.240 data step that moved the keys, its page on Connections and who may change it
 - api/api-change-rules.md: How the external API may change: by adding only, no version in the address, English endpoint texts, the checks every API change keeps, and what the 2026-11-17 test measured that is still open
@@ -963,6 +964,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/course-student-hunt.md: Bug hunt of the courses' student side (architect, 2026-11-20, agent channel message 10214): files read, the lesson outside its folder fixed (#10601), the parent-folder enrolment day left as #10603
 - commerce/course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, rows written once, the certificate code
 - commerce/customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR
+- commerce/delivery-tower-segments.md: The link segments "Problems" / "Carrier scorecard" under the head of Delivery problems and the Carrier scorecard (DT5b): who sees which, how they are drawn
 - commerce/event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets
 - commerce/event-tickets-key.md: The event tickets' own key (sealed in config_text, made once when the switch is saved on, resealed on a key reset) and why an order's deletion removes its tickets
 - commerce/event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch
@@ -1203,7 +1205,6 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/visitor-push-watch.md: Visitor notifications to one device (11.0.229, VP6): the site_push_watch table a browser waits for one record in, its moments sent once, who deletes its rows, the helpers VP5 and VP6 share
 - platform/visitor-push.md: Visitor notifications start file: the "Notify me" block, the Features switch, Send a notification; its decisions, which file holds each part, the known gap
 - platform/whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test
-- platform/xlsx-workbook-part.md: Where .xlsx readers and editors find the workbook part: through _rels/.rels (pg_sheet_xlsx_workbook(), PR #10905), else xl/workbook.xml; which editor refuses one kept elsewhere
 - release/released-vs-open-version.md: Released versions are closed, the unreleased one open: where the status is, how the upgrade loop compares, no new number while one is open, schema the open version gave up is taken out
 - ui/admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 - ui/ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
@@ -1240,6 +1241,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-attach.md: Artifact Canvas Attach to and Detach: l.att on the follower, the target's motion under its own keys, the rest carry, circles refused; menu, More, Path tab first, layers list mark
 - ui/image-editor-clip-bar.md: A video clip's bar on the tracks (V3b): the filmstrip of several frames from a second decoder, the clip's sound as a waveform under the frames
 - ui/image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b)
+- ui/image-editor-detach-sound.md: Artifact Canvas Detach sound where the hand is: the bar over a clip, a clip row's menu on the tracks, Detach from a video under Add sound; the reasons it is refused
 - ui/image-editor-eraser.md: The Artifact Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place
 - ui/image-editor-follow.md: The Artifact Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
 - ui/image-editor-groups.md: Artifact Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
@@ -1298,8 +1300,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes
 - ui/screen-composition-rules.md: How a settings pane, a form drawer and a connect row are put together in look A so a person understands them: folded rows, one line of help, tabs, a remove button, one state everywhere
 - ui/settings-assistants-help-lines.md: Site Settings › Assistants and agents, the help (AT3): one line per part with "How does this work?" opening a drawer of numbered steps; Add an agent's "Start from an application"
-- ui/settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents (AT2b): one column, the fold Application and key, the drawers Set up on claude.ai and The latest requests, what a test pins
+- ui/settings-assistants-long-lists.md: Site Settings › Assistants and agents, the long lists (AT6): MCP servers, Workspace agents and Canvas templates show at most five rows, then "Show all N" and the part's drawer
+- ui/settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents as drawn: the sentence, the grid, Try and Set up, the fold Key and secret, the five-step drawer Set up on claude.ai
 - ui/settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab
+- ui/settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows
 - ui/settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1): SMTP Settings' five cards, the campaign texts and MailChimp, a save writing config.php then the config row, old anchors
 - ui/settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility.
 - ui/settings-modal-save-place.md: After a save the Site Settings dialog keeps the form's scroll, opens the drawer the save came from again and says "saved" in one toast; when the drawer stays shut (#9751)
@@ -1327,7 +1331,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-language.md: The agent channel's language: English between agents, Turkish to the owner (2026-11-13; the Turkish spell of 2026-11-15 ended 2026-11-16); a note that asks nothing names an agent without the mark
 - workflow/agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
-- workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed
+- workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes (a note's card too), the handles typed
 - workflow/architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20
 - workflow/architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19)
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
@@ -1379,6 +1383,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
 - workflow/screen-described-in-plan.md: A plan describes each screen it adds in words, by the composition rules; no drawing is approved before a step and no screenshot goes to the architect or the owner for a yes (owner, 2026-11-20)
 - workflow/screen-description-checks.md: What a screen description of a redrawn screen must hold so the result matches it: every part the screen has today placed, countable lines a unit test pins, who looks on dev after landing
+- workflow/screen-follows-drawing.md: A screen the architect drew is built as drawn: button order, sentences, pills, links; a words-only description beside it gives way (owner, 2026-11-21)
 - workflow/session-lifecycle.md: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas
@@ -1427,6 +1432,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-members-agents.md: A channel's agents and guests among its members (#8936, GV2): agent faces in the head; People, Agents and Guests in Channel info; last seen, a person's and a guest's only for a manager
 - workspace/channel-memory-general.md: A memory record's project (ws_channel_memory.project) and the general memory (channel_id 0) the agent channels share: who keeps it, the checks, the routes, the sweep
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
+- workspace/channel-notes-written.md: A document in a channel is a note written there: Write a note, POST /workspace/channels/{id}/notes, edit through the channel's share, the card touched on a save, note_card's fields
 - workspace/channel-open-items-line.md: The open items line under a channel's pin (OI1 #9783) and on GET /workspace/channels/{id} (OI2 #9827): open polls, agent questions, the running check-in, waiting approvals; whose answer each waits for
 - workspace/channel-settings-drawer.md: The Channel settings drawer (channelForm(), #9616): four tabs, icon and colour popovers by the name, switches at the row end, one versions list; what stays in Channel info
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
@@ -1560,4 +1566,4 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-voice-browser-route.md: Voice to assistants (#5390, VA1-VA6) and VA2: without a site key the sender's browser writes a recording out before the upload, kept as a done ws_voice row with provider browser; what is still open
 - workspace/workspace-voice-read-aloud.md: Assistants' and channel agents' answers read aloud (V5, GV3): the per-person browser switch, off by default, no schema; which answers are read, what is left out, when it stops
 - workspace/workspace-voice-spoken-answers.md: An assistant's answer to a recording is heard back (VA4, #5390): ws_voice_answer_spoken() on the three answer routes, the words read, the language, the browser fallback
-- workspace/workspace-writing-rules.md: How every AI is told to write a Workspace message (bold, code, lists, tables, quotes, links, no headings): one English text in code for the agent instructions and the guide
+- workspace/workspace-writing-rules.md: How every AI is told to write a Workspace message (bold, code, lists, tables, no headings): one English text in code for the agent instructions, the guide, the assistants, the message routes

@@ -10,7 +10,7 @@ module: image_editor
 - Desktop: over the selected object, so a command does not take the tool's panel away (#10003). Owner (2026-11-16, poll 103, message 7038): "Evet, böyle çıksın" (`workflow/decisions-made-product-67.md`).
 
 ## Which commands show on the desktop?
-- `M.actionList(state)` with `state.place` `object` (`objectActions()`): one layer's own command (a text: Edit text; a video in Animate: Split), Follow in Animate for a layer other than a video or a redaction while a video shows at the playhead (`image-editor-follow.md`), Motion in Animate (never a redaction), Duplicate, Delete, Lock, More. Several layers: Duplicate, Delete, Lock, More. Every layer locked: Unlock and More.
+- `M.actionList(state)` with `state.place` `object` (`objectActions()`): one layer's own command (a text: Edit text; a video in Animate: Split, Detach sound), Follow in Animate for a layer other than a video or a redaction while a video shows at the playhead (`image-editor-follow.md`), Motion in Animate (never a redaction), Duplicate, Delete, Lock, More. Several layers: Duplicate, Delete, Lock, More. Every layer locked: Unlock and More.
 - The picture and an area keep their commands in the panel there: no bar. More opens the context menu's list at the bar (`openMenu()`): order, align, flip are there, not in the bar.
 - Motion opens the Motion popover (`image-editor-motion.md`); a track row's button opens the same one (`image-editor-tracks.md`).
 
@@ -30,4 +30,4 @@ module: image_editor
 
 ## How was it checked?
 - `tests/image_editor_actions_test.php`: the lists per place, kind and lock; `actBarPlace()` at each edge; the stylesheet's rules; the labels' owners (#10003, #10041, #10500).
-- Browser, 390×844 (2026-11-04) and 1440 and 1024 light and dark (#10003): the bar, a text, a video in Animate with the popover open, a layer at the top edge, a locked one.
+- Browser, 390×844 (2026-11-04), 1440 and 1024 light and dark (#10003): the bar, a text, a video in Animate with the popover, a layer at the top edge, a locked one.

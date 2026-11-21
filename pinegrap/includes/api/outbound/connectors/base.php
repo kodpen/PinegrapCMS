@@ -142,7 +142,7 @@ function mp_providers() {
 				)
 			)
 		),
-		// Managed: no fields of its own. The Product Feeds card writes and
+		// Managed: no fields of its own. Its page of Connections writes and
 		// deletes its account row (includes/fn/merchant_center_push.php); this
 		// screen lists it and never offers it under "add account".
 		'merchant_center' => array(

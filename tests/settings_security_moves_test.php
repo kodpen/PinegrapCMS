@@ -59,9 +59,17 @@ function settings_security_moves_test_card($file, $id)
 		return '';
 	}
 
-	$end = strpos($source, '$pg_settings_cards[]', $start);
+	$ends = array();
 
-	return ($end === false) ? substr($source, $start) : substr($source, $start, $end - $start);
+	foreach (array('$pg_settings_cards[]', '$firewall_parts[') as $mark) {
+		$at = strpos($source, $mark, $start);
+
+		if ($at !== false) {
+			$ends[] = $at;
+		}
+	}
+
+	return $ends ? substr($source, $start, min($ends) - $start) : substr($source, $start);
 }
 
 function test_settings_security_moves_labels_and_keys()
@@ -86,7 +94,7 @@ function test_settings_security_moves_card_order()
 		array('pgset-session', 'pgset-captcha', 'pgset-device', 'pgset-mfa', 'pgset-audit', 'pgset-signin', 'pgset-membership', 'pgset-encryption'),
 		settings_security_moves_test_sections('security'));
 	pg_assert_same(
-		array('pgset-waf', 'pgset-proxies', 'pgset-bots', 'pgset-iplists', 'pgset-countries', 'pgset-headers'),
+		array('pgset-waf', 'pgset-limits', 'pgset-bots', 'pgset-iplists', 'pgset-countries', 'pgset-proxies', 'pgset-headers'),
 		settings_security_moves_test_sections('firewall'));
 
 	// The pane draws the cards in the order the registry lists them.

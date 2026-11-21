@@ -273,3 +273,23 @@ function test_sheet_read_xlsx_workbook_without_package_relationships()
 	pg_assert_same(array('t' => 'd', 'v' => '46343'), isset($read['rows'][2][1]) ? $read['rows'][2][1] : null, 'the 1904 date');
 	pg_assert_same(array(2 => true), $read['kinds']['text'], 'the text styles');
 }
+
+// The preview (pg_office_xlsx_read()) took its date-1904 flag from
+// xl/workbook.xml alone: a workbook named otherwise in _rels/.rels showed
+// its 1904 dates four years early (2022-11-16 for 2026-11-17) in Quick Look
+// and the file window, while the importers read them right.
+function test_office_xlsx_read_date1904_from_the_package_relationships()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	foreach (array('book/main.xml', 'xl/Workbook2.xml', 'xl/workbook.xml') as $workbook) {
+		$path = sheet_read_xlsx_workbook_test_file($workbook);
+		$book = pg_office_xlsx_read($path);
+		unlink($path);
+
+		pg_assert_same(true, $book['ok'], $workbook . ': the preview reads it');
+		pg_assert_same('2026-11-17', isset($book['sheets'][0]['rows'][1]['cells'][1]) ? $book['sheets'][0]['rows'][1]['cells'][1] : null, $workbook . ': the 1904 date in B2');
+	}
+}

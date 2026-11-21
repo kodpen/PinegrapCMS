@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the names screen readers get in the Site Settings cards: radio
- * groups are headed by a legend, the Custom CSS and cron command code fields
+ * groups are headed by a legend, the Panel CSS and cron command code fields
  * and the default barcode type select are named, the e-document check time
  * follows the site's date and time format, and required markers are not
  * read as "star".
@@ -31,7 +31,7 @@ function settings_card_names_quoted($text)
 function test_settings_card_radio_groups_have_a_legend()
 {
 	$groups = array(
-		'appearance.php' => array('Editor Version'),
+		'appearance.php' => array('Editor version'),
 		'commerce.php' => array('Recipient Mode', 'Enforcement', 'Transaction Type', 'Mode', 'Price before the discount'),
 		'features.php' => array('Site Search Type', 'Setup'),
 		'firewall.php' => array('Mode', 'Restriction', 'Content Security Policy'),
@@ -71,7 +71,7 @@ function test_settings_card_social_setup_legend_heads_only_its_radios()
 function test_settings_card_code_fields_are_named()
 {
 	$appearance = settings_card_names_source('appearance.php');
-	pg_assert_contains('<label class="form-label" for="custom_css">', $appearance, 'the Custom CSS label points at its textarea');
+	pg_assert_contains('<label class="form-label" for="custom_css">', $appearance, 'the Panel CSS label points at its textarea');
 
 	$general = settings_card_names_source('maintenance.php');
 	pg_assert_contains('<textarea id="cron_job_general_dispatch" aria-label="\' . h(lang(\'General job command\')) . \'">', $general, 'the dispatch command box has a translated name');

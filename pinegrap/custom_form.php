@@ -1754,13 +1754,19 @@ if ($liveform->check_form_errors() == false) {
     // from /forms/{id}/submissions with the permission that takes.
     require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
 
-    api_webhook_enqueue('form.submitted', array(
+    $form_submitted_event = array(
         'id'             => (int) $form_id,
         'form_id'        => (int) $_POST['page_id'],
         'form_name'      => $form_name,
         'reference_code' => $reference_code,
         'contact_id'     => ((int) $contact_id > 0) ? (int) $contact_id : null
-    ));
+    );
+
+    api_webhook_enqueue('form.submitted', $form_submitted_event);
+
+    // The satisfaction surveys that follow this form (pg_announce() tells
+    // them elsewhere; this event goes to the queue directly).
+    pg_feedback_heard('form.submitted', $form_submitted_event);
 
     // A form the shop picked on an ad service's page is a Lead there, sent
     // only with the visitor's consent (includes/fn/ad_conversions.php).

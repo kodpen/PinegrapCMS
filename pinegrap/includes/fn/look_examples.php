@@ -438,20 +438,24 @@ function pg_look_examples_patterns($prefix = 'light')
     );
 
     // Claude's "Set up on claude.ai" drawer (ws_claude_setup_drawer_html()):
-    // the steps a person follows on another site, numbered by the stepper, in
-    // a drawer of their own that one quiet button opens.
-    $guide = ws_claude_setup_guide('https://example.com/pinegrap/', 'example.com', '', function () {
-        return '';
-    });
+    // the steps a person follows on another site, numbered by the stepper, a
+    // title and one sentence each with the values to copy, in a drawer of
+    // their own that one quiet button opens.
+    $guide = ws_claude_setup_guide('example.com', "Site API: https://example.com/pinegrap/integration.php\n1. GET …/workspace/claude/instructions\n2. Follow them.", 'pg_live_example');
+    // Both themes draw it: their own ids.
+    $guide = str_replace(array('id="ws-claude-', 'for="ws-claude-', 'data-ws-copy-field="ws-claude-'), array('id="' . $p . '-ws-claude-', 'for="' . $p . '-ws-claude-', 'data-ws-copy-field="' . $p . '-ws-claude-'), $guide);
 
     $patterns[] = array(
         'id'      => 'pattern-steps',
         'title'   => lang('Numbered steps drawer'),
-        'classes' => array('.pg-stepper-cards', 'stepper-item', '.ws-claude-setup-steps', '.ws-claude-shot', '.pg-field-label', '.pg-button-quiet'),
+        'classes' => array('.pg-stepper-cards', 'stepper-item', '.ws-claude-setup-steps', '.ws-claude-step-title', '.ws-claude-code', '.pg-value-row', '.ws-claude-value-field', '.pg-icon-tile-lg', 'drawer-footer', '.pg-button-quiet'),
         'html'    => '<div class="pg-look-line"><button type="button" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . h(lang('Set up on claude.ai')) . '</button></div>'
-            . '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:42rem">'
-            . '<div class="drawer-header border-bottom p-5"><h5 class="drawer-title">' . h(lang('Set up on claude.ai')) . '</h5><button type="button" class="btn-close" aria-label="' . h(lang('Close')) . '"></button></div>'
+            . '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:34rem">'
+            . '<div class="drawer-header border-bottom gap-3 p-5"><span class="pg-icon-tile pg-icon-tile-lg pg-tone-violet" aria-hidden="true"><i class="bi bi-stars"></i></span>'
+            . '<div class="flex-grow-1 min-width-0"><h5 class="drawer-title">' . h(lang('Set up on claude.ai')) . '</h5><p class="small fg-2 mb-0 mt-1">' . h(lang('Five steps; every value has Copy beside it.')) . '</p></div>'
+            . '<button type="button" class="btn-close" aria-label="' . h(lang('Close')) . '"></button></div>'
             . '<div class="drawer-body p-5"><ol class="stepper pg-stepper-cards ws-claude-setup-steps">' . $guide . '</ol></div>'
+            . '<div class="drawer-footer border-top p-5 d-flex"><button type="button" class="pg-button pg-button-quiet ms-auto">' . h(lang('Close')) . '</button></div>'
             . '</div><p class="pg-text-meta">' . h(lang('From Site Settings › Assistants and agents › Claude: steps done on another site are numbered steps in their own drawer, opened by one button, never paragraphs in the form.')) . '</p>',
     );
 

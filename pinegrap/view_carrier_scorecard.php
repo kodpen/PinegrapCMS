@@ -269,6 +269,7 @@ print
         )
     ) . '
 <main id="content" class="container-fluid">
+    ' . pg_delivery_tower_segments_html('scorecard', $user, true) . '
     <div class="pg-report-tools">' . $output_stepper . '
     </div>
     <div class="row">

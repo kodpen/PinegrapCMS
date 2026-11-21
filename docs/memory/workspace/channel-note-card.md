@@ -27,6 +27,6 @@ description: A note's card in a channel and its windows: look (plain card, full 
 - Edit: a dialog with the note read by `ws_note_get`; Save sends `revision` and `base`. A stale save shows the server's "<name> changed this note meanwhile." with "Load their version" and "Keep mine", as the notes screen does.
 - Versions: a drawer (480 px from the end, a bottom sheet under 576 px) reading `ws_note_get` with `versions: 1` and `version: id`, the notes screen's own list, no second store. Show draws one; "Put this version back" (who may edit) saves its body with the card's revision; a stale one is refused with the same words.
 
-## What comes next?
-- The foot and the drawer's rows name the person; the server's `changed_by` words (an agent's handle) replace them in KD3b (`workspace-note-changed-by-app.md`).
+## Who is named?
+- The foot and the Versions drawer's rows draw the server's `changed_by` words, an application by its name (PR #10904, `workspace-note-changed-by-app.md`).
 - Tests: `tests/workspace_channel_notes_js_test.php` (fold state, foot words and line, the Written up to line, the card's look, menu items, hooks). Introduced by PR #10863; redrawn by PR #10986.

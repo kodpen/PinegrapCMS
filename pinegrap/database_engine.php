@@ -555,7 +555,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     // The run of summarized days ending at the most recent one: the days
     // the overview and the API read from the summary.
     $visitor_range = $visitor_settings['summary'] ? pg_visitor_summary_range() : null;
-    $visitor_settings_link = '<a href="settings_privacy.php#pgset-analytics">' . h(lang('Change')) . '</a>';
+    $visitor_settings_link = '<a href="settings_privacy.php#pgset-retention">' . h(lang('Change')) . '</a>';
 
     $visitor_alert = '';
 

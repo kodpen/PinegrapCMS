@@ -70,7 +70,7 @@ $ws_card = ws_claude_settings_card('', $ws_viewer, $ws_credentials, $ws_form);
 if ($ws_card !== '') {
     $ws_parts['ws-claude'] = array('html' => $ws_card) + ws_assistants_fold_claude(ws_assistants_fold_facts_claude(), $ws_now);
     // The set-up on claude.ai, as numbered steps, opened from the row.
-    $pg_settings_modals[] = ws_settings_claude_setup_drawer(!empty($pg_settings_in_dialog));
+    $pg_settings_modals[] = ws_settings_claude_setup_drawer(!empty($pg_settings_in_dialog), (int) $ws_viewer['role'] === 0);
     // The newest requests and the instructions' version, opened from the row.
     $pg_settings_modals[] = ws_settings_claude_requests_drawer($ws_viewer, !empty($pg_settings_in_dialog));
 }
@@ -78,7 +78,8 @@ if ($ws_card !== '') {
 // ── Workspace agents ──
 // Each agent's activity and form, and Add an agent, open in drawers whose
 // fields and buttons join the settings form by its id.
-$ws_card = ws_agents_settings_card('', $ws_viewer, $ws_form);
+$ws_all = '';
+$ws_card = ws_agents_settings_card('', $ws_viewer, $ws_form, $ws_all);
 
 if ($ws_card !== '') {
     $ws_apps = ws_agents_settings_apps();
@@ -95,6 +96,11 @@ if ($ws_card !== '') {
 
     if ((int) $ws_viewer['role'] === 0) {
         $pg_settings_modals[] = ws_settings_agent_drawer(null, $ws_viewer, $ws_apps, $ws_counts, $ws_form, !empty($pg_settings_in_dialog));
+    }
+
+    // More than five agents: every one in the drawer "Show all N" opens.
+    if ($ws_all !== '') {
+        $pg_settings_modals[] = ws_settings_assistants_all_drawer('ws-agents', $ws_all, !empty($pg_settings_in_dialog));
     }
 }
 
@@ -133,7 +139,8 @@ if (empty($pg_settings_in_dialog) && isset($_GET['mcp_connected']) && !isset($_G
     ws_mcp_settings_returned($ws_viewer, $liveform);
 }
 
-$ws_card = ws_mcp_settings_card('', $ws_viewer, $ws_mcp_relay, $ws_form);
+$ws_all = '';
+$ws_card = ws_mcp_settings_card('', $ws_viewer, $ws_mcp_relay, $ws_form, $ws_all);
 
 if ($ws_card !== '') {
     $ws_mcp_servers = ws_mcp_servers();
@@ -147,6 +154,10 @@ if ($ws_card !== '') {
     if ((int) $ws_viewer['role'] === 0) {
         $pg_settings_modals[] = ws_settings_mcp_drawer(null, $ws_viewer, $ws_mcp_kept, $ws_mcp_servers, $ws_form, !empty($pg_settings_in_dialog));
     }
+
+    if ($ws_all !== '') {
+        $pg_settings_modals[] = ws_settings_assistants_all_drawer('ws-mcp', $ws_all, !empty($pg_settings_in_dialog));
+    }
 }
 
 // ── Bulk changes by the assistants ──
@@ -157,10 +168,17 @@ if ($ws_card !== '') {
 }
 
 // ── Canvas templates ──
-$ws_card = ws_canvas_templates_settings_card($ws_viewer);
+$ws_all = '';
+$ws_card = ws_canvas_templates_settings_card($ws_viewer, $ws_form, $ws_all);
 
 if ($ws_card !== '') {
     $ws_parts['ws-canvas-templates'] = array('html' => $ws_card) + ws_assistants_fold_templates(count(pg_canvas_templates_rows()));
+
+    // The switches in that drawer post with the settings form, saved here.
+    if ($ws_all !== '') {
+        $pg_settings_modals[] = ws_settings_assistants_all_drawer('ws-canvas-templates', $ws_all, !empty($pg_settings_in_dialog),
+            ((int) $ws_viewer['role'] === 0) ? '<button type="submit" form="' . h($ws_form) . '" class="pg-button pg-button-fill pg-button-sm">' . h(lang('Save')) . '</button>' : '');
+    }
 }
 
 // ── The parts' guides ──

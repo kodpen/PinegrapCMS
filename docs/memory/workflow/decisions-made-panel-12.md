@@ -17,8 +17,8 @@ description: Decisions list, panel part 12 (2026-11-20 on): the owner's yes to t
 - Not chosen: "Hayır, baştan çiz".
 
 ## Is Assistants and agents gathered as drawn? (owner, 2026-11-20, agent channel poll 190, channel message 10740)
-- "Evet, böyle çıksın", on the drawing `plans/assistants-settings-tidy/assistants.html` (and JPG): A the seven parts as folded rows, only one open; B Claude's long set-up guide in a drawer. The dialog at its new size (1240 × 880).
-- Binds: AT1, AT2 and AT3 of `plans/assistants-settings-tidy-steps.md` build the tab as drawn.
+- "Evet, böyle çıksın", on the drawing `assistants.html` (and JPG; `git show 95a7d40a:docs/memory/plans/assistants-settings-tidy/assistants.html`): A the seven parts as folded rows, only one open; B Claude's long set-up guide in a drawer. The dialog at its new size (1240 × 880).
+- Binds: AT1, AT2 and AT3 (#10807, #10860, #10864) built the tab as drawn (`ui/settings-fold-rows.md`).
 - Not chosen: "Hayır, baştan çiz".
 
 ## What do the three have in common?

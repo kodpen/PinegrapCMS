@@ -11593,6 +11593,14 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-set-fold-body > .pg-set-card > .card > .card-body {
   padding-inline: 0;
 }
+/* A settings card's body is an inner card (.pg-card-inner) with an inset
+   line drawn by its shadow; inside a row that line would sit flush against
+   the fields, whose side padding is gone, so the frame goes with it. */
+.pg-set-fold-body > .pg-set-card > .card > .card-body {
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
 .pg-set-fold-body > .pg-set-card > .card > .card-header:not(:has(button, a)) {
   display: none;
 }
@@ -22613,6 +22621,108 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     margin-bottom: .25rem;
   }
 }
+/* Claude's opened row (ws_claude_row_html()): the switch with its one line
+   and "How does this work?", two columns of fields (Application and Summary
+   channel, Routine address and Token), then Try and Set up on claude.ai
+   with the newest request beside them. */
+.ws-claude-lead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ws-claude-how-link,
+.ws-claude-last {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+}
+.ws-claude-how-link {
+  color: var(--pg-accent);
+  font-weight: var(--pg-weight-strong);
+  text-decoration: none;
+}
+.ws-claude-how-link:hover {
+  text-decoration: underline;
+}
+.ws-claude-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+}
+.ws-claude-cell {
+  min-width: 0;
+}
+.ws-claude-pair {
+  display: flex;
+  gap: 8px;
+}
+.ws-claude-pair > .ws-claude-select:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.ws-claude-pair > .ws-claude-select + .ws-claude-select {
+  flex: none;
+  width: 7.5rem;
+}
+.ws-claude-select {
+  position: relative;
+}
+.ws-claude-select > select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 22px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.ws-claude-select > .pg-input-end {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+}
+.ws-claude-token > input {
+  font-family: var(--bs-font-monospace);
+}
+.ws-claude-token > .pg-icon-button {
+  flex: none;
+  margin-right: -6px;
+}
+.ws-claude-token > .pg-icon-button + .pg-icon-button {
+  margin-left: -6px;
+}
+.ws-claude-token > [aria-pressed="true"][data-ws-claude-clear] {
+  color: var(--pg-tone-rose-text);
+}
+.ws-claude-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+.ws-claude-last {
+  min-width: 0;
+  max-width: 100%;
+  margin-left: 6px;
+  color: var(--pg-fg-3);
+  text-align: start;
+}
+.ws-claude-last:hover {
+  color: var(--pg-fg-2);
+  text-decoration: underline;
+}
+.ws-claude-fold {
+  margin-top: 16px;
+}
+@media (max-width: 575.98px) {
+  .ws-claude-grid {
+    grid-template-columns: 1fr;
+  }
+  .ws-claude-cell[aria-hidden="true"] {
+    display: none;
+  }
+}
 .ws-claude-copy {
   display: flex;
   align-items: flex-start;
@@ -22621,63 +22731,107 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-claude-copy .pg-input {
   font-size: var(--pg-text-meta);
 }
-.ws-claude-steps {
-  display: grid;
-  gap: 1rem;
-  padding-left: 1.2rem;
-}
-/* The pictures of the steps for connecting Claude (claude_setup.php); the
-   set-up drawer of Claude's row draws them in a .stepper. */
-.ws-claude-steps .ws-ui,
+/* The steps for connecting Claude (claude_setup.php), drawn by the set-up
+   drawer of Claude's row in a .stepper: a title, one sentence, the values to
+   copy. claude.ai's own names stay bold and unbroken. */
 .ws-claude-setup-steps .ws-ui {
   font-weight: 600;
   color: var(--pg-fg-emphasis);
   white-space: nowrap;
 }
-.ws-claude-shot {
-  max-width: 380px;
-  margin: .1rem 0 .65rem;
+.ws-claude-setup-steps a.ws-ui {
+  color: var(--pg-primary);
+  text-decoration: none;
 }
-.ws-claude-shot svg,
-.ws-claude-shot img {
-  display: block;
-  width: 100%;
-  height: auto;
+.ws-claude-setup-steps a.ws-ui:hover {
+  text-decoration: underline;
 }
-.ws-claude-shot img {
-  border: 1px solid var(--pg-border-color);
-  border-radius: var(--ws-radius-sm);
+.ws-claude-step-body {
+  padding-top: .55rem;
 }
-.ws-claude-shot svg {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+.ws-claude-step-title {
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-emphasis);
+  margin-bottom: 2px;
 }
-.ws-claude-shot figcaption {
-  margin-top: .25rem;
-  font-size: .72rem;
+.ws-claude-step-body > .pg-card-inner,
+.ws-claude-step-body > .ws-claude-code {
+  margin-top: 10px;
+}
+/* A value to copy: its name, the value in a borderless read-only field, Copy
+   at the row's end. */
+.ws-claude-value-name {
+  flex: 0 0 auto;
+  min-width: 4.5rem;
+  margin: 0;
+}
+.ws-claude-value-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pg-fg-body);
+  font-size: var(--pg-text-meta);
+  text-overflow: ellipsis;
+}
+.ws-claude-value-field:focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+/* A text to copy: the inner card's surface, the text unwrapped and
+   scrolling on its own, Copy in the top corner beside it rather than over
+   it. */
+.ws-claude-code {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 10px;
+  background: var(--pg-surface-inset);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.ws-claude-code > textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
   color: var(--pg-fg-2);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+  overflow: auto;
+  resize: none;
 }
-.ws-claude-shot .s-frame { fill: var(--pg-bg-body); stroke: var(--pg-border-color); }
-.ws-claude-shot .s-bar { fill: var(--pg-bg-1); }
-.ws-claude-shot .s-dot { fill: var(--pg-border-color); }
-.ws-claude-shot .s-address,
-.ws-claude-shot .s-field,
-.ws-claude-shot .s-dialog { fill: var(--pg-bg-body); stroke: var(--pg-border-color); }
-.ws-claude-shot .s-soft,
-.ws-claude-shot .s-panel { fill: var(--pg-bg-1); stroke: var(--pg-border-color); }
-.ws-claude-shot .s-line,
-.ws-claude-shot .s-chip,
-.ws-claude-shot .s-code { fill: var(--pg-bg-2); }
-.ws-claude-shot .s-dim { fill: rgba(0, 0, 0, .16); }
-.ws-claude-shot .s-ink { fill: var(--pg-fg-body); }
-.ws-claude-shot .s-mute { fill: var(--pg-fg-2); }
-.ws-claude-shot .s-white { fill: #fff; }
-.ws-claude-shot .s-acc { fill: var(--pg-primary); }
-.ws-claude-shot .s-acc-soft { fill: color-mix(in srgb, var(--pg-primary) 14%, transparent); }
-.ws-claude-shot .s-acc-ink { fill: var(--pg-primary); }
-.ws-claude-shot .s-warn { fill: var(--pg-warning-fg-emphasis); }
-.ws-claude-shot .s-bad { fill: var(--pg-danger); }
-.ws-claude-shot .s-claude { fill: #c96442; }
-.ws-claude-shot .s-ring { fill: none; stroke: #f59f00; stroke-width: 2; }
+.ws-claude-code > textarea:focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.ws-claude-code > .ws-claude-copy-button {
+  flex: 0 0 auto;
+}
+/* Which name Claude answers under: a quiet note in the accent's tint. */
+.ws-claude-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pg-primary) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-primary) 24%, transparent);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-meta);
+}
+.ws-claude-note > .bi {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--pg-primary);
+}
 .ws-claude-recent-row {
   align-items: flex-start;
   font-size: var(--pg-text-2);

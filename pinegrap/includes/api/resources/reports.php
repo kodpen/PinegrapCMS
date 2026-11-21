@@ -677,6 +677,386 @@ function api_customer_value_report_schema() {
 
 }
 
+// Customer rhythm (includes/fn/customer_rhythm_*.php): the customers per
+// stage, read from the table the nightly pass writes, and its customers a
+// page at a time, most expected value first; with contact_id the one row the
+// contact card shows and the products due for it. Read only: nothing is
+// worked out again or told at the call. A name is given only to a key that
+// may also read customers and, for the user role (3), only on a contact in
+// its reach, as the customers routes narrow theirs.
+function api_reports_customer_rhythm($params) {
+
+	$commerce = defined('ECOMMERCE') && (ECOMMERCE === true);
+
+	$ready = $commerce && pg_customer_rhythm_ready();
+
+	$summary = $ready ? pg_customer_rhythm_summary() : null;
+
+	$pass = array('lease' => 0, 'started' => 0, 'done' => 0, 'total' => 0);
+
+	if ($ready) {
+
+		list(, $pass) = pg_customer_rhythm_pass_read();
+
+	}
+
+	$names_shown = api_has_scope(api_current_scopes(), 'customers:read');
+
+	$app = api_current_app();
+
+	$name_rule = ((int)$app['owner']['role'] < 3) ? '' : pg_contact_owner_sql((int)$app['owner']['id'], 'customer_rhythm.contact_id');
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$query = array('limit' => $limit, 'names' => $names_shown, 'name_rule' => $name_rule, 'stage' => api_customer_rhythm_stage_filter(isset($params['stage']) ? $params['stage'] : ''));
+
+	if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+
+		$query['cursor'] = api_cursor_decode($params['cursor']);
+
+		if ($query['cursor'] === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+	}
+
+	$currency = defined('BASE_CURRENCY_CODE') ? (string)BASE_CURRENCY_CODE : null;
+
+	if ($summary === null) {
+
+		api_ok_list(array(), $limit, null, null, array('rhythm' => api_customer_rhythm_present(null, $pass, $names_shown, $currency, array(), array())));
+
+	}
+
+	$now = time();
+
+	$due = array();
+
+	$rows = array();
+
+	if (isset($params['contact_id'])) {
+
+		// The card's row: the contact's e-mail key, else its contact key, else
+		// the latest row naming it.
+		$contact = pg_customer_rhythm_select("SELECT id, email_address FROM contacts WHERE id = ?", array((int)$params['contact_id']));
+
+		$row = $contact ? pg_customer_rhythm_contact_row((int)$contact[0]['id'], (string)$contact[0]['email_address']) : null;
+
+		if ($row !== null) {
+
+			$query['id'] = (int)$row['id'];
+
+			$query['stage'] = null;
+
+			unset($query['cursor']);
+
+			list($sql, $values) = api_customer_rhythm_page_query($query);
+
+			$rows = pg_customer_rhythm_select($sql, $values);
+
+			$due = api_customer_rhythm_due($row, $summary, $now);
+
+		}
+
+	} else {
+
+		list($sql, $values) = api_customer_rhythm_page_query($query);
+
+		$rows = pg_customer_rhythm_select($sql, $values);
+
+	}
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = $rows[count($rows) - 1];
+
+		$next = api_cursor_encode((int)$last['expected_value'], (int)$last['id']);
+
+	}
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_customer_rhythm_customer_present($row, $names_shown, $now);
+
+	}
+
+	api_ok_list($out, $limit, $next, null, array('rhythm' => api_customer_rhythm_present($summary, $pass, $names_shown, $currency, pg_customer_rhythm_stage_totals(), $due)));
+
+}
+
+// The stage words a caller filters by and is answered with: the six stages,
+// then none for a customer the store has no interval to judge yet. Pure.
+function api_customer_rhythm_stage_keys() {
+
+	$keys = array_values(array_filter(array_keys(pg_customer_rhythm_stage_codes()), 'strlen'));
+
+	$keys[] = 'none';
+
+	return $keys;
+
+}
+
+// A stage code as its word. Pure.
+function api_customer_rhythm_stage_key($code) {
+
+	$name = pg_customer_rhythm_stage_name((int)$code);
+
+	return ($name === '') ? 'none' : $name;
+
+}
+
+// The stage code a stage word filters by, null for no filter. Pure.
+function api_customer_rhythm_stage_filter($stage) {
+
+	$stage = is_scalar($stage) ? (string)$stage : '';
+
+	if ($stage === 'none') {
+
+		return 0;
+
+	}
+
+	$code = pg_customer_rhythm_stage_code($stage);
+
+	return ($code > 0) ? $code : null;
+
+}
+
+// One page of customer_rhythm rows, most expected value first, with the
+// number of the last order; names joined only when they are shown.
+// name_rule is '' when every name may be read, else the condition a row's
+// contact must meet for its name: it marks names, it never narrows the rows,
+// as the figures are order data. Never the customer key. Pure.
+//
+// $query: stage (code or null), cursor (v, i) or null, id, limit, names,
+// name_rule.
+function api_customer_rhythm_page_query($query) {
+
+	$select = 'customer_rhythm.id, customer_rhythm.contact_id, customer_rhythm.orders, customer_rhythm.first_order_at, customer_rhythm.last_order_at, customer_rhythm.last_order_id, customer_rhythm.interval_days, customer_rhythm.avg_order, customer_rhythm.stage, customer_rhythm.stage_before, customer_rhythm.stage_at, customer_rhythm.chance, customer_rhythm.expected_value, customer_rhythm.next_due_at, customer_rhythm.reminded_at, customer_rhythm.held_back, customer_rhythm.came_back_order_id, orders.order_number';
+
+	$from = 'customer_rhythm LEFT JOIN orders ON orders.id = customer_rhythm.last_order_id';
+
+	if (!empty($query['names'])) {
+
+		$rule = isset($query['name_rule']) ? (string)$query['name_rule'] : '';
+
+		$select .= ', contacts.first_name AS contact_first_name, contacts.last_name AS contact_last_name, orders.billing_first_name, orders.billing_last_name, orders.billing_company, '
+			. (($rule === '') ? '1' : '(customer_rhythm.contact_id <> 0 AND ' . $rule . ')') . ' AS name_ok';
+
+		$from .= ' LEFT JOIN contacts ON contacts.id = customer_rhythm.contact_id';
+
+	}
+
+	$where = array();
+
+	$params = array();
+
+	if (isset($query['id'])) {
+
+		$where[] = '(customer_rhythm.id = ?)';
+
+		$params[] = (int)$query['id'];
+
+	}
+
+	if (isset($query['stage']) && ($query['stage'] !== null)) {
+
+		$where[] = '(customer_rhythm.stage = ?)';
+
+		$params[] = (int)$query['stage'];
+
+	}
+
+	if (!empty($query['cursor'])) {
+
+		$where[] = '((customer_rhythm.expected_value < ?) OR ((customer_rhythm.expected_value = ?) AND (customer_rhythm.id < ?)))';
+
+		$params[] = (int)$query['cursor']['v'];
+
+		$params[] = (int)$query['cursor']['v'];
+
+		$params[] = (int)$query['cursor']['i'];
+
+	}
+
+	$sql = 'SELECT ' . $select . ' FROM ' . $from
+		. ($where ? ' WHERE ' . implode(' AND ', $where) : '')
+		. ' ORDER BY customer_rhythm.expected_value DESC, customer_rhythm.id DESC LIMIT ' . ((int)$query['limit'] + 1);
+
+	return array($sql, $params);
+
+}
+
+// The products due for one customer now, as the contact card works them out,
+// with their names.
+function api_customer_rhythm_due($row, $summary, $now) {
+
+	$due = pg_customer_rhythm_contact_due($row, $summary, pg_customer_rhythm_settings(), $now);
+
+	if (!$due) {
+
+		return array();
+
+	}
+
+	$names = array();
+
+	foreach (pg_customer_rhythm_select("SELECT id, name, short_description FROM products WHERE id IN (" . implode(',', array_map('intval', array_column($due, 'product_id'))) . ")") as $item) {
+
+		$names[(int)$item['id']] = ((string)$item['short_description'] !== '') ? (string)$item['short_description'] : (string)$item['name'];
+
+	}
+
+	foreach ($due as $i => $product) {
+
+		$due[$i]['name'] = isset($names[(int)$product['product_id']]) ? $names[(int)$product['product_id']] : '';
+
+	}
+
+	return $due;
+
+}
+
+// One customer of GET /reports/customer-rhythm. Pure: the row as
+// api_customer_rhythm_page_query() reads it, whether names are shown, now.
+function api_customer_rhythm_customer_present($row, $names_shown, $now) {
+
+	$name = null;
+
+	if ($names_shown && !empty($row['name_ok'])) {
+
+		$name = pg_customer_rhythm_name($row);
+
+		$name = ($name !== '') ? $name : null;
+
+	}
+
+	return array(
+		'id'                    => (int)$row['id'],
+		'contact_id'            => ((int)$row['contact_id'] > 0) ? (int)$row['contact_id'] : null,
+		'name'                  => $name,
+		'stage'                 => api_customer_rhythm_stage_key($row['stage']),
+		'stage_before'          => api_customer_rhythm_stage_key($row['stage_before']),
+		'stage_changed_at'      => api_time($row['stage_at']),
+		'orders'                => (int)$row['orders'],
+		'first_order_at'        => api_time($row['first_order_at']),
+		'last_order_at'         => api_time($row['last_order_at']),
+		'last_order_number'     => ((int)$row['order_number'] > 0) ? (int)$row['order_number'] : null,
+		'days_since_last_order' => pg_customer_rhythm_days_since($row, $now),
+		'interval_days'         => (int)$row['interval_days'],
+		'own_interval'          => ((int)$row['orders'] > 1),
+		'chance'                => (int)$row['chance'],
+		'expected_value'        => (int)$row['expected_value'],
+		'average_order'         => (int)$row['avg_order'],
+		'next_due_at'           => api_time($row['next_due_at']),
+		'reminded_at'           => api_time($row['reminded_at']),
+		'held_back'             => ((int)$row['held_back'] === 1),
+		'came_back_order_id'    => ((int)$row['came_back_order_id'] > 0) ? (int)$row['came_back_order_id'] : null
+	);
+
+}
+
+// What GET /reports/customer-rhythm answers beside its page. Pure: the
+// summary (null before the first pass), the pass under way, whether names
+// are shown, the base currency, the counts per stage code and the products
+// due for the one contact asked for.
+function api_customer_rhythm_present($summary, $pass, $names_shown, $currency, $totals, $due) {
+
+	$stages = array();
+
+	if ($summary !== null) {
+
+		foreach (pg_customer_rhythm_stage_rows($totals) as $row) {
+
+			$stages[] = array('stage' => ($row['stage'] === '') ? 'none' : $row['stage'], 'customers' => (int)$row['customers'], 'expected_value' => (int)$row['value']);
+
+		}
+
+	}
+
+	$products = array();
+
+	foreach ((array)$due as $product) {
+
+		$products[] = array(
+			'product_id'     => (int)$product['product_id'],
+			'name'           => (string)$product['name'],
+			'quantity'       => (int)$product['quantity'],
+			'last_bought_at' => api_time($product['last']),
+			'due_at'         => api_time($product['due'])
+		);
+
+	}
+
+	return array(
+		'ready'             => ($summary !== null),
+		'as_of'             => ($summary !== null) ? api_time($summary['at']) : null,
+		'progress'          => api_customer_value_progress($pass),
+		'names_shown'       => (bool)$names_shown,
+		'currency'          => ($currency !== null) ? (string)$currency : null,
+		'store_median_days' => (($summary !== null) && ($summary['median'] !== null)) ? (float)$summary['median'] : null,
+		'customers'         => ($summary !== null) ? (int)$summary['customers'] : 0,
+		'stages'            => $stages,
+		'due'               => $products
+	);
+
+}
+
+// What api_customer_rhythm_present() answers with, declared for the OpenAPI
+// document.
+function api_customer_rhythm_report_schema() {
+
+	return array(
+		'ready'             => 'boolean',
+		'as_of'             => 'datetime?',
+		'progress'          => array('read' => 'integer', 'total' => 'integer'),
+		'names_shown'       => 'boolean',
+		'currency'          => 'string?',
+		'store_median_days' => 'number?',
+		'customers'         => 'integer',
+		'stages'            => array(array('stage' => 'string', 'customers' => 'integer', 'expected_value' => 'integer')),
+		'due'               => array(array('product_id' => 'integer', 'name' => 'string', 'quantity' => 'integer', 'last_bought_at' => 'datetime?', 'due_at' => 'datetime?'))
+	);
+
+}
+
+// What api_customer_rhythm_customer_present() answers with, declared for the
+// OpenAPI document.
+function api_customer_rhythm_customer_schema() {
+
+	return array(
+		'id'                    => 'integer',
+		'contact_id'            => 'integer?',
+		'name'                  => 'string?',
+		'stage'                 => 'string',
+		'stage_before'          => 'string',
+		'stage_changed_at'      => 'datetime?',
+		'orders'                => 'integer',
+		'first_order_at'        => 'datetime?',
+		'last_order_at'         => 'datetime?',
+		'last_order_number'     => 'integer?',
+		'days_since_last_order' => 'integer',
+		'interval_days'         => 'integer',
+		'own_interval'          => 'boolean',
+		'chance'                => 'integer',
+		'expected_value'        => 'integer',
+		'average_order'         => 'integer',
+		'next_due_at'           => 'datetime?',
+		'reminded_at'           => 'datetime?',
+		'held_back'             => 'boolean',
+		'came_back_order_id'    => 'integer?'
+	);
+
+}
+
 // The sales watch (includes/fn/sales_watch.php): per channel the orders it
 // expects in the next 12 hours and what the last 12 brought, when its pass
 // last ran, the sales alerts of the last 7 days and the products it took off

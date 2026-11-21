@@ -17,7 +17,7 @@ module: event_tickets
 
 ## When is ticket.checked_in announced?
 - From `event_check_in.php` when `pg_check_in_run()` answers `valid`, which it does only when this request's conditional UPDATE marked the ticket used: two phones scanning one ticket announce it once. An undone check-in and a second scan are not announced.
-- Payload `pg_check_in_ticket_event()`: id, order_id, order_number, order_item_id, unit, product_id (null for none), calendar_event_id, recurrence_number, checked_in_at (UTC), checked_in_by. Fields and sample in `api_webhook_event_payloads()`; area Calendars in `api_app_event_area()`. Not a Workspace flow trigger.
+- Payload `pg_check_in_ticket_event()`: id, order_id, order_number, order_item_id, unit, product_id (null for none), calendar_event_id, recurrence_number, checked_in_at (UTC), checked_in_by. Fields and sample in `api_webhook_event_payloads()`; area Calendars in `api_app_event_area()`. A flow start since FD3, about its calendar event; it queues the surveys that follow events (`platform/feedback-sends.md`).
 
 ## Where is a product marked "Gives tickets"?
 - Product screen (`product_builder.php`), Advanced Settings, section "Event Tickets", switch "Gives tickets". Drawn only while Tickets is on in Site Settings and `products.gives_tickets` exists (`pg_pb_tickets_mark_drawn()`); not drawn, it posts nothing and the stored mark is kept.
