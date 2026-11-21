@@ -4384,6 +4384,7 @@
     "The form was larger than this server accepts. Nothing was saved.": "Form bu sunucunun kabul ettiğinden büyüktü. Hiçbir şey kaydedilmedi.",
     "The form was moved to this page — you can edit it here now.": "Form bu sayfaya taşındı — artık buradan düzenleyebilirsiniz.",
     "The form was not found.": "Form bulunamadı.",
+    "The format of {1} changes when you save.": "{1} biçimi kaydettiğinizde değişir.",
     "The format shows on the page and in Preview; the first card on the canvas shows the value without it. A value with formatting of its own (rich text, a link list) is shown as it is. A condition compares the value before its format.": "Biçim sayfada ve Önizleme'de görünür; tuvaldeki ilk kart değeri biçimsiz gösterir. Kendi biçimi olan bir değer (zengin metin, bağlantı listesi) olduğu gibi gösterilir. Bir koşul, değeri biçimlenmeden önceki hâliyle karşılaştırır.",
     "The forms a will can take, the shares the law keeps for the family, and where to keep it.": "Vasiyetnamenin şekilleri, yasanın aile için ayırdığı paylar ve nerede saklanacağı.",
     "The formula could not be read.": "Formül okunamadı.",

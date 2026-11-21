@@ -620,12 +620,18 @@ function pg_office_xlsx_strings($path, $part, $limited = true)
  * The cell style numbers that mean "a date": the built-in date and time
  * formats, and the operator's own whose pattern names a day, month or year.
  *
+ * Asked for them, it also gives what each style looks like
+ * (pg_office_xlsx_style_looks()), from the same read of the part.
+ *
  * @param ZipArchive $zip
  * @param string     $refused set to large or damaged when the style part could not be read whole
+ * @param array|null $looks   set to pg_office_xlsx_style_looks() when not null
  * @return array style index => pg_office_xlsx_format_kind() (date, time, time_s, hours, hours_s, minutes)
  */
-function pg_office_xlsx_date_styles($zip, &$refused = null)
+function pg_office_xlsx_date_styles($zip, &$refused = null, &$looks = null)
 {
+    $want_looks = is_array($looks);
+    $looks = array();
     $dates = array();
     $refused = '';
     // Where the workbook's relationships name it (xl/Styles2.xml from some
@@ -641,6 +647,10 @@ function pg_office_xlsx_date_styles($zip, &$refused = null)
 
     if ($styles === null) {
         return $dates;
+    }
+
+    if ($want_looks) {
+        $looks = pg_office_xlsx_style_looks($styles);
     }
 
     // The built-in formats (ECMA-376 18.8.30): 14-17 dates, 18-21 times of
@@ -674,6 +684,254 @@ function pg_office_xlsx_date_styles($zip, &$refused = null)
     }
 
     return $dates;
+}
+
+/**
+ * What each cell format of a styles part looks like in the preview, and what
+ * the format controls show as chosen: bold (b), italic (i), a text colour (c)
+ * and a solid fill (bg) given as RRGGBB, a horizontal alignment (a: left,
+ * center, right) and the kind of number format (n: number, money, percent,
+ * date, or other for one the controls do not offer; general is left out).
+ * A number, money or percent also carries its decimals (d) and grouping
+ * (g), money its symbol (y) and its place (p: before or after).
+ *
+ * Only colours written as RGB are drawn: a theme or palette colour needs the
+ * workbook's theme, which is not read, and the cell keeps the page's look.
+ * A style that looks like nothing is left out.
+ *
+ * @param DOMDocument $styles the styles part
+ * @return array cell format index => look
+ */
+function pg_office_xlsx_style_looks($styles)
+{
+    $list = function ($parent_name, $child_name) use ($styles) {
+        $out = array();
+
+        foreach ($styles->getElementsByTagNameNS('*', $parent_name) as $parent) {
+            foreach ($parent->childNodes as $child) {
+                if (($child->nodeType === XML_ELEMENT_NODE) && ($child->localName === $child_name)) {
+                    $out[] = $child;
+                }
+            }
+
+            break;
+        }
+
+        return $out;
+    };
+
+    // The first direct child of this name.
+    $child = function ($node, $local) {
+        foreach ($node->childNodes as $item) {
+            if (($item->nodeType === XML_ELEMENT_NODE) && ($item->localName === $local)) {
+                return $item;
+            }
+        }
+
+        return null;
+    };
+
+    // An ARGB colour as RRGGBB; anything else (theme, indexed, auto) as ''.
+    $rgb = function ($node) {
+        $value = ($node === null) ? '' : strtoupper(pg_office_attr($node, 'rgb'));
+
+        return preg_match('/^(?:[0-9A-F]{2})?([0-9A-F]{6})$/', $value, $match) ? $match[1] : '';
+    };
+
+    // On unless val says 0 or false (ECMA-376 18.8.2 b, 18.8.26 i).
+    $on = function ($node) {
+        return ($node !== null) && !in_array(strtolower(pg_office_attr($node, 'val')), array('0', 'false'), true);
+    };
+
+    $fonts = array();
+
+    foreach ($list('fonts', 'font') as $font) {
+        $look = array();
+
+        if ($on($child($font, 'b'))) {
+            $look['b'] = 1;
+        }
+
+        if ($on($child($font, 'i'))) {
+            $look['i'] = 1;
+        }
+
+        $color = $rgb($child($font, 'color'));
+
+        if ($color !== '') {
+            $look['c'] = $color;
+        }
+
+        $fonts[] = $look;
+    }
+
+    $fills = array();
+
+    foreach ($list('fills', 'fill') as $fill) {
+        $pattern = $child($fill, 'patternFill');
+        $fills[] = (($pattern !== null) && (pg_office_attr($pattern, 'patternType') === 'solid')) ? $rgb($child($pattern, 'fgColor')) : '';
+    }
+
+    $codes = array();
+
+    foreach ($list('numFmts', 'numFmt') as $format) {
+        $codes[(int) pg_office_attr($format, 'numFmtId')] = pg_office_attr($format, 'formatCode');
+    }
+
+    $aligns = array('left' => 'left', 'center' => 'center', 'centerContinuous' => 'center', 'right' => 'right');
+    $looks = array();
+
+    foreach ($list('cellXfs', 'xf') as $index => $xf) {
+        $font_id = (int) pg_office_attr($xf, 'fontId');
+        $fill_id = (int) pg_office_attr($xf, 'fillId');
+        $look = isset($fonts[$font_id]) ? $fonts[$font_id] : array();
+
+        if (isset($fills[$fill_id]) && ($fills[$fill_id] !== '')) {
+            $look['bg'] = $fills[$fill_id];
+        }
+
+        $alignment = $child($xf, 'alignment');
+        $horizontal = ($alignment === null) ? '' : pg_office_attr($alignment, 'horizontal');
+
+        if (isset($aligns[$horizontal])) {
+            $look['a'] = $aligns[$horizontal];
+        }
+
+        $format_id = (int) pg_office_attr($xf, 'numFmtId');
+        $look += pg_office_xlsx_number_look($format_id, isset($codes[$format_id]) ? $codes[$format_id] : null);
+
+        if (!empty($look)) {
+            $looks[$index] = $look;
+        }
+    }
+
+    return $looks;
+}
+
+/**
+ * The kind of a number format, as the format controls name it, with what
+ * showing a number in it needs (pg_office_xlsx_style_looks() lists the
+ * keys). General is an empty list.
+ *
+ * @param int         $id   numFmtId
+ * @param string|null $code the workbook's own formatCode, or null for a built-in id
+ * @return array
+ */
+function pg_office_xlsx_number_look($id, $code)
+{
+    // The built-in formats (ECMA-376 18.8.30) the controls offer; 5 to 8 and
+    // 42 and 44 are the locale's currency, shown here without a symbol.
+    $builtin = array(
+        1 => array('number', 0, 0), 2 => array('number', 2, 0), 3 => array('number', 0, 1), 4 => array('number', 2, 1),
+        9 => array('percent', 0, 0), 10 => array('percent', 2, 0),
+        5 => array('money', 0, 1), 6 => array('money', 0, 1), 7 => array('money', 2, 1), 8 => array('money', 2, 1),
+        37 => array('number', 0, 1), 38 => array('number', 0, 1), 39 => array('number', 2, 1), 40 => array('number', 2, 1),
+        41 => array('number', 0, 1), 42 => array('money', 0, 1), 43 => array('number', 2, 1), 44 => array('money', 2, 1),
+    );
+
+    if ($code === null) {
+        if ($id === 0) {
+            return array();
+        }
+
+        if (isset($builtin[$id])) {
+            $look = array('n' => $builtin[$id][0], 'd' => $builtin[$id][1], 'g' => $builtin[$id][2]);
+
+            return ($look['n'] === 'money') ? $look + array('y' => '', 'p' => 'after') : $look;
+        }
+
+        return (($id >= 14) && ($id <= 17)) || ($id === 22) ? array('n' => 'date') : array('n' => 'other');
+    }
+
+    $kind = pg_office_xlsx_format_kind($code);
+
+    if ($kind !== '') {
+        return array('n' => ($kind === 'date') ? 'date' : 'other');
+    }
+
+    // The positive section only: quoted text and a bracketed currency are
+    // kept apart before the format characters are looked at.
+    $section = $code;
+
+    if (preg_match('/^(?:"[^"]*"|\\\\.|\[[^\]]*\]|[^;"\\\\\[])*/u', $code, $match)) {
+        $section = $match[0];
+    }
+
+    if (strtolower(trim($section)) === 'general') {
+        return array();
+    }
+
+    $symbol = '';
+
+    if (preg_match('/\[\$([^\]\-]*)/u', $section, $match)) {
+        $symbol = $match[1];
+    } elseif (preg_match('/"([^"]*)"/u', $section, $match)) {
+        $symbol = trim($match[1]);
+    }
+
+    $bare = preg_replace('/"[^"]*"|\[[^\]]*\]|\\\\.|[_*]./u', '', $section);
+
+    if (!preg_match('/[0#?]/', $bare)) {
+        return array('n' => 'other');
+    }
+
+    if (($symbol === '') && preg_match('/[$€£¥₺]/u', $bare, $match)) {
+        $symbol = $match[0];
+    }
+
+    $decimals = preg_match('/\.([0#?]+)/', $bare, $match) ? strlen($match[1]) : 0;
+    $grouped = preg_match('/[0#?],[0#?]/', $bare) ? 1 : 0;
+
+    if (strpos($bare, '%') !== false) {
+        return array('n' => 'percent', 'd' => $decimals, 'g' => $grouped);
+    }
+
+    if ($symbol !== '') {
+        $before = mb_strpos($section, $symbol, 0, 'UTF-8') < strcspn($section, '0#?');
+
+        return array('n' => 'money', 'd' => $decimals, 'g' => $grouped, 'y' => $symbol, 'p' => $before ? 'before' : 'after');
+    }
+
+    return array('n' => 'number', 'd' => $decimals, 'g' => $grouped);
+}
+
+/**
+ * A stored number as its number, money or percent format shows it, with the
+ * site's decimal and thousands separators; '' when the look has none of
+ * those formats or the value is not a number (the cell is shown as before).
+ *
+ * @param string $value
+ * @param array  $look       pg_office_xlsx_style_looks()
+ * @param array  $separators decimal, thousands (pg_number_separators())
+ * @return string
+ */
+function pg_office_xlsx_shown_number($value, $look, $separators)
+{
+    $kind = isset($look['n']) ? $look['n'] : '';
+
+    if (!in_array($kind, array('number', 'money', 'percent'), true) || !is_numeric($value)) {
+        return '';
+    }
+
+    $number = (float) $value * (($kind === 'percent') ? 100 : 1);
+    $decimals = min(10, max(0, (int) (isset($look['d']) ? $look['d'] : 0)));
+    $text = number_format($number, $decimals, $separators['decimal'], empty($look['g']) ? '' : $separators['thousands']);
+
+    if (preg_match('/^-0(?:\D0+)?$/', $text)) {
+        $text = substr($text, 1);
+    }
+
+    if ($kind === 'percent') {
+        return $text . '%';
+    }
+
+    $symbol = ($kind === 'money') ? (string) (isset($look['y']) ? $look['y'] : '') : '';
+
+    if ($symbol === '') {
+        return $text;
+    }
+
+    return (isset($look['p']) && ($look['p'] === 'before')) ? $symbol . $text : $text . ' ' . $symbol;
 }
 
 /**
@@ -920,12 +1178,18 @@ function pg_office_xlsx_cell_parts($reader)
  * @param int    $cells_left  how many cells may still be read, counted down
  * @param bool   $truncated   set when the sheet was cut
  * @param bool   $date1904    the workbook counts its days from 1904
+ * @param array  $looks       pg_office_xlsx_style_looks(): a row then says
+ *                            which of its cells have a look (s, column =>
+ *                            style) and how a number is shown in its format
+ *                            (show, column => text), the value staying what
+ *                            the editor changes
  * @return array[]
  */
-function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left, &$truncated, $date1904 = false)
+function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left, &$truncated, $date1904 = false, $looks = array())
 {
     $rows = array();
     $truncated = false;
+    $separators = (!empty($looks) && function_exists('pg_number_separators')) ? pg_number_separators() : array('decimal' => '.', 'thousands' => ',');
 
     $reader = new XMLReader();
 
@@ -958,6 +1222,8 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
         $has_cells = !$reader->isEmptyElement;
         $row = array();
         $waiting = array();
+        $row_looks = array();
+        $row_shown = array();
         $past_columns = false;
         $next_column = 0;
 
@@ -1018,9 +1284,18 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
                         } elseif ($kind !== '') {
                             $value = pg_office_xlsx_time($value, $kind);
                         } else {
+                            $shown = isset($looks[$style]) ? pg_office_xlsx_shown_number($value, $looks[$style], $separators) : '';
                             $value = pg_office_xlsx_number($value);
+
+                            if (($shown !== '') && ($shown !== $value)) {
+                                $row_shown[$column] = $shown;
+                            }
                         }
                     }
+            }
+
+            if (isset($looks[$style])) {
+                $row_looks[$column] = $style;
             }
 
             while (count($row) < $column) {
@@ -1041,6 +1316,14 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
 
         if (!empty($waiting)) {
             $entry['calc'] = $waiting;
+        }
+
+        if (!empty($row_looks)) {
+            $entry['s'] = $row_looks;
+        }
+
+        if (!empty($row_shown)) {
+            $entry['show'] = $row_shown;
         }
 
         $rows[] = $entry;
@@ -1067,7 +1350,7 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
  *
  * @param string $path
  * @param bool   $edit
- * @return array ok, error, sheets (name, hidden, rows [n, cells], truncated[, edit]), truncated[, version]
+ * @return array ok, error, sheets (name, hidden, rows [n, cells[, s, show, calc]], truncated[, edit]), truncated, looks (style => look)[, version]
  */
 function pg_office_xlsx_read($path, $edit = false)
 {
@@ -1082,7 +1365,8 @@ function pg_office_xlsx_read($path, $edit = false)
     }
 
     $sheets = pg_office_xlsx_sheets($zip, $refused);
-    $date_styles = ($refused === '') ? pg_office_xlsx_date_styles($zip, $refused) : array();
+    $looks = array();
+    $date_styles = ($refused === '') ? pg_office_xlsx_date_styles($zip, $refused, $looks) : array();
 
     // A part read whole that is too large or damaged: the workbook is not
     // drawn without it, its sheets missing or its dates shown as numbers.
@@ -1113,6 +1397,8 @@ function pg_office_xlsx_read($path, $edit = false)
     $cells_left = PG_OFFICE_MAX_CELLS;
     $out = array();
     $any_cut = false;
+    // The styles the shown cells use: only their looks are sent.
+    $used = array();
     $edit = $edit && function_exists('pg_office_xlsx_sheet_edit_info');
     $signed = $edit && pg_office_signed($zip);
     // A password to modify closes the whole workbook, whatever its sheets.
@@ -1121,7 +1407,13 @@ function pg_office_xlsx_read($path, $edit = false)
 
     foreach ($sheets as $sheet) {
         $cut = false;
-        $rows = ($cells_left > 0) ? pg_office_xlsx_rows($path, $sheet['part'], $strings, $date_styles, $cells_left, $cut, $date1904) : array();
+        $rows = ($cells_left > 0) ? pg_office_xlsx_rows($path, $sheet['part'], $strings, $date_styles, $cells_left, $cut, $date1904, $looks) : array();
+
+        foreach ($rows as $row) {
+            if (isset($row['s'])) {
+                $used += array_flip($row['s']);
+            }
+        }
 
         if ($cells_left <= 0) {
             $cut = true;
@@ -1144,7 +1436,7 @@ function pg_office_xlsx_read($path, $edit = false)
 
     $zip->close();
 
-    $book = array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut);
+    $book = array('ok' => true, 'error' => '', 'sheets' => $out, 'truncated' => $any_cut, 'looks' => array_intersect_key($looks, $used));
 
     if ($edit) {
         $book['version'] = $version;
@@ -3121,7 +3413,7 @@ function pg_office_view_includes()
 /**
  * The words the preview's drawing code needs, translated: the preview's own,
  * those of a workbook offered for editing (why a cell or a sheet is not
- * offered, the hint, the count of changes), those of a document (why a
+ * offered, the hint, the count of changes, the format bar), those of a document (why a
  * paragraph or the whole document is not offered, the hint, the count) and
  * the choice above a .csv's sheet.
  *
@@ -3180,6 +3472,48 @@ function pg_office_view_strings()
         'sheet_pending_rename' => lang('Sheet {1} is renamed {2} when you save.'),
         'sheet_pending_delete' => lang('Sheet {1} is deleted when you save.'),
         'sheet_pending_move'   => lang('Sheet {1} moves to place {2} when you save.'),
+        'format_bar'        => lang('Format of the selected cells'),
+        'format_bold'       => lang('Bold'),
+        'format_italic'     => lang('Italic'),
+        'format_color'      => lang('Text color'),
+        'format_fill'       => lang('Fill color'),
+        'format_none'       => lang('None'),
+        'colour_black'      => lang('Black color'),
+        'colour_grey'       => lang('Grey'),
+        'colour_red'        => lang('Red'),
+        'colour_orange'     => lang('Orange'),
+        'colour_yellow'     => lang('Yellow'),
+        'colour_green'      => lang('Green'),
+        'colour_teal'       => lang('Teal'),
+        'colour_blue'       => lang('Blue'),
+        'colour_violet'     => lang('Violet'),
+        'colour_pink'       => lang('Pink'),
+        'colour_bright_yellow'=> lang('Bright yellow'),
+        'colour_light_grey' => lang('Light grey'),
+        'colour_light_red'  => lang('Light red'),
+        'colour_light_orange'=> lang('Light orange'),
+        'colour_light_yellow'=> lang('Light yellow'),
+        'colour_light_green'=> lang('Light green'),
+        'colour_light_teal' => lang('Light teal'),
+        'colour_light_blue' => lang('Light blue'),
+        'colour_light_violet'=> lang('Light violet'),
+        'colour_light_pink' => lang('Light pink'),
+        'format_align'      => lang('Alignment'),
+        'format_left'       => lang('Align left'),
+        'format_center'     => lang('Align center'),
+        'format_right'      => lang('Align right'),
+        'format_number'     => lang('Number format'),
+        'format_general_kind' => lang('General'),
+        'format_number_kind'  => lang('Number'),
+        'format_money_kind'   => lang('Money'),
+        'format_percent_kind' => lang('Percent'),
+        'format_date_kind'    => lang('Date'),
+        'format_undo'       => lang('Undo the format change'),
+        'format_hint'       => lang('Shift+click or Shift+arrow keys select more cells; the bar above the sheet changes their format.'),
+        'format_pending'    => lang('The format of {1} changes when you save.'),
+        'format_first'      => lang('Save the other changes first, then change the format.'),
+        'format_one'        => lang('One format change is saved at a time. Save or undo the waiting one first.'),
+        'format_many'       => lang('Select at most 5000 cells to change their format.'),
         'locked_formula'    => lang('Worked out by a formula. Change it in a spreadsheet program.'),
         'locked_formula_is' => lang('Worked out by a formula: {1}'),
         'locked_value'      => lang('A linked value or a picture in the cell. Change it in a spreadsheet program.'),
