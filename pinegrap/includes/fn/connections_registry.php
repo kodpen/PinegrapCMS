@@ -537,19 +537,20 @@ function pg_connections_registry()
 
     $rows = array(
         // Payments. The card gateways keep their config columns, and are
-        // connected while one takes the cards with its keys stored; the
-        // redirect drivers keep their connect_apps switch.
+        // connected while one takes the cards with its keys stored; Stripe,
+        // PayPal, PayTR and Givex are connected while chosen or switched on
+        // with their keys stored.
         'iyzico' => array('name' => 'iyzico', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments and Pay with iyzico at checkout',
             'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('iyzico')),
             'covers' => array('payment' => array('iyzico', 'pay_with_iyzico'))),
-        'stripe' => array('name' => 'Stripe', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
-            'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_PAYMENT_GATEWAY'), 'equals' => 'Stripe PaymentIntents'),
+        'stripe' => array('name' => 'Stripe', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_connection_ready', 'args' => array('stripe')),
             'covers' => array('payment' => array('stripe'))),
-        'paypal' => array('name' => 'PayPal', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'PayPal Checkout',
-            'state' => array('kind' => 'app', 'key' => 'payment_paypal'),
+        'paypal' => array('name' => 'PayPal', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'PayPal Checkout and PayPal Express Checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_connection_ready', 'args' => array('paypal')),
             'covers' => array('payment' => array('paypal'))),
-        'paytr' => array('name' => 'PayTR', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Payments in PayTR\'s page at checkout',
-            'state' => array('kind' => 'app', 'key' => 'payment_paytr'),
+        'paytr' => array('name' => 'PayTR', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Payments in PayTR\'s page at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_connection_ready', 'args' => array('paytr')),
             'covers' => array('payment' => array('paytr'))),
         // The older PayPal and Stripe card gateways have keys of their own,
         // each typed on its own page.
@@ -567,8 +568,8 @@ function pg_connections_registry()
             'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('first_data'))),
         'sage' => array('name' => 'Sage', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
             'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('sage'))),
-        'givex' => array('name' => 'Givex', 'group' => 'payments', 'place' => '#settings/commerce/pgset-giftcards', 'uses' => 'Gift cards at checkout',
-            'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_GIVEX', 'ECOMMERCE_GIVEX_PRIMARY_HOSTNAME'))),
+        'givex' => array('name' => 'Givex', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-giftcards', 'uses' => 'Gift cards at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_connection_ready', 'args' => array('givex'))),
 
         // Shipping: label drivers, live rates, the order reader.
         'geliver' => array('name' => 'Geliver', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',

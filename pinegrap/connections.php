@@ -703,6 +703,114 @@ if ($_POST) {
 
 	}
 
+	// Stripe's, PayPal Checkout's or PayTR's keys, saved or removed on its
+	// page under the gate of the Payment Methods card they came from. A
+	// refused box writes nothing; the driver's Mode and other choices, and
+	// whether it takes payments, are still set on the card.
+	if (in_array($action, array('driver_save', 'driver_remove'), true)) {
+
+		$driver_id = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$driver_definition = pg_payment_driver_has_page($driver_id) ? pg_payment_driver($driver_id) : null;
+
+		if (($driver_definition !== null) && connections_commerce_may_manage($user)) {
+
+			$driver_fields = pg_payment_fields($driver_id);
+			$driver_settings = pg_payment_settings($driver_id);
+
+			if ($action === 'driver_remove') {
+
+				if (pg_payment_settings_forget_keys($driver_id, $user['id'])) {
+					$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $driver_definition['label'])));
+					log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $driver_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			} else {
+
+				// Its keys are required while it takes payments.
+				$driver_active = ($driver_definition['kind'] === 'card')
+					? (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY === $driver_definition['gateway']))
+					: $driver_settings['enabled'];
+				$driver_decision = pg_payment_settings_decide($driver_definition, pg_payment_fields_part($driver_fields, 'keys'),
+					pg_payment_driver_page_post($driver_definition, $driver_fields, $_POST, $driver_settings), $driver_settings, $driver_active);
+
+				foreach ($driver_decision['marks'] as $driver_input => $driver_mark) {
+					$liveform->mark_error($driver_input, $driver_mark);
+				}
+
+				if (($driver_decision['secrets'] !== array()) && !pg_connect_can_seal()) {
+					$liveform->mark_error(pg_payment_input_name($driver_id, (string) key($driver_decision['secrets'])), lang('This site has no encryption key, so it cannot keep the keys of a payment service.'));
+				}
+
+				if (!$liveform->check_form_errors() && $driver_decision['changed']) {
+					pg_payment_settings_store($driver_id, $driver_decision['values'], $driver_decision['secrets'], $driver_decision['enabled'], $user['id']);
+					$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $driver_definition['label'])));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $driver_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($driver_definition !== null) ? '?service=' . $driver_id : ''));
+		exit();
+
+	}
+
+	// PayPal Express Checkout's keys (on PayPal's page) or Givex's, saved or
+	// removed under the gate of the card they came from. A refused box
+	// writes nothing; the switch, Transaction Type and Mode stay on the card.
+	if (in_array($action, array('method_save', 'method_remove'), true)) {
+
+		$method_page = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$method_id = pg_payment_method_connection_for_page($method_page);
+		$method_definitions = pg_payment_method_connections();
+		$method_definition = ($method_id !== '') ? $method_definitions[$method_id] : null;
+
+		if (($method_definition !== null) && connections_commerce_may_manage($user)) {
+
+			if ($action === 'method_remove') {
+
+				$method_values = array_fill_keys(array_keys($method_definition['fields']), '');
+
+			} else {
+
+				$method_decision = pg_payment_method_keys_decide($method_id, $method_definition, $_POST, pg_payment_method_connection_stored(), defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
+
+				foreach ($method_decision['marks'] as $method_field => $method_mark) {
+					$liveform->mark_error($method_field, $method_mark);
+				}
+
+				$method_values = $method_decision['values'];
+
+			}
+
+			if ($method_values) {
+
+				$method_sets = array();
+
+				foreach ($method_values as $method_column => $method_value) {
+					$method_sets[] = $method_column . " = '" . escape($method_value) . "'";
+				}
+
+				db("UPDATE config SET " . implode(', ', $method_sets) . ", last_modified_user_id = '" . (int) $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()");
+
+			}
+
+			if ($action === 'method_remove') {
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $method_definition['label'])));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $method_definition['label'])), $_SESSION['sessionusername']);
+			} elseif (!$liveform->check_form_errors() && $method_values) {
+				$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $method_definition['label'])));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $method_definition['label'])), $_SESSION['sessionusername']);
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($method_definition !== null) ? '?service=' . $method_definition['page'] : ''));
+		exit();
+
+	}
+
 	// A CAPTCHA provider's keys, saved or removed on its page under the gate
 	// of the Spam Protection card they came from. The card's checks run as
 	// before: changed keys of the provider forms use are asked about first,
@@ -1665,6 +1773,216 @@ function connections_gateway_page($page, $id, $may_manage) {
 						<span class="connections-row-name">' . h(lang('Card payments at checkout')) . '</span>
 						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Payment Methods')) . '</span>
 						<span class="pg-text-meta d-block">' . h($active ? lang('It takes the card payments now.') : lang('Another gateway, or none, takes the card payments now.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($connected && $active) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* A payment driver's page (Stripe, PayPal, PayTR): "Connection details"
+   holds the keys the Payment Methods card held (a secret never drawn back)
+   with where to find them and the webhook address, for who may open Site
+   Settings › Ecommerce; Status has Disconnect while any key is stored;
+   "Where it is used" leads to the card, where Stripe is chosen, PayPal
+   Checkout and PayTR are switched on, and their Mode is set. */
+
+function connections_driver_page($page, $id, $may_manage) {
+
+	$definition = pg_payment_driver($id);
+	$fields = pg_payment_fields($id);
+	$settings = pg_payment_settings($id);
+	$card = ($definition['kind'] === 'card');
+	$active = $card
+		? (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY === $definition['gateway']))
+		: $settings['enabled'];
+	$connected = pg_payment_driver_keys_complete($fields, $settings);
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$lines = '';
+
+		if (!$settings['readable']) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang(array('string' => 'The stored keys of {var:1} cannot be read with this site\'s encryption key. Enter them again.', 'vars' => $definition['label']))) . '</div>';
+		}
+
+		if ($definition['portal'] !== '') {
+			$lines .= '
+				<p class="pg-text-meta mb-4">' . lang(array('string' => 'The keys are in your {var:1} account.', 'vars' => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</p>';
+		}
+
+		// A service that sends its own messages needs this site's address
+		// entered on its side; it is copied from here.
+		if (pg_payment_can($id, 'notify')) {
+			$lines .= '
+				<div class="mb-4">
+					<label class="pg-field-label" for="connections-driver-callback">' . h(lang('Webhook Address')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="connections-driver-callback" value="' . h(pg_payment_callback_url($id)) . '" readonly>
+					<div class="pg-field-help">' . h(lang(array('string' => 'Add this address as a webhook endpoint in your {var:1} account.', 'vars' => $definition['label']))) . '</div>
+				</div>';
+		}
+
+		$inputs = '';
+
+		foreach (pg_payment_fields_part($fields, 'keys') as $field) {
+
+			$input_id = pg_payment_input_name($id, $field['name']);
+			$help = ($field['help'] !== '') ? '<div class="pg-field-help">' . h($field['help']) . '</div>' : '';
+
+			if ($field['type'] === 'secret') {
+				$input = '<input type="password" class="pg-input font-monospace" id="' . h($input_id) . '" name="' . h($input_id) . '" value="" maxlength="' . (int) $field['max_length'] . '" autocomplete="new-password" spellcheck="false"'
+					. (isset($settings['secrets'][$field['name']]) ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>';
+			} else {
+				$value = isset($settings['values'][$field['name']]) ? $settings['values'][$field['name']] : $field['default'];
+				$input = '<input type="text" class="pg-input font-monospace" id="' . h($input_id) . '" name="' . h($input_id) . '" value="' . h($value) . '" maxlength="' . (int) $field['max_length'] . '" autocomplete="off" spellcheck="false">';
+			}
+
+			$inputs .= '
+				<div>
+					<label class="pg-field-label" for="' . h($input_id) . '">' . h($field['label']) . '</label>
+					' . $input . '
+					' . $help . '
+				</div>';
+
+		}
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h($card
+				? lang(array('string' => 'The site\'s {var:1} keys. Which gateway takes cards, and its Transaction Type, are chosen on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))
+				: lang(array('string' => 'The site\'s {var:1} keys. Whether it is offered at checkout, and its Mode, are set on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			' . $lines . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="driver_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . $inputs . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if (pg_payment_driver_keys_stored($fields, $settings)) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="driver_remove" data-id="0"
+					data-confirm="' . h($active
+						? ($card
+							? lang(array('string' => 'The {var:1} keys are removed from this site: card payments stop at checkout until they are entered again or another gateway is chosen.', 'vars' => $definition['label']))
+							: lang(array('string' => 'The {var:1} keys are removed from this site: it is no longer offered at checkout until they are entered again.', 'vars' => $definition['label'])))
+						: lang(array('string' => 'The {var:1} keys are removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $definition['label']))) . '</button>
+			</div>';
+		}
+
+	}
+
+	if ($card) {
+		$use_name = lang('Card payments at checkout');
+		$use_line = $active ? lang('It takes the card payments now.') : lang('Another gateway, or none, takes the card payments now.');
+	} else {
+		$use_name = $definition['label'];
+		$use_line = $active ? lang('It is offered at checkout.') : lang('It is switched off on the card, so it is not offered at checkout.');
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-payments')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h($use_name) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Payment Methods')) . '</span>
+						<span class="pg-text-meta d-block">' . h($use_line) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($connected && $active) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* PayPal Express Checkout's keys on PayPal's page, below PayPal Checkout's,
+   or Givex's on its own: the keys the card held in config columns (a secret
+   never drawn back), for who may open Site Settings › Ecommerce; Disconnect
+   in Status while any key is stored; a row under "Where it is used" leading
+   to the card that switches it on. */
+
+function connections_method_page($page, $id, $may_manage) {
+
+	$definitions = pg_payment_method_connections();
+	$definition = $definitions[$id];
+	$stored = pg_payment_method_connection_stored();
+	$connected = pg_payment_gateway_connected($definition, $stored);
+	$active = !empty($stored[$definition['switch']]);
+	$beside = ($page['details'] !== '');
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$fields = '';
+
+		foreach ($definition['fields'] as $column => $field) {
+
+			$value = isset($stored[$column]) ? (string) $stored[$column] : '';
+
+			if ($field['kind'] === 'text') {
+				$input = '<input type="text" class="pg-input font-monospace" id="' . h($column) . '" name="' . h($column) . '" value="' . h($value) . '" maxlength="' . (int) $field['width'] . '" autocomplete="off" spellcheck="false">';
+			} else {
+				$input = '<input type="password" class="pg-input font-monospace" id="' . h($column) . '" name="' . h($column) . '" value="" maxlength="' . (int) $field['width'] . '" autocomplete="new-password" spellcheck="false"'
+					. (($value !== '') ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>';
+			}
+
+			$fields .= '
+				<div>
+					<label class="pg-field-label" for="' . h($column) . '">' . h($field['label']) . '</label>
+					' . $input . '
+				</div>';
+
+		}
+
+		$section = $beside ? 'connections-details-' . $id : 'connections-details';
+
+		$page['details'] .= '
+		<section class="pg-card p-5 mb-6" id="' . h($section) . '" aria-labelledby="' . h($section) . '-title">
+			<h2 class="pg-title-section mb-1" id="' . h($section) . '-title">' . h($beside ? $definition['label'] : lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(($id === 'givex')
+				? lang('The site\'s Givex account. Whether Givex cards are accepted is set on the Gift Cards & Rewards card of Site Settings › Ecommerce.')
+				: lang(array('string' => 'The site\'s {var:1} keys. Whether it is offered at checkout, its Transaction Type and Mode are set on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="method_save">
+				<input type="hidden" name="connections_return" value="' . h($definition['page']) . '">
+				' . $fields . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if (pg_payment_gateway_stored($definition, $stored)) {
+			$page['status_extra'] .= '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="method_remove" data-id="0"
+					data-confirm="' . h($active
+						? lang(array('string' => 'The {var:1} keys are removed from this site: it is no longer offered at checkout until they are entered again.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} keys are removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $definition['label']))) . '</button>
+			</div>';
+		}
+
+	}
+
+	$card_name = ($definition['card'] === 'pgset-giftcards') ? lang('Gift Cards & Rewards') : lang('Payment Methods');
+
+	$page['uses'] .= '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', $definition['card'])) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(($id === 'givex') ? lang('Gift cards at checkout') : $definition['label']) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h($card_name) . '</span>
+						<span class="pg-text-meta d-block">' . h($active ? lang('It is offered at checkout.') : lang('It is switched off on the card, so it is not offered at checkout.')) . '</span>
 					</span>
 					<span class="connections-row-side">' . connections_state_pill(($connected && $active) ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
@@ -3044,19 +3362,30 @@ if ($provider_page !== '') {
 			'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
 			'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
 			'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
-			'commerce'     => in_array($page_id, pg_connections_screen_gateway_pages(), true) && connections_commerce_may_manage($user),
+			'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_gateway_pages(), true),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true),
 	);
 
 	// A card gateway's page: its keys and the card that chooses it.
 	if (in_array($page_id, pg_connections_screen_gateway_pages(), true)) {
 		$page = connections_gateway_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// Stripe's, PayPal's and PayTR's pages: their keys and the card that
+	// chooses or switches them on.
+	if (in_array($page_id, pg_connections_screen_driver_pages(), true)) {
+		$page = connections_driver_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// PayPal Express Checkout's keys below PayPal Checkout's, and Givex's page.
+	if (pg_payment_method_connection_for_page($page_id) !== '') {
+		$page = connections_method_page($page, pg_payment_method_connection_for_page($page_id), connections_commerce_may_manage($user));
 	}
 
 	// A CAPTCHA provider's page: its keys and the card that chooses it.

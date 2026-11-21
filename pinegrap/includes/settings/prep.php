@@ -301,10 +301,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_gift_card = $row['ecommerce_gift_card'];
     $ecommerce_gift_card_validity_days = $row['ecommerce_gift_card_validity_days'];
     $ecommerce_givex = $row['ecommerce_givex'];
-    $ecommerce_givex_primary_hostname = $row['ecommerce_givex_primary_hostname'];
-    $ecommerce_givex_secondary_hostname = $row['ecommerce_givex_secondary_hostname'];
-    $ecommerce_givex_user_id = $row['ecommerce_givex_user_id'];
-    $ecommerce_givex_password = $row['ecommerce_givex_password'];
     $ecommerce_credit_debit_card = $row['ecommerce_credit_debit_card'];
     $ecommerce_american_express = $row['ecommerce_american_express'];
     $ecommerce_diners_club = $row['ecommerce_diners_club'];
@@ -324,15 +320,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // The card gateways' keys are typed on their pages of Connections; the
     // card reads them only for each gateway's connection state.
     $ecommerce_gateway_connection_stored = array_intersect_key($row, array_flip(pg_payment_gateway_connection_columns()));
+    // So are PayPal Express Checkout's and Givex's.
+    $ecommerce_method_connection_stored = array_intersect_key($row, array_flip(pg_payment_method_connection_columns()));
 	$ecommerce_iyzipay_threeds = $row['ecommerce_iyzipay_threeds'];
     $ecommerce_pay_with_iyzico = $row['ecommerce_pay_with_iyzico'];
     $ecommerce_surcharge_percentage = $row['ecommerce_surcharge_percentage'];
     $ecommerce_paypal_express_checkout = $row['ecommerce_paypal_express_checkout'];
     $ecommerce_paypal_express_checkout_transaction_type = $row['ecommerce_paypal_express_checkout_transaction_type'];
     $ecommerce_paypal_express_checkout_mode = $row['ecommerce_paypal_express_checkout_mode'];
-    $ecommerce_paypal_express_checkout_api_username = $row['ecommerce_paypal_express_checkout_api_username'];
-    $ecommerce_paypal_express_checkout_api_password = pg_gateway_secret_shown($row['ecommerce_paypal_express_checkout_api_password']);
-    $ecommerce_paypal_express_checkout_api_signature = $row['ecommerce_paypal_express_checkout_api_signature'];
     $ecommerce_offline_payment = $row['ecommerce_offline_payment'];
     $ecommerce_offline_payment_only_specific_orders = $row['ecommerce_offline_payment_only_specific_orders'];
     $ecommerce_offline_payment_cancel_days = (int) ($row['ecommerce_offline_payment_cancel_days'] ?? 0);

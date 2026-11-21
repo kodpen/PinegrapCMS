@@ -20,8 +20,8 @@ module: payments, connections_screen
 
 ## Who may change them, and what else changed?
 - Who may open Site Settings › Ecommerce (`connections_commerce_may_manage()`, `$can['commerce']` in `pg_connections_screen_page_cards()`); the write checks the same.
-- Registry: `place` `connections.php`, `found_at` `#settings/commerce/pgset-payments`, state `pg_payment_gateway_ready()`: connected while it takes the cards with every key stored (an active gateway without keys was shown connected before). New services `payflow_pro`, `payments_pro`, `stripe_classic` (owner 2026-11-21, via K3): `pg_connections_count()` 84 (`api/connections-registry.md`). The `paypal` row is PayPal Checkout only.
+- Registry: `place` `connections.php`, `found_at` `#settings/commerce/pgset-payments`, state `pg_payment_gateway_ready()`: connected while it takes the cards with every key stored (an active gateway without keys was shown connected before). New services `payflow_pro`, `payments_pro`, `stripe_classic` (owner 2026-11-21, via K3): `pg_connections_count()` 84 (`api/connections-registry.md`). The `paypal` row is PayPal Checkout and Express Checkout.
 - Old anchors (each gateway's first key, e.g. `ecommerce_stripe_api_key`) land on `pgset-payments`. No data step, table or column.
-- Not yet moved (CX11g2): Stripe PaymentIntents, PayPal Checkout, PayTR, PayPal Express Checkout, Givex.
+- Stripe PaymentIntents, PayPal Checkout and Express Checkout, PayTR, Givex moved in CX11g2: `connections-payment-services-page.md`.
 
 Tests: `tests/connections_payment_gateways_test.php`, `tests/gateway_secrets_test.php`, `tests/gateway_masked_secrets_test.php`.
