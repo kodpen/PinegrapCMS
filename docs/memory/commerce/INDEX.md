@@ -461,6 +461,7 @@
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
 - verified-shipping-address-screens.md: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, state filter fit to the bar (#9080), Turkish name
 - visitor-currency-zero-rate.md: init.php uses a visitor's chosen currency only while its exchange rate is above zero (pg_visitor_currency_row()); a 0 rate falls back to the base currency
+- walk-in-queue-places.md: Calendars › Queue (WQ2): the places list, a place's Set-up (six folded rows) and Desks tabs, the place's JSON keys and bounds, Open the queue's checks, Delete and Remove, the QR poster [decision: here]
 - walk-in-queue-rules.md: The walk-in queue's pure rules in includes/fn/walk_in_queue.php: the order, the number A-012, cap and closing, the estimate, Not here, the signed link token
 - walk-in-queue-store.md: Walk-in queue tables waiting_places, waiting_desks, waiting_tickets (11.0.266, WQ1b): what each holds, states, the keep-period clear, erase, export, inventory, contact merge [decision: here]
 - wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch [decision: decisions-made-product-64.md, decisions-made-product-65.md]

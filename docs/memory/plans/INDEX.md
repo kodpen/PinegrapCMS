@@ -43,9 +43,6 @@
 - canvas-data-views-screens.md: Plan canvas-data-views, how the Data menu and the data layer's panel are put together in the Design Canvas (DV2) and the Data screen's "Show on a canvas" (DV3)
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
 - canvas-group-motion-send.md: Plan (owner 2026-11-20): Artifact Canvas: a group recorded and shown as one, Attach to and Detach sound where the hand is, the main button as a split button with send and save choices; CS1 to CS5
-- channel-timeline-redraw-card.md: The conversation timeline's card in words: shortcut rows to what a message carries (note, task, file, picture, table, canvas and the rest), how they open, pointer, keyboard and phone
-- channel-timeline-redraw-screens.md: The redrawn conversation timeline in words: the well, days as columns under dates, runs as bars, the decision diamond, the card's shortcut rows, zoom buttons, wheel and keys
-- channel-timeline-redraw.md: Plan: the conversation timeline rebuilt from the architect's drawing (one well in the tabs row, days as columns, runs as bars, Ctrl and Shift with the wheel); one step, TR1
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - communication-settings-tidy-screens.md: Plan communication-settings-tidy, its screen: the Communication pane as folded rows, Chat and Chat on the site with their groups, the words and what must be true
