@@ -109,3 +109,37 @@ function test_application_reviewers_plan_drops_a_reviewer_moved_out_of_the_pool(
 	pg_assert_same(array(array(1, 11)), $plan['inserts']);
 	pg_assert_same(array(100), $plan['deletes']);
 }
+
+function test_application_reviewers_tab_markup_follows_the_description()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_application_program.php');
+	$start = strpos($source, '// The Reviewers tab');
+	$tab = substr($source, $start, strpos($source, '$ap_setup_html =') - $start);
+
+	// The tabs: Set-up and Reviewers as links of one segmented control.
+	pg_assert_contains("\$ap_tab('setup', lang('Set-up')) . \$ap_tab('reviewers', lang('Reviewers'), count(\$ap_reviewers))", $tab, 'two tabs');
+	pg_assert_contains('<a class="pg-seg-item', $tab, 'tabs are links');
+
+	// One fill on the view ("Add reviewer"), one in the drawer's foot (Add).
+	pg_assert_same(2, substr_count($tab, 'pg-button-fill'), 'two fills: the view and the drawer');
+	pg_assert_contains("pg-button pg-button-fill\" data-pg-ap-drawer=\"aprog_reviewer_add\"><i class=\"bi bi-plus-circle\" aria-hidden=\"true\"></i>' . h(lang('Add reviewer'))", $tab, 'Add reviewer is the fill');
+
+	// "Give out entries" is quiet, with a confirm that says the counts.
+	pg_assert_contains("class=\"pg-button pg-button-quiet\" data-confirm-content=\"' . h(\$ap_assign_text) . '\"", $tab, 'Give out entries quiet with its confirm');
+
+	// The drawer: a panel user or a name and an e-mail, then the categories.
+	pg_assert_same(2, substr_count($tab, 'data-pg-ap-kind-choice="'), 'two kinds');
+	pg_assert_contains('name="reviewer_name"', $tab, 'juror name');
+	pg_assert_contains('name="reviewer_email"', $tab, 'juror e-mail');
+	pg_assert_contains('name="reviewer_categories[]"', $tab, 'categories');
+
+	// A row: initials, name, kind and pool, sent of given, the menu with
+	// Remove (danger, confirmed) as its one item.
+	pg_assert_contains('<span class="pg-initials', $tab, 'people as rows');
+	pg_assert_same(1, substr_count($tab, 'class="menu-item'), 'one menu item');
+	pg_assert_contains('class="menu-item fg-emphasis-danger" data-confirm-content=', $tab, 'Remove is danger with a confirm');
+
+	// Conflicts: gathered lines under the list.
+	pg_assert_contains('<div class="pg-gather">', $tab, 'conflicts gathered');
+	pg_assert_true(strpos($tab, 'aprog_reviewers_title') < strpos($tab, 'aprog_conflicts_title'), 'conflicts under the list');
+}
