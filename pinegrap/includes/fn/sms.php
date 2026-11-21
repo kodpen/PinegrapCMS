@@ -262,6 +262,9 @@ function pg_sms_kinds()
         'flow'      => false,
         // A Workspace answer to a customer's own SMS (sms_reply.php).
         'reply'     => false,
+        // A service satisfaction survey's link (feedback_answer.php); a
+        // commercial survey goes as marketing.
+        'feedback'  => false,
         'marketing' => true,
     );
 }
