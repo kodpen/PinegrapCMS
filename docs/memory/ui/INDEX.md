@@ -655,7 +655,7 @@
 - settings-card-own-button.md: A settings card that runs a job beside saving: named type=submit button, pressed handling, why serializers drop it, no save-less button contract.
 - settings-card-row-layout.md: How a settings card lays out one setting per row via stylesheet only: shape-based :has() rule, dividers between rows, name+control grid, single vertical rhythm.
 - settings-card-save-rules.md: Rules for writing settings cards and their save modules: own columns only, $sql_* splice, prep.php $row, balanced divs, registry.php sections.
-- settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents (AT2b): one column, the fold Application and key, the drawers Set up on claude.ai and The latest requests, what a test pins [decision: here]
+- settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents as drawn: the sentence, the grid, Try and Set up, the fold Key and secret, the five-step drawer Set up on claude.ai [decision: here]
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
 - settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab [decision: here]
