@@ -1,6 +1,6 @@
 ---
 name: delivery-tower-steps
-description: Plan delivery-tower, steps DT1a to DT6 (with DT4b): the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
+description: Plan delivery-tower, steps DT1a to DT6 (with DT4b and DT5b): the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
 ---
 
 ## Which steps are there?
@@ -13,6 +13,7 @@ description: Plan delivery-tower, steps DT1a to DT6 (with DT4b): the pure rules,
 - DT4 (M) done (#10890), after DT1b: the scorecard screen and Excel, the arrival suggestion on the scorecard and the method's screen, the carrier ordering rule `pg_delivery_tower_carrier_order()` (tested, not yet on a screen). Features: T11, T12, the ordering rule of T13.
 - DT4b (S) done (#10931), after DT4: the Create Label chooser on the order screen, its screens file from docs PR #10906 (delivery-tower-screens-label); `view_order.php`, `includes/fn/shipment_labels.php` (one optional argument), a new action, the dialog's script. Feature: T13.
 - DT5 (S) done (#10969), after DT3, DT4 and DT4b: `GET /reports/delivery` (in `includes/api/resources/reports.php`, shared with sales-watch SW5) and `GET /shipments/problems`, their types, `php tools/check_api_schema.php`; the settings. Feature: T14.
+- DT5b (S) done (#11006), after DT5: Architect (2026-11-21): under the head of Delivery problems and the Carrier scorecard the same link segments [segmented control], "Problems" and "Carrier scorecard", the open screen's selected, the other its link; a segment the person may not open is not drawn. Nothing else changes. One shared helper in `includes/fn/delivery_tower.php`, tested.
 - DT6 (S) close-out, after DT4b: every T number checked against the code with its PR; `commerce/delivery-tower.md` written, `commerce/shipment-tracking.md` pointing to it; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
