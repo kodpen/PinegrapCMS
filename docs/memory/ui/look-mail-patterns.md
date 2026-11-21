@@ -17,6 +17,7 @@ module: look_examples
 - Provider sign-in: `.pg-card-inner.pg-signin` with `.pg-signin-google` (white, 1 px #747775, 4 px, 40 px, Roboto 500 14/20, #1f1f1f, G at 18 px) or `.pg-signin-microsoft` (white, 1 px #8c8c8c, square, 41 px, Segoe UI 600 15 px, #5e5e5e, logo at 21 px); same in both themes, no look A button class or tone.
 - Result line: `.pg-result role="status"` with a teal tile, `.pg-result-title`, `.pg-result-line`.
 - Confirm with its effects: a `.pg-card.pg-card-sheet role="dialog"`, rose tile, `ul.pg-card-inner.pg-effects` of `.pg-effect-keep` (green check), `.pg-effect-go` (rose cross), `.pg-effect-info` (blue info), each with an optional `.pg-effect-line`; Cancel quiet, then `.pg-button-danger`.
+- Switch rows (`plans/features-switchboard-design.md`, architect channel message 11411): `.pg-set-fold` holding `div.pg-set-switch-row`s: tile, `.pg-set-fold-name` as the switch's `label`, `.pg-set-fold-line` as its `aria-describedby`, quiet "Settings", `input.pg-switch` last; a category row has a pill and "Open it" (Turkish "Aç"; "Open" is "Açık"). `.is-off`, `.is-locked`; a switch turned off greys its row through `:has()`.
 
 ## What was found while building them?
 - The key "Sending" is the mail queue's status ("Gönderiliyor" in Turkish), so the example's tab says "E-mail sending"; the EM step names its own tab key.
