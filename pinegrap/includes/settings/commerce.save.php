@@ -300,7 +300,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Stored after the card, then the connection test that was asked for.
     pg_label_settings_save($label_driver_decisions, USER_ID, $liveform);
 
-    // The address autocomplete account, then its test when asked for.
+    // The address autocomplete switch: the chosen provider on, the others off.
     pg_addr_settings_save($addr_settings_decision, USER_ID, $liveform);
 
 
@@ -413,28 +413,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 } else {
                     $liveform->add_warning(lang(array('string' => '{var:1} was not built: {var:2}', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], pg_product_feed_error_text($product_feeds_result['error'])))));
                 }
-            }
-        }
-    }
-
-    // Google Merchant Center (includes/fn/merchant_center.php), after the
-    // feeds so a Google feed switched on in the same save already has the
-    // address that is registered. The messages carry Google's own words, so
-    // they are escaped whole.
-    if ($product_feeds_save_ready && array_key_exists('merchant_card', $_POST) && function_exists('pg_merchant_save_from_screen')) {
-        $merchant_messages = pg_merchant_save_from_screen(array(
-            'account'  => (string) post_value('merchant_account'),
-            'country'  => (string) post_value('merchant_center_country'),
-            'register' => (bool) post_value('merchant_register'),
-            'check'    => (bool) post_value('merchant_check'),
-            'unlink'   => (bool) post_value('merchant_unlink'),
-        ));
-
-        foreach ($merchant_messages as $merchant_message) {
-            if ($merchant_message[0] === 'error') {
-                $liveform->add_error(h($merchant_message[1]));
-            } else {
-                $liveform->add_notice(h($merchant_message[1]));
             }
         }
     }
