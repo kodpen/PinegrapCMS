@@ -34,7 +34,8 @@
  * by its name. save.url ('url') sends what a replace sends, the document and
  * the overlay, to that address instead (Workspace); for an artboard the PNG
  * drawn here (picture) in place of the overlay; save.label names its
- * button. opts.doc with opts.blank opens a canvas saved before with its
+ * button. save.ask with options.send and no save.url: the main button
+ * first asks for the channel (the send list) and posts there. opts.doc with opts.blank opens a canvas saved before with its
  * layers (M.canvasOpenDoc()). Without any of these, or with save.mode 'callback', the document
  * goes to onSave and nothing is written.
  *
@@ -285,7 +286,7 @@
         // replace, copy, new or callback: see the top of this file.
         this.saveMode = save.mode || (save.url ? 'url' : (opts.fileId ? 'replace' : ((opts.blank && save.folderId) ? 'new' : 'callback')));
 
-        if (!config().api || ((this.saveMode === 'url') && !save.url)) {
+        if (!config().api || ((this.saveMode === 'url') && !save.url && !this.asksChannel())) {
             this.saveMode = 'callback';
         }
 
@@ -1466,7 +1467,7 @@
 
             if (this.saveMenu) {
                 this.toggleSaveMenu(false);
-                this.menuBtn.focus();
+                (this.menuBtn || this.saveBtn).focus();
             } else {
                 this.onEscape();
             }
@@ -1651,7 +1652,8 @@
 
         return {
             channel: ok && (this.saveMode === 'url'),
-            send: ok,
+            // A main button that asks for the channel sends nowhere else.
+            send: ok && !this.asksChannel(),
             // Save to Files: someone who may edit a folder (the server asks
             // again of the folder chosen at every save).
             files: !!config().filesEdit && !!config().api,
@@ -1662,6 +1664,27 @@
             // sent as a canvas (canvasCopy()).
             convert: !this.doc.artboard && !!this.opts.fileId && !!config().api
         };
+    };
+
+    // save.ask: the main button posts in a channel it asks for first.
+    Editor.prototype.asksChannel = function () {
+        var send = this.opts.send;
+
+        return !!(this.opts.save || {}).ask && !!send && (typeof send.channels === 'function') && (typeof send.url === 'function');
+    };
+
+    // The send list under the main button; the channel chosen is where the
+    // main button's save goes (save.url).
+    Editor.prototype.askChannel = function () {
+        var self = this;
+
+        this.toggleSaveMenu(false);
+        this.saveMenu = el('div', { class: 'pgie-menu', role: 'menu', 'aria-label': t('sendChannel').replace(/\u2026$/, '') });
+        this.saveBox.appendChild(this.saveMenu);
+        this.openSendList(function (channel) {
+            self.opts.save.url = self.opts.send.url(channel.id);
+            self.save('url');
+        });
     };
 
     // A file that opens as a canvas only once its answer came: the chevron
@@ -1758,15 +1781,17 @@
     // The channels the person may write in, inside the open menu: a find
     // field once there are more than eight, one button a channel. A press
     // posts the canvas there as the person's own message; the editor stays
-    // open, as nothing was saved where its main button saves.
-    Editor.prototype.openSendList = function () {
+    // open, as nothing was saved where its main button saves. Given pick
+    // (askChannel()), a press hands it the channel instead, a find field
+    // always above.
+    Editor.prototype.openSendList = function (pick) {
         var self = this, menu = this.saveMenu, send = this.opts.send, c = this.sendContext();
 
         if (!menu || !send) {
             return;
         }
 
-        var title = t(c.channel ? 'sendOther' : 'sendChannel').replace(/\u2026$/, '');
+        var title = t((c.channel && !pick) ? 'sendOther' : 'sendChannel').replace(/\u2026$/, '');
         var list = el('div', { class: 'pgie-sendlist', role: 'group', 'aria-label': title });
         var status = el('p', { class: 'pgie-sendnote', role: 'status', text: t('sendLoading') });
 
@@ -1796,12 +1821,17 @@
                 M.sendFilter(channels, words).forEach(function (ch) {
                     list.appendChild(el('button', { type: 'button', role: 'menuitem', text: ch.name, onclick: function () {
                         self.toggleSaveMenu(false);
-                        self.sendTo(ch);
+
+                        if (pick) {
+                            pick(ch);
+                        } else {
+                            self.sendTo(ch);
+                        }
                     } }));
                 });
             };
 
-            if (channels.length > 8) {
+            if (pick || (channels.length > 8)) {
                 var find = el('input', { type: 'search', class: 'pgie-sendfind', placeholder: t('sendFind'), 'aria-label': t('sendFind') });
 
                 find.addEventListener('input', function () { draw(find.value); });
@@ -2112,6 +2142,12 @@
         }
 
         mode = mode || this.saveMode;
+
+        // No channel yet (save.ask): asked first, then saved there.
+        if ((mode === 'url') && !(this.opts.save || {}).url) {
+            this.askChannel();
+            return;
+        }
 
         if (mode === 'callback') {
             var result = { doc: M.clone(this.doc), fileId: this.doc.source ? this.doc.source.fileId : 0 };

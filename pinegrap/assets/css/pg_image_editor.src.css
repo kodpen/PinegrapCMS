@@ -3228,13 +3228,14 @@ a.pgie-langthumb:focus-visible {
   }
 }
 
-/* A narrow phone: the top bar's secondary buttons (Import, Languages, Save
-   animation, Present) show their glyph only, square as undo and redo, their
+/* A narrow phone: the top bar's secondary buttons (Import, Data, Languages,
+   Save animation, Present) show their glyph only, square as undo and redo, their
    name kept as aria-label and title; the split button keeps its words and
    the file's name gives way, so the bar never scrolls sideways. */
 
 @media (max-width: 575.98px) {
   .pgie-top .pgie-importbtn,
+  .pgie-top .pgie-databtn,
   .pgie-top .pgie-langbtn,
   .pgie-top .pgie-animbtn,
   .pgie-top .pgie-presentbtn {
@@ -3245,6 +3246,7 @@ a.pgie-langthumb:focus-visible {
   }
 
   .pgie-top .pgie-importbtn .pgie-vlabel,
+  .pgie-top .pgie-databtn .pgie-vlabel,
   .pgie-top .pgie-langbtn .pgie-vlabel,
   .pgie-top .pgie-animbtn .pgie-vlabel,
   .pgie-top .pgie-presentbtn .pgie-vlabel {
