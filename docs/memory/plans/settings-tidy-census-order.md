@@ -24,7 +24,7 @@ description: Survey of the Site Settings categories, its second part: how old ea
 - 1. Features as one switchboard: `plans/features-switchboard.md`; Commerce and Accounting keep their switch and show on the board.
 - 2. Visitors and privacy: `plans/privacy-settings-tidy.md`; every retention shown in one row, each still set beside its feature; K1 decided: the KVKK notice gets its own switch (`workflow/decisions-made-product-96.md`).
 - 3. Bookings: `plans/bookings-settings-tidy.md`; services and staff as rows with drawers, one Messages row saying which booking mails and texts go.
-- 4. Firewall and HTTPS with Accounts and sign-in: `plans/security-settings-tidy.md`; one Limits row, radios to `pg-seg`, popovers to folds, bans and logs as rows (K8); K4 (AI training against the firewall) asked there.
+- 4. Firewall and HTTPS with Accounts and sign-in: `plans/security-settings-tidy.md`; one Limits row, radios to `pg-seg`, popovers to folds, bans and logs as rows (K8); K4 (AI training against the firewall) decided: step SE1b.
 - 5. General and Appearance: `plans/general-appearance-settings-tidy.md`; one Site address row, K3, K5, K6, K7, footer links as rows.
 - 6. Communication: `plans/communication-settings-tidy.md`; the pane as folded rows, the Chat card split in two.
 - 7. Ecommerce, after its CX11 step. 8. Accounting's ERP card split, after its CX11 step. 9. Updates and maintenance (cron steps, one S3, K2), after its CX11 step.

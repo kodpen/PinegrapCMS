@@ -25,8 +25,8 @@ priority: 8
 - Each limit stays in its pane (a category writes only its own columns, `ui/settings-card-save-rules.md`); the Firewall's "Limits" row shows the Accounts limits as value rows with Change, and every "allowed list" line links `#settings/firewall/pgset-iplists`.
 - Each provider becomes a [Connect row]: its pill, its sentence, the switch, "Set up in Connections".
 
-## What waits for the owner?
-- (S8) May "Allow AI training" also let the training crawlers (`pg_ai_crawler_catalog()['train']`) past the built-in list (`waf/waf-ai-bots-ranges.md`), still under the rate limits? A product change, put to the owner as a poll (message 11489), proposed yes with no new field. Until then the Bots row says they are refused; no step waits.
+## What did the owner decide?
+- (S8) Owner (2026-11-21, poll 216, `workflow/decisions-made-product-97.md`): with "Allow AI training" on, the firewall takes the training crawlers out of the bad-bot match only; rate limits, bans and attack rules still apply; no new field. Step SE1b.
 
 ## What binds it?
 - Field names, ids, columns and saves do not change; card ids and anchors keep working (`pg_settings_legacy_anchors()`); one Save a pane; no schema change.
