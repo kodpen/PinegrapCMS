@@ -18,8 +18,8 @@ module: feedback_surveys
 - `texts`: `{"question": {lang: text}, "comment": {lang: text}, "extra": [{"type": "text"|"choice", "label": {lang: text}, "choices": {lang: [..]}}]}`; an extra question without a label in the site's first language is dropped; a choice needs two choices. Languages: `pg_feedback_survey_languages()`, the translation source first.
 
 ## What does Send me a test do?
-- From the edit screen it saves, then sends; from the list it sends the stored survey. The e-mail in the site's first language to the signed-in user's address, subject "[Test] <question>", through `email()`; no answer row, buttons lead nowhere (FD4 links them). Ten an hour per user: `waf_rate` bucket `feedback_test|<user id>` (`PG_FEEDBACK_TEST_HOURLY`).
-- SMS and WhatsApp surveys are tested by e-mail too, until FD4 builds their message.
+- From the edit screen it saves, then sends; from the list it sends the stored survey. The e-mail in the site's first language to the signed-in user's address, subject "[Test] <question>", through `email()`; no answer row, so no token: its buttons lead nowhere, while a real send links each score (`platform/feedback-answer.md`). Ten an hour per user: `waf_rate` bucket `feedback_test|<user id>` (`PG_FEEDBACK_TEST_HOURLY`).
+- SMS and WhatsApp surveys are tested by e-mail too.
 
 Test: `tests/feedback_surveys_test.php`.
 
