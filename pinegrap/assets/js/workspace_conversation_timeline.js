@@ -228,14 +228,19 @@
             return { low: SCALE_OPEN, top: SCALE_TOP };
         }
 
+        // A conversation of more turns than the well holds at their least
+        // widths: the floor is the largest scale that still draws that
+        // least strip, so the first zoom in shows a change.
+        var room = width;
+
         if (timelineLayout(runs, low).width > width) {
-            return { low: SCALE_LEAST, top: SCALE_TOP };
+            room = timelineLayout(runs, low).width;
         }
 
         for (var step = 0; step < 30; step++) {
             var middle = (low + high) / 2;
 
-            if (timelineLayout(runs, middle).width > width) {
+            if (timelineLayout(runs, middle).width > room) {
                 high = middle;
             } else {
                 low = middle;
@@ -452,7 +457,8 @@
     // left out. Pure.
     function timelineInitials(name) {
         var words = String(name || '').replace(/\([^)]*\)/g, ' ').trim().split(/[\s._-]+/).filter(Boolean);
-        var letters = words.slice(0, 2).map(function (word) { return word.charAt(0); }).join('');
+        // One word gives its first two letters, as the channel head's faces.
+        var letters = (words.length === 1) ? words[0].slice(0, 2) : words.slice(0, 2).map(function (word) { return word.charAt(0); }).join('');
 
         return (letters || '?').toLocaleUpperCase();
     }

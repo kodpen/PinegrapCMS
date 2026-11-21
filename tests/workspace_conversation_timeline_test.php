@@ -420,7 +420,7 @@ var crowd = [];
 for (var j = 0; j < 300; j++) { crowd.push({ id: j + 1, at: j * 200, s: j % 2 }); }
 console.log(JSON.stringify({
 	low: range.low < SCALE_OPEN,
-	crowd: timelineZoomRange(timelineRuns(crowd, 120, 1800), 400).low,
+	crowd: (function () { var cr = timelineRuns(crowd, 120, 1800); var low = timelineZoomRange(cr, 400).low; var least = timelineLayout(cr, 0.05).width; return [low > 0.05, timelineLayout(cr, low).width === least, timelineLayout(cr, low * 1.05).width > least, least > 400]; })(),
 	fits: timelineLayout(runs, range.low).width <= 400,
 	snug: timelineLayout(runs, range.low * 1.05).width > 400,
 	top: range.top,
@@ -439,7 +439,7 @@ console.log(JSON.stringify({
 	pg_assert_true($result['low'], 'a long conversation zooms out past the opening scale');
 	pg_assert_true($result['fits'] && $result['snug'], 'fully zoomed out it fills the well, the whole conversation in sight');
 	pg_assert_same(48, $result['top'], 'it zooms in until a message is 48 pixels');
-	pg_assert_same(0.05, $result['crowd'], 'a conversation of more turns than the well holds zooms out as far as it goes and still moves along');
+	pg_assert_same(array(true, true, true, true), $result['crowd'], 'a conversation of more turns than the well holds stops at the largest scale of its least strip, still wider than the well, so the first zoom in shows');
 	pg_assert_same(5.2, $result['few'], 'a short conversation stands at the left at the opening scale, nothing to zoom out to');
 	pg_assert_same(5.2, $result['none'], 'an empty one too');
 	pg_assert_same(array(6, 4, 48, 1, 48, 1), $result['steps'], 'a step is half again, to the end when it would stop just short');
@@ -463,7 +463,7 @@ console.log(JSON.stringify({
 	}
 
 	pg_assert_same(array('ctl_sec(40)', 'ctl_min(10)', 'ctl_hour(1,5)', 'ctl_day(1,1)'), $result['waits'], 'waits in seconds, minutes, hours and days');
-	pg_assert_same(array('MK', 'MK', 'KC', '?', 'I'), $result['initials'], 'two letters, an application\'s mark left out');
+	pg_assert_same(array('MK', 'MK', 'KC', '?', 'IŞ'), $result['initials'], 'two letters, a one-word name its first two, an application\'s mark left out');
 }
 
 function test_workspace_conversation_timeline_screen_hooks()

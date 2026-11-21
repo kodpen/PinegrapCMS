@@ -12,7 +12,7 @@ description: Decisions made, workspace part 46 (2026-11-21 on): the conversation
 - Smaller in height and in width: it no longer takes the whole row. Ctrl with the wheel zooms in and out, Shift with the wheel moves along the conversation, and all of it works from the keyboard.
 - Architect (2026-11-21), the sizes and the rest of the drawing: one well 30 px high and at most 420 px wide at the end of the tabs row; a day a column under its date, a run one bar cut into its writers, a wait the space between bars; a decision the only mark; the zoom buttons inside the well.
 - Architect: the plain wheel over the well is left to the page, so a pointer resting on the head never catches a scroll; before, the plain wheel moved the strip.
-- The drawing: `workspace/channel-timeline-drawing/timeline.html` (boards 1 to 9, `timeline-dark.jpg`, `timeline-light.jpg`). In words: `plans/channel-timeline-redraw-screens.md`. No schema and no API change.
+- The drawing: `workspace/channel-timeline-drawing/timeline.html` (boards 1 to 9, `timeline-dark.jpg`, `timeline-light.jpg`). Built in #11047; in words: `workspace/workspace-channel-timeline.md` with its `-zoom` and `-card` files. No schema and no API change.
 
 ## What does the timeline's card offer beside the message's words? (owner, 2026-11-21, in the architect's window, on the drawing)
 - Owner: "daha iyi bu sefer karar dışındaki kanal içi öğeler içinde kart içinde kısayol olsun. görsel ve tablo dahil (önizlenmesi şart değil sadece ne oldukları belirtilse yeter) bu görevi @arge ye verelim o iyi yapar".
@@ -20,4 +20,4 @@ description: Decisions made, workspace part 46 (2026-11-21 on): the conversation
 - Architect: a decision keeps its plain line since the message is the decision; four rows at most, then one row for the rest; a row only for what the viewer may open; the card stays under the pointer and is reached by Tab.
 - The research agent builds the step (TR1).
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-workspace-44.md, docs/memory/plans/channel-timeline-redraw.md, docs/memory/workspace/workspace-channel-timeline.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-workspace-44.md, docs/memory/workspace/workspace-channel-timeline.md, docs/memory/workspace/workspace-channel-timeline-card.md
