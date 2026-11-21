@@ -1,6 +1,6 @@
 ---
 name: delivery-problems-settings
-description: The Settings drawer of Orders › Delivery problems (DT5, #PRNUM): each problem kind on or off, the two day counts under Advanced, who may save, what it writes
+description: The Settings drawer of Orders › Delivery problems (DT5, #10969): each problem kind on or off, the two day counts under Advanced, who may save, what it writes
 module: delivery_problems
 ---
 

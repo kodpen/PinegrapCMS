@@ -1,6 +1,6 @@
 ---
 name: api-delivery-tower
-description: GET /reports/delivery (the carrier scorecard, DeliveryReport) and GET /shipments/problems (ShipmentProblem list), orders:read, MCP tools (DT5, #PRNUM)
+description: GET /reports/delivery (the carrier scorecard, DeliveryReport) and GET /shipments/problems (ShipmentProblem list), orders:read, MCP tools (DT5, #10969)
 ---
 
 ## What does GET /reports/delivery answer?
