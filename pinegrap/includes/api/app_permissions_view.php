@@ -91,6 +91,7 @@ function api_app_permission_area_keys() {
 		'visitors'           => 'site',
 		'users'              => 'site',
 		'site_log'           => 'site',
+		'privacy'            => 'site',
 		'account'            => 'site'
 	);
 
@@ -125,6 +126,7 @@ function api_settings_group_text($key, $group = array()) {
 		'system'    => array(lang('System'),     lang('The health score and the checks behind it, for your own monitoring, and the audit trail'), 'bi-activity'),
 		'visitors'  => array(lang('Visitors'),   lang('Visits and page views, the most viewed content and where visits came from, as totals - never a single visit'), 'bi-bar-chart'),
 		'users'     => array(lang('Users'),      lang('The panel\'s accounts, their roles and rights, never a password; writing opens, changes and closes accounts, held by an administrator only'), 'bi-person-gear'),
+		'privacy'   => array(lang('Privacy'),    lang('The personal data inventory with its transfers, and the requests people sent about their data - read only'), 'bi-shield-lock'),
 		'site_log'  => array(lang('Site Log'),   lang('Who did what on the site and from which address - read only'), 'bi-journal-text'),
 		'fediverse' => array(lang('Fediverse'),  lang('The Fediverse account\'s followers and what was delivered to them - read only'), 'bi-mastodon'),
 		'campaigns' => array(lang('Campaigns'),  lang('E-mail campaigns, how far sending has got and who they go to; writing holds, releases, cancels, corrects or removes one, not putting one together'), 'bi-envelope'),

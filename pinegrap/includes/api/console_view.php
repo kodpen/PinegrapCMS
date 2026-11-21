@@ -49,6 +49,7 @@ function api_console_group_labels() {
 		'gift_cards'     => lang('Gift Cards'),
 		'commissions'    => lang('Commissions'),
 		'site_log'       => lang('Site Log'),
+		'privacy'        => lang('Privacy'),
 		'fediverse'      => lang('Fediverse'),
 		'campaigns'      => lang('Campaigns'),
 		'contact_groups' => lang('Contact Groups'),

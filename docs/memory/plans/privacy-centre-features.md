@@ -28,4 +28,4 @@ description: Plan privacy-centre, features P1 to P12: the inventory and its tran
 - (P11) The panel list: kind, person, received, due (30 days), who handles it, status, result. Bell and e-mail at 7 and 2 days left. "Prepare the answer" runs the export (information) or the erase dry run (erasure); the answer goes by e-mail and is kept with the request. Each step is an `audit_log` line (`entity_type = 'privacy_request'`).
 
 ## Who can read it from outside?
-- (P12) `GET /privacy/inventory` and `GET /privacy/requests` with a request's steps; MCP tools by the route rule. Writes stay on the panel, where a person confirms them.
+- (P12) `GET /privacy/inventory`, `GET /privacy/requests` and `GET /privacy/requests/{id}` with a request's steps; MCP tools by the route rule. Writes stay on the panel, where a person confirms them.
