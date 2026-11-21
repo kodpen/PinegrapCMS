@@ -198,6 +198,8 @@ function test_workspace_channel_notes_js_card_look()
 	pg_assert_contains("kit.el('div', 'ws-cn-more d-none')", $card, 'in its own row, hidden while the note fits');
 	pg_assert_contains("more.classList.toggle('d-none', state === 'whole')", $fold, 'the fold shows the row only for a longer note');
 	pg_assert_contains("metaLine(kit, text);", $card, 'the "Written up to" line is drawn as a meta line');
+	pg_assert_contains("tightGaps(kit, text);", $card, 'an empty line between paragraphs is a short gap');
+	pg_assert_contains(".ws-cn-gap {\n    display: block;\n    height: 6px;\n}", $css, 'of 6 px');
 	pg_assert_contains("kit.el('div', 'ws-cn-foot pg-text-meta')", $card, 'the foot is one muted line');
 	pg_assert_contains("footLine(card, kit.t)", $card, 'of the foot\'s words joined');
 	pg_assert_contains(".ws-cn-more {\n    margin-top: 6px;\n    text-align: center;\n}", $css, 'the button is centred under the note');

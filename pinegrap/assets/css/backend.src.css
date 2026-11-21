@@ -24107,6 +24107,17 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
 .ws-cn-versions-button {
     flex: none;
 }
+/* On a phone Versions is its icon and count, so the words keep the line */
+@media (max-width: 575.98px) {
+    .ws-cn-versions-button .pg-btn-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+}
 /* Inside the note: headings measured against the text (the first one step
    bigger), paragraphs and lists close together, the "Written up to …"
    line as a meta line. */
@@ -24138,6 +24149,11 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
 }
 .ws-cn-meta {
     margin-bottom: 6px;
+}
+/* An empty line between paragraphs (workspace_channel_notes.js tightGaps()) */
+.ws-cn-gap {
+    display: block;
+    height: 6px;
 }
 /* The writing box in the Write a note and Edit windows */
 .ws-cn-editor .ws-rich-field {

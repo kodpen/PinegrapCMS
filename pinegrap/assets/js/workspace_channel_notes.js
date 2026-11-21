@@ -582,9 +582,46 @@
         });
         text.insertBefore(meta, text.firstChild);
 
+        // The empty lines under it go: the meta line keeps its own gap.
+        var rest = inBlock ? first.firstChild : meta.nextSibling;
+
+        while (rest && ((rest.nodeType === 3 && !rest.nodeValue.trim()) || (rest.nodeType === 1 && rest.tagName === 'BR'))) {
+            var gone = rest;
+
+            rest = rest.nextSibling;
+            gone.remove();
+        }
+
         if (inBlock && !first.children.length && !first.textContent.trim()) {
             first.remove();
         }
+    }
+
+    // An empty line between two paragraphs of one text block is drawn as a
+    // line break after a line break, a whole empty line high; in the card it
+    // becomes a short gap (.ws-cn-gap) so paragraphs sit close together.
+    // Only in running text: code and table cells keep their lines.
+    function tightGaps(kit, text) {
+        Array.prototype.forEach.call(text.querySelectorAll('br'), function (br) {
+            var parent = br.parentNode;
+
+            if (parent !== text && !(parent.classList && parent.classList.contains('ws-text'))) {
+                return;
+            }
+
+            var before = br.previousSibling;
+
+            while (before && before.nodeType === 3 && !before.nodeValue.trim()) {
+                before = before.previousSibling;
+            }
+
+            if (before && before.nodeType === 1 && before.classList.contains('ws-cn-gap')) {
+                // Several empty lines in a row: one gap.
+                br.remove();
+            } else if (before && before.nodeType === 1 && before.tagName === 'BR') {
+                parent.replaceChild(kit.el('span', 'ws-cn-gap'), br);
+            }
+        });
     }
 
     // Lays the fold on the drawn note once it is on the page: a note
@@ -669,6 +706,7 @@
 
             hooks.setHtml(text, card.html);
             metaLine(kit, text);
+            tightGaps(kit, text);
             hooks.chipMenus(text);
             text.id = 'ws-cn-fold-' + (++seq);
             toggle.type = 'button';
@@ -693,7 +731,10 @@
         if (card.versions > 0) {
             var list = lookButton(kit, 'ghost', kit.t('cn_versions'), 'bi-clock-history');
 
+            // On a phone the label hides (the words keep the room); the
+            // button is still named by its title.
             list.classList.add('pg-button-sm', 'ws-cn-versions-button');
+            list.title = kit.t('cn_versions');
             list.appendChild(kit.el('span', 'pg-count', String(card.versions)));
             list.addEventListener('click', function (event) {
                 event.stopPropagation();
