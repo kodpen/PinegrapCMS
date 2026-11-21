@@ -27,6 +27,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvas.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/openapi.php');
 
 // The newest version's row says the version and whether a browser has still
 // to draw it: only an agent's version marked pending waits.
@@ -133,6 +134,7 @@ function test_workspace_api_message_canvas_is_documented()
 
 	foreach (ws_api_routes() as $route) {
 		$routes[$route['id']] = $route;
+		$routes[$route['id']]['description'] = api_openapi_operation_description($route);
 	}
 
 	pg_assert_contains('file.canvas is set on a canvas\'s picture', $routes['workspace.messages.list']['description']);

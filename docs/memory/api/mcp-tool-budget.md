@@ -11,6 +11,8 @@ description: The MCP tool size budget (AG9): 600 characters a description, 4,096
 - `tests/mcp_tool_budget_test.php` builds every route of the core and the modules as tools for a caller with every scope, and keeps two lists: tools over 600 characters, tools over 4,096 bytes.
 - The lists may only shrink: a tool over a budget that is not listed fails (fit it, never list it); a listed tool that fits fails until it is taken off.
 - On 2026-11-20: 584 tools, 222 descriptions over 600 characters (workspace 102, erp 28, design 11, the rest 81), 13 tools over 4,096 bytes (7 of them workspace). The plan's 209 was counted before later routes landed.
+- AG10 (Workspace, PR #10920): all 102 Workspace descriptions and its 7 tools over 4,096 bytes fit; the test lists hold no `workspace_` tool. The tool list fell from 883,515 to 793,568 bytes (Workspace 356,741 to 266,794).
+- AG10 moves: the flow boxes' settings went to `$flow_details` (flows create and update), the proposals' `changes` text to `ws_api_changes_details()` (a brief form via `ws_api_changes_param(..., true)`), the canvas short guide to `details`; the `workspace` guide topic gained a Building a flow section (assign values, the marketing consent rule).
 
 ## Where does long reference text go?
 - A route row's `details` key: read only by `api_openapi_operation_description()` (`includes/api/openapi.php`), which writes description, the scope sentence, then the details as their own paragraph. `pg_mcp_tool_from_route()` never reads it (tested).

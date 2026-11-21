@@ -57,7 +57,8 @@ function ws_memory_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceMessage',
             'summary'     => 'Mark a message as a decision or a note, or take the mark off',
-            'description' => 'Marks a message of a person or of an application (an agent\'s agreement too) in a channel the owner of the application may post in, the way Mark as decision in the message menu does: kind decision or note; message takes the mark off. Its decision line goes into the brief of every agent asked in the channel, and GET /workspace/decisions lists it with marked_by and marked_by_kind (user or app).' . $who . ' A decision that records a change to a record keeps its mark against the User role (403).',
+            'description' => 'Marks a message of a person or of an application (an agent\'s agreement too) in a channel the owner of the application may post in, the way Mark as decision in the message menu does: kind decision or note; message takes the mark off. Its decision line goes into the brief of every agent asked in the channel, and GET /workspace/decisions lists it with marked_by and marked_by_kind (user or app). A decision that records a change to a record keeps its mark against the User role (403).',
+            'details'     => 'marked_by_kind:' . $who,
             'params'      => array(
                 $id,
                 array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('decision', 'note', 'message'), 'required' => true),
@@ -88,7 +89,8 @@ function ws_memory_api_routes()
             'handler'     => 'ws_api_memory_general_list',
             'returns'     => array('list' => 'WorkspaceMemoryIndexEntry'),
             'summary'     => 'The index of the general memory',
-            'description' => 'The general memory the agent channels share (channel_id 0), for whoever may post in an agent channel: pinned first and then the most recently changed, without their texts: read the ones needed with GET /workspace/memory/{id}. The brief of an agent asked in an agent channel carries the same index before the channel\'s own. Expired entries are left out unless expired is true; tag keeps the entries with that tag, project those filed under that project. 403 forbidden for an owner who may post in no agent channel; 503 service_unavailable before the database update.',
+            'description' => 'The general memory the agent channels share (channel_id 0), for whoever may post in an agent channel: pinned first, then the most recently changed, without their texts: read the ones needed with GET /workspace/memory/{id}. Expired entries are left out unless expired is true; tag and project narrow the list. 403 forbidden for an owner who may post in no agent channel; 503 service_unavailable before the database update.',
+            'details'     => 'The brief of an agent asked in an agent channel carries the same index before the channel\'s own. tag keeps the entries with that tag, project those filed under that project.',
             'params'      => array(
                 array('name' => 'expired', 'in' => 'query', 'type' => 'bool', 'description' => 'The expired entries too.'),
                 array('name' => 'tag', 'in' => 'query', 'type' => 'string', 'max_length' => WS_MEMORY_TAG_MAX),
@@ -106,7 +108,8 @@ function ws_memory_api_routes()
             'status'      => 201,
             'returns'     => 'WorkspaceMemoryEntry',
             'summary'     => 'Write an entry into the general memory',
-            'description' => 'Adds an entry to the general memory the agent channels share, for an owner who may post in an agent channel: what every agent channel should keep knowing, filed under a project. Something only one channel needs goes into that channel\'s memory (POST /workspace/channels/{id}/memory). Keep one topic per entry and a title that says it.' . $who . $errors,
+            'description' => 'Adds an entry to the general memory the agent channels share, for an owner who may post in an agent channel: what every agent channel should keep knowing, filed under a project. Something only one channel needs goes into that channel\'s memory (POST /workspace/channels/{id}/memory). Keep one topic per entry and a title that says it. A refused value: 422 validation_failed naming the field; a channel the owner may not post in: 403; database not updated: 503.',
+            'details'     => trim($who . $errors),
             'params'      => array_map(function ($field) {
                 return ($field['name'] === 'title') ? $field + array('required' => true) : $field;
             }, $fields),
@@ -121,7 +124,8 @@ function ws_memory_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceMemoryEntry',
             'summary'     => 'Move a channel\'s memory entry to the general memory',
-            'description' => 'Moves an entry of an agent channel\'s memory into the general memory the agent channels share, with its id, project, tags and text: every agent channel\'s brief then lists it. The owner must be able to post in the channel and in an agent channel. 422 validation_failed for an entry already general or of a channel that is no agent channel; 403 forbidden otherwise; 503 service_unavailable before the database update.' . $who,
+            'description' => 'Moves an entry of an agent channel\'s memory into the general memory the agent channels share, with its id, project, tags and text: every agent channel\'s brief then lists it. The owner must be able to post in the channel and in an agent channel. 422 validation_failed for an entry already general or of a channel that is no agent channel; 403 forbidden otherwise; 503 service_unavailable before the database update.',
+            'details'     => trim($who),
             'params'      => array($id),
         ),
 
@@ -147,7 +151,8 @@ function ws_memory_api_routes()
             'status'      => 201,
             'returns'     => 'WorkspaceMemoryEntry',
             'summary'     => 'Write an entry into a channel\'s memory',
-            'description' => 'Adds an entry to the memory of a channel the owner of the application may post in: something the members and the agents of the channel should keep knowing, such as a rule of the channel, a fact, a link or a state of work. Keep one topic per entry and a title that says it: agents see only the titles and tags until they read an entry.' . $who . $errors,
+            'description' => 'Adds an entry to the memory of a channel the owner of the application may post in: something the members and the agents of the channel should keep knowing, such as a rule of the channel, a fact, a link or a state of work. Keep one topic per entry and a title that says it: agents see only the titles and tags until they read an entry. A refused value: 422 validation_failed naming the field; a channel the owner may not post in: 403; database not updated: 503.',
+            'details'     => trim($who . $errors),
             'params'      => array_merge(array($id), array_map(function ($field) {
                 return ($field['name'] === 'title') ? $field + array('required' => true) : $field;
             }, $fields)),
@@ -163,7 +168,8 @@ function ws_memory_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceMemoryEntry',
             'summary'      => 'Change a memory entry',
-            'description'  => 'Changes an entry of a channel the owner of the application may post in, or a general entry when the owner may post in an agent channel; fields left out keep their value. Correct a stale entry rather than writing a second one beside it. PATCH is accepted beside POST.' . $who . $errors,
+            'description'  => 'Changes an entry of a channel the owner of the application may post in, or a general entry when the owner may post in an agent channel; fields left out keep their value. Correct a stale entry rather than writing a second one beside it.' . $errors,
+            'details'      => 'PATCH is accepted beside POST.' . $who,
             'params'       => array_merge(array($id), $fields),
         ),
 

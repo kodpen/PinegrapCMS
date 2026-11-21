@@ -52,7 +52,7 @@ function test_agent_guide_workspace_says_its_records_and_rules()
 
 	pg_assert_true(is_string($text), 'the workspace topic has text');
 
-	foreach (array('Channel:', 'Message:', 'Task:', 'Proposal:', 'Approval:', 'Table:', 'Note:', 'Memory:', 'Flow:', 'workspace_channels_context', 'workspace_changes_propose', 'dry_run', 'since_id', '<@user:12>', 'minor units') as $needle) {
+	foreach (array('Channel:', 'Message:', 'Task:', 'Proposal:', 'Approval:', 'Table:', 'Note:', 'Memory:', 'Flow:', 'workspace_channels_context', 'workspace_changes_propose', 'dry_run', 'since_id', '<@user:12>', 'minor units', 'workspace_flow_kinds_list', 'department_lead') as $needle) {
 		pg_assert_contains($needle, (string)$text, 'workspace says ' . $needle);
 	}
 

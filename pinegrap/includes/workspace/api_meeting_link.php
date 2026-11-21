@@ -37,7 +37,8 @@ function ws_meeting_link_api_routes()
             'handler'     => 'ws_api_meeting_link_get',
             'returns'     => 'WorkspaceMeetingLink',
             'summary'     => 'The owner\'s own meeting link',
-            'description' => 'What the screen My meeting link shows the owner when they are booking staff: bookable (they have services to be booked for), link_url (the address a visitor books them through; null when not bookable or the site has no encryption key), short_url (the live short address of the site that points at the link, null when there is none), meeting_url (the address of their online meeting room, empty for none) and services (their services, each offered on the link or not, reason deposit when it takes a deposit; price in minor units). Read only: the short address and the meeting address are changed on the screen. The person only: an application key gets 403 forbidden. An owner who is not booking staff gets 404 not_found.',
+            'description' => 'What the screen My meeting link shows the owner when they are booking staff: bookable, link_url (the address a visitor books them through), short_url, meeting_url (their online meeting room) and services (each offered on the link or not; price in minor units). Read only: the short address and the meeting address are changed on the screen. The person only: an application key gets 403 forbidden. An owner who is not booking staff gets 404 not_found.',
+            'details'     => 'bookable: they have services to be booked for. link_url is null when not bookable or the site has no encryption key. short_url is the live short address of the site that points at the link, null when there is none. meeting_url is empty for none. A service not offered on the link because it takes a deposit has reason deposit.',
             'params'      => array(),
         ),
     );

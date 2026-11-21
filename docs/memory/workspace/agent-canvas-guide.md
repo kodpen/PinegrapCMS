@@ -15,7 +15,7 @@ description: The drawing guide an agent reads before drawing a canvas (canvas_gu
 ## Who reads the guide, and where?
 - `GET /workspace/canvas/guide` (`workspace:read`, `ws_api_canvas_guide()`): `text` (English) and `values`.
 - MCP: the resource `pinegrap://workspace/canvas-guide` over that route, and the prompt `canvas_chart` (channel_id, topic?), offered when the guide is readable and `workspace.channels.canvases.create` is a tool; it embeds the guide and says to send with layers split, dry_run first (`api/mcp-resources-prompts.md`).
-- The descriptions of POST `/workspace/channels/{id}/canvases` and the canvas edit route end with the short form, which names the route.
+- The descriptions of POST `/workspace/channels/{id}/canvases` and the canvas edit route end with "Draw by the drawing guide: GET /workspace/canvas/guide"; the short form (457 characters) sits in their `details` (OpenAPI only), since with it no description fits the 600-character tool budget (AG10, PR #10920, `api/mcp-tool-budget.md`).
 - The assistants' `draw_canvas` carries the whole text in its description, since an assistant has no route to read it (`agent-canvas-assistants.md`).
 
 ## What does the guide hold back on?

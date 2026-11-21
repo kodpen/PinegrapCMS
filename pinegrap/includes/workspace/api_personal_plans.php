@@ -84,7 +84,8 @@ function ws_personal_plan_api_routes()
             'handler'     => 'ws_api_personal_plans_list',
             'returns'     => array('list' => 'WorkspacePersonalPlan'),
             'summary'     => 'The person\'s own plans',
-            'description' => 'The plans of the signed-in person on My calendar that touch the days from..to, by start, all in one page (at most 1000). A repeating plan is listed once, with its rule; times holds every plan\'s times inside from..to (a plan that does not repeat has its one time). A plan another person shared with them is not listed. Closed to everybody else, administrators included.' . $who,
+            'description' => 'The plans of the signed-in person on My calendar that touch the days from..to, by start, all in one page (at most 1000). A repeating plan is listed once, with its rule; times holds every plan\'s times inside from..to (a plan that does not repeat has its one time). A plan another person shared with them is not listed. Closed to everybody else, administrators included. Only the person\'s own session or an OAuth connection they approved: an application key gets 403.',
+            'details'     => trim($who),
             'params'      => array(
                 array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The first day, YYYY-MM-DD; today when left out.'),
                 array('name' => 'to', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The last day, YYYY-MM-DD; 30 days after from when left out; at most ' . WS_API_PERSONAL_PLANS_SPAN_MAX . ' days after from.'),
@@ -113,7 +114,8 @@ function ws_personal_plan_api_routes()
             'status'      => 201,
             'returns'     => 'WorkspacePersonalPlan',
             'summary'     => 'Add a plan',
-            'description' => 'Adds a plan to the signed-in person\'s My calendar, as "New plan" there does. It takes no capacity and is not a plan item of the team.' . $errors . $who,
+            'description' => 'Adds a plan to the signed-in person\'s My calendar, as "New plan" there does. It takes no capacity and is not a plan item of the team.' . $errors . ' Only the person\'s own session or an OAuth connection they approved: an application key gets 403.',
+            'details'     => trim($who),
             'params'      => $create_fields,
         ),
 
@@ -127,7 +129,8 @@ function ws_personal_plan_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspacePersonalPlan',
             'summary'      => 'Change a plan',
-            'description'  => 'Changes only the fields sent on a plan of the signed-in person; anybody else\'s plan is 404, a shared one too. A changed reminder moment reminds again. people replaces the list. On a repeating plan the change is for the whole series, or with mode and day for one time or for it and the following ones. PATCH is accepted beside POST.' . $errors . $who,
+            'description'  => 'Changes only the fields sent on a plan of the signed-in person; anybody else\'s plan is 404, a shared one too. people replaces the list. A repeating plan changes as a whole series, or with mode and day one time or it and those after.' . $errors . ' Only the person\'s own session or an OAuth connection they approved: an application key gets 403.',
+            'details'      => 'A changed reminder moment reminds again. PATCH is accepted beside POST.' . $who,
             'params'       => array_merge(array($id), $fields, $times_body),
         ),
 
