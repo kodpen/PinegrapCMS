@@ -99,8 +99,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mapping['confirmed'] = 1;
                 $columns['mapping'] = json_encode($mapping);
 
-                if ((int) $feed['status'] === 0) {
+                // Saving the fields switches an off feed on, and lets a feed
+                // a brake paused go on (the sync, supplier_feed_sync.php).
+                if ((int) $feed['status'] !== 1) {
                     $columns['status'] = 1;
+                    $columns['pause_reason'] = '';
                 }
             }
 

@@ -6,7 +6,7 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 ## What is recorded and why?
 - `product_price_history` (product_id, channel, price minor units, currency, changed_at, source): one row each time the price a product sells at changes, its own or an offer's (offer rows: product-price-history-offers.md). The "price before the discount" (TR: lowest of 30 days, 10 days for discount ads from 2026-08-01; EU Omnibus: 30 days) is read from it, so it must see every change.
 - `channel` is `web` for `products.price`, the shop's own price. `marketplace:<account id>`: an account's own price (two stores on one marketplace sell at their own; `marketplace-channel-price.md`); `pos` reserved.
-- `source`: `initial` (upgrade), `panel` (screens, Workspace included), `import`, `api` (API and MCP tools), `offer` (the general job), `erp` (reserved), `rule` (a marketplace channel price by rules), `repricer` (the robot's). VARCHAR, not ENUM, so a later label never turns into `''`.
+- `source`: `initial` (upgrade), `panel` (screens, Workspace included), `import`, `api` (API and MCP tools), `offer` (the general job), `erp` (reserved), `rule` (a marketplace channel price by rules), `repricer` (the robot's), `supplier` (a supplier feed). VARCHAR, not ENUM, so a later label never turns into `''`.
 - `products.compare_at_price` (INT NULL), same step: the merchant's "was" price, never in the history.
 
 ## How do writers record a change?

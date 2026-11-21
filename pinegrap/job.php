@@ -743,6 +743,15 @@ if ($import_tick['swept'] > 0) {
     )), 'UNKNOWN');
 }
 
+// Supplier feeds (includes/fn/supplier_feed_sync.php, loaded only here): the
+// feeds whose pull is running or due are worked for a short budget every
+// tick, a feed's place in its file kept between ticks, under one lock per
+// feed. With no feed it is a few reads of small tables.
+if (ECOMMERCE && pg_schema_has('supplier_feeds')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_sync.php');
+    pg_supplier_feed_job_tick(pg_cron_time_left(20));
+}
+
 // The bulk move to the visual designer (includes/fn/legacy_to_designer_run.php):
 // a move started on its screen is worked for a short budget every tick, so it
 // carries on with the screen closed. With none it is one missing file, and the

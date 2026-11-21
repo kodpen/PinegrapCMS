@@ -295,12 +295,22 @@ function api_inventory_bulk($params) {
 // ($location, 0 for the default) through pg_stock_change(): an adjust stops
 // at 0 there, as the total's GREATEST(0, ...) does, and nothing is taken from
 // another location; the total follows from the product's rows.
-function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry = false, $location = 0) {
+//
+// It also runs outside a request to the API: the supplier feed's sync
+// (includes/fn/supplier_feed_sync.php) sets stock from the general job with
+// its own $reason and $ref for the stock history. There the queries go
+// through db() (pg_catalog_query()), as no API helper is loaded, and no
+// application is named.
+function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry = false, $location = 0, $reason = 'api', $ref = null) {
+
+	$db = array('api' => defined('PG_API_ENTRY'));
+
+	$app = function_exists('api_current_app') ? api_current_app() : null;
 
 	if ($id <= 0 && $sku !== '') {
 
-		$id = (int)api_value("SELECT product_id FROM product_barcodes
-			WHERE barcode = '" . escape($sku) . "' LIMIT 1");
+		$id = (int)pg_catalog_query("SELECT product_id FROM product_barcodes
+			WHERE barcode = '" . escape($sku) . "' LIMIT 1", 'value', $db);
 
 	}
 
@@ -310,9 +320,9 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 
 	}
 
-	$product = api_row("SELECT id, name, inventory, inventory_quantity FROM products WHERE id = '" . $id . "' LIMIT 1");
+	$product = pg_catalog_query("SELECT id, name, inventory, inventory_quantity FROM products WHERE id = '" . $id . "' LIMIT 1", 'row', $db);
 
-	if ($product === null) {
+	if (!is_array($product)) {
 
 		return array('status' => 'not_found');
 
@@ -386,7 +396,7 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 		// product that tracks stock, and seeds its default row from the total.
 		if ((int)$product['inventory'] !== 1) {
 
-			api_exec("UPDATE products SET inventory = '1' WHERE id = '" . $id . "' LIMIT 1");
+			pg_catalog_query("UPDATE products SET inventory = '1' WHERE id = '" . $id . "' LIMIT 1", 'exec', $db);
 
 		}
 
@@ -396,7 +406,7 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 			function ($at_location) use ($op, $quantity) {
 				return pg_stock_api_delta($op, $quantity, $at_location);
 			},
-			'api', (string)(api_current_app()['api_key'] ?? ''));
+			$reason, ($ref !== null) ? (string)$ref : (string)(is_array($app) && isset($app['api_key']) ? $app['api_key'] : ''));
 
 		if (!$change['ok']) {
 
@@ -412,33 +422,31 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 			'quantity' => isset($stock_rows[$location_id]) ? (int)$stock_rows[$location_id] : 0
 		);
 
-		api_exec("UPDATE products
+		pg_catalog_query("UPDATE products
 			SET out_of_stock = IF(inventory_quantity <= 0, '1', '0'),
 			    timestamp = UNIX_TIMESTAMP()
 			WHERE id = '" . $id . "'
-			LIMIT 1");
+			LIMIT 1", 'exec', $db);
 
 	} else {
 
-		api_exec("UPDATE products
+		pg_catalog_query("UPDATE products
 			SET out_of_stock = IF((" . $quantity_sql . ") <= 0, '1', '0'),
 			    inventory_quantity = " . $quantity_sql . ",
 			    " . $tracking_sql . "
 			    timestamp = UNIX_TIMESTAMP()
 			WHERE id = '" . $id . "'
-			LIMIT 1");
+			LIMIT 1", 'exec', $db);
 
 	}
 
-	$row = api_row("SELECT id, inventory, inventory_quantity, out_of_stock, timestamp
-		FROM products WHERE id = '" . $id . "' LIMIT 1");
+	$row = pg_catalog_query("SELECT id, inventory, inventory_quantity, out_of_stock, timestamp
+		FROM products WHERE id = '" . $id . "' LIMIT 1", 'row', $db);
 
 	// A batch writes one summary line instead of one line per product: the
 	// activity log is a per-user list with a fixed ceiling, and two hundred
 	// stock rows would push everything else out of it.
-	if ($write_log) {
-
-		$app = api_current_app();
+	if ($write_log && is_array($app)) {
 
 		log_activity(lang(array(
 			'string' => 'Stock for product ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
@@ -506,7 +514,7 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 			'tracked'      => ((int)$row['inventory'] === 1),
 			'quantity'     => (int)$row['inventory_quantity'],
 			'out_of_stock' => ((int)$row['out_of_stock'] === 1),
-			'updated_at'   => api_time($row['timestamp'])
+			'updated_at'   => function_exists('api_time') ? api_time($row['timestamp']) : (int)$row['timestamp']
 		) + (($stock_location === null) ? array() : array(
 			'location_id'       => $stock_location['id'],
 			'location_quantity' => $stock_location['quantity']

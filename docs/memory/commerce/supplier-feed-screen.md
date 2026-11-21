@@ -25,13 +25,13 @@ module: supplier_feed_screen
 ## What do Prices and Fields save?
 - Shown only after a read. Prices: the feed's currency ('' the store's), prices include VAT, the ERP supplier account (only with Accounting on; `kind` supplier or both, active).
 - Fields: a row a product field (Supplier code, Buy price, Stock required; the rest under "More fields"), a select of the feed's fields, the first record's value. A proposed choice wears "Suggested" until saved.
-- Save sets `confirmed` 1 and an off feed's status to 1, so the sync (SF3) picks it up. Another record path in the select reads the feed again instead of saving the fields.
+- Save sets `confirmed` 1 and an off or paused feed's status to 1 for the sync. Another record path in the select reads the feed again instead of saving the fields.
 
 ## What does a test pull count? (F3)
 - Reads up to 50,000 records, matches by the code to `products.name`, else by `product_barcodes.barcode`. Added: no product. Closed: stock 0 on an open product (tracked: quantity over 0; untracked: enabled), or a product the feed's items follow missing from the pull. Reopened: stock back on a product the feed itself closed. Changed: a tracked product whose stock differs.
 - The selling price is not compared: the price rule's form is not on the screen yet. Nothing is written; the result is drawn under the form, four figures and up to 20 rows each.
 
 ## What is not here yet?
-- Pull now and the runs list (with the sync, SF3); the F4 price rule's card goes to SF3 (architect, 2026-11-20, message 11049). Delete is also at the foot of the status column.
+- Pull now, the runs list, Accept and Reject of a held price and the F4 price rule's card: SF3b (architect, 2026-11-20, message 11049). Delete is also at the foot of the status column.
 
 Related: `commerce/supplier-feed-readers.md`, `commerce/supplier-feed-price-rule.md`.
