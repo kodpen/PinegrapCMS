@@ -22,8 +22,8 @@ description: Survey of the Site Settings categories, its second part: how old ea
 ## In which order are the plans written?
 - One category a plan, each written when the queue allows and the session's PR before it has landed.
 - 1. Features as one switchboard: `plans/features-switchboard.md`; Commerce and Accounting keep their switch and show on the board.
-- 2. Visitors and privacy: `plans/privacy-settings-tidy.md`; every retention shown in one row, each still set beside its feature; K1 waits for the architect.
-- 3. Bookings: services as list rows with a drawer, no empty block; staff hours in a drawer with links to Team and working hours.
+- 2. Visitors and privacy: `plans/privacy-settings-tidy.md`; every retention shown in one row, each still set beside its feature; K1 decided: the KVKK notice gets its own switch (`workflow/decisions-made-product-96.md`).
+- 3. Bookings: `plans/bookings-settings-tidy.md`; services and staff as rows with drawers, one Messages row saying which booking mails and texts go.
 - 4. Firewall and HTTPS with Accounts and sign-in: one Limits part, radios to `pg-seg`, popovers to folds, bans and logs as state lines (K8).
 - 5. General and Appearance: the site address in General, K3, K5, K6, K7, footer links as list rows.
 - 6. Communication: the Chat card as folded rows.
