@@ -109,6 +109,7 @@
 - course-tables.md: Courses' data (2026.11.0, step 11.0.234): the course, course_lesson and course_progress tables, the open-lesson rule, rows written once, the certificate code [decision: here]
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
+- customer-rhythm-events.md: Customer rhythm events (customer_rhythm_tell.php): stage changed, reorder due, the 7-day brake, when a product stops being named, comparison share, settings row, payload, flow stage filter
 - customer-rhythm-rules.md: Customer rhythm's pure rules (customer_rhythm.php): days per unit, own interval, the chance curve, stages and their moves, due products, and the choices the features left open
 - customer-rhythm-store.md: Table customer_rhythm and its nightly pass (customer_rhythm_pass.php): a row, when a stage moves, the product summary, export and erase, the 200k-order timing
 - customer-value-groups-csv-api.md: What the Customers Report hands on: a contact group from a cell of the groups table, the top customers CSV, GET /reports/customer-value and who gets names (#10297)
