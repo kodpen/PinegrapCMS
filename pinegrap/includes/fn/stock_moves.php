@@ -50,6 +50,7 @@ function pg_stock_move_reason_labels()
         'marketplace' => lang('Marketplace'),
         'erp'         => lang('Accounting'),
         'workspace'   => lang('Workspace'),
+        'supplier_feed' => lang('Supplier feed'),
     );
 
     $out = array();

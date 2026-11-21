@@ -16,7 +16,7 @@ module: connections_screen
 ## What does the Translation Engines card show?
 - `#pgsub-google-translate`: "Google Cloud Translation connection", Connected when a key is stored, and "Manage in Connections" / "Connect in Connections".
 - `languages.save.php` no longer writes the key, so saving the card cannot change or clear it; the "Remove the stored key" box is gone.
-- The old anchor `translation_google_key` lands on `pgset-translation-engines` (`pg_settings_legacy_anchors()`). Registry: `place` `connections.php`, `found_at` `#settings/languages/pgset-translation-engines`; `pg_connections_count()` stays 78.
+- The old anchor `translation_google_key` lands on `pgset-translation-engines` (`pg_settings_legacy_anchors()`). Registry: `place` `connections.php`, `found_at` `#settings/languages/pgset-translation-engines`; no service was added (`pg_connections_count()`: `api/connections-registry.md`).
 - The engine's "no key" reason (`pg_tr_engines()`, `pg_tr_google_translate()`) names the Connections page.
 
 ## What of Languages and Translation stayed, and why?

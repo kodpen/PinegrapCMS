@@ -24,7 +24,7 @@ module: connections_screen
 - Who may open Accounts and sign-in (`connections_signin_may_manage()`, `pg_settings_may_open('security')`): cards `details` of `pg_connections_screen_page_cards()` with `$can['signin']` (Apple) and `$can['security']` (Turnstile, hCaptcha). Nobody gains or loses a right.
 
 ## What did not change?
-- The registry rows keep their `place` on the cards, as `signin_google` did in CX10b: the switch and the choice stay there. `pg_connections_count()` stays 78. No data step, table or column.
+- The registry rows keep their `place` on the cards, as `signin_google` did in CX10b: the switch and the choice stay there. no service was added (`pg_connections_count()`: `api/connections-registry.md`). No data step, table or column.
 - Old anchors (`pg_settings_legacy_anchors()`): `signin_apple_row`, `apple_client_id` land on `pgset-signin`; `captcha_turnstile_site_key`, `captcha_hcaptcha_site_key` on `pgset-captcha`.
 
 Tests: `tests/connections_accounts_signin_test.php`, `tests/captcha_test.php`.

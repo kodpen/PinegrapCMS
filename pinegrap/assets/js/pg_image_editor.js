@@ -20,6 +20,9 @@
  *       fullscreen: true,                         open filling the window
  *       ratio: { value: 16 / 9, label: '16:9' },  the shape a page shows it in:
  *                                                 the crop panel's first ratio
+ *       dataShow: { table, show },               open the Data picker on that
+ *                                                 table's views (show 'chart' or
+ *                                                 'table'; pg_image_editor_data.js)
  *       onSave: function (result) {},            result.doc, result.file
  *       onClose: function () {}
  *   }).then(function (result) {});              null when closed unsaved
@@ -332,8 +335,8 @@
         Editor.inits.forEach(function (init) { init.call(self); });
 
         // The New image dialog has nothing to ask of a canvas opened again,
-        // nor of one that takes a video's size.
-        if ((this.reopened || (opts.blank && opts.clip)) && this.board) {
+        // nor of one that takes a video's size or opens on a table's data.
+        if ((this.reopened || (opts.blank && (opts.clip || opts.dataShow))) && this.board) {
             this.board.ask = false;
         }
 
@@ -1612,18 +1615,23 @@
 
     // ---- save and close ----
 
-    // The Save button, with a menu (Save as a copy) beside it when Save
-    // writes over a file.
+    // The main button, and beside it a narrow chevron button flush on its
+    // right that opens the canvas's own menu when it has a choice
+    // (M.sendMenu()): Save as a copy when Save writes over a file, the
+    // sends to Workspace channels the caller allows (options.send), Download.
     Editor.prototype.renderSave = function () {
         var self = this, mini = this.tools.mini;
 
         this.saveBox.textContent = '';
         this.saveMenu = null;
-        this.saveBtn = button('pgie-btn pgie-primary', this.saveLabel(), null, function () { self.save(); }, true);
+        this.saveBtn = button('pgie-btn pgie-primary pgie-savebtn', this.saveLabel(), null, function () { self.save(); }, false);
+        this.saveBtn.appendChild(el('span', { class: 'pgie-savefull' }));
+        this.saveBtn.appendChild(el('span', { class: 'pgie-saveshort', 'aria-hidden': 'true' }));
+        this.labelSave(this.saveLabel());
         this.saveBox.appendChild(this.saveBtn);
         this.menuBtn = null;
 
-        if ((this.saveMode === 'replace') && !mini) {
+        if (!mini && M.sendMenu(this.sendContext()).length) {
             this.menuBtn = button('pgie-btn pgie-primary pgie-caret', t('moreSave'), 'chev', function () { self.toggleSaveMenu(); });
             this.menuBtn.setAttribute('aria-haspopup', 'menu');
             this.menuBtn.setAttribute('aria-expanded', 'false');
@@ -1631,6 +1639,54 @@
         }
 
         this.saveBox.classList.toggle('pgie-split', !!this.menuBtn);
+    };
+
+    // What the main button's menu offers depends on (M.sendMenu()).
+    // options.send: { channels() -> Promise of [{id, name}] the person may
+    // write in, url(id) -> where a canvas is posted in that channel,
+    // current: the channel the main button posts in, if any }.
+    Editor.prototype.sendContext = function () {
+        var send = this.opts.send;
+        var ok = !!send && (typeof send.channels === 'function') && (typeof send.url === 'function');
+
+        return {
+            channel: ok && (this.saveMode === 'url'),
+            send: ok,
+            // Save to Files: someone who may edit a folder (the server asks
+            // again of the folder chosen at every save).
+            files: !!config().filesEdit && !!config().api,
+            replace: this.saveMode === 'replace',
+            motion: M.hasMotion(this.doc) || (M.sceneCount(this.doc) > 1),
+            artboard: !!this.doc.artboard,
+            // A photo of Files: the server draws its picture for the copy
+            // sent as a canvas (canvasCopy()).
+            convert: !this.doc.artboard && !!this.opts.fileId && !!config().api
+        };
+    };
+
+    // A file that opens as a canvas only once its answer came: the chevron
+    // follows when its menu gains or loses every choice.
+    Editor.views.push(function () {
+        if (this.saveBox && !this.tools.mini && !this.saving && !this.saveMenu
+            && (!!this.menuBtn !== (M.sendMenu(this.sendContext()).length > 0))) {
+            this.renderSave();
+        }
+    });
+
+    // The main button's words: the full ones, and under 576 px the caller's
+    // short form (save.short) shown in their place by the stylesheet; the
+    // full words stay its title and aria-label at every width.
+    Editor.prototype.labelSave = function (full, short) {
+        var save = this.opts.save || {};
+
+        if (short === undefined) {
+            short = ((this.saveMode === 'url') && save.short) ? String(save.short) : full;
+        }
+
+        this.saveBtn.title = full;
+        this.saveBtn.setAttribute('aria-label', full);
+        this.saveBtn.querySelector('.pgie-savefull').textContent = full;
+        this.saveBtn.querySelector('.pgie-saveshort').textContent = short;
     };
 
     // A caller's own word for its save (save.label), else Done or Save.
@@ -1645,7 +1701,7 @@
     };
 
     Editor.prototype.toggleSaveMenu = function (open) {
-        var self = this;
+        var self = this, c;
 
         open = (open === undefined) ? !this.saveMenu : open;
 
@@ -1664,14 +1720,304 @@
             return;
         }
 
-        var copy = el('button', { type: 'button', role: 'menuitem', text: t('saveCopy'), onclick: function () {
-            self.toggleSaveMenu(false);
-            self.save('copy');
+        c = this.sendContext();
+
+        var acts = {
+            saveCopy: function () { self.save('copy'); },
+            sendOther: function () { self.openSendList(); },
+            sendChannel: function () { self.openSendList(); },
+            savePicture: function () { self.openFilesPick('picture'); },
+            saveVideo: function () { self.openFilesPick('video'); },
+            download: function () { self.downloadCanvas(); }
+        };
+        var items = M.sendMenu(c).filter(function (key) { return !!acts[key]; }).map(function (key) {
+            return el('button', { type: 'button', role: 'menuitem', text: t(key), onclick: function () {
+                // The channel list opens in the same menu.
+                if ((key !== 'sendOther') && (key !== 'sendChannel')) {
+                    self.toggleSaveMenu(false);
+                }
+
+                acts[key]();
+            } });
+        });
+
+        // The parts' own items (Export settings, Save as template) after
+        // the main button's; a channel's menu keeps to its own.
+        if (!c.channel) {
+            items = items.concat(Editor.menuItems.map(function (item) { return item.call(self); }));
+        }
+
+        this.saveMenu = el('div', { class: 'pgie-menu', role: 'menu', 'aria-label': t('moreSave') }, items);
+        this.saveBox.appendChild(this.saveMenu);
+
+        if (items[0]) {
+            items[0].focus();
+        }
+    };
+
+    // The channels the person may write in, inside the open menu: a find
+    // field once there are more than eight, one button a channel. A press
+    // posts the canvas there as the person's own message; the editor stays
+    // open, as nothing was saved where its main button saves.
+    Editor.prototype.openSendList = function () {
+        var self = this, menu = this.saveMenu, send = this.opts.send, c = this.sendContext();
+
+        if (!menu || !send) {
+            return;
+        }
+
+        var title = t(c.channel ? 'sendOther' : 'sendChannel').replace(/\u2026$/, '');
+        var list = el('div', { class: 'pgie-sendlist', role: 'group', 'aria-label': title });
+        var status = el('p', { class: 'pgie-sendnote', role: 'status', text: t('sendLoading') });
+
+        menu.textContent = '';
+        menu.classList.add('pgie-sendmenu');
+        menu.appendChild(el('div', { class: 'pgie-menuhead', text: title }));
+        menu.appendChild(status);
+        menu.appendChild(list);
+
+        Promise.resolve().then(function () { return send.channels(); }).then(function (channels) {
+            if (self.saveMenu !== menu) {
+                return;
+            }
+
+            channels = M.sendChannels(channels, send.current);
+
+            if (!channels.length) {
+                status.textContent = t('sendNone');
+                return;
+            }
+
+            status.textContent = '';
+            status.hidden = true;
+
+            var draw = function (words) {
+                list.textContent = '';
+                M.sendFilter(channels, words).forEach(function (ch) {
+                    list.appendChild(el('button', { type: 'button', role: 'menuitem', text: ch.name, onclick: function () {
+                        self.toggleSaveMenu(false);
+                        self.sendTo(ch);
+                    } }));
+                });
+            };
+
+            if (channels.length > 8) {
+                var find = el('input', { type: 'search', class: 'pgie-sendfind', placeholder: t('sendFind'), 'aria-label': t('sendFind') });
+
+                find.addEventListener('input', function () { draw(find.value); });
+                menu.insertBefore(find, list);
+                draw('');
+                find.focus();
+                return;
+            }
+
+            draw('');
+
+            if (list.firstChild) {
+                list.firstChild.focus();
+            }
+        }, function () {
+            if (self.saveMenu === menu) {
+                status.textContent = t('sendError');
+            }
+        });
+    };
+
+    // A canvas posted in another channel (options.send.url()): the same body
+    // its main button sends, to that channel's address. A photo goes as a
+    // copy turned into a canvas (canvasCopy(), the artboard part); the open
+    // document stays as it is.
+    Editor.prototype.sendTo = function (channel) {
+        var self = this;
+
+        if (!this.ready || this.saving) {
+            return;
+        }
+
+        if (this.cropping()) {
+            this.applyCrop();
+        }
+
+        this.hideMessage();
+        this.setSaving(true);
+        this.canvasCopy().then(function (copy) {
+            return self.withDoc(copy.doc, function () { return self.layersReady(); }).then(function () { return copy; });
+        }).then(function (copy) {
+            self.send('url', { url: self.opts.send.url(channel.id), name: channel.name, doc: copy.doc, photo: copy.photo });
+        }, function (err) {
+            self.setSaving(false);
+            self.showMessage((err && (err.name === 'Error') && err.message) || t('sendError'), true);
+        });
+    };
+
+    // fn() run with doc as the editor's document, then the editor's own back:
+    // a copy is drawn and its body built by the code that draws the open one.
+    Editor.prototype.withDoc = function (doc, fn) {
+        var own = this.doc;
+
+        this.doc = doc;
+
+        try {
+            return fn();
+        } finally {
+            this.doc = own;
+        }
+    };
+
+    // Save to Files from a channel's canvas: a small window with the
+    // folders the person may edit (action folders) as an indented list, the
+    // last one chosen picked again (this browser's storage). A picture is
+    // the canvas's PNG with its document, a new file in that folder; a
+    // video goes through Save animation into it (filesFolder). The message
+    // in the channel stays as it is: this is a copy.
+    Editor.prototype.openFilesPick = function (kind) {
+        var self = this;
+
+        if (!this.ready || this.saving || this.confirmBox) {
+            return;
+        }
+
+        var title = t(kind === 'video' ? 'saveVideo' : 'savePicture');
+        var select = el('select', { id: 'pgie-files-folder', class: 'pgie-select', disabled: true });
+        var note = el('p', { id: 'pgie-confirm-text', class: 'pgie-note', role: 'status', text: t('filesLoading') });
+        var cancel = el('button', { type: 'button', class: 'pgie-btn', text: t('cancel'), onclick: function () { self.closeConfirm(); } });
+        var go = el('button', { type: 'button', class: 'pgie-btn pgie-primary', text: t(kind === 'video' ? 'filesNext' : 'save'), disabled: true, onclick: function () {
+            var opt = select.options[select.selectedIndex];
+
+            if (!opt) {
+                return;
+            }
+
+            var folder = { id: Number(opt.value), name: opt.getAttribute('data-name') || '' };
+
+            M.filesRemember(folder.id, function (key, value) {
+                try {
+                    window.localStorage.setItem(key, value);
+                } catch (err) {
+                    // No storage: the list starts at its top next time.
+                }
+            });
+            self.closeConfirm();
+
+            if (kind === 'video') {
+                self.filesFolder = folder;
+                self.openAnimation();
+            } else {
+                self.saveToFiles(folder);
+            }
         } });
 
-        this.saveMenu = el('div', { class: 'pgie-menu', role: 'menu', 'aria-label': t('moreSave') }, [copy].concat(Editor.menuItems.map(function (item) { return item.call(self); })));
-        this.saveBox.appendChild(this.saveMenu);
-        copy.focus();
+        this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-confirm-title', 'aria-describedby': 'pgie-confirm-text' }, [
+            el('div', { class: 'pgie-confirm-box pgie-files-box' }, [
+                el('h2', { id: 'pgie-confirm-title', text: title }),
+                el('label', { class: 'pgie-files-label', for: 'pgie-files-folder', text: t('filesFolder') }),
+                select,
+                note,
+                el('div', { class: 'pgie-confirm-actions' }, [cancel, go])
+            ])
+        ]);
+        this.confirmReturn = this.menuBtn;
+        this.root.appendChild(this.confirmBox);
+        cancel.focus();
+
+        var box = this.confirmBox;
+
+        this.request({ action: 'folders' }).then(function (r) {
+            if (self.confirmBox !== box) {
+                return;
+            }
+
+            if (!r || (r.status !== 'success')) {
+                note.textContent = (r && r.message) || t('filesError');
+                return;
+            }
+
+            if (!r.folders || !r.folders.length) {
+                note.textContent = t('filesNone');
+                return;
+            }
+
+            var last = M.filesRemembered(function (key) {
+                try {
+                    return window.localStorage.getItem(key);
+                } catch (err) {
+                    return null;
+                }
+            });
+
+            r.folders.forEach(function (f) {
+                var opt = el('option', { value: String(f.id), 'data-name': f.name, text: M.filesIndent(f.depth) + f.name });
+
+                if (Number(f.id) === last) {
+                    opt.selected = true;
+                }
+
+                select.appendChild(opt);
+            });
+
+            note.textContent = '';
+            note.hidden = true;
+            select.disabled = false;
+            go.disabled = false;
+            select.focus();
+        }, function () {
+            if (self.confirmBox === box) {
+                note.textContent = t('filesError');
+            }
+        });
+    };
+
+    // The canvas's PNG and its document as a new file in a folder of Files
+    // (save mode new); the editor stays open on the channel's canvas.
+    Editor.prototype.saveToFiles = function (folder) {
+        var self = this;
+
+        if (!this.ready || this.saving || !this.doc.artboard) {
+            return;
+        }
+
+        this.hideMessage();
+        this.setSaving(true);
+        this.layersReady().then(function () {
+            self.send('new', { folder: folder });
+        }, function () {
+            self.setSaving(false);
+            self.showMessage(t('saveError'), true);
+        });
+    };
+
+    // "Saved to Files > folder" with a link that opens the folder in the
+    // File Manager.
+    Editor.prototype.showFilesSaved = function (folder) {
+        var self = this;
+
+        this.showMessage(t('filesSaved').replace('{folder}', folder.name));
+
+        if (this.toastEl && config().filesUrl) {
+            this.toastEl.appendChild(document.createTextNode(' '));
+            this.toastEl.appendChild(el('a', { href: config().filesUrl + '?folder=' + encodeURIComponent(folder.id), target: '_blank', rel: 'noopener', text: t('filesOpen') }));
+            clearTimeout(this.toastTimer);
+            this.toastTimer = setTimeout(function () { self.hideMessage(); }, 10000);
+        }
+    };
+
+    // The canvas as a PNG on this computer, drawn as a save draws it.
+    Editor.prototype.downloadCanvas = function () {
+        var self = this;
+
+        if (!this.ready || this.saving || !this.doc.artboard) {
+            return;
+        }
+
+        this.layersReady().then(function () {
+            var a = el('a', { href: self.drawArtboard(), download: M.sendFileName(self.opts.fileName || t('newImage')) });
+
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }, function () {
+            self.showMessage(t('saveError'), true);
+        });
     };
 
     // url: another endpoint that takes the same body (save.url).
@@ -1714,7 +2060,11 @@
         this.root.classList.toggle('pgie-busy', on);
         this.root.setAttribute('aria-busy', on ? 'true' : 'false');
         this.saveBtn.disabled = on;
-        this.saveBtn.lastChild.textContent = on ? t('saving') : this.saveLabel();
+        if (on) {
+            this.labelSave(t('saving'), t('saving'));
+        } else {
+            this.labelSave(this.saveLabel());
+        }
 
         if (this.menuBtn) {
             this.menuBtn.disabled = on;
@@ -1791,7 +2141,34 @@
         });
     };
 
-    Editor.prototype.send = function (mode) {
+    // to: { url, name } posts the canvas in another channel instead
+    // (sendTo()), { folder } writes it as a new file into that folder of
+    // Files (saveToFiles()); either way the editor stays open.
+    Editor.prototype.send = function (mode, to) {
+        var self = this, body;
+
+        // A copy (to.doc) is drawn and described instead of the open document.
+        if (to && to.doc && (to.doc !== this.doc)) {
+            body = this.withDoc(to.doc, function () { return self.sendBody(mode, to); });
+        } else {
+            body = this.sendBody(mode, to);
+        }
+
+        if (!body) {
+            return;
+        }
+
+        this.request(body, to ? (to.url || '') : ((mode === 'url') ? this.opts.save.url : '')).then(function (r) {
+            self.sent(r, to);
+        }, function () {
+            self.setSaving(false);
+            self.showMessage(t('saveError'), true);
+        });
+    };
+
+    // The body of a save: the document, the picture or overlay drawn here,
+    // and what the parts add (saveHooks); null after a refusal shown.
+    Editor.prototype.sendBody = function (mode, to) {
         var self = this, body = { action: 'save', mode: mode, doc: this.doc };
 
         // Without Imagick the server takes the colour step from here.
@@ -1809,7 +2186,7 @@
         // endpoint keeps (save.url, Workspace).
         if (this.doc.artboard) {
             if (mode === 'new') {
-                body.folder_id = (this.opts.save && this.opts.save.folderId) || 0;
+                body.folder_id = (to && to.folder) ? to.folder.id : ((this.opts.save && this.opts.save.folderId) || 0);
             }
 
             body.name = (this.opts.save && this.opts.save.name) || this.opts.fileName || '';
@@ -1824,29 +2201,54 @@
 
         Editor.saveHooks.forEach(function (hook) { hook.call(self, body, mode); });
 
-        this.request(body, (mode === 'url') ? this.opts.save.url : '').then(function (r) {
-            if (!r || (r.status !== 'success')) {
-                self.setSaving(false);
-                self.showMessage((r && r.message) || t('saveError'), true);
-                return;
+        // The layer a photo became in a copy sent to a channel: refused there
+        // with its own sentence when too large to be kept.
+        if (to && to.photo) {
+            body.photo = to.photo;
+        }
+
+        return body;
+    };
+
+    // The server's answer to send(). A copy sent elsewhere (to) leaves the
+    // open document as it is: its pictures are not pointed at the files
+    // written there, and the editor stays open.
+    Editor.prototype.sent = function (r, to) {
+        if (!r || (r.status !== 'success')) {
+            this.setSaving(false);
+            this.showMessage((r && r.message) || t((to && to.url) ? 'sendError' : 'saveError'), true);
+            return;
+        }
+
+        if (to && to.folder) {
+            this.setSaving(false);
+            this.showFilesSaved(to.folder);
+            return;
+        }
+
+        if (to) {
+            this.setSaving(false);
+            this.showMessage(t('sendSent').replace('{name}', to.name));
+
+            if (typeof this.opts.send.onSent === 'function') {
+                this.opts.send.onSent(r);
             }
 
-            // Pictures the save kept as files: their layers point at them.
-            if (self.takePictures) {
-                self.takePictures(r.pictures);
-            }
+            return;
+        }
 
-            var result = { file: r, doc: M.clone(self.doc), fileId: r.id };
+        // Pictures the save kept as files: their layers point at them.
+        if (this.takePictures) {
+            this.takePictures(r.pictures);
+        }
 
-            if (typeof self.opts.onSave === 'function') {
-                self.opts.onSave(result);
-            }
+        var result = { file: r, doc: M.clone(this.doc), fileId: r.id };
 
-            self.finish(result);
-        }, function () {
-            self.setSaving(false);
-            self.showMessage(t('saveError'), true);
-        });
+        if (typeof this.opts.onSave === 'function') {
+            this.opts.onSave(result);
+        }
+
+        this.finish(result);
     };
 
     Editor.prototype.requestClose = function () {

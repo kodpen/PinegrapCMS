@@ -10,6 +10,7 @@
 - ai-prompt-version.md: pg_ai_prompt_version() (r + 8 hex of the rules' SHA-1), ws_ai_requests.prompt_version (11.0.112, #2829), the insert helper and its scan test, where the version is shown
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
+- application-review-programme.md: Application programme settings (AR2): the Forms screens, the period check in the submit path, the entry row with eligibility, the override, criteria templates
 - application-review-rules.md: Pure rules of application review: eligibility codes, weighted sums, leniency correction, spread flag, balanced assignment, shortlist tie rule
 - application-review-store.md: Application review desk tables (11.0.258, #10832): defaults, personal data erase and export of them, audit_log types application_program and application_entry
 - asset-paths-and-inline-escaping.md: Local asset paths decoded before the parent-folder check, design asset files written under a plain name only, the hero's typed style escaped, the variant payload script with \u-escaped tags
@@ -175,6 +176,7 @@
 - privacy-inventory.md: Personal data inventory (privacy_inventory.php): the catalogue beside the erase table list, live counts, transfers from the registry rows' country and data, the tests
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
 - privacy-request-answer.md: "Prepare the answer", the Answer tab of a privacy request's drawer (KV4b, #10894): four numbered steps, the gather (export counts or erase dry run), the kind's text, Send / Erase and send
+- privacy-request-form.md: A person's own privacy request (P10, P10b, #10921): privacy_request.php, off for visitors by default, always from My Account; 48-hour proof link; 5 an address an hour; the switch
 - privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer [decision: here]
 - privacy-retention-rules.md: Privacy centre retention rules (P6-P9): rules and bounds, config_text settings, dry run and yes, the nightly pass through the erase entries, the skips, privacy_rule audit lines and their 3-year keep
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())
@@ -217,5 +219,6 @@
 - user-disabled.md: Disabled users (2026.11.0, 11.0.160): user.user_disabled_at, the helpers every sign-in path asks, the gates, the Account enabled switch and its guards (#6186)
 - user-write.md: Creating, saving and deleting a panel account goes through includes/fn/user_write.php, shared by add_user.php, edit_user.php, delete_users.php and the /users API writes
 - vanilla-calendar-library.md: The vendored vanilla-calendar-pro (assets/lib/vanilla-calendar-pro/, 3.4.0, unmodified) behind the one date-and-time control: why, how it loads once, how to update it [decision: decisions-made-panel-2.md, decisions-made-panel.md]
+- volunteer-shift-rules.md: Pure rules of volunteer shifts: who fits a role on a shift, the waitlist pass, the cancel cut-off, the unfilled call's pick, show-up rate, hours sums, document notices, the signed link's token
 - web-address-rule.md: Short link destination and auto dialog URL share pg_web_address_problem() on save; pg_address_opens_as_web() and its JS twin guard a stored address where it is printed
 - webauthn-verifier.md: WebAuthn (passkey) verifier in includes/webauthn/ (PR #594): API, what it accepts and refuses, error codes, record fields, W3C test vectors, what a caller must do

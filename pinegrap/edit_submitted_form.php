@@ -406,6 +406,10 @@ if (!$_POST) {
         }
     }
 
+    // The submission's application programme entry: eligibility and the
+    // note that lets a not eligible one in (includes/fn/application_programs.php).
+    $output_application = $submitted_forms_manager ? pg_application_entry_card($id) : array('card' => '', 'form' => '');
+
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
         $output_workspace_button = ws_record_button($user, 'form', $id, trim($form_name . ' ' . $reference_code));
@@ -474,6 +478,7 @@ if (!$_POST) {
                                         </dl>'
                                 . (($output_workspace_button !== '') ? '
                                         <div class="mt-3">' . $output_workspace_button . '</div>' : ''))
+                            . $output_application['card']
                             . pg_submitted_form_status_card(lang('Form Editor'), '
                                         <label for="form_editor_username" class="form-label">' . lang('Username') . '</label>
                                         ' . $output_form_editor_field)
@@ -489,7 +494,7 @@ if (!$_POST) {
                             pg_save_bar_return_button() . '
                                         <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(pg_coll_rows_delete_question(lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))), count((array) pg_coll_rows_held_ids(array($id))), false)) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>' . $output_buttons
                         ) . '
-                    </form>' . $output_payment_form . '
+                    </form>' . $output_payment_form . $output_application['form'] . '
                     ' . ($history_enabled ? pg_record_revision_history_markup($id, $page_id, (is_scalar($_GET['compare'] ?? null) ? (int) $_GET['compare'] : 0), $send_to) : '') . '
     
     ' . pg_ai_write_assets() . '
@@ -523,6 +528,20 @@ if (!$_POST) {
             pg_audit_record('update', 'orders', $payment_order['id'], $audit_before);
 
             $liveform->add_notice(lang('Payment recorded.'));
+        }
+
+        go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $id);
+    }
+
+    // A not eligible application entry let in with a note, by someone who
+    // runs the form's records.
+    if (!empty($_POST['application_override'])) {
+        $application = $submitted_forms_manager ? pg_application_entry_for_form($id) : null;
+
+        if (($application !== null) && pg_application_entry_override($application['entry'], is_string($_POST['application_note'] ?? null) ? $_POST['application_note'] : '', (int) $user['id'])) {
+            $liveform->add_notice(h(lang('The entry is let in.')));
+        } else {
+            $liveform->add_error(h(lang('Write why the entry is let in.')));
         }
 
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $id);
@@ -746,6 +765,17 @@ if (!$_POST) {
             eval(prepare_for_eval($hook_code));
         }
         
+        // A draft of an application programme is finished until the
+        // programme closes (includes/fn/application_programs.php); the forms'
+        // managers may still complete it.
+        if (!$submitted_forms_manager && !$complete && $liveform->field_in_session('complete_button')) {
+            $application_refusal = pg_application_submit_refusal($custom_form_page_id, true);
+
+            if ($application_refusal !== '') {
+                $liveform->add_error(h($application_refusal));
+            }
+        }
+
         // if an error does not exist
         if ($liveform->check_form_errors() == false) {
 
@@ -951,6 +981,10 @@ if (!$_POST) {
                 // can reuse it.  The true argument preserves the original behavior
                 // of only acting on custom forms that have save-for-later enabled.
                 pg_send_custom_form_notifications($custom_form_page_id, $id, $contact_id, true);
+
+                // Completed, it becomes an entry of the form's open
+                // application programme, checked for eligibility.
+                pg_application_entry_record($custom_form_page_id, $id);
             }
             
             log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was modified','vars'=>array($form_name,$reference_code))), $_SESSION['sessionusername']);

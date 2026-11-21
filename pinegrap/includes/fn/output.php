@@ -4253,9 +4253,12 @@ function output_menu($properties = false)
         $menu_items[5]['color_class'] = 'forms-color';
         $menu_items[5]['title'] = 'Forms';
         $menu_items[5]['context'] = true;
-        $menu_items[5]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-ui-checks bi-me-2\'>' . lang('All Forms') . '</a>';
+        $forms_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
+        $menu_items[5]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-ui-checks bi-me-2\'>' . lang('All Forms') . '</a>';
         // add_submitted_form.php opens to the same people (validate_forms_access()).
-        $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Add {var:1}', 'vars' => lang('Form'))) . '</a>';
+        $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Add {var:1}', 'vars' => lang('Form'))) . '</a>';
+        // view_application_programs.php opens to the same people.
+        $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_application_programs.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-clipboard-check bi-me-2\'>' . lang('Application programmes') . '</a>';
     }
 
     if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
@@ -4435,7 +4438,11 @@ function output_menu($properties = false)
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?status=any&type=local\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-shop-window bi-me-2\'>' . lang('Local Orders') . ' </a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_order.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(['string' => 'Add {var:1}', 'vars' => [lang('Order')]]) . '</a>';
             $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_returns.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-return-left bi-me-2\'>' . lang('Returns') . '</a>';
+            // Returns and Delivery problems share the menu's link look,
+            // each followed by its icon.
+            $orders_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-me-2 ';
+            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_returns.php\'' . $output_parent_target . ' class=\'' . $orders_link_class . 'bi-arrow-return-left\'>' . lang('Returns') . '</a>';
+            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_delivery_problems.php\'' . $output_parent_target . ' class=\'' . $orders_link_class . 'bi-truck\'>' . lang('Delivery problems') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_cart_quotes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart3 bi-me-2\'>' . lang('Cart quotes') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_subscriptions.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-repeat bi-me-2\'>' . lang('Subscriptions') . '</a>';
 
@@ -5030,6 +5037,8 @@ function output_menu($properties = false)
         case 'add_submitted_form.php':
         case 'edit_submitted_form.php':
         case 'import_submitted_forms.php':
+        case 'view_application_programs.php':
+        case 'edit_application_program.php':
             $active_menu = 5;
             break;
         case 'visitors.php':
@@ -8092,6 +8101,7 @@ function pg_js_bundles()
             'assets/js/workspace_memory.js',
             'assets/js/workspace_channel_agents.js',
             'assets/js/workspace_channel_activity.js',
+            'assets/js/workspace_conversation_timeline.js',
             'assets/js/workspace_my_calendar_roadmap.js',
             'assets/js/workspace_my_calendar.js',
             'assets/js/workspace_translate.js',

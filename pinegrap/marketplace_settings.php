@@ -2473,7 +2473,10 @@ if ($selected) {
 					<i class="bi bi-boxes"></i>' . h(lang('Match in bulk with pictures')) . '</a>' : '')
 				. ($can_listings ? '
 				<a class="pg-button pg-button-quiet pg-button-sm" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=listings">
-					<i class="bi bi-tags"></i>' . h(lang('Listings')) . '</a>' : '') . '
+					<i class="bi bi-tags"></i>' . h(lang('Listings')) . '</a>' : '')
+				. (mp_pricing_ready() ? '
+				<a class="pg-button pg-button-quiet pg-button-sm" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=repricing">
+					<i class="bi bi-graph-down-arrow"></i>' . h(lang('Repricing')) . '</a>' : '') . '
 			</div>
 		</div>
 		<div class="card-body">'
@@ -3182,13 +3185,16 @@ if ($selected) {
 
 	$pricing_open = false;
 
+	$mp_open_pricing = isset($_GET['settings']) && ($_GET['settings'] === 'pricing') && mp_pricing_ready();
+
 	if (mp_pricing_ready()) {
 
 		$pricing_refused = ($mp_refused === 'update') && isset($mp_pricing) && is_array($mp_pricing);
 
 		$pricing_errors = $pricing_refused ? $mp_pricing['errors'] : array();
 
-		$pricing_open = (bool) $pricing_errors;
+		// The Repricing view's "Try first" line opens the drawer on this tab.
+		$pricing_open = (bool) $pricing_errors || $mp_open_pricing;
 
 		$pricing_pane = mp_settings_pricing_pane($edit,
 			$pricing_refused ? $mp_pricing['rules'] : mp_pricing_account_rules($selected_id), $pricing_errors);
@@ -3519,8 +3525,9 @@ echo '
 
 	}
 
-	// A refused Connect or Save opens its form again, as it was posted.
-	var refused = ' . json_encode($mp_refused === 'create' ? array('dialog', 'mp_new') : ($mp_refused === 'update' ? array('drawer', 'mp_drawer') : null)) . ';
+	// A refused Connect or Save opens its form again, as it was posted; a
+	// link to the Pricing tab opens the drawer on it.
+	var refused = ' . json_encode($mp_refused === 'create' ? array('dialog', 'mp_new') : ((($mp_refused === 'update') || !empty($mp_open_pricing)) ? array('drawer', 'mp_drawer') : null)) . ';
 
 	if (refused) {
 

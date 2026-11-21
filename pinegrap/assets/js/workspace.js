@@ -3562,6 +3562,53 @@
     // The theme a sender's face is drawn in (avatar()), without its
     // "theme-" prefix: a message's box takes a faint tint of it on a wide
     // screen.
+    // The first and the last message of a pane on the screen, as their ids;
+    // null when none is. The messages stand top to bottom, so each end is
+    // found by halving.
+    function visibleMessages(pane) {
+        if (!pane || !pane.isConnected) {
+            return null;
+        }
+
+        var nodes = Array.prototype.filter.call(pane.querySelectorAll('[data-ws-message]'), function (node) {
+            return node.offsetParent !== null;
+        });
+        var box = pane.getBoundingClientRect();
+
+        if (!nodes.length || !(box.height > 0)) {
+            return null;
+        }
+
+        function edge(test) {
+            var low = 0;
+            var high = nodes.length - 1;
+            var found = -1;
+
+            while (low <= high) {
+                var middle = (low + high) >> 1;
+
+                if (test(nodes[middle].getBoundingClientRect())) {
+                    found = middle;
+                    high = middle - 1;
+                } else {
+                    low = middle + 1;
+                }
+            }
+
+            return found;
+        }
+
+        var first = edge(function (rect) { return rect.bottom > box.top; });
+        var after = edge(function (rect) { return rect.top >= box.bottom; });
+        var last = ((after < 0) ? nodes.length : after) - 1;
+
+        if ((first < 0) || (last < first)) {
+            return null;
+        }
+
+        return [parseInt(nodes[first].getAttribute('data-ws-message'), 10), parseInt(nodes[last].getAttribute('data-ws-message'), 10)];
+    }
+
     function senderTone(personData) {
         var data = personData || {};
 
@@ -10142,6 +10189,11 @@
                 api('ws_channel_clear', { channel_id: channel.id, title: title.value }).then(function () {
                     toast(t('era_cleared'), 'success');
 
+                    // The timeline holds the conversation just put away.
+                    if (window.PGWsConversationTimeline) {
+                        window.PGWsConversationTimeline.forget(channel.id);
+                    }
+
                     if (after) {
                         after();
                     }
@@ -11713,6 +11765,18 @@
             card.appendChild(tabs);
             self.drawTabMarks();
 
+            // The conversation timeline beside the tabs, in the room they
+            // leave (workspace_conversation_timeline.js); mounted once the
+            // pane below is made, whose scroll its frame follows. The
+            // current conversation only: none over an earlier version.
+            var timelineHolder = (window.PGWsConversationTimeline && !self.era) ? el('div', 'ws-ctl') : null;
+
+            if (timelineHolder) {
+                card.appendChild(timelineHolder);
+            } else if (window.PGWsConversationTimeline) {
+                window.PGWsConversationTimeline.unmount('head');
+            }
+
             window.requestAnimationFrame(function () {
                 var active = tabs.querySelector('.active');
 
@@ -11749,6 +11813,15 @@
             self.pane = pane;
             messageKeys(pane);
 
+            if (timelineHolder) {
+                window.PGWsConversationTimeline.mount(timelineHolder, channel, 'head', {
+                    root: self.root,
+                    go: function (messageId) { self.timelineGo(messageId); },
+                    pane: function () { return (self.tab === 'messages') ? pane : null; },
+                    visible: function () { return (self.tab === 'messages') ? visibleMessages(pane) : null; }
+                });
+            }
+
             self.watchEnd(self.tab === 'messages' ? pane : null);
 
             if (self.tab === 'messages') {
@@ -11757,6 +11830,11 @@
                 self.composerWrap.appendChild(self.jumpButton());
                 self.drawSelectBar();
                 self.fit();
+
+                // The timeline's frame, once the messages stand.
+                if (timelineHolder) {
+                    window.requestAnimationFrame(function () { window.PGWsConversationTimeline.scrolled(); });
+                }
             } else if (self.tab === 'decisions') {
                 self.loadList('ws_channel_decisions', t('no_decisions'));
             } else if (self.tab === 'files') {
@@ -12540,9 +12618,45 @@
                 body.appendChild(settings);
             }
 
+            // The conversation timeline at the foot, shown while the tabs
+            // row has no room for it (.ws-ctl-narrow on the screen, set by
+            // workspace_conversation_timeline.js).
+            if (window.PGWsConversationTimeline && !self.era) {
+                var timeline = el('div', 'ws-ctl-section');
+                var timelineHolder = el('div', 'ws-ctl');
+
+                timeline.appendChild(el('h3', 'ws-panel-kicker', t('ctl_label')));
+                timeline.appendChild(timelineHolder);
+                body.appendChild(timeline);
+                window.PGWsConversationTimeline.mount(timelineHolder, channel, 'info', {
+                    go: function (messageId) { self.timelineGo(messageId); }
+                });
+            } else if (window.PGWsConversationTimeline) {
+                window.PGWsConversationTimeline.unmount('info');
+            }
+
             if (focus) {
                 title.focus();
             }
+        },
+
+        // A message chosen on the conversation timeline: the conversation
+        // opens on it, flashed; on a phone Channel info, which covers the
+        // conversation, closes first.
+        timelineGo: function (messageId) {
+            var self = app;
+
+            if (self.infoOpen && window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches) {
+                self.closeInfo();
+            }
+
+            if (self.tab !== 'messages') {
+                self.tab = 'messages';
+                self.drawCenter();
+                self.syncAddress();
+            }
+
+            self.jumpTo(messageId, true);
         },
 
         // After a change made from the info panel: the channel read again
@@ -14254,7 +14368,7 @@
                 var doc = loaded[1];
                 var options = {
                     fileName: message.file.name,
-                    save: { mode: 'url', url: url, label: mine ? t('file_edit_put') : t('file_edit_send') },
+                    save: { mode: 'url', url: url, label: mine ? t('file_edit_put') : t('file_edit_send'), short: mine ? t('file_edit_put_short') : t('file_edit_send') },
                     onSave: function () {
                         toast(mine ? t('file_replaced') : t('file_copy_sent'), 'success');
                         self.sync(!mine);
@@ -14264,6 +14378,7 @@
                 if (doc) {
                     options.blank = doc.artboard;
                     options.doc = doc;
+                    options.send = self.canvasSend(self.channel);
                 } else {
                     options.src = message.file.url;
                 }
@@ -14272,6 +14387,26 @@
             }).catch(function () {
                 toast(t('file_editor_missing'), 'danger');
             });
+        },
+
+        // The canvas's menu beside its main button: the other channels the
+        // person may write in (ws_library_channels), each taking the canvas
+        // as the person's own message (workspace_file_save.php?channel=).
+        canvasSend: function (channel) {
+            var self = this;
+
+            return {
+                current: channel ? channel.id : 0,
+                channels: function () {
+                    return api('ws_library_channels', {}).then(function (data) { return data.channels || []; });
+                },
+                url: function (id) {
+                    return CFG.urls.file_save + '?channel=' + id;
+                },
+                onSent: function () {
+                    self.sync(false);
+                }
+            };
         },
 
         // A new canvas in the image editor, posted here as the person's own
@@ -14284,7 +14419,8 @@
                 window.pgImageEditor.open({
                     blank: { width: 1080, height: 1080, background: '#ffffff' },
                     fileName: t('canvas_new'),
-                    save: { mode: 'url', url: CFG.urls.file_save + '?channel=' + channel.id, label: t('canvas_send') },
+                    save: { mode: 'url', url: CFG.urls.file_save + '?channel=' + channel.id, label: t('canvas_send'), short: t('canvas_send_short') },
+                    send: self.canvasSend(channel),
                     onSave: function () {
                         toast(t('canvas_sent'), 'success');
 
@@ -22683,6 +22819,11 @@
                 // message, a vote or an answer of the channel changed.
                 if (window.PGWsChannelActivity && !self.isThread && self.infoOpen && self.channel && (data.messages.length || (data.changed || []).length || itemsMoved)) {
                     window.PGWsChannelActivity.changed(self.channel.id);
+                }
+
+                // So does the conversation timeline, wherever it is drawn.
+                if (window.PGWsConversationTimeline && !self.isThread && !self.era && self.channel && (data.messages.length || (data.changed || []).length || itemsMoved)) {
+                    window.PGWsConversationTimeline.changed(self.channel.id, data.messages.length > 0);
                 }
 
                 // Who outside the team reads along, as it changes.

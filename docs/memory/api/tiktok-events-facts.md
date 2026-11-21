@@ -6,7 +6,7 @@ module: ad_conversions_tiktok
 
 ## Where were these read?
 - 2026-11-20 from business-api.tiktok.com: `portal/docs/events-api-2.0/v1.3`, `report-app-web-offline-or-crm-events/v1.3`, `event-deduplication/v1.3`, `events-api-v1-web-set-up-external-id/v1.3`; ads.tiktok.com help: `standard-events-parameters`, the Tealium and Hightouch Events API guides (test code).
-- The portal draws its pages by script; they were read through search excerpts of those pages, not as whole pages. Read them again before changing the sender (`plans/ad-conversions.md`: never from memory).
+- The portal draws its pages by script; they were read through search excerpts of those pages, not as whole pages. Read them again before changing the sender (`ad-conversions.md`: never from memory).
 
 ## What is the request?
 - `POST https://business-api.tiktok.com/open_api/v1.3/event/track/` (`PG_AD_CONVERSION_TIKTOK_URL`), the recommended endpoint for web, app, offline and CRM events. Events API 1.0 (`pixel/track`) is the old one.

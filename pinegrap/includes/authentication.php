@@ -128,6 +128,23 @@ function pg_user_has_erp_readonly_column()
 }
 
 /**
+ * Does the user table carry the "Packing only" right yet (2026.11.0, 11.0.264)?
+ * Asked for the same reason as pg_user_has_erp_columns(), by exact name.
+ *
+ * @return bool
+ */
+function pg_user_has_packing_column()
+{
+    static $has = null;
+
+    if ($has === null) {
+        $has = pg_auth_column_exists('user', 'manage_packing');
+    }
+
+    return $has;
+}
+
+/**
  * Is this account disabled (user.user_disabled_at > 0)? The get_file.php side
  * of pg_user_id_is_disabled() in includes/fn/auth.php, which this defers to
  * when functions.php is loaded; without it the column is probed by exact name.
@@ -185,6 +202,38 @@ function pg_user_erp_readonly_sql($mode, $post = null)
     }
 
     return "manage_erp_readonly = '" . $value . "',";
+}
+
+/**
+ * The posted "Packing only" right as SQL for the user INSERT ('columns',
+ * 'values') or UPDATE ('set'). Empty when the column is not there yet, so
+ * a site between its new files and its upgrade never names it.
+ *
+ * @param string     $mode
+ * @param array|null $post the form's fields, $_POST when not given
+ * @return string
+ */
+function pg_user_packing_sql($mode, $post = null)
+{
+    if ($post === null) {
+        $post = $_POST;
+    }
+
+    if (!pg_user_has_packing_column()) {
+        return '';
+    }
+
+    $value = (!empty($post['manage_packing']) ? 1 : 0);
+
+    if ($mode === 'columns') {
+        return 'manage_packing,';
+    }
+
+    if ($mode === 'values') {
+        return "'" . $value . "',";
+    }
+
+    return "manage_packing = '" . $value . "',";
 }
 
 // Verify a cookie value and return the user id, or false. An expired or
@@ -307,6 +356,9 @@ function pg_load_user_row($user_id)
     // The ERP's read-only right (4.78), under the same rule.
     $erp_columns .= pg_user_has_erp_readonly_column() ? " user.manage_erp_readonly," : " 0 AS manage_erp_readonly,";
 
+    // The "Packing only" right (11.0.264), under the same rule.
+    $erp_columns .= pg_user_has_packing_column() ? " user.manage_packing," : " 0 AS manage_packing,";
+
     // The workspace rights, under the same rule.
     $ws_columns = pg_user_has_ws_columns()
         ? "user.manage_workspace, user.manage_workspace_assign, user.manage_workspace_board, user.manage_workspace_settings,"
@@ -395,6 +447,16 @@ function pg_session_sign_in($user_id, $username)
     if (function_exists('initialize_token')) {
         unset($_SESSION['software']['token']);
         initialize_token();
+    }
+
+    // The visitor journey: a person's own sign-in ties the browser that
+    // allowed marketing cookies to their contact. A request already signed
+    // in as someone else (login_as_user.php) is not that person's act.
+    // functions.php is not loaded by get_file.php.
+    $signed_in_as_other = defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ID') && ((int) USER_ID !== (int) $user_id);
+
+    if (!$signed_in_as_other && function_exists('pg_lead_sign_in')) {
+        pg_lead_sign_in((int) $user_id);
     }
 }
 

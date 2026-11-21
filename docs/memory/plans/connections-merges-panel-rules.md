@@ -1,6 +1,6 @@
 ---
 name: connections-merges-panel-rules
-description: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count stays 78, gates, card titles
+description: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count (84), gates, card titles
 ---
 
 ## What is this file?
@@ -12,7 +12,8 @@ description: Connections management screen (plan connections-merges): the archit
 - Such a feature's row under "Kullanıldığı yerler" reads "Kendi anahtarını kullanıyor" with the action "Bağlantıdaki anahtarı kullan". The update changes nothing a running site calls with.
 
 ## Does the registry's figure change?
-- Architect (2026-11-17): no. The registry keeps its services and `pg_connections_count()` stays 78; the figure is the owner's public one (`workflow/decisions-made-product-69.md`).
+- Architect (2026-11-17): a merge adds no service; the figure is the owner's public one (`workflow/decisions-made-product-69.md`).
+- Owner (2026-11-21, via K3, CX11g1 #10919): each card gateway of the Payment Gateway list is a service with its own page, so PayPal Payflow Pro, PayPal Payments Pro and Stripe (classic) were added: `pg_connections_count()` is 84.
 - The list folds the seven mail routes (Postmark, Mailgun, Brevo, Resend, Amazon SES, Gmail, Microsoft 365 mail) into one "E-posta gönderimi" row whose "Yönet" opens the Site Settings category of poll 148; each route's name still finds the row in search. The filter counts rows. Done in #10434.
 
 ## Who sees a panel's section?

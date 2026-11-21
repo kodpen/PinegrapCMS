@@ -446,7 +446,11 @@ if (!$_POST) {
             if ($liveform->get_field_value('contact_group_' . $contact_group['id'])) {
                 // add contact to contact group unless already in it, announcing
                 // the join (a group filled by rules keeps only the opt-in choice)
-                pg_audience_door_join((int) $contact['id'], (int) $contact_group['id']);
+                // A new yes is the person's own act: the browser that allowed
+                // marketing cookies is tied to the contact (visitor journey).
+                if (pg_audience_door_join((int) $contact['id'], (int) $contact_group['id'])) {
+                    pg_lead_tie('newsletter', (int) $contact['id'], (int) $contact_group['id']);
+                }
             }
             
             // check to see if there is already an opt-in record

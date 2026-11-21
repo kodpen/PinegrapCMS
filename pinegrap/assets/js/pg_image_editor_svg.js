@@ -702,13 +702,15 @@
     };
 
     // An SVG file is saved as SVG (over the file, or as a copy beside it).
+    // Every other save goes on with all its arguments: a send to another
+    // channel or into a folder of Files names its target in the second.
     var send = Editor.prototype.send;
 
     Editor.prototype.send = function (mode) {
         var self = this;
 
         if (!this.svgFileId || ((mode !== 'replace') && (mode !== 'copy'))) {
-            send.call(this, mode);
+            send.apply(this, arguments);
             return;
         }
 

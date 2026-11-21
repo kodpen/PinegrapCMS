@@ -1162,13 +1162,21 @@ if (!$_POST) {
 
                     $shipment_label_by_marketplace = $shipment_label_marketplace && ($shipment_label_marketplace['offer'] === 'create') && !$shipment_label_active[0];
 
+                    // A method that names no carrier and links no driver,
+                    // with two or more drivers ready: Create Label opens the
+                    // carrier chooser instead of its confirm
+                    // (includes/fn/shipment_label_chooser.php).
+                    $shipment_label_method = ($shipment_label_drivers && !$shipment_label_by_marketplace && !$shipment_label_active[0]) ? pg_shipment_label_chooser_method_read($ship_to_id) : null;
+                    $shipment_label_choose = $shipment_label_method && pg_shipment_label_chooser_due($shipment_label_method['carrier'], $shipment_label_method['method_driver'], $shipment_label_drivers);
+                    $shipment_label_chooser_shown = !empty($shipment_label_chooser_shown) || $shipment_label_choose;
+
                     if (($shipment_label_drivers || $shipment_label_by_marketplace) && !in_array($status, array('incomplete', 'cancelled'), true)) {
                         $output_shipment_labels .= '<div class="d-flex flex-wrap align-items-center gap-2 pg-print-none">'
                             . ($shipment_label_by_marketplace
                                 ? '<label class="visually-hidden" for="label_boxes_' . $ship_to_id . '">' . lang('Boxes') . '</label>'
                                     . '<input type="number" form="shipment-label-form" id="label_boxes_' . $ship_to_id . '" name="label_boxes_' . $ship_to_id . '" value="1" min="1" max="' . mp_label_max_boxes() . '" step="1" class="form-control form-control-sm" style="max-width:5rem" onkeydown="if (event.key === \'Enter\') { event.preventDefault(); document.getElementById(\'label_marketplace_' . $ship_to_id . '\').click(); }">'
                                     . '<button type="submit" form="shipment-label-form" id="label_marketplace_' . $ship_to_id . '" name="label_request" value="marketplace-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} makes the shipping label of this package for its carrier, one per box. A package not accepted yet is accepted first, which starts its dispatch time. Continue?', 'vars' => array($shipment_label_marketplace['name'])))) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Get {var:1} label', 'vars' => array($shipment_label_marketplace['name'])))) . '</button>'
-                                : (($shipment_label_active[0] || !$shipment_label_drivers) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="create-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>'))
+                                : (($shipment_label_active[0] || !$shipment_label_drivers) ? '' : '<button ' . ($shipment_label_choose ? 'type="button" data-pg-label-chooser="' . $ship_to_id . '"' : 'type="submit" form="shipment-label-form" name="label_request" value="create-' . $ship_to_id . '" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"') . ' class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>'))
                             . (($shipment_label_active[1] || !$shipment_label_drivers) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="return-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A return shipment, collected from this address and delivered to the store, is opened at the carrier label service and its label is bought. Continue?')) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . lang('Create Return Label') . '</button>')
                             . (!$shipment_label_pickup ? '' : '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_' . $ship_to_id . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>'
                                 . pg_shipment_label_pickup_dialog('shipment_pickup_' . $ship_to_id, 'shipment-label-form', 'pickup-' . $ship_to_id, pg_shipment_label_pickup_warning(pg_shipment_label_pickup_booked(array($shipment_label_pickup)))))
@@ -2888,6 +2896,7 @@ if (!$_POST) {
         $output_cancel_modal .
         $output_refund_modal .
         $output_parasut_forms .
+        (!empty($shipment_label_chooser_shown) ? pg_shipment_label_chooser_dialog() : '') .
         '<form method="post" action="shipment_label.php" id="shipment-label-form" class="d-none">
             ' . get_token_field() . '
             <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />

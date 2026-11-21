@@ -64,6 +64,13 @@ function delete_order($request) {
     // door.
     pg_event_tickets_delete_for_order($order['id']);
 
+    // The order's addresses in pick waves and its packs. A wave keeps its
+    // other orders; product_bins and pick_waves hold no order's rows.
+    if (pg_schema_has('order_packs')) {
+        db("DELETE FROM pick_wave_orders WHERE order_id = '" . e($order['id']) . "'");
+        db("DELETE FROM order_packs WHERE order_id = '" . e($order['id']) . "'");
+    }
+
     // The units held for the order while its payment ran.
     pg_stock_hold_release($order['id']);
 

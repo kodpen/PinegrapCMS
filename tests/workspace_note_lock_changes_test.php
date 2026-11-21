@@ -26,6 +26,7 @@ if (!defined('PG_API_PANEL')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/note_lock.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/openapi.php');
 
 /**
  * Every function of the workspace's files, by name, with its source.
@@ -199,8 +200,8 @@ function test_workspace_note_lock_changes_are_documented()
 
 	$list = $routes['workspace.notes.list'];
 
-	pg_assert_contains('counts as a change of the note', $list['description']);
-	pg_assert_contains('by its title alone', $list['description']);
+	pg_assert_contains('counts as a change of the note', api_openapi_operation_description($list));
+	pg_assert_contains('by its title alone', api_openapi_operation_description($list));
 
 	foreach ($list['params'] as $param) {
 		if ($param['name'] === 'search') {

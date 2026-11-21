@@ -11,6 +11,7 @@ description: Which cookies the cookie notice lists (pg_consent_catalogue()), the
   - necessary, while `wishlist_items` exists (`pg_wishlist_ready()`): `pg_wishlist` (`PG_WISHLIST_COOKIE`, a visitor's favourites before signing in, set on the first saved product, 1 year, HttpOnly; `commerce/wishlist.md`);
   - analytics with `VISITOR_TRACKING`: `software[number_of_visits]`, `software[tracking_code]`, `lsid`; with Google Analytics `_ga, _ga_*`;
   - marketing with tracking and the affiliate program: `software[affiliate_code]`;
+  - marketing with tracking while the journey tables exist (`pg_lead_ready()`): `pg_lead` (`PG_LEAD_COOKIE`, the visitor journey's browser key, 13 months, only with the marketing yes; in `pg_consent_revoke_names()`; `visitors/lead-journey-store.md`);
   - marketing while Auto Dialogs are on (`AUTO_DIALOGS`): `pg_popup, software[auto_dialog_*]` (`pg_consent_popup_row()`): the pop-ups' one cookie and the per-row ones before it, both in `pg_consent_revoke_names()` (PR #9852, `auto-dialog-browser-dialog.md`);
   - necessary, while `CAPTCHA` is on with a provider: "Cloudflare Turnstile" or "hCaptcha" as a service (not held: a form cannot be sent without it, `waf/form-captcha-providers.md`);
   - marketing, on a page with the "Map of places" block while "Maps" is on: the map's tile service ("OpenStreetMap" or the tile host), not a cookie (`designer/designer-blocks-map.md`);

@@ -11,6 +11,7 @@
 - experiment-goals.md: Page experiment goals (PX3, #6230): form, order, click, page; counted for the variant the pg_exp cookie holds, once a day per experiment by a mark in the cookie, into experiment_hourly.goals
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - lead-journey-rules.md: The visitor journey's pure rules (lead_journey.php, LJ1a): browser key verdict, tie and move on a shared browser, tying back in the keep period, interest score half-life
+- lead-journey-store.md: The visitor journey's four tables (step 11.0.265), the pg_lead browser key cookie under the marketing yes, the visit rows, the ties at each act's save path, a refusal, panel users (LJ1b)
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
 - page-clicks-designer-layer.md: The designer's Clicks layer (part clicks #10056, wired #10715): toolbar toggle and panel, the read page_clicks, sdDesign.clicks, badges, tenth lines, side list, empty state
 - page-clicks-scope.md: What the clicks and scroll depth counter is for and where it stops: the owner's and the architect's lines of 2026-11-16 (polls 67 and 75, messages 5763, 5774), the bounds, what is left out, whose look [decision: here]

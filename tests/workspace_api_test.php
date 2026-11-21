@@ -40,6 +40,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/openapi.php');
 
 function test_ws_api_routes_reach_a_handler()
 {
@@ -317,7 +318,9 @@ function test_ws_api_change_proposals_are_tools()
 
 		// What a model reads: it proposes, the person applies, nothing is
 		// written to a record by the call.
-		$text = $tool['description'];
+		pg_assert_true(preg_match('/(waits on a card|cards wait)/', $tool['description']) === 1, $id . ': the tool says the changes wait for the person');
+
+		$text = api_openapi_operation_description($route);
 
 		pg_assert_contains('this only proposes, the person applies', $text, $id);
 		pg_assert_contains('Nothing is written to a record here', $text, $id);
@@ -859,7 +862,7 @@ function test_ws_api_hide_reaches_the_other_devices_in_the_docs()
 	$descriptions = array();
 
 	foreach (ws_api_routes() as $route) {
-		$descriptions[$route['id']] = (string) ($route['description'] ?? '');
+		$descriptions[$route['id']] = api_openapi_operation_description($route);
 	}
 
 	pg_assert_true(strpos($descriptions['workspace.messages.list'], 'deleted for themselves since then') !== false, 'changed_since names hidden messages');
@@ -1204,8 +1207,8 @@ function test_ws_api_inbox_list_takes_note_id()
 
 	pg_assert_true(isset($params['note_id']), 'note_id is declared');
 	pg_assert_same('query int 1', $params['note_id']['in'] . ' ' . $params['note_id']['type'] . ' ' . $params['note_id']['min']);
-	pg_assert_true(strpos($list['description'], 'note_id') !== false, 'the description says what note_id does');
-	pg_assert_true(strpos($list['description'], 'POST /workspace/inbox/read') !== false, 'and where the lines are cleared');
+	pg_assert_true(strpos(api_openapi_operation_description($list), 'note_id') !== false, 'the document says what note_id does');
+	pg_assert_true(strpos(api_openapi_operation_description($list), 'POST /workspace/inbox/read') !== false, 'and where the lines are cleared');
 
 	$properties = (array) pg_mcp_tool_from_route($list)['inputSchema']['properties'];
 

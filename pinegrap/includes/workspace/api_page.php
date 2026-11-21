@@ -32,6 +32,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/page.php');
 function ws_page_api_routes()
 {
     $limit = 'The HTML is one whole document, its styles and script inside it, UTF-8, at most 500 KB. It runs only in a guarded frame of the panel, in an origin of its own: no cookie or storage of the panel, no request out of it (no fetch, socket or form; pictures and fonts only as data: inside the document; no script from an address), no window, download or move to another address.';
+    $sandbox = 'One whole HTML document, styles and script inside, UTF-8, at most 500 KB, run in a sandboxed frame: no request out (fetch, form, outside script), pictures and fonts only as data:.';
     $libraries = array('name' => 'libraries', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 5, 'description' => 'Libraries the site puts into the page from its own copy, ahead of the page\'s own script: ' . implode(', ', array_map(function ($name, $library) {
         return $name . ' (' . $library['title'] . ')';
     }, array_keys(ws_page_libraries()), ws_page_libraries())) . '. A page never loads one from an address.');
@@ -47,7 +48,8 @@ function ws_page_api_routes()
             'status'      => 201,
             'returns'     => array('message' => 'WorkspaceMessage', 'page' => ws_api_page_returns()),
             'summary'     => 'Make a live page in a channel',
-            'description' => 'Posts a live page into a channel as a message of the application: an HTML document a person opens and uses in the channel, such as a chart that shows a value on hover, a filter or a small tool. It shows as a card naming the agent as its maker; it runs only when a member opens it and stops when they leave the channel. A still picture is a canvas (POST /workspace/channels/{id}/canvases). ' . $limit . ' Only an agent of the channel makes one: an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The first 20 versions are not all kept: the first and the newest 19 are. Refusals: no HTML, over 500 KB or not UTF-8 422 validation_failed on html; a library the site does not have 422 on libraries; not an agent of the channel 403 forbidden.',
+            'description' => 'Posts a live page into a channel as the application: an HTML document a member opens and uses there. A still picture is a canvas (POST /workspace/channels/{id}/canvases). ' . $sandbox . ' Only an agent of the channel (GET /workspace/channels/{id}/agents) makes one (403 forbidden). 422 on html (none, over 500 KB, not UTF-8) or libraries (one the site lacks).',
+            'details'     => 'Examples of a live page: a chart that shows a value on hover, a filter or a small tool. It shows as a card naming the agent as its maker; it runs only when a member opens it and stops when they leave the channel. ' . $limit . ' An agent of the channel is an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The first 20 versions are not all kept: the first and the newest 19 are.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'html', 'in' => 'body', 'type' => 'string', 'max_length' => 512000, 'required' => true, 'description' => 'The page, one whole HTML document.'),
@@ -82,7 +84,8 @@ function ws_page_api_routes()
             'dry_run'      => true,
             'returns'      => ws_api_page_returns(),
             'summary'      => 'Write a new version of a live page',
-            'description'  => 'Replaces a live page of the channel with a whole new document, kept as a new version made by the agent; the earlier ones stay among the versions, and a member of the channel may undo your edit, which keeps the version before as a newer one (source restore). ' . $limit . ' version is the newest version you read (GET /workspace/messages/{id}/page): when the page changed since, the call answers 409 conflict; read it again and redo. Only an agent of the channel edits, as for POST /workspace/channels/{id}/pages (403 forbidden). POST is accepted as well.',
+            'description'  => 'Replaces a live page of the channel with a whole new document, kept as a new version made by the agent; a member may undo the edit. ' . $sandbox . ' version is the newest version you read (GET /workspace/messages/{id}/page): when the page changed since, 409 conflict; read it again and redo. Only an agent of the channel edits (403 forbidden).',
+            'details'      => 'The earlier versions stay among the versions; an undo keeps the version before as a newer one (source restore). ' . $limit . ' Only an agent of the channel edits, as for POST /workspace/channels/{id}/pages. POST is accepted as well.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The newest version you read.'),

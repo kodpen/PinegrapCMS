@@ -85,7 +85,7 @@
 - catalog-stock-quantity-input.md: How the Catalog Manager stock edits and the product list's Modify Selected read a typed quantity: grouped the panel's way (1.200), whole counts only, else refused
 - catalog-variant-set-writer.md: pg_catalog_variant_set_create(): input array, shared check, prices in minor units, callers (product screen, POST /product-groups/variant-sets), what it skips
 - checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card [decision: here]
-- checkout-kvkk-notice.md: KVKK notice link and optional consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection and designer node, the kvkk copy, consent log row
+- checkout-kvkk-notice.md: KVKK notice link and optional consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection and designer node, the kvkk copy, consent log row [decision: decisions-made-product-96.md]
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
 - checkout-requested-arrival-date.md: Requested arrival date at checkout: which one a visitor may post, how the designed checkout refills and bounds the custom date box, where an unusable date is reported
 - checkout-state-list.md: The checkout's state as a text box and a pick list (_eo_fit_state_lists(), #6146), one state script per address (data-pg-sa-for), the order screen's İlçe/İl billing labels
@@ -110,12 +110,15 @@
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - customer-rhythm-rules.md: Customer rhythm's pure rules (customer_rhythm.php): days per unit, own interval, the chance curve, stages and their moves, due products, and the choices the features left open
+- customer-rhythm-store.md: Table customer_rhythm and its nightly pass (customer_rhythm_pass.php): a row, when a stage moves, the product summary, export and erase, the 200k-order timing
 - customer-value-groups-csv-api.md: What the Customers Report hands on: a contact group from a cell of the groups table, the top customers CSV, GET /reports/customer-value and who gets names (#10297)
 - customer-value-report-screen.md: Customers Report screen (view_customer_report.php, Reports menu): periods, tiles, months, cohorts, groups, top customers, who sees names, states before data (#10020)
 - customer-value-report.md: Customers Report (customer value: repeat purchase, value per customer, cohorts, customer groups) as built: its parts, the decisions that bind it, what was left out, each feature U1-U15 with its PR [decision: here]
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
+- delivery-problems-desk.md: Orders › Delivery problems (view_delivery_problems.php, DT3): the list of shipment_problems, its filters and bulk bar, a problem's drawer, assign, note, close with a reason, the audit lines
 - delivery-tower-alerts-events.md: Delivery tower alerts and events: the shipping ops alert codes, shipment.problem and shipment.problem_resolved, payload, flow kind filter, quiet first walk
+- delivery-tower-label-chooser.md: Create Label carrier chooser on the order screen (DT4b, #10931): when it shows, the rows' order and suggestion, the api.php action, the label path's one optional argument
 - delivery-tower-passes.md: Delivery tower passes from the general job: the nightly measured-times summary (config_text, cursor in data/temp), the hourly problem pass, the lock, the time budget, the 100k-parcel timing
 - delivery-tower-problems-table.md: The shipment_problems table (step 11.0.259): one row per problem found on a parcel, its columns, the unique open-row key, who writes and closes rows, order deletion
 - delivery-tower-rules.md: Delivery tower pure rules: province key, median and p90, working days, on time, the 20-parcel minimum, the four problem kinds, one open row per kind and its closing
@@ -175,6 +178,8 @@
 - marketplace-product-import-queue.md: The product import queues the products it updated for the marketplaces in one call at the end, after the bundle refresh, without webhooks
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
 - marketplace-repricer-robot.md: The repricer's robot pass (RP4): Win and Grow while winning, the floor and cap, the day's limits, Try first, the log, the listing state, the two operations alerts
+- marketplace-repricing-lists.md: The Repricing view's cards and lists (RP3b): what Winning, Losing, At the floor and No cost count, how each filters in SQL, the products list's price and columns, the price log's columns
+- marketplace-repricing-screen.md: Marketplace Products › Repricing view (RP3b): figure cards, one segment row with Price log, lists on the table driver, Try first notice, rank on a product row [decision: here]
 - marketplace-shop-view.md: Shop view of marketplace_products.php (#1931): shop products with pictures and their state on an account, codes typed in the row, bulk own-code match, send, remove, listing changes
 - marketplace-sync-queue-lease.md: How a stock and price batch claims its queue rows (lease token in remote_task_id), why a change during a push gets a row of its own, and how a product is sent once per batch.
 - marketplace-variant-attributes.md: Listed products' variant attributes (Trendyol varianter and slicer, n11 isVariant): own option first, the article's value as fallback, duplicate refusal, mapping screen field.
@@ -284,6 +289,7 @@
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
 - paypal-express-return-query.md: How the classic PayPal Express Checkout return in submit_order.php reads token and PayerID: one string each, an array or a missing one empty (#5270)
 - pick-pack-rules.md: Pick and pack's pure rules (includes/fn/pick_pack.php): shelf address sort, wave rule filter and ship-by day, cancelled order leaving a wave, pick list totals, scan verdict codes, pack state
+- pick-pack-tables.md: Pick and pack's four tables and their keys, the reserved `lines` column, what an order's deletion removes, the "Packing only" right user.manage_packing [decision: here]
 - place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country [decision: decisions-made-product-17.md]
 - print-order-header-facts.md: The printed order (print_order.php) carries the order screen's tax number, on-account, unpaid and cancelled state, order codes, installments and gift cards
 - print-order-id.md: print_order.php reads every order query with the one id it checked ($id from $_REQUEST, whole number), never $_GET['id'] again
@@ -417,6 +423,7 @@
 - supplier-feed-price-rule.md: Supplier feed amounts (Turkish and English separators, stock text, net of VAT) and the F4 price rule: margin, fixed, rate, ,90 or ,99 endings, floor, category and brand rules
 - supplier-feed-readers.md: Supplier feed tables (11.0.255) and readers: format from the first bytes, record path, XML/CSV/JSON with a resumable cursor, flat keys, the field proposal (SF1, PR #10771)
 - supplier-feed-screen.md: Products › Supplier feeds (SF2): the list, Add and Edit supplier feed, the encrypted sign-in, the first read into the Fields mapping, the test pull; what each button writes [decision: here]
+- supplier-feed-sync.md: Supplier feed sync (SF3a, #10895): the job tick, one lock per feed, scan, apply and close phases over one file, matching, price and stock writers, closing and reopening, held prices, brakes, run rows
 - tax-zone-commission-reward-boxes.md: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 - tr-district-carriers.md: What sends and writes ship_tos.district (#3654): the four Turkish carrier drivers (district first, city fallback), the needs-district hook, the n11 and Trendyol imports [decision: decisions-made-product-12.md]
 - tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far [decision: here]
@@ -441,6 +448,7 @@
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
 - verified-shipping-address-screens.md: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, state filter fit to the bar (#9080), Turkish name
 - visitor-currency-zero-rate.md: init.php uses a visitor's chosen currency only while its exchange rate is above zero (pg_visitor_currency_row()); a 0 rate falls back to the base currency
+- walk-in-queue-rules.md: The walk-in queue's pure rules in includes/fn/walk_in_queue.php: the order, the number A-012, cap and closing, the estimate, Not here, the signed link token
 - wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch [decision: decisions-made-product-64.md, decisions-made-product-65.md]
 - wishlist-heart.md: Favourite heart in the catalog widgets: catalog_wishlist / wishlist actions, the binding pass, pg_wishlist.js and its injection, the variant event, why pages stay cacheable
 - wishlist.md: Favourites core (includes/fn/wishlist.php, wishlist.php): owner model, the pg_wishlist cookie, lazy merge at sign-in, the toggle and state endpoint, rate limit, trim, privacy export

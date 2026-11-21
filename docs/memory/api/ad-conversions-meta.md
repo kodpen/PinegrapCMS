@@ -1,6 +1,6 @@
 ---
 name: ad-conversions-meta
-description: Meta Conversions API (ad-conversions SC2): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row
+description: Meta Conversions API (#10812): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row
 module: ad_conversions_meta
 ---
 

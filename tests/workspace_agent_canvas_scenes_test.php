@@ -268,7 +268,7 @@ function test_workspace_canvas_scenes_rows()
 	}
 
 	pg_assert_true(isset(ws_api_canvas_returns()['scenes']), 'the read names its scenes');
-	pg_assert_true(strpos($routes['workspace.messages.canvas.edit']['description'], 'scene (action add') !== false, 'the edit route describes scenes');
+	pg_assert_true(strpos(array_column($routes['workspace.messages.canvas.edit']['params'], null, 'name')['operations']['description'], 'scene (action add') !== false, 'the edit route describes scenes');
 
 	$tools = ws_canvas_ai_tools(function ($name, $description) {
 		return array('name' => $name, 'description' => $description);

@@ -30,7 +30,8 @@ description: Decisions list, schema part 41 (2026-11-20 on): pick and pack's fou
 ## Which columns does order_packs have? (architect, 2026-11-20)
 - One row per address. `id` INT UNSIGNED AUTO_INCREMENT; `order_id`, `ship_to_id` INT UNSIGNED; `wave_id` INT UNSIGNED, 0 for none; `status` TINYINT UNSIGNED (0 open, 1 packed, 2 short); `packer_id` INT UNSIGNED.
 - `started_at`, `packed_at`, `short_at` INT UNSIGNED; `units`, `scanned`, `refused` INT UNSIGNED (units wanted, good scans, refused scans).
-- `lines` TEXT NULL, the units scanned per order line as JSON while the pack is open; `missing` TEXT NULL, a short pack's missing lines by product id as JSON.
+- `scan_lines` TEXT NULL, units scanned per order line as JSON while open; `missing` TEXT NULL, a short pack's missing lines by product id as JSON.
+- Architect (2026-11-21): scan_lines, since LINES is a reserved word in MySQL and MariaDB.
 - Keys: unique (`ship_to_id`); `order_id`; (`status`, `packed_at`); (`packer_id`, `packed_at`); `wave_id`.
 - A short pack finished later becomes `packed` on the same row and keeps `short_at`. No `pack_scans` table; one `audit_log` line when a pack closes.
 
@@ -41,4 +42,3 @@ description: Decisions list, schema part 41 (2026-11-20 on): pick and pack's fou
 
 ## What else holds?
 - Every column NOT NULL with its default but the TEXT ones. InnoDB, utf8mb4_unicode_ci. No customer data in any of the four; an order's deletion removes its rows.
-- The step's worker writes the columns into its PR body and asks the architect before it is marked ready.

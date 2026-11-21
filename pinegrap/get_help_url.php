@@ -277,6 +277,7 @@ function get_help_url($properties = array())
         'view_returns'                       => 'commerce#returns',
         'view_return'                        => 'commerce#view-return',
         'add_return'                         => 'commerce#returns',
+        'view_delivery_problems'             => 'commerce#orders',
         'view_cart_quotes'                   => 'commerce#cart-quotes',
         'view_subscriptions'                 => 'commerce#subscriptions',
         'add_cart_quote'                     => 'commerce#cart-quotes',

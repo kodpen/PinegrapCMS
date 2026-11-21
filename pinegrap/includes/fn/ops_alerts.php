@@ -119,6 +119,13 @@ function pg_ops_alert_codes()
             'type'  => 'error',
             'url'   => 'welcome.php',
         ),
+        // An ad service refused every event of a day
+        // (includes/fn/ad_conversions_log.php); the detail names the service.
+        'ad_events_refused' => array(
+            'label' => lang('An ad service refused every event of a day'),
+            'type'  => 'warning',
+            'url'   => 'connections.php',
+        ),
         'orders_stopped' => array(
             'label' => lang('Orders stopped coming in'),
             'type'  => 'error',
@@ -134,6 +141,13 @@ function pg_ops_alert_codes()
         // The bell row links the product it names first
         // (pg_sales_watch_price_check()); the e-mail and the chat targets the
         // products list.
+        // A supplier feed stopped by a brake (includes/fn/supplier_feed_sync.php):
+        // nothing was written and the feed is paused. Once per feed a day.
+        'supplier_feed' => array(
+            'label' => lang('A supplier feed was paused'),
+            'type'  => 'warning',
+            'url'   => 'view_supplier_feeds.php',
+        ),
         'price_error' => array(
             'label' => lang('A product sells at a wrong price'),
             'type'  => 'error',
@@ -1527,6 +1541,9 @@ function pg_ops_alert_sources()
         'mail_reputation' => 'pg_ops_alerts_check_mail_reputation',
         'webhooks'    => 'pg_ops_alerts_check_webhooks',
         'storage'     => 'pg_ops_alerts_check_storage',
+        // An ad service that refused every event of yesterday, once a day
+        // (includes/fn/ad_conversions_log.php).
+        'ad_conversions' => 'pg_ad_conversion_check_refused',
         // Orders stopped and payment broken (includes/fn/sales_watch.php).
         'sales'       => 'pg_sales_watch_check',
         // A price error that sells (includes/fn/sales_watch.php).

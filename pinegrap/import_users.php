@@ -686,6 +686,10 @@ if (!$_POST) {
         $sql_erp_readonly_column = pg_user_erp_readonly_sql('columns');
         $sql_erp_readonly_value = pg_user_erp_readonly_sql('values');
 
+        // The "Packing only" right, when its column exists.
+        $sql_packing_column = pg_user_packing_sql('columns');
+        $sql_packing_value = pg_user_packing_sql('values');
+
         // insert row into user table
         $query =
             "INSERT INTO user (
@@ -712,6 +716,7 @@ if (!$_POST) {
                 manage_erp_cash,
                 manage_erp_settings,
                 $sql_erp_readonly_column
+                $sql_packing_column
                 $sql_ws_columns
                 user_set_offline_payment,
                 user_publish_calendar_events,
@@ -745,6 +750,7 @@ if (!$_POST) {
                 '" . e($_POST['manage_erp_cash'] ?? '') . "',
                 '" . e($_POST['manage_erp_settings'] ?? '') . "',
                 $sql_erp_readonly_value
+                $sql_packing_value
                 $sql_ws_values
                 '" . escape($_POST['set_offline_payment'] ?? '') . "',
                 '" . escape($_POST['publish_calendar_events'] ?? '') . "',
@@ -982,6 +988,7 @@ if (!$_POST) {
                 || ($_POST['manage_ecommerce_reports'] ?? '')
                 || ($_POST['manage_erp'] ?? '')
                 || ($_POST['manage_workspace'] ?? '')
+                || ($_POST['manage_packing'] ?? '')
                 || (count(get_items_user_can_edit('ad_regions', $user_id)) > 0)
             ) {
                 $login = 

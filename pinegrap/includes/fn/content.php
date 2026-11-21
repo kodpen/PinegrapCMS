@@ -2547,7 +2547,7 @@ function send_user_to_login_home()
         // or user has edit rights
         // or user has access to control panel
         // then forward user to control panel welcome screen
-    } elseif (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)) {
+    } elseif (($user['role'] < 3) || (no_acl_check($user['id']) == true) || ($user['manage_calendars'] == true) || ($user['manage_forms'] == true) || ($user['manage_visitors'] == true) || ($user['manage_contacts'] == true) || ($user['manage_emails'] == true) || ($user['manage_ecommerce'] == true) || $user['manage_ecommerce_reports'] || !empty($user['manage_erp']) || !empty($user['manage_workspace']) || !empty($user['manage_packing']) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0)) {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/welcome.php');
         exit();
         // else send user to my account page

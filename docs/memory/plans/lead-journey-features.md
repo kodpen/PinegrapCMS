@@ -5,7 +5,9 @@ description: Plan lead-journey, features J1 to J15: the browser key and the tie,
 
 ## How is a visit tied to a person?
 - (J1) With the marketing consent yes only, a random browser key in a first-party cookie (catalogue row, its category, 13 months); no key without the yes, and a later refusal deletes the cookie and stops new ties.
-- (J2) A tie is made by the person's act: a form that writes a contact, a newsletter yes (after the double opt-in when it is on), a sign-in, an order, a booking, a click through a campaign e-mail's existing tracking code. The browser key then points at that contact.
+- (J2) A tie is made by the person's act: a form that writes a contact, a newsletter yes (after the double opt-in when it is on), a sign-in, an order, opening a campaign e-mail's web version by its recipient's own code (`view_email_campaign.php?r=`). The browser key then points at that contact.
+  - The campaign-wide `?t=` code ties nobody (the same code goes to every recipient); it stays the visit's campaign. No per-recipient click code is added in this plan (architect, 2026-11-20, channel message 11218).
+  - No booking tie: a booking writes no contact and nothing is matched by e-mail; a signed-in person's booking is already tied by the sign-in (same message).
 - (J3) One browser, one contact: a later act by another contact on the same browser moves the key (a shared computer), the earlier ties stay with their contact.
 - (J4) Visits of the browser since its consent are tied back, inside the keep period (13 months, a setting).
 

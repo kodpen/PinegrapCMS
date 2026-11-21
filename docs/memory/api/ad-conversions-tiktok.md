@@ -1,6 +1,6 @@
 ---
 name: ad-conversions-tiktok
-description: TikTok Events API (ad-conversions SC4): its Connections page and gate, the sealed token, the sender, the E.164 phone hash, how TikTok's answers become a row's outcome, the test event, the registry row
+description: TikTok Events API (#10862): its Connections page and gate, the sealed token, the sender, the E.164 phone hash, how TikTok's answers become a row's outcome, the test event, the registry row
 module: ad_conversions_tiktok
 ---
 
@@ -9,7 +9,7 @@ module: ad_conversions_tiktok
 
 ## What does its page hold?
 - `connections.php?service=tiktok_events`, under Visitors and privacy's gate (`connections_privacy_may_manage()`), for the card and the writes `tiktok_events_save` / `tiktok_events_remove`.
-- "Connection details": "Pixel code" (capital letters and digits, upper-cased on save), "Access token" (password field, never drawn back), "Test event code", "Events sent" (Purchase only until SC5), "Without consent" › "Send events without the person" (C9), "Send personal data while the cookie notice is off" (C8) with its risk line and, notice off and box clear, the warning with the Cookie Consent link. "Save" filled, "Send a test event" quiet.
+- "Connection details": "Pixel code" (capital letters and digits, upper-cased on save), "Access token" (password field, never drawn back), "Test event code", "Events sent" (Purchase only: `ad-conversions.md`), "Without consent" › "Send events without the person" (C9), "Send personal data while the cookie notice is off" (C8) with its risk line and, notice off and box clear, the warning with the Cookie Consent link. "Save" filled, "Send a test event" quiet.
 - Ticking or clearing the box writes its own activity log line; "Disconnect" in Status empties the row.
 
 ## Where are the settings kept?

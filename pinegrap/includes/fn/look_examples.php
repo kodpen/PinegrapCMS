@@ -73,7 +73,7 @@ function pg_look_examples($prefix = 'light')
     $sections[] = array(
         'id'      => 'buttons',
         'title'   => lang('Buttons'),
-        'classes' => array('.pg-button', '.pg-button-fill', '.pg-button-quiet', '.pg-button-ghost', '.pg-button-danger', '.pg-button-sm', '.pg-icon-button', '.pg-icon-button-sm', '.is-active'),
+        'classes' => array('.pg-button', '.pg-button-fill', '.pg-button-quiet', '.pg-button-ghost', '.pg-button-danger', '.pg-button-sm', '.pg-button-split', '.pg-button-split-more', '.pg-icon-button', '.pg-icon-button-sm', '.is-active'),
         'html'    => '<div class="pg-look-line">'
             . '<button type="button" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>'
             . '<button type="button" class="pg-button pg-button-quiet">' . h(lang('Cancel')) . '</button>'
@@ -84,6 +84,12 @@ function pg_look_examples($prefix = 'light')
             . '<button type="button" class="pg-icon-button is-active" aria-label="' . h(lang('More actions')) . '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>'
             . '<button type="button" class="pg-icon-button" aria-label="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>'
             . '<button type="button" class="pg-icon-button pg-icon-button-sm" aria-label="' . h(lang('Mark as read')) . '"><span class="bi bi-check2" aria-hidden="true"></span></button>'
+            . '</div><div class="pg-look-line">'
+            . '<span class="pg-button-split">'
+            . '<button type="button" class="pg-button pg-button-fill">' . h(lang('Send the canvas')) . '</button>'
+            . '<button type="button" class="pg-button pg-button-fill pg-button-split-more" aria-haspopup="menu" aria-expanded="false" aria-label="' . h(lang('More save options')) . '"><span class="bi bi-chevron-down" aria-hidden="true"></span></button>'
+            . '</span>'
+            . '<span class="pg-text-meta">' . h(lang('Split button: the chevron opens the action\'s own menu.')) . '</span>'
             . '</div><p class="pg-text-meta">' . h(lang('At most one filled button in a view.')) . '</p>',
     );
 

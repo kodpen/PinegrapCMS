@@ -16,14 +16,15 @@ description: Plan marketplace-repricer, how its screens are put together: the Pr
 - After a save that changed a rule, one notice line: prices are sent again in the background.
 
 ## How does the product's marketplace row change?
-- No new card. The account's row gains: the channel price now (grey when by the rules), "Own price" (a field; empty means by the rules), strategy as a small select (Fixed, Win, Grow while winning; n11 only Fixed), the floor as grey text, and with RP3b the rank and the last change.
+- No new card. The account's row gains: the channel price now (grey when by the rules), "Own price" (a field; empty means by the rules), strategy as a small select (Fixed, Win, Grow while winning; n11 only Fixed), the floor as grey text, and with RP3b the rank ("Buybox rank: 2", rank 1 a green pill "Winning", "Not read yet" grey) and the last change (old → new, reason pill, relative time).
 - Past five fields the row folds them under "Pricing" in the row.
 
 ## How is the Repricing screen laid out? (RP3b)
-- Views as link segments: "Products" and "Log".
-- Products: figure cards [cards: figure] Winning, Losing, At the floor, No cost; a click on one filters the list. Columns: product, our price, buybox price, rank, strategy, floor, last change with a reason pill [status].
-- Log: time, product, old and new price, reason, and "Sent" or "Try first" as a pill.
-- While "Try first" is on, one line above both views: "Try first is on: nothing is sent", with a link to the Pricing tab.
+- Architect (2026-11-20, agent channel message 11220). The door: a fourth view "Repricing" in Marketplace Products' view strip (`mode=repricing`, once the tables exist) and a quiet small "Repricing" button on the account's Matched products card.
+- While "Try first" is on (or the account has no Pricing row yet): "Try first is on: nothing is sent" as `.alert.theme-info.small` above the cards, its link opening Marketplaces with the account's Settings drawer on the Pricing tab.
+- Figure cards [cards: figure, `ui/look-figure-cards.md`] Winning, Losing, At the floor, No cost; each label a stretched link to its filter; no new card state.
+- Under the cards ONE row of link segments with counts: All, Winning, Losing, At the floor, No cost, and last "Price log", which opens the log in the same place. No second row.
+- Both lists on the list table driver, read in keyset batches. Products: product, our price, buybox price, rank, strategy, floor, last change (old → new, reason pill, relative time); sorts by product, rank and last change. Price log: time, product, old and new price, reason pill, "Sent" or "Try first" pill; newest first.
 
 ## Which words?
 - "Channel price", "Own price", "Floor", "Try first", "Buybox"; never a strategy's code or a table's name.

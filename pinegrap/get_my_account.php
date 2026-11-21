@@ -55,6 +55,11 @@ function get_my_account($properties) {
     $store_credit = pg_credit_account_view(USER_ID, (string) get_page_type_url('view order'), time());
     $reward_points_credit = $store_credit['convert'];
 
+    // The link to a request about the person's personal data (privacy_request.php).
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_request_form.php');
+    $privacy_request = pg_privacy_request_account_view();
+
     $contact = db_item(
         "SELECT
             first_name,
@@ -403,6 +408,7 @@ function get_my_account($properties) {
         'reward_points' => $reward_points,
         'reward_points_credit' => $reward_points_credit,
         'store_credit' => $store_credit,
+        'privacy_request' => $privacy_request,
         'my_account_profile_url' => get_page_type_url('my account profile'),
         'first_name' => $first_name,
         'last_name' => $last_name,

@@ -949,6 +949,97 @@ function api_sales_watch_closed_present($closed, $products) {
 
 }
 
+// The ad services' events (includes/fn/ad_conversions_log.php): per service
+// the counts of the last 30 days and the newest refusals. A read only.
+function api_reports_ad_conversions($params) {
+
+	api_ok(api_ad_conversions_present(pg_ad_conversion_report(time())));
+
+}
+
+// GET /reports/ad-conversions' answer from pg_ad_conversion_report(). Pure.
+function api_ad_conversions_present($report) {
+
+	$services = array();
+
+	foreach ($report['services'] as $service) {
+
+		$errors = array();
+
+		foreach ($service['errors'] as $error) {
+			$errors[] = array(
+				'at'          => api_time($error['at']),
+				'event'       => (string)$error['event'],
+				'status_code' => ((int)$error['status_code'] > 0) ? (int)$error['status_code'] : null,
+				'error'       => (string)$error['error']
+			);
+		}
+
+		$days = array();
+
+		foreach ($service['days'] as $day) {
+			$days[] = array(
+				'day'              => (string)$day['day'],
+				'sent'             => (int)$day['sent'],
+				'failed'           => (int)$day['failed'],
+				'sent_with_person' => (int)$day['sent_with_person'],
+				'share'            => ($day['share'] === null) ? null : (int)$day['share']
+			);
+		}
+
+		$services[] = array(
+			'service'   => (string)$service['service'],
+			'name'      => (string)$service['name'],
+			'connected' => (bool)$service['connected'],
+			'events'    => array_values(array_map('strval', $service['events'])),
+			'waiting'   => (int)$service['waiting'],
+			'totals'    => array(
+				'sent'             => (int)$service['totals']['sent'],
+				'failed'           => (int)$service['totals']['failed'],
+				'sent_with_person' => (int)$service['totals']['sent_with_person'],
+				'share'            => ($service['totals']['share'] === null) ? null : (int)$service['totals']['share']
+			),
+			'days'      => $days,
+			'errors'    => $errors
+		);
+
+	}
+
+	return array('services' => $services);
+
+}
+
+// What api_reports_ad_conversions() answers with, declared for the OpenAPI
+// document.
+function api_ad_conversions_report_schema() {
+
+	$counts = array(
+		'sent'             => 'integer',
+		'failed'           => 'integer',
+		'sent_with_person' => 'integer',
+		'share'            => 'integer?'
+	);
+
+	return array(
+		'services' => array(array(
+			'service'   => 'string',
+			'name'      => 'string',
+			'connected' => 'boolean',
+			'events'    => 'string[]',
+			'waiting'   => 'integer',
+			'totals'    => $counts,
+			'days'      => array(array('day' => 'date') + $counts),
+			'errors'    => array(array(
+				'at'          => 'datetime?',
+				'event'       => 'string',
+				'status_code' => 'integer?',
+				'error'       => 'string'
+			))
+		))
+	);
+
+}
+
 // What api_reports_sales_watch() answers with, declared for the OpenAPI
 // document.
 function api_sales_watch_report_schema() {

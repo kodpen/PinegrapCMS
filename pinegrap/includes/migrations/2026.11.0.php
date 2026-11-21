@@ -251,7 +251,10 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipment_problems();       // 11.0.259
 	upgrade_2026_11_0_privacy_requests();        // 11.0.260
 	upgrade_2026_11_0_marketplace_step_unit();   // 11.0.261
+	upgrade_2026_11_0_customer_rhythm();         // 11.0.262
 	upgrade_2026_11_0_feedback_surveys();        // 11.0.263
+	upgrade_2026_11_0_pick_pack();               // 11.0.264
+	upgrade_2026_11_0_lead_journey();            // 11.0.265
 
 }
 
@@ -8685,5 +8688,205 @@ function upgrade_2026_11_0_feedback_surveys() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Communication: the tables of satisfaction surveys (surveys and their answers) were added; nothing is sent until a survey is made and switched on.');
+
+}
+
+// Pick and pack (11.0.264; includes/fn/pick_pack.php). A shelf address per
+// product and stock location, pick waves and the addresses in each, and one
+// pack row per address (orders' ship_to_id) with its scan counts. None of the
+// four holds customer data; an order's deletion removes its wave and pack
+// rows (delete_order()), a product's deletion its shelf addresses
+// (pg_pb_delete_product()). The "Packing only" right is a column of its own,
+// read for role 3 only (roles 0-2 and the orders right hold the screens).
+function upgrade_2026_11_0_pick_pack() {
+
+	install_create_table('product_bins', "CREATE TABLE product_bins (
+		product_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		location_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		bin          VARCHAR(40) NOT NULL DEFAULT '',
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (product_id, location_id),
+		KEY idx_location_bin (location_id, bin)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('pick_waves', "CREATE TABLE pick_waves (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name         VARCHAR(100) NOT NULL DEFAULT '',
+		location_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		status       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		single_item  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		rule         TEXT NULL,
+		picked       TEXT NULL,
+		created_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_status_created (status, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('pick_wave_orders', "CREATE TABLE pick_wave_orders (
+		wave_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		order_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		removed_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (wave_id, ship_to_id),
+		KEY idx_ship_to (ship_to_id),
+		KEY idx_order (order_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('order_packs', "CREATE TABLE order_packs (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		wave_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		status       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		packer_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		started_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		packed_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		short_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		units        INT UNSIGNED NOT NULL DEFAULT 0,
+		scanned      INT UNSIGNED NOT NULL DEFAULT 0,
+		refused      INT UNSIGNED NOT NULL DEFAULT 0,
+		scan_lines   TEXT NULL,
+		missing      TEXT NULL,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_ship_to (ship_to_id),
+		KEY idx_order (order_id),
+		KEY idx_status_packed (status, packed_at),
+		KEY idx_packer_packed (packer_id, packed_at),
+		KEY idx_wave (wave_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (install_table_exists('user')) {
+		install_add_column('user', 'manage_packing', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	} else {
+		install_skipped('user does not exist, skipped');
+	}
+
+	install_note('Orders: the tables for shelf addresses, pick waves and packs, and the "Packing only" user right, were added; nothing changes until they are used.');
+
+}
+
+// Customer rhythm (2026.11.0, 11.0.262; includes/fn/customer_rhythm_pass.php).
+//
+// One row per customer, keyed by the Customers Report's customer key
+// (pg_customer_value_key(): a hash of the billing e-mail, else c<contact>),
+// written by the nightly pass in the general job. The row keeps the own
+// interval and the stage as fixed at the last order, so a stage only moves
+// forward between orders and each move is seen once. stage: 0 none,
+// 1 Regular, 2 Due, 3 Late, 4 Slipping away, 5 Lost, 6 Won back. Amounts are
+// minor units of the base currency; chance is a per cent. No name, e-mail or
+// address; a marketplace buyer gets no row. No column is added to an
+// existing table.
+function upgrade_2026_11_0_customer_rhythm() {
+
+	install_create_table('customer_rhythm', "CREATE TABLE customer_rhythm (
+		id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		customer_key        VARCHAR(24) CHARACTER SET ascii NOT NULL DEFAULT '',
+		contact_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		orders              INT UNSIGNED NOT NULL DEFAULT 0,
+		first_order_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		last_order_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		last_order_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		interval_days       SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		avg_order           INT UNSIGNED NOT NULL DEFAULT 0,
+		stage               TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		stage_before        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		stage_at            INT UNSIGNED NOT NULL DEFAULT 0,
+		chance              TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		expected_value      INT UNSIGNED NOT NULL DEFAULT 0,
+		next_due_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		held_back           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		came_back_order_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_customer_key (customer_key),
+		KEY idx_contact (contact_id),
+		KEY idx_stage_at (stage, stage_at),
+		KEY idx_next_due (next_due_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Orders: a table for each customer\'s own order rhythm was added; the general job fills it every night.');
+
+}
+
+// 11.0.265 - The visitor journey's own store (owner, poll 194): a browser
+// that said yes to the cookie notice's marketing category (lead_browsers,
+// keyed by the sha256 of its cookie's random key), that browser's visits
+// (lead_visits, their own copy since visitors is trimmed by month), the
+// journey's own rows (contact_journey) and one score row per contact
+// (contact_scores). No column on visitors or contacts; no IP, user agent or
+// form content in any of the four.
+function upgrade_2026_11_0_lead_journey() {
+
+	install_create_table('lead_browsers', "CREATE TABLE lead_browsers (
+		id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		key_hash      CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		contact_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		consent_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		tied_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		last_seen_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_key_hash (key_hash),
+		KEY idx_contact (contact_id),
+		KEY idx_last_seen (last_seen_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('lead_visits', "CREATE TABLE lead_visits (
+		id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		browser_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		contact_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		visitor_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		started_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		channel        VARCHAR(20) NOT NULL DEFAULT '',
+		campaign       VARCHAR(100) NOT NULL DEFAULT '',
+		referrer_host  VARCHAR(150) NOT NULL DEFAULT '',
+		landing_page   VARCHAR(255) NOT NULL DEFAULT '',
+		pages          TEXT NULL,
+		PRIMARY KEY (id),
+		KEY idx_browser_started (browser_id, started_at),
+		KEY idx_contact_started (contact_id, started_at),
+		KEY idx_started (started_at),
+		KEY idx_visitor (visitor_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('contact_journey', "CREATE TABLE contact_journey (
+		id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		contact_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		at              INT UNSIGNED NOT NULL DEFAULT 0,
+		visit_id        BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		ref_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		detail          VARCHAR(255) NOT NULL DEFAULT '',
+		first_visit_id  BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		last_visit_id   BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_contact_at (contact_id, at),
+		KEY idx_kind_at (kind, at),
+		KEY idx_at (at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('contact_scores', "CREATE TABLE contact_scores (
+		contact_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		interest       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		fit            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		reasons        TEXT NULL,
+		topics         TEXT NULL,
+		points         TEXT NULL,
+		hot            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		hot_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		returned_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_visit_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		touched_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		scored_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (contact_id),
+		KEY idx_hot_interest (hot, interest),
+		KEY idx_touched (touched_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Contacts: the visitor journey tables were added; nothing is recorded until a visitor allows marketing cookies.');
 
 }

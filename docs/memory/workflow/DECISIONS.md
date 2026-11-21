@@ -514,6 +514,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-94.md: Under which consent do the queue's notices and the unfilled-shift call go? (owner, 2026-11-21, agent channel poll 207, channel message 11149)
 - decisions-made-product-94.md: Is a volunteer's document kept as a file? (owner, 2026-11-21, agent channel poll 208, channel message 11150)
 - decisions-made-product-94.md: What does "Go live" do? (owner, 2026-11-21, agent channel poll 209, channel message 11152)
+- decisions-made-product-95.md: Where are the rules and the earlier parts?
+- decisions-made-product-95.md: How does the exported data of an information request reach the person? (owner, 2026-11-21, in the architect's window)
+- decisions-made-product-96.md: Where are the rules and the earlier parts?
+- decisions-made-product-96.md: Does the KVKK notice depend on the distance sales switch? (owner, 2026-11-21, poll 214)
+- decisions-made-product-96.md: Where is the retention of site chats set, and is it applied at the update? (owner, 2026-11-21, poll 215)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
@@ -905,7 +910,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 
 ## Topic files that record a dated owner or architect decision
 
-- api/ad-conversions-click-ids.md: Ad click ids of the landing address (fbclid, gclid, ttclid, SC1b): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache
+- api/ad-conversions-click-ids.md: Ad click ids of the landing address (fbclid, gclid, ttclid, #10781): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache
+- api/ad-conversions.md: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: the start file, which file holds each part, the rules every change keeps, C1 to C12 with PRs, what is not built
 - api/ai-connections.md: One connection per AI provider (CX9a): where its key is kept, the key an assistant calls with, the 11.0.240 data step that moved the keys, its page on Connections and who may change it
 - api/api-change-rules.md: How the external API may change: by adding only, no version in the address, English endpoint texts, the checks every API change keeps, and what the 2026-11-17 test measured that is still open
 - api/api-content-review.md: GET /content-review and POST /content-review/{kind}/{id} (CH4): the screen's filters, the keyset over its branches, the fields, partial writes, the dry run, the scope and a user-role caller's rows
@@ -927,7 +933,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/claude-console-agents.md: Claude Console's agents (Claude Managed Agents) as Anthropic's pages state them (read 2026-11-20): MCP and vault credentials, the sandbox, waking a session, long runs; what was not found
 - api/claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address
 - api/claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope
-- api/connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (81 + 12 MCP connectors), the difference from the census's 79, adding a service
+- api/connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (84 + 12 MCP connectors), the difference from the census's 79, adding a service
 - api/mcp-compact-list.md: The MCP server's compact list (mcp_compact.php, AG7): guide_read, tools_find, tools_describe, tools_read, tools_write and the money tools by name; one OAuth resource with mcp.php; refusal codes; sizes
 - api/oauth-client-automation-platforms.md: Whether one OAuth client could serve an automation platform on every site (read 2026-11-17): the client metadata document a site reads, what Zapier, Make, Pabbly and n8n allow, why it is not used
 - commerce/address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
@@ -957,6 +963,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/gift-card-part-owed.md: How an order's gift card part is counted (architect 2026-11-17, #10259, #10260): the cards gave SUM(applied_gift_cards.amount); a return gave back order_refunds rows of type return_gift_card
 - commerce/marketplace-buybox-read.md: The hourly buybox read (2026.11.0): the Trendyol connector ability buybox, its body, header and limit, the job pass, and what marketplace_price_state keeps
 - commerce/marketplace-pricing-tab.md: Marketplaces › Settings drawer › Pricing tab and the Products in this shop row's own price and strategy (repricer RP2): what is stored, when nothing is written, the one-time requeue by the general job
+- commerce/marketplace-repricing-screen.md: Marketplace Products › Repricing view (RP3b): figure cards, one segment row with Price log, lists on the table driver, Try first notice, rank on a product row
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
 - commerce/n11-warehouse.md: Products n11 ships from its own warehouse (n11depom): read into the catalogue with sender=ALL and marked, their stock never pushed, their orders not pulled
 - commerce/order-report-ready-reports.md: Ready reports: the registry in includes/fn/ready_reports.php, view_order_report.php?ready=<key> opening one as a new unsaved report, sales by region counted as the Sales map card counts (#8691)
@@ -967,6 +974,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/payment-gateway-secrets.md: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #3058; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit
 - commerce/payment-iyzico-refusals.md: iyzico card refusals (PR #8517): the visitor sentence by error code, the Site Log line with order, payment id, error group and mdStatus, the 3-D Secure return stopping at a failed verification
 - commerce/payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
+- commerce/pick-pack-tables.md: Pick and pack's four tables and their keys, the reserved `lines` column, what an order's deletion removes, the "Packing only" right user.manage_packing
 - commerce/place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country
 - commerce/product-form-upload-field.md: The File Upload field of product forms: its rule in form_fields.rules, the check, place and keep functions, who opens the file in get_file.php, the one remove function
 - commerce/product-form-upload-sweep.md: The general job's sweep of a product form's uploaded files in carts that never became an order: 30 days after the cart's last touch, what counts as a touch, how the pass walks, orders never swept
@@ -1194,9 +1202,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
 - ui/connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection
 - ui/connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button
+- ui/connections-payment-gateways-page.md: The card gateways on Connections (CX11g1): each gateway of the Payment Gateway list has a page with its keys; the card keeps the choice, Mode, Transaction Type, shop options
 - ui/connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate
 - ui/connections-sms-providers-page.md: Netgsm's, İleti Merkezi's and Twilio's pages on Connections (CX11d2): each account typed there under the Communication gate; the SMS card keeps the switch, the Provider select and the connection
 - ui/dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's card: functions, the two palettes, what stays byte for byte, the fixtures test
+- ui/dashboard-v2-ai-card.md: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, proposals, giving Claude a job through ws_send, the chat box; the daily summary
 - ui/dashboard-v2-brief.md: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js
 - ui/dashboard-v2-drawn-look.md: The new dashboard's drawn look (visual pass V): the --pgd-* palette every part reads, the frame and faces, the drawn Assistant and goals, the differences kept on purpose
 - ui/dashboard-v2-engagement-card.md: New dashboard's Online Engagement card (engagement): what it shows when nobody is on the site (the last visits, Last visits list), the time used, the bounded read, when it sends empty
@@ -1226,10 +1236,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-overview.md: The Artifact Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part
 - ui/image-editor-picture-to-layer.md: Convert to a layer in the Artifact Canvas (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
 - ui/image-editor-rail.md: The Artifact Canvas rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
+- ui/image-editor-send.md: The Artifact Canvas's main button as a split button (#10858): the chevron's menu from M.sendMenu(), send to a Workspace channel, Download, who is offered what from a channel and from the File Manager
 - ui/image-editor-subject.md: The Artifact Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
 - ui/image-editor-touch.md: The Artifact Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick
 - ui/image-editor-upload-setting.md: The Artifact Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
 - ui/image-editor-video-files.md: Artifact Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
+- ui/image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - ui/list-seo-details.md: A click on the SEO score of the Pages and Products lists loads the analysis into the Details panel under the SEO line (no drawer); the run buttons and failure lines there
 - ui/list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
@@ -1473,6 +1485,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, TD1): tasks in columns, decisions one list of wide cards, each kind of file a card; My tasks keeps its rows
 - workspace/workspace-channel-screen.md: The Workspace channel screen as redrawn (C1–C8) and its card look (CL1-CL4, what it left alone): what every change keeps, the phone rules, who changes the design, where each part is
 - workspace/workspace-channel-summary-board-memory.md: The channel's Summary and Board tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the Memory tab is in workspace-memory-tab.md
+- workspace/workspace-channel-timeline.md: Conversation timeline beside the channel tabs (Channel info on a narrow screen): writer colours, waits, hover card with first words and tool result, click to open, live
 - workspace/workspace-command-flow.md: The channel's flows in the composer's "/" list and /flow (/akış) (CC5 of channel-commands, #10301): which flows, read when, what a pick does, a typed name, the customer of a channel about one
 - workspace/workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
 - workspace/workspace-command-overview.md: Start file of the / commands in a Workspace channel's writing box: what they are, what binds them, which workspace-command-* file holds each part, how a new command is added

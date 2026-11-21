@@ -61,6 +61,68 @@
         body.appendChild(row);
     }
 
+    // A quiet small button to a settings row, or the line naming who
+    // opens it.
+    function quietAction(part) {
+        var el = pgDash.el;
+
+        if (part.button) {
+            var link = el("a", "pg-dash-btn-sm", part.button.label);
+            link.href = part.button.url;
+            return link;
+        }
+
+        return part.ask ? el("p", "pg-dash-ai-quiet-ask", part.ask) : null;
+    }
+
+    // While Claude is not connected and the card holds something else: one
+    // row at the top, the small plug tile, the state and what is missing,
+    // and Connect Claude at its right (or who connects it under the text).
+    function notice(body, part) {
+        var el = pgDash.el;
+        var row = el("div", "pg-dash-ai-notice");
+        var icon = el("span", "pg-dash-ai-notice-icon");
+        icon.setAttribute("aria-hidden", "true");
+        icon.appendChild(el("i", "bi bi-plug"));
+        row.appendChild(icon);
+
+        var main = el("div", "pg-dash-ai-notice-main");
+        main.appendChild(el("strong", "pg-dash-ai-notice-title", part.title));
+        main.appendChild(el("p", "pg-dash-ai-notice-text", part.text));
+        row.appendChild(main);
+
+        var action = quietAction(part);
+        if (action) {
+            (part.button ? row : main).appendChild(action);
+        }
+        body.appendChild(row);
+    }
+
+    // While no application agent is active: a grey block at the foot saying
+    // what an agent and its channel are, and where one is connected.
+    function agentNote(body, part) {
+        var el = pgDash.el;
+
+        if (!part) {
+            return;
+        }
+
+        var block = el("section", "pg-dash-ai-agents");
+        block.setAttribute("aria-labelledby", "pg_dash_ai_agents_title");
+        var title = el("h3", "pg-dash-rows-title", part.title);
+        title.id = "pg_dash_ai_agents_title";
+        block.appendChild(title);
+        (part.lines || []).forEach(function (line) {
+            block.appendChild(el("p", "pg-dash-ai-agents-line", line));
+        });
+
+        var action = quietAction(part);
+        if (action) {
+            block.appendChild(action);
+        }
+        body.appendChild(block);
+    }
+
     // The daily summary as Claude's message: the avatar beside a bubble with
     // the kicker (when it was written) and three lines, each opening the
     // message in its channel.
@@ -115,6 +177,12 @@
     function proposals(body, data) {
         var el = pgDash.el;
         var part = data.proposals || {};
+
+        // While Claude is not ready only proposals that wait are drawn.
+        if (!(part.chips || []).length && !part.none) {
+            return;
+        }
+
         body.appendChild(el("h3", "pg-dash-rows-title", part.title));
 
         if (!(part.chips || []).length) {
@@ -719,15 +787,25 @@
     pgDash.renderers.ai = function (body, data) {
         headChip(body, data.chip);
 
+        // Claude not connected: the notice above what the agents bring, or
+        // the offer alone when there is nothing else.
         if (!data.connected) {
-            offline(body, data);
-            return;
+            if (data.notice) {
+                notice(body, data.notice);
+                questions(body, data);
+                proposals(body, data);
+                chat(body, data);
+            } else {
+                offline(body, data);
+            }
+        } else {
+            summary(body, data);
+            questions(body, data);
+            proposals(body, data);
+            job(body, data);
+            chat(body, data);
         }
 
-        summary(body, data);
-        questions(body, data);
-        proposals(body, data);
-        job(body, data);
-        chat(body, data);
+        agentNote(body, data.agent);
     };
 })();

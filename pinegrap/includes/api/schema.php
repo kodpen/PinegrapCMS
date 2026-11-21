@@ -3812,6 +3812,19 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'reports.ad_conversions',
+			'method'  => 'GET',
+			'path'    => '/reports/ad-conversions',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_ad_conversions',
+			'returns' => 'AdConversionsReport',
+			'summary' => 'Events sent from the server to Meta, GA4 and TikTok: daily counts and the last errors',
+			'description' => 'Per ad service (meta_capi, ga4_mp, tiktok_events): connected, the events it gets, the events waiting, and for each of the last 30 site days the events sent, failed (refused or given up) and the share of sent events that carried the person. errors lists the newest refusals in the service\'s own words. Read only: keys are typed on the panel.',
+			'details' => 'Days are newest first; share is null on a day with nothing sent. The person is hashed contact data and browser ids, sent only with the buyer\'s consent; no e-mail, phone, click id or browser id is ever answered. A service that refused every event of a day raises the operations alert ad_events_refused. There is no write route: the keys are typed only on the Connections pages.',
+			'params'  => array()
+		),
+
+		array(
 			'id'      => 'reports.cart_recovery',
 			'method'  => 'GET',
 			'path'    => '/reports/cart-recovery',

@@ -340,15 +340,21 @@ function test_workspace_flow_rows_get_reads_through_the_store()
 	pg_assert_contains('ws_step_row_match(', workspace_flow_rows_get_test_source('ws_step_row_get_do'));
 
 	$api = '';
+	$named = false;
 
 	foreach (ws_api_routes() as $route) {
+		if (($route['id'] ?? '') === 'workspace.flows.create') {
+			$api = (string) ($route['details'] ?? '');
+		}
+
 		foreach ((array) ($route['params'] ?? array()) as $field) {
-			if ((($field['name'] ?? '') === 'nodes') && (strpos((string) ($field['description'] ?? ''), 'row_get') !== false)) {
-				$api = (string) $field['description'];
+			if ((($field['name'] ?? '') === 'nodes') && (strpos((string) ($field['description'] ?? ''), 'rows_get') !== false)) {
+				$named = true;
 			}
 		}
 	}
 
-	pg_assert_contains('rows_get, which reads the rows of a workflow table', $api, 'the API names the box');
+	pg_assert_true($named, 'the nodes parameter names the box');
+	pg_assert_contains('rows_get, which reads the rows of a workflow table', $api, 'the API documents the box');
 	pg_assert_contains('match, the first row that meets conditions', $api);
 }

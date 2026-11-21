@@ -91,6 +91,7 @@
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
 - connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
 - connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button [decision: here]
+- connections-payment-gateways-page.md: The card gateways on Connections (CX11g1): each gateway of the Payment Gateway list has a page with its keys; the card keeps the choice, Mode, Transaction Type, shop options [decision: here]
 - connections-provider-page.md: Google's and Microsoft's own pages on Connections (CX10a, #10512): application, accounts, both redirect addresses, Google's APIs to turn on, the "API not enabled" error, the verification warning
 - connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
 - connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
@@ -132,7 +133,8 @@
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
 - dashboard-scroll-regions.md: Dashboard card lists that scroll inside the square card become named keyboard regions (pg_widget_scroll_regions() in welcome.php)
 - dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's card: functions, the two palettes, what stays byte for byte, the fixtures test [decision: here]
-- dashboard-v2-ai-card.md: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, the proposals waiting for the person, giving Claude a job through ws_send, the chat box; the daily summary [decision: decisions-made-panel-13.md, decisions-made-panel-9.md]
+- dashboard-v2-ai-card-claude-off.md: Dashboard Assistant card while Claude is not connected: the pitch alone or the notice above questions, proposals and the agent chat; the agent note while no application agent is active [decision: decisions-made-panel-13.md]
+- dashboard-v2-ai-card.md: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, proposals, giving Claude a job through ws_send, the chat box; the daily summary [decision: decisions-made-panel-13.md, decisions-made-panel-9.md]
 - dashboard-v2-ai-chat-keep.md: Dashboard Assistant card chat box after a reload: the browser keeps the talk's ids only, reads the chain again through ws_sync, last 5 lines, 24 hours, New chat; why its links say "Open it"
 - dashboard-v2-brief.md: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js [decision: here]
 - dashboard-v2-cards-look.md: The new dashboard's shop and other cards as drawn (pictures 16-19, V5 #8315): what each card draws, the data added for it, the differences kept on purpose
@@ -290,6 +292,7 @@
 - image-editor-crop.md: The Artifact Canvas's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
 - image-editor-data-layer.md: The Artifact Canvas's data layer (DV1a, #10752): a Workspace table as a chart or a plain table, the description it holds, its check, grouping, the marks the browser draws, the shared fixture
 - image-editor-data-menu.md: The Artifact Canvas's Data menu (DV2, #10892): Data in Import, the two-step picker (tables, then sample cards of the kinds that fit), the layer's panel groups, the actions data_tables and data_rows
+- image-editor-data-show.md: "Show on a canvas" on a Data table's head (DV3): As a chart / As a table, the picker's step two on the table, a new canvas in the table's channel, the table bound read-only, who may
 - image-editor-draw.md: The Artifact Canvas's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
 - image-editor-encode.md: The Artifact Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 - image-editor-eraser.md: The Artifact Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place [decision: decisions-made-product-30.md]
@@ -324,6 +327,7 @@
 - image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas
 - image-editor-scissors.md: The Artifact Canvas's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
 - image-editor-select.md: How the Artifact Canvas picks layers: Select's click, Shift, box, Select all, groups, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
+- image-editor-send.md: The Artifact Canvas's main button as a split button (#10858): the chevron's menu from M.sendMenu(), send to a Workspace channel, Download, who is offered what from a channel and from the File Manager [decision: here]
 - image-editor-sound.md: Music and sounds on an animation (V4): doc.sounds on the whole timeline, sounds from Files, the rows under the tracks, the Sound panel, Web Audio in step with the play bar, the sound_files action [decision: decisions-made-product-31.md]
 - image-editor-sticker.md: The Artifact Canvas's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-subject-brushes.md: The Artifact Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
@@ -343,7 +347,7 @@
 - image-editor-video-files.md: Artifact Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it [decision: decisions-made-product-56.md]
 - image-editor-video-reopen.md: A video project saved and opened again (V9, #8701): clips and sounds by fileId, pictures kept as files, the door from Files (FV1), an unsaved canvas's video replaced
 - image-editor-warp.md: The Artifact Canvas's Warp tool: presets and an envelope mesh kept as l.warp, drawn by mapping the flattened outline; Expand bakes it into the path
-- image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
+- image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers [decision: here]
 - import-campaign-profiles-screen.md: import_email_campaign_profiles.php on the wide edit layout (step B11): the Import CSV and File Format cards, the Summary with the name-match warning, the save bar
 - inline-feedback-placement.md: Where a panel field's error message goes on Bootstrap 6 (pgPlaceInlineFeedback(), #2578) and how script-set marks get aria-invalid and their message (pgFieldInvalid(), class observer, #3026)
 - installer-wizard-a11y.md: Installer wizard (install/index.php) from the keyboard and a screen reader: focus on step change, step status, rail current/Completed, step problems, the announced run, choice cards

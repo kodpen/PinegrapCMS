@@ -38,6 +38,7 @@
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
 - agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback [decision: decisions-made-schema-21.md, decisions-made-workspace-33.md]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
+- agent-instructions-note-lines.md: The agent instructions' block (KD4b): a plan or long explanation is a note shared in the channel, changed in place with its revision; API routes only, no repository tool
 - agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box [decision: decisions-made-workspace-32.md]
 - agent-key-trial-2.md: The agent's own side tried live on dev (2026-11-11) with an application agent's key: POST agent-wake and its dry run, a wake's request, brief and text answer, the agent's edit of its own message
 - agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief [decision: here]
@@ -81,6 +82,8 @@
 - calls-screen.md: Workspace calls of two people on the channel screen (CL2, #10522): head buttons, the ring and Decline, the call window kept across channels, ws_call_sync each second, STUN default
 - calls-server.md: Workspace calls on the server (CL1, #10499, step 11.0.243): tables, start/join/leave/end, signals read by their member only, the 2-minute end, who may, limits, read-only API
 - calls-settings.md: The Calls card of Workspace settings (CL6, #10608): off until turned on, STUN addresses, the TURN relay with its sealed secret, member-only time-limited credentials, the browser's connection test
+- calls-share-stage.md: How a Workspace call shows a shared screen (CL4, #10908): the window's stage, the tile rail, the phone layout, smaller and full screen, the sharer's own notice
+- calls-share.md: Screen sharing in a Workspace call (CL4, #10908): one share at a time by share/unshare marks, the share ends when its sharer leaves, the screen line, the share button
 - calls-signalling.md: Which live read carries a Workspace call (CL1 census): ws_sync and the guest page's state, the data/temp/ws_calls_live stamp that keeps an idle channel's cost, how often a browser in a call looks
 - canvas-binding-line.md: An application's binding of a table to a canvas shows in the channel as a line with Undo (CO7d): the system line and its ws_refs, the reader's words, who may undo, what Undo puts back
 - canvas-bridge.md: A live page's data bridge (#8947): page to shell to panel to site and back, the message shape, the canvas named by the card and never the page, the bounds and the stop, the who call, the proofs
@@ -119,6 +122,7 @@
 - mail-away.md: "I am away" in My e-mail settings (IB12): ws_profiles.mail_away (11.0.211), the text once per sender, the stand-in for conversations given to an away person, the team plan [decision: decisions-made-workspace-29.md]
 - mail-blocks.md: A mailbox's block list (IB4, IB4b): Block sender under a mail, who may block where, what a blocked mail keeps, the list with Allow again on the Mailboxes card, the 30-day sweep, the schema step [decision: here]
 - mail-bounce-dev-check.md: Why conversation 48 on dev seemed to get no "Not delivered" line after an answer to a mistyped domain, and why mail_bounces has no row for a Workspace bounce (checked 2026-11-13) [decision: decisions-made-workspace-23.md]
+- mail-box-drawer.md: A mailbox's drawer in Site Settings › Mailboxes since #10934: head with the state pill, tabs General / Reading / Answers / Routing, the Advanced fold, routes as rows, the foot with Remove mailbox
 - mail-box-remove.md: Removing a mailbox (Site Settings › Mailboxes, MT1 #10900): the row, its settings, password, rules and own blocks go; every conversation stays; the check, posted name and confirm [decision: here]
 - mail-card-answered.md: The conversation's mail card in a channel since MA10b (#9453): "Answered · who · time" with no column, the Open e-mail link to Communication, what left the card, the touch after an answer [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - mail-card-quote.md: What a reply's quote line says of a mail card in a channel (plain() and quoteText() in workspace.js): the head, Show all and refused files left out, blocks read apart (#9011)
@@ -313,6 +317,7 @@
 - workspace-channel-settings.md: Channel templates, voice transcripts and the GitHub card in Site Settings (Channels, mail and voice) and Workspace Settings: names, shared saves, where the GitHub links went
 - workspace-channel-sound.md: The tone on the Workspace channel screen when something for the person arrives out of their sight: which inbox lines sound, the menu switch, why a hidden tab stays silent [decision: decisions-made-workspace-14.md, decisions-made-workspace-18.md]
 - workspace-channel-summary-board-memory.md: The channel's Summary and Board tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the Memory tab is in workspace-memory-tab.md [decision: here]
+- workspace-channel-timeline.md: Conversation timeline beside the channel tabs (Channel info on a narrow screen): writer colours, waits, hover card with first words and tool result, click to open, live [decision: here]
 - workspace-checklist-to-task.md: A checklist item of a Workspace message made into a task (ws_checklist_item_task(), step 9b): read as /task reads it, item tied by message + words, button, tag, edits, rights, API
 - workspace-claude-bootstrap.md: Claude's routine reads its instructions and each request's briefing (ws_ai_briefing()) from the site; the short versioned bootstrap pasted on claude.ai and the card's warning
 - workspace-claude-daily-summary.md: The daily summary Claude writes for the dashboard's Assistant card: its setting, how its request is queued and told apart, where the card finds the message, why config holds no message id [decision: decisions-made-schema-8.md]

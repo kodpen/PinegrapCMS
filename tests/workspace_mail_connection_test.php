@@ -108,9 +108,9 @@ function test_workspace_mail_box_form_connection()
 	pg_assert_contains('name="channel_id" id="ws_mail_0_channel" required>', $new, 'the channel is required');
 	pg_assert_contains('id="ws_mail_0_name" maxlength="100" required', $new, 'the name is required');
 	pg_assert_contains('id="ws_mail_0_address" maxlength="255" required', $new, 'the address is required');
-	pg_assert_contains('<div class="md:col-4 d-none" data-ws-mail-when="after_fetch=move">', $new, 'the move folder hides while mail is marked read');
-	pg_assert_contains('<div class="md:col-5" data-ws-mail-when="reply_via=box">', $new, 'the sending server shows while the mailbox sends');
-	pg_assert_contains('<div class="md:col-5 d-none" data-ws-mail-when="reply_via=box">', $html, 'the sending server hides for a connected account');
+	pg_assert_contains('<div class="md:col-6 d-none" data-ws-mail-when="after_fetch=move">', $new, 'the move folder hides while mail is marked read');
+	pg_assert_contains('<div class="md:col-8" data-ws-mail-when="reply_via=box">', $new, 'the sending server shows while the mailbox sends');
+	pg_assert_contains('<div class="md:col-8 d-none" data-ws-mail-when="reply_via=box">', $html, 'the sending server hides for a connected account');
 }
 
 function test_workspace_mail_connect_button()

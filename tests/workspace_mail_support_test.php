@@ -128,7 +128,7 @@ function test_workspace_mail_support_form()
 	$script = ws_mail_settings_script();
 	pg_assert_contains("support.checked = (target.value !== 'mailbox');", $script, 'a new box kept in the mailbox itself starts plain');
 	pg_assert_contains("support.removeAttribute('data-ws-mail-new');", $script, 'until the person sets the switch');
-	pg_assert_contains("(select.type === 'checkbox') ? (select.checked ? select.value : '')", $script, 'a switch shows its half while on');
+	pg_assert_contains("(control.type === 'checkbox') ? (control.checked ? control.value : '')", $script, 'a switch shows its half while on');
 }
 
 function test_workspace_mail_support_triage_body()

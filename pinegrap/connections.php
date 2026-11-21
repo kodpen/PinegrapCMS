@@ -175,6 +175,21 @@ function connections_contact_may_manage($user) {
 
 }
 
+// May the user change a card gateway's keys? They came from the Payment
+// Methods card of Site Settings › Ecommerce, so they keep that category's
+// gate.
+function connections_commerce_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('commerce', $user);
+
+}
+
 // May the user connect an account for mailboxes on Google's or Microsoft's
 // page? The action came from Site Settings › Mailboxes, so it keeps that
 // category's gate.
@@ -627,6 +642,63 @@ if ($_POST) {
 		}
 
 		header('Location: ' . $screen_url . '?service=signin_apple');
+		exit();
+
+	}
+
+	// A card gateway's keys, saved or removed on its page under the gate of
+	// the Payment Methods card they came from. A refused box writes nothing.
+	// Which gateway takes cards, its Mode and Transaction Type are still
+	// chosen on the card.
+	if (in_array($action, array('gateway_save', 'gateway_remove'), true)) {
+
+		$gateway_id = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$gateway_definitions = pg_payment_gateway_connections();
+		$gateway_definition = isset($gateway_definitions[$gateway_id]) ? $gateway_definitions[$gateway_id] : null;
+
+		if (($gateway_definition !== null) && connections_commerce_may_manage($user)) {
+
+			$gateway_stored = pg_payment_gateway_connection_stored();
+
+			if ($action === 'gateway_remove') {
+
+				$gateway_values = array_fill_keys(array_keys($gateway_definition['fields']), '');
+
+			} else {
+
+				$gateway_decision = pg_payment_gateway_keys_decide($gateway_definition, $_POST, $gateway_stored, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
+
+				foreach ($gateway_decision['marks'] as $gateway_field => $gateway_mark) {
+					$liveform->mark_error($gateway_field, $gateway_mark);
+				}
+
+				$gateway_values = $gateway_decision['values'];
+
+			}
+
+			if ($gateway_values) {
+
+				$gateway_sets = array();
+
+				foreach ($gateway_values as $gateway_column => $gateway_value) {
+					$gateway_sets[] = $gateway_column . " = '" . escape($gateway_value) . "'";
+				}
+
+				db("UPDATE config SET " . implode(', ', $gateway_sets) . ", last_modified_user_id = '" . (int) $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()");
+
+			}
+
+			if ($action === 'gateway_remove') {
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $gateway_definition['label'])));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $gateway_definition['label'])), $_SESSION['sessionusername']);
+			} elseif (!$liveform->check_form_errors() && $gateway_values) {
+				$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $gateway_definition['label'])));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $gateway_definition['label'])), $_SESSION['sessionusername']);
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($gateway_definition !== null) ? '?service=' . $gateway_id : ''));
 		exit();
 
 	}
@@ -1487,6 +1559,114 @@ function connections_signin_apple_page($page, $may_manage, $can_seal) {
 						<span class="pg-text-meta d-block">' . h($switched_on ? lang('The button is switched on.') : lang('The button is switched off.')) . '</span>
 					</span>
 					<span class="connections-row-side">' . connections_state_pill($ready ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* A card gateway's page (iyzico, Stripe (classic), PayPal Payflow Pro,
+   PayPal Payments Pro, Authorize.Net, ClearCommerce, First Data, Sage):
+   "Connection details" holds the keys the Payment Methods card held (a
+   secret never drawn back), for who may open Site Settings › Ecommerce;
+   Status has Disconnect while any key is stored; "Where it is used" leads
+   to the card, where the gateway, its Mode and Transaction Type are chosen. */
+
+function connections_gateway_page($page, $id, $may_manage) {
+
+	$definitions = pg_payment_gateway_connections();
+	$definition = $definitions[$id];
+	$stored = pg_payment_gateway_connection_stored();
+	$connected = pg_payment_gateway_connected($definition, $stored);
+	$active = defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY === $definition['gateway'])
+		&& defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD;
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$fields = '';
+
+		foreach ($definition['fields'] as $column => $field) {
+
+			$value = isset($stored[$column]) ? (string) $stored[$column] : '';
+			$help = isset($field['help']) ? '<div class="pg-field-help">' . h($field['help']) . '</div>' : '';
+
+			if ($field['kind'] === 'pem') {
+
+				$options = '<option value="">-' . h(lang('None')) . '-</option>';
+				$matched = ($value === '');
+				$pem_files = db_items("SELECT name FROM files WHERE type = 'pem' ORDER BY name");
+
+				foreach ((is_array($pem_files) ? $pem_files : array()) as $pem_file) {
+					$matched = $matched || ($pem_file['name'] === $value);
+					$options .= '<option value="' . h($pem_file['name']) . '"' . (($pem_file['name'] === $value) ? ' selected="selected"' : '') . '>' . h($pem_file['name']) . '</option>';
+				}
+
+				// A stored name no PEM file carries any more stays chosen,
+				// marked, so a save does not silently clear it.
+				if (!$matched) {
+					$options .= pg_stored_file_option($value, pg_stored_file_exists($value));
+				}
+
+				$input = '<select class="pg-input" id="' . h($column) . '" name="' . h($column) . '" data-pg-combobox>' . $options . '</select>';
+				$help = '<div class="pg-field-help">' . h(lang('The certificate file First Data gave you, uploaded to Files.')) . '</div>';
+
+			} elseif ($field['kind'] === 'text') {
+
+				$input = '<input type="text" class="pg-input font-monospace" id="' . h($column) . '" name="' . h($column) . '" value="' . h($value) . '" maxlength="' . (int) $field['width'] . '" autocomplete="off" spellcheck="false">';
+
+			} else {
+
+				$input = '<input type="password" class="pg-input font-monospace" id="' . h($column) . '" name="' . h($column) . '" value="" maxlength="' . (int) $field['width'] . '" autocomplete="new-password" spellcheck="false"'
+					. (($value !== '') ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>';
+
+			}
+
+			$fields .= '
+				<div>
+					<label class="pg-field-label" for="' . h($column) . '">' . h($field['label']) . '</label>
+					' . $input . '
+					' . $help . '
+				</div>';
+
+		}
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The site\'s {var:1} keys. Which gateway takes cards, its Mode and Transaction Type are chosen on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="gateway_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . $fields . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if (pg_payment_gateway_stored($definition, $stored)) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="gateway_remove" data-id="0"
+					data-confirm="' . h($active
+						? lang(array('string' => 'The {var:1} keys are removed from this site: card payments stop at checkout until they are entered again or another gateway is chosen.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} keys are removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-payments')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Card payments at checkout')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Payment Methods')) . '</span>
+						<span class="pg-text-meta d-block">' . h($active ? lang('It takes the card payments now.') : lang('Another gateway, or none, takes the card payments now.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($connected && $active) ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
 
@@ -2864,14 +3044,20 @@ if ($provider_page !== '') {
 			'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
 			'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
 			'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
+			'commerce'     => in_array($page_id, pg_connections_screen_gateway_pages(), true) && connections_commerce_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_gateway_pages(), true),
 	);
+
+	// A card gateway's page: its keys and the card that chooses it.
+	if (in_array($page_id, pg_connections_screen_gateway_pages(), true)) {
+		$page = connections_gateway_page($page, $page_id, connections_commerce_may_manage($user));
+	}
 
 	// A CAPTCHA provider's page: its keys and the card that chooses it.
 	if (in_array($page_id, array('turnstile', 'hcaptcha'), true)) {
@@ -2925,6 +3111,12 @@ if ($provider_page !== '') {
 	// boxes, under the Visitors and privacy gate.
 	if ($page_id === 'ga4_mp') {
 		$page = pg_ad_conversion_ga4_page($page, connections_privacy_may_manage($user), $can_seal);
+	}
+
+	// An ad service's events: the daily counts and the last 50, below its
+	// details, under the same gate.
+	if (in_array($page_id, pg_ad_conversion_services(), true) && connections_privacy_may_manage($user)) {
+		$page['details'] .= pg_ad_conversion_log_card($page_id);
 	}
 
 	// An AI provider's page: its key, and the assistants that use it.

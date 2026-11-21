@@ -1890,7 +1890,8 @@ function _pg_acct_staff_url($staff_page_id)
 // Favourites widget, which has no legacy page type),
 // ^^__logout_url^^, ^^__staff_url^^ (cfg staff_page_id, only for a member
 // the staff page's folder lets in), ^^__referral_url^^ (shop sites: the
-// customer's referral link while they can refer). Sections: order_history (the member's
+// customer's referral link while they can refer), ^^__privacy_request_url^^
+// (a request about the member's personal data). Sections: order_history (the member's
 // orders, newest first, each linking to the order view page), subscriptions
 // (the member's subscriptions with their actions,
 // pg_subscription_customer_section_html()), bookings (the member's upcoming
@@ -1923,6 +1924,7 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         '__logout_url'              => '',
         '__staff_url'               => '',
         '__referral_url'            => '',
+        '__privacy_request_url'     => '',
     );
     // 'orders' and 'order_view_url': the history's rows and the view order
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
@@ -1952,6 +1954,9 @@ function _pg_my_account_extras($logged_in, $cfg = array())
           . '&token=' . urlencode(isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : ''));
     $links['__staff_url'] = _pg_acct_staff_url(is_array($cfg) && isset($cfg['staff_page_id']) ? $cfg['staff_page_id'] : 0);
     $out['flags']['is_staff'] = ($links['__staff_url'] !== '');
+    // A request about the member's personal data (privacy_request.php), once
+    // the request box's table is there.
+    $links['__privacy_request_url'] = pg_schema_has('privacy_requests') ? pg_tr_script_url(_pg_acct_software_path() . '/privacy_request.php') : '';
     $out['links'] = $links;
 
     if (defined('USER_ID') && (int)USER_ID > 0) {

@@ -5,7 +5,7 @@ module: supplier_feed
 ---
 
 ## Where are the tables?
-- `supplier_feeds`, `supplier_feed_items`, `supplier_feed_runs`: step `upgrade_2026_11_0_supplier_feeds()`, label 11.0.255, all three in `get_tables()`. Columns bind: `workflow/decisions-made-schema-38.md`. The screens write `supplier_feeds` (`supplier-feed-screen.md`); the sync comes in a later step of the plan.
+- `supplier_feeds`, `supplier_feed_items`, `supplier_feed_runs`: step `upgrade_2026_11_0_supplier_feeds()`, label 11.0.255, all three in `get_tables()`. Columns bind: `workflow/decisions-made-schema-38.md`. The screens write `supplier_feeds` (`supplier-feed-screen.md`); the sync writes items and runs (`supplier-feed-sync.md`).
 
 ## How is the format told?
 - `pg_supplier_feed_format_detect()` on the first bytes after a BOM and white space: `<` is xml, `[` or `{` json, anything else csv. `pg_supplier_feed_format_detect_file()` reads 4 KB.

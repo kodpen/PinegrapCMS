@@ -6,7 +6,7 @@ module: ad_conversions_meta
 
 ## Where were these read?
 - 2026-11-20 from developers.facebook.com: `marketing-api/conversions-api/using-the-api`, `parameters/server-event`, `parameters/customer-information-parameters`, `parameters/custom-data`, `graph-api/guides/error-handling`; the answer's fields from the Ads Pixel Events reference.
-- Read them again before changing the sender (`plans/ad-conversions.md`: never from memory).
+- Read them again before changing the sender (`ad-conversions.md`: never from memory).
 
 ## What is the request?
 - `POST https://graph.facebook.com/{version}/{PIXEL_ID}/events`; the document's example uses `v27.0` (`PG_AD_CONVERSION_META_VERSION`).

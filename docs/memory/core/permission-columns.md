@@ -9,7 +9,7 @@ description: Adding a user right: column type and naming, the role-3 ladder file
 
 ## Which files must learn about a new right?
 - A right that on its own lets a role-3 user into the panel goes into every role-3 ladder, the checks that decide "may this person use the panel at all": `welcome.php` (the access refusal at the top), `get_page.php` (control panel access), `includes/fn/content.php`, `set_password.php` (where to send the user next) and `reset_password.php` (whether the mail names the panel login). Skip one and a user whose only right is the new one falls to "no access" there.
-- The sign-in path reads such columns only behind a probe in `includes/authentication.php` (`pg_user_has_erp_columns()`, `pg_user_has_ws_columns()`, `pg_user_has_erp_readonly_column()`): between new files and the upgrade, a login query naming a missing column answered "Unknown column user.manage_erp" and locked the operator out of the screen that runs the upgrade. A new column of such a family goes into its probe or gets one.
+- The sign-in path reads such columns only behind a probe in `includes/authentication.php` (`pg_user_has_erp_columns()`, `pg_user_has_ws_columns()`, `pg_user_has_erp_readonly_column()`, `pg_user_has_packing_column()`): between new files and the upgrade, a login query naming a missing column answered "Unknown column user.manage_erp" and locked the operator out of the screen that runs the upgrade. A new column of such a family goes into its probe or gets one.
 
 ## How is a right drawn and saved?
 - Through `pg_user_permission_ui($config)`, `pg_user_role_cards()`, `pg_user_permission_everything()` (`includes/user_permissions.php`) on `add_user.php`, `edit_user.php`, `import_users.php` (`ui/user-permission-rows.md`).

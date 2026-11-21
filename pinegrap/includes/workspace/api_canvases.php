@@ -49,7 +49,8 @@ function ws_canvases_api_routes()
             'handler'     => 'ws_api_canvases_get',
             'returns'     => ws_api_canvas_one_returns(),
             'summary'     => 'Read a canvas with its parts',
-            'description' => 'A canvas of a channel as one thing: its name, its channel and the parts it has - a drawing (GET /workspace/messages/{id}/canvas reads its layers), a live page (GET /workspace/messages/{id}/page reads its HTML) and the workflow tables bound to it, which its page may read or write through the panel. A part the canvas does not have is null. versions is one list over the parts, oldest first, each saying which part it belongs to; each part keeps its own numbering. A table the caller\'s owner does not reach is counted with no name and reached false. A message that carries neither a drawing nor a page answers 404 not_found.',
+            'description' => 'A canvas of a channel as one thing: its name, channel and parts - a drawing (GET /workspace/messages/{id}/canvas reads its layers), a live page (GET /workspace/messages/{id}/page reads its HTML) and the workflow tables bound to it. A part the canvas does not have is null. versions is one list over the parts, oldest first, each naming its part; each part keeps its own numbering. A message with neither a drawing nor a page answers 404 not_found.',
+            'details'     => 'The bound tables are the ones its page may read or write through the panel. A table the caller\'s owner does not reach is counted with no name and reached false.',
             'params'      => array($id),
         ),
 
@@ -62,7 +63,8 @@ function ws_canvases_api_routes()
             'dry_run'     => true,
             'returns'     => ws_api_canvas_one_returns(),
             'summary'     => 'Bind a workflow table to a canvas',
-            'description' => 'Lets the canvas\'s live page read a workflow table, or read and write it: the page asks the panel, which answers for the bound tables and no other, with the rights of the person looking at it - never with the owner\'s. Binding a table already bound changes its access. Only where the owner of the application may write in the canvas\'s channel and may change the table, for a read binding too, so a table nobody may change is not put under a page others run (403 forbidden); a table that is not there or out of the owner\'s reach is 404 not_found.' . $bound . ' One more answers 409 too_many_tables, and a canvas with no live page 409 part_missing, since a drawing reads no table: add the page first with POST /workspace/canvases/{id}/page. The answer is the canvas as GET /workspace/canvases/{id} gives it.',
+            'description' => 'Lets the canvas\'s live page read a workflow table, or read and write it, with the rights of the person looking at it. Binding a bound table changes its access. The application\'s owner must write in the channel and may change the table, even to read (403 forbidden); a table not there or out of reach is 404 not_found.' . $bound . ' One more: 409 too_many_tables; no live page: 409 part_missing (add it with POST /workspace/canvases/{id}/page). Answers the canvas.',
+            'details'     => 'The page asks the panel, which answers for the bound tables and no other, with the rights of the person looking at it - never with the owner\'s. A read binding also needs a table the owner may change, so a table nobody may change is not put under a page others run. A canvas with no live page is refused since a drawing reads no table. The answer is the canvas as GET /workspace/canvases/{id} gives it.',
             'params'      => array(
                 $id,
                 array('name' => 'table_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The workflow table (GET /workspace/tables).'),
@@ -112,7 +114,8 @@ function ws_canvases_api_routes()
             'dry_run'      => true,
             'returns'      => ws_api_canvas_one_returns(),
             'summary'      => 'Write a new version of a canvas\'s page',
-            'description'  => 'Replaces the live page of the canvas with a whole new document, kept as a new version made by the agent; the earlier ones stay among the versions and a member of the channel may undo the edit. version is the number the page part has now (GET /workspace/canvases/{id}): when it changed since, the call answers 409 conflict. On a canvas with no page, version 0 adds one beside its drawing: the same canvas then has both parts, and its tables are bound to that page. A page added at the same moment by another call answers 409 conflict. Only an agent of the channel writes, as for that route (403 forbidden). The answer is the canvas as GET /workspace/canvases/{id} gives it.',
+            'description'  => 'Replaces the live page of the canvas with a whole new document, kept as a new version made by the agent; a member may undo the edit. version is the number the page part has now (GET /workspace/canvases/{id}): when it changed since, 409 conflict. On a canvas with no page, version 0 adds one beside its drawing; a page added at the same moment by another call answers 409 conflict. Only an agent of the channel writes (403 forbidden). Answers the canvas as GET /workspace/canvases/{id}.',
+            'details'      => 'The earlier versions stay among the versions. A page added with version 0 makes the same canvas have both parts, and its tables are bound to that page. Only an agent of the channel writes, as for a page edit (PATCH /workspace/messages/{id}/page).',
             'params'       => ws_api_canvas_one_page_params($id),
         ),
 
@@ -126,7 +129,8 @@ function ws_canvases_api_routes()
             'dry_run'      => true,
             'returns'      => ws_api_canvas_one_returns(),
             'summary'      => 'Write a new version of a canvas\'s drawing',
-            'description'  => 'Draws the canvas anew from SVG, kept as a new version made by the agent, as POST /workspace/messages/{id}/canvas does with single operations; the earlier versions stay and a member may undo the edit. version is the number the drawing part has now (GET /workspace/canvases/{id}): when it changed since, the call answers 409 conflict. On a canvas with no drawing, version 0 adds one beside its page; a drawing added at the same moment by another call answers 409 conflict. The picture is drawn by the server where it can, else by the first member\'s browser that shows it (picture pending). Only an agent of the channel writes (403 forbidden).',
+            'description'  => 'Draws the canvas anew from SVG, kept as a new version made by the agent; a member may undo the edit. version is the number the drawing part has now (GET /workspace/canvases/{id}): when it changed since, 409 conflict. On a canvas with no drawing, version 0 adds one beside its page; a drawing added at the same moment by another call answers 409 conflict. The picture is drawn by the server where it can, else by the first member\'s browser that shows it (picture pending). Only an agent of the channel writes (403 forbidden).',
+            'details'      => 'The same as POST /workspace/messages/{id}/canvas does with single operations, as one whole drawing; the earlier versions stay.',
             'params'       => ws_api_canvas_one_drawing_params($id),
         ),
 
