@@ -212,7 +212,8 @@ if ($_POST) {
     log_activity('booking #' . $booking_id . ' was ' . ($cancel ? 'cancelled' : 'modified'), 'ACTIVITY');
 
     // A request confirmed or a booking cancelled here tells the customer and
-    // announces booking.confirmed / booking.cancelled.
+    // announces booking.confirmed / booking.cancelled; one marked done
+    // announces booking.completed.
     $status_event = pg_booking_status_event((string) $booking['status'], $status);
 
     if ($status_event !== '') {

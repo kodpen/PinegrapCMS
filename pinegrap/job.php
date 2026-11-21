@@ -1199,6 +1199,17 @@ if (function_exists('pg_booking_reminders_run')) {
 
 }
 
+// Satisfaction surveys (pg_feedback_job_run() in includes/fn/feedback_sends.php):
+// the periodic NPS rounds, then, between 09:00 and 20:00 site time, the
+// surveys due after their delay and the one reminder. Before the mail pass,
+// so a survey made now goes out in this run. Nothing to do without the
+// survey tables.
+if (function_exists('pg_feedback_job_run')) {
+
+    pg_feedback_job_run(time());
+
+}
+
 // Store credit (pg_credit_mails_run() in includes/fn/store_credit_mails.php):
 // the credit_expiring notices whose moment fell since the last pass, then the
 // customer cards whose end has come are closed. Before the mail pass, so a

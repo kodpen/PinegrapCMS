@@ -190,18 +190,13 @@ function api_booking_list_statuses($value) {
 
 }
 
-// The event a status move announces: a booking becoming confirmed or
-// cancelled. A hold confirmed is announced by pg_booking_confirm() itself,
-// and a hold cancelled was never announced. Pure.
+// The event a status move announces, as the agenda's: a booking becoming
+// confirmed or cancelled, or completed when marked done. A hold confirmed is
+// announced by pg_booking_confirm() itself, and a hold cancelled was never
+// announced. Pure.
 function api_booking_move_event($from, $to) {
 
-	if (($from === $to) || ($from === 'held')) {
-
-		return '';
-
-	}
-
-	return in_array($to, array('confirmed', 'cancelled'), true) ? $to : '';
+	return pg_booking_status_event((string)$from, (string)$to);
 
 }
 

@@ -280,6 +280,7 @@ function api_webhook_event_payloads() {
 		'booking.confirmed'   => array('fields' => $booking, 'sample' => $booking_sample('confirmed', '2026-11-20T07:00:00Z', '2026-11-20T07:45:00Z')),
 		'booking.rescheduled' => array('fields' => $booking, 'sample' => $booking_sample('confirmed', '2026-11-21T11:00:00Z', '2026-11-21T11:45:00Z')),
 		'booking.cancelled'   => array('fields' => $booking, 'sample' => $booking_sample('cancelled', '2026-11-20T07:00:00Z', '2026-11-20T07:45:00Z')),
+		'booking.completed'   => array('fields' => $booking, 'sample' => $booking_sample('done', '2026-11-20T07:00:00Z', '2026-11-20T07:45:00Z')),
 
 		'subscription.renewed'   => array('fields' => $subscription, 'sample' => $subscription_sample('active', 'active', 'renewed', 1043, '100319', '2026-12-17T08:00:00Z', 0)),
 		'subscription.failed'    => array('fields' => $subscription, 'sample' => $subscription_sample('active', 'active', 'renewal_failed', null, '', '2026-11-18T08:00:00Z', 1)),

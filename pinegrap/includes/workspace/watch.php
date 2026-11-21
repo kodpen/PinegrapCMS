@@ -194,6 +194,12 @@ function ws_events_catalog()
         // Spots of a calendar event taken by a placed order.
         $catalog['calendar_event.reserved'] = array('label' => lang('A calendar event is reserved'), 'when' => lang('When an order reserves a calendar event'), 'record' => 'calendar_event', 'right' => 'calendars', 'filter' => '');
 
+        // A ticket checked in at the door, about its calendar event
+        // (event_check_in.php); listed once the tickets table exists.
+        if (function_exists('pg_event_tickets_ready') && pg_event_tickets_ready()) {
+            $catalog['ticket.checked_in'] = array('label' => lang('A ticket is checked in'), 'when' => lang('When a ticket is checked in at the door'), 'record' => 'calendar_event', 'right' => 'calendars', 'filter' => '');
+        }
+
         // Store credit, about the customer's contact.
         if (function_exists('pg_credit_ready') && pg_credit_ready()) {
             $catalog += array(
@@ -270,6 +276,7 @@ function ws_events_catalog()
             'booking.confirmed'   => array('label' => lang('A booking is confirmed'), 'when' => lang('When a booking is confirmed'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
             'booking.rescheduled' => array('label' => lang('A booking is moved'), 'when' => lang('When a booking is moved to another time'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
             'booking.cancelled'   => array('label' => lang('A booking is cancelled'), 'when' => lang('When a booking is cancelled'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+            'booking.completed'   => array('label' => lang('A booking is done'), 'when' => lang('When staff mark a booking done'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
         );
     }
 
@@ -749,6 +756,9 @@ function ws_events_record_of($event, $payload)
 
         case 'calendar_event.reserved':
             return array('calendar_event', (int) ($payload['id'] ?? 0));
+
+        case 'ticket.checked_in':
+            return array('calendar_event', (int) ($payload['calendar_event_id'] ?? 0));
 
         case 'customer.consent_changed':
         case 'customer.rhythm_stage_changed':
