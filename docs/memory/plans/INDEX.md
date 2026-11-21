@@ -58,7 +58,7 @@
 - delivery-tower-features.md: Plan delivery-tower, features T1 to T14: measured times, the four problem kinds, the desk, alerts, events, the scorecard, arrival and carrier suggestions, settings, API
 - delivery-tower-screens-label.md: Plan delivery-tower, step DT4b: the Create Label chooser on the order screen for an address whose method names no carrier; its parts, the carriers' order, the label path's one argument
 - delivery-tower-screens.md: Plan delivery-tower, how its screens are put together (DT3 to DT5): the Delivery problems list, a problem's drawer, the carrier scorecard, the two suggestions, the settings drawer
-- delivery-tower-steps.md: Plan delivery-tower, steps DT1a to DT6 (with DT4b): the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
+- delivery-tower-steps.md: Plan delivery-tower, steps DT1a to DT6 (with DT4b and DT5b): the pure rules, measured times and problem finding, alerts and events, the desk, the scorecard and suggestions, API, close-out
 - delivery-tower.md: Plan (owner 2026-11-20, poll 178): delivery times measured per carrier and province, problem parcels found, a problem desk, events, a carrier scorecard; DT1a to DT6
 - design-examples-patterns-mail.md: Step DX2b of the Design examples plan: the parts of the approved e-mail settings drawing as patterns (tabs with a state, choice cards, provider sign-in, effects confirm), before EM1
 - design-examples-patterns.md: Plan (owner 2026-11-20): the Design examples screen finished with whole patterns: folded settings pane, starting-point sheet, form drawer with tabs and foot, connect row, phone width; DX1-DX5

@@ -52,7 +52,7 @@ function mp_merchant_center_target($account) {
 
 	if ($connection_id <= 0 || !preg_match('/^\d{1,20}$/', $merchant)) {
 
-		return mp_error(lang('Choose the Merchant Center account again on the Product Feeds card.'));
+		return mp_error(lang('Choose the Merchant Center account again on its page of Connections.'));
 
 	}
 
@@ -96,7 +96,7 @@ function mp_merchant_center_push($account, $rows) {
 
 	if ($state['supplement'] === '' || $state['account'] !== $target['account']) {
 
-		return mp_error(lang('The price and stock update source is not registered in Merchant Center; register the feed again on the Product Feeds card.'));
+		return mp_error(lang('The price and stock update source is not registered in Merchant Center; register the feed again on its page of Connections.'));
 
 	}
 

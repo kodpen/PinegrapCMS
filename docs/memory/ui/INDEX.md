@@ -86,6 +86,7 @@
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
 - connections-accounts-signin-page.md: Accounts and sign-in on Connections (CX11f): Apple's sign-in application and the Turnstile and hCaptcha keys on their pages; the cards keep the switches and the choice
+- connections-address-merchant-page.md: Address autocomplete providers and Merchant Center on Connections (CX11g4): keys, server, account, country on their pages; the card keeps switch and provider
 - connections-communication-page.md: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection
 - connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
