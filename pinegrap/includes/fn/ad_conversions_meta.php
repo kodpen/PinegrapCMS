@@ -125,7 +125,8 @@ function pg_ad_conversion_meta_stored($raw)
 /**
  * The settings the page's form writes, from what is stored and what was
  * typed. An empty token field keeps the stored token; the choices are taken
- * as posted (pg_ad_conversion_choices_merge()). Pure.
+ * as posted (pg_ad_conversion_choices_merge()), but for counter sales
+ * (always off) and without_person (kept as stored). Pure.
  *
  * @param array  $stored pg_ad_conversion_meta_stored()
  * @param array  $post   pixel_id, test_event_code and the choices of
@@ -145,6 +146,10 @@ function pg_ad_conversion_meta_settings_merge(array $stored, array $post, $seale
         'test_event_code' => trim((string) ($post['test_event_code'] ?? '')),
         // Meta takes no counter sale (pg_ad_conversion_counter_sale_offered()).
         'counter_sales' => false,
+        // Nor a purchase without the person: the page's switch is disabled
+        // and the queue does not read this, so what was stored is kept as it
+        // was (pg_ad_conversion_without_person_offered()).
+        'without_person' => (array) ($stored['without_person'] ?? array()),
     ) + pg_ad_conversion_choices_merge(array_keys(pg_ad_conversion_meta_events()), $post);
 }
 
@@ -399,6 +404,20 @@ function pg_ad_conversion_meta_refusal(array $event, array $keys, $now)
 }
 
 /**
+ * Whether a queued event carries nothing of the person Meta reads, so its
+ * user_data would be an empty object. Pure.
+ *
+ * @param array $event pg_ad_conversion_event()
+ * @return bool
+ */
+function pg_ad_conversion_meta_without_person(array $event)
+{
+    $user = pg_ad_conversion_meta_server_event($event, '')['user_data'];
+
+    return !is_array($user) || ($user === array());
+}
+
+/**
  * The sender pg_ad_conversion_dispatch() calls for a due meta_capi row. A
  * row Meta could not take is answered as a refusal (400) without a call, so
  * it is given up.
@@ -409,6 +428,13 @@ function pg_ad_conversion_meta_refusal(array $event, array $keys, $now)
  */
 function pg_ad_conversion_send_meta_capi(array $event, array $settings)
 {
+    // An event without the person (consent taken back after completion, or a
+    // row queued before Meta stopped taking one) is refused by Meta, which
+    // asks for at least one customer information parameter: no call.
+    if (pg_ad_conversion_meta_without_person($event)) {
+        return array('ok' => false, 'status' => 400, 'error' => 'No consent');
+    }
+
     $keys = pg_ad_conversion_meta_keys();
     $refusal = pg_ad_conversion_meta_refusal($event, $keys, time());
 

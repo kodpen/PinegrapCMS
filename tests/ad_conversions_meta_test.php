@@ -156,7 +156,7 @@ function test_ad_conversions_meta_settings()
 	pg_assert_same('sealed:iv', $kept['token'], 'empty field keeps the token');
 	pg_assert_same('222222', $kept['pixel_id'], 'pixel trimmed');
 	pg_assert_same(array('purchase'), $kept['events'], 'unknown events dropped');
-	pg_assert_same(array('purchase'), $kept['without_person'], 'without the person');
+	pg_assert_same(array(), $kept['without_person'], 'a posted without the person is not saved for Meta');
 	pg_assert_false($kept['person_notice_off'], 'a cleared box is cleared');
 	pg_assert_true($kept['connected'], 'connected with pixel and token');
 
@@ -252,4 +252,41 @@ function test_ad_conversions_meta_counter_sale()
 	$fields = ad_conversions_meta_test_source('includes/fn/ad_conversions.php');
 	pg_assert_contains("lang('Meta takes an event only with some customer information, so counter sales are not sent to Meta.')", $fields, 'the page says why');
 	pg_assert_contains("!\$counter_offered) . '", $fields, 'the switch is disabled');
+}
+
+// Meta asks for at least one customer information parameter with every
+// event: a purchase without consent is never queued for Meta, even when
+// "Send events without the person" was stored before; the stored value is
+// kept, the switch is shown off and disabled, and a due row without the
+// person is given up without a call.
+function test_ad_conversions_meta_no_personless_purchase()
+{
+	$meta = array('connected' => true, 'events' => array('purchase'), 'person_notice_off' => false, 'without_person' => array('purchase'));
+	$settings = array('meta_capi' => $meta, 'ga4_mp' => $meta, 'tiktok_events' => $meta);
+
+	pg_assert_false(pg_ad_conversion_without_person_offered('meta_capi'), 'Meta takes no purchase without the person');
+	pg_assert_true(pg_ad_conversion_without_person_offered('ga4_mp'), 'GA4 does');
+	pg_assert_true(pg_ad_conversion_without_person_offered('tiktok_events'), 'TikTok does');
+
+	pg_assert_same(array('ga4_mp' => 'insert', 'tiktok_events' => 'insert'), pg_ad_conversion_completion_plan(array(), $settings), 'no consent, no row: none written for Meta');
+
+	$rows = array('meta_capi' => array('status' => '0', 'person' => '0'), 'ga4_mp' => array('status' => '0', 'person' => '0'));
+	pg_assert_same(array('meta_capi' => 'give_up', 'ga4_mp' => 'due', 'tiktok_events' => 'insert'), pg_ad_conversion_completion_plan($rows, $settings), 'consent taken back: Meta left with 3');
+	pg_assert_same(array('meta_capi' => 'due'), pg_ad_conversion_completion_plan(array('meta_capi' => array('status' => '0', 'person' => '1')), array('meta_capi' => $meta)), 'with the person it still goes');
+
+	// The stored value is not deleted, and a posted one is not saved.
+	$stored = pg_ad_conversion_meta_stored(json_encode(array('connected' => true, 'pixel_id' => '111111', 'token' => 'sealed:iv') + $meta));
+	pg_assert_same(array('purchase'), pg_ad_conversion_meta_settings_merge($stored, array('pixel_id' => '111111', 'events' => array('purchase')), '')['without_person'], 'stored value kept on save');
+
+	// A due row without the person (consent taken back after completion, or
+	// queued before): no request, given up as no consent.
+	$sent = pg_ad_conversion_send_meta_capi(ad_conversions_meta_test_event(false), array());
+	pg_assert_same(array('ok' => false, 'status' => 400, 'error' => 'No consent'), $sent, 'refused without a call');
+	pg_assert_true(pg_ad_conversion_meta_without_person(ad_conversions_meta_test_event(false)), 'without the person');
+	pg_assert_false(pg_ad_conversion_meta_without_person(ad_conversions_meta_test_event()), 'with the person');
+
+	$fields = ad_conversions_meta_test_source('includes/fn/ad_conversions.php');
+	pg_assert_contains("lang('Meta asks for at least one piece of the person\\'s data with every event, so a purchase without the person is not sent to Meta.')", $fields, 'the page says why');
+	pg_assert_contains("!\$without_offered) . '", $fields, 'the switch is disabled');
+	pg_assert_contains("\$without_offered && in_array('purchase', \$stored['without_person'], true)", $fields, 'the switch is shown off');
 }
