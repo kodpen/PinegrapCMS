@@ -844,8 +844,9 @@
     };
 
     // The Import button, before Save, where layers can be added: not on the
-    // mini bar or a file being optimised.
-    Editor.topItems.push(function () {
+    // mini bar or a file being optimised. Named, so a part may put its own
+    // button beside it (the data layer's Data).
+    Editor.topImport = function () {
         var self = this;
 
         if (this.tools.list.indexOf('select') < 0) {
@@ -858,7 +859,9 @@
         this.importBox = el('div', { class: 'pgie-importwrap' }, [this.importBtn]);
 
         return this.importBox;
-    });
+    };
+
+    Editor.topItems.push(Editor.topImport);
 
     Editor.inits.push(function () {
         this.importMenu = null;
