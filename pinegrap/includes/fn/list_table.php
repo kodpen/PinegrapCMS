@@ -1253,6 +1253,7 @@ function pg_list_table_printed_lists()
         'view_supplier_feeds',
         'workspace_wtables',
         'messages_automatic',
+        'view_application_programs',
         'privacy_requests',
         'delivery_problems',
     );
