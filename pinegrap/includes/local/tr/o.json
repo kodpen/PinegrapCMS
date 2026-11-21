@@ -2217,6 +2217,7 @@
     "Order — totals": "Sipariş — toplamlar",
     "Order(s)": "Sipariş",
     "Order(s) {var:1}: {var:2}": "{var:1} numaralı sipariş(ler): {var:2}",
+    "Order, form, password and notice mail.": "Sipariş, form, parola ve bildirim iletileri.",
     "Ordered": "Sipariş edilen",
     "Ordered List": "Sıralı Liste",
     "Ordered a Chocolate Drip Cake": "Çikolata Akıtmalı Pasta sipariş etti",

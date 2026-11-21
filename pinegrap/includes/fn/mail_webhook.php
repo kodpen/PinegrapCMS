@@ -213,13 +213,13 @@ function pg_mail_webhook_settings_fields($key)
     if ($secrets['webhook_key'] === '') {
         $address = '<div class="pg-field-help">' . h(lang('Save the service to get the address its bounce and complaint reports are posted to.')) . '</div>';
     } else {
-        $address = '<input type="text" id="' . h($id) . '" class="form-control" value="' . h(pg_mail_webhook_url($key, $secrets['webhook_key'])) . '" readonly>
-                    <div class="form-text">' . h(lang('Add this address to the service as a webhook for bounces, complaints and deliveries.')) . '</div>';
+        $address = '<input type="text" id="' . h($id) . '" class="pg-input" value="' . h(pg_mail_webhook_url($key, $secrets['webhook_key'])) . '" readonly>
+                    <div class="pg-field-help">' . h(lang('Add this address to the service as a webhook for bounces, complaints and deliveries.')) . '</div>';
     }
 
     $out = '
                 <div class="col-12">
-                    <label for="' . h($id) . '" class="form-label pg-field-label">' . h(lang('Webhook address')) . '</label>
+                    <label for="' . h($id) . '" class="pg-field-label">' . h(lang('Webhook address')) . '</label>
                     ' . $address . '
                 </div>';
 
@@ -228,9 +228,9 @@ function pg_mail_webhook_settings_fields($key)
         $placeholder = ($secrets['webhook_signing'] !== '') ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '';
         $out .= '
                 <div class="col-12">
-                    <label for="' . h($name) . '" class="form-label pg-field-label">' . h(lang('Webhook signing key')) . '</label>
-                    <input type="password" name="' . h($name) . '" id="' . h($name) . '" class="form-control" value="" autocomplete="new-password"' . $placeholder . '>
-                    <div class="form-text">' . h(lang('Optional. With it, a report that the service did not sign is refused.')) . '</div>
+                    <label for="' . h($name) . '" class="pg-field-label">' . h(lang('Webhook signing key')) . '</label>
+                    <input type="password" name="' . h($name) . '" id="' . h($name) . '" class="pg-input" value="" autocomplete="new-password"' . $placeholder . '>
+                    <div class="pg-field-help">' . h(lang('Optional. With it, a report that the service did not sign is refused.')) . '</div>
                 </div>';
     }
 

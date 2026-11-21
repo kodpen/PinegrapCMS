@@ -19,6 +19,30 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_settings.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_sending_rows.php');
+
+// ── How system e-mail leaves ──
+// The ways sheet posts the way chosen; it decides the account, the sending
+// service and the mail server saved below (pg_mail_way_post()). A Google or
+// Microsoft way without an account of its own is refused before anything
+// is checked or written.
+if (isset($_POST['system_mail_way'])) {
+    $mail_way_accounts = array();
+
+    foreach (pg_connect_accounts(array('user_id' => 0, 'purpose' => 'mail')) as $mail_way_account) {
+        $mail_way_accounts[(int) $mail_way_account['id']] = (string) $mail_way_account['provider'];
+    }
+
+    $mail_way = pg_mail_way_post($_POST, pg_mail_way_enabled_service(), $mail_way_accounts);
+
+    if ($mail_way['mark']) {
+        $liveform->mark_error($mail_way['mark'][0], h($mail_way['mark'][1]));
+
+        return;
+    }
+
+    $_POST = $mail_way['post'];
+}
 
 // ── MailChimp ──
 //

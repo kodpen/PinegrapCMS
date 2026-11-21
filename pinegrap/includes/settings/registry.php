@@ -618,21 +618,21 @@ function pg_settings_email_category()
         'icon'  => 'bi-envelope-at',
         'description' => lang('The e-mail the site sends, and the mailboxes it reads.'),
         'sections' => array(
-            'pgset-mail-transport' => lang('Sending service'),
-            'pgset-mail-system'    => lang('System'),
-            'pgset-mail-campaign'  => lang('Campaign'),
-            'pgset-mail-dkim'      => lang('DKIM TXT Record'),
+            'pgset-mail-system'    => lang('How e-mail leaves'),
             'pgset-mail-domain'    => lang('Sending domain'),
+            'pgset-mail-dkim'      => lang('DKIM TXT Record'),
+            'pgset-mail-campaign'  => lang('Campaign mail'),
             'pgset-mailchimp'      => lang('MailChimp'),
+            'pgset-mail-test'      => lang('Send a test'),
             'pgset-ws-mail'        => lang('Mailboxes'),
         ),
         'keywords' => array(
-            'pgset-mail-transport' => pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')),
-            'pgset-mail-system'    => pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail')),
-            'pgset-mail-campaign'  => array_values(array_unique(array_merge(pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')), pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer'))))),
-            'pgset-mail-dkim'      => pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature')),
+            'pgset-mail-system'    => array_values(array_unique(array_merge(pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')), pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail'))))),
             'pgset-mail-domain'    => pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')),
+            'pgset-mail-dkim'      => pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature')),
+            'pgset-mail-campaign'  => array_values(array_unique(array_merge(pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')), pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer'))))),
             'pgset-mailchimp'      => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
+            'pgset-mail-test'      => pg_settings_keywords(lang('test e-mail, send a test, test')),
             'pgset-ws-mail'        => pg_settings_keywords(lang('workspace, mailbox, mailboxes, e-mail')),
         ),
         'tabs' => array(
@@ -641,7 +641,7 @@ function pg_settings_email_category()
                 'gate'     => '',
                 'module'   => 'mail_sending',
                 'prep'     => true,
-                'sections' => array('pgset-mail-transport', 'pgset-mail-system', 'pgset-mail-campaign', 'pgset-mail-dkim', 'pgset-mail-domain', 'pgset-mailchimp'),
+                'sections' => array('pgset-mail-system', 'pgset-mail-domain', 'pgset-mail-dkim', 'pgset-mail-campaign', 'pgset-mailchimp', 'pgset-mail-test'),
             ),
             'mailboxes' => array(
                 'label'    => lang('Mailboxes'),
@@ -1289,7 +1289,9 @@ function pg_settings_legacy_anchors()
         'ws-mail'          => array('email', 'pgset-ws-mail'),
         // SMTP Settings became the E-mail category's Sending tab; its
         // screen's card anchors (smtp_settings.php#mail_domain_card).
-        'mail_transport_card' => array('email', 'pgset-mail-transport'),
+        // The Sending service card went into How e-mail leaves' ways sheet.
+        'mail_transport_card' => array('email', 'pgset-mail-system'),
+        'pgset-mail-transport' => array('email', 'pgset-mail-system'),
         'mail_domain_card' => array('email', 'pgset-mail-domain'),
         // The GitHub repository links are managed on GitHub's page of
         // Connections; the card that held them keeps its place and leads there.

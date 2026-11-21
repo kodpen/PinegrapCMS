@@ -24,15 +24,14 @@ if (!defined('PG_SETTINGS_MENU')) {
 
 require_once PG_FUNCTIONS_DIR . '/includes/settings/registry.php';
 
-// SMTP Settings' five cards are Site Settings › E-mail sending's, in the
-// screen's order, each under its section id; the Sending domain card comes
-// unwrapped inside its section.
+// E-mail sending's cards, each under its section id, in the source's
+// order; the Sending domain card comes unwrapped inside its section.
 function test_smtp_settings_wide_layout()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
 	$at = -1;
 
-	foreach (array('pgset-mail-transport', 'pgset-mail-system', 'pgset-mail-campaign', 'pgset-mail-dkim', 'pgset-mail-domain', 'pgset-mailchimp') as $section) {
+	foreach (array('pgset-mail-system', 'pgset-mail-campaign', 'pgset-mail-dkim', 'pgset-mail-domain', 'pgset-mailchimp', 'pgset-mail-test') as $section) {
 		$here = strpos($source, '<div id="' . $section . '" class="pg-set-card">');
 		pg_assert_true(($here !== false) && ($here > $at), $section . ' in its place');
 		$at = $here;
@@ -40,7 +39,7 @@ function test_smtp_settings_wide_layout()
 
 	pg_assert_contains('pg_mail_domain_health_card($mail_domain_health, false)', $source, 'the Sending domain card comes unwrapped');
 	pg_assert_contains('$mail_domain_health = pg_mail_domain_health();', $source, 'one lookup, which the tab\'s pill reads too');
-	pg_assert_contains('id="mail_transport_card"', $source, 'the old anchor of the Sending service card stays');
+	pg_assert_contains('id="mail_transport_card"', $source, 'the old anchor of the Sending service card lands on How e-mail leaves');
 	pg_assert_false(strpos($source, 'class="buttons navigation') !== false, 'no save bar of its own: the dialog and the page have theirs');
 }
 
@@ -94,18 +93,15 @@ function test_mail_sending_holds_the_campaign_texts_and_mailchimp()
 	pg_assert_same(array('email', 'pgset-mailchimp'), $anchors['pgset-mailchimp'], 'an old MailChimp link');
 }
 
-// The category speaks only of sending: its first card says so and links
-// Mailboxes for incoming e-mail, the mirror of the Mailboxes card's line.
-// The cards are look A: the settings rows, look buttons and fields, no
-// Bootstrap button, input group or badge.
+// The tab is folded rows, How e-mail leaves first; its cards are look A:
+// the settings rows, look buttons and fields, no Bootstrap button, input
+// group or badge.
 function test_mail_sending_in_the_panel_look()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
-	$transport = strpos($source, 'id="pgset-mail-transport"');
-	$system = strpos($source, 'id="pgset-mail-system"');
-	$line = strpos($source, "E-mail sending is the way out");
 
-	pg_assert_true(($line > $transport) && ($line < $system), 'the purpose line opens the first card');
+	pg_assert_contains('$pg_settings_cards[] = pg_settings_fold($mail_rows);', $source, 'the tab is one list of folded rows');
+	pg_assert_same(1, substr_count($source, '$pg_settings_cards[]'), 'and nothing else');
 	pg_assert_false(strpos($source, "pg_settings_url('mailboxes')") !== false, 'no link to Mailboxes: it is the tab beside');
 
 	$parts = array(
@@ -122,7 +118,7 @@ function test_mail_sending_in_the_panel_look()
 		}
 	}
 
-	foreach (array('id="mail_transport_card"', "pg_settings_tile('megaphone', 'team')", "pg_settings_tile('envelope-paper', 'team')", 'class="pg-input font-monospace"', 'class="pg-checkbox"') as $kept) {
+	foreach (array('id="mail_transport_card"', "pg_settings_tile('megaphone', 'team')", "pg_settings_tile('envelope-paper', 'team')", 'class="pg-input font-monospace"', 'class="pg-checkbox"', 'class="pg-value-row"', 'class="pg-card-inner"') as $kept) {
 		pg_assert_contains($kept, $source, $kept);
 	}
 }
