@@ -449,7 +449,8 @@ function pg_ad_conversion_send_meta_capi(array $event, array $settings)
 
 /**
  * The test event "Send a test event" posts: a purchase of 1.00 in the
- * site's currency without the person, with an id of its own. Pure.
+ * site's currency, with an id of its own; its user_data is set apart
+ * (pg_ad_conversion_meta_test_server_event()). Pure.
  *
  * @param int    $now
  * @param string $currency
@@ -470,9 +471,43 @@ function pg_ad_conversion_meta_test_event($now, $currency)
 }
 
 /**
+ * The user_data of "Send a test event" only, never of a queued event: Meta
+ * refuses an event without a customer information parameter, and one with
+ * only client_user_agent. A fixed external_id (the SHA-256 of the text
+ * pinegrap-test) and a fixed client_user_agent stand for no real person; the
+ * panel user's address and browser are not sent. Pure.
+ *
+ * @return array
+ */
+function pg_ad_conversion_meta_test_user_data()
+{
+    return array(
+        'external_id' => array(hash('sha256', 'pinegrap-test')),
+        'client_user_agent' => 'Pinegrap test',
+    );
+}
+
+/**
+ * The server event "Send a test event" posts: the test purchase with the
+ * fixed test user_data. Pure.
+ *
+ * @param int    $now
+ * @param string $currency
+ * @param string $source_url
+ * @return array
+ */
+function pg_ad_conversion_meta_test_server_event($now, $currency, $source_url)
+{
+    $server = pg_ad_conversion_meta_server_event(pg_ad_conversion_meta_test_event($now, $currency), $source_url);
+    $server['user_data'] = pg_ad_conversion_meta_test_user_data();
+
+    return $server;
+}
+
+/**
  * "Send a test event": the test purchase with the stored test event code,
  * so it shows in Events Manager's Test events and is left out of the
- * figures.
+ * figures. A refusal is shown with Meta's own words.
  *
  * @return array ok, status, error
  */
@@ -487,7 +522,7 @@ function pg_ad_conversion_meta_send_test()
         return array('ok' => false, 'status' => 400, 'error' => $refusal);
     }
 
-    $server = pg_ad_conversion_meta_server_event($event, pg_ad_conversion_meta_source_url());
+    $server = pg_ad_conversion_meta_test_server_event($now, $event['currency'], pg_ad_conversion_meta_source_url());
 
     return pg_ad_conversion_meta_post($keys['pixel_id'], pg_ad_conversion_meta_body($server, $keys['token'], $keys['test_event_code']));
 }

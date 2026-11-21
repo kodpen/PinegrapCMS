@@ -290,3 +290,33 @@ function test_ad_conversions_meta_no_personless_purchase()
 	pg_assert_contains("!\$without_offered) . '", $fields, 'the switch is disabled');
 	pg_assert_contains("\$without_offered && in_array('purchase', \$stored['without_person'], true)", $fields, 'the switch is shown off');
 }
+
+// "Send a test event" carries a fixed external_id and a fixed browser name,
+// nothing of a real person; a queued event never gets either.
+function test_ad_conversions_meta_test_event_user_data()
+{
+	$test = pg_ad_conversion_meta_test_server_event(1763600000, 'try', 'https://shop.example/');
+	$expected = array('external_id' => array(hash('sha256', 'pinegrap-test')), 'client_user_agent' => 'Pinegrap test');
+
+	pg_assert_same($expected, $test['user_data'], 'the two fixed fields, nothing else');
+	pg_assert_same('Purchase', $test['event_name'], 'a purchase');
+	pg_assert_same(1.0, $test['custom_data']['value'], 'of 1.00');
+	pg_assert_same('TRY', $test['custom_data']['currency'], 'in the site currency');
+	pg_assert_same(0, strpos($test['event_id'], 'pg-test-'), 'its own id');
+
+	foreach (array(ad_conversions_meta_test_event(), ad_conversions_meta_test_event(false)) as $event) {
+		$json = json_encode(pg_ad_conversion_meta_server_event($event, 'https://shop.example/'));
+		pg_assert_false(strpos($json, 'external_id') !== false, 'no external_id on a queue event');
+		pg_assert_false(strpos($json, 'Pinegrap test') !== false, 'no test browser name on a queue event');
+		pg_assert_false(strpos($json, hash('sha256', 'pinegrap-test')) !== false, 'no test id on a queue event');
+	}
+
+	// The test send uses the test builder; the queue's sender never does.
+	$module = ad_conversions_meta_test_source('includes/fn/ad_conversions_meta.php');
+	$start = strpos($module, 'function pg_ad_conversion_send_meta_capi(');
+	$end = strpos($module, "\n}\n", $start);
+	pg_assert_false(strpos(substr($module, $start, $end - $start), '_test_') !== false, 'the queue sender builds no test data');
+	$start = strpos($module, 'function pg_ad_conversion_meta_send_test(');
+	$end = strpos($module, "\n}\n", $start);
+	pg_assert_contains('pg_ad_conversion_meta_test_server_event(', substr($module, $start, $end - $start), 'the test send uses it');
+}
