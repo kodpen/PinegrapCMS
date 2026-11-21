@@ -2251,8 +2251,8 @@ function ws_guest_state($context, $signature = '', $call_after = 0)
  * browser already has, if any. state (signature, call_after), send (text,
  * parent_id), react (message_id, emoji), vote (poll_id, option_ids), check
  * (message_id, item, checked), call_join (call_id), call_leave (call_id),
- * call_signal (call_id, to_member_id, kind, body): with the session and its
- * csrf.
+ * call_signal (call_id, to_member_id, kind, body), call_sync (call_after):
+ * with the session and its csrf.
  *
  * @param string $action
  * @param array  $request
@@ -2317,6 +2317,12 @@ function ws_guest_handle($action, $request)
             $joined = ws_call_join(ws_call_party_guest($context), $context['channel'], (int) ($request['call_id'] ?? 0));
 
             return $joined['ok'] ? array('status' => 'ok', 'call_id' => $joined['call_id'], 'member_id' => $joined['member_id'], 'ice' => ws_call_member_ice()) : array('status' => 'error', 'message' => $joined['error']);
+
+        // The look of a guest in the call, every second: the room's call
+        // and the signals sent to the guest, nothing of the conversation.
+        case 'call_sync':
+            return array('status' => 'ok', 'call' => function_exists('ws_call_live_part')
+                ? ws_call_live_part(ws_call_party_guest($context), (int) $context['channel']['id'], (int) ($request['call_after'] ?? 0)) : null);
 
         case 'call_leave':
             $left = ws_call_leave(ws_call_party_guest($context), (int) ($request['call_id'] ?? 0));
