@@ -32301,7 +32301,10 @@ textarea.pg-campaign-text {
   border: 1px solid #747775;
   border-radius: 4px;
   color: #1f1f1f;
-  font: 500 14px/20px Roboto, Arial, sans-serif;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
 }
 .pg-signin-microsoft {
   gap: 12px;
