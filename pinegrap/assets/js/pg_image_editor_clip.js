@@ -9,7 +9,9 @@
  * part's in step with the play bar. Videos come from Files or this computer
  * through Import (a file from this computer is uploaded into Files first,
  * action video_upload). The clip's panel holds the source in and out, the
- * start, the speed, the volume and mute, Detach sound and Replace.
+ * start, the speed, the volume and mute, Detach sound and Replace; Detach
+ * sound is on the bar over the clip and its row's menu too, and Detach
+ * from a video under Add sound.
  *
  * At rest (outside the Animate tool, and in every still save) the clip
  * shows its frame at the source in; each frame of an animation's export
@@ -788,6 +790,87 @@
         });
     };
 
+    // Why Detach sound is refused (M.clipDetachWhy()): the line it says.
+    var DETACH_WHY = { locked: 'clipDetachLocked', sound: 'clipNoSound', speed: 'clipDetachSpeed', full: 'clipDetachFull' };
+
+    // Detach sound from the bar over the clip, a clip row's menu and Detach
+    // from a video: a refusal says its reason in the toast (an alert, so a
+    // screen reader hears it).
+    Editor.prototype.clipDetachHere = function (id) {
+        var l = this.doc.layers.find(function (o) { return o.id === id; }), why;
+
+        if (!l || (l.type !== 'video')) {
+            return;
+        }
+
+        why = M.clipDetachWhy(l, M.soundList(this.doc, origin()).length);
+
+        if (why) {
+            this.showMessage(t(DETACH_WHY[why]).replace('{max}', String(M.SOUND_MAX)), true);
+            return;
+        }
+
+        this.clipDetach(l);
+    };
+
+    // Detach from a video, under Add sound: the selected clip, the only
+    // one, else a menu naming each clip at the button b.
+    Editor.prototype.clipDetachFrom = function (b) {
+        var sel = this.sel, list = M.clipDetachList(this.doc.layers), picked = list.filter(function (l) { return sel.indexOf(l.id) >= 0; })[0], r;
+
+        if (picked || (list.length === 1)) {
+            this.clipDetachHere((picked || list[0]).id);
+            return;
+        }
+
+        r = b.getBoundingClientRect();
+        this.openMenu({ at: 'detachFrom', clips: list.map(function (l) { return l.id; }) }, r.left, r.bottom + 4, b);
+    };
+
+    // A clip's name in Detach from a video's menu, as its bar names it.
+    Editor.prototype.clipMenuName = function (id) {
+        var l = this.doc.layers.find(function (o) { return o.id === id; });
+
+        return l ? this.clipLabel(l, M.clipLayer(l)) : '';
+    };
+
+    // Detach from a video under Add sound, on the sound rows and in the
+    // panel's Sounds list, while a clip has a sound track to detach.
+    var soundsNode = Editor.prototype.soundsNode, soundList = Editor.prototype.soundList;
+
+    Editor.prototype.clipDetachButton = function (cls) {
+        var self = this, b = el('button', { type: 'button', class: cls, onclick: function () { self.clipDetachFrom(b); } }, [icon('music'), el('span', { text: t('clipDetachFrom') })]);
+
+        return b;
+    };
+
+    Editor.prototype.soundsNode = function () {
+        var box = soundsNode.call(this), add = box ? box.querySelector('.pgie-sndadd') : null;
+
+        if (add && M.clipDetachList(this.doc.layers).length) {
+            add.parentNode.insertBefore(el('div', { class: 'pgie-trrow pgie-sndadd pgie-snddetach' }, [this.clipDetachButton('pgie-trname'), el('div', { class: 'pgie-trlane' })]), add.nextSibling);
+        }
+
+        return box;
+    };
+
+    // The sound part's dock took its node function when it was loaded.
+    Editor.motionDocks.forEach(function (d) {
+        if (d.node === soundsNode) {
+            d.node = Editor.prototype.soundsNode;
+        }
+    });
+
+    Editor.prototype.soundList = function (body) {
+        soundList.call(this, body);
+
+        var adds = body.querySelectorAll('.pgie-sndaddbtn'), add = adds[adds.length - 1];
+
+        if (add && M.clipDetachList(this.doc.layers).length) {
+            add.parentNode.insertBefore(this.clipDetachButton('pgie-btn pgie-sndaddbtn pgie-snddetach'), add.nextSibling);
+        }
+    };
+
     // Replace: another video from Files in the same box and on the same
     // timeline place.
     Editor.prototype.clipReplace = function (l) {
@@ -822,6 +905,10 @@
         if (top !== l) {
             return false;
         }
+
+        // The row's menu (pg_image_editor_menu.js) is for its selected
+        // clip, else its top one; a bar's for its own.
+        var picked = row.filter(function (o) { return (self.sel.length === 1) && (self.sel[0] === o.id); })[0] || top;
 
         lane = el('div', { class: 'pgie-trlane' }, [el('span', { class: 'pgie-trline' })]);
         pick = el('button', { type: 'button', class: 'pgie-trname', title: name, 'aria-pressed': on ? 'true' : 'false', onclick: function (e) {
@@ -878,7 +965,7 @@
             }
         });
 
-        return el('div', { class: 'pgie-trrow pgie-cliprow' + (on ? ' on' : ''), role: 'group', 'aria-label': name }, [pick, lane]);
+        return el('div', { class: 'pgie-trrow pgie-cliprow' + (on ? ' on' : ''), role: 'group', 'aria-label': name, 'data-clip': picked.id }, [pick, lane]);
     };
 
     function pct(ms, end) {
@@ -911,7 +998,7 @@
             label += ' · ' + t('clipTabFx');
         }
 
-        var bar = el('span', { class: 'pgie-trbar pgie-clipbar' + (on ? ' on' : '') + ((c.muted || !c.sound) ? ' pgie-clipquiet' : '') + (wave ? ' pgie-clipsounded' : ''), style: 'left: ' + pct(sp.from, end) + '; width: ' + pct(sp.to - sp.from, end), title: label, role: 'img', 'aria-label': label }, [
+        var bar = el('span', { class: 'pgie-trbar pgie-clipbar' + (on ? ' on' : '') + ((c.muted || !c.sound) ? ' pgie-clipquiet' : '') + (wave ? ' pgie-clipsounded' : ''), style: 'left: ' + pct(sp.from, end) + '; width: ' + pct(sp.to - sp.from, end), title: label, role: 'img', 'aria-label': label, 'data-clip': l.id }, [
             strip, wave, el('span', { class: 'pgie-clipname' }, marks.concat([this.clipLabel(l, c)]))
         ]);
 
@@ -1425,7 +1512,7 @@
         this.clipKeyNow = JSON.stringify(this.clipLayers().map(function (l) {
             var snd = self.soundBufs && self.soundBufs[l.src];
 
-            return [l.id, l.from, l.to, l.start, l.speed, l.row || '', l.name, l.muted ? 1 : 0, self.sel.indexOf(l.id) >= 0 ? 1 : 0, snd ? snd.state : ''];
+            return [l.id, l.from, l.to, l.start, l.speed, l.row || '', l.name, l.muted ? 1 : 0, l.locked ? 1 : 0, self.sel.indexOf(l.id) >= 0 ? 1 : 0, snd ? snd.state : ''];
         }));
 
         return this.clipKeyNow;
