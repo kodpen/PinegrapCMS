@@ -43,6 +43,14 @@ if (!$_POST) {
         $excluded_transit_dates[] = prepare_form_data_for_output($row['date'], 'date');
     }
 
+    $values = pg_shipping_method_form_row_values($shipping_method, implode(',', $excluded_transit_dates));
+
+    // The line under the transit days when the carrier's measured days
+    // differ from them by a day or more.
+    $summary = pg_delivery_tower_summary();
+    $transit_check = $summary ? pg_delivery_tower_arrival_check(array_merge($shipping_method, array('carrier' => pg_delivery_tower_method_carrier($shipping_method))), $summary['figures']) : null;
+    $values['transit_check'] = $transit_check ? pg_delivery_tower_arrival_sentence($shipping_method['name'], $transit_check) : '';
+
     $output =
     pg_page_shell([
         'title'=> lang('Edit Shipping Method'),
@@ -60,7 +68,7 @@ if (!$_POST) {
         ' . get_token_field() . '
         <input type="hidden" name="id" value="' . $id . '">
         <div class="row">
-            ' . pg_shipping_method_form_cards(pg_shipping_method_form_row_values($shipping_method, implode(',', $excluded_transit_dates)), pg_shipping_method_zone_options_for($id)) . '
+            ' . pg_shipping_method_form_cards($values, pg_shipping_method_zone_options_for($id)) . '
             <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
                 <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">

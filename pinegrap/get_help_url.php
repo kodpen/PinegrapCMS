@@ -338,6 +338,7 @@ function get_help_url($properties = array())
         'add_container'                    => 'commerce-cont#create-edit-container',
         'edit_container'                   => 'commerce-cont#create-edit-container',
         'view_shipping_report'             => 'commerce-cont#shipping-report',
+        'view_carrier_scorecard'           => 'commerce-cont#shipping-report',
         'view_ship_date_adjustments'       => 'commerce-cont#ship-date-adjustments',
         'add_ship_date_adjustment'         => 'commerce-cont#create-edit-ship-date-adjustment',
         'edit_ship_date_adjustment'        => 'commerce-cont#create-edit-ship-date-adjustment',

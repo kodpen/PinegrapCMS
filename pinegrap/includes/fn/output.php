@@ -4302,7 +4302,8 @@ function output_menu($properties = false)
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
             // ECOMMERCE > Shipping Reports
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'' . $report_link_class . 'bi-bar-chart\'>' . lang('Shipping Report') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_carrier_scorecard.php\'' . $output_parent_target . ' class=\'' . $report_link_class . 'bi-truck\'>' . lang('Carrier Scorecard') . '</a>';
         }
 
 
@@ -4447,7 +4448,10 @@ function output_menu($properties = false)
             if (USER_MANAGE_ECOMMERCE_REPORTS and ECOMMERCE_SHIPPING) {
                 // ECOMMERCE > Shipping Reports
                 $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-                $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
+                // The menu's link look, followed by each link's icon.
+                $shipping_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-me-2 ';
+                $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'' . $shipping_link_class . 'bi-bar-chart\'>' . lang('Shipping Report') . '</a>';
+                $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_carrier_scorecard.php\'' . $output_parent_target . ' class=\'' . $shipping_link_class . 'bi-truck\'>' . lang('Carrier Scorecard') . '</a>';
             }
             if (defined('ENABLE_PARASUT') && ENABLE_PARASUT && defined('PARASUT_COMPANY_ID') && PARASUT_COMPANY_ID !== '') {
                 // ECOMMERCE > Parasut E-Invoice Inbox
@@ -4618,7 +4622,10 @@ function output_menu($properties = false)
             if ($menu_items[15]['data-bs-content'] !== '') {
                 $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             }
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
+            // The menu's link look, followed by each link's icon.
+            $shipping_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-me-2 ';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'' . $shipping_link_class . 'bi-bar-chart\'>' . lang('Shipping Report') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_carrier_scorecard.php\'' . $output_parent_target . ' class=\'' . $shipping_link_class . 'bi-truck\'>' . lang('Carrier Scorecard') . '</a>';
         }
     }
 
@@ -5232,6 +5239,7 @@ function output_menu($properties = false)
         case 'add_container.php':
         case 'edit_container.php':
         case 'view_shipping_report.php':
+        case 'view_carrier_scorecard.php':
         case 'view_ship_date_adjustments.php':
         case 'add_ship_date_adjustment.php':
         case 'edit_ship_date_adjustment.php':

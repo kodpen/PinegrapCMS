@@ -7277,6 +7277,7 @@
     "Arrival date ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Varış tarihi ({var:1}) API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından silindi.",
     "Arrival date description": "Varış tarihi açıklaması",
     "Arrival date name": "Varış tarihi adı",
+    "Arrival days to check": "Gözden geçirilecek varış günleri",
     "Arrival from 14:00, departure by 11:00": "Giriş 14:00'ten itibaren, çıkış 11:00'e kadar",
     "Arrival from 14:00, departure by 11:00. Ask the reception for a late departure.": "Giriş 14:00'ten itibaren, çıkış 11:00'e kadar. Geç çıkış için resepsiyona sorun.",
     "Arrival in Amalfi": "Amalfi'ye varış",
