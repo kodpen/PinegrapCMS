@@ -242,7 +242,8 @@ function pg_supplier_feed_spool_add($feed_id, $rows)
     $by_bucket = array();
 
     foreach ((array) $rows as $row) {
-        $by_bucket[pg_supplier_feed_spool_bucket($row['m'], $row['k'])][] = json_encode($row);
+        // A value the readers could not make UTF-8 is left out, not the line.
+        $by_bucket[pg_supplier_feed_spool_bucket($row['m'], $row['k'])][] = json_encode($row, JSON_PARTIAL_OUTPUT_ON_ERROR);
     }
 
     foreach ($by_bucket as $bucket => $lines) {

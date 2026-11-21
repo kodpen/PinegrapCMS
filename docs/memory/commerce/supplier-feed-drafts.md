@@ -14,7 +14,7 @@ module: supplier_feed_drafts
 
 ## What becomes what?
 - `pg_supplier_feed_draft_groups()` (pure): by model, case-blind. A model with a product already in a variant set (a 'select' group): the new records join that set. Two or more new records of a model: a new variant set (`pg_catalog_variant_set_create()`). Anything else: a single product (`pg_pb_create_product()`).
-- A set is named by the words its records' names all start with (`pg_supplier_feed_set_name()`), its group code is the model code; each variant's own name tells it apart in the set's select, no attribute is made (the feed maps none).
+- A new set's group starts switched off like its variants. A set is named by the words its records' names all start with (`pg_supplier_feed_set_name()`), its group code is the model code; each variant's own name tells it apart in the set's select, no attribute is made (the feed maps none).
 
 ## What does a draft hold?
 - `products.name` the supplier code (so the next pull matches it), short description the record's name, `enabled` 0, stock tracked at the record's stock, `brand`, the description cleaned as the editor's (`pg_sanitize_rich_text()`, 'staff'), the barcode (`pg_assign_product_barcode()`).
