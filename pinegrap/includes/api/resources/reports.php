@@ -1078,3 +1078,196 @@ function api_sales_watch_report_schema() {
 	);
 
 }
+
+// GET /reports/delivery: the carrier scorecard of one month, or of the twelve
+// months ending with it, with the shipping methods whose typed transit days
+// differ from what their carrier measured. Read from the parcel rows as the
+// Carrier Scorecard screen reads them; nothing is judged or changed.
+function api_reports_delivery($params) {
+
+	$now = time();
+
+	$month = isset($params['month']) ? (string)$params['month'] : '';
+
+	if (($month !== '') && !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
+
+		api_fail_validation(lang('month must be a month written as YYYY-MM.'), 'month');
+
+	}
+
+	$month = pg_delivery_scorecard_month($month, $now);
+
+	$year = (isset($params['period']) && ($params['period'] === 'year'));
+
+	$shipping = defined('ECOMMERCE') && (ECOMMERCE === true) && defined('ECOMMERCE_SHIPPING') && (ECOMMERCE_SHIPPING === true);
+
+	$months = $year ? pg_delivery_scorecard_months($month) : array($month);
+
+	$view = pg_delivery_scorecard_month_view(array(), $month);
+
+	$arrival = array();
+
+	$summary = null;
+
+	if ($shipping) {
+
+		$from = pg_delivery_scorecard_bounds($months[0])[0];
+
+		$to = pg_delivery_scorecard_bounds($month)[1];
+
+		$state = pg_delivery_scorecard_read($from, $to, !$year);
+
+		$view = $year
+			? pg_delivery_scorecard_year_view($state, $months)
+			: pg_delivery_scorecard_month_view($state, $month);
+
+		$arrival = pg_delivery_tower_arrival_checks_read();
+
+		$summary = pg_delivery_tower_summary();
+
+	}
+
+	$names = array();
+
+	foreach ($view['carriers'] as $row) {
+
+		$names[$row['carrier']] = ($row['carrier'] === '') ? '' : pg_delivery_scorecard_carrier_name($row['carrier']);
+
+	}
+
+	api_ok(api_delivery_report_present($view, $year, $months, $names, $arrival, $shipping, is_array($summary) ? (int)$summary['at'] : 0));
+
+}
+
+// One scorecard figure set as the API gives it: the shares and days are null
+// under PG_DELIVERY_TOWER_MIN_PARCELS parcels (enough false), as the screen's
+// "Too few parcels". Pure.
+function api_delivery_figures_present($figures) {
+
+	$enough = !empty($figures['enough']);
+
+	$value = function ($key) use ($figures, $enough) {
+
+		return ($enough && isset($figures[$key]) && ($figures[$key] !== null)) ? round((float)$figures[$key], 1) : null;
+
+	};
+
+	return array(
+		'parcels'  => (int)$figures['parcels'],
+		'enough'   => $enough,
+		'on_time'  => $value('on_time'),
+		'median'   => $value('median'),
+		'problem'  => $value('problem'),
+		'returned' => $value('returned')
+	);
+
+}
+
+// The answer of GET /reports/delivery. Pure: $view is
+// pg_delivery_scorecard_month_view() or _year_view(), $names carrier key =>
+// name, $arrival pg_delivery_tower_arrival_checks_read(), $measured_at when
+// the nightly summary the arrival check reads was made (0 for none).
+function api_delivery_report_present($view, $year, $months, $names, $arrival, $shipping, $measured_at) {
+
+	$carriers = array();
+
+	foreach ($view['carriers'] as $row) {
+
+		$carrier = (string)$row['carrier'];
+
+		$provinces = array();
+
+		$by_month = array();
+
+		if ($year) {
+
+			foreach ($months as $key) {
+
+				$by_month[] = array('month' => (string)$key, 'figures' => api_delivery_figures_present($row['months'][$key]));
+
+			}
+
+		} else {
+
+			foreach ($row['provinces'] as $province) {
+
+				$provinces[] = array('name' => (string)$province['name'], 'figures' => api_delivery_figures_present($province['figures']));
+
+			}
+
+		}
+
+		$carriers[] = array(
+			'carrier'   => ($carrier === '') ? null : $carrier,
+			'name'      => isset($names[$carrier]) ? (string)$names[$carrier] : $carrier,
+			'figures'   => api_delivery_figures_present($row['figures']),
+			'provinces' => $provinces,
+			'months'    => $by_month
+		);
+
+	}
+
+	$methods = array();
+
+	foreach ($arrival as $check) {
+
+		$methods[] = array(
+			'method_id' => (int)$check['id'],
+			'name'      => (string)$check['name'],
+			'measured'  => round((float)$check['check']['measured'], 1),
+			'set'       => (int)$check['check']['set']
+		);
+
+	}
+
+	return array(
+		'shipping'    => (bool)$shipping,
+		'period'      => $year ? 'year' : 'month',
+		'from_month'  => (string)$months[0],
+		'to_month'    => (string)$months[count($months) - 1],
+		'min_parcels' => PG_DELIVERY_TOWER_MIN_PARCELS,
+		'total'       => api_delivery_figures_present($view['total']),
+		'carriers'    => $carriers,
+		'arrival'     => $methods,
+		'measured_at' => api_time($measured_at)
+	);
+
+}
+
+// What api_reports_delivery() answers with, declared for the OpenAPI
+// document.
+function api_delivery_report_schema() {
+
+	$figures = array(
+		'parcels'  => 'integer',
+		'enough'   => 'boolean',
+		'on_time'  => 'number?',
+		'median'   => 'number?',
+		'problem'  => 'number?',
+		'returned' => 'number?'
+	);
+
+	return array(
+		'shipping'    => 'boolean',
+		'period'      => 'string',
+		'from_month'  => 'string',
+		'to_month'    => 'string',
+		'min_parcels' => 'integer',
+		'total'       => $figures,
+		'carriers'    => array(array(
+			'carrier'   => 'string?',
+			'name'      => 'string',
+			'figures'   => $figures,
+			'provinces' => array(array('name' => 'string', 'figures' => $figures)),
+			'months'    => array(array('month' => 'string', 'figures' => $figures))
+		)),
+		'arrival'     => array(array(
+			'method_id' => 'integer',
+			'name'      => 'string',
+			'measured'  => 'number',
+			'set'       => 'integer'
+		)),
+		'measured_at' => 'datetime?'
+	);
+
+}

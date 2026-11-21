@@ -787,6 +787,7 @@
     "In total": "Toplam",
     "In total, inside": "İçinde toplam",
     "In transit": "Yolda",
+    "In transit longer than the carrier usually takes to the province.": "Kargo firmasının bu ile genellikle harcadığı süreden daha uzun süredir yolda.",
     "In two weeks": "İki hafta sonra",
     "In use": "Kullanımda",
     "In use: PHP has no certificate store of its own on this server.": "Kullanımda: bu sunucuda PHP'nin kendine ait bir sertifika deposu yok.",
