@@ -38,7 +38,7 @@ if (!defined('PG_MERCHANT_API')) {
 
 // How long a reading of the product issues is kept before the daily job
 // reads them again. Shorter than a day so the daily run always finds it due;
-// a "Check now" on the card resets it.
+// a "Check issues now" on its page of Connections resets it.
 if (!defined('PG_MERCHANT_ISSUES_TTL')) {
     define('PG_MERCHANT_ISSUES_TTL', 43200);
 }
@@ -370,6 +370,42 @@ function pg_merchant_issues_due($checked_at, $now, $ttl = PG_MERCHANT_ISSUES_TTL
 function pg_merchant_center_url($account)
 {
     return 'https://merchants.google.com/mc/products/diagnostics?a=' . rawurlencode(preg_replace('/\D/', '', (string) $account));
+}
+
+// The address of Merchant Center's page on Connections, where its account is
+// chosen, the feed registered and the issues read.
+function pg_merchant_connections_url()
+{
+    return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
+        . '/connections.php?service=merchant_center';
+}
+
+// The Product Feeds card's Merchant Center connection: Connected while an
+// account is chosen and a Google account still reaches it, and the way to
+// its page on Connections. Pure.
+function pg_merchant_card_connection_html($state, $linked)
+{
+    $connected = ($state['account'] !== '') && $linked;
+
+    if ($connected) {
+        $line = lang(array('string' => 'Merchant Center account {var:1}. It is chosen on its page of Connections, where the feed is registered and the product issues are read.',
+            'vars' => array($state['account_name'] . (($state['account_name'] !== $state['account']) ? ' (' . $state['account'] . ')' : ''))));
+    } elseif ($state['account'] !== '') {
+        $line = lang('The Google account Merchant Center was reached through is no longer connected. Connect one again on its page of Connections.');
+    } else {
+        $line = lang('No Merchant Center account is chosen. Connect a Google account and choose the account on its page of Connections.');
+    }
+
+    return '
+                                        <div class="col-12" id="pgsub-merchant-connection">
+                                            <div class="d-flex flex-column align-items-start gap-2">
+                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => 'Google Merchant Center'))) . '</span>' . ($connected
+                                                    ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                    : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                <div class="form-text mt-0">' . h($line) . '</div>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(pg_merchant_connections_url()) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                            </div>
+                                        </div>';
 }
 
 // The tile's state from the stored reading: 'none' (no tile: no account

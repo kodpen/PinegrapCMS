@@ -13,6 +13,7 @@ module: messages_area
 ## Which areas have it?
 - Communication (`.pg-area-tabs pg-messages-tabs`, `pg_messages_tab_strip()`): its six tabs, full width or the list measure (TS1, #10390; the shared class since TS2).
 - The marketplace products screen's views (store area, `marketplace_products.php`, list measure): Catalogue on the marketplace, Products in this shop, Listings, each with its own columns (TS2). Its `#mpp-flash` messages come under the strip.
+- Delivery problems and the Carrier scorecard (store area, list and report measure): "Problems", "Carrier scorecard" (`pg_delivery_tower_segments_html()`, `commerce/delivery-tower-segments.md`).
 - A new strip of links over a group of screens takes `.pg-area-tabs`, printed first in `#content`, on screens whose `#content` is centred (no edit measure, no rail).
 
 ## Which `.pg-seg` strips are not area strips? (inventory of 2026-11-19, TS2)

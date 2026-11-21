@@ -62,6 +62,7 @@
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers [decision: decisions-made-product-25.md]
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the Artifact Canvas's save that used to write over it
+- feedback-answer.md: Satisfaction survey's message and answer page (FD4a): pg_feedback_message_send(), e-mail buttons, SMS kind, feedback.php, the page-side score write, 7-day change, review invitation, Don't ask me again
 - feedback-rules.md: Satisfaction surveys' pure rules (includes/fn/feedback.php): score bands per kind, NPS/CSAT/effort sums, 30-day fatigue, low score, owner chooser, signed answer token
 - feedback-send-pass.md: Survey pass of the general job (FD3): hours 09:00-20:00, checks before a send, one reminder, no answer after 30 days, consent of service and commercial surveys, periodic NPS
 - feedback-sends.md: Satisfaction surveys queued (FD3): the events that queue one, the row and its token hash, the cancels, booking.completed, workspace.mail.closed, ticket.checked_in in flows

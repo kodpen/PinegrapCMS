@@ -414,29 +414,63 @@ function pg_feedback_sent_after_words(array $survey)
 }
 
 /**
- * The e-mail's body: the question, the score buttons and the comment's
- * label, in tables mail programs draw. In a preview or a test the buttons
- * lead nowhere; the sends give each its signed link. No promotion and no
- * review invitation: those belong to the answer page. Pure but for h().
+ * The e-mail's body: the question, the score buttons with the words at both
+ * ends of the scale, and the comment's label, in tables mail programs draw.
+ * In a preview or a test the buttons lead nowhere; a send gives each its
+ * signed link and adds the quiet "Don't ask me again" link. No promotion
+ * and no review invitation: those belong to the answer page. Pure but for
+ * h() and lang().
  *
  * @param int    $kind
  * @param string $question
  * @param string $comment the comment's label
+ * @param array  $links   scores (score => address), stop (address); none
+ *                        for a preview
  * @return string HTML
  */
-function pg_feedback_mail_html($kind, $question, $comment)
+function pg_feedback_mail_html($kind, $question, $comment, array $links = array())
 {
     $range = pg_feedback_range($kind);
+    $ends = pg_feedback_scale_ends($kind);
     $cells = '';
+    $style = 'display:inline-block;min-width:28px;padding:8px 4px;border:1px solid #c9ced6;border-radius:6px;font:600 15px/1 Arial,sans-serif;color:#1f2933;text-align:center;text-decoration:none';
 
     for ($score = $range[0]; $score <= $range[1]; $score++) {
-        $cells .= '<td style="padding:2px"><span style="display:inline-block;min-width:28px;padding:8px 4px;border:1px solid #c9ced6;border-radius:6px;font:600 15px/1 Arial,sans-serif;color:#1f2933;text-align:center">' . $score . '</span></td>';
+        $cells .= '<td style="padding:2px">' . (isset($links['scores'][$score])
+            ? '<a href="' . h($links['scores'][$score]) . '" style="' . $style . '">' . $score . '</a>'
+            : '<span style="' . $style . '">' . $score . '</span>') . '</td>';
     }
 
-    return '<div style="font:15px/1.5 Arial,sans-serif;color:#1f2933">'
+    $html = '<div style="font:15px/1.5 Arial,sans-serif;color:#1f2933">'
         . '<p style="margin:0 0 12px;font-weight:600">' . h($question) . '</p>'
         . '<table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse:collapse"><tr>' . $cells . '</tr></table>'
-        . '<p style="margin:12px 0 0;color:#52606d">' . h($comment) . '</p></div>';
+        . '<p style="margin:4px 0 0;font-size:13px;color:#52606d">' . h($range[0] . ': ' . $ends[0] . ' · ' . $range[1] . ': ' . $ends[1]) . '</p>'
+        . '<p style="margin:12px 0 0;color:#52606d">' . h($comment) . '</p>';
+
+    if (!empty($links['stop'])) {
+        $html .= '<p style="margin:24px 0 0;font-size:12px"><a href="' . h($links['stop']) . '" style="color:#7b8794">' . h(lang('Don\'t ask me again')) . '</a></p>';
+    }
+
+    return $html . '</div>';
+}
+
+/**
+ * The words at the two ends of a kind's scale, translated. Pure but for
+ * lang().
+ *
+ * @param int $kind
+ * @return array (lowest score's words, highest score's words)
+ */
+function pg_feedback_scale_ends($kind)
+{
+    switch ((int) $kind) {
+        case PG_FEEDBACK_CSAT:
+            return array(lang('Very unsatisfied'), lang('Very satisfied'));
+        case PG_FEEDBACK_EFFORT:
+            return array(lang('Very easy'), lang('Very hard'));
+    }
+
+    return array(lang('Not at all likely'), lang('Extremely likely'));
 }
 
 /**

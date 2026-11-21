@@ -110,7 +110,7 @@ function test_settings_seo_sharing_feeds_in_ecommerce()
 	pg_assert_contains('<div id="pgset-feeds" class="pg-set-card">', $cards, 'drawn by Ecommerce');
 	pg_assert_contains("require(PG_FUNCTIONS_DIR . '/includes/settings/commerce_merchant.php');", $cards, 'with Merchant Center');
 	pg_assert_same(false, strpos($seo, '_merchant.php'), 'Merchant Center not required by SEO');
-	pg_assert_contains("pg_settings_url('commerce') . '?merchant_connect=1#pgset-feeds'", $merchant, 'Google comes back to the card');
+	pg_assert_contains('pg_merchant_card_connection_html(', $merchant, 'the card shows Merchant Center\'s connection; its account is chosen on Connections');
 
 	foreach (array('product_feed_seller_name', 'product_feed_default_brand', 'product_feed_seller_url', 'product_feed_privacy_policy_url', 'product_feed_terms_url', 'product_feed_excluded_groups', 'product_feed_build', 'product_feed_new_address') as $field) {
 		pg_assert_contains('name="' . $field, $cards, $field . ' drawn by Ecommerce');
@@ -120,10 +120,13 @@ function test_settings_seo_sharing_feeds_in_ecommerce()
 	$seo_save = settings_seo_sharing_source('includes/settings/seo.save.php');
 	$save = settings_seo_sharing_source('includes/settings/commerce.save.php');
 
-	foreach (array('pg_product_feed_valid_url(', 'pg_product_feed_save_from_screen(', 'pg_merchant_save_from_screen(', "post_value('merchant_center_country')", "post_value('product_feed_build')") as $piece) {
+	foreach (array('pg_product_feed_valid_url(', 'pg_product_feed_save_from_screen(', "post_value('product_feed_build')") as $piece) {
 		pg_assert_contains($piece, $save, $piece . ' in the Ecommerce save');
 		pg_assert_same(false, strpos($seo_save, $piece), $piece . ' no longer in the SEO save');
 	}
+
+	pg_assert_same(false, strpos($save, 'pg_merchant_save_from_screen('), 'Merchant Center is saved on its page of Connections');
+	pg_assert_contains('pg_merchant_save_from_screen(', settings_seo_sharing_source('connections.php'));
 
 	// The address check refuses before Ecommerce writes a column.
 	pg_assert_true(strpos($save, 'pg_product_feed_valid_url(') < strpos($save, 'db("UPDATE config'), 'checked before the write');
@@ -163,12 +166,13 @@ function test_settings_seo_sharing_ai_bots_in_one_place()
 }
 
 // The structured data seller country and the Merchant Center country are two
-// settings: each card posts its own field and each save reads only its own,
-// so saving one never overwrites the other.
+// settings: each place posts its own field and each save reads only its own,
+// so saving one never overwrites the other. Merchant Center's is on its page
+// of Connections.
 function test_settings_seo_sharing_two_countries_two_fields()
 {
 	$seo = settings_seo_sharing_source('includes/settings/seo.php') . settings_seo_sharing_source('includes/settings/prep.php');
-	$merchant = settings_seo_sharing_source('includes/settings/commerce_merchant.php');
+	$merchant = settings_seo_sharing_source('connections.php');
 	$seo_save = settings_seo_sharing_source('includes/settings/seo.save.php');
 	$save = settings_seo_sharing_source('includes/settings/commerce.save.php');
 
@@ -178,7 +182,8 @@ function test_settings_seo_sharing_two_countries_two_fields()
 
 	pg_assert_contains("post_value('merchant_country')", $seo_save, 'SEO reads its own field');
 	pg_assert_same(false, strpos($seo_save, 'merchant_center_country'), 'SEO does not read the Merchant Center field');
-	pg_assert_contains("post_value('merchant_center_country')", $save, 'Ecommerce reads its own field');
+	pg_assert_contains('$merchant_post(\'merchant_center_country\')', $merchant, 'Merchant Center\'s page reads its own field');
+	pg_assert_same(false, strpos($merchant, "'merchant_country'"), 'and not the structured data field');
 	pg_assert_same(false, strpos($save, "post_value('merchant_country')"), 'Ecommerce does not read the structured data field');
 	pg_assert_same(false, strpos($save, 'merchant_country = '), 'Ecommerce does not write config.merchant_country');
 }

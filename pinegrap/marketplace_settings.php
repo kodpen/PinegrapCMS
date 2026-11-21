@@ -370,8 +370,8 @@ if ($_POST) {
 
 	}
 
-	// A managed account goes when its card clears it (Merchant Center: the
-	// Product Feeds card); removed here, the card would still show it chosen.
+	// A managed account goes when its page clears it (Merchant Center: its
+	// page of Connections); removed here, the page would still show it chosen.
 	if ($action === 'delete' && $account && mp_provider_is_managed($account['provider'])) {
 
 		$liveform->add_warning(h(mp_settings_managed_note($account['provider'])));
@@ -1746,7 +1746,7 @@ function mp_settings_order_total($row) {
 function mp_settings_managed_note($provider) {
 
 	return lang(array(
-		'string' => 'The {var:1} account is set up on the Product Feeds card of the e-commerce settings; choose or clear the account there.',
+		'string' => 'The {var:1} account is set up on its page of Connections; choose or clear the account there.',
 		'vars'   => array(mp_provider_name($provider))
 	));
 
@@ -3166,7 +3166,7 @@ if ($selected) {
 
 		$edit_fields .= '
 			<div class="alert theme-info mb-5"><i class="bi bi-info-circle me-1"></i>' . h(mp_settings_managed_note($selected['provider']))
-				. ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_commerce.php#pgset-feeds') . '">' . lang('Open the Product Feeds card') . '</a></div>';
+				. ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=' . rawurlencode($selected['provider'])) . '">' . lang('Manage in Connections') . '</a></div>';
 
 	}
 

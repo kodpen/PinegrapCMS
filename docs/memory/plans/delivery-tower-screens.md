@@ -8,7 +8,7 @@ description: Plan delivery-tower, how its screens are put together (DT3 to DT5):
 - `ui/screen-composition-rules.md`; parts are copied from the Design examples screen, the section named in brackets (`workflow/screen-described-in-plan.md`).
 
 ## How is the Delivery problems list laid out? (DT3)
-- From DT4 link segments [segmented control] sit under the head: "Problems", "Carrier scorecard".
+- Link segments [segmented control] sit under the head of this list and of the scorecard: "Problems", "Carrier scorecard" (step DT5b).
 - A list on the list table driver: parcel number, order, carrier, kind as a pill [status] (Stuck, Not handed over, Delivery problem, Returned), "Since" in days, assignee, the note's first words. A marketplace order's row carries a quiet "Marketplace" pill.
 - Filters: Open, Closed, All as segments; kind and carrier as selects. The screen has no fill: nothing is added here. With rows chosen the bulk bar offers "Assign to…" and "Close…".
 - Empty: "No open delivery problems" and one line on what is watched.

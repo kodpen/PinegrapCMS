@@ -5,10 +5,13 @@
  * Site Settings - the Appearance cards: the panel theme, the dashboard, the
  * rich-text editor and, for an administrator, the private label branding.
  *
- * Fills $pg_settings_cards, one grid column per card, in reading order. Which
- * cards belong here is said once, in includes/settings/registry.php; this file
- * holds them, and <key>.save.php writes what they edit. The variables they read
- * are prepared by includes/settings/prep.php.
+ * Each part is one folded row (includes/settings/fold.php) holding its card;
+ * the rows' order, names and lines are includes/fn/appearance_settings_fold.php.
+ * A switch's fields sit under it, drawn whatever its state. Fills
+ * $pg_settings_cards with the one list of rows. Which cards belong here is
+ * said once, in includes/settings/registry.php; this file holds them, and
+ * appearance.save.php writes what they edit. The variables they read are
+ * prepared by includes/settings/prep.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,32 +23,43 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
-// ── Theme ──
-$pg_settings_cards[] = '
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/appearance_settings_fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
+
+// Each part's card and its line of state, by row key; drawn as rows at the
+// end in pg_appearance_fold_order().
+$appearance_parts = array();
+
+// ── Panel look ──
+// Panel CSS is printed in the control panel only (output_header() in
+// includes/fn/output.php), never on the site.
+$appearance_parts['theme'] = array('html' => '
                         <div id="pgset-theme" class="pg-set-card" data-pg-advanced-visuals="' . ($advanced_visual_effects_checked ? '1' : '0') . '">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Theme') . '
+                                    ' . lang('Panel look') . '
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $advanced_visual_effects_checked . ' class="" type="checkbox" id="advanced_visual_effects" name="advanced_visual_effects"/></div>
-                                                <label class="" for="advanced_visual_effects">' . lang('Enable Transparent Acrylic Effect') . '</label><div class="form-text">' . lang('If the device you are using is weak in hardware, you can disable this setting to get a faster interface.') . '</div>
+                                        <div class="col-12">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="checkbox" class="pg-switch" value="1"' . $advanced_visual_effects_checked . ' id="advanced_visual_effects" name="advanced_visual_effects" aria-describedby="advanced_visual_effects_help"/>
+                                                <label class="pg-text-2" for="advanced_visual_effects">' . lang('Transparent acrylic effect') . '</label>
                                             </div>
+                                            <div class="form-text" id="advanced_visual_effects_help">' . lang('For everyone who uses the panel. Turn it off if the panel feels slow.') . '</div>
                                         </div>
-                                        <div class="col-12 ">
-                                            <label class="form-label" for="custom_css">' . lang('Custom CSS') . '</label>
+                                        <div class="col-12">
+                                            <label class="form-label" for="custom_css">' . lang('Panel CSS') . '</label>
                                             <div id="edit_custom">
                                                 <textarea name="custom_css" id="custom_css" rows="25" cols="60" wrap="off">' . h($custom_css) . '</textarea>
                                                 ' . pg_code_editor_attach(array('id' => 'custom_css', 'code_type' => 'css')) . '
                                             </div>
+                                            <div class="form-text">' . lang('Styles the control panel only, never the site.') . (((int) $user['role'] === 0) ? ' ' . lang('A whole stylesheet can be set under Private label branding.') : '') . '</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_appearance_fold_theme($advanced_visual_effects_checked !== '', $custom_css);
 
 // The acrylic effect is a class on the body, set when the page is drawn, and
 // every glass rule of the menus and the dialog hangs on it. The pane is read
@@ -67,8 +81,9 @@ $pg_settings_scripts[] = '
 // Designers and administrators only ($dashboard_card_shown, prep.php); the
 // save checks the same gate, so a manager's save of this category leaves the
 // dashboard alone. Card style, backdrop and widget order are on the dashboard
-// row and apply to everyone's dashboard; the refresh time is this sign-in's.
-// Reset Widgets is a named submit button: the save writes the settings first,
+// row and apply to everyone's dashboard, under "For everyone"; the refresh
+// time is this sign-in's, under "Only for you, until you sign out".
+// Reset widgets is a named submit button: the save writes the settings first,
 // then puts the widgets back in their default order.
 if ($dashboard_card_shown) {
 
@@ -81,18 +96,18 @@ if ($dashboard_card_shown) {
 
         $output_dashboard_appearance = '
                                         <div class="pg-f-md">
-                                            <label for="dashboard_widget_theme" class="form-label">' . lang('Card Style') . '</label>
+                                            <label for="dashboard_widget_theme" class="form-label">' . lang('Card style') . '</label>
                                             <select name="dashboard_widget_theme" id="dashboard_widget_theme" class="form-control">' . $output_dashboard_theme_options . '</select>
                                             <div class="form-text">' . lang('How the cards on the dashboard are drawn, for everyone who uses the panel.') . '</div>
                                         </div>
                                         <div class="pg-f-md">
-                                            <label for="dashboard_panel_backdrop" class="form-label">' . lang('Panel Backdrop') . '</label>
+                                            <label for="dashboard_panel_backdrop" class="form-label">' . lang('Panel backdrop') . '</label>
                                             <select name="dashboard_panel_backdrop" id="dashboard_panel_backdrop" class="form-control">' . $output_dashboard_backdrop_options . '</select>
                                             <div class="form-text">' . lang('What sits behind the dashboard cards. Match Card Style picks the one that suits the chosen style.') . '</div>
                                         </div>';
     }
 
-    $pg_settings_cards[] = '
+    $appearance_parts['dashboard'] = array('html' => '
                         <div id="pgset-dashboard" class="pg-set-card"'
                             . ($dashboard_appearance_ready
                                 ? ' data-pg-dashboard-theme="' . h($dashboard_appearance['widget_theme']) . '"'
@@ -105,23 +120,27 @@ if ($dashboard_card_shown) {
                                     ' . lang('Dashboard') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-5">' . $output_dashboard_appearance . '
+                                   <div class="row gy-5">
+                                        <div class="col-12"><h3 class="pg-group-label mb-0">' . lang('For everyone') . '</h3></div>' . $output_dashboard_appearance . '
+                                        <div class="col-12">
+                                            <button type="submit" name="dashboard_reset_widgets" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . lang('Reset widgets') . '</button>
+                                            <div class="form-text">' . lang('Puts the dashboard cards back in their default order. This button also saves the other settings on this screen.') . '</div>
+                                        </div>
+                                        <div class="col-12"><h3 class="pg-group-label mb-0">' . lang('Only for you, until you sign out') . '</h3></div>
                                         <div class="pg-f-xs">
-                                            <label for="dashboard_refresh" class="form-label">' . lang('Refresh Time') . '</label>
+                                            <label for="dashboard_refresh" class="form-label">' . lang('Refresh every') . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('seconds') . '</span>
                                                 <input type="number" name="dashboard_refresh" id="dashboard_refresh" class="form-ghost text-end" value="' . (int) $dashboard_refresh . '" min="10" max="86400" step="1" inputmode="numeric"/>
                                             </label>
                                             <div class="form-text">' . lang('How often the dashboard asks for fresh figures, at least 10 seconds. It is kept for this sign-in only and goes back to 60 seconds at the next one.') . '</div>
                                         </div>
-                                        <div class="col-12 ">
-                                            <button type="submit" name="dashboard_reset_widgets" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . lang('Reset Widgets') . '</button>
-                                            <div class="form-text">' . lang('Puts the dashboard cards back in their default order. This button also saves the other settings on this screen.') . '</div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_appearance_fold_dashboard(
+                            $dashboard_appearance_ready ? $dashboard_choice_labels['widget_theme'][$dashboard_appearance['widget_theme']] : '',
+                            $dashboard_refresh);
 
     // Over the dashboard, a save shows on it: the pane is read again after
     // every save, so the card carries what is stored now. Card style and
@@ -172,72 +191,57 @@ if ($dashboard_card_shown) {
 </script>';
 }
 
-// ── Rich-text Editor ──
-$pg_settings_cards[] = '
+// ── Rich-text editor ──
+// The five tool switches, each a button of the editor's toolbar.
+$editor_tools = '';
+
+foreach (array(
+    'page_editor_font'             => array($page_editor_font_checked, lang('Font')),
+    'page_editor_font_size'        => array($page_editor_font_size_checked, lang('Font size')),
+    'page_editor_font_style'       => array($page_editor_font_style_checked, lang('Font style')),
+    'page_editor_font_color'       => array($page_editor_font_color_checked, lang('Text colour button')),
+    'page_editor_background_color' => array($page_editor_background_color_checked, lang('Background colour button')),
+) as $editor_tool => $editor_tool_face) {
+    $editor_tools .= '
+                                        <div class="col-12">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="checkbox" class="pg-switch" value="1"' . $editor_tool_face[0] . ' id="' . $editor_tool . '" name="' . $editor_tool . '"/>
+                                                <label class="pg-text-2" for="' . $editor_tool . '">' . $editor_tool_face[1] . '</label>
+                                            </div>
+                                        </div>';
+}
+
+$appearance_parts['editor'] = array('html' => '
                         <div id="pgset-editor" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Rich-text Editor') . '
+                                    ' . lang('Rich-text editor') . '
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">
-                                        <div class="col-12 ">
-                                            <fieldset><legend class="form-label pg-field-label">'. lang('Editor Version') . '</legend>
-                                            <div class="form-field">
-                                                <input value="latest" class="radio" type="radio" id="page_editor_version_latest" name="page_editor_version" ' . $page_editor_version_latest_checked . '>
-                                                <label class="" for="page_editor_version_latest">'. lang('Latest') . '</label>
-                                            </div>
-                                            <div class="form-field">
-                                                <input value="previous" class="radio" type="radio" id="page_editor_version_previous" name="page_editor_version" ' . $page_editor_version_previous_checked . '>
-                                                <label class="" for="page_editor_version_previous">'. lang('Previous') . '</label>
+                                        <div class="col-12">
+                                            <fieldset><legend class="form-label pg-field-label">'. lang('Editor version') . '</legend>
+                                            <div class="pg-seg flex-wrap">
+                                                <label class="pg-seg-item" for="page_editor_version_latest"><input value="latest" class="visually-hidden" type="radio" id="page_editor_version_latest" name="page_editor_version" ' . $page_editor_version_latest_checked . '>'. lang('Latest') . '</label>
+                                                <label class="pg-seg-item" for="page_editor_version_previous"><input value="previous" class="visually-hidden" type="radio" id="page_editor_version_previous" name="page_editor_version" ' . $page_editor_version_previous_checked . '>'. lang('Previous') . '</label>
                                             </div>
                                             </fieldset>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $page_editor_font_checked . ' class="" type="checkbox" id="page_editor_font" name="page_editor_font"/></div>
-                                                <label class="" for="page_editor_font">' . lang('Font Selection') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $page_editor_font_size_checked . ' class="" type="checkbox" id="page_editor_font_size" name="page_editor_font_size"/></div>
-                                                <label class="" for="page_editor_font_size">' . lang('Font Size Selection') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $page_editor_font_style_checked . ' class="" type="checkbox" id="page_editor_font_style" name="page_editor_font_style"/></div>
-                                                <label class="" for="page_editor_font_style">' . lang('Font Style Selection') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $page_editor_font_color_checked . ' class="" type="checkbox" id="page_editor_font_color" name="page_editor_font_color"/></div>
-                                                <label class="" for="page_editor_font_color">' . lang('Font Color Button') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $page_editor_background_color_checked . ' class="" type="checkbox" id="page_editor_background_color" name="page_editor_background_color"/></div>
-                                                <label class="" for="page_editor_background_color">' . lang('Background Color Button') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <label for="spell_check_engine_info" class="form-label">' . lang('Spell Checker Engine') . '</label>
-                                            <input class="form-control disabled" readonly="true" id="spell_check_engine_info" value="' . $spell_checker_engine_info['name'] . '"/>
+                                        </div>' . $editor_tools . '
+                                        <div class="col-12">
+                                            <div class="pg-text-meta">' . h(lang(array('string' => 'Spell checker: {var:1}', 'vars' => $spell_checker_engine_info['name']))) . '</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_appearance_fold_editor($page_editor_version_previous_checked !== '' ? 'previous' : 'latest');
 
-// ── Private Label Branding ──
+// ── Private label branding ──
 // The panel's own logo, stylesheet and footer links, kept in data/config.php
 // (pg_private_label_config_keys()) behind the private_label switch of the
-// config row. The administrator's alone, as private_label.php was: for
-// anyone else the card is not drawn and appearance.save.php writes none of
-// it. A logo or stylesheet that is init.php's default shows an empty box.
+// config row, its fields drawn whatever the switch says. The administrator's
+// alone, as private_label.php was: for anyone else the card is not drawn and
+// appearance.save.php writes none of it. A logo or stylesheet that is
+// init.php's default shows an empty box.
 if ((int) $user['role'] === 0) {
 
     $private_label_values = array();
@@ -270,31 +274,31 @@ if ((int) $user['role'] === 0) {
                                             </div>';
     }
 
-    $pg_settings_cards[] = '
+    $appearance_parts['private-label'] = array('html' => '
                         <div id="pgset-private-label" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Private Label Branding') . '
+                                    ' . lang('Private label branding') . '
                                 </div>
                                 <div class="card-body">
                                     <input type="hidden" name="private_label_card" value="1" />
                                     <div class="row gy-5">
                                         <div class="col-12">
-                                            <div class="form-field">' . pg_settings_tile('tag', 'content') . '
-                                                <div class="switch"><input value="1"' . ($private_label_on ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="private_label" name="private_label" data-bs-target="#private_label_fields"/></div>
-                                                <label class="" for="private_label">' . lang('Enable private label branding') . '</label>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="checkbox" class="pg-switch" value="1"' . ($private_label_on ? ' checked="checked"' : '') . ' id="private_label" name="private_label" aria-describedby="private_label_help"/>
+                                                <label class="pg-text-2" for="private_label">' . lang('Use your own branding') . '</label>
                                             </div>
-                                            <div class="form-text">' . lang('Update the branding for the control panel.') . '</div>
+                                            <div class="form-text" id="private_label_help">' . lang('The control panel shows your logo, stylesheet and footer links instead of Pinegrap\'s.') . '</div>
                                         </div>
-                                        <div class="col-12 collapse' . ($private_label_on ? ' show' : '') . '" id="private_label_fields">
+                                        <div class="col-12" id="private_label_fields">
                                             <div class="row gy-5">
                                                 <div class="col-12 md:col-6">
-                                                    <label for="logo_url" class="form-label">' . lang('Logo URL') . '</label>
+                                                    <label for="logo_url" class="form-label">' . lang('Logo address') . '</label>
                                                     <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="logo_url" id="logo_url" class="form-control" value="' . h($private_label_values['logo_url']) . '" />
                                                     <div class="form-text">' . lang('Leave blank to use the default Pinegrap logo') . '</div>
                                                 </div>
                                                 <div class="col-12 md:col-6">
-                                                    <label for="control_panel_stylesheet_url" class="form-label">' . lang('Control Panel Stylesheet URL') . '</label>
+                                                    <label for="control_panel_stylesheet_url" class="form-label">' . lang('Panel stylesheet address') . '</label>
                                                     <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="control_panel_stylesheet_url" id="control_panel_stylesheet_url" class="form-control" value="' . h($private_label_values['control_panel_stylesheet_url']) . '" />
                                                 </div>
                                                 <div class="col-12">
@@ -305,5 +309,15 @@ if ((int) $user['role'] === 0) {
                                     </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_appearance_fold_private_label($private_label_on);
 }
+
+$appearance_rows = array();
+
+foreach (pg_appearance_fold_order() as $appearance_key) {
+    if (isset($appearance_parts[$appearance_key])) {
+        $appearance_rows[] = array('key' => $appearance_key) + pg_appearance_fold_face($appearance_key) + $appearance_parts[$appearance_key];
+    }
+}
+
+$pg_settings_cards[] = pg_settings_fold($appearance_rows);

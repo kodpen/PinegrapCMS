@@ -5189,8 +5189,9 @@
 
     // The bar over the selected object where the panel is not a sheet (s as
     // actionList() reads it, and s.kind: the one layer's type; s.animate:
-    // the Animate tool). The type's own command (a text: Edit text; a video
-    // in Animate: Split), Motion in Animate (never for a redaction, which
+    // the Animate tool; s.sound: the one clip has a sound track). The type's
+    // own command (a text: Edit text; a video in Animate: Split, then Detach
+    // sound with a sound track), Motion in Animate (never for a redaction, which
     // does not move), Group or Ungroup (s.group, s.ungroup), Duplicate,
     // Delete, Lock, More (the context menu's list). Every layer locked:
     // Unlock and More. The picture and an area keep their commands in the
@@ -5216,6 +5217,12 @@
 
             if (s.animate && (s.kind === 'video')) {
                 add('split');
+            }
+
+            // Detach sound for one clip with a sound track (s.sound); off
+            // 1× its press says why.
+            if (s.animate && (s.kind === 'video') && s.sound) {
+                add('detachSound');
             }
 
             // Follow an area of the video showing at the playhead: never a
@@ -5300,8 +5307,12 @@
     // s.imports (the Import button is there) and s.site (Import from the
     // site), s.canvas (the Canvas tool is offered), s.attach (the targets
     // one free layer may attach to) and s.attached (it is attached).
+    // On a clip's row of the tracks s.clipRow { sound } adds Split clip and,
+    // with a sound track, Detach sound before the stage's items.
     // On a rail item: s.modes, its tools, and s.tool; one mode has no menu.
     // On a scene: s.index, s.count and s.max of the scenes.
+    // Under Add sound (s.at 'detachFrom'): s.clips, the ids of the clips
+    // whose sound may be detached, one item each.
     function menuList(s) {
         var out = [], acts;
         var item = function (name, off, extra) {
@@ -5323,6 +5334,10 @@
             return ((s.modes || []).length > 1) ? s.modes.map(function (m) { return { name: 'mode', mode: m, on: m === s.tool, off: false }; }) : out;
         }
 
+        if (s.at === 'detachFrom') {
+            return (s.clips || []).map(function (id) { return { name: 'detachClip', clip: id, off: false }; });
+        }
+
         if (s.at === 'scene') {
             item('sceneDuplicate', s.count >= s.max);
             item('sceneDelete', s.count < 2);
@@ -5335,6 +5350,16 @@
         acts = actionList({ layers: s.layers, free: s.free, picture: s.picture, area: s.area, sheet: false, can: s.can });
 
         if (s.layers) {
+            if (s.clipRow) {
+                item('split', !s.free);
+
+                if (s.clipRow.sound) {
+                    item('detachSound', !s.free);
+                }
+
+                sep();
+            }
+
             item('cut', !s.free);
             item('copyLayers');
             item('paste', !s.clip);
@@ -10125,6 +10150,34 @@
         return s;
     }
 
+    // Why Detach sound is refused for clip l in a document holding count
+    // sounds: 'locked', 'sound' (no sound track), 'speed' (off 1×, its
+    // sound would not match the pictures), 'full' (SOUND_MAX sounds); ''
+    // when it may be detached.
+    function clipDetachWhy(l, count) {
+        var c = clipLayer(l);
+
+        if (l.locked) {
+            return 'locked';
+        }
+
+        if (!c.sound) {
+            return 'sound';
+        }
+
+        if (c.speed !== 1) {
+            return 'speed';
+        }
+
+        return ((Number(count) || 0) >= SOUND_MAX) ? 'full' : '';
+    }
+
+    // The clips whose sound Detach from a video offers: unlocked ones with
+    // a sound track, in the stack's order from the top.
+    function clipDetachList(layers) {
+        return (layers || []).filter(function (l) { return (l.type === 'video') && !l.locked && clipLayer(l).sound; }).reverse();
+    }
+
     // A file name's video type, lower case, or '' for another type.
     function clipType(name) {
         var m = /\.([a-z0-9]+)$/i.exec(String(name || '')), ext = m ? m[1].toLowerCase() : '';
@@ -10665,7 +10718,7 @@
 
     var CLIP = {
         CLIP_SPEEDS: CLIP_SPEEDS, CLIP_TYPES: CLIP_TYPES, CLIP_MIN: CLIP_MIN, clipLayer: clipLayer, clipSpan: clipSpan, clipAt: clipAt,
-        clipFit: clipFit, clipCanvas: clipCanvas, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipType: clipType,
+        clipFit: clipFit, clipCanvas: clipCanvas, clipNew: clipNew, clipReplace: clipReplace, clipEnd: clipEnd, clipSound: clipSound, clipDetach: clipDetach, clipDetachWhy: clipDetachWhy, clipDetachList: clipDetachList, clipType: clipType,
         clipRowKey: clipRowKey, clipRow: clipRow, clipRipple: clipRipple, clipTrim: clipTrim, clipMove: clipMove, clipSplit: clipSplit, clipSplitPick: clipSplitPick, clipLength: clipLength,
         clipApply: clipApply, clipPart: clipPart, clipJoins: clipJoins, clipMotionNeed: clipMotionNeed, CLIP_STRIP_MAX: CLIP_STRIP_MAX, clipStripTimes: clipStripTimes,
         clipFramesAt: clipFramesAt, CLIP_FX: CLIP_FX, clipFx: clipFx, clipFxOn: clipFxOn, clipFxColor: clipFxColor, clipFxBlur: clipFxBlur,

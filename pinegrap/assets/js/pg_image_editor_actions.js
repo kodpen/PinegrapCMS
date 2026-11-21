@@ -54,6 +54,8 @@
         // object uses the clip part's own Split clip, as the panel and the
         // play bar do.
         split: ['scissors', 'actSplit', function () { this.clipSplitHere(this.selected()[0].id); }, false, 'clipSplit'],
+        // Detach sound (pg_image_editor_clip.js), over one clip only.
+        detachSound: ['music', 'clipDetach', function () { this.clipDetachHere(this.selected()[0].id); }],
         // Group and Ungroup (pg_image_editor_layers.js), as Ctrl/Cmd+G and
         // Ctrl/Cmd+Shift+G do.
         group: ['group', 'groupLayers', function () { this.groupLayers(); }],
@@ -127,6 +129,8 @@
             sheet: !!this.panel && !this.sheetOpen,
             // One clip in the Animate tool: Split at the playhead.
             split: (this.tool === 'motion') && (picked.length === 1) && (picked[0].type === 'video') && !!this.clipSplitHere,
+            // One clip with a sound track: Detach sound.
+            sound: (picked.length === 1) && (picked[0].type === 'video') && !!M.clipLayer(picked[0]).sound && !!this.clipDetachHere,
             // A layer Follow may move while a video shows at the playhead.
             follow: !!this.followOffered && this.followOffered(),
             can: {

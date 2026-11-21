@@ -1309,6 +1309,7 @@
     "{var:1} is not an e-mail address.": "{var:1} geçerli bir e-posta adresi değil.",
     "{var:1} is not approved on {var:2} yet, so there is no listing to update.": "{var:1} henüz {var:2} pazaryerinde onaylanmadı, bu yüzden güncellenecek bir ilan yok.",
     "{var:1} is not connected. Connect it in Connections, then switch SMS on.": "{var:1} bağlı değil. Bağlantılar'da bağlayın, sonra SMS'i açın.",
+    "{var:1} is not connected. Connect it in Connections, then switch address autocomplete on.": "{var:1} bağlı değil. Bağlantılar'da bağlayın, sonra adres otomatik tamamlamayı açın.",
     "{var:1} is not connected: connect it before switching this on.": "{var:1} bağlı değil: bunu açmadan önce bağlayın.",
     "{var:1} is not in the {var:2} department.": "{var:1}, {var:2} departmanında değil.",
     "{var:1} is not read by the action {var:2}.": "{var:1}, {var:2} işleminde okunmaz.",
