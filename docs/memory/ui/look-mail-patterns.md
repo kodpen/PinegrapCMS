@@ -1,6 +1,6 @@
 ---
 name: look-mail-patterns
-description: The e-mail settings drawing's seven parts as Design examples patterns (DX2b #10930) and the recipes and classes that draw each
+description: The e-mail settings drawing's seven parts and the Features board's switch rows as Design examples patterns (DX2b #10930), with the classes that draw each
 module: look_examples
 ---
 

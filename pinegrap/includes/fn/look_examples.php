@@ -460,7 +460,8 @@ function pg_look_examples_patterns($prefix = 'light')
  * The patterns of the approved e-mail settings drawing
  * (docs/memory/plans/mail-settings-one/email-settings.html, boards A to E):
  * tabs with a state, value rows, choice cards, the step line, the provider
- * sign-in, the result line and the confirm with its effects. 'phone' marks
+ * sign-in, the result line and the confirm with its effects; then the
+ * switch rows of the Features settings board. 'phone' marks
  * the patterns the phone pane draws as well.
  *
  * @param string $p the pane's id prefix, already cleaned
@@ -634,6 +635,50 @@ function pg_look_examples_mail_patterns($p)
             . '<div class="border-top p-5 d-flex justify-content-end gap-3"><button type="button" class="pg-button pg-button-quiet">' . h(lang('Cancel')) . '</button>'
             . '<button type="button" class="pg-button pg-button-danger">' . h(lang('Remove mailbox')) . '</button></div>'
             . '</div><p class="pg-text-meta">' . h(lang('From Mailboxes › Remove mailbox: what stays green, what goes rose, what stays connected blue; the counts are read when the dialog opens.')) . '</p>',
+    );
+
+    // The Features settings board (plans/features-switchboard-design.md):
+    // a module a row, the switch at its end, its name the switch's label and
+    // its line the switch's description. Settings opens the module's folded
+    // row and shows whether the module is on or off; a module with its own
+    // category has a state pill and Open instead of a switch.
+    $switch_row = function ($key, $tone, $icon, $name, $line, $end, $state = '') use ($p) {
+        $id = $p . '_look_switch_' . $key;
+
+        if ($end === 'open') {
+            $control = '<span class="pg-pill pg-tone-' . (($state === 'on') ? 'teal' : 'gray') . '">' . h(($state === 'on') ? lang('On') : lang('Off')) . '</span>'
+                . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" aria-label="' . h(lang('Open it') . ': ' . $name) . '">' . h(lang('Open it')) . '<i class="bi bi-arrow-right" aria-hidden="true"></i></button>';
+        } else {
+            $control = (($end === 'settings') ? '<button type="button" class="pg-button pg-button-quiet pg-button-sm" aria-label="' . h(lang('Settings') . ': ' . $name) . '">' . h(lang('Settings')) . '</button>' : '')
+                . '<input type="checkbox" class="pg-switch" id="' . $id . '" aria-describedby="' . $id . '_line"' . (($state !== 'off') ? ' checked' : '') . (($state === 'locked') ? ' disabled' : '') . '>';
+        }
+
+        $name_html = ($end === 'open')
+            ? '<span class="pg-set-fold-name">' . h($name) . '</span>'
+            : '<label class="pg-set-fold-name" for="' . $id . '">' . h($name) . '</label>';
+
+        return '<div class="pg-set-switch-row' . ((($end === 'open') && ($state !== 'on')) ? ' is-off' : '') . (($state === 'locked') ? ' is-locked' : '') . '">'
+            . '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . $tone . '" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
+            . '<span class="pg-set-fold-text">' . $name_html . '<span class="pg-set-fold-line" id="' . $id . '_line">' . h($line) . '</span></span>'
+            . $control . '</div>';
+    };
+
+    $patterns[] = array(
+        'id'      => 'pattern-switch',
+        'title'   => lang('Switch rows'),
+        'classes' => array('.pg-group-label', '.pg-group-label-count', '.pg-set-fold', '.pg-set-switch-row', '.is-off', '.is-locked', '.pg-set-fold-text', '.pg-set-fold-name', '.pg-set-fold-line', '.pg-icon-tile-lg', '.pg-switch', '.pg-pill', '.pg-button-quiet', '.pg-button-sm'),
+        'html'    => '<div><div class="pg-group-label mb-2">' . h(lang('Modules')) . '<span class="pg-group-label-count">' . h(lang(array('string' => '{var:1} / {var:2} on', 'vars' => array(9, 12)))) . '</span></div>'
+            . '<div class="pg-set-fold">'
+            . $switch_row('forms', 'blue', 'bi-ui-checks', lang('Forms'), lang('Adds forms to pages; the submissions gather in the panel.'), 'switch')
+            . $switch_row('calendars', 'teal', 'bi-calendar3', lang('Calendars'), lang('Event calendars and booking pages.'), 'switch')
+            . $switch_row('courses', 'amber', 'bi-mortarboard', lang('Courses'), lang('Lessons, exams and certificates.'), 'settings')
+            . $switch_row('ads', 'blue', 'bi-megaphone', lang('Ads'), lang('Off: ad areas do not show on pages or in the menu.'), 'switch', 'off')
+            . $switch_row('share', 'violet', 'bi-share', lang('Social sharing'), lang('Adds share buttons to pages.'), 'settings')
+            . $switch_row('commerce', 'teal', 'bi-bag', lang('Commerce'), lang('Products, cart and orders. Opens in its own category.'), 'open', 'on')
+            . $switch_row('accounting', 'amber', 'bi-receipt', lang('Accounting'), lang('Invoices, accounts and e-documents. Opens in its own category.'), 'open', 'off')
+            . $switch_row('approval', 'gray', 'bi-check2-square', lang('Content approval'), lang('Only an administrator can change this.'), 'switch', 'locked')
+            . '</div></div>'
+            . '<p class="pg-text-meta">' . h(lang('From Site Settings › Features: a module a row with its switch at the end; Settings opens its folded row, on or off; a module with its own category shows its state and Open.')) . '</p>',
     );
 
     return $patterns;

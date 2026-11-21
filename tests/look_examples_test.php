@@ -146,9 +146,9 @@ function test_look_examples_numbered_steps_drawer()
 function test_look_examples_mail_patterns_in_order()
 {
 	$ids = array_column(pg_look_examples_patterns('light'), 'id');
-	$mail = array('pattern-tabs', 'pattern-values', 'pattern-choice', 'pattern-stepline', 'pattern-signin', 'pattern-result', 'pattern-confirm');
+	$mail = array('pattern-tabs', 'pattern-values', 'pattern-choice', 'pattern-stepline', 'pattern-signin', 'pattern-result', 'pattern-confirm', 'pattern-switch');
 
-	pg_assert_same($mail, array_slice($ids, -7), 'the e-mail drawing\'s seven parts close the Patterns group, in the drawing\'s order');
+	pg_assert_same($mail, array_slice($ids, -8), 'the e-mail drawing\'s seven parts, then the switch rows, close the Patterns group');
 	pg_assert_same(array('pattern-choice', 'pattern-stepline'), array_keys(array_filter(array_column(pg_look_examples_patterns('light'), 'phone', 'id'))), 'the phone pane takes the choice cards and the step line');
 	pg_assert_contains('Look A: tabs with a state, value rows, choice cards, step line, provider', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'), 'the recipes in their own block');
 }
@@ -248,6 +248,37 @@ function test_look_examples_confirm_with_its_effects()
 	pg_assert_same(1, substr_count($html, 'pg-effect pg-effect-info'), 'what stays connected');
 	pg_assert_true(strpos($html, 'pg-button-quiet') < strpos($html, 'pg-button-danger'), 'Cancel quiet, the danger button last');
 	pg_assert_same(0, substr_count($html, 'pg-button-fill'), 'no filled button beside the danger one');
+}
+
+function test_look_examples_switch_rows()
+{
+	$html = array_column(pg_look_examples_patterns('dark'), 'html', 'id')['pattern-switch'];
+
+	pg_assert_same(1, substr_count($html, '<div class="pg-set-fold">'), 'one card of rows, the folded rows\' frame');
+	preg_match_all('/<div class="pg-set-switch-row[^"]*">(.*?)<\/div>(?=<div class="pg-set-switch-row|<\/div>)/', $html, $rows);
+	pg_assert_same(8, count($rows[1]), 'a module a row');
+
+	foreach ($rows[1] as $row) {
+		$switches = substr_count($row, '<input type="checkbox" class="pg-switch"');
+		$open = substr_count($row, 'class="pg-pill') + substr_count($row, h(lang('Open it')) . '<i class="bi bi-arrow-right"');
+		pg_assert_true(($switches === 1 && $open === 0) || ($switches === 0 && $open === 2), 'one switch, or one state pill with Open');
+
+		if ($switches === 1) {
+			pg_assert_true(preg_match('/<label class="pg-set-fold-name" for="([^"]+)">.*id="\1"/', $row) === 1, 'the name is the switch\'s label');
+			pg_assert_true(preg_match('/id="([^"]+)_line".*aria-describedby="\1_line"/', $row) === 1, 'the line is its description');
+		}
+	}
+
+	pg_assert_same(0, preg_match('/<(a|button)[^>]*class="pg-set-switch-row/', $html), 'no row is a link or a button');
+	pg_assert_same(2, substr_count($html, '>' . h(lang('Settings')) . '</button><input'), 'Settings quiet before the switch, on or off');
+	pg_assert_same(1, substr_count($html, ' disabled>'), 'the row the viewer may not change');
+	pg_assert_same(1, substr_count($html, 'pg-set-switch-row is-locked'), 'at half strength');
+	pg_assert_same(1, substr_count($html, 'pg-set-switch-row is-off'), 'a category that is off greys its row');
+	pg_assert_same(0, substr_count($html, 'pg-button-fill'), 'no filled button: the window\'s Save is the one');
+	pg_assert_contains('class="pg-group-label-count"', $html, 'the count beside the group label');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_contains('.pg-set-switch-row:has(> .pg-switch:not(:checked)) .pg-icon-tile', $css, 'a switch turned off greys the tile at once');
 }
 
 function test_look_examples_screen_gate_and_link()
