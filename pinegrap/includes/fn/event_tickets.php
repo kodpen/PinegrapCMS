@@ -70,10 +70,18 @@ function pg_event_tickets_product_mark_ready()
  *                     order_number and the product's product_name
  * @param array $event get_calendar_event() of its event and repeat, or
  *                     array() for a product's ticket
+ * @param array $check_ins a series ticket's entries: event_date (the date's
+ *                         start), checked_at
  * @return array
  */
-function pg_event_tickets_export_row(array $row, array $event = array())
+function pg_event_tickets_export_row(array $row, array $event = array(), array $check_ins = array())
 {
+    $entries = array();
+
+    foreach ($check_ins as $entry) {
+        $entries[] = array('event_date' => (string) ($entry['event_date'] ?? ''), 'checked_in_at' => (int) ($entry['checked_at'] ?? 0));
+    }
+
     return array(
         'id'                => (int) ($row['id'] ?? 0),
         'order_id'          => (int) ($row['order_id'] ?? 0),
@@ -84,7 +92,145 @@ function pg_event_tickets_export_row(array $row, array $event = array())
         'product'           => (string) ($row['product_name'] ?? ''),
         'state'             => (string) ($row['state'] ?? ''),
         'checked_in_at'     => (int) ($row['used_at'] ?? 0),
+        'check_ins'         => $entries,
     );
+}
+
+/**
+ * Whether the entries of series tickets have their table
+ * (event_ticket_checkins).
+ *
+ * @return bool
+ */
+function pg_event_ticket_checkins_ready()
+{
+    return function_exists('pg_schema_has') && pg_schema_has('event_ticket_checkins');
+}
+
+/**
+ * Whether an event gives series tickets: it repeats and its dates share
+ * their places (separate reservations off), so a reservation is for the
+ * whole series and its ticket is kept on date 0; the door enters it once
+ * on each date. Pure.
+ *
+ * @param array|false|null $event get_calendar_event(): recurrence,
+ *                                recurrence_type, separate_reservations,
+ *                                total_recurrence_number
+ * @return bool
+ */
+function pg_event_ticket_is_series($event)
+{
+    if (!is_array($event)) {
+        return false;
+    }
+
+    return ((int) ($event['recurrence'] ?? 0) === 1)
+        && in_array((string) ($event['recurrence_type'] ?? ''), array('day', 'week', 'month', 'year'), true)
+        && ((int) ($event['separate_reservations'] ?? 0) !== 1)
+        && ((int) ($event['total_recurrence_number'] ?? 0) > 0);
+}
+
+/**
+ * The dates of a series by their numbers: 0 to its stored repeat count,
+ * those removed from the calendar left out. Pure.
+ *
+ * @param int   $total      the event's stored repeat count
+ * @param array $exceptions the removed date numbers
+ * @return int[]
+ */
+function pg_event_ticket_series_numbers($total, array $exceptions)
+{
+    $removed = array();
+
+    foreach ($exceptions as $number) {
+        $removed[(int) $number] = true;
+    }
+
+    $numbers = array();
+
+    for ($number = 0; $number <= max(0, (int) $total); $number++) {
+        if (!isset($removed[$number])) {
+            $numbers[] = $number;
+        }
+    }
+
+    return $numbers;
+}
+
+/**
+ * An event that gives series tickets, with its dates; read once a request.
+ *
+ * @param int $event_id
+ * @return array|null event (get_calendar_event() of its first date), dates
+ *                    (pg_event_ticket_series_numbers()); null when the
+ *                    event gives no series tickets
+ */
+function pg_event_ticket_series($event_id)
+{
+    static $series = array();
+
+    $event_id = (int) $event_id;
+
+    // Without the entries' table a series ticket is read as before: on date 0.
+    if (($event_id <= 0) || !function_exists('get_calendar_event') || !pg_event_ticket_checkins_ready()) {
+        return null;
+    }
+
+    if (!array_key_exists($event_id, $series)) {
+        $event = get_calendar_event($event_id, 0);
+        $series[$event_id] = null;
+
+        if (pg_event_ticket_is_series($event)) {
+            $exceptions = array();
+
+            foreach ((array) db_items("SELECT recurrence_number FROM calendar_event_exceptions WHERE calendar_event_id = '" . $event_id . "'") as $row) {
+                $exceptions[] = (int) $row['recurrence_number'];
+            }
+
+            $series[$event_id] = array('event' => $event, 'dates' => pg_event_ticket_series_numbers($event['total_recurrence_number'], $exceptions));
+        }
+    }
+
+    return $series[$event_id];
+}
+
+/**
+ * Whether a ticket row is a series ticket: an event's, on date 0, whose
+ * event gives series tickets.
+ *
+ * @param array $ticket calendar_event_id, recurrence_number
+ * @return bool
+ */
+function pg_event_ticket_row_is_series(array $ticket)
+{
+    return ((int) ($ticket['calendar_event_id'] ?? 0) > 0)
+        && ((int) ($ticket['recurrence_number'] ?? 0) === 0)
+        && (pg_event_ticket_series((int) $ticket['calendar_event_id']) !== null);
+}
+
+/**
+ * The entries of tickets, oldest first, with the name of who checked each
+ * in; on one date only when a date is given.
+ *
+ * @param int[]    $ticket_ids
+ * @param int|null $date
+ * @return array rows of ticket_id, calendar_event_id, recurrence_number,
+ *               checked_at, checked_by, checked_by_name
+ */
+function pg_event_ticket_checkins(array $ticket_ids, $date = null)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ticket_ids))));
+
+    if (!$ids || !pg_event_ticket_checkins_ready()) {
+        return array();
+    }
+
+    return (array) db_items(
+        "SELECT c.ticket_id, c.calendar_event_id, c.recurrence_number, c.checked_at, c.checked_by, user.user_username AS checked_by_name
+        FROM event_ticket_checkins AS c
+        LEFT JOIN user ON user.user_id = c.checked_by
+        WHERE (c.ticket_id IN (" . implode(', ', $ids) . "))" . (($date === null) ? '' : " AND (c.recurrence_number = '" . (int) $date . "')") . "
+        ORDER BY c.recurrence_number, c.id");
 }
 
 /**
@@ -497,7 +643,18 @@ function pg_event_tickets_delete_for_order($order_id, $query = null)
         return 0;
     }
 
-    $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
+    $run = ($query === null) ? 'pg_event_tickets_query' : $query;
+
+    // A series ticket's entries go first, while its row still names the order.
+    if (($query !== null) || pg_event_ticket_checkins_ready()) {
+        call_user_func($run,
+            "DELETE event_ticket_checkins FROM event_ticket_checkins
+            INNER JOIN event_tickets ON event_tickets.id = event_ticket_checkins.ticket_id
+            WHERE event_tickets.order_id = ?",
+            array((int) $order_id));
+    }
+
+    $changed = call_user_func($run,
         "DELETE FROM event_tickets WHERE order_id = ?",
         array((int) $order_id));
 

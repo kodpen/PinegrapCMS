@@ -292,6 +292,92 @@ function pg_event_ticket_when(array $event, $date_format, $time_format)
 }
 
 /**
+ * When a series takes place, for a series ticket: its first and last date
+ * in the site's date format and, when shown, the times of its dates (taken
+ * from the first). Pure.
+ *
+ * @param array  $first       get_calendar_event() of the first date
+ * @param array  $last        get_calendar_event() of the last date
+ * @param string $date_format a date() format
+ * @param string $time_format a date() format
+ * @return string
+ */
+function pg_event_ticket_series_when(array $first, array $last, $date_format, $time_format)
+{
+    $start = strtotime((string) ($first['start_date_and_time'] ?? ''));
+    $last_start = strtotime((string) ($last['start_date_and_time'] ?? ''));
+    $end = strtotime((string) ($first['end_date_and_time'] ?? ''));
+
+    if ($start === false) {
+        return '';
+    }
+
+    $when = date($date_format, $start) . ((($last_start !== false) && ($last_start > $start)) ? ' – ' . date($date_format, $last_start) : '');
+    $all_day = ((string) ($first['all_day'] ?? '0') === '1');
+
+    if (!$all_day && !empty($first['show_start_time'])) {
+        $when .= ', ' . date($time_format, $start)
+            . ((!empty($first['show_end_time']) && ($end !== false) && ($end > $start)) ? ' – ' . date($time_format, $end) : '');
+    }
+
+    return $when;
+}
+
+/**
+ * The parts of one VEVENT each of several calendar files holds, as one
+ * file: the first file's head, every event, one end. Pure.
+ *
+ * @param string[] $files pg_calendar_event_ics() of one date each
+ * @return string
+ */
+function pg_event_tickets_ics_merge(array $files)
+{
+    $head = '';
+    $events = '';
+
+    foreach (array_values($files) as $i => $file) {
+        $begin = strpos((string) $file, "BEGIN:VEVENT\r\n");
+        $end = strrpos((string) $file, "END:VEVENT\r\n");
+
+        if (($begin === false) || ($end === false)) {
+            continue;
+        }
+
+        if ($head === '') {
+            $head = substr($file, 0, $begin);
+        }
+
+        $events .= substr($file, $begin, $end + strlen("END:VEVENT\r\n") - $begin);
+    }
+
+    return ($head === '') ? '' : $head . $events . "END:VCALENDAR\r\n";
+}
+
+/**
+ * The event a series ticket is for, as its page writes it: name, its first
+ * and last date, the place; null when the event gives no series tickets.
+ *
+ * @param int $event_id
+ * @return array|null name, when, place, event (its first date), dates
+ */
+function pg_event_tickets_page_series($event_id)
+{
+    $series = pg_event_ticket_series((int) $event_id);
+    $first = ($series !== null) ? pg_event_tickets_page_event((int) $event_id, (int) reset($series['dates'])) : null;
+
+    if ($first === null) {
+        return null;
+    }
+
+    $last = get_calendar_event((int) $event_id, (int) end($series['dates']));
+    $first['when'] = pg_event_ticket_series_when($first['event'], is_array($last) ? $last : $first['event'], pg_sw_default_date_format('date'),
+        (defined('TIME_FORMAT') && (TIME_FORMAT == 'twelve_hours')) ? 'g:i A' : 'H:i');
+    $first['dates'] = $series['dates'];
+
+    return $first;
+}
+
+/**
  * The event a ticket is for, as its page writes it: name, the date and
  * time range, the place; null when the event is gone. The pair is the
  * ticket's event and occurrence.
@@ -350,8 +436,11 @@ function pg_event_tickets_page_views(array $order, $base_url)
         if ($event_id > 0) {
             $pair = $event_id . '-' . (int) $row['recurrence_number'];
 
+            // A series ticket is for the whole series: its first and last date.
             if (!array_key_exists($pair, $events)) {
-                $events[$pair] = pg_event_tickets_page_event($event_id, (int) $row['recurrence_number']);
+                $events[$pair] = pg_event_ticket_row_is_series($row)
+                    ? pg_event_tickets_page_series($event_id)
+                    : pg_event_tickets_page_event($event_id, (int) $row['recurrence_number']);
             }
 
             if ($events[$pair] !== null) {
@@ -393,6 +482,25 @@ function pg_event_tickets_page_ics(array $order, $pair)
             AND (calendar_event_id = '" . (int) $match[1] . "')
             AND (recurrence_number = '" . (int) $match[2] . "')
             AND (state <> 'void')");
+
+    $series = (((int) $held > 0) && ((int) $match[2] === 0)) ? pg_event_ticket_series((int) $match[1]) : null;
+
+    // A series ticket's file holds every date of the series, each its own
+    // event with its own UID.
+    if ($series !== null) {
+        $files = array();
+
+        foreach (array_slice($series['dates'], 0, 500) as $number) {
+            $date = pg_event_tickets_page_event((int) $match[1], (int) $number);
+
+            if ($date !== null) {
+                $date['event']['id'] = $date['event']['id'] . '-' . (int) $number;
+                $files[] = pg_calendar_event_ics($date['event'], (string) HOSTNAME_SETTING, defined('ORGANIZATION_NAME') ? (string) ORGANIZATION_NAME : '', '');
+            }
+        }
+
+        return pg_event_tickets_ics_merge($files);
+    }
 
     $event = ((int) $held > 0) ? pg_event_tickets_page_event((int) $match[1], (int) $match[2]) : null;
 
