@@ -916,6 +916,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Design, Content, Store, Accounting, All; #1716, #10709): what each ticks, why record writes are ticked by hand
 - api/api-panel-coverage-channels.md: The API beside the panel for channels and the agent channel (compared 2026-11-15, #9764, #9761; CA2-CA16 by 2026-11-16): each covered part and its topic file
 - api/api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart
+- api/api-privacy-routes.md: The read-only privacy API (KV6, #10897): GET /privacy/inventory, /privacy/requests and /privacy/requests/{id}, the privacy:read scope, views, cursor, steps
 - api/api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows
 - api/api-webhook-subscription-limit.md: How many event subscriptions one application may hold (50), the one function that holds the number, the 409 too_many_webhooks text, and why 50 subscribers of one event drain
 - api/application-access-automation.md: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks
@@ -1163,6 +1164,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/messages-area-sends.md: Communication › Sends (MA2 #9252, MA2b #9275, WA2b #9409): the list of six branches, row ids, filters, buttons, e-mail sources, measured batch times, what the old queue screen left to it
 - platform/notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
 - platform/office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
+- platform/office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, one format change a save, and how the preview draws each cell's look and number format
 - platform/panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913)
 - platform/place-coordinates.md: Coordinates of a collection's places (#10000): fields found by name, "Find from the address" on a record, "Find missing coordinates" on the record list, place_coordinates.php, always Photon
 - platform/place-list-near.md: Near me and the typed-address box of the Map of places block (#10613): position kept in the browser, the POST lookup in places.php, 10 a minute, nothing typed kept
