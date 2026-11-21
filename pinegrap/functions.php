@@ -223,6 +223,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_notify.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_holds.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_click_ids.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/ad_conversions_log.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/courses.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/bundles.php');

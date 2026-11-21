@@ -17,7 +17,7 @@ description: Plan ad-conversions, steps SC1 to SC7: the record and queue with th
 - SC3 (S) after SC2: GA4 Measurement Protocol: the API secret on its page, purchase and refund, the validation endpoint; `api/ga4-mp-facts.md`. Features: C4, C8 (GA4). Done in #10866 (memory: `api/ad-conversions-ga4.md`, `api/ga4-mp-facts.md`).
 - SC4 (S) after SC2: TikTok Events API: page, sender, test code; `api/tiktok-events-facts.md`. Feature: C8 (TikTok). Done in #10862 (memory: `api/ad-conversions-tiktok.md`).
 - SC5 (S) after SC2: Lead, CompleteRegistration, add to cart from `cart_action.php` and begin checkout (C6); the receipt page's event id. Features: C5, C6, C7. Done in #10868 (memory: `api/ad-conversions-visitor-events.md`).
-- SC6 (S) after SC3 and SC4: the event log on each page, the daily counts, the operations alert, `GET /reports/ad-conversions` and `php tools/check_api_schema.php`. Features: C11, C12.
+- SC6 (S) after SC3 and SC4: the event log on each page, the daily counts, the operations alert, `GET /reports/ad-conversions` and `php tools/check_api_schema.php`. Features: C11, C12. Done in #10907 (memory: `api/ad-conversions-log.md`).
 - SC7 (S) close-out: every C number checked against the code with its PR; `api/ad-conversions.md` written; `plans/integrations-census-today-2.md`'s Conversions API line made true; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
