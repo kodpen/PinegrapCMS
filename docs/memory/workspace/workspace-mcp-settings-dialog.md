@@ -11,6 +11,7 @@ description: The MCP servers card in Site Settings (Assistants and agents) and o
 ## What opens in a drawer?
 - Each server is a row like an agent's (#10432): tile, `@alias` and name, one summary line, the state as a pill, Connect or Disconnect and the icon buttons (ask again, turn off or on, remove), "Tools and settings" at the row's end. The pill's tones (`ws_mcp_settings_state_badge()`, #10918): Not connected and Off gray, No tool on amber, Connect again and Cannot be reached rose, Ready teal.
 - The card opens with one help line and "How does this work?" (`pgset-ws-mcp-guide`). It opens `pgset-ws-mcp-<id>`: its last error, the tools (kinds as toned pills) with the agent choice, the tools' Save in the drawer's foot, then address and sign-in under a closed "Connection settings" with its own quiet Save.
+- More than five servers: five rows, those needing something first, then "Show all N" opening `pgset-ws-mcp-all` with every row (`ui/settings-assistants-long-lists.md`).
 - "Add a server" opens `pgset-ws-mcp-add`: the ready-made connectors, Check the address and its short form, the whole form under More settings. Both from `ws_settings_mcp_drawer()`.
 
 ## Which names does the dialog post?

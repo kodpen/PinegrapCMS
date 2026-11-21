@@ -4,7 +4,7 @@ description: Pinegrap AI's and Voice's opened rows in Site Settings › Assistan
 ---
 
 ## Why were they redrawn?
-- AT4 (#10918) found both in two columns with paragraphs of help. The architect placed every part (`plans/assistants-settings-tidy-screens-2.md`, 2026-11-21); AT5 (#10948) built it as Claude's row was built (`settings-claude-row.md`).
+- AT4 (#10918) found both in two columns with paragraphs of help. The architect placed every part (2026-11-21, agent channel message 11395); AT5 (#10948) built it as Claude's row was built (`settings-claude-row.md`).
 
 ## What does Pinegrap AI's opened row hold?
 - One column (`ws_ai_row_html()`, values read by `ws_ai_settings_card()`, `includes/workspace/ai.php`): notices one line each, only when true (the licence's sentence when it is not entered, expired or refused; the last error; "Requests wait until …").

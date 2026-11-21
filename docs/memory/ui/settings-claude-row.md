@@ -4,7 +4,7 @@ description: Claude's opened row in Site Settings › Assistants and agents (AT2
 ---
 
 ## Why was it redrawn?
-- Owner (2026-11-20): the row scrolled at least four dialog heights; AT2 (#10860) had moved only the guide. The architect placed every part (#10869, the plan's screens file); AT2b built it.
+- Owner (2026-11-20): the row scrolled at least four dialog heights; AT2 (#10860) had moved only the guide. The architect placed every part (#10869); AT2b (#10898) built it.
 
 ## What does Claude's opened row hold? (AT2b)
 - One column (`ws_claude_row_html()`, values read by `ws_claude_settings_card()`): notices one line each, only when true (not HTTPS; an old prompt, with "Show the new prompt" opening the set-up drawer; the last error; "Requests wait until …"); the switch; the routine's address; its token with "Stored encrypted and never shown again." and "Remove the stored token" on one line; Daily summary (Hour, Channel).
@@ -16,4 +16,4 @@ description: Claude's opened row in Site Settings › Assistants and agents (AT2
 - "Set up on claude.ai" (`#pgset-ws-claude-setup`, `ws_settings_claude_setup_drawer()`): "Still missing" (`ws_claude_missing()`) at the top, the steps of `ws_claude_setup_guide()` as `.stepper.pg-stepper-cards` (`ui/step-rail.md`), the prompt only in its step, then "How does this work?" with every sentence the row says in one line (`ws_claude_how_it_works()`). Test: `tests/settings_claude_setup_drawer_test.php`.
 - "The latest requests" (`#pgset-ws-claude-requests`, `ws_settings_claude_requests_drawer()`): the version of the instructions with its help, then the ten newest requests (`ws_claude_latest_requests()`, read once a page).
 
-Related: docs/memory/ui/settings-fold-rows.md, docs/memory/plans/assistants-settings-tidy.md
+Related: docs/memory/ui/settings-fold-rows.md, docs/memory/ui/settings-ai-voice-rows.md
