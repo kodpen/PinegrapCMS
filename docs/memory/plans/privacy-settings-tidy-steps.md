@@ -4,7 +4,7 @@ description: Plan privacy-settings-tidy, steps VP1 to VP4: the pane as folded ro
 ---
 
 ## Which steps are there?
-- VP1 (M) first: the pane as folded rows (`pg_settings_fold()`): "Visitor tracking", "Cookie consent", "Legal documents", "KVKK notice", "Accessibility statement", "Privacy centre", each with its state line. No popover: the switches' fields sit under them, always drawn. Every switch is `pg-switch`. Fixes: V4, V6, V3's drawing.
+- VP1 (M) first, done (#10964): the pane as folded rows (`pg_settings_fold()`): "Visitor tracking", "Cookie consent", "Legal documents", "KVKK notice", "Accessibility statement", "Privacy centre", each with its state line. No popover: the switches' fields sit under them, always drawn. Every switch is `pg-switch`. Fixes: V4, V6, V3's drawing.
 - In VP1 each card keeps its id inside its row; the KVKK fields leave the Legal documents popover for their own row (`pgset-kvkk`, new, in the registry with keywords); the fields table stays under a `details`.
 - Tests of VP1: `tests/settings_card_ids_test.php` and `settings_card_names_test.php` with the ids kept; every field posts under its old name, `privacy.save.php` unchanged; a row an anchor names arrives open.
 
