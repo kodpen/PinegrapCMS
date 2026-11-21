@@ -27,4 +27,4 @@ module: customer_rhythm
 - With no order since the stored one, the stored interval is kept and the stage only moves forward (Regular = Won back < Due < Late < Slipping away < Lost). A new order takes the new interval; Won back when the silence before it reached Late at the bounds it ran under.
 
 ## When is a product due?
-- Due day: last purchase + days per unit × its units; due from 3 days before. The window has no end here: the 7-day brake and when to stop naming a product belong to RY2.
+- Due day: last purchase + days per unit × its units; due from 3 days before (the lead). The window has no end here: when a product is named and the brake are in `customer-rhythm-events.md`.
