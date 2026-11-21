@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Workspace: the conversation timeline in the channel card, redrawn (2026-11-21)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<style>
+.stage { width: 1512px; }
+.board { margin-bottom: 30px; }
+.cap small { display: block; margin-top: 2px; color: var(--fg3); font-size: 12.5px; }
+.cols { display: flex; gap: 28px; align-items: flex-start; }
+
+/* the channel card: head, then the tabs row with the timeline at its end */
+.cc { position: relative; padding: 0; }
+.cc .hd { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; }
+.cc .hd b { font: 650 16px/1 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc .hd .ib { width: 28px; height: 28px; font-size: 14px; }
+.cc .row { display: flex; align-items: center; gap: 2px; height: 48px; padding: 0 16px 8px 12px; }
+.tab { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border-radius: 12px; font-size: 13px; font-weight: 500; color: var(--fg2); white-space: nowrap; flex: none; }
+.tab.on { color: var(--fg); font-weight: 600; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi); }
+.tab em { font-style: normal; font-size: 11px; font-weight: 550; padding: 2px 6px; border-radius: 7px; color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, transparent); }
+
+/* the timeline: one quiet well, 30 px high, at most 420 px wide, at the row's end */
+.tl { margin-left: auto; flex: 0 1 420px; min-width: 220px; display: flex; align-items: stretch; height: 30px; border-radius: 9px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.tl .port { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; border-radius: 9px 0 0 9px; }
+.tl .port.cut-l { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22px); mask-image: linear-gradient(90deg, transparent 0, #000 22px); }
+.tl .port.cut-r { -webkit-mask-image: linear-gradient(270deg, transparent 0, #000 22px); mask-image: linear-gradient(270deg, transparent 0, #000 22px); }
+.tl .port.cut-l.cut-r { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); }
+.tl .track { position: absolute; top: 0; bottom: 0; }
+.tl .day { position: absolute; top: 5px; bottom: 5px; width: 1px; background: var(--line); }
+.tl .lbl { position: absolute; top: 4px; font: 500 10.5px/11px Inter, sans-serif; color: var(--fg3); white-space: nowrap; letter-spacing: .01em; }
+.tl .lbl.now { color: var(--fg2); }
+.tl .turn { position: absolute; top: 19px; height: 6px; background: color-mix(in srgb, var(--c) 82%, var(--surf1)); }
+.tl .turn.first { border-radius: 3px 0 0 3px; } .tl .turn.last { border-radius: 0 3px 3px 0; } .tl .turn.first.last { border-radius: 3px; }
+.tl .turn.dec::after { content: ""; position: absolute; left: 50%; top: -1px; width: 6px; height: 6px; margin-left: -3px; border-radius: 1.5px; background: var(--amber); transform: rotate(45deg) scale(1.05); box-shadow: 0 0 0 2px var(--surf1); }
+.tl.pointing .turn { opacity: .38; }
+.tl.pointing .turn.on { opacity: 1; top: 17px; height: 10px; border-radius: 3px; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent); z-index: 2; }
+.tl .here { position: absolute; bottom: 2px; height: 2px; border-radius: 1px; background: var(--accent); opacity: .9; }
+.tl .zoom { flex: none; display: flex; align-items: center; gap: 0; padding: 0 3px 0 3px; margin-left: 2px; border-left: 1px solid var(--line); }
+.tl .zoom .ib { width: 24px; height: 24px; border-radius: 7px; font-size: 12.5px; }
+.tl .zoom .ib.off { opacity: .35; }
+.t-gray { --c: var(--gray); }
+
+/* the card of the message pointed at (kept as built) */
+.card { position: absolute; z-index: 5; width: 304px; padding: 12px 14px 11px; border-radius: 14px; background: var(--float); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: var(--shadow-float); }
+.card .who { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+.card .ini { --c: var(--violet); flex: none; width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; font-size: 10px; font-weight: 650; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 26%, transparent); }
+.card .who small { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--fg3); }
+.card .who .st { height: 18px; font-size: 11px; padding: 0 7px; } .card .who .st::before { display: none; }
+.card p { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--fg2); }
+.card .tool { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12.5px; color: var(--fg2); }
+.card .tool .tile { width: 22px; height: 22px; border-radius: 7px; font-size: 11.5px; }
+.card .ft { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg3); }
+
+/* what stands there today, for the difference */
+.old { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; margin-left: 14px; overflow: hidden; }
+.old .line { position: relative; height: 14px; white-space: nowrap; }
+.old .pill { display: inline-block; position: relative; height: 9px; margin-right: 9px; border-radius: 5px; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 72%, var(--surf1)), var(--c)); vertical-align: middle; }
+.old .pill.m::before { content: ""; position: absolute; left: 50%; top: -6px; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: var(--fg2); }
+.old .zb { display: flex; gap: 2px; color: var(--fg3); font-size: 12px; } .old .zb i { width: 22px; text-align: center; }
+
+/* Channel info on a phone */
+.phone { width: 390px; border-radius: 26px; border: 1px solid var(--line); background: var(--page); box-shadow: var(--shadow); overflow: hidden; }
+.phone .bar { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-bottom: 1px solid var(--line); font: 650 15px/1 "Inter Display", Inter, sans-serif; }
+.phone .bar .ib { margin-left: auto; }
+.phone .sec { padding: 14px 16px 16px; border-bottom: 1px solid var(--line); }
+.phone .sec h4 { margin: 0 0 9px; font-size: 13px; font-weight: 600; }
+.phone .sec .skl { display: grid; gap: 8px; } .phone .sec .skl .sk { height: 9px; }
+.phone .tl { flex: none; width: 100%; height: 34px; }
+.phone .tl .turn { top: 21px; } .phone .tl .lbl { top: 5px; }
+.phone .tl .zoom .ib { width: 28px; height: 28px; font-size: 13.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.legend .st { height: 22px; }
+
+/* the measures, three times the size */
+.big { position: relative; width: 720px; height: 150px; }
+.big .tl { position: absolute; left: 0; top: 30px; width: 240px; min-width: 0; transform: scale(3); transform-origin: 0 0; }
+.notes { margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--fg2); display: grid; gap: 7px; width: 700px; }
+.notes b { color: var(--fg); font-weight: 600; }
+.keys { width: 560px; display: grid; grid-template-columns: auto 1fr; gap: 9px 16px; font-size: 13px; color: var(--fg2); align-items: center; }
+.keys span:nth-child(odd) { display: flex; gap: 5px; align-items: center; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+<div class="board">
+  <p class="cap"><b>Today, taken out</b><small>Every turn a pill of its own with the same space around it, so runs and days cannot be told apart; a dot over nearly every turn; the strip as wide as the row and past the card's edge; the zoom buttons on a line of their own under it.</small></p>
+  <div class="pcard cc" style="width:1440px">
+    <div class="hd"><span class="tile t-rose"><i class="bi bi-robot"></i></span><b>PinegrapCMS - development agent channel</b><span class="sp"></span><span class="ib dim"><i class="bi bi-search"></i></span><span class="ib dim"><i class="bi bi-info-circle"></i></span><span class="ib dim"><i class="bi bi-three-dots-vertical"></i></span></div>
+    <div class="row" style="height:64px;align-items:flex-start;padding-right:0"><span class="tab on">Mesajlar</span><span class="tab">Kararlar <em>99+</em></span><span class="tab">Görevler</span><span class="tab">Dosyalar <em>99+</em></span><span class="tab">Özet</span><span class="tab">Pano</span><span class="tab">Bellek</span>
+      <div class="old"><div class="line" id="old"></div><div class="zb"><i class="bi bi-zoom-out"></i><i class="bi bi-zoom-in"></i></div></div></div>
+  </div>
+</div>
+
+<div class="board">
+  <p class="cap"><b>1 · In the channel card, 1440 px: as it opens</b><small>One quiet well at the end of the tabs row, 30 px high, at most 420 px wide, 16 px from the card's edge. A day is a column with its date over it; a run is one bar cut into its writers; a wait is the space between bars. It opens at its newest end, earlier days fade out at the left. The accent line under the bars is the part of the conversation on the screen.</small></p>
+  <div class="pcard cc" style="width:1440px">
+    <div class="hd"><span class="tile t-rose"><i class="bi bi-robot"></i></span><b>PinegrapCMS - development agent channel</b><span class="sp"></span><span class="ib dim"><i class="bi bi-search"></i></span><span class="ib dim"><i class="bi bi-info-circle"></i></span><span class="ib dim"><i class="bi bi-three-dots-vertical"></i></span></div>
+    <div class="row"><span class="tab on">Mesajlar</span><span class="tab">Kararlar <em>99+</em></span><span class="tab">Görevler</span><span class="tab">Dosyalar <em>99+</em></span><span class="tab">Özet</span><span class="tab">Pano</span><span class="tab">Bellek</span>
+      <div class="tl" data-scale="5.2" data-here=".9,1"></div></div>
+  </div>
+</div>
+
+<div class="board" style="height:336px">
+  <p class="cap"><b>2 · Pointing at a turn</b><small>The turn under the pointer grows to 10 px in its full colour, the rest dims; the card of the message hangs under the well (as built). A click opens the message.</small></p>
+  <div class="pcard cc" style="width:1440px">
+    <div class="hd"><span class="tile t-rose"><i class="bi bi-robot"></i></span><b>PinegrapCMS - development agent channel</b><span class="sp"></span><span class="ib dim"><i class="bi bi-search"></i></span><span class="ib dim"><i class="bi bi-info-circle"></i></span><span class="ib dim"><i class="bi bi-three-dots-vertical"></i></span></div>
+    <div class="row"><span class="tab on">Mesajlar</span><span class="tab">Kararlar <em>99+</em></span><span class="tab">Görevler</span><span class="tab">Dosyalar <em>99+</em></span><span class="tab">Özet</span><span class="tab">Pano</span><span class="tab">Bellek</span>
+      <div class="tl pointing" data-scale="5.2" data-here=".9,1" data-on="5,1,2" data-card="c2"></div></div>
+    <div class="card" id="c2"><div class="who"><span class="ini">CO</span>console <span class="st t-violet">Ajan</span><small>Bugün 12:08</small></div><p>DV4 işçisi aynı görev olarak DV2b'ye çevrildi; DV4, DV2b inince yeni işçiye gider. Tarif plandaki "What did the owner …</p><div class="tool"><span class="tile t-amber"><i class="bi bi-bookmark-check"></i></span>Karar · Erdal Güral işaretledi</div><div class="ft">Önceki mesajdan 6 dk sonra</div></div>
+  </div>
+</div>
+
+<div class="board cols">
+  <div>
+    <p class="cap"><b>3 · Zoomed all the way out</b><small>The whole conversation in the well. A date shortens to its day, then goes, as its column narrows.</small></p>
+    <div class="pcard cc" style="width:700px"><div class="row" style="padding-top:8px;height:56px"><span class="tab on">Mesajlar</span><span class="tab">Kararlar <em>99+</em></span><span class="tab">Görevler</span>
+      <div class="tl" data-fit="1" data-here=".93,1" data-zoom="out"></div></div></div>
+  </div>
+  <div>
+    <p class="cap"><b>4 · Zoomed in, moved back</b><small>Both ends fade; the date of the day under the left edge stays in sight.</small></p>
+    <div class="pcard cc" style="width:700px"><div class="row" style="padding-top:8px;height:56px"><span class="tab on">Mesajlar</span><span class="tab">Kararlar <em>99+</em></span><span class="tab">Görevler</span>
+      <div class="tl" data-scale="13" data-shift="430" data-here=".52,.6"></div></div></div>
+  </div>
+</div>
+
+<div class="board cols">
+  <div>
+    <p class="cap"><b>5 · A narrow row, 900 px</b><small>The well takes what the tabs leave, down to 220 px; under that it leaves the row.</small></p>
+    <div class="pcard cc" style="width:900px"><div class="row" style="padding-top:8px;height:56px"><span class="tab on">Mesajlar</span><span class="tab">Kararlar <em>99+</em></span><span class="tab">Görevler</span><span class="tab">Dosyalar <em>99+</em></span><span class="tab">Özet</span><span class="tab">Pano</span><span class="tab">Bellek</span>
+      <div class="tl" data-scale="5.2" data-here=".8,1"></div></div></div>
+    <p class="cap" style="margin-top:26px"><b>7 · The measures (three times the size)</b></p>
+    <div class="big"><div class="tl" data-scale="5.2" data-here=".7,1" data-zoom="none"></div></div>
+    <ul class="notes">
+      <li><b>Well</b> 30 px high, radius 9 px, the card tint with a hairline; at most 420 px, at least 220 px wide.</li>
+      <li><b>Date</b> 10.5 px, quiet, 4 px from the top, at the start of its day; "Bugün" one step stronger. A hairline stands before each day but the first in sight.</li>
+      <li><b>Run</b> one bar 6 px high: its turns touch, 1 px apart, square inside, 3 px round at the run's two ends. Flat colour, no gradient, no shadow.</li>
+      <li><b>Space</b> 8 px or more between runs by the wait; 8 px, the hairline, 8 px between days.</li>
+      <li><b>Decision</b> an amber diamond on the bar, the only mark; other tools are said in the card.</li>
+      <li><b>On screen</b> a 2 px accent line under the bars, 2 px from the well's foot.</li>
+      <li><b>Zoom</b> two 24 px quiet icon buttons after a hairline, inside the well; the one at its end dims.</li>
+    </ul>
+  </div>
+  <div>
+    <p class="cap"><b>6 · Channel info, 390 px</b><small>Under 220 px left in the row: the same well, full width, 34 px high, the writers under it.</small></p>
+    <div class="phone">
+      <div class="bar">Kanal bilgisi<span class="ib dim"><i class="bi bi-x-lg"></i></span></div>
+      <div class="sec"><div class="skl"><span class="sk" style="width:62%"></span><span class="sk" style="width:84%"></span><span class="sk" style="width:48%"></span></div></div>
+      <div class="sec"><h4>Konuşma</h4>
+        <div class="tl" data-scale="5.2" data-here=".8,1"></div>
+        <div class="legend"><span class="st t-blue">Erdal Güral</span><span class="st t-teal">mimar</span><span class="st t-violet">console</span><span class="st t-amber">k1</span><span class="st t-rose">arge</span><span class="st t-gray">prmerge</span></div>
+      </div>
+    </div>
+    <p class="cap" style="margin-top:26px"><b>8 · Keys and wheel</b><small>The pointer over the well, or the well focused.</small></p>
+    <div class="keys">
+      <span><kbd>Ctrl</kbd>+<kbd>tekerlek</kbd></span><span>Zoom in and out around the pointer (pinch on a touchpad or a phone).</span>
+      <span><kbd>Shift</kbd>+<kbd>tekerlek</kbd></span><span>Move along the conversation (a sideways swipe; a drag with the mouse).</span>
+      <span><kbd>tekerlek</kbd></span><span>Left alone: the page scrolls as everywhere.</span>
+      <span><kbd>+</kbd> <kbd>−</kbd></span><span>Zoom a step. <kbd>0</kbd> the whole conversation.</span>
+      <span><kbd>←</kbd> <kbd>→</kbd></span><span>A message back or on; with <kbd>Shift</kbd> a run; <kbd>PgUp</kbd> <kbd>PgDn</kbd> a day.</span>
+      <span><kbd>Home</kbd> <kbd>End</kbd></span><span>The first and the newest message.</span>
+      <span><kbd>Enter</kbd> <kbd>Esc</kbd></span><span>Open the message; hide the card.</span>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+if (location.search.indexOf('light') > -1) { document.documentElement.setAttribute('data-theme', 'light'); }
+var TONES = ['blue', 'teal', 'violet', 'amber', 'rose', 'gray'];
+function rnd(seed) { return function () { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }; }
+function conversation() {
+  var r = rnd(11), names = ['16 Kas', '17 Kas', '18 Kas', '19 Kas', 'Dün', 'Bugün'], load = [3, 5, 2, 5, 6, 4], days = [];
+  for (var d = 0; d < names.length; d++) {
+    var runs = [];
+    for (var i = 0; i < load[d]; i++) {
+      var turns = [], n = 2 + Math.floor(r() * 6), prev = -1;
+      for (var j = 0; j < n; j++) {
+        var w = Math.floor(r() * TONES.length);
+        if (w === prev) { w = (w + 1) % TONES.length; }
+        prev = w;
+        turns.push({ w: w, weight: 1 + r() * 3.2, dec: r() < 0.06 });
+      }
+      runs.push({ turns: turns, wait: 1 + r() * 3 });
+    }
+    days.push({ label: names[d], runs: runs });
+  }
+  return days;
+}
+function layout(days, s) {
+  var x = 6, out = [];
+  days.forEach(function (day, d) {
+    var start = x;
+    if (d) { x += 8; start = x; x += 9; }
+    var first = x, items = [];
+    day.runs.forEach(function (run, i) {
+      if (i) { x += Math.max(s < 2 ? 3 : 8, Math.min(26, run.wait * s * 1.4)); }
+      run.turns.forEach(function (t, j) {
+        var w = Math.max(s < 2 ? 2 : 6, Math.round(t.weight * s));
+        items.push({ x: x, w: w, t: t, first: j === 0, last: j === run.turns.length - 1, run: i, turn: j });
+        x += w + 1;
+      });
+      x -= 1;
+    });
+    out.push({ line: d ? start : -1, first: first, end: x, label: day.label, items: items, now: d === days.length - 1 });
+  });
+  return { days: out, width: x + 8 };
+}
+function draw(el) {
+  var days = conversation(), zoom = el.getAttribute('data-zoom') || '';
+  el.innerHTML = '<div class="port"><div class="track"></div></div>' + (zoom === 'none' ? '' : '<div class="zoom"><span class="ib dim' + (zoom === 'out' ? ' off' : '') + '"><i class="bi bi-zoom-out"></i></span><span class="ib dim"><i class="bi bi-zoom-in"></i></span></div>');
+  var port = el.firstChild, track = port.firstChild, pw = port.clientWidth, s = parseFloat(el.getAttribute('data-scale') || '5'), lay;
+  if (el.getAttribute('data-fit')) {
+    var lo = 0.2, hi = 12;
+    for (var k = 0; k < 30; k++) { s = (lo + hi) / 2; if (layout(days, s).width > pw) { hi = s; } else { lo = s; } }
+    s = lo;
+  }
+  lay = layout(days, s);
+  var shift = parseFloat(el.getAttribute('data-shift') || '0'), left = Math.min(0, pw - lay.width + shift);
+  if (lay.width <= pw) { left = 0; }
+  track.style.left = left + 'px'; track.style.width = lay.width + 'px';
+  if (left < 0) { port.classList.add('cut-l'); }
+  if (left + lay.width > pw + 1) { port.classList.add('cut-r'); }
+  var on = (el.getAttribute('data-on') || '').split(','), html = '', onX = 0;
+  lay.days.forEach(function (day, d) {
+    if (day.line >= 0) { html += '<span class="day" style="left:' + day.line + 'px"></span>'; }
+    var room = day.end - day.first, text = day.label, lx = day.first;
+    if (room < 34) { text = /^\d/.test(text) && room >= 13 ? text.split(' ')[0] : ''; }
+    if (-left > lx && -left < day.end - 40) { lx = -left + 22; }
+    if (text) { html += '<span class="lbl' + (day.now ? ' now' : '') + '" style="left:' + lx + 'px">' + text + '</span>'; }
+    day.items.forEach(function (it) {
+      var hit = on.length === 3 && +on[0] === d && +on[1] === it.run && +on[2] === it.turn;
+      if (hit) { onX = it.x + it.w / 2; }
+      html += '<span class="turn t-' + TONES[it.t.w] + (it.first ? ' first' : '') + (it.last ? ' last' : '') + (it.t.dec && s >= 2 ? ' dec' : '') + (hit ? ' on' : '') + '" style="left:' + it.x + 'px;width:' + it.w + 'px"></span>';
+    });
+  });
+  var here = (el.getAttribute('data-here') || '').split(',');
+  if (here.length === 2) { html += '<span class="here" style="left:' + Math.round(lay.width * here[0]) + 'px;width:' + Math.round(lay.width * (here[1] - here[0]) - 8) + 'px"></span>'; }
+  track.innerHTML = html;
+  var card = el.getAttribute('data-card');
+  if (card && onX) {
+    var c = document.getElementById(card), box = el.getBoundingClientRect(), host = c.parentNode.getBoundingClientRect();
+    c.style.left = Math.round(box.left - host.left + left + onX - 152) + 'px';
+    c.style.top = Math.round(box.bottom - host.top + 8) + 'px';
+  }
+}
+Array.prototype.forEach.call(document.querySelectorAll('.tl'), draw);
+(function () {
+  var r = rnd(5), html = '';
+  for (var i = 0; i < 46; i++) { html += '<span class="pill t-' + TONES[Math.floor(r() * 6)] + (r() < 0.45 ? ' m' : '') + '" style="width:' + (14 + Math.floor(r() * 26)) + 'px"></span>'; }
+  document.getElementById('old').innerHTML = html;
+})();
+</script>
+</body>
+</html>
