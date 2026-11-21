@@ -609,7 +609,9 @@ function pg_connections_registry()
         'trendyol' => array('name' => 'Trendyol', 'group' => 'marketplaces', 'place' => 'marketplace_settings.php', 'uses' => 'Listings, stock, prices and orders',
             'state' => array('kind' => 'marketplace', 'key' => 'trendyol'),
             'covers' => array('marketplace' => array('trendyol'))),
-        'merchant_center' => array('name' => 'Google Merchant Center', 'group' => 'marketplaces', 'place' => '#settings/commerce/pgset-feeds', 'uses' => 'The product feed and each product\'s push',
+        // Merchant Center's account is chosen on its page; the Product Feeds
+        // card shows the connection.
+        'merchant_center' => array('name' => 'Google Merchant Center', 'group' => 'marketplaces', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-feeds', 'uses' => 'The product feed and each product\'s push',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'merchant_center', 'attention' => true),
             'apis' => array('merchantapi.googleapis.com' => 'Merchant API'),
             'covers' => array('marketplace' => array('merchant_center'), 'purpose' => array('merchant_center'))),
@@ -731,14 +733,15 @@ function pg_connections_registry()
         'ga4_mp' => array('name' => 'GA4 Measurement Protocol', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/privacy/pgset-cookies', 'uses' => 'Purchases and refunds sent from the server to Google Analytics',
             'state' => array('kind' => 'reader', 'function' => 'pg_ad_conversion_ga4_connected')),
 
-        // Maps and places.
-        'google_places' => array('name' => 'Google Places', 'group' => 'maps', 'place' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
+        // Maps and places. An address provider's key or server is typed on
+        // its page; the Address Autocomplete card switches one on.
+        'google_places' => array('name' => 'Google Places', 'group' => 'maps', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
             'state' => array('kind' => 'app', 'key' => 'addr_google_places'),
             'covers' => array('address' => array('google_places'))),
-        'mapbox' => array('name' => 'Mapbox', 'group' => 'maps', 'place' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
+        'mapbox' => array('name' => 'Mapbox', 'group' => 'maps', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
             'state' => array('kind' => 'app', 'key' => 'addr_mapbox'),
             'covers' => array('address' => array('mapbox'))),
-        'photon' => array('name' => 'Photon', 'group' => 'maps', 'place' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
+        'photon' => array('name' => 'Photon', 'group' => 'maps', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
             'state' => array('kind' => 'app', 'key' => 'addr_photon'),
             'covers' => array('address' => array('photon'))),
         'google_reviews' => array('name' => 'Google reviews', 'group' => 'maps', 'place' => '#settings/api/pgset-google-reviews', 'uses' => 'The place\'s reviews on the site',

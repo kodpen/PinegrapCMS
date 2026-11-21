@@ -5,8 +5,8 @@
  * Tests for address autocomplete (includes/fn/address_autocomplete.php) and
  * its drivers (includes/geo/autocomplete/): each provider's answer mapped
  * from a fixture to the one address shape, the boxes a Turkish address
- * fills, the input clean-up and what the settings card decides. No provider
- * is called and no database is used.
+ * fills, the input clean-up, and what the settings card and the provider's
+ * page on Connections decide. No provider is called and no database is used.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -32,7 +32,7 @@ function addr_test_before()
 	$apps = array();
 
 	foreach (array_keys(pg_addr_providers()) as $provider) {
-		$apps[$provider] = array('key' => '', 'key_stored' => false, 'host' => '', 'enabled' => false);
+		$apps[$provider] = array('key' => '', 'key_stored' => false, 'host' => '', 'enabled' => false, 'exists' => false);
 	}
 
 	return $apps;
@@ -204,39 +204,92 @@ function test_address_autocomplete_settings_decide()
 {
 	$before = addr_test_before();
 
-	pg_assert_same(null, pg_addr_settings_decide(array(), $before, '', ''), 'no card');
-	pg_assert_same(null, pg_addr_settings_decide(array('addr_provider' => 'nope'), $before, '', ''));
+	pg_assert_same(null, pg_addr_settings_decide(array(), $before, ''), 'no card');
+	pg_assert_same(null, pg_addr_settings_decide(array('addr_provider' => 'nope'), $before, ''));
 
-	// On with no key anywhere: the key is marked.
-	$d = pg_addr_settings_decide(array('addr_provider' => 'google_places', 'addr_enabled' => '1', 'addr_google_places_key' => ''), $before, '', '');
-	pg_assert_true(isset($d['marks']['addr_google_places_key']));
+	// On with a provider not connected: the switch is marked, nothing written.
+	$d = pg_addr_settings_decide(array('addr_provider' => 'google_places', 'addr_enabled' => '1'), $before, '');
+	pg_assert_true(isset($d['marks']['addr_enabled']));
+	pg_assert_contains('Connections', $d['marks']['addr_enabled']);
+	pg_assert_same('none', $d['action']);
 
-	// A stored key is kept by an empty box.
+	// A stored key: switched on, the others off.
 	$stored = $before;
-	$stored['google_places'] = array('key' => 'K', 'key_stored' => true, 'host' => '', 'enabled' => true);
-	$d = pg_addr_settings_decide(array('addr_provider' => 'google_places', 'addr_enabled' => '1', 'addr_google_places_key' => ''), $stored, 'google_places', '');
+	$stored['google_places'] = array('key' => 'K', 'key_stored' => true, 'host' => '', 'enabled' => false, 'exists' => true);
+	$stored['mapbox'] = array('key' => 'M', 'key_stored' => true, 'host' => '', 'enabled' => true, 'exists' => true);
+	$d = pg_addr_settings_decide(array('addr_provider' => 'google_places', 'addr_enabled' => '1'), $stored, '');
 	pg_assert_same(array(), $d['marks']);
-	pg_assert_same('none', $d['action'], 'nothing changed');
+	pg_assert_same('switch', $d['action']);
+	pg_assert_false($d['create'], 'its row is there');
 
-	// Photon needs no key; a wrong host is marked.
-	$d = pg_addr_settings_decide(array('addr_provider' => 'photon', 'addr_enabled' => '1', 'addr_photon_host' => ''), $before, '', '');
+	// Already on alone: nothing written, an unreadable key included.
+	$on = $before;
+	$on['google_places'] = array('key' => '', 'key_stored' => true, 'host' => '', 'enabled' => true, 'exists' => true);
+	$d = pg_addr_settings_decide(array('addr_provider' => 'google_places', 'addr_enabled' => '1'), $on, '');
+	pg_assert_same(array(), $d['marks'], 'a running store keeps saving');
+	pg_assert_same('none', $d['action']);
+
+	// Off: always written, never refused.
+	$d = pg_addr_settings_decide(array('addr_provider' => 'google_places'), $on, 'No key.');
+	pg_assert_same('switch', $d['action']);
 	pg_assert_same(array(), $d['marks']);
-	pg_assert_same('save', $d['action']);
+	pg_assert_same('none', pg_addr_settings_decide(array('addr_provider' => 'mapbox'), $before, '')['action'], 'off and off');
 
-	$d = pg_addr_settings_decide(array('addr_provider' => 'photon', 'addr_enabled' => '1', 'addr_photon_host' => 'http://x'), $before, '', '');
-	pg_assert_true(isset($d['marks']['addr_photon_host']));
+	// Photon needs no account; switched on with no row, the row is made.
+	$d = pg_addr_settings_decide(array('addr_provider' => 'photon', 'addr_enabled' => '1'), $before, '');
+	pg_assert_same(array(), $d['marks']);
+	pg_assert_same('switch', $d['action']);
+	pg_assert_true($d['create']);
 
-	// A change that cannot be kept is refused on the switch.
-	$d = pg_addr_settings_decide(array('addr_provider' => 'photon', 'addr_enabled' => '1'), $before, '', 'No key.');
-	pg_assert_same('No key.', $d['marks']['addr_enabled']);
+	$d = pg_addr_settings_decide(array('addr_provider' => 'photon', 'addr_enabled' => '1'), $before, 'No key.');
+	pg_assert_same('No key.', $d['marks']['addr_enabled'], 'a row that cannot be kept is refused on the switch');
+}
 
-	// The test needs text and the switch on.
-	$d = pg_addr_settings_decide(array('addr_provider' => 'photon', 'addr_enabled' => '1', 'addr_test' => '1', 'addr_test_text' => 'a'), $before, '', '');
+function test_address_autocomplete_page_decide()
+{
+	$none = array('key' => '', 'key_stored' => false, 'host' => '', 'enabled' => false, 'exists' => false);
+
+	pg_assert_same(null, pg_addr_page_decide('nope', array(), $none, ''));
+
+	// A key provider: the key is required while none is stored.
+	$d = pg_addr_page_decide('google_places', array('addr_google_places_key' => ''), $none, '');
+	pg_assert_same(array('addr_google_places_key'), array_keys($d['marks']));
+	pg_assert_false($d['changed']);
+
+	$d = pg_addr_page_decide('google_places', array('addr_google_places_key' => ' K2 '), $none, '');
+	pg_assert_same(array(), $d['marks']);
+	pg_assert_same('K2', $d['key']);
+	pg_assert_true($d['changed']);
+
+	// A stored key is kept by an empty box; nothing changed, nothing written.
+	$stored = array('key' => 'K', 'key_stored' => true, 'host' => '', 'enabled' => true, 'exists' => true);
+	$d = pg_addr_page_decide('mapbox', array(), $stored, '');
+	pg_assert_same(array(), $d['marks']);
+	pg_assert_false($d['changed']);
+
+	$unreadable = array('key' => '', 'key_stored' => true, 'host' => '', 'enabled' => true, 'exists' => true);
+	pg_assert_contains('encryption key', pg_addr_page_decide('mapbox', array(), $unreadable, '')['marks']['addr_mapbox_key']);
+
+	// Photon: the public server needs nothing typed; its first save keeps a row.
+	$d = pg_addr_page_decide('photon', array('addr_photon_host' => ''), $none, '');
+	pg_assert_same(array(), $d['marks']);
+	pg_assert_true($d['changed']);
+
+	$photon = array('key' => '', 'key_stored' => false, 'host' => 'https://p.example', 'enabled' => false, 'exists' => true);
+	pg_assert_false(pg_addr_page_decide('photon', array('addr_photon_host' => 'https://p.example/'), $photon, '')['changed'], 'the same server');
+	pg_assert_true(isset(pg_addr_page_decide('photon', array('addr_photon_host' => 'http://x'), $photon, '')['marks']['addr_photon_host']));
+
+	// A change that cannot be kept is refused on its box.
+	pg_assert_same('No key.', pg_addr_page_decide('google_places', array('addr_google_places_key' => 'K'), $none, 'No key.')['marks']['addr_google_places_key']);
+
+	// Save and try needs a test address; it is asked whether the provider is on or not.
+	$d = pg_addr_page_decide('mapbox', array('submit_try' => '1', 'addr_test_text' => 'a'), $stored, '');
 	pg_assert_true(isset($d['marks']['addr_test_text']));
 
-	$d = pg_addr_settings_decide(array('addr_provider' => 'photon', 'addr_test' => '1', 'addr_test_text' => 'Moda Caddesi'), $before, '', '');
-	pg_assert_true(isset($d['marks']['addr_enabled']));
+	$d = pg_addr_page_decide('mapbox', array('submit_try' => '1', 'addr_test_text' => 'Moda Caddesi'), array('enabled' => false) + $stored, '');
+	pg_assert_same(array(), $d['marks']);
 	pg_assert_same('Moda Caddesi', $d['test']);
+	pg_assert_same('', pg_addr_page_decide('mapbox', array('addr_test_text' => 'Moda Caddesi'), $stored, '')['test'], 'Save alone tries nothing');
 }
 
 // Every address form prints pg_ship_to_district_script(), which carries the
