@@ -48,7 +48,7 @@ function ws_mail_providers()
 {
     return array(
         'gmail'  => array('label' => lang('Gmail or Google Workspace'), 'host' => 'imap.gmail.com', 'port' => 993, 'smtp_host' => 'smtp.gmail.com', 'smtp_port' => 465, 'auth_server' => 'mx.google.com',
-            'hint' => lang('Connect the Google account for Reading mailboxes and choose it as the connected account, or turn on 2-Step Verification and use an app password; Google refuses the account\'s own password.')),
+            'hint' => lang('Sign in with a connected Google account or an app password; Google refuses the account\'s own password.')),
         'yandex' => array('label' => 'Yandex', 'host' => 'imap.yandex.com', 'port' => 993, 'smtp_host' => 'smtp.yandex.com', 'smtp_port' => 465, 'auth_server' => '',
             'hint' => lang('Allow access by mail programs in the Yandex mail settings and use an app password.')),
         'icloud' => array('label' => 'iCloud', 'host' => 'imap.mail.me.com', 'port' => 993, 'smtp_host' => 'smtp.mail.me.com', 'smtp_port' => 587, 'auth_server' => '',
@@ -60,9 +60,9 @@ function ws_mail_providers()
         // No password: the box signs in with a connected account's token
         // and answers through it (purpose mail_read).
         'microsoft' => array('label' => lang('Microsoft 365 or Outlook.com'), 'host' => 'outlook.office365.com', 'port' => 993, 'smtp_host' => '', 'smtp_port' => 587, 'auth_server' => '', 'connection' => true,
-            'hint' => lang('Connect the Microsoft account for Reading mailboxes, choose it as the connected account and send answers through it; no password is typed. The user is the mailbox\'s address.')),
+            'hint' => lang('Signs in with a connected Microsoft account and answers through it; no password is typed.')),
         'other'  => array('label' => lang('Another server'), 'host' => '', 'port' => 993, 'smtp_host' => '', 'smtp_port' => 587, 'auth_server' => '',
-            'hint' => lang('The server must accept IMAP over TLS (usually port 993). Microsoft 365 and Outlook.com accept no password for IMAP: choose Microsoft 365 for them.')),
+            'hint' => lang('Any server that accepts IMAP over TLS, usually on port 993.')),
     );
 }
 
@@ -1162,7 +1162,10 @@ function ws_mail_box_menu($box, $form)
 }
 
 /**
- * One mailbox's form, empty for a new one.
+ * One mailbox's form, empty for a new one, in four tabs (the segmented
+ * control with role tab, as the Design examples' Drawer draws it): General,
+ * Reading, Answers and Routing. Every field is drawn in every tab, a hidden
+ * tab's too, so the form posts the same names whichever tab is open.
  *
  * @param string     $self_url
  * @param array|null $box
@@ -1172,8 +1175,8 @@ function ws_mail_box_menu($box, $form)
  * @param bool       $ai_ready Pinegrap AI can be asked (ws_mail_triage_ai_ready())
  * @param string|null $form    the Site Settings form's id: no form of its own,
  *                             fields ws_mail[<id>][...] joined to it
- *                             (ws_mail_box_dialog_names()), a named Save
- *                             (ws_mail_box_save, value the box's id)
+ *                             (ws_mail_box_dialog_names()); the drawer's foot
+ *                             (ws_mail_box_drawer_foot()) holds its Save
  * @param bool       $rooms_only ws_mail_box_rooms_only(): kept in the mailbox
  *                             itself, so no channel, routing or suggestion
  *                             under a card is offered
@@ -1199,8 +1202,7 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
             . h('#' . $channel['name']) . '</option>';
     }
 
-    $fields = '
-            <div class="row g-5">
+    $general = '
                 <div class="md:col-6">
                     <label class="pg-field-label" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
                     <input class="pg-input" type="text" name="name" id="' . $prefix . 'name" maxlength="100" required value="' . h($box ? (string) $box['name'] : '') . '" placeholder="' . h(lang('Support')) . '">
@@ -1210,57 +1212,132 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
                     <input class="pg-input" type="email" name="address" id="' . $prefix . 'address" maxlength="255" required value="' . h($box ? (string) $box['address'] : '') . '" placeholder="support@example.com">
                 </div>
                 ' . ws_mail_room_fields($prefix, $box, $options, $rooms_only) . '
-                <div class="md:col-6">
-                    <label class="pg-field-label" for="' . $prefix . 'auth">' . h(lang('Checking server')) . '</label>
-                    <input class="pg-input font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
-                    <div class="pg-field-help">' . h(lang('The server that receives this mailbox\'s mail and writes Authentication-Results. Only its verdict is believed; left empty, every sender stays unverified and no mail is tied to a customer.')) . '</div>
-                </div>
-                ' . ($rooms_only ? '' : ws_mail_route_fields($prefix, $box, $channels)) . '
-                ' . ws_mail_box_server_fields($prefix, $box, $settings, $google) . '
-                <div class="md:col-12">
-                    <label class="pg-field-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
-                    <textarea class="pg-input" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
-                    <div class="pg-field-help">' . h(lang('Plain text put under a new e-mail sent from this mailbox, after the writer\'s name. Left empty, the mailbox\'s name is put there.')) . '</div>
-                </div>
-                ' . ws_mail_support_field($prefix, $box) . '
-                <div class="md:col-12' . (ws_mail_box_is_support($box) ? '' : ' d-none') . '" data-ws-mail-when="support=1">
-                    <div class="row g-5">
-                    ' . ws_mail_first_reply_field($prefix, $box) . '
-                    ' . ws_mail_auto_reply_fields($prefix, $box) . '
-                    </div>
-                </div>
-                ' . ws_mail_triage_field($prefix, $box, $ai_ready && !$rooms_only) . '
-                <div class="md:col-12">
-                    <div class="d-flex align-items-center gap-3">
-                        <input class="pg-checkbox" type="checkbox" name="reads_bounces" value="1" id="' . $prefix . 'reads_bounces"' . (!empty($settings['reads_bounces']) ? ' checked' : '') . '>
-                        <label for="' . $prefix . 'reads_bounces">' . h(lang('Reads bounces')) . '</label>
-                    </div>
-                    <div class="pg-field-help">' . h(lang('Queued and campaign e-mails are sent with this address as their return path, written with a + and a code after its name. Delivery failures that come back are recorded and leave the channel; an address that keeps failing gets no more mail. The mail server must deliver such addresses to this mailbox, and the site\'s sending address must be on the same domain.')) . '</div>
-                </div>
                 <div class="md:col-12">
                     <div class="d-flex align-items-center gap-3">
                         <input class="pg-switch" type="checkbox" name="enabled" value="1" id="' . $prefix . 'enabled"' . ((!$box || (int) $box['enabled'] === 1) ? ' checked' : '') . '>
                         <label for="' . $prefix . 'enabled">' . h(lang('On')) . '</label>
                     </div>
                 </div>
-            </div>';
-    $save = h(lang('Save'));
+                ' . ws_mail_support_field($prefix, $box) . '
+                <div class="md:col-12">
+                    <label class="pg-field-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
+                    <textarea class="pg-input" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
+                    <div class="pg-field-help">' . h(lang('Put under each new e-mail from this mailbox; left empty, its name is put there.')) . '</div>
+                </div>';
+    $answers = ws_mail_box_send_fields($prefix, $box, $settings) . '
+                <div class="md:col-12' . (ws_mail_box_is_support($box) ? '' : ' d-none') . '" data-ws-mail-when="support=1">
+                    <div class="row g-5">
+                    ' . ws_mail_first_reply_field($prefix, $box) . '
+                    ' . ws_mail_auto_reply_fields($prefix, $box) . '
+                    </div>
+                </div>
+                ' . ws_mail_triage_field($prefix, $box, $ai_ready && !$rooms_only);
+    $fields = array(
+        'general' => $general,
+        'reading' => ws_mail_box_server_fields($prefix, $box, $settings, $google),
+        'answers' => $answers,
+        'routing' => $rooms_only ? '' : ws_mail_route_fields($prefix, $box, $channels),
+    );
+    $panes = array();
+
+    foreach (ws_mail_box_tab_labels($rooms_only) as $key => $label) {
+        $panes[$key] = array($label, $fields[$key]);
+    }
+
+    $tabs = ws_mail_box_tabs($prefix, $panes);
+    $fields = $tabs['panes'];
 
     if ($form !== null) {
+        // Test connection is the pane's named button, not a field of the box.
+        $test = ($box && ((string) ($settings['host'] ?? '') !== ''))
+            ? '<div class="md:col-12"><button type="submit" name="ws_mail_test" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Test connection')) . '</button></div>'
+            : '';
+
         return '
-        <div class="ws-mail-box-form" data-ws-mail-dialog>' . ws_mail_box_dialog_names($fields, $id, $form) . '
-            <button type="submit" name="ws_mail_box_save" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-fill mt-5">' . $save . '</button>
+        <div class="ws-mail-box-form" data-ws-mail-dialog data-ws-mail-tabs="' . h($prefix) . '">' . str_replace('<!--ws-mail-test-->', $test, ws_mail_box_dialog_names($fields, $id, $form)) . '
         </div>';
     }
 
     return '
-        <form method="post" action="' . h($self_url) . '#ws-mail" class="py-5 ws-mail-box-form">
+        <form method="post" action="' . h($self_url) . '#ws-mail" class="py-5 ws-mail-box-form" data-ws-mail-tabs="' . h($prefix) . '">
             ' . get_token_field() . '
             <input type="hidden" name="ws_action" value="mail_box_save">
             <input type="hidden" name="box_id" value="' . $id . '">
-            ' . $fields . '
-            <button type="submit" class="pg-button pg-button-fill mt-5">' . $save . '</button>
+            <div class="mb-5">' . $tabs['bar'] . '</div>
+            ' . str_replace('<!--ws-mail-test-->', '', $fields) . '
+            <button type="submit" class="pg-button pg-button-fill mt-5">' . h(lang('Save')) . '</button>
         </form>';
+}
+
+/**
+ * The tabs of a box's form; a box kept in the mailbox itself has no channel
+ * to route to, so no Routing. Pure but for the words.
+ *
+ * @param bool $rooms_only ws_mail_box_rooms_only()
+ * @return array key => label
+ */
+function ws_mail_box_tab_labels($rooms_only = false)
+{
+    $labels = array('general' => lang('General'), 'reading' => lang('Reading'), 'answers' => lang('Answers'), 'routing' => lang('Routing'));
+
+    if ($rooms_only) {
+        unset($labels['routing']);
+    }
+
+    return $labels;
+}
+
+/**
+ * A box form's tabs: the segmented control (role tablist, one tab a pane)
+ * and the panes, General open. Pure but for the words.
+ *
+ * @param string $prefix the form's id prefix
+ * @param array  $panes  key => array(label, fields HTML)
+ * @return array bar (the tabs, HTML), panes (HTML)
+ */
+function ws_mail_box_tabs($prefix, $panes)
+{
+    $bar = '<span class="pg-seg" role="tablist" aria-label="' . h(lang('Mailbox')) . '">';
+    $html = '';
+    $first = true;
+
+    foreach ($panes as $key => $pane) {
+        $tab = $prefix . 'tab_' . $key;
+        $id = $prefix . 'pane_' . $key;
+        $bar .= '<button type="button" class="pg-seg-item" role="tab" id="' . h($tab) . '" aria-selected="' . ($first ? 'true' : 'false') . '" aria-controls="' . h($id) . '"' . ($first ? '' : ' tabindex="-1"') . ' data-ws-mail-tab>' . h($pane[0]) . '</button>';
+        $html .= '
+            <div class="ws-mail-box-pane" role="tabpanel" id="' . h($id) . '" aria-labelledby="' . h($tab) . '"' . ($first ? '' : ' hidden') . '>
+                <div class="row g-5">' . $pane[1] . '
+                </div>
+            </div>';
+        $first = false;
+    }
+
+    return array('bar' => $bar . '</span>', 'panes' => $html);
+}
+
+/**
+ * The foot of a box's drawer, as the Design examples' Drawer draws it:
+ * "Remove mailbox" in danger at the left (a kept box only; it asks
+ * ws_mail_box_remove_confirm() first), then Cancel quiet and Save filled.
+ * Save and Remove are the settings form's named buttons (ws_mail_box_save
+ * and ws_mail_remove, value the box's id). Pure but for the words.
+ *
+ * @param array|null $box
+ * @param string     $form      the settings form's id
+ * @param bool       $in_dialog pg_settings_drawer()'s: Cancel closes the
+ *                              dialog's panel, else Bootstrap's drawer
+ * @return string HTML
+ */
+function ws_mail_box_drawer_foot($box, $form, $in_dialog)
+{
+    $id = $box ? (int) $box['id'] : 0;
+    $f = ' form="' . h($form) . '"';
+
+    return ($box ? '<button type="submit" name="ws_mail_remove" value="' . $id . '"' . $f . ' class="pg-button pg-button-danger" data-ws-mail-confirm="' . h(ws_mail_box_remove_confirm($box)) . '"><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Remove mailbox')) . '</button>' : '')
+        . '<span class="flex-grow-1"></span>'
+        . '<button type="button" class="pg-button pg-button-quiet"' . ($in_dialog ? ' data-pgdrawer-close' : ' data-bs-dismiss="drawer"') . '>' . h(lang('Cancel')) . '</button>'
+        . '<button type="submit" name="ws_mail_box_save" value="' . $id . '"' . $f . ' class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>';
 }
 
 /**
@@ -1302,9 +1379,60 @@ function ws_mail_settings_dialog_input($post, $id)
 }
 
 /**
- * The server half of a mailbox's form: provider, IMAP server, user,
- * password (drawn empty, an empty box keeps the kept one), folder, what
- * happens to mail once read, and how answers are sent.
+ * How a box's form opens its Reading tab on: which sign-in fields show. A
+ * box with no service and no server reads nothing ("none"); Microsoft signs
+ * in with a connected account; Gmail as its "Sign in with" says; any other
+ * service with a connected account once one is chosen, else with the user
+ * name and password. The card's script works it out again on each change.
+ * Pure.
+ *
+ * @param string $provider      ws_mail_providers() key, '' for none
+ * @param string $google_way    ws_mail_google_way()
+ * @param int    $connection_id the chosen connected account, 0 for none
+ * @param string $host          the IMAP server
+ * @return string none | account | password
+ */
+function ws_mail_box_signin_way($provider, $google_way, $connection_id, $host)
+{
+    $provider = (string) $provider;
+
+    if (($provider === '') && ((string) $host === '')) {
+        return 'none';
+    }
+
+    if ($provider === 'microsoft') {
+        return 'account';
+    }
+
+    if ($provider === 'gmail') {
+        return ($google_way === 'password') ? 'password' : 'account';
+    }
+
+    return ((int) $connection_id > 0) ? 'account' : 'password';
+}
+
+/**
+ * Whether a box's IMAP server and port stand in the Reading tab itself: for
+ * another server, or a box with a server and no service; a chosen service
+ * fills them, so they wait folded under "Advanced". Pure.
+ *
+ * @param string $provider
+ * @param string $host
+ * @return bool
+ */
+function ws_mail_box_server_own($provider, $host)
+{
+    return ((string) $provider === 'other') || (((string) $provider === '') && ((string) $host !== ''));
+}
+
+/**
+ * The Reading tab of a mailbox's form: the mail service with its one line,
+ * then only what that service needs (the Gmail part, the user name and
+ * password or the connected account, the folder and what happens after
+ * reading); the IMAP server and port when the service fills them, the
+ * checking server and Reads bounces folded under "Advanced". The password
+ * is drawn empty: an empty box keeps the kept one. The drawer adds Test
+ * connection where <!--ws-mail-test--> stands.
  *
  * @param string     $prefix
  * @param array|null $box
@@ -1315,18 +1443,22 @@ function ws_mail_settings_dialog_input($post, $id)
 function ws_mail_box_server_fields($prefix, $box, $settings, $google = array())
 {
     $provider = (string) ($settings['provider'] ?? '');
+    $host = (string) ($settings['host'] ?? '');
     $options = '<option value="">' . h(lang('None: only .eml files')) . '</option>';
     $hints = '';
 
     foreach (ws_mail_providers() as $key => $entry) {
         $options .= '<option value="' . h($key) . '"' . (($key === $provider) ? ' selected' : '') . '>' . h($entry['label']) . '</option>';
-        $hints .= '<li><strong>' . h($entry['label']) . ':</strong> ' . h($entry['hint']) . '</li>';
+        $hints .= '<div class="pg-field-help' . (($key === $provider) ? '' : ' d-none') . '" data-ws-mail-when="provider=' . h($key) . '">' . h($entry['hint']) . '</div>';
     }
 
     $kept = !empty($settings['secret']);
     $move = $box && ((string) $box['after_fetch'] === 'move');
     $via = $box ? (string) ($box['reply_via'] ?? 'box') : 'box';
     $connection_id = (int) ($settings['connection_id'] ?? 0);
+    $google_way = ws_mail_google_way($settings);
+    $way = ws_mail_box_signin_way($provider, $google_way, $connection_id, $host);
+    $own = ws_mail_box_server_own($provider, $host);
     $accounts = '<option value="">' . h(lang('None: sign in with the password')) . '</option>';
     $listed = false;
 
@@ -1340,69 +1472,112 @@ function ws_mail_box_server_fields($prefix, $box, $settings, $google = array())
     if (($connection_id > 0) && !$listed) {
         $accounts .= '<option value="' . $connection_id . '" selected>' . h(lang('An account no longer connected')) . '</option>';
     }
-    $copy = !isset($settings['sent_copy']) || !empty($settings['sent_copy']);
+
+    $shown = function ($rule) use ($way) {
+        return (($rule === '!none') ? ($way !== 'none') : ($way === $rule)) ? '' : ' d-none';
+    };
+    // Moved between the tab and the fold by the card's script as the
+    // service changes; one copy, so the names stay one each.
+    $server = '
+                        <div class="row g-5" data-ws-mail-server>
+                            <div class="col-8">
+                                <label class="pg-field-label" for="' . $prefix . 'host">' . h(lang('IMAP server')) . '</label>
+                                <input class="pg-input font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="host" id="' . $prefix . 'host" maxlength="253" value="' . h($host) . '" placeholder="imap.example.com" autocomplete="off">
+                            </div>
+                            <div class="col-4">
+                                <label class="pg-field-label" for="' . $prefix . 'port">' . h(lang('Port')) . '</label>
+                                <input class="pg-input" type="number" name="port" id="' . $prefix . 'port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['port'] ?? 0, $provider, 'port') . '">
+                            </div>
+                        </div>';
 
     return '
-                <div class="md:col-12"><h3 class="pg-group-label mt-3 mb-0">' . h(lang('Reading the mailbox')) . '</h3>
-                    <div class="pg-field-help">' . h(lang('Leave the server empty to bring mail in only as .eml files. A chosen service fills an empty server, checking server and sending server.')) . '</div>
-                </div>
-                <div class="md:col-4">
+                <div class="md:col-12">
                     <label class="pg-field-label" for="' . $prefix . 'provider">' . h(lang('Mail service')) . '</label>
                     <select class="pg-input" name="provider" id="' . $prefix . 'provider">' . $options . '</select>
+                    <div class="pg-field-help' . (($provider === '') ? '' : ' d-none') . '" data-ws-mail-when="provider=">' . h(lang('Mail is brought in only as .eml files.')) . '</div>' . $hints . '
                 </div>
-                <div class="md:col-5">
-                    <label class="pg-field-label" for="' . $prefix . 'host">' . h(lang('IMAP server')) . '</label>
-                    <input class="pg-input font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="host" id="' . $prefix . 'host" maxlength="253" value="' . h((string) ($settings['host'] ?? '')) . '" placeholder="imap.example.com" autocomplete="off">
-                </div>
-                <div class="md:col-3">
-                    <label class="pg-field-label" for="' . $prefix . 'port">' . h(lang('Port')) . '</label>
-                    <input class="pg-input" type="number" name="port" id="' . $prefix . 'port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['port'] ?? 0, $provider, 'port') . '">
-                </div>
-                ' . ws_mail_google_steps($provider, $prefix, ws_mail_google_way($settings), $google) . '
-                <div class="md:col-6">
+                <div class="md:col-12" data-ws-mail-slot="own">' . ($own ? $server : '') . '</div>
+                ' . ws_mail_google_steps($provider, $prefix, $google_way, $google) . '
+                <div class="md:col-6' . $shown('password') . '" data-ws-mail-when="signin=password">
                     <label class="pg-field-label" for="' . $prefix . 'user">' . h(lang('User name')) . '</label>
                     <input class="pg-input" type="text" spellcheck="false" autocapitalize="off" name="user" id="' . $prefix . 'user" maxlength="255" value="' . h((string) ($settings['user'] ?? '')) . '" autocomplete="off">
                 </div>
-                <div class="md:col-6">
+                <div class="md:col-6' . $shown('password') . '" data-ws-mail-when="signin=password">
                     <label class="pg-field-label" for="' . $prefix . 'password">' . h(lang('Password')) . '</label>
                     <input class="pg-input" type="password" name="password" id="' . $prefix . 'password" value="" autocomplete="new-password" placeholder="' . h($kept ? lang('Stored. Type a new one to replace it.') : '') . '">
                 </div>
-                <div class="md:col-12">
+                <div class="md:col-12' . $shown('account') . '" data-ws-mail-when="signin=account">
                     <label class="pg-field-label" for="' . $prefix . 'connection">' . h(lang('Connected account')) . '</label>
                     <select class="pg-input" name="connection_id" id="' . $prefix . 'connection"' . (($via === 'connection') ? ' required' : '') . '>' . $accounts . '</select>
-                    <div class="pg-field-help">' . h(lang('Microsoft 365 and Outlook.com sign in with a connected account instead of a password; Gmail can too.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('It signs in instead of a password; the user name is the mailbox\'s address.')) . '</div>
                 </div>
-                <div class="md:col-4">
+                <div class="md:col-6' . $shown('!none') . '" data-ws-mail-when="signin!=none">
                     <label class="pg-field-label" for="' . $prefix . 'folder">' . h(lang('Folder to read')) . '</label>
                     <input class="pg-input" type="text" name="folder" id="' . $prefix . 'folder" maxlength="255" value="' . h($box ? (string) $box['folder'] : 'INBOX') . '">
                 </div>
-                <div class="md:col-4">
+                <div class="md:col-6' . $shown('!none') . '" data-ws-mail-when="signin!=none">
                     <label class="pg-field-label" for="' . $prefix . 'after">' . h(lang('After reading')) . '</label>
                     <select class="pg-input" name="after_fetch" id="' . $prefix . 'after">
                         <option value="seen"' . ($move ? '' : ' selected') . '>' . h(lang('Mark as read')) . '</option>
                         <option value="move"' . ($move ? ' selected' : '') . '>' . h(lang('Move to a folder')) . '</option>
                     </select>
                 </div>
-                <div class="md:col-4' . ($move ? '' : ' d-none') . '" data-ws-mail-when="after_fetch=move">
+                <div class="md:col-6' . ($move ? '' : ' d-none') . '" data-ws-mail-when="after_fetch=move">
                     <label class="pg-field-label" for="' . $prefix . 'move">' . h(lang('Folder to move to')) . '</label>
                     <input class="pg-input" type="text" name="move_folder" id="' . $prefix . 'move" maxlength="255" value="' . h((string) ($settings['move_folder'] ?? '')) . '" placeholder="' . h(lang('Processed')) . '">
                 </div>
-                <div class="md:col-12"><h3 class="pg-group-label mt-3 mb-0">' . h(lang('Sending answers')) . '</h3>
-                    <div class="pg-field-help">' . h(lang('Answers leave from the mailbox\'s address. Its own sending server signs in with the user name and password above; the site\'s mail settings send only for an address on the site\'s own mail domain.')) . '</div>
+                <div class="md:col-12">
+                    <details class="pg-start-advanced">
+                        <summary class="small"><i class="bi bi-sliders me-1" aria-hidden="true"></i><b>' . h(lang('Advanced')) . '</b> <span class="small fg-2">' . h(lang('Server, checking server and bounces')) . '</span></summary>
+                        <div class="mt-3" data-ws-mail-slot="advanced">' . ($own ? '' : $server) . '</div>
+                        <div class="mt-5">
+                            <label class="pg-field-label" for="' . $prefix . 'auth">' . h(lang('Checking server')) . '</label>
+                            <input class="pg-input font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
+                            <div class="pg-field-help">' . h(lang('The server whose sender check is trusted.')) . '</div>
+                        </div>
+                        <div class="mt-5">
+                            <div class="d-flex align-items-center gap-3">
+                                <input class="pg-checkbox" type="checkbox" name="reads_bounces" value="1" id="' . $prefix . 'reads_bounces"' . (!empty($settings['reads_bounces']) ? ' checked' : '') . '>
+                                <label for="' . $prefix . 'reads_bounces">' . h(lang('Reads bounces')) . '</label>
+                            </div>
+                            <div class="pg-field-help">' . h(lang('E-mails the site sent that could not be delivered come back here and are recorded.')) . '</div>
+                        </div>
+                    </details>
                 </div>
-                <div class="md:col-4">
+                <!--ws-mail-test-->';
+}
+
+/**
+ * The Answers tab's sending half: Send through, the sending server's
+ * fields only for the mailbox's own server, the sent copy and its folder,
+ * and reading the Sent folder.
+ *
+ * @param string     $prefix
+ * @param array|null $box
+ * @param array      $settings ws_mail_box_settings()
+ * @return string HTML
+ */
+function ws_mail_box_send_fields($prefix, $box, $settings)
+{
+    $provider = (string) ($settings['provider'] ?? '');
+    $via = $box ? (string) ($box['reply_via'] ?? 'box') : 'box';
+    $copy = !isset($settings['sent_copy']) || !empty($settings['sent_copy']);
+
+    return '
+                <div class="md:col-12">
                     <label class="pg-field-label" for="' . $prefix . 'reply_via">' . h(lang('Send through')) . '</label>
                     <select class="pg-input" name="reply_via" id="' . $prefix . 'reply_via">
                         <option value="box"' . (($via === 'box') ? ' selected' : '') . '>' . h(lang('The mailbox\'s sending server')) . '</option>
                         <option value="site"' . (($via === 'site') ? ' selected' : '') . '>' . h(lang('The site\'s mail settings')) . '</option>
                         <option value="connection"' . (($via === 'connection') ? ' selected' : '') . '>' . h(lang('The connected account')) . '</option>
                     </select>
+                    <div class="pg-field-help">' . h(lang('Answers leave from the mailbox\'s address.')) . '</div>
                 </div>
-                <div class="md:col-5' . (($via === 'box') ? '' : ' d-none') . '" data-ws-mail-when="reply_via=box">
+                <div class="md:col-8' . (($via === 'box') ? '' : ' d-none') . '" data-ws-mail-when="reply_via=box">
                     <label class="pg-field-label" for="' . $prefix . 'smtp_host">' . h(lang('SMTP server')) . '</label>
                     <input class="pg-input font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="smtp_host" id="' . $prefix . 'smtp_host" maxlength="253" value="' . h((string) ($settings['smtp_host'] ?? '')) . '" placeholder="smtp.example.com" autocomplete="off">
                 </div>
-                <div class="md:col-3' . (($via === 'box') ? '' : ' d-none') . '" data-ws-mail-when="reply_via=box">
+                <div class="md:col-4' . (($via === 'box') ? '' : ' d-none') . '" data-ws-mail-when="reply_via=box">
                     <label class="pg-field-label" for="' . $prefix . 'smtp_port">' . h(lang('Port')) . '</label>
                     <input class="pg-input" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['smtp_port'] ?? 0, $provider, 'smtp_port') . '">
                 </div>
@@ -1411,7 +1586,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings, $google = array())
                         <input class="pg-checkbox" type="checkbox" name="sent_copy" value="1" id="' . $prefix . 'sent_copy"' . ($copy ? ' checked' : '') . '>
                         <label for="' . $prefix . 'sent_copy">' . h(lang('Keep a copy of each answer in the mailbox\'s sent folder')) . '</label>
                     </div>
-                    <div class="pg-field-help">' . h(lang('Needs the IMAP server above. Gmail and Microsoft 365 keep what their own sending server sends, so no copy is added for them.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('Gmail and Microsoft 365 keep their own copy.')) . '</div>
                 </div>
                 <div class="md:col-4">
                     <label class="pg-field-label" for="' . $prefix . 'sent_folder">' . h(lang('Sent folder')) . '</label>
@@ -1422,10 +1597,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings, $google = array())
                         <input class="pg-checkbox" type="checkbox" name="read_sent" value="1" id="' . $prefix . 'read_sent"' . (!empty($settings['read_sent']) ? ' checked' : '') . '>
                         <label for="' . $prefix . 'read_sent">' . h(lang('Read the Sent folder')) . '</label>
                     </div>
-                    <div class="pg-field-help">' . h(lang('An answer written in a mail program joins its conversation as a sent mail. Only mail sent after this is switched on is read; a mail that answers no conversation is left out.')) . '</div>
-                </div>
-                <div class="md:col-12">
-                    <details class="small fg-secondary"><summary>' . h(lang('What each service needs')) . '</summary><ul class="mb-0 mt-2">' . $hints . '</ul></details>
+                    <div class="pg-field-help">' . h(lang('Answers written in a mail program join their conversation.')) . '</div>
                 </div>';
 }
 
@@ -2084,8 +2256,10 @@ function ws_mail_eml_form($action, $id, $dialog)
 
 /**
  * A Site Settings drawer of the mailboxes card: a box's form or, with $box
- * null, Add a mailbox's. Bring in an .eml file is the pane's last row
- * (ws_mail_eml_pane()).
+ * null, Add a mailbox's. The head names the box, its address and state
+ * pill; the tabs stand in the band under it; the foot holds Remove
+ * mailbox, Cancel and Save (ws_mail_box_drawer_foot()). Bring in an .eml
+ * file is the pane's last row (ws_mail_eml_pane()).
  *
  * @param array|null $box
  * @param array      $viewer
@@ -2098,15 +2272,22 @@ function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
     $channels = ws_mail_box_channels($viewer);
     $ai_ready = ws_mail_triage_ai_ready();
     $rooms_only = ws_mail_box_rooms_only($box, ws_enabled());
+    $id = $box ? (int) $box['id'] : 0;
+    $bar = ws_mail_box_tabs('ws_mail_' . $id . '_', array_map(function ($label) {
+        return array($label, '');
+    }, ws_mail_box_tab_labels($rooms_only)))['bar'];
+    $body = ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer));
+    $foot = ws_mail_box_drawer_foot($box, $form, $in_dialog);
 
     if (!$box) {
-        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), ws_mail_box_form('', null, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer)), $in_dialog);
+        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), $body, $in_dialog, $foot, '', $bar);
     }
 
-    $id = (int) $box['id'];
+    // The head: its name, then its address and state pill (ws_mail_box_state()).
+    $state = ws_mail_box_state($box);
+    $line = h((string) $box['address']) . (($state['words'] !== '') ? ' <span class="pg-pill ' . h($state['tone']) . '">' . h($state['words']) . '</span>' : '');
 
-    return pg_settings_drawer('pgset-ws-mail-' . $id, h((string) $box['name']) . ' · ' . h((string) $box['address']),
-        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only, ws_mail_google_parts($viewer)), $in_dialog);
+    return pg_settings_drawer('pgset-ws-mail-' . $id, h((string) $box['name']), $body, $in_dialog, $foot, $line, $bar);
 }
 
 /**
@@ -2135,24 +2316,74 @@ function ws_mail_settings_script()
                 return form.querySelector(\'[name="\' + name + \'"], [name$="[\' + name + \']"]\');
             }
 
+            // A field\'s value: a ticked box\'s value or \'\', the chosen
+            // radio\'s (Kept in), else the field\'s own; null when absent.
+            function valueOf(form, name) {
+                var control = field(form, name);
+
+                if (!control) {
+                    return null;
+                }
+
+                if (control.type === \'radio\') {
+                    var chosen = form.querySelector(\'[name="\' + control.name + \'"]:checked\');
+
+                    return chosen ? chosen.value : \'\';
+                }
+
+                return (control.type === \'checkbox\') ? (control.checked ? control.value : \'\') : control.value;
+            }
+
+            // How the box signs in, as ws_mail_box_signin_way() works it out.
+            function signin(form) {
+                var provider = valueOf(form, \'provider\') || \'\';
+
+                if ((provider === \'\') && !(valueOf(form, \'host\') || \'\')) {
+                    return \'none\';
+                }
+
+                if (provider === \'microsoft\') {
+                    return \'account\';
+                }
+
+                if (provider === \'gmail\') {
+                    return (valueOf(form, \'google_way\') === \'password\') ? \'password\' : \'account\';
+                }
+
+                return valueOf(form, \'connection_id\') ? \'account\' : \'password\';
+            }
+
             // A field that applies to one choice of a select, or to a
             // switch that is on, shows only with it
-            // (data-ws-mail-when="name=value"); the connected account is
-            // required when answers are sent through it.
+            // (data-ws-mail-when="name=value", or "name!=value"; signin is
+            // the sign-in way); the server and port stand in the Reading
+            // tab for another server and fold under Advanced for a service
+            // that fills them; the connected account is required when
+            // answers are sent through it.
             function sync(form) {
                 form.querySelectorAll(\'[data-ws-mail-when]\').forEach(function (part) {
-                    var rule = part.getAttribute(\'data-ws-mail-when\').split(\'=\');
-                    var select = field(form, rule[0]);
-                    var value = !select ? null : ((select.type === \'checkbox\') ? (select.checked ? select.value : \'\') : select.value);
+                    var rule = part.getAttribute(\'data-ws-mail-when\');
+                    var not = rule.indexOf(\'!=\') !== -1;
+                    var pair = rule.split(not ? \'!=\' : \'=\');
+                    var value = (pair[0] === \'signin\') ? signin(form) : valueOf(form, pair[0]);
 
-                    part.classList.toggle(\'d-none\', value !== rule[1]);
+                    part.classList.toggle(\'d-none\', not ? (value === pair[1]) : (value !== pair[1]));
                 });
 
-                var kept = field(form, \'kept_in\');
+                var server = form.querySelector(\'[data-ws-mail-server]\');
+                var provider = valueOf(form, \'provider\') || \'\';
+                var own = (provider === \'other\') || ((provider === \'\') && !!(valueOf(form, \'host\') || \'\'));
+                var slot = form.querySelector(\'[data-ws-mail-slot="\' + (own ? \'own\' : \'advanced\') + \'"]\');
+
+                if (server && slot && (server.parentNode !== slot)) {
+                    slot.appendChild(server);
+                }
+
+                var kept = valueOf(form, \'kept_in\');
                 var channel = field(form, \'channel_id\');
 
-                if (kept && channel && !form.hasAttribute(\'data-ws-mail-dialog\')) {
-                    channel.required = (kept.value !== \'mailbox\');
+                if ((kept !== null) && channel && !form.hasAttribute(\'data-ws-mail-dialog\')) {
+                    channel.required = (kept !== \'mailbox\');
                 }
 
                 var via = field(form, \'reply_via\');
@@ -2171,6 +2402,110 @@ function ws_mail_settings_script()
                 }
             }
 
+            // A tab of a box\'s form (the segmented control): its pane shows,
+            // the others hide; every pane\'s fields still post.
+            function showTab(tab) {
+                var list = tab.closest(\'[role="tablist"]\');
+
+                if (!list) {
+                    return;
+                }
+
+                list.querySelectorAll(\'[role="tab"]\').forEach(function (other) {
+                    var on = (other === tab);
+                    var pane = document.getElementById(other.getAttribute(\'aria-controls\'));
+
+                    other.setAttribute(\'aria-selected\', on ? \'true\' : \'false\');
+                    other.tabIndex = on ? 0 : -1;
+
+                    if (pane) {
+                        pane.hidden = !on;
+                    }
+                });
+            }
+
+            // The tab of the pane a field sits in, opened: a field the save
+            // refused or the browser found invalid is seen where it was typed.
+            function showField(control) {
+                var pane = (control && control.closest) ? control.closest(\'.ws-mail-box-pane\') : null;
+                var tab = (pane && pane.hidden) ? document.getElementById(pane.getAttribute(\'aria-labelledby\')) : null;
+
+                if (tab) {
+                    showTab(tab);
+                }
+            }
+
+            document.addEventListener(\'click\', function (event) {
+                var tab = event.target.closest ? event.target.closest(\'[data-ws-mail-tab]\') : null;
+
+                if (tab) {
+                    showTab(tab);
+                }
+            });
+
+            document.addEventListener(\'keydown\', function (event) {
+                var tab = event.target.closest ? event.target.closest(\'[data-ws-mail-tab]\') : null;
+                var step = {ArrowRight: 1, ArrowLeft: -1}[event.key];
+
+                if (!tab || !step) {
+                    return;
+                }
+
+                var tabs = Array.prototype.slice.call(tab.closest(\'[role="tablist"]\').querySelectorAll(\'[role="tab"]\'));
+                var next = tabs[(tabs.indexOf(tab) + step + tabs.length) % tabs.length];
+
+                event.preventDefault();
+                showTab(next);
+                next.focus();
+            });
+
+            document.addEventListener(\'invalid\', function (event) {
+                showField(event.target);
+            }, true);
+
+            // A refused save marks its field (pgSettingsRestore()) before the
+            // drawer opens and focuses it.
+            if (window.MutationObserver) {
+                new MutationObserver(function (changes) {
+                    changes.forEach(function (change) {
+                        if (change.target.hasAttribute(\'data-pg-set-marked\')) {
+                            showField(change.target);
+                        }
+                    });
+                }).observe(document.documentElement, {attributes: true, attributeFilter: [\'data-pg-set-marked\'], subtree: true});
+            }
+
+            // Add a route copies the template\'s row with ids of its own;
+            // Remove takes a row away. Never past the most routes a box keeps.
+            var routeCount = 0;
+
+            document.addEventListener(\'click\', function (event) {
+                var add = event.target.closest ? event.target.closest(\'[data-ws-mail-route-add]\') : null;
+                var remove = event.target.closest ? event.target.closest(\'[data-ws-mail-route-remove]\') : null;
+                var part = (add || remove) ? (add || remove).closest(\'.md\\\\:col-12\') : null;
+                var list = part ? part.querySelector(\'[data-ws-mail-routes]\') : null;
+
+                if (!list) {
+                    return;
+                }
+
+                var button = part.querySelector(\'[data-ws-mail-route-add]\');
+                var max = parseInt(button.getAttribute(\'data-ws-mail-route-max\'), 10) || 0;
+
+                if (remove) {
+                    remove.closest(\'[data-ws-mail-route]\').remove();
+                } else if (list.children.length < max) {
+                    var html = part.querySelector(\'template[data-ws-mail-route-new]\').innerHTML;
+
+                    routeCount++;
+                    list.insertAdjacentHTML(\'beforeend\', html.replace(/__n__/g, \'new\' + routeCount));
+                    list.lastElementChild.querySelector(\'input\').focus();
+                }
+
+                button.hidden = (list.children.length >= max);
+                button.classList.toggle(\'mt-3\', list.children.length > 0);
+            });
+
             // A new box kept in the mailbox itself starts plain, one kept in
             // a channel as a support box, until the person sets the switch.
             function startPlain(form, target) {
@@ -2188,7 +2523,7 @@ function ws_mail_settings_script()
             }
 
             document.addEventListener(\'change\', function (event) {
-                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via|kept_in|support|provider|google_way)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
+                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via|kept_in|support|provider|google_way|host|connection_id)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
 
                 if (form) {
                     startPlain(form, event.target);

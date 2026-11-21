@@ -100,7 +100,7 @@ function ws_mail_support_field($prefix, $box)
                             . ($box ? '' : ' data-ws-mail-new') . '>
                         <label for="' . $prefix . 'support">' . h(lang('Support box')) . '</label>
                     </div>
-                    <div class="pg-field-help">' . h(lang('Each conversation gets a status and a holder, the first-answer time and the automatic answer. Off, its e-mails are only read and answered.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('Its conversations get a status, a holder and a first-answer time.')) . '</div>
                 </div>';
 }
 
@@ -474,7 +474,7 @@ function ws_mail_first_reply_field($prefix, $box)
                 <div class="md:col-6">
                     <label class="pg-field-label" for="' . $prefix . 'first_reply_hours">' . h(lang('First answer within (hours)')) . '</label>
                     <input class="pg-input" type="number" name="first_reply_hours" id="' . $prefix . 'first_reply_hours" min="0" max="' . WS_MAIL_FIRST_REPLY_MAX . '" value="' . (($hours > 0) ? $hours : '') . '" placeholder="' . h(lang('No target')) . '">
-                    <div class="pg-field-help">' . h(lang('A conversation nobody answered in this time is marked overdue on its card. Empty: no target.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('Left unanswered longer, a conversation is marked overdue.')) . '</div>
                 </div>';
 }
 
@@ -663,14 +663,12 @@ function ws_mail_auto_reply_fields($prefix, $box)
     $text = $box ? (string) ($box['auto_reply_text'] ?? '') : '';
 
     return '
-                <div class="md:col-12"><h3 class="pg-group-label mt-3 mb-0">' . h(lang('Automatic answer')) . '</h3>
-                    <div class="pg-field-help">' . h(lang('Sent once to the customer of a new conversation, from the mailbox\'s address and the way answers are sent; not to a sender the checking server found forged, and at most once a day to the same address.')) . '</div>
-                </div>
                 <div class="md:col-12">
                     <div class="d-flex align-items-center gap-3">
                         <input class="pg-switch" type="checkbox" name="auto_reply" value="1" id="' . $prefix . 'auto_reply"' . ($on ? ' checked' : '') . '>
                         <label for="' . $prefix . 'auto_reply">' . h(lang('Answer new conversations automatically')) . '</label>
                     </div>
+                    <div class="pg-field-help">' . h(lang('Sent once to a new conversation\'s customer, at most once a day to an address.')) . '</div>
                 </div>
                 <div class="md:col-12">
                     <label class="pg-field-label" for="' . $prefix . 'auto_reply_text">' . h(lang('Text of the automatic answer')) . '</label>

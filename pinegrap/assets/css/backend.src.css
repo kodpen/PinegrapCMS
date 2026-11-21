@@ -11446,6 +11446,13 @@ body.pg-side-panel-open .pg-chat-launcher {
   overscroll-behavior: contain;
   overflow-wrap: anywhere;
 }
+/* A band under a drawer's head that does not scroll: its tabs as the
+   segmented control. */
+.pg-sm-drawer-bar {
+  flex: 0 0 auto;
+  padding: .75rem 1.25rem;
+  border-bottom: var(--pg-border-width) solid var(--pg-border-color-translucent);
+}
 /* A drawer's own buttons (Save, Try, Delete): a foot under the scrolling
    body, always in view. */
 .pg-sm-drawer-foot {
@@ -11502,6 +11509,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-sm-drawer { width: 100%; }
   .pg-sm-drawer-head { padding-inline: .875rem; }
   .pg-sm-drawer-body { padding: 1rem .875rem; }
+  .pg-sm-drawer-bar { padding-inline: .875rem; }
   .pg-sm-drawer-foot { padding-inline: .875rem; }
 }
 @media (prefers-reduced-motion: reduce) {

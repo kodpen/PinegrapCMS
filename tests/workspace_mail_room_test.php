@@ -152,8 +152,8 @@ function test_workspace_mail_room_fields_of_a_box_in_a_channel()
 	$html = ws_mail_room_fields_html('p_', array('settings' => json_encode(array('room_people' => array(7)))), '<option value="4">#50% off</option>', true,
 		array(5 => 'Ada <A>', 7 => 'Deniz'), array(2 => 'Sales'));
 
-	pg_assert_contains('<option value="channel" selected>' . h(lang('A channel')) . '</option>', $html);
-	pg_assert_contains('<option value="mailbox">' . h(lang('The mailbox itself')) . '</option>', $html);
+	pg_assert_contains('name="kept_in" value="channel" id="p_kept_in" checked>' . h(lang('A channel')) . '</label>', $html, 'Kept in as segments, a channel chosen');
+	pg_assert_contains('name="kept_in" value="mailbox" id="p_kept_in_mailbox">' . h(lang('The mailbox itself')) . '</label>', $html);
 	pg_assert_contains('<div class="md:col-6" data-ws-mail-when="kept_in=channel">', $html, 'the channel shows');
 	pg_assert_contains('<option value="4">#50% off</option>', $html, 'a channel\'s name is drawn as given');
 	pg_assert_same(2, substr_count($html, '<div class="md:col-6 d-none" data-ws-mail-when="kept_in=mailbox">'), 'the people and the departments wait for the choice');
@@ -168,7 +168,7 @@ function test_workspace_mail_room_fields_of_a_box_in_no_channel()
 	$box = array('settings' => json_encode(array('kept_in' => 'mailbox', 'room_id' => 9, 'room_people' => array(5), 'room_departments' => array(2))));
 	$html = ws_mail_room_fields_html('p_', $box, '<option value="">Choose</option>', true, array(5 => 'Ada', 7 => 'Deniz'), array(2 => 'Sales ' . lang('(archived)')));
 
-	pg_assert_contains('<option value="mailbox" selected>', $html);
+	pg_assert_contains('name="kept_in" value="mailbox" id="p_kept_in_mailbox" checked>', $html, 'the mailbox itself chosen');
 	pg_assert_contains('<div class="md:col-6 d-none" data-ws-mail-when="kept_in=channel">', $html, 'the channel waits for the choice');
 	pg_assert_contains('name="channel_id" id="p_channel"><option', $html, 'and is not required while hidden');
 	pg_assert_same(2, substr_count($html, '<div class="md:col-6" data-ws-mail-when="kept_in=mailbox">'), 'the readers show');
@@ -197,8 +197,8 @@ function test_workspace_mail_room_in_the_box_form()
 
 	$script = ws_mail_settings_script();
 
-	pg_assert_contains('(after_fetch|reply_via|kept_in|support|provider|google_way)', $script, 'the choice shows and hides its fields');
-	pg_assert_contains("channel.required = (kept.value !== \\'mailbox\\');", pg_test_function_source('ws_mail_settings_script'), 'a hidden channel is not asked for');
+	pg_assert_contains('(after_fetch|reply_via|kept_in|support|provider|google_way|host|connection_id)', $script, 'the choice shows and hides its fields');
+	pg_assert_contains("channel.required = (kept !== \\'mailbox\\');", pg_test_function_source('ws_mail_settings_script'), 'a hidden channel is not asked for');
 }
 
 function test_workspace_mail_room_a_box_in_no_channel_never_names_its_room_as_a_channel()

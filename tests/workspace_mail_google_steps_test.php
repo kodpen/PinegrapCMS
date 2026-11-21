@@ -71,7 +71,7 @@ function test_workspace_mail_google_ways()
 	pg_assert_contains('<div class="mt-3 d-none" data-ws-mail-when="google_way=connection">', $html, 'the connected-account way hidden');
 	pg_assert_contains('<div class="mt-3" data-ws-mail-when="google_way=password">', $html, 'the app password shown');
 	pg_assert_true(strpos($html, 'google_way=connection') < strpos($html, 'google_way=password'), 'the connected account is the first way');
-	pg_assert_contains('google_way)', ws_mail_settings_script(), 'the choice shows and hides them');
+	pg_assert_contains('google_way|host|connection_id)', ws_mail_settings_script(), 'the choice shows and hides them');
 
 	$new = ws_mail_google_steps('gmail');
 	pg_assert_contains('<div class="mt-3" data-ws-mail-when="google_way=connection">', $new);

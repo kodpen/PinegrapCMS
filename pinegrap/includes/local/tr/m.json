@@ -75,6 +75,7 @@
     "Mail Room": "Posta Odası",
     "Mail and parcels kept for you": "Postanız ve kargolarınız sizin için saklanır",
     "Mail cannot be moved into the folder it is read from.": "Posta, okunduğu klasöre taşınamaz.",
+    "Mail is brought in only as .eml files.": "E-postalar yalnızca .eml dosyası olarak alınır.",
     "Mail queue": "Posta kuyruğu",
     "Mail queue worked: {var:1} sent, {var:2} not sent.": "E-posta kuyruğu çalıştı: {var:1} gönderildi, {var:2} gönderilemedi.",
     "Mail service": "Posta hizmeti",

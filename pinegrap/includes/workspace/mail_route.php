@@ -175,8 +175,10 @@ function ws_mail_routes_input($matches, $channel_ids, $allowed, $kept)
 }
 
 /**
- * The routing half of a box's form: the kept routes, then empty rows up to
- * three more (never past WS_MAIL_ROUTES_MAX).
+ * The Routing tab of a box's form: a row a kept route (address or +tag,
+ * channel, Remove), no empty rows, and "Add a route" quiet, which copies the
+ * row kept in the template (the card's script; never past
+ * WS_MAIL_ROUTES_MAX). The names stay route_match[] and route_channel[].
  *
  * @param string     $prefix
  * @param array|null $box
@@ -186,43 +188,57 @@ function ws_mail_routes_input($matches, $channel_ids, $allowed, $kept)
 function ws_mail_route_fields($prefix, $box, $channels)
 {
     $routes = ws_mail_routes($box);
-    $rows = $routes;
+    $html = '';
 
-    for ($i = 0; ($i < 3) && (count($rows) < WS_MAIL_ROUTES_MAX); $i++) {
-        $rows[] = array('match' => '', 'channel_id' => 0);
+    foreach ($routes as $index => $route) {
+        $html .= ws_mail_route_row($prefix . 'route_' . $index, $route, $channels);
     }
 
-    $html = '
-                <div class="md:col-12"><h3 class="pg-group-label mt-3 mb-0">' . h(lang('Routing')) . '</h3>
-                    <div class="pg-field-help">' . h(lang('A new conversation written to one of these addresses goes to its channel instead; the first route that fits wins. A tag such as +billing stands for the mailbox\'s address with that tag (support+billing@…). Answers stay in their conversation\'s channel.')) . '</div>
-                </div>';
-
-    foreach ($rows as $index => $route) {
-        $channel_id = (int) $route['channel_id'];
-        $options = '<option value="">' . h(lang('Choose')) . '</option>';
-
-        if (($channel_id > 0) && !isset($channels[$channel_id])) {
-            $options .= '<option value="' . $channel_id . '" selected>' . h(lang('A channel you do not see')) . '</option>';
-        }
-
-        foreach ($channels as $channel) {
-            $options .= '<option value="' . (int) $channel['id'] . '"' . (((int) $channel['id'] === $channel_id) ? ' selected' : '') . '>'
-                . h('#' . $channel['name']) . '</option>';
-        }
-
-        $id = $prefix . 'route_' . $index;
-        $html .= '
-                <div class="md:col-6">
-                    <label class="pg-field-label visually-hidden" for="' . $id . '">' . h(lang('Address or tag')) . '</label>
-                    <input class="pg-input font-monospace" type="text" inputmode="email" spellcheck="false" autocapitalize="off" name="route_match[]" id="' . $id . '" maxlength="255" value="' . h((string) $route['match']) . '" placeholder="' . h(lang('billing@example.com or +billing')) . '" autocomplete="off">
+    return '
+                <div class="md:col-12">
+                    <div class="pg-field-help mt-0">' . h(lang('New mail written to one of these addresses, or to a +tag of the mailbox\'s address, goes to its channel.')) . '</div>
                 </div>
-                <div class="md:col-6">
-                    <label class="pg-field-label visually-hidden" for="' . $id . '_channel">' . h(lang('Channel')) . '</label>
-                    <select class="pg-input" name="route_channel[]" id="' . $id . '_channel">' . $options . '</select>
+                <div class="md:col-12">
+                    <div class="d-grid gap-3" data-ws-mail-routes>' . $html . '</div>
+                    <template data-ws-mail-route-new>' . ws_mail_route_row($prefix . 'route___n__', array('match' => '', 'channel_id' => 0), $channels) . '</template>
+                    <button type="button" class="pg-button pg-button-quiet pg-button-sm' . (($html !== '') ? ' mt-3' : '') . '" data-ws-mail-route-add data-ws-mail-route-max="' . (int) WS_MAIL_ROUTES_MAX . '"' . ((count($routes) >= WS_MAIL_ROUTES_MAX) ? ' hidden' : '') . '><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a route')) . '</button>
                 </div>';
+}
+
+/**
+ * One route's row: the address or tag, the channel, and Remove.
+ *
+ * @param string  $id       the address field's id; the channel's adds _channel
+ * @param array   $route    match, channel_id
+ * @param array[] $channels ws_mail_box_channels()
+ * @return string HTML
+ */
+function ws_mail_route_row($id, $route, $channels)
+{
+    $channel_id = (int) $route['channel_id'];
+    $options = '<option value="">' . h(lang('Choose')) . '</option>';
+
+    if (($channel_id > 0) && !isset($channels[$channel_id])) {
+        $options .= '<option value="' . $channel_id . '" selected>' . h(lang('A channel you do not see')) . '</option>';
     }
 
-    return $html;
+    foreach ($channels as $channel) {
+        $options .= '<option value="' . (int) $channel['id'] . '"' . (((int) $channel['id'] === $channel_id) ? ' selected' : '') . '>'
+            . h('#' . $channel['name']) . '</option>';
+    }
+
+    return '
+                        <div class="d-flex align-items-center gap-3" data-ws-mail-route>
+                            <div class="flex-grow-1 min-w-0">
+                                <label class="pg-field-label visually-hidden" for="' . h($id) . '">' . h(lang('Address or tag')) . '</label>
+                                <input class="pg-input font-monospace" type="text" inputmode="email" spellcheck="false" autocapitalize="off" name="route_match[]" id="' . h($id) . '" maxlength="255" value="' . h((string) $route['match']) . '" placeholder="' . h(lang('billing@example.com or +billing')) . '" autocomplete="off">
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <label class="pg-field-label visually-hidden" for="' . h($id) . '_channel">' . h(lang('Channel')) . '</label>
+                                <select class="pg-input" name="route_channel[]" id="' . h($id) . '_channel">' . $options . '</select>
+                            </div>
+                            <button type="button" class="pg-icon-button" aria-label="' . h(lang('Remove the route')) . '" title="' . h(lang('Remove the route')) . '" data-ws-mail-route-remove><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                        </div>';
 }
 
 /**

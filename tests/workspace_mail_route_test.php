@@ -107,8 +107,16 @@ function test_workspace_mail_route_fields()
 
 	pg_assert_contains('name="route_match[]" id="ws_mail_3_route_0" maxlength="255" value="+billing"', $html);
 	pg_assert_contains('<option value="9" selected>' . h(lang('A channel you do not see')) . '</option>', $html, 'a channel the editor does not read stays chosen');
-	pg_assert_same(4, substr_count($html, 'name="route_match[]"'), 'the kept route and three empty rows');
-	pg_assert_contains('id="ws_mail_3_route_3"', $html);
+	$rows = preg_replace('#<template[^>]*>.*?</template>#s', '', $html);
+	pg_assert_same(1, substr_count($rows, 'name="route_match[]"'), 'the kept route as a row, no empty rows');
+	pg_assert_same(1, substr_count($rows, 'data-ws-mail-route-remove'), 'each row has its Remove');
+	pg_assert_contains('id="ws_mail_3_route___n__"', $html, 'Add a route copies the template\'s row');
+	pg_assert_contains('data-ws-mail-route-add data-ws-mail-route-max="' . WS_MAIL_ROUTES_MAX . '"', $html, 'Add a route, never past the most routes');
+	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm mt-3" data-ws-mail-route-add', $html, 'Add a route is quiet');
+	pg_assert_same(1, substr_count($rows, 'pg-field-help'), 'one line of help');
+
+	$none = ws_mail_route_fields('ws_mail_0_', null, array());
+	pg_assert_same(0, substr_count(preg_replace('#<template[^>]*>.*?</template>#s', '', $none), 'name="route_match[]"'), 'a box without routes draws no empty row');
 
 	$form = ws_mail_box_form('workspace_settings.php', null, array());
 	pg_assert_contains('name="route_match[]"', $form, 'on the box form');
