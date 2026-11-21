@@ -149,6 +149,9 @@ function webhook_payloads_test_builders()
 		'ws_wtable_row_event_body' => function ($event = '') {
 			return ws_wtable_row_event_body(array('id' => 1, 'name' => 'T'), array('id' => 2), array(3), 4, ($event === 'workspace.wtable.row.updated') ? array(5) : array());
 		},
+		'pg_delivery_tower_event_payload' => function ($event = '') {
+			return pg_delivery_tower_event_payload(array('id' => 9, 'order_id' => 3, 'order_number' => '1001', 'order_type' => 'web', 'number' => 'N', 'carrier' => 'yurtici', 'state' => 'Ankara', 'city' => '', 'shipped_at' => 1000), 'stuck', 5, array(), 2000, ($event !== '') ? $event : 'shipment.problem', 'delivered');
+		},
 		'pg_contact_group_members_event' => function () {
 			return pg_contact_group_members_event(3, 'Newsletter', array(4), array());
 		},

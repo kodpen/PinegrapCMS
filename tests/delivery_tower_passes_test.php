@@ -161,8 +161,8 @@ function test_delivery_tower_parcel_changes()
 		array('shipment_id' => 11, 'order_id' => 7, 'ship_to_id' => 8, 'kind' => 2),
 	), $changes['open'], 'stuck and not handed over are opened, the open exception is not repeated');
 	pg_assert_same(array(
-		array('shipment_id' => 13, 'kind' => 1),
-		array('shipment_id' => 14, 'kind' => 2),
+		array('shipment_id' => 13, 'kind' => 1, 'reason' => 'delivered'),
+		array('shipment_id' => 14, 'kind' => 2, 'reason' => 'scanned'),
 	), $changes['close'], 'a delivery and a scan close their rows');
 
 	// The label's driver does not track and the row was typed in the panel:

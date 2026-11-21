@@ -44,7 +44,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * - direct Optional. The e-mail is sent at once instead of being queued.
  * - group  Optional. 'sales' for the sales watch's alerts
  *          (includes/fn/sales_watch.php), which are about the shop's orders
- *          rather than the software.
+ *          rather than the software; 'shipping' for the delivery tower's
+ *          (includes/fn/delivery_tower_tell.php), about its parcels.
  *
  * @return array<string,array>
  */
@@ -156,6 +157,26 @@ function pg_ops_alert_codes()
             'label' => lang('The buybox of a marketplace could not be read'),
             'type'  => 'warning',
             'url'   => 'marketplace_settings.php',
+        ),
+        // New delivery problems found by the hourly pass, one row a walk
+        // (pg_delivery_tower_alerts_send()).
+        'parcel_stuck' => array(
+            'label' => lang('Parcels are in transit longer than usual'),
+            'type'  => 'warning',
+            'url'   => 'view_orders.php',
+            'group' => 'shipping',
+        ),
+        'parcel_not_handed_over' => array(
+            'label' => lang('Parcels were not handed over to the carrier'),
+            'type'  => 'warning',
+            'url'   => 'view_orders.php',
+            'group' => 'shipping',
+        ),
+        'parcel_problem' => array(
+            'label' => lang('Parcels have a delivery problem'),
+            'type'  => 'warning',
+            'url'   => 'view_orders.php',
+            'group' => 'shipping',
         ),
     );
 }

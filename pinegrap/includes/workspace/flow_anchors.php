@@ -289,6 +289,11 @@ function ws_flow_event_outputs()
     // The tracking values a shipment mail fills (pg_shipment_event_values()).
     $tracking = array($value('tracking_numbers_text', 'text', lang('Tracking numbers')), $value('carrier_name', 'text', lang('Carrier')),
         $value('tracking_url', 'text', lang('Tracking link')));
+    // A delivery problem (pg_delivery_tower_event_payload()); usual_days may
+    // be a fraction or empty, so it is offered as text.
+    $problem = array($order, $value('order_type', 'text', lang('Order type')), $value('number', 'text', lang('Tracking number')),
+        $value('carrier', 'text', lang('Carrier')), $value('kind', 'text', lang('Kind of problem')), $value('province', 'text', lang('Province')),
+        $value('days_in_transit', 'number', lang('Days in transit')), $value('usual_days', 'text', lang('Usual days')));
     $booking = array($value('name', 'text', lang('Name')), $value('email', 'text', lang('E-mail')), $value('start_at', 'text', lang('Start')),
         $value('end_at', 'text', lang('End')), $value('status', 'text', lang('Status')), $value('service_name', 'text', lang('Service')),
         $value('staff_name', 'text', lang('Staff member')));
@@ -304,6 +309,8 @@ function ws_flow_event_outputs()
         'order.return.received'  => $return,
         'order.return.refunded'  => array_merge($return, array($value('refund_method', 'text', lang('How it was refunded')))),
         'marketplace.order.imported' => array($order, $value('provider', 'text', lang('Marketplace')), $value('remote_order_id', 'text', lang('The marketplace\'s order number'))),
+        'shipment.problem'       => $problem,
+        'shipment.problem_resolved' => array_merge($problem, array($value('reason', 'text', lang('What settled it')))),
         'cart_quote.created'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact'))),
         'cart_quote.ordered'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact')), $order),
         'subscription.renewed'   => $subscription,

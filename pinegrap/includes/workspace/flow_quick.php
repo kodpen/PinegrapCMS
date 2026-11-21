@@ -68,7 +68,7 @@ function ws_flow_quick_areas()
             'event:booking.created', 'schedule', 'manual')),
         'orders'        => $area(lang('Orders'), 'bi-bag', 'site', array('event:order.created', 'event:order.status_changed', 'event:order.shipped',
             'event:order.delivered', 'event:order.cancelled', 'event:order.return.requested', 'event:order.return.approved', 'event:order.return.received',
-            'event:order.return.refunded', 'event:marketplace.order.imported', 'no_order')),
+            'event:order.return.refunded', 'event:marketplace.order.imported', 'event:shipment.problem', 'event:shipment.problem_resolved', 'no_order')),
         'carts'         => $area(lang('Cart and quotes'), 'bi-cart3', 'site', array('event:cart_quote.created', 'event:cart_quote.ordered',
             'event:erp.quote.accepted', 'event:erp.quote.rejected')),
         'forms'         => $area(lang('Forms'), 'bi-ui-checks', 'site', array('event:form.submitted', 'event:form.paid')),

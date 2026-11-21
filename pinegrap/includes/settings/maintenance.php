@@ -870,13 +870,17 @@ $notify_checks = function ($name, $id_prefix, $options, $chosen) {
     return $out;
 };
 
-// The sales watch's codes are listed apart from the software's.
+// The sales watch's and the deliveries' codes are listed apart from the
+// software's.
 $notify_alert_options = array();
 $notify_sales_options = array();
+$notify_shipping_options = array();
 
 foreach (pg_ops_alert_codes() as $notify_code => $notify_alert) {
     if (($notify_alert['group'] ?? '') === 'sales') {
         $notify_sales_options[$notify_code] = $notify_alert['label'];
+    } elseif (($notify_alert['group'] ?? '') === 'shipping') {
+        $notify_shipping_options[$notify_code] = $notify_alert['label'];
     } else {
         $notify_alert_options[$notify_code] = $notify_alert['label'];
     }
@@ -926,7 +930,10 @@ if (!$notify_ready) {
                                 . $notify_checks('notify_target_codes[' . $notify_id . ']', 'notify_code_' . $notify_id, $notify_alert_options, (array) ($notify_target['codes'] ?? array()))
                                 . ($notify_sales_options ? '
                                 <div class="col-12"><div class="form-label">' . lang('Sales watch') . '</div></div>'
-                                . $notify_checks('notify_target_codes[' . $notify_id . ']', 'notify_code_' . $notify_id, $notify_sales_options, (array) ($notify_target['codes'] ?? array())) : '') . '
+                                . $notify_checks('notify_target_codes[' . $notify_id . ']', 'notify_code_' . $notify_id, $notify_sales_options, (array) ($notify_target['codes'] ?? array())) : '')
+                                . ($notify_shipping_options ? '
+                                <div class="col-12"><div class="form-label">' . lang('Deliveries') . '</div></div>'
+                                . $notify_checks('notify_target_codes[' . $notify_id . ']', 'notify_code_' . $notify_id, $notify_shipping_options, (array) ($notify_target['codes'] ?? array())) : '') . '
                                 <div class="col-12"><div class="form-label">' . lang('Workspace') . '</div></div>'
                                 . $notify_checks('notify_target_events[' . $notify_id . ']', 'notify_event_' . $notify_id, $notify_event_options, (array) ($notify_target['events'] ?? array())) . '
                                 <div class="col-12 d-flex flex-wrap gap-7 align-items-center">
@@ -976,7 +983,9 @@ if (!$notify_ready) {
                     <div class="col-12" data-notify-fields="slack teams telegram"><div class="form-label">' . lang('Operations alerts') . '</div></div>
                     <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_codes', 'notify_new_code', $notify_alert_options, array_keys($notify_alert_options)) . '</div></div>' . ($notify_sales_options ? '
                     <div class="col-12" data-notify-fields="slack teams telegram"><div class="form-label">' . lang('Sales watch') . '</div></div>
-                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_codes', 'notify_new_code', $notify_sales_options, array_keys($notify_sales_options)) . '</div></div>' : '') . '
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_codes', 'notify_new_code', $notify_sales_options, array_keys($notify_sales_options)) . '</div></div>' : '') . ($notify_shipping_options ? '
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="form-label">' . lang('Deliveries') . '</div></div>
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_codes', 'notify_new_code', $notify_shipping_options, array_keys($notify_shipping_options)) . '</div></div>' : '') . '
                     <div class="col-12" data-notify-fields="slack teams telegram"><div class="form-label">' . lang('Workspace') . '</div></div>
                     <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_events', 'notify_new_event', $notify_event_options, array()) . '</div></div>';
 

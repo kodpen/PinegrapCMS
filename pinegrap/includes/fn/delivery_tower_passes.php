@@ -360,7 +360,9 @@ function pg_delivery_tower_parcel_query($after, $since, $limit)
             shipping_tracking_numbers.shipped_at,
             shipping_tracking_numbers.delivered_at,
             ship_tos.state,
-            ship_tos.city
+            ship_tos.city,
+            orders.order_number,
+            orders.type AS order_type
         FROM shipping_tracking_numbers
         INNER JOIN orders ON orders.id = shipping_tracking_numbers.order_id
         LEFT JOIN ship_tos ON ship_tos.id = shipping_tracking_numbers.ship_to_id
@@ -399,7 +401,8 @@ function pg_delivery_tower_parcel_query($after, $since, $limit)
  * @param string[] $tracking the label drivers that follow their parcels
  * @param string   $timezone
  * @return array open: list of (shipment_id, order_id, ship_to_id, kind),
- *               close: list of (shipment_id, kind); kinds as numbers
+ *               close: list of (shipment_id, kind, reason); kinds as
+ *               numbers, reason as pg_delivery_tower_pass() gives it
  */
 function pg_delivery_tower_parcel_changes($parcels, $labels, $open, $figures, $now, $settings, $tracking, $timezone = '')
 {
@@ -425,9 +428,9 @@ function pg_delivery_tower_parcel_changes($parcels, $labels, $open, $figures, $n
         foreach ($pass['open'] as $kind) {
             $changes['open'][] = array('shipment_id' => (int) $id, 'order_id' => (int) $parcel['order_id'], 'ship_to_id' => (int) $parcel['ship_to_id'], 'kind' => $codes[$kind]);
         }
-        foreach (array_keys($pass['close']) as $kind) {
+        foreach ($pass['close'] as $kind => $why) {
             if (isset($codes[$kind])) {
-                $changes['close'][] = array('shipment_id' => (int) $id, 'kind' => $codes[$kind]);
+                $changes['close'][] = array('shipment_id' => (int) $id, 'kind' => $codes[$kind], 'reason' => $why);
             }
         }
     }
@@ -588,13 +591,16 @@ function pg_delivery_tower_summary_run($deadline, $now)
 function pg_delivery_tower_pass_record()
 {
     $record = json_decode((string) db_value("SELECT value FROM config_text WHERE name = 'delivery_tower_pass'"), true);
-    return array_merge(array('after' => 0, 'at' => 0), is_array($record) ? $record : array());
+    return array_merge(array('after' => 0, 'at' => 0, 'quiet' => 0, 'told' => array()), is_array($record) ? $record : array());
 }
 
 /**
  * The problem pass, until $deadline: pages of parcels from the kept place,
  * their labels and open problems read alongside, the rows opened and
  * closed; then the open rows whose parcel or order is gone are closed.
+ * Each row opened, and each one a later status closed, is announced
+ * (includes/fn/delivery_tower_tell.php), except on a site's first walk; the
+ * walk's new rows are counted into its alerts, sent when it ends.
  *
  * @param float $deadline microtime
  * @param int   $now
@@ -605,8 +611,12 @@ function pg_delivery_tower_pass_run($deadline, $now, $figures)
 {
     $record = pg_delivery_tower_pass_record();
     if (empty($record['after'])) {
-        $record = array('after' => 0, 'at' => $now);
+        // No walk ever started: this one finds what was already wrong and
+        // stays quiet (delivery_tower_tell.php).
+        $record = array('after' => 0, 'at' => $now, 'quiet' => empty($record['at']) ? 1 : 0, 'told' => array());
     }
+    $told = is_array($record['told']) ? $record['told'] : array();
+    $names = array_flip(pg_delivery_tower_kind_codes());
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_tracking.php');
     $tracking = pg_shipment_labels_ready() ? pg_shipment_tracking_drivers() : array();
@@ -626,7 +636,8 @@ function pg_delivery_tower_pass_run($deadline, $now, $figures)
         }
         mysqli_free_result($page);
         if ($parcels) {
-            $changes = pg_delivery_tower_parcel_changes($parcels, pg_delivery_tower_page_labels($parcels), pg_delivery_tower_page_open(array_keys($parcels)), $figures, $now, $settings, $tracking);
+            $open_ids = array();
+            $changes = pg_delivery_tower_parcel_changes($parcels, pg_delivery_tower_page_labels($parcels), pg_delivery_tower_page_open(array_keys($parcels), $open_ids), $figures, $now, $settings, $tracking);
             if ($changes['open']) {
                 // One statement a page; the unique key skips a kind already
                 // open on a parcel (a run that overlapped this one).
@@ -636,12 +647,36 @@ function pg_delivery_tower_pass_run($deadline, $now, $figures)
                 }
                 $written = db_q("INSERT IGNORE INTO shipment_problems (shipment_id, order_id, ship_to_id, kind, found_at, updated_at) VALUES " . implode(', ', $values));
                 $result['opened'] += $written !== false ? (int) mysqli_affected_rows(db::$con) : 0;
+                // The rows this pass wrote, read back for their ids.
+                $shipments = array();
+                foreach ($changes['open'] as $row) {
+                    $shipments[(int) $row['shipment_id']] = true;
+                }
+                $opened = db_items(
+                    "SELECT id, shipment_id, kind FROM shipment_problems
+                    WHERE (closed_at = 0) AND (found_at = '" . (int) $now . "') AND (shipment_id IN (" . implode(', ', array_keys($shipments)) . "))");
+                foreach ((array) $opened as $row) {
+                    $parcel = $parcels[(int) $row['shipment_id']] ?? null;
+                    $kind = $names[(int) $row['kind']] ?? '';
+                    if (!$parcel || ($kind === '')) {
+                        continue;
+                    }
+                    pg_delivery_tower_told_add($told, $kind, (string) $parcel['order_number']);
+                    if (empty($record['quiet'])) {
+                        pg_delivery_tower_announce(false, $parcel, $kind, (int) $row['id'], $figures, $now);
+                    }
+                }
             }
             foreach ($changes['close'] as $row) {
                 $written = db_q(
                     "UPDATE shipment_problems SET closed_at = ?, closed_by = 0, close_reason = ?, updated_at = ? WHERE shipment_id = ? AND kind = ? AND closed_at = 0",
                     array($now, $reason['status'], $now, $row['shipment_id'], $row['kind']));
-                $result['closed'] += $written !== false ? (int) mysqli_affected_rows(db::$con) : 0;
+                $closed = $written !== false ? (int) mysqli_affected_rows(db::$con) : 0;
+                $result['closed'] += $closed;
+                $problem_id = (int) ($open_ids[$row['shipment_id']][$row['kind']] ?? 0);
+                if ($closed && $problem_id && empty($record['quiet']) && isset($names[$row['kind']])) {
+                    pg_delivery_tower_announce(true, $parcels[$row['shipment_id']], $names[$row['kind']], $problem_id, $figures, $now, $row['reason']);
+                }
             }
             $record['after'] = max(array_keys($parcels));
         }
@@ -668,9 +703,16 @@ function pg_delivery_tower_pass_run($deadline, $now, $figures)
             array($now, $reason['status'], $now));
         $result['closed'] += $written !== false ? (int) mysqli_affected_rows(db::$con) : 0;
         $record['after'] = 0;
+        pg_delivery_tower_alerts_send($told);
+        $told = array();
     }
 
-    pg_config_text_save('delivery_tower_pass', json_encode(array('after' => (int) $record['after'], 'at' => (int) $record['at'])));
+    pg_config_text_save('delivery_tower_pass', json_encode(array(
+        'after' => (int) $record['after'],
+        'at' => (int) $record['at'],
+        'quiet' => $result['done'] ? 0 : (int) $record['quiet'],
+        'told' => $told,
+    )));
     return $result;
 }
 
@@ -706,16 +748,19 @@ function pg_delivery_tower_page_labels($parcels)
  * The kinds open on each parcel of a page, as kind names.
  *
  * @param int[] $ids
+ * @param array $rows filled with shipment id => kind number => problem id
  * @return array shipment id => list of kinds
  */
-function pg_delivery_tower_page_open($ids)
+function pg_delivery_tower_page_open($ids, &$rows = null)
 {
+    $rows = array();
     $names = array_flip(pg_delivery_tower_kind_codes());
     $open = array();
-    $rows = db_items(
-        "SELECT shipment_id, kind FROM shipment_problems
+    $found = db_items(
+        "SELECT id, shipment_id, kind FROM shipment_problems
         WHERE (closed_at = 0) AND (shipment_id IN (" . implode(', ', array_map('intval', $ids)) . "))");
-    foreach ((array) $rows as $row) {
+    foreach ((array) $found as $row) {
+        $rows[(int) $row['shipment_id']][(int) $row['kind']] = (int) $row['id'];
         if (isset($names[(int) $row['kind']])) {
             $open[(int) $row['shipment_id']][] = $names[(int) $row['kind']];
         }

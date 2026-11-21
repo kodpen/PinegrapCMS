@@ -173,6 +173,15 @@ function ws_events_catalog()
             );
         }
 
+        // A delivery problem on a parcel, about its order, narrowed to one
+        // kind (includes/fn/delivery_tower_tell.php).
+        if (function_exists('pg_delivery_tower_ready') && pg_delivery_tower_ready()) {
+            $catalog += array(
+                'shipment.problem'          => array('label' => lang('A parcel has a delivery problem'), 'when' => lang('When a delivery problem is found on a parcel'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => 'problem_kind'),
+                'shipment.problem_resolved' => array('label' => lang('A parcel\'s delivery problem is settled'), 'when' => lang('When a later status settles a parcel\'s delivery problem'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => 'problem_kind'),
+            );
+        }
+
         // Spots of a calendar event taken by a placed order.
         $catalog['calendar_event.reserved'] = array('label' => lang('A calendar event is reserved'), 'when' => lang('When an order reserves a calendar event'), 'record' => 'calendar_event', 'right' => 'calendars', 'filter' => '');
 
@@ -366,6 +375,22 @@ function ws_events_own_group_add($event, $added_by, $flow_id)
 function ws_events_checks_creator($event)
 {
     return ws_events_is_own($event) || (strpos((string) $event, 'booking.') === 0) || (strpos((string) $event, 'page.') === 0);
+}
+
+/**
+ * The delivery problem kinds a rule of shipment.problem and
+ * shipment.problem_resolved may be narrowed to (pg_delivery_tower_kinds()).
+ *
+ * @return array kind => label
+ */
+function ws_events_problem_kinds()
+{
+    return array(
+        'stuck'           => lang('Stuck in transit'),
+        'not_handed_over' => lang('Not handed over'),
+        'problem'         => lang('Delivery problem'),
+        'returned'        => lang('Returned'),
+    );
 }
 
 /**
@@ -617,7 +642,7 @@ function ws_events_record_of($event, $payload)
     $event = (string) $event;
     $payload = (array) $payload;
 
-    if ((strpos($event, 'order.') === 0) || ($event === 'marketplace.order.imported')) {
+    if ((strpos($event, 'order.') === 0) || ($event === 'marketplace.order.imported') || (strpos($event, 'shipment.problem') === 0)) {
         return array('order', (int) ($payload['id'] ?? 0));
     }
 
@@ -806,6 +831,11 @@ function ws_events_filter_value($event, $payload)
 
     if ((string) $event === 'contact_group.joined') {
         return (string) (int) ($payload['group_id'] ?? 0);
+    }
+
+    // A delivery problem's kind.
+    if (strpos((string) $event, 'shipment.problem') === 0) {
+        return (string) ($payload['kind'] ?? '');
     }
 
     // How a conversation's message came; one kept before the transport was
@@ -1596,6 +1626,7 @@ function ws_events_js_config($viewer)
         'task_status' => array('filter_label' => lang('Status it moves to'), 'any' => lang('Any status'), 'options' => $pairs(ws_task_statuses())),
         'outcome'     => array('filter_label' => lang('How it ended'), 'any' => lang('However it ended'), 'options' => $pairs(ws_events_approval_outcomes())),
         'transport'   => array('filter_label' => lang('How it came'), 'any' => lang('Any way'), 'options' => $pairs(ws_mail_transport_labels())),
+        'problem_kind' => array('filter_label' => lang('Kind of problem'), 'any' => lang('Any kind'), 'options' => $pairs(ws_events_problem_kinds())),
     );
 
     $list = array();
