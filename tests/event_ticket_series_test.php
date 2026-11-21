@@ -264,6 +264,35 @@ function test_event_ticket_series_api_and_export()
 
 	$row = pg_event_tickets_export_row(event_ticket_series_test_ticket(), array(), array(array('event_date' => '2026-12-08 19:00:00', 'checked_at' => 1763600000)));
 	pg_assert_same(array(array('event_date' => '2026-12-08 19:00:00', 'checked_in_at' => 1763600000)), $row['check_ins'], 'the export lists each date entered');
+
+	// The export and the route read the entries and hand them on.
+	$export = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/privacy_export.php');
+	pg_assert_contains("pg_event_ticket_checkins(array_column(\$sections['event_tickets']['rows'], 'id'))", $export, 'the export reads the entries');
+	pg_assert_contains("pg_event_tickets_export_row(\$row, \$event, \$check_ins[(int) \$row['id']] ?? array())", $export, 'and lists them per ticket');
+
+	$route = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/event_tickets.php');
+	pg_assert_contains("pg_event_ticket_checkins(array_column(\$rows, 'id'))", $route, 'the route reads the entries');
+	pg_assert_contains("\$rows[\$i]['check_ins'] = \$entries[(int)\$row['id']] ?? array();", $route, 'and gives them to each ticket');
+}
+
+// Deleting an order removes its tickets' entries with its tickets.
+function test_event_ticket_series_entries_go_with_the_order()
+{
+	$queries = array();
+	$record = function ($sql, array $params) use (&$queries) {
+		$queries[] = $sql;
+
+		return 1;
+	};
+
+	pg_event_tickets_delete_for_order(9001, $record);
+
+	pg_assert_same(2, count($queries), 'two statements');
+	pg_assert_contains('DELETE event_ticket_checkins FROM event_ticket_checkins', $queries[0], 'the entries first, while the tickets name the order');
+	pg_assert_contains('DELETE FROM event_tickets WHERE order_id = ?', $queries[1], 'then the tickets');
+
+	$delete_order = (string) file_get_contents(PG_FUNCTIONS_DIR . '/delete_order.php');
+	pg_assert_contains("pg_event_tickets_delete_for_order(\$order['id']);", $delete_order, 'delete_order.php runs it');
 }
 
 // The table's step and its place in get_tables().
@@ -273,6 +302,14 @@ function test_event_ticket_series_table_step()
 
 	pg_assert_true((bool) preg_match('~\tupgrade_2026_11_0_event_ticket_checkins\(\); +// 11\.0\.268\n~', $migration), 'under 11.0.268');
 	pg_assert_contains("install_create_table('event_ticket_checkins'", $migration, 'the idempotent helper');
+
+	// A fresh install runs every step from the starter site, so it creates
+	// the table with this same statement; the step holds no other statement,
+	// so a second run only finds the table there.
+	$start = strpos($migration, 'function upgrade_2026_11_0_event_ticket_checkins()');
+	$body = substr($migration, $start, strpos($migration, "\n}\n", $start) - $start);
+	pg_assert_false((bool) preg_match('~\bdb(_q)?\(~', $body), 'no statement outside the helpers');
+	pg_assert_same(1, substr_count($body, 'install_create_table('), 'one table');
 	pg_assert_contains('UNIQUE KEY idx_ticket_date (ticket_id, recurrence_number)', $migration, 'one entry a date');
 	pg_assert_contains('KEY idx_event_date (calendar_event_id, recurrence_number)', $migration, 'the door\'s counts');
 
