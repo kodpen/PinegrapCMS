@@ -1550,6 +1550,7 @@
     "hostname, domain, ip, proxy": "hostname, domain, ip, proxy, sunucu, alan adi, alan adı, ip adresi, vekil",
     "hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy": "hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy, sunucu, alan adi, alan adı, guvenli mod, eposta, destek, vekil",
     "hostname, domain, ip, ssl, https, secure mode, secure, proxy": "hostname, domain, ip, ssl, https, secure mode, secure, proxy, sunucu, alan adi, alan adı, guvenli mod, vekil",
+    "hostname, domain, site address, ip, proxy, proxy address, outgoing proxy": "hostname, domain, site address, ip, proxy, proxy address, outgoing proxy, sunucu, alan adi, alan adı, site adresi, ip adresi, vekil, proxy adresi, giden proxy, giden vekil sunucu",
     "hosts": "sunucular",
     "hosts, presenters, interviewers, team": "sunucular, programcılar, söyleşi yapanlar, ekip",
     "hosts, presenters, team": "sunucular, programcılar, ekip",
