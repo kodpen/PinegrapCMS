@@ -931,3 +931,97 @@ function pg_delivery_problem_bulk_drawers($form)
 
     return $assign . $close;
 }
+
+/**
+ * The settings drawer's switches: each problem kind with the one line on
+ * when it is found. Pure.
+ *
+ * @return array kind => array(label, help)
+ */
+function pg_delivery_problem_setting_rows()
+{
+    return array(
+        'stuck'           => array(lang('Stuck'), lang('In transit longer than the carrier usually takes to the province.')),
+        'not_handed_over' => array(lang('Not handed over'), lang('A label the carrier has not scanned yet, where the parcel\'s status is read.')),
+        'problem'         => array(lang('Delivery problem'), lang('The carrier says the delivery failed.')),
+        'returned'        => array(lang('Returned'), lang('The carrier is bringing the parcel back.')),
+    );
+}
+
+/**
+ * The settings a posted settings drawer gives: a switch left out is off,
+ * the two day counts clamped as pg_delivery_tower_settings_clean() does.
+ * Pure.
+ *
+ * @param array $post kinds (kind => 1 for each switch on), not_handed_over_days, stuck_extra_days
+ * @return array
+ */
+function pg_delivery_problem_settings_input(array $post)
+{
+    $kinds = (isset($post['kinds']) && is_array($post['kinds'])) ? $post['kinds'] : array();
+    $raw = array();
+
+    foreach (array_keys(pg_delivery_tower_kinds()) as $kind) {
+        $raw[$kind] = !empty($kinds[$kind]);
+    }
+
+    foreach (array('not_handed_over_days', 'stuck_extra_days') as $key) {
+        if (isset($post[$key]) && is_scalar($post[$key])) {
+            $raw[$key] = trim((string) $post[$key]);
+        }
+    }
+
+    return pg_delivery_tower_settings_clean($raw);
+}
+
+/**
+ * Keep the settings (config_text 'delivery_tower_settings'), read by the
+ * next hourly pass.
+ *
+ * @param array $settings pg_delivery_problem_settings_input()
+ * @return bool
+ */
+function pg_delivery_problems_settings_save(array $settings)
+{
+    return pg_config_text_save('delivery_tower_settings', json_encode(pg_delivery_tower_settings_clean($settings)));
+}
+
+/**
+ * The settings drawer: a switch a row for each problem kind with its line,
+ * the two day counts folded under "Advanced"; Cancel quiet and Save fill.
+ *
+ * @param array $settings pg_delivery_tower_settings()
+ * @param array $filters  the list's filters, kept after a save
+ * @return string
+ */
+function pg_delivery_problem_settings_drawer(array $settings, array $filters)
+{
+    $rows = '';
+
+    foreach (pg_delivery_problem_setting_rows() as $kind => $row) {
+        $id = 'delivery_settings_' . $kind;
+        $rows .= '<div class="pg-card-inner-row">'
+            . '<label class="flex-grow-1 min-width-0" for="' . h($id) . '"><strong class="pg-list-row-title d-block">' . h($row[0]) . '</strong>'
+            . '<span class="pg-text-meta d-block" id="' . h($id) . '_help">' . h($row[1]) . '</span></label>'
+            . '<input type="checkbox" class="pg-switch" id="' . h($id) . '" name="kinds[' . h($kind) . ']" value="1"' . (!empty($settings[$kind]) ? ' checked' : '') . ' aria-describedby="' . h($id) . '_help">'
+            . '</div>';
+    }
+
+    $number = function ($name, $value, $min, $max) {
+        return '<input type="number" class="pg-input" id="delivery_settings_' . $name . '" name="' . $name . '" min="' . (int) $min . '" max="' . (int) $max . '" step="1" value="' . (int) $value . '" required aria-describedby="delivery_settings_' . $name . '_help">';
+    };
+
+    $body = '<input type="hidden" name="back" value="' . h(pg_delivery_problem_url($filters)) . '">'
+        . '<div class="pg-card-inner mb-5">' . $rows . '</div>'
+        . '<details class="pg-start-advanced"><summary class="small"><i class="bi bi-sliders me-1" aria-hidden="true"></i><b>' . h(lang('Advanced')) . '</b></summary>'
+        . '<div class="mt-3">'
+        . pg_delivery_problem_field('delivery_settings_not_handed_over_days', lang('Working days before a label counts as not handed over'), $number('not_handed_over_days', $settings['not_handed_over_days'], 1, 10), lang('From 1 to 10.'))
+        . pg_delivery_problem_field('delivery_settings_stuck_extra_days', lang('Days a parcel may take beyond the usual before it is stuck'), $number('stuck_extra_days', $settings['stuck_extra_days'], 0, 30), lang('From 0 to 30.'))
+        . '</div></details>';
+
+    $foot = '<span class="flex-grow-1"></span>'
+        . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>'
+        . '<button type="submit" name="action" value="settings" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>';
+
+    return pg_delivery_problem_drawer_frame('delivery_problems_settings', lang('Delivery problem settings'), h(lang('Which problems the hourly check looks for.')), $body, $foot);
+}

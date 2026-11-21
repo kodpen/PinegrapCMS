@@ -905,6 +905,26 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'shipments.problems',
+			'method'  => 'GET',
+			'path'    => '/shipments/problems',
+			'scope'   => 'orders:read',
+			'handler' => 'api_shipments_problems',
+			'returns' => array('list' => 'ShipmentProblem'),
+			'summary' => 'Delivery problems found on parcels',
+			'description' => 'The problems the hourly delivery check found on parcels, as Orders > Delivery problems lists them, newest found first, cursor paged. kind is stuck (in transit longer than the carrier usually takes to the province, plus a margin), not_handed_over (a label the carrier has not scanned), problem (the carrier reported a failed delivery) or returned. A later status closes a problem by itself (close_reason delivered, scanned, status_changed, order_cancelled or parcel_removed); staff close one on the screen with sent_again, refunded, found or other. Each carries its order, the parcel with its carrier and status, the province of the address (its state, else its city; never the street address or the buyer\'s name), days_in_transit and usual_days, the carrier\'s median days to the province over the last 90 days. status=open (the default) gives the open ones. A site not yet updated to the version that keeps problems has an empty list.',
+			'details' => 'The same problems are announced as the shipment.problem and shipment.problem_resolved webhook events; order_type marketplace is an order a marketplace sold, whose buyer the shop does not write to. Assigning, the note and closing are done on the screen.',
+			'params'  => array(
+				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all'), 'default' => 'open'),
+				array('name' => 'kind',     'in' => 'query', 'type' => 'enum', 'values' => array('stuck', 'not_handed_over', 'problem', 'returned')),
+				array('name' => 'carrier',  'in' => 'query', 'type' => 'string', 'max_length' => 20, 'description' => 'Only the parcels of this carrier key.'),
+				array('name' => 'order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the problems of this order.'),
+				array('name' => 'limit',    'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',   'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
 			'id'      => 'returns.get',
 			'method'  => 'GET',
 			'path'    => '/returns/{id}',
@@ -3809,6 +3829,22 @@ function api_schema() {
 			'description' => 'The usual order rhythm per channel (the site and each marketplace account that pulls orders) over 8 weeks, with the sales alerts of the last 7 days and the products the watch took off sale. Per channel: learnt (under 20 orders in 8 weeks it has no history), the next 12 hours expected and the last 12 hours against what was expected. Nothing is judged or sent at the call; last_pass says when the watch last ran.',
 			'details' => 'The watch alerts when orders stop, carts reach payment but are not completed, a product sells at a wrong price or its returns rise; counter sales are left out. A marketplace channel is counted up to data_until, its last successful order sync. alerts are newest first; closed lists the products still off sale, with the price they sold at in minor units and why (half: under the usual price share, cost: under the goods\' cost). Put a product back with the product update route.',
 			'params'  => array()
+		),
+
+		array(
+			'id'      => 'reports.delivery',
+			'method'  => 'GET',
+			'path'    => '/reports/delivery',
+			'scope'   => 'orders:read',
+			'handler' => 'api_reports_delivery',
+			'returns' => 'DeliveryReport',
+			'summary' => 'The carrier scorecard: parcels, on time, median days, problems and returns per carrier',
+			'description' => 'The Carrier Scorecard of one month (period=month, the default: a carrier a row with its provinces) or of the twelve months ending with it (period=year: a carrier a row with its figures per month). A parcel counts in the month it was shipped, in the site\'s time zone; parcels of incomplete or cancelled orders are left out. Figures: parcels, on_time (the share in percent of the delivered parcels with a checkout estimate that arrived on or before it), median (calendar days from shipped to delivered), problem (the share in percent with a delivery problem found, open or closed) and returned (the share in percent returned). arrival lists the shipping methods whose typed transit days differ by a day or more from their carrier\'s median over the last 90 days (measured_at says when that was worked out). Nothing is judged or changed at the call.',
+			'details' => 'A carrier or a province with fewer than min_parcels parcels has enough false and null figures but parcels, as the screen\'s "Too few parcels". carrier is null for parcels with no known carrier. A province is the address\'s state, else its city, as first written. shipping false is a site whose shipping is off: empty figures, not an error. month in the future reads as the current month.',
+			'params'  => array(
+				array('name' => 'month',  'in' => 'query', 'type' => 'string', 'max_length' => 7, 'description' => 'The month as YYYY-MM; with period=year, the last of the twelve. Defaults to the current month.'),
+				array('name' => 'period', 'in' => 'query', 'type' => 'enum', 'values' => array('month', 'year'), 'default' => 'month')
+			)
 		),
 
 		array(
