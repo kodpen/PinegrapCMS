@@ -5,7 +5,7 @@ module: general_settings_fold
 ---
 
 ## How is the pane drawn?
-- Folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`), first row open, in this order: Organization, Site address, Software, Date and time. Order, names, icons and lines: `includes/fn/general_settings_fold.php` (`pg_general_fold_order()`, `pg_general_fold_face()`, `pg_general_fold_<part>()`, pure but for `lang()`). Test: `tests/settings_general_fold_test.php`.
+- Folded rows since #11013 (`pg_settings_fold()`, `ui/settings-fold-rows.md`), first row open, in this order: Organization, Site address, Software, Date and time. Order, names, icons and lines: `includes/fn/general_settings_fold.php` (`pg_general_fold_order()`, `pg_general_fold_face()`, `pg_general_fold_<part>()`, pure but for `lang()`). Test: `tests/settings_general_fold_test.php`.
 - The purpose line is the category's description in `registry.php`: who runs the site, where it is, its licence and its clock.
 
 ## What does each row say and hold?
