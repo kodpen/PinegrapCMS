@@ -4,8 +4,8 @@ description: Plan supplier-feed, how its screens are put together (SF2): the Sup
 ---
 
 ## Which screens, and by which rules?
-- SF2: Products › Supplier feeds (list), Add and Edit supplier feed, the mapping and the test pull. SF4 and SF5 add to the product's screen only.
-- Product screen (SF3b): "Supplier feed" card [cards], side column under Stock by location, feeds with link, buy price, last seen, the switch "Price from the feed"; none when no feed carries it (architect, 2026-11-21, #10963).
+- SF2: Products › Supplier feeds (list), Add and Edit supplier feed, the mapping, the test pull. SF4: "Drafts go into" on Fields.
+- Product screen (SF3b): "Supplier feed" card [cards], side column under Stock by location, feeds with link, buy price, last seen, switch "Price from the feed"; none when no feed carries it (architect, 2026-11-21, #10963).
 - `ui/screen-composition-rules.md`; parts are copied from the Design examples screen, the section named in brackets (`workflow/screen-described-in-plan.md`).
 
 ## How is the list laid out?
@@ -21,7 +21,7 @@ description: Plan supplier-feed, how its screens are put together (SF2): the Sup
      From SF3 the price rule (F4) under them: margin %, fixed amount, rounding as segments (None, Whole, ,90, ,99), minimum margin % (the floor), with one line: "Buy price x (1 + margin) + fixed amount; never under buy price plus the minimum margin." Then "Rules by category or brand": rows [rows] of kind (Category, Brand), the category or brand, margin %, fixed amount; "Add a rule" quiet, a row's remove; one line says the most specific rule wins.
   4. "Fields": the mapping, shown once a first pull has read records.
 - A new feed shows cards 1 and 2 and the button "Read the feed"; cards 3 and 4 open after the read. No empty mapping grid.
-- Status column: state pill, last and next pull, the counts as a label and value list (`ui/look-kv-list.md`), Pull now and Test pull (quiet), Delete (danger) at its foot.
+- Status column: state pill, last and next pull, the counts as a label and value list (`ui/look-kv-list.md`), Pull now, Test pull (quiet), Delete (danger) at its foot.
 - SF3b: "Held prices", first card of the form column while a buy price is held: rows [rows] of last and held buy price, Accept and Reject quiet small; "Accept all" quiet at its head; 20 rows, the rest behind "Show all" in a drawer [drawer]. No filled button: the save bar holds the only one (architect, 2026-11-21, #10963).
 - SF3b: "Pull history" (quiet) in the status column opens a drawer [drawer] of the last 30 pulls, like the test pull's (same approval).
 
