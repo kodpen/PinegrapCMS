@@ -45,7 +45,13 @@ define('PG_AD_CONVERSION_TIKTOK_ROW', 'ad_conversions_tiktok_events');
  */
 function pg_ad_conversion_tiktok_events()
 {
-    return array('purchase' => 'Purchase');
+    return array(
+        'purchase' => 'Purchase',
+        'add_to_cart' => 'AddToCart',
+        'begin_checkout' => 'InitiateCheckout',
+        'complete_registration' => 'CompleteRegistration',
+        'lead' => 'Lead',
+    );
 }
 
 /**
@@ -57,12 +63,7 @@ function pg_ad_conversion_tiktok_events()
  */
 function pg_ad_conversion_tiktok_event_name($event)
 {
-    $names = pg_ad_conversion_tiktok_events() + array(
-        'add_to_cart' => 'AddToCart',
-        'begin_checkout' => 'InitiateCheckout',
-        'lead' => 'Lead',
-        'complete_registration' => 'CompleteRegistration',
-    );
+    $names = pg_ad_conversion_tiktok_events();
 
     return isset($names[$event]) ? $names[$event] : '';
 }
@@ -124,23 +125,17 @@ function pg_ad_conversion_tiktok_stored($raw)
 
 /**
  * The settings the page's form writes, from what is stored and what was
- * typed. An empty token field keeps the stored token; the event ticks, the
- * notice-off box and "Send events without the person" are taken as posted.
- * Pure.
+ * typed. An empty token field keeps the stored token; the choices are taken
+ * as posted (pg_ad_conversion_choices_merge()). Pure.
  *
  * @param array  $stored pg_ad_conversion_tiktok_stored()
- * @param array  $post   pixel_code, test_event_code, events (string[]),
- *                       person_notice_off, without_person (string[])
+ * @param array  $post   pixel_code, test_event_code and the choices of
+ *                       pg_ad_conversion_choices_merge()
  * @param string $sealed the newly sealed token, '' to keep the stored one
  * @return array what is saved as JSON
  */
 function pg_ad_conversion_tiktok_settings_merge(array $stored, array $post, $sealed)
 {
-    $known = array_keys(pg_ad_conversion_tiktok_events());
-    $list = function ($value) use ($known) {
-        return array_values(array_intersect($known, is_array($value) ? $value : array()));
-    };
-
     $token = ((string) $sealed !== '') ? (string) $sealed : (string) ($stored['token'] ?? '');
     $pixel = strtoupper(trim((string) ($post['pixel_code'] ?? '')));
 
@@ -149,10 +144,7 @@ function pg_ad_conversion_tiktok_settings_merge(array $stored, array $post, $sea
         'pixel_code' => $pixel,
         'token' => $token,
         'test_event_code' => trim((string) ($post['test_event_code'] ?? '')),
-        'events' => $list($post['events'] ?? array()),
-        'person_notice_off' => !empty($post['person_notice_off']),
-        'without_person' => $list($post['without_person'] ?? array()),
-    );
+    ) + pg_ad_conversion_choices_merge(array_keys(pg_ad_conversion_tiktok_events()), $post);
 }
 
 /**
@@ -221,10 +213,13 @@ function pg_ad_conversion_tiktok_web_event(array $event, $phone_hash, $page_url)
         );
     }
 
-    $properties = array(
-        'value' => (float) ($event['value'] ?? 0),
-        'currency' => strtoupper((string) ($event['currency'] ?? '')),
-    );
+    // A Lead or a registration has no amount: no value and no currency.
+    $properties = array();
+
+    if ((string) ($event['currency'] ?? '') !== '') {
+        $properties['value'] = (float) ($event['value'] ?? 0);
+        $properties['currency'] = strtoupper((string) $event['currency']);
+    }
 
     if ($contents) {
         $properties['contents'] = $contents;
@@ -240,7 +235,7 @@ function pg_ad_conversion_tiktok_web_event(array $event, $phone_hash, $page_url)
         'event_time' => (int) ($event['time'] ?? 0),
         'event_id' => (string) ($event['event_id'] ?? ''),
         'user' => $user ? $user : new stdClass(),
-        'properties' => $properties,
+        'properties' => $properties ? $properties : new stdClass(),
     );
 
     if ((string) $page_url !== '') {
@@ -530,6 +525,8 @@ function pg_ad_conversion_tiktok_post_page($action, array $post, $liveform)
         'events' => $post['ad_events'] ?? array(),
         'person_notice_off' => !empty($post['person_notice_off']),
         'without_person' => $post['ad_without_person'] ?? array(),
+        'lead_forms' => $post['ad_lead_forms'] ?? array(),
+        'counter_sales' => !empty($post['counter_sales']),
     ), $sealed);
 
     pg_config_text_save(PG_AD_CONVERSION_TIKTOK_ROW, json_encode($saved));
@@ -578,34 +575,10 @@ function pg_ad_conversion_tiktok_page(array $page, $may_manage, $can_seal)
     }
 
     if ($may_manage) {
-        $ticks = '';
-        $without = '';
-
-        foreach (pg_ad_conversion_tiktok_events() as $event => $tiktok_name) {
-            $ticks .= '
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="ad_events[]" value="' . h($event) . '" id="tiktok_events_event_' . h($event) . '"' . (in_array($event, $stored['events'], true) ? ' checked' : '') . '>
-						<label class="pg-text-2" for="tiktok_events_event_' . h($event) . '">' . h(lang('Purchase')) . ' <span class="pg-text-meta">(' . h($tiktok_name) . ')</span></label>
-					</div>';
-            $without .= '
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="ad_without_person[]" value="' . h($event) . '" id="tiktok_events_without_' . h($event) . '"' . (in_array($event, $stored['without_person'], true) ? ' checked' : '') . '>
-						<label class="pg-text-2" for="tiktok_events_without_' . h($event) . '">' . h(lang('Send events without the person')) . ' <span class="pg-text-meta">(' . h(lang('Purchase')) . ')</span></label>
-					</div>';
-        }
-
-        $notice_line = '';
-
-        if (!$notice_on && !$stored['person_notice_off']) {
-            $notice_line = '
-				<div class="alert theme-warning small py-3 mb-0">' . h(lang('The cookie notice is off: events go without the person')) . '.
-					<a href="' . h(pg_settings_link('privacy', 'pgset-cookies')) . '">' . h(lang('Cookie Consent')) . '</a></div>';
-        }
-
         $page['details'] = '
 		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
 			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
-			<p class="pg-card-sub mb-4">' . h(lang('Purchases are sent from the server to the TikTok pixel, after the buyer accepted marketing cookies.')) . '</p>
+			<p class="pg-card-sub mb-4">' . h(lang('Events are sent from the server to the TikTok pixel, after the visitor accepted marketing cookies.')) . '</p>
 			<form method="post" action="connections.php" class="connections-app-form">
 				' . get_token_field() . '
 				<input type="hidden" name="connections_action" value="tiktok_events_save">
@@ -626,20 +599,7 @@ function pg_ad_conversion_tiktok_page(array $page, $may_manage, $can_seal)
 					<input type="text" class="pg-input font-monospace" id="tiktok_events_test_event_code" name="test_event_code" value="' . h($stored['test_event_code']) . '" maxlength="40" autocomplete="off" spellcheck="false">
 					<div class="pg-field-help">' . h(lang('From Events Manager › Test events. Used only by Send a test event, never with real events.')) . '</div>
 				</div>
-				<div>
-					<div class="pg-field-label">' . h(lang('Events sent')) . '</div>' . $ticks . '
-				</div>
-				<div>
-					<div class="pg-field-label">' . h(lang('Without consent')) . '</div>' . $without . '
-					<div class="pg-field-help">' . h(lang('Only the amount and the products, when the buyer did not accept marketing cookies.')) . '</div>
-				</div>
-				<div>
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="person_notice_off" value="1" id="tiktok_events_person_notice_off"' . ($stored['person_notice_off'] ? ' checked' : '') . '>
-						<label class="pg-text-2" for="tiktok_events_person_notice_off">' . h(lang('Send personal data while the cookie notice is off')) . '</label>
-					</div>
-					<div class="pg-field-help">' . h(lang('The buyer was not asked, and the risk is the shop\'s. It acts only while the cookie notice is off.')) . '</div>
-				</div>' . $notice_line . '
+				' . pg_ad_conversion_choices_fields('tiktok_events', pg_ad_conversion_tiktok_events(), $stored, $notice_on) . '
 				<div class="d-flex flex-wrap align-items-center gap-3">
 					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
 					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Send a test event')) . '</button>

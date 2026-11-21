@@ -1104,6 +1104,7 @@
     "Meta refused the request (code {var:1}).": "Meta isteği reddetti (kod {var:1}).",
     "Meta says: {var:1}": "Meta diyor ki: {var:1}",
     "Meta sent an answer that could not be read (HTTP {var:1}).": "Meta okunamayan bir cevap gönderdi (HTTP {var:1}).",
+    "Meta takes an event only with some customer information, so counter sales are not sent to Meta.": "Meta bir olayı ancak bir müşteri bilgisiyle alır; bu yüzden kasa satışları Meta'ya gönderilmez.",
     "Meta took the template but returned no id for it. Refresh the templates to see it.": "Meta şablonu aldı ama kimliğini döndürmedi. Görmek için şablonları yenileyin.",
     "Meta's list of templates could not be read.": "Meta'nın şablon listesi okunamadı.",
     "Meta's sending rate for this number was reached. Try again shortly.": "Bu numara için Meta'nın gönderim hızı sınırına ulaşıldı. Biraz sonra yeniden deneyin.",

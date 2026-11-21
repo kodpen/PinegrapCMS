@@ -70,11 +70,12 @@ function test_ad_conversions_consent_taken_back()
 	pg_assert_contains('status IN (0, 1)', $sql, 'a sent row is left as it is');
 }
 
-// A marketplace order is never sent; a counter sale not without its setting.
+// A marketplace order is never sent; a counter sale never from the site's
+// checkout (its own path below).
 function test_ad_conversions_marketplace_order()
 {
 	pg_assert_false(pg_ad_conversion_order_sendable('marketplace'), 'marketplace');
-	pg_assert_false(pg_ad_conversion_order_sendable('local'), 'counter sale');
+	pg_assert_false(pg_ad_conversion_order_sendable('local'), 'counter sale not through the checkout path');
 	pg_assert_true(pg_ad_conversion_order_sendable('online'), 'site order');
 	pg_assert_true(pg_ad_conversion_order_sendable(''), 'a site without the type column');
 	pg_assert_true(pg_ad_conversion_order_sendable(null), 'no type read');
@@ -246,4 +247,84 @@ function test_ad_conversions_wiring()
 	pg_assert_same(array('order_id' => 'order_ids', 'id' => 'ad_conversion_ids'), $tables['ad_conversion_events']['find'], 'erased by the person\'s orders and, for rows without one, by the hashed e-mail');
 	pg_assert_same('delete', $tables['ad_conversion_events']['action'], 'deleted');
 	pg_assert_true(isset(pg_privacy_export_sections()['ad_conversions']), 'exported');
+}
+
+// The choices every service page writes: only the events it offers, the
+// purchase alone without the person, the forms only with Lead offered,
+// counter sales off unless switched on.
+function test_ad_conversions_choices_merge()
+{
+	$all = pg_ad_conversion_all_events();
+	pg_assert_same(array('purchase', 'refund', 'add_to_cart', 'begin_checkout', 'complete_registration', 'lead'), $all, 'the six events in page order');
+
+	$merged = pg_ad_conversion_choices_merge(array('purchase', 'lead', 'add_to_cart'), array(
+		'events' => array('lead', 'refund', 'purchase', 'evil'),
+		'without_person' => array('purchase', 'lead'),
+		'lead_forms' => array('12', 'x', 4),
+		'person_notice_off' => '1',
+		'counter_sales' => '1',
+	));
+	pg_assert_same(array('purchase', 'lead'), $merged['events'], 'offered only, in page order');
+	pg_assert_same(array('purchase'), $merged['without_person'], 'only the purchase goes without the person');
+	pg_assert_same(array(12, 4), $merged['lead_forms'], 'forms as page ids');
+	pg_assert_true($merged['person_notice_off'], 'the box');
+	pg_assert_true($merged['counter_sales'], 'counter sales on');
+
+	$none = pg_ad_conversion_choices_merge(array('purchase'), array('lead_forms' => array(5)));
+	pg_assert_same(array(), $none['events'], 'nothing ticked');
+	pg_assert_same(array(), $none['lead_forms'], 'no Lead offered, no forms kept');
+	pg_assert_false($none['counter_sales'], 'counter sales off by default');
+
+	$old = pg_ad_conversion_settings_parse('{"connected":true,"events":["purchase","refund"]}');
+	pg_assert_false($old['counter_sales'], 'a row saved before the switch sends no counter sale');
+	pg_assert_same(array('purchase', 'refund'), $old['events'], 'and keeps its events');
+}
+
+// Counter sales: only to a connected service with the purchase ticked and
+// the switch on; the row is due at once, with no ids and no person.
+function test_ad_conversions_counter_sale_rows()
+{
+	$settings = array(
+		'meta_capi' => ad_conversions_test_settings(array('counter_sales' => true)),
+		'ga4_mp' => ad_conversions_test_settings(array('counter_sales' => true)),
+		'tiktok_events' => ad_conversions_test_settings(array('counter_sales' => true, 'events' => array('lead'))),
+		'other' => ad_conversions_test_settings(array('counter_sales' => true, 'connected' => false)),
+	);
+	pg_assert_same(array('ga4_mp'), pg_ad_conversion_counter_sale_plan($settings), 'switch on, purchase ticked, connected; never Meta');
+	pg_assert_same(array(), pg_ad_conversion_counter_sale_plan(array('ga4_mp' => ad_conversions_test_settings())), 'switch off: nothing, as before');
+
+	$detail = pg_ad_conversion_purchase_detail(12550, 'TRY', '1042', 1763600000, array(array('product_name' => 'SKU-1', 'quantity' => 2, 'price' => 5000)));
+	$rows = pg_ad_conversion_counter_sale_rows(array('meta_capi', 'ga4_mp'), 77, 'R7K2Q9', $detail, 1763600000);
+	pg_assert_same(2, count($rows), 'one row per service');
+	pg_assert_same(array('meta_capi', 'purchase', 77, 'R7K2Q9'), array_slice($rows[0], 0, 4), 'a purchase with the order reference');
+	pg_assert_same(null, $rows[0][4], 'no ids');
+	pg_assert_same(0, $rows[0][6], 'no person');
+	pg_assert_same(1, $rows[0][7], 'due at once');
+	pg_assert_true(json_decode($rows[0][5], true)['counter_sale'], 'marked as a counter sale');
+	pg_assert_same(array(), pg_ad_conversion_counter_sale_rows(array('meta_capi'), 77, '', $detail, 1), 'no reference, no row');
+
+	// Whatever a row says, a counter sale is built without the person.
+	$row = array('event' => 'purchase', 'event_id' => 'R7K2Q9', 'person' => 1, 'ids' => json_encode(array('fbp' => 'fb.1.2.3', 'fbclid' => 'x', 'ip' => '203.0.113.9')), 'detail' => $rows[0][5]);
+	$event = pg_ad_conversion_event($row, array('billing_email_address' => 'buyer@example.com', 'billing_phone_number' => '+90 532 111 22 33'));
+	pg_assert_same(array(), $event['user'], 'no e-mail, phone, browser or click id');
+	pg_assert_true($event['counter_sale'], 'the sender is told');
+	pg_assert_same('125.50', $event['value'], 'the amount goes');
+
+	$site = pg_ad_conversion_event(array('event' => 'purchase', 'person' => 0, 'detail' => json_encode($detail)), array());
+	pg_assert_false($site['counter_sale'], 'a site purchase is not a counter sale');
+}
+
+// The till's completion queues the counter sale, after its claim.
+function test_ad_conversions_counter_sale_place()
+{
+	$local = ad_conversions_test_source('includes/fn/local_order.php');
+	$claim = strpos($local, 'if (mysqli_affected_rows(db::$con) !== 1) {');
+	$call = strpos($local, 'pg_ad_conversion_counter_sale_completed($order_id, (int) $totals[\'gross\'], $order_number);');
+	pg_assert_true($call !== false, 'pg_local_order_complete() queues it');
+	pg_assert_true(($claim !== false) && ($call > $claim), 'after the claim, so a second completion never reaches it');
+
+	$module = ad_conversions_test_source('includes/fn/ad_conversions.php');
+	$body = substr($module, (int) strpos($module, 'function pg_ad_conversion_counter_sale_completed('), 2000);
+	pg_assert_contains("!== 'local'", $body, 'only a counter sale');
+	pg_assert_false(strpos($body, '$_COOKIE') !== false || strpos($body, 'ad_click_ids') !== false, 'no cookie or click id read');
 }

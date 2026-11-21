@@ -47,33 +47,11 @@ function pg_ad_conversion_meta_events()
 {
     return array(
         'purchase' => 'Purchase',
-        'lead' => 'Lead',
-        'complete_registration' => 'CompleteRegistration',
         'add_to_cart' => 'AddToCart',
         'begin_checkout' => 'InitiateCheckout',
+        'complete_registration' => 'CompleteRegistration',
+        'lead' => 'Lead',
     );
-}
-
-/**
- * An event's name on the page, in the panel's language.
- *
- * @param string $event
- * @return string
- */
-function pg_ad_conversion_meta_event_label($event)
-{
-    switch ($event) {
-        case 'lead':
-            return lang('Lead (a form picked below)');
-        case 'complete_registration':
-            return lang('Account opened');
-        case 'add_to_cart':
-            return lang('Add to cart');
-        case 'begin_checkout':
-            return lang('Begin checkout');
-        default:
-            return lang('Purchase');
-    }
 }
 
 /**
@@ -146,24 +124,17 @@ function pg_ad_conversion_meta_stored($raw)
 
 /**
  * The settings the page's form writes, from what is stored and what was
- * typed. An empty token field keeps the stored token; the event ticks, the
- * notice-off box, "Send events without the person" (the purchase only) and
- * the forms picked for Lead are taken as posted. Pure.
+ * typed. An empty token field keeps the stored token; the choices are taken
+ * as posted (pg_ad_conversion_choices_merge()). Pure.
  *
  * @param array  $stored pg_ad_conversion_meta_stored()
- * @param array  $post   pixel_id, test_event_code, events (string[]),
- *                       person_notice_off, without_person (string[]),
- *                       lead_forms (page ids)
+ * @param array  $post   pixel_id, test_event_code and the choices of
+ *                       pg_ad_conversion_choices_merge()
  * @param string $sealed the newly sealed token, '' to keep the stored one
  * @return array what is saved as JSON
  */
 function pg_ad_conversion_meta_settings_merge(array $stored, array $post, $sealed)
 {
-    $known = array_keys(pg_ad_conversion_meta_events());
-    $list = function ($value) use ($known) {
-        return array_values(array_intersect($known, is_array($value) ? $value : array()));
-    };
-
     $token = ((string) $sealed !== '') ? (string) $sealed : (string) ($stored['token'] ?? '');
     $pixel = trim((string) ($post['pixel_id'] ?? ''));
 
@@ -172,11 +143,9 @@ function pg_ad_conversion_meta_settings_merge(array $stored, array $post, $seale
         'pixel_id' => $pixel,
         'token' => $token,
         'test_event_code' => trim((string) ($post['test_event_code'] ?? '')),
-        'events' => $list($post['events'] ?? array()),
-        'person_notice_off' => !empty($post['person_notice_off']),
-        'without_person' => array_values(array_intersect(array('purchase'), $list($post['without_person'] ?? array()))),
-        'lead_forms' => pg_ad_conversion_page_ids($post['lead_forms'] ?? array()),
-    );
+        // Meta takes no counter sale (pg_ad_conversion_counter_sale_offered()).
+        'counter_sales' => false,
+    ) + pg_ad_conversion_choices_merge(array_keys(pg_ad_conversion_meta_events()), $post);
 }
 
 /**
@@ -617,47 +586,6 @@ function pg_ad_conversion_meta_page(array $page, $may_manage, $can_seal)
     }
 
     if ($may_manage) {
-        $ticks = '';
-        $without = '';
-
-        foreach (pg_ad_conversion_meta_events() as $event => $meta_name) {
-            $ticks .= '
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="ad_events[]" value="' . h($event) . '" id="meta_capi_event_' . h($event) . '"' . (in_array($event, $stored['events'], true) ? ' checked' : '') . '>
-						<label class="pg-text-2" for="meta_capi_event_' . h($event) . '">' . h(pg_ad_conversion_meta_event_label($event)) . ' <span class="pg-text-meta">(' . h($meta_name) . ')</span></label>
-					</div>';
-
-            // Without consent only the purchase goes, without the person.
-            if ($event !== 'purchase') {
-                continue;
-            }
-
-            $without .= '
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="ad_without_person[]" value="' . h($event) . '" id="meta_capi_without_' . h($event) . '"' . (in_array($event, $stored['without_person'], true) ? ' checked' : '') . '>
-						<label class="pg-text-2" for="meta_capi_without_' . h($event) . '">' . h(lang('Send events without the person')) . ' <span class="pg-text-meta">(' . h(lang('Purchase')) . ')</span></label>
-					</div>';
-        }
-
-        $forms = '';
-
-        foreach ((array) db_items("SELECT page_id, form_name FROM custom_form_pages ORDER BY form_name, page_id") as $form) {
-            $form_id = (int) $form['page_id'];
-            $forms .= '
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="ad_lead_forms[]" value="' . $form_id . '" id="meta_capi_lead_form_' . $form_id . '"' . (in_array($form_id, $stored['lead_forms'], true) ? ' checked' : '') . '>
-						<label class="pg-text-2" for="meta_capi_lead_form_' . $form_id . '">' . h((string) $form['form_name']) . '</label>
-					</div>';
-        }
-
-        $notice_line = '';
-
-        if (!$notice_on && !$stored['person_notice_off']) {
-            $notice_line = '
-				<div class="alert theme-warning small py-3 mb-0">' . h(lang('The cookie notice is off: events go without the person')) . '.
-					<a href="' . h(pg_settings_link('privacy', 'pgset-cookies')) . '">' . h(lang('Cookie Consent')) . '</a></div>';
-        }
-
         $page['details'] = '
 		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
 			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
@@ -682,25 +610,7 @@ function pg_ad_conversion_meta_page(array $page, $may_manage, $can_seal)
 					<input type="text" class="pg-input font-monospace" id="meta_capi_test_event_code" name="test_event_code" value="' . h($stored['test_event_code']) . '" maxlength="40" autocomplete="off" spellcheck="false">
 					<div class="pg-field-help">' . h(lang('From Events Manager › Test events. Used only by Send a test event, never with real events.')) . '</div>
 				</div>
-				<div>
-					<div class="pg-field-label">' . h(lang('Events sent')) . '</div>' . $ticks . '
-				</div>
-				<div>
-					<div class="pg-field-label">' . h(lang('Forms sent as Lead')) . '</div>' . (($forms !== '') ? $forms : '
-					<div class="pg-text-meta">' . h(lang('No form yet.')) . '</div>') . '
-					<div class="pg-field-help">' . h(lang('A record of a picked form is sent as Lead, when Lead is ticked. Add to cart, Begin checkout and the other events go only after the visitor accepted marketing cookies.')) . '</div>
-				</div>
-				<div>
-					<div class="pg-field-label">' . h(lang('Without consent')) . '</div>' . $without . '
-					<div class="pg-field-help">' . h(lang('Only the amount and the products, when the buyer did not accept marketing cookies.')) . '</div>
-				</div>
-				<div>
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="person_notice_off" value="1" id="meta_capi_person_notice_off"' . ($stored['person_notice_off'] ? ' checked' : '') . '>
-						<label class="pg-text-2" for="meta_capi_person_notice_off">' . h(lang('Send personal data while the cookie notice is off')) . '</label>
-					</div>
-					<div class="pg-field-help">' . h(lang('The buyer was not asked, and the risk is the shop\'s. It acts only while the cookie notice is off.')) . '</div>
-				</div>' . $notice_line . '
+				' . pg_ad_conversion_choices_fields('meta_capi', pg_ad_conversion_meta_events(), $stored, $notice_on) . '
 				<div class="d-flex flex-wrap align-items-center gap-3">
 					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
 					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Send a test event')) . '</button>

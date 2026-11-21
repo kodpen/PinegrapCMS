@@ -211,3 +211,45 @@ function test_ad_conversions_ga4_places()
 	$reseal = ad_conversions_ga4_test_source('includes/fn/reseal.php');
 	pg_assert_true(strpos($reseal, "'ad_conversions_ga4_mp', 'connect', array('fields' => array('secret'))") !== false, 'the secret is sealed again on a key reset');
 }
+
+// The page offers the six events; the save keeps them, the forms and the
+// counter sales switch.
+function test_ad_conversions_ga4_all_events()
+{
+	pg_assert_same(pg_ad_conversion_all_events(), array_keys(pg_ad_conversion_ga4_events()), 'all six, in page order');
+	pg_assert_same('generate_lead', pg_ad_conversion_ga4_event_name('lead'), 'Lead');
+
+	$saved = pg_ad_conversion_ga4_settings_merge(pg_ad_conversion_ga4_stored(''), array(
+		'events' => array('purchase', 'refund', 'add_to_cart', 'begin_checkout', 'complete_registration', 'lead'),
+		'lead_forms' => array('9'),
+		'counter_sales' => '1',
+	), 'sealed');
+	$parsed = pg_ad_conversion_settings_parse(json_encode($saved));
+	pg_assert_same(pg_ad_conversion_all_events(), $parsed['events'], 'no event key dropped');
+	pg_assert_same(array(9), $parsed['lead_forms'], 'the forms sent as Lead');
+	pg_assert_true($parsed['counter_sales'], 'the counter sales switch');
+}
+
+// A Lead has no amount and no transaction; a counter sale goes without the
+// visitor.
+function test_ad_conversions_ga4_lead_and_counter_sale()
+{
+	$lead = pg_ad_conversion_event(array('event' => 'lead', 'event_id' => 'lead-F1', 'person' => 1,
+		'ids' => json_encode(array('client_id' => '1234567890.1700000000', 'email_sha256' => 'abc')),
+		'detail' => json_encode(array('value' => 0, 'currency' => '', 'order_number' => '', 'time' => 1763600000, 'contents' => array()))), array());
+	$body = pg_ad_conversion_ga4_body($lead);
+	pg_assert_same('generate_lead', $body['events'][0]['name'], 'Lead');
+	pg_assert_same('{}', json_encode($body['events'][0]['params']), 'no transaction id, value or currency');
+	pg_assert_same('1234567890.1700000000', $body['client_id'], 'the visitor who consented');
+
+	$sale = pg_ad_conversion_event(array('event' => 'purchase', 'event_id' => 'R7K2Q9AB12', 'person' => 1,
+		'ids' => json_encode(array('client_id' => '1234567890.1700000000', 'ip' => '203.0.113.9')),
+		'detail' => json_encode(array('value' => 12550, 'currency' => 'TRY', 'order_number' => '1042', 'time' => 1763600000, 'contents' => array(), 'counter_sale' => true))), array());
+	$body = pg_ad_conversion_ga4_body($sale);
+	pg_assert_false($body['client_id'] === '1234567890.1700000000', 'not a visitor\'s client id');
+	pg_assert_same(array('ad_user_data' => 'DENIED', 'ad_personalization' => 'DENIED'), $body['consent'], 'consent denied');
+	pg_assert_false(isset($body['ip_override']) || isset($body['user_agent']), 'no address or browser');
+	pg_assert_same('R7K2Q9AB12', $body['events'][0]['params']['transaction_id'], 'the order reference');
+	pg_assert_same(125.5, $body['events'][0]['params']['value'], 'the amount goes');
+}
+

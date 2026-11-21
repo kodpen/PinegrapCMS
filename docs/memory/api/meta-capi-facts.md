@@ -24,10 +24,17 @@ module: ad_conversions_meta
 - Never hashed: `client_ip_address`, `client_user_agent`, `fbc`, `fbp`.
 - `fbc` is `fb.{subdomain_index}.{creation_time}.{fbclid}`, from the `_fbc` cookie or built from `fbclid`; `fbp` from the `_fbp` cookie.
 
+## How does a store sale go?
+- Read 2026-11-21 from developers.facebook.com `documentation/ads-commerce/conversions-api/offline-events` and `…/parameters`: `action_source` `physical_store` for every offline and store event; website events need `client_user_agent`, `action_source` and `event_source_url`, other events only `action_source`. Store events may be uploaded up to 62 days later, but the 7-day `event_time` limit still holds.
+
+## Does Meta take an event without the person?
+- No, by its documents. Read 2026-11-21, `documentation/ads-commerce/conversions-api/parameters/customer-information-parameters`: "You must provide at least one of the following user_data parameters"; the Payload Helper says the same per event. The parameters page's "non-web events require only action_source" lists the required event fields, not an exception to `user_data`.
+- So counter sales, which carry no person, are not sent to Meta (#10960, `ad-conversions-counter-sales.md`).
+
 ## What does Meta answer?
 - 2xx for a valid body: `events_received` (integer), `messages` (list), `fbtrace_id`. A 200 does not prove the event shows in Events Manager.
 - An invalid body: 4xx with `error`: `message`, `type`, `code`, `error_subcode`, `fbtrace_id`.
 - Codes to wait and retry: 1, 2 (downtime), 4, 17 (throttling), 341, 368; 32 and 613 are rate limits too (rate limits guide). 190: the token expired, get a new one.
 
 ## What could not be checked?
-- Whether Meta takes an event with an empty `user_data` (a purchase without the person, C9): no pixel to try against. A refusal gives the row up with Meta's words in `last_error`.
+- How Meta answers an event with an empty `user_data` (a purchase without the person, C9): the documents above say it is refused; no pixel to try against. A refusal gives the row up with Meta's words in `last_error`.
