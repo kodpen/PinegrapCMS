@@ -9,7 +9,7 @@ description: Plan walk-in-queue, steps WQ1a to WQ9: the pure rules, the store, p
 
 - WQ1b (M) after WQ1a, done in #10956: `waiting_places`, `waiting_desks`, `waiting_tickets` (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns approved by the architect (`workflow/decisions-made-schema-47.md`); the five privacy registrations and `pg_contact_holders()`; the keep-period clear in the general job; their tests. Features: W14.
 
-- WQ2 (M) after WQ1b: the places list and a place's screen (services, hours, desks, notices, order, keep period), the printable QR poster. Features: W1, W2.
+- WQ2 (M) after WQ1b, done in #11038: the places list and a place's screen (services, hours, desks, notices, order, keep period), the printable QR poster (`commerce/walk-in-queue-places.md`; rows read "Messages" and "Calling order"). Features: W1, W2.
 
 - WQ3 (M) after WQ2: the public `queue.php` (take a number, the person's page with its 15-second read, Leave the queue) and its `waf_sensitive_scripts()` entry; staff adding a number; kind `queue` in `pg_sms_kinds()` and the WhatsApp template, a service message (poll 207), never asking marketing consent; the notices. Features: W3, W5, W6.
 

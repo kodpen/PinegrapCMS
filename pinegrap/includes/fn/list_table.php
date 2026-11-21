@@ -1255,6 +1255,7 @@ function pg_list_table_printed_lists()
         'workspace_wtables',
         'messages_automatic',
         'view_application_programs',
+        'view_queue_places',
         'privacy_requests',
         'delivery_problems',
     );
