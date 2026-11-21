@@ -377,7 +377,8 @@ function test_customer_rhythm_pass_privacy_finds_the_person()
 }
 
 // The general job calls the pass once, guarded, on a commerce site; the
-// pass announces nothing (the events are their own step).
+// pass itself announces nothing: each written batch goes to
+// pg_customer_rhythm_tell(), which announces.
 function test_customer_rhythm_pass_job_hook_announces_nothing()
 {
 	$job = (string) file_get_contents(PG_FUNCTIONS_DIR . '/job.php');
@@ -388,4 +389,5 @@ function test_customer_rhythm_pass_job_hook_announces_nothing()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/customer_rhythm_pass.php');
 	pg_assert_false(strpos($source, 'pg_announce') !== false, 'no event from the pass');
 	pg_assert_false(strpos($source, 'pg_webhook') !== false, 'no webhook from the pass');
+	pg_assert_same(1, substr_count($source, '= pg_customer_rhythm_tell('), 'one hand-over per written batch');
 }

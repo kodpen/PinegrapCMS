@@ -80,7 +80,7 @@ function test_ws_frame_sticky_columns_below_header()
 {
 	$source = ws_frame_css_source();
 
-	foreach (array('.ws-claude-status', '.ws-tl-side') as $selector) {
+	foreach (array('.ws-tl-side') as $selector) {
 		$rule = ws_frame_css_rule($source, "\n" . $selector);
 		pg_assert_true(strpos($rule, 'position: sticky;') !== false, $selector . ' is sticky');
 		pg_assert_true(strpos($rule, 'top: calc(var(--pg-navbar-h) + 1rem);') !== false, $selector . ' sticks below the panel header');

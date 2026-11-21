@@ -1,6 +1,6 @@
 ---
 name: ad-conversions-queue
-description: ad_conversion_events (11.0.254): the three-input consent reader, status 0 rows at the payment step, queueing at completion, the job's pass, sweep, privacy
+description: ad_conversion_events (11.0.254): the three-input consent reader, status 0 rows at the payment step, queueing at completion, the job's pass, sweep
 module: ad_conversions
 ---
 
@@ -27,7 +27,7 @@ module: ad_conversions
 - A sender answers `array('ok', 'status', 'error')` as `api_http_post()` does.
 
 ## Privacy?
-- `pg_privacy_erase_tables()`: `ad_conversion_events` found by `order_id` → `order_ids`, deleted. Export section `ad_conversions` ("Ad service events") after `consents`.
+- Erase and export of the rows: `ad-conversions-privacy.md`.
 
 ## Click ids?
 - The landing address's `fbclid`, `gclid`, `ttclid` join a consenting buyer's `ids` at the payment step: `ad-conversions-click-ids.md`.

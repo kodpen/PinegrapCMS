@@ -5158,20 +5158,20 @@ function ws_ai_settings_test($liveform, $refuse = null)
 }
 
 /**
- * The card on the settings screen: the connection on the left, how it
- * stands on the right, and the setup steps under the form.
+ * The card on the settings screen: Pinegrap AI's opened row, read here and
+ * drawn by ws_ai_row_html() in one column.
  *
- * An administrator sees Pinegrap AI's key there: a button that makes it
- * while no application is linked, otherwise its name and whether it can sign
- * in. The application select stays inside the Save form, under "Use another
- * application": outside it, a Save would post no application and unlink the
- * key.
+ * An administrator sees Pinegrap AI's key in the fold "Application": a
+ * button that makes it while no application is linked, otherwise its name.
+ * The application select stays inside the fold, which is inside the Save
+ * form: outside it, a Save would post no application and unlink the key.
  *
  * In the Site Settings dialog ($form: the settings form's id) the card has no
  * form of its own: the switch and the application (ws_ai_enabled,
  * ws_ai_app_id) are saved with the pane's Save, and Create and the test are
  * named submit buttons of the settings form (ws_ai_key_create, ws_ai_test),
- * run after the save (includes/settings/workspace_assistants.save.php).
+ * run after the save (includes/settings/workspace_assistants.save.php). The
+ * latest requests are a drawer of their own (ws_settings_ai_requests_drawer()).
  *
  * @param string      $self_url
  * @param array       $viewer
@@ -5185,73 +5185,264 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
     }
 
     $config = ws_ai_config(true);
-    $admin = ((int) $viewer['role'] === 0);
-    $app = ws_ai_app();
-    $missing = ws_ai_missing();
-    $disabled = $admin ? '' : ' disabled';
     $claude_app = (int) ws_claude_config()['app_id'];
-    $dialog = ($form !== null);
+    $apps = array();
+
+    foreach ((array) db_items("SELECT id, name, status FROM api_apps WHERE status <> 'revoked' ORDER BY name LIMIT 200") as $row) {
+        if ((int) $row['id'] !== $claude_app) {
+            $apps[] = $row;
+        }
+    }
+
+    // The notices, each one line and only when true: a licence that does not
+    // work, the last error, a wait.
+    $notices = array();
+    $problem = ws_ai_license_problem();
+
+    if ($problem !== '') {
+        $notices[] = array('tone' => $config['license_set'] ? 'danger' : 'warning', 'text' => $problem);
+    }
+
+    if ($config['error'] !== '') {
+        $notices[] = array('tone' => 'danger', 'text' => $config['error']);
+    }
+
+    if ($config['hold_until'] > time()) {
+        $notices[] = array('tone' => 'warning', 'text' => lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until']))));
+    }
+
+    // The licence as a pill on the facts line: a problem is a word there,
+    // its sentence is the notice above.
+    $license = ws_ai_license_label();
+
+    if (!$config['license_set']) {
+        $license['label'] = lang('Not entered');
+    } elseif ($problem === ws_ai_license_sentence('expired')) {
+        $license['label'] = lang('Expired');
+    } elseif ($problem !== '') {
+        $license['label'] = lang('Refused');
+    }
+
+    $latest = ws_ai_latest_requests();
+
+    return ws_ai_row_html(array(
+        'dialog'      => ($form !== null),
+        'form'        => $form,
+        'self_url'    => (string) $self_url,
+        'token_field' => ($form !== null) ? '' : get_token_field(),
+        'admin'       => ((int) $viewer['role'] === 0),
+        'config'      => $config,
+        'missing'     => ws_ai_missing(),
+        'apps'        => $apps,
+        'app'         => ws_ai_app(),
+        'scopes'      => ws_ai_required_scopes(),
+        'notices'     => $notices,
+        'license'     => array('label' => $license['label'], 'tone' => ws_ai_license_tone($license['tone'])),
+        'tokens'      => ws_ai_tokens_ready() ? ws_ai_tokens_line(ws_ai_read_tokens()) : '',
+        'last'        => empty($latest)
+            ? lang('Nobody has asked Pinegrap AI yet.')
+            : lang(array('string' => 'Last request {var:1}', 'vars' => ws_time_label($latest[0]['created_at']))) . ' · ' . ws_ai_request_state($viewer, $latest[0])['label'],
+    )) . ws_claude_fold_script();
+}
+
+/**
+ * Pinegrap AI's opened row, drawn from the values ws_ai_settings_card()
+ * reads. One column, in this order: the notices (one line each, only when
+ * true), the switch with one line and "How does this work?", the facts line
+ * (licence, model, tokens), a row of quiet small buttons with the last
+ * request at its right, and last the fold "Application". Pure but for
+ * lang().
+ *
+ * @param array $v dialog, form, self_url, token_field, admin, config
+ *                 (ws_ai_config()), missing, apps (id, name, status; Claude's
+ *                 left out), app (ws_ai_app()), scopes (the required ones),
+ *                 notices (tone, text), license (label, tone: a pg-tone-*
+ *                 class), tokens (the tokens line, '' for none), last
+ * @return string HTML
+ */
+function ws_ai_row_html($v)
+{
+    $dialog = !empty($v['dialog']);
+    $form = $v['form'] ?? null;
+    $self_url = (string) ($v['self_url'] ?? '');
+    $token_field = (string) ($v['token_field'] ?? '');
+    $admin = !empty($v['admin']);
+    $config = $v['config'];
+    $missing = (array) $v['missing'];
+    $app = $v['app'] ?? null;
+    $disabled = $admin ? '' : ' disabled';
     $field_name = function ($field) use ($dialog) {
         return ($dialog ? 'ws_' : '') . 'ai_' . $field;
     };
 
     // A card button: a form of its own on Workspace Settings, a named submit
     // button of the settings form in the dialog.
-    $button = function ($action, $class, $inner, $after, $wrap) use ($self_url, $form) {
+    $button = function ($action, $inner, $after = '', $wrap = '') use ($self_url, $form, $token_field) {
+        $class = 'pg-button pg-button-quiet pg-button-sm';
+
         if ($form !== null) {
-            return '<div class="' . h($wrap) . '"><button type="submit" name="ws_' . h($action) . '" value="1" form="' . h($form) . '" class="' . h($class) . '">' . $inner . '</button>' . $after . '</div>';
+            return '<div' . (($wrap !== '') ? ' class="' . h($wrap) . '"' : '') . '><button type="submit" name="ws_' . h($action) . '" value="1" form="' . h($form) . '" class="' . $class . '">' . $inner . '</button>' . $after . '</div>';
         }
 
-        return '<form method="post" action="' . h($self_url) . '#ws-ai" class="' . h($wrap) . '">
-                                ' . get_token_field() . '
+        return '<form method="post" action="' . h($self_url) . '#ws-ai"' . (($wrap !== '') ? ' class="' . h($wrap) . '"' : '') . '>
+                                ' . $token_field . '
                                 <input type="hidden" name="ws_action" value="' . h($action) . '">
-                                <button type="submit" class="' . h($class) . '">' . $inner . '</button>' . $after . '
+                                <button type="submit" class="' . $class . '">' . $inner . '</button>' . $after . '
                             </form>';
     };
 
+    $notices = '';
+
+    foreach ((array) $v['notices'] as $notice) {
+        $notices .= '
+                <div class="alert theme-' . (($notice['tone'] === 'danger') ? 'danger' : 'warning') . ' small py-3"><span class="ws-grow">' . h($notice['text']) . '</span></div>';
+    }
+
+    // The facts line: the licence, the model, the tokens used.
+    $facts = '<span>' . h(lang('Licence')) . '</span> <span class="pg-pill ' . h($v['license']['tone']) . '">' . h($v['license']['label']) . '</span>';
+
+    if ((string) $config['model'] !== '') {
+        $facts .= '<span aria-hidden="true">·</span><span>' . h(lang('Model')) . ' <code>' . h($config['model']) . '</code></span>';
+    }
+
+    if ((string) $v['tokens'] !== '') {
+        $facts .= '<span aria-hidden="true">·</span><span>' . h($v['tokens']) . '</span>';
+    }
+
+    // The fold "Application": the application, or the button that makes it,
+    // and the select of another one with what it may read.
     $options = '<option value="0">' . h(lang('Choose an application')) . '</option>';
 
-    foreach ((array) db_items("SELECT id, name, status FROM api_apps WHERE status <> 'revoked' ORDER BY name LIMIT 200") as $row) {
-        if ((int) $row['id'] === $claude_app) {
-            continue;
-        }
-
-        $options .= '<option value="' . (int) $row['id'] . '"' . (((int) $row['id'] === $config['app_id']) ? ' selected' : '') . '>'
+    foreach ((array) $v['apps'] as $row) {
+        $options .= '<option value="' . (int) $row['id'] . '"' . (((int) $row['id'] === (int) $config['app_id']) ? ' selected' : '') . '>'
             . h($row['name']) . (($row['status'] !== 'active') ? ' (' . h(lang('not active')) . ')' : '') . '</option>';
     }
 
     $scope_rows = '';
+    $lacking = false;
 
-    foreach (ws_ai_required_scopes() as $scope) {
+    foreach ((array) $v['scopes'] as $scope) {
         $has = $app && in_array($scope, $app['scopes'], true);
+        $lacking = $lacking || !$has;
         $scope_rows .= '<li><i class="bi ' . ($has ? 'bi-check-circle fg-success' : 'bi-x-circle fg-danger') . ' me-1" aria-hidden="true"></i><code>' . h($scope) . '</code></li>';
     }
 
     $readable = array();
 
     foreach ($app ? $app['scopes'] : array() as $scope) {
-        if ((substr($scope, -5) === ':read') && !in_array($scope, ws_ai_required_scopes(), true)) {
+        if ((substr($scope, -5) === ':read') && !in_array($scope, (array) $v['scopes'], true)) {
             $readable[] = $scope;
         }
     }
 
-    $state = ws_assistant_state_pill($missing, $config['enabled']);
+    $key = '';
 
-    $status_list = '';
-
-    foreach ($missing as $sentence) {
-        $status_list .= '<li>' . h($sentence) . '</li>';
+    if ($admin && !$app) {
+        $key = $button('ai_key_create', '<i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')), '
+                            <div class="pg-field-help">' . h(lang('Makes the application Pinegrap AI writes through; it writes only in the Workspace and the Tasks.')) . '</div>', 'ws-claude-key mb-5');
+    } elseif ($app) {
+        $key = '
+                        <div class="ws-claude-key mb-5">
+                            <div class="pg-text-2"><strong>' . h($app['name']) . '</strong> <span class="pg-text-meta">#' . (int) $app['id'] . '</span> · <a href="api_settings.php">' . h(lang('Application Access')) . '</a></div>
+                            <div class="pg-field-help">' . h(lang('It needs no secret: Pinegrap AI runs inside this site.')) . '</div>
+                        </div>';
     }
 
-    $license = ws_ai_license_label();
+    // Shut while a suitable application is chosen; open with none and with
+    // one that lacks a permission Pinegrap AI needs.
+    $open = !$app || $lacking;
 
+    $fold = '
+                    <div class="ws-agset-section ws-ai-fold">
+                        <button type="button" class="pg-gather-toggle mt-0" data-ws-claude-fold aria-expanded="' . ($open ? 'true' : 'false') . '" aria-controls="ws-ai-fold">' . h(lang('Application')) . '<span class="bi ' . ($open ? 'bi-chevron-up' : 'bi-chevron-down') . '" aria-hidden="true"></span></button>
+                        <div class="mt-4" id="ws-ai-fold"' . ($open ? '' : ' hidden') . '>
+                        ' . $key . '
+                            <label class="pg-field-label" for="ws_ai_app_id">' . h(lang('Use another application')) . '</label>
+                            <select class="pg-input pg-input-sm" name="' . $field_name('app_id') . '" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
+                            <ul class="list-unstyled pg-text-2 mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
+                            <div class="pg-field-help">' . ($app && !empty($readable)
+                                ? h(lang('It may also read:')) . ' <span class="font-monospace">' . h(implode(', ', $readable)) . '</span>'
+                                : h(lang('It reads no records: Pinegrap AI sees the channels and the tasks only.'))) . '</div>
+                        </div>
+                    </div>';
+
+    $head = $dialog
+        ? '
+    <div id="pgset-ws-ai" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                <span class="pg-title-section ws-grow">' . h(lang('Pinegrap AI in the channels')) . '</span>
+                ' . ws_assistant_state_pill($missing, $config['enabled']) . '
+            </div>'
+        : '
+        <div class="card mt-7" id="ws-ai">
+            <div class="card-header d-flex align-items-center gap-3">
+                <h2 class="h6 mb-0 ws-grow"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . h(lang('Pinegrap AI in the channels')) . '</h2>
+                ' . ws_assistant_state_pill($missing, $config['enabled']) . '
+            </div>';
+
+    return $head . '
+            <div class="card-body ws-ai-row">
+                ' . $notices . '
+                ' . ($dialog ? '<div class="ws-ai-connection">' : '<form method="post" action="' . h($self_url) . '#ws-ai">
+                    ' . $token_field . '
+                    <input type="hidden" name="ws_action" value="ai">') . '
+                    <div class="d-flex align-items-start gap-3">
+                        <input class="pg-switch" type="checkbox" name="' . $field_name('enabled') . '" value="1" id="ws_ai_enabled" aria-describedby="ws_ai_enabled-help"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
+                        <div><label class="pg-text-2" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
+                        <div class="d-flex flex-wrap align-items-center gap-2"><span class="pg-field-help m-0" id="ws_ai_enabled-help">' . h(ws_assistants_help_line('ws-ai')) . '</span>' . ws_assistants_help_button('ws-ai') . '</div></div>
+                    </div>
+                    <div class="ws-agset-section pg-text-meta d-flex flex-wrap align-items-center gap-2 ws-ai-facts">' . $facts . '</div>
+                    ' . ($admin ? ($dialog ? '' : '<button type="submit" class="pg-button pg-button-fill pg-button-sm mt-5">' . h(lang('Save')) . '</button>') : '<div class="pg-field-help">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
+                ' . ($dialog ? '</div>' : '</form>') . '
+                    <div class="ws-agset-section d-flex flex-wrap align-items-center gap-3">
+                        ' . ($admin && !empty($config['license_set']) ? $button('ai_test', '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Try the connection'))) : '') . '
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-ai-requests" aria-controls="pgset-ws-ai-requests"><i class="bi bi-clock-history" aria-hidden="true"></i>' . h(lang('The latest requests')) . '</button>
+                        <span class="pg-text-meta ms-auto text-truncate ws-ai-last">' . h((string) $v['last']) . '</span>
+                    </div>
+                    ' . $fold . '
+            </div>
+        </div>' . ($dialog ? '
+    </div>' : '');
+}
+
+/**
+ * The ten newest requests to Pinegrap AI with their channel's name, read
+ * once a page: the row's last line and the drawer "The latest requests"
+ * share them.
+ *
+ * @return array[]
+ */
+function ws_ai_latest_requests()
+{
+    static $rows = null;
+
+    if ($rows === null) {
+        $rows = (array) db_items("SELECT r.*, c.name AS channel_name FROM ws_ai_requests r
+            LEFT JOIN ws_channels c ON c.id = r.channel_id
+            WHERE r.agent = 'ai'
+            ORDER BY r.id DESC LIMIT 10");
+    }
+
+    return $rows;
+}
+
+/**
+ * The body of Pinegrap AI's drawer "The latest requests": the requests as
+ * list rows, where each was asked, when and how it stands. Pure but for
+ * lang() and ws_ai_request_state().
+ *
+ * @param array   $viewer
+ * @param array[] $requests ws_ai_latest_requests()
+ * @return string HTML
+ */
+function ws_ai_requests_drawer_html($viewer, $requests)
+{
     $recent = '';
 
-    foreach ((array) db_items("SELECT r.*, c.name AS channel_name FROM ws_ai_requests r
-        LEFT JOIN ws_channels c ON c.id = r.channel_id
-        WHERE r.agent = 'ai'
-        ORDER BY r.id DESC LIMIT 10") as $row) {
+    foreach ((array) $requests as $row) {
         $line = ws_ai_request_state($viewer, $row);
+
         if ((int) ($row['task_id'] ?? 0) > 0) {
             $where = '<a href="workspace_tasks.php?task=' . (int) $row['task_id'] . '">' . h(ws_task_number($row['task_id'])) . '</a>';
         } elseif ((int) ($row['note_id'] ?? 0) > 0) {
@@ -5275,95 +5466,23 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
         $recent = '<li class="pg-card-inner-row pg-text-meta">' . h(lang('Nobody has asked Pinegrap AI yet.')) . '</li>';
     }
 
-    // Pinegrap AI's key, for an administrator only: made here while no
-    // application row is linked, otherwise named, with whether it can sign
-    // in. A key made here has no secret, so there is nothing to show once.
-    $key_block = '';
+    return '<ul class="list-unstyled pg-card-inner ws-claude-recent mb-0">' . $recent . '</ul>';
+}
 
-    if ($admin && !$app) {
-        require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
-
-        $key_block = '
-                        ' . $button('ai_key_create', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-key" aria-hidden="true"></i>' . h(lang('Create Pinegrap AI\'s key')), '
-                            <div class="pg-field-help">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It has no secret and cannot sign in anywhere: Pinegrap AI runs inside this site.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>', 'ws-claude-key ws-agset-section mt-0');
-    } elseif ($admin) {
-        require_once PG_FUNCTIONS_DIR . '/includes/api/keys.php';
-
-        // A key linked by hand may hold a secret, or be a team devices or
-        // OAuth application: the line says what is true of the row.
-        $doors = (array) db_item("SELECT kind, api_secret_hash, api_secret_prev_hash, api_secret_prev_expires FROM api_apps WHERE id = '" . (int) $app['id'] . "'");
-
-        $key_block = '
-                        <section class="ws-claude-key ws-agset-section mt-0">
-                            <h4 class="pg-group-label">' . h(lang('The application Pinegrap AI writes through')) . ': ' . h($app['name']) . ' <span class="pg-text-meta">#' . (int) $app['id'] . '</span></h4>
-                            <div class="pg-text-2">' . h(api_app_can_sign_in($doors, time())
-                                ? lang('Pinegrap AI uses only this application\'s name and permissions; its key and secret are not needed here.')
-                                : lang('It cannot sign in anywhere and needs no secret: Pinegrap AI runs inside this site.')) . '</div>
-                        </section>';
+/**
+ * The drawer "The latest requests" of Pinegrap AI's row in Site Settings.
+ *
+ * @param array $viewer
+ * @param bool  $in_dialog drawn in the settings dialog (pg_settings_drawer())
+ * @return string HTML, '' before the Pinegrap AI upgrade
+ */
+function ws_settings_ai_requests_drawer($viewer, $in_dialog)
+{
+    if (!ws_ai_schema_ready()) {
+        return '';
     }
 
-    $head = $dialog
-        ? '
-    <div id="pgset-ws-ai" class="pg-set-card">
-        <div class="card">
-            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                <span class="pg-title-section ws-grow">' . h(lang('Pinegrap AI in the channels')) . '</span>
-                ' . $state . '
-            </div>'
-        : '
-        <div class="card mt-7" id="ws-ai">
-            <div class="card-header d-flex align-items-center gap-3">
-                <h2 class="h6 mb-0 ws-grow"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . h(lang('Pinegrap AI in the channels')) . '</h2>
-                ' . $state . '
-            </div>';
-
-    return $head . '
-            <div class="card-body">
-                ' . ws_assistants_help_html('ws-ai') . '
-                <div class="row g-7">
-                    <div class="lg:col-7">
-                        ' . $key_block . '
-                        ' . ($dialog ? '<div class="ws-ai-connection">' : '<form method="post" action="' . h($self_url) . '#ws-ai">
-                            ' . get_token_field() . '
-                            <input type="hidden" name="ws_action" value="ai">') . '
-                            <div class="d-flex align-items-start gap-3">
-                                <input class="pg-switch" type="checkbox" name="' . $field_name('enabled') . '" value="1" id="ws_ai_enabled" aria-describedby="ws_ai_enabled-help"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
-                                <div><label class="pg-text-2" for="ws_ai_enabled">' . h(lang('Pinegrap AI can be asked in the channels with @ai')) . '</label>
-                                <div class="pg-field-help" id="ws_ai_enabled-help">' . h(lang('What is written in a channel where Pinegrap AI is asked is sent to the model at ai.pinegrap.com. Public channels are open to it, private ones only when their manager allows it.')) . '</div></div>
-                            </div>
-                            <details class="ws-agset-section ws-agset-advanced">
-                                <summary class="pg-group-label">' . h(lang('Use another application')) . '</summary>
-                                <div class="mt-3">
-                                    <label class="pg-field-label" for="ws_ai_app_id">' . h(lang('The application Pinegrap AI writes through')) . '</label>
-                                    <select class="pg-input pg-input-sm" name="' . $field_name('app_id') . '" id="ws_ai_app_id"' . $disabled . '>' . $options . '</select>
-                                    <ul class="list-unstyled pg-text-2 mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
-                                    <div class="pg-field-help">' . h(empty($readable)
-                                        ? lang('It reads no records: Pinegrap AI sees the channels and the tasks only.')
-                                        : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable))) . '.') . ' ' . h(lang('It reads with the rights of the person who asked, never more.')) . '</div>
-                                </div>
-                            </details>
-                            ' . ($admin ? ($dialog ? '' : '<button type="submit" class="pg-button pg-button-fill pg-button-sm mt-5">' . h(lang('Save')) . '</button>') : '<div class="pg-field-help">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
-                        ' . ($dialog ? '</div>' : '</form>') . '
-                    </div>
-                    <div class="lg:col-5">
-                        <div class="ws-claude-status">
-                            <h4 class="pg-group-label">' . h(lang('Licence')) . '</h4>
-                            <div class="mb-5"><span class="pg-pill ' . h(ws_ai_license_tone($license['tone'])) . ' text-wrap text-start">' . h($license['label']) . '</span></div>
-                            ' . (($config['model'] !== '') ? '<div class="pg-text-2 mb-5"><span class="pg-text-meta">' . h(lang('Model')) . ':</span> <code>' . h($config['model']) . '</code></div>' : '') . '
-                            ' . (!empty($missing) ? '<h4 class="pg-group-label">' . h(lang('Still missing')) . '</h4><ul class="pg-text-2 mb-5">' . $status_list . '</ul>' : '') . '
-                            ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '') . '
-                            ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
-                            ' . ($admin && $config['license_set'] ? $button('ai_test', 'pg-button pg-button-quiet pg-button-sm', '<i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('Try the connection')), '
-                                <div class="pg-field-help">' . h(lang('Checks the licence and asks the model for a one-word answer; it may take up to a minute.')) . '</div>', 'mb-5') : '') . '
-                            ' . (ws_ai_tokens_ready() ? '<div class="pg-text-2 fg-secondary mb-5">' . h(ws_ai_tokens_line(ws_ai_read_tokens())) . '</div>' : '') . '
-                            <h4 class="pg-group-label">' . h(lang('The latest requests')) . '</h4>
-                            <ul class="list-unstyled pg-card-inner ws-claude-recent">' . $recent . '</ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>' . ($dialog ? '
-    </div>' : '');
+    return pg_settings_drawer('pgset-ws-ai-requests', h(lang('The latest requests')), ws_ai_requests_drawer_html($viewer, ws_ai_latest_requests()), $in_dialog);
 }
 
 // The model assistants, answered with this file's loop.

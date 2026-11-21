@@ -76,7 +76,7 @@ function test_workspace_webhook_start_events_outputs_are_payload_keys()
 
 function test_workspace_webhook_start_events_kept_on_demand()
 {
-	pg_assert_same(array('inventory.changed'), pg_event_workspace_on_demand(), 'a stock change on every sale is kept only while a flow waits for it');
+	pg_assert_same(array('inventory.changed', 'customer.rhythm_stage_changed', 'customer.reorder_due'), pg_event_workspace_on_demand(), 'a stock change on every sale, and the rhythm pass\'s many customers a night, are kept only while a flow waits for them');
 	pg_assert_true(!pg_event_workspace_awaited('inventory.changed', array()), 'no active rule names it');
 	pg_assert_true(pg_event_workspace_awaited('inventory.changed', array('[{"type":"event","event":"inventory.changed"}]')));
 	pg_assert_true(!pg_event_workspace_awaited('inventory.changed', array('[{"type":"event","event":"stock.low"}]')));

@@ -152,6 +152,12 @@ function webhook_payloads_test_builders()
 		'pg_delivery_tower_event_payload' => function ($event = '') {
 			return pg_delivery_tower_event_payload(array('id' => 9, 'order_id' => 3, 'order_number' => '1001', 'order_type' => 'web', 'number' => 'N', 'carrier' => 'yurtici', 'state' => 'Ankara', 'city' => '', 'shipped_at' => 1000), 'stuck', 5, array(), 2000, ($event !== '') ? $event : 'shipment.problem', 'delivered');
 		},
+		'pg_customer_rhythm_event_payload' => function () {
+			return pg_customer_rhythm_event_payload(array('contact_id' => 4, 'stage' => 2, 'stage_before' => 1, 'interval_days' => 30, 'last_order_at' => 1000, 'updated_at' => 90000, 'chance' => 80, 'expected_value' => 100, 'last_order_id' => 3), '1001');
+		},
+		'pg_customer_rhythm_reorder_payload' => function () {
+			return pg_customer_rhythm_reorder_payload(array('contact_id' => 4, 'stage' => 1, 'stage_before' => 0, 'interval_days' => 30, 'last_order_at' => 1000, 'updated_at' => 90000, 'chance' => 80, 'expected_value' => 100, 'last_order_id' => 3), '1001', array(array('product_id' => 7, 'quantity' => 2, 'due' => 5000)), array(7 => array('P', 'Product')));
+		},
 		'pg_contact_group_members_event' => function () {
 			return pg_contact_group_members_event(3, 'Newsletter', array(4), array());
 		},

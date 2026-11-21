@@ -6,7 +6,8 @@
 - ad-conversions-ga4.md: GA4 Measurement Protocol (#10866): its Connections page, Measurement ID from the Google Analytics page, sealed API secret, sender, refunds from order_refunds, test
 - ad-conversions-log.md: Ad conversions log (#10907): the Events card on each service's Connections page (daily counts, last 50 events), the ad_events_refused operations alert, GET /reports/ad-conversions
 - ad-conversions-meta.md: Meta Conversions API (#10812): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row
-- ad-conversions-queue.md: ad_conversion_events (11.0.254): the three-input consent reader, status 0 rows at the payment step, queueing at completion, the job's pass, sweep, privacy
+- ad-conversions-privacy.md: ad_conversion_events in a person's erase and export: rows of their orders, and Lead and sign-up rows (order_id 0) found by the hashed e-mail in ids (#10955)
+- ad-conversions-queue.md: ad_conversion_events (11.0.254): the three-input consent reader, status 0 rows at the payment step, queueing at completion, the job's pass, sweep
 - ad-conversions-tiktok.md: TikTok Events API (#10862): its Connections page and gate, the sealed token, the sender, the E.164 phone hash, how TikTok's answers become a row's outcome, the test event, the registry row
 - ad-conversions-visitor-events.md: Ad events besides the purchase (#10868): Lead for picked forms, CompleteRegistration, add to cart (20 a cart), begin checkout once per order, only with consent; the receipt's data-pg-event-id
 - ad-conversions.md: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: the start file, which file holds each part, the rules every change keeps, C1 to C12 with PRs, what is not built [decision: decisions-made-product-87.md, decisions-made-schema-35.md]
@@ -72,6 +73,7 @@
 - api-if-match.md: If-Match on an update of the external API: 412 precondition_failed when the record changed since, which updates honour it (GET twin), how the tag is read, no lock
 - api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, /inventory, /inventory/moves, POST /inventory/transfer; scopes, refusals, dry run, inventory.changed
 - api-list-newest-first.md: sort=newest on the lists automation triggers sample (customers, form submissions, products, subscriptions, ERP invoices and quotes): the walk, the marked cursor, list_order.php
+- api-marketplace-repricing.md: GET /marketplaces/{account}/repricing and POST (PATCH) /marketplaces/{account}/repricing/{product}: each listing's price, floor, buybox rank and last change; setting its strategy and own price
 - api-mcp-client-streams.md: The MCP client reads an event-stream answer only until the event that answers its request (api_http_request() option complete); why curl's error 23 then counts as success; other callers unchanged
 - api-mcp-client.md: The site as an MCP client (includes/mcp/client.php, the Workspace's MCP servers): what a refusal says (OAuth challenge, moved address, old /sse address, JSON-RPC error, timeout) and why
 - api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why [decision: here]

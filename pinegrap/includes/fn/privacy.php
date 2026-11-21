@@ -867,8 +867,9 @@ function pg_privacy_erase_tables()
             'label_file' => '',
         )),
         // The ad services' events of the person's orders, sent or not: the
-        // buyer's ids and what each order said.
-        'ad_conversion_events' => array('find' => array('order_id' => 'order_ids'), 'action' => 'delete', 'fields' => array()),
+        // buyer's ids and what each order said; and their Lead and sign-up
+        // rows, which have no order, found by the hashed e-mail they hold.
+        'ad_conversion_events' => array('find' => array('order_id' => 'order_ids', 'id' => 'ad_conversion_ids'), 'action' => 'delete', 'fields' => array()),
         // A card the person bought loses the sender's name and message, a
         // card sent to them the address (_pg_privacy_erase_apply_gift_cards()).
         'gift_cards' => array('find' => array('order_id' => 'order_ids', 'recipient_email_address' => 'emails'), 'action' => 'anonymise', 'fields' => array(
@@ -1293,7 +1294,7 @@ function pg_privacy_customer_keys(array $emails, array $contact_ids)
  *                form_ids, account_ids, conversation_ids, file_ids,
  *                return_ids, audit_ids, cell_ids, revision_form_ids,
  *                wtable_row_ids, wtable_bin_ids, application_entry_ids,
- *                feedback_hashes,
+ *                feedback_hashes, ad_conversion_ids,
  *                customer_keys
  */
 function pg_privacy_erase_scope(array $found)
@@ -1321,6 +1322,7 @@ function pg_privacy_erase_scope(array $found)
         'application_entry_ids' => array(),
         'request_ids'      => array(),
         'feedback_hashes'  => array(),
+        'ad_conversion_ids' => array(),
         'customer_keys'    => pg_privacy_customer_keys($person['emails'], $person['contact_ids']),
     );
 
@@ -1438,6 +1440,14 @@ function pg_privacy_erase_scope(array $found)
     // Satisfaction survey answers are found by the hash of the address or
     // number they went to, as well as by the contact.
     $scope['feedback_hashes'] = pg_feedback_person_hashes(array_merge($scope['emails'], $scope['phones']));
+
+    // Lead and sign-up rows of the ad services have no order: they are found
+    // by the person's e-mail hashed as the queue hashes it.
+    $by_email = pg_ad_conversion_person_where($scope['emails']);
+
+    if (($by_email !== '') && pg_schema_has('ad_conversion_events', 'ids')) {
+        $scope['ad_conversion_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM ad_conversion_events WHERE " . $by_email));
+    }
 
     if ($scope['order_ids'] && pg_schema_has('order_returns', 'order_id')) {
         $scope['return_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM order_returns WHERE " . _pg_privacy_export_in('order_id', $scope['order_ids'])));

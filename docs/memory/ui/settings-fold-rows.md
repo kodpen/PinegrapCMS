@@ -21,7 +21,7 @@ description: Folded rows of a Site Settings pane (Assistants and agents, AT1): p
 - Claude: "Ready · last run 14:05" (the date too when not today), "no run yet", the first missing sentence (pill Not ready, attention), or "Switched off" (pill Off). Pinegrap AI and Voice: the same three states with their own ready and off lines.
 - Workspace agents: "3 agents · 1 not seen yet", pill "N waiting" (no attention: a waiting request is work, not a fault). MCP servers: "2 servers · 1 asks for a sign-in", pill Sign-in needed or Cannot be reached (attention), Ready when all are. Canvas templates: how many. Bulk changes: whether bulk deletes may be proposed.
 
-## Where is Claude's opened row described?
-- `ui/settings-claude-row.md`: its one column, the fold "Application and key" and its two drawers.
+## Where are the opened rows described?
+- `ui/settings-claude-row.md`: its one column, the fold "Application and key" and its two drawers. Pinegrap AI's and Voice's: `ui/settings-ai-voice-rows.md`.
 
 Related: docs/memory/ui/settings-modal-overview.md, docs/memory/ui/settings-modal-save-place.md, docs/memory/plans/assistants-settings-tidy.md
