@@ -36,6 +36,7 @@ description: Generated from the module field of the memory files: each includes/
 - `ai_visibility`: [[ai-visibility-figures]]
 - `application_programs`: [[application-review-programme]]
 - `application_review`: [[application-review-rules]]
+- `application_reviewers`: [[application-review-reviewers]]
 - `arrival_date_list_edit`: [[list-table-quick-edit-arrival-dates]]
 - `audience_doors`: [[audiences-door-join]], [[audiences-doors]]
 - `audiences`: [[audiences-overview]], [[audiences-recompute]], [[audiences-rules]], [[contact-group-rules]]

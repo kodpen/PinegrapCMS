@@ -11,6 +11,7 @@
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
 - application-review-programme.md: Application programme settings (AR2): the Forms screens, the period check in the submit path, the entry row with eligibility, the override, criteria templates
+- application-review-reviewers.md: A programme's Reviewers tab (AR3a): panel users and outside jurors, category pools, Remove, "Give out entries" per category, conflicts listed
 - application-review-rules.md: Pure rules of application review: eligibility codes, weighted sums, leniency correction, spread flag, balanced assignment, shortlist tie rule
 - application-review-store.md: Application review desk tables (11.0.258, #10832): defaults, personal data erase and export of them, audit_log types application_program and application_entry
 - asset-paths-and-inline-escaping.md: Local asset paths decoded before the parent-folder check, design asset files written under a plain name only, the hero's typed style escaped, the variant payload script with \u-escaped tags
