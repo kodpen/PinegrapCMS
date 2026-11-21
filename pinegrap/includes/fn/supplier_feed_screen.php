@@ -1628,11 +1628,13 @@ function pg_supplier_feed_product_card_html($items)
 
     $follow = true;
     $rows = '';
+    $several = count($items) > 1;
 
     foreach ($items as $item) {
         $follow = $follow && !empty($item['follow_price']);
         $seen = ((int) $item['seen_at'] > 0) ? get_relative_time(array('timestamp' => (int) $item['seen_at'], 'format' => 'plain_text')) : lang('Never');
-        $rows .= '<dt><a href="edit_supplier_feed.php?id=' . (int) $item['feed_id'] . '">' . h($item['name']) . '</a></dt>'
+        $chosen = ($several && !empty($item['active'])) ? ' ' . pg_pill(lang('In use'), 'success', 'data-pg-sf-followed') : '';
+        $rows .= '<dt><a href="edit_supplier_feed.php?id=' . (int) $item['feed_id'] . '">' . h($item['name']) . '</a>' . $chosen . '</dt>'
             . '<dd>' . h(lang(array('string' => 'Buy {var:1} · seen {var:2}', 'vars' => array(pg_supplier_feed_money_text($item['buy_price'], (string) $item['currency']), $seen)))) . '</dd>';
     }
 
@@ -1640,7 +1642,8 @@ function pg_supplier_feed_product_card_html($items)
                     <div class="card mb-5" id="pg_supplier_feed_card">
                         <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Supplier feed')) . '</h2>
                         <div class="card-body pt-0">
-                            <dl class="pg-kv">' . $rows . '</dl>
+                            <dl class="pg-kv">' . $rows . '</dl>'
+                            . ($several ? '<div class="pg-field-help mt-2">' . h(lang('The product follows the feed that has stock with the lowest buy price, for price and stock both.')) . '</div>' : '') . '
                             <input type="hidden" name="supplier_feed_follow_was" value="' . ($follow ? 1 : 0) . '" />
                             <div class="d-flex align-items-start gap-3 mt-3">
                                 <input type="checkbox" class="pg-switch" id="supplier_feed_follow_price" name="supplier_feed_follow_price" value="1"' . ($follow ? ' checked' : '') . ' aria-describedby="supplier_feed_follow_help" />

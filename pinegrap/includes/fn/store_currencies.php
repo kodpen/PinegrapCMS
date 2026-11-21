@@ -242,6 +242,7 @@ function pg_store_currency_rates_refresh($user_id)
     $fetched = pg_currency_rates_fetch($base_code, $wanted);
     $failed = array();
     $updated = 0;
+    $changed = array();
 
     foreach ($wanted as $code) {
         if (!isset($fetched[$code])) {
@@ -263,6 +264,7 @@ function pg_store_currency_rates_refresh($user_id)
 
             if ($store_rate !== number_format((float) $currency['exchange_rate'], 5, '.', '')) {
                 pg_announce('currency.updated', pg_store_currency_event($code, (int) $currency['id'], $store_rate, 0));
+                $changed[$code] = array((float) $currency['exchange_rate'], (float) $store_rate);
             }
         }
 
@@ -273,6 +275,13 @@ function pg_store_currency_rates_refresh($user_id)
         }
 
         $updated++;
+    }
+
+    // Supplier feeds priced in a changed currency are worked out again by the
+    // general job from the buy prices they keep.
+    if ($changed !== array()) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_choice.php');
+        pg_supplier_feed_rates_note($changed);
     }
 
     return array(

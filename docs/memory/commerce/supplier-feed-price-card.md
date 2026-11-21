@@ -24,7 +24,7 @@ module: supplier_feed_screen
 - "Pull history" (quiet) in the status column opens `#sf_runs`: the last 30 runs, date, state pill, By hand or Scheduled, the counts, the reason and the first 5 failed lines.
 
 ## What does the product screen show?
-- `product_builder.php`'s side column, under Stock by location: card "Supplier feed" (`pg_supplier_feed_product_card()`) for a product a feed's item carries: each feed with its link, buy price and last seen, and the switch "Price from the feed" (F5). Saving the product writes `follow_price` on all its items, only when the switch moved (`supplier_feed_follow_was`).
+- `product_builder.php`'s side column, under Stock by location: card "Supplier feed" (`pg_supplier_feed_product_card()`) for a product a feed's item carries: each feed with its link, buy price and last seen (with several feeds, the one in use first with the green "In use" pill and a line on how it is chosen, `supplier-feed-several.md`), and the switch "Price from the feed" (F5). Saving the product writes `follow_price` on all its items, only when the switch moved (`supplier_feed_follow_was`).
 
 ## What keeps the form safe?
 - The form starts with a hidden default submit (Save, or Read the feed before a read), so Return never presses Accept or Pull now (`ui/return-key-default-button.md`).

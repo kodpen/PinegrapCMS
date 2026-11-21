@@ -6331,6 +6331,7 @@
     "The product feed could not be registered in Merchant Center. Register it again on its page of Connections.": "Ürün akışı Merchant Center'a kaydedilemedi. Bağlantılar'daki kendi sayfasında yeniden kaydedin.",
     "The product feeds that are on were built in the last two days.": "Açık olan ürün akışları son iki gün içinde oluşturuldu.",
     "The product feeds were not built: {var:1}": "Ürün akışları oluşturulmadı: {var:1}",
+    "The product follows the feed that has stock with the lowest buy price, for price and stock both.": "Ürün; fiyatta da stokta da, stoku olan ve alış fiyatı en düşük beslemeyi izler.",
     "The product group could not be created.": "Ürün grubu oluşturulamadı.",
     "The product group does not exist.": "Ürün grubu mevcut değil.",
     "The product group has been deleted.": "Ürün grubu silindi.",
