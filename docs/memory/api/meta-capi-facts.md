@@ -24,6 +24,9 @@ module: ad_conversions_meta
 - Never hashed: `client_ip_address`, `client_user_agent`, `fbc`, `fbp`.
 - `fbc` is `fb.{subdomain_index}.{creation_time}.{fbclid}`, from the `_fbc` cookie or built from `fbclid`; `fbp` from the `_fbp` cookie.
 
+## How does a store sale go?
+- Read 2026-11-21 from developers.facebook.com `documentation/ads-commerce/conversions-api/offline-events` and `…/parameters`: `action_source` `physical_store` for every offline and store event; website events need `client_user_agent`, `action_source` and `event_source_url`, other events only `action_source`. Store events may be uploaded up to 62 days later, but the 7-day `event_time` limit still holds.
+
 ## What does Meta answer?
 - 2xx for a valid body: `events_received` (integer), `messages` (list), `fbtrace_id`. A 200 does not prove the event shows in Events Manager.
 - An invalid body: 4xx with `error`: `message`, `type`, `code`, `error_subcode`, `fbtrace_id`.

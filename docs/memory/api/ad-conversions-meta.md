@@ -9,7 +9,8 @@ module: ad_conversions_meta
 
 ## What does its page hold?
 - `connections.php?service=meta_capi`, under Visitors and privacy's gate (`connections_privacy_may_manage()`), for the page card and the writes `meta_capi_save` / `meta_capi_remove`.
-- "Connection details": "Pixel ID" (digits), "Access token" (password field, never drawn back), "Test event code", "Events sent" ticks (Purchase, Lead, Account opened, Add to cart, Begin checkout: `ad-conversions-visitor-events.md`), "Forms sent as Lead", "Without consent" › "Send events without the person" (C9, the purchase only), "Send personal data while the cookie notice is off" (C8) with its risk line. "Save" filled, "Send a test event" quiet (saves, then tries).
+- "Connection details": "Pixel ID" (digits), "Access token" (password field, never drawn back), "Test event code".
+- Then the choices block the three pages share (`ad-conversions-counter-sales.md`): "Events sent" switches (Purchase, Add to cart, Begin checkout, Customer account opened, Lead from a form: `ad-conversions-visitor-events.md`), "Forms sent as Lead", "Without consent", "Counter sales", "Send personal data while the cookie notice is off" (C8). "Save" filled, "Send a test event" quiet (saves, then tries).
 - Notice off and the box clear: a warning "The cookie notice is off: events go without the person" with a link to Cookie Consent.
 - Ticking or clearing the box writes its own activity log line. "Disconnect" in Status empties the row; due rows are then given up by the job.
 
@@ -18,7 +19,7 @@ module: ad_conversions_meta
 - The token is in `pg_reseal_registry()` (area `ad_conversions`, field `token`), so a key reset seals it again.
 
 ## How is a row sent?
-- `pg_ad_conversion_send_meta_capi()`: one event per POST, the token in the JSON body, never in the address. `action_source` website, `event_source_url` the site's address, the event id the order reference.
+- `pg_ad_conversion_send_meta_capi()`: one event per POST, the token in the JSON body, never in the address. `action_source` website, `event_source_url` the site's address, the event id the order reference. A counter sale: `physical_store` and no `event_source_url` (`meta-capi-facts.md`).
 - The person (C2) only when the row has it: `em`, `ph` hashed; `fbp`, `fbc`, address, browser name plain. The click id is read from the row's `ids` (`fbc`), never from `ad_click_ids.php`. Without the person `user_data` is an empty object.
 - Refused without a call (400, given up): no pixel or token, an event Meta has no name for (refund), an event older than 7 days less 10 minutes.
 

@@ -15,20 +15,18 @@ description: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: t
 - No network call in a request: an event is a queue row, checkout never waits.
 - Consent only through `pg_ad_conversion_consent_by()` (notice on, stored answer, the service's box), never `pg_consent_allows()`. Owner (2026-11-20, poll 175): notice off, no personal data unless the service's "Send personal data while the cookie notice is off" is ticked.
 - Without consent nothing of the person; a purchase (GA4 also a refund) goes without the person only with "Send events without the person".
-- Marketplace orders never; counter sales never while they have no setting.
+- Marketplace orders never; a counter sale only with the service's "Send counter sales" switch, never with the person (`ad-conversions-counter-sales.md`).
 - Keys sealed in `config_text` and in `pg_reseal_registry()`; each page under the Visitors and privacy gate. No write route in the API.
 - A service's request format, test mode and limits are read from its own document into its facts file, never from memory.
 - Money in minor units until the body. A click id seen before consent waits in the session only.
 - Architect (2026-11-20, message 10514): add to cart and begin checkout from the server, no new public endpoint, only with consent; the owner may turn it.
 
 ## Which feature is where?
-- C1 the ids at the payment step: #10732, click ids #10781. C2 hashing at send: #10732. C3 purchase at completion: #10732.
-- C4 refund (GA4 only): #10866. C5 Lead and registration, C6 add to cart (20 a cart) and begin checkout, C7 the receipt's event id: #10868.
+- C1 the ids at the payment step: #10732, click ids #10781. C2 hashing at send: #10732. C3 purchase at completion: #10732; its counter sale switch: the PR of `ad-conversions-counter-sales.md`.
+- C4 refund (GA4 only): #10866. C5 Lead and registration, C6 add to cart (20 a cart) and begin checkout, C7 the receipt's event id: #10868; the switches on GA4's and TikTok's pages: `ad-conversions-counter-sales.md`.
 - C8 the three pages and the notice-off box: #10812, #10866, #10862. C9 without the person: same PRs. C10, C10b the table and queue: #10732. C11 log and alert, C12 the report: #10907.
 
 ## What is not built?
-- C3's counter sale setting: `local` orders are never sent.
-- C5, C6 on GA4 and TikTok: their pages tick only Purchase (GA4 also Refund). Their senders already name `generate_lead`, `sign_up`, `add_to_cart`, `begin_checkout` (TikTok: Lead, CompleteRegistration, AddToCart, InitiateCheckout), but only Meta's page writes those ticks.
 - A Lead or registration row has `order_id` 0, so the privacy erase (by order id) does not find it; its `ids` hold the hashed e-mail until sent or given up, and the row is swept at 30 days.
 
 ## What was left out?

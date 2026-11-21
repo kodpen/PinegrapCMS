@@ -16,10 +16,10 @@ module: ad_conversions
 - Completion (`pg_ad_conversion_order_completed()`, called in `pg_order_complete()` after its lock, so a second completion never reaches it; `INSERT IGNORE` on the unique key as well): status 0 with the person → due (1) with `detail` (value in minor units, currency, order number, time, lines: SKU, quantity, price).
 - At completion, no row or a row without the person → a row without the person only when the service's `without_person` lists `purchase`, else given up (3, "No consent"). It reads no cookie: a payment service's message completes an order without the visitor.
 - Consent taken back (`consent_answer.php` → `pg_ad_conversion_consent_changed()`): marketing refused clears `ids` and `person` on the cart's and the just-completed order's rows with status 0 or 1.
-- Marketplace orders (`type = 'marketplace'`) are never sent; counter sales (`local`) not until their setting exists.
+- Marketplace orders (`type = 'marketplace'`) are never sent; counter sales (`local`) only through their own switch: `ad-conversions-counter-sales.md`.
 
 ## Where do the settings live?
-- `config_text` row `ad_conversions_<service>`, JSON: `connected`, `events` (missing → `purchase`), `person_notice_off` (the box), `without_person` (events sent without the person). Written by each service's Connections page (Meta: `ad-conversions-meta.md`; GA4: `ad-conversions-ga4.md`, which also writes refund rows); a service with no page queues nothing.
+- `config_text` row `ad_conversions_<service>`, JSON: `connected`, `events` (missing → `purchase`), `person_notice_off` (the box), `without_person` (events sent without the person), `lead_forms`, `counter_sales` (missing → off). Written by each service's Connections page (Meta: `ad-conversions-meta.md`; GA4: `ad-conversions-ga4.md`, which also writes refund rows); a service with no page queues nothing.
 
 ## How is a row sent?
 - `pg_ad_conversion_dispatch(10)` in `job.php`, apart from the webhook queue: sweep once a day (rows over 30 days, any status), then up to 50 due rows. Each row is claimed (`next_attempt_at` moved on), its event built at send (`pg_ad_conversion_event()`: amounts to decimals, e-mail and phone normalised and SHA-256 hashed then, ids only with the person) and handed to `pg_ad_conversion_send_<service>($event, $settings)` when that function exists; a service without a sender leaves its rows due.

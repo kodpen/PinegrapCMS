@@ -3969,6 +3969,7 @@
     "Counter sale": "Kasa satışı",
     "Counter sale #{var:1}": "Tezgâh satışı #{var:1}",
     "Counter sale #{var:1}, part {var:2}": "Tezgâh satışı #{var:1}, {var:2}. parça",
+    "Counter sales": "Kasa satışları",
     "Counting": "Sayılıyor",
     "Counting could not be turned on. Try again.": "Sayım açılamadı. Yeniden deneyin.",
     "Counting is on. The first figures appear here after the next visits to the site's pages.": "Sayım açık. İlk rakamlar, sitenin sayfalarına gelecek ilk ziyaretlerden sonra burada görünür.",

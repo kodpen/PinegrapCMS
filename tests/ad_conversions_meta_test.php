@@ -203,3 +203,31 @@ function test_ad_conversions_meta_places()
 	$reseal = ad_conversions_meta_test_source('includes/fn/reseal.php');
 	pg_assert_true(strpos($reseal, "'ad_conversions_meta_capi', 'connect', array('fields' => array('token'))") !== false, 'the token is sealed again on a key reset');
 }
+
+// A counter sale: physical_store, no page address, nothing of the person
+// even when the row carried ids; the switch is saved and read back.
+function test_ad_conversions_meta_counter_sale()
+{
+	$row = array(
+		'event' => 'purchase',
+		'event_id' => 'R7K2Q9',
+		'person' => 1,
+		'ids' => json_encode(array('fbp' => 'fb.1.1700000000000.123456789', 'fbc' => 'fb.1.1700000000000.AbCdEf', 'ip' => '203.0.113.9', 'user_agent' => 'Mozilla/5.0')),
+		'detail' => json_encode(array('value' => 12550, 'currency' => 'try', 'order_number' => '1042', 'time' => 1763600000, 'contents' => array(), 'counter_sale' => true)),
+	);
+	$server = pg_ad_conversion_meta_server_event(pg_ad_conversion_event($row, array('billing_email_address' => 'buyer@example.com', 'billing_phone_number' => '+90 532 111 22 33')), 'https://shop.example/');
+	$json = json_encode($server);
+
+	pg_assert_same('physical_store', $server['action_source'], 'a store event');
+	pg_assert_false(isset($server['event_source_url']), 'no page address for a store event');
+	pg_assert_same('{}', json_encode($server['user_data']), 'no e-mail, phone, browser or click id');
+	pg_assert_false(strpos($json, 'fb.1.') !== false || strpos($json, '203.0.113.9') !== false || strpos($json, hash('sha256', 'buyer@example.com')) !== false, 'nothing of the buyer');
+	pg_assert_same(125.5, $server['custom_data']['value'], 'the amount goes');
+
+	$stored = pg_ad_conversion_meta_stored(json_encode(array('connected' => true, 'pixel_id' => '111111', 'token' => 'sealed:iv', 'events' => array('purchase'))));
+	pg_assert_false($stored['counter_sales'], 'off on a row saved before the switch');
+	$saved = pg_ad_conversion_meta_settings_merge($stored, array('pixel_id' => '111111', 'events' => array('purchase'), 'counter_sales' => '1'), '');
+	pg_assert_true(pg_ad_conversion_settings_parse(json_encode($saved))['counter_sales'], 'the switch saved, read by the queue');
+	pg_assert_false(pg_ad_conversion_meta_settings_merge($stored, array('pixel_id' => '111111'), '')['counter_sales'], 'cleared when off');
+}
+

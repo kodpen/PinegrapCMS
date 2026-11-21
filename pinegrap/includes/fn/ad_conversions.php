@@ -37,7 +37,8 @@
  * A service's settings live in config_text row ad_conversions_<service>, a
  * JSON object: connected, events (the ticked event names), person_notice_off
  * (the box), without_person (the events sent without the person when there is
- * no consent).
+ * no consent), lead_forms (the form pages sent as Lead), counter_sales (a
+ * counter sale's purchase sent, never with the person).
  *
  * No network call is made in a request: an event is a queue row. Money stays
  * in minor units until the event is built.
@@ -91,7 +92,7 @@ function pg_ad_conversions_ready()
  * @param mixed $raw the stored JSON
  * @return array connected (bool), events (string[]), person_notice_off
  *               (bool), without_person (string[]), lead_forms (int[], the
- *               form pages whose records are a Lead)
+ *               form pages whose records are a Lead), counter_sales (bool)
  */
 function pg_ad_conversion_settings_parse($raw)
 {
@@ -108,6 +109,46 @@ function pg_ad_conversion_settings_parse($raw)
         'person_notice_off' => !empty($data['person_notice_off']),
         'without_person' => $list($data['without_person'] ?? array()),
         'lead_forms' => pg_ad_conversion_page_ids($data['lead_forms'] ?? array()),
+        'counter_sales' => !empty($data['counter_sales']),
+    );
+}
+
+/**
+ * Every event a service page can offer, in the order the pages list them.
+ * Pure.
+ *
+ * @return string[]
+ */
+function pg_ad_conversion_all_events()
+{
+    return array('purchase', 'refund', 'add_to_cart', 'begin_checkout', 'complete_registration', 'lead');
+}
+
+/**
+ * The choices a service page's form writes, shared by the three pages: the
+ * events ticked among those the service offers, the notice-off box, "Send
+ * events without the person" (the purchase only), the forms sent as Lead
+ * (kept only while the service offers Lead) and "Send counter sales". Pure.
+ *
+ * @param string[] $offered the events the service offers
+ * @param array    $post    events (string[]), person_notice_off,
+ *                          without_person (string[]), lead_forms (page ids),
+ *                          counter_sales
+ * @return array events, person_notice_off, without_person, lead_forms,
+ *               counter_sales
+ */
+function pg_ad_conversion_choices_merge(array $offered, array $post)
+{
+    $posted = is_array($post['events'] ?? null) ? $post['events'] : array();
+    $without = is_array($post['without_person'] ?? null) ? $post['without_person'] : array();
+    $events = array_values(array_intersect(pg_ad_conversion_all_events(), $offered, $posted));
+
+    return array(
+        'events' => $events,
+        'person_notice_off' => !empty($post['person_notice_off']),
+        'without_person' => in_array('purchase', $offered, true) && in_array('purchase', $without, true) ? array('purchase') : array(),
+        'lead_forms' => in_array('lead', $offered, true) ? pg_ad_conversion_page_ids($post['lead_forms'] ?? array()) : array(),
+        'counter_sales' => !empty($post['counter_sales']),
     );
 }
 
@@ -168,9 +209,10 @@ function pg_ad_conversion_consent_by($notice_on, array $choices, $box)
 }
 
 /**
- * Whether an order of this type is ever sent: never a marketplace order (the
- * marketplace's buyer, not the shop's), never a counter sale (no setting for
- * it yet). Pure.
+ * Whether an order of this type is sent from the site's checkout: never a
+ * marketplace order (the marketplace's buyer, not the shop's), never a
+ * counter sale, whose purchase goes only through
+ * pg_ad_conversion_counter_sale_completed(), without the person. Pure.
  *
  * @param mixed $type orders.type; '' or null on a site without the column
  * @return bool
@@ -482,7 +524,7 @@ function pg_ad_conversion_hash_phone($phone)
  * @param array $row   event, event_id, person, ids, detail
  * @param array $order billing_email_address, billing_phone_number
  * @return array event, event_id, time, value, currency, order_number,
- *               contents (id, quantity, price), user
+ *               contents (id, quantity, price), user, counter_sale (bool)
  */
 function pg_ad_conversion_event(array $row, array $order)
 {
@@ -500,8 +542,10 @@ function pg_ad_conversion_event(array $row, array $order)
     }
 
     $user = array();
+    $counter_sale = !empty($detail['counter_sale']);
 
-    if ((int) ($row['person'] ?? 0) === 1) {
+    // A counter sale never carries the person, whatever the row says.
+    if (((int) ($row['person'] ?? 0) === 1) && !$counter_sale) {
         $ids = json_decode((string) ($row['ids'] ?? ''), true);
 
         $user = array_filter(array(
@@ -519,7 +563,57 @@ function pg_ad_conversion_event(array $row, array $order)
         'order_number' => (string) ($detail['order_number'] ?? ''),
         'contents' => $contents,
         'user' => $user,
+        'counter_sale' => $counter_sale,
     );
+}
+
+/**
+ * The services a counter sale's purchase goes to: connected, the purchase
+ * ticked and "Send counter sales" on. Pure.
+ *
+ * @param array $settings service => pg_ad_conversion_settings_parse()
+ * @return string[]
+ */
+function pg_ad_conversion_counter_sale_plan(array $settings)
+{
+    $services = array();
+
+    foreach ($settings as $service => $one) {
+        if (!empty($one['connected']) && !empty($one['counter_sales']) && in_array('purchase', (array) ($one['events'] ?? array()), true)) {
+            $services[] = $service;
+        }
+    }
+
+    return $services;
+}
+
+/**
+ * The insert parameters of a counter sale's purchase row for each service:
+ * due at once, no ids, person 0, the detail marked as a counter sale. Pure.
+ *
+ * @param string[] $services pg_ad_conversion_counter_sale_plan()
+ * @param int      $order_id
+ * @param string   $event_id pg_ad_conversion_purchase_event_id()
+ * @param array    $detail   pg_ad_conversion_purchase_detail()
+ * @param int      $now
+ * @return array[] pg_ad_conversion_insert_sql()'s parameters
+ */
+function pg_ad_conversion_counter_sale_rows(array $services, $order_id, $event_id, array $detail, $now)
+{
+    $rows = array();
+
+    if (((int) $order_id <= 0) || ((string) $event_id === '')) {
+        return $rows;
+    }
+
+    $detail['counter_sale'] = true;
+    $detail = json_encode($detail);
+
+    foreach ($services as $service) {
+        $rows[] = array((string) $service, 'purchase', (int) $order_id, (string) $event_id, null, $detail, 0, 1, (int) $now, (int) $now);
+    }
+
+    return $rows;
 }
 
 /**
@@ -689,6 +783,52 @@ function pg_ad_conversion_order_completed($order_id, $total, $order_number)
             db_q("UPDATE ad_conversion_events SET status = 3, ids = NULL, last_error = ? WHERE service = ? AND event_id = ? AND status = 0",
                 array('No consent', $service, $event_id));
         }
+    }
+}
+
+/**
+ * A counter sale completed at the till (pg_local_order_complete(), after its
+ * claim, so a second completion never reaches it): its purchase is queued,
+ * without the person, for each service with "Send counter sales" on. Nothing
+ * of the buyer is read: no e-mail, phone, browser or click id.
+ *
+ * @param int    $order_id
+ * @param int    $total        the order's total, minor units
+ * @param string $order_number
+ * @return void
+ */
+function pg_ad_conversion_counter_sale_completed($order_id, $total, $order_number)
+{
+    $order_id = (int) $order_id;
+
+    if (($order_id <= 0) || !pg_ad_conversions_ready()) {
+        return;
+    }
+
+    $services = pg_ad_conversion_counter_sale_plan(pg_ad_conversion_settings_all());
+
+    if ($services === array()) {
+        return;
+    }
+
+    $order = pg_ad_conversion_order_row($order_id);
+
+    if (($order === null) || ((string) ($order['type'] ?? '') !== 'local')) {
+        return;
+    }
+
+    $lines = array();
+    $result = db_q("SELECT product_name, quantity, price FROM order_items WHERE order_id = ? ORDER BY id", array($order_id));
+
+    while ($result && ($line = mysqli_fetch_assoc($result))) {
+        $lines[] = $line;
+    }
+
+    $now = time();
+    $detail = pg_ad_conversion_purchase_detail($total, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', $order_number, $now, $lines);
+
+    foreach (pg_ad_conversion_counter_sale_rows($services, $order_id, pg_ad_conversion_purchase_event_id($order['reference_code']), $detail, $now) as $params) {
+        db_q(pg_ad_conversion_insert_sql(), $params);
     }
 }
 
@@ -1180,6 +1320,116 @@ function pg_ad_conversion_begin_checkout($order_id)
     $detail = pg_ad_conversion_purchase_detail($total, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', '', time(), $lines);
 
     pg_ad_conversion_visitor_write('begin_checkout', array_fill_keys($services, pg_ad_conversion_visitor_event_id('begin_checkout', $order['reference_code'])), (int) $order_id, $detail);
+}
+
+/**
+ * One switch row of a service page: the title, a line under it and the
+ * switch.
+ *
+ * @param string $id
+ * @param string $name    the field's name
+ * @param string $value
+ * @param bool   $checked
+ * @param string $title
+ * @param string $meta
+ * @return string
+ */
+function pg_ad_conversion_switch_row($id, $name, $value, $checked, $title, $meta)
+{
+    return '
+					<div class="pg-card-inner-row">
+						<div class="flex-grow-1">
+							<label class="pg-list-row-title d-block" for="' . h($id) . '">' . h($title) . '</label>
+							<div class="pg-text-meta">' . h($meta) . '</div>
+						</div>
+						<input type="checkbox" class="pg-switch" role="switch" name="' . h($name) . '" value="' . h($value) . '" id="' . h($id) . '"' . ($checked ? ' checked' : '') . '>
+					</div>';
+}
+
+/**
+ * The choices part of a service page's "Connection details" form, the same
+ * on the three pages: "Events sent" (a switch for each event the service
+ * offers), "Forms sent as Lead" when it offers Lead, "Without consent",
+ * "Counter sales" and "Send personal data while the cookie notice is off"
+ * with its warning.
+ *
+ * @param string $service
+ * @param array  $names     our event => the service's own name, in the
+ *                          order of pg_ad_conversion_all_events()
+ * @param array  $stored    pg_ad_conversion_settings_parse()
+ * @param bool   $notice_on pg_consent_enabled()
+ * @return string
+ */
+function pg_ad_conversion_choices_fields($service, array $names, array $stored, $notice_on)
+{
+    $events = '';
+    $consent_only = array('add_to_cart', 'begin_checkout', 'complete_registration', 'lead');
+
+    foreach ($names as $event => $their_name) {
+        $meta = $their_name;
+
+        if ($event === 'refund') {
+            $meta .= ' · ' . lang('A refund goes for an order whose purchase Google Analytics received, within 72 hours of the refund.');
+        } elseif ($event === 'lead') {
+            $meta .= ' · ' . lang('A record of a form picked below.');
+        } elseif (in_array($event, $consent_only, true)) {
+            $meta .= ' · ' . lang('Only after the visitor accepted marketing cookies.');
+        }
+
+        $events .= pg_ad_conversion_switch_row($service . '_event_' . $event, 'ad_events[]', $event, in_array($event, $stored['events'], true), pg_ad_conversion_log_event_label($event), $meta);
+    }
+
+    $forms = '';
+
+    if (isset($names['lead'])) {
+        foreach ((array) db_items("SELECT page_id, form_name FROM custom_form_pages ORDER BY form_name, page_id") as $form) {
+            $form_id = (int) $form['page_id'];
+            $forms .= '
+					<div class="d-flex align-items-center gap-2">
+						<input type="checkbox" class="pg-checkbox" name="ad_lead_forms[]" value="' . $form_id . '" id="' . h($service) . '_lead_form_' . $form_id . '"' . (in_array($form_id, $stored['lead_forms'], true) ? ' checked' : '') . '>
+						<label class="pg-text-2" for="' . h($service) . '_lead_form_' . $form_id . '">' . h((string) $form['form_name']) . '</label>
+					</div>';
+        }
+
+        $forms = '
+				<div>
+					<div class="pg-field-label">' . h(lang('Forms sent as Lead')) . '</div>' . (($forms !== '') ? $forms : '
+					<div class="pg-text-meta">' . h(lang('No form yet.')) . '</div>') . '
+					<div class="pg-field-help">' . h(lang('A record of a picked form is sent as Lead, when Lead is on.')) . '</div>
+				</div>';
+    }
+
+    $notice_line = '';
+
+    if (!$notice_on && !$stored['person_notice_off']) {
+        $notice_line = '
+				<div class="alert theme-warning small py-3 mb-0">' . h(lang('The cookie notice is off: events go without the person')) . '.
+					<a href="' . h(pg_settings_link('privacy', 'pgset-cookies')) . '">' . h(lang('Cookie Consent')) . '</a></div>';
+    }
+
+    return '
+				<div>
+					<div class="pg-field-label">' . h(lang('Events sent')) . '</div>
+					<div class="pg-card-inner">' . $events . '
+					</div>
+				</div>' . $forms . '
+				<div>
+					<div class="pg-field-label">' . h(lang('Without consent')) . '</div>
+					<div class="pg-card-inner">' . pg_ad_conversion_switch_row($service . '_without_purchase', 'ad_without_person[]', 'purchase', in_array('purchase', $stored['without_person'], true),
+                        lang('Send events without the person'), lang('Purchase') . ' · ' . lang('Only the amount and the products, when the buyer did not accept marketing cookies.')) . '
+					</div>
+				</div>
+				<div>
+					<div class="pg-field-label">' . h(lang('Counter sales')) . '</div>
+					<div class="pg-card-inner">' . pg_ad_conversion_switch_row($service . '_counter_sales', 'counter_sales', '1', !empty($stored['counter_sales']),
+                        lang('Send counter sales'), lang('Purchase') . ' · ' . lang('A sale at the till goes with the amount and the products only: no e-mail, phone, browser or click id.')) . '
+					</div>
+				</div>
+				<div>
+					<div class="pg-card-inner">' . pg_ad_conversion_switch_row($service . '_person_notice_off', 'person_notice_off', '1', $stored['person_notice_off'],
+                        lang('Send personal data while the cookie notice is off'), lang('The buyer was not asked, and the risk is the shop\'s. It acts only while the cookie notice is off.')) . '
+					</div>
+				</div>' . $notice_line;
 }
 
 // The services' senders.

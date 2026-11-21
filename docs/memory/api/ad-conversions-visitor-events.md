@@ -24,4 +24,4 @@ module: ad_conversions
 - The receipt carries `<span hidden data-pg-event-id="<order reference>">` (`pg_ad_conversion_receipt_marker()`): in `get_order_receipt.php` (both layouts) and in the designer's order view widget for the order this session just completed, never in an e-mail. A pasted pixel sends that id as its `eventID` and Meta counts the purchase once (C7).
 
 ## How does Meta take them?
-- Its page ticks all five (`pg_ad_conversion_meta_events()`), "Forms sent as Lead" lists the form pages, "Send events without the person" only the purchase. An event without an amount (Lead, registration) goes without `custom_data`.
+- Its page offers all five (`pg_ad_conversion_meta_events()`), as GA4's and TikTok's do (`ad-conversions-counter-sales.md`); "Forms sent as Lead" lists the form pages, "Send events without the person" only the purchase. An event without an amount (Lead, registration) goes without `custom_data`.
