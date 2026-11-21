@@ -87,6 +87,17 @@ function api_inventory_write($params) {
 
 	}
 
+	// The shelf address (includes/fn/product_bins.php), when one was sent,
+	// checked before the stock moves: the router held it to the column's
+	// length; what is left is text that is not UTF-8.
+	$shelf = array_key_exists('shelf', $params) ? pg_bin_clean($params['shelf']) : null;
+
+	if ($shelf === false) {
+
+		api_fail(422, 'shelf', lang('shelf is not a shelf address this site can keep.'));
+
+	}
+
 	$result = api_inventory_apply((int)$params['id'], '', $params['op'], (int)$params['quantity'], true, api_dry_run_requested(), $location);
 
 	if ($result['status'] === 'not_tracked') {
@@ -122,7 +133,15 @@ function api_inventory_write($params) {
 		'op'       => $params['op'],
 		'quantity' => (int)$params['quantity'],
 		'location' => $location
-	));
+	) + (is_string($shelf) ? array('shelf' => $shelf) : array()));
+
+	if (is_string($shelf) && pg_bins_ready()) {
+
+		pg_bins_write((int)$params['id'], array(pg_bin_location_key($location) => $shelf));
+
+		$result['inventory']['shelf'] = $shelf;
+
+	}
 
 	api_ok($result['inventory']);
 
@@ -1079,7 +1098,8 @@ function api_inventory_schema() {
 		'out_of_stock' => 'boolean',
 		'updated_at'   => 'datetime?',
 		'location_id'       => 'integer?',
-		'location_quantity' => 'integer?'
+		'location_quantity' => 'integer?',
+		'shelf'             => 'string?'
 	);
 
 }

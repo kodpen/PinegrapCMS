@@ -3514,6 +3514,10 @@ function pg_pb_form_values($set = NULL)
  * product, a variant row and a bundle keep the one box: a new product's
  * count lands at the default location on its first stock change.
  *
+ * The edit screen of a product that is not a bundle carries its shelf
+ * address (includes/fn/product_bins.php): a "Shelf" box beside each
+ * location's count, or one under the count without locations.
+ *
  * @param string     $mode       'create' or 'edit'
  * @param int        $product_id
  * @param string|int $total      products.inventory_quantity
@@ -3523,6 +3527,9 @@ function pg_pb_render_stock_quantity($mode, $product_id, $total)
 {
     $locations = pg_stock_screen_locations();
     $is_bundle = $product_id && pg_bundle_ids_among(array((int) $product_id));
+    $with_bins = ($mode === 'edit') && !$is_bundle && pg_bins_ready();
+    $bins = $with_bins ? pg_bins_of_product($product_id) : array();
+    $bin_help = $with_bins ? '<div class="form-text">' . lang('Shelf: where it sits in the store room, such as A-03-2.') . '</div>' : '';
 
     if (!$locations || ($mode !== 'edit') || $is_bundle) {
         return '<div class="col-12 pg-field-span-3">
@@ -3531,31 +3538,35 @@ function pg_pb_render_stock_quantity($mode, $product_id, $total)
                 ' . (($mode === 'edit') ? '<input type="hidden" name="inventory_quantity_was" value="' . h($total) . '" />' : '') . '
                 <div class="form-text pg-pb-group-only d-none">' . lang('Starting stock for every variant; each row can differ.') . '</div>
                 ' . ($locations ? '<div class="form-text">' . lang('The starting stock goes to the default location.') . '</div>' : '') . '
-            </div>';
+            </div>'
+            . (($with_bins && !$locations)
+                ? pg_bin_field_html(0, isset($bins[0]) ? $bins[0] : '', 'col-12 pg-field-span-3', $bin_help)
+                : '');
     }
 
     $quantities = pg_stock_screen_quantities(pg_stock_locations(), pg_stock_rows($product_id), (int) $total);
-    $output = '';
 
-    foreach ($locations as $location) {
-        $id = (int) $location['id'];
-        $quantity = isset($quantities[$id]) ? $quantities[$id] : 0;
-
-        $output .= '<div class="col-12 md:col-3">
-                <label for="stock_location_' . $id . '" class="form-label">' . h($location['name']) . '</label>
-                <input type="number" min="0" step="1" name="stock_location[' . $id . ']" id="stock_location_' . $id . '" class="form-control" value="' . $quantity . '" />
-                <input type="hidden" name="stock_location_was[' . $id . ']" value="' . $quantity . '" />
-            </div>';
-    }
-
-    return '<div class="col-12"><div class="form-label mb-0">' . lang('Stock by location') . '</div></div>'
-        . $output . '
+    return '<div class="col-12"><div class="form-label mb-0">' . lang('Stock by location') . '</div>' . $bin_help . '</div>'
+        . pg_bin_location_rows_html($locations, $quantities, $with_bins ? pg_bins_screen_values($locations, $bins) : null) . '
         <div class="col-12 md:col-3">
             <label for="inventory_quantity_total" class="form-label">' . lang('Total') . '</label>
             <input type="number" id="inventory_quantity_total" class="form-control" value="' . h((int) $total) . '" readonly />
         </div>';
 }
 
+
+/**
+ * The locations the stock card draws a "Shelf" box for: the enabled ones,
+ * or 0 alone without locations.
+ *
+ * @return int[]
+ */
+function pg_pb_bin_location_ids()
+{
+    $locations = pg_stock_screen_locations();
+
+    return $locations ? array_map('intval', array_column($locations, 'id')) : array(0);
+}
 
 /**
  * The pre-order switch beside the back order one, with the date the stock
@@ -6903,6 +6914,12 @@ function pg_pb_update_product($product_id)
         }
     }
 
+    // The shelf addresses the stock card drew (a bundle has none): a box
+    // emptied removes its address. Checked by pg_pb_validate_product_post().
+    if (isset($_POST['product_bin']) && pg_bins_ready() && !pg_bundle_ids_among(array((int) $product_id))) {
+        pg_bins_write($product_id, pg_bins_posted(pg_pb_bin_location_ids(), $_POST['product_bin'])['bins']);
+    }
+
     // The price history writes a row only when the stored price differs from
     // its newest one, so a save that left the price alone adds nothing.
     pg_price_history_record($product_id, 'panel');
@@ -7430,6 +7447,12 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         if ($variant_problem !== '') {
             output_error(h($variant_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
+    }
+
+    // A shelf address past what the column holds is refused before anything
+    // is written; the box's maxlength stops it in the browser already.
+    if (isset($_POST['product_bin']) && !pg_bins_posted(pg_pb_bin_location_ids(), $_POST['product_bin'])['ok']) {
+        output_error(h(lang(array('string' => '{var:1} is longer than the {var:2} characters accepted.', 'vars' => array(lang('Shelf'), PG_BIN_MAX)))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
     // A quantity by location that is not a whole count of zero or more is
