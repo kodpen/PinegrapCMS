@@ -12,7 +12,7 @@ module: booking_settings
 ## How is a service shown and edited?
 - One list row each (icon tile, name, `pg_booking_settings_service_line()`: "30 min · 250,00 TRY · Can be booked" or "Switched off", Edit, a menu with Move up and Move down).
 - Edit opens the service's drawer `pgset-booking-service-<id>` (`pg_settings_drawer()`, `ui/settings-drawer-card-form.md`): Name, Duration, the two breaks, Price, Deposit and its product, Description, Can be booked; its boxes carry `form=` and post as `booking_service[<id>][…]`; its foot Save is the pane's Save.
-- "Add a service" in the row's head opens `pgset-booking-service-new` (`booking_service[new]`); a typed name adds it, an empty one is passed over. No empty block is drawn (#BT1PR).
+- "Add a service" in the row's head opens `pgset-booking-service-new` (`booking_service[new]`); a typed name adds it, an empty one is passed over. No empty block is drawn (#11008).
 
 ## How is the order changed?
 - No Display order box any more. Each row posts a hidden `booking_service[<id>][order]` in the pane; Move up / Move down swap the row, rewrite every row's order from 0 and submit the form (a save at once: hidden inputs do not make the dialog's Save active). The add drawer's order is one past the highest.
