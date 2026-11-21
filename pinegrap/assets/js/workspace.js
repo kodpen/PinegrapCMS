@@ -14254,7 +14254,7 @@
                 var doc = loaded[1];
                 var options = {
                     fileName: message.file.name,
-                    save: { mode: 'url', url: url, label: mine ? t('file_edit_put') : t('file_edit_send') },
+                    save: { mode: 'url', url: url, label: mine ? t('file_edit_put') : t('file_edit_send'), short: mine ? t('file_edit_put_short') : t('file_edit_send') },
                     onSave: function () {
                         toast(mine ? t('file_replaced') : t('file_copy_sent'), 'success');
                         self.sync(!mine);
@@ -14264,6 +14264,7 @@
                 if (doc) {
                     options.blank = doc.artboard;
                     options.doc = doc;
+                    options.send = self.canvasSend(self.channel);
                 } else {
                     options.src = message.file.url;
                 }
@@ -14272,6 +14273,26 @@
             }).catch(function () {
                 toast(t('file_editor_missing'), 'danger');
             });
+        },
+
+        // The canvas's menu beside its main button: the other channels the
+        // person may write in (ws_library_channels), each taking the canvas
+        // as the person's own message (workspace_file_save.php?channel=).
+        canvasSend: function (channel) {
+            var self = this;
+
+            return {
+                current: channel ? channel.id : 0,
+                channels: function () {
+                    return api('ws_library_channels', {}).then(function (data) { return data.channels || []; });
+                },
+                url: function (id) {
+                    return CFG.urls.file_save + '?channel=' + id;
+                },
+                onSent: function () {
+                    self.sync(false);
+                }
+            };
         },
 
         // A new canvas in the image editor, posted here as the person's own
@@ -14284,7 +14305,8 @@
                 window.pgImageEditor.open({
                     blank: { width: 1080, height: 1080, background: '#ffffff' },
                     fileName: t('canvas_new'),
-                    save: { mode: 'url', url: CFG.urls.file_save + '?channel=' + channel.id, label: t('canvas_send') },
+                    save: { mode: 'url', url: CFG.urls.file_save + '?channel=' + channel.id, label: t('canvas_send'), short: t('canvas_send_short') },
+                    send: self.canvasSend(channel),
                     onSave: function () {
                         toast(t('canvas_sent'), 'success');
 

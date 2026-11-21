@@ -785,6 +785,8 @@
 
         var back = this.animReturn;
 
+        // A channel's Save to Files chose its folder for this dialog only.
+        this.filesFolder = null;
         this.animBox.remove();
         this.animBox = null;
         this.animBase = null;
@@ -1009,7 +1011,9 @@
     Editor.prototype.saveAnimationFile = function (blob, mode, name) {
         var self = this, pictures = M.animPictures(this.doc), head = {
             action: 'animation', mode: mode, doc: this.doc, base: this.versionBase || 0,
-            file_id: this.opts.fileId || 0, folder_id: (this.opts.save && this.opts.save.folderId) || 0,
+            // A channel's canvas saved to Files: the folder the person chose.
+            file_id: this.filesFolder ? 0 : (this.opts.fileId || 0),
+            folder_id: this.filesFolder ? this.filesFolder.id : ((this.opts.save && this.opts.save.folderId) || 0),
             name: (this.opts.save && this.opts.save.name) || name,
             target: (mode === 'replace') ? this.animFile.id : 0
         };
@@ -1099,9 +1103,16 @@
                     self.animUploading = false;
 
                     if (self.animTask === task) {
+                        var folder = self.filesFolder;
+
                         self.animTask = null;
                         self.closeAnimation();
-                        self.showMessage(t('animSaved').replace('{name}', r.name));
+
+                        if (folder) {
+                            self.showFilesSaved(folder);
+                        } else {
+                            self.showMessage(t('animSaved').replace('{name}', r.name));
+                        }
                     }
                 }, function (err) {
                     self.animUploading = false;
@@ -1157,7 +1168,7 @@
             return null;
         }
 
-        this.animBtn = el('button', { type: 'button', class: 'pgie-btn pgie-animbtn', title: t('animTitle'), onclick: function () { self.openAnimation(); } }, [
+        this.animBtn = el('button', { type: 'button', class: 'pgie-btn pgie-animbtn', title: t('animTitle'), 'aria-label': t('animTitle'), onclick: function () { self.openAnimation(); } }, [
             icon('film'), el('span', { class: 'pgie-vlabel', text: t('animSave') })
         ]);
         this.animBtn.hidden = true;

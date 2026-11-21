@@ -12592,6 +12592,121 @@
         dataSeries: dataSeries, dataMarks: dataMarks
     };
 
+    // ---- SEND (pg_image_editor.js: the main button's menu) ----
+
+    // The choices of the menu beside the main button (the split button's
+    // chevron), in order. c.channel: the caller's save posts in a channel
+    // (save.url with a send option); c.send: the caller can send to channels
+    // (the Workspace is on, the person in it); c.files: the person may edit a
+    // folder of Files (Save to Files); c.replace: Save writes over a file;
+    // c.motion: something moves; c.artboard: the document is a canvas, which
+    // is what a channel takes and what Download draws; c.convert: a photo
+    // the server can draw, sent to a channel as a copy turned into a canvas.
+    function sendMenu(c) {
+        var out = [];
+
+        c = c || {};
+
+        if (c.channel) {
+            if (c.send && c.artboard) {
+                out.push('sendOther');
+            }
+
+            if (c.files) {
+                out.push('savePicture');
+
+                if (c.motion) {
+                    out.push('saveVideo');
+                }
+            }
+
+            if (c.artboard) {
+                out.push('download');
+            }
+
+            return out;
+        }
+
+        if (c.replace) {
+            out.push('saveCopy');
+        }
+
+        if (c.send && (c.artboard || c.convert)) {
+            out.push('sendChannel');
+        }
+
+        return out;
+    }
+
+    // The channels a send offers: the ones the server says the person may
+    // write in, without the channel the canvas is posted in already and
+    // without a row marked post false, in the order given.
+    function sendChannels(list, current) {
+        var seen = {};
+
+        return (Array.isArray(list) ? list : []).filter(function (ch) {
+            var id = ch ? Number(ch.id) : 0;
+
+            if (!(id > 0) || (id === Number(current || 0)) || (ch.post === false) || seen[id]) {
+                return false;
+            }
+
+            seen[id] = true;
+
+            return true;
+        }).map(function (ch) {
+            return { id: Number(ch.id), name: String(ch.name || '') };
+        });
+    }
+
+    // The channels whose name holds the words typed, case and accents
+    // aside; all of them for no words.
+    function sendFilter(list, words) {
+        var fold = function (s) {
+            return String(s || '').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0131/g, 'i');
+        };
+        var w = fold(words).trim();
+
+        return w ? list.filter(function (ch) { return fold(ch.name).indexOf(w) >= 0; }) : list.slice();
+    }
+
+    // A downloaded canvas's file name: the canvas's name without its own
+    // extension or characters a file name cannot hold, as .png.
+    function sendFileName(name) {
+        var stem = String(name || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+        return (stem || 'canvas').slice(0, 120) + '.png';
+    }
+
+    // The folder Save to Files chose last, kept in this browser: written
+    // through set(key, value), read through get(key) (either may throw or
+    // answer nothing: then no folder is picked first).
+    var FILES_KEY = 'pgie.filesFolder';
+
+    function filesRemember(id, set) {
+        id = Number(id);
+
+        if (id > 0) {
+            set(FILES_KEY, String(id));
+        }
+    }
+
+    function filesRemembered(get) {
+        var id = Number(get(FILES_KEY));
+
+        return (id > 0) ? Math.floor(id) : 0;
+    }
+
+    // A folder's place in the indented list: two no-break spaces a level.
+    function filesIndent(depth) {
+        return new Array(Math.max(0, Math.min(12, Number(depth) || 0)) + 1).join('\u00a0\u00a0');
+    }
+
+    var SEND = {
+        sendMenu: sendMenu, sendChannels: sendChannels, sendFilter: sendFilter, sendFileName: sendFileName,
+        filesRemember: filesRemember, filesRemembered: filesRemembered, filesIndent: filesIndent
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -12609,7 +12724,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
