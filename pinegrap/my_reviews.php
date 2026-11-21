@@ -185,6 +185,7 @@ if ($mr === null) {
         'title' => lang('My reviews'),
         'extra classes' => 'form pg-measure-edit',
         'icon' => 'form',
+        'help' => 'forms#submitted-forms',
         'heading' => h(lang('My reviews')),
         'heading_description' => lang('The entries given to you to score. Others\' scores stay hidden.'),
     )) . '
@@ -266,6 +267,7 @@ echo pg_page_shell(array(
     'title' => $mr_name,
     'extra classes' => 'form',
     'icon' => 'form',
+    'help' => 'forms#submitted-forms',
     'heading' => h($mr_name) . ' ' . ($mr_pills[$mr_status] ?? ''),
     'heading_description' => $mr_program['name'] . ((string) $mr['entry']['category'] !== '' ? ' · ' . ($mr_choices[$mr['entry']['category']] ?? $mr['entry']['category']) : ''),
     'breadcrumb' => array(
