@@ -1,6 +1,6 @@
 ---
 name: form-adorn-settings-cards
-description: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the add-on type that keeps the rows 38px tall, what stays an input-group
+description: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the unit in the field's own type, what stays an input-group
 ---
 
 ## Which settings fields are form-adorn?
@@ -15,8 +15,8 @@ description: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fi
 - The `.pg-set-card` row shape test (`:has(> .form-label):has(...)`) and the control placement (`grid-area: pgctrl`) in backend.src.css list `> .form-adorn` beside `> .input-group`; without it a converted cell fell out of the two-column row.
 - The `pg-f-xs/sm/md/lg` caps need no line of their own: the wrapper is a `.form-control`.
 
-## Why does the add-on keep a larger type?
-- An input-group was 38px tall because its add-on used the body size (16px / 24px), while a plain settings field is 33.5px (13px). Drawn at the field's size, every converted row lost 4-5px.
-- `.pg-set-card .form-adorn > .form-adorn-text` takes `--bs-btn-input-font-size` and `--bs-btn-input-line-height`, and the wrapper aligns on the baseline so value and unit share one line. Measured before and after (1440 and 390px): width, height, right edge, label offset and row height of every field unchanged.
+## What size is the unit?
+- The field's own: `.pg-set-card .form-adorn > .form-adorn-text` inherits the field's 13px and line height, so the unit is never larger than the number and the field is 32px like a plain one beside it. The wrapper aligns on the baseline.
+- Before, the add-on took the body size (16px), kept from the input-group it replaced so a row stayed 38px tall (#2501). The settings scan of 2026-11-21 (agent channel message 11676) found the unit bigger than its number on every pane; the architect bound the unit to the field's size (request 2363; `ui/settings-card-shared-style.md`). Test: `tests/bs6_form_adorn_test.php`.
 
 Related: docs/memory/ui/form-adorn.md, docs/memory/ui/settings-card-row-layout.md, docs/memory/ui/settings-card-field-widths.md

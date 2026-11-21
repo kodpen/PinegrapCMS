@@ -1477,7 +1477,7 @@ function ws_templates_settings_card($self_url, $viewer, $form = null)
     }
 
     $intro = '<p class="small fg-secondary">' . h(lang('A template sets a channel up with its tasks, notes, summary and pinned message: when a channel is made from it, or later from the channel\'s menu.')) . '</p>';
-    $new = '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h($edit_url) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New template')) . '</a>';
+    $new = '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($edit_url) . '"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New template')) . '</a>';
 
     if ($form !== null) {
         return '

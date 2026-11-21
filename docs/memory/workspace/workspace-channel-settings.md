@@ -18,6 +18,10 @@ description: Channel templates, voice transcripts and the GitHub card in Site Se
 - Fields `ws_voice_*` (old `voice_*`; `ws_voice_service` the provider since CX9b), saved with the pane's Save: `ws_voice_settings_input($post, $prefix)`, `ws_voice_settings_check()` (each refused field, marked `ws_voice_<field>`, nothing stored), `ws_voice_settings_write($input, $liveform, $refuse)`. The old screen's `ws_voice_settings_post()` gives the first refusal as its error.
 - A write clears both services' last errors and the transcripts' wait, so `ws_voice_settings_changed()` (pure) skips an unchanged card; a typed key or a ticked remove box is a change. Role 0 only: others see the fields disabled, not posted.
 
+## How are the pane's switches and heads drawn?
+- Link previews and Calls: the master switch is a settings row like every other pane's (`.row > .col-12 > .form-field`, name and help on the left, the switch at the end), not a switch before its label. Their state is a `pg-pill` in the card head (`pg-pill-success` On, plain Off), the same on both cards.
+- Channel templates: New template is the quiet small button of a card head (`pg-button pg-button-quiet pg-button-sm`), as New department and Add a server. The Workspace screen's own card keeps its button.
+
 ## Where are the GitHub links?
 - On GitHub's page of Connections since #10418 (`ui/connections-service-page.md`). The Channels card `pgset-ws-github` (`ws_github_links_settings_card($viewer)`) only counts the links and leads there; its drawer and its save buttons are gone.
 
