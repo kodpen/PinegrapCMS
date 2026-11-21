@@ -63,8 +63,8 @@ function test_ws_voice_unheard_words_and_line()
 	pg_assert_same('', ws_voice_unheard_words('other'), 'an unknown reason has no words');
 
 	pg_assert_contains('switched off', ws_voice_unheard_words('off'));
-	pg_assert_contains('Workspace Settings', ws_voice_unheard_line('off'), 'off names the settings card');
-	pg_assert_contains('Voice message transcripts', ws_voice_unheard_line('off'), 'off names the card');
+	pg_assert_contains('Site Settings › Assistants and agents', ws_voice_unheard_line('off'), 'off names the settings category');
+	pg_assert_contains('› Voice', ws_voice_unheard_line('off'), 'off names the row');
 	pg_assert_contains('channel', ws_voice_unheard_words('skipped'));
 	pg_assert_contains('channel menu', ws_voice_unheard_line('skipped'), 'skipped names the channel switch');
 	pg_assert_contains('Voice messages are transcribed here', ws_voice_unheard_line('skipped'), 'skipped names the menu entry');

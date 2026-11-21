@@ -60,7 +60,7 @@ function ws_voice_js_strings()
         // recording (ws_voice_channel_unheard()).
         'voice_unheard_off' => lang('Assistants will not hear this recording: voice message transcripts are switched off.'),
         'voice_unheard_skipped' => lang('Assistants will not hear this recording: voice messages are not transcribed in this channel.'),
-        'voice_unheard_settings' => lang('Switch them on: Workspace Settings › Voice message transcripts'),
+        'voice_unheard_settings' => lang('Switch them on: Site Settings › Assistants and agents › Voice'),
         'voice_unheard_menu' => lang('A manager switches it on in the channel menu: Voice messages are transcribed here.'),
         'voice_browser_hint' => lang('This browser writes the recording out on this device; the text goes with it for the assistants.'),
         'voice_browser_working' => lang('Writing the recording out…'),
@@ -3023,13 +3023,13 @@ function ws_voice_unheard_line($reason)
 
     switch ((string) $reason) {
         case 'off':
-            $place = 'an administrator switches them on under Workspace Settings › Voice message transcripts';
+            $place = 'an administrator switches them on under Site Settings › Assistants and agents › Voice';
             break;
         case 'skipped':
             $place = 'a manager of the channel allows them in the channel menu, "Voice messages are transcribed here"';
             break;
         case 'failed':
-            $place = 'the person can record it again or write it; an administrator sees the service under Workspace Settings › Voice message transcripts';
+            $place = 'the person can record it again or write it; an administrator sees the service under Site Settings › Assistants and agents › Voice';
             break;
         default:
             $place = 'it will be heard once it is written out';
