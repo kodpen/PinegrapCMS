@@ -1199,6 +1199,18 @@ if (function_exists('pg_booking_reminders_run')) {
 
 }
 
+// Application review reminders (pg_application_reminders_run() in
+// includes/fn/application_my_reviews.php): three days and one day before a
+// round's end, each reviewer with entries left gets one e-mail. Before the
+// mail pass, so a reminder made now goes out in this run. Nothing on a site
+// without the programme tables.
+if (pg_application_program_ready()) {
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_my_reviews.php');
+    pg_application_reminders_run(time());
+
+}
+
 // Satisfaction surveys (pg_feedback_job_run() in includes/fn/feedback_sends.php):
 // the periodic NPS rounds, then, between 09:00 and 20:00 site time, the
 // surveys due after their delay and the one reminder. Before the mail pass,
