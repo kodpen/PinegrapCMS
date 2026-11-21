@@ -679,6 +679,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-46.md: What does the set-up journey get? (architect, 2026-11-21)
 - decisions-made-schema-46.md: What does prototype approval get? (architect, 2026-11-21)
 - decisions-made-schema-46.md: Who sets the columns?
+- decisions-made-schema-47.md: Where are the rules and the earlier parts?
+- decisions-made-schema-47.md: Which columns do the walk-in queue's tables have? (architect, 2026-11-21, #10956)
+- decisions-made-schema-47.md: What does the walk-in queue do with personal data? (architect, 2026-11-21)
+- decisions-made-schema-47.md: Which columns do the volunteer tables have? (architect, 2026-11-21, #10949)
+- decisions-made-schema-47.md: How are a volunteer's document file and erasure handled? (architect, 2026-11-21)
+- decisions-made-schema-47.md: Which migration label do two table steps open at once take?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
