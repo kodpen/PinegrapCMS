@@ -991,14 +991,18 @@ if (pg_privacy_rules_due()) {
 }
 
 // The Privacy centre's request box (includes/fn/privacy_requests.php):
-// requests never proven are swept after 7 days, and open ones are reminded
-// of at 7 and 2 days left, each once. Nothing on a site without the table.
+// requests never proven are swept after 7 days, open ones are reminded of
+// at 7 and 2 days left, each once, and an answer's export file is deleted
+// once its download link has ended. Nothing on a site without the table.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
 
 if (pg_privacy_requests_ready()) {
 
     $privacy_requests_swept = pg_privacy_requests_sweep();
     pg_privacy_requests_remind();
+
+    // The export file of an information answer goes when its link ends.
+    pg_privacy_link_sweep();
 
     if ($privacy_requests_swept > 0) {
         log_activity(lang(array(

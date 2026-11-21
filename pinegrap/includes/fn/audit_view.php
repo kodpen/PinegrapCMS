@@ -613,6 +613,8 @@ function pg_audit_view_labels($kind)
             'answer'  => lang('Answered'),
             'refuse'  => lang('Refused'),
             'close'   => lang('Closed'),
+            'link'    => lang('Download link sent'),
+            'download' => lang('Downloaded'),
         ),
         'source' => array(
             'panel' => lang('Panel'),
