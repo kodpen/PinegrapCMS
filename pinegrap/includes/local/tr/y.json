@@ -1362,6 +1362,7 @@
     "Your unsent e-mail was brought back.": "Gönderilmemiş e-postanız geri getirildi.",
     "Your updates have been <strong>canceled</strong>": "Güncellemeleriniz <strong>iptal edildi</strong>",
     "Your updates have been <strong>saved</strong>.": "Güncellemeleriniz <strong>kaydedildi</strong>.",
+    "Your user has no e-mail address, so the test has nowhere to go.": "Kullanıcınızın e-posta adresi yok, bu yüzden deneme gidecek bir yer bulamıyor.",
     "Your user has no e-mail address: type one to send the test to.": "Kullanıcınızın e-posta adresi yok: denemenin gideceği bir adres yazın.",
     "Your user name, if you have one": "Varsa kullanıcı adınız",
     "Your username has been updated. Username: {var:1}": "Kullanıcı adınız güncellendi. Kullanıcı adı: {var:1}",

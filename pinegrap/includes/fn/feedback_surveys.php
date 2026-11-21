@@ -394,15 +394,23 @@ function pg_feedback_sent_after_words(array $survey)
         return lang(array('string' => 'Every {var:1} months', 'vars' => array((int) $survey['filter']['every'])));
     }
 
-    $what = array('booking' => 'a booking', 'ticket' => 'an event', 'course' => 'a course', 'form' => 'a form', 'delivery' => 'a delivery', 'mail' => 'a mail conversation');
-    $after = lang($what[$survey['touchpoint']] ?? 'a booking');
+    // Whole sentences, so each language can say them in its own order.
+    $words = array(
+        'booking'  => array('Right after a booking', '{var:1} hours after a booking', '{var:1} days after a booking'),
+        'ticket'   => array('Right after an event', '{var:1} hours after an event', '{var:1} days after an event'),
+        'course'   => array('Right after a course', '{var:1} hours after a course', '{var:1} days after a course'),
+        'form'     => array('Right after a form', '{var:1} hours after a form', '{var:1} days after a form'),
+        'delivery' => array('Right after a delivery', '{var:1} hours after a delivery', '{var:1} days after a delivery'),
+        'mail'     => array('Right after a mail conversation', '{var:1} hours after a mail conversation', '{var:1} days after a mail conversation'),
+    );
+    $sentences = $words[$survey['touchpoint']] ?? $words['booking'];
     $delay = pg_feedback_delay_split($survey['delay_minutes']);
 
     if ($delay['amount'] === 0) {
-        return lang(array('string' => 'Right after {var:1}', 'vars' => array($after)));
+        return lang($sentences[0]);
     }
 
-    return lang(array('string' => ($delay['unit'] === 'days') ? '{var:1} days after {var:2}' : '{var:1} hours after {var:2}', 'vars' => array($delay['amount'], $after)));
+    return lang(array('string' => $sentences[($delay['unit'] === 'days') ? 2 : 1], 'vars' => array($delay['amount'])));
 }
 
 /**

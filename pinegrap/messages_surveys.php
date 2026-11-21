@@ -40,7 +40,7 @@ $surveys_rows = array();
 foreach ($surveys as $survey) {
     $id = (int) $survey['id'];
     $remove = $survey['used']
-        ? array('label' => lang('Archive'), 'icon' => 'bi-archive', 'confirm' => lang('The survey is switched off and leaves this list. Its answers stay in the results.'))
+        ? array('label' => lang('Archive'), 'icon' => 'bi-archive', 'confirm' => lang('The survey is switched off and leaves the list. Its answers stay in the results.'))
         : array('label' => lang('Delete'), 'icon' => 'bi-trash', 'confirm' => lang('The survey is deleted. Nothing was sent with it.'));
 
     $surveys_rows[] = array(

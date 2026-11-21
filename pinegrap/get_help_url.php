@@ -265,6 +265,8 @@ function get_help_url($properties = array())
         'messages_automatic'             => 'campaigns',
         'messages_templates'             => 'campaigns',
         'messages_sends'                 => 'site-settings#mail-queue',
+        'messages_surveys'               => 'campaigns',
+        'edit_feedback_survey'           => 'campaigns',
         'messages_channels'              => 'site-settings',
 
         // Commerce
