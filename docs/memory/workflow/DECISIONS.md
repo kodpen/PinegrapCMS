@@ -516,6 +516,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-94.md: What does "Go live" do? (owner, 2026-11-21, agent channel poll 209, channel message 11152)
 - decisions-made-product-95.md: Where are the rules and the earlier parts?
 - decisions-made-product-95.md: How does the exported data of an information request reach the person? (owner, 2026-11-21, in the architect's window)
+- decisions-made-product-96.md: Where are the rules and the earlier parts?
+- decisions-made-product-96.md: Does the KVKK notice depend on the distance sales switch? (owner, 2026-11-21, poll 214)
+- decisions-made-product-96.md: Where is the retention of site chats set, and is it applied at the update? (owner, 2026-11-21, poll 215)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?

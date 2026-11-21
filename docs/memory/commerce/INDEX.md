@@ -85,7 +85,7 @@
 - catalog-stock-quantity-input.md: How the Catalog Manager stock edits and the product list's Modify Selected read a typed quantity: grouped the panel's way (1.200), whole counts only, else refused
 - catalog-variant-set-writer.md: pg_catalog_variant_set_create(): input array, shared check, prices in minor units, callers (product screen, POST /product-groups/variant-sets), what it skips
 - checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card [decision: here]
-- checkout-kvkk-notice.md: KVKK notice link and optional consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection and designer node, the kvkk copy, consent log row
+- checkout-kvkk-notice.md: KVKK notice link and optional consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection and designer node, the kvkk copy, consent log row [decision: decisions-made-product-96.md]
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
 - checkout-requested-arrival-date.md: Requested arrival date at checkout: which one a visitor may post, how the designed checkout refills and bounds the custom date box, where an unusable date is reported
 - checkout-state-list.md: The checkout's state as a text box and a pick list (_eo_fit_state_lists(), #6146), one state script per address (data-pg-sa-for), the order screen's İlçe/İl billing labels
