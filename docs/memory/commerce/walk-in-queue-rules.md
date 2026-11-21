@@ -5,7 +5,7 @@ module: walk_in_queue
 ---
 
 ## Where are the queue's rules?
-- `includes/fn/walk_in_queue.php`, pure: no table read, plain arrays in, so the store, the desk, the person's page and the API share one answer. Tests: `tests/walk_in_queue_test.php`. Built in #PR (step WQ1a of the walk-in-queue plan).
+- `includes/fn/walk_in_queue.php`, pure: no table read, plain arrays in, so the store, the desk, the person's page and the API share one answer. Tests: `tests/walk_in_queue_test.php`. Built in #10924 (step WQ1a of the walk-in-queue plan).
 
 ## In what order are people called?
 - `pg_waiting_order($tickets, $grace_seconds)`: priority people first (a non-empty `priority` reason), then by `pg_waiting_order_time()`, then by id.
