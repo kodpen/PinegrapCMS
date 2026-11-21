@@ -51,6 +51,13 @@ function settings_workspace_gate_test_categories()
 		}
 	}
 
+	// E-mail is kept in a function of its own, read without the database,
+	// in its place in the list.
+	if (strpos($source, "'email' => pg_settings_email_category(),") !== false) {
+		$at = array_search('contact', array_keys($categories), true) + 1;
+		$categories = array_slice($categories, 0, $at, true) + array('email' => pg_settings_email_category()) + array_slice($categories, $at, null, true);
+	}
+
 	return $categories;
 }
 
@@ -63,7 +70,7 @@ function test_settings_workspace_gate_heading_and_keys()
 {
 	$categories = settings_workspace_gate_test_categories();
 
-	pg_assert_same(20, count($categories), 'the registry\'s categories are read');
+	pg_assert_same(19, count($categories), 'the registry\'s categories are read');
 	pg_assert_same(settings_workspace_gate_test_workspace_keys(), array_slice(array_keys($categories), -3), 'the three Workspace categories close the list');
 
 	foreach ($categories as $key => $category) {
@@ -96,10 +103,14 @@ function test_settings_workspace_gate_right_holder_opens_workspace_only()
 	$categories = settings_workspace_gate_test_categories();
 	$reader = array('manager' => false, 'workspace' => true, 'mail' => true);
 
-	pg_assert_same(array_merge(array('mailboxes'), settings_workspace_gate_test_workspace_keys()), array_keys(pg_settings_categories_for(array('role' => 3), $reader, $categories)));
+	$open = pg_settings_categories_for(array('role' => 3), $reader, $categories);
+
+	pg_assert_same(array_merge(array('email'), settings_workspace_gate_test_workspace_keys()), array_keys($open));
+	pg_assert_same(array('mailboxes'), array_keys($open['email']['tabs']), 'E-mail with its Mailboxes tab alone');
+	pg_assert_same(array('pgset-ws-mail'), array_keys($open['email']['sections']), 'and only that tab\'s card');
 
 	foreach ($categories as $key => $category) {
-		pg_assert_same(pg_settings_category_is_workspace($category), pg_settings_category_open($category, $reader), $key);
+		pg_assert_same(pg_settings_category_is_workspace($category) || ($key === 'email'), pg_settings_category_open($category, $reader), $key);
 	}
 }
 
@@ -109,8 +120,12 @@ function test_settings_workspace_gate_mailboxes_follow_the_right_not_the_switch(
 {
 	$categories = settings_workspace_gate_test_categories();
 
-	pg_assert_true(pg_settings_category_open($categories['mailboxes'], array('manager' => false, 'workspace' => false, 'mail' => true)), 'the right with the Workspace off');
-	pg_assert_false(pg_settings_category_open($categories['mailboxes'], array('manager' => true, 'workspace' => false, 'mail' => false)), 'a manager without the right');
+	$right = array('manager' => false, 'workspace' => false, 'mail' => true);
+	$manager = array('manager' => true, 'workspace' => false, 'mail' => false);
+
+	pg_assert_same(array('mailboxes'), array_keys(pg_settings_tabs_open($categories['email'], $right)), 'the right with the Workspace off opens the Mailboxes tab');
+	pg_assert_same(array('sending'), array_keys(pg_settings_tabs_open($categories['email'], $manager)), 'a manager without the right opens the Sending tab alone');
+
 	pg_assert_false(pg_settings_category_open($categories['workspace_channels'], array('manager' => false, 'workspace' => false, 'mail' => true)), 'the Workspace categories stay behind the switch');
 }
 
@@ -123,7 +138,8 @@ function test_settings_workspace_gate_manager_without_right_is_refused()
 	$open = array_keys(pg_settings_categories_for(array('role' => 2), $reader, $categories));
 
 	pg_assert_same(16, count($open), 'every other category');
-	pg_assert_false(in_array('mailboxes', $open, true), 'Mailboxes is refused too');
+	pg_assert_true(in_array('email', $open, true), 'E-mail opens on its Sending tab');
+	pg_assert_false(isset(pg_settings_categories_for(array('role' => 2), $reader, $categories)['email']['tabs']['mailboxes']), 'its Mailboxes tab is refused');
 
 	foreach (settings_workspace_gate_test_workspace_keys() as $key) {
 		pg_assert_false(in_array($key, $open, true), $key . ' is refused');

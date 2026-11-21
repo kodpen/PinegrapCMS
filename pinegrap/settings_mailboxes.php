@@ -2,12 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - Mailboxes: the boxes whose e-mail is read in Communication
- * › Incoming e-mail. Opened by a holder of the Workspace settings right,
- * whatever the Workspace's switch (pg_settings_category_open(), gate
- * 'mail'). Everything the screen does lives in the shared flow and in the
- * two modules named after this key; a wrapper exists because the root of
- * the software holds the files a URL asks for.
+ * Site Settings › E-mail on its Mailboxes tab: the boxes whose e-mail is
+ * read in Communication › Incoming e-mail. The tab opens for a holder of the
+ * Workspace settings right, whatever the Workspace's switch (gate 'mail').
+ * The old address of the category that became that tab
+ * (pg_settings_moved_categories()); Bring in an .eml file posts here.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com

@@ -44,6 +44,22 @@ include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/drawer.php');
 
 $pg_settings_key      = (string) PG_SETTINGS_KEY;
+
+// Where this screen posts to and returns to. Built from the key rather than
+// from the request, so nothing a visitor sends can steer it. A category that
+// became a tab keeps its page, which opens that tab.
+$pg_settings_self = pg_settings_url($pg_settings_key);
+
+// The tab a category with tabs opens on ('' for its first): the old page of
+// a category that became one of its tabs names it.
+$pg_settings_tab = '';
+$pg_settings_moved = pg_settings_moved_categories();
+
+if (isset($pg_settings_moved[$pg_settings_key])) {
+    $pg_settings_tab = $pg_settings_moved[$pg_settings_key][1];
+    $pg_settings_key = $pg_settings_moved[$pg_settings_key][0];
+}
+
 $pg_settings_category = pg_settings_category($pg_settings_key);
 
 if ($pg_settings_category === null) {
@@ -64,7 +80,10 @@ if (!pg_settings_may_open($pg_settings_key, $user)) {
     validate_area_access($user, 'manager');
 }
 
-$pg_settings_workspace = pg_settings_category_is_workspace($pg_settings_category);
+// The category as this reader sees it: a category with tabs keeps the tabs
+// the reader may open.
+$pg_settings_reader   = pg_settings_reader($user);
+$pg_settings_category = pg_settings_category_for_reader($pg_settings_category, $pg_settings_reader);
 
 $liveform = new liveform('settings');
 
@@ -76,16 +95,12 @@ $pg_settings_head        = '';
 // No outer dialog on this page: a card's drawer is Bootstrap's (drawer.php).
 $pg_settings_in_dialog = false;
 
-// Where this screen posts to and returns to. Built from the key rather than
-// from the request, so nothing a visitor sends can steer it.
-$pg_settings_self = pg_settings_url($pg_settings_key);
-
 
 if (!$_POST) {
 
     // Every value the cards read, prepared exactly as before the split. A
     // Workspace category reads none of it, and its reader may be no manager.
-    if (!$pg_settings_workspace) {
+    if (pg_settings_category_reads_prep($pg_settings_category, $pg_settings_reader)) {
         include(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
     }
 

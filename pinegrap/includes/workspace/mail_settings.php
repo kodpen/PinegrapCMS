@@ -2313,8 +2313,7 @@ function ws_mail_settings_rows($viewer, $boxes, $list, $form)
             </div>
             <div class="card-body">
                 ' . $list . '
-                <div class="pg-field-help mt-3">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs.'))
-                    . ' ' . lang(array('string' => 'For sending: {var:1}', 'vars' => '<a href="' . h(pg_settings_url('mail_sending')) . '">' . h(lang('E-mail sending')) . '</a>')) . '</div>
+                <div class="pg-field-help mt-3">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs.')) . '</div>
             </div>
         </div>
     </div>') + ws_mail_settings_boxes_face($boxes);

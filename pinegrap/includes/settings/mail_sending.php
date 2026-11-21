@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings › E-mail sending: the cards of the former SMTP Settings
- * screen, the campaign texts and MailChimp. What the mail cards save and run
+ * Site Settings › E-mail › E-mail sending tab: the cards of the former SMTP
+ * Settings screen, the campaign texts and MailChimp. What the mail cards save and run
  * is includes/fn/mail_settings.php, config.php defines read here from the
  * constants; the campaign texts and MailChimp are config row columns,
  * prepared by includes/settings/prep.php.
@@ -70,8 +70,7 @@ $pg_settings_cards[] = '
                                     ' . lang('Sending service') . '
                                 </div>
                                 <div class="card-body">
-                                    <p class="pg-card-sub mb-3">' . h(lang('E-mail sending is the way out: the service and the accounts the site sends its e-mail through, and the records that let mailbox providers trust it.'))
-                                        . ' ' . lang(array('string' => 'For incoming e-mail: {var:1}', 'vars' => '<a href="' . h(pg_settings_url('mailboxes')) . '">' . h(lang('Mailboxes')) . '</a>')) . '</p>' . pg_mail_transport_settings_fields() . '
+                                    <p class="pg-card-sub mb-3">' . h(lang('E-mail sending is the way out: the service and the accounts the site sends its e-mail through, and the records that let mailbox providers trust it.')) . '</p>' . pg_mail_transport_settings_fields() . '
                                     <div class="d-flex flex-wrap gap-2 mt-5">' . $mail_test_button . '</div>
                                 </div>
                             </div>
@@ -224,9 +223,12 @@ $pg_settings_cards[] = '
 // ── Sending domain ──
 // Read only: SPF, DKIM and DMARC from DNS, the bounce and complaint rates.
 // The card keeps id="mail_domain_card", the operations alert's old target.
+// The E-mail category's Sending tab reads the same lookup for its pill.
+$mail_domain_health = pg_mail_domain_health();
+
 $pg_settings_cards[] = '
                         <div id="pgset-mail-domain" class="pg-set-card">
-                            ' . pg_mail_domain_health_card(pg_mail_domain_health(), false) . '
+                            ' . pg_mail_domain_health_card($mail_domain_health, false) . '
                         </div>';
 
 // ── MailChimp ──
