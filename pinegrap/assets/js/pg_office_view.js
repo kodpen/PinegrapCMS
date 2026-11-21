@@ -111,6 +111,266 @@
         return value !== '' && !isNaN(value) && !isNaN(parseFloat(value));
     }
 
+    // The most values a column's filter menu lists.
+    var FILTER_VALUES = 300;
+
+    // The value a cell holds: a change typed into it (changes, by address)
+    // first, else the file's.
+    function cellValue(row, column, changes) {
+        var address = columnName(column) + row.n;
+
+        if (changes && own(changes, address)) {
+            return String(changes[address]);
+        }
+
+        return (column < row.cells.length) ? String(row.cells[column]) : '';
+    }
+
+    // The text a cell shows, as the grid draws it: a change typed into it,
+    // else its number format's text (row.show), else its value.
+    function cellText(row, column, changes) {
+        if (changes && own(changes, columnName(column) + row.n)) {
+            return cellValue(row, column, changes);
+        }
+
+        if (row.show && own(row.show, column)) {
+            return String(row.show[column]);
+        }
+
+        return cellValue(row, column, null);
+    }
+
+    function plainCompare(one, two) {
+        return (one < two) ? -1 : ((one > two) ? 1 : 0);
+    }
+
+    // Two cell values in sort order: numbers first by size, then text by
+    // `compare`; an empty cell is last either way, so `down` turns only the
+    // rest around.
+    function compareValues(one, two, down, compare) {
+        if (one === '' || two === '') {
+            return (one === '') ? ((two === '') ? 0 : 1) : -1;
+        }
+
+        var first = isNumber(one);
+        var second = isNumber(two);
+        var result;
+
+        if (first && second) {
+            result = parseFloat(one) - parseFloat(two);
+        } else if (first !== second) {
+            result = first ? -1 : 1;
+        } else {
+            result = (compare || plainCompare)(one, two);
+        }
+
+        return down ? -result : result;
+    }
+
+    // Whether a sheet's first row reads as its header: it holds text and no
+    // number, and more rows follow. Sorting and filtering leave it on top.
+    function headerRow(rows, changes) {
+        if (rows.length < 2) {
+            return false;
+        }
+
+        var filled = false;
+
+        for (var column = 0; column < rows[0].cells.length; column++) {
+            var value = cellValue(rows[0], column, changes);
+
+            if (isNumber(value)) {
+                return false;
+            }
+
+            filled = filled || value.trim() !== '';
+        }
+
+        return filled;
+    }
+
+    // The order a sheet's rows are shown in, as indexes into `rows`: those
+    // `view.filters` leaves ({column: {text: true}}, the texts hidden),
+    // sorted by `view.sort` ({column, down}) and kept in the file's order
+    // for equal values. The header row stays first.
+    function arrange(rows, view, changes, compare) {
+        var order = rows.map(function (row, index) { return index; });
+        var filters = (view && view.filters) || {};
+        var columns = Object.keys(filters);
+        var sort = view ? view.sort : null;
+
+        if (!sort && !columns.length) {
+            return order;
+        }
+
+        var head = headerRow(rows, changes) ? order.splice(0, 1) : [];
+
+        order = order.filter(function (index) {
+            return columns.every(function (column) {
+                return !own(filters[column], cellText(rows[index], parseInt(column, 10), changes));
+            });
+        });
+
+        if (sort) {
+            var keys = {};
+
+            order.forEach(function (index) {
+                keys[index] = cellValue(rows[index], sort.column, changes);
+            });
+
+            order.sort(function (one, two) {
+                return compareValues(keys[one], keys[two], !!sort.down, compare) || (one - two);
+            });
+        }
+
+        return head.concat(order);
+    }
+
+    // The texts a column shows under its header, each once, in sort order;
+    // `more` is true when there were more than FILTER_VALUES.
+    function columnValues(rows, column, changes, compare) {
+        var seen = {};
+        var list = [];
+
+        rows.forEach(function (row, index) {
+            if (index === 0 && headerRow(rows, changes)) {
+                return;
+            }
+
+            var text = cellText(row, column, changes);
+
+            if (!own(seen, text)) {
+                seen[text] = true;
+                list.push({ text: text, value: cellValue(row, column, changes) });
+            }
+        });
+
+        list.sort(function (one, two) {
+            return compareValues(one.value, two.value, false, compare);
+        });
+
+        return {
+            texts: list.slice(0, FILTER_VALUES).map(function (item) { return item.text; }),
+            more: list.length > FILTER_VALUES
+        };
+    }
+
+    function sheetWidth(sheet) {
+        return sheet.rows.reduce(function (width, row) {
+            return Math.max(width, row.cells.length);
+        }, 0);
+    }
+
+    // Every cell of a workbook whose shown text holds `query`, whatever the
+    // case: [{sheet, row (its number), column}], sheet by sheet in the order
+    // its rows are shown (orders[sheet]), row by row, left to right.
+    // `lower` lowers a text's case in the page's language.
+    function findCells(sheets, query, orders, changes, lower) {
+        lower = lower || function (text) { return text.toLowerCase(); };
+
+        var needle = lower(String(query));
+        var found = [];
+
+        if (needle === '') {
+            return found;
+        }
+
+        sheets.forEach(function (sheet, index) {
+            var width = sheetWidth(sheet);
+            var sheetChanges = changes ? changes[index] : null;
+
+            (orders[index] || []).forEach(function (place) {
+                var row = sheet.rows[place];
+
+                for (var column = 0; column < width; column++) {
+                    if (lower(cellText(row, column, sheetChanges)).indexOf(needle) !== -1) {
+                        found.push({ sheet: index, row: row.n, column: column });
+                    }
+                }
+            });
+        });
+
+        return found;
+    }
+
+    // One CSV field. A text a spreadsheet would take as a formula (=, +, -,
+    // @, a tab or a return first) gets an apostrophe in front, unless it is
+    // a number as shown (-12,50 or -₺1.234); a field holding the comma, a
+    // quote or a line break is quoted.
+    function csvField(text) {
+        text = String(text);
+
+        if (/^[=+\-@\t\r]/.test(text) && !/^[+-]?[^\d=+\-@|!()]{0,3}[\d.,\s\u00a0]*\d[\d.,\s\u00a0]*[^\d=+\-@|!()]{0,3}$/.test(text)) {
+            text = '\'' + text;
+        }
+
+        return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    }
+
+    // A sheet as CSV, as the grid shows it: the rows in `order`, each cell's
+    // shown text, as wide as the last column holding a text; comma, CRLF,
+    // and a byte order mark so that a spreadsheet reads it as UTF-8.
+    function csvText(rows, order, changes) {
+        var lines = order.map(function (place) {
+            var row = rows[place];
+            var width = row.cells.length;
+            var cells = [];
+
+            Object.keys(changes || {}).forEach(function (address) {
+                var match = /^([A-Z]+)(\d+)$/.exec(address);
+
+                if (match && parseInt(match[2], 10) === row.n) {
+                    width = Math.max(width, columnIndex(match[1]) + 1);
+                }
+            });
+
+            for (var column = 0; column < width; column++) {
+                cells.push(cellText(row, column, changes));
+            }
+
+            return cells;
+        });
+
+        var width = lines.reduce(function (most, cells) {
+            for (var column = cells.length; column > most; column--) {
+                if (cells[column - 1] !== '') {
+                    return column;
+                }
+            }
+
+            return most;
+        }, 0);
+
+        return '\ufeff' + lines.map(function (cells) {
+            var fields = [];
+
+            for (var column = 0; column < width; column++) {
+                fields.push(csvField((column < cells.length) ? cells[column] : ''));
+            }
+
+            return fields.join(',');
+        }).join('\r\n') + '\r\n';
+    }
+
+    // A file name for a sheet's CSV: the sheet's name without the
+    // characters a file name may not hold.
+    function csvName(name) {
+        var stem = String(name || '').replace(/[\\\/:*?"<>|\u0000-\u001f\u007f]+/g, '_').replace(/^[\s.]+|[\s.]+$/g, '');
+
+        return (stem || 'sheet') + '.csv';
+    }
+
+    // A column's letters as its 0-based index: A is 0, AA is 26.
+    function columnIndex(letters) {
+        var index = 0;
+
+        for (var at = 0; at < letters.length; at++) {
+            index = index * 26 + (letters.charCodeAt(at) - 64);
+        }
+
+        return index - 1;
+    }
+
     // The areas a sheet's cells are checked against (merges, array
     // formulas, tables, pivot tables), listed under each shown row they
     // cover, so a cell looks only at those of its own row. The server sends
@@ -319,28 +579,53 @@
         return 'office-shift-insert-' + pending.axis + ((pending.place === 'after') ? '-after' : '');
     }
 
-    // A row's or a column's head: with `state.heads` a button that opens the
-    // menu to insert or delete it.
-    function headCell(axis, at, label, strings, state) {
-        var th = el('th', '', (state && state.heads) ? '' : label);
+    // A row's or a column's head. A column's, with `tools`, is a button
+    // that opens its menu (sort, filter, and with `state.heads` insert and
+    // delete) and marks the sort and filter on it; a row's is one with
+    // `state.heads` (insert and delete).
+    function headCell(axis, at, label, strings, state, tools) {
+        var shifts = !!(state && state.heads);
+        var menu = (axis === 'column') ? (!!tools || shifts) : shifts;
+        var th = el('th', '', menu ? '' : label);
         var marked = state ? shiftMark(state, (axis === 'row') ? at : -1, (axis === 'column') ? at : -1) : '';
 
         if (marked) {
             th.classList.add(marked);
         }
 
-        if (state && state.heads) {
+        if (menu) {
             var button = el('button', 'office-head', label);
+            var name = (axis === 'row') ? strings.head_row : (shifts ? strings.head_column : strings.head_column_view);
+
             button.type = 'button';
             button.tabIndex = -1;
             button.setAttribute('data-axis', axis);
             button.setAttribute('data-at', at);
             button.setAttribute('aria-haspopup', 'menu');
-            button.setAttribute('aria-label', fill(strings['head_' + axis], label));
+            button.setAttribute('aria-label', fill(name, label));
+
+            if (axis === 'column' && tools && tools.sort && tools.sort.column === at) {
+                th.setAttribute('aria-sort', tools.sort.down ? 'descending' : 'ascending');
+                button.appendChild(headMark(tools.sort.down ? 'bi-sort-alpha-up-alt' : 'bi-sort-alpha-down'));
+            }
+
+            if (axis === 'column' && tools && tools.filters && own(tools.filters, at)) {
+                button.appendChild(headMark('bi-funnel-fill'));
+                button.setAttribute('aria-label', fill(name, label) + ', ' + (strings.filtered_mark || ''));
+            }
+
             th.appendChild(button);
         }
 
         return th;
+    }
+
+    function headMark(icon) {
+        var mark = el('span', 'bi ' + icon + ' office-head-mark');
+
+        mark.setAttribute('aria-hidden', 'true');
+
+        return mark;
     }
 
     // One sheet as a table. With `state` (a sheet offered for editing) the
@@ -348,8 +633,9 @@
     // each row, and the column by the cell's place in it. Each cell is drawn
     // in its look (`looks`, by style number) and a number in its number
     // format's text (row.show), with the format change waiting laid over
-    // its range (state.format).
-    function sheetTable(sheet, strings, state, looks) {
+    // its range (state.format). `tools` ({order, sort, filters}) gives the
+    // rows' order as sorted and filtered, marked on the column heads.
+    function sheetTable(sheet, strings, state, looks, tools) {
         var width = 0;
 
         sheet.rows.forEach(function (row) {
@@ -374,7 +660,7 @@
         headRow.appendChild(el('th', 'office-corner', ''));
 
         for (var column = 0; column < width; column++) {
-            headRow.appendChild(headCell('column', column, columnName(column), strings, state));
+            headRow.appendChild(headCell('column', column, columnName(column), strings, state, tools));
         }
 
         head.appendChild(headRow);
@@ -382,13 +668,14 @@
 
         var body = el('tbody');
 
-        sheet.rows.forEach(function (row) {
-            var tr = el('tr');
-            tr.appendChild(headCell('row', row.n, String(row.n), strings, state));
+        var order = tools ? tools.order : sheet.rows.map(function (row, place) { return place; });
 
-            if (state) {
-                tr.setAttribute('data-row', row.n);
-            }
+        order.forEach(function (place) {
+            var row = sheet.rows[place];
+            var tr = el('tr');
+
+            tr.appendChild(headCell('row', row.n, String(row.n), strings, state));
+            tr.setAttribute('data-row', row.n);
 
             for (var column = 0; column < width; column++) {
                 var value = (column < row.cells.length) ? row.cells[column] : '';
@@ -507,6 +794,30 @@
         var bar = editable ? el('div', 'office-format') : null;
         var controls = {};
 
+        // Per sheet, by position, how its rows are shown ({sort: {column,
+        // down}, filters: {column: {text: true}}}); nothing of it is written
+        // to the file. A sheet sorted or filtered is only looked at, so that
+        // a selection, a range and a row's place on the grid stay the
+        // file's. `finder` is the search through the workbook.
+        var views = office.sheets.map(function () { return { sort: null, filters: {} }; });
+        var tools = el('div', 'office-tools');
+        var toolParts = {};
+        var finder = { query: '', list: [], at: -1 };
+        var compare = plainCompare;
+        var lower = function (text) { return text.toLowerCase(); };
+
+        // Text is sorted and found as the page's language orders and cases
+        // it (a dotted and a dotless i in Turkish), numbers in text by size.
+        try {
+            var language = document.documentElement.lang || undefined;
+
+            compare = new Intl.Collator(language, { numeric: true, sensitivity: 'base' }).compare;
+            'I'.toLocaleLowerCase(language);
+            lower = function (text) { return text.toLocaleLowerCase(language); };
+        } catch (error) {
+            // A language tag the browser does not know: the plain order.
+        }
+
         // The changes as they stand, with the value of the cell being typed
         // in: Save is offered, and sends it, before Enter.
         function changesNow() {
@@ -558,7 +869,7 @@
         function sheetEditable(index) {
             var edit = office.sheets[index].edit;
 
-            return editable && !!edit && !!edit.ok && !pending && !sheetPending && !format;
+            return editable && !!edit && !!edit.ok && !pending && !sheetPending && !format && !arranged(index);
         }
 
         // The format bar serves a sheet whose cells may change, unless it is
@@ -566,7 +877,7 @@
         function sheetFormattable(index) {
             var edit = (index >= 0) ? office.sheets[index].edit : null;
 
-            return editable && !!edit && !!edit.ok && !edit.protected;
+            return editable && !!edit && !!edit.ok && !edit.protected && !arranged(index);
         }
 
         // Rows and columns move on a sheet whose cells may change, unless it
@@ -574,7 +885,17 @@
         function sheetShiftable(index) {
             var edit = office.sheets[index].edit;
 
-            return editable && !!edit && !!edit.ok && !edit.protected;
+            return editable && !!edit && !!edit.ok && !edit.protected && !arranged(index);
+        }
+
+        // Whether a sheet is shown sorted or filtered.
+        function arranged(index) {
+            return index >= 0 && (!!views[index].sort || Object.keys(views[index].filters).length > 0);
+        }
+
+        // The places of a sheet's rows in the order they are shown.
+        function orderOf(index) {
+            return arrange(office.sheets[index].rows, views[index], changes[index], compare);
         }
 
         // The value the file holds for a cell, as the server showed it.
@@ -605,6 +926,8 @@
 
             if (note) {
                 parts.push(note);
+            } else if (arranged(shown.index) && sheetEdit && sheetEdit.ok) {
+                parts.push(strings.view_paused || '');
             } else if (sheetEditable(shown.index)) {
                 parts.push(strings.edit_hint || '');
 
@@ -1170,6 +1493,11 @@
 
             var opener = menu.opener;
 
+            // A sheet drawn again under the menu has a new head for it.
+            if (opener && !opener.isConnected && menu.reopen) {
+                opener = menu.reopen();
+            }
+
             menu.node.remove();
             document.removeEventListener('mousedown', menu.outside, true);
             menu = null;
@@ -1242,7 +1570,9 @@
         }
 
         // `swatches` (optional): {colours: [[RRGGBB, word]], chosen, pick}
-        // drawn as a grid of colour buttons after the items.
+        // drawn as a grid of colour buttons after the items. An item with
+        // `divider` is a line between groups; one with `checked` is a
+        // checkbox that keeps the menu open.
         function openMenu(anchor, items, label, swatches) {
             closeMenu(false);
 
@@ -1253,10 +1583,36 @@
             node.setAttribute('aria-label', label || '');
 
             items.forEach(function (item) {
+                if (item.divider) {
+                    var line = el('hr', 'menu-divider');
+
+                    line.setAttribute('role', 'separator');
+                    node.appendChild(line);
+                    return;
+                }
+
                 var button = el('button', 'menu-item pg-link-body-emphasis');
                 button.type = 'button';
                 button.setAttribute('role', 'menuitem');
                 button.tabIndex = -1;
+
+                if (item.checked !== undefined) {
+                    var check = el('span', 'bi bi-check-lg office-menu-check');
+
+                    check.setAttribute('aria-hidden', 'true');
+                    button.setAttribute('role', 'menuitemcheckbox');
+                    button.setAttribute('aria-checked', item.checked ? 'true' : 'false');
+                    button.appendChild(check);
+                    button.addEventListener('click', function () {
+                        item.checked = !item.checked;
+                        button.setAttribute('aria-checked', item.checked ? 'true' : 'false');
+                        item.run(item.checked);
+                    });
+                    button.appendChild(el('span', '', item.label || ''));
+                    buttons.push(button);
+                    node.appendChild(button);
+                    return;
+                }
 
                 if (item.icon) {
                     var icon = el('span', 'bi ' + item.icon);
@@ -1330,6 +1686,12 @@
             node.style.left = Math.max(0, place.left - box.left) + 'px';
             node.style.top = (place.bottom - box.top) + 'px';
             book.appendChild(node);
+
+            // A menu opened near the right edge (a narrow screen) stays in
+            // the view.
+            if (node.offsetLeft + node.offsetWidth > book.clientWidth) {
+                node.style.left = Math.max(0, book.clientWidth - node.offsetWidth) + 'px';
+            }
 
             menu = {
                 node: node,
@@ -1545,6 +1907,404 @@
             return items;
         }
 
+        // The open sheet's head button of a column.
+        function headButton(column) {
+            return shown.table ? shown.table.querySelector('thead .office-head[data-at="' + column + '"]') : null;
+        }
+
+        // Draws the open sheet again in its new order, the find marks and
+        // the tools' line with it; `keepMenu` leaves an open filter menu.
+        function rearrange(keepMenu) {
+            refind(false);
+            show(shown.index, keepMenu);
+        }
+
+        function setSort(column, down) {
+            views[shown.index].sort = (column === null) ? null : { column: column, down: down };
+            rearrange(false);
+        }
+
+        function clearView() {
+            views[shown.index] = { sort: null, filters: {} };
+            rearrange(false);
+        }
+
+        // What a column's menu offers for the view: sort either way, the
+        // filter by its values, and the removal of either when set.
+        function viewItems(column) {
+            var view = views[shown.index];
+            var name = columnName(column);
+            var items = [
+                { label: strings.sort_up, icon: 'bi-sort-alpha-down', run: function () { setSort(column, false); } },
+                { label: strings.sort_down, icon: 'bi-sort-alpha-up-alt', run: function () { setSort(column, true); } },
+                { label: strings.filter_values, icon: 'bi-funnel', run: function () { return openFilter(column); } }
+            ];
+
+            if (view.sort && view.sort.column === column) {
+                items.push({ label: strings.sort_off, icon: 'bi-x-lg', run: function () { setSort(null); } });
+            }
+
+            if (own(view.filters, column)) {
+                items.push({ label: fill(strings.filter_off, name), icon: 'bi-x-lg', run: function () {
+                    delete views[shown.index].filters[column];
+                    rearrange(false);
+                } });
+            }
+
+            return items;
+        }
+
+        // A column's values as checkboxes: one cleared hides the rows
+        // showing it, at once; the menu stays open.
+        function openFilter(column) {
+            var anchor = headButton(column);
+            var values = columnValues(office.sheets[shown.index].rows, column, changes[shown.index], compare);
+            var hidden = views[shown.index].filters[column] || {};
+            var items = [{ label: strings.filter_all, icon: 'bi-eye', run: function () {
+                delete views[shown.index].filters[column];
+                rearrange(false);
+            } }, { divider: true }];
+
+            values.texts.forEach(function (text) {
+                items.push({ label: (text === '') ? strings.filter_empty : text, checked: !own(hidden, text), run: function (on) {
+                    var filters = views[shown.index].filters;
+
+                    filters[column] = filters[column] || {};
+
+                    if (on) {
+                        delete filters[column][text];
+                    } else {
+                        filters[column][text] = true;
+                    }
+
+                    if (!Object.keys(filters[column]).length) {
+                        delete filters[column];
+                    }
+
+                    rearrange(true);
+                } });
+            });
+
+            if (values.more) {
+                items.push({ label: fill(strings.filter_more, FILTER_VALUES) });
+            }
+
+            if (!anchor) {
+                return false;
+            }
+
+            openMenu(anchor, items, fill(strings.filter_menu, columnName(column)));
+            menu.reopen = function () { return headButton(column); };
+
+            return true;
+        }
+
+        // Opens a column head's menu: the view's items, and inserting and
+        // deleting where the sheet allows it.
+        function headMenu(event) {
+            var head = event.target.closest('.office-head');
+
+            if (!head) {
+                return false;
+            }
+
+            var axis = head.getAttribute('data-axis');
+            var at = parseInt(head.getAttribute('data-at'), 10);
+            var items = (axis === 'column') ? viewItems(at) : [];
+
+            if (sheetShiftable(shown.index)) {
+                items = items.concat(items.length ? [{ divider: true }] : [], menuItems([{ axis: axis, at: at }]));
+            }
+
+            if (!items.length) {
+                return false;
+            }
+
+            event.preventDefault();
+            openMenu(head, items, (axis === 'column') ? fill(strings.column_menu, columnName(at)) : strings.shift_menu);
+
+            return true;
+        }
+
+        // The menu of a cell's row and column: the view's items for its
+        // column, and inserting and deleting where the sheet allows it.
+        function cellMenu(td) {
+            var position = cellPosition(td);
+            var items = viewItems(position.column);
+
+            if (!sheetShiftable(shown.index)) {
+                openMenu(td, items, fill(strings.column_menu, columnName(position.column)));
+                return;
+            }
+
+            items = items.concat([{ divider: true }], menuItems([{ axis: 'row', at: position.row }, { axis: 'column', at: position.column }]));
+            openMenu(td, items, strings.shift_menu);
+        }
+
+        // The heads' clicks; a sheet only looked at reaches its column heads
+        // from the keyboard too: the first is a Tab stop, the arrows move.
+        function wireHeads(table, roving) {
+            table.addEventListener('click', headMenu);
+
+            if (!roving) {
+                return;
+            }
+
+            var heads = Array.prototype.slice.call(table.querySelectorAll('thead .office-head'));
+
+            if (heads.length) {
+                heads[0].tabIndex = 0;
+            }
+
+            table.querySelector('thead').addEventListener('keydown', function (event) {
+                var at = heads.indexOf(event.target);
+                var step = { ArrowLeft: -1, ArrowRight: 1 }[event.key];
+
+                if (at < 0 || !step || !heads[at + step]) {
+                    return;
+                }
+
+                event.preventDefault();
+                heads[at].tabIndex = -1;
+                heads[at + step].tabIndex = 0;
+                heads[at + step].focus();
+            });
+        }
+
+        // Searches the workbook again; `move` goes to the first match from
+        // the open sheet on, else the one at the same place is kept.
+        function refind(move) {
+            var orders = office.sheets.map(function (sheet, index) { return orderOf(index); });
+
+            finder.list = findCells(office.sheets, finder.query, orders, changes, lower);
+
+            if (!finder.list.length) {
+                finder.at = -1;
+            } else if (move || finder.at < 0) {
+                finder.at = 0;
+
+                for (var at = 0; at < finder.list.length; at++) {
+                    if (finder.list[at].sheet >= shown.index) {
+                        finder.at = at;
+                        break;
+                    }
+                }
+            } else {
+                finder.at = Math.min(finder.at, finder.list.length - 1);
+            }
+        }
+
+        function foundCell(match) {
+            var tr = shown.table ? shown.table.querySelector('tbody tr[data-row="' + match.row + '"]') : null;
+
+            return (tr && match.column + 1 < tr.cells.length) ? tr.cells[match.column + 1] : null;
+        }
+
+        // Marks the open sheet's matches, the current one apart.
+        function markFound() {
+            if (!shown.table) {
+                return;
+            }
+
+            Array.prototype.forEach.call(shown.table.querySelectorAll('td.office-found'), function (td) {
+                td.classList.remove('office-found', 'office-found-current');
+            });
+
+            finder.list.forEach(function (match, at) {
+                var td = (match.sheet === shown.index) ? foundCell(match) : null;
+
+                if (td) {
+                    td.classList.add('office-found');
+                    td.classList.toggle('office-found-current', at === finder.at);
+                }
+            });
+        }
+
+        // Shows the current match: its sheet opened, the cell scrolled into
+        // view. The focus stays in the search field.
+        function showFound() {
+            var match = finder.list[finder.at];
+
+            if (match && match.sheet !== shown.index) {
+                openTab(match.sheet);
+            } else {
+                markFound();
+                drawTools();
+            }
+
+            var td = match ? foundCell(match) : null;
+
+            if (td && td.scrollIntoView) {
+                padHeadings();
+                td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+        }
+
+        function stepFound(step) {
+            if (!finder.list.length) {
+                return;
+            }
+
+            finder.at = (finder.at + step + finder.list.length) % finder.list.length;
+            showFound();
+        }
+
+        // The open sheet as a CSV file, as the grid shows it.
+        function downloadCsv() {
+            var index = shown.index;
+
+            if (index < 0 || !shown.table) {
+                return;
+            }
+
+            var sheet = office.sheets[index];
+            var text = csvText(sheet.rows, orderOf(index), changesNow()[index]);
+            var link = el('a');
+
+            link.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+            link.download = csvName(sheet.name);
+            link.hidden = true;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(function () { URL.revokeObjectURL(link.href); }, 60000);
+
+            toolParts.said = sheet.truncated ? (strings.csv_truncated || '') : '';
+            drawTools();
+        }
+
+        // The line over the grid: find in the workbook, the open sheet's
+        // sort and filter with a way to clear them, Download as CSV.
+        function buildTools() {
+            var search = el('div', 'office-find');
+            var field = el('span', 'pg-input pg-input-sm office-find-field');
+            var glass = el('span', 'bi bi-search');
+            var input = el('input');
+            var count = el('span', 'pg-input-end');
+
+            search.setAttribute('role', 'search');
+            glass.setAttribute('aria-hidden', 'true');
+            input.type = 'search';
+            input.placeholder = strings.find_label || '';
+            input.setAttribute('aria-label', strings.find_label || '');
+            input.spellcheck = false;
+            count.setAttribute('aria-live', 'polite');
+            field.appendChild(glass);
+            field.appendChild(input);
+            field.appendChild(count);
+            search.appendChild(field);
+
+            input.addEventListener('input', function () {
+                finder.query = input.value;
+                refind(true);
+                showFound();
+                drawTools();
+            });
+
+            input.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    stepFound(event.shiftKey ? -1 : 1);
+                } else if (event.key === 'Escape' && input.value !== '') {
+                    // The window's own Escape waits until the search is empty.
+                    event.preventDefault();
+                    event.stopPropagation();
+                    input.value = '';
+                    finder.query = '';
+                    refind(false);
+                    markFound();
+                    drawTools();
+                }
+            });
+
+            [['previous', 'bi-chevron-up', -1], ['next', 'bi-chevron-down', 1]].forEach(function (item) {
+                var button = el('button', 'pg-icon-button pg-icon-button-sm');
+                var icon = el('span', 'bi ' + item[1]);
+
+                button.type = 'button';
+                icon.setAttribute('aria-hidden', 'true');
+                button.appendChild(icon);
+                button.setAttribute('aria-label', strings['find_' + item[0]] || '');
+                button.title = strings['find_' + item[0]] || '';
+                button.addEventListener('click', function () {
+                    stepFound(item[2]);
+                });
+                toolParts[item[0]] = button;
+                search.appendChild(button);
+            });
+
+            var state = el('span', 'pg-text-meta office-view-state');
+            var clear = el('button', 'pg-button pg-button-quiet pg-button-sm', strings.view_clear || '');
+            var download = el('button', 'pg-button pg-button-quiet pg-button-sm office-csv');
+            var csvIcon = el('span', 'bi bi-filetype-csv');
+
+            state.setAttribute('aria-live', 'polite');
+            clear.type = 'button';
+            clear.addEventListener('click', clearView);
+            download.type = 'button';
+            download.title = strings.csv_help || '';
+            csvIcon.setAttribute('aria-hidden', 'true');
+            download.appendChild(csvIcon);
+            download.appendChild(el('span', 'pg-btn-label', strings.csv_download || ''));
+            download.addEventListener('click', downloadCsv);
+
+            toolParts.count = count;
+            toolParts.state = state;
+            toolParts.clear = clear;
+            toolParts.download = download;
+            toolParts.said = '';
+
+            tools.appendChild(search);
+            tools.appendChild(state);
+            tools.appendChild(clear);
+            tools.appendChild(download);
+        }
+
+        // The tools' line as the open sheet and the search stand.
+        function drawTools() {
+            if (!toolParts.state) {
+                return;
+            }
+
+            var count = '';
+
+            if (finder.query !== '') {
+                count = finder.list.length ? fill(strings.find_count, finder.at + 1).replace('{2}', finder.list.length) : (strings.find_none || '');
+            }
+
+            toolParts.count.textContent = count;
+            toolParts.previous.disabled = toolParts.next.disabled = finder.list.length < 2;
+
+            var parts = [];
+            var index = shown.index;
+
+            if (arranged(index)) {
+                var view = views[index];
+                var rows = office.sheets[index].rows;
+                var header = headerRow(rows, changes[index]) ? 1 : 0;
+
+                if (view.sort) {
+                    parts.push(fill(strings[view.sort.down ? 'view_sorted_down' : 'view_sorted_up'], columnName(view.sort.column)));
+                }
+
+                if (Object.keys(view.filters).length) {
+                    parts.push(fill(strings.view_filtered, orderOf(index).length - header).replace('{2}', rows.length - header));
+                }
+
+                if (header) {
+                    parts.push(fill(strings.view_header, rows[0].n));
+                }
+            }
+
+            if (toolParts.said) {
+                parts.push(toolParts.said);
+            }
+
+            toolParts.state.textContent = parts.join(' ');
+            toolParts.clear.classList.toggle('d-none', !arranged(index));
+            toolParts.download.disabled = !shown.table;
+        }
+
         function wireGrid(table) {
             // A cell reached with Tab is selected as a click would select it,
             // so the arrows, Enter and typing work on it at once.
@@ -1556,21 +2316,6 @@
                 }
             });
 
-            function headMenu(event) {
-                var head = event.target.closest('.office-head');
-
-                if (!head || !sheetShiftable(shown.index)) {
-                    return false;
-                }
-
-                event.preventDefault();
-                openMenu(head, menuItems([{ axis: head.getAttribute('data-axis'), at: parseInt(head.getAttribute('data-at'), 10) }]), strings.shift_menu);
-
-                return true;
-            }
-
-            table.addEventListener('click', headMenu);
-
             table.addEventListener('contextmenu', function (event) {
                 if (headMenu(event)) {
                     return;
@@ -1578,10 +2323,10 @@
 
                 var td = event.target.closest('td');
 
-                if (td && sheetShiftable(shown.index) && !td.classList.contains('office-editing')) {
+                if (td && !td.classList.contains('office-editing')) {
                     event.preventDefault();
                     select(td);
-                    openMenu(td, menuItems([{ axis: 'row', at: cellPosition(td).row }, { axis: 'column', at: cellPosition(td).column }]), strings.shift_menu);
+                    cellMenu(td);
                 }
             });
 
@@ -1644,10 +2389,11 @@
                     return;
                 }
 
-                // The menu key or Shift+F10 offers the cell's row and column.
-                if ((key === 'ContextMenu' || (key === 'F10' && event.shiftKey)) && sheetShiftable(shown.index)) {
+                // The menu key or Shift+F10 offers the cell's column's sort
+                // and filter, and its row and column.
+                if (key === 'ContextMenu' || (key === 'F10' && event.shiftKey)) {
                     event.preventDefault();
-                    openMenu(td, menuItems([{ axis: 'row', at: cellPosition(td).row }, { axis: 'column', at: cellPosition(td).column }]), strings.shift_menu);
+                    cellMenu(td);
                     return;
                 }
 
@@ -1698,9 +2444,12 @@
             });
         }
 
-        function show(index) {
+        function show(index, keepMenu) {
             closeEditor(true);
-            closeMenu(false);
+
+            if (!keepMenu) {
+                closeMenu(false);
+            }
 
             var sheet = office.sheets[index];
             var offered = editable && !!sheet.edit;
@@ -1709,6 +2458,7 @@
             shown.cell = null;
             shown.anchor = null;
             shown.note = '';
+            toolParts.said = '';
             pane.innerHTML = '';
 
             if (!sheet.rows.length) {
@@ -1720,8 +2470,9 @@
                     heads: sheetShiftable(index),
                     pending: (pending && pending.sheet === index) ? pending : null,
                     format: (format && format.sheet === index) ? format : null
-                } : null, looks);
+                } : null, looks, { order: orderOf(index), sort: views[index].sort, filters: views[index].filters });
                 pane.appendChild(shown.table);
+                wireHeads(shown.table, !offered);
 
                 if (offered) {
                     wireGrid(shown.table);
@@ -1748,8 +2499,10 @@
             }
 
             padHeadings();
+            markFound();
             drawBar();
             drawStatus();
+            drawTools();
         }
 
         tabs.setAttribute('role', 'tablist');
@@ -1902,6 +2655,9 @@
         } else {
             book.appendChild(tabs);
         }
+
+        buildTools();
+        book.appendChild(tools);
 
         if (bar) {
             buildBar();
@@ -2779,6 +3535,18 @@
     }
 
     window.pgOfficeView = {
+        // The sheet tools' own logic, which reads no page: sort, filter,
+        // find and CSV over the rows the server sent.
+        sheetTools: {
+            cellText: cellText,
+            headerRow: headerRow,
+            arrange: arrange,
+            columnValues: columnValues,
+            findCells: findCells,
+            csvField: csvField,
+            csvText: csvText,
+            csvName: csvName
+        },
         render: function (container, office, strings, options) {
             strings = strings || {};
             container.innerHTML = '';

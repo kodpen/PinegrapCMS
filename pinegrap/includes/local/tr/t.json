@@ -1550,6 +1550,7 @@
     "The CSS classes of the ^^__order_status_badge^^ token. The status text comes from the order; you pick its colour here. Left empty, the default is used.": "^^__order_status_badge^^ token'ının CSS sınıfları. Durum metni siparişten gelir; rengi buradan sen belirlersin. Boş bırakılırsa varsayılan kullanılır.",
     "The CSS classes of the badge in elements bound to \"{var}\". The status text comes from the order; you pick its colour here. Left empty, the default is used.": "\"{var}\" alanına bağlanan öğelerdeki rozetin CSS sınıfları. Durum metni siparişten gelir; rengi buradan sen belirlersin. Boş bırakılırsa varsayılan kullanılır.",
     "The CSS file was edited successfully.": "CSS dosyası başarıyla düzenlendi.",
+    "The CSV holds only the rows shown here.": "CSV yalnızca burada gösterilen satırları içerir.",
     "The Campsite": "Kamp Alanı",
     "The Card": "Kart",
     "The Case for Doing One Thing at a Time": "Bir Seferde Tek İş Yapmanın Savunusu",
