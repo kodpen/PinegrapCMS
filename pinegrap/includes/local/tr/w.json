@@ -92,6 +92,7 @@
     "Waiting for you: {var:1}.": "Sizi bekleyenler: {var:1}.",
     "Waiting for your answer": "Yanıtınız bekleniyor",
     "Waiting for your approval": "Onayınızı bekliyor",
+    "Waiting for your yes": "Onayınızı bekliyor",
     "Waiting for {1} to apply it or preview it in the editor.": "{1} tarafından uygulanmayı ya da düzenleyicide önizlenmeyi bekliyor.",
     "Waiting for {var:1}": "Bekliyor: {var:1}",
     "Waiting list": "Bekleme listesi",

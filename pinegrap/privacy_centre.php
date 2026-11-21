@@ -7,7 +7,10 @@
  * suggested legal ground and retention and live counts; the outside services
  * that receive personal data and which of them sit abroad. Downloads the
  * same as an Excel workbook with the VERBİS columns and as a PDF that also
- * lists the destruction records (includes/fn/privacy_centre.php).
+ * lists the destruction records (includes/fn/privacy_centre.php). The
+ * retention rules card switches the rules, sets their periods and the
+ * interval, shows a rule's dry run and takes the yes
+ * (includes/fn/privacy_retention.php).
  *
  * Managers and up, as the personal data export and erasure beside it. The
  * screen and its downloads name no person: only counts.
@@ -33,6 +36,48 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
 
 if ((($_GET['view'] ?? '') === 'requests') || (($_POST['view'] ?? '') === 'requests')) {
     require(PG_FUNCTIONS_DIR . '/includes/privacy_centre_requests.php');
+    exit();
+}
+
+// The retention rules card: a save or the yes after a dry run
+// (includes/fn/privacy_retention.php checks the role and writes the audit line).
+$privacy_centre_operator = array('role' => (int) $user['role'], 'id' => (int) $user['id']);
+$privacy_centre_rule_labels = pg_privacy_rules_labels();
+
+if (($_SERVER['REQUEST_METHOD'] === 'POST') && in_array($_POST['action'] ?? '', array('rules_save', 'rules_approve'), true)) {
+    validate_token_field();
+
+    if ($_POST['action'] === 'rules_save') {
+        $privacy_centre_input = (isset($_POST['rules']) && is_array($_POST['rules'])) ? $_POST['rules'] : array();
+        $privacy_centre_input['interval'] = $_POST['interval'] ?? '';
+        $privacy_centre_saved = pg_privacy_rules_save($privacy_centre_input, $privacy_centre_operator);
+
+        if ($privacy_centre_saved['status'] === 'ok') {
+            $liveform->add_notice(lang('The retention rules were saved.'));
+        } elseif ($privacy_centre_saved['status'] === 'invalid') {
+            foreach ($privacy_centre_saved['errors'] as $privacy_centre_key => $privacy_centre_error) {
+                $privacy_centre_text = $privacy_centre_rule_labels['errors'][$privacy_centre_error] ?? lang('The retention rules could not be saved.');
+                $liveform->add_error(isset($privacy_centre_rule_labels['rules'][$privacy_centre_key]) ? $privacy_centre_rule_labels['rules'][$privacy_centre_key] . ': ' . $privacy_centre_text : $privacy_centre_text);
+            }
+        } else {
+            $liveform->add_error(($privacy_centre_saved['status'] === 'refused') ? lang('Your role may not change the retention rules.') : lang('The retention rules could not be saved.'));
+        }
+    } else {
+        $privacy_centre_approved = pg_privacy_rule_approve(is_string($_POST['rule'] ?? null) ? $_POST['rule'] : '', $privacy_centre_operator);
+        $privacy_centre_errors = array(
+            'refused' => lang('Your role may not change the retention rules.'),
+            'off'     => lang('Switch the rule on and give it a period first.'),
+            'failed'  => lang('The retention rules could not be saved.'),
+        );
+
+        if ($privacy_centre_approved === 'ok') {
+            $liveform->add_notice(lang('The rule runs from the next night on.'));
+        } else {
+            $liveform->add_error($privacy_centre_errors[$privacy_centre_approved] ?? lang('The retention rules could not be saved.'));
+        }
+    }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/privacy_centre.php#privacy-rules');
     exit();
 }
 
@@ -171,6 +216,24 @@ $privacy_centre_transfers_card = '
                 <div class="card-body pt-0 small fg-secondary">' . h(lang('The services that are connected, or whose state cannot be told, on the Connections screen. The country is where the company that runs the service is seated; check it for your own notice.')) . '</div>
             </div>';
 
+// The retention rules, and the dry run of a rule switched on when asked:
+// nothing is written by it.
+$privacy_centre_rules = pg_privacy_rules();
+$privacy_centre_dry_key = is_string($_GET['dry_run'] ?? null) ? $_GET['dry_run'] : '';
+$privacy_centre_dry = (isset(pg_privacy_rules_catalogue()[$privacy_centre_dry_key]) && $privacy_centre_rules[$privacy_centre_dry_key]['on'])
+    ? array('key' => $privacy_centre_dry_key, 'result' => pg_privacy_rule_dry_run($privacy_centre_dry_key, $privacy_centre_rules[$privacy_centre_dry_key]))
+    : null;
+
+$privacy_centre_rules_card = pg_privacy_centre_rules_card(array(
+    'rules'      => $privacy_centre_rules,
+    'state'      => pg_privacy_rules_state(),
+    'labels'     => $privacy_centre_rule_labels,
+    'forms'      => pg_privacy_centre_rule_forms($privacy_centre_rules['forms']['pages']),
+    'may_change' => pg_privacy_rules_may_change($privacy_centre_operator),
+    'dry'        => $privacy_centre_dry,
+    'entries'    => pg_privacy_erase_labels(),
+));
+
 $privacy_centre_toolbar = pg_screen_toolbar(array(
     'primary'   => array('label' => lang('Download Excel'), 'url' => 'privacy_centre.php?download=xlsx', 'icon' => 'bi-file-earmark-spreadsheet'),
     'secondary' => array_merge(
@@ -198,6 +261,7 @@ pg_page_shell(array(
     ' . $privacy_centre_toolbar . '
     <div class="alert theme-info mb-7">' . h(lang('The legal grounds and retentions are suggested defaults, not legal advice. Check them for your own notice and your VERBİS record. Erased data stays in backups made before the erasure until those backups are removed.')) . '</div>
     ' . $privacy_centre_inventory . '
+    ' . $privacy_centre_rules_card . '
     ' . $privacy_centre_transfers_card . '
 </main>
 ' .
