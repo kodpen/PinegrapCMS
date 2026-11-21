@@ -6,7 +6,7 @@ module: ad_conversions_ga4
 
 ## Where were these read?
 - 2026-11-20 from developers.google.com: `analytics/devguides/collection/protocol/ga4/reference` (gtag.js), `…/ga4/sending-events`, `…/ga4/validating-events`, `…/ga4/reference/events` (purchase, refund) and `analytics/devguides/collection/ga4/uid-data`.
-- Read them again before changing the sender (`plans/ad-conversions.md`: never from memory).
+- Read them again before changing the sender (`ad-conversions.md`: never from memory).
 
 ## What is the request?
 - `POST https://www.google-analytics.com/mp/collect?measurement_id=G-…&api_secret=…`; `region1.google-analytics.com` for EU collection (not used). POST only; the body under 130 kB.

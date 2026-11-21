@@ -1,6 +1,6 @@
 ---
 name: ad-conversions-log
-description: Ad conversions SC6: the Events card on each service's Connections page (daily counts, last 50 events), the ad_events_refused operations alert, GET /reports/ad-conversions
+description: Ad conversions log (#10907): the Events card on each service's Connections page (daily counts, last 50 events), the ad_events_refused operations alert, GET /reports/ad-conversions
 module: ad_conversions_log
 ---
 
