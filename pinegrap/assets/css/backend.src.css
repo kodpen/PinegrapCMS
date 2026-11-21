@@ -22296,10 +22296,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-claude-shot .s-bad { fill: var(--pg-danger); }
 .ws-claude-shot .s-claude { fill: #c96442; }
 .ws-claude-shot .s-ring { fill: none; stroke: #f59f00; stroke-width: 2; }
-.ws-claude-status {
-  position: sticky;
-  top: calc(var(--pg-navbar-h) + 1rem);
-}
 .ws-claude-recent-row {
   align-items: flex-start;
   font-size: var(--pg-text-2);

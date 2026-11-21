@@ -926,10 +926,6 @@
         "button": 6,
         "tabs": 0
     },
-    "includes/workspace/voice.php": {
-        "button": 1,
-        "tabs": 0
-    },
     "includes/workspace/workdays.php": {
         "button": 7,
         "tabs": 0
