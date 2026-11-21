@@ -103,6 +103,7 @@ function test_settings_firewall_fold_lines()
 
 	pg_assert_same(lang('Unknown bots are refused'), pg_firewall_fold_bots(true, 0, 0)['line'], 'unknown bots refused');
 	pg_assert_same(lang('Unknown bots are let in') . ' · ' . lang(array('string' => '{var:1} allowed by you', 'vars' => 2)) . ' · ' . lang(array('string' => '{var:1} blocked by you', 'vars' => 1)), pg_firewall_fold_bots(false, 2, 1)['line'], 'let in, with the operator\'s lists');
+	pg_assert_same(lang('Unknown bots are refused') . ' · ' . lang('AI training crawlers let in'), pg_firewall_fold_bots(true, 0, 0, true)['line'], 'AI training allowed');
 
 	pg_assert_same(lang('No address is banned by the firewall now'), pg_firewall_fold_bans_sentence(0), 'no ban');
 	pg_assert_same(lang('1 address banned now'), pg_firewall_fold_bans_sentence(1), 'one ban');

@@ -153,6 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mapping = $feed_mapping;
                 $mapping['fields'] = $feed_fields_posted['fields'];
                 $mapping['confirmed'] = 1;
+                $mapping['draft_group'] = pg_supplier_feed_draft_group_input($_POST['draft_group'] ?? 0);
                 $columns['mapping'] = json_encode($mapping);
 
                 // Saving the fields switches an off feed on, and lets a feed
@@ -407,6 +408,11 @@ if ($has_keys) {
                                 ' . $path_field . $required_rows . '
                                 <button type="button" class="pg-gather-toggle" aria-expanded="false" aria-controls="sf_more_fields" data-pg-sf-fold>' . h(lang('More fields')) . '<span class="bi bi-chevron-down" aria-hidden="true"></span></button>
                                 <div id="sf_more_fields" class="mt-3 d-none">' . $more_rows . '
+                                    <div class="row gy-2 align-items-center mb-3">
+                                        <div class="col-12 md:col-3"><label class="pg-field-label mb-0" for="sf_draft_group">' . h(lang('Drafts go into')) . '</label></div>
+                                        <div class="col-12 md:col-4"><select class="pg-input" id="sf_draft_group" name="draft_group" aria-describedby="sf_draft_group_help"><option value="0">' . h(lang('No group')) . '</option>' . get_product_group_options($feed_mapping['draft_group'], 0, 0, 0, array(), false, 'text', false, true, false) . '</select></div>
+                                        <div class="col-12 md:col-5 pg-field-help" id="sf_draft_group_help">' . h(lang('New products whose category matches no group are filed here.')) . '</div>
+                                    </div>
                                 </div>
                                 <div class="mt-5"><button type="submit" name="read_feed" value="1" formnovalidate class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Read the feed again')) . '</button></div>
                             </div>
