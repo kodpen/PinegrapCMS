@@ -6,6 +6,8 @@
  * <template>s, keeps each round's weight sum and its pill current (amber
  * until 100), copies a kept template's criteria into a round and switches
  * the decision e-mails' tabs. Nothing is saved here: the form posts it all.
+ * On the Reviewers tab it opens the Add reviewer drawer and switches it
+ * between a panel user and an outside juror.
  *
  * Loaded with a plain <script src> by the screen; no .min twin.
  *
@@ -166,6 +168,62 @@
     form.addEventListener('input', function (event) {
         if (event.target.hasAttribute('data-pg-ap-weight')) {
             updateSum(event.target.closest('[data-pg-ap-round]'));
+        }
+    });
+}());
+
+(function () {
+    'use strict';
+
+    var drawer = document.getElementById('aprog_reviewer_add');
+    if (!drawer) {
+        return;
+    }
+
+    var phone = window.matchMedia('(max-width: 575.98px)');
+
+    // From the right, or on a phone as a sheet from the bottom.
+    function open() {
+        if (!window.pgUI) {
+            return;
+        }
+        drawer.classList.toggle('drawer-end', !phone.matches);
+        drawer.classList.toggle('drawer-bottom', phone.matches);
+        pgUI.drawer.show(drawer);
+    }
+
+    document.addEventListener('click', function (event) {
+        if (event.target.closest('[data-pg-ap-drawer]')) {
+            open();
+        }
+    });
+
+    // A panel user or an outside juror: the hidden pane's fields are
+    // disabled, so they are neither required nor posted.
+    drawer.addEventListener('click', function (event) {
+        var choice = event.target.closest('[data-pg-ap-kind-choice]');
+        if (!choice) {
+            return;
+        }
+        var kind = choice.getAttribute('data-pg-ap-kind-choice');
+        drawer.querySelector('[data-pg-ap-kind]').value = kind;
+        drawer.querySelectorAll('[data-pg-ap-kind-choice]').forEach(function (item) {
+            item.setAttribute('aria-pressed', item === choice ? 'true' : 'false');
+        });
+        drawer.querySelectorAll('[data-pg-ap-kind-pane]').forEach(function (pane) {
+            var shown = pane.getAttribute('data-pg-ap-kind-pane') === kind;
+            pane.hidden = !shown;
+            pane.querySelectorAll('input, select').forEach(function (field) {
+                field.disabled = !shown;
+            });
+        });
+    });
+
+    // pgUI comes with the footer, after this script; a refused add opens the
+    // drawer again with the screen.
+    window.addEventListener('load', function () {
+        if (drawer.hasAttribute('data-open')) {
+            open();
         }
     });
 }());

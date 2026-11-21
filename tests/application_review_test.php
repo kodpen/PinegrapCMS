@@ -235,6 +235,18 @@ function test_application_review_assignment_conflict_and_rerun()
 	pg_assert_same(array(1 => 1), $none['short']);
 }
 
+function test_application_review_assignment_counts_load_from_other_pools()
+{
+	// Reviewer a already holds an entry of another category: b and c are
+	// served first, a only once they have caught up.
+	$result = pg_application_assign(array(1, 2, 3), array('a', 'b', 'c'), 1, array(), array(), false, array('a' => 1, 'x' => 9));
+	pg_assert_same(array(1 => array('b'), 2 => array('c'), 3 => array('a')), $result['assigned']);
+
+	// With no load given the pool order decides.
+	$plain = pg_application_assign(array(1), array('a', 'b'), 1, array(), array(), false);
+	pg_assert_same(array(1 => array('a')), $plain['assigned']);
+}
+
 function test_application_review_rank_and_shortlist()
 {
 	$scores = array(10 => 7.5, 11 => 9.0, 12 => null, 13 => 7.5, 14 => 6.0);

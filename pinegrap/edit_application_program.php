@@ -5,9 +5,11 @@
  * An application programme's screen (Forms › Application programmes): the
  * head with the name, the status and the button that follows it, the tabs,
  * and the Set-up tab: period, categories, eligibility, rounds and criteria,
- * blind review and decision e-mails. Gated by validate_forms_access() and
- * the folder rule on the programme's form. It also takes the list drawer's
- * add (a name and a form: a new draft) and the row menu's Delete.
+ * blind review and decision e-mails; and the Reviewers tab: the people who
+ * score the entries, the run that gives the entries out to them and the
+ * conflicts they declared. Gated by validate_forms_access() and the folder
+ * rule on the programme's form. It also takes the list drawer's add (a name
+ * and a form: a new draft) and the row menu's Delete.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -16,6 +18,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_reviewers.php');
 
 $user = validate_user();
 validate_forms_access($user);
@@ -30,6 +33,7 @@ $ap_forms = pg_application_program_forms($user);
 $ap_id = (int) ($_POST['id'] ?? $_POST['submit_delete'] ?? $_GET['id'] ?? 0);
 $ap_program = ($ap_id > 0) ? pg_application_program_get($ap_id) : null;
 $ap_self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_application_program.php';
+$ap_view = ((($_POST['view'] ?? $_GET['view'] ?? '') === 'reviewers') && ($ap_program !== null)) ? 'reviewers' : 'setup';
 $ap_list = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_application_programs.php';
 
 if (($ap_id > 0) && ($ap_program === null)) {
@@ -67,7 +71,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         go($ap_self . '?id=' . $ap_new_id);
     }
 
-    $ap_back = $ap_self . '?id=' . $ap_id;
+    $ap_back = $ap_self . '?id=' . $ap_id . (($ap_view === 'reviewers') ? '&view=reviewers' : '');
+
+    if (isset($_POST['submit_reviewer_add'])) {
+        $ap_reviewer = pg_application_reviewer_input($_POST, pg_application_category_choices($ap_program));
+
+        if ($ap_reviewer['error'] !== '') {
+            $liveform->add_error(h($ap_reviewer['error']));
+            go($ap_back . '&add=1');
+        }
+
+        if (pg_application_reviewer_add($ap_program, $ap_reviewer['user_id'], $ap_reviewer['name'], $ap_reviewer['email'], $ap_reviewer['categories'])) {
+            $liveform->add_notice(h(lang('The reviewer was added. Give out entries to share the entries with them.')));
+        } else {
+            $liveform->add_error(h(lang('The reviewer could not be added.')));
+        }
+
+        go($ap_back);
+    }
+
+    if (isset($_POST['submit_reviewer_remove'])) {
+        if (pg_application_reviewer_remove($ap_program, (int) $_POST['submit_reviewer_remove'])) {
+            $liveform->add_notice(h(lang('The reviewer was removed. Give out entries to pass their open entries to others.')));
+        }
+
+        go($ap_back);
+    }
+
+    if (isset($_POST['submit_assign'])) {
+        $ap_plan = pg_application_assignment_run($ap_program);
+        $liveform->add_notice(h(lang(array('string' => 'Entries given out: {var:1} new reviews.', 'vars' => array(count($ap_plan['inserts']))))));
+
+        if ($ap_plan['short']) {
+            $liveform->add_error(h(lang(array('string' => '{var:1} entries still lack reviewers: add reviewers to their category.', 'vars' => array(count($ap_plan['short']))))));
+        }
+
+        go($ap_back);
+    }
 
     if (isset($_POST['submit_delete'])) {
         if (pg_application_program_delete($ap_program)) {
@@ -326,6 +366,123 @@ if ($ap_program['status'] === 0) {
     $ap_state_button = '<button type="submit" form="aprog_state_form" name="submit_close" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h(lang('The form stops taking entries. Drafts saved for later can no longer be finished.')) . '">' . h(lang('Close')) . '</button>';
 }
 
+// The Reviewers tab: the people as rows, "Add reviewer" in a drawer, the
+// run that gives the entries out, the conflicts gathered under the list.
+$ap_reviewers = pg_application_reviewers($ap_program);
+$ap_choices = pg_application_category_choices($ap_program);
+$ap_initials = function ($name) {
+    $letters = '';
+
+    foreach (array_slice(preg_split('/[\s(]+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY), 0, 2) as $word) {
+        $letters .= mb_strtoupper(mb_substr($word, 0, 1));
+    }
+
+    return ($letters !== '') ? $letters : '?';
+};
+$ap_reviewer_rows = '';
+
+foreach ($ap_reviewers as $i => $reviewer) {
+    $pool = ($reviewer['categories'] === null) ? lang('Every category') : implode(', ', array_map(function ($value) use ($ap_choices) {
+        return $ap_choices[$value] ?? $value;
+    }, $reviewer['categories']));
+    $ap_reviewer_rows .= '<div class="pg-card-inner-row" data-pg-ap-reviewer>'
+        . '<span class="pg-initials' . (($i % 3) ? ' pg-initials-' . (($i % 3) + 1) : '') . '" aria-hidden="true">' . h($ap_initials($reviewer['display'])) . '</span>'
+        . '<div class="flex-grow-1 min-width-0"><strong class="pg-list-row-title">' . h($reviewer['display']) . '</strong>'
+        . '<div class="pg-text-meta">' . h(((int) $reviewer['user_id'] > 0) ? lang('Panel user') : lang('Outside juror') . ' · ' . $reviewer['email']) . ($ap_choices ? ' · ' . h($pool) : '') . '</div></div>'
+        . '<span class="pg-text-2 pg-tabular text-nowrap">' . h(lang(array('string' => '{var:1} of {var:2} sent', 'vars' => array((int) $reviewer['done'], (int) $reviewer['assigned'])))) . '</span>'
+        . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" data-bs-container="body" aria-expanded="false" aria-label="' . h(lang('More actions')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>'
+        . '<ul class="menu pg-menu-end"><li><button type="submit" form="aprog_reviewers_form" name="submit_reviewer_remove" value="' . (int) $reviewer['id'] . '" class="menu-item fg-emphasis-danger" data-confirm-content="' . h(lang('Entries they have not sent go back to be given out again. Reviews they sent stay.')) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Remove')) . '</button></li></ul></span>'
+        . '</div>';
+}
+
+$ap_conflict_lines = '';
+
+foreach (pg_application_conflicts($ap_program) as $conflict) {
+    $ap_conflict_lines .= '<div class="pg-gather-line"><b>' . h($conflict['display']) . '</b>'
+        . '<span><a href="edit_submitted_form.php?id=' . (int) $conflict['form_id'] . '">' . h(((string) $conflict['reference_code'] !== '') ? $conflict['reference_code'] : '#' . (int) $conflict['form_id']) . '</a> · ' . h($conflict['conflict_reason']) . '</span>'
+        . '<span class="pg-gather-line-end">' . h(lang(array('string' => 'Round {var:1}', 'vars' => array((int) $conflict['round'])))) . '</span></div>';
+}
+
+$ap_plan = pg_application_assignment_read($ap_program, false);
+$ap_assign_text = ($ap_plan['entries'] > 0)
+    ? lang(array('string' => '{var:1} entries go to {var:2} reviewers. Reviews already started or sent are kept.', 'vars' => array($ap_plan['entries'], $ap_plan['reviewers'])))
+    : lang('No entry needs a new reviewer now.');
+
+if ($ap_plan['short']) {
+    $ap_assign_text .= ' ' . lang(array('string' => '{var:1} entries cannot get all their reviewers: their category has too few.', 'vars' => array(count($ap_plan['short']))));
+}
+
+$ap_category_boxes = '';
+
+foreach ($ap_choices as $value => $label) {
+    $ap_category_boxes .= '<span class="d-inline-flex align-items-center gap-2 me-4"><input type="checkbox" class="pg-checkbox" id="aprog_cat_' . md5($value) . '" name="reviewer_categories[]" value="' . h($value) . '"><label class="pg-text-2" for="aprog_cat_' . md5($value) . '">' . h($label) . '</label></span>';
+}
+
+// A manager or above finds the account as they type (user_search_action.php);
+// a forms manager who cannot list users types the username.
+$ap_user_field = pg_user_picker_may_search($user['role'])
+    ? '<select class="pg-input" id="aprog_reviewer_user" name="reviewer_user_id" data-pg-combobox data-pg-source="user_search_action.php" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a user')) . '"><option value=""></option></select>'
+    : '<input type="text" class="pg-input" id="aprog_reviewer_user" name="reviewer_username" maxlength="100" required>';
+
+$ap_reviewers_html = '<form id="aprog_reviewers_form" action="edit_application_program.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="reviewers"></form>'
+    . '<section class="pg-card p-5 mb-5" aria-labelledby="aprog_reviewers_title"><h2 class="pg-title-section mb-0" id="aprog_reviewers_title">' . h(lang('Reviewers')) . '</h2>'
+    . '<p class="pg-card-sub mb-5">' . h($ap_reviewers ? lang('Each entry goes to reviewers of its category; the fewest given out first.') : lang('No reviewers yet. Add the people who score the entries.')) . '</p>'
+    . ($ap_reviewers ? '<div class="pg-card-inner">' . $ap_reviewer_rows . '</div>' : '') . '</section>'
+    . (($ap_conflict_lines !== '') ? '<section class="pg-list-row mb-5" aria-labelledby="aprog_conflicts_title"><span class="pg-icon-tile pg-tone-amber" aria-hidden="true"><span class="bi bi-person-exclamation"></span></span><div class="pg-list-row-main">'
+        . '<div class="pg-list-row-head"><h2 class="pg-list-row-title mb-0" id="aprog_conflicts_title">' . h(lang('Conflicts')) . '<span class="pg-count">' . substr_count($ap_conflict_lines, 'pg-gather-line"') . '</span></h2></div>'
+        . '<div class="pg-list-row-text">' . h(lang('Reviewers who know an applicant; the entry goes to another reviewer.')) . '</div>'
+        . '<div class="pg-gather">' . $ap_conflict_lines . '</div></div></section>' : '')
+    . '<dialog class="drawer drawer-end" id="aprog_reviewer_add" aria-labelledby="aprog_reviewer_add_title" style="width:min(480px,100%)"' . (isset($_GET['add']) ? ' data-open="1"' : '') . '>
+        <form method="post" action="edit_application_program.php" class="d-flex flex-column h-100">
+            ' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="reviewers"><input type="hidden" name="reviewer_kind" value="user" data-pg-ap-kind>
+            <div class="drawer-header">
+                <div class="flex-grow-1 min-width-0">
+                    <h5 class="drawer-title mb-0" id="aprog_reviewer_add_title">' . h(lang('Add reviewer')) . '</h5>
+                    <p class="small fg-2 mb-0 mt-1">' . h(lang('A panel user signs in to score; an outside juror needs no sign-in.')) . '</p>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="drawer-body flex-grow-1 overflow-auto">
+                <span class="pg-seg mb-5" role="group" aria-label="' . h(lang('Reviewer')) . '"><button type="button" class="pg-seg-item" aria-pressed="true" data-pg-ap-kind-choice="user">' . h(lang('Panel user')) . '</button><button type="button" class="pg-seg-item" aria-pressed="false" data-pg-ap-kind-choice="juror">' . h(lang('Outside juror')) . '</button></span>
+                <div data-pg-ap-kind-pane="user"><div class="form-field mb-5"><label class="form-label pg-field-label" for="aprog_reviewer_user">' . h(lang('User')) . '</label>' . $ap_user_field . '</div></div>
+                <div data-pg-ap-kind-pane="juror" hidden>
+                    <div class="form-field mb-5"><label class="form-label pg-field-label" for="aprog_reviewer_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="aprog_reviewer_name" name="reviewer_name" maxlength="150" required disabled></div>
+                    <div class="form-field mb-5"><label class="form-label pg-field-label" for="aprog_reviewer_email">' . h(lang('E-mail')) . '</label><input type="email" class="pg-input" id="aprog_reviewer_email" name="reviewer_email" maxlength="190" required disabled></div>
+                </div>
+                ' . (($ap_category_boxes !== '') ? '<div class="pg-field-label">' . h(lang('Categories')) . '</div><div class="mb-3">' . $ap_category_boxes . '</div><div class="pg-field-help">' . h(lang('Leave all unticked to review every category.')) . '</div>' : '') . '
+            </div>
+            <div class="drawer-footer border-top p-5 d-flex align-items-center gap-3"><span class="flex-grow-1"></span>
+                <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>
+                <button type="submit" name="submit_reviewer_add" value="1" class="pg-button pg-button-fill">' . h(lang('Add')) . '</button>
+            </div>
+        </form>
+    </dialog>';
+
+$ap_tab = function ($view, $label, $count = null) use ($ap_id, $ap_view) {
+    return '<a class="pg-seg-item' . (($ap_view === $view) ? ' is-active" aria-current="page' : '') . '" href="edit_application_program.php?id=' . $ap_id . (($view === 'setup') ? '' : '&amp;view=' . $view) . '">' . h($label) . (($count !== null) ? ' <span class="pg-seg-count">' . (int) $count . '</span>' : '') . '</a>';
+};
+$ap_toolbar = array(
+    'primary' => ($ap_view === 'reviewers')
+        ? array('<button type="button" class="pg-button pg-button-fill" data-pg-ap-drawer="aprog_reviewer_add"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add reviewer')) . '</button>', $ap_state_button)
+        : $ap_state_button,
+    'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $ap_tab('setup', lang('Set-up')) . $ap_tab('reviewers', lang('Reviewers'), count($ap_reviewers)) . '</span>',
+);
+
+if ($ap_view === 'reviewers') {
+    $ap_toolbar['secondary'] = '<button type="submit" form="aprog_reviewers_form" name="submit_assign" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h($ap_assign_text) . '"' . (($ap_reviewers && $ap_entries) ? '' : ' disabled') . '><i class="bi bi-shuffle" aria-hidden="true"></i>' . h(lang('Give out entries')) . '</button>';
+}
+
+$ap_setup_html = '<form id="aprog_form" action="edit_application_program.php" method="post">
+        ' . get_token_field() . '
+        <input type="hidden" name="id" value="' . $ap_id . '">
+        <section class="pg-card p-5 mb-5" aria-labelledby="aprog_name_title"><h2 class="pg-title-section mb-0" id="aprog_name_title">' . h(lang('Programme')) . '</h2><p class="pg-card-sub mb-5">' . h(lang('The name staff and reviewers see.')) . '</p>
+        <label class="pg-field-label" for="aprog_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="aprog_name" name="name" maxlength="150" required value="' . h($ap_values['name']) . '"></section>
+        ' . $ap_period . $ap_categories . $ap_eligibility . $ap_rounds_html . $ap_blind . $ap_mails . '
+        <div class="pg-floatbar d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 mb-5">
+            <span class="d-flex flex-wrap gap-2"><button type="submit" name="submit_save" value="1" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button><a class="pg-button pg-button-quiet" href="' . h($ap_list) . '">' . h(lang('Cancel')) . '</a></span>
+        </div>
+    </form>';
+
 echo pg_page_shell(array(
     'title' => $ap_program['name'],
     'extra classes' => 'form pg-measure-edit',
@@ -341,21 +498,9 @@ echo pg_page_shell(array(
 )) . '
 <main id="content" class="container-fluid">
     ' . $liveform->get_messages() . '
-    ' . pg_screen_toolbar(array(
-        'primary' => $ap_state_button,
-        'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '"><button type="button" class="pg-seg-item" aria-pressed="true">' . h(lang('Set-up')) . '</button></span>',
-    )) . '
-    <form id="aprog_state_form" action="edit_application_program.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"></form>
-    <form id="aprog_form" action="edit_application_program.php" method="post">
-        ' . get_token_field() . '
-        <input type="hidden" name="id" value="' . $ap_id . '">
-        <section class="pg-card p-5 mb-5" aria-labelledby="aprog_name_title"><h2 class="pg-title-section mb-0" id="aprog_name_title">' . h(lang('Programme')) . '</h2><p class="pg-card-sub mb-5">' . h(lang('The name staff and reviewers see.')) . '</p>
-        <label class="pg-field-label" for="aprog_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="aprog_name" name="name" maxlength="150" required value="' . h($ap_values['name']) . '"></section>
-        ' . $ap_period . $ap_categories . $ap_eligibility . $ap_rounds_html . $ap_blind . $ap_mails . '
-        <div class="pg-floatbar d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 mb-5">
-            <span class="d-flex flex-wrap gap-2"><button type="submit" name="submit_save" value="1" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button><a class="pg-button pg-button-quiet" href="' . h($ap_list) . '">' . h(lang('Cancel')) . '</a></span>
-        </div>
-    </form>
+    ' . pg_screen_toolbar($ap_toolbar) . '
+    <form id="aprog_state_form" action="edit_application_program.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="' . $ap_view . '"></form>
+    ' . (($ap_view === 'reviewers') ? $ap_reviewers_html : $ap_setup_html) . '
 </main>
 ' . get_date_time_picker_format() . pg_fields_script() . '
 <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/application_program.js?v=' . filemtime(PG_FUNCTIONS_DIR . '/assets/js/application_program.js') . '"></script>
