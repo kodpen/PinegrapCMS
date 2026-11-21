@@ -8904,7 +8904,8 @@ function upgrade_2026_11_0_lead_journey() {
 // booking's id and time (0 for a walk-in), the times, and the person's name,
 // phone (as pg_sms_number() gives it) and e-mail, which the general job
 // clears after the place's keep period (cleared_at); the figures stay.
-// token_hash is the sha256 of the person's page link (pg_waiting_ticket_token()).
+// token_hash is the sha256 of the person's page link (pg_waiting_ticket_token());
+// the link carries the number's id and the hash is only compared, so no index.
 // No column is added to an existing table.
 function upgrade_2026_11_0_walk_in_queue() {
 
@@ -8920,8 +8921,7 @@ function upgrade_2026_11_0_walk_in_queue() {
 		created_by  INT UNSIGNED NOT NULL DEFAULT 0,
 		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
 		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
-		PRIMARY KEY (id),
-		KEY idx_status (status)
+		PRIMARY KEY (id)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_create_table('waiting_desks', "CREATE TABLE waiting_desks (

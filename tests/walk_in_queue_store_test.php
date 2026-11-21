@@ -72,7 +72,7 @@ function test_walk_in_queue_store_migration_step_shape()
 	);
 
 	$keys = array(
-		'waiting_places' => array('PRIMARY KEY (id)', 'KEY idx_status (status)'),
+		'waiting_places' => array('PRIMARY KEY (id)'),
 		'waiting_desks' => array('PRIMARY KEY (id)', 'KEY idx_place (place_id)', 'KEY idx_user (user_id)'),
 		'waiting_tickets' => array('PRIMARY KEY (id)', 'UNIQUE KEY uniq_number (place_id, day, service, number)', 'KEY idx_place_state (place_id, state, joined_at)', 'KEY idx_place_joined (place_id, joined_at)', 'KEY idx_desk_called (desk_id, called_at)', 'KEY idx_booking (booking_id)', 'KEY idx_contact (contact_id)', 'KEY idx_phone (phone)', 'KEY idx_email (email)'),
 	);
@@ -103,6 +103,11 @@ function test_walk_in_queue_store_migration_step_shape()
 			pg_assert_contains($key, $tables[$table]['body'], $table . ' ' . $key);
 		}
 	}
+
+	// A place has no key but its id (a handful of rows); the link carries the
+	// number's id and token_hash is only compared, so it has no key either.
+	pg_assert_same(1, substr_count($tables['waiting_places']['body'] ?? '', 'KEY'), 'waiting_places has only its primary key');
+	pg_assert_false(strpos($tables['waiting_tickets']['body'] ?? '', 'KEY idx_token') !== false, 'token_hash has no index');
 
 	// The states the pure rules compare (pg_waiting_open_desks(), Call next's
 	// WHERE state = 'waiting') are the columns' defaults.

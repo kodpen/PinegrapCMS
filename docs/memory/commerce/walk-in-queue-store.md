@@ -6,6 +6,7 @@ module: walk_in_queue_store
 
 ## Which tables hold the queue?
 - `waiting_places`, `waiting_desks`, `waiting_tickets`, made by `upgrade_2026_11_0_walk_in_queue()` (11.0.266) and listed in `get_tables()`. Names: owner poll 206, `workflow/decisions-made-schema-46.md`. `tests/walk_in_queue_store_test.php` pins every column and key. No column on an existing table.
+- Columns: Architect (2026-11-21), the schema-47 decisions (#10957): `waiting_places` keyed by its id only (a few rows); `contact_id` without `user_id`; `priority` cleared with the personal fields; staff in the place's settings JSON and the lobby link as an HMAC, no columns; states as short text; no `pg_privacy_rules_catalogue()` entry (the place's keep period covers it).
 - Until the step runs `pg_waiting_ready()` is false and nothing is read or written (`includes/fn/walk_in_queue_store.php`).
 
 ## What does a place hold?
@@ -18,7 +19,7 @@ module: walk_in_queue_store
 - `place_id`, `service` (the service's key) and `letter` as it was when taken, `day` (YYYYMMDD in the site's zone) and `number` (the day's count); unique on place, day, service and number, so two numbers never get one count.
 - `state`: `waiting` by default, `called`, `served`, `left` (left the queue), `no_show` (Not here the last time). `source`: how it was taken. `priority` is the priority group's key, '' for none.
 - `booking_id` and `booking_at` (0 for a walk-in), `desk_id` and `staff_user_id` of the call, `moved_back`, `notices` (bits of the messages sent, at most three), times `joined_at`, `on_way_at`, `called_at`, `done_at`.
-- The person: `name`, `phone` (as `pg_sms_number()` gives it, the form export and erase find numbers in), `email`, `contact_id`. `token_hash`: sha256 of the link token (`pg_waiting_ticket_token()`); '' opens nothing.
+- The person: `name`, `phone` (as `pg_sms_number()` gives it, the form export and erase find numbers in), `email`, `contact_id`. `token_hash`: sha256 of the link token (`pg_waiting_ticket_token()`); '' opens nothing. No index: the link carries the number's id, the row is read by it and the hash only compared (`pg_waiting_ticket_token_valid()`) (as the booking manage link).
 
 ## When are a number's personal fields cleared? (W14)
 - `pg_waiting_keep_clear_daily()` from `job.php`, once a day, at most 5 seconds a tick, 1,000 rows a statement: numbers that joined more than the place's keep period ago get `pg_waiting_clear_fields()` (name, phone, e-mail, contact, priority, link hash emptied) and `cleared_at`. The figures stay for the report.

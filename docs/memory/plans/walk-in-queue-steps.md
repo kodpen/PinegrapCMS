@@ -7,7 +7,7 @@ description: Plan walk-in-queue, steps WQ1a to WQ9: the pure rules, the store, p
 - WQ1a (S) first, no schema, done in #10924: new `includes/fn/walk_in_queue.php`, pure.
   - Its rules: the order rule (priority, a booking within the grace window), the number's letter and count, the cap and closing rule, the estimate (median of the handled, open desks, rounding), the not-here timer, the signed token. `tests/walk_in_queue_test.php` red first: two desks and one service, a priority person, a booking 10 minutes late, 19 and 20 handled, a number after the closing estimate. Features: W3, W8, W9 (the rules).
 
-- WQ1b (M) after WQ1a: `waiting_places`, `waiting_desks`, `waiting_tickets` (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns brought to the architect before ready; the five privacy registrations and `pg_contact_holders()`; the keep-period clear in the general job; their tests. Features: W14.
+- WQ1b (M) after WQ1a, done in #10956: `waiting_places`, `waiting_desks`, `waiting_tickets` (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns approved by the architect (`workflow/decisions-made-schema-47.md`); the five privacy registrations and `pg_contact_holders()`; the keep-period clear in the general job; their tests. Features: W14.
 
 - WQ2 (M) after WQ1b: the places list and a place's screen (services, hours, desks, notices, order, keep period), the printable QR poster. Features: W1, W2.
 
