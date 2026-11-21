@@ -10,6 +10,7 @@ module: image_editor
 
 ## Which items show?
 - `M.menuList(s)` (the model's MENU section), `s` from `menuState()`. Layers: Cut, Copy, Paste, then `M.actionList()`'s Duplicate and Delete, Order and Align submenus, Lock/Unlock and Hide/Show (the inverse when every selected layer has it), then the type's own: Combine shapes (two areas or more, the five pathfinder ops), Convert to outlines, Expand warp, Break apart (one imported SVG). The picture and an area: `actionList()` as the selection bar shows it, without Options. Empty canvas: Paste, Select all, Import (a submenu with From the site when the API is there; nothing without the Import button), Canvas size (Canvas tool offered), Fit to screen. A group rail item: its modes (menuitemradio, the shown one ticked); a one-tool item has no menu. A scene: Duplicate, Delete, Move earlier, Move later, each off at its limit.
+- A clip's row on the tracks (a bar or the row's name): that clip selected, Split clip and Detach sound first (`image-editor-detach-sound.md`).
 - Paste uses the editor's own clipboard (`this.clip`, what Ctrl+C and Cut put there); a picture on the system clipboard still comes in by Ctrl+V only.
 - The panel's Arrange, Align and Distribute call `arrangeLayers()`, `alignLayers()`, `spreadLayers()` (layers part), as the menu does.
 
