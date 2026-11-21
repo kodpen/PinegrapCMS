@@ -8,7 +8,7 @@ description: Plan assistants-settings-tidy, steps AT1 to AT4: the folded rows of
 - AT2 (M) done #10860: Claude's row and its set-up drawer (`includes/workspace/claude.php`'s card). Feature: T3.
 - AT2b (M) done #10898: Claude's opened row part by part (one column, the fold Application and key, the drawer The latest requests; `ui/settings-claude-row.md`). Feature: T3.
 - AT3 (S) done #10864: the help lines of Pinegrap AI, Agents, MCP servers, Voice and Canvas templates; texts with `php tools/tr_add.php`. Features: T4, T7.
-- AT4 (S) close-out: the T numbers checked against the code with their PRs; the four Workspace settings files corrected; this plan deleted.
+- AT4 (S) #10918 draft: memory corrected, MCP "Not connected" gray; the other rows fail the screens file's lines (Pinegrap AI and Voice in two columns, help paragraphs, the MCP list with no "Show all N"), asked of the architect; the plan is deleted once that is answered.
 
 ## Which steps run side by side?
 - After AT1: AT2 and AT3, each in its own files.
