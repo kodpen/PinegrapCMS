@@ -3386,6 +3386,7 @@
     "A subscription with a payment due cannot be paused: it would stop the payment retries.": "Ödemesi bekleyen bir abonelik duraklatılamaz: ödeme denemeleri durur.",
     "A subscription's renewal was refused or waits for the customer to confirm the payment; status ended when the last retry failed (the end itself is not announced again)": "Bir aboneliğin yenileme ödemesi reddedildi ya da müşterinin ödemeyi onaylaması bekleniyor; son deneme de başarısız olduğunda status ended olur (sona erme ayrıca yeniden bildirilmez)",
     "A success box that confirms something went well: an icon, a title and a short message.": "Bir işin yolunda gittiğini bildiren başarı kutusu: simge, başlık ve kısa mesaj.",
+    "A suggestion from your own deliveries; the choice is yours.": "Kendi teslimatlarınızdan bir öneri; seçim sizin.",
     "A suite with a free-standing bath facing the window and the sea": "Pencereye ve denize bakan, ayaklı küveti olan bir süit",
     "A suite, a bottle of sparkling wine on arrival, a dinner on the terrace and a late check-out.": "Bir süit, gelişte bir şişe köpüklü şarap, terasta bir akşam yemeği ve geç çıkış.",
     "A summary is proposed for the channel the request came from.": "Özet yalnız isteğin geldiği kanal için önerilir.",

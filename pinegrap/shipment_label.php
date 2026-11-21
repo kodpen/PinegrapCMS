@@ -42,7 +42,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     include_once('liveform.class.php');
 
-    // label_request: create-<ship_to_id>, return-<ship_to_id>,
+    // label_request: create-<ship_to_id> (with label_driver from the
+    // carrier chooser), return-<ship_to_id>,
     // cancel-<label id> and marketplace-<ship_to_id> (with
     // label_boxes_<ship_to_id>) and pickup-<ship_to_id> from the order
     // screen; bulk_create, bulk_print, bulk_zpl and bulk_pickup with
@@ -170,7 +171,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             ? lang('This address has its shipping label already.')
             : lang(array('string' => 'The shipping label was created. Tracking number: {var:1}', 'vars' => array(h($result['number']))));
     } else {
-        $result = pg_shipment_label_create((int) $match[2], USER_ID, $match[1] === 'return');
+        // label_driver: the carrier chooser's pick, weighed by
+        // pg_shipment_label_chosen_driver(); a return label ignores it.
+        $chosen = ($match[1] === 'create' && is_scalar($_POST['label_driver'] ?? null)) ? (string) $_POST['label_driver'] : '';
+        $result = pg_shipment_label_create((int) $match[2], USER_ID, $match[1] === 'return', $chosen);
         $notice = lang(array('string' => 'The shipping label was created. Tracking number: {var:1}', 'vars' => array(h($result['number']))));
     }
 

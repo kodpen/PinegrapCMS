@@ -201,6 +201,29 @@ function pg_shipment_label_method_driver($method_driver, $carrier, $drivers)
 }
 
 /**
+ * The driver a person chose in the Create Label chooser, when the chooser
+ * applies: the address's method names no carrier and links no driver, and
+ * the chosen driver is ready. Otherwise the pick stands. Pure.
+ *
+ * @param string $chosen        the posted driver key, '' for none
+ * @param string $carrier       pg_shipment_label_carrier()
+ * @param string $method_driver shipping_methods.label_driver
+ * @param array  $drivers       pg_shipment_label_drivers()
+ * @param string $pick          pg_shipment_label_method_driver()
+ * @return string driver key
+ */
+function pg_shipment_label_chosen_driver($chosen, $carrier, $method_driver, $drivers, $pick)
+{
+    $chosen = (string) $chosen;
+
+    if (($chosen === '') || ((string) $carrier !== '') || ((string) $method_driver !== '') || !array_key_exists($chosen, (array) $drivers)) {
+        return (string) $pick;
+    }
+
+    return $chosen;
+}
+
+/**
  * The service a label is asked for: the linked service of the address's
  * shipping method when the label is made with the linked driver, else ''
  * (the account's service, or the cheapest offer). Pure.
@@ -697,12 +720,14 @@ function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $ret
  * an API dry run stops after it. A label made from a return request is that
  * request's (pg_shipment_label_create_for_return()) and is not counted.
  *
- * @param int  $ship_to_id
- * @param bool $return
+ * @param int    $ship_to_id
+ * @param bool   $return
+ * @param string $chosen the driver chosen in the Create Label chooser
+ *                       (pg_shipment_label_chosen_driver()), '' for none
  * @return array ok, code, error (pg_shipment_label_create_refusal()),
  *               ship_to (with method_carrier), order, driver
  */
-function pg_shipment_label_create_check($ship_to_id, $return = false)
+function pg_shipment_label_create_check($ship_to_id, $return = false, $chosen = '')
 {
     $out = array('ok' => false, 'code' => '', 'error' => '', 'ship_to' => null, 'order' => null, 'driver' => '');
     $ready = pg_shipment_labels_ready();
@@ -740,7 +765,13 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
             . (pg_shipment_labels_link_returns() ? " AND (order_return_id = '0')" : ""));
 
         $carrier = pg_shipment_label_carrier(isset($ship_to['method_carrier']) ? $ship_to['method_carrier'] : '', $ship_to['shipping_method_code']);
-        $driver = pg_shipment_label_method_driver(isset($ship_to['method_label_driver']) ? $ship_to['method_label_driver'] : '', $carrier, pg_shipment_label_drivers());
+        $method_driver = isset($ship_to['method_label_driver']) ? $ship_to['method_label_driver'] : '';
+        $drivers = pg_shipment_label_drivers();
+        $driver = pg_shipment_label_method_driver($method_driver, $carrier, $drivers);
+
+        if (!$return) {
+            $driver = pg_shipment_label_chosen_driver($chosen, $carrier, $method_driver, $drivers, $driver);
+        }
 
         $marketplace = $return ? null : pg_shipment_label_marketplace((int) $ship_to['id']);
         $marketplace_name = ($marketplace && ($marketplace['offer'] === 'create')) ? $marketplace['name'] : '';
@@ -775,13 +806,16 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
  * another create of the same address runs, the call is refused with code
  * busy and nothing is asked of the service.
  *
- * @param int  $ship_to_id
- * @param int  $user_id
- * @param bool $return
+ * @param int    $ship_to_id
+ * @param int    $user_id
+ * @param bool   $return
+ * @param string $chosen the driver chosen in the Create Label chooser, ''
+ *                       for the method's pick (the bulk run, the automatic
+ *                       label, the API)
  * @return array ok, error, code (the check's or busy, '' past it), unclear,
  *               id (the label row), number, row
  */
-function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
+function pg_shipment_label_create($ship_to_id, $user_id, $return = false, $chosen = '')
 {
     $lock = pg_shipment_label_lock_name($ship_to_id);
 
@@ -789,7 +823,7 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
         return pg_shipment_label_busy_refusal();
     }
 
-    $result = pg_shipment_label_create_locked($ship_to_id, $user_id, $return);
+    $result = pg_shipment_label_create_locked($ship_to_id, $user_id, $return, $chosen);
 
     db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
@@ -834,15 +868,16 @@ function pg_shipment_label_busy_refusal()
  * active label and the service call run inside it, so two presses, a bulk
  * run and an API call at once never buy two labels for one address.
  *
- * @param int  $ship_to_id
- * @param int  $user_id
- * @param bool $return
+ * @param int    $ship_to_id
+ * @param int    $user_id
+ * @param bool   $return
+ * @param string $chosen as pg_shipment_label_create()
  * @return array as pg_shipment_label_create()
  */
-function pg_shipment_label_create_locked($ship_to_id, $user_id, $return = false)
+function pg_shipment_label_create_locked($ship_to_id, $user_id, $return = false, $chosen = '')
 {
     $out = array('ok' => false, 'error' => '', 'code' => '', 'unclear' => false, 'id' => 0, 'number' => '', 'row' => array());
-    $check = pg_shipment_label_create_check($ship_to_id, $return);
+    $check = pg_shipment_label_create_check($ship_to_id, $return, $chosen);
 
     if (!$check['ok']) {
         $out['error'] = $check['error'];

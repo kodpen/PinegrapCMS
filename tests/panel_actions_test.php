@@ -56,7 +56,7 @@ function pg_test_panel_exempt_names()
 		'purge_cache', 'push_config', 'push_pending', 'push_subscribe',
 		'push_test', 'push_unsubscribe', 'remove_notifications',
 		'save_barcode_template', 'save_product_barcode',
-		'server_config_repair', 'shared_component', 'sitemap_check',
+		'server_config_repair', 'shared_component', 'shipment_label_choose', 'sitemap_check',
 		'software_backup', 'software_update', 'software_update_check',
 		'sort_menu_items', 'tour_seen', 'update_dashboard_widgets',
 		'update_product_group_status', 'update_product_status',

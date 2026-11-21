@@ -1421,3 +1421,37 @@ function pg_panel_product_name_check($request, $action)
         'url' => PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . (int) $holder['id'],
         'link' => lang('Open it')));
 }
+
+function pg_panel_shipment_label_choose($request, $action)
+{
+    // The Create Label chooser of the order screen: the ready label drivers
+    // for an address whose shipping method names no carrier, in the
+    // suggested order (includes/fn/shipment_label_chooser.php). It answers
+    // the drivers, their figures and the province, nothing else of the
+    // address.
+
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+    $user = validate_user();
+    // The order screen's own rule (validate_ecommerce_access()), in JSON.
+    if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+        log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+        respond(array(
+            'status' => 'error',
+            'message' => lang('Access denied')));
+    }
+    validate_token();
+
+    if (!pg_shipment_labels_ready()) {
+        respond(array('status' => 'error', 'message' => lang('Run the software update first: the table for shipping labels is missing.')));
+    }
+
+    $answer = pg_shipment_label_chooser_read((int) ($request['ship_to_id'] ?? 0));
+
+    respond(array('status' => 'success', 'due' => $answer['due'], 'html' => $answer['html']));
+}
