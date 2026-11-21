@@ -4950,6 +4950,7 @@
     "The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.": "Bu siparişi faturalamak için yapılan son denemeye Paraşüt'ten cevap gelmedi; satış faturası Paraşüt'te olabilir.",
     "The last update check got no answer from the update server, so it is not known whether an update is waiting. The Site Log has the reason.": "Son güncelleme denetimi güncelleme sunucusundan yanıt alamadı, bu yüzden bir güncellemenin beklenip beklenmediği bilinmiyor. Nedeni Site Günlüğü'nde yazıyor.",
     "The last week of the autumn term, 18:00": "Güz döneminin son haftası, 18:00",
+    "The last {var:1}, and every one from the last {var:2} day{suffix:1}": "Son {var:1} tanesi ve son {var:2} gündekilerin hepsi",
     "The late payment fee is on this sales invoice draft. Check the line, its tax rate and the notes, then issue it; until it is issued nothing is charged.": "Vade farkı bu satış faturası taslağına yazıldı. Satırı, vergi oranını ve notları kontrol edip kesin; kesilene kadar cariye hiçbir şey yansımaz.",
     "The late payment fee terms were saved.": "Vade farkı ayarları kaydedildi.",
     "The latest": "En yeniler",

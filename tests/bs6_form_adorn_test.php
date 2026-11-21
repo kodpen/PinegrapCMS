@@ -105,8 +105,8 @@ function pg_test_form_adorn_settings_fields()
 		),
 		'mail_sending.php' => array('mailchimp_sync_days' => "lang('days in the past')"),
 		'features.php' => array(
-			'image_quality_webp' => array('>%</span>', '$image_quality_adorn'),
-			'image_quality_avif' => array('>%</span>', '$image_quality_adorn'),
+			'image_quality_webp' => array('>%</span>', 'form-adorn-end'),
+			'image_quality_avif' => array('>%</span>', 'form-adorn-end'),
 			'image_product_max_dimension' => "lang('pixels')",
 			'image_product_min_dimension' => "lang('pixels')",
 			'image_file_resize_trigger' => "lang('pixels')",

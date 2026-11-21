@@ -287,7 +287,7 @@ function test_page_clicks_features_card_uses_the_one_reader_and_saver()
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.save.php');
 
 	pg_assert_contains('id="pgset-page-clicks"', $card, 'the card');
-	pg_assert_contains("\$features_modules['page_clicks'] = array('on' => pg_page_clicks_switch_on(), 'settings' => 'pgset-page-clicks');", $card, 'drawn from the one reader, a row of the Modules board');
+	pg_assert_contains("\$features_modules['page_clicks'] = array('on' => pg_page_clicks_switch_on(), 'settings' => 'pg-fold-page-clicks');", $card, 'drawn from the one reader, a row of the Modules board');
 	pg_assert_contains('id="page_clicks_privacy"', $card, 'with the sentence for the privacy text');
 	pg_assert_true(strpos($card, '<textarea class="form-control" id="page_clicks_privacy"') === false, 'shown whole as text, never cut inside a box');
 	pg_assert_contains('day and device type (desktop, phone or tablet)', $card, 'counted per device type, not per device');
