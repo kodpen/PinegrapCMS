@@ -4,7 +4,7 @@ description: Plan mail-settings-one, steps EM1 to EM6: the E-mail category's two
 ---
 
 ## Which steps are there?
-- EM1 (M) first, after MT1 of `plans/mailboxes-tidy.md`, the design files and DX2b (`plans/design-examples-patterns-mail.md`): category `email` with tabs `sending` and `mailboxes` (design A), the tab kept in the address; old addresses, anchors and search words open their tab (`pg_settings_legacy_anchors()`, `fromUrl()`); each tab keeps today's gate, one right shows no tab control. Tests: every old address lands on its tab; a user with one tab's right sees only it. Fixes: C1.
+- EM1 (M) first, after MT1 of `plans/mailboxes-tidy.md`, the design files and DX2b (`plans/design-examples-patterns-mail.md`): category `email` with tabs `sending` and `mailboxes` (design A), the tab kept in the address; old addresses, anchors and search words open their tab (`pg_settings_legacy_anchors()`, `fromUrl()`); each tab keeps today's gate, one right shows no tab control. Tests: every old address lands on its tab; a user with one tab's right sees only it. Fixes: C1. Done: #10983.
 
 - EM2 (M) after EM1: the Sending tab as folded rows (`pg_settings_fold()`): "How e-mail leaves" (design A) with one line a kind of mail naming the way it leaves today, Change opening the ways sheet (design B, DX2's `.pg-start`), each way showing only its fields; "Send a test" with its result line. Field names unchanged. Fixes: C3.
 
