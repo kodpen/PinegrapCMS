@@ -4,7 +4,7 @@ description: Plan security-settings-tidy, steps SE1 to SE5: Firewall and HTTPS a
 ---
 
 ## Which steps are there?
-- SE1 (M) first: Firewall and HTTPS as folded rows (`pg_settings_fold()`) "Firewall", "Limits", "Bots", "Addresses", "Countries", "Trusted proxies", each with its state line; the popovers of Enable Firewall, Rate Limiting, Automatic Temporary Bans and Block Unknown Bots gone, their fields always drawn; Mode and Country Restriction as `pg-seg`. Fixes: S1 and S3 for these rows.
+- SE1 (M) first, done (#11000): Firewall and HTTPS as folded rows (`pg_settings_fold()`) "Firewall", "Limits", "Bots", "Addresses", "Countries", "Trusted proxies", each with its state line; the popovers of Enable Firewall, Rate Limiting, Automatic Temporary Bans and Block Unknown Bots gone, their fields always drawn; Mode and Country Restriction as `pg-seg`. Fixes: S1 and S3 for these rows.
 - In SE1 "Limits" (`pgset-limits`, new) takes Rate Limiting, Open at Once and Automatic Temporary Bans from the Firewall card; the bans table leaves IP Lists for a drawer (`pg_settings_drawer()`) opened by "See the bans" under a state line in "Addresses", its Release form unchanged. Fixes: S4.
 - Tests of SE1: `tests/settings_card_ids_test.php` and `settings_card_names_test.php` with the ids kept; every field posts under its old name, `firewall.save.php` unchanged; a row an anchor names arrives open.
 
