@@ -576,6 +576,7 @@
     "Google Calendar could not be written: {var:1}": "Google Takvim'e yazılamadı: {var:1}",
     "Google Client ID": "Google Client ID",
     "Google Client Secret": "Google Client Secret",
+    "Google Cloud Console": "Google Cloud Console",
     "Google Cloud Translation": "Google Cloud Translation",
     "Google Cloud Translation API key": "Google Cloud Translation API anahtarı",
     "Google Cloud Translation needs your own key from the Google Cloud console. The key is set on Google Cloud Translation's page of Connections.": "Google Cloud Translation, Google Cloud konsolundan alacağınız kendi anahtarınızla çalışır. Anahtar, Bağlantılar'daki Google Cloud Translation sayfasında girilir.",
