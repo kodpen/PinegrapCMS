@@ -435,7 +435,6 @@
 - look-kept-screens.md: The owner's kept panel screens in look A (Edit Offer, Product Builder, Edit User, Offers…): which shared rules reach them, the file line, KS1 and KS2, what each shared step left out of them [decision: decisions-made-panel-9.md]
 - look-kv-list.md: Look A's label and value list of a status column (.pg-kv, SH2, #9757): the markup, the second group under a hairline, the grey second line, which screens use it
 - look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile()) [decision: here]
-- look-mail-patterns.md: The e-mail settings drawing's seven parts and the Features board's switch rows as Design examples patterns (DX2b #10930), with the classes that draw each
 - look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields [decision: here]
 - look-mark-over-picture.md: A mark laid over a picture (the poll's picture count, #10037): its own class, colours as the tokens --pg-media-mark-bg / -fg, the same in both themes; a recipe when a second is built [decision: decisions-made-workspace-38.md]
 - look-marketplace-ranks.md: SH10 (#9755): the Marketplaces and Marketplace Products screens' button ranks (one fill per view, one quiet rank per card) and their views and filter rows as link segments [decision: here]
