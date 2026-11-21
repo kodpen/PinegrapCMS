@@ -9,6 +9,8 @@
  * fact: nothing is added to the order path. What a written batch has to
  * tell (stage moves, reorder reminders) is left to customer_rhythm_tell.php;
  * a rebuild that moves no stage and finds no new due product tells nothing.
+ * The pass also marks the order a reminded customer came back with
+ * (customer_rhythm_report.php) and counts it in the summary.
  *
  * Which orders count and who the customer is come from the Customers
  * Report (pg_customer_value_order_counts(), pg_customer_value_key(),
@@ -320,7 +322,8 @@ function pg_customer_rhythm_pass_stored($row)
  * @param array      $available  product_id => bool
  * @param int        $now
  * @return array|null  row (column => value), moved (bool), new (bool), due
- *                     (the products in their reorder window)
+ *                     (the products in their reorder window), came_back
+ *                     (pg_customer_rhythm_came_back())
  */
 function pg_customer_rhythm_pass_row($key, $orders, $lines, $stored, $store, $available, $now)
 {
@@ -401,7 +404,10 @@ function pg_customer_rhythm_pass_row($key, $orders, $lines, $stored, $store, $av
         'updated_at' => $now,
     );
 
-    return array('row' => $row, 'moved' => $moved, 'new' => ($stored === null), 'due' => $due_products);
+    // An order within 14 days of the last reminder counts as coming back (H13).
+    $came_back = $stored ? pg_customer_rhythm_came_back($orders, isset($stored['reminded_at']) ? $stored['reminded_at'] : 0, isset($stored['came_back_order_id']) ? $stored['came_back_order_id'] : 0) : null;
+
+    return array('row' => $row, 'moved' => $moved, 'new' => ($stored === null), 'due' => $due_products, 'came_back' => $came_back);
 }
 
 /**
@@ -455,6 +461,8 @@ function pg_customer_rhythm_pass_write_query($rows)
  * @param int   $at
  * @param array $counts  customers, moved, stages (code => customers),
  *                       optional reminders ('YYYY-MM' => told, held back)
+ *                       and returns ('YYYY-MM' => came back and value, told
+ *                       and held back)
  * @return string  JSON
  */
 function pg_customer_rhythm_summary_encode($store, $at, $counts)
@@ -477,6 +485,10 @@ function pg_customer_rhythm_summary_encode($store, $at, $counts)
 
     if (isset($counts['reminders'])) {
         $summary['reminders'] = (object) $counts['reminders'];
+    }
+
+    if (isset($counts['returns'])) {
+        $summary['returns'] = (object) $counts['returns'];
     }
 
     $json = json_encode($summary);
@@ -759,7 +771,7 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
                 $state['keys'] = array_keys($state['c']);
                 sort($state['keys'], SORT_STRING);
                 $state['cursor'] = 0;
-                $state['counts'] = array('customers' => 0, 'moved' => 0, 'stages' => array(), 'months' => array());
+                $state['counts'] = array('customers' => 0, 'moved' => 0, 'stages' => array(), 'months' => array(), 'back' => array());
                 $state['phase'] = 'write';
                 break;
             }
@@ -776,7 +788,7 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
         while ($state['cursor'] < $total) {
             $keys = array_slice($state['keys'], $state['cursor'], PG_CUSTOMER_RHYTHM_WRITE_BATCH);
             $stored = array();
-            $result = db_q("SELECT customer_key, contact_id, stage, stage_before, stage_at, interval_days, last_order_at, reminded_at, updated_at FROM customer_rhythm WHERE customer_key IN (" . implode(', ', array_fill(0, count($keys), '?')) . ")", $keys);
+            $result = db_q("SELECT customer_key, contact_id, stage, stage_before, stage_at, interval_days, last_order_at, reminded_at, held_back, came_back_order_id, updated_at FROM customer_rhythm WHERE customer_key IN (" . implode(', ', array_fill(0, count($keys), '?')) . ")", $keys);
 
             if ($result === false) {
                 break;
@@ -814,6 +826,28 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
 
             $out['written'] += count($rows);
             $state['cursor'] += count($keys);
+
+            // Who came back after their last reminder, before a new
+            // reminder clears the mark.
+            $back = array();
+
+            foreach ($batch as $key => $made) {
+                if (!empty($made['came_back'])) {
+                    $back[$key] = $made['came_back'];
+                }
+            }
+
+            list($sql, $params) = pg_customer_rhythm_came_back_query($back);
+
+            if (($sql !== '') && (db_q($sql, $params) !== false)) {
+                if (!isset($state['counts']['back'])) {
+                    $state['counts']['back'] = array();
+                }
+
+                foreach ($back as $key => $came) {
+                    pg_customer_rhythm_return_count($state['counts']['back'], (int) $stored[$key]['reminded_at'], !empty($stored[$key]['held_back']), $came['amount']);
+                }
+            }
             $told = pg_customer_rhythm_tell($batch, $stored, $settings, (int) $state['started']);
             $out['told'] += $told['told'];
 
@@ -832,6 +866,7 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
             // A customer whose orders no longer count (erased, cancelled,
             // refunded) was not written this pass.
             db_q("DELETE FROM customer_rhythm WHERE updated_at < ?", array((int) $state['started']));
+            $state['counts']['returns'] = pg_customer_rhythm_returns_merge(($summary !== null) && isset($summary['returns']) ? $summary['returns'] : array(), isset($state['counts']['back']) ? $state['counts']['back'] : array());
             $state['counts']['reminders'] = pg_customer_rhythm_reminders_merge(($summary !== null) && isset($summary['reminders']) ? $summary['reminders'] : array(), isset($state['counts']['months']) ? $state['counts']['months'] : array());
             $saved = pg_config_text_save('customer_rhythm', pg_customer_rhythm_summary_encode($state['store'], $state['started'], $state['counts']));
             @unlink($path);
