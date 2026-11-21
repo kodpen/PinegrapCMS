@@ -1,6 +1,6 @@
 ---
 name: channel-timeline-redraw-screens
-description: The redrawn conversation timeline in words: the well and its size, days as columns under dates, runs as bars, the decision diamond, the on-screen line, zoom buttons, wheel and keys
+description: The redrawn conversation timeline in words: the well, days as columns under dates, runs as bars, the decision diamond, the card's shortcut rows, zoom buttons, wheel and keys
 ---
 
 ## Where does it stand, and how big is it?
@@ -18,12 +18,15 @@ description: The redrawn conversation timeline in words: the well and its size, 
 - An end where the strip is cut fades over 22 px.
 
 ## How does it answer the pointer?
-- Pointing (board 2): the turn grows to 10 px in its full colour with a soft ring, the rest dims to 38%; the playhead and the card as built, the card 8 px under the well.
-- A click opens the message. A drag moves the strip and opens nothing.
+- Pointing (board 2): the turn grows to 10 px in its full colour with a soft ring, the rest dims to 38%; the playhead as built; the card 8 px under the well.
+- A click on the turn opens the message. A drag moves the strip and opens nothing.
+
+## What does the card carry?
+- Shortcut rows to what the message holds: `channel-timeline-redraw-card.md` (boards 2 and 9).
 
 ## Wheel and keys? (owner, 2026-11-21; board 8)
 - Ctrl or Cmd with the wheel zooms around the pointer; a pinch does the same. Shift with the wheel moves along the conversation; a sideways swipe does the same.
 - The plain wheel over the well is left to the page.
 - Focused, the well is a slider as built: `+` and `-` a zoom step, `0` the whole conversation; the arrows a message, with Shift a run, Page Up and Page Down a day; Home and End the first and the newest message; Enter opens it, Escape hides the card.
 
-Related: docs/memory/plans/channel-timeline-redraw.md, docs/memory/workflow/decisions-made-workspace-46.md
+Related: docs/memory/plans/channel-timeline-redraw.md, docs/memory/plans/channel-timeline-redraw-card.md, docs/memory/workflow/decisions-made-workspace-46.md

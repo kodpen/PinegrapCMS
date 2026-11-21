@@ -49,9 +49,20 @@
 .card .who small { margin-left: auto; font-weight: 400; font-size: 12px; color: var(--fg3); }
 .card .who .st { height: 18px; font-size: 11px; padding: 0 7px; } .card .who .st::before { display: none; }
 .card p { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--fg2); }
-.card .tool { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12.5px; color: var(--fg2); }
-.card .tool .tile { width: 22px; height: 22px; border-radius: 7px; font-size: 11.5px; }
-.card .ft { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg3); }
+.card .dec { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12.5px; color: var(--fg2); }
+.card .dec .tile, .card .it .tile { width: 22px; height: 22px; border-radius: 7px; font-size: 11.5px; }
+.card .its { margin: 9px -6px 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.card .it { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 6px; border-radius: 8px; font-size: 12.5px; color: var(--fg); white-space: nowrap; }
+.card .it.hov { background: var(--hover); box-shadow: inset 0 0 0 1px var(--line); }
+.card .it em { font-style: normal; color: var(--fg3); flex: none; }
+.card .it span.n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.card .it small { margin-left: auto; padding-left: 8px; font-size: 11.5px; color: var(--fg3); flex: none; }
+.card .it i.go { margin-left: 6px; font-size: 10px; color: var(--fg3); flex: none; }
+.card .it small + i.go { margin-left: 6px; } .card .it span.n + i.go { margin-left: auto; }
+.card .it.more { color: var(--fg2); }
+.card .ft { display: flex; align-items: center; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg3); }
+.card .ft a { margin-left: auto; color: var(--accent); font-weight: 550; text-decoration: none; }
+.card.still { position: static; }
 
 /* what stands there today, for the difference */
 .old { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; margin-left: 14px; overflow: hidden; }
@@ -103,13 +114,15 @@
   </div>
 </div>
 
-<div class="board" style="height:336px">
-  <p class="cap"><b>2 · Pointing at a turn</b><small>The turn under the pointer grows to 10 px in its full colour, the rest dims; the card of the message hangs under the well (as built). A click opens the message.</small></p>
+<div class="board" style="height:440px">
+  <p class="cap"><b>2 · Pointing at a turn</b><small>The turn under the pointer grows to 10 px in its full colour, the rest dims. The card hangs under the well and stays while the pointer is on it: what the message carries stands in it as shortcuts, each opening its own thing. A click on the turn, or "Mesajı aç", opens the message.</small></p>
   <div class="pcard cc" style="width:1440px">
     <div class="hd"><span class="tile t-rose"><i class="bi bi-robot"></i></span><b>PinegrapCMS - development agent channel</b><span class="sp"></span><span class="ib dim"><i class="bi bi-search"></i></span><span class="ib dim"><i class="bi bi-info-circle"></i></span><span class="ib dim"><i class="bi bi-three-dots-vertical"></i></span></div>
     <div class="row"><span class="tab on">Mesajlar</span><span class="tab">Kararlar <em>99+</em></span><span class="tab">Görevler</span><span class="tab">Dosyalar <em>99+</em></span><span class="tab">Özet</span><span class="tab">Pano</span><span class="tab">Bellek</span>
       <div class="tl pointing" data-scale="5.2" data-here=".9,1" data-on="5,1,2" data-card="c2"></div></div>
-    <div class="card" id="c2"><div class="who"><span class="ini">CO</span>console <span class="st t-violet">Ajan</span><small>Bugün 12:08</small></div><p>DV4 işçisi aynı görev olarak DV2b'ye çevrildi; DV4, DV2b inince yeni işçiye gider. Tarif plandaki "What did the owner …</p><div class="tool"><span class="tile t-amber"><i class="bi bi-bookmark-check"></i></span>Karar · Erdal Güral işaretledi</div><div class="ft">Önceki mesajdan 6 dk sonra</div></div>
+    <div class="card" id="c2"><div class="who"><span class="ini">CO</span>console <span class="st t-violet">Ajan</span><small>Bugün 12:08</small></div><p>DV4 işçisi aynı görev olarak DV2b'ye çevrildi; DV4, DV2b inince yeni işçiye gider. Tarif plandaki …</p>
+      <div class="its"><span class="it"><span class="tile t-violet"><i class="bi bi-image"></i></span><em>Görsel</em><span class="n">tuval-ust-cubuk.png</span><i class="bi bi-chevron-right go"></i></span><span class="it hov"><span class="tile t-teal"><i class="bi bi-table"></i></span><em>Tablo</em><span class="n">İşçi listesi</span><small>42 satır</small><i class="bi bi-chevron-right go"></i></span><span class="it"><span class="tile t-blue"><i class="bi bi-check2-square"></i></span><em>Görev</em><span class="n">DV2b tuvalde Veri düğmesi</span><small>Sürüyor</small><i class="bi bi-chevron-right go"></i></span></div>
+      <div class="ft">Önceki mesajdan 6 dk sonra<a>Mesajı aç</a></div></div>
   </div>
 </div>
 
@@ -164,6 +177,29 @@
       <span><kbd>Enter</kbd> <kbd>Esc</kbd></span><span>Open the message; hide the card.</span>
     </div>
   </div>
+</div>
+
+<div class="board cols">
+  <div>
+    <p class="cap"><b>9 · The card's shortcuts, by what the message carries</b><small>A small tile, the kind in a quiet word, the thing's name, what came of it. No preview of a picture or a table: the row says what it is. Four rows at most, then one row for the rest.</small></p>
+    <div class="cols" style="gap:20px">
+      <div class="card still"><div class="who"><span class="ini" style="--c:var(--blue)">EG</span>Erdal Güral<small>Dün 16:20</small></div><p>Kanalda xlsx gösteren bir düğme yok, önizleme yeni sekmede açıyor ve indiriyor …</p>
+        <div class="its"><span class="it"><span class="tile t-amber"><i class="bi bi-journal-text"></i></span><em>Not</em><span class="n">@console devir notu</span><i class="bi bi-chevron-right go"></i></span><span class="it"><span class="tile"><i class="bi bi-file-earmark"></i></span><em>Dosya</em><span class="n">siparisler-kasim.xlsx</span><small>84 KB</small><i class="bi bi-chevron-right go"></i></span><span class="it"><span class="tile t-violet"><i class="bi bi-image"></i></span><em>Görsel</em><span class="n">ekran-goruntusu-1412.png</span><i class="bi bi-chevron-right go"></i></span><span class="it"><span class="tile t-rose"><i class="bi bi-mic"></i></span><em>Ses</em><span class="n">Sesli mesaj</span><small>0:42</small><i class="bi bi-chevron-right go"></i></span><span class="it more"><span class="tile"><i class="bi bi-three-dots"></i></span><span class="n">2 öğe daha, mesajda</span><i class="bi bi-chevron-right go"></i></span></div>
+        <div class="ft">Önceki mesajdan 2 sa sonra<a>Mesajı aç</a></div></div>
+      <div class="card still"><div class="who"><span class="ini" style="--c:var(--teal)">Mİ</span>mimar <span class="st t-teal">Ajan</span><small>Bugün 09:14</small></div><p>Zaman şeridi yeniden çizildi; plan ve çizim hazır, tek işçi tek PR …</p>
+        <div class="dec"><span class="tile t-amber"><i class="bi bi-bookmark-check"></i></span>Karar · Erdal Güral işaretledi</div>
+        <div class="its"><span class="it"><span class="tile t-blue"><i class="bi bi-bar-chart"></i></span><em>Anket</em><span class="n">Evet önde</span><small>3 oy</small><i class="bi bi-chevron-right go"></i></span><span class="it"><span class="tile t-blue"><i class="bi bi-question-circle"></i></span><em>Ajan sorusu</em><span class="n">Yanıt bekliyor</span><i class="bi bi-chevron-right go"></i></span><span class="it"><span class="tile t-teal"><i class="bi bi-patch-check"></i></span><em>Onay</em><span class="n">Sürüm 2026.11.0</span><small>2 / 3</small><i class="bi bi-chevron-right go"></i></span><span class="it"><span class="tile t-teal"><i class="bi bi-easel"></i></span><em>Tuval</em><span class="n">Haftalık satış grafiği</span><i class="bi bi-chevron-right go"></i></span></div>
+        <div class="ft">Önceki mesajdan 14 dk sonra<a>Mesajı aç</a></div></div>
+    </div>
+  </div>
+  <ul class="notes" style="margin-top:58px;width:540px">
+    <li><b>Row</b> 30 px, the whole row the link; the row under the pointer or the focus gets the hover tint. The name cuts with three dots, the outcome stays whole at the right.</li>
+    <li><b>Kinds</b> note, task, file, picture, voice message, poll, agent question, approval, table (a table or a row of it), canvas, and every other thing a channel message can carry. A decision is not a row: it keeps its line, the message is the decision.</li>
+    <li><b>Opens</b> the thing itself where it has a window of its own (the note, the task, the file's or the picture's preview, the table at its row, the canvas); the message at that thing otherwise (a poll, a question, an approval, a voice message).</li>
+    <li><b>Reach</b> the card stays while the pointer is on the turn or on the card, and 200 ms after it leaves both. With the well focused, <kbd>Tab</kbd> goes into the card's rows, <kbd>Enter</kbd> opens the row, <kbd>Esc</kbd> goes back to the strip.</li>
+    <li><b>Phone</b> a tap on a turn shows the card under the well; a tap on a row opens the thing, "Mesajı aç" closes Channel info and opens the message.</li>
+    <li><b>Rights</b> a row is drawn only for what the viewer may open; the read gives each row its kind, name, outcome and where it leads.</li>
+  </ul>
 </div>
 
 </div>
