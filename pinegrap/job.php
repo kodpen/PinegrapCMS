@@ -174,6 +174,15 @@ if (ECOMMERCE && function_exists('pg_customer_rhythm_job_run')) {
 
 }
 
+// The visitor journey's keep period (includes/fn/lead_journey_view.php):
+// visits, journey rows and browsers older than it go, a batch a table each
+// tick; with nothing to trim it is three indexed deletes that find no row.
+if (function_exists('pg_lead_trim_run')) {
+
+    pg_lead_trim_run(time());
+
+}
+
 // Customer value summary (includes/fn/customer_values.php): rebuilt whole from
 // the orders once a day, at most PG_CUSTOMER_VALUE_TICK_SECONDS of this tick,
 // going on from its place next tick; one write when the walk is done.
