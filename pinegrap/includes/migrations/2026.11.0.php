@@ -257,6 +257,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_lead_journey();            // 11.0.265
 	upgrade_2026_11_0_walk_in_queue();           // 11.0.266
 	upgrade_2026_11_0_event_ticket_checkins();   // 11.0.267
+	upgrade_2026_11_0_stock_taken();             // 11.0.268
 
 }
 
@@ -9004,5 +9005,22 @@ function upgrade_2026_11_0_event_ticket_checkins() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Event tickets: a ticket of a repeating event whose dates share their places is now checked in once on each date.');
+
+}
+
+// 11.0.268 - What a sale really took from the stock (owner, poll 171):
+// order_items.stock_taken and order_item_components.stock_taken, the units
+// the line (or the bundle line's component) took when it was sold. A sale
+// made with no stock or too little (a back order, a marketplace selling more
+// than the shop holds) takes less than its quantity, and a marketplace cancel
+// puts back only what was taken. NULL is "not recorded": a line from before
+// this step, or a product that does not track stock; such a line puts back
+// its whole quantity, as before. No data is moved and no key is added.
+function upgrade_2026_11_0_stock_taken() {
+
+	install_add_column('order_items', 'stock_taken', "INT UNSIGNED NULL DEFAULT NULL");
+	install_add_column('order_item_components', 'stock_taken', "INT UNSIGNED NULL DEFAULT NULL");
+
+	install_note('Orders: each order line now records how many units its sale took from the stock, so a cancelled marketplace order puts back only those; earlier orders are not changed.');
 
 }
