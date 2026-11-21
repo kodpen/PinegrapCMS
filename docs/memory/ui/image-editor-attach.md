@@ -21,7 +21,7 @@ module: image_editor
 
 ## Where is it offered?
 - Attach to for one free layer (not a picked group, a locked or a fixed layer): the context menu's submenu, the same menu the More button of the bar over one object opens, and first on the Path tab (`keysTop()`, the pane's `top`, above Record), a select whose Not attached detaches. Targets in the layers list's order, named as there (`attachLabel()`); refused: itself, a group it is in, a gone target, a circle (`M.attachTargets()`).
-- A picked group's Path tab: one line on how a layer follows it (`attachGroupNote`). The layers list: a follower's row shows a link and its target's name, titled "Attached to …" (`followMark()`). More, first place, line and mark: #PRNUM.
+- A picked group's Path tab: one line on how a layer follows it (`attachGroupNote`). The layers list: a follower's row shows a link and its target's name, titled "Attached to …" (`followMark()`). More, first place, line and mark: #10970.
 - Detach (the menu, or Not attached) drops `att` where the layer stands. One undo step each; no shortcut. A phone uses the long-press menu and the sheet's Path tab.
 - Copies: a target copied with its follower stays its target (`M.attachRemap()`); a follower copied alone keeps the original target.
 
