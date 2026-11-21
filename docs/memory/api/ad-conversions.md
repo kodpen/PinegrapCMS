@@ -14,7 +14,7 @@ description: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: t
 ## What does every change keep?
 - No network call in a request: an event is a queue row, checkout never waits.
 - Consent only through `pg_ad_conversion_consent_by()` (notice on, stored answer, the service's box), never `pg_consent_allows()`. Owner (2026-11-20, poll 175): notice off, no personal data unless the service's "Send personal data while the cookie notice is off" is ticked.
-- Without consent nothing of the person; a purchase (GA4 also a refund) goes without the person only with "Send events without the person".
+- Without consent nothing of the person; a purchase (GA4 also a refund) goes without the person only with "Send events without the person", never to Meta (#10993, `ad-conversions-meta.md`).
 - Marketplace orders never; a counter sale only with the service's "Send counter sales" switch, never with the person, never to Meta (`ad-conversions-counter-sales.md`).
 - Keys sealed in `config_text` and in `pg_reseal_registry()`; each page under the Visitors and privacy gate. No write route in the API.
 - A service's request format, test mode and limits are read from its own document into its facts file, never from memory.
@@ -24,7 +24,7 @@ description: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: t
 ## Which feature is where?
 - C1 the ids at the payment step: #10732, click ids #10781. C2 hashing at send: #10732. C3 purchase at completion: #10732; its counter sale switch: #10960 (`ad-conversions-counter-sales.md`).
 - C4 refund (GA4 only): #10866. C5 Lead and registration, C6 add to cart (20 a cart) and begin checkout, C7 the receipt's event id: #10868; on GA4's and TikTok's pages: #10960.
-- C8 the three pages and the notice-off box: #10812, #10866, #10862. C9 without the person: same PRs. C10, C10b the table and queue: #10732. C11 log and alert, C12 the report: #10907.
+- C8 the three pages and the notice-off box: #10812, #10866, #10862. C9 without the person: same PRs; not to Meta: #10993. C10, C10b the table and queue: #10732. C11 log and alert, C12 the report: #10907.
 
 ## What is not built?
 - Nothing of C1 to C12 is left open.

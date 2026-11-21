@@ -11,22 +11,26 @@ module: ad_conversions_meta
 - `connections.php?service=meta_capi`, under Visitors and privacy's gate (`connections_privacy_may_manage()`), for the page card and the writes `meta_capi_save` / `meta_capi_remove`.
 - "Connection details": "Pixel ID" (digits), "Access token" (password field, never drawn back), "Test event code".
 - Then the choices block the three pages share (`ad-conversions-counter-sales.md`): "Events sent" switches (Purchase, Add to cart, Begin checkout, Customer account opened, Lead from a form: `ad-conversions-visitor-events.md`), "Forms sent as Lead", "Without consent", "Counter sales", "Send personal data while the cookie notice is off" (C8). "Save" filled, "Send a test event" quiet (saves, then tries).
+- "Send events without the person" (#10993) and "Send counter sales" (#10960): off and disabled, each with its reason.
 - Notice off and the box clear: a warning "The cookie notice is off: events go without the person" with a link to Cookie Consent.
-- Ticking or clearing the box writes its own activity log line. "Disconnect" in Status empties the row; due rows are then given up by the job.
+- Ticking or clearing the box writes an activity log line. "Disconnect" in Status empties the row; the job then gives up its due rows.
 
 ## Where are the settings kept?
 - config_text `ad_conversions_meta_capi`, the same JSON `pg_ad_conversion_settings_parse()` reads, plus `pixel_id`, `token` (`pg_connect_seal(array('token' => …))`) and `test_event_code`. `connected` is true with a pixel and a token.
+- The merge saves `counter_sales` false and keeps `without_person` as stored: one saved before #10993 stays, unread, and no migration cleans it.
 - The token is in `pg_reseal_registry()` (area `ad_conversions`, field `token`), so a key reset seals it again.
 
 ## How is a row sent?
 - `pg_ad_conversion_send_meta_capi()`: one event per POST, the token in the JSON body, never in the address. `action_source` website, `event_source_url` the site's address, the event id the order reference. Counter sales never go to Meta (`ad-conversions-counter-sales.md`).
-- The person (C2) only when the row has it: `em`, `ph` hashed; `fbp`, `fbc`, address, browser name plain. The click id is read from the row's `ids` (`fbc`), never from `ad_click_ids.php`. Without the person `user_data` is an empty object.
-- Refused without a call (400, given up): no pixel or token, an event Meta has no name for (refund), an event older than 7 days less 10 minutes.
+- The person (C2) only when the row has it: `em`, `ph` hashed; `fbp`, `fbc`, address, browser name plain. The click id is read from the row's `ids` (`fbc`), never from `ad_click_ids.php`.
+- No purchase without the person is queued for Meta (`pg_ad_conversion_without_person_offered()`, #10993); the earlier ones Meta refused keep their `last_error`, never retried or cleaned.
+- Refused without a call (400, given up): an empty `user_data` ("No consent", `pg_ad_conversion_meta_without_person()`: consent taken back after completion, an old row); no pixel or token; refund (no Meta name); older than 7 days less 10 minutes.
 
 ## How are Meta's answers read?
 - 2xx with `events_received` ≥ 1: sent. 2xx with none: refused.
-- A Graph error: `error_user_msg` or `message`, the code and subcode, the `fbtrace_id` into `last_error`. Codes 1, 2, 4, 17, 32, 341, 613 answer 429 so the row is tried again; 190 (token) and other 400s are given up.
-- The test code goes only with "Send a test event" (a 1.00 purchase without the person, id `pg-test-<time>`), never with a queued event.
+- A Graph error: `error_user_msg` or `message`, code, subcode, `fbtrace_id` into `last_error`. Codes 1, 2, 4, 17, 32, 341, 613 answer 429 so the row is tried again; 190 (token) and other 400s are given up.
+- The test code goes only with "Send a test event" (a 1.00 purchase, id `pg-test-<time>`). Its `user_data`, on this path only (`pg_ad_conversion_meta_test_user_data()`): `external_id` the SHA-256 of `pinegrap-test`, `client_user_agent` "Pinegrap test". A refusal shows Meta's words.
+- Architect (2026-11-21), channel message: those two fixed fields, nothing of a real person (not the panel user's address or browser), and nothing added if Meta refuses (#10993).
 
 ## Registry?
 - Row `meta_capi`, group Analytics and search, `place` `connections.php`, `found_at` `#settings/privacy/pgset-cookies`, state reader `pg_ad_conversion_meta_connected()`; transfer US, contact, order and payment, IP and cookie. The registry's count: `connections-registry.md`.

@@ -28,3 +28,4 @@ module: ad_conversions_tiktok
 - The return codes appendix: 40100 (too many requests) and codes of 50000 and up (TikTok's fault) are read as "try again" from TikTok's general API codes, not from the page; any other code is given up.
 - How old an event may be: no limit was found, so no age refusal is made.
 - No pixel to try against: the test event's acceptance was not seen.
+- Whether an event with an empty `user` is taken: read 2026-11-21, ads.tiktok.com `how-to-set-up-matching-events-with-events-api` and `standard-events-parameters` present the user keys as improving the match, not as required; no TikTok page found asks for one. So TikTok keeps "Send events without the person" (#10993 checked it).
