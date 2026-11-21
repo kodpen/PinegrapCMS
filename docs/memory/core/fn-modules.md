@@ -183,6 +183,7 @@ description: Generated from the module field of the memory files: each includes/
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `lead_journey`: [[lead-journey-rules]]
 - `lead_journey_store`: [[lead-journey-store]]
+- `lead_journey_view`: [[lead-journey-view]]
 - `legacy_bootstrap`: [[legacy-bootstrap-map]], [[legacy-layouts-converter]], [[legacy-layouts-left]], [[legacy-layouts-output-pass]], [[legacy-layouts-shapes]]
 - `legacy_bootstrap_move`: [[legacy-bootstrap-move]]
 - `legacy_bootstrap_report`: [[legacy-bootstrap-card]]
