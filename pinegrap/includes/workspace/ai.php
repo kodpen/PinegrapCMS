@@ -971,7 +971,7 @@ function ws_ai_setup_hint()
         : lang('An administrator connects it on this card:');
 
     return lang('Pinegrap AI cannot answer yet.') . ' ' . $where . ' ['
-        . str_replace(array('[', ']'), '', lang('Workspace Settings › Pinegrap AI')) . '](' . $base . pg_settings_workspace_link('ws-ai') . ')';
+        . str_replace(array('[', ']'), '', lang('Site Settings › Assistants and agents › Pinegrap AI')) . '](' . $base . pg_settings_workspace_link('ws-ai') . ')';
 }
 
 /**
@@ -5068,7 +5068,7 @@ function ws_ai_key_post($liveform, $user, $username, $refuse = null)
         return;
     }
 
-    $made = api_app_create(lang('Pinegrap AI'), lang('Made in Workspace settings for Pinegrap AI in the channels. It has no secret and cannot sign in.'), $scopes, (int) $user['id'], false, $username);
+    $made = api_app_create(lang('Pinegrap AI'), lang('Made in Site Settings for Pinegrap AI in the channels. It has no secret and cannot sign in.'), $scopes, (int) $user['id'], false, $username);
 
     if (!$made) {
         $refuse(lang('Pinegrap AI\'s key could not be made.'));

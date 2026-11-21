@@ -106,14 +106,14 @@ function ws_note_notion_state($server, $connected, $tools)
     $out = array('state' => 'missing', 'message' => '', 'search' => null, 'fetch' => null);
 
     if (!$server || (($server['status'] ?? '') !== 'active') || (($server['auth_kind'] ?? '') !== 'oauth')) {
-        $out['message'] = lang('Notion is not set up on this site. An administrator adds the Notion connector under Workspace settings › MCP servers.');
+        $out['message'] = lang('Notion is not set up on this site. An administrator adds the Notion connector under Site Settings › Assistants and agents › MCP servers.');
 
         return $out;
     }
 
     if (!$connected) {
         $out['state'] = 'not_connected';
-        $out['message'] = lang(array('string' => 'Connect your own Notion account first: Workspace settings › MCP servers, @{var:1}, Connect my account.', 'vars' => $server['alias']));
+        $out['message'] = lang(array('string' => 'Connect your own Notion account first: Site Settings › Assistants and agents › MCP servers, @{var:1}, Connect my account.', 'vars' => $server['alias']));
 
         return $out;
     }
@@ -123,7 +123,7 @@ function ws_note_notion_state($server, $connected, $tools)
 
         if (!$out[$kind]) {
             $out['state'] = 'no_tool';
-            $out['message'] = lang(array('string' => '@{var:1} offers no {var:2} tool, or it is turned off. An administrator reads its tools again under Workspace settings › MCP servers.', 'vars' => array($server['alias'], $kind)));
+            $out['message'] = lang(array('string' => '@{var:1} offers no {var:2} tool, or it is turned off. An administrator reads its tools again under Site Settings › Assistants and agents › MCP servers.', 'vars' => array($server['alias'], $kind)));
 
             return $out;
         }

@@ -243,7 +243,7 @@ function translate_api_routes()
             'mcp'         => false,
             'returns'     => array('list' => 'TranslationJob'),
             'summary'     => 'The translation jobs waiting for Claude',
-            'description' => 'For the application chosen for Claude in the Workspace Settings only (and, to try it, an administrator\'s API Documentation screen). status open (the default) is what is waiting to be claimed, oldest first; all is the latest 50 of every state. Each job names its source and target language and how many texts it holds.',
+            'description' => 'For the application chosen for Claude under Site Settings › Assistants and agents only (and, to try it, an administrator\'s API Documentation screen). status open (the default) is what is waiting to be claimed, oldest first; all is the latest 50 of every state. Each job names its source and target language and how many texts it holds.',
             'params'      => array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'running', 'done', 'failed', 'cancelled', 'all'), 'default' => 'open'),
             ),

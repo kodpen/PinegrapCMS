@@ -1443,7 +1443,7 @@ function pg_label_settings_rows()
         if (pg_label_can($key, 'test')) {
             $html .= '
                                                                                         <div class="col-12">
-                                                                                            <button type="submit" name="label_test" value="' . h($key) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                                                                                            <button type="submit" name="label_test" value="' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
                                                                                         </div>';
         }
 

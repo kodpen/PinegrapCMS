@@ -371,7 +371,7 @@ pg_page_shell(array(
 <div class="ws-shell-main">
     ' . $liveform_messages . '
     ' . (empty($servers)
-        ? pg_empty_state('bi-plug', lang('No MCP server yet'), lang('An administrator adds the other services\' MCP servers under Workspace Settings › MCP servers. They appear here once they are on.'))
+        ? pg_empty_state('bi-plug', lang('No MCP server yet'), lang('An administrator adds the other services\' MCP servers under Site Settings › Assistants and agents › MCP servers. They appear here once they are on.'))
         : '<div class="row g-5">
         <div class="col-12 xl:col-5">' . $server_cards . '</div>
         <div class="col-12 xl:col-7">' . (($form_card !== '') ? $form_card : $help) . '</div>

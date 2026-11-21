@@ -386,7 +386,7 @@ function test_dashboard_v2_ai_agent_note()
 
 	$member = pg_dashboard_v2_ai_agent_note(false);
 	pg_assert_same(null, $member['button'], 'no button');
-	pg_assert_same('An administrator connects agents in the Workspace settings.', $member['ask'], 'the administrator line');
+	pg_assert_same('An administrator connects agents under Site Settings › Assistants and agents.', $member['ask'], 'the administrator line');
 }
 
 function test_dashboard_v2_ai_notice()

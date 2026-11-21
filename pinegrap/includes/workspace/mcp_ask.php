@@ -164,7 +164,7 @@ function ws_mcp_ask_problem($server, $asker = null, $channel_id = 0, $task_id = 
     }
 
     if (empty(ws_mcp_tools_on($server))) {
-        return lang(array('string' => '@{var:1} has no tool turned on yet. An administrator turns them on in Workspace Settings › MCP servers.', 'vars' => $server['alias']));
+        return lang(array('string' => '@{var:1} has no tool turned on yet. An administrator turns them on under Site Settings › Assistants and agents › MCP servers.', 'vars' => $server['alias']));
     }
 
     if ($asker && ($server['auth_kind'] === 'oauth') && !ws_mcp_oauth_account($server, (int) $asker['id'])) {

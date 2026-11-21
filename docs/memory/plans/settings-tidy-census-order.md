@@ -28,7 +28,6 @@ description: Survey of the Site Settings categories, its second part: how old ea
 - 5. General and Appearance: `plans/general-appearance-settings-tidy.md`; one Site address row, K3, K5, K6, K7, footer links as rows.
 - 6. Communication: `plans/communication-settings-tidy.md`; the pane as folded rows, the Chat card split in two.
 - 7. Ecommerce, after its CX11 step. 8. Accounting's ERP card split, after its CX11 step. 9. Updates and maintenance (cron steps, one S3, K2), after its CX11 step.
-- 10. One small PR, no plan: the five helpers' old buttons and the K9 messages.
-- Which date format wins: G4 of the General plan. Unverified: whether the "Workspace Settings" menu labels are meant.
+- Which date format wins: G4 of the General plan. The Workspace menu's "Workspace Settings" entry stays: it names the group (`workspace/workspace-settings-place-names.md`).
 
 Related: docs/memory/plans/settings-tidy-census.md

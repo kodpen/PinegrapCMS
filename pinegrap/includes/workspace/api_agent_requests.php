@@ -47,7 +47,7 @@ function ws_api_agent_answer_schema()
 function ws_agent_request_api_routes()
 {
     $id = array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true);
-    $only = ' For an active application agent\'s own key only (Workspace Settings, Agents): any other caller 403 forbidden.';
+    $only = ' For an active application agent\'s own key only (Site Settings, Workspace agents): any other caller 403 forbidden.';
 
     return array(
         array(

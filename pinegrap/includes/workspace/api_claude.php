@@ -53,10 +53,10 @@ function ws_claude_api_routes()
             'mcp'         => false,
             'returns'     => array('list' => 'WorkspaceClaudeRequest'),
             'summary'     => 'The requests waiting for Claude',
-            'description' => 'For the application chosen for Claude in the Workspace Settings, and for the asker\'s own session through an OAuth connection: a connection lists only what its owner asked, and a request asked in a message waits two minutes for the asker\'s session while one is online (it called within two minutes) before the routine lists it. status open (the default) is what is waiting to be claimed, oldest first; all is the latest 50 of every state. message.text is the request with every tag spelled out.',
+            'description' => 'For the application chosen for Claude under Site Settings › Assistants and agents, and for the asker\'s own session through an OAuth connection: a connection lists only what its owner asked, and a request asked in a message waits two minutes for the asker\'s session while one is online (it called within two minutes) before the routine lists it. status open (the default) is what is waiting to be claimed, oldest first; all is the latest 50 of every state. message.text is the request with every tag spelled out.',
             'params'      => array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'running', 'answered', 'failed', 'cancelled', 'all'), 'default' => 'open'),
-                array('name' => 'version', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'The version of the prompt pasted into the routine, as the instructions say to send it. Left out, the Workspace Settings say the routine still runs a prompt pasted before it read its instructions from the site.'),
+                array('name' => 'version', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'The version of the prompt pasted into the routine, as the instructions say to send it. Left out, Site Settings › Assistants and agents says the routine still runs a prompt pasted before it read its instructions from the site.'),
             ),
         ),
 
@@ -69,7 +69,7 @@ function ws_claude_api_routes()
             'mcp'         => false,
             'returns'     => 'WorkspaceClaudeInstructions',
             'summary'     => 'What the routine does, from the site',
-            'description' => 'For the application chosen for Claude in the Workspace Settings only. text is the routine\'s instructions for this site as it is now: the queue, the endpoints, the answer\'s shape and the rules. The short prompt pasted into the routine reads it at the start of every run and sends its own version and the Site API it was written with; version is the one this site hands out, site its current address, and outdated is true when the version sent is older or missing or the address sent is no longer this site\'s, which the Workspace Settings show until the prompt is copied again.',
+            'description' => 'For the application chosen for Claude under Site Settings › Assistants and agents only. text is the routine\'s instructions for this site as it is now: the queue, the endpoints, the answer\'s shape and the rules. The short prompt pasted into the routine reads it at the start of every run and sends its own version and the Site API it was written with; version is the one this site hands out, site its current address, and outdated is true when the version sent is older or missing or the address sent is no longer this site\'s, which Site Settings › Assistants and agents shows until the prompt is copied again.',
             'params'      => array(
                 array('name' => 'version', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'The version written in the pasted prompt.'),
                 array('name' => 'site', 'in' => 'query', 'type' => 'string', 'max_length' => 250, 'description' => 'The Site API written in the pasted prompt.'),
@@ -101,7 +101,7 @@ function ws_claude_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
-            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel; claimed through an OAuth connection, the request stays with that connection. 409 when another run has taken it or it is closed; 409 held when it is the other side\'s (waiting for the asker\'s session, or handed to the routine). 409 editing while the writer is editing the message that asked (try again in a minute). 409 instructions_outdated when instructions is not the version of the instructions the site serves now (GET /workspace/claude/instructions): the run has not read them, or read them before they changed, and reads them again; a run that sends none is told so in the channel once and in the Workspace Settings.',
+            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel; claimed through an OAuth connection, the request stays with that connection. 409 when another run has taken it or it is closed; 409 held when it is the other side\'s (waiting for the asker\'s session, or handed to the routine). 409 editing while the writer is editing the message that asked (try again in a minute). 409 instructions_outdated when instructions is not the version of the instructions the site serves now (GET /workspace/claude/instructions): the run has not read them, or read them before they changed, and reads them again; a run that sends none is told so in the channel once and under Site Settings › Assistants and agents.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'instructions', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'description' => 'The version of the instructions the run follows, as their claim step writes it (instructions_version of GET /workspace/claude/instructions).'),
@@ -974,7 +974,7 @@ function ws_api_claude_instructions_check($row, $sent)
                 WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent') AND error <> 'instructions_outdated'");
 
             if (mysqli_affected_rows(db::$con) > 0) {
-                ws_message_system((int) $row['channel_id'], lang('Claude could not take this request: its routine does not read the instructions this site gives it. An administrator copies the prompt again from Claude in the channels in the Workspace Settings.'));
+                ws_message_system((int) $row['channel_id'], lang('Claude could not take this request: its routine does not read the instructions this site gives it. An administrator copies the prompt again under Site Settings › Assistants and agents › Claude, Set up on claude.ai.'));
             }
         }
     }
