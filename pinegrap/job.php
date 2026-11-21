@@ -1199,6 +1199,18 @@ if (function_exists('pg_booking_reminders_run')) {
 
 }
 
+// Application review reminders (pg_application_reminders_run() in
+// includes/fn/application_my_reviews.php): three days and one day before a
+// round's end, each reviewer with entries left gets one e-mail. Before the
+// mail pass, so a reminder made now goes out in this run. Nothing on a site
+// without the programme tables.
+if (pg_application_program_ready()) {
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_my_reviews.php');
+    pg_application_reminders_run(time());
+
+}
+
 // Store credit (pg_credit_mails_run() in includes/fn/store_credit_mails.php):
 // the credit_expiring notices whose moment fell since the last pass, then the
 // customer cards whose end has come are closed. Before the mail pass, so a
