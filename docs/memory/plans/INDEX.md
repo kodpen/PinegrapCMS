@@ -35,6 +35,7 @@
 - application-review-screens.md: Plan application-review, how the programme's screens are put together (AR2, AR3): the programmes list, a programme's screen in tabs, Set-up as folded rows, the Reviewers tab
 - application-review-steps.md: Plan application-review, steps AR1a to AR8: pure rules, store, programme settings, reviewers and assignment, juror and correction links, combining, decisions, report and API, close-out
 - application-review.md: Plan (owner 2026-11-20, poll 196): a form as an application programme: period, eligibility, weighted criteria, reviewers and jurors, blind review, combined scores, rounds, decisions; AR1a to AR8
+- assistants-settings-tidy-screens-2.md: Plan assistants-settings-tidy, steps AT5 and AT6: Pinegrap AI's and Voice's opened rows in one column part by part, and the lists capped at five rows with "Show all N"
 - assistants-settings-tidy-screens.md: Plan assistants-settings-tidy, Claude's opened row part by part (step AT2b): what stays, what goes into the fold and the drawers, what a test pins; the other rows' check
 - assistants-settings-tidy-steps.md: Plan assistants-settings-tidy, steps AT1 to AT6: the folded rows of Assistants and agents, Claude's set-up drawer, the help lines, close-out
 - assistants-settings-tidy.md: Plan (owner 2026-11-20, urgent, in the architect's window): Site Settings › Assistants and agents tidied: each part one folded row, Claude's long guide in its drawer, repeated help cut; AT1 to AT4
