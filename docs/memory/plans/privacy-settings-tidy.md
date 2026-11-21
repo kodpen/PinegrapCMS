@@ -19,12 +19,12 @@ priority: 8
 - Each period stays where it is set, beside what bounds the same data (the firewall log by its size limit, the audit trail by Open it): one place per setting (`decisions-made-product-14.md`), as the e-mail addresses stay (`plans/mail-settings-one.md`, C8).
 - The "How long we keep data" row shows every period with today's value and Change opening its card; the visitor periods and the daily summary move into it from Visitor tracking (same pane, same post names).
 - The pane becomes folded rows (`pg_settings_fold()`), as Features (FS2) and Assistants and agents.
-- The KVKK fields get a row of their own, drawn whatever the switch; until V3's answer its line says they are used while Legal documents is on.
+- The KVKK fields get a row of their own, drawn whatever the switch; with VP3 they follow their own switch (V3).
 - The inventory gains the three IP lines (V5), no person column: counted, never erased by a person's erasure.
 
-## What waits for the architect? (watcher off, owner message 11445)
-- (V3) May the KVKK notice and sentence work without the distance sales switch? Proposal: a "Show the KVKK notice" switch of their own in `config_text` (no schema), set at the update to the distance sales switch's state, so no running site changes.
-- (V2) Build the chat removal or take the field away? Turning it on would delete every chat older than 60 days at the update. Proposal: the field leaves Chat; a "Site chats" rule in the Privacy centre's catalogue, off by default, dry run then yes (`core/privacy-retention-rules.md`), 60 days suggested.
+## What did the owner decide? (`workflow/decisions-made-product-96.md`)
+- (V3) Owner (2026-11-21, poll 214): the KVKK notice page and the consent sentence get a switch of their own, a `config_text` row the update sets to the distance sales switch's state, so no running site changes; after that the two go on and off apart.
+- (V2) Owner (2026-11-21, poll 215): "Chat Retention Period" leaves Communication › Chat; a "Site chats" rule enters the Privacy centre's rules, off by default, dry run then yes (`core/privacy-retention-rules.md`), 60 days suggested; the update deletes no chat.
 
 ## What binds it?
 - Field names, ids, columns and what a save stores do not change; card ids and old anchors keep working (`pg_settings_legacy_anchors()`); one Save for the pane; no field hidden by a switch.

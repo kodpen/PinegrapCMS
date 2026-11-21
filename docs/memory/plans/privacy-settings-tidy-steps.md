@@ -1,6 +1,6 @@
 ---
 name: privacy-settings-tidy-steps
-description: Plan privacy-settings-tidy, steps VP1 to VP4: the pane as folded rows, the "How long we keep data" row and the inventory's IP lines, the architect's two answers, close-out
+description: Plan privacy-settings-tidy, steps VP1 to VP4: the pane as folded rows, the "How long we keep data" row and the inventory's IP lines, the owner's two answers, close-out
 ---
 
 ## Which steps are there?
@@ -12,7 +12,7 @@ description: Plan privacy-settings-tidy, steps VP1 to VP4: the pane as folded ro
 - In VP2 the values come from one pure `pg_privacy_retention_overview()` in `includes/fn/privacy_retention.php` (keys, labels, values, card anchors), red test first; the anchors `visitor_retention_days`, `visitor_ip_days` and `visitor_summary` open the row.
 - In VP2 the inventory gains `visitors`, `waf_log` and `api_request_log` (IP and cookie, visitors; legitimate interest), with retention keys naming their settings in `pg_privacy_inventory_retentions()`; `tests/privacy_inventory_test.php` stays green with no person column.
 
-- VP3 (S) after the architect's answer below: V3 and V2 as answered. On the proposals: the KVKK switch in `config_text` set at the update, `pg_legal_kvkk_settings()` reading it; the chat field out of `contact.php`, the "Site chats" rule in `pg_privacy_rules_catalogue()` through the chats' erase entry. If the answer is larger than S, two steps.
+- VP3 (S) after VP2, as the owner decided (`workflow/decisions-made-product-96.md`): the KVKK row gains "Show the KVKK notice", a `config_text` switch an update step in the open version sets to the distance sales switch's state, `pg_legal_kvkk_settings()` reading it; Chat Retention Period leaves `contact.php`; a "Site chats" rule enters `pg_privacy_rules_catalogue()` through the chats' erase entry, off, 60 days suggested, and the update deletes no chat. If larger than S, two steps.
 
 - VP4 (S) close-out: `ui/settings-privacy.md` written (the rows, the overview, what stayed where); `core/privacy-inventory.md` and `core/privacy-log-retention.md` corrected; item 2 of `plans/settings-tidy-census-order.md` removed; this plan's files deleted.
 
