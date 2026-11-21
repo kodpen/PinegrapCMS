@@ -12,9 +12,9 @@ description: Plan application-review, steps AR1a to AR8: pure rules, store, prog
 
 - AR3 (M) after AR2, cut in two:
   - AR3a after AR2. Done (#10962, `core/application-review-reviewers.md`): the programme's Reviewers tab (a panel user or an outside juror by name and e-mail, the categories of their pool, Remove), the "Give out entries" run with its confirm, the conflicts gathered under the list. Features: V6, V7 (the list).
-  - AR3b after AR3a: "My reviews" opened by membership with no Forms right, the scoring screen, blind, "I know this applicant" moving the entry, the reminders 3 and 1 days before the round's end. Features: V7 to V9.
+  - AR3b after AR3a. Done (#11024, `core/application-review-my-reviews.md`): "My reviews" opened by membership with no Forms right, the scoring screen, blind, "I know this applicant" moving the entry, the reminders 3 and 1 days before the round's end. Features: V7 to V9.
 
-- AR4 (M) after AR3b: the external juror's link and page, its `waf.php` entry; the correction link. Features: V4, V10.
+- AR4 (M) after AR3b: the external juror's link and page, its `waf.php` entry; the reminders of AR3b to outside jurors with their link (`pg_application_reminders_run()` sends to panel users only); the correction link. Features: V4, V10.
 
 - AR5 (M) after AR3b: combining, the consensus flag, ranking and the shortlist, the next round. Features: V11 to V13.
 
