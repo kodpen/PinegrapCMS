@@ -66,6 +66,9 @@ function pg_privacy_export_sections()
         'bookings'           => lang('Appointment bookings'),
         'feedback'           => lang('Satisfaction surveys'),
         'courses'            => lang('Course progress'),
+        'journey_visits'     => lang('Visits tied to the contact'),
+        'journey'            => lang('Journey'),
+        'interest_score'     => lang('Interest score'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
         'ad_conversions'     => lang('Ad service events'),
@@ -1149,6 +1152,25 @@ function pg_privacy_export_collect(array $found)
             WHERE " . _pg_privacy_export_in('course_progress.user_id', $user_ids) . "
             ORDER BY course_progress.course_id, course_progress.created_at",
             $user_ids
+        );
+    }
+
+    // The visitor journey (lead_journey_store.php): the visits tied to the
+    // contact with their pages, the journey's own rows and the score.
+    if (function_exists('pg_lead_ready') && pg_lead_ready() && $contact_ids) {
+        $journey_in = _pg_privacy_export_in('contact_id', $contact_ids);
+
+        $sections['journey_visits'] = _pg_privacy_export_select(
+            "SELECT id, contact_id, started_at, channel, campaign, referrer_host, landing_page, pages FROM lead_visits WHERE " . $journey_in . " ORDER BY started_at",
+            $contact_ids
+        );
+        $sections['journey'] = _pg_privacy_export_select(
+            "SELECT id, contact_id, kind, at, ref_id, detail FROM contact_journey WHERE " . $journey_in . " ORDER BY at",
+            $contact_ids
+        );
+        $sections['interest_score'] = _pg_privacy_export_select(
+            "SELECT contact_id, interest, fit, reasons, topics, hot, hot_at, returned_at, last_visit_at, scored_at FROM contact_scores WHERE " . $journey_in,
+            $contact_ids
         );
     }
 
