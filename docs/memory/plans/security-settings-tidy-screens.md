@@ -12,7 +12,7 @@ description: Plan security-settings-tidy, its first screen: the Firewall and HTT
 - HTTPS: "Secure Mode" [Fields, switch] with its warning and the trusted-proxy offer; "Send security headers" and under it, always drawn, "Refuse framing by other sites", "Always HTTPS (HSTS)", "Content security policy" [Segmented control and status] Off, Report only, Enforce, the policy box, "Policy reports" quiet.
 - Firewall: the switch, Mode [Segmented control and status] Monitor, Block with its line, Sensitivity, the signature scan, attack tools and crawler check switches, the AI crawlers' state line with "Change under AI Crawlers", Excluded paths.
 - Limits: "Rate limiting" with its four boxes, "Automatic temporary bans" with its three, all drawn while off; from SE4 one inner card [Value rows]: "Sign-in attempts" and "Form submissions", today's values and Change opening their Accounts rows.
-- Bots: "Block unknown bots", Allowed bots, Blocked bots; one line on AI training crawlers (S8 in the plan).
+- Bots: "Block unknown bots", Allowed bots, Blocked bots; one line saying whether AI training crawlers pass, by SEO's "Allow AI training" (S8, step SE1b).
 - Addresses: Allowed IP addresses, Banned IP addresses, then a state line ("No address is banned by the firewall now", "2 addresses banned now") with "See the bans" quiet opening a drawer [Drawer] of today's table and its Release.
 - Countries: Restriction [Segmented control and status] Off, Refuse the listed, Let in only the listed; Countries; the exemptions as switches; the "you are in" line.
 - Trusted proxies: the list and its line. Logs: Log retention, Log size limit, "Open the firewall log" quiet; "Plain-text block log" and, under a `details` "Log file and fail2ban", the files.
