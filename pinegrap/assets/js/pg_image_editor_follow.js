@@ -664,7 +664,7 @@
         pane.panel = function (body, layers) {
             own.call(this, body, layers);
 
-            var act = body.querySelector('.pgie-recact'), notes = body.querySelectorAll('.pgie-note'), note;
+            var act = body.querySelector('.pgie-recact'), rec = body.querySelector('.pgie-recnote'), note;
 
             if (!act) {
                 return;
@@ -673,7 +673,7 @@
             act.appendChild(this.followButton());
             note = el('p', { class: 'pgie-note pgie-follownote', text: t('followNote') });
             note.setAttribute('data-follow', '1');
-            act.parentNode.insertBefore(note, (notes.length ? notes[0] : act).nextSibling);
+            act.parentNode.insertBefore(note, (rec || act).nextSibling);
         };
     });
 

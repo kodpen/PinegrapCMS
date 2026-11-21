@@ -23,6 +23,7 @@
     // Group and Ungroup: boxes held in a frame, and the frame broken.
     X.icons.group = 'M3.5 3.5h4M16.5 3.5h4v4M20.5 16.5v4h-4M7.5 20.5h-4v-4M3.5 7.5v-4M7 7h6v6H7zM11 11h6v6h-6z';
     X.icons.ungroup = 'M3 3h7v7H3zM14 14h7v7h-7z';
+    X.icons.link = 'M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1';
 
     // The eight handles of a box and the turning handle. The corners come
     // after the edges, so on a small box their touch targets lie on top.
@@ -1075,7 +1076,7 @@
                 // The tool stays: one that does not select shows the
                 // handles while Ctrl or Cmd is held.
                 self.select(e.shiftKey ? ((on ? self.sel.filter(function (id) { return id !== l.id; }) : self.sel.concat([l.id]))) : [l.id]);
-            } }, [X.icon(LAYER_ICONS[l.type] || 'draw'), el('span', { text: self.layerName(l) })]),
+            } }, [X.icon(LAYER_ICONS[l.type] || 'draw'), el('span', { text: self.layerName(l) })].concat(this.followMark(l))),
             this.flagButton([l.id], 'hidden', [t('hide'), t('show')], ['eye', 'eyeoff']),
             this.flagButton([l.id], 'locked', [t('lock'), t('unlock')], ['unlock', 'lock'])
         ]);
@@ -1083,6 +1084,18 @@
         li.style.setProperty('--pgie-depth', String(depth));
 
         return li;
+    };
+
+    // A follower's mark after its name: a link and its target's name
+    // (attachLabel()); none for a layer not attached or a gone target.
+    Editor.prototype.followMark = function (l) {
+        var name = M.attachOf(l) ? this.attachLabel(M.attachOf(l)) : '';
+
+        if (!name) {
+            return [];
+        }
+
+        return [el('span', { class: 'pgie-lfollow', title: t('attachedTo').replace('{name}', name) }, [X.icon('link'), el('span', { text: name })])];
     };
 
     // A group's row: a button opening it to its members, its name picking

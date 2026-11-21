@@ -7955,6 +7955,7 @@
     "Attach a file": "Dosya ekle",
     "Attach to": "Şuna bağla",
     "Attached is our account reconciliation letter, reference {var:1}.": "{var:1} referanslı cari hesap mutabakat mektubumuz ektedir.",
+    "Attached to {name}": "Bağlı: {name}",
     "Attachment": "Ek",
     "Attachment (file)": "Ek dosya (file)",
     "Attachment (optional)": "Ek (isteğe bağlı)",

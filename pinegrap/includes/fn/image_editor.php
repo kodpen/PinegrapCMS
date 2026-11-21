@@ -1530,6 +1530,8 @@ function pg_image_editor_strings_layers()
         'attachNone'     => lang('Not attached'),
         'attachNote'     => lang('An attached layer takes the other layer\'s move, turn and size at every moment, with its own place and keys on top.'),
         'detach'         => lang('Detach'),
+        'attachedTo'     => lang('Attached to {name}'),
+        'attachGroupNote' => lang('To make a layer follow this group, pick that layer alone and choose this group under Attach to.'),
     );
 }
 
