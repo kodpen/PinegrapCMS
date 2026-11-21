@@ -27,6 +27,6 @@ description: Conversation timeline beside the channel tabs (Channel info on a na
 - The channel card is a grid (tabs, then the strip in the rest). Under 220 px left the script marks `.ws-app.ws-ctl-narrow`: the strip hides there and shows at the foot of Channel info with the first and last time and the writers as pills. A tap on a phone closes Channel info and opens the message. It hides while the phone keyboard is up and over an earlier version.
 
 ## How was it checked?
-- Sandbox at 1600 px light and dark, Channel info at 1280 px, iPhone 13 (scrub and tap); a message written by another writer reached the strip in about 2.5 s. `tests/workspace_conversation_timeline_test.php`.
+- PR #10936: sandbox at 1600 px light and dark, Channel info at 1280 px, iPhone 13 (scrub and tap); a message written by another writer reached the strip in about 2.5 s. `tests/workspace_conversation_timeline_test.php`.
 
 Related: docs/memory/workspace/workspace-channel-overview.md, docs/memory/workspace/workspace-channel-panels.md, docs/memory/workspace/workspace-channel-identity-motion.md
