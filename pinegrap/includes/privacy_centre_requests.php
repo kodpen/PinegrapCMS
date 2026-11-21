@@ -19,13 +19,16 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_request_form.php');
+// The list table driver is not loaded with every screen.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $requests_labels = pg_privacy_request_labels();
 $requests_operator = array('role' => (int) $user['role'], 'id' => (int) $user['id']);
 $requests_now = time();
 $requests_ready = pg_privacy_requests_ready();
+
+// The public request form's switch (includes/fn/privacy_request_form.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_request_form.php');
 
 // A change: checked, done, and the screen again on the same request.
 if ($requests_ready && ($_SERVER['REQUEST_METHOD'] === 'POST')) {
@@ -141,6 +144,11 @@ pg_page_shell(array(
 (function () {
     var phone = window.matchMedia("(max-width: 575.98px)");
 
+    // The switch of the public form saves as it is flipped.
+    document.addEventListener("change", function (event) {
+        if (event.target.matches("[data-privacy-submit]")) { event.target.form.submit(); }
+    });
+
     // A drawer opens through pgUI, from the right or, on a phone, as a
     // sheet from the bottom; one carrying data-open opens with the screen.
     var open = function (drawer) {
@@ -176,11 +184,6 @@ pg_page_shell(array(
         var next = tabs.indexOf(tab) + ((event.key === "ArrowRight") ? 1 : -1);
         select(tabs[(next + tabs.length) % tabs.length]);
         event.preventDefault();
-    });
-
-    // The switch of the public form saves as it is flipped.
-    document.addEventListener("change", function (event) {
-        if (event.target.matches("[data-privacy-submit]")) { event.target.form.submit(); }
     });
 
     document.querySelectorAll("dialog[data-open]").forEach(open);
