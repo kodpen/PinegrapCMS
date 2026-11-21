@@ -312,6 +312,8 @@ function pg_event_workspace_events()
         'marketplace.order.imported',
         'shipment.problem',
         'shipment.problem_resolved',
+        'customer.rhythm_stage_changed',
+        'customer.reorder_due',
         'subscription.failed',
         'subscription.renewed',
         'subscription.cancelled',
@@ -380,11 +382,13 @@ function pg_event_contact_of_address($address)
 }
 
 // The site's events kept only while an active scheduled action or flow
-// names them: a stock change comes with every line of every sale, and rows
-// nobody waits for would hold up the run's batch for the events people do.
+// names them: a stock change comes with every line of every sale, and the
+// customer rhythm pass may announce thousands of customers in one night;
+// rows nobody waits for would hold up the run's batch for the events people
+// do.
 function pg_event_workspace_on_demand()
 {
-    return array('inventory.changed');
+    return array('inventory.changed', 'customer.rhythm_stage_changed', 'customer.reorder_due');
 }
 
 // Is the event kept, given the rules of the active scheduled actions that

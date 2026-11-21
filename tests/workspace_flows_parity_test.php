@@ -2303,6 +2303,7 @@ function workspace_flows_parity_table()
 			array(array('page.created', 'page.updated'), 3, 'event trigger box: a page made or changed, checked against the pages the creator\'s tag resolves (ws_events_creator_sees())'),
 			array(array('course.completed'), 3, 'event trigger box: a member completed a course (once the courses tables exist), about the member\'s contact'),
 			array(array('shipment.problem', 'shipment.problem_resolved'), 3, 'event trigger box: a delivery problem found on a parcel or settled by a later status (with the shop, once the problems table exists), about its order, narrowed to one kind'),
+			array(array('customer.rhythm_stage_changed', 'customer.reorder_due'), 3, 'event trigger box: a customer\'s rhythm stage moved or a reorder due, from the nightly pass (with the shop, once the customer_rhythm table exists; kept only while a rule names it), about the customer\'s contact, narrowed to one stage'),
 			array(array('content.review_due'), 3, 'event trigger box: a page or collection record whose review date passed, once per date from the general job (pg_content_review_announce_due()); checked against the items the creator may edit (ws_events_creator_sees())'),
 			array(array('booking.created', 'booking.confirmed', 'booking.rescheduled', 'booking.cancelled'), 3, 'event trigger box: staff agenda events (once the booking tables exist), each checked against the bookings the creator\'s agenda shows (ws_events_creator_sees())'),
 			array(array('workspace.task.completed', 'workspace.task.status_changed', 'workspace.task.overdue', 'workspace.approval.decided', 'workspace.guest.message', 'workspace.mail.received'), 3, 'event trigger box: Workspace events, each checked against what the creator reads (ws_events_creator_sees())'),
@@ -2316,6 +2317,7 @@ function workspace_flows_parity_table()
 			array(array('transport'), 3, 'event trigger box: how a conversation\'s message came (e-mail, WhatsApp, SMS)'),
 			array(array('group'), 3, 'event trigger box: which contact group a contact joins (its id kept as the status)'),
 			array(array('problem_kind'), 3, 'event trigger box: the kind of a parcel\'s delivery problem (kept as the status)'),
+			array(array('rhythm_stage'), 3, 'event trigger box: the customer\'s rhythm stage (kept as the status)'),
 			array(array('channel'), 3, 'event trigger box: a Workspace event in one channel'),
 		),
 		'event_filter_values' => array(
@@ -2324,6 +2326,7 @@ function workspace_flows_parity_table()
 			array(workspace_flows_parity_prefixed('outcome=', 'approved rejected expired withdrawn'), 3, 'event trigger box: approval outcome (ws_events_approval_outcomes())'),
 			array(workspace_flows_parity_prefixed('transport=', 'email whatsapp sms'), 3, 'event trigger box: how a conversation\'s message came (ws_mail_transport_labels())'),
 			array(workspace_flows_parity_prefixed('problem_kind=', 'stuck not_handed_over problem returned'), 3, 'event trigger box: a delivery problem\'s kind (ws_events_problem_kinds())'),
+			array(workspace_flows_parity_prefixed('rhythm_stage=', 'regular due late slipping lost won_back'), 3, 'event trigger box: a customer\'s rhythm stage (ws_events_rhythm_stages())'),
 		),
 		'condition_kinds' => array(
 			array(array('workday'), 3, 'condition box: a working day (ws_day_off()); no is skipped, the reason kept'),
