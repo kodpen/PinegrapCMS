@@ -6,7 +6,7 @@
 - ad-conversions-counter-sales.md: The choices block of the Meta, GA4 and TikTok pages (event switches, Lead forms, counter sales) and "Send counter sales": a local order's purchase without any personal data [decision: here]
 - ad-conversions-ga4.md: GA4 Measurement Protocol (#10866): its Connections page, Measurement ID from the Google Analytics page, sealed API secret, sender, refunds from order_refunds, test
 - ad-conversions-log.md: Ad conversions log (#10907): the Events card on each service's Connections page (daily counts, last 50 events), the ad_events_refused operations alert, GET /reports/ad-conversions
-- ad-conversions-meta.md: Meta Conversions API (#10812): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row
+- ad-conversions-meta.md: Meta Conversions API (#10812): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row [decision: here]
 - ad-conversions-privacy.md: ad_conversion_events in a person's erase and export: rows of their orders, and Lead and sign-up rows (order_id 0) found by the hashed e-mail in ids (#10955)
 - ad-conversions-queue.md: ad_conversion_events (11.0.254): the three-input consent reader, status 0 rows at the payment step, queueing at completion, the job's pass, sweep
 - ad-conversions-tiktok.md: TikTok Events API (#10862): its Connections page and gate, the sealed token, the sender, the E.164 phone hash, how TikTok's answers become a row's outcome, the test event, the registry row
@@ -40,6 +40,7 @@
 - api-customer-consents.md: GET /customers/{id}/consents (the consent_log rows of a customer and its accounts) and the customer.consent_changed webhook announced by pg_consent_log_record(); what is left out and why
 - api-customer-credit.md: Store credit over the API: GET/POST /customers/{id}/credit and void under gift_cards:*, the account pick, credit.* events, export and erasure of a customer's cards [decision: decisions-made-product-27.md, decisions-made-product-29.md, decisions-made-product-52.md]
 - api-customer-mail-suppression.md: email_suppressed on the Customer answer (the suppressed badge of the contact screens) and POST /customers/{id}/allow-mail, the contact card's "Allow again" with dry_run
+- api-customer-rhythm-report.md: GET /reports/customer-rhythm (RY5, orders:read, an MCP tool): customers per stage, the customers a page at a time, ?stage= and ?contact_id=, names with customers:read and the user role's reach
 - api-customer-subscriptions.md: GET /customers/{id}/subscriptions, the pause/resume/cancel moves with dry_run (PR #4399), and the subscription.* webhooks announced from pg_subscription_mail_send()
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
 - api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)

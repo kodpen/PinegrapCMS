@@ -39,7 +39,7 @@ description: Generated from the module field of the memory files: each includes/
 - `application_reviewers`: [[application-review-reviewers]]
 - `arrival_date_list_edit`: [[list-table-quick-edit-arrival-dates]]
 - `audience_doors`: [[audiences-door-join]], [[audiences-doors]]
-- `audiences`: [[audiences-overview]], [[audiences-recompute]], [[audiences-rules]], [[contact-group-rules]]
+- `audiences`: [[audiences-overview]], [[audiences-recompute]], [[audiences-rules]], [[contact-group-rules]], [[customer-rhythm-group-rule]]
 - `audit`: [[audit-trail-diff]], [[audit-trail-file-content]], [[consent-log-and-audit-trail]]
 - `audit_list`: [[audit-log-paging]]
 - `audit_rules`: [[audit-rule-registry]]

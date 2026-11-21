@@ -110,6 +110,7 @@
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - customer-rhythm-events.md: Customer rhythm events (customer_rhythm_tell.php): stage changed, reorder due, the 7-day brake, when a product stops being named, comparison share, settings row, payload, flow stage filter
+- customer-rhythm-group-rule.md: The contact group rule "Rhythm stage" is / is not (H11, RY5): the stage names it takes, the customer_rhythm rows it reads, contacts with two rows or none
 - customer-rhythm-reorder-link.md: The reorder link of customer.reorder_due (H9): reorder.php, signed products and 30 days, nothing stored, GET shows and POST fills the cart, the ended link, reorder_url
 - customer-rhythm-report.md: Customer rhythm as read: Customers Report's Rhythm part (stages, came back after a reminder, list by stage and CSV, products), the contact card's Order rhythm card, the settings form, who sees names
 - customer-rhythm-rules.md: Customer rhythm's pure rules (customer_rhythm.php): days per unit, own interval, the chance curve, stages and their moves, due products, and the choices the features left open
