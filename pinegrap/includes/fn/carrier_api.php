@@ -645,7 +645,7 @@ function pg_carrier_api_test_button($carrier)
 {
     return '
             <div class="col-12">
-                <button type="submit" name="carrier_api_test" value="' . h($carrier) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                <button type="submit" name="carrier_api_test" value="' . h($carrier) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
             </div>';
 }
 

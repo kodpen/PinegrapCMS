@@ -612,7 +612,7 @@ function ws_call_start($party, $channel, $kind)
     }
 
     if (!ws_calls_on()) {
-        return array('ok' => false, 'error' => lang('Calls are turned off in the Workspace settings.'));
+        return array('ok' => false, 'error' => lang('Calls are turned off under Site Settings › Channels › Calls.'));
     }
 
     $error = ws_call_party_check($party, $channel, true);
@@ -677,7 +677,7 @@ function ws_call_join($party, $channel, $call_id)
     }
 
     if (!ws_calls_on()) {
-        return array('ok' => false, 'error' => lang('Calls are turned off in the Workspace settings.'));
+        return array('ok' => false, 'error' => lang('Calls are turned off under Site Settings › Channels › Calls.'));
     }
 
     $call = ws_call($call_id);

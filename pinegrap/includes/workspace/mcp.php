@@ -957,7 +957,7 @@ function ws_mcp_error_text($server, $status, $error, $person = false)
     if (((string) ($server['auth_kind'] ?? '') === 'oauth') && ((int) $status === 401)) {
         return $person
             ? lang(array('string' => 'Your own connection to @{var:1} ended. Connect your account again.', 'vars' => $server['alias']))
-            : lang(array('string' => '@{var:1} is not connected, or its connection ended. An administrator connects it again under Workspace settings › MCP servers.', 'vars' => $server['alias']));
+            : lang(array('string' => '@{var:1} is not connected, or its connection ended. An administrator connects it again under Site Settings › Assistants and agents › MCP servers.', 'vars' => $server['alias']));
     }
 
     return (string) $error;
@@ -1003,7 +1003,7 @@ function ws_mcp_person_connect_start($viewer, $server, $return)
     $key = ws_mcp_connect_key($server);
 
     if (!pg_connect_app_ready(pg_connect_app($key)) || !ws_mcp_connect_provider($key)) {
-        return $fail(lang(array('string' => 'The sign-in to @{var:1} is not set up yet. An administrator saves the server again under Workspace settings › MCP servers.', 'vars' => $server['alias'])));
+        return $fail(lang(array('string' => 'The sign-in to @{var:1} is not set up yet. An administrator saves the server again under Site Settings › Assistants and agents › MCP servers.', 'vars' => $server['alias'])));
     }
 
     $mine = ws_mcp_person_account($server, (int) $viewer['id']);
@@ -1202,10 +1202,10 @@ function ws_mcp_server_state($server)
         $reason = lang(array('string' => '@{var:1} is turned off. Nothing is sent to it until it is turned on again.', 'vars' => $server['alias']));
     } elseif ($oauth && $account && !$connected) {
         $state = 'connect_again';
-        $reason = lang('The site\'s connection to the service ended: connect it again in the Workspace settings.');
+        $reason = lang('The site\'s connection to the service ended: connect it again under Site Settings › Assistants and agents › MCP servers.');
     } elseif ($oauth && !$account) {
         $state = 'not_connected';
-        $reason = lang('The site is not connected to the service yet: connect it in the Workspace settings.');
+        $reason = lang('The site is not connected to the service yet: connect it under Site Settings › Assistants and agents › MCP servers.');
     } elseif ($error !== '') {
         $state = 'unreachable';
         $reason = $error;

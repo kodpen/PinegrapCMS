@@ -535,6 +535,8 @@
     "Deleting it breaks the references on those pages. Are you sure?": "Silerseniz bu sayfalardaki referanslar bozulur. Emin misiniz?",
     "Deleting records in bulk is switched off in the Workspace Settings.": "Kayıtları toplu silme Çalışma Alanı Ayarları'nda kapalı.",
     "Deleting records in bulk is switched off in the Workspace Settings. Say so in the answer; an administrator can allow it.": "Kayıtları toplu silme Çalışma Alanı Ayarları'nda kapalı. Bunu yanıtta söyleyin; bir yönetici izin verebilir.",
+    "Deleting records in bulk is switched off under Site Settings › Assistants and agents › Bulk changes.": "Kayıtları toplu silme Site Ayarları › Asistanlar ve ajanlar › Toplu değişiklikler altında kapalı.",
+    "Deleting records in bulk is switched off under Site Settings › Assistants and agents › Bulk changes. Say so in the answer; an administrator can allow it.": "Kayıtları toplu silme Site Ayarları › Asistanlar ve ajanlar › Toplu değişiklikler altında kapalı. Bunu yanıtta söyleyin; bir yönetici izin verebilir.",
     "Deliver to my home": "Evime teslim edilsin",
     "Delivered": "Teslim Edildi",
     "Delivered (estimated)": "Teslim (tahmini)",

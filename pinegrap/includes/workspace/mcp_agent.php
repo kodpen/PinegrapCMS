@@ -492,8 +492,8 @@ function ws_mcp_agent_problem($server, $asker = null, $channel_id = 0, $task_id 
         // On a server people sign in to, a tool that writes may take the
         // messages too, each one approved: only being turned off stops it.
         return lang(array('string' => ws_mcp_can_approve($server)
-            ? 'The tool that takes the messages of @{var:1} ({var:2}) is no longer turned on. An administrator turns it on again in Workspace Settings › MCP servers.'
-            : 'The tool that takes the messages of @{var:1} ({var:2}) is no longer turned on as one that reads only. An administrator chooses it again in Workspace Settings › MCP servers.', 'vars' => array(
+            ? 'The tool that takes the messages of @{var:1} ({var:2}) is no longer turned on. An administrator turns it on again under Site Settings › Assistants and agents › MCP servers.'
+            : 'The tool that takes the messages of @{var:1} ({var:2}) is no longer turned on as one that reads only. An administrator chooses it again under Site Settings › Assistants and agents › MCP servers.', 'vars' => array(
             $server['alias'],
             '`' . str_replace('`', '', (string) $server['agent_tool']) . '`',
         )));

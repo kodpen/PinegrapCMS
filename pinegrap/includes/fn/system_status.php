@@ -4144,7 +4144,7 @@ function get_system_status_checks()
                         'bi-envelope-exclamation-fill',
                         'fg-danger',
                         'Incoming E-mail',
-                        'A mailbox could not be read, so the mail sent to it does not reach its channel. The reason is on the Mailboxes card of Workspace Settings.',
+                        'A mailbox could not be read, so the mail sent to it does not reach its channel. The reason is under Site Settings › Mailboxes.',
                         lang(array('string' => '{var:1} failing', 'vars' => pg_format_number($mail_health['failing'], 0))),
                         $mail_href,
                         $mail_detail

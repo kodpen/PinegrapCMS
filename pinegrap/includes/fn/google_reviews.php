@@ -448,7 +448,7 @@ function pg_grev_settings_fields()
 
     $html .= '
                                         <div class="col-12">
-                                            <button type="submit" name="google_reviews_test" value="1" class="btn btn-sm btn-outline theme-secondary"' . ($ready ? '' : ' disabled') . '><i class="bi bi-google me-1" aria-hidden="true"></i>' . lang('Save and test') . '</button>
+                                            <button type="submit" name="google_reviews_test" value="1" class="pg-button pg-button-quiet pg-button-sm"' . ($ready ? '' : ' disabled') . '><i class="bi bi-google" aria-hidden="true"></i>' . lang('Save and test') . '</button>
                                         </div>';
 
     return $html;
