@@ -6,8 +6,9 @@
  * assets/js/workspace_conversation_timeline.js): the first words cut on a
  * word, what came of a poll, an approval and an agent request, the panel
  * action, the words of the strip; the strip's runs and turns, its layout in
- * pixels, the message under a point, the waits in words, a writer's
- * initials; and the hooks in workspace.js and the stylesheet. The Node
+ * pixels, its days and its zoom, the message under a point, the waits in
+ * words, a writer's initials; and the hooks in workspace.js and the
+ * stylesheet. The Node
  * parts are skipped where Node cannot run.
  *
  * @author      Erdal Güral (Kodpen)
@@ -247,6 +248,98 @@ console.log(JSON.stringify({
 	pg_assert_true(($result['tightLeast'] < 6) && ($result['tightLeast'] >= 1), 'a crowded strip makes its turns narrower, never under a pixel');
 	pg_assert_same(array(-1, 0, 5, 11), $result['indexOf'], 'a message id finds itself or the one before');
 	pg_assert_same(0, $result['empty'], 'an empty conversation draws nothing');
+}
+
+function test_workspace_conversation_timeline_js_days()
+{
+	$source = workspace_conversation_timeline_test_function('timelineRuns') . workspace_conversation_timeline_test_function('timelineLayout')
+		. workspace_conversation_timeline_test_function('timelineDayMarks');
+
+	pg_assert_true(workspace_conversation_timeline_test_function('timelineDayMarks') !== '', 'timelineDayMarks() is in the script');
+
+	$result = workspace_conversation_timeline_test_node($source . '
+var day = function (at) { return "d" + Math.floor(at / 86400); };
+var items = [
+	{ id: 1, at: 2 * 86400 - 200, s: 0 }, { id: 2, at: 2 * 86400 - 140, s: 1 },
+	{ id: 3, at: 2 * 86400 - 30, s: 1 }, { id: 4, at: 2 * 86400 + 10, s: 1 },
+	{ id: 5, at: 2 * 86400 + 40, s: 0 }, { id: 6, at: 3 * 86400 + 5, s: 0 }
+];
+var runs = timelineRuns(items, 120, 1800, day);
+var layout = timelineLayout(runs, 600, 10, 6, 3, 16);
+var marks = timelineDayMarks(layout, 48);
+var tight = timelineDayMarks({ width: 100, runs: [{ left: 0, width: 40, day: false, turns: [] }, { left: 56, line: 48, width: 20, day: true, turns: [{ from: 1 }] }, { left: 92, line: 84, width: 8, day: true, turns: [{ from: 2 }] }] }, 48);
+console.log(JSON.stringify({
+	runs: runs.length,
+	days: runs.map(function (run) { return run.day; }),
+	split: runs[1].turns[0].from,
+	gaps: [Math.round(layout.runs[1].left - (layout.runs[0].left + layout.runs[0].width)), Math.round(layout.runs[2].left - (layout.runs[1].left + layout.runs[1].width))],
+	line: Math.round(layout.runs[1].line - (layout.runs[0].left + layout.runs[0].width)),
+	marks: marks.map(function (mark) { return [mark.from, mark.label]; }),
+	tight: tight.map(function (mark) { return mark.label; }),
+	plain: timelineRuns(items, 120, 1800).map(function (run) { return run.day; })
+}));
+');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(3, $result['runs'], 'a new day starts a run even within half an hour');
+	pg_assert_same(array(false, true, true), $result['days'], 'every run after the first that opens a day is marked');
+	pg_assert_same(3, $result['split'], 'one writer across midnight is two turns');
+	pg_assert_same(array(16, 16), $result['gaps'], 'a day stands sixteen pixels from the one before');
+	pg_assert_same(8, $result['line'], 'its hairline in the middle of the gap');
+	pg_assert_same(array(array(3, true), array(5, true)), $result['marks'], 'each day has its mark and its first message, a date where there is room');
+	pg_assert_same(array(false, false), $result['tight'], 'no date where less than the room is left to the next day or the end');
+	pg_assert_same(array(false, false, false), $result['plain'], 'without a day the runs are as before');
+}
+
+function test_workspace_conversation_timeline_js_zoom()
+{
+	$source = workspace_conversation_timeline_test_function('timelineRuns') . workspace_conversation_timeline_test_function('timelineLayout')
+		. workspace_conversation_timeline_test_function('timelineOpenZoom') . workspace_conversation_timeline_test_function('timelineZoomTop')
+		. workspace_conversation_timeline_test_function('timelineZoomStep') . workspace_conversation_timeline_test_function('timelineZoomWheel')
+		. workspace_conversation_timeline_test_function('timelineZoomScroll') . workspace_conversation_timeline_test_function('timelineFollow');
+
+	foreach (array('timelineOpenZoom', 'timelineZoomTop', 'timelineZoomStep', 'timelineZoomWheel', 'timelineZoomScroll', 'timelineFollow') as $name) {
+		pg_assert_true(workspace_conversation_timeline_test_function($name) !== '', $name . '() is in the script');
+	}
+
+	$result = workspace_conversation_timeline_test_node($source . '
+var items = [];
+for (var i = 0; i < 300; i++) { items.push({ id: i + 1, at: i * 200 + 4000 * Math.floor(i / 50), s: i % 2 }); }
+var runs = timelineRuns(items, 120, 1800);
+var open = timelineOpenZoom(runs, 400, 6, 10, 3, 16);
+var layout = timelineLayout(runs, 400 * open, 10, 6, 3, 16);
+var turns = [].concat.apply([], layout.runs.map(function (run) { return run.turns; }));
+var few = timelineRuns(items.slice(0, 5), 120, 1800);
+var top = timelineZoomTop(300, 400, open);
+console.log(JSON.stringify({
+	open: open > 1,
+	least: Math.min.apply(null, turns.map(function (turn) { return turn.width; })),
+	fewOpen: timelineOpenZoom(few, 400, 6, 10, 3, 16),
+	top: top >= open,
+	fewTop: timelineZoomTop(5, 400, 1),
+	steps: [timelineZoomStep(1, 1, 50), timelineZoomStep(1.5, 1, 50), timelineZoomStep(2.5, 1, 50), timelineZoomStep(2.5, -1, 50), timelineZoomStep(1.2, -1, 50), timelineZoomStep(1, -1, 50), timelineZoomStep(40, 1, 50), timelineZoomStep(50, 1, 50), timelineZoomStep(3, 1, 1)],
+	wheel: [timelineZoomWheel(2, -100, 50) > 2, timelineZoomWheel(2, 100, 50) < 2, timelineZoomWheel(1, 500, 50), timelineZoomWheel(49, -5000, 50)],
+	scroll: [timelineZoomScroll(1000, 2000, 100, 50, 400), timelineZoomScroll(2000, 1000, 0, 0, 400), timelineZoomScroll(2000, 1000, 1600, 400, 400)],
+	follow: [timelineFollow(0, 400, 100, 200), timelineFollow(0, 400, 900, 1000), timelineFollow(1000, 400, 100, 200), timelineFollow(0, 400, 380, 420)]
+}));
+');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true($result['open'], 'a crowded strip opens zoomed in');
+	pg_assert_true($result['least'] >= 6 - 0.001, 'so far that no turn is under six pixels');
+	pg_assert_same(1, $result['fewOpen'], 'a short conversation opens whole');
+	pg_assert_true($result['top'], 'zooming in reaches at least the opening zoom');
+	pg_assert_same(1, $result['fewTop'], 'a short conversation has nothing to zoom into');
+	pg_assert_same(array(1.5, 2, 3, 2, 1, 1, 48, 50, 1), $result['steps'], 'the buttons and keys step along the levels, within one and the top');
+	pg_assert_same(array(true, true, 1, 50), $result['wheel'], 'the wheel and a pinch zoom smoothly within one and the top');
+	pg_assert_same(array(250, 0, 600), $result['scroll'], 'a zoom keeps the point under the pointer, within the strip');
+	pg_assert_same(array(0, 750, 0, 200), $result['follow'], 'the strip scrolls only to bring the part on the screen into view');
 }
 
 function test_workspace_conversation_timeline_js_words()
