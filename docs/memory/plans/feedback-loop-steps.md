@@ -8,7 +8,7 @@ description: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, s
 
 - FD1b (M) after FD1a (the owner said yes to poll 197, message 10847), done (PR #10877, `platform/feedback-store.md`): `feedback_surveys` and `feedback_responses` as a migration step in the open version, the columns of `decisions-made-schema-45.md`, in the PR body, asked of the architect before ready; the five privacy registrations and their tests. Features: Q16.
 
-- FD2 (M) after FD1b: the Surveys tab of the Communication area (`ui/messages-area-rules.md`), the survey list, a new survey off by default, the test send to oneself. Features: Q2.
+- FD2 (M) after FD1b, done (PR #10981, `ui/messages-area-surveys-tab.md`, `ui/messages-area-survey-edit.md`): the Surveys tab of the Communication area (`ui/messages-area-rules.md`), the survey list, a new survey off by default, the test send to oneself. Features: Q2.
 
 - FD3 (M) after FD2: the missing announcements (`pg_booking_status_event()` for a finished booking, `ws_mail_conversation_set()` on close, the check-in in `pg_event_workspace_events()`); the listener that queues a send; the general job's pass with the delay, the hours, the reminder and the cancels; the periodic NPS; the consent rule of poll 198 (`decisions-made-product-91.md`). Features: Q3, Q4, Q5.
 

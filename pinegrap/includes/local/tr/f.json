@@ -1218,6 +1218,7 @@
     "Follow-up": "Sonraki adım",
     "Follow-up Visit": "Kontrol Muayenesi",
     "Follow-up visit": "Kontrol muayenesi",
+    "Follow-up when the record names nobody": "Kayıtta kimse yoksa takip eden",
     "Followed": "Takip Edilenler",
     "Followed as {var:1}.": "{var:1} olarak takip edilir.",
     "Followed when the box ends": "Kutu şöyle bittiğinde izlenir",

@@ -8,7 +8,8 @@
  * to the screen where its job is done today.
  *
  * Each tab is a screen of its own file with its own gate: Campaigns is
- * view_email_campaigns.php, the others are messages_*.php. A tab its viewer
+ * view_email_campaigns.php, the others are messages_*.php. Surveys holds
+ * the satisfaction surveys (includes/fn/feedback_surveys.php). A tab its viewer
  * may not open is left out of the strip and the menu panel, so neither leads
  * to "Access denied".
  *
@@ -43,6 +44,7 @@ function pg_messages_area_tabs()
         'automatic' => array('file' => 'messages_automatic.php', 'label' => 'Automatic sends', 'icon' => 'bi-diagram-3', 'gate' => 'email_or_flows'),
         'templates' => array('file' => 'messages_templates.php', 'label' => 'Templates', 'icon' => 'bi-card-text', 'gate' => 'email'),
         'sends'     => array('file' => 'messages_sends.php', 'label' => 'Sends', 'icon' => 'bi-send', 'gate' => 'email'),
+        'surveys'   => array('file' => 'messages_surveys.php', 'label' => 'Surveys', 'icon' => 'bi-emoji-smile', 'gate' => 'manager'),
         'channels'  => array('file' => 'messages_channels.php', 'label' => 'Channels', 'icon' => 'bi-broadcast', 'gate' => 'manager'),
     );
 }

@@ -12,6 +12,7 @@ description: Start file of the Communication area (İletişim, menu row 9, #8961
 - Automatic sends, `messages_automatic.php`: [[messages-area-automatic-tab]].
 - Templates, `messages_templates.php`: [[messages-area-templates-tab]].
 - Sends, `messages_sends.php`: `platform/messages-area-sends.md`, its speed `platform/messages-area-sends-speed.md`, its Calendar view [[messages-area-sends-calendar]].
+- Surveys, `messages_surveys.php` and `edit_feedback_survey.php`: [[messages-area-surveys-tab]].
 - Channels, `messages_channels.php`: [[messages-area-shell]] (its cards).
 - The shell, strip, gates and doors: [[messages-area-shell]]; the look: [[messages-area-look]]; the drawing: `messages-area-drawing/`.
 
