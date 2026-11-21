@@ -18,6 +18,10 @@
  * WS_CALL_SILENCE seconds, ends; its signals are deleted then, and any
  * signal after WS_CALL_SIGNAL_LIFE seconds.
  *
+ * One member at a time shares a screen: its share and unshare signals,
+ * addressed to nobody, say who; the sharer renews its share with the
+ * keep-alive, and a member's signals go when it leaves, so its share ends.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -56,6 +60,14 @@ define('WS_CALL_SWEEP_EVERY', 10);
 define('WS_CALL_RING', 45);
 
 /**
+ * Seconds a screen share holds without its sharer renewing it (the browser
+ * renews it with every keep-alive, every 30 seconds: PING_EVERY in
+ * assets/js/workspace_calls.js), so a closed tab's share does not stay on
+ * the others' screens.
+ */
+define('WS_CALL_SHARE_LIFE', 75);
+
+/**
  * Does the database carry calls (2026.11.0, 11.0.243)?
  *
  * @return bool
@@ -82,13 +94,26 @@ function ws_call_kinds()
 }
 
 /**
- * The kinds of a signal. A ping is the keep-alive, addressed to nobody.
+ * The kinds of a signal. A ping is the keep-alive, addressed to nobody; so
+ * are share (the sender shows its screen, renewed with each keep-alive) and
+ * unshare (it stopped).
  *
  * @return string[]
  */
 function ws_call_signal_kinds()
 {
-    return array('offer', 'answer', 'candidate', 'ping');
+    return array('offer', 'answer', 'candidate', 'ping', 'share', 'unshare');
+}
+
+/**
+ * Is a signal of this kind addressed to nobody? Pure.
+ *
+ * @param string $kind
+ * @return bool
+ */
+function ws_call_signal_to_nobody($kind)
+{
+    return in_array((string) $kind, array('ping', 'share', 'unshare'), true);
 }
 
 // ── The stamp that keeps an idle channel's reads free ──
@@ -254,14 +279,65 @@ function ws_call_signal_check($from, $to, $kind, $body)
         return lang('The connection message is too long.');
     }
 
-    // The keep-alive is read by nobody.
-    if ($kind === 'ping') {
+    // The keep-alive and the share marks are read by nobody.
+    if (ws_call_signal_to_nobody($kind)) {
         return '';
     }
 
     if (!is_array($to) || ((int) $to['call_id'] !== (int) $from['call_id']) || ((int) $to['left_at'] > 0)
         || ((int) $to['id'] === (int) $from['id'])) {
         return lang('That person is not in this call.');
+    }
+
+    return '';
+}
+
+/**
+ * Who shares a screen in a call now? Pure. The newest share or unshare mark
+ * of the call decides: a share by a member still in it, renewed within
+ * WS_CALL_SHARE_LIFE seconds. A member's marks go when it leaves.
+ *
+ * @param array|null $mark     the newest share/unshare signal: from_member_id, kind, created_at
+ * @param int[]      $live_ids the member ids in the call now
+ * @param int        $now
+ * @return int the sharer's member id, 0 for none
+ */
+function ws_call_sharer_from($mark, $live_ids, $now)
+{
+    if (!is_array($mark) || ((string) $mark['kind'] !== 'share')) {
+        return 0;
+    }
+
+    if ((int) $mark['created_at'] <= ((int) $now - WS_CALL_SHARE_LIFE)) {
+        return 0;
+    }
+
+    $member_id = (int) $mark['from_member_id'];
+
+    return in_array($member_id, array_map('intval', (array) $live_ids), true) ? $member_id : 0;
+}
+
+/**
+ * May this member start or renew a share, or stop one? Pure. One share at a
+ * time: only while nobody else shares. Stopping is the sharer's own; from
+ * anyone else it changes nothing (null: write nothing).
+ *
+ * @param array  $from   the sender's live ws_call_members row
+ * @param int    $sharer ws_call_sharer_from()
+ * @param string $kind   share | unshare
+ * @return string|null '' to write the mark, null to write nothing, else the refusal
+ */
+function ws_call_share_check($from, $sharer, $kind)
+{
+    $sharer = (int) $sharer;
+    $mine = (int) $from['id'];
+
+    if ((string) $kind === 'unshare') {
+        return ($sharer === $mine) ? '' : null;
+    }
+
+    if ($sharer && ($sharer !== $mine)) {
+        return lang('Someone else is sharing their screen.');
     }
 
     return '';
@@ -320,9 +396,10 @@ function ws_call_may_end($party, $call, $manages)
  * @param array    $call    the ws_calls row
  * @param array[]  $members its live ws_call_members rows
  * @param string[] $names   'user:<id>' / 'guest:<id>' => name
+ * @param int      $sharer  the member id sharing a screen, 0 for none
  * @return array
  */
-function ws_call_present($call, $members, $names)
+function ws_call_present($call, $members, $names, $sharer = 0)
 {
     $people = array();
 
@@ -346,6 +423,7 @@ function ws_call_present($call, $members, $names)
         'started_by' => (int) $call['started_by'],
         'started_at' => (int) $call['started_at'],
         'members'    => $people,
+        'sharer'     => (int) $sharer,
     );
 }
 
@@ -401,6 +479,27 @@ function ws_call_member_of($party, $call_id)
     $row = db_item("SELECT * FROM ws_call_members WHERE call_id = '" . (int) $call_id . "' AND " . $column . " = '" . (int) $party['id'] . "' AND left_at = 0 ORDER BY id LIMIT 1");
 
     return is_array($row) ? $row : null;
+}
+
+/**
+ * Who shares a screen in a call now (ws_call_sharer_from()).
+ *
+ * @param int     $call_id
+ * @param array[] $members its live ws_call_members rows
+ * @return int the sharer's member id, 0 for none
+ */
+function ws_call_sharer($call_id, $members)
+{
+    $mark = db_item("SELECT from_member_id, kind, created_at FROM ws_call_signals
+        WHERE call_id = '" . (int) $call_id . "' AND to_member_id = 0 AND kind IN ('share', 'unshare')
+        ORDER BY id DESC LIMIT 1");
+    $live_ids = array();
+
+    foreach ((array) $members as $member) {
+        $live_ids[] = (int) $member['id'];
+    }
+
+    return ws_call_sharer_from(is_array($mark) ? $mark : null, $live_ids, time());
 }
 
 /**
@@ -711,7 +810,7 @@ function ws_call_signal_send($party, $call_id, $to_member_id, $kind, $body)
     $kind = (string) $kind;
     $to = null;
 
-    if ($kind !== 'ping') {
+    if (!ws_call_signal_to_nobody($kind)) {
         $to = db_item("SELECT * FROM ws_call_members WHERE id = '" . (int) $to_member_id . "'");
         $to = is_array($to) ? $to : null;
     }
@@ -729,10 +828,48 @@ function ws_call_signal_send($party, $call_id, $to_member_id, $kind, $body)
         return array('ok' => false, 'error' => lang('Too many connection messages. Please wait a moment.'));
     }
 
+    if (($kind === 'share') || ($kind === 'unshare')) {
+        return ws_call_share_send($call, $from, $kind, $now);
+    }
+
     db_q("INSERT INTO ws_call_signals (call_id, from_member_id, to_member_id, kind, body, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        array((int) $call_id, (int) $from['id'], $to ? (int) $to['id'] : 0, $kind, ($kind === 'ping') ? '' : (string) $body, $now));
+        array((int) $call_id, (int) $from['id'], $to ? (int) $to['id'] : 0, $kind, ws_call_signal_to_nobody($kind) ? '' : (string) $body, $now));
 
     return array('ok' => true, 'error' => '', 'signal_id' => (int) mysqli_insert_id(db::$con));
+}
+
+/**
+ * A share or unshare mark, written while the channel's calls are held, so
+ * two members starting a share at once cannot both have it.
+ *
+ * @param array  $call
+ * @param array  $from the sender's live row
+ * @param string $kind share | unshare
+ * @param int    $now
+ * @return array ok, error, signal_id
+ */
+function ws_call_share_send($call, $from, $kind, $now)
+{
+    if (!ws_call_lock($call['channel_id'])) {
+        return array('ok' => false, 'error' => lang('Please try again in a moment.'));
+    }
+
+    $error = ws_call_share_check($from, ws_call_sharer((int) $call['id'], ws_call_members_live($call['id'])), $kind);
+    $signal_id = 0;
+
+    if ($error === '') {
+        db_q("INSERT INTO ws_call_signals (call_id, from_member_id, to_member_id, kind, body, created_at) VALUES (?, ?, 0, ?, '', ?)",
+            array((int) $call['id'], (int) $from['id'], $kind, (int) $now));
+        $signal_id = (int) mysqli_insert_id(db::$con);
+    }
+
+    ws_call_unlock($call['channel_id']);
+
+    if (($error !== '') && ($error !== null)) {
+        return array('ok' => false, 'error' => $error);
+    }
+
+    return array('ok' => true, 'error' => '', 'signal_id' => $signal_id);
 }
 
 /**
@@ -840,7 +977,7 @@ function ws_call_live_part($party, $channel_id, $signal_after)
     $mine = ws_call_member_of($party, $call['id']);
 
     return array(
-        'call'      => ws_call_present($call, $members, ws_call_member_names($members)),
+        'call'      => ws_call_present($call, $members, ws_call_member_names($members), ws_call_sharer((int) $call['id'], $members)),
         'member_id' => $mine ? (int) $mine['id'] : 0,
         'signals'   => $mine ? ws_call_signals_for((int) $mine['id'], (int) $signal_after) : array(),
     );
@@ -1041,5 +1178,14 @@ function ws_call_js_strings()
         'call_full'       => lang('This call is full.'),
         'call_waiting'    => lang('Waiting for others…'),
         'call_you'        => lang('You'),
+        'call_share'      => lang('Share screen'),
+        'call_share_stop' => lang('Stop sharing'),
+        'call_share_busy' => lang('Someone else is sharing their screen.'),
+        'call_sharing'    => ws_js_template('{var:1} is sharing', 1),
+        'call_self_sharing' => lang('You are sharing your screen'),
+        'call_smaller'    => lang('Make smaller'),
+        'call_larger'     => lang('Make larger'),
+        'call_full_screen' => lang('Full screen'),
+        'call_full_exit'  => lang('Exit full screen'),
     );
 }
