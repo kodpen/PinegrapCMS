@@ -1,6 +1,6 @@
 ---
 name: lead-journey-view
-description: The visitor journey read and drawn (LJ2): the merge by time, the contact screen's Journey card, the Workspace card's folded row, erase, export, inventory, the keep period trim
+description: The visitor journey read and drawn (LJ2, #10946): the merge by time, the contact screen's Journey card, the Workspace card's folded row, erase, export, inventory, the keep period trim
 module: lead_journey_view
 ---
 
