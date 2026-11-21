@@ -35,6 +35,7 @@ description: Generated from the module field of the memory files: each includes/
 - `ai_prompts`: [[ai-prompt-version]]
 - `ai_visibility`: [[ai-visibility-figures]]
 - `appearance_settings_fold`: [[settings-appearance]]
+- `application_my_reviews`: [[application-review-my-reviews]]
 - `application_programs`: [[application-review-programme]]
 - `application_review`: [[application-review-rules]]
 - `application_reviewers`: [[application-review-reviewers]]

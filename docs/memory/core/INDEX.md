@@ -10,6 +10,7 @@
 - ai-prompt-version.md: pg_ai_prompt_version() (r + 8 hex of the rules' SHA-1), ws_ai_requests.prompt_version (11.0.112, #2829), the insert helper and its scan test, where the version is shown
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
+- application-review-my-reviews.md: "My reviews" (AR3b): opened by programme membership with no Forms right, the queue, the scoring screen, blind review, "I know this applicant", reminders 3 and 1 days before a round's end [decision: here]
 - application-review-programme.md: Application programme settings (AR2): the Forms screens, the period check in the submit path, the entry row with eligibility, the override, criteria templates
 - application-review-reviewers.md: A programme's Reviewers tab (AR3a): panel users and outside jurors, category pools, Remove, "Give out entries" per category, conflicts listed
 - application-review-rules.md: Pure rules of application review: eligibility codes, weighted sums, leniency correction, spread flag, balanced assignment, shortlist tie rule
