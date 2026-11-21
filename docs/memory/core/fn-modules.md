@@ -408,6 +408,7 @@ description: Generated from the module field of the memory files: each includes/
 - `waf_notice`: [[waf-ban-notice]]
 - `waf_rescue`: [[waf-self-rescue]], [[waf-settings-save-and-release]]
 - `walk_in_queue`: [[walk-in-queue-rules]]
+- `walk_in_queue_store`: [[walk-in-queue-store]]
 - `whatsapp`: [[whatsapp-connection]], [[whatsapp-outbox-queue]], [[whatsapp-overview]], [[whatsapp-templates]]
 - `whatsapp_design`: [[whatsapp-template-approval]], [[whatsapp-template-authentication]], [[whatsapp-template-designer]]
 - `whatsapp_forms`: [[whatsapp-form-messages]]
