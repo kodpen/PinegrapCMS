@@ -61,6 +61,8 @@ function pg_label_aras_fields()
             'help'       => lang('The web service user Aras Kargo gives for sending shipments, not the Esasweb sign-in.'),
             'required'   => true,
             'max_length' => 100,
+            // Typed with the password on Aras Kargo's page of Connections.
+            'connection' => true,
         ),
         array(
             'name'     => 'password',
@@ -73,6 +75,7 @@ function pg_label_aras_fields()
             'label'      => lang('Customer Code'),
             'help'       => lang('Your Aras Kargo customer code. Needed to read where a parcel is.'),
             'max_length' => 20,
+            'connection' => true,
         ),
         array(
             'name'    => 'mode',
