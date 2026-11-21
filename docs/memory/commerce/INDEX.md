@@ -264,6 +264,7 @@
 - order-screen-shipping-input.md: Order screen shipping card input: cancelled order read only and refused by update_order(), ship and delivery dates checked, shipped quantity 0 to ordered, paid on row
 - order-screen-toolbar.md: The order screen's toolbar (view_order.php): which buttons stay on the bar, which are rows of the three-dots menu, why menu rows lost their colours
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
+- order-stock-taken.md: order_items.stock_taken and order_item_components.stock_taken (step 11.0.268, #10684): what a sale took from the stock, who writes it, how a marketplace cancel puts back only that
 - order-template-installment-row.md: The built-in order receipt and order view layouts (includes/templates/order_receipt.php, view_order.php) print the instalment rows, so their rows add up to the Total
 - order-totals-overview.md: Order totals (a coupon's 1 kurus gap) across checkout, order pages and the ERP invoice: who works them out, who reads the header, rounding, where a kurus may differ and what is decided [decision: here]
 - order-view-legal-documents.md: Order view links to the legal documents and KVKK copy kept with the order: __legal_*_url tokens, has_legal_* flags, starter card, cards added after older layouts, none in the e-mail
