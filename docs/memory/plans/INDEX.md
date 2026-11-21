@@ -75,7 +75,7 @@
 - feedback-loop-features.md: Plan feedback-loop, features Q1 to Q16: surveys, touchpoints, periodic NPS, timing, fatigue, the signed one-click answer, review invitation, follow-up, report, group rule, API, privacy
 - feedback-loop-screens-results.md: Plan feedback-loop, how the answer page and the results are put together (FD4, FD6): the public answer page, the results report, comments and frequent words, the contact card's scores
 - feedback-loop-screens.md: Plan feedback-loop, how its panel screens are put together (FD2): the Surveys tab's list, starting points, a survey's edit screen in cards; each part's Design examples section
-- feedback-loop-steps.md: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, survey settings, touchpoints and sends, the answer page, follow-up, report and group rule, API, close-out
+- feedback-loop-steps.md: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, survey settings, touchpoints and sends, the answer page, WhatsApp, follow-up, report and group rule, API, close-out
 - feedback-loop.md: Plan (owner 2026-11-20, poll 187): NPS, CSAT and effort surveys after a booking, ticket, course, form, delivery or mail conversation, one-click signed answers, low scores followed up; FD1a to FD8
 - general-appearance-settings-tidy-screens-appearance.md: Plan general-appearance-settings-tidy, its second screen: the Appearance pane as folded rows, the Dashboard row by who it reaches, footer links as list rows in drawers
 - general-appearance-settings-tidy-screens.md: Plan general-appearance-settings-tidy, its first screen: the General pane as folded rows, Organization in three groups, one Site address row, the words and what must be true
