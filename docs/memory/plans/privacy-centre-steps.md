@@ -15,7 +15,7 @@ description: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers,
 - KV4b (S) after KV4: the drawer's Answer tab, "Prepare the answer" as Bootstrap 6's `.stepper` (`ol.stepper.pg-stepper-cards`, architect, channel message 11006): gather (export counts, erase dry run), the kind's answer text, Send / Erase and send through `pg_privacy_request_send()`; adds the "Numbered steps" section to Design examples. Cut from KV4 for its size.
   - Columns (message 10557): id; kind, status, source (form, account, staff) VARCHAR(16); contact_id, user_id, assigned_user_id, created_by INT UNSIGNED; email, name; message TEXT; answer MEDIUMTEXT; result VARCHAR(16).
   - verified_at, received_at, due_at, closed_at INT UNSIGNED; reminded TINYINT; keys (status, due_at), contact_id, email. The columns go in the PR body and are asked of the architect before ready.
-- KV5 (S) after KV4: the My Account request, the root `privacy_request.php` (off by default, its switch in the Privacy centre), the proof link, the rate limit. Features: P10, P10b.
+- KV5 (S) after KV4: the My Account request, the root `privacy_request.php` (off by default, its switch in the Privacy centre), the proof link, the rate limit. Features: P10, P10b. In progress (PR to follow).
 - KV6 (S) after KV4: `GET /privacy/inventory` and `GET /privacy/requests`, `php tools/check_api_schema.php`. Feature: P12.
 - KV7 (S) close-out: every P number checked against the code with its PR; `core/privacy-centre.md` written, `core/privacy-log-retention.md`'s "Not built" line made true; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
