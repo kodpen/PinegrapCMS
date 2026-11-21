@@ -172,6 +172,7 @@
 - decisions-made-product-92.md: Decisions list, product part 92 (2026-11-20 on): text written for an AI agent is English only in the panel, the API and MCP, never translated; MCP's own refusals English too
 - decisions-made-product-93.md: Decisions list, product part 93 (2026-11-20 on): plans from the owner's hourly polls: a walk-in queue, volunteer shifts, a set-up journey, prototype approval; saved list views not wanted
 - decisions-made-product-94.md: Decisions list, product part 94 (2026-11-21 on): queue notices and the unfilled-shift call are service messages; a volunteer's document file is kept, no health report; Go live turns both off itself
+- decisions-made-product-95.md: Decisions list, product part 95 (2026-11-21 on): an information request's exported data reaches the person by a signed download link valid 7 days in the answer e-mail
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
 - decisions-made-schema-11.md: Decisions list, schema part 11 (2026-11-05 on): the access_scopes column of api_devices for a narrower scope asked on an OAuth refresh

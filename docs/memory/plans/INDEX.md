@@ -129,6 +129,7 @@
 - pick-pack-screens.md: Plan pick-pack, how the shelf and wave screens are put together (PP2, PP3): the shelf address field, the Pick waves list, "Make a wave", a wave's screen, its pick list on paper and phone
 - pick-pack-steps.md: Plan pick-pack, steps PP1a to PP7: the pure rules, shelf addresses, waves and the pick list, the pack check, label and marketplace on a checked pack, short picks and measures, API, close-out
 - pick-pack.md: Plan (owner 2026-11-20, poll 181): shelf addresses, pick waves in shelf order, barcode pack checks that stop a wrong or short parcel, label on a checked pack, measures, events; PP1a to PP7
+- privacy-centre-export-link.md: Privacy centre: the answer to an information request carries a signed download link valid 7 days for the export, never an attachment; what the link opens and what must be true
 - privacy-centre-features.md: Plan privacy-centre, features P1 to P12: the inventory and its transfers, the retention rules with their dry run and audit-line destruction records, the request box, API
 - privacy-centre-screens.md: Plan privacy-centre, how the request box's screens are put together (KV4): the Requests view of the Privacy centre, a request's drawer with tabs, "Prepare the answer" as numbered steps
 - privacy-centre-steps.md: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers, the screen and downloads, the retention rules, the request record, the public form, API, close-out
