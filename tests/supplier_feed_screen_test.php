@@ -333,6 +333,21 @@ function test_supplier_feed_screen_held_and_runs()
 	pg_assert_same(2, substr_count($html, 'name="held_reject"'), 'Reject on each row');
 	pg_assert_contains('value="7"', $html, 'the item\'s id');
 	pg_assert_contains('B-2', $html, 'an unmatched item shows its code');
+	pg_assert_same(1, substr_count($html, 'name="held_accept_all"'), 'Accept all at the card\'s head');
+	pg_assert_false(strpos($html, 'pg-button-fill') !== false, 'no filled button in the card');
+	pg_assert_false(strpos($html, 'sf_held_all') !== false, 'two rows: no Show all');
+
+	$many = array();
+
+	for ($i = 1; $i <= 25; $i++) {
+		$many[] = array('id' => $i, 'supplier_key' => 'K' . $i, 'buy_price' => 1000, 'held_price' => 300, 'product_name' => '');
+	}
+
+	$html = pg_supplier_feed_held_html($many, 'USD');
+	$card = preg_replace('/<dialog.*<\/dialog>/s', '', $html);
+	pg_assert_same(20, substr_count($card, 'data-pg-sf-held-row'), 'at most 20 rows in the card');
+	pg_assert_contains('data-bs-target="#sf_held_all"', $card, 'Show all opens the drawer');
+	pg_assert_same(45, substr_count($html, 'data-pg-sf-held-row'), 'the drawer holds all 25');
 
 	$runs = pg_supplier_feed_runs_drawer_html(array(
 		array('kind' => 1, 'status' => 1, 'started_at' => 1763700000, 'records' => 10, 'changed' => 2, 'closed' => 1, 'reopened' => 0, 'held' => 1, 'failed' => 1, 'detail' => json_encode(array('reason' => '', 'failed' => array(array('line' => 'X', 'reason' => 'No buy price'))))),

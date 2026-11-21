@@ -13,7 +13,7 @@ module: supplier_feed_screen
 - `pg_supplier_feed_test_diff()` with `$pricing` (the feed's rules, rate, VAT): each row has the buy price (net of VAT as the sync makes it) and the selling price; "Floor" (amber pill) where the floor lifted it (`pg_supplier_feed_price_parts()`). A buy price the sync would hold shows "Held: the price stays".
 
 ## How are held prices decided?
-- Card "Held prices" first in the form column, only while an item has `held_price`: last and held buy price, Accept and Reject (`pg_supplier_feed_held_decide()`).
+- Card "Held prices" first in the form column, only while an item has `held_price`: last and held buy price, Accept and Reject (`pg_supplier_feed_held_decide()`); "Accept all" at its head (`pg_supplier_feed_held_accept_all()`); 20 rows, the rest in the "Show all" drawer `#sf_held_all` (500 at most).
 - Accept: `buy_price = held_price`; the selling price follows at the next pull, which reads that price in range. Reject: `held_price` 0; a pull with the same price holds it again.
 
 ## What does Pull now do?

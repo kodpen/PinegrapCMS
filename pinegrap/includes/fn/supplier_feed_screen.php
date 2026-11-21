@@ -38,6 +38,9 @@ define('PG_SUPPLIER_FEED_TEST_RECORDS', 50000);
 // Rows a test pull shows under each figure.
 define('PG_SUPPLIER_FEED_TEST_ROWS', 20);
 
+// Held prices the card shows; the rest are in its "Show all" drawer.
+define('PG_SUPPLIER_FEED_HELD_ROWS', 20);
+
 /**
  * Whether the three tables are there (2026.11.0, 11.0.255).
  *
@@ -962,7 +965,9 @@ function pg_supplier_feed_test_drawer_html($test, $pull_button, $feed_code, $hom
 
 /**
  * The held prices card: each item whose buy price waits for a person, with
- * the last and the held price, Accept and Reject. '' when none waits.
+ * the last and the held price, Accept and Reject; "Accept all" at its head.
+ * The first PG_SUPPLIER_FEED_HELD_ROWS rows show; the rest are in the
+ * "Show all" drawer. '' when none waits.
  *
  * @param array  $items     id, supplier_key, buy_price, held_price, product name
  * @param string $feed_code the feed's currency code
@@ -974,24 +979,54 @@ function pg_supplier_feed_held_html($items, $feed_code)
         return '';
     }
 
-    $rows = '';
-
-    foreach ($items as $item) {
+    $row = function ($item) use ($feed_code) {
         $title = ((string) $item['product_name'] !== '') ? $item['product_name'] : $item['supplier_key'];
-        $rows .= '<div class="pg-list-row is-read" data-pg-sf-held-row><div class="pg-list-row-main">'
+
+        return '<div class="pg-list-row is-read" data-pg-sf-held-row><div class="pg-list-row-main">'
             . '<div class="pg-list-row-head"><span class="pg-list-row-title">' . h($title) . '</span></div>'
             . '<div class="pg-list-row-text pg-tabular">' . h(lang(array('string' => 'Buy price {var:1} → {var:2}', 'vars' => array(pg_supplier_feed_money_text($item['buy_price'], $feed_code), pg_supplier_feed_money_text($item['held_price'], $feed_code))))) . '</div>'
             . '<div class="pg-list-row-actions"><button type="submit" name="held_accept" value="' . (int) $item['id'] . '" formnovalidate class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Accept')) . '</button>'
             . '<button type="submit" name="held_reject" value="' . (int) $item['id'] . '" formnovalidate class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Reject')) . '</button></div>'
             . '</div></div>';
+    };
+
+    $rows = '';
+    $all = '';
+
+    foreach (array_values($items) as $index => $item) {
+        if ($index < PG_SUPPLIER_FEED_HELD_ROWS) {
+            $rows .= $row($item);
+        }
+
+        $all .= $row($item);
+    }
+
+    $more = '';
+
+    if (count($items) > PG_SUPPLIER_FEED_HELD_ROWS) {
+        $more = '
+                                <button type="button" class="pg-button pg-button-quiet pg-button-sm mt-3" data-bs-toggle="drawer" data-bs-target="#sf_held_all" aria-controls="sf_held_all">' . h(lang(array('string' => 'Show all {var:1}', 'vars' => array(count($items))))) . '</button>
+                                <dialog class="drawer drawer-end" id="sf_held_all" aria-labelledby="sf_held_all_title" style="width:min(640px,100%)">
+                                    <div class="drawer-header d-flex align-items-start gap-3">
+                                        <div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0" id="sf_held_all_title">' . h(lang('Held prices')) . '</h5></div>
+                                        <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+                                    </div>
+                                    <div class="drawer-body">' . $all . '</div>
+                                    <div class="drawer-footer border-top p-5 d-flex align-items-center gap-3"><span class="flex-grow-1"></span>
+                                        <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Close')) . '</button>
+                                    </div>
+                                </dialog>';
     }
 
     return '
                         <div class="card mb-7" id="sf_held">
-                            <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Held prices')) . '</h2>
+                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                                <h2 class="pg-title-section mb-0 flex-grow-1">' . h(lang('Held prices')) . '</h2>
+                                <button type="submit" name="held_accept_all" value="1" formnovalidate class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Accept all')) . '</button>
+                            </div>
                             <div class="card-body pt-0">
                                 <p class="pg-card-sub">' . h(lang('These buy prices fell under half or rose over ten times the last one. The old price stays until you accept or reject.')) . '</p>
-                                <div>' . $rows . '</div>
+                                <div>' . $rows . '</div>' . $more . '
                             </div>
                         </div>';
 }
@@ -1446,7 +1481,7 @@ function pg_supplier_feed_held_items($feed_id)
         FROM supplier_feed_items LEFT JOIN products ON products.id = supplier_feed_items.product_id
         WHERE supplier_feed_items.feed_id = '" . (int) $feed_id . "' AND supplier_feed_items.held_price > 0
         ORDER BY supplier_feed_items.changed_at DESC, supplier_feed_items.id
-        LIMIT 100");
+        LIMIT 500");
 }
 
 /**
@@ -1470,6 +1505,22 @@ function pg_supplier_feed_held_decide($feed_id, $item_id, $accept)
     db("UPDATE supplier_feed_items SET " . ($accept ? "buy_price = held_price, " : "") . "held_price = 0, changed_at = '" . time() . "'" . $where);
 
     return true;
+}
+
+/**
+ * Accept all: every held buy price of the feed becomes its buy price.
+ *
+ * @param int $feed_id
+ * @return int the prices accepted
+ */
+function pg_supplier_feed_held_accept_all($feed_id)
+{
+    if (db("UPDATE supplier_feed_items SET buy_price = held_price, held_price = 0, changed_at = '" . time() . "'
+        WHERE feed_id = '" . (int) $feed_id . "' AND held_price > 0") === false) {
+        return 0;
+    }
+
+    return (int) mysqli_affected_rows(db::$con);
 }
 
 /**

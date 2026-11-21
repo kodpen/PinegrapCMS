@@ -1493,6 +1493,7 @@
     "{var:1} needs the option pairs that make it that variant: {attribute_id, option_id}, one per attribute.": "{var:1} için onu o varyant yapan seçenek çiftleri gerekir: {attribute_id, option_id}, her özellik için bir tane.",
     "{var:1} never ran": "{var:1} tanesi hiç çalışmadı",
     "{var:1} new": "{var:1} yeni",
+    "{var:1} new buy prices were accepted. The selling prices follow at the next pull.": "{var:1} yeni alış fiyatı kabul edildi. Satış fiyatları bir sonraki çekimde güncellenir.",
     "{var:1} new contacts this week.": "Bu hafta {var:1} yeni kişi.",
     "{var:1} new e-mails": "{var:1} yeni e-posta",
     "{var:1} new form{suffix:1}": "{var:1} yeni form",

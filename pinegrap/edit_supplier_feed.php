@@ -64,6 +64,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_supplier_feeds.php');
     }
 
+    if (($feed !== null) && isset($_POST['held_accept_all'])) {
+        $accepted = pg_supplier_feed_held_accept_all($feed_id);
+        log_activity('supplier feed "' . $feed['name'] . '": ' . $accepted . ' held buy prices were accepted');
+        $liveform->add_notice(h(lang(array('string' => '{var:1} new buy prices were accepted. The selling prices follow at the next pull.', 'vars' => array($accepted)))));
+        go($feed_self . '?id=' . $feed_id);
+    }
+
     if (($feed !== null) && (isset($_POST['held_accept']) || isset($_POST['held_reject']))) {
         $accept = isset($_POST['held_accept']);
 

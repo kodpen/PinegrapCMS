@@ -5,6 +5,7 @@ description: Plan supplier-feed, how its screens are put together (SF2): the Sup
 
 ## Which screens, and by which rules?
 - SF2: Products › Supplier feeds (list), Add and Edit supplier feed, the mapping and the test pull. SF4 and SF5 add to the product's screen only.
+- Product screen (SF3b): "Supplier feed" card [cards], side column under Stock by location, feeds with link, buy price, last seen, the switch "Price from the feed"; none when no feed carries it (architect, 2026-11-21, #10963).
 - `ui/screen-composition-rules.md`; parts are copied from the Design examples screen, the section named in brackets (`workflow/screen-described-in-plan.md`).
 
 ## How is the list laid out?
@@ -21,13 +22,15 @@ description: Plan supplier-feed, how its screens are put together (SF2): the Sup
   4. "Fields": the mapping, shown once a first pull has read records.
 - A new feed shows cards 1 and 2 and the button "Read the feed"; cards 3 and 4 open after the read. No empty mapping grid.
 - Status column: state pill, last and next pull, the counts as a label and value list (`ui/look-kv-list.md`), Pull now and Test pull (quiet), Delete (danger) at its foot.
+- SF3b: "Held prices", first card of the form column while a buy price is held: rows [rows] of last and held buy price, Accept and Reject quiet small; "Accept all" quiet at its head; 20 rows, the rest behind "Show all" in a drawer [drawer]. No filled button: the save bar holds the only one (architect, 2026-11-21, #10963).
+- SF3b: "Pull history" (quiet) in the status column opens a drawer [drawer] of the last 30 pulls, like the test pull's (same approval).
 
 ## How is the mapping laid out?
 - A mapping grid in its own narrow columns (`ui/look-mapping-grids.md`): a row a product field, a select of the feed's fields with the proposed one chosen, a sample value from the first record. The record path of XML and JSON is one select above it.
 - Required fields first, the rest folded under "More fields". A proposed choice carries a "Suggested" pill until saved.
 
 ## How is the test pull shown?
-- A drawer from the status column: four figures [cards: figure] (would be added, changed, closed, reopened), under each its first 20 rows as plain rows [rows]; one line says nothing was written. From SF3 a row shows the buy price and the selling price the rule gives, with a "Floor" pill where the floor lifted it. Foot: "Pull now" fill, Close quiet.
+- A drawer from the status column: four figures [cards: figure] (would be added, changed, closed, reopened), under each its first 20 rows as plain rows [rows]; one line says nothing was written. From SF3 a row shows buy price and the rule's selling price, "Floor" pill where the floor lifted it. Foot: "Pull now" fill, Close quiet.
 
 ## Which words?
 - One line of help a card. On screen: "Supplier feed", "Pull", "Test pull", "Fields"; never "blob", "sync job" or a column's name.
