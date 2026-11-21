@@ -1,33 +1,31 @@
 ---
 name: workspace-channel-timeline-zoom
-description: The conversation timeline's zoom (buttons, + and -, Ctrl+wheel, pinch), the zoom a crowded strip opens at, the day hairlines and dates, the strip scrolling inside the tabs row
+description: The conversation timeline's zoom and movement: buttons in the well, Ctrl+wheel, Shift+wheel, pinch, the keys, where a strip opens, the zoom kept per channel
 ---
 
-## Why does the strip zoom and mark days?
-- Owner (2026-11-21, agent channel message 11680): in a long conversation the groups could not be told apart, days should read a little clearer without overdoing it, and the strip ran off a narrow screen.
+## Why does the strip zoom?
+- Owner (2026-11-21, agent channel message 11680): in a long conversation the groups could not be told apart. Then, on the redraw: "klavye kısayolları ile çalışsın ctrl ve shift scroll ile yaklaş uzaklaş ve kaydır" (`workflow/decisions-made-workspace-46.md`).
 
-## How does one zoom?
-- Two quiet icon buttons at the strip's end (`.ws-ctl-zoom`, `pg-icon-button-sm`, zoom out then zoom in), disabled at either end. On the focused strip `+` (or `=`) and `-` step around the message on the card.
-- They step along fixed levels 1, 1.5, 2, 3, 4, 6 … 256 (`timelineZoomStep()`). Ctrl or Cmd with the wheel and a touchpad pinch zoom smoothly around the pointer (`timelineZoomWheel()`); two fingers on the strip zoom around their middle. A zoom keeps the point under the pointer (`timelineZoomScroll()`).
-- Zoom one is the whole conversation in the strip's width, as before. The top is where turns would stand about 48 px apart, never below the opening zoom (`timelineZoomTop()`); a short conversation has none.
+## What is a zoom?
+- A scale in the layout's units (`timelineLayout(runs, scale)`), not a multiple of the well. It opens at 5.2; the top is 48; the least is the scale at which the whole conversation fits the well, never above 5.2 (`timelineZoomRange()`). A conversation too long for the well even at its turns' least widths stops at the largest scale that still draws that least strip, so the first zoom in shows a change; it then moves along. A short conversation sits at the left at 5.2 and is not stretched.
+- A strip opens at 5.2 at its newest end. The viewer's zoom is kept per channel in the browser (`localStorage` key `pg_ws_ctl_scale_<channel id>`, in try/catch), held between the least and the top.
 
-## Where does a strip open?
-- A crowded strip opens zoomed so far that no turn is under 6 px (`timelineOpenZoom()`, beside the seven tenths of the room `timelineLayout()` gives turns), at its newest end.
-- The viewer's zoom is kept per channel in the browser (`localStorage` key `pg_ws_ctl_zoom_<channel id>`, read and written in try/catch) and wins over the opening zoom; without storage it lasts while the screen is open.
+## How does one zoom and move?
+- The two buttons inside the well (`.ws-ctl-zoom`, `pg-icon-button pg-icon-button-sm`, zoom out then in) step ×1.5, snapping to an end within 1.2× of it (`timelineZoomStep()`); the one at its end is dimmed.
+- Ctrl or Cmd with the wheel, and a touchpad pinch, zoom smoothly around the pointer (`timelineZoomWheel()`). Shift with the wheel, or a sideways swipe, moves along. The plain wheel is left to the page.
+- A zoom keeps the message under the pointer (or on the card) where it was (`timelineAnchor()`).
+- Pointer: a drag of 6 px or more moves the strip and opens nothing. Touch: a tap shows the card, a drag moves, two fingers zoom.
 
-## How does a zoomed strip move?
-- The track is wider than its port (`.ws-ctl-port`, sideways scroll, no scrollbar). The wheel moves it, a mouse drags it (a drag opens nothing), the slider's keys bring the message on the card into view.
-- In the tabs row it follows the part of the conversation on the screen: when the conversation scrolls and the frame is out of view, the frame comes to the middle (`timelineFollow()`). New messages keep a strip at its newest end there.
-- The port reaches 12 px over and 14 px under the track with the pointer passing there, so the decision diamond and the dates are not cut and the head's buttons stay reachable.
+## Which keys work on the focused well? (board 8)
+- `+` or `=` and `-`: a zoom step; `0`: the whole conversation.
+- Left and Right: a message; with Shift, a run; Page Up and Page Down: a day (`timelineJump()`); Home and End: the first and the newest message.
+- Enter or Space opens the message; Escape hides the card; Tab goes into the card's rows (`workspace-channel-timeline-card.md`).
+- The well is a slider (`role="slider"`, its value the message on the card, its text who wrote it and when).
 
-## How are days marked?
-- A new day (site time zone, `ws-config` timezone) starts a new run 16 px from the one before, beside 10 px between runs, with a hairline in the middle of the gap (`.ws-ctl-day`).
-- Its short date (day and month in the panel's locale, "Today" for today) stands beside the hairline only where 48 px or more are left to the next day or the strip's end (`timelineDayMarks()`). Nothing louder.
-
-## What stays as it was?
-- The read, the colours, the card and the keyboard slider. The move to the foot of Channel info under 220 px left; the zoom works there too.
+## How does a zoomed strip follow the screen?
+- In the tabs row the strip follows the part of the conversation on the screen: when the conversation scrolls and that part is out of view, it comes back (`timelineFollow()`). New messages keep a strip at its newest end there.
 
 ## How was it checked?
-- PR #11027: sandbox with 430 messages over five days at 1440, 1280, 1024, 900 (dark), 768 and 390 px (Channel info); buttons, Ctrl+wheel, wheel, drag, Home, `-`, the kept zoom after a reload. Before it, under 220 px the holder's padding stood past the card's edge (at 390 px 26 px past it).
+- PR #11027 (the first zoom); PR #11047 for the scale, Ctrl and Shift with the wheel and the keys, its screen check in the PR body.
 
-Related: docs/memory/workspace/workspace-channel-timeline.md
+Related: docs/memory/workspace/workspace-channel-timeline.md, docs/memory/workspace/workspace-channel-timeline-card.md

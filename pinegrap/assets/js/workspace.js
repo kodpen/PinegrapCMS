@@ -12005,6 +12005,7 @@
                 window.PGWsConversationTimeline.mount(timelineHolder, channel, 'head', {
                     root: self.root,
                     go: function (messageId) { self.timelineGo(messageId); },
+                    open: function (go, row, messageId) { self.timelineOpen(go, row, messageId); },
                     pane: function () { return (self.tab === 'messages') ? pane : null; },
                     visible: function () { return (self.tab === 'messages') ? visibleMessages(pane) : null; }
                 });
@@ -12806,18 +12807,21 @@
                 body.appendChild(settings);
             }
 
-            // The conversation timeline at the foot, shown while the tabs
-            // row has no room for it (.ws-ctl-narrow on the screen, set by
+            // The conversation timeline at the foot, under "The
+            // conversation", shown while the tabs row has no room for it
+            // (.ws-ctl-narrow on the screen, set by
             // workspace_conversation_timeline.js).
             if (window.PGWsConversationTimeline && !self.era) {
                 var timeline = el('div', 'ws-ctl-section');
                 var timelineHolder = el('div', 'ws-ctl');
 
-                timeline.appendChild(el('h3', 'ws-panel-kicker', t('ctl_label')));
+                timeline.appendChild(el('h3', 'ws-panel-kicker', t('ctl_heading')));
                 timeline.appendChild(timelineHolder);
                 body.appendChild(timeline);
                 window.PGWsConversationTimeline.mount(timelineHolder, channel, 'info', {
-                    go: function (messageId) { self.timelineGo(messageId); }
+                    go: function (messageId) { self.timelineGo(messageId); },
+                    open: function (go, row, messageId) { self.timelineOpen(go, row, messageId); },
+                    visible: function () { return ((self.tab === 'messages') && self.pane) ? visibleMessages(self.pane) : null; }
                 });
             } else if (window.PGWsConversationTimeline) {
                 window.PGWsConversationTimeline.unmount('info');
@@ -12845,6 +12849,37 @@
             }
 
             self.jumpTo(messageId, true);
+        },
+
+        // A shortcut row of the timeline's card: the thing opens in its own
+        // window (a note, a task, a file's or a picture's preview, a bound
+        // table's screen), anything else at its message. On a phone Channel
+        // info, which covers the screen, closes first.
+        timelineOpen: function (go, row, messageId) {
+            var self = app;
+
+            if ((go === 'message') || !row) {
+                self.timelineGo(messageId);
+                return;
+            }
+
+            if (self.infoOpen && window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches) {
+                self.closeInfo();
+            }
+
+            if ((go === 'note') && row.id) {
+                openNoteView(row.id);
+            } else if ((go === 'task') && row.id) {
+                taskDrawer.open(row.id);
+            } else if ((go === 'picture') && row.url) {
+                previewFile({ kind: 'image', url: row.url, name: row.text || '', message_id: messageId });
+            } else if ((go === 'file') && row.url) {
+                previewFile({ kind: row.fk || '', url: row.url, name: row.text || '', office: !!row.office, message_id: messageId });
+            } else if ((go === 'table') && row.url) {
+                window.location.href = row.url;
+            } else {
+                self.timelineGo(messageId);
+            }
         },
 
         // After a change made from the info panel: the channel read again

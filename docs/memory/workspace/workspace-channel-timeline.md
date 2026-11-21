@@ -1,32 +1,30 @@
 ---
 name: workspace-channel-timeline
-description: Conversation timeline beside the channel tabs (Channel info on a narrow screen): writer colours, waits, days, hover card with first words and tool result, click to open, live; zoom in its own file
+description: Conversation timeline at the end of the channel tabs row (Channel info when narrow): one well, days as columns, runs as bars, writer colours, the read, live updates
 ---
 
 ## What is it, and why?
-- Owner (2026-11-21): the current conversation of a channel as one strip in the tabs row, split by who answered and by the waits; pointing at it shows a card a little larger than a tooltip; a click opens the message; on a narrow screen it goes to the foot of Channel info. It holds no earlier version of a cleared conversation, and it is live.
-- Drawn on look A's recipes: a thin rail a run, a capsule a turn, the card a floating surface with `pg-initials`, `pg-icon-tile` and `pg-pill`.
-- Zoom and day marks (owner, 2026-11-21, agent channel message 11680): `workspace-channel-timeline-zoom.md`.
+- Owner (2026-11-21): a channel's current conversation as one strip in the tabs row, split by who answered and by the waits; pointing shows a card; on a narrow screen it goes to the foot of Channel info. No earlier version of a cleared conversation; live.
+- Redrawn in TR1 (#11047) from the architect's drawing `workspace/channel-timeline-drawing/timeline.html` (boards 1 to 9, with `timeline-dark.jpg` and `timeline-light.jpg`) after the owner turned down the first build (`workflow/decisions-made-workspace-46.md`). Where the words and the drawing differ, the drawing holds.
+- The well and a still card are the "Conversation timeline" pattern of the Design examples screen (`pg_look_examples_timeline_pattern()`): a change starts there.
 
-## How is the strip drawn?
-- A turn is one writer's messages each within 120 s of the one before; a wait of 30 min or more, or a new day in the site's time zone, starts a new run (`timelineRuns()`). A turn weighs √(its seconds + 240 a message), a wait √(its seconds); a turn is at least 6 px, less only when the strip is crowded (`timelineLayout()`). Runs stand 10 px apart, a new day 16 px with a hairline.
-- One colour a writer, by the order they first wrote (8 tones from `--pg-tone-*`), grey for system lines. A decision is an amber diamond over its turn, any other tool a small dot.
-- In the tabs row a soft window marks the part of the conversation on the screen (`visibleMessages()` in workspace.js, the pane's scroll).
-- Pointing brings the turn forward and dims the rest; in a turn of several messages a playhead marks the one on the card. Keyboard: the strip is a slider (arrows a message, Page Up/Down a turn, Home/End, Enter opens, Escape hides the card).
-
-## What does the card say?
-- The writer (initials in their colour, the kind for an agent, an application, a guest, a mail or the system), the time (with the date before today), the first 100 characters, up to two tools with what came of them, and the wait since the message before.
-- Tools and results: decision or note (who marked it), task (status), file, picture, voice, poll or agent question (votes, the leading option, the winner once closed), approval, read receipt, status update, check-in, agent request (working, failed, answered).
+## How is the well drawn?
+- One well at the end of the tabs row: 30 px high, 220 to 420 px wide, `--pg-surface-inset` with a hairline (`--ws-ctl-line`), no shadow; the zoom buttons inside it after a hairline. No scrollbar; a cut end fades over 22 px.
+- A turn is one writer's messages each within 120 s of the one before; a wait of 30 min or more, or a new day in the site's time zone, starts a run (`timelineRuns()`).
+- `timelineLayout(runs, scale)`: x starts at 6 px; a turn is √(its seconds / 240 + its messages) × scale wide, at least 6 px (2 px under scale 2), 1 px between turns; runs stand √(wait / 1800) × scale × 1.4 apart, 8 to 26 px (3 px under scale 2); a new day is 8 px, a 1 px hairline, 9 px; 8 px after the last turn.
+- A run is one 6 px bar of its turns, round only at its two ends, flat colour (the writer's tone at 82 % over the surface). A colour a writer by first-writing order (8 tones), grey for system lines. A decision is an amber diamond on its turn from scale 2, the strip's only mark.
+- A day's date over its column: the short date from 34 px of column, the day number alone from 13 px (none for Today and Yesterday), else none; today's a step stronger. A long day's date stays 22 px from the port's left while its column passes, until 40 px before its end (`timelineDayLeft()`).
+- The part of the conversation on the screen: a 2 px accent line under the bars (`.ws-ctl-here`, `visibleMessages()` in workspace.js), in the tabs row and in Channel info.
 
 ## Which read is behind it?
-- `ws_conversation_timeline($viewer, $channel)`: panel action `ws_conversation_timeline`, every reader of the channel (`ws_action_channel()`). The newest 600 messages after `ws_channel_floor()`, no deleted one and none the reader hid; one query a tool for the whole set. No API route and no MCP tool yet.
+- `ws_conversation_timeline($viewer, $channel)`: panel action `ws_conversation_timeline`, every reader of the channel (`ws_action_channel()`). The newest 600 messages after `ws_channel_floor()`, no deleted one and none the reader hid; one query a kind of row for the whole set. No API route and no MCP tool.
 
 ## When does it read, and where does it show?
-- `assets/js/workspace_conversation_timeline.js` (bundled in `workspace.min.js`), mounted from `drawCenter()` (`head`) and `drawInfo()` (`info`). A read is kept 60 s per channel; Clear conversation drops it (`forget()`).
-- Live: a sync that brings a new message reads again at once, and the new turns come in with a short animation; a vote or an answer reads again at most once in 8 s.
-- The channel card is a grid (tabs, then the strip in the rest); the strip never leaves that column. Under 220 px left the script marks `.ws-app.ws-ctl-narrow`: the strip hides there (its padding too) and shows at the foot of Channel info with the first and last time and the writers as pills. A tap on a phone closes Channel info and opens the message. It hides while the phone keyboard is up and over an earlier version.
+- `assets/js/workspace_conversation_timeline.js` (in `workspace.min.js`), mounted from `drawCenter()` (`head`) and `drawInfo()` (`info`, under the heading "The conversation", the writers as pills under it). A read is kept 60 s per channel; Clear conversation drops it (`forget()`).
+- Live: a sync with a new message reads again at once and the new turns grow in; a vote or an answer reads again at most once in 8 s.
+- Narrow: when the holder's content box is under 220 px (ResizeObserver) the script marks `.ws-app.ws-ctl-narrow`: the well hides in the tabs row and shows at the foot of Channel info. The holder keeps its padding, so the switch cannot swing to and fro. It hides while the phone keyboard is up.
 
 ## How was it checked?
-- PR #10936: sandbox at 1600 px, Channel info at 1280 px, iPhone 13; PR #11027 (zoom, days, width) in its own file. `tests/workspace_conversation_timeline_test.php`.
+- First build #10936, zoom #11027, the redraw #11047 (its screen check in the PR body). `tests/workspace_conversation_timeline_test.php`: the read's rows in PHP, the script's pure functions in node.
 
-Related: docs/memory/workspace/workspace-channel-timeline-zoom.md, docs/memory/workspace/workspace-channel-overview.md, docs/memory/workspace/workspace-channel-panels.md
+Related: docs/memory/workspace/workspace-channel-timeline-zoom.md, docs/memory/workspace/workspace-channel-timeline-card.md, docs/memory/workspace/workspace-channel-overview.md

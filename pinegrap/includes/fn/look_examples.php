@@ -459,6 +459,8 @@ function pg_look_examples_patterns($prefix = 'light')
             . '</div><p class="pg-text-meta">' . h(lang('From Site Settings › Assistants and agents › Claude: steps done on another site are numbered steps in their own drawer, opened by one button, never paragraphs in the form.')) . '</p>',
     );
 
+    $patterns[] = pg_look_examples_timeline_pattern();
+
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
     // the parts the one E-mail category is built from.
     $patterns = array_merge($patterns, pg_look_examples_mail_patterns($p));
@@ -692,6 +694,71 @@ function pg_look_examples_mail_patterns($p)
     );
 
     return $patterns;
+}
+
+
+/**
+ * The Workspace's conversation timeline as a still pattern: the well of a
+ * channel's tabs row and the card of one message.
+ *
+ * @return array{id: string, title: string, classes: string[], html: string}
+ */
+function pg_look_examples_timeline_pattern()
+{
+    // The Workspace's conversation timeline, still: three days in the well
+    // (a hairline and a date each, a run a bar of its writers' turns, the
+    // decision a diamond, the part on the screen an accent line) and the
+    // card of one message under it.
+    $turns = array(
+        array(6, 12, 0, 'first'), array(19, 7, 1, 'last'),
+        array(43, 18, 0, 'first'), array(62, 7, 1, 'decision'), array(70, 11, 0, 'last'), array(101, 10, 3, 'both'),
+        array(120, 6, 1, 'first'), array(127, 14, 0, 'last'),
+        array(158, 12, 0, 'first'), array(171, 9, 2, ''), array(181, 16, 1, 'last'), array(211, 10, 0, 'first'), array(222, 8, 3, 'last'),
+    );
+    $strip = '';
+
+    foreach ($turns as $turn) {
+        $ends = ($turn[3] === 'both') ? ' is-first is-last' : (in_array($turn[3], array('first', 'last'), true) ? ' is-' . $turn[3] : '');
+        $strip .= '<div class="ws-ctl-turn' . $ends . '" data-tone="' . $turn[2] . '"' . (($turn[3] === 'decision') ? ' data-mark="decision"' : '') . ' style="left:' . $turn[0] . 'px;width:' . $turn[1] . 'px"></div>';
+    }
+
+    $tool_row = function ($tone, $icon, $kind, $name, $result) {
+        return '<button type="button" class="ws-ctl-row"><span class="pg-icon-tile pg-tone-' . $tone . '"><i class="bi ' . $icon . '" aria-hidden="true"></i></span>'
+            . '<em class="ws-ctl-row-kind">' . h($kind) . '</em><span class="ws-ctl-row-name">' . h($name) . '</span>'
+            . (($result !== '') ? '<small class="ws-ctl-row-result pg-tabular">' . h($result) . '</small>' : '')
+            . '<i class="bi bi-chevron-right ws-ctl-row-go" aria-hidden="true"></i></button>';
+    };
+
+    return array(
+        'id'      => 'pattern-timeline',
+        'title'   => lang('Conversation timeline'),
+        'classes' => array('.ws-ctl', '.ws-ctl-bar', '.ws-ctl-port', '.ws-ctl-track', '.ws-ctl-day', '.ws-ctl-date', '.is-now', '.ws-ctl-turn', '.is-first', '.is-last', 'data-mark="decision"', '.ws-ctl-here', '.ws-ctl-zoom', '.pg-icon-button-sm', '.ws-ctl-card', '.ws-ctl-card-head', '.pg-initials', '.ws-ctl-card-name', '.ws-ctl-card-time', '.ws-ctl-card-text', '.ws-ctl-card-mark', '.ws-ctl-rows', '.ws-ctl-row', '.ws-ctl-row-kind', '.ws-ctl-row-name', '.ws-ctl-row-result', '.ws-ctl-row-go', '.ws-ctl-card-foot', '.ws-ctl-card-wait', '.ws-ctl-card-go'),
+        'html'    => '<div class="pg-look-stack">'
+            . '<div class="ws-ctl d-flex"><div class="ws-ctl-bar"><div class="ws-ctl-port">'
+            . '<div class="ws-ctl-track" role="slider" tabindex="0" aria-label="' . h(lang('Conversation timeline')) . '" aria-orientation="horizontal" aria-valuemin="1" aria-valuemax="13" aria-valuenow="13" style="width:238px">'
+            . '<span class="ws-ctl-date" style="left:6px">19</span>'
+            . '<div class="ws-ctl-day" style="left:34px"></div><span class="ws-ctl-date" style="left:43px">' . h(lang('Yesterday')) . '</span>'
+            . '<div class="ws-ctl-day" style="left:149px"></div><span class="ws-ctl-date is-now" style="left:158px">' . h(lang('Today')) . '</span>'
+            . $strip
+            . '<div class="ws-ctl-here" style="left:158px;width:72px"></div>'
+            . '</div></div><div class="ws-ctl-zoom">'
+            . '<button type="button" class="pg-icon-button pg-icon-button-sm" title="' . h(lang('Zoom out (-, or Ctrl and the wheel)')) . '" aria-label="' . h(lang('Zoom out (-, or Ctrl and the wheel)')) . '"><i class="bi bi-zoom-out" aria-hidden="true"></i></button>'
+            . '<button type="button" class="pg-icon-button pg-icon-button-sm" title="' . h(lang('Zoom in (+, or Ctrl and the wheel)')) . '" aria-label="' . h(lang('Zoom in (+, or Ctrl and the wheel)')) . '" disabled><i class="bi bi-zoom-in" aria-hidden="true"></i></button>'
+            . '</div></div></div>'
+            . '<div class="ws-ctl-card" data-tone="1">'
+            . '<div class="ws-ctl-card-head"><span class="pg-initials">AD</span><span class="ws-ctl-card-name">Ayşe Demir</span><span class="ws-ctl-card-time pg-tabular">' . h(lang(array('string' => 'Yesterday {var:1}', 'vars' => array('16:40')))) . '</span></div>'
+            . '<p class="ws-ctl-card-text">' . h(lang('The new prices start on Monday; the list and the task are below.')) . '</p>'
+            . '<div class="ws-ctl-card-mark"><span class="pg-icon-tile pg-tone-amber"><i class="bi bi-bookmark-check" aria-hidden="true"></i></span><span>' . h(lang('Decision') . ' · ' . lang(array('string' => 'marked by {var:1}', 'vars' => array('Deniz Kaya')))) . '</span></div>'
+            . '<div class="ws-ctl-rows">'
+            . $tool_row('gray', 'bi-file-earmark', lang('File'), 'price-list.xlsx', '')
+            . $tool_row('blue', 'bi-check2-square', lang('Task'), lang('Update the shop\'s prices'), '')
+            . $tool_row('blue', 'bi-bar-chart', lang('Poll'), lang('Which day do we tell the customers?'), '4 / 6')
+            . '</div>'
+            . '<div class="ws-ctl-card-foot"><span class="ws-ctl-card-wait">' . h(lang(array('string' => '{var:1} after the message before', 'vars' => array(lang(array('string' => '{var:1} h {var:2} min', 'vars' => array(2, 14))))))) . '</span>'
+            . '<button type="button" class="ws-ctl-card-go">' . h(lang('Open the message')) . '</button></div>'
+            . '</div></div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Workspace: at the end of a channel\'s tabs, a day a column, a run of messages one bar, a writer a colour; pointing at a bar shows the card of its message, whose rows open what it carries.')) . '</p>',
+    );
 }
 
 /**
