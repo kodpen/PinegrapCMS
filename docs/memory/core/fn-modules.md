@@ -113,7 +113,7 @@ description: Generated from the module field of the memory files: each includes/
 - `currency_rates`: [[exchange-rates-update]], [[visitor-currency-zero-rate]]
 - `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[custom-form-private-access-expiry]], [[custom-form-shown-when]], [[custom-form-upload-placement]], [[form-field-errors]], [[form-field-errors-before-sending]], [[registration-gate-form-submitter]], [[sms-consent-custom-form]]
 - `custom_form_steps`: [[custom-form-open-slots]], [[custom-form-steps]], [[form-field-errors-before-sending]]
-- `customer_rhythm`: [[customer-rhythm-rules]]
+- `customer_rhythm`: [[customer-rhythm]], [[customer-rhythm-rules]]
 - `customer_rhythm_link`: [[customer-rhythm-reorder-link]]
 - `customer_rhythm_pass`: [[customer-rhythm-store]]
 - `customer_rhythm_report`: [[customer-rhythm-report]]
