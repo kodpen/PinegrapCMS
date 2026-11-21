@@ -12,9 +12,9 @@ description: Site Settings › Assistants and agents, the help (AT3): one line p
 ## What moved out of the cards?
 - Pinegrap AI: the "How to connect it" fold and the Licence paragraph; the switch's help is one plain line. Its right column went with AT5 (`settings-ai-voice-rows.md`).
 - Agents: the intro paragraph; the empty list says "No agent yet". MCP servers: the "How it works" fold. Voice: the switch's three-sentence help. Canvas templates: the intro paragraph; the empty list says "No templates yet."
-- Why: owner (2026-11-20) "kopya içerik gibi sürekli", plan `assistants-settings-tidy` T4; one line a field or part (`ui/screen-composition-rules.md`).
+- Why: owner (2026-11-20) "kopya içerik gibi sürekli" (`workflow/decisions-made-panel-11.md`); one line a field or part (`ui/screen-composition-rules.md`).
 
 ## What does Add an agent offer?
-- The drawer opens with "Start from an application", leading to Application Access (`api_settings.php`). The agent starting point there comes with AA5 of `plans/app-access-redraw-steps.md`; the link is then pointed at it (plan T7).
+- The drawer opens with "Start from an application", leading to Application Access (`api_settings.php`). The agent starting point there comes with AA5 of `plans/app-access-redraw-steps.md`; the link is then pointed at it.
 
 Related: docs/memory/ui/settings-fold-rows.md, docs/memory/ui/screen-composition-rules.md
