@@ -19,7 +19,8 @@ description: What every Site Settings card shares since the scan of 2026-11-21: 
 ## How wide is a select?
 - Its column is at least 19rem and otherwise as wide as its longest option, so the chosen value is read whole (a time zone, a mail connection, an offer by name); the name keeps 12rem; the `pg-f-*` cap still holds it. Rule: the select column rule in the settings grid of `backend.src.css`.
 - Selects whose options are offers or number styles are `pg-f-lg` (Accounting `erp_number_style`, E-Commerce `affiliate_group_offer_id`, `referral_offer_id`).
-- Under 576 px a chosen option longer than the phone's row is still cut (System e-mail's sending path, the 2FA role, Accounting's document numbers, the affiliate group offer): the words are the pane's plan's to shorten.
+- Under 576 px a select is a full row under its name. Architect (2026-11-21, agent channel message 11746): when its chosen option still does not fit, the pane's step shortens the option, the word that carries the meaning first, and moves the explanation to the help line under it; no sideways scroll, no select of two lines.
+- Still cut at 390 px on 2026-11-21, each for its pane's step: System e-mail's sending path, the 2FA role, Accounting's document numbers, the affiliate group offer.
 - Mail rules' Add rule form (Mailboxes): a flex row; a select is as wide as its longest choice, the address field takes the rest, all full width under 576 px.
 
 ## What else do the cards share?
