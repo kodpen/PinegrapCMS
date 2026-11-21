@@ -5,7 +5,8 @@
  * Tests for Settings > Bookings (includes/fn/booking_settings.php): the
  * policies and the widget's texts kept in config_text, a service's posted
  * row, the weekly hours grid, the dated exceptions entered as ranges of days,
- * the price box and the order of the week.
+ * the price box, the order of the week, the folded rows' lines and the
+ * drawer a refused box sits in.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -266,7 +267,103 @@ function test_booking_settings_pane_labels_and_reminder_keyboard()
 	}
 
 	pg_assert_contains("lang('Bookable services')", $pane);
-	pg_assert_contains("lang('Display order')", $pane);
 	pg_assert_contains("lang('Duration')", $pane);
 	pg_assert_true(preg_match('/id="booking_reminder_hours"[^>]*inputmode="numeric"/', $pane) === 0, 'no numeric keypad for a list');
+}
+
+// A refused box opens the drawer that holds it: a service's boxes sit in its
+// drawer, a new service's in the add drawer. The order is no box of a drawer;
+// staff have no drawer yet.
+function test_booking_settings_error_drawer()
+{
+	foreach (array('name', 'length', 'before', 'after', 'price', 'deposit', 'deposit_product', 'description', 'enabled') as $box) {
+		pg_assert_same('pgset-booking-service-12', pg_booking_settings_error_drawer('booking_service', '12', $box), $box);
+	}
+
+	pg_assert_same('pgset-booking-service-new', pg_booking_settings_error_drawer('booking_service', 'new', 'name'));
+	pg_assert_same('pgset-booking-service-7', pg_booking_settings_error_drawer('booking_service', 7, 'price'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_service', '12', 'order'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_service', '12', 'colour'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_service', '0', 'name'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_service', '1x', 'name'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_service', array(), 'name'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_staff', '4', 'h1a'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_staff_add', '', ''));
+}
+
+// A service's row says its length, its price and whether it can be booked.
+function test_booking_settings_service_line()
+{
+	$separators = array('decimal' => ',', 'thousands' => '.');
+	$service = array('length_minutes' => 30, 'price' => 25000, 'enabled' => 1);
+
+	pg_assert_same('30 min · 250,00 TRY · Can be booked', pg_booking_settings_service_line($service, $separators, 'TRY'));
+	pg_assert_same('45 min · Can be booked', pg_booking_settings_service_line(array('price' => 0, 'length_minutes' => 45) + $service, $separators, 'TRY'), 'no price, no amount');
+	pg_assert_same('Switched off', pg_booking_settings_service_line(array('enabled' => 0) + $service, $separators, 'TRY'));
+}
+
+// Each folded row's line of state.
+function test_booking_settings_fold_lines()
+{
+	$services = array(
+		3 => array('enabled' => 1), 5 => array('enabled' => 0), 9 => array('enabled' => 1),
+	);
+	$staff = array(
+		2 => array('enabled' => 1), 4 => array('enabled' => 0),
+	);
+	$policy = array('horizon_days' => 60, 'auto_confirm' => true);
+
+	$lines = pg_booking_settings_fold_lines($services, $staff, $policy, array('title' => 'Book a table'));
+
+	pg_assert_same('3 services, 2 can be booked', $lines['services']);
+	pg_assert_same('1 takes bookings', $lines['staff']);
+	pg_assert_same('Up to 60 days ahead · confirmed at once', $lines['policy']);
+	pg_assert_same('1 of 4 texts set', $lines['texts']);
+
+	$lines = pg_booking_settings_fold_lines(array(1 => array('enabled' => 1)), array(2 => array('enabled' => 1), 4 => array('enabled' => 1)),
+		array('horizon_days' => 1, 'auto_confirm' => false), array());
+
+	pg_assert_same('1 service, 1 can be booked', $lines['services']);
+	pg_assert_same('2 take bookings', $lines['staff']);
+	pg_assert_same('Up to 1 day ahead · staff confirm each booking', $lines['policy']);
+	pg_assert_same('The widget\'s own wording', $lines['texts']);
+
+	$lines = pg_booking_settings_fold_lines(array(), array(), $policy, array());
+
+	pg_assert_same('No service yet', $lines['services']);
+	pg_assert_same('Nobody takes bookings yet', $lines['staff']);
+}
+
+// The pane: folded rows, the services in drawers, every box under its old
+// name, the card ids kept, look A's switch, no Display order box.
+function test_booking_settings_pane_rows_and_drawers()
+{
+	$pane = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/bookings.php');
+
+	pg_assert_contains('pg_settings_fold(', $pane);
+	pg_assert_contains('pg_settings_drawer(', $pane);
+	pg_assert_contains("lang('Add a service')", $pane);
+	pg_assert_contains("lang('Move up')", $pane);
+	pg_assert_contains("lang('Move down')", $pane);
+
+	foreach (array('pgset-booking-services', 'pgset-booking-staff', 'pgset-booking-policy', 'pgset-booking-texts') as $card) {
+		pg_assert_contains("'" . $card . "'", $pane, 'card id kept: ' . $card);
+	}
+
+	foreach (array('name', 'length', 'before', 'after', 'price', 'deposit', 'deposit_product', 'description', 'enabled', 'order') as $box) {
+		pg_assert_contains("\$name . '[" . $box . "]", $pane, 'posts as booking_service[..][' . $box . ']');
+	}
+
+	foreach (array("'booking_reschedule'", "'booking_auto_confirm'", 'name="booking_reminder_hours"', 'name="booking_staff_add"', 'name="booking_text_') as $box) {
+		pg_assert_contains($box, $pane);
+	}
+
+	pg_assert_same(false, strpos($pane, '<div class="switch">'), 'look A switch');
+	pg_assert_same(false, strpos($pane, "lang('Display order')"), 'the order is moved, not typed');
+	pg_assert_same(false, strpos($pane, "lang('New service')"), 'no empty block');
+
+	// The save names the drawer of a refused box and changes nothing else.
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/bookings.save.php');
+
+	pg_assert_contains('pg_settings_drawer_refused(pg_booking_settings_error_drawer(', $save);
 }

@@ -4,7 +4,7 @@ description: Plan bookings-settings-tidy, steps BT1 to BT4: folded rows and serv
 ---
 
 ## Which steps are there?
-- BT1 (M) first: the pane as folded rows (`pg_settings_fold()`) "Services", "Staff", "Booking rules", "Widget texts", each with its state line; the services as list rows, each opening its drawer (`pg_settings_drawer()`) of today's boxes; "Add a service" quiet in the row's head opens an empty drawer (`booking_service[new]`, as today). Fixes: K1, K5, K6's drawing.
+- BT1 (M) first, done (#11008): the pane as folded rows (`pg_settings_fold()`) "Services", "Staff", "Booking rules", "Widget texts", each with its state line; the services as list rows, each opening its drawer (`pg_settings_drawer()`) of today's boxes; "Add a service" quiet in the row's head opens an empty drawer (`booking_service[new]`, as today). Fixes: K1, K5, K6's drawing.
 - In BT1 Display Order leaves the drawer: "Move up" and "Move down" in a row's menu rewrite the rows' `booking_service[<id>][order]`; with Commerce off the deposit boxes are drawn disabled with their line; every switch is `pg-switch`; the services' keywords gain "deposit". Each card keeps its id inside its row.
 - In BT1 a refused save reopens the drawer holding the box it names: one pure `pg_booking_settings_error_drawer()` in `includes/fn/booking_settings.php` (error key and row to drawer id), red test first in `tests/booking_settings_test.php`.
 - Tests of BT1: `tests/settings_card_ids_test.php` and `settings_card_names_test.php` with the ids kept; every box posts under its old name; `bookings.save.php` unchanged but for the error's drawer.

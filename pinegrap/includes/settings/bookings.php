@@ -6,10 +6,13 @@
  * staff who take them (their services, weekly hours and dated exceptions),
  * the booking rules and the booking widget's texts.
  *
- * Fills $pg_settings_cards, one grid column per card, in reading order. Which
- * cards belong here is said once, in includes/settings/registry.php; this file
- * holds them, and bookings.save.php writes what they edit. The rows and the
- * two config_text entries are read through includes/fn/booking_settings.php.
+ * Each card is one folded row (includes/settings/fold.php) with its line of
+ * state; the services are list rows, each edited in its drawer, whose boxes
+ * join the settings form by its id and post under the names they always had.
+ * Which cards belong here is said once, in includes/settings/registry.php;
+ * this file holds them, and bookings.save.php writes what they edit. The rows
+ * and the two config_text entries are read through
+ * includes/fn/booking_settings.php.
  *
  * Every staff member's block posts booking_staff[<user id>][seen], so the save
  * tells a block that was drawn with every switch off from one that was not
@@ -25,22 +28,22 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
+
 // The tables come with the 2026.11.0 upgrade (11.0.157); before it every
-// card says so and draws no control the save would ignore.
+// row says so and draws no control the save would ignore.
 $booking_ready = function_exists('pg_booking_ready') && pg_booking_ready();
 
-$booking_not_ready = '
-                    <div class="col-12">
-                        <div class="alert theme-secondary mb-0 py-3 small">' . lang('Bookings arrive with the 2026.11.0 upgrade, which this site has not run yet.') . '</div>
-                    </div>';
+$booking_not_ready = lang('Bookings arrive with the 2026.11.0 upgrade, which this site has not run yet.');
 
-// One card in the settings' shape; $body is the inside of its row.
-$booking_card = function ($id, $title, $body) {
+// One card in the settings' shape; $body is the inside of its row, $button a
+// quiet button kept in the folded row's head.
+$booking_card = function ($id, $title, $body, $button = '') {
     return '
     <div id="' . $id . '" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 pg-title-section">
-                ' . $title . '
+            <div class="card-header bg-reset border-0 ' . (($button !== '') ? 'd-flex align-items-center gap-3' : 'pg-title-section') . '">
+                ' . (($button !== '') ? '<span class="pg-title-section flex-grow-1">' . $title . '</span>' . $button : $title) . '
             </div>
             <div class="card-body">
                 <div class="row gy-5">' . $body . '
@@ -48,6 +51,34 @@ $booking_card = function ($id, $title, $body) {
             </div>
         </div>
     </div>';
+};
+
+// The folded rows, in reading order: key, card id, name, icon, tone.
+$booking_faces = array(
+    array('services', 'pgset-booking-services', lang('Bookable services'), 'bi-card-checklist', 'pg-tone-shop'),
+    array('staff', 'pgset-booking-staff', lang('Staff'), 'bi-people', 'pg-tone-team'),
+    array('policy', 'pgset-booking-policy', lang('Booking rules'), 'bi-sliders', 'pg-tone-violet'),
+    array('texts', 'pgset-booking-texts', lang('Booking widget texts'), 'bi-chat-left-text', 'pg-tone-teal'),
+);
+
+// $parts: key => array(line, card body, head button).
+$booking_fold = function ($parts) use ($booking_faces, $booking_card) {
+
+    $rows = array();
+
+    foreach ($booking_faces as $face) {
+        $rows[] = array(
+            'key'  => $face[0],
+            'name' => $face[2],
+            'icon' => $face[3],
+            'tone' => $face[4],
+            'line' => $parts[$face[0]][0],
+            'pill' => null,
+            'html' => $booking_card($face[1], $face[2], $parts[$face[0]][1], $parts[$face[0]][2] ?? ''),
+        );
+    }
+
+    return pg_settings_fold($rows);
 };
 
 // A number box with its unit after it.
@@ -63,44 +94,64 @@ $booking_number = function ($name, $id, $label, $value, $unit, $min, $max, $help
                     </div>';
 };
 
-// A switch with its label and description.
-$booking_switch = function ($name, $id, $label, $checked, $help = '') {
+// A switch with its label and description; $form joins a drawer's switch to
+// the settings form.
+$booking_switch = function ($name, $id, $label, $checked, $help = '', $form = '') {
     return '
                     <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . ($checked ? ' checked="checked"' : '') . ' type="checkbox" id="' . $id . '" name="' . $name . '"/></div>
-                            <label for="' . $id . '">' . $label . '</label>' . (($help !== '') ? '
-                            <div class="form-text">' . $help . '</div>' : '') . '
-                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="checkbox" class="pg-switch" value="1"' . ($checked ? ' checked="checked"' : '') . ' id="' . $id . '" name="' . $name . '"' . (($form !== '') ? ' form="' . h($form) . '"' : '') . (($help !== '') ? ' aria-describedby="' . $id . '_help"' : '') . '/>
+                            <label class="pg-text-2" for="' . $id . '">' . $label . '</label>
+                        </div>' . (($help !== '') ? '
+                        <div class="form-text" id="' . $id . '_help">' . $help . '</div>' : '') . '
                     </div>';
 };
 
 if (!$booking_ready) {
 
-    $pg_settings_cards[] = $booking_card('pgset-booking-services', lang('Bookable services'), $booking_not_ready);
-    $pg_settings_cards[] = $booking_card('pgset-booking-staff', lang('Staff'), $booking_not_ready);
-    $pg_settings_cards[] = $booking_card('pgset-booking-policy', lang('Booking rules'), $booking_not_ready);
-    $pg_settings_cards[] = $booking_card('pgset-booking-texts', lang('Booking widget texts'), $booking_not_ready);
+    $booking_note = '
+                    <div class="col-12">
+                        <div class="alert theme-secondary mb-0 py-3 small">' . $booking_not_ready . '</div>
+                    </div>';
+
+    $pg_settings_cards[] = $booking_fold(array(
+        'services' => array($booking_not_ready, $booking_note),
+        'staff'    => array($booking_not_ready, $booking_note),
+        'policy'   => array($booking_not_ready, $booking_note),
+        'texts'    => array($booking_not_ready, $booking_note),
+    ));
 
     return;
 }
 
+// A drawer sits outside the settings form (the dialog's drawer host, or the
+// page's Bootstrap drawer after the form), so its boxes and its Save join the
+// form by its id.
+$booking_in_dialog = !empty($pg_settings_in_dialog);
+$booking_form = $booking_in_dialog ? 'pg_settings_modal_form' : 'pg_settings_page_form';
+$booking_joins = ' form="' . h($booking_form) . '"';
+
 $booking_services = pg_booking_settings_services();
 $booking_staff = pg_booking_settings_staff();
+$booking_policy = pg_booking_policy();
+$booking_texts = pg_booking_texts();
+$booking_lines = pg_booking_settings_fold_lines($booking_services, $booking_staff, $booking_policy, $booking_texts);
 $booking_separators = pg_number_separators();
 $booking_currency = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
 $booking_today = date('Y-m-d');
 
-// The deposit boxes come with the 11.0.169 columns and only while the store
-// is on: the deposit is charged as an order.
-$booking_deposit_on = defined('ECOMMERCE') && (ECOMMERCE == true)
-    && function_exists('pg_booking_deposit_ready') && pg_booking_deposit_ready();
-$booking_deposit_products = $booking_deposit_on ? pg_booking_settings_deposit_products() : array();
+// The deposit boxes come with the 11.0.169 columns. The deposit is charged as
+// an order, so with the store off they are drawn disabled: a disabled box is
+// not posted and the stored deposit stays.
+$booking_deposit_ready = function_exists('pg_booking_deposit_ready') && pg_booking_deposit_ready();
+$booking_deposit_on = defined('ECOMMERCE') && (ECOMMERCE == true);
+$booking_deposit_products = $booking_deposit_ready ? pg_booking_settings_deposit_products() : array();
 
 // The deposit box and the product its order line names.
-$booking_deposit_fields = function ($name, $id, $service) use ($booking_separators, $booking_currency, $booking_deposit_products) {
+$booking_deposit_fields = function ($name, $id, $service) use ($booking_separators, $booking_currency, $booking_deposit_products, $booking_deposit_on, $booking_joins) {
 
     $product_id = (int) ($service['deposit_product_id'] ?? 0);
+    $off = $booking_deposit_on ? '' : ' disabled="disabled"';
     $options = '<option value="0">' . h(lang('No product')) . '</option>';
 
     foreach ($booking_deposit_products as $option_id => $option_name) {
@@ -112,104 +163,135 @@ $booking_deposit_fields = function ($name, $id, $service) use ($booking_separato
                                     <label for="' . $id . '_deposit" class="form-label">' . lang('Deposit') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . h($booking_currency) . '</span>
-                                        <input type="text" name="' . $name . '[deposit]" id="' . $id . '_deposit" class="form-ghost text-end" value="' . h(pg_booking_settings_price_text((int) ($service['deposit'] ?? 0), $booking_separators)) . '" maxlength="16" inputmode="decimal"/>
+                                        <input type="text" name="' . $name . '[deposit]"' . $booking_joins . ' id="' . $id . '_deposit" class="form-ghost text-end" value="' . h(pg_booking_settings_price_text((int) ($service['deposit'] ?? 0), $booking_separators)) . '" maxlength="16" inputmode="decimal"' . $off . '/>
                                     </label>
                                 </div>
                                 <div class="pg-f-md">
                                     <label for="' . $id . '_deposit_product" class="form-label">' . lang('Deposit product') . '</label>
-                                    <select name="' . $name . '[deposit_product]" id="' . $id . '_deposit_product" class="form-control">' . $options . '</select>
-                                    <div class="form-text">' . lang('The deposit is paid in advance as a one-line order of this product. A deposit of 0 asks for none.') . '</div>
+                                    <select name="' . $name . '[deposit_product]"' . $booking_joins . ' id="' . $id . '_deposit_product" class="form-control"' . $off . '>' . $options . '</select>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-text mt-0">' . ($booking_deposit_on
+                                        ? lang('The deposit is paid in advance as a one-line order of this product. A deposit of 0 asks for none.')
+                                        : lang('Deposits are taken as an order: they wait while Commerce is off.')) . '</div>
                                 </div>';
 };
 
 // ── Services ──
-// One block per service and an empty one at the end; a name typed there
-// adds a service on save. A service is never deleted here: bookings point at
-// it, so one that is no longer offered is switched off.
-$booking_service_block = function ($key, $service, $legend) use ($booking_separators, $booking_currency, $booking_deposit_on, $booking_deposit_fields) {
+// One list row per service, each edited in its drawer; "Add a service" opens
+// an empty drawer whose typed name adds a service on save. A service is never
+// deleted here: bookings point at it, so one that is no longer offered is
+// switched off. The order is the rows' order, rewritten by Move up and Move
+// down.
+$booking_service_fields = function ($key, $service) use ($booking_separators, $booking_currency, $booking_deposit_ready, $booking_deposit_fields, $booking_switch, $booking_joins, $booking_form) {
 
     $name = 'booking_service[' . $key . ']';
     $id = 'booking_service_' . $key;
+    $f = $booking_joins;
 
     return '
-                    <div class="col-12">
-                        <fieldset class="border rounded p-5">
-                            <legend class="pg-group-label float-none w-auto px-3 mb-0">' . h($legend) . '</legend>
                             <div class="row gy-5">
-                                <div class="pg-f-md">
+                                <div class="col-12">
                                     <label for="' . $id . '_name" class="form-label">' . lang('Name') . '</label>
-                                    <input type="text" name="' . $name . '[name]" id="' . $id . '_name" class="form-control" value="' . h($service['name']) . '" maxlength="100"/>
+                                    <input type="text" name="' . $name . '[name]"' . $f . ' id="' . $id . '_name" class="form-control" value="' . h($service['name']) . '" maxlength="100"/>
                                 </div>
                                 <div class="pg-f-xs">
                                     <label for="' . $id . '_length" class="form-label">' . lang('Duration') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('min') . '</span>
-                                        <input type="number" name="' . $name . '[length]" id="' . $id . '_length" class="form-ghost text-end" value="' . (int) $service['length_minutes'] . '" min="5" max="1440" step="5" inputmode="numeric"/>
+                                        <input type="number" name="' . $name . '[length]"' . $f . ' id="' . $id . '_length" class="form-ghost text-end" value="' . (int) $service['length_minutes'] . '" min="5" max="1440" step="5" inputmode="numeric"/>
                                     </label>
                                 </div>
                                 <div class="pg-f-xs">
                                     <label for="' . $id . '_before" class="form-label">' . lang('Break before') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('min') . '</span>
-                                        <input type="number" name="' . $name . '[before]" id="' . $id . '_before" class="form-ghost text-end" value="' . (int) $service['buffer_before'] . '" min="0" max="480" inputmode="numeric"/>
+                                        <input type="number" name="' . $name . '[before]"' . $f . ' id="' . $id . '_before" class="form-ghost text-end" value="' . (int) $service['buffer_before'] . '" min="0" max="480" inputmode="numeric"/>
                                     </label>
                                 </div>
                                 <div class="pg-f-xs">
                                     <label for="' . $id . '_after" class="form-label">' . lang('Break after') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('min') . '</span>
-                                        <input type="number" name="' . $name . '[after]" id="' . $id . '_after" class="form-ghost text-end" value="' . (int) $service['buffer_after'] . '" min="0" max="480" inputmode="numeric"/>
+                                        <input type="number" name="' . $name . '[after]"' . $f . ' id="' . $id . '_after" class="form-ghost text-end" value="' . (int) $service['buffer_after'] . '" min="0" max="480" inputmode="numeric"/>
                                     </label>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-text mt-0">' . lang('The breaks keep bookings apart: no other booking starts within them. They do not shorten the working hours. A service that is no longer offered is switched off rather than deleted, so its bookings keep their service.') . '</div>
                                 </div>
                                 <div class="pg-f-xs">
                                     <label for="' . $id . '_price" class="form-label">' . lang('Price') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . h($booking_currency) . '</span>
-                                        <input type="text" name="' . $name . '[price]" id="' . $id . '_price" class="form-ghost text-end" value="' . h(pg_booking_settings_price_text($service['price'], $booking_separators)) . '" maxlength="16" inputmode="decimal"/>
+                                        <input type="text" name="' . $name . '[price]"' . $f . ' id="' . $id . '_price" class="form-ghost text-end" value="' . h(pg_booking_settings_price_text($service['price'], $booking_separators)) . '" maxlength="16" inputmode="decimal"/>
                                     </label>
-                                </div>' . ($booking_deposit_on ? $booking_deposit_fields($name, $id, $service) : '') . '
-                                <div class="pg-f-xs">
-                                    <label for="' . $id . '_order" class="form-label">' . lang('Display order') . '</label>
-                                    <input type="number" name="' . $name . '[order]" id="' . $id . '_order" class="form-control" value="' . (int) $service['sort_order'] . '" min="0" max="65535" inputmode="numeric"/>
-                                </div>
+                                </div>' . ($booking_deposit_ready ? $booking_deposit_fields($name, $id, $service) : '') . '
                                 <div class="col-12">
                                     <label for="' . $id . '_description" class="form-label">' . lang('Description') . '</label>
-                                    <input type="text" name="' . $name . '[description]" id="' . $id . '_description" class="form-control" value="' . h($service['description']) . '" maxlength="255"/>
-                                </div>
-                                <div class="col-12">
-                                    <div class="form-field">
-                                        <div class="switch"><input value="1"' . (!empty($service['enabled']) ? ' checked="checked"' : '') . ' type="checkbox" id="' . $id . '_enabled" name="' . $name . '[enabled]"/></div>
-                                        <label for="' . $id . '_enabled">' . lang('Can be booked') . '</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </fieldset>
-                    </div>';
+                                    <input type="text" name="' . $name . '[description]"' . $f . ' id="' . $id . '_description" class="form-control" value="' . h($service['description']) . '" maxlength="255"/>
+                                </div>' . $booking_switch($name . '[enabled]', $id . '_enabled', lang('Can be booked'), !empty($service['enabled']), '', $booking_form) . '
+                            </div>';
 };
 
-$output_booking_services = '
-                    <div class="col-12">
-                        <div class="form-text">' . lang('The breaks keep bookings apart: no other booking starts within them. They do not shorten the working hours. A service that is no longer offered is switched off rather than deleted, so its bookings keep their service.') . '</div>
-                    </div>';
+// A drawer's foot: the pane's Save, joined to the form.
+$booking_drawer_foot = '<button type="submit"' . $booking_joins . ' class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>';
 
+$output_booking_services = '';
 $booking_next_order = 0;
+$booking_service_count = count($booking_services);
+$booking_position = 0;
 
 foreach ($booking_services as $service_id => $service) {
-    $output_booking_services .= $booking_service_block((int) $service_id, $service, $service['name']);
+
+    $service_id = (int) $service_id;
+    $name = 'booking_service[' . $service_id . ']';
+    $drawer = pg_booking_settings_service_drawer($service_id);
+    $first = ($booking_position === 0);
+    $last = ($booking_position === $booking_service_count - 1);
+    $booking_position++;
     $booking_next_order = max($booking_next_order, (int) $service['sort_order'] + 1);
+
+    // Move up and Move down submit the form once the script has rewritten
+    // every row's order: the pane's Save, as a drawer's Save is.
+    $output_booking_services .= '
+                        <div class="pg-list-row" data-pg-booking-service>
+                            <span class="pg-icon-tile pg-tone-shop" aria-hidden="true"><span class="bi bi-calendar2-check"></span></span>
+                            <div class="pg-list-row-main">
+                                <div class="pg-list-row-head"><span class="pg-list-row-title">' . h($service['name']) . '</span></div>
+                                <div class="pg-list-row-text">' . h(pg_booking_settings_service_line($service, $booking_separators, $booking_currency)) . '</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-1 align-self-center">
+                                <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . $drawer . '" aria-controls="' . $drawer . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Edit'), $service['name'])))) . '"><span class="pg-btn-label">' . h(lang('Edit')) . '</span></button>
+                                <span class="pg-menu-wrap">
+                                    <button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" aria-expanded="false" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('More actions'), $service['name'])))) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
+                                    <ul class="menu pg-menu-end">
+                                        <li><button type="submit" class="menu-item" data-pg-booking-move="up"' . ($first ? ' disabled="disabled"' : '') . '><i class="bi bi-arrow-up me-3" aria-hidden="true"></i>' . h(lang('Move up')) . '</button></li>
+                                        <li><button type="submit" class="menu-item" data-pg-booking-move="down"' . ($last ? ' disabled="disabled"' : '') . '><i class="bi bi-arrow-down me-3" aria-hidden="true"></i>' . h(lang('Move down')) . '</button></li>
+                                    </ul>
+                                </span>
+                            </div>
+                            <input type="hidden" name="' . $name . '[order]" value="' . (int) $service['sort_order'] . '" data-pg-booking-order/>
+                        </div>';
+
+    $pg_settings_modals[] = pg_settings_drawer($drawer, h($service['name']), $booking_service_fields($service_id, $service), $booking_in_dialog, $booking_drawer_foot);
 }
 
-$output_booking_services .= $booking_service_block('new', array(
+$pg_settings_modals[] = pg_settings_drawer(pg_booking_settings_service_drawer('new'), h(lang('Add a service')), $booking_service_fields('new', array(
     'name' => '', 'description' => '', 'length_minutes' => 30, 'buffer_before' => 0, 'buffer_after' => 0,
-    'price' => 0, 'deposit' => 0, 'deposit_product_id' => 0, 'enabled' => 1, 'sort_order' => $booking_next_order,
-), lang('New service'));
+    'price' => 0, 'deposit' => 0, 'deposit_product_id' => 0, 'enabled' => 1,
+)), $booking_in_dialog, $booking_drawer_foot);
 
-$output_booking_services .= '
-                    <div class="col-12">
-                        <div class="form-text">' . lang('Type a name in New service and save to add it.') . '</div>
+$output_booking_services = '
+                    <div class="col-12">' . (($output_booking_services !== '')
+                        ? '
+                        <div data-pg-booking-services>' . $output_booking_services . '
+                        </div>'
+                        : '
+                        <div class="pg-text-meta">' . h(lang('No service yet. Add one, then choose the staff who take it.')) . '</div>') . '
+                        <input type="hidden" name="booking_service[new][order]" value="' . (int) $booking_next_order . '"/>
                     </div>';
 
-$pg_settings_cards[] = $booking_card('pgset-booking-services', lang('Bookable services'), $output_booking_services);
+$booking_add_service = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . pg_booking_settings_service_drawer('new') . '" aria-controls="' . pg_booking_settings_service_drawer('new') . '"><i class="bi bi-plus-lg" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Add a service')) . '</span></button>';
 
 // ── Staff ──
 // Each staff member: the switch, their services, the weekly hours as two
@@ -283,13 +365,7 @@ foreach ($booking_staff as $user_id => $member) {
                         <fieldset class="border rounded p-5" data-pg-booking-staff>
                             <legend class="pg-group-label float-none w-auto px-3 mb-0">' . h($member['person']) . '</legend>
                             <input type="hidden" name="' . $name . '[seen]" value="1"/>
-                            <div class="row gy-5">
-                                <div class="col-12">
-                                    <div class="form-field">
-                                        <div class="switch"><input value="1"' . (!empty($member['enabled']) ? ' checked="checked"' : '') . ' type="checkbox" id="' . $id . '_enabled" name="' . $name . '[enabled]"/></div>
-                                        <label for="' . $id . '_enabled">' . lang('Takes bookings') . '</label>
-                                    </div>
-                                </div>
+                            <div class="row gy-5">' . $booking_switch($name . '[enabled]', $id . '_enabled', lang('Takes bookings'), !empty($member['enabled'])) . '
                                 <div class="col-12">
                                     <label for="' . $id . '_services" class="form-label">' . lang('Bookable services') . '</label>
                                     <select multiple data-pg-combobox name="' . $name . '[services][]" id="' . $id . '_services" class="form-control" data-placeholder="' . h(lang('Choose the services')) . '">' . $options . '</select>
@@ -350,11 +426,11 @@ if ($booking_candidates) {
                     <div class="col-12"><div class="form-text">' . lang('There is no panel user to add.') . '</div></div>';
 }
 
-$pg_settings_cards[] = $booking_card('pgset-booking-staff', lang('Staff'), $output_booking_staff . '
-                    <div class="d-none">' . get_date_picker_format() . pg_fields_script() . '</div>');
+$output_booking_staff .= '
+                    <div class="d-none">' . get_date_picker_format() . pg_fields_script() . '</div>';
 
-// Copy the first day of the grid to every day, and add an exception row.
-// Bound once on the document: the pane's markup is replaced on every visit.
+// Copy the first day of the grid to every day, add an exception row, and
+// move a service up or down. Bound once on the document: the pane's markup is replaced on every visit.
 $pg_settings_scripts[] = '
     <script>
         (function () {
@@ -374,6 +450,29 @@ $pg_settings_scripts[] = '
             }
 
             document.addEventListener("click", function (event) {
+
+                // Move up and Move down: the row changes place, the order of
+                // every row is written again from the top, and the button
+                // then submits the form.
+                var move = event.target.closest("[data-pg-booking-move]");
+
+                if (move) {
+                    var service = move.closest("[data-pg-booking-service]");
+                    var up = move.getAttribute("data-pg-booking-move") === "up";
+                    var other = service ? (up ? service.previousElementSibling : service.nextElementSibling) : null;
+
+                    if (!other || !other.hasAttribute("data-pg-booking-service")) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    service.parentNode.insertBefore(up ? service : other, up ? other : service);
+
+                    service.parentNode.querySelectorAll("[data-pg-booking-order]").forEach(function (input, position) {
+                        input.value = String(position);
+                    });
+                    return;
+                }
 
                 var copy = event.target.closest("[data-pg-booking-copy]");
                 var add = event.target.closest("[data-pg-booking-add-exception]");
@@ -415,7 +514,6 @@ $pg_settings_scripts[] = '
     </script>';
 
 // ── Booking rules ──
-$booking_policy = pg_booking_policy();
 
 $booking_step_options = '';
 
@@ -447,10 +545,8 @@ $output_booking_policy =
     . $booking_switch('booking_auto_confirm', 'booking_auto_confirm', lang('Confirm bookings at once'), $booking_policy['auto_confirm'],
         lang('Off, a booking made on the site waits as a request until staff confirm it; the time stays taken meanwhile.'));
 
-$pg_settings_cards[] = $booking_card('pgset-booking-policy', lang('Booking rules'), $output_booking_policy);
 
 // ── Booking widget texts ──
-$booking_texts = pg_booking_texts();
 $output_booking_texts = '
                     <div class="col-12">
                         <div class="form-text">' . lang('Plain text. A box left empty shows the widget\'s own wording in the visitor\'s language.') . '</div>
@@ -473,4 +569,11 @@ foreach (pg_booking_settings_text_fields() as $key => $field) {
                     </div>';
 }
 
-$pg_settings_cards[] = $booking_card('pgset-booking-texts', lang('Booking widget texts'), $output_booking_texts);
+
+// ── The rows ──
+$pg_settings_cards[] = $booking_fold(array(
+    'services' => array($booking_lines['services'], $output_booking_services, $booking_add_service),
+    'staff'    => array($booking_lines['staff'], $output_booking_staff),
+    'policy'   => array($booking_lines['policy'], $output_booking_policy),
+    'texts'    => array($booking_lines['texts'], $output_booking_texts),
+));

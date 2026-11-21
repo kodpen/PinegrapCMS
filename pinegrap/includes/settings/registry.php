@@ -389,7 +389,7 @@ function pg_settings_categories()
                 'pgset-booking-texts'    => lang('Booking widget texts'),
             ),
             'keywords' => array(
-                'pgset-booking-services' => pg_settings_keywords(lang('booking, appointment, service, duration, length, buffer, price, reservation')),
+                'pgset-booking-services' => pg_settings_keywords(lang('booking, appointment, service, duration, length, buffer, price, deposit, reservation')),
                 'pgset-booking-staff'    => pg_settings_keywords(lang('booking, appointment, staff, working hours, opening hours, time off, holiday, day off, schedule')),
                 'pgset-booking-policy'   => pg_settings_keywords(lang('booking, appointment, lead time, horizon, cancellation, reschedule, hold, reminder, confirmation')),
                 'pgset-booking-texts'    => pg_settings_keywords(lang('booking, appointment, widget, text, heading, message')),

@@ -79,3 +79,23 @@ function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = 
                     <div class="drawer-footer pg-set-drawer-foot">' . $foot . '</div>' : '') . '
                 </dialog>';
 }
+
+
+/**
+ * The drawer holding the box a refused save marked, named by the save module
+ * so the pane opens it again: the box cannot be seen or fixed in a shut
+ * drawer. The first module's call wins; a call without an id only reads.
+ *
+ * @param string|null $id the drawer's element id; '' names none
+ * @return string the drawer named so far, '' for none
+ */
+function pg_settings_drawer_refused($id = null)
+{
+    static $drawer = '';
+
+    if (($drawer === '') && ($id !== null)) {
+        $drawer = (string) $id;
+    }
+
+    return $drawer;
+}

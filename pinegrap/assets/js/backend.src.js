@@ -13070,13 +13070,21 @@ var pgSettingsModal = (function () {
      * at the top of the scrolling form comes into view -- the footer Save is
      * pressed from anywhere in the pane -- and the first marked field that
      * can take focus gets it, so the operator lands on what to fix. Focus
-     * opens a latched field the way a click does.
+     * opens a latched field the way a click does. A save that names the
+     * drawer holding a marked field (pg_settings_drawer_refused()) opens it,
+     * and its first marked field takes the focus: a shut drawer's field can
+     * be neither seen nor fixed.
      */
-    function refused(fields) {
+    function refused(fields, drawer) {
 
         var first = null;
+        var holder = drawer ? byId(drawer) : null;
 
         unmark();
+
+        if (holder && !holder.classList.contains('is-open')) {
+            reopen({ drawer: drawer, drawerScroll: 0 });
+        }
 
         Object.keys(fields).forEach(function (name) {
 
@@ -13102,7 +13110,21 @@ var pgSettingsModal = (function () {
 
         form.scrollTop = 0;
 
-        if (first) {
+        var inside = holder ? holder.querySelector('[data-pg-sm-marked]:not(:disabled)') : null;
+
+        // In the drawer, which may still be sliding in: a plain focus would
+        // scroll the dialog sideways to reach it, so the drawer's own body is
+        // scrolled to the field instead.
+        if (inside) {
+            var body = holder.querySelector('.pg-sm-drawer-body');
+            var top = (inside.labels && inside.labels.length) ? inside.labels[0] : inside;
+
+            inside.focus({ preventScroll: true });
+
+            if (body) {
+                body.scrollTop += top.getBoundingClientRect().top - body.getBoundingClientRect().top - 16;
+            }
+        } else if (first) {
             first.focus();
         }
     }
@@ -13647,7 +13669,7 @@ window.pgCodeEditorReady = function (markup, done) {
                     ? response.errors.join(' ')
                     : say('failed'), true);
 
-                refused(response.fields || {});
+                refused(response.fields || {}, response.drawer || '');
 
                 return;
             }
