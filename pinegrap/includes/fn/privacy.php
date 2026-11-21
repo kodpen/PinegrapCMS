@@ -1025,6 +1025,12 @@ function pg_privacy_erase_tables()
             'comment'     => null,
             'answers'     => null,
         )),
+        // A volunteer goes whole: their shifts and hours, their documents
+        // (whose files are in the scope's file_ids) and their profiles. A
+        // place they held on a shift to come is freed with the row.
+        'volunteer_signups'            => array('find' => array('volunteer_id' => 'volunteer_ids'), 'action' => 'delete', 'fields' => array()),
+        'volunteer_documents'          => array('find' => array('volunteer_id' => 'volunteer_ids'), 'action' => 'delete', 'fields' => array()),
+        'volunteers'                   => array('find' => array('id' => 'volunteer_ids', 'contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
         // A member's course progress (lessons done, first open, completion)
         // goes whole; the course and its lessons stay.
         'course_progress'              => array('find' => $user, 'action' => 'delete', 'fields' => array()),
@@ -1153,6 +1159,9 @@ function pg_privacy_erase_labels()
         'customer_rhythm'              => lang('Order rhythm'),
         'bookings'                     => lang('Appointment bookings'),
         'feedback_responses'           => lang('Satisfaction survey answers'),
+        'volunteer_signups'            => lang('Volunteer shifts and hours'),
+        'volunteer_documents'          => lang('Volunteer documents'),
+        'volunteers'                   => lang('Volunteer profiles'),
         'course_progress'              => lang('Course progress'),
         'email_recipients'             => lang('E-mail campaigns'),
         'mail_outbox'                  => lang('E-mail messages'),
@@ -1282,7 +1291,7 @@ function pg_privacy_customer_keys(array $emails, array $contact_ids)
  *                form_ids, account_ids, conversation_ids, file_ids,
  *                return_ids, audit_ids, cell_ids, revision_form_ids,
  *                wtable_row_ids, wtable_bin_ids, application_entry_ids,
- *                feedback_hashes,
+ *                feedback_hashes, volunteer_ids,
  *                customer_keys
  */
 function pg_privacy_erase_scope(array $found)
@@ -1310,6 +1319,7 @@ function pg_privacy_erase_scope(array $found)
         'application_entry_ids' => array(),
         'request_ids'      => array(),
         'feedback_hashes'  => array(),
+        'volunteer_ids'    => array(),
         'customer_keys'    => pg_privacy_customer_keys($person['emails'], $person['contact_ids']),
     );
 
@@ -1395,8 +1405,14 @@ function pg_privacy_erase_scope(array $found)
         }
     }
 
+    // The person's volunteer profiles, by their contacts.
+    if ($scope['contact_ids'] && pg_schema_has('volunteers', 'contact_id')) {
+        $scope['volunteer_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM volunteers WHERE " . _pg_privacy_export_in('contact_id', $scope['contact_ids'])));
+    }
+
     // Uploads: files sent with the person's forms and product forms, their
-    // signature images and the attachments of their chats.
+    // signature images, the attachments of their chats and the files of
+    // their volunteer documents.
     $files = array();
     $where = pg_privacy_erase_where(array('form_id' => 'form_ids', 'order_id' => 'order_ids'), $scope);
 
@@ -1410,6 +1426,10 @@ function pg_privacy_erase_scope(array $found)
 
     if ($scope['conversation_ids'] && pg_schema_has('chat_messages', 'attachment_file_id')) {
         $files = array_merge($files, db_values("SELECT attachment_file_id FROM chat_messages WHERE (attachment_file_id > 0) AND " . _pg_privacy_export_in('conversation_id', $scope['conversation_ids'])));
+    }
+
+    if ($scope['volunteer_ids'] && pg_schema_has('volunteer_documents', 'file_id')) {
+        $files = array_merge($files, db_values("SELECT file_id FROM volunteer_documents WHERE (file_id > 0) AND " . _pg_privacy_export_in('volunteer_id', $scope['volunteer_ids'])));
     }
 
     $scope['file_ids'] = _pg_privacy_export_ids($files);

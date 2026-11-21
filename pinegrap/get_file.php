@@ -449,10 +449,59 @@ if (($erp_document === false) && ($workspace_file === false) && ($chat_attachmen
     }
 }
 
+// A volunteer document's file (an attachment a volunteer_documents row holds)
+// opens only for roles 0 to 2, the coordinators of the volunteer's programme,
+// the volunteer signed in and the volunteer whose signed link opened this
+// session, whatever its folder allows; never a public copy in a cache.
+// Before the volunteer tables exist the query fails and nothing is one.
+$volunteer_document = false;
+
+if (($erp_document === false) && ($workspace_file === false) && ($chat_attachment === false) && ($product_form_upload === false) && ($file['attachment'] == 1)) {
+    $volunteer_result = @mysqli_query(db::$con, "SELECT d.volunteer_id, v.contact_id, p.coordinators
+        FROM volunteer_documents d
+        INNER JOIN volunteers v ON v.id = d.volunteer_id
+        LEFT JOIN volunteer_programmes p ON p.id = v.programme_id
+        WHERE d.file_id = '" . (int) $file['id'] . "' AND d.file_id > 0");
+    $volunteer_holders = array();
+
+    while (($volunteer_result !== false) && ($volunteer_row = mysqli_fetch_assoc($volunteer_result))) {
+        $volunteer_holders[] = $volunteer_row;
+    }
+
+    if ($volunteer_holders) {
+        $volunteer_document = true;
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_shifts.php');
+
+        if (defined('USER_LOGGED_IN') == false) {
+            initialize_user();
+        }
+
+        $volunteer_user = (USER_LOGGED_IN == true) ? pg_load_user_row((int) USER_ID) : null;
+        $volunteer_allowed = pg_volunteer_document_access_verdict($volunteer_holders, array(
+            'user_id' => is_array($volunteer_user) ? (int) $volunteer_user['id'] : 0,
+            'role' => is_array($volunteer_user) ? (int) $volunteer_user['role'] : 3,
+            'contact_id' => is_array($volunteer_user) ? (int) $volunteer_user['contact_id'] : 0,
+            'link_volunteer_ids' => (isset($_SESSION['volunteer']['ids']) && is_array($_SESSION['volunteer']['ids'])) ? $_SESSION['volunteer']['ids'] : array(),
+        ));
+
+        if (!$volunteer_allowed) {
+            header('Cache-Control: no-store');
+
+            if (USER_LOGGED_IN == false) {
+                get_file_sign_in_redirect('index.php');
+            }
+
+            log_activity(pg_log_lang(array('string' => 'access denied to file attachment ({var:1})', 'vars' => array($file['name']))), $_SESSION['sessionusername']);
+            output_error(get_file_text('Sorry, you do not have access to view this file attachment.'), 403);
+        }
+    }
+}
+
 // An ERP document or a workspace file has no folder and was checked above;
 // the folder walk would read a folder row that is not there. A product form
-// answer's file was let through above.
-$access_control_type = ($erp_document || $workspace_file || $product_form_upload) ? 'public' : get_access_control_type($file['folder_id']);
+// answer's and a volunteer document's file were let through above.
+$access_control_type = ($erp_document || $workspace_file || $product_form_upload || $volunteer_document) ? 'public' : get_access_control_type($file['folder_id']);
 
 // if the access control type is not public, then do access control checks
 if (
@@ -555,7 +604,7 @@ if (
 
 // If the file is a comment or submitted form attachment
 // then check if visitor has access to attachment.
-if (($file['attachment'] == 1) && ($product_form_upload === false)) {
+if (($file['attachment'] == 1) && ($product_form_upload === false) && ($volunteer_document === false)) {
     // Assume that visitor does not have access to attachment
     // until we find out otherwise.
     $attachment_access = false;
@@ -1489,7 +1538,7 @@ if ($image_negotiation['private']) {
 if ($derivative_status === 'busy') {
     header('Cache-Control: no-store');
 } else {
-    header('Cache-Control: ' . (($erp_document || $chat_attachment) ? 'private, no-store' : ($cache_control_type . ', max-age=604800')));
+    header('Cache-Control: ' . (($erp_document || $chat_attachment || $volunteer_document) ? 'private, no-store' : ($cache_control_type . ', max-age=604800')));
 }
 
 // Set the pragma cache.  Technically, this header should not be necessary,

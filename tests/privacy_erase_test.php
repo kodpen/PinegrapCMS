@@ -55,6 +55,7 @@ function privacy_erase_test_scope()
 		'application_entry_ids' => array(99),
 		'request_ids'      => array(100),
 		'feedback_hashes'  => array(str_repeat('b', 40)),
+		'volunteer_ids'    => array(101),
 		'customer_keys'    => array('e0123456789abcdef0123', 'c7'),
 	);
 }
@@ -87,6 +88,7 @@ function test_privacy_erase_tables_are_pinned()
 			'forms' => 'delete',
 			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete', 'customer_rhythm' => 'delete', 'bookings' => 'anonymise',
 			'feedback_responses' => 'anonymise',
+			'volunteer_signups' => 'delete', 'volunteer_documents' => 'delete', 'volunteers' => 'delete',
 			'course_progress' => 'delete',
 			'email_recipients' => 'delete', 'mail_outbox' => 'delete', 'mail_bounces' => 'delete', 'sms_outbox' => 'delete', 'whatsapp_outbox' => 'delete', 'whatsapp_inbox' => 'delete',
 			'chat_messages' => 'delete', 'chat_conversations' => 'delete', 'address_book' => 'delete',
@@ -207,6 +209,9 @@ function test_privacy_erase_find_columns_are_pinned()
 			'customer_rhythm' => array('customer_key' => 'customer_keys', 'contact_id' => 'contact_ids'),
 			'bookings' => array('user_id' => 'user_ids', 'email' => 'emails'),
 			'feedback_responses' => array('contact_id' => 'contact_ids', 'person_hash' => 'feedback_hashes'),
+			'volunteer_signups' => array('volunteer_id' => 'volunteer_ids'),
+			'volunteer_documents' => array('volunteer_id' => 'volunteer_ids'),
+			'volunteers' => array('id' => 'volunteer_ids', 'contact_id' => 'contact_ids'),
 			'course_progress' => $user,
 			'email_recipients' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'),
 			'mail_outbox' => array('recipient' => 'emails'),

@@ -255,6 +255,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_feedback_surveys();        // 11.0.263
 	upgrade_2026_11_0_pick_pack();               // 11.0.264
 	upgrade_2026_11_0_lead_journey();            // 11.0.265
+	upgrade_2026_11_0_volunteer_shifts();        // 11.0.266
 
 }
 
@@ -8888,5 +8889,143 @@ function upgrade_2026_11_0_lead_journey() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Contacts: the visitor journey tables were added; nothing is recorded until a visitor allows marketing cookies.');
+
+}
+
+// Volunteer shifts (2026.11.0, 11.0.266; includes/fn/volunteer_shifts.php).
+//
+// volunteer_programmes: a programme with its application form (page_id), the
+// form's fields it reads, its roles (key => name, skills, trainings, document
+// kinds) and coordinators (panel user ids) as JSON, its sign-up rules, call
+// settings and message texts. volunteers: one profile per contact and
+// programme (state applied, active, paused or left), skills and weekly free
+// hours (the bookings' hours shape) as JSON, the "Shift calls" switch and
+// channel, and only the sha256 of the signed link's token (NULL when none,
+// so the unique key never collides). volunteer_documents: a dated document
+// of a volunteer (kind, number, valid until, who saw it and when); file_id is
+// 0 or a files row with attachment = 1 that get_file.php opens only after
+// the document's own check. volunteer_shifts: a shift's place, its start and
+// end as the site's wall-clock DATETIME (the rules compare them as written),
+// its roles with their counts and the volunteers already called as JSON.
+// volunteer_signups: a volunteer's place in one role of a shift, its waitlist
+// state, check-in and out, and its hours; hours worked outside a shift are a
+// row with shift_id NULL, so the unique (shift_id, volunteer_id) key refuses
+// a second sign-up on one shift and never an hours row. No column is added
+// to an existing table.
+function upgrade_2026_11_0_volunteer_shifts() {
+
+	install_create_table('volunteer_programmes', "CREATE TABLE volunteer_programmes (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name           VARCHAR(150) NOT NULL DEFAULT '',
+		state          VARCHAR(16) NOT NULL DEFAULT 'open',
+		page_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		form_fields    TEXT NULL,
+		roles          TEXT NULL,
+		coordinators   TEXT NULL,
+		cutoff_hours   SMALLINT UNSIGNED NOT NULL DEFAULT 24,
+		min_age        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		swap_approval  TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		call_days      TINYINT UNSIGNED NOT NULL DEFAULT 3,
+		call_channels  VARCHAR(30) NOT NULL DEFAULT 'email',
+		texts          TEXT NULL,
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_page (page_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('volunteers', "CREATE TABLE volunteers (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		programme_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		contact_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		form_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		state           VARCHAR(16) NOT NULL DEFAULT 'applied',
+		skills          TEXT NULL,
+		hours           TEXT NULL,
+		calls           TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		call_channel    VARCHAR(10) NOT NULL DEFAULT 'email',
+		link_hash       CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL,
+		link_issued_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		thanked_hours   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		applied_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		approved_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		approved_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		left_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_link_hash (link_hash),
+		KEY idx_programme_state (programme_id, state),
+		KEY idx_contact (contact_id),
+		KEY idx_form (form_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('volunteer_documents', "CREATE TABLE volunteer_documents (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		volunteer_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind          VARCHAR(60) NOT NULL DEFAULT '',
+		number        VARCHAR(100) NOT NULL DEFAULT '',
+		valid_until   DATE NULL DEFAULT NULL,
+		file_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		seen_by       INT UNSIGNED NOT NULL DEFAULT 0,
+		seen_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		notice_sent   TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		added_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_volunteer (volunteer_id),
+		KEY idx_valid_until (valid_until),
+		KEY idx_file (file_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('volunteer_shifts', "CREATE TABLE volunteer_shifts (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		programme_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		place         VARCHAR(100) NOT NULL DEFAULT '',
+		start_time    DATETIME NULL DEFAULT NULL,
+		end_time      DATETIME NULL DEFAULT NULL,
+		roles         TEXT NULL,
+		note          VARCHAR(500) NOT NULL DEFAULT '',
+		series_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		called        TEXT NULL,
+		reminded_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_programme_start (programme_id, start_time),
+		KEY idx_start (start_time),
+		KEY idx_series (series_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('volunteer_signups', "CREATE TABLE volunteer_signups (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		programme_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		shift_id      INT UNSIGNED NULL DEFAULT NULL,
+		volunteer_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		role          VARCHAR(40) NOT NULL DEFAULT '',
+		state         VARCHAR(16) NOT NULL DEFAULT 'signed',
+		outcome       VARCHAR(16) NOT NULL DEFAULT '',
+		offered_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		swap_from     INT UNSIGNED NOT NULL DEFAULT 0,
+		check_in      DATETIME NULL DEFAULT NULL,
+		check_out     DATETIME NULL DEFAULT NULL,
+		checked_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		worked_on     DATE NULL DEFAULT NULL,
+		minutes       SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		note          VARCHAR(255) NOT NULL DEFAULT '',
+		approved_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		approved_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		cancelled_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_shift_volunteer (shift_id, volunteer_id),
+		KEY idx_volunteer (volunteer_id),
+		KEY idx_programme_approved (programme_id, approved_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Contacts: the tables of volunteer programmes, volunteers, their documents, shifts and sign-ups were added; nothing changes until a programme is made.');
 
 }

@@ -58,6 +58,7 @@ function pg_privacy_inventory_subjects()
         'customer'  => 'Customers',
         'visitor'   => 'Visitors',
         'applicant' => 'Applicants',
+        'volunteer' => 'Volunteers',
         'staff'     => 'Staff',
     );
 }
@@ -95,6 +96,7 @@ function pg_privacy_inventory_retentions()
         'incomplete_carts' => 'Rule: incomplete carts',
         'orders'           => 'Rule: orders',
         'closed_requests'  => 'Rule: closed requests',
+        'left_volunteers'  => 'Rule: volunteers who left',
     );
 }
 
@@ -177,6 +179,14 @@ function pg_privacy_inventory()
             'purpose' => 'Satisfaction survey answers', 'ground' => 'legitimate_interest', 'retention' => 'until_erased', 'person' => $contact),
         'course_progress' => array('categories' => array('identity'), 'subjects' => array('customer'),
             'purpose' => 'Members\' course progress', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => $user),
+
+        // Volunteering.
+        'volunteers' => array('categories' => array('identity', 'contact'), 'subjects' => array('volunteer'),
+            'purpose' => 'Volunteer profiles, skills and free hours', 'ground' => 'legitimate_interest', 'retention' => 'left_volunteers', 'person' => $contact),
+        'volunteer_documents' => array('categories' => array('identity', 'uploads'), 'subjects' => array('volunteer'),
+            'purpose' => 'Volunteers\' dated documents', 'ground' => 'legitimate_interest', 'retention' => 'left_volunteers', 'person' => array('volunteer_id', 'int')),
+        'volunteer_signups' => array('categories' => array('identity', 'messages'), 'subjects' => array('volunteer'),
+            'purpose' => 'Volunteers\' shifts, check-ins and hours', 'ground' => 'legitimate_interest', 'retention' => 'left_volunteers', 'person' => array('volunteer_id', 'int')),
 
         // Accounting.
         'erp_accounts' => array('categories' => array('identity', 'contact', 'address'), 'subjects' => array('customer'),

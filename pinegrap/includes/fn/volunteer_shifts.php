@@ -642,3 +642,56 @@ function pg_volunteer_link_token_valid($token, $stored)
 
     return hash_equals($stored, pg_volunteer_link_token_hash($token));
 }
+
+/**
+ * Who opens a volunteer document's file, whatever its folder allows: a
+ * signed-in user of roles 0 to 2, a coordinator of the volunteer's programme
+ * (a user id in its coordinators list), the volunteer signed in (their
+ * account's contact is the profile's) and the volunteer whose signed link
+ * opened this session. Pure, and PHP only, for get_file.php.
+ *
+ * @param array $holders the documents holding the file: volunteer_id,
+ *                       contact_id (the profile's), coordinators (the
+ *                       programme's JSON list of user ids)
+ * @param array $viewer  user_id (0: not signed in), role, contact_id (the
+ *                       account's contact), link_volunteer_ids (volunteers
+ *                       whose signed link this session opened)
+ * @return bool
+ */
+function pg_volunteer_document_access_verdict($holders, $viewer)
+{
+    $viewer = is_array($viewer) ? $viewer : array();
+    $user_id = isset($viewer['user_id']) ? (int) $viewer['user_id'] : 0;
+    $contact_id = ($user_id > 0) && isset($viewer['contact_id']) ? (int) $viewer['contact_id'] : 0;
+    $linked = array_map('intval', (isset($viewer['link_volunteer_ids']) && is_array($viewer['link_volunteer_ids'])) ? $viewer['link_volunteer_ids'] : array());
+
+    if (($user_id > 0) && isset($viewer['role']) && is_numeric($viewer['role']) && ((int) $viewer['role'] < 3)) {
+        return true;
+    }
+
+    foreach (is_array($holders) ? $holders : array() as $holder) {
+
+        if (!is_array($holder)) {
+            continue;
+        }
+
+        $volunteer_id = isset($holder['volunteer_id']) ? (int) $holder['volunteer_id'] : 0;
+
+        if (($volunteer_id > 0) && in_array($volunteer_id, $linked, true)) {
+            return true;
+        }
+
+        if (($contact_id > 0) && isset($holder['contact_id']) && ((int) $holder['contact_id'] === $contact_id)) {
+            return true;
+        }
+
+        $coordinators = isset($holder['coordinators']) && is_string($holder['coordinators']) ? json_decode($holder['coordinators'], true) : null;
+
+        if (($user_id > 0) && is_array($coordinators) && in_array((string) $user_id, _pg_volunteer_strings($coordinators), true)) {
+            return true;
+        }
+
+    }
+
+    return false;
+}
