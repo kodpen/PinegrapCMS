@@ -12552,6 +12552,15 @@
         });
     }
 
+    // The cards "Show on a canvas" offers (the Data screen): 'table' alone
+    // for As a table; for As a chart the chart kinds the columns fit, or
+    // 'table' alone when none does (the picker then says why).
+    function dataShowKinds(show, columns, rows) {
+        var charts = dataFits(columns, rows).filter(function (kind) { return kind !== 'table'; });
+
+        return ((show === 'chart') && charts.length) ? charts : ['table'];
+    }
+
     // A checked description turned to another kind, its choices kept where
     // the kind takes them: a donut keeps the first value, a chart without a
     // value takes the first number column; null when the columns do not fit.
@@ -12577,7 +12586,7 @@
     }
 
     var DATA = {
-        DATA_SIZES: DATA_SIZES, DATA_SAMPLE_ROWS: DATA_SAMPLE_ROWS, dataColumns: dataColumns, dataStart: dataStart, dataFits: dataFits, dataWithKind: dataWithKind,
+        DATA_SIZES: DATA_SIZES, DATA_SAMPLE_ROWS: DATA_SAMPLE_ROWS, dataColumns: dataColumns, dataStart: dataStart, dataFits: dataFits, dataShowKinds: dataShowKinds, dataWithKind: dataWithKind,
         DATA_KINDS: DATA_KINDS, DATA_GROUPS: DATA_GROUPS, DATA_SORTS: DATA_SORTS, DATA_MAX: DATA_MAX, DATA_GUIDE: DATA_GUIDE,
         dataCheck: dataCheck, dataNumber: dataNumber, dataText: dataText, dataFormat: dataFormat, dataStep: dataStep,
         dataSeries: dataSeries, dataMarks: dataMarks

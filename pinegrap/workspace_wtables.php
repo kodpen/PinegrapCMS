@@ -1935,9 +1935,15 @@ if (!$table) {
     </dialog>';
     }
 
+    // "Show on a canvas": a new canvas in the table's channel with the table
+    // as one data layer, for whoever reads it and may post there.
+    $show = pg_image_editor_data_show_check($viewer, (int) $table['id']);
+    $show_menu = ($show['code'] === '') ? pg_image_editor_data_show_menu(pg_image_editor_data_show_config($show['table'], $show['channel'])) : '';
+
     $toolbar = '
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
         ' . $flow_button . '
+        ' . $show_menu . '
         ' . (($row_form !== '') ? '<a class="btn btn-sm btn-text theme-primary" href="' . h($table_url) . '#ws-wt-row-form"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New row')) . '</a>' : '') . '
         <a class="btn btn-sm btn-text theme-secondary" href="' . h($table_url . '&download=xlsx') . '" download><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . h(lang('Download as Excel')) . '</a>
         ' . ($can_manage ? '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
@@ -1999,6 +2005,27 @@ $shell . '
 ' . get_date_picker_format() . pg_fields_script() . '
 <script>
 (function () {
+
+    // "Show on a canvas": the Design Canvas opens on the views of the table; the
+    // canvas sent, the channel opens on it.
+    document.addEventListener("click", function (e) {
+        var item = e.target.closest("[data-ws-wt-canvas]");
+        var node = document.getElementById("ws_wt_canvas_config");
+        if (!item || !node || !window.pgImageEditor) { return; }
+        var cfg = JSON.parse(node.textContent);
+        window.pgImageEditor.load().then(function () {
+            window.pgImageEditor.open({
+                blank: { width: 1920, height: 1080, background: "#ffffff" },
+                fileName: cfg.table.name,
+                dataShow: { table: cfg.table, show: item.dataset.wsWtCanvas },
+                save: { mode: "url", url: cfg.save, label: cfg.label },
+                onSave: function (result) {
+                    var id = (result && result.file) ? Number(result.file.message_id || 0) : 0;
+                    window.location.href = cfg.open + (id ? "&message=" + id : "");
+                }
+            });
+        });
+    });
 
     // A type change of a column asks first.
     document.addEventListener("submit", function (e) {

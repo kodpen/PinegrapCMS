@@ -177,6 +177,18 @@
         this.dataTables = null;
         this.dataPick = null;
         this.dataFold = 'data';
+        // "Show on a canvas" on the Data screen: { table, show } opens step
+        // two of the picker on that table at once.
+        this.dataShow = (this.opts.dataShow && this.opts.dataShow.table) ? this.opts.dataShow : null;
+    });
+
+    Editor.views.push(function () {
+        var start = this.dataShow;
+
+        if (start && this.ready) {
+            this.dataShow = null;
+            this.openDataPicker(null, start);
+        }
     });
 
     // ---- reading ----
@@ -246,17 +258,24 @@
     // and the tables as rows), then "Pick a view" (a sample card for each
     // kind the table's columns fit). A card puts the layer on the stage, or
     // given a layer id (the panel's Change) gives that layer the table.
-    Editor.prototype.openDataPicker = function (layerId) {
+    // Given start ({ table, show: 'chart' | 'table' }) it opens on step two
+    // with that table, no way back, the cards of the kinds show takes.
+    Editor.prototype.openDataPicker = function (layerId, start) {
         var self = this, back = document.activeElement;
 
         this.closeConfirm();
-        this.dataPick = { layer: layerId || null, search: '', table: null };
+        this.dataPick = { layer: layerId || null, search: '', table: null, show: start ? start.show : '' };
         this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-data-title' }, [
             el('div', { class: 'pgie-confirm-box pgie-importbox pgie-databox' })
         ]);
         this.confirmReturn = (back && this.root.contains(back)) ? back : this.importBtn;
         this.root.appendChild(this.confirmBox);
-        this.dataPickTables();
+
+        if (start) {
+            this.dataPickViews(start.table);
+        } else {
+            this.dataPickTables();
+        }
     };
 
     // The head of a step: its title, Back on the second step, Close.
@@ -327,7 +346,7 @@
 
         this.dataPick.table = x;
         box.textContent = '';
-        box.appendChild(pickHead(this, t('dataPickView'), function () { self.dataPickTables(); }));
+        box.appendChild(pickHead(this, t('dataPickView'), this.dataPick.show ? null : function () { self.dataPickTables(); }));
         box.appendChild(cards);
         cards.appendChild(el('p', { class: 'pgie-note', text: t('dataReading') }));
 
@@ -345,9 +364,9 @@
                 return;
             }
 
-            kinds = M.dataFits(read.columns, read.rows);
+            kinds = self.dataPick.show ? M.dataShowKinds(self.dataPick.show, read.columns, read.rows) : M.dataFits(read.columns, read.rows);
 
-            if (kinds.length === 1) {
+            if ((self.dataPick.show !== 'table') && (M.dataFits(read.columns, read.rows).length === 1)) {
                 box.insertBefore(el('p', { class: 'pgie-note', text: t('dataOnlyTable') }), cards);
             }
 

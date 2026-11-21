@@ -134,3 +134,195 @@ function pg_image_editor_action_data_rows($request, $user)
 
     return array(array('status' => 'success', 'read' => $read), 200);
 }
+
+/* ---------------------------------------------------------------------------
+   "Show on a canvas" on the Data screen: a new canvas in the table's
+   channel holding one data layer of the table, the table bound to it for
+   reading only (ws_canvas_tables).
+   --------------------------------------------------------------------------- */
+
+/**
+ * Why a person may not show a table on a new canvas in its channel, ''
+ * when they may. Pure.
+ *
+ * @param array $facts table (they may read it), channel (it belongs to a
+ *                     channel, the one the canvas goes to), may_post (they
+ *                     may post in that channel)
+ * @return string '' or table, channel, post
+ */
+function pg_image_editor_data_show_refusal($facts)
+{
+    if (empty($facts['table'])) {
+        return 'table';
+    }
+
+    if (empty($facts['channel'])) {
+        return 'channel';
+    }
+
+    if (empty($facts['may_post'])) {
+        return 'post';
+    }
+
+    return '';
+}
+
+/**
+ * The words of a refusal: the ones the data layer and the channel already
+ * say.
+ *
+ * @param string $code pg_image_editor_data_show_refusal()
+ * @return string
+ */
+function pg_image_editor_data_show_text($code)
+{
+    $texts = array(
+        'table'   => lang('You cannot read this table.'),
+        'channel' => lang('That channel could not be found.'),
+        'post'    => lang('You cannot post in that channel.'),
+    );
+
+    return $texts[$code] ?? $code;
+}
+
+/**
+ * May this person show the table on a new canvas, and where does it go?
+ * With a channel id, the canvas is asked to go there: any channel but the
+ * table's own is refused.
+ *
+ * @param array    $viewer
+ * @param int      $table_id
+ * @param int|null $channel_id
+ * @return array code ('' when they may), table, channel (the table's)
+ */
+function pg_image_editor_data_show_check($viewer, $table_id, $channel_id = null)
+{
+    $table = (!empty($viewer['member']) && ((int) $table_id > 0) && ws_wtables_ready()) ? ws_wtable_for($viewer, (int) $table_id, 'view') : null;
+    $home = $table ? ws_wtable_home($table) : null;
+
+    if (is_array($home) && ($channel_id !== null) && ((int) $home['id'] !== (int) $channel_id)) {
+        $home = null;
+    }
+
+    $code = pg_image_editor_data_show_refusal(array(
+        'table'    => (bool) $table,
+        'channel'  => is_array($home),
+        'may_post' => is_array($home) && ws_can_post_channel($viewer, $home),
+    ));
+
+    return array('code' => $code, 'table' => $table, 'channel' => $home);
+}
+
+/**
+ * Does a saved canvas document hold a data layer of the table? Only then
+ * does the save bind the table. Pure.
+ *
+ * @param array|object|null $doc the editor's document
+ * @param int               $table_id
+ * @return bool
+ */
+function pg_image_editor_data_doc_shows($doc, $table_id)
+{
+    $doc = json_decode((string) json_encode($doc), true);
+
+    foreach ((is_array($doc) && is_array($doc['layers'] ?? null)) ? $doc['layers'] : array() as $layer) {
+        if (is_array($layer) && (($layer['type'] ?? '') === 'data') && is_array($layer['data'] ?? null)
+            && ((int) ($layer['data']['table'] ?? 0) === (int) $table_id) && ((int) $table_id > 0)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The binding a shown table gets: read only, in the person's name. Pure.
+ *
+ * @param int $message_id the new canvas
+ * @param int $table_id
+ * @param int $user_id
+ * @return array the ws_canvas_tables row's fields
+ */
+function pg_image_editor_data_show_binding($message_id, $table_id, $user_id)
+{
+    return array(
+        'message_id'    => (int) $message_id,
+        'table_id'      => (int) $table_id,
+        'access'        => 'read',
+        'bound_by_kind' => 'user',
+        'bound_by_id'   => (int) $user_id,
+    );
+}
+
+/**
+ * Binds the shown table to the new canvas for reading. The canvas is new,
+ * so the limit of tables a canvas binds is never met; a second press
+ * writes one row (the unique key).
+ *
+ * @param int $message_id
+ * @param int $table_id
+ * @param int $user_id
+ * @return bool written
+ */
+function pg_image_editor_data_show_bind($message_id, $table_id, $user_id)
+{
+    $row = pg_image_editor_data_show_binding($message_id, $table_id, $user_id);
+
+    if (!ws_canvas_tables_ready() || ($row['message_id'] <= 0) || ($row['table_id'] <= 0)) {
+        return false;
+    }
+
+    return (bool) db("INSERT IGNORE INTO ws_canvas_tables (message_id, table_id, access, bound_by_kind, bound_by_id, created_at)
+        VALUES ('" . $row['message_id'] . "', '" . $row['table_id'] . "', '" . escape($row['access']) . "', '" . escape($row['bound_by_kind']) . "', '" . $row['bound_by_id'] . "', UNIX_TIMESTAMP())");
+}
+
+/**
+ * What the Data screen's "Show on a canvas" hands the editor: the table as
+ * the picker lists it (pg_image_editor_data_tables_shape()) and where the
+ * canvas is sent.
+ *
+ * @param array $table   ws_wtable_for() row
+ * @param array $channel the table's channel
+ * @return array table, channel (id), save (URL)
+ */
+function pg_image_editor_data_show_config($table, $channel)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_chart.php');
+
+    $shape = pg_image_editor_data_tables_shape(array($table), function () use ($channel) {
+        return $channel;
+    }, ws_canvas_guide_values()['palettes']);
+
+    return array(
+        'table'   => $shape[0],
+        'channel' => (int) $channel['id'],
+        'save'    => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_file_save.php?channel=' . (int) $channel['id'] . '&table=' . (int) $table['id'],
+        'open'    => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'],
+    );
+}
+
+/**
+ * "Show on a canvas" on a table's head: the Menus pattern of the Design
+ * examples screen (a quiet toolbar button opening .menu) with "As a chart"
+ * and "As a table", what the editor is handed, and the editor's loader.
+ * Each entry opens the Data picker's second step on the table
+ * (workspace_wtables.php's script, dataShow in pg_image_editor_data.js).
+ *
+ * @param array $config pg_image_editor_data_show_config()
+ * @return string HTML
+ */
+function pg_image_editor_data_show_menu($config)
+{
+    $config['label'] = lang('Send the canvas');
+    $json = json_encode($config, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    return '<span class="pg-menu-wrap" id="ws_wt_canvas_wrap">'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary" id="ws_wt_canvas_button" data-bs-toggle="menu" aria-expanded="false">'
+        . pg_design_canvas_icon_one_colour('me-1') . h(lang('Show on a canvas')) . '<i class="bi bi-chevron-down ms-1" aria-hidden="true"></i></button>'
+        . '<ul class="menu">'
+        . '<li><button type="button" class="menu-item" data-ws-wt-canvas="chart"><i class="bi bi-bar-chart me-3" aria-hidden="true"></i>' . h(lang('As a chart')) . '</button></li>'
+        . '<li><button type="button" class="menu-item" data-ws-wt-canvas="table"><i class="bi bi-table me-3" aria-hidden="true"></i>' . h(lang('As a table')) . '</button></li>'
+        . '</ul></span>'
+        . '<script type="application/json" id="ws_wt_canvas_config">' . $json . '</script>'
+        . pg_image_editor_includes();
+}
