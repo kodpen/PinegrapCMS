@@ -172,4 +172,5 @@
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
 - website-second-set-conditions-per-plan.md: What the architect asked of each of the eight website plans of poll 82 before they were written: newsletter, appointment link, map, customer value, referral, wholesale, event tickets, courses
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
+- workspace-calls-share.md: Workspace calls, step CL4: how a shared screen is shown large: the same window grown to a stage, the tile rail, one's own share, the narrow width, Make smaller and Full screen
 - workspace-calls.md: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls in the Workspace, browser to browser (WebRTC), two people and groups of four at most, guests, screen sharing; steps CL1-CL8
