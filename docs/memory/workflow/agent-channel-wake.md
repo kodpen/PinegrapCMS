@@ -1,28 +1,27 @@
 ---
 name: agent-channel-wake
-description: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed
+description: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes (a note's card too), the handles typed
 ---
 
 ## How does a session wake on the channel? (architect, 2026-11-11)
 - On its request queue. When a person writes, every wake rule makes a request for the agent (`workspace/agent-doors.md`): a mention, an answer to one of its messages (rule "Replies to its messages"), a scheduled wake. Only a mention carries the `@handle`, so a text waiter misses the rest (2026-11-11).
 - `php tools/ws_wait.php --requests --timeout=7000` waits on that queue: exit 0 on the oldest queued request, printed as one line; what it prints, its exits and its restart: [[agent-channel-request-wait]].
-- A message to all is a person's `@herkes` (#9571, `workspace/workspace-everyone-mention.md`): a request for every active application agent, so the request waiter covers it; `@hepsi` and its text waiter are gone.
+- A message to all is a person's `@herkes` (#9571, `workspace/workspace-everyone-mention.md`): a request for every active application agent, so the request waiter covers it.
 - Another agent's message makes a request too (#8806): an application's message or an agent's answer that names the agent (`@handle`, `<@app:N>`), or answers one of its messages under the rule "Replies to its messages". CI's lines wake nobody.
-- Every waiter runs with Bash `run_in_background` (timeout 7200000). It exits on a match and so wakes the session, which answers and starts it again (the request waiter once the request is claimed, a text or `--changed` waiter with `--after-id=<last id>`); exit 3 (timeout) starts it again; each check-in makes sure it runs. Each wake is one turn.
-- A request is answered through its own routes (brief, claim, answer), never as a plain message. The architect asks the owner as one-choice polls (`workspace/agent-questions.md`, `architect.md`).
+- Every waiter runs with Bash `run_in_background` (timeout 7200000). It exits on a match, waking the session, which answers and restarts it (the request waiter once the request is claimed, a text or `--changed` waiter with `--after-id=<last id>`); exit 3 (timeout) starts it again; each check-in makes sure it runs. Each wake is one turn.
+- A request is answered through its own routes (brief, claim, answer), never as a plain message.
 
 ## Which options does the waiter take?
 - `--prefix`, `--contains`, `--regex`: on the message's `text`.
 - `--from=person`: only a message with `sender.user_id` set, so an application's line (CI's `[ci]` / `[ready]` included) never wakes a session waiting for people; `--from=app`: only an application's.
 - `--mention=<application id>`: only a message tagging that application (`<@app:N>` in `body`), as the @ picker writes it (`workspace/agent-shown.md`).
-- `--changed=<id>[,<id>]`: wakes when one of those messages comes under sync `changed` (a tick, a vote, an edit) and prints it with its `checks` and `poll`. With `--changed` alone new messages do not wake; with a rule as well either does.
-- `tools/ws_post.php --parent=<id>` answers a message (Reply).
-- No answer: exit 3, [[agent-channel-post-repeat]].
-- `tools/ws_poll.php ask` / `close <poll id>`: a one-answer poll, locked once read; wait with `--changed=<message id>` (`workspace/agent-questions.md`, #8564).
+- `--changed=<id>[,<id>]`: wakes when one of those messages comes under sync `changed` (a tick, a vote, an edit, a save of the note it is the card of, which makes no request: `workspace/channel-notes-written.md`) and prints it with its `checks` and `poll`. With `--changed` alone new messages do not wake; with a rule as well either does.
+- `tools/ws_post.php --parent=<id>` answers a message (Reply); no answer: exit 3, [[agent-channel-post-repeat]].
+- `tools/ws_poll.php ask` / `close <poll id>`: a one-answer poll, locked once read, the architect's way to ask the owner; wait with `--changed=<message id>` (`workspace/agent-questions.md`, #8564).
 
 ## When does a session report its model, usage and context?
 - At its start and at most once an hour: `php tools/ws_profile.php --model=<model> [--windows=…] [--context=USED:SIZE] [--project=<name>] [--branch=<branch>]` (`workspace/agent-report.md`; or `"model"` and `"context"` on an answer, `agent-report-hourly.md`). The channel's Activity tab shows it (`workspace/channel-activity-tab.md`).
-- Context only when the session can read it (tokens used, the window's size); else it is left out. A session without its own key sends nothing.
+- Context only when the session can read it (tokens used, the window's size). A session without its own key sends nothing.
 
 ## Which handles are typed?
 - `@mimar`, `@prmerge` (the merging session), `@k1` to `@k3`, `@test`; a person's `@herkes` for all. CI writes its lines into the same agent channel (owner, 2026-11-08); such a line wakes nobody.

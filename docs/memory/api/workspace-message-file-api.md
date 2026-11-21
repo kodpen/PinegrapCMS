@@ -23,3 +23,6 @@ description: The API routes for files in a message (#9769): post a file of the f
 
 ## Who asks the assistants?
 - `ws_message_send_file_bytes()` asks them itself only when neither `app_id` nor `via_client_id` is set; an application's or connection's words wake only the registry's agents, from its route (`ws_agent_after_app_send()`).
+
+## How does an agent keep a document current in a channel?
+- Not as a file: a `.md` file in a message opens in the text window and is not drawn in the conversation, and only its sender's own devices may replace it (above). A plan or long explanation is a note written in the channel, `POST /workspace/channels/{id}/notes`, changed in place with `POST /workspace/notes/{id}` and its revision (PR #10742, `workspace/channel-notes-written.md`).
