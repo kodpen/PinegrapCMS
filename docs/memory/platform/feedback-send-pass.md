@@ -6,7 +6,7 @@ module: feedback_sends
 
 ## When does the pass send?
 - `pg_feedback_job_run(time())` in `job.php`, before the mail pass: periodic rounds first, then sent rows older than 30 days become status 4 (no answer).
-- Only between 09:00 and 20:00 site time (`pg_feedback_send_time()`, the PHP zone `init.php` sets) and only while `pg_feedback_message_send($row, $survey, $reminder)` exists (the message is FD4's): up to 200 due rows (`token_hash` set), then up to 200 reminders. Until then rows wait queued.
+- Only between 09:00 and 20:00 site time (`pg_feedback_send_time()`, the PHP zone `init.php` sets) and only while `pg_feedback_sender()` finds `pg_feedback_message_send($row, $survey, $reminder)` (the message is FD4's): up to 200 due rows (`token_hash` set), then up to 200 reminders. Until then rows wait queued.
 
 ## What is checked before a send?
 - `pg_feedback_send_due()`: survey switched off or archived; `pg_feedback_record_verdict()` 'cancel' (booking not `done`, ticket `void`, order `cancelled` or its review request made in the last 30 days, conversation not `closed`: a customer's new mail reopens it; record gone); `pg_feedback_fatigue()` (any survey in 30 days, "Don't ask me again", a staff address by `pg_privacy_rule_is_staff()`); `pg_feedback_consent_refusal()`. Any of these: status 3.

@@ -583,7 +583,9 @@ function pg_feedback_job_run($now)
     db("UPDATE feedback_responses SET status = " . PG_FEEDBACK_NO_ANSWER . "
         WHERE (status = " . PG_FEEDBACK_SENT . ") AND (sent_at < '" . ((int) $now - PG_FEEDBACK_TOKEN_DAYS * 86400) . "')");
 
-    if (!function_exists('pg_feedback_message_send') || (pg_feedback_send_time($now, date_default_timezone_get()) !== (int) $now)) {
+    $sender = pg_feedback_sender();
+
+    if (($sender === null) || (pg_feedback_send_time($now, date_default_timezone_get()) !== (int) $now)) {
         return;
     }
 
@@ -594,7 +596,7 @@ function pg_feedback_job_run($now)
         LIMIT " . PG_FEEDBACK_PASS_ROWS);
 
     foreach ($due as $row) {
-        pg_feedback_send_due($row, $now);
+        pg_feedback_send_due($row, $now, $sender);
     }
 
     $sent = (array) db_items(
@@ -614,9 +616,21 @@ function pg_feedback_job_run($now)
         db("UPDATE feedback_responses SET reminded_at = '" . (int) $now . "' WHERE (id = '" . (int) $row['id'] . "') AND (reminded_at = 0)");
 
         if ($survey && (mysqli_affected_rows(db::$con) === 1)) {
-            pg_feedback_message_send($row, $survey, true);
+            call_user_func($sender, $row, $survey, true);
         }
     }
+}
+
+/**
+ * The function that sends a survey's message (its row, its survey, whether
+ * it is the reminder; true when it went), null while none is loaded: the
+ * due rows then wait.
+ *
+ * @return callable|null
+ */
+function pg_feedback_sender()
+{
+    return function_exists('pg_feedback_message_send') ? 'pg_feedback_message_send' : null;
 }
 
 /**
@@ -645,11 +659,12 @@ function pg_feedback_survey_of_row(array $row)
  * One due row: cancelled, moved on or sent, after looking again at its
  * survey, its record, the person and their consent.
  *
- * @param array $row
- * @param int   $now
+ * @param array    $row
+ * @param int      $now
+ * @param callable $sender pg_feedback_sender()
  * @return string sent, cancelled, waiting or lost (another pass took it)
  */
-function pg_feedback_send_due(array $row, $now)
+function pg_feedback_send_due(array $row, $now, $sender)
 {
     $cancel = function () use ($row) {
         db("UPDATE feedback_responses SET status = " . PG_FEEDBACK_CANCELLED . " WHERE (id = '" . (int) $row['id'] . "') AND (status = " . PG_FEEDBACK_QUEUED . ")");
@@ -696,7 +711,7 @@ function pg_feedback_send_due(array $row, $now)
         return 'lost';
     }
 
-    if (!pg_feedback_message_send(array_merge($row, array('status' => PG_FEEDBACK_SENT, 'sent_at' => (int) $now)), $survey, false)) {
+    if (!call_user_func($sender, array_merge($row, array('status' => PG_FEEDBACK_SENT, 'sent_at' => (int) $now)), $survey, false)) {
         db("UPDATE feedback_responses SET status = " . PG_FEEDBACK_CANCELLED . " WHERE id = '" . (int) $row['id'] . "'");
 
         return 'cancelled';
