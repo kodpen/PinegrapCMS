@@ -5,7 +5,7 @@ description: Plan assistants-settings-tidy, Claude's opened row part by part (st
 
 ## Why this file?
 - Owner (2026-11-20, with a picture of Claude's row on dev): "claude ekranı en az 4 modal ekran boyu kaydırma sonra bitiyor. çizimindeki modernizim ve pratiklik tamamen atlanmış".
-- The drawing (`ui/assistants-settings-drawing/assistants.html`, board A) shows the opened row as one line, four fields and two buttons. The plan's T3 named only the guide; AT1 and AT2 (#10860) moved the guide and left every other part where it was. This file places each part.
+- The drawing (`assistants-settings-tidy/assistants.html`, board A) shows the opened row as one line, four fields and two buttons. The plan's T3 named only the guide; AT1 and AT2 (#10860) moved the guide and left every other part where it was. This file places each part.
 
 ## Which step builds it?
 - AT2b (M), after AT2 #10860 lands, before AT4: `ws_claude_settings_card()` in `includes/workspace/claude.php`. Field names, button names and values and the save do not change (T6). Parts from the Design examples screen, section in brackets.
