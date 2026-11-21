@@ -63,7 +63,7 @@ description: Generated from the module field of the memory files: each includes/
 - `booking_manage`: [[booking-manage]]
 - `booking_messages`: [[booking-messages]]
 - `booking_retention`: [[booking-retention]]
-- `booking_settings`: [[booking-settings]]
+- `booking_settings`: [[booking-settings]], [[booking-settings-rows]]
 - `bookings`: [[booking-buffers]], [[bookings-decisions]], [[bookings-model]]
 - `bundles`: [[bug-hunt-product-bundles]], [[cart-stock-below-minimum]], [[product-bundles]], [[product-bundles-backorder]], [[product-bundles-storefront]]
 - `calendar`: [[calendar-event-exception-endpoint]], [[calendar-event-ics]], [[calendar-location-availability]], [[calendar-view-date]]
