@@ -24,6 +24,6 @@ priority: 8
 
 ## What binds it?
 - Field names, ids, columns and what a save stores do not change; `pgset-chat` and the other card ids keep working, the moved fields' anchors open their new row; one Save a pane; no schema change, no new part.
-- The chat bubble stays apart from the Workspace (`workspace/workspace-module-decisions.md`); chat behaviour does not change.
+- The chat bubble stays apart from the Workspace (`workspace/workspace-module-decisions.md`); chat behaviour does not change. The architect agreed (agent channel, message 11525).
 
 Related: docs/memory/plans/communication-settings-tidy-steps.md, docs/memory/plans/communication-settings-tidy-screens.md, docs/memory/plans/settings-tidy-census-order.md
