@@ -11,7 +11,7 @@ description: Survey of the Site Settings categories, its second part: how old ea
 - Old buttons in helpers drawn into settings, not reached by the S5 pass: `includes/fn/address_autocomplete.php:804`, `carrier_api.php:648`, `carrier_labels.php:1446`, `geo.php:658`, `google_reviews.php:451`.
 
 ## What is already planned?
-- Assistants and agents: `plans/assistants-settings-tidy*.md`. E-mail: `plans/mail-settings-one*.md`, `plans/mailboxes-tidy.md`.
+- Assistants and agents: `plans/assistants-settings-tidy*.md`. E-mail: `plans/mail-settings-one*.md`, `plans/mailboxes-tidy.md`. Features: `plans/features-switchboard*.md`.
 - Credentials on category cards: connections-merges CX11 (`plans/connections-merges-build.md`); Ecommerce, Accounting, Integrations, Updates and maintenance and the Workspace's categories are still to come, and a tidy of one of them waits for its CX11 step.
 - The starting-point sheet and the numbered-steps drawer: DX2 (#10885).
 
@@ -21,7 +21,7 @@ description: Survey of the Site Settings categories, its second part: how old ea
 
 ## In which order are the plans written?
 - One category a plan, each written when the queue allows and the session's PR before it has landed.
-- 1. Features as one switchboard: a row a module with its state and a link, Enable Commerce moved in (anchor kept), social and search out of popovers.
+- 1. Features as one switchboard: `plans/features-switchboard.md`; Commerce and Accounting keep their switch and show on the board.
 - 2. Visitors and privacy: one "How long we keep data" card linking each retention; K1 decoupled after the architect's answer.
 - 3. Bookings: services as list rows with a drawer, no empty block; staff hours in a drawer with links to Team and working hours.
 - 4. Firewall and HTTPS with Accounts and sign-in: one Limits part, radios to `pg-seg`, popovers to folds, bans and logs as state lines (K8).
