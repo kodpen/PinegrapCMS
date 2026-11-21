@@ -16,6 +16,7 @@ description: Generated from the module field of the memory files: each includes/
 - `ad_click_ids`: [[ad-conversions-click-ids]]
 - `ad_conversions`: [[ad-conversions-queue]], [[ad-conversions-visitor-events]]
 - `ad_conversions_ga4`: [[ad-conversions-ga4]], [[ga4-mp-facts]]
+- `ad_conversions_log`: [[ad-conversions-log]]
 - `ad_conversions_meta`: [[ad-conversions-meta]], [[meta-capi-facts]]
 - `ad_conversions_tiktok`: [[ad-conversions-tiktok]], [[tiktok-events-facts]]
 - `address_autocomplete`: [[address-autocomplete]]

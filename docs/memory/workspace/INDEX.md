@@ -38,6 +38,7 @@
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
 - agent-feedback.md: Right or Wrong on an agent's reply (AF5a #9814, AF5b #9850): the ws_agent_feedback table, who marks, the buttons under a reply, the counts on the cards, GET /workspace/agent-feedback [decision: decisions-made-schema-21.md, decisions-made-workspace-33.md]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
+- agent-instructions-note-lines.md: The agent instructions' block (KD4b): a plan or long explanation is a note shared in the channel, changed in place with its revision; API routes only, no repository tool
 - agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box [decision: decisions-made-workspace-32.md]
 - agent-key-trial-2.md: The agent's own side tried live on dev (2026-11-11) with an application agent's key: POST agent-wake and its dry run, a wake's request, brief and text answer, the agent's edit of its own message
 - agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief [decision: here]
@@ -81,6 +82,8 @@
 - calls-screen.md: Workspace calls of two people on the channel screen (CL2, #10522): head buttons, the ring and Decline, the call window kept across channels, ws_call_sync each second, STUN default
 - calls-server.md: Workspace calls on the server (CL1, #10499, step 11.0.243): tables, start/join/leave/end, signals read by their member only, the 2-minute end, who may, limits, read-only API
 - calls-settings.md: The Calls card of Workspace settings (CL6, #10608): off until turned on, STUN addresses, the TURN relay with its sealed secret, member-only time-limited credentials, the browser's connection test
+- calls-share-stage.md: How a Workspace call shows a shared screen (CL4, #10908): the window's stage, the tile rail, the phone layout, smaller and full screen, the sharer's own notice
+- calls-share.md: Screen sharing in a Workspace call (CL4, #10908): one share at a time by share/unshare marks, the share ends when its sharer leaves, the screen line, the share button
 - calls-signalling.md: Which live read carries a Workspace call (CL1 census): ws_sync and the guest page's state, the data/temp/ws_calls_live stamp that keeps an idle channel's cost, how often a browser in a call looks
 - canvas-binding-line.md: An application's binding of a table to a canvas shows in the channel as a line with Undo (CO7d): the system line and its ws_refs, the reader's words, who may undo, what Undo puts back
 - canvas-bridge.md: A live page's data bridge (#8947): page to shell to panel to site and back, the message shape, the canvas named by the card and never the page, the bounds and the stop, the who call, the proofs

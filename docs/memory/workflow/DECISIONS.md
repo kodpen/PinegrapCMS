@@ -1197,6 +1197,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate
 - ui/connections-sms-providers-page.md: Netgsm's, İleti Merkezi's and Twilio's pages on Connections (CX11d2): each account typed there under the Communication gate; the SMS card keeps the switch, the Provider select and the connection
 - ui/dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's card: functions, the two palettes, what stays byte for byte, the fixtures test
+- ui/dashboard-v2-ai-card.md: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, proposals, giving Claude a job through ws_send, the chat box; the daily summary
 - ui/dashboard-v2-brief.md: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js
 - ui/dashboard-v2-drawn-look.md: The new dashboard's drawn look (visual pass V): the --pgd-* palette every part reads, the frame and faces, the drawn Assistant and goals, the differences kept on purpose
 - ui/dashboard-v2-engagement-card.md: New dashboard's Online Engagement card (engagement): what it shows when nobody is on the site (the last visits, Last visits list), the time used, the bounded read, when it sends empty

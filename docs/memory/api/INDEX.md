@@ -4,6 +4,7 @@
 
 - ad-conversions-click-ids.md: Ad click ids of the landing address (fbclid, gclid, ttclid, SC1b): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache [decision: here]
 - ad-conversions-ga4.md: GA4 Measurement Protocol (ad-conversions SC3): its Connections page, Measurement ID from the Google Analytics page, sealed API secret, sender, refunds from order_refunds, test
+- ad-conversions-log.md: Ad conversions SC6: the Events card on each service's Connections page (daily counts, last 50 events), the ad_events_refused operations alert, GET /reports/ad-conversions
 - ad-conversions-meta.md: Meta Conversions API (ad-conversions SC2): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row
 - ad-conversions-queue.md: ad_conversion_events (11.0.254): the three-input consent reader, status 0 rows at the payment step, queueing at completion, the job's pass, sweep, privacy
 - ad-conversions-tiktok.md: TikTok Events API (ad-conversions SC4): its Connections page and gate, the sealed token, the sender, the E.164 phone hash, how TikTok's answers become a row's outcome, the test event, the registry row
