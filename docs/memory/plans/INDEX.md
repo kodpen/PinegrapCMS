@@ -42,6 +42,9 @@
 - automation-platforms-steps-3.md: Plan automation-platforms, AX1 to AX4, the apps that wait for the release of 2026.11.0: the n8n node, the Zapier, Make and Pabbly Connect apps, what each needs of the owner, how each is built
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
+- bookings-settings-tidy-screens.md: Plan bookings-settings-tidy, its screen: the Bookings pane as folded rows, services and staff as list rows with their drawers, the Messages row, the words and what must be true
+- bookings-settings-tidy-steps.md: Plan bookings-settings-tidy, steps BT1 to BT4: folded rows and services in drawers, staff in drawers, the rules and the Messages row, close-out
+- bookings-settings-tidy.md: Plan (owner 2026-11-21): Site Settings › Bookings as folded rows, services and staff as list rows each edited in a drawer, one "Messages" row saying which booking mails and texts go
 - canvas-data-views-screens.md: Plan canvas-data-views, how the Data menu and the data layer's panel are put together in the Design Canvas (DV2) and the Data screen's "Show on a canvas" (DV3)
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
 - canvas-group-motion-send.md: Plan (owner 2026-11-20): Artifact Canvas: a group recorded and shown as one, Attach to and Detach sound where the hand is, the main button as a split button with send and save choices; CS1 to CS5
@@ -136,13 +139,17 @@
 - privacy-centre-steps.md: Plan privacy-centre, steps KV1 to KV7: the catalogue and transfers, the screen and downloads, the retention rules, the request record, the public form, API, close-out
 - privacy-centre.md: Plan (owner 2026-11-20, poll 167): KVKK centre: a live personal data inventory with transfers abroad, opt-in retention and destruction rules, a request box with the 30-day clock; KV1 to KV7
 - privacy-settings-tidy-screens.md: Plan privacy-settings-tidy, its screen: the Visitors and privacy pane as folded rows, the "How long we keep data" row of value rows, the words and what must be true
-- privacy-settings-tidy-steps.md: Plan privacy-settings-tidy, steps VP1 to VP4: the pane as folded rows, the "How long we keep data" row and the inventory's IP lines, the architect's two answers, close-out
+- privacy-settings-tidy-steps.md: Plan privacy-settings-tidy, steps VP1 to VP4: the pane as folded rows, the "How long we keep data" row and the inventory's IP lines, the owner's two answers, close-out
 - privacy-settings-tidy.md: Plan (owner 2026-11-21): Site Settings › Visitors and privacy as folded rows, one "How long we keep data" row showing every retention, popovers gone, the KVKK fields on their own
 - prototype-approval-features.md: Plan prototype-approval, features A1 to A8: the link asking approval, the sealed verdict, older version, round two, publish rule, mails, the designer's side, events and API
 - prototype-approval-screens.md: Plan prototype-approval, how its parts sit: the Share prototype dialog's approval fields, the viewer's Review box and round two, the designer's Comments list and the Publish sheet's held row
 - prototype-approval-steps.md: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the link's approval settings, the viewer's verdict, round two, the publish rule, mails, events and API, close-out
 - prototype-approval.md: Plan (owner 2026-11-20, poll 205): what prototype sharing lacks for a customer's sign-off: Approve or Request changes per page sealed to the draft, round two, publish rule, mails, events; PA1a to PA7
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- security-settings-tidy-screens-accounts.md: Plan security-settings-tidy, its second screen: the Accounts and sign-in pane as folded rows, Sign-in attempts and Deleting many at once on rows of their own, the providers as connect rows
+- security-settings-tidy-screens.md: Plan security-settings-tidy, its first screen: the Firewall and HTTPS pane as folded rows, HTTPS first, Limits, Addresses with the bans drawer, Logs; the words and what must be true
+- security-settings-tidy-steps.md: Plan security-settings-tidy, steps SE1 to SE5: Firewall and HTTPS as folded rows in two steps, Accounts and sign-in as folded rows, the Limits row's overview, close-out
+- security-settings-tidy.md: Plan (owner 2026-11-21): Firewall and HTTPS and Accounts and sign-in as folded rows, no popover or plain radio, both logs in one row, every limit on one address shown in one Limits row
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line
 - stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see

@@ -174,6 +174,15 @@ if (ECOMMERCE && function_exists('pg_customer_rhythm_job_run')) {
 
 }
 
+// The visitor journey's keep period (includes/fn/lead_journey_view.php):
+// visits, journey rows and browsers older than it go, a batch a table each
+// tick; with nothing to trim it is three indexed deletes that find no row.
+if (function_exists('pg_lead_trim_run')) {
+
+    pg_lead_trim_run(time());
+
+}
+
 // Customer value summary (includes/fn/customer_values.php): rebuilt whole from
 // the orders once a day, at most PG_CUSTOMER_VALUE_TICK_SECONDS of this tick,
 // going on from its place next tick; one write when the walk is done.
@@ -991,14 +1000,18 @@ if (pg_privacy_rules_due()) {
 }
 
 // The Privacy centre's request box (includes/fn/privacy_requests.php):
-// requests never proven are swept after 7 days, and open ones are reminded
-// of at 7 and 2 days left, each once. Nothing on a site without the table.
+// requests never proven are swept after 7 days, open ones are reminded of
+// at 7 and 2 days left, each once, and an answer's export file is deleted
+// once its download link has ended. Nothing on a site without the table.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
 
 if (pg_privacy_requests_ready()) {
 
     $privacy_requests_swept = pg_privacy_requests_sweep();
     pg_privacy_requests_remind();
+
+    // The export file of an information answer goes when its link ends.
+    pg_privacy_link_sweep();
 
     if ($privacy_requests_swept > 0) {
         log_activity(lang(array(
