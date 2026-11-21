@@ -61,8 +61,8 @@ function volunteer_store_test_table($table)
 	return $lines;
 }
 
-// The columns are the architect's (decisions-made-schema-46): a change here
-// is a schema change and is asked first.
+// The columns are the architect's (decisions-made-schema-46, approved with
+// changes in schema-47): a change here is a schema change and is asked first.
 function test_volunteer_store_tables_are_pinned()
 {
 	pg_assert_contains('upgrade_2026_11_0_volunteer_shifts();', volunteer_store_test_source('includes/migrations/2026.11.0.php'), 'the step is called');
@@ -181,6 +181,22 @@ function test_volunteer_store_tables_are_pinned()
 
 	pg_assert_contains("install_note('", volunteer_store_test_step(), 'the step ends with a note');
 	pg_assert_true(strpos(volunteer_store_test_step(), 'db("') === false, 'no hand-written statement');
+}
+
+// No count, stamp or id in the five tables can go below zero: every integer
+// column is UNSIGNED (schema-47 named minutes and thanked_hours).
+function test_volunteer_store_integers_are_unsigned()
+{
+	foreach (array('volunteer_programmes', 'volunteers', 'volunteer_documents', 'volunteer_shifts', 'volunteer_signups') as $table) {
+		$lines = volunteer_store_test_table($table);
+		pg_assert_true(!empty($lines), $table . ' is read');
+
+		foreach ($lines as $line) {
+			if (preg_match('/^\w+ (TINYINT|SMALLINT|MEDIUMINT|INT|BIGINT)\b/', $line)) {
+				pg_assert_contains(' UNSIGNED ', $line, $table . ': ' . $line);
+			}
+		}
+	}
 }
 
 // A reinstall drops and makes the tables only when get_tables() lists them.

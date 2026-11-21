@@ -7,13 +7,15 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 - VS1a (S) first, no schema (done, #10922): new `includes/fn/volunteer_shifts.php`, pure: who fits a role on a day (skills, trainings, a document valid then, free hours, no other shift), the waitlist pass, the cut-off, the call's pick, the show-up rate, hours sums, document notice days, the signed token. `tests/volunteer_shifts_test.php` red first: overlapping shifts, a document ending the day before, a cancel 23 and 25 hours before, two waiting. Features: G4, G7, G8, G10, G13 (the rules).
 
 - VS1b (M) after VS1a: the five `volunteer_*` tables (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns brought to the architect before ready; the five privacy registrations and `pg_contact_holders()`; a document's file (poll 208) behind `get_file.php` as `volunteer-shifts.md` says, that door brought to the architect before ready; no health report kind; their tests. Features: G2, G4 (the store).
-  - Built (#10949), `core/volunteer-store.md`; columns and the file door with the architect.
+  - Built (#10949), `core/volunteer-store.md`; columns approved with changes (decision schema-47); lands after WQ1b #10956 with the next free label.
 
 - VS2 (M) after VS1b: Contacts › Volunteers: the programmes list and a programme's Set-up (form and its fields, roles, rules, messages, coordinators); applications with Approve; the volunteer's profile. Features: G1, G2, G3.
+  - If it opens document uploading: the same PR leaves `volunteer-doc-` `files` rows out of the panel search and the file pickers (decision schema-47, `core/volunteer-document-file.md`); uploading is never opened without it.
 
 - VS3 (M) after VS2: shifts with roles and counts, the weekly series, "Copy last week", the board. Features: G5, G6.
 
 - VS4 (M) after VS3: "My volunteering" in My Account (`_pg_my_account_extras()`, its list and designer twin) and the signed-link page (new root `volunteer.php`, in `waf_sensitive_scripts()`): sign up, cancel, the waitlist pass, "Offer my place". Features: G7, G8, G9.
+  - If it opens document uploading first: the same PR leaves `volunteer-doc-` `files` rows out of the panel search and the file pickers (decision schema-47, `core/volunteer-document-file.md`); uploading is never opened without it.
 
 - VS5 (M) after VS4: the general job's passes: the unfilled call, the day-before reminder, the document notices; SMS and WhatsApp kind `volunteer`, a service message (poll 207); the profile's "Shift calls" switch turns the calls off. Features: G4, G10.
 
