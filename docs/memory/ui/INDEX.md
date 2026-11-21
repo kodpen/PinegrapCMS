@@ -241,7 +241,7 @@
 - find-and-replace-results.md: What find_and_replace.php searches (no orphan or binned page regions, no binned products) and how its Find Results screen names, counts and caps the records
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
 - focus-after-removal.md: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API sheet, Modify Selected, marketplace bulk bar, product group Load More)
-- form-adorn-settings-cards.md: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the add-on type that keeps the rows 38px tall, what stays an input-group
+- form-adorn-settings-cards.md: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the unit in the field's own type, what stays an input-group
 - form-adorn.md: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups become a label wrapper with the add-on inside the border, the markup, the panel focus rules, the pilot places
 - form-card-headings.md: Create and edit screens on includes/forms/*.php: card titles are h2.h5, group titles inside a card h3.hN, only dialog titles keep h4-h6; why the look did not change
 - form-date-whole-value.md: validate_date() takes a site-format date only when the whole value is one; prepare_form_data_for_input() trims a date before splitting it
@@ -659,6 +659,7 @@
 - settings-card-own-button.md: A settings card that runs a job beside saving: named type=submit button, pressed handling, why serializers drop it, no save-less button contract.
 - settings-card-row-layout.md: How a settings card lays out one setting per row via stylesheet only: shape-based :has() rule, dividers between rows, name+control grid, single vertical rhythm.
 - settings-card-save-rules.md: Rules for writing settings cards and their save modules: own columns only, $sql_* splice, prep.php $row, balanced divs, registry.php sections.
+- settings-card-shared-style.md: What every Site Settings card shares since the scan of 2026-11-21: text sizes, one 32px field height, the select column and chevron, tag fields, swatch edge, quiet head buttons [decision: here]
 - settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents as drawn: the sentence, the grid, Try and Set up, the fold Key and secret, the five-step drawer Set up on claude.ai [decision: here]
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
@@ -691,9 +692,11 @@
 - settings-modal-search.md: The Site Settings dialog's search box (index, system tools, ranking, Turkish keywords keeping English terms) and how a text names a card's place [decision: decisions-made-product-14.md]
 - settings-organization-card.md: Site Settings General › Organization card: which fields it gathered from where, who saves them, the two support e-mail fields, the ERP Settings pointer. [decision: decisions-made-product-11.md]
 - settings-pane-stale-page.md: A settings pane asked by a page left open across an update: the panel script stamp in the dialog's address, the Reload line instead of the cards, the pure compare (#8787)
+- settings-picker-field.md: The picker field inside Site Settings cards: one 32px line, a 20px thumb, a quiet Browse icon at the end, and placeholders that say what to choose [decision: here]
 - settings-privacy.md: Site Settings › Visitors and privacy as folded rows: the six rows and their state lines, what each row holds, what stayed (ids, field names, the save), the KVKK notice's own row
 - settings-public-image-pickers.md: Site Settings pickers whose picture is shown to everyone (Site Icon, App Icon, Default Share Image, Organization Logo, Fediverse Avatar): search and save keep only files every visitor can open
 - settings-refused-not-clamped.md: Site Settings boxes a save refuses instead of clamping or blanking: firewall and sign-in limits, tracking days, analytics IDs, merchant fields (pg_whole_number_in_range(), pg_ga_tag_id())
+- settings-revealed-groups.md: Fields a switch opens inside a Site Settings card: no frame, tint or arrow, lined up with the label text, the indent dropped under 576 px; the divider over a nested row's first field and .pg-set-ruled [decision: here]
 - settings-security-cards.md: Accounts and sign-in and Firewall and HTTPS (keys security, firewall): where the encryption key, blocked e-mail addresses and trusted proxies sit and which save writes them. [decision: decisions-made-product-25.md]
 - settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups() [decision: decisions-made-product-14.md]
 - settings-window-turkish-texts.md: Site Settings window wording in Turkish (#5029, PR #5079): mid-sentence relative time, Turkish starter dollar name, translated language names, the category-switch question, settled terms

@@ -114,7 +114,7 @@ function pg_application_assignment_plan(array $entries, array $reviewers, array 
         } else {
             $unstarted[$entry][$reviewer] = (int) $review['id'];
 
-            if (isset($active[$reviewer]) && pg_application_reviewer_in_pool($active[$reviewer], $category_of[$entry], $has_categories)) {
+            if (array_key_exists($reviewer, $active) && pg_application_reviewer_in_pool($active[$reviewer], $category_of[$entry], $has_categories)) {
                 $existing[$entry][] = $reviewer;
             }
         }

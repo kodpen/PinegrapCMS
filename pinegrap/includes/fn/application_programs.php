@@ -32,6 +32,20 @@ function pg_application_program_ready()
 }
 
 /**
+ * Whether a panel user reviews in an open or closed programme: what opens
+ * "My reviews" (my_reviews.php) and its menu row, with no Forms right.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_application_review_member($user_id)
+{
+    return ((int) $user_id > 0) && pg_application_program_ready()
+        && ((int) db_value("SELECT COUNT(*) FROM application_reviewers INNER JOIN application_programs ON application_programs.id = application_reviewers.program_id
+            WHERE application_reviewers.user_id = '" . (int) $user_id . "' AND application_reviewers.revoked_at = 0 AND application_programs.status IN (1, 2)") > 0);
+}
+
+/**
  * Where a programme stands in its period at a time: 'none' for a draft (the
  * form works as it does with no programme), 'before', 'open' or 'closed'.
  *

@@ -762,8 +762,8 @@ function ws_link_preview_settings_card($viewer)
 
     $on = (pg_config_text('ws_link_preview_off') !== '1');
     $state = ($on && !pg_demo())
-        ? '<span class="badge theme-success">' . h(lang('On')) . '</span>'
-        : '<span class="badge theme-secondary">' . h(lang('Off')) . '</span>';
+        ? '<span class="pg-pill pg-pill-success">' . h(lang('On')) . '</span>'
+        : '<span class="pg-pill">' . h(lang('Off')) . '</span>';
 
     return '
     <div id="pgset-ws-link-preview" class="pg-set-card">
@@ -774,11 +774,15 @@ function ws_link_preview_settings_card($viewer)
             </div>
             <div class="card-body">
                 <input type="hidden" name="ws_link_preview_card" value="1">
-                <div class="form-field">
-                    <div class="switch"><input type="checkbox" name="ws_link_preview_on" value="1" id="ws_link_preview_on"' . ($on ? ' checked' : '') . '></div>
-                    <label for="ws_link_preview_on">' . h(lang('Show a card under a message\'s web address')) . '</label>
-                    <div class="form-text">' . h(lang('The server reads the first web address of a new message once and keeps its title, description and site name for the card. Addresses inside the site\'s own network are never read. Off, nothing is read and no card is shown.')) . '</div>
-                    ' . (pg_demo() ? '<div class="form-text">' . h(lang('A demonstration site reads no web addresses.')) . '</div>' : '') . '
+                <div class="row">
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input type="checkbox" name="ws_link_preview_on" value="1" id="ws_link_preview_on"' . ($on ? ' checked' : '') . '></div>
+                            <label for="ws_link_preview_on">' . h(lang('Show a card under a message\'s web address')) . '</label>
+                            <div class="form-text">' . h(lang('The server reads the first web address of a new message once and keeps its title, description and site name for the card. Addresses inside the site\'s own network are never read. Off, nothing is read and no card is shown.'))
+                            . (pg_demo() ? ' ' . h(lang('A demonstration site reads no web addresses.')) : '') . '</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

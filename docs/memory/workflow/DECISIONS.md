@@ -877,6 +877,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-44.md: How does the conversation timeline behave when the conversation is long? (owner, 2026-11-21, agent channel message 11680)
 - decisions-made-workspace-45.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-45.md: How does a spreadsheet or document open in a channel? (owner, 2026-11-21, agent channel message 11700)
+- decisions-made-workspace-46.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-46.md: How big is the conversation timeline, and how is it zoomed and moved? (owner, 2026-11-21, in the architect's window)
+- decisions-made-workspace-46.md: What does the timeline's card offer beside the message's words? (owner, 2026-11-21, in the architect's window, on the drawing)
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?
@@ -1015,6 +1018,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/user-delete-store-credit.md: Deleting a user account voids its open store credit (note "Account deleted", audit revoke) and releases the closed cards; a card that lost the void race stays bound (#9016)
 - commerce/walk-in-queue-store.md: Walk-in queue tables waiting_places, waiting_desks, waiting_tickets (11.0.266, WQ1b): what each holds, states, the keep-period clear, erase, export, inventory, contact merge
 - commerce/wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch
+- core/application-review-my-reviews.md: "My reviews" (AR3b): opened by programme membership with no Forms right, the queue, the scoring screen, blind review, "I know this applicant", reminders 3 and 1 days before a round's end
 - core/audiences-overview.md: Contact groups filled by rules as a whole (owner 2026-11-02): why they exist, the decisions that bind them, and which file holds each part (rules, recompute, editor, doors, token, joined triggers)
 - core/audit-trail-contacts.md: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which panel, API, import, İYS, Workspace, storefront, job, merge paths write a line, the label, erasure
 - core/audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
@@ -1308,12 +1312,15 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/screen-composition-rules.md: How a settings pane, a form drawer and a connect row are put together in look A so a person understands them: folded rows, one line of help, tabs, a remove button, one state everywhere
 - ui/settings-assistants-help-lines.md: Site Settings › Assistants and agents, the help (AT3): one line per part with "How does this work?" opening a drawer of numbered steps; Add an agent's "Start from an application"
 - ui/settings-assistants-long-lists.md: Site Settings › Assistants and agents, the long lists (AT6): MCP servers, Workspace agents and Canvas templates show at most five rows, then "Show all N" and the part's drawer
+- ui/settings-card-shared-style.md: What every Site Settings card shares since the scan of 2026-11-21: text sizes, one 32px field height, the select column and chevron, tag fields, swatch edge, quiet head buttons
 - ui/settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents as drawn: the sentence, the grid, Try and Set up, the fold Key and secret, the five-step drawer Set up on claude.ai
 - ui/settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab
 - ui/settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows
 - ui/settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1): SMTP Settings' five cards, the campaign texts and MailChimp, a save writing config.php then the config row, old anchors
 - ui/settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility.
 - ui/settings-modal-save-place.md: After a save the Site Settings dialog keeps the form's scroll, opens the drawer the save came from again and says "saved" in one toast; when the drawer stays shut (#9751)
+- ui/settings-picker-field.md: The picker field inside Site Settings cards: one 32px line, a 20px thumb, a quiet Browse icon at the end, and placeholders that say what to choose
+- ui/settings-revealed-groups.md: Fields a switch opens inside a Site Settings card: no frame, tint or arrow, lined up with the label text, the indent dropped under 576 px; the divider over a nested row's first field and .pg-set-ruled
 - ui/settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
 - ui/site-editor-picker-frame.md: On a site page in Edit mode the editor's Link and Image dialogs open the picker in a same-origin frame (picker_frame.php) inside a native dialog (#9117); the messages, the rights, what was refused
 - ui/variable-chips.md: Variable chips (WA8b): a message's {{n}} drawn as chips naming what they stand for, the shared pgVarChips editor and pg_var_chip_html(), drag, click, move and remove, what the textarea keeps
@@ -1341,6 +1348,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes (a note's card too), the handles typed
 - workflow/architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20
+- workflow/architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back
 - workflow/architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19)
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer

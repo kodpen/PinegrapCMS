@@ -15,10 +15,8 @@ description: Decisions made, workspace part 44 (2026-11-21 on): a file pasted, d
 
 ## How does the conversation timeline behave when the conversation is long? (owner, 2026-11-21, agent channel message 11680)
 - Owner: "timeline alanını bir elden geçir zoom in zoom out yapılabilsin. çok fazla konuşma olunca gruplamalar anlaşılmıyor gün gün boşluklarda biraz daha anşaşılır olsun abartılmadan. ekran daralınca ekran dışına taşıyor."
-- Zoom: two quiet icon buttons at the strip's end (zoom out, zoom in), the + and - keys on the focused strip, Ctrl with the wheel and a pinch over it. Zoomed in, the strip scrolls inside its own place (wheel, drag, the slider's keys) and follows the part of the conversation on the screen.
-- A crowded strip opens zoomed so far that a turn is at least 6 px, at its newest end; zoomed all the way out it shows everything as before. The zoom is kept per channel for the viewer in the browser.
-- Days: a new day starts after a gap a little wider than a run's (16 px beside 10 px) with a hairline; the day's short date stands at it only where there is room (about 48 px), "Today" for today. Nothing louder than that.
-- Width: the strip never leaves the tabs row. It takes the room left of the row and cuts inside itself; the move to the foot of Channel info on a narrow screen stays (`workspace/workspace-channel-timeline.md`). Checked at 1440, 1280, 1024, 768 and 390 px.
-- The read, the colours, the card and the keyboard slider stay as they are.
+- It zooms in and out, marks its days and never leaves the tabs row; it opens at its newest end with no turn under 6 px, and the zoom is kept per channel for the viewer in the browser.
+- Built from these words alone (#11027) it read as noise; the owner sent it back the same day. How it is drawn, its size, the wheel and the keys: `decisions-made-workspace-46.md` and the drawing `workspace/channel-timeline-drawing/timeline.html`.
+- The read, the colours by writer and the card stay as they are.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/workspace/workspace-channel-timeline.md, docs/memory/workspace/workspace-editor-pasted-files.md, docs/memory/workspace/workspace-attachment-uploads.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-workspace-46.md, docs/memory/workspace/workspace-channel-timeline.md, docs/memory/workspace/workspace-editor-pasted-files.md, docs/memory/workspace/workspace-attachment-uploads.md

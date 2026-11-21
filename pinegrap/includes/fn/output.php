@@ -4271,6 +4271,17 @@ function output_menu($properties = false)
         $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_application_programs.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-clipboard-check bi-me-2\'>' . lang('Application programmes') . '</a>';
     }
 
+    // MY REVIEWS. Slot 28, the next free one (slots are never reused): a
+    // reviewer of an open or closed application programme, by membership
+    // alone, with no Forms right (my_reviews.php). One screen, no panel.
+    if (pg_application_review_member((int) $user['id'])) {
+        $menu_items[28]['id'] = 28;
+        $menu_items[28]['href'] = 'my_reviews.php';
+        $menu_items[28]['menu_icon'] = 'forms';
+        $menu_items[28]['color_class'] = 'forms-color';
+        $menu_items[28]['title'] = 'My reviews';
+    }
+
     if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
         // VISITORS
         $menu_items[6]['id'] = 6;
@@ -5053,6 +5064,9 @@ function output_menu($properties = false)
         case 'edit_application_program.php':
             $active_menu = 5;
             break;
+        case 'my_reviews.php':
+            $active_menu = 28;
+            break;
         case 'visitors.php':
         case 'view_visitor_reports.php':
         case 'view_visitor_report.php':
@@ -5601,8 +5615,8 @@ function pg_menu_categories()
         // Automation flows (26) between the Dashboard and the Workspace: they
         // reach every part of the site, so they sit under no heading. A
         // person's pinned Incoming e-mail (27) comes after the Workspace and
-        // My Notes.
-        ''           => array('label' => '', 'slots' => array(0, 26, 23, 24, 27)),
+        // My Notes, then a reviewer's My reviews (28).
+        ''           => array('label' => '', 'slots' => array(0, 26, 23, 24, 27, 28)),
         'content'    => array('label' => 'Content', 'slots' => array(2, 1, 4, 5)),
         'design'     => array('label' => 'Design', 'slots' => array(21)),
         'ecommerce'  => array('label' => 'Ecommerce', 'slots' => array(10, 11, 12, 14, 15)),

@@ -76,7 +76,7 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . h(lang(array('string' => 'A page opened on another name of this site (with or without www) moves to the same address on {var:1} with a permanent redirect, so search engines see one copy of each page. Turn it on only once that name opens this site. The panel, the API and file downloads answer on every name.', 'vars' => array(HOSTNAME_SETTING)))) . '</div>
                                             </div>
                                         </div>
-                                        <div id="pgsub-indexnow" class="col-12">
+                                        <div id="pgsub-indexnow" class="col-12 pg-set-ruled">
                                             <div class="d-flex flex-column align-items-start gap-2">
                                                 <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => 'IndexNow'))) . '</span>' . ($indexnow_connected
                                                     ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'

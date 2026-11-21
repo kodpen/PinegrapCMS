@@ -8,6 +8,10 @@ description: Departments and Team members in Site Settings (Team and working hou
 - "Who is in the team" was an info card on the old screen; its text is the Team members card's footnote, and the choice is that table's "Not in the team" column.
 - The Working calendar followed (SW2b): [[workspace-holiday-settings]]. With it the category's card linking the old screen (`pgset-ws-team-screen`) went: nothing of the team part is left to link.
 
+## What does the Team members table look like on a phone?
+- Under 576 px each member is a list row, not a table that scrolls sideways: the name across, Job title and Hours a day side by side, Working days across, then "Not in the team" with its switch at the end. Each field sits under its own label, the cell's `data-label` (`.ws-people-table`, cells `.ws-people-cell-*`, in `ws_settings_people_rows_html()`).
+- Why: nothing scrolls sideways at 390 px in a settings pane; at 390 the Working days and Not in the team columns were cut off. The hours column keeps 6rem by class, not an inline width.
+
 ## Where are the checks and writes?
 - `includes/workspace/team_settings.php` (PR #8721): `ws_settings_candidates()`, `ws_settings_people_check()` (pure: rank rule, hours, nobody takes themselves out, default stored as 0) and `ws_settings_people_write()`, `ws_settings_department_check()` / `_save()` / `_archive()`, and the markup `ws_settings_department_fields()` and `ws_settings_people_rows_html()`, which take a callback naming each field.
 - The Site Settings category calls them (`ws_dept[id][x]`, `ws_people[id][x]`, the pane's save); the old screen's forms are gone (PR #8931).
