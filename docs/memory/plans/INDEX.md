@@ -73,6 +73,7 @@
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
+- features-switchboard-design.md: Plan features-switchboard, the switch row (FS1): a card of rows with a tile, name, one line and a switch at the end, its Settings button, state pill and Open, 390 px; into Design examples by DX2b
 - features-switchboard-screens.md: Plan features-switchboard, its screen: the Features pane's board of module switches, its folded rows, the words and what must be true
 - features-switchboard-steps.md: Plan features-switchboard, steps FS1 to FS3: the board of module switches, the rest of Features as folded rows, close-out
 - features-switchboard.md: Plan (owner 2026-11-21): Site Settings › Features as one board of module switches and folded rows for the rest; its contradictions fixed, social sharing out of popovers
