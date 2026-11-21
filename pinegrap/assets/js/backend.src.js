@@ -258,6 +258,68 @@ window.pgSettingsFoldPick = function (keys, asks) {
     });
 })();
 
+// The Features pane's Modules board (includes/fn/features_modules.php): a
+// row's Settings opens and scrolls to the part its module's settings sit in;
+// a switch turned says its row's other line and counts the board again.
+(function () {
+    // The nearest box that scrolls: the dialog's pane, or none on a screen
+    // of its own. Scrolled by arithmetic, as scrollIntoView() would also
+    // scroll the page behind the dialog.
+    function scroller(el) {
+        for (var node = el.parentElement; node && (node !== document.body); node = node.parentElement) {
+            if (/(auto|scroll)/.test(window.getComputedStyle(node).overflowY) && (node.scrollHeight > node.clientHeight)) {
+                return node;
+            }
+        }
+
+        return null;
+    }
+
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest ? event.target.closest('[data-pg-set-goto]') : null;
+        var target = button ? document.getElementById(button.getAttribute('data-pg-set-goto')) : null;
+
+        if (!target) {
+            return;
+        }
+
+        event.preventDefault();
+        window.pgSettingsFoldReveal(target);
+
+        var box = scroller(target);
+
+        if (box) {
+            box.scrollTop += target.getBoundingClientRect().top - box.getBoundingClientRect().top - 8;
+        } else {
+            target.scrollIntoView({ block: 'start', behavior: 'instant' });
+        }
+    });
+
+    document.addEventListener('change', function (event) {
+        var input = event.target;
+
+        if (!input.matches || !input.matches('.pg-set-switch-row > .pg-switch')) {
+            return;
+        }
+
+        var line = document.getElementById(input.getAttribute('aria-describedby') || '');
+        var text = line ? line.getAttribute(input.checked ? 'data-pg-on' : 'data-pg-off') : null;
+
+        if (text) {
+            line.textContent = text;
+        }
+
+        var board = input.closest('[data-pg-modules]');
+        var count = board ? board.querySelector('[data-pg-modules-count]') : null;
+
+        if (count) {
+            var on = board.querySelectorAll('[data-pg-module-on], .pg-set-switch-row > .pg-switch:checked').length;
+
+            count.textContent = String(count.getAttribute('data-pg-template') || '').replace('{on}', String(on));
+        }
+    });
+})();
+
 // Says a short answer to a screen reader without moving focus. A live region
 // is only heard when its words change after it is in the document, so the two
 // regions (polite and assertive) are made empty once the page has loaded and
@@ -13077,7 +13139,10 @@ var pgSettingsModal = (function () {
         // measured before that lands somewhere else.
         window.requestAnimationFrame(function () {
 
-            var card = byId(section);
+            // An old card id whose card moved inside this pane (Courses and
+            // Tickets onto the Modules board) lands where it went.
+            var moved = anchors[section] ? String(anchors[section]).split('|') : null;
+            var card = byId(section) || ((moved && (moved[0] === pane) && moved[1]) ? byId(moved[1]) : null);
 
             if (!card) {
                 return;

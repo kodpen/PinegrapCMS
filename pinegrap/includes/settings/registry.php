@@ -131,9 +131,9 @@ function pg_settings_categories()
             'label' => lang('Features'),
             'group' => 'site',
             'icon'  => 'bi-toggles',
-            'description' => lang('Which features are on, and how images are handled.'),
+            'description' => lang('What the site has on, and how its search, pages and images behave.'),
             'sections' => array(
-                'pgset-features' => lang('Feature Options'),
+                'pgset-features' => lang('Modules'),
                 'pgset-search-tuning' => lang('Search Tuning'),
                 'pgset-content-approval' => lang('Content Approval'),
                 'pgset-page-clicks' => lang('Clicks and scrolling'),
@@ -145,7 +145,7 @@ function pg_settings_categories()
                 'pgset-signature' => lang('Signature Time Stamp'),
             ),
             'keywords' => array(
-                'pgset-features' => pg_settings_keywords(lang('feature, badge, calendar, form, ads, auto dialog, sharing, social, workspace, search, performance, mobile, prefetch, speculation rules, preload')),
+                'pgset-features' => pg_settings_keywords(lang('module, modules, feature, commerce, accounting, courses, lessons, tickets, qr code, badge, calendar, form, ads, auto dialog, sharing, social, workspace, search, performance, mobile, prefetch, speculation rules, preload')),
                 'pgset-search-tuning' => pg_settings_keywords(lang('search, synonym, synonyms, promoted, recommended, pinned result')),
                 'pgset-content-approval' => pg_settings_keywords(lang('approval, approve, content, editor, manager, review, waiting, publish')),
                 'pgset-page-clicks' => pg_settings_keywords(lang('clicks, scrolling, scroll depth, links, buttons, visitors, statistics, privacy')),
@@ -1164,6 +1164,10 @@ function pg_settings_legacy_anchors()
         'pgset-theme'      => array('appearance', 'pgset-theme'),
         'pgset-editor'     => array('appearance', 'pgset-editor'),
         'pgset-features'   => array('features',   'pgset-features'),
+        // Courses and Tickets were cards of their own; their switches are
+        // rows of the Modules board now.
+        'pgset-courses'    => array('features',   'pgset-features'),
+        'pgset-event-tickets' => array('features', 'pgset-features'),
         'pgset-images'     => array('features',   'pgset-images'),
         'pgset-signature'  => array('features',   'pgset-signature'),
         'pgset-seo'        => array('seo',        'pgset-seo'),

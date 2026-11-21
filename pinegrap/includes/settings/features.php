@@ -19,12 +19,75 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
-// ── Feature Options ──
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/features_modules.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+
+// ── Modules ──
+//
+// One board of module switches (includes/fn/features_modules.php). Each
+// switch keeps the field name and id of its old card, so features.save.php
+// reads it unchanged; a card with nothing but its switch (Courses, Tickets)
+// posts its marker from the row. Commerce and Accounting keep their switch
+// at the head of their own category, where their save needs it: the board
+// shows their state and opens them.
+$features_modules = array(
+    'commerce'     => array('on' => ($ecommerce_checked !== ''), 'href' => pg_settings_may_open('commerce', $user) ? pg_settings_link('commerce') : ''),
+    'accounting'   => array('on' => ($erp_enabled_checked !== ''), 'href' => pg_settings_may_open('accounting', $user) ? pg_settings_link('accounting') : ''),
+    'forms'        => array('on' => ($forms_checked !== '')),
+    'calendars'    => array('on' => ($calendars_checked !== '')),
+    'ads'          => array('on' => ($ads_checked !== '')),
+    'auto_dialogs' => array('on' => ($auto_dialogs_checked !== '')),
+    'sharing'      => array('on' => ($social_networking_checked !== ''), 'settings' => 'pg-features-sharing'),
+    'mobile'       => array('on' => ($mobile_checked !== '')),
+);
+
+if ($workspace_setting_available) {
+    $features_modules['workspace'] = array('on' => ($workspace_enabled_checked !== ''));
+}
+
+if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('config_text')) {
+    $features_modules['courses'] = array('on' => pg_course_switch_on(), 'extra' => '<input type="hidden" name="courses_card" value="1"/>');
+}
+
+if (function_exists('pg_event_tickets_ready') && pg_event_tickets_ready() && pg_schema_has('config_text')) {
+    $features_modules['tickets'] = array('on' => pg_event_tickets_switch_on(), 'extra' => '<input type="hidden" name="event_tickets_card" value="1"/>');
+}
+
+if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
+    $features_modules['site_push'] = array('on' => pg_site_push_switch_on(), 'settings' => 'pgset-site-push');
+}
+
+if (pg_schema_has('config_text')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_tiles.php');
+    $features_modules['maps'] = array('on' => pg_place_tiles_switch_on(), 'settings' => 'pgset-place-map');
+}
+
+if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
+    $features_modules['page_clicks'] = array('on' => pg_page_clicks_switch_on(), 'settings' => 'pgset-page-clicks');
+}
+
+// Drawn for designers and administrators only, as its card is: a Manager's
+// own saves are the ones it holds.
+$features_content_approval_shown = pg_content_proposals_ready() && pg_content_proposals_may_set($user);
+
+if ($features_content_approval_shown) {
+    $content_approval = pg_content_proposals_settings();
+    $features_modules['content_approval'] = array('on' => $content_approval['on'], 'settings' => 'pgset-content-approval');
+}
+
 $pg_settings_cards[] = '
                         <div id="pgset-features" class="pg-set-card">
+                            ' . pg_features_modules_board($features_modules) . '
+                        </div>';
+
+// The settings that switch nothing wait here, under the board, with the
+// sharing buttons' setup. Its id is not a pgset- one, so the search index
+// counts its fields as the board's (pg_settings_card_labels()).
+$pg_settings_cards[] = '
+                        <div id="pg-features-other" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Feature Options') . '
+                                    ' . lang('Other settings') . '
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">
@@ -45,33 +108,23 @@ $pg_settings_cards[] = '
                                             <div class="form-text">' . lang('Advanced searches the search index, which the search index job rebuilds once a day: pages, linked files and the records of public form lists. Simple searches the text of pages as it is now and finds no form records.') . '</div>
                                             </fieldset>
                                         </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $perf_monitor_checked . ' class="" type="checkbox" id="perf_monitor" name="perf_monitor"/></div>
-                                                <label class="" for="perf_monitor">' . lang('Enable Performance Monitoring') . '</label>
-                                                <div class="form-text">' . lang('Records how long each request takes, so slow pages can be found. The measurement is written after the response has been sent, so visitors do not wait for it.') . '</div>
+                                        <div class="col-12">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="checkbox" class="pg-switch" value="1"' . $perf_monitor_checked . ' id="perf_monitor" name="perf_monitor" aria-describedby="perf_monitor_help"/>
+                                                <label class="pg-text-2" for="perf_monitor">' . lang('Enable Performance Monitoring') . '</label>
                                             </div>
+                                            <div class="form-text" id="perf_monitor_help">' . lang('Records how long each request takes, so slow pages can be found. The measurement is written after the response has been sent, so visitors do not wait for it.') . '</div>
                                         </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $mobile_checked . ' class="" type="checkbox" id="mobile" name="mobile"/></div>
-                                                <label class="" for="mobile">' . lang('Enable Mobile') . '</label>
+                                        ' . (array_key_exists('speculation_prefetch', $row) ? '
+                                        <div class="col-12">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="checkbox" class="pg-switch" value="1"' . (!empty($row['speculation_prefetch']) ? ' checked="checked"' : '') . ' id="speculation_prefetch" name="speculation_prefetch" aria-describedby="speculation_prefetch_help"/>
+                                                <label class="pg-text-2" for="speculation_prefetch">' . lang('Prefetch Menu Links') . '</label>
                                             </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $auto_dialogs_checked . ' class="" type="checkbox" id="auto_dialogs" name="auto_dialogs"/></div>
-                                                <label class="" for="auto_dialogs">' . lang('Enable Auto Dialogs') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $social_networking_checked . '  id="social_networking" name="social_networking" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#social_networking_type_row"/></div>
-                                                <label class="d-inline" for="social_networking">' . lang('Enable Social Networking') . '</label>
-                                            </div>
-                                            <div class="collapse popover  fade bs-popover-bottom p-0  w-100" id="social_networking_type_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
+                                            <div class="form-text" id="speculation_prefetch_help">' . lang('Pages tell the browser the addresses in their menus, so a page a visitor points at or presses is fetched a moment before it is opened and appears at once. Chrome and Edge do this; other browsers ignore it. Not for signed-in members and staff, and never for sign-in, cart, download or panel links. A page fetched this way and then opened is counted once.') . '</div>
+                                        </div>' : '') . '
+                                        <div class="col-12" id="pg-features-sharing">
+                                            <div class="pg-group-label mb-2">' . h(lang('Sharing buttons')) . '</div>
                                                    <div class="row gy-5">
                                                         <div class="col-12 ">
                                                             <fieldset><legend class="form-label pg-field-label">'. lang('Setup') . '</legend>
@@ -154,43 +207,7 @@ $pg_settings_cards[] = '
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </div>
                                         </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $forms_checked . ' class="" type="checkbox" id="forms" name="forms"/></div>
-                                                <label class="" for="forms">' . lang('Enable Forms') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $calendars_checked . ' class="" type="checkbox" id="calendars" name="calendars"/></div>
-                                                <label class="" for="calendars">' . lang('Enable Calendars') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $ads_checked . ' class="" type="checkbox" id="ads" name="ads"/></div>
-                                                <label class="" for="ads">' . lang('Enable Ads') . '</label>
-                                            </div>
-                                        </div>
-                                        ' . ($workspace_setting_available ? '
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $workspace_enabled_checked . ' class="" type="checkbox" id="workspace_enabled" name="workspace_enabled"/></div>
-                                                <label class="" for="workspace_enabled">' . lang('Enable Workspace') . '</label>
-                                                <div class="form-text">' . lang('Channels for the team, tasks with owners and dates, and a planning board. Basic users are given it from their user screen.') . '</div>
-                                            </div>
-                                        </div>' : '') . '
-                                        ' . (array_key_exists('speculation_prefetch', $row) ? '
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (!empty($row['speculation_prefetch']) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="speculation_prefetch" name="speculation_prefetch"/></div>
-                                                <label class="" for="speculation_prefetch">' . lang('Prefetch Menu Links') . '</label>
-                                                <div class="form-text">' . lang('Pages tell the browser the addresses in their menus, so a page a visitor points at or presses is fetched a moment before it is opened and appears at once. Chrome and Edge do this; other browsers ignore it. Not for signed-in members and staff, and never for sign-in, cart, download or panel links. A page fetched this way and then opened is counted once.') . '</div>
-                                            </div>
-                                        </div>' : '') . '
                                    </div>
                                 </div>
                             </div>
@@ -486,11 +503,7 @@ if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
                                     <input type="hidden" name="page_clicks_card" value="1"/>
                                     <div class="row gy-12">
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (pg_page_clicks_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="page_clicks_on" name="page_clicks_on"/></div>
-                                                <label for="page_clicks_on">' . h(lang('Count clicks and scrolling on public pages')) . '</label>
-                                                <div class="form-text">' . h(lang('Which links and buttons visitors click on each page and how far down they scroll, per page, day and device type, shown in Visitors. Signed-in members and visitors who refused statistics in the cookie notice are not counted.')) . '</div>
-                                            </div>
+                                            <div class="form-text mt-0">' . h(lang('Which links and buttons visitors click on each page and how far down they scroll, per page, day and device type, shown in Visitors. Signed-in members and visitors who refused statistics in the cookie notice are not counted.')) . '</div>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-label" id="page_clicks_privacy_label">' . h(lang('For your privacy text')) . '</div>
@@ -508,7 +521,6 @@ if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
 // OpenStreetMap's until another is typed; a provider's key is kept sealed,
 // drawn empty and never shown back.
 if (pg_schema_has('config_text')) {
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_tiles.php');
     $place_tiles = pg_place_tiles_settings();
 
     $pg_settings_cards[] = '
@@ -521,11 +533,7 @@ if (pg_schema_has('config_text')) {
                                     <input type="hidden" name="place_map_card" value="1"/>
                                     <div class="row gy-12">
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (pg_place_tiles_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="place_map_on" name="place_map_on"/></div>
-                                                <label for="place_map_on">' . h(lang('Show places on a map')) . '</label>
-                                                <div class="form-text">' . h(lang('The Map of places block draws its places on a map beside its list; off, it shows the list alone. While the cookie notice is on, the map loads only after the visitor allows marketing, and the block shows a Show the map button until then.')) . '</div>
-                                            </div>
+                                            <div class="form-text mt-0">' . h(lang('The Map of places block draws its places on a map beside its list; off, it shows the list alone. While the cookie notice is on, the map loads only after the visitor allows marketing, and the block shows a Show the map button until then.')) . '</div>
                                         </div>
                                         <div class="col-12">
                                             <label for="place_map_tiles" class="form-label">' . h(lang('Tile Address')) . '</label>
@@ -553,49 +561,6 @@ if (pg_schema_has('config_text')) {
                         </div>';
 }
 
-// Courses (includes/fn/courses.php): off on every site, a new install too.
-// On, the Pages menu offers the Courses screen and the lesson gate runs.
-if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('config_text')) {
-    $pg_settings_cards[] = '
-                        <div id="pgset-courses" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . h(lang('Courses')) . '
-                                </div>
-                                <div class="card-body">
-                                    <input type="hidden" name="courses_card" value="1"/>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <input type="checkbox" class="pg-switch" value="1"' . (pg_course_switch_on() ? ' checked="checked"' : '') . ' id="courses_on" name="courses_on" aria-describedby="courses_on_help"/>
-                                        <label class="pg-text-2" for="courses_on">' . h(lang('Courses with ordered and timed lessons')) . '</label>
-                                    </div>
-                                    <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="courses_on_help">' . h(lang('A course is a private folder a product already opens: its pages become lessons that open in order or some days after enrolment, and each member\'s progress is kept. On, the Pages menu offers the Courses screen.')) . '</p>
-                                </div>
-                            </div>
-                        </div>';
-}
-
-// Event tickets (includes/fn/event_tickets.php): off on every site, a new
-// install too. On, a completed order's event reservation or "Gives tickets"
-// product line makes one ticket per unit and the buyer gets their link.
-if (function_exists('pg_event_tickets_ready') && pg_event_tickets_ready() && pg_schema_has('config_text')) {
-    $pg_settings_cards[] = '
-                        <div id="pgset-event-tickets" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . h(lang('Tickets')) . '
-                                </div>
-                                <div class="card-body">
-                                    <input type="hidden" name="event_tickets_card" value="1"/>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <input type="checkbox" class="pg-switch" value="1"' . (pg_event_tickets_switch_on() ? ' checked="checked"' : '') . ' id="event_tickets_on" name="event_tickets_on" aria-describedby="event_tickets_on_help"/>
-                                        <label class="pg-text-2" for="event_tickets_on">' . h(lang('Tickets with a QR code for events')) . '</label>
-                                    </div>
-                                    <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="event_tickets_on_help">' . h(lang('A completed order gives one ticket per place for each calendar event reservation and each product marked Gives tickets, and the buyer gets a link to them by e-mail. A cancelled order\'s tickets become void.')) . '</p>
-                                </div>
-                            </div>
-                        </div>';
-}
-
 // Visitor notifications (includes/fn/site_push.php): off on every site, a new
 // install too, until it is switched on here. Read and saved only through the
 // module's one reader and saver. With it off the "Notify me" block draws
@@ -612,11 +577,7 @@ if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
                                     <input type="hidden" name="site_push_card" value="1"/>
                                     <div class="row gy-12">
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (pg_site_push_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="site_push_on" name="site_push_on"/></div>
-                                                <label for="site_push_on">' . h(lang('Let visitors turn on notifications from this site')) . '</label>
-                                                <div class="form-text">' . h(lang('A visitor presses the Notify Me block of the visual editor and gets your news as a notification in the browser, on a phone or a computer, without an account or an email address. The block shows only where the browser can subscribe. Messages are sent from Communication, Channels. Off: the block shows nothing and no new subscription is taken.')) . '</div>
-                                            </div>
+                                            <div class="form-text mt-0">' . h(lang('A visitor presses the Notify Me block of the visual editor and gets your news as a notification in the browser, on a phone or a computer, without an account or an email address. The block shows only where the browser can subscribe. Messages are sent from Communication, Channels. Off: the block shows nothing and no new subscription is taken.')) . '</div>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-field">
@@ -635,9 +596,7 @@ if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
 // off on every site until it is switched on here, by a designer or an
 // administrator only (a Manager's own saves are the ones held). The channel
 // the change is also asked in is offered while the Workspace is on.
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
-if (pg_content_proposals_ready() && pg_content_proposals_may_set($user)) {
-    $content_approval = pg_content_proposals_settings();
+if ($features_content_approval_shown) {
     $content_approval_channel = '';
 
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && pg_schema_has('ws_channels')) {
@@ -667,11 +626,7 @@ if (pg_content_proposals_ready() && pg_content_proposals_may_set($user)) {
                                     <input type="hidden" name="content_approval_card" value="1"/>
                                     <div class="row gy-12">
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . ($content_approval['on'] ? ' checked="checked"' : '') . ' type="checkbox" id="content_approval_on" name="content_approval_on"/></div>
-                                                <label for="content_approval_on">' . lang('Content changes wait for approval') . '</label>
-                                                <div class="form-text">' . lang('A Manager or User who saves a change in the Page Design Studio to a page already on the site does not publish it: it waits until a Designer or Administrator applies it. Drafts, new pages, classic pages and the changes of Designers and Administrators are not held.') . '</div>
-                                            </div>
+                                            <div class="form-text mt-0">' . lang('A Manager or User who saves a change in the Page Design Studio to a page already on the site does not publish it: it waits until a Designer or Administrator applies it. Drafts, new pages, classic pages and the changes of Designers and Administrators are not held.') . '</div>
                                         </div>' . $content_approval_channel . '
                                     </div>
                                 </div>
