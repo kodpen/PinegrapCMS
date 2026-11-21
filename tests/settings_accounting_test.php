@@ -104,7 +104,7 @@ function test_settings_accounting_cards_moved_out_of_ecommerce()
 	// The fields the moved cards post: none left in Ecommerce, all in Accounting.
 	$moved = settings_accounting_test_names($accounting);
 
-	foreach (array('erp_enabled', 'erp_web_address', 'erp_default_series', 'erp_overdue_notify_days', 'erp_auto_invoice_on', 'enable_parasut', 'parasut_client_id', 'parasut_client_secret', 'parasut_auth_code', 'erp_edoc_autosend', 'local_sale_prices') as $field) {
+	foreach (array('erp_enabled', 'erp_web_address', 'erp_default_series', 'erp_overdue_notify_days', 'erp_auto_invoice_on', 'enable_parasut', 'erp_edoc_autosend', 'local_sale_prices') as $field) {
 		pg_assert_true(in_array($field, $moved, true), $field . ' drawn by Accounting');
 	}
 
@@ -115,6 +115,11 @@ function test_settings_accounting_cards_moved_out_of_ecommerce()
 	}
 
 	pg_assert_same(array(), array_values(array_intersect($moved, settings_accounting_test_names($commerce))), 'no field drawn by both');
+
+	// The Paraşüt connection is typed on its page of Connections.
+	foreach (array('parasut_client_id', 'parasut_client_secret', 'parasut_auth_code', 'parasut_username', 'parasut_password', 'parasut_company_id') as $field) {
+		pg_assert_false(in_array($field, $moved, true), $field . ' no longer drawn by Accounting');
+	}
 }
 
 function test_settings_accounting_save_writes_what_the_cards_post()
@@ -122,15 +127,20 @@ function test_settings_accounting_save_writes_what_the_cards_post()
 	$commerce = settings_accounting_test_source('includes/settings/commerce.save.php');
 	$accounting = settings_accounting_test_source('includes/settings/accounting.save.php');
 
-	foreach (array('erp_enabled', 'erp_web_address', 'erp_default_series', 'erp_fx_enabled', 'erp_overdue_notify_days', 'erp_auto_invoice_on', 'erp_edoc_autosend', 'local_sale_prices', 'enable_parasut', 'parasut_credentials_enc', 'parasut_company_id') as $column) {
+	foreach (array('erp_enabled', 'erp_web_address', 'erp_default_series', 'erp_fx_enabled', 'erp_overdue_notify_days', 'erp_auto_invoice_on', 'erp_edoc_autosend', 'local_sale_prices', 'enable_parasut') as $column) {
 		pg_assert_contains($column . ' = ', $accounting, $column . ' written by Accounting');
 		pg_assert_same(false, strpos($commerce, $column . ' = '), $column . ' no longer written by Ecommerce');
 	}
 
-	pg_assert_contains('function pg_parasut_credentials_for_save()', $accounting, 'the Paraşüt secrets kept as before');
-	pg_assert_same(false, strpos($commerce, 'pg_parasut_credentials_for_save'), 'not in Ecommerce');
+	foreach (array('parasut_client_id', 'parasut_credentials_enc', 'parasut_username', 'parasut_company_id') as $column) {
+		pg_assert_same(false, strpos($accounting, $column . ' = '), $column . ' written on Paraşüt\'s page of Connections, not by Accounting');
+	}
+
+	pg_assert_same(false, strpos($accounting, 'pg_parasut_credentials_for_save'), 'no Paraşüt secret stored here');
+	pg_assert_same(false, strpos($commerce, 'pg_parasut_credentials_for_save'), 'nor in Ecommerce');
 	pg_assert_contains('erp_edoc_activate($erp_edoc_picked);', $accounting, 'the e-document provider picked here');
-	pg_assert_contains('parasut_connect_with_code(', $accounting, 'a pasted Paraşüt code exchanged here');
+	pg_assert_contains('erp_edoc_pick_decide(', $accounting, 'a provider not connected is refused');
+	pg_assert_same(false, strpos($accounting, 'parasut_connect_with_code('), 'a Paraşüt code is exchanged on its page of Connections');
 	pg_assert_same(false, strpos($commerce, 'parasut_connect_with_code('), 'not in Ecommerce');
 	pg_assert_contains('last_modified_user_id', $accounting, 'the save stamps who changed it');
 	pg_assert_contains("if (!defined('PG_SETTINGS_ENTRY')) {", $accounting, 'the gate constant');
