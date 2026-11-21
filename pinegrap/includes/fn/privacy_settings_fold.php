@@ -25,7 +25,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_privacy_fold_order()
 {
-    return array('analytics', 'cookies', 'legal', 'kvkk', 'a11y-statement', 'privacy-centre');
+    return array('analytics', 'retention', 'cookies', 'legal', 'kvkk', 'a11y-statement', 'privacy-centre');
 }
 
 /**
@@ -39,6 +39,8 @@ function pg_privacy_fold_face($key)
     switch ($key) {
         case 'analytics':
             return array('name' => lang('Visitor tracking'), 'icon' => 'bi-graph-up', 'tone' => 'pg-tone-blue');
+        case 'retention':
+            return array('name' => lang('How long we keep data'), 'icon' => 'bi-hourglass-split', 'tone' => 'pg-tone-violet');
         case 'cookies':
             return array('name' => lang('Cookie consent'), 'icon' => 'bi-cookie', 'tone' => 'pg-tone-amber');
         case 'legal':
@@ -80,6 +82,37 @@ function pg_privacy_fold_tracking($on, $ga_connected)
     }
 
     return array('line' => $line, 'pill' => pg_privacy_fold_switch_pill($on), 'attention' => false);
+}
+
+/**
+ * How long we keep data's line: the visitor records' period and when their
+ * IP addresses go; without those fields, what the row shows.
+ *
+ * @param int|null $records_days the visitor records' days (0: no limit), null
+ *                               before the column exists
+ * @param int|null $ip_days      the days after which IP addresses go (0:
+ *                               with the record), null before the column
+ * @return array line, pill, attention
+ */
+function pg_privacy_fold_retention($records_days, $ip_days)
+{
+    if ($records_days === null) {
+        $line = lang('Every period the site applies, and where each is set');
+    } else {
+        $records_days = (int) $records_days;
+        $line = ($records_days > 0)
+            ? lang(array('string' => 'Visitor records kept {var:1} day{suffix:1}', 'vars' => $records_days, 'suffix' => array(($records_days === 1) ? '' : 's')))
+            : lang('Visitor records kept until deleted');
+
+        if ($ip_days !== null) {
+            $ip_days = (int) $ip_days;
+            $line .= ' · ' . (($ip_days > 0)
+                ? lang(array('string' => 'IP addresses removed after {var:1} day{suffix:1}', 'vars' => $ip_days, 'suffix' => array(($ip_days === 1) ? '' : 's')))
+                : lang('IP addresses kept with the record'));
+        }
+    }
+
+    return array('line' => $line, 'pill' => null, 'attention' => false);
 }
 
 /**

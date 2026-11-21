@@ -165,6 +165,6 @@ function test_settings_privacy_has_a_page()
 
 function test_settings_privacy_links_name_the_new_place()
 {
-	pg_assert_contains('settings_privacy.php#pgset-analytics', settings_privacy_test_source('database_engine.php'), 'the Database Engine link');
+	pg_assert_contains('settings_privacy.php#pgset-retention', settings_privacy_test_source('database_engine.php'), 'the Database Engine link opens How long we keep data');
 	pg_assert_contains('connections.php?service=google_analytics', settings_privacy_test_source('includes/dashboard/widgets/widget_32.php'), 'the dashboard widget leads to Google Analytics\' page');
 }

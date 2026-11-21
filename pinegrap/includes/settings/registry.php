@@ -186,6 +186,7 @@ function pg_settings_categories()
             'description' => lang('What the site records of its visitors, how long it keeps personal data and what it asks them.'),
             'sections' => array(
                 'pgset-analytics' => lang('Visitor tracking'),
+                'pgset-retention' => lang('How long we keep data'),
                 'pgset-cookies'   => lang('Cookie consent'),
                 'pgset-legal'     => lang('Legal documents'),
                 'pgset-kvkk'      => lang('KVKK notice'),
@@ -193,7 +194,8 @@ function pg_settings_categories()
                 'pgset-privacy-centre' => lang('Privacy centre'),
             ),
             'keywords' => array(
-                'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics, retention, ip address')),
+                'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics, paid')),
+                'pgset-retention' => pg_settings_keywords(lang('retention, ip address, how long, keep, period, delete, visitor records, daily summary, log, audit trail, firewall log, api log')),
                 'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-kvkk'      => pg_settings_keywords(lang('kvkk, kvkk notice, personal data, explicit consent, consent sentence, privacy notice, gdpr')),
@@ -1179,6 +1181,11 @@ function pg_settings_legacy_anchors()
         'google_analytics_web_property_id' => array('privacy', 'pgset-analytics'),
         'stats_url'        => array('privacy',    'pgset-analytics'),
         'ga_property'      => array('privacy',    'pgset-analytics'),
+        // The visitor records' periods and daily summary moved into How
+        // long we keep data; a link to one of their fields lands there.
+        'visitor_retention_days' => array('privacy', 'pgset-retention'),
+        'visitor_ip_days'  => array('privacy',    'pgset-retention'),
+        'visitor_summary'  => array('privacy',    'pgset-retention'),
         // The Google Cloud Translation key moved onto its page of
         // Connections; an old link to its field lands on the card that shows
         // the connection.
