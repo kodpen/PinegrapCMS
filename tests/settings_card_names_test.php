@@ -54,7 +54,11 @@ function test_settings_card_radio_groups_have_a_legend()
 	pg_assert_same(2, preg_match_all('/<legend class="form-label pg-field-label">\'\s*\.\s*lang\(\'Transaction Type\'\)/', $commerce), 'commerce.php: both Transaction Type groups have a legend');
 
 	$general = settings_card_names_source('general.php');
-	pg_assert_contains('<div class="form-label">\' . lang(\'Current Site Time\') . \'</div>', $general, 'Current Site Time names no control, so it is not a label');
+	pg_assert_contains('<div class="pg-text-meta">\' . lang(\'Current Site Time\') . \': \'', $general, 'Current Site Time names no control, so it is a meta line, not a label');
+
+	foreach (array('pgset-organization', 'pgset-server', 'pgset-software', 'pgset-datetime') as $id) {
+		pg_assert_contains('<div id="' . $id . '" class="pg-set-card">', $general, 'general.php: ' . $id . ' keeps its card id inside its row');
+	}
 }
 
 function test_settings_card_social_setup_legend_heads_only_its_radios()

@@ -1571,6 +1571,7 @@
     "Requests per minute": "Dakikada istek",
     "Requests the firewall blocked or flagged": "Güvenlik duvarının engellediği veya işaretlediği istekler",
     "Requests the firewall stopped or noted": "Güvenlik duvarının durdurduğu ya da not ettiği istekler",
+    "Requests this site sends to payment gateways, updates and some connected services go through it. Proxies in front of the site are set under {var:1}.": "Bu sitenin ödeme altyapılarına, güncellemelere ve bazı bağlı hizmetlere gönderdiği istekler bunun üzerinden geçer. Sitenin önündeki vekil sunucular {var:1} altında ayarlanır.",
     "Requests to the site's API": "Sitenin API'sine yapılan istekler",
     "Requests wait until {var:1}.": "İstekler {var:1} tarihine kadar bekliyor.",
     "Requests, complaints and every question, answered in one place.": "Talepler, şikâyetler ve her soru tek yerde yanıtlanır.",

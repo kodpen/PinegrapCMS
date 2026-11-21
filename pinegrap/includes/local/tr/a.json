@@ -2123,6 +2123,7 @@
     "A page per project with the film's link, its stills, the facts, the credits and the client's words.": "Her proje için filmin bağlantısı, kareleri, bilgileri, jeneriği ve müşterinin sözleriyle bir sayfa.",
     "A page per treatment answering those questions, real photos of the team and a short request form.": "Bu soruları yanıtlayan, her tedaviye bir sayfa, ekibin gerçek fotoğrafları ve kısa bir talep formu.",
     "A page region inside a shared component shows the content of every page that places it, so it cannot move into one page. Put it on the page first.": "Paylaşılan bileşen içindeki bir sayfa bölgesi, onu yerleştiren her sayfanın içeriğini gösterir; bu yüzden tek bir sayfaya taşınamaz. Önce onu sayfaya koyun.",
+    "A page served in another language uses that language's date format": "Başka bir dilde sunulan sayfa o dilin tarih biçimini kullanır",
     "A page that explains the card's security code, linked beside the field.": "Kartın güvenlik kodunu açıklayan, alanın yanında bağlantısı verilen sayfa.",
     "A page that explains the cookies in detail, shown as a link in the notice. Start it with / or https://; leave it empty for no link.": "Çerezleri ayrıntılı anlatan sayfa; bildirimde bağlantı olarak gösterilir. / ya da https:// ile başlatın; bağlantı istemiyorsanız boş bırakın.",
     "A page that is closed to search engines cannot be in the site map.": "Arama motorlarına kapatılmış bir sayfa site haritasında yer alamaz.",

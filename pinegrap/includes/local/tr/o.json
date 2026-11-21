@@ -2680,6 +2680,7 @@
     "Outfit length (m)": "Araç uzunluğu (m)",
     "Outgoing Invoices": "Giden Faturalar",
     "Outgoing addresses must be https.": "Dışarıya giden adresler https olmalı.",
+    "Outgoing proxy": "Giden vekil sunucu",
     "Outgoing · {var:1}": "Giden · {var:1}",
     "Outlet": "Yayın",
     "Outline": "Anahat",
