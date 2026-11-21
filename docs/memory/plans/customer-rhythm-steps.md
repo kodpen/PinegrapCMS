@@ -10,7 +10,7 @@ description: Plan customer-rhythm, steps RY1a to RY6: the pure rules, the store 
   - The `customer_rhythm` table as a migration step in the open version, the columns of the schema decisions list; the privacy export and erase. The pass in the general job in bounded runs, reading `orders` and `order_items` with the Customers Report's key and counting rule; a rebuild announces nothing (test).
   - Timed on a 200k-order copy; the figure in the PR body. Features: H7, H16 (the pass).
 - RY2 (M) done (#10947), after RY1b: the two events through `pg_announce()`, the catalogue, payload fixtures, API reference blocks, the flow start box and its filters, the 7-day brake, the comparison share. Features: H8, H10, H12.
-- RY3 (S) after RY2: the reorder link and the cart it fills; the link goes into `customer.reorder_due` as a new field with its sample (`commerce/customer-rhythm-events.md`). Feature: H9.
+- RY3 (S) done (#PR_NUMBER), after RY2: the reorder link and the cart it fills; the link goes into `customer.reorder_due` as a new field with its sample (`commerce/customer-rhythm-events.md`). Feature: H9.
 - RY4 (M) after RY1b: the Rhythm part of the Customers Report (`view_customer_report.php`), list and CSV, the contact card's part, the settings. Features: H13, H14, H15.
 - RY5 (S) after RY2 and RY4: `GET /reports/customer-rhythm` in `includes/api/resources/reports.php` (shared with sales-watch SW5: check the open PRs), its type, `php tools/check_api_schema.php`; the contact group rule. Features: H11, H16.
 - RY6 (S) close-out: every H number checked against the code with its PR; `commerce/customer-rhythm.md` written and `commerce/customer-value-report.md`'s left-out line updated; this plan's three files deleted; the changelog `[NEW]` line named in its PR.

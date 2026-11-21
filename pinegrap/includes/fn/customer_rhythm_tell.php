@@ -15,6 +15,9 @@
  * comparison share on, one due customer in ten is held back: the reminder
  * is kept on the row as held back and nothing is announced.
  *
+ * A reorder event carries the signed link that fills a cart with the
+ * products named (customer_rhythm_link.php, reorder.php).
+ *
  * The payload names the contact, never a name, e-mail or address. A
  * customer without a contact, or whose contact is gone, is counted in the
  * pass and never announced.
@@ -162,16 +165,18 @@ function pg_customer_rhythm_event_payload($row, $order_number)
 }
 
 /**
- * The data of customer.reorder_due: the customer's, and each product named
- * with its last quantity and due day. Pure.
+ * The data of customer.reorder_due: the customer's, each product named
+ * with its last quantity and due day, and the reorder link that puts them
+ * into a cart (pg_customer_rhythm_link_url()). Pure.
  *
  * @param array  $row
  * @param string $order_number
  * @param array  $products  pg_customer_rhythm_reorder_pick()
  * @param array  $names     product_id => array(name, short_description)
+ * @param string $url       the reorder link, '' when the site has no key
  * @return array
  */
-function pg_customer_rhythm_reorder_payload($row, $order_number, $products, $names)
+function pg_customer_rhythm_reorder_payload($row, $order_number, $products, $names, $url = '')
 {
     $list = array();
     $text = array();
@@ -193,6 +198,7 @@ function pg_customer_rhythm_reorder_payload($row, $order_number, $products, $nam
     return pg_customer_rhythm_event_payload($row, $order_number) + array(
         'products' => $list,
         'products_text' => implode(', ', $text),
+        'reorder_url' => (string) $url,
     );
 }
 
@@ -378,7 +384,7 @@ function pg_customer_rhythm_tell($made, $stored, $settings, $now)
     }
 
     foreach ($told as $key => $products) {
-        pg_announce('customer.reorder_due', pg_customer_rhythm_reorder_payload($made[$key]['row'], $number($made[$key]['row']), $products, $names));
+        pg_announce('customer.reorder_due', pg_customer_rhythm_reorder_payload($made[$key]['row'], $number($made[$key]['row']), $products, $names, pg_customer_rhythm_link_url($products, $now)));
         $out['told']++;
     }
 

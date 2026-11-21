@@ -2634,6 +2634,7 @@
     "None of these": "Hiçbiri",
     "None of these are needed to send a request; they make the first conversation shorter.": "Talep göndermek için bunların hiçbiri gerekmez; yalnızca ilk görüşmeyi kısaltırlar.",
     "None of these orders has an active label of a carrier label service that books pickups.": "Bu siparişlerin hiçbirinde kurye çağırabilen bir kargo etiket hizmetinin etkin etiketi yok.",
+    "None of these products can be ordered now.": "Bu ürünlerin hiçbiri şu anda sipariş edilemiyor.",
     "None of these products has a code on n11.": "Bu ürünlerin hiçbirinin n11'de kodu yok.",
     "None of these products has anything to send: no code, or no stock and no price.": "Bu ürünlerin gönderilecek bir şeyi yok: kod yok ya da ne stok ne fiyat var.",
     "None of this order's goods went to an address, so there is nothing to send back.": "Bu siparişin hiçbir ürünü bir adrese gönderilmedi, geri gönderilecek bir şey yok.",
