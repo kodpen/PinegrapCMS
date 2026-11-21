@@ -5578,6 +5578,62 @@
         return bytes + ' B';
     }
 
+    // What the browser knows a channel refuses, said when a file is put in
+    // the writing box rather than at Send. rules is BOOT.upload (max and the
+    // lists of ws_upload_browser_rules()); the name is matched part by part
+    // as pg_upload_name_blocked() and ws_upload_refused() match it. The
+    // server asks again at the send. '' when nothing is known against the
+    // file, else 'size', 'macro' or 'kind'.
+    function uploadRefusal(name, size, rules) {
+        var set = rules || {};
+        var base = String(name || '').replace(/\\/g, '/').replace(/\/+$/, '');
+
+        base = base.slice(base.lastIndexOf('/') + 1).trim().toLowerCase();
+
+        if (set.max && (size > set.max)) {
+            return 'size';
+        }
+
+        var parts = base.split('.').slice(1);
+
+        function listed(list) {
+            return parts.some(function (part) { return (list || []).indexOf(part) !== -1; });
+        }
+
+        if ((base === '') || (base.charAt(0) === '.') || ((set.names || []).indexOf(base) !== -1) || listed(set.blocked)) {
+            return 'kind';
+        }
+
+        if (listed(set.macro)) {
+            return 'macro';
+        }
+
+        return listed(set.refused) ? 'kind' : '';
+    }
+
+    // A file of this device waiting in the writing box: a picture shows
+    // itself through an object URL, let go with waitThumbFree().
+    function waitItem(file, name) {
+        var url = '';
+
+        if (/^image\/(png|jpe?g|gif|webp|avif|bmp)$/.test(file.type || '') && window.URL && window.URL.createObjectURL) {
+            try {
+                url = window.URL.createObjectURL(file);
+            } catch (error) {
+                url = '';
+            }
+        }
+
+        return { file: file, name: name, size: file.size || 0, url: url };
+    }
+
+    function waitThumbFree(item) {
+        if (item && item.url && window.URL && window.URL.revokeObjectURL) {
+            window.URL.revokeObjectURL(item.url);
+            item.url = '';
+        }
+    }
+
     function progressBar(progress, small, label) {
         var bar = el('div', 'progress ws-progress' + (small ? ' ws-progress-sm' : '') + (progress.complete ? ' ws-progress-full' : ''));
         var fill = el('div', 'progress-bar');
@@ -18395,10 +18451,13 @@
             var self = this;
             var wrap = el('div', 'ws-composer-wrap');
 
-            // The box this one replaces writes its waiting draft first.
+            // The box this one replaces writes its waiting draft first; files
+            // waiting for another conversation's Send are let go.
             self.flushDraft();
+            self.waitingFiles();
             self.composerWrap = wrap;
             self.meter = null;
+            self.waitBox = null;
 
             if (!self.channel.can_post) {
                 wrap.appendChild(el('div', 'small fg-secondary text-center py-3', self.era ? t('era_readonly') : (self.channel.audit ? t('audit_readonly') : (self.channel.archived ? t('archived_readonly') : t('cannot_post')))));
@@ -18441,7 +18500,7 @@
                     return true;
                 }
 
-                if ((event.key === 'ArrowUp') && self.inputEmpty()) {
+                if ((event.key === 'ArrowUp') && self.inputEmpty() && !self.hasWaiting()) {
                     var mine = self.messages.filter(function (message) { return message.can_edit; });
 
                     if (mine.length) {
@@ -18459,16 +18518,17 @@
             // A discussion's box does not name its title as a channel.
             var placeholder = self.isThread ? t('thread_composer_placeholder') : t('composer_placeholder', self.channel.name);
 
-            // A pasted picture or file is posted as "Add file" posts it, the
-            // box's words with it. The box takes it itself: a discussion's
-            // panel is not inside the channel screen's centre.
+            // A pasted picture or file waits in the box until Send, as a
+            // dropped or picked one does (waitFiles()). The box takes it
+            // itself: a discussion's panel is not inside the channel
+            // screen's centre.
             self.rich = window.PGWsEditor ? window.PGWsEditor.create({
                 placeholder: placeholder,
                 // A pasted message tag or link of a message becomes its chip.
                 messageRefs: true,
                 onKeydown: keys,
                 onEnter: function () { self.send(); },
-                pasteFiles: function (files) { self.uploadFiles(files); },
+                pasteFiles: function (files) { self.waitFiles(files); },
                 pasteAnyFile: true
             }) : null;
 
@@ -18483,16 +18543,22 @@
 
                     if (files.length) {
                         event.preventDefault();
-                        self.uploadFiles(files);
+                        self.waitFiles(files);
                     }
                 });
             }
 
             self.input = input;
 
-            // The field on top, the row of tools with Send under it, on a
-            // phone as on a wide screen.
+            // The files waiting for Send over the field, then the field, then
+            // the row of tools with Send under it, on a phone as on a wide
+            // screen.
+            self.waitBox = el('div', 'ws-composer-files');
+            self.waitBox.setAttribute('role', 'list');
+            self.waitBox.setAttribute('aria-label', t('wait_files'));
+            box.appendChild(self.waitBox);
             box.appendChild(input);
+            self.drawWaiting();
 
             // The row under the box, in order: the inserts, then the box's own
             // marks and steps, then Send (or the microphone in its place).
@@ -18656,6 +18722,12 @@
                     var items = [{ header: t('sm_schedule') }];
 
                     event.stopPropagation();
+
+                    // A message waiting for a time carries no file.
+                    if (self.hasWaiting() && !self.editing) {
+                        toast(t('sm_no_files'), 'warning');
+                        return;
+                    }
 
                     if (self.inputEmpty() || self.editing) {
                         self.input.focus();
@@ -19000,7 +19072,8 @@
         },
 
         // The microphone in place of Send while the box is empty or holds
-        // only tags (voiceTags()). Not while a message is changed; beside a
+        // only tags (voiceTags()) and no file waits in it (Send is live with
+        // a file alone). Not while a message is changed; beside a
         // reply bar it answers that message (voiceSend()), but not several
         // at once (voiceAnswers()).
         voiceSwap: function () {
@@ -19010,7 +19083,7 @@
                 return;
             }
 
-            var show = (this.inputEmpty() || (this.voiceTags() !== '')) && !this.editing && !this.editingScheduled && !this.era
+            var show = (this.inputEmpty() || (this.voiceTags() !== '')) && !this.hasWaiting() && !this.editing && !this.editingScheduled && !this.era
                 && !!this.channel && !!this.channel.can_post
                 && (!this.reply || (!(this.replyMore && this.replyMore.length) && this.voiceAnswers(this.reply)));
 
@@ -19688,7 +19761,11 @@
                 return;
             }
 
-            if (raw.trim() === '' && !options) {
+            // Files waiting in the box go with Send, with or without words;
+            // a message being changed takes only its words.
+            var filesGo = !options && !self.editing && !self.editingScheduled && self.hasWaiting();
+
+            if (raw.trim() === '' && !options && !filesGo) {
                 return;
             }
 
@@ -19702,6 +19779,11 @@
             if (self.picker && (self.pickerMode === 'arg')) {
                 self.argDismissed = self.argument ? self.argumentKey(self.argument) : null;
                 self.closePicker();
+            }
+
+            if (filesGo) {
+                self.sendWaiting();
+                return;
             }
 
             var body = self.tokens(raw);
@@ -20440,14 +20522,14 @@
             input.addEventListener('change', function () {
                 var files = Array.prototype.slice.call(input.files || []);
                 input.remove();
-                self.uploadFiles(files);
+                self.waitFiles(files);
             });
 
             input.click();
         },
 
-        // A copy of a file of the file manager, the text in the composer
-        // going with it as it does with an upload.
+        // A copy of a file of the file manager, waiting in the box for Send
+        // as a file of this device does; the words go with the first.
         attachFromLibrary: function () {
             var self = this;
 
@@ -20465,32 +20547,190 @@
                 return;
             }
 
+            var channel = self.channel;
+
             window.pgPicker.open({ kind: 'channel_file', title: t('lib_from_manager') }).then(function (file) {
-                if (!file) {
+                if (!file || (self.channel !== channel)) {
                     return;
                 }
 
-                var body = self.input ? self.tokens(self.inputText()) : '';
-
-                api('ws_library_attach', { channel_id: self.channel.id, file_id: file.id, body: body }).then(function () {
-                    if (body !== '') {
-                        self.clearInput();
-                    }
-
-                    self.sync(true);
-                }).catch(fail);
+                self.waitingFiles().push({ library: file.id, name: String(file.text || file.name || ''), size: file.size || 0, url: '' });
+                self.waitDrawn();
             });
         },
 
-        // Files picked, dropped or pasted: one after the other, the text in
-        // the composer going with the first. What the file manager refuses
-        // (PHP, .htaccess, web.config, shell scripts, programs) the server
-        // refuses here too, and says so. options (a recording, voiceSend()):
-        // body sent instead of the box's text, which then stays in the box;
-        // parent_id, the message the files answer; voice, a recording's
-        // duration_ms and peaks; transcript, the text this browser wrote of
-        // it; channel, the one it was made in when not the one shown now;
-        // sent(), once any is posted.
+        // ── Files waiting in the writing box for Send ──
+        // A file pasted, dropped or picked is not posted at once: it waits
+        // over the field as a chip until Send (sendWaiting()), with the words
+        // written by then. The list lives in the open screen only, not in the
+        // saved draft; the box of another conversation lets it go.
+
+        // The waiting files of the conversation shown, emptied when it is not
+        // the one they were added in.
+        waitingFiles: function () {
+            var slot = this.channel ? this.channel.id : 0;
+
+            if (!this.waiting || (this.waiting.slot !== slot)) {
+                (this.waiting ? this.waiting.files : []).forEach(waitThumbFree);
+                this.waiting = { slot: slot, files: [] };
+            }
+
+            return this.waiting.files;
+        },
+
+        hasWaiting: function () {
+            return !!(this.waiting && this.channel && (this.waiting.slot === this.channel.id) && this.waiting.files.length);
+        },
+
+        // Files of this device put in the box. What the browser knows the
+        // channel refuses (uploadRefusal()) is said now and not added.
+        waitFiles: function (files) {
+            var self = this;
+            var rules = BOOT.upload || {};
+            var added = 0;
+
+            if (!self.channel || !self.channel.can_post) {
+                return;
+            }
+
+            (files || []).forEach(function (file) {
+                var name = file.name || ('image-' + Date.now() + '.png');
+                var why = uploadRefusal(name, file.size, rules);
+
+                if (why === 'size') {
+                    toast(t('file_too_large_named', name, Math.floor(rules.max / 1048576)), 'warning');
+                    return;
+                }
+
+                if (why) {
+                    toast(t((why === 'macro') ? 'file_refused_macro' : 'file_refused_named', name), 'warning');
+                    return;
+                }
+
+                file.wsName = name;
+                self.waitingFiles().push(waitItem(file, name));
+                added++;
+            });
+
+            if (added) {
+                self.waitDrawn();
+            }
+        },
+
+        // The chips drawn again, Send or the microphone, the caret back in
+        // the box (not on a touch screen, whose keyboard would come up).
+        waitDrawn: function () {
+            this.drawWaiting();
+            this.voiceSwap();
+
+            if (this.input && this.input.isConnected && !touchScreen()) {
+                this.input.focus();
+            }
+        },
+
+        // One chip a waiting file: a picture's thumbnail or a file icon, the
+        // name, the size and the button that takes it out.
+        drawWaiting: function () {
+            var self = this;
+            var strip = self.waitBox;
+
+            if (!strip) {
+                return;
+            }
+
+            var files = self.waitingFiles();
+
+            clear(strip);
+            strip.hidden = !files.length;
+
+            files.forEach(function (item) {
+                var chip = el('div', 'ws-wait-file');
+                var face = el(item.url ? 'img' : 'span', 'ws-wait-thumb');
+                var text = el('span', 'ws-wait-text');
+                var remove = button('pg-icon-button pg-icon-button-sm ws-wait-remove', '', 'bi-x-lg', t('wait_remove', item.name));
+
+                chip.setAttribute('role', 'listitem');
+
+                if (item.url) {
+                    face.src = item.url;
+                    face.alt = '';
+                } else {
+                    face.appendChild(icon('bi-file-earmark'));
+                }
+
+                text.appendChild(el('span', 'ws-wait-name', item.name));
+                text.appendChild(el('span', 'ws-wait-size', sizeLabel(item.size || 0)));
+                text.title = item.name;
+                remove.addEventListener('click', function () { self.dropWaiting(item); });
+                chip.appendChild(face);
+                chip.appendChild(text);
+                chip.appendChild(remove);
+                strip.appendChild(chip);
+            });
+        },
+
+        // The remove button of a chip: the file is not sent.
+        dropWaiting: function (item) {
+            var files = this.waitingFiles();
+            var at = files.indexOf(item);
+
+            if (at !== -1) {
+                files.splice(at, 1);
+                waitThumbFree(item);
+                this.waitDrawn();
+            }
+        },
+
+        // Send with files waiting: they go as "Attach a file" sends several,
+        // one message each, the words of the box with the first, a reply
+        // bar's message answered. One that fails waits again; Cancel drops it
+        // and the ones behind it.
+        sendWaiting: function () {
+            var self = this;
+            var channel = self.channel;
+            var items = self.waitingFiles().splice(0);
+            var parentId = self.reply ? self.reply.id : 0;
+
+            items.forEach(waitThumbFree);
+            self.reply = null;
+            self.replyMore = null;
+            self.drawReplyBar();
+            self.drawWaiting();
+            self.voiceSwap();
+
+            if (self.sendButton && self.sendButton.isConnected) {
+                playMotion(self.sendButton, 'ws-pop');
+            }
+
+            self.uploadFiles(items.map(function (item) {
+                if (item.file) {
+                    item.file.wsWait = item;
+                }
+
+                return item.file || item;
+            }), {
+                parent_id: parentId,
+                back: function (entry) {
+                    if (self.channel === channel) {
+                        var item = entry.wsWait || entry;
+
+                        self.waitingFiles().push(item.file ? waitItem(item.file, item.name) : item);
+                        self.waitDrawn();
+                    }
+                }
+            });
+        },
+
+        // Files and file manager copies (library: its id), one after the
+        // other, the text in the composer going with the first. What the
+        // file manager refuses (PHP, .htaccess, web.config, shell scripts,
+        // programs) the server refuses here too, and says so. options (a
+        // recording, voiceSend()): body sent instead of the box's text, which
+        // then stays in the box; parent_id, the message the files answer;
+        // voice, a recording's duration_ms and peaks; transcript, the text
+        // this browser wrote of it; channel, the one it was made in when not
+        // the one shown now; sent(), once any is posted; back(file), a file
+        // that failed (not one cancelled).
         uploadFiles: function (files, options) {
             var self = this;
             var settings = options || {};
@@ -20507,6 +20747,7 @@
 
             function next() {
                 var file = queue.shift();
+                var card = null;
 
                 if (!file) {
                     if (done > 0) {
@@ -20520,30 +20761,11 @@
                     return;
                 }
 
-                if (file.size > BOOT.upload.max) {
-                    toast(t('file_too_large_named', file.name, Math.floor(BOOT.upload.max / 1048576)), 'warning');
-                    next();
-                    return;
-                }
+                function posted(result) {
+                    if (card) {
+                        card.remove();
+                    }
 
-                var name = file.name || ('image-' + Date.now() + '.png');
-                var card = uploadCard((total > 1) ? t('uploading_count', total - queue.length, total) : t('uploading'), name, function () {
-                    request.xhr.abort();
-                });
-                var request = apiUpload('ws_attach', {
-                    channel_id: channel.id,
-                    name: name,
-                    body: body,
-                    parent_id: settings.parent_id || 0,
-                    voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
-                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : '',
-                    voice_transcript: settings.transcript || ''
-                }, file, name, function (loaded, sent) {
-                    card.progress(loaded, sent);
-                });
-
-                request.done.then(function (result) {
-                    card.remove();
                     done++;
 
                     // "/create product" sent with a spreadsheet: the file
@@ -20556,17 +20778,25 @@
                         }
                     }
 
+                    // The words went with this file; the box is emptied
+                    // only while it still holds them.
                     if (body !== '') {
+                        var words = body;
+
                         body = '';
 
                         if (!ownBody) {
-                            self.clearInput();
+                            self.clearSent(words);
                         }
                     }
 
                     next();
-                }).catch(function (error) {
-                    card.remove();
+                }
+
+                function failed(error) {
+                    if (card) {
+                        card.remove();
+                    }
 
                     // Cancel stops this file and the ones after it; what
                     // was posted stays.
@@ -20575,17 +20805,54 @@
                         toast(t('upload_cancelled'), 'secondary');
                     } else {
                         fail(error);
+
+                        if (settings.back) {
+                            settings.back(file);
+                        }
                     }
 
                     next();
+                }
+
+                // A copy of a file of the file manager (attachFromLibrary()).
+                if (file.library) {
+                    api('ws_library_attach', { channel_id: channel.id, file_id: file.library, body: body }).then(posted).catch(failed);
+                    return;
+                }
+
+                if (file.size > BOOT.upload.max) {
+                    toast(t('file_too_large_named', file.wsName || file.name, Math.floor(BOOT.upload.max / 1048576)), 'warning');
+                    next();
+                    return;
+                }
+
+                var name = file.wsName || file.name || ('image-' + Date.now() + '.png');
+                var request = null;
+
+                card = uploadCard((total > 1) ? t('uploading_count', total - queue.length, total) : t('uploading'), name, function () {
+                    request.xhr.abort();
                 });
+                request = apiUpload('ws_attach', {
+                    channel_id: channel.id,
+                    name: name,
+                    body: body,
+                    parent_id: settings.parent_id || 0,
+                    voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
+                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : '',
+                    voice_transcript: settings.transcript || ''
+                }, file, name, function (loaded, sent) {
+                    card.progress(loaded, sent);
+                });
+
+                request.done.then(posted).catch(failed);
             }
 
             next();
         },
 
-        // Files dragged onto the conversation are posted into it (a pasted
-        // one is the writing box's own, composer()).
+        // Files dragged onto the conversation wait in its writing box for
+        // Send (a pasted one is the box's own, composer()); dropped on
+        // another tab, the conversation and its box are shown first.
         bindDrop: function () {
             var self = this;
             var center = self.center;
@@ -20656,7 +20923,20 @@
 
                 event.preventDefault();
                 hide();
-                self.uploadFiles(Array.prototype.slice.call(event.dataTransfer.files || []));
+
+                var files = Array.prototype.slice.call(event.dataTransfer.files || []);
+
+                if (!files.length || !self.channel || !self.channel.can_post) {
+                    return;
+                }
+
+                if (self.tab !== 'messages') {
+                    self.tab = 'messages';
+                    self.drawCenter();
+                    self.syncAddress();
+                }
+
+                self.waitFiles(files);
             });
 
         },
@@ -22990,7 +23270,9 @@
             pendingThread: null,
             pendingScheduledEdit: null,
             draftTimer: null,
-            draftPending: null
+            draftPending: null,
+            waiting: null,
+            waitBox: null
         };
 
         Object.keys(fresh).forEach(function (key) { view[key] = fresh[key]; });
