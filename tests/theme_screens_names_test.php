@@ -92,8 +92,7 @@ function test_theme_screens_private_label_cards_and_labels()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/appearance.php');
 
 	pg_assert_false(strpos($source, 'show_or_hide_private_label') !== false, 'no inline display script');
-	pg_assert_contains('class="collapse-switcher" type="checkbox" id="private_label" name="private_label" data-bs-target="#private_label_fields"', $source, 'switch opens the fields');
-	pg_assert_contains('id="private_label_fields"', $source, 'fields section');
+	pg_assert_contains('<div class="col-12" id="private_label_fields">', $source, 'fields section, drawn whatever the switch says');
 	pg_assert_contains('<div class="form-text">\' . lang(\'Leave blank to use the default Pinegrap logo\')', $source, 'logo hint as form text');
 
 	foreach (array('logo_url', 'control_panel_stylesheet_url') as $field) {

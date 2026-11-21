@@ -524,6 +524,7 @@
     "Use this text": "Bu metni kullan",
     "Use this theme": "Bu temayı kullan",
     "Use transactional only for real transaction and relationship notices (service outage, terms change, delivery schedule); promotional text is sent as commercial.": "İşlemsel amacı yalnız gerçek işlem ve ilişki bildirimleri için kullanın (hizmet kesintisi, sözleşme değişikliği, teslimat düzeni); tanıtım metni ticari amaçla gönderilir.",
+    "Use your own branding": "Kendi markanızı kullanın",
     "Use {size} at {fps} ({bytes})": "{size}, {fps} kullan ({bytes})",
     "Used": "Kullanıldı",
     "Used Cars": "İkinci El Araçlar",
