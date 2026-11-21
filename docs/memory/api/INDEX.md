@@ -42,6 +42,7 @@
 - api-customer-subscriptions.md: GET /customers/{id}/subscriptions, the pause/resume/cancel moves with dry_run (PR #4399), and the subscription.* webhooks announced from pg_subscription_mail_send()
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
 - api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)
+- api-delivery-tower.md: GET /reports/delivery (the carrier scorecard, DeliveryReport) and GET /shipments/problems (ShipmentProblem list), orders:read, MCP tools (DT5, #10969)
 - api-design-ads.md: Ads and ad regions over the external API (/design/ads, /design/ad-regions): the write path the four screens share, the routes, refusals, the region that keeps its ads
 - api-design-bundles.md: The release bundle API (/design/bundles): read, add and remove pages, publish with the dry run's page list, take back; its 409 codes, design:read/write, and release_bundle_held on the page delete
 - api-design-dialogs-regions.md: Auto dialogs and common regions over the external API (/design/auto-dialogs, /design/common-regions): the write path the four screens share, routes, refusals, the converted region that keeps its row [decision: decisions-made-product-20.md, decisions-made-schema-23.md, decisions-made-schema-28.md]

@@ -115,7 +115,7 @@ description: Generated from the module field of the memory files: each includes/
 - `customer_rhythm_pass`: [[customer-rhythm-store]]
 - `customer_rhythm_tell`: [[customer-rhythm-events]]
 - `customer_values`: [[bug-hunt-areas-customer-value]], [[customer-value-groups-csv-api]], [[customer-value-report]], [[customer-value-report-screen]], [[customer-value-summary]]
-- `delivery_problems`: [[delivery-problems-desk]]
+- `delivery_problems`: [[delivery-problems-desk]], [[delivery-problems-settings]]
 - `delivery_scorecard`: [[delivery-tower-scorecard]]
 - `delivery_tower`: [[delivery-tower-rules]]
 - `delivery_tower_passes`: [[delivery-tower-passes]]

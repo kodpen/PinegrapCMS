@@ -118,6 +118,7 @@
 - customer-value-summary.md: Customer value summary (config_text customer_values): what counts, the customer key, the rebuild in the general job, the summary shape, the 200k-order measurement (#9995)
 - delivery-date-error-answer.md: get_delivery_date() (shipping.php) always answers with a delivery_date key, '' on every error, because its seven callers read it without a check
 - delivery-problems-desk.md: Orders › Delivery problems (view_delivery_problems.php, DT3): the list of shipment_problems, its filters and bulk bar, a problem's drawer, assign, note, close with a reason, the audit lines
+- delivery-problems-settings.md: The Settings drawer of Orders › Delivery problems (DT5, #10969): each problem kind on or off, the two day counts under Advanced, who may save, what it writes
 - delivery-tower-alerts-events.md: Delivery tower alerts and events: the shipping ops alert codes, shipment.problem and shipment.problem_resolved, payload, flow kind filter, quiet first walk
 - delivery-tower-label-chooser.md: Create Label carrier chooser on the order screen (DT4b, #10931): when it shows, the rows' order and suggestion, the api.php action, the label path's one optional argument
 - delivery-tower-passes.md: Delivery tower passes from the general job: the nightly measured-times summary (config_text, cursor in data/temp), the hourly problem pass, the lock, the time budget, the 100k-parcel timing
