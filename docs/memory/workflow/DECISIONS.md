@@ -877,6 +877,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-44.md: How does the conversation timeline behave when the conversation is long? (owner, 2026-11-21, agent channel message 11680)
 - decisions-made-workspace-45.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-45.md: How does a spreadsheet or document open in a channel? (owner, 2026-11-21, agent channel message 11700)
+- decisions-made-workspace-46.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-46.md: How big is the conversation timeline, and how is it zoomed and moved? (owner, 2026-11-21, in the architect's window)
+- decisions-made-workspace-46.md: What does the timeline's card offer beside the message's words? (owner, 2026-11-21, in the architect's window, on the drawing)
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?
@@ -1344,6 +1347,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes (a note's card too), the handles typed
 - workflow/architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20
+- workflow/architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back
 - workflow/architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19)
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
