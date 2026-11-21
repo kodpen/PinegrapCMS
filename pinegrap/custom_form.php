@@ -1434,6 +1434,7 @@ if ($liveform->check_form_errors() == false) {
             SET contact_id = ?
             WHERE id = ?";
         $result = db_q($query, array((string) $contact_id, (string) $form_id)) or output_error('Query failed.');
+        pg_lead_tie('form', (int) $contact_id, (int) $form_id); // visitor journey: the form sent (and its group yes) ties the consenting browser
 
         // Mail the confirmation link to the contact's own address.
         if ($form_contact_group_held) {

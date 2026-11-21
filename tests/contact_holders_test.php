@@ -107,7 +107,7 @@ function test_contact_holders_name_columns_the_schema_has()
 			pg_assert_same('contact', $value, $key . ': the type names a contact');
 		}
 
-		pg_assert_true(in_array($holder['merge'], array('move', 'one', 'cells', 'groups', 'keep', 'survivor'), true), $key . ': known merge answer');
+		pg_assert_true(in_array($holder['merge'], array('move', 'one', 'cells', 'groups', 'keep', 'survivor', 'drop'), true), $key . ': known merge answer');
 		pg_assert_true(in_array($holder['erase'], array('find', 'scope', 'none'), true), $key . ': known erase answer');
 		pg_assert_same(1, preg_match('/^[a-z0-9_]+$/', $table . $holder['column']), $key . ': names are safe to put in SQL');
 	}
@@ -120,6 +120,7 @@ function test_contact_holders_merge_answers_as_decided()
 	pg_assert_same('one', $holders['erp_accounts']['merge'], 'a group with more than one ERP account is not merged');
 	pg_assert_same('keep', $holders['consent_log']['merge'], 'the consent log stays as proof');
 	pg_assert_same('survivor', $holders['user']['merge'], 'a contact a user holds is the one that stays');
+	pg_assert_same('drop', $holders['contact_scores']['merge'], 'a merged contact\'s score row goes, one row per contact');
 
 	foreach (array('orders', 'forms', 'email_recipients', 'ws_channels', 'ws_channels_customer') as $key) {
 		pg_assert_same('move', $holders[$key]['merge'], $key . ' is re-pointed');

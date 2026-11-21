@@ -448,6 +448,16 @@ function pg_session_sign_in($user_id, $username)
         unset($_SESSION['software']['token']);
         initialize_token();
     }
+
+    // The visitor journey: a person's own sign-in ties the browser that
+    // allowed marketing cookies to their contact. A request already signed
+    // in as someone else (login_as_user.php) is not that person's act.
+    // functions.php is not loaded by get_file.php.
+    $signed_in_as_other = defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_ID') && ((int) USER_ID !== (int) $user_id);
+
+    if (!$signed_in_as_other && function_exists('pg_lead_sign_in')) {
+        pg_lead_sign_in((int) $user_id);
+    }
 }
 
 // Note the sign-in time on the person's dashboard_layout row, moving the one

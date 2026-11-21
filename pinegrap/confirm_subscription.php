@@ -46,6 +46,12 @@ if (($pg_fs_link !== null) && (pg_fs_group($pg_fs_link['g']) !== null)) {
 
 if ($pg_fs_post && ($pg_fs_state === 'confirm')) {
     $pg_fs_state = pg_fs_confirm($pg_fs_link['c'], $pg_fs_link['g'], $pg_fs_email) ? 'confirmed' : 'failed';
+
+    // The double opt-in's yes is the person's own act: the browser that
+    // allowed marketing cookies is tied to the contact of the signed link.
+    if ($pg_fs_state === 'confirmed') {
+        pg_lead_tie('newsletter', (int) $pg_fs_link['c'], (int) $pg_fs_link['g']);
+    }
 }
 
 switch ($pg_fs_state) {

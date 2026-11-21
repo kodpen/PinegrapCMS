@@ -80,6 +80,7 @@ if ($changes && pg_consent_enabled() && pg_consent_log_ready() && pg_consent_ans
 if ($changes && ($status === 200)) {
     pg_ad_conversion_consent_changed($changes);
     pg_ad_click_ids_consent_changed($changes);
+    pg_lead_consent_changed($changes);
 }
 
 http_response_code($status);
