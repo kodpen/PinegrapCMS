@@ -22,6 +22,6 @@ module: customer_rhythm_link
 
 ## Tests?
 - `tests/customer_rhythm_link_test.php`: items, query names no person, signature prefix, open, ended, changed products, quantity, end or key invalid, parse shapes, `reorder_url` in the event and flow outputs, GET changes nothing, headers, firewall list.
-- Not run against a database or in a browser when written (#PR_NUMBER).
+- Not run against a database or in a browser when written (#10976).
 
 Related: docs/memory/commerce/customer-rhythm-events.md, docs/memory/commerce/cart-quotes.md, docs/memory/commerce/order-reference-code-link.md
