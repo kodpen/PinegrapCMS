@@ -27,4 +27,7 @@ description: The conversation timeline's zoom (buttons, + and -, Ctrl+wheel, pin
 ## What stays as it was?
 - The read, the colours, the card and the keyboard slider. The move to the foot of Channel info under 220 px left; the zoom works there too.
 
+## How was it checked?
+- PR #11027: sandbox with 430 messages over five days at 1440, 1280, 1024, 900 (dark), 768 and 390 px (Channel info); buttons, Ctrl+wheel, wheel, drag, Home, `-`, the kept zoom after a reload. Before it, under 220 px the holder's padding stood past the card's edge (at 390 px 26 px past it).
+
 Related: docs/memory/workspace/workspace-channel-timeline.md
