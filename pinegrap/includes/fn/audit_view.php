@@ -592,6 +592,7 @@ function pg_audit_view_labels($kind)
             'person'       => lang('Person'),
             'privacy_rule' => lang('Retention rule'),
             'privacy_request' => lang('Privacy request'),
+            'shipment_problem' => lang('Delivery problem'),
             'audit'        => lang('Audit trail'),
         ),
         'action' => array(
@@ -611,6 +612,7 @@ function pg_audit_view_labels($kind)
             'run'     => lang('Rule run'),
             'answer'  => lang('Answered'),
             'refuse'  => lang('Refused'),
+            'close'   => lang('Closed'),
         ),
         'source' => array(
             'panel' => lang('Panel'),
