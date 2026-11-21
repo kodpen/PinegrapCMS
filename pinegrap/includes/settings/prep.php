@@ -1281,6 +1281,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // button submits the hidden form firewall.php hands over, by its form
     // attribute: forms cannot be nested).
     $output_auto_bans = '';
+    $waf_auto_ban_count = 0;
 
     if ($waf_ip_columns) {
         $auto_result = db_q(
@@ -1311,7 +1312,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                                 <button type="submit" form="pgset_waf_release" name="release_ip" value="' . h($auto_row['ip_address']) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-unlock" aria-hidden="true"></i>' . lang('Release') . '</button>
                                                             </td>
                                                         </tr>';
+                $waf_auto_ban_count++;
             }
+        }
+
+        // The table shows the latest 25; the Addresses row's line counts them all.
+        if ($waf_auto_ban_count >= 25) {
+            $waf_auto_ban_count = (int) db_value("SELECT COUNT(*) FROM banned_ip_addresses WHERE source = 'auto' AND (expires_at = 0 OR expires_at > " . (int) time() . ")");
         }
     }
 

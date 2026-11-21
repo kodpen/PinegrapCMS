@@ -1373,6 +1373,7 @@
     "Checked and ready": "Kontrol edildi, hazır",
     "Checked and ready temporary staff for a busy season, a project or a sudden gap.": "Yoğun bir sezon, bir proje ya da ani bir boşluk için kontrol edilmiş ve hazır geçici personel.",
     "Checked before every other rule, and enforced whether or not the firewall is enabled. Behind a CDN these are matched against the real visitor address, not the edge server — provided the edge is listed under Trusted Proxies above.": "Diğer tüm kurallardan önce denetlenir ve güvenlik duvarı açık olsun olmasın uygulanır. Bir CDN arkasındaysanız, uç sunucu yukarıda Güvenilen Vekil Sunucular'da listelendiği sürece, bunlar edge sunucusuyla değil gerçek ziyaretçi adresiyle eşleştirilir.",
+    "Checked before every other rule, and enforced whether or not the firewall is enabled. Behind a CDN these are matched against the real visitor address, not the edge server — provided the edge is listed under Trusted proxies.": "Diğer tüm kurallardan önce denetlenir ve güvenlik duvarı açık olsun olmasın uygulanır. Bir CDN arkasındaysanız, uç sunucu Güvenilen vekil sunucular'da listelendiği sürece, bunlar uç sunucuyla değil gerçek ziyaretçi adresiyle eşleştirilir.",
     "Checked by the vet every month": "Her ay veteriner kontrolünden geçer",
     "Checked candidates": "Kontrol edilmiş adaylar",
     "Checked cars": "Kontrol edilmiş araçlar",
