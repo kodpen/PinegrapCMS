@@ -26,7 +26,7 @@ module: customer_rhythm_tell
 
 ## What does the payload carry?
 - `pg_customer_rhythm_event_payload()`: `id` (contact), `stage`, `previous_stage` (null for none), `interval_days`, `days_since_last_order`, `chance` (per cent), `expected_value` (minor units, base currency), `last_order_id`, `last_order_number`. Stage names are those of `pg_customer_rhythm_stage_codes()` (`slipping` for Slipping away).
-- Reorder adds `products` (id, name, short_description, quantity, due_at UTC) and `products_text` ("2 × Coffee beans 1 kg"). The reorder link is RY3's field.
+- Reorder adds `products` (id, name, short_description, quantity, due_at UTC), `products_text` ("2 × Coffee beans 1 kg") and `reorder_url`, the signed link that fills a cart (`customer-rhythm-reorder-link.md`).
 - Fields, samples and catalogue lines in `webhook_payloads.php` / `webhooks.php`; the API reference blocks come from them. Area "Customers".
 
 ## How do flows start on them?

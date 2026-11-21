@@ -317,7 +317,7 @@ function ws_flow_event_outputs()
         'shipment.problem'       => $problem,
         'shipment.problem_resolved' => array_merge($problem, array($value('reason', 'text', lang('What settled it')))),
         'customer.rhythm_stage_changed' => $rhythm,
-        'customer.reorder_due'   => array_merge($rhythm, array($value('products_text', 'text', lang('Products due')))),
+        'customer.reorder_due'   => array_merge($rhythm, array($value('products_text', 'text', lang('Products due')), $value('reorder_url', 'text', lang('Reorder link')))),
         'cart_quote.created'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact'))),
         'cart_quote.ordered'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact')), $order),
         'subscription.renewed'   => $subscription,

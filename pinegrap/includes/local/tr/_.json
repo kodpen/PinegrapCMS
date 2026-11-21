@@ -1549,6 +1549,7 @@
     "{var:1} of them were not sent.": "Bunlardan {var:1} tanesi gönderilemedi.",
     "{var:1} of these pages have a mobile style: on a phone they are still drawn with that style, not with the design.": "Bu sayfalardan {var:1} tanesinin mobil stili var: telefonda tasarımla değil, yine o stille çizilirler.",
     "{var:1} of these pages take the style from their folder: they get the design as their own style, and the folder keeps the classic style.": "Bu sayfalardan {var:1} tanesi stili klasöründen alıyor: tasarımı kendi stili olarak alır, klasör klasik stilini korur.",
+    "{var:1} of these products cannot be ordered now and are left out.": "Bu ürünlerden {var:1} tanesi şu anda sipariş edilemiyor ve dışarıda bırakıldı.",
     "{var:1} of your colleagues are signed in right now.": "Şu anda {var:1} çalışma arkadaşın oturum açmış durumda.",
     "{var:1} of your requests to MCP agents are still waiting, some of them for your approval. Approve those or set them aside first.": "MCP ajanlarına gönderdiğiniz {var:1} istek hâlâ bekliyor, bazıları sizin onayınızı. Önce onları onaylayın ya da bir kenara bırakın.",
     "{var:1} of your requests to MCP agents are still waiting. Please wait for those to be answered.": "MCP ajanlarına gönderdiğiniz {var:1} istek hâlâ bekliyor. Lütfen onların yanıtlanmasını bekleyin.",

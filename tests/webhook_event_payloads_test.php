@@ -156,7 +156,7 @@ function webhook_payloads_test_builders()
 			return pg_customer_rhythm_event_payload(array('contact_id' => 4, 'stage' => 2, 'stage_before' => 1, 'interval_days' => 30, 'last_order_at' => 1000, 'updated_at' => 90000, 'chance' => 80, 'expected_value' => 100, 'last_order_id' => 3), '1001');
 		},
 		'pg_customer_rhythm_reorder_payload' => function () {
-			return pg_customer_rhythm_reorder_payload(array('contact_id' => 4, 'stage' => 1, 'stage_before' => 0, 'interval_days' => 30, 'last_order_at' => 1000, 'updated_at' => 90000, 'chance' => 80, 'expected_value' => 100, 'last_order_id' => 3), '1001', array(array('product_id' => 7, 'quantity' => 2, 'due' => 5000)), array(7 => array('P', 'Product')));
+			return pg_customer_rhythm_reorder_payload(array('contact_id' => 4, 'stage' => 1, 'stage_before' => 0, 'interval_days' => 30, 'last_order_at' => 1000, 'updated_at' => 90000, 'chance' => 80, 'expected_value' => 100, 'last_order_id' => 3), '1001', array(array('product_id' => 7, 'quantity' => 2, 'due' => 5000)), array(7 => array('P', 'Product')), 'https://example.com/p/reorder.php?p=7-2');
 		},
 		'pg_contact_group_members_event' => function () {
 			return pg_contact_group_members_event(3, 'Newsletter', array(4), array());

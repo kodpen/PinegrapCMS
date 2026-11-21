@@ -2675,7 +2675,7 @@ function waf_scan_value($name, $value, array &$result)
  * Scripts where automated abuse is expensive: credential stuffing, card
  * testing, form spam, coupon brute-forcing, cart, sales quote and public
  * invoice link guessing, privacy request spam, privacy download link
- * guessing.
+ * guessing, reorder link guessing.
  */
 function waf_sensitive_scripts()
 {
@@ -2687,7 +2687,7 @@ function waf_sensitive_scripts()
         'email_a_friend.php', 'add_comment.php', 'api.php',
         'cancel_order.php', 'retrieve_order.php', 'order_history_retrieve_order.php',
         'cart_quote.php', 'erp_quote.php', 'erp_invoice.php',
-        'privacy_request.php', 'privacy_download.php',
+        'privacy_request.php', 'privacy_download.php', 'reorder.php',
     );
 }
 

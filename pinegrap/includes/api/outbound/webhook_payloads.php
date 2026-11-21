@@ -323,11 +323,13 @@ function api_webhook_event_payloads() {
 		'customer.reorder_due' => array(
 			'fields' => $rhythm + array(
 				'products'      => array('object[]', 'The products due: id (GET /products/{id}), name, short_description, quantity (the units last bought) and due_at (UTC, the day they run out by the product\'s rhythm).'),
-				'products_text' => array('string', 'The products as one text, such as "2 × Coffee beans 1 kg".')
+				'products_text' => array('string', 'The products as one text, such as "2 × Coffee beans 1 kg".'),
+				'reorder_url'   => array('string', 'The reorder link: it shows the products and quantities and puts them into the visitor\'s cart at today\'s price and stock. Signed, it works for 30 days; it names no order, person or address and signs no one in. Empty when the site has no encryption key.')
 			),
 			'sample' => array_merge($rhythm_sample, array('previous_stage' => null, 'stage' => 'regular', 'days_since_last_order' => 27)) + array(
 				'products'      => array(array('id' => 120, 'name' => 'COFFEE-1KG', 'short_description' => 'Coffee beans 1 kg', 'quantity' => 2, 'due_at' => '2026-11-24T09:30:00Z')),
-				'products_text' => '2 × Coffee beans 1 kg'
+				'products_text' => '2 × Coffee beans 1 kg',
+				'reorder_url'   => 'https://www.example.com/pinegrap/reorder.php?p=120-2&e=1766478600&s=4f9c2a7e1b0d83c6a5e2f19d7b4c0a8e'
 			)
 		),
 
