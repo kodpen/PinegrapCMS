@@ -167,6 +167,88 @@
         }
 
         body.appendChild(historyPart(h, channelId));
+
+        if (data.journey) {
+            body.appendChild(journeyPart(h, data.journey));
+        }
+    }
+
+    // The contact's journey, folded under the history: where they first
+    // came from and the newest rows as the contact screen draws them, then
+    // a way to the contact (pg_lead_journey_card()).
+    function journeyPart(h, journey) {
+        var part = h.el('details', 'mt-5 ws-customer-journey');
+        var summary = h.el('summary', 'small fw-semibold d-flex align-items-center gap-1');
+        var rows = h.el('div', 'mt-3');
+
+        summary.appendChild(h.icon('bi-signpost', 'fg-secondary'));
+        summary.appendChild(h.el('span', '', h.t('cust_journey')));
+        part.appendChild(summary);
+
+        if (journey.first) {
+            var first = h.el('div', 'd-flex flex-wrap align-items-center gap-3 small mt-3');
+
+            first.appendChild(h.el('span', 'fg-secondary', h.t('cust_journey_first')));
+            first.appendChild(h.el('span', 'pg-pill pg-tone-blue', journey.first.channel));
+            [journey.first.campaign, journey.first.landing_page].filter(Boolean).forEach(function (text) {
+                first.appendChild(h.el('span', 'pg-text-meta text-break', text));
+            });
+            part.appendChild(first);
+        }
+
+        journey.rows.forEach(function (item) {
+            var row = h.el('div', 'pg-list-row is-read');
+            var tile = h.el('span', 'pg-icon-tile pg-tone-' + item.tone);
+            var main = h.el('div', 'pg-list-row-main');
+            var head = h.el('div', 'pg-list-row-head');
+
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(h.icon(item.icon, ''));
+            head.appendChild(named(h, 'pg-list-row-title', item.text, item.url));
+            head.appendChild(h.el('span', 'pg-list-row-time', [item.day_text, item.time_text].join(' ')));
+            main.appendChild(head);
+
+            if (item.amount_text) {
+                main.appendChild(h.el('div', 'pg-list-row-text fw-semibold', item.amount_text));
+            }
+
+            if (item.pages.length) {
+                var pages = h.el('div', 'pg-gather');
+                var toggle = h.el('button', 'pg-gather-toggle', h.t('cust_journey_pages'));
+
+                pages.hidden = true;
+                item.pages.forEach(function (page) {
+                    var line = h.el('div', 'pg-gather-line');
+
+                    line.appendChild(h.el('span', 'text-break', page.page));
+                    line.appendChild(h.el('span', 'pg-gather-line-end', page.time_text));
+                    pages.appendChild(line);
+                });
+                toggle.type = 'button';
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.addEventListener('click', function () {
+                    pages.hidden = !pages.hidden;
+                    toggle.setAttribute('aria-expanded', pages.hidden ? 'false' : 'true');
+                });
+                main.appendChild(pages);
+                main.appendChild(toggle);
+            }
+
+            row.appendChild(tile);
+            row.appendChild(main);
+            rows.appendChild(row);
+        });
+
+        part.appendChild(rows);
+
+        if (journey.contact_url) {
+            var open = h.el('a', 'pg-button pg-button-quiet pg-button-sm mt-3', h.t('cust_journey_open'));
+
+            open.href = journey.contact_url;
+            part.appendChild(open);
+        }
+
+        return part;
     }
 
     // The kinds of entry in the history and their icons.

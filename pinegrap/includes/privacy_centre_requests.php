@@ -69,12 +69,36 @@ if ($requests_ready && ($_SERVER['REQUEST_METHOD'] === 'POST')) {
                 'unverified' => lang('Check who asks first.'),
                 'mail'       => lang('The e-mail could not be sent. Nothing was erased; try again.'),
                 'refused'    => lang('Your role may not see this person\'s data: someone with a higher role answers this request.'),
+                'file'       => lang('The export file could not be written. Nothing was sent; try again.'),
             );
 
             if ($requests_sent === 'ok') {
                 $liveform->add_notice(($requests_request['kind'] === 'erasure') ? lang('The answer was sent and the person\'s data erased.') : lang('The answer was sent.'));
             } else {
                 $liveform->add_error($requests_errors[$requests_sent] ?? lang('The request could not be saved.'));
+            }
+        } elseif ($requests_action === 'link_new') {
+            $requests_sent = pg_privacy_link_resend($requests_request, $requests_operator);
+            $requests_errors = array(
+                'closed'  => lang('This request has no download link.'),
+                'refused' => lang('Your role may not see this person\'s data: someone with a higher role answers this request.'),
+                'empty'   => lang('Nothing of this person was found.'),
+                'file'    => lang('The export file could not be written. Nothing was sent; try again.'),
+                'mail'    => lang('The e-mail could not be sent; try again.'),
+            );
+
+            if ($requests_sent === 'ok') {
+                $liveform->add_notice(lang('A new link was sent. The earlier link no longer works.'));
+            } else {
+                $liveform->add_error($requests_errors[$requests_sent] ?? lang('The request could not be saved.'));
+            }
+        } elseif ($requests_action === 'link_withdraw') {
+            $requests_sent = pg_privacy_link_withdraw($requests_request);
+
+            if ($requests_sent === 'ok') {
+                $liveform->add_notice(lang('The link was withdrawn and the file deleted.'));
+            } else {
+                $liveform->add_error(lang('This request has no working link.'));
             }
         } elseif ($requests_action === 'refuse') {
             $requests_sent = pg_privacy_request_send($requests_request, is_string($_POST['reason'] ?? null) ? $_POST['reason'] : '', $requests_operator, true);

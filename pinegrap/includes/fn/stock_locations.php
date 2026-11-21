@@ -88,6 +88,7 @@ function pg_stock_reasons()
     return array(
         'panel', 'bulk_edit', 'import', 'checkout', 'local_sale', 'cancel', 'return',
         'barcode', 'api', 'transfer', 'count', 'marketplace', 'erp', 'workspace',
+        'supplier_feed',
     );
 }
 

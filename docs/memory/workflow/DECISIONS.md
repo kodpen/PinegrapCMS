@@ -516,6 +516,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-94.md: What does "Go live" do? (owner, 2026-11-21, agent channel poll 209, channel message 11152)
 - decisions-made-product-95.md: Where are the rules and the earlier parts?
 - decisions-made-product-95.md: How does the exported data of an information request reach the person? (owner, 2026-11-21, in the architect's window)
+- decisions-made-product-96.md: Where are the rules and the earlier parts?
+- decisions-made-product-96.md: Does the KVKK notice depend on the distance sales switch? (owner, 2026-11-21, poll 214)
+- decisions-made-product-96.md: Where is the retention of site chats set, and is it applied at the update? (owner, 2026-11-21, poll 215)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
@@ -676,6 +679,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-46.md: What does the set-up journey get? (architect, 2026-11-21)
 - decisions-made-schema-46.md: What does prototype approval get? (architect, 2026-11-21)
 - decisions-made-schema-46.md: Who sets the columns?
+- decisions-made-schema-47.md: Where are the rules and the earlier parts?
+- decisions-made-schema-47.md: Which columns do the walk-in queue's tables have? (architect, 2026-11-21, #10956)
+- decisions-made-schema-47.md: What does the walk-in queue do with personal data? (architect, 2026-11-21)
+- decisions-made-schema-47.md: Which columns do the volunteer tables have? (architect, 2026-11-21, #10949)
+- decisions-made-schema-47.md: How are a volunteer's document file and erasure handled? (architect, 2026-11-21)
+- decisions-made-schema-47.md: Which migration label do two table steps open at once take?
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
@@ -907,7 +916,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 
 ## Topic files that record a dated owner or architect decision
 
-- api/ad-conversions-click-ids.md: Ad click ids of the landing address (fbclid, gclid, ttclid, SC1b): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache
+- api/ad-conversions-click-ids.md: Ad click ids of the landing address (fbclid, gclid, ttclid, #10781): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache
+- api/ad-conversions.md: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: the start file, which file holds each part, the rules every change keeps, C1 to C12 with PRs, what is not built
 - api/ai-connections.md: One connection per AI provider (CX9a): where its key is kept, the key an assistant calls with, the 11.0.240 data step that moved the keys, its page on Connections and who may change it
 - api/api-change-rules.md: How the external API may change: by adding only, no version in the address, English endpoint texts, the checks every API change keeps, and what the 2026-11-17 test measured that is still open
 - api/api-content-review.md: GET /content-review and POST /content-review/{kind}/{id} (CH4): the screen's filters, the keyset over its branches, the fields, partial writes, the dry run, the scope and a user-role caller's rows
@@ -1012,6 +1022,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/picture-text-translation-draw.md: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
 - core/picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points
 - core/picture-text-translation-store.md: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
+- core/privacy-request-export-link.md: The signed download link of an information answer (KV4c, #10944): the file in data/privacy_exports, HMAC, 7 days, privacy_download.php 410, Send a new link, Withdraw the link
 - core/privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer
 - core/sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
 - core/software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
@@ -1232,10 +1243,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-overview.md: The Artifact Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part
 - ui/image-editor-picture-to-layer.md: Convert to a layer in the Artifact Canvas (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
 - ui/image-editor-rail.md: The Artifact Canvas rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
+- ui/image-editor-send.md: The Artifact Canvas's main button as a split button (#10858): the chevron's menu from M.sendMenu(), send to a Workspace channel, Download, who is offered what from a channel and from the File Manager
 - ui/image-editor-subject.md: The Artifact Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
 - ui/image-editor-touch.md: The Artifact Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick
 - ui/image-editor-upload-setting.md: The Artifact Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
 - ui/image-editor-video-files.md: Artifact Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
+- ui/image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
 - ui/list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - ui/list-seo-details.md: A click on the SEO score of the Pages and Products lists loads the analysis into the Details panel under the SEO line (no drawer); the run buttons and failure lines there
 - ui/list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
@@ -1479,6 +1492,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, TD1): tasks in columns, decisions one list of wide cards, each kind of file a card; My tasks keeps its rows
 - workspace/workspace-channel-screen.md: The Workspace channel screen as redrawn (C1–C8) and its card look (CL1-CL4, what it left alone): what every change keeps, the phone rules, who changes the design, where each part is
 - workspace/workspace-channel-summary-board-memory.md: The channel's Summary and Board tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the Memory tab is in workspace-memory-tab.md
+- workspace/workspace-channel-timeline.md: Conversation timeline beside the channel tabs (Channel info on a narrow screen): writer colours, waits, hover card with first words and tool result, click to open, live
 - workspace/workspace-command-flow.md: The channel's flows in the composer's "/" list and /flow (/akış) (CC5 of channel-commands, #10301): which flows, read when, what a pick does, a typed name, the customer of a channel about one
 - workspace/workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
 - workspace/workspace-command-overview.md: Start file of the / commands in a Workspace channel's writing box: what they are, what binds them, which workspace-command-* file holds each part, how a new command is added

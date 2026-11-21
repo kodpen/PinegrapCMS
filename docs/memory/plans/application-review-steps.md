@@ -8,7 +8,7 @@ description: Plan application-review, steps AR1a to AR8: pure rules, store, prog
 
 - AR1b (M) after AR1a (owner yes, poll 199). Done (#10832, `core/application-review-store.md`): the four tables as a migration step in the open version, the columns of `decisions-made-schema-44.md`, in the PR body, asked of the architect before ready; the erase of the four tables; the export of state, decision, combined and criterion scores, never jurors' notes or names (poll 200, `decisions-made-product-91.md`); their tests; the `audit_log` entity type. Features: V16 (privacy).
 
-- AR2 (M) after AR1b: the programme settings screen under Forms (`validate_forms_access()` and the folder rule): period, categories, criteria and templates, rounds, blind, decision texts; the period check in the form's submit path; eligibility and its override. Features: V1, V2, V3, V5.
+- AR2 (M) after AR1b. Done (#10880, `core/application-review-programme.md`): the programme settings screen under Forms (`validate_forms_access()` and the folder rule): period, categories, criteria and templates, rounds, blind, decision texts; the period check in the form's submit path; eligibility and its override. Features: V1, V2, V3, V5.
 
 - AR3 (M) after AR2: reviewers and pools, the assignment run, conflicts, "My reviews" opened by membership with no Forms right, blind, the reminders. Features: V6 to V9.
 

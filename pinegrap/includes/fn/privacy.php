@@ -1040,6 +1040,13 @@ function pg_privacy_erase_tables()
         // A member's course progress (lessons done, first open, completion)
         // goes whole; the course and its lessons stay.
         'course_progress'              => array('find' => $user, 'action' => 'delete', 'fields' => array()),
+        // The visitor journey: the visits tied to the contact, its own rows,
+        // the score and the browser the contact's key points at. A visit
+        // no contact holds is nobody's and stays until the keep period.
+        'lead_visits'                  => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
+        'contact_journey'              => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
+        'contact_scores'               => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
+        'lead_browsers'                => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
         'email_recipients'             => array('find' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_outbox'                  => array('find' => array('recipient' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_bounces'                 => array('find' => array('address' => 'emails'), 'action' => 'delete', 'fields' => array()),
@@ -1167,6 +1174,10 @@ function pg_privacy_erase_labels()
         'feedback_responses'           => lang('Satisfaction survey answers'),
         'waiting_tickets'              => lang('Queue numbers'),
         'course_progress'              => lang('Course progress'),
+        'lead_visits'                  => lang('Visits tied to the contact'),
+        'contact_journey'              => lang('Journey'),
+        'contact_scores'               => lang('Interest score'),
+        'lead_browsers'                => lang('Browsers tied to the contact'),
         'email_recipients'             => lang('E-mail campaigns'),
         'mail_outbox'                  => lang('E-mail messages'),
         'mail_bounces'                 => lang('E-mail bounces and complaints'),

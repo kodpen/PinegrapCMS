@@ -1612,6 +1612,65 @@ function api_products_set_enabled($id, $enabled, $by) {
 
 }
 
+// Write a product's own price from outside a request to the API: the
+// supplier feed's sync (includes/fn/supplier_feed_sync.php) runs in the
+// general job. The steps after the write are those of the batch price route
+// (api_products_prices()): the audit trail, the price history under $source,
+// the product.updated event and the marketplace queue. The caller flushes the
+// price history queue (pg_price_history_flush()). Never stops the caller: a
+// product that is missing, in the Recycle Bin, already at the price, or a
+// bundle priced as the sum of its products answers false and writes nothing.
+function api_products_set_price($id, $price, $source) {
+
+	$id = (int)$id;
+	$price = (int)$price;
+
+	if (($price < 0) || ($price > API_PRODUCT_PRICE_MAX)) {
+
+		return false;
+
+	}
+
+	$product = db_item("SELECT id, name, short_description, price, "
+		. (pg_bundles_ready() ? "bundle, bundle_pricing" : "0 AS bundle, 'fixed' AS bundle_pricing")
+		. " FROM products WHERE (id = '" . $id . "')" . pg_catalog_bin_live_sql('products') . " LIMIT 1");
+
+	if (!is_array($product) || ((int)$product['price'] === $price)
+		|| (!empty($product['bundle']) && ($product['bundle_pricing'] === 'sum'))) {
+
+		return false;
+
+	}
+
+	if (db_q("UPDATE products SET price = ?, timestamp = UNIX_TIMESTAMP() WHERE (id = ?) AND (price = ?) LIMIT 1", array((string)$price, (string)$id, (string)$product['price'])) === false) {
+
+		return false;
+
+	}
+
+	// Another writer got there first.
+	if (mysqli_affected_rows(db::$con) !== 1) {
+
+		return false;
+
+	}
+
+	pg_audit('update', 'product', $id, array('price' => $product['price']), array('price' => $price), pg_audit_label_of('products', $product));
+
+	pg_price_history_queue($id, $source);
+
+	api_webhook_enqueue('product.updated', array('id' => $id, 'name' => $product['name']));
+
+	if (function_exists('pg_marketplace_product_changed')) {
+
+		pg_marketplace_product_changed($id);
+
+	}
+
+	return true;
+
+}
+
 // The bundle fields an update sent, checked before anything is written, the
 // way the product screen's Bundle card writes them: null when the request
 // named none of them. Answers the columns to set and the contents to save

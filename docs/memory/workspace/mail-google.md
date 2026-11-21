@@ -12,9 +12,9 @@ description: A Gmail or Google Workspace mailbox (MG1): a connected Google accou
 - Registry (`connections_registry.php`): the `gmail` entry covers purposes `mail` and `mail_read`.
 
 ## What does the box form show with Gmail?
-- `ws_mail_google_steps()` between Mail service and User name, while Gmail is chosen: "Sign in with" (`google_way`, not stored) with "A connected Google account" first and "An app password". `ws_mail_google_way()` opens a box with an account or no password (a new one) on the account, a box keeping a password on the app password.
-- The account way: four steps, the Google account's state with "Connect in Connections" to Google's page in a new tab (CX11e, `ui/connections-mailboxes-accounts.md`), and "Setting up the Google application": the two redirect addresses each with Copy, the Gmail API's enable link, Google's verification warning; their words come from `includes/fn/google_cloud.php`, shared with Google's page (`ui/connections-provider-page.md`).
-- The app password way: six steps (2-Step Verification, App passwords, full address as user, Connected account None, Test connection) and three notes.
+- In Reading, "Sign in with" (`google_way`, not stored, `ws_mail_google_signin()`): "A connected Google account" first, "An app password". `ws_mail_google_way()` opens a box with an account or no password (a new one) on the account, a box keeping a password on the app password.
+- Under it one quiet button opens the drawer "Set up the Google application" (since MT3): the OAuth client, the two redirect addresses each with Copy, the Gmail API's enable link, the Google account's state with "Connect in Connections" (new tab), what to choose in the box, Google's verification warning, the app password's steps folded (`mail-box-start-setup.md`).
+- Its words come from `includes/fn/google_cloud.php`, shared with Google's page (`ui/connections-provider-page.md`).
 
 ## Which Google pages were checked (2026-11-19)?
 - developers.google.com/workspace/gmail/imap/xoauth2-protocol: the IMAP/SMTP scope is `https://mail.google.com/` (no Gmail API needed; only sending uses it).
@@ -27,6 +27,6 @@ description: A Gmail or Google Workspace mailbox (MG1): a connected Google accou
 - No Google account in the cloud session: the real consent, the XOAUTH2 exchange with imap.gmail.com and sending through the Gmail API were never run; the owner tries them on dev.
 
 ## Tests?
-- `tests/workspace_mail_google_steps_test.php` (ways, button, addresses, warning), `tests/workspace_mail_connection_test.php` (purpose scopes, registry covers).
+- `tests/workspace_mail_google_steps_test.php` (ways, button, the set-up drawer's steps, addresses, warning), `tests/workspace_mail_connection_test.php` (purpose scopes, registry covers).
 
 Related: docs/memory/workspace/mail-microsoft.md, docs/memory/ui/look-settings-mailboxes.md

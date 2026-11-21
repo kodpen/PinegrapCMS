@@ -185,6 +185,15 @@ if (ECOMMERCE && function_exists('pg_customer_rhythm_job_run')) {
 
 }
 
+// The visitor journey's keep period (includes/fn/lead_journey_view.php):
+// visits, journey rows and browsers older than it go, a batch a table each
+// tick; with nothing to trim it is three indexed deletes that find no row.
+if (function_exists('pg_lead_trim_run')) {
+
+    pg_lead_trim_run(time());
+
+}
+
 // Customer value summary (includes/fn/customer_values.php): rebuilt whole from
 // the orders once a day, at most PG_CUSTOMER_VALUE_TICK_SECONDS of this tick,
 // going on from its place next tick; one write when the walk is done.
@@ -754,6 +763,15 @@ if ($import_tick['swept'] > 0) {
     )), 'UNKNOWN');
 }
 
+// Supplier feeds (includes/fn/supplier_feed_sync.php, loaded only here): the
+// feeds whose pull is running or due are worked for a short budget every
+// tick, a feed's place in its file kept between ticks, under one lock per
+// feed. With no feed it is a few reads of small tables.
+if (ECOMMERCE && pg_schema_has('supplier_feeds')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_sync.php');
+    pg_supplier_feed_job_tick(pg_cron_time_left(20));
+}
+
 // The bulk move to the visual designer (includes/fn/legacy_to_designer_run.php):
 // a move started on its screen is worked for a short budget every tick, so it
 // carries on with the screen closed. With none it is one missing file, and the
@@ -993,14 +1011,18 @@ if (pg_privacy_rules_due()) {
 }
 
 // The Privacy centre's request box (includes/fn/privacy_requests.php):
-// requests never proven are swept after 7 days, and open ones are reminded
-// of at 7 and 2 days left, each once. Nothing on a site without the table.
+// requests never proven are swept after 7 days, open ones are reminded of
+// at 7 and 2 days left, each once, and an answer's export file is deleted
+// once its download link has ended. Nothing on a site without the table.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_requests.php');
 
 if (pg_privacy_requests_ready()) {
 
     $privacy_requests_swept = pg_privacy_requests_sweep();
     pg_privacy_requests_remind();
+
+    // The export file of an information answer goes when its link ends.
+    pg_privacy_link_sweep();
 
     if ($privacy_requests_swept > 0) {
         log_activity(lang(array(

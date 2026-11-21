@@ -11585,6 +11585,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         window.pgImageEditor.open({
             blank: { width: BLANK_IMAGE_SIZE, height: BLANK_IMAGE_SIZE, background: '#ffffff' },
             save: { mode: 'new', folderId: folderId, name: L.new_image_name },
+            send: canvasSend(),
             onSave: function (result) {
 
                 var response = result.file || {};
@@ -14867,6 +14868,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             fileId: item.id,
             fileName: item.name,
             profile: profile || 'photo',
+            send: canvasSend(),
             onSave: function (result) {
 
                 var response = result.file || {};
@@ -14881,6 +14883,30 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
         }).catch(function () { toast(L.image_editor_missing, false); });
     }
+
+    // "Send to a channel as a canvas..." in the canvas's menu beside Save,
+    // for the people of the Workspace (wsSend): the channels they may write
+    // in, each taking the canvas as their own message. The canvas stays
+    // open; Save still saves it here. null leaves the choice out.
+    function canvasSend() {
+
+        if (!wsSend) { return null; }
+
+        return {
+            channels: function () {
+                return new Promise(function (resolve, reject) {
+                    wsAction('ws_library_channels', {}, function (data) {
+                        if (data) { resolve(data.channels || []); } else { reject(new Error('channels')); }
+                    });
+                });
+            },
+            url: function (id) {
+                return WS_CANVAS_SEND_URL + '?channel=' + encodeURIComponent(id);
+            }
+        };
+    }
+
+    var WS_CANVAS_SEND_URL = <?php echo encode_json(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_file_save.php'); ?>;
 
     // A video in the Artifact Canvas from the context menu: the file window's
     // answer says whether it is on the disk and whether the canvas saved it.

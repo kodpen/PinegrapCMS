@@ -19,4 +19,4 @@ description: Decisions list, schema part 35 (2026-11-20 on): the ad_conversion_e
 - `api_webhook_queue` carries none of these events: its dispatcher sends one row at a time within 20 seconds a pass, so a slow ad service would hold back order webhooks and chat messages.
 - The worker of the plan's first step writes the columns into its PR body and asks the architect before it is marked ready.
 
-Related: docs/memory/plans/ad-conversions.md, docs/memory/workflow/decisions-made-product-87.md
+Related: docs/memory/api/ad-conversions.md, docs/memory/workflow/decisions-made-product-87.md

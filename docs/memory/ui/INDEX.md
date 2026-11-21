@@ -327,6 +327,7 @@
 - image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas
 - image-editor-scissors.md: The Artifact Canvas's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
 - image-editor-select.md: How the Artifact Canvas picks layers: Select's click, Shift, box, Select all, groups, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
+- image-editor-send.md: The Artifact Canvas's main button as a split button (#10858): the chevron's menu from M.sendMenu(), send to a Workspace channel, Download, who is offered what from a channel and from the File Manager [decision: here]
 - image-editor-sound.md: Music and sounds on an animation (V4): doc.sounds on the whole timeline, sounds from Files, the rows under the tracks, the Sound panel, Web Audio in step with the play bar, the sound_files action [decision: decisions-made-product-31.md]
 - image-editor-sticker.md: The Artifact Canvas's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-subject-brushes.md: The Artifact Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
@@ -346,7 +347,7 @@
 - image-editor-video-files.md: Artifact Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it [decision: decisions-made-product-56.md]
 - image-editor-video-reopen.md: A video project saved and opened again (V9, #8701): clips and sounds by fileId, pictures kept as files, the door from Files (FV1), an unsaved canvas's video replaced
 - image-editor-warp.md: The Artifact Canvas's Warp tool: presets and an envelope mesh kept as l.warp, drawn by mapping the flattened outline; Expand bakes it into the path
-- image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
+- image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers [decision: here]
 - import-campaign-profiles-screen.md: import_email_campaign_profiles.php on the wide edit layout (step B11): the Import CSV and File Format cards, the Summary with the name-match warning, the save bar
 - inline-feedback-placement.md: Where a panel field's error message goes on Bootstrap 6 (pgPlaceInlineFeedback(), #2578) and how script-set marks get aria-invalid and their message (pgFieldInvalid(), class observer, #3026)
 - installer-wizard-a11y.md: Installer wizard (install/index.php) from the keyboard and a screen reader: focus on step change, step status, rail current/Completed, step problems, the announced run, choice cards
@@ -438,6 +439,7 @@
 - look-kept-screens.md: The owner's kept panel screens in look A (Edit Offer, Product Builder, Edit User, Offers…): which shared rules reach them, the file line, KS1 and KS2, what each shared step left out of them [decision: decisions-made-panel-9.md]
 - look-kv-list.md: Look A's label and value list of a status column (.pg-kv, SH2, #9757): the markup, the second group under a hairline, the grey second line, which screens use it
 - look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile()) [decision: here]
+- look-mail-patterns.md: The e-mail settings drawing's seven parts and the Features board's switch rows as Design examples patterns (DX2b #10930), with the classes that draw each
 - look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields [decision: here]
 - look-mark-over-picture.md: A mark laid over a picture (the poll's picture count, #10037): its own class, colours as the tokens --pg-media-mark-bg / -fg, the same in both themes; a recipe when a second is built [decision: decisions-made-workspace-38.md]
 - look-marketplace-ranks.md: SH10 (#9755): the Marketplaces and Marketplace Products screens' button ranks (one fill per view, one quiet rank per card) and their views and filter rows as link segments [decision: here]

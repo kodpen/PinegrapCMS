@@ -5,7 +5,8 @@
  * Site Settings - Mailboxes: the mailboxes whose e-mail is read in
  * Communication › Incoming e-mail as folded rows (the boxes, the accounts
  * for mailboxes, the rules, the blocked senders, Bring in an .eml file),
- * each box's form and Add a mailbox in drawers. Opened by a holder of the Workspace settings right,
+ * each box's form, Add a mailbox and Google's and Microsoft's set-up steps
+ * in drawers. Opened by a holder of the Workspace settings right,
  * whatever the Workspace's switch (pg_settings_mail_settings_allowed()).
  *
  * Fills $pg_settings_cards and $pg_settings_modals; mailboxes.save.php
@@ -58,4 +59,9 @@ if ($ws_card !== '') {
     }
 
     $pg_settings_modals[] = ws_settings_mail_drawer(null, $ws_viewer, $ws_form, !empty($pg_settings_in_dialog));
+
+    // What is done at Google or Microsoft, opened from a box's Reading tab.
+    foreach (array('google', 'microsoft') as $ws_provider) {
+        $pg_settings_modals[] = ws_settings_mail_setup_drawer($ws_provider, $ws_viewer, !empty($pg_settings_in_dialog));
+    }
 }

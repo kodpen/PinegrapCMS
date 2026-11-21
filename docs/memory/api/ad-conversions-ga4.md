@@ -1,6 +1,6 @@
 ---
 name: ad-conversions-ga4
-description: GA4 Measurement Protocol (ad-conversions SC3): its Connections page, Measurement ID from the Google Analytics page, sealed API secret, sender, refunds from order_refunds, test
+description: GA4 Measurement Protocol (#10866): its Connections page, Measurement ID from the Google Analytics page, sealed API secret, sender, refunds from order_refunds, test
 module: ad_conversions_ga4
 ---
 

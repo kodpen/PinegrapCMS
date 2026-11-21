@@ -14906,6 +14906,385 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   outline: 2px solid var(--ws-accent);
   outline-offset: -2px;
 }
+/* The conversation timeline (workspace_conversation_timeline.js) beside the
+   tabs: the card is a grid whose rows span both columns but the tabs' one,
+   so the tabs keep their width and the timeline takes what is left. Where
+   that is too little the script marks the screen .ws-ctl-narrow and the
+   timeline moves to the foot of Channel info. */
+.ws-channel-card {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+}
+.ws-channel-card > * {
+  grid-column: 1 / -1;
+}
+.ws-channel-card > .ws-tabs {
+  grid-column: 1;
+}
+.ws-channel-card > .ws-ctl {
+  grid-column: 2;
+  align-self: center;
+  padding: .45rem 1rem .6rem .75rem;
+}
+.ws-channel-card > .ws-head + .ws-tabs + .ws-ctl {
+  padding-top: 0;
+}
+.ws-app.ws-ctl-narrow .ws-channel-card > .ws-ctl > *,
+.ws-app:not(.ws-ctl-narrow) .ws-info-panel .ws-ctl-section {
+  display: none;
+}
+.ws-ctl {
+  --ws-ctl-rail: color-mix(in srgb, var(--pg-fg-2) 16%, transparent);
+  min-width: 0;
+}
+/* One writer, one colour, by the order they first wrote; grey for the
+   system's lines. The tone is the recipes' too (a legend pill, the card's
+   initials). */
+.ws-ctl [data-tone],
+.ws-ctl-card {
+  --ws-ctl-c: var(--pg-tone-gray);
+  --pg-tone: var(--ws-ctl-c);
+}
+.ws-ctl [data-tone="0"], .ws-ctl-card[data-tone="0"] { --ws-ctl-c: var(--pg-tone-blue); }
+.ws-ctl [data-tone="1"], .ws-ctl-card[data-tone="1"] { --ws-ctl-c: var(--pg-tone-teal); }
+.ws-ctl [data-tone="2"], .ws-ctl-card[data-tone="2"] { --ws-ctl-c: var(--pg-tone-violet); }
+.ws-ctl [data-tone="3"], .ws-ctl-card[data-tone="3"] { --ws-ctl-c: var(--pg-tone-amber); }
+.ws-ctl [data-tone="4"], .ws-ctl-card[data-tone="4"] { --ws-ctl-c: var(--pg-tone-rose); }
+.ws-ctl [data-tone="5"], .ws-ctl-card[data-tone="5"] { --ws-ctl-c: color-mix(in srgb, var(--pg-tone-blue) 50%, var(--pg-tone-teal)); }
+.ws-ctl [data-tone="6"], .ws-ctl-card[data-tone="6"] { --ws-ctl-c: color-mix(in srgb, var(--pg-tone-violet) 50%, var(--pg-tone-rose)); }
+.ws-ctl [data-tone="7"], .ws-ctl-card[data-tone="7"] { --ws-ctl-c: color-mix(in srgb, var(--pg-tone-amber) 55%, var(--pg-tone-teal)); }
+/* The strip: a thin rail a run, each turn a capsule on it. The track is
+   taller than what it draws, so the pointer finds it. */
+.ws-ctl-track {
+  position: relative;
+  height: 26px;
+  border-radius: 13px;
+  cursor: pointer;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.ws-ctl-track:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+/* Before the first read, with no message and when it failed: the bare
+   rail. */
+.ws-ctl[data-ws-ctl-state] .ws-ctl-track {
+  cursor: default;
+}
+.ws-ctl[data-ws-ctl-state] .ws-ctl-track::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 2px;
+  background: var(--ws-ctl-rail);
+}
+.ws-ctl[data-ws-ctl-state="reading"] .ws-ctl-track::before {
+  background: linear-gradient(90deg, var(--ws-ctl-rail) 0%, color-mix(in srgb, var(--pg-fg-2) 30%, transparent) 50%, var(--ws-ctl-rail) 100%);
+  background-size: 200% 100%;
+}
+.ws-ctl-run {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 2px;
+  background: var(--ws-ctl-rail);
+}
+.ws-ctl-turn {
+  position: absolute;
+  top: 50%;
+  height: 10px;
+  margin-top: -5px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ws-ctl-c) 72%, var(--pg-surface-1)), var(--ws-ctl-c));
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ws-ctl-c) 35%, transparent);
+}
+html[data-bs-theme="dark"] .ws-ctl-turn {
+  background: linear-gradient(180deg, var(--ws-ctl-c), color-mix(in srgb, var(--ws-ctl-c) 78%, var(--pg-surface-2)));
+  box-shadow: none;
+}
+/* Pointing at the strip brings the turn under the pointer forward. */
+.ws-ctl-track.is-pointing .ws-ctl-turn {
+  opacity: .42;
+}
+.ws-ctl-track.is-pointing .ws-ctl-turn.is-on,
+.ws-ctl-turn.is-on {
+  z-index: 1;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 7px;
+  opacity: 1;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ws-ctl-c) 24%, transparent), 0 2px 6px color-mix(in srgb, var(--ws-ctl-c) 40%, transparent);
+}
+/* A turn with a channel tool: a dot over it; a decision's is an amber
+   diamond. */
+.ws-ctl-turn[data-mark]::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--pg-fg-2) 70%, transparent);
+}
+.ws-ctl-turn[data-mark="decision"]::before {
+  top: -9px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 1.5px;
+  background: var(--pg-tone-amber);
+  transform: rotate(45deg);
+}
+.ws-ctl-turn.is-on[data-mark]::before {
+  top: -9px;
+}
+.ws-ctl-turn.is-on[data-mark="decision"]::before {
+  top: -11px;
+}
+/* The message under the pointer in a turn of several: a playhead. */
+.ws-ctl-cursor {
+  position: absolute;
+  z-index: 3;
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--pg-fg-emphasis);
+  box-shadow: 0 0 0 1.5px var(--pg-surface-1);
+  pointer-events: none;
+}
+/* The part of the conversation on the screen: a soft window behind it. */
+.ws-ctl-frame {
+  position: absolute;
+  z-index: 0;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pg-accent) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-accent) 28%, transparent);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ws-ctl-turn {
+    transition: opacity .15s ease, height .15s ease, margin-top .15s ease, box-shadow .15s ease;
+  }
+  .ws-ctl-frame {
+    transition: left .2s ease, width .2s ease;
+  }
+  .ws-ctl[data-ws-ctl-state="reading"] .ws-ctl-track::before {
+    animation: ws-ctl-shimmer 1.4s linear infinite;
+  }
+  .ws-ctl-card:not([hidden]) {
+    animation: ws-ctl-card-in .14s ease-out;
+  }
+  /* A message just written comes onto the strip live. */
+  .ws-ctl-turn.is-new {
+    animation: ws-ctl-turn-in .6s cubic-bezier(.2, .9, .3, 1.3);
+  }
+}
+@keyframes ws-ctl-turn-in {
+  0% { opacity: 0; transform: scale(.2); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ws-ctl-c) 60%, transparent); }
+  60% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 0 6px color-mix(in srgb, var(--ws-ctl-c) 0%, transparent); }
+  100% { transform: none; }
+}
+@keyframes ws-ctl-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@keyframes ws-ctl-card-in {
+  from { opacity: 0; transform: translateY(var(--ws-ctl-from, -4px)); }
+  to { opacity: 1; transform: none; }
+}
+/* In Channel info: the rail, its first and last time under it, then the
+   writers as pills in their colours. */
+.ws-ctl-section .ws-ctl-track {
+  margin-top: .35rem;
+}
+.ws-ctl-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-top: .15rem;
+}
+.ws-ctl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .375rem;
+  margin-top: .65rem;
+}
+.ws-ctl-legend .pg-pill {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-ctl-legend-cut {
+  flex-basis: 100%;
+}
+/* The card of the message pointed at: a floating surface of one size for
+   every message, a little larger than a tooltip. */
+.ws-ctl-card {
+  position: fixed;
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  width: 20rem;
+  max-width: calc(100vw - 1rem);
+  min-height: 8.25rem;
+  padding: .75rem .875rem .625rem;
+  border-radius: var(--pg-radius-card);
+  background: var(--pg-surface-float);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow: var(--pg-shadow-float), 0 0 0 1px var(--pg-field-line);
+  color: var(--pg-fg);
+  font-size: var(--pg-text-2);
+  line-height: var(--pg-leading);
+  pointer-events: none;
+}
+.ws-ctl-card-head {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  min-width: 0;
+}
+/* The writer: their initials on a tint of their colour, as an icon tile is
+   drawn. */
+.ws-ctl-card .pg-initials {
+  background: linear-gradient(140deg, color-mix(in srgb, var(--ws-ctl-c) var(--pg-tint-from), transparent), color-mix(in srgb, var(--ws-ctl-c) var(--pg-tint-to), transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ws-ctl-c) var(--pg-tint-line), transparent);
+  color: color-mix(in srgb, var(--ws-ctl-c) 70%, var(--pg-fg-emphasis));
+}
+.ws-ctl-card-who {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.ws-ctl-card-name {
+  overflow: hidden;
+  color: var(--pg-fg-emphasis);
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+  line-height: var(--pg-leading-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-ctl-card-kind {
+  color: var(--pg-fg-2);
+}
+.ws-ctl-card-time {
+  flex: none;
+  align-self: flex-start;
+  color: var(--pg-fg-2);
+}
+.ws-ctl-card-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: var(--pg-fg-emphasis);
+  overflow-wrap: anywhere;
+}
+.ws-ctl-card-text.is-empty {
+  color: var(--pg-fg-2);
+}
+/* Its tools: an inset row each, the tool's tile, its name and subject,
+   what came of it as a pill. */
+.ws-ctl-card-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--pg-surface-inset);
+  box-shadow: inset 0 0 0 1px var(--pg-quiet);
+}
+.ws-ctl-tool {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+  padding: .3rem .375rem;
+}
+.ws-ctl-tool .pg-icon-tile {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  font-size: var(--pg-text-meta);
+}
+.ws-ctl-tool-words {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+.ws-ctl-tool-name {
+  color: var(--pg-fg-emphasis);
+  font-weight: var(--pg-weight-medium);
+  line-height: var(--pg-leading-title);
+}
+.ws-ctl-tool-text {
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-ctl-tool .pg-pill {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 68%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-ctl-tool-more {
+  padding: 0 .375rem .125rem;
+  color: var(--pg-fg-2);
+}
+.ws-ctl-card-foot {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  min-width: 0;
+  margin-top: auto;
+  padding-top: .5rem;
+  border-top: 1px solid var(--pg-quiet);
+  color: var(--pg-fg-2);
+  white-space: nowrap;
+}
+.ws-ctl-card-wait {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-ctl-card-go {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: .25rem;
+  margin-left: auto;
+  color: var(--pg-fg-2);
+}
+.ws-ctl-card-go .bi {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--pg-quiet);
+  font-size: var(--pg-text-count);
+}
 /* Only the pane gives way when the screen is short: the header, the tabs and
    the composer keep their height (the tabs scroll sideways, so without this
    they were squeezed to a sliver). */
@@ -21729,6 +22108,9 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
      the height between the header and the box. */
   body.ws-keyboard .ws-center > :is(.ws-strip, .ws-tabs),
   body.ws-keyboard .ws-channel-card > .ws-tabs {
+    display: none;
+  }
+  body.ws-keyboard .ws-channel-card > .ws-ctl {
     display: none;
   }
   /* The expanded box (Aa) rides on the keyboard as the one-line box does:
@@ -29816,6 +30198,23 @@ select:not([multiple], [size]:not([size="1"])) :is(option, optgroup) {
   padding: 0 11px;
   border-radius: 8px;
 }
+/* Split button: the main action and, flush on its right, a narrow chevron
+   button that opens the action's own menu; outer corners rounded, a
+   hairline between. */
+.pg-button-split {
+  display: inline-flex;
+  align-items: stretch;
+}
+.pg-button-split > .pg-button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.pg-button-split > .pg-button-split-more {
+  padding: 0 9px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.4), 0 1px 2px rgba(0, 0, 0, 0.25);
+}
 .pg-button:disabled,
 .pg-button.disabled {
   opacity: 0.5;
@@ -32168,6 +32567,406 @@ textarea.pg-campaign-text {
 .pg-start-copy { display: flex; align-items: center; gap: 8px; background: var(--pg-bg-1);
   border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 9px 11px; }
 .pg-start-copy code { flex: 1; font-size: var(--pg-text-meta); word-break: break-all; }
+
+}
+
+/* ==========================================================================
+   Look A: tabs with a state, value rows, choice cards, step line, provider
+   sign-in, result line, confirm with its effects, switch rows.
+   Value for value the approved e-mail settings drawing (boards A to E):
+   .pg-seg-tall is the segmented control as tabs, each with its state pill;
+   .pg-value-row says what a thing does today with Change at its end;
+   .pg-start-choice turns the starting-point cards into a radio group with a
+   ring and a mark; .pg-steps is the stepper as one line of numbers and
+   names; .pg-signin holds a provider's own button; .pg-result is the green
+   line after a sign-in or a test; .pg-effects lists what a removal keeps,
+   deletes and leaves connected; .pg-set-switch-row is a folded-rows row
+   with a switch at its end (the Features settings board).
+   ========================================================================== */
+@layer custom {
+
+/* Tabs with a state: 34 px items, the label strong, a state pill after it.
+   Under 576 px the pill is its dot; the word stays for screen readers and
+   in the pill's title. */
+.pg-seg-tall .pg-seg-item {
+  height: 34px;
+  padding: 0 14px;
+  gap: 9px;
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-seg-tall .pg-pill {
+  height: 20px;
+  font-size: 11.5px;
+}
+@media (max-width: 575.98px) {
+  .pg-seg-tall .pg-seg-item {
+    padding: 0 11px;
+    gap: 7px;
+  }
+  .pg-seg-tall .pg-pill {
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .pg-seg-tall .pg-pill > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Value rows: one inner card, a row a thing: its tile, its name, one
+   sentence saying what happens today, Change at the row's end. */
+.pg-value-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+.pg-value-row + .pg-value-row {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-value-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.pg-value-row-name {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.pg-value-row-line {
+  display: block;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+
+/* Choice cards: the starting-point cards as a radio group. A card is the
+   inner card's surface; the chosen one takes the accent ring and its mark
+   at the head's end is filled with a check. The radio itself stays in the
+   card for the keyboard, drawn by the mark. */
+.pg-start.pg-start-choice {
+  gap: 12px;
+}
+@media (min-width: 576px) {
+  .pg-start.pg-start-choice {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.pg-start-choice .form-field-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px 14px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--pg-surface-inset);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
+}
+.pg-start-choice .form-field-card:has(:checked) {
+  background: color-mix(in srgb, var(--pg-accent) 5%, transparent);
+  box-shadow: inset 0 0 0 2px var(--pg-accent), 0 0 0 4px color-mix(in srgb, var(--pg-accent) 14%, transparent);
+}
+.pg-start-choice .form-field-card:has(.radio:focus-visible) {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 4px;
+}
+.pg-start-choice .radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.pg-start-choice .pg-start-head {
+  align-self: stretch;
+  gap: 10px;
+  font-size: var(--pg-text-base);
+}
+.pg-start-choice .pg-start-head strong {
+  font-weight: 600;
+}
+.pg-start-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--pg-fg-3);
+  color: transparent;
+  font-size: 12px;
+}
+.pg-start-choice .form-field-card:has(:checked) .pg-start-mark {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: none;
+  color: var(--pg-on-accent-fill);
+}
+.pg-start-choice .form-text {
+  margin: 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+  line-height: var(--pg-leading);
+}
+/* A note at the card's end: how long the choice takes. */
+.pg-start-note {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-start-choice + .pg-group-label {
+  margin: 20px 2px 8px;
+}
+
+/* Step line: a number and a name a step on one line, a hairline between.
+   The current step is filled with the accent, a finished one shows the
+   green check. Under 576 px the other steps keep only their numbers. */
+.stepper.pg-steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.pg-steps .stepper-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+  white-space: nowrap;
+}
+.pg-steps .stepper-item:not(:last-child) {
+  flex: 1;
+}
+.pg-steps .stepper-item::before {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-3);
+}
+.pg-steps .stepper-item::after,
+.pg-steps .stepper-item.active::after {
+  position: static;
+  flex: 1;
+  width: auto;
+  height: 1px;
+  margin-left: 2px;
+  background: var(--pg-border-color-translucent);
+}
+.pg-steps .stepper-item:last-child::after {
+  display: none;
+}
+.pg-steps .stepper-item[aria-current="step"] {
+  color: var(--pg-fg-body);
+}
+.pg-steps .stepper-item[aria-current="step"]::before {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: none;
+  color: var(--pg-on-accent-fill);
+}
+.pg-steps .stepper-item.is-done {
+  color: var(--pg-fg-2);
+}
+.pg-steps .stepper-item.is-done::before {
+  content: "\F26E";
+  font-family: "bootstrap-icons";
+  font-size: 14px;
+  font-weight: normal;
+  background: color-mix(in srgb, var(--pg-tone-teal) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone-teal) 26%, transparent);
+  color: var(--pg-tone-teal);
+}
+@media (max-width: 575.98px) {
+  .pg-steps .stepper-item:not([aria-current="step"]) > .pg-steps-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Provider sign-in: an inner card, its content centred, the provider's own
+   button and one line. The two buttons keep their brand values in both
+   panel themes and take no look A button class or tone; their logos are
+   inline SVG, never recoloured. */
+.pg-signin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 26px 16px 22px;
+  text-align: center;
+}
+.pg-signin > p {
+  max-width: 360px;
+  margin: 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+.pg-signin-google,
+.pg-signin-microsoft {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #ffffff;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pg-signin-google {
+  gap: 10px;
+  height: 40px;
+  border: 1px solid #747775;
+  border-radius: 4px;
+  color: #1f1f1f;
+  font-family: "Google Sans", Roboto, Arial, sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+}
+.pg-signin-microsoft {
+  gap: 12px;
+  height: 41px;
+  border: 1px solid #8c8c8c;
+  border-radius: 0;
+  color: #5e5e5e;
+  font: 600 15px/1 "Segoe UI", Arial, sans-serif;
+}
+.pg-signin-google:focus-visible,
+.pg-signin-microsoft:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+/* Result line: green, after a sign-in or a test; a tile and two lines at
+   most. */
+.pg-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--pg-tone-teal) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone-teal) 22%, transparent);
+}
+.pg-result-title {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.pg-result-line {
+  display: block;
+  font-size: 12.5px;
+  color: var(--pg-fg-2);
+}
+
+/* Switch rows: the folded rows' frame (.pg-set-fold) holding rows that are
+   a div, never a link or a button, so each may hold controls: the icon
+   tile, the name (the switch's label) over one line (its description),
+   then a quiet small Settings or a state pill with Open, and last the
+   switch. A row switched off greys its tile and name; a row the viewer may
+   not change is at half strength. Under 576 px the name and the switch
+   keep one line and the buttons stand under the name. */
+.pg-set-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 16px;
+}
+.pg-set-switch-row + .pg-set-switch-row {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-set-switch-row .pg-set-fold-name {
+  font-weight: 600;
+}
+.pg-set-switch-row .pg-set-fold-line {
+  margin-top: 1px;
+  overflow: visible;
+  white-space: normal;
+}
+.pg-set-switch-row.is-off .pg-icon-tile,
+.pg-set-switch-row:has(> .pg-switch:not(:checked)) .pg-icon-tile {
+  --pg-tone: var(--pg-tone-gray);
+  opacity: .7;
+}
+.pg-set-switch-row.is-off .pg-set-fold-name,
+.pg-set-switch-row:has(> .pg-switch:not(:checked)) .pg-set-fold-name {
+  color: var(--pg-fg-2);
+}
+.pg-set-switch-row.is-locked {
+  opacity: .55;
+}
+.pg-set-switch-row > .pg-switch {
+  flex: none;
+}
+.pg-group-label-count {
+  margin-left: 6px;
+  font-weight: var(--pg-weight-medium);
+}
+@media (max-width: 575.98px) {
+  .pg-set-switch-row {
+    flex-wrap: wrap;
+    gap: 11px;
+    padding: 12px;
+  }
+  .pg-set-switch-row > .pg-set-fold-text {
+    flex-basis: calc(100% - 100px);
+  }
+  .pg-set-switch-row > .pg-pill {
+    order: 4;
+    margin-left: 41px;
+  }
+  .pg-set-switch-row > .pg-button {
+    order: 5;
+    margin-left: 41px;
+  }
+  .pg-set-switch-row > .pg-pill + .pg-button {
+    margin-left: 0;
+  }
+}
+
+/* Confirm with its effects: a line an effect in an inner card, a green
+   check for what stays, a rose cross for what goes, a blue info line for
+   what stays connected; a meta line under where it helps. */
+.pg-effects {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pg-effect {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: var(--pg-text-2);
+}
+.pg-effect + .pg-effect {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-effect > .bi {
+  margin-top: 1px;
+  font-size: 15px;
+  line-height: 1;
+}
+.pg-effect-line {
+  display: block;
+  font-size: 12.5px;
+  color: var(--pg-fg-2);
+}
+.pg-effect-keep > .bi { color: var(--pg-tone-teal); }
+.pg-effect-go > .bi { color: var(--pg-tone-rose); }
+.pg-effect-info > .bi { color: var(--pg-tone-blue); }
 
 }
 

@@ -20,6 +20,6 @@ description: Privacy centre: the answer to an information request carries a sign
 - The WAF's rate limit covers the script like the other public signed links.
 
 ## Which step builds it?
-- The privacy centre step that sends the answer; where that step has landed with an attachment, a small step of its own after it. The coordinator holding the plan places it in `privacy-centre-steps.md`.
+- The privacy centre step that sends the answer; where that step has landed with an attachment, a small step of its own after it. The coordinator holding the plan places it in `privacy-centre-steps.md`. Built as KV4c (#10944): `core/privacy-request-export-link.md`.
 
 Related: docs/memory/plans/privacy-centre.md, docs/memory/plans/privacy-centre-screens.md, docs/memory/core/personal-data-export.md

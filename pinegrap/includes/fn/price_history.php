@@ -120,13 +120,14 @@ function pg_price_history_ready()
  * job's record of what the open offers made the price; erp is kept for a
  * writer that will need it; rule: a marketplace account's channel price from
  * its price rules or the shop's price (includes/fn/marketplace_pricing.php);
- * repricer: the price the marketplace repricer set.
+ * repricer: the price the marketplace repricer set; supplier: a supplier
+ * feed's price rule (includes/fn/supplier_feed_sync.php).
  *
  * @return string[]
  */
 function pg_price_history_sources()
 {
-    return array('initial', 'panel', 'import', 'api', 'offer', 'erp', 'rule', 'repricer');
+    return array('initial', 'panel', 'import', 'api', 'offer', 'erp', 'rule', 'repricer', 'supplier');
 }
 
 /**

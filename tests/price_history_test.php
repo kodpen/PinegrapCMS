@@ -90,7 +90,7 @@ function test_price_history_ids()
 // rather than lost, since a missing row is worse than a vague label.
 function test_price_history_source()
 {
-	foreach (array('initial', 'panel', 'import', 'api', 'offer', 'erp', 'rule', 'repricer') as $source) {
+	foreach (array('initial', 'panel', 'import', 'api', 'offer', 'erp', 'rule', 'repricer', 'supplier') as $source) {
 		pg_assert_same($source, pg_price_history_source($source), $source);
 	}
 

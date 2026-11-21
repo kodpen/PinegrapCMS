@@ -11697,6 +11697,10 @@ var pgSettingsModal = (function () {
      */
     var opener = null;
 
+    // The drawers a drawer was opened from (a mailbox's drawer under its
+    // set-up steps), each with its own opener: closing goes back to them.
+    var below = [];
+
 
     function cardDrawer() {
         return el ? el.querySelector('#pg_settings_modal_drawers > .pg-sm-drawer.is-open') : null;
@@ -11726,6 +11730,12 @@ var pgSettingsModal = (function () {
         var open = cardDrawer();
 
         if (open && (open !== target)) {
+            if (button && open.contains(button)) {
+                below.push({ drawer: open, opener: opener });
+            } else {
+                below = [];
+            }
+
             open.classList.remove('is-open');
         }
 
@@ -11752,9 +11762,25 @@ var pgSettingsModal = (function () {
             open.classList.remove('is-open');
         }
 
-        underCardDrawer(false);
-
         var back = opener;
+        var under = (giveBack !== false) ? below.pop() : null;
+
+        // Opened from another drawer: that one comes back, with the focus
+        // on the button that opened this one.
+        if (under && document.contains(under.drawer)) {
+            opener = under.opener;
+            under.drawer.classList.add('is-open');
+
+            if (back) {
+                back.setAttribute('aria-expanded', 'false');
+            }
+
+            (back && under.drawer.contains(back) ? back : under.drawer).focus({ preventScroll: true });
+            return;
+        }
+
+        below = [];
+        underCardDrawer(false);
 
         opener = null;
 
@@ -11943,7 +11969,7 @@ var pgSettingsModal = (function () {
         // headed off -- its delegated listeners sit on the document in the
         // capture phase -- so the server hands us the trigger under a name of
         // our own; see pg_settings_own_dialog_triggers().
-        $(el).on('click', '#pg_settings_modal_pane [data-pgdrawer="open"]', function (event) {
+        $(el).on('click', '#pg_settings_modal_pane [data-pgdrawer="open"], #pg_settings_modal_drawers [data-pgdrawer="open"]', function (event) {
 
             var target = byId((this.getAttribute('data-bs-target') || '').replace(/^#/, ''));
 

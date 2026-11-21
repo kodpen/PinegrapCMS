@@ -390,7 +390,7 @@ function pg_supplier_feed_state($feed, $run)
     }
 
     if ((int) $run['status'] === 3) {
-        return array('tone' => 'rose', 'label' => lang('Failed'), 'note' => $first_words($run['detail']));
+        return array('tone' => 'rose', 'label' => lang('Failed'), 'note' => $first_words(pg_supplier_feed_detail_reason($run['detail'])));
     }
 
     if ((int) $run['status'] === 0) {
@@ -649,10 +649,10 @@ function pg_supplier_feed_delete($id)
     db("DELETE FROM supplier_feed_runs WHERE feed_id = '" . (int) $id . "'");
     db("DELETE FROM supplier_feeds WHERE id = '" . (int) $id . "'");
 
-    $file = pg_supplier_feed_temp_file($id);
-
-    if (is_file($file)) {
-        @unlink($file);
+    foreach (array(pg_supplier_feed_temp_file($id), PG_FUNCTIONS_DIR . '/data/temp/supplier_feed_' . (int) $id . '_pull.dat') as $file) {
+        if (is_file($file)) {
+            @unlink($file);
+        }
     }
 }
 
