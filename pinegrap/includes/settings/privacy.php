@@ -2,9 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Visitors and privacy cards: visitor tracking, cookie
- * consent, the checkout's legal documents, the KVKK notice, the
- * accessibility statement and the way to the Privacy centre.
+ * Site Settings - the Visitors and privacy cards: visitor tracking, how long
+ * the site keeps data, cookie consent, the checkout's legal documents, the
+ * KVKK notice, the accessibility statement and the way to the Privacy centre.
  *
  * Each part is one folded row (includes/settings/fold.php) holding its card;
  * the rows' order, names and lines are includes/fn/privacy_settings_fold.php.
@@ -76,7 +76,58 @@ $privacy_parts['analytics'] = array('html' => '
                                             <label for="pay_per_click_flag" class="form-label">' . lang('Paid tracking code mark') . '</label>
                                             <input type="text" name="pay_per_click_flag" id="pay_per_click_flag" class="form-control" value="' . h($pay_per_click_flag) . '" aria-describedby="pay_per_click_flag_help" />
                                             <div class="form-text" id="pay_per_click_flag_help">' . h(lang('A tracking code holding this text counts as paid advertising.')) . '</div>
-                                        </div>' . ($visitor_retention_available ? '
+                                        </div>
+                                        <div id="pgsub-google-analytics" class="col-12">
+                                            <div class="pg-card-inner connections-list">
+                                                <div class="pg-card-inner-row connections-row">
+                                                    <span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-google"></i></span>
+                                                    <span class="connections-row-main"><span class="connections-row-name">Google Analytics</span><span class="pg-text-meta d-block">' . h($google_analytics_line) . '</span></span>
+                                                    <span class="connections-row-side">' . ($google_analytics_connected
+                                                        ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                        : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '<a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=google_analytics">' . h($google_analytics_connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                   </div>
+                                </div>
+                            </div>
+                        </div>') + pg_privacy_fold_tracking($visitor_tracking_checked !== '', $google_analytics_connected);
+
+// ── How long we keep data ──
+// The visitor records' periods and their daily summary, then one value row a
+// period set elsewhere (pg_privacy_retention_overview()): its value today and
+// Change opening the card that sets it; a fixed period has no Change.
+$retention_overview = pg_privacy_retention_overview(array(
+    'audit_years'   => $audit_retention_ready ? $audit_retention_years : null,
+    'consent_years' => pg_privacy_retention_limits()['consent_years'],
+    'waf_days'      => $waf_log_retention_days,
+    'waf_rows'      => $waf_log_max_rows,
+    'api_days'      => $api_log_retention_days,
+    'booking_days'  => pg_booking_ready() ? pg_booking_retention_limits()['days'] : null,
+    'rules'         => pg_privacy_rules(),
+));
+$retention_rows = '';
+
+foreach ($retention_overview as $retention_row) {
+    $retention_change = ($retention_row['url'] !== '')
+        ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $retention_row['url']
+        : (($retention_row['category'] !== '') ? pg_settings_link($retention_row['category'], $retention_row['card']) : '');
+
+    $retention_rows .= '<div class="pg-value-row">'
+        . '<span class="pg-icon-tile ' . h($retention_row['tone']) . '" aria-hidden="true"><i class="bi ' . h($retention_row['icon']) . '"></i></span>'
+        . '<span class="pg-value-row-text"><span class="pg-value-row-name">' . h($retention_row['name']) . '</span><span class="pg-value-row-line">' . h($retention_row['line']) . '</span></span>'
+        . (($retention_change !== '') ? '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($retention_change) . '" aria-label="' . h(lang('Change') . ': ' . $retention_row['name']) . '">' . h(lang('Change')) . '</a>' : '')
+        . '</div>';
+}
+
+$privacy_parts['retention'] = array('html' => '
+                        <div id="pgset-retention" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('How long we keep data') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . ($visitor_retention_available ? '
                                         <div class="pg-f-xs">
                                             <label for="visitor_retention_days" class="form-label">' . lang('Keep visitor records for') . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
@@ -105,21 +156,14 @@ $privacy_parts['analytics'] = array('html' => '
                                             <div class="form-text" id="visitor_summary_help">' . lang('Every day through yesterday is added up by source, landing page, campaign, place and device, whatever the period above, so the visitor overview reads it quickly and the visitor report and the API still count a day once its records are removed. Turned off, removed days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
                                             <div class="form-text"><a href="database_engine.php#visitor-records">' . lang('The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.') . '</a></div>
                                         </div>' : '') . '
-                                        <div id="pgsub-google-analytics" class="col-12">
-                                            <div class="pg-card-inner connections-list">
-                                                <div class="pg-card-inner-row connections-row">
-                                                    <span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-google"></i></span>
-                                                    <span class="connections-row-main"><span class="connections-row-name">Google Analytics</span><span class="pg-text-meta d-block">' . h($google_analytics_line) . '</span></span>
-                                                    <span class="connections-row-side">' . ($google_analytics_connected
-                                                        ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
-                                                        : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '<a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=google_analytics">' . h($google_analytics_connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a></span>
-                                                </div>
-                                            </div>
+                                        <div class="col-12">
+                                            <div class="pg-card-inner">' . $retention_rows . '</div>
+                                            <div class="pg-field-help">' . h(lang(array('string' => 'Erasures and retention rule runs are destruction records: their lines stay at least {var:1} years, whatever is set here.', 'vars' => array(pg_privacy_retention_limits()['record_years'])))) . '</div>
                                         </div>
                                    </div>
                                 </div>
                             </div>
-                        </div>') + pg_privacy_fold_tracking($visitor_tracking_checked !== '', $google_analytics_connected);
+                        </div>') + pg_privacy_fold_retention($visitor_retention_available ? $visitor_retention_days : null, $visitor_ip_available ? $visitor_ip_days : null);
 
 // ── Cookie Consent ──
 // The notice itself is drawn by pg_consent_markup() (includes/fn/consent.php).

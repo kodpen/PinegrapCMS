@@ -2484,10 +2484,14 @@ function ws_mcp_settings_button($self_url, $form, $action, $id, $class, $inner, 
  * @param object|null   $liveform the screen's, or a ws_mcp_settings_relay
  *                                holding what a refused form kept
  * @param string|null   $form     the Site Settings form's id
+ * @param string|null   $all      set to every server's row for the drawer
+ *                                "Show all N" opens, '' while all fit
  * @return string
  */
-function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null)
+function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null, &$all = null)
 {
+    $all = '';
+
     if (!ws_mcp_ready()) {
         return '';
     }
@@ -2495,6 +2499,11 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
     $admin = ((int) $viewer['role'] === 0);
     $servers = ws_mcp_servers(true);
     $list = '';
+    // Site Settings: each server's row for the pane and its copy for the
+    // drawer of every server, and whether it needs something.
+    $rows = array();
+    $copies = array();
+    $asks = array();
     $agents = false;
     $kept = ws_mcp_settings_kept($admin ? $liveform : null);
 
@@ -2608,10 +2617,16 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
 
         // Site Settings: the form and the tools open in the server's drawer.
         if ($form !== null) {
-            $list .= '
-            <div class="ws-agset-row' . (($server['status'] !== 'active') ? ' opacity-75' : '') . '" id="pgset-ws-mcp-row-' . $id . '">' . $line . '
+            $row = '<div class="ws-agset-row' . (($server['status'] !== 'active') ? ' opacity-75' : '') . '"';
+            $inner = '>' . $line . '
                 ' . $end . '
             </div>';
+            $rows[$id] = '
+            ' . $row . ' id="pgset-ws-mcp-row-' . $id . '"' . $inner;
+            $copies[$id] = '
+            ' . $row . $inner;
+            // A form a check refused waits in its drawer, opened from the pane.
+            $asks[$id] = ws_assistants_list_asks($badge[0]) || !empty($typed);
             continue;
         }
 
@@ -2627,9 +2642,22 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
             </div>';
     }
 
+    // Five servers in the pane, the ones that need something first; every
+    // server in the drawer "Show all N" opens.
+    $shown = ws_assistants_list_cut($asks);
+
+    foreach ($shown as $id) {
+        $list .= $rows[$id];
+    }
+
+    if (count($shown) < count($rows)) {
+        $all = '<div class="pg-card-inner ws-agset-list">' . implode('', $copies) . '</div>';
+    }
+
     // An administrator's empty list is the catalogue below it.
     if ($list !== '') {
-        $list = '<h4 class="pg-group-label">' . h(lang('Added servers')) . '</h4><div class="pg-card-inner ws-agset-list mb-5">' . $list . '</div>';
+        $list = '<h4 class="pg-group-label">' . h(lang('Added servers')) . '</h4><div class="pg-card-inner ws-agset-list' . (($all !== '') ? '' : ' mb-5') . '">' . $list . '</div>'
+            . (($all !== '') ? '<div class="mb-5">' . ws_assistants_show_all_html('ws-mcp', count($rows)) . '</div>' : '');
     } elseif (!$admin) {
         $list = '<div class="ws-empty py-5"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('No MCP server yet.')) . '</div>';
     }

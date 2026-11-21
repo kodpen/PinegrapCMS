@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * What a booking tells its customer and the rest of the site (2026.11.0,
- * 11.0.161): the booking.created, booking.confirmed, booking.rescheduled and
- * booking.cancelled events for webhooks and Flows, the e-mails of the four
+ * 11.0.161): the booking.created, booking.confirmed, booking.rescheduled,
+ * booking.cancelled and booking.completed events for webhooks and Flows, the e-mails of the four
  * campaign profile actions booking_confirmed, booking_reminder,
  * booking_rescheduled and booking_cancelled with an .ics attachment, the text
  * messages of the same four, and the reminders before a booking starts.
@@ -591,15 +591,17 @@ function pg_booking_message_send($row, $event, $hours = 0)
 /**
  * Tells the site and the customer that a booking changed, after the change
  * is written: the booking.<event> event, then the mail and the text of the
- * event. A throw is logged and stops nothing: the booking stands.
+ * event. A completed booking (marked done) mails nothing; its event starts
+ * the satisfaction surveys that follow bookings (feedback_sends.php). A
+ * throw is logged and stops nothing: the booking stands.
  *
  * @param int    $id
- * @param string $event created, confirmed, rescheduled, cancelled
+ * @param string $event created, confirmed, rescheduled, cancelled, completed
  * @return bool whether the booking was found
  */
 function pg_booking_changed($id, $event)
 {
-    if (!in_array($event, array('created', 'confirmed', 'rescheduled', 'cancelled'), true)) {
+    if (!in_array($event, array('created', 'confirmed', 'rescheduled', 'cancelled', 'completed'), true)) {
         return false;
     }
 
@@ -626,18 +628,22 @@ function pg_booking_changed($id, $event)
 
 /**
  * The event a status change announces (pure): a booking that becomes
- * confirmed or cancelled; '' for any other move (done, no-show, an
- * unchanged status). A hold confirmed goes through pg_booking_confirm(),
- * which announces it itself.
+ * confirmed or cancelled, or completed when staff mark it done; '' for any
+ * other move (no-show, an unchanged status). A hold confirmed goes through
+ * pg_booking_confirm(), which announces it itself.
  *
  * @param string $from
  * @param string $to
- * @return string confirmed, cancelled or ''
+ * @return string confirmed, cancelled, completed or ''
  */
 function pg_booking_status_event($from, $to)
 {
     if (($from === $to) || ($from === 'held')) {
         return '';
+    }
+
+    if ($to === 'done') {
+        return 'completed';
     }
 
     return in_array($to, array('confirmed', 'cancelled'), true) ? $to : '';

@@ -7,7 +7,7 @@ module: connections_registry
 ## Where is each set, and how is its state read?
 - The rule and the reader kinds: `connections-registry.md`. Cards are `#settings/<category>/<card>`; the code is the source, this file its map.
 - Payments (`commerce/pgset-payments`): the eight card gateways (`connections.php`) by `pg_payment_gateway_ready()`; Stripe, PayPal, PayTR, Givex (`connections.php`) by `pg_payment_connection_ready()`.
-- Shipping (`commerce/pgset-shipping`): Geliver, Basit Kargo, Kargonomi, Aras Kargo, Shippo, Sendcloud by `pg_label_ready()`; UPS, FedEx, USPS by `pg_carrier_api_ready()`; ShipWorks none.
+- Shipping (`connections.php` since CX11g3, found at `pgset-shipping`): Geliver, Basit Kargo, Kargonomi, Aras Kargo, Shippo, Sendcloud by `pg_label_ready()`; UPS, FedEx, USPS by `pg_carrier_api_connected()`; ShipWorks (the card) none.
 - Marketplaces and feeds: n11, Trendyol (`marketplace_settings.php`) by their account; Google Merchant Center (`pgset-feeds`) by the Google account for `merchant_center`; OpenAI product feed none.
 - E-documents: Paraşüt, Logo İşbaşı (`accounting/pgset-invoice`) by the active e-document provider; VIES (`pgset-store`) none.
 - E-mail: Postmark, Mailgun, Brevo, Resend, Amazon SES (`email/pgset-mail-transport`) by the app `mail_<key>`; Gmail and Microsoft 365 mail (`email/pgset-mail-system`, where the account is chosen) by the account for `mail` (Microsoft's also covers `mail_read`); Mailchimp (`email/pgset-mailchimp`) by `MAILCHIMP`.

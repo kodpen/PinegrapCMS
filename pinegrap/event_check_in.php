@@ -99,12 +99,12 @@ if ($request !== '') {
     if (($request === 'scan') || ($request === 'check_in')) {
         if ($request === 'scan') {
             $hash = pg_event_ticket_code_hash((isset($_POST['code']) && is_string($_POST['code'])) ? $_POST['code'] : '');
-            $find = function () use ($hash) {
-                return pg_check_in_ticket_find('code_hash', $hash);
+            $find = function () use ($hash, $pick) {
+                return pg_check_in_ticket_find('code_hash', $hash, $pick);
             };
         } else {
-            $find = function () use ($ticket_id) {
-                return pg_check_in_ticket_find('id', $ticket_id);
+            $find = function () use ($ticket_id, $pick) {
+                return pg_check_in_ticket_find('id', $ticket_id, $pick);
             };
         }
 
@@ -130,13 +130,14 @@ if ($request !== '') {
     }
 
     if ($request === 'undo') {
-        $ticket = pg_check_in_ticket_find('id', $ticket_id);
+        $ticket = pg_check_in_ticket_find('id', $ticket_id, $pick);
 
         if (!pg_check_in_may_undo($user) || !is_array($ticket) || !pg_check_in_ticket_matches($ticket, $pick)) {
             event_check_in_json(array('ok' => false, 'code' => 'denied', 'message' => lang('Only a manager can undo a check-in.')), 403);
         }
 
-        $undone = pg_check_in_undo($ticket_id);
+        // A series ticket loses its entry on the pick's date only.
+        $undone = pg_check_in_undo($ticket_id, null, pg_check_in_series_date($ticket, $pick));
 
         event_check_in_json(array(
             'ok'      => true,

@@ -85,6 +85,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // The same for the carrier label drivers (includes/fn/carrier_labels.php).
     $label_driver_decisions = pg_label_settings_check($_POST, $liveform);
 
+    // UPS, FedEx or Verify US Addresses (USPS) switched on while the
+    // carrier's keys are not on its page of Connections yet is refused; a
+    // switch already on saves.
+    foreach (array_keys(pg_carrier_api_definitions()) as $carrier_api) {
+        $carrier_api_switch = pg_carrier_api_switch($carrier_api);
+        $carrier_api_refusal = pg_carrier_api_choice_refusal($carrier_api, (post_value($carrier_api_switch) == 1), pg_carrier_api_switched_on($carrier_api), pg_carrier_api_ready($carrier_api));
+
+        if ($carrier_api_refusal !== '') {
+            $liveform->mark_error($carrier_api_switch, $carrier_api_refusal);
+        }
+    }
+
     // The gateways' keys, PayPal Express Checkout's and Givex's are written
     // on their pages of Connections, never here.
 
@@ -279,8 +291,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
-    // The carriers' API applications are kept with the connected accounts'
-    // applications, the secrets sealed (includes/fn/carrier_api.php).
+    // The carriers' environments; their client IDs and secrets are typed on
+    // their pages of Connections (includes/fn/carrier_api.php).
     pg_carrier_api_settings_save($_POST, USER_ID, $liveform);
 
     pg_payment_settings_save($payment_driver_decisions, USER_ID);

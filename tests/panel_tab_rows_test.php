@@ -23,10 +23,10 @@ function panel_tab_rows_source($path)
 
 function test_panel_tab_rows_api_drawer_tabs_name_their_panes()
 {
-	$source = panel_tab_rows_source('api_settings.php');
+	$source = panel_tab_rows_source('includes/api/app_drawer_view.php');
 
 	// Bootstrap gives a pane aria-labelledby only when its tab has an id.
-	foreach (array('general', 'perms', 'security', 'devices', 'hooks', 'log') as $pane) {
+	foreach (array('general', 'connect', 'perms', 'devices', 'hooks', 'log') as $pane) {
 		pg_assert_contains('data-bs-target="#d_' . $pane . '" type="button" id="d_' . $pane . '_label" aria-controls="d_' . $pane . '"', $source, $pane . ' tab id');
 	}
 }

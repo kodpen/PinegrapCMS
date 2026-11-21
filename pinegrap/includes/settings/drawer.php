@@ -46,9 +46,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
  * @param string $line a line under the title (an address, a state pill), as markup
  * @param string $bar  a band under the head that does not scroll (the
  *                     segmented control of the drawer's tabs), as markup
+ * @param string $tile an icon tile before the title (.pg-icon-tile-lg), as markup
  * @return string
  */
-function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = '', $bar = '')
+function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = '', $bar = '', $tile = '')
 {
     $id = (string) $id;
     $close = lang('Close');
@@ -58,7 +59,7 @@ function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = 
         return '
                 <div class="pg-sm-drawer" id="' . h($id) . '" role="dialog" aria-modal="true" aria-labelledby="' . h($id . '_title') . '" tabindex="-1">
                     <div class="pg-sm-drawer-head">
-                        ' . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h3 class="pg-sm-drawer-title" id="' . h($id . '_title') . '">' . $title . '</h3>' . (($under !== '') ? $under . '</div>' : '') . '
+                        ' . $tile . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h3 class="pg-sm-drawer-title" id="' . h($id . '_title') . '">' . $title . '</h3>' . (($under !== '') ? $under . '</div>' : '') . '
                         <button type="button" class="btn-close" data-pgdrawer-close aria-label="' . h($close) . '" title="' . h($close) . '"></button>
                     </div>' . (($bar !== '') ? '
                     <div class="pg-sm-drawer-bar">' . $bar . '</div>' : '') . '
@@ -69,8 +70,8 @@ function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = 
 
     return '
                 <dialog class="drawer drawer-end pg-set-drawer" id="' . h($id) . '" aria-labelledby="' . h($id . '_title') . '">
-                    <div class="drawer-header border-bottom">
-                        ' . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h5 class="drawer-title" id="' . h($id . '_title') . '">' . $title . '</h5>' . (($under !== '') ? $under . '</div>' : '') . '
+                    <div class="drawer-header border-bottom' . (($tile !== '') ? ' gap-3' : '') . '">
+                        ' . $tile . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h5 class="drawer-title" id="' . h($id . '_title') . '">' . $title . '</h5>' . (($under !== '') ? $under . '</div>' : '') . '
                         <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h($close) . '"></button>
                     </div>' . (($bar !== '') ? '
                     <div class="pg-sm-drawer-bar border-bottom">' . $bar . '</div>' : '') . '

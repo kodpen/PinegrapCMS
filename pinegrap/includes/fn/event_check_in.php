@@ -11,6 +11,10 @@
  * screen counts checked in against sold for the pick, finds a guest by
  * name when the code is missing, and lets a manager undo a check-in.
  *
+ * A series ticket (a repeating event whose dates share their places, kept
+ * on date 0) is good on every date of the series: it is entered once on
+ * each date as an event_ticket_checkins row, and its own row stays valid.
+ *
  * No new right: an event's tickets are checked in by whoever may manage
  * that calendar (validate_calendar_event_access()), a product's by whoever
  * manages commerce. Loaded by the screen only.
@@ -31,6 +35,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/event_tickets_page.php');
 
 /** The most rows a name search answers. */
 define('PG_CHECK_IN_SEARCH_LIMIT', 30);
+
+/** The most dates of one series the pick list holds, the soonest first. */
+define('PG_CHECK_IN_SERIES_PICKS', 60);
 
 /**
  * Reads a pick as the screen posts it: "e-<event>-<date number>" for an
@@ -72,9 +79,11 @@ function pg_check_in_pick_value(array $pick)
 
 /**
  * Whether a ticket belongs to the pick: an event's ticket to its event and
- * date, a product's ticket (no event) to its product. Pure.
+ * date, a series ticket to its event and any date of the series, a
+ * product's ticket (no event) to its product. Pure.
  *
- * @param array $ticket the event_tickets row
+ * @param array $ticket the event_tickets row; a series ticket carries
+ *                      series_dates (pg_check_in_series_state())
  * @param array $pick   pg_check_in_pick_parse()
  * @return bool
  */
@@ -83,8 +92,15 @@ function pg_check_in_ticket_matches(array $ticket, array $pick)
     $event_id = (int) ($ticket['calendar_event_id'] ?? 0);
 
     if ($pick['kind'] === 'event') {
-        return ($event_id === (int) $pick['event_id'])
-            && ((int) ($ticket['recurrence_number'] ?? 0) === (int) $pick['recurrence_number']);
+        if ($event_id !== (int) $pick['event_id']) {
+            return false;
+        }
+
+        if (isset($ticket['series_dates']) && is_array($ticket['series_dates'])) {
+            return in_array((int) $pick['recurrence_number'], array_map('intval', $ticket['series_dates']), true);
+        }
+
+        return (int) ($ticket['recurrence_number'] ?? 0) === (int) $pick['recurrence_number'];
     }
 
     return ($event_id === 0) && ((int) ($ticket['product_id'] ?? 0) === (int) $pick['product_id']);
@@ -159,49 +175,156 @@ function pg_check_in_answer($ticket, array $pick, $allowed)
 /**
  * Marks a valid ticket used: one conditional UPDATE, so of two scans at
  * once only one changes the row; the other changes none and is told the
- * ticket was used before.
+ * ticket was used before. A series ticket is entered on the date instead:
+ * one INSERT IGNORE of its entry, taken from the row only while it is
+ * valid, so a second scan on that date and a void ticket write nothing.
  *
  * @param int           $ticket_id
  * @param int           $user_id
  * @param callable|null $query pg_event_tickets_query() by default
+ * @param int|null      $date  a series ticket's date, null for any other
  * @return bool whether this call marked it
  */
-function pg_check_in_mark_used($ticket_id, $user_id, $query = null)
+function pg_check_in_mark_used($ticket_id, $user_id, $query = null, $date = null)
 {
     if ((int) $ticket_id <= 0) {
         return false;
     }
 
-    $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
-        "UPDATE event_tickets
-        SET state = 'used', used_at = UNIX_TIMESTAMP(), used_by = ?
-        WHERE (id = ?) AND (state = 'valid')",
-        array((int) $user_id, (int) $ticket_id));
+    if ($date !== null) {
+        $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
+            "INSERT IGNORE INTO event_ticket_checkins (ticket_id, calendar_event_id, recurrence_number, checked_at, checked_by)
+            SELECT id, calendar_event_id, ?, UNIX_TIMESTAMP(), ? FROM event_tickets
+            WHERE (id = ?) AND (state = 'valid')",
+            array((int) $date, (int) $user_id, (int) $ticket_id));
+    } else {
+        $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
+            "UPDATE event_tickets
+            SET state = 'used', used_at = UNIX_TIMESTAMP(), used_by = ?
+            WHERE (id = ?) AND (state = 'valid')",
+            array((int) $user_id, (int) $ticket_id));
+    }
 
     return ($changed !== false) && ((int) $changed === 1);
 }
 
 /**
  * Undoes a check-in: a used ticket becomes valid again, by one conditional
- * UPDATE, so a void ticket stays void.
+ * UPDATE, so a void ticket stays void. A series ticket loses its entry on
+ * the date.
  *
  * @param int           $ticket_id
  * @param callable|null $query pg_event_tickets_query() by default
+ * @param int|null      $date  a series ticket's date, null for any other
  * @return bool whether this call changed it
  */
-function pg_check_in_undo($ticket_id, $query = null)
+function pg_check_in_undo($ticket_id, $query = null, $date = null)
 {
     if ((int) $ticket_id <= 0) {
         return false;
     }
 
-    $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
-        "UPDATE event_tickets
-        SET state = 'valid', used_at = 0, used_by = 0
-        WHERE (id = ?) AND (state = 'used')",
-        array((int) $ticket_id));
+    if ($date !== null) {
+        $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
+            "DELETE FROM event_ticket_checkins WHERE (ticket_id = ?) AND (recurrence_number = ?)",
+            array((int) $ticket_id, (int) $date));
+    } else {
+        $changed = call_user_func(($query === null) ? 'pg_event_tickets_query' : $query,
+            "UPDATE event_tickets
+            SET state = 'valid', used_at = 0, used_by = 0
+            WHERE (id = ?) AND (state = 'used')",
+            array((int) $ticket_id));
+    }
 
     return ($changed !== false) && ((int) $changed === 1);
+}
+
+/**
+ * The date a check-in or an undo writes for a ticket: the pick's date for a
+ * series ticket, null for any other (its own row is written). Pure.
+ *
+ * @param array|null $ticket
+ * @param array      $pick
+ * @return int|null
+ */
+function pg_check_in_series_date($ticket, array $pick)
+{
+    return (is_array($ticket) && isset($ticket['series_date']) && ($pick['kind'] === 'event'))
+        ? (int) $ticket['series_date']
+        : null;
+}
+
+/**
+ * A series ticket as the door reads it on one date: the dates it is good
+ * for, and, unless it is void, used with when and by whom when it was
+ * entered on that date, else valid. Its own row stays valid. Pure.
+ *
+ * @param array      $ticket the row
+ * @param int[]      $dates  pg_event_ticket_series_numbers()
+ * @param int|null   $date   the pick's date, null for another event's pick
+ * @param array|null $entry  its event_ticket_checkins row on that date
+ * @return array
+ */
+function pg_check_in_series_state(array $ticket, array $dates, $date, $entry)
+{
+    $ticket['series_dates'] = array_values(array_map('intval', $dates));
+
+    if ($date === null) {
+        return $ticket;
+    }
+
+    $ticket['series_date'] = (int) $date;
+
+    if ((string) ($ticket['state'] ?? '') !== 'void') {
+        $ticket['state'] = is_array($entry) ? 'used' : 'valid';
+        $ticket['used_at'] = is_array($entry) ? (int) $entry['checked_at'] : 0;
+        $ticket['used_by'] = is_array($entry) ? (int) $entry['checked_by'] : 0;
+        $ticket['used_by_name'] = is_array($entry) ? (string) ($entry['checked_by_name'] ?? '') : '';
+    }
+
+    return $ticket;
+}
+
+/**
+ * The series tickets among rows read for a pick, each as the door reads it
+ * on the pick's date (pg_check_in_series_state()): one query for their
+ * entries on that date.
+ *
+ * @param array      $tickets
+ * @param array|null $pick
+ * @return array
+ */
+function pg_check_in_series_overlay(array $tickets, $pick)
+{
+    $series = array();
+
+    foreach ($tickets as $i => $ticket) {
+        if (pg_event_ticket_row_is_series($ticket)) {
+            $series[$i] = (int) $ticket['id'];
+        }
+    }
+
+    if (!$series) {
+        return $tickets;
+    }
+
+    $date = (is_array($pick) && ($pick['kind'] === 'event')) ? (int) $pick['recurrence_number'] : null;
+    $entries = array();
+
+    if ($date !== null) {
+        foreach (pg_event_ticket_checkins(array_values($series), $date) as $entry) {
+            $entries[(int) $entry['ticket_id']] = $entry;
+        }
+    }
+
+    foreach ($series as $i => $id) {
+        $event_id = (int) $tickets[$i]['calendar_event_id'];
+        $same = ($date !== null) && ((int) $pick['event_id'] === $event_id);
+
+        $tickets[$i] = pg_check_in_series_state($tickets[$i], pg_event_ticket_series($event_id)['dates'], $same ? $date : null, $entries[$id] ?? null);
+    }
+
+    return $tickets;
 }
 
 /**
@@ -225,7 +348,7 @@ function pg_check_in_run($find, array $pick, array $user, $event_access, $query 
     $answer = pg_check_in_answer($ticket, $pick, $allowed);
 
     if ($answer === 'valid') {
-        $marked = pg_check_in_mark_used((int) $ticket['id'], (int) ($user['id'] ?? 0), $query);
+        $marked = pg_check_in_mark_used((int) $ticket['id'], (int) ($user['id'] ?? 0), $query, pg_check_in_series_date($ticket, $pick));
         $ticket = call_user_func($find);
 
         // The write lost: the row changed after it was read (another phone
@@ -266,7 +389,7 @@ function pg_check_in_ticket_event(array $ticket)
         'unit'              => (int) ($ticket['unit'] ?? 0),
         'product_id'        => ($product_id > 0) ? $product_id : null,
         'calendar_event_id' => (int) ($ticket['calendar_event_id'] ?? 0),
-        'recurrence_number' => (int) ($ticket['recurrence_number'] ?? 0),
+        'recurrence_number' => (int) ($ticket['series_date'] ?? ($ticket['recurrence_number'] ?? 0)),
         'checked_in_at'     => ($used_at > 0) ? gmdate('Y-m-d\TH:i:s\Z', $used_at) : null,
         'checked_in_by'     => (int) ($ticket['used_by'] ?? 0),
     );
@@ -314,16 +437,18 @@ function pg_check_in_counts_from_rows(array $rows)
 }
 
 /**
- * The SQL condition and values of a pick on event_tickets as t. Pure.
+ * The SQL condition and values of a pick on event_tickets as t: a date of
+ * a series reads the series tickets, on date 0. Pure.
  *
  * @param array $pick
+ * @param bool  $series the pick is a date of a series
  * @return array sql, params
  */
-function pg_check_in_pick_where(array $pick)
+function pg_check_in_pick_where(array $pick, $series = false)
 {
     if ($pick['kind'] === 'event') {
         return array('sql' => '(t.calendar_event_id = ?) AND (t.recurrence_number = ?)',
-            'params' => array((int) $pick['event_id'], (int) $pick['recurrence_number']));
+            'params' => array((int) $pick['event_id'], $series ? 0 : (int) $pick['recurrence_number']));
     }
 
     return array('sql' => '(t.calendar_event_id = 0) AND (t.product_id = ?)', 'params' => array((int) $pick['product_id']));
@@ -357,13 +482,29 @@ define('PG_CHECK_IN_TICKET_COLUMNS', "t.id, t.order_id, t.order_item_id, t.unit,
     (SELECT COUNT(*) FROM event_tickets AS s WHERE s.order_item_id = t.order_item_id) AS line_tickets");
 
 /**
- * A ticket by the hash of its code, or by its id.
+ * Whether a pick is a date of a series: an event that gives series
+ * tickets, on one of its dates.
  *
- * @param string $column code_hash or id
- * @param mixed  $value
+ * @param array $pick
+ * @return bool
+ */
+function pg_check_in_pick_is_series(array $pick)
+{
+    $series = ($pick['kind'] === 'event') ? pg_event_ticket_series((int) $pick['event_id']) : null;
+
+    return ($series !== null) && in_array((int) $pick['recurrence_number'], $series['dates'], true);
+}
+
+/**
+ * A ticket by the hash of its code, or by its id; a series ticket as the
+ * door reads it on the pick's date.
+ *
+ * @param string     $column code_hash or id
+ * @param mixed      $value
+ * @param array|null $pick
  * @return array|null
  */
-function pg_check_in_ticket_find($column, $value)
+function pg_check_in_ticket_find($column, $value, $pick = null)
 {
     $column = ($column === 'id') ? 't.id' : 't.code_hash';
 
@@ -380,7 +521,7 @@ function pg_check_in_ticket_find($column, $value)
         LIMIT 1",
         array(($column === 't.id') ? (int) $value : (string) $value));
 
-    return $rows ? pg_check_in_with_names($rows)[0] : null;
+    return $rows ? pg_check_in_series_overlay(pg_check_in_with_names($rows), $pick)[0] : null;
 }
 
 /**
@@ -443,11 +584,35 @@ function pg_check_in_names_from_forms(array $tickets, array $form_rows)
  */
 function pg_check_in_counts(array $pick)
 {
-    $where = pg_check_in_pick_where($pick);
+    $counts = pg_check_in_counts_sql($pick, pg_check_in_pick_is_series($pick));
 
-    return pg_check_in_counts_from_rows(pg_check_in_rows(
-        "SELECT t.state, COUNT(*) AS n FROM event_tickets AS t WHERE " . $where['sql'] . " GROUP BY t.state",
-        $where['params']));
+    return pg_check_in_counts_from_rows(pg_check_in_rows($counts['sql'], $counts['params']));
+}
+
+/**
+ * The statement of a pick's counts by state: for a date of a series, a
+ * ticket not void is used when it was entered on that date. Pure.
+ *
+ * @param array $pick
+ * @param bool  $series
+ * @return array sql, params
+ */
+function pg_check_in_counts_sql(array $pick, $series)
+{
+    $where = pg_check_in_pick_where($pick, $series);
+
+    if (!$series) {
+        return array('sql' => "SELECT t.state, COUNT(*) AS n FROM event_tickets AS t WHERE " . $where['sql'] . " GROUP BY t.state", 'params' => $where['params']);
+    }
+
+    return array(
+        'sql'    => "SELECT CASE WHEN t.state = 'void' THEN 'void' WHEN c.id IS NULL THEN 'valid' ELSE 'used' END AS state, COUNT(*) AS n
+            FROM event_tickets AS t
+            LEFT JOIN event_ticket_checkins AS c ON (c.ticket_id = t.id) AND (c.recurrence_number = ?)
+            WHERE " . $where['sql'] . "
+            GROUP BY 1",
+        'params' => array_merge(array((int) $pick['recurrence_number']), $where['params']),
+    );
 }
 
 /**
@@ -466,9 +631,9 @@ function pg_check_in_search(array $pick, $text)
         return array();
     }
 
-    $search = pg_check_in_search_sql($pick, $text);
+    $search = pg_check_in_search_sql($pick, $text, pg_check_in_pick_is_series($pick));
 
-    return pg_check_in_with_names(pg_check_in_rows($search['sql'], $search['params']));
+    return pg_check_in_series_overlay(pg_check_in_with_names(pg_check_in_rows($search['sql'], $search['params'])), $pick);
 }
 
 /**
@@ -478,13 +643,14 @@ function pg_check_in_search(array $pick, $text)
  * PG_EVENT_TICKET_GUEST_FIELD_PATTERN). Pure.
  *
  * @param array  $pick
- * @param string $text the trimmed search text
+ * @param string $text   the trimmed search text
+ * @param bool   $series the pick is a date of a series
  * @return array sql, params
  */
-function pg_check_in_search_sql(array $pick, $text = '')
+function pg_check_in_search_sql(array $pick, $text = '', $series = false)
 {
     $like = '%' . escape_like(mb_substr((string) $text, 0, 100)) . '%';
-    $where = pg_check_in_pick_where($pick);
+    $where = pg_check_in_pick_where($pick, $series);
 
     return array(
         'sql'    => "SELECT " . PG_CHECK_IN_TICKET_COLUMNS . "
@@ -532,6 +698,37 @@ function pg_check_in_picks_groups_sql()
 }
 
 /**
+ * The first of a series' dates that has not ended before a moment: its
+ * dates follow each other, so it is found by halving, reading a few dates
+ * of a long series rather than every one. Pure; the end of a date is
+ * handed in.
+ *
+ * @param int[]    $numbers the series' dates, in order
+ * @param callable $end_of  function (int $number): int, the date's end
+ *                          (0 when it cannot be read)
+ * @param int      $since
+ * @return int the index in $numbers, count($numbers) when all have ended
+ */
+function pg_check_in_series_first_open(array $numbers, $end_of, $since)
+{
+    $numbers = array_values($numbers);
+    $low = 0;
+    $high = count($numbers);
+
+    while ($low < $high) {
+        $middle = intdiv($low + $high, 2);
+
+        if ((int) call_user_func($end_of, (int) $numbers[$middle]) < (int) $since) {
+            $low = $middle + 1;
+        } else {
+            $high = $middle;
+        }
+    }
+
+    return $low;
+}
+
+/**
  * The event dates and products a user may check tickets in for, from the
  * tickets sold: an event's date with its name, date and place, a product
  * with its name. An event that ended more than a day ago is left out.
@@ -554,19 +751,43 @@ function pg_check_in_picks(array $user, $event_access)
             continue;
         }
 
-        $event = get_calendar_event($event_id, (int) $group['recurrence_number']);
+        // A series ticket is good on each date of its series: every date is
+        // a pick until a day after its own end.
+        $series = ((int) $group['recurrence_number'] === 0) ? pg_event_ticket_series($event_id) : null;
+        $numbers = array((int) $group['recurrence_number']);
+        $open = 0;
 
-        if (!is_array($event) || (strtotime((string) $event['end_date_and_time']) < time() - 86400)) {
-            continue;
+        if ($series !== null) {
+            $first = pg_check_in_series_first_open($series['dates'], function ($number) use ($event_id) {
+                $date = get_calendar_event($event_id, $number);
+
+                return is_array($date) ? (int) strtotime((string) $date['end_date_and_time']) : 0;
+            }, time() - 86400);
+            $numbers = array_slice($series['dates'], $first);
         }
 
-        $dated[] = array(
-            'value'  => pg_check_in_pick_value(array('kind' => 'event', 'event_id' => $event_id, 'recurrence_number' => (int) $group['recurrence_number'])),
-            'label'  => (string) $event['name'],
-            'detail' => trim(pg_check_in_event_date($event) . (((string) $event['location'] !== '') ? ' · ' . strip_tags((string) $event['location']) : '')),
-            'start'  => (string) $event['start_date_and_time'],
-        );
+        foreach ($numbers as $number) {
+            $event = get_calendar_event($event_id, $number);
+            $value = pg_check_in_pick_value(array('kind' => 'event', 'event_id' => $event_id, 'recurrence_number' => $number));
+
+            if (isset($dated[$value]) || !is_array($event) || (strtotime((string) $event['end_date_and_time']) < time() - 86400)) {
+                continue;
+            }
+
+            $dated[$value] = array(
+                'value'  => $value,
+                'label'  => (string) $event['name'],
+                'detail' => trim(pg_check_in_event_date($event) . (((string) $event['location'] !== '') ? ' · ' . strip_tags((string) $event['location']) : '')),
+                'start'  => (string) $event['start_date_and_time'],
+            );
+
+            if (++$open >= PG_CHECK_IN_SERIES_PICKS) {
+                break;
+            }
+        }
     }
+
+    $dated = array_values($dated);
 
     usort($dated, function ($a, $b) {
         return strcmp($a['start'], $b['start']);

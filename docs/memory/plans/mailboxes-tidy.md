@@ -37,5 +37,5 @@ priority: 8
 
 ## What binds it?
 - Field names, ids and what a save stores do not change: the save module and the settings search read them; a test pins the posted names.
-- `mail_settings.php` is entered by one step at a time. The folded row is the one AT1 of `plans/assistants-settings-tidy-steps.md` builds.
+- `mail_settings.php` is entered by one step at a time. The folded row is `pg_settings_fold()` (`ui/settings-fold-rows.md`).
 - Architect (2026-11-20): Remove deletes the box's settings and never a conversation.

@@ -12,7 +12,7 @@ description: Workspace Settings rows name their person or department, hours boxe
 - `ws_settings_hours()` writes `pg_number_separators()['decimal']` ("7,5" on a Turkish panel); `ws_settings_minutes()` reads both `,` and `.`, so saving is unchanged.
 
 ## How do the Claude guide's copy fields get a name?
-- The `$copy` closure in `includes/workspace/claude.php` takes an optional fourth `$label` that becomes the field's `aria-label`, for a field with no `<label for>` beside it: the guide's routine prompt and domain (`claude_setup.php`, drawn in Claude's set-up drawer since #10860).
+- In Claude's set-up drawer (`includes/workspace/claude_setup.php`) a value row's name is the `<label for>` of its read-only field (`ws_claude_setup_value()`: Domain, Key); the prompt's code box names its field by `aria-label` (`ws_claude_setup_code()`). Each Copy is named "Copy: <what it copies>". Test: `tests/workspace_settings_names_test.php`.
 
 ## Can two active departments share a name?
 - No. Saving a department refuses a name another active one holds, and Bring it back refuses the same way ("There is already a department with this name. Rename one of them first."): before the fix an archived department brought back beside a new one of its name made two active departments of one name (bug hunt of the workspace endpoints, PR #6120).

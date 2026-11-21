@@ -395,14 +395,14 @@ function test_booking_messages_attachment_only_for_booking_campaigns()
 	pg_assert_same(null, pg_booking_ics_attachment(array('action' => 'booking_confirmed', 'action_item_id' => 0)));
 }
 
-// A request confirmed and a booking cancelled on the agenda announce
-// themselves; other moves, an unchanged status and a hold do not.
+// A request confirmed, a booking cancelled and one marked done on the agenda
+// announce themselves; other moves, an unchanged status and a hold do not.
 function test_booking_messages_status_event()
 {
 	pg_assert_same('confirmed', pg_booking_status_event('requested', 'confirmed'));
 	pg_assert_same('cancelled', pg_booking_status_event('confirmed', 'cancelled'));
 	pg_assert_same('cancelled', pg_booking_status_event('requested', 'cancelled'));
-	pg_assert_same('', pg_booking_status_event('confirmed', 'done'));
+	pg_assert_same('completed', pg_booking_status_event('confirmed', 'done'), 'a booking marked done starts its surveys');
 	pg_assert_same('', pg_booking_status_event('confirmed', 'no_show'));
 	pg_assert_same('', pg_booking_status_event('confirmed', 'confirmed'));
 	pg_assert_same('', pg_booking_status_event('held', 'confirmed'), 'pg_booking_confirm() announces a hold');

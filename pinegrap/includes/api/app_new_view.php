@@ -72,8 +72,12 @@ function api_app_new_card_html($card, $checked) {
 
 // The whole sheet. $cards is api_app_templates(), $permission_rows the
 // permission rows (api_settings_permission_rows() with the 'scope' names),
-// $start_note the line naming what the automation card ticks.
-function api_app_new_view($cards, $permission_rows, $start_note) {
+// $start_note the line naming what the automation card ticks. $connect is
+// step 3 on the request that follows Create or a new secret, null on the
+// others: title, sub (the line under it), tone, icon, html
+// (api_app_new_connect_html()), ack (a secret is shown, so Close waits for
+// "I have copied it"), rotated (no step line: nothing was picked).
+function api_app_new_view($cards, $permission_rows, $start_note, $connect = null) {
 
 	$card_html = '';
 
@@ -87,9 +91,25 @@ function api_app_new_view($cards, $permission_rows, $start_note) {
 
 	}
 
+	$done = is_array($connect);
+
+	$done_head = $done ? '
+				<div class="flex-grow-1 min-width-0" id="n_head_done">
+					<h5 class="drawer-title mb-0">' . h($connect['title']) . '</h5>
+					<p class="small fg-2 mb-0 mt-1">' . $connect['sub'] . '</p>
+				</div>' : '';
+
+	$done_foot = $done ? '
+			<span class="d-flex align-items-center gap-2 order-first me-auto" id="n_done_ack_field">' . ($connect['ack'] ? '
+				<input class="pg-checkbox" type="checkbox" id="n_done_ack">
+				<label class="small" for="n_done_ack">' . lang('I have copied the secret') . '</label>' : '') . '
+			</span>
+			<button type="button" class="pg-button pg-button-fill" id="n_done"' . ($connect['ack'] ? ' disabled' : '') . '>' . lang('Close') . '</button>' : '';
+
 	return '
 <!-- New application -->
-<dialog class="drawer drawer-end" id="api_new" aria-labelledby="api_new_title" style="width:min(760px,100%)">
+<dialog class="drawer drawer-end" id="api_new" aria-labelledby="api_new_title" style="width:min(760px,100%)"'
+	. ($done ? ' data-done="1" data-done-rotated="' . (empty($connect['rotated']) ? '0' : '1') . '"' : '') . '>
 	<form method="post" action="api_settings.php" autocomplete="off" class="disable_shortcut d-flex flex-column h-100" id="n_form">
 		' . get_token_field() . '
 		<input type="hidden" name="api_action" value="create">
@@ -98,7 +118,7 @@ function api_app_new_view($cards, $permission_rows, $start_note) {
 		<div class="drawer-header pb-1 d-block">
 			<div class="d-flex align-items-start gap-3">
 				<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" id="n_head_tile" aria-hidden="true"><i class="bi bi-plug" id="n_head_icon"></i></span>
-				<div class="flex-grow-1 min-width-0">
+				<div class="flex-grow-1 min-width-0" id="n_head_main">
 					<h5 class="drawer-title mb-0" id="api_new_title">' . lang('New Application') . '</h5>
 					<p class="small fg-2 mb-0 mt-1" id="n_head_pick">' . lang('What connects to this site? Pick one and the rest is prepared for it.') . '</p>
 					<p class="small fg-2 mb-0 mt-1" id="n_head_chosen" hidden>
@@ -106,11 +126,12 @@ function api_app_new_view($cards, $permission_rows, $start_note) {
 						<button type="button" class="pg-button pg-button-ghost pg-button-sm" id="n_change">' . lang('Change') . '</button>
 					</p>
 				</div>
-				<button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+				' . ($done ? '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . h($connect['tone']) . '" id="n_done_tile" aria-hidden="true"><i class="bi ' . h($connect['icon']) . '"></i></span>' . $done_head : '') . '
+				<button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" id="n_x" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 		</div>
 
-		<div class="px-5 pt-3 pb-5 border-bottom">' . api_app_new_steps_html(1) . '</div>
+		<div class="px-5 pt-3 pb-5 border-bottom" id="n_steps_wrap">' . api_app_new_steps_html(1) . '</div>
 
 		<div class="drawer-body flex-grow-1 overflow-auto">
 
@@ -160,7 +181,7 @@ function api_app_new_view($cards, $permission_rows, $start_note) {
 					</div>
 				</details>
 			</div>
-
+' . ($done ? $connect['html'] : '') . '
 		</div>
 
 		<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">
@@ -171,7 +192,7 @@ function api_app_new_view($cards, $permission_rows, $start_note) {
 			<button type="button" class="pg-button pg-button-ghost" id="n_cancel" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
 			<button type="button" class="pg-button pg-button-fill" id="n_next"
 				data-next="' . h(lang('Continue')) . '" data-open="' . h(lang('Open it')) . '"><span class="pg-btn-label">' . lang('Continue') . '</span><i class="bi bi-arrow-right" aria-hidden="true"></i></button>
-			<button type="submit" class="pg-button pg-button-fill" id="n_submit" hidden>' . lang('Create') . '</button>
+			<button type="submit" class="pg-button pg-button-fill" id="n_submit" hidden>' . lang('Create') . '</button>' . $done_foot . '
 		</div>
 	</form>
 </dialog>';

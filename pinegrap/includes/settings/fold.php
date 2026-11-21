@@ -20,7 +20,7 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-if (!defined('PG_SETTINGS_ENTRY')) {
+if (!defined('PG_SETTINGS_ENTRY') && !defined('PG_API_PANEL')) {
     exit;
 }
 

@@ -324,7 +324,7 @@ function test_api_app_save_keeps_a_filled_subscription_form()
 	pg_assert_contains('if (!saving || !hookFormHolds()) { return; }', $handler);
 	pg_assert_contains('e.preventDefault();', $handler, 'nothing is posted');
 	pg_assert_contains('d_hook_unsaved', $handler, 'the line is shown');
-	pg_assert_contains("lang('The subscription is not created yet: create it or close the form.')", $panel);
+	pg_assert_contains("lang('The subscription is not created yet: create it or close the form.')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/app_drawer_view.php'));
 }
 
 // The parts this screen added are drawn with the design language's buttons
@@ -333,8 +333,9 @@ function test_api_app_automation_parts_use_the_look()
 {
 	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
 
-	$start = strpos($panel, '<div class="tab-pane fade" id="d_hooks">');
-	$pane = substr($panel, $start, strpos($panel, '<div class="tab-pane fade" id="d_log">') - $start);
+	$view = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/app_drawer_view.php');
+	$start = strpos($view, '<div class="tab-pane fade" id="d_hooks"');
+	$pane = substr($view, $start, strpos($view, "\n}\n", $start) - $start);
 	$sample = substr($panel, strpos($panel, 'box.className = "api-hook-sample";'), 2600);
 
 	foreach (array('Events tab' => $pane, 'sample box' => $sample) as $name => $part) {

@@ -3927,6 +3927,24 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'reports.customer_rhythm',
+			'method'  => 'GET',
+			'path'    => '/reports/customer-rhythm',
+			'scope'   => 'orders:read',
+			'handler' => 'api_reports_customer_rhythm',
+			'returns' => array('list' => 'CustomerRhythmCustomer', 'rhythm' => 'CustomerRhythmReport'),
+			'summary' => 'Customer rhythm: customers per stage, each customer\'s own interval, chance and next due day',
+			'description' => 'From the table the scheduled jobs rebuild nightly (rhythm.as_of). rhythm.stages counts customers and expected 12-month value per stage: regular, due, late, slipping, lost, won_back, none. data is the customers, most expected value first, cursor paged; stage filters it. contact_id answers the one row the contact card shows, with the products due in rhythm.due. Names need customers:read too. Read only.',
+			'details' => 'A customer is a billing e-mail address, else the contact of its orders, as in GET /reports/customer-value; a buyer with only marketplace orders has no row. interval_days is the customer\'s own median days between orders, fixed at their last order; with one order (own_interval false) it is the store\'s median days to a second order. Stages by days since the last order d and the interval i: regular d < i, due i to 2i, late 2i to 3i, slipping 3i or more and still 10% or more likely to order, lost under 10%, won_back the first order after late, slipping or lost until d reaches i; none until the store has an interval. chance is the percent likely still to order; expected_value and average_order are minor units of currency. Between orders a stage only moves forward; stage_before and stage_changed_at keep the last move. reminded_at is the last customer.reorder_due event, held_back true when the comparison share held it back, came_back_order_id the order placed within 14 days after it. name is the contact\'s, else the last order\'s billing name; for an account with the user role only on contacts in its contact groups, else null. Before the first rebuild has finished, rhythm.ready is false, data is empty and rhythm.progress tells the pass. The contact group rule Rhythm stage selects by the same stages.',
+			'params'  => array(
+				array('name' => 'stage',      'in' => 'query', 'type' => 'enum', 'values' => array('regular', 'due', 'late', 'slipping', 'lost', 'won_back', 'none'), 'description' => 'Only the customers of this stage.'),
+				array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the row of this contact, as its contact card shows it, with the products due.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
 			'id'      => 'reports.traffic',
 			'method'  => 'GET',
 			'path'    => '/reports/traffic',

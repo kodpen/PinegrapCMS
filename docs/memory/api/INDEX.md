@@ -6,7 +6,7 @@
 - ad-conversions-counter-sales.md: The choices block of the Meta, GA4 and TikTok pages (event switches, Lead forms, counter sales) and "Send counter sales": a local order's purchase without any personal data [decision: here]
 - ad-conversions-ga4.md: GA4 Measurement Protocol (#10866): its Connections page, Measurement ID from the Google Analytics page, sealed API secret, sender, refunds from order_refunds, test
 - ad-conversions-log.md: Ad conversions log (#10907): the Events card on each service's Connections page (daily counts, last 50 events), the ad_events_refused operations alert, GET /reports/ad-conversions
-- ad-conversions-meta.md: Meta Conversions API (#10812): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row
+- ad-conversions-meta.md: Meta Conversions API (#10812): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row [decision: here]
 - ad-conversions-privacy.md: ad_conversion_events in a person's erase and export: rows of their orders, and Lead and sign-up rows (order_id 0) found by the hashed e-mail in ids (#10955)
 - ad-conversions-queue.md: ad_conversion_events (11.0.254): the three-input consent reader, status 0 rows at the payment step, queueing at completion, the job's pass, sweep
 - ad-conversions-tiktok.md: TikTok Events API (#10862): its Connections page and gate, the sealed token, the sender, the E.164 phone hash, how TikTok's answers become a row's outcome, the test event, the registry row
@@ -40,6 +40,7 @@
 - api-customer-consents.md: GET /customers/{id}/consents (the consent_log rows of a customer and its accounts) and the customer.consent_changed webhook announced by pg_consent_log_record(); what is left out and why
 - api-customer-credit.md: Store credit over the API: GET/POST /customers/{id}/credit and void under gift_cards:*, the account pick, credit.* events, export and erasure of a customer's cards [decision: decisions-made-product-27.md, decisions-made-product-29.md, decisions-made-product-52.md]
 - api-customer-mail-suppression.md: email_suppressed on the Customer answer (the suppressed badge of the contact screens) and POST /customers/{id}/allow-mail, the contact card's "Allow again" with dry_run
+- api-customer-rhythm-report.md: GET /reports/customer-rhythm (RY5, orders:read, an MCP tool): customers per stage, the customers a page at a time, ?stage= and ?contact_id=, names with customers:read and the user role's reach
 - api-customer-subscriptions.md: GET /customers/{id}/subscriptions, the pause/resume/cancel moves with dry_run (PR #4399), and the subscription.* webhooks announced from pg_subscription_mail_send()
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
 - api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)
@@ -133,6 +134,7 @@
 - api-workspace-highlights.md: Readers' highlights over the Workspace API (#10341): the WorkspaceMessage keys, who gets For me rows, the three person-only writes, what quote indexes, how changes reach devices
 - api-workspace-quiet-hours.md: A person's own quiet hours over the API: quiet_hours on GET /auth/me, POST /workspace/quiet-hours from a team devices session only, the quiet_hours feature key (issue #10347, PR #10388)
 - application-access-automation.md: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks [decision: here]
+- application-access-drawer-guides.md: Application Access's edit drawer (head, tabs, Overview, Connect) and the connection guides of api_app_guides(), also shown in step 3 of New application; which guide suits which application [decision: here]
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
 - application-access-new-sheet.md: Application Access's New application sheet: a drawer in three steps, the starting point cards of api_app_templates(), what each ticks, the sign-in card when OAuth is set up, the create branch's checks
 - application-access-permission-picker.md: Application Access permission picker: areas with icons, a row per scope group, None / Read / Write, search, counts, the four bulk buttons and their rule, the money pill
@@ -153,7 +155,7 @@
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on its Connections page, batchRunReports cached by an hourly job, state in a sealed service entry [decision: decisions-made-product-5.md]
 - mailchimp-sync-running-claim.md: How the MailChimp sync in the general job keeps two overlapping runs from syncing at once.
 - mcp-agent-own-tools.md: An application agent's own routes as MCP tools ('mcp' => 'agent', AA7a #10867): which ten, only for an active app agent's own key, the callers that never see them, the budget, the second sending form
-- mcp-compact-list.md: The MCP server's compact list (mcp_compact.php, AG7): guide_read, tools_find, tools_describe, tools_read, tools_write and the money tools by name; one OAuth resource with mcp.php; refusal codes; sizes [decision: here]
+- mcp-compact-list.md: The MCP server's compact list (mcp_compact.php, AG7): guide_read, tools_find, tools_describe, tools_read, tools_write and the money tools by name; one OAuth resource with mcp.php; refusal codes; sizes
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
 - mcp-form-guidance.md: What MCP tells a model before it writes a form record (PR #8042): guidance on the form write tools, the pinegrap://forms/{id}/fields resource, the blog_post prompt and its text argument
 - mcp-resources-prompts.md: MCP resources (pinegrap://workspace/my-day, channels/{id}/context and /customer, refs/{type}/{id}, forms/{id}/fields) read by their GET routes; prompts; who sees them, errors, caching

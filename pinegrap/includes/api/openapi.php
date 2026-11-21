@@ -1189,6 +1189,8 @@ function api_openapi_objects()
         'AdConversionsReport' => 'api_ad_conversions_report_schema',
         'CartRecoveryReport' => 'api_cart_recovery_report_schema',
         'CustomerValueReport' => 'api_customer_value_report_schema',
+        'CustomerRhythmReport' => 'api_customer_rhythm_report_schema',
+        'CustomerRhythmCustomer' => 'api_customer_rhythm_customer_schema',
         'VitalsReport'   => 'api_vitals_report_schema',
         'PageClicksReport' => 'api_page_clicks_report_schema',
         'PageClicksElement' => 'api_page_clicks_element_schema',
