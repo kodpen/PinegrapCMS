@@ -181,6 +181,7 @@ pg_page_shell(array(
         'cancel'              => true,
     )) . '
 <main id="content" class="container-fluid">
+    ' . pg_delivery_tower_segments_html('problems', $user, (ECOMMERCE == true) && (ECOMMERCE_SHIPPING == true)) . '
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
     ' . pg_screen_toolbar(array(

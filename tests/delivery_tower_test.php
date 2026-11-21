@@ -246,3 +246,40 @@ function test_delivery_tower_settings_clean()
 	pg_assert_same(false, $odd['returned'], 'a kind turned off');
 	pg_assert_false(isset($odd['other']), 'an unknown key is dropped');
 }
+
+function test_delivery_tower_segments_by_right()
+{
+	$manager = array('role' => 2, 'manage_ecommerce' => false, 'manage_ecommerce_reports' => false);
+	$orders = array('role' => 3, 'manage_ecommerce' => true, 'manage_ecommerce_reports' => false);
+	$reports = array('role' => 3, 'manage_ecommerce' => false, 'manage_ecommerce_reports' => true);
+	$both = array('role' => 3, 'manage_ecommerce' => true, 'manage_ecommerce_reports' => true);
+	$none = array('role' => 3, 'manage_ecommerce' => false, 'manage_ecommerce_reports' => false);
+
+	pg_assert_same(array('problems', 'scorecard'), array_keys(pg_delivery_tower_segments($manager, true)), 'Manager and up see both, Problems first');
+	pg_assert_same(array('problems', 'scorecard'), array_keys(pg_delivery_tower_segments($both, true)), 'a user with both rights sees both');
+	pg_assert_same(array('problems'), array_keys(pg_delivery_tower_segments($orders, true)), 'the orders right alone: Problems');
+	pg_assert_same(array('scorecard'), array_keys(pg_delivery_tower_segments($reports, true)), 'the reports right alone: the scorecard');
+	pg_assert_same(array(), array_keys(pg_delivery_tower_segments($none, true)), 'neither right: nothing');
+	pg_assert_same(array('problems'), array_keys(pg_delivery_tower_segments($manager, false)), 'shipping off: no scorecard');
+	pg_assert_same('view_carrier_scorecard.php', pg_delivery_tower_segments($manager, true)['scorecard'][1], 'the scorecard segment opens its screen');
+}
+
+function test_delivery_tower_segments_html()
+{
+	$manager = array('role' => 2);
+	$html = pg_delivery_tower_segments_html('scorecard', $manager, true);
+
+	pg_assert_contains('<nav class="pg-area-tabs mb-3"', $html, 'an area strip, centred like the others');
+	pg_assert_same(2, substr_count($html, 'class="pg-seg-item'), 'two segments');
+	pg_assert_same(1, substr_count($html, 'aria-current="page"'), 'one segment selected');
+	pg_assert_contains('<a class="pg-seg-item is-active" href="view_carrier_scorecard.php" aria-current="page">', $html, 'the open screen is the selected one');
+	pg_assert_contains('<a class="pg-seg-item" href="view_delivery_problems.php">', $html, 'the other one is its link');
+	pg_assert_same(1, substr_count(pg_delivery_tower_segments_html('problems', $manager, true), 'is-active" href="view_delivery_problems.php"'), 'on Delivery problems, Problems is selected');
+	pg_assert_same('', pg_delivery_tower_segments_html('problems', array('role' => 3, 'manage_ecommerce' => true), true), 'one segment leads nowhere: no strip');
+	pg_assert_same('', pg_delivery_tower_segments_html('problems', $manager, false), 'shipping off: no strip');
+
+	foreach (array('view_delivery_problems.php' => "'problems'", 'view_carrier_scorecard.php' => "'scorecard'") as $file => $key) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains("<main id=\"content\" class=\"container-fluid\">\n    ' . pg_delivery_tower_segments_html(" . $key, $source, $file . ' prints the strip first in its content');
+	}
+}
