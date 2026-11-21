@@ -63,7 +63,7 @@ function test_settings_dialog_marks_refused_fields()
 	pg_assert_true($at !== false, 'invalid branch found');
 	pg_assert_contains('refused(response.fields', substr($js, (int) $at, 600), 'invalid branch marks the fields');
 
-	$fn = strpos($js, 'function refused(fields)');
+	$fn = strpos($js, 'function refused(fields, drawer)');
 	pg_assert_true($fn !== false, 'refused() found');
 	$body = substr($js, (int) $fn, 2000);
 	pg_assert_contains('window.pgFieldInvalid(', $body, 'marks through the shared helper');
@@ -71,4 +71,10 @@ function test_settings_dialog_marks_refused_fields()
 	pg_assert_contains('.focus()', $body, 'first marked field focused');
 	pg_assert_contains('CSS.escape', $js, 'names like languages[tr][prefix] escaped');
 	pg_assert_contains("'[data-pg-sm-marked]'", $js, 'mark cleared on input');
+
+	// A save module names the drawer holding the refused box; the dialog
+	// opens it, so the box can be seen and fixed.
+	pg_assert_contains("refused(response.fields || {}, response.drawer || '')", $js, 'the drawer goes to refused()');
+	pg_assert_contains('reopen({ drawer: drawer, drawerScroll: 0 })', $body, 'a shut drawer opens');
+	pg_assert_contains("'drawer' => pg_settings_drawer_refused(),", (string) file_get_contents(PG_FUNCTIONS_DIR . '/settings_pane.php'), 'the answer names it');
 }

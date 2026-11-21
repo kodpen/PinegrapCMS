@@ -351,11 +351,11 @@ function test_booking_settings_pane_rows_and_drawers()
 	}
 
 	foreach (array('name', 'length', 'before', 'after', 'price', 'deposit', 'deposit_product', 'description', 'enabled', 'order') as $box) {
-		pg_assert_contains("\$name . '[" . $box . "]\"", $pane, 'posts as booking_service[..][' . $box . ']');
+		pg_assert_contains("\$name . '[" . $box . "]", $pane, 'posts as booking_service[..][' . $box . ']');
 	}
 
-	foreach (array('booking_reschedule', 'booking_auto_confirm', 'booking_reminder_hours', 'booking_staff_add') as $box) {
-		pg_assert_contains("'" . $box . "'", $pane);
+	foreach (array("'booking_reschedule'", "'booking_auto_confirm'", 'name="booking_reminder_hours"', 'name="booking_staff_add"', 'name="booking_text_') as $box) {
+		pg_assert_contains($box, $pane);
 	}
 
 	pg_assert_same(false, strpos($pane, '<div class="switch">'), 'look A switch');

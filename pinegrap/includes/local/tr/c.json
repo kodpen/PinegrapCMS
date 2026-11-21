@@ -4934,6 +4934,7 @@
     "confirmation, request, availability, appointment": "onay, talep, uygunluk, randevu",
     "confirmation, reservation, hold, date": "onay, rezervasyon, tarih tutma, tarih",
     "confirmation, reservation, request, availability": "onay, rezervasyon, istek, müsaitlik",
+    "confirmed at once": "hemen onaylanır",
     "conflict of interest, other side, opposing party": "çıkar çatışması, karşı taraf",
     "connect again": "yeniden bağlayın",
     "connected an application with OAuth ({var:1})": "OAuth ile bir uygulama bağladı ({var:1})",

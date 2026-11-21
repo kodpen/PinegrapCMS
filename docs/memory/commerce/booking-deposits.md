@@ -9,7 +9,7 @@ module: booking_deposits
 
 ## When does a service ask for a deposit?
 - `pg_booking_deposit_due()`: deposit > 0, a product, a price > 0 and deposit <= price; else null. Settings › Bookings (`pg_booking_deposit_clean()` inside `pg_booking_settings_service_clean()`) refuses a deposit above the price or on a free service (`deposit`) and one without a product (`deposit_product`).
-- The Deposit box and the product picker (first 2000 products by name, `pg_booking_settings_deposit_products()`) are drawn only with the columns and the store on. A posted row without the boxes leaves the stored deposit as it is.
+- The Deposit box and the product picker (first 2000 products by name, `pg_booking_settings_deposit_products()`) are drawn in a service's drawer once the columns exist. With the store off they are drawn disabled, with the line that deposits are taken as an order and wait while Commerce is off: a disabled box is not posted, and a posted row without the boxes leaves the stored deposit as it is. Before, they vanished with the store off (#BT1PR).
 
 ## How is the order written?
 - `pg_booking_deposit_order_write($booking_id)`: the form fee's one-line order (`pg_form_payment_order_columns()` + `pg_form_payment_order_insert()`, shared with `forms`), billing from the booking's name (split on the last space), e-mail, phone, user. Offline payment is allowed when the store allows it ("paid on arrival"). A booking with an order keeps it, so a retry charges the same order.
