@@ -932,7 +932,11 @@ function pg_label_input_name($key, $field)
 
 /**
  * A driver's account fields: the shape the payment drivers declare
- * (pg_payment_fields_normalize()), switches left out.
+ * (pg_payment_fields_normalize()), switches left out. Each field also says
+ * whether it is one of the account's keys ('connection'): every secret, and
+ * a text field the driver declares with 'connection' => true (a user name,
+ * a customer code). The keys are typed on the driver's page of Connections;
+ * the other fields stay on the Shipping card.
  *
  * @param string $key
  * @return array
@@ -946,14 +950,223 @@ function pg_label_fields($key)
     }
 
     try {
-        $fields = pg_payment_fields_normalize(call_user_func($function));
+        $declared = call_user_func($function);
+        $fields = pg_payment_fields_normalize($declared);
     } catch (\Throwable $exception) {
         return array();
     }
 
-    return array_values(array_filter($fields, function ($field) {
-        return $field['type'] !== 'switch';
-    }));
+    $connection = array();
+
+    foreach ((array) $declared as $field) {
+        if (is_array($field) && isset($field['name']) && is_string($field['name']) && isset($field['connection']) && ($field['connection'] === true)) {
+            $connection[$field['name']] = true;
+        }
+    }
+
+    $kept = array();
+
+    foreach ($fields as $field) {
+        if ($field['type'] !== 'switch') {
+            $field['connection'] = ($field['type'] === 'secret') || (($field['type'] === 'text') && isset($connection[$field['name']]));
+            $kept[] = $field;
+        }
+    }
+
+    return $kept;
+}
+
+/**
+ * The part of a driver's fields one side writes: 'keys' (the driver's page
+ * of Connections) or 'card' (the Shipping card). Pure.
+ *
+ * @param array  $fields pg_label_fields()
+ * @param string $part   'keys' or 'card'
+ * @return array
+ */
+function pg_label_fields_part($fields, $part)
+{
+    $part_fields = array();
+
+    foreach ($fields as $field) {
+        if (!empty($field['connection']) === ($part === 'keys')) {
+            $part_fields[] = $field;
+        }
+    }
+
+    return $part_fields;
+}
+
+/**
+ * Whether every required key of a driver is stored and readable with this
+ * site's key. Pure.
+ *
+ * @param array $fields   pg_label_fields()
+ * @param array $settings pg_label_settings()
+ * @return bool
+ */
+function pg_label_keys_complete($fields, $settings)
+{
+    if (isset($settings['readable']) && !$settings['readable']) {
+        return false;
+    }
+
+    foreach (pg_label_fields_part($fields, 'keys') as $field) {
+        if (!$field['required']) {
+            continue;
+        }
+
+        $stored = ($field['type'] === 'secret')
+            ? isset($settings['secrets'][$field['name']])
+            : (isset($settings['values'][$field['name']]) && (trim((string) $settings['values'][$field['name']]) !== ''));
+
+        if (!$stored) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Whether any key of a driver is stored (Disconnect is offered). Pure.
+ *
+ * @param array $fields   pg_label_fields()
+ * @param array $settings pg_label_settings()
+ * @return bool
+ */
+function pg_label_keys_stored($fields, $settings)
+{
+    foreach (pg_label_fields_part($fields, 'keys') as $field) {
+        if ($field['type'] === 'secret') {
+            if (isset($settings['secrets'][$field['name']])) {
+                return true;
+            }
+        } elseif (isset($settings['values'][$field['name']]) && (trim((string) $settings['values'][$field['name']]) !== '')) {
+            return true;
+        }
+    }
+
+    // Secrets this site's key cannot read are still stored.
+    return !empty($settings['secret_stored']) && isset($settings['readable']) && !$settings['readable'];
+}
+
+/**
+ * The post a driver's page of Connections gives pg_label_settings_decide():
+ * its keys as typed, the marker, the switch and the automatic label as
+ * stored (only the card changes them), and the connection test when Save
+ * and try was pressed. Pure.
+ *
+ * @param string $key
+ * @param array  $fields   pg_label_fields()
+ * @param array  $post     the page's form
+ * @param array  $settings pg_label_settings()
+ * @return array
+ */
+function pg_label_page_post($key, $fields, $post, $settings)
+{
+    $page_post = array(pg_label_input_name($key, 'present') => '1');
+
+    foreach (pg_label_fields_part($fields, 'keys') as $field) {
+        $input = pg_label_input_name($key, $field['name']);
+        $page_post[$input] = (isset($post[$input]) && is_string($post[$input])) ? $post[$input] : '';
+    }
+
+    if (!empty($settings['enabled'])) {
+        $page_post[pg_label_input_name($key, 'enabled')] = '1';
+    }
+
+    if (isset($settings['values']['auto_label']) && ((string) $settings['values']['auto_label'] === '1')) {
+        $page_post[pg_label_input_name($key, 'auto_label')] = '1';
+    }
+
+    if (!empty($post['submit_try'])) {
+        $page_post['label_test'] = $key;
+    }
+
+    return $page_post;
+}
+
+/**
+ * The mark on the Shipping card when a driver is newly switched on while
+ * its keys are missing on its page of Connections. A driver already on is
+ * never refused, so a running store keeps saving. Pure.
+ *
+ * @param string $label    the driver's name
+ * @param array  $fields   pg_label_fields()
+ * @param array  $settings pg_label_settings()
+ * @param bool   $enabled  the post switches it on
+ * @return string '' or the message
+ */
+function pg_label_choice_refusal($label, $fields, $settings, $enabled)
+{
+    if (!$enabled || !empty($settings['enabled']) || pg_label_keys_complete($fields, $settings)) {
+        return '';
+    }
+
+    return lang(array('string' => 'Set up the {var:1} keys on its page of Connections first.', 'vars' => array(h($label))));
+}
+
+/**
+ * A driver's connection on the Shipping card: Connected or Not connected and
+ * the way to its page of Connections. Pure.
+ *
+ * @param string $key
+ * @param array  $definition pg_label_driver()
+ * @param array  $fields     pg_label_fields()
+ * @param array  $settings   pg_label_settings()
+ * @return string HTML
+ */
+function pg_label_connection_html($key, $definition, $fields, $settings)
+{
+    $connected = pg_label_keys_complete($fields, $settings);
+
+    return pg_payment_connection_block_html(pg_label_input_name($key, 'connection'), $definition['label'], $connected, $connected
+        ? lang('The keys are kept on its page of Connections.')
+        : lang('The keys are missing, so no label can be made with this service. Enter them on its page of Connections.'),
+        pg_payment_gateway_connections_url($key));
+}
+
+/**
+ * Removes a driver's keys (Disconnect on its page of Connections): its key
+ * fields are emptied and its key secrets dropped; the switch, the card's
+ * choices and the status webhook's own values stay.
+ *
+ * @param string $key
+ * @param int    $user_id
+ * @return bool false when nothing is kept for it here
+ */
+function pg_label_forget_keys($key, $user_id)
+{
+    if (!pg_connect_schema_ready() || (pg_label_driver($key) === null)) {
+        return false;
+    }
+
+    $provider = pg_label_settings_key($key);
+    $existing = db_item("SELECT secret, options FROM connect_apps WHERE provider = '" . e($provider) . "'");
+
+    if (!is_array($existing)) {
+        return false;
+    }
+
+    $options = json_decode((string) $existing['options'], true);
+    $options = is_array($options) ? array_filter($options, 'is_scalar') : array();
+    $secrets = pg_connect_unseal($existing['secret']);
+
+    foreach (pg_label_fields_part(pg_label_fields($key), 'keys') as $field) {
+        unset($options[$field['name']], $secrets[$field['name']]);
+    }
+
+    $sealed = ($secrets && pg_connect_can_seal()) ? pg_connect_seal($secrets) : '';
+
+    db("UPDATE connect_apps SET
+        secret = '" . e($sealed) . "',
+        options = '" . e(json_encode((object) $options)) . "',
+        updated_user_id = '" . (int) $user_id . "',
+        updated_timestamp = UNIX_TIMESTAMP()
+        WHERE provider = '" . e($provider) . "'");
+
+    return true;
 }
 
 /**
@@ -1057,7 +1270,9 @@ function pg_label_ready($key)
  * secret keeps the stored one; a value outside a select's options keeps the
  * stored one (or the default); a required field is required only while the
  * driver is switched on. Only a change is written, and a driver never set
- * up gets no row while it is off with every value at its default.
+ * up gets no row while it is off with every value at its default. A stored
+ * value of a field not given is kept: the card decides its part of the
+ * fields, the driver's page of Connections its keys (pg_label_fields_part()).
  *
  * A driver that can create keeps its automatic label switch in the values
  * beside its fields: auto_label '1' and auto_label_since, the time it was
@@ -1153,6 +1368,16 @@ function pg_label_settings_decide($key, $fields, $post, $stored, $now = 0)
         }
     }
 
+    // The card and the driver's page of Connections each decide their own
+    // fields: the stored values of the others are kept as they are.
+    $own = array('auto_label' => true, 'auto_label_since' => true);
+
+    foreach ($fields as $field) {
+        $own[$field['name']] = true;
+    }
+
+    $values = array_merge(array_diff_key($stored_values, $own), $values);
+
     if (!empty($stored['exists'])) {
         $compare = $stored_values;
         $changed = ($enabled !== !empty($stored['enabled'])) || $auto_turned_off;
@@ -1202,7 +1427,11 @@ function pg_label_settings_check($post, $liveform)
 
     foreach (pg_label_drivers() as $key => $definition) {
         $fields = pg_label_fields($key);
-        $decision = pg_label_settings_decide($key, $fields, $post, pg_label_settings($key));
+        $settings = pg_label_settings($key);
+
+        // The card writes the switch and its choices; the keys are typed on
+        // the driver's page of Connections.
+        $decision = pg_label_settings_decide($key, pg_label_fields_part($fields, 'card'), $post, $settings);
 
         if (!$decision['posted']) {
             continue;
@@ -1210,6 +1439,12 @@ function pg_label_settings_check($post, $liveform)
 
         foreach ($decision['marks'] as $input => $sentence) {
             $liveform->mark_error($input, $sentence);
+        }
+
+        $refusal = pg_label_choice_refusal($definition['label'], $fields, $settings, $decision['enabled']);
+
+        if ($refusal !== '') {
+            $liveform->mark_error(pg_label_input_name($key, 'enabled'), $refusal);
         }
 
         if ($decision['changed'] && !pg_connect_schema_ready()) {
@@ -1333,8 +1568,9 @@ function pg_label_settings_test($key, $liveform)
 
 /**
  * The label drivers' rows of the Shipping card: per driver a switch, its
- * account fields (secrets never drawn back) and a connection test. Nothing
- * when no driver is installed.
+ * connection (the keys are typed on its page of Connections), the fields
+ * that are no keys and a connection test. Nothing when no driver is
+ * installed.
  *
  * @return string
  */
@@ -1374,26 +1610,11 @@ function pg_label_settings_rows()
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-5">
-                                                                                        <input type="hidden" name="' . h(pg_label_input_name($key, 'present')) . '" value="1"/>';
+                                                                                        <input type="hidden" name="' . h(pg_label_input_name($key, 'present')) . '" value="1"/>'
+            // The keys are typed on the driver's page of Connections.
+            . pg_label_connection_html($key, $definition, $fields, $settings);
 
-        if (!pg_connect_can_seal()) {
-            $html .= '
-                                                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . lang('This site has no encryption key, so it cannot keep the keys of a carrier label service.') . '</div></div>';
-        } elseif (!$settings['readable']) {
-            $html .= '
-                                                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . lang(array(
-                                                                                            'string' => 'The stored keys of {var:1} cannot be read with this site\'s encryption key. Enter them again.',
-                                                                                            'vars'   => array(h($definition['label'])))) . '</div></div>';
-        }
-
-        if ($definition['portal'] !== '') {
-            $html .= '
-                                                                                        <div class="col-12 form-text">' . lang(array(
-                                                                                            'string' => 'The keys are in your {var:1} account.',
-                                                                                            'vars'   => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</div>';
-        }
-
-        foreach ($fields as $field) {
+        foreach (pg_label_fields_part($fields, 'card') as $field) {
             $id = pg_label_input_name($key, $field['name']);
             $value = isset($settings['values'][$field['name']]) ? $settings['values'][$field['name']] : $field['default'];
             $help = ($field['help'] !== '') ? '
@@ -1407,9 +1628,6 @@ function pg_label_settings_rows()
                 }
 
                 $input = '<select class="form-control" id="' . h($id) . '" name="' . h($id) . '">' . $options . '</select>';
-            } elseif ($field['type'] === 'secret') {
-                $input = '<input class="form-control" type="password" id="' . h($id) . '" name="' . h($id) . '" value="" maxlength="' . (int) $field['max_length'] . '" autocomplete="new-password"'
-                    . (isset($settings['secrets'][$field['name']]) ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '/>';
             } else {
                 $input = '<input class="form-control" type="text" id="' . h($id) . '" name="' . h($id) . '" value="' . h($value) . '" maxlength="' . (int) $field['max_length'] . '" autocomplete="off"/>';
             }
@@ -1443,7 +1661,7 @@ function pg_label_settings_rows()
         if (pg_label_can($key, 'test')) {
             $html .= '
                                                                                         <div class="col-12">
-                                                                                            <button type="submit" name="label_test" value="' . h($key) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                                                                                            <button type="submit" name="label_test" value="' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
                                                                                         </div>';
         }
 

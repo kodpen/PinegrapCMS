@@ -47,7 +47,7 @@ function ws_api_agent_answer_schema()
 function ws_agent_request_api_routes()
 {
     $id = array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true);
-    $only = ' For an active application agent\'s own key only (Workspace Settings, Agents): any other caller 403 forbidden.';
+    $only = ' For an active application agent\'s own key only (Site Settings, Workspace agents): any other caller 403 forbidden.';
 
     return array(
         array(
@@ -91,7 +91,7 @@ function ws_agent_request_api_routes()
             'details'     => 'The answer is written as the application. For a run on a task the text is kept on the run and shown on the task, the person who asked is told, and no message is written; it answers 422 for no_answer, emoji, conclude or offer_conclude, and 403 once the task\'s channel no longer allows the agent. emoji leaves one emoji on the message that asked, with text or with no_answer. conclude true, for a request asked in a discussion by a person in it who asks for it, concludes the discussion after the answer is written (closed_by is that person); any other request is not concluded, conclude.error says why and the answer is still written. offer_conclude true, with text, unasked, puts a Conclude the discussion button under the answer for the people in the discussion; one of them presses it to conclude in their own name (the same asker rule; offer.error says why it was not made). 403 also when the person who asked can no longer write there. 422 on text for a wake made in no channel: write with POST /workspace/channels/{id}/messages, then close it with no_answer.',
             'params'      => array(
                 $id,
-                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true. ' . WS_WRITING_RULES_POINTER),
                 array('name' => 'no_answer', 'in' => 'body', 'type' => 'bool', 'description' => 'Close the request without writing anything: it needs no answer.'),
                 array('name' => 'emoji', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'description' => 'One fitting emoji left on the message that asked, as the application: beside text, or with no_answer in place of it. Never on the agent\'s own message; a wake asked by no message takes none.'),
                 array('name' => 'conclude', 'in' => 'body', 'type' => 'bool', 'description' => 'Conclude the discussion the request was asked in, after the answer: only when a person in it asked for it. Never unasked.'),

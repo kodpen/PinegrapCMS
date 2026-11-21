@@ -29,7 +29,7 @@ function other_date_fields_test_source($file)
 
 function test_other_date_fields_native_inputs_are_hooked()
 {
-	foreach (array('cloudflare.php' => 4, 'api_settings.php' => 1, 'view_parasut_inbox.php' => 2, 'includes/workspace/workdays.php' => 2) as $file => $count) {
+	foreach (array('cloudflare.php' => 4, 'includes/api/app_drawer_view.php' => 1, 'view_parasut_inbox.php' => 2, 'includes/workspace/workdays.php' => 2) as $file => $count) {
 		preg_match_all('/<input [^>]*type="date"[^>]*>/', other_date_fields_test_source($file), $inputs);
 
 		pg_assert_same($count, count($inputs[0]), $file . ' native date inputs');

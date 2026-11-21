@@ -255,7 +255,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_feedback_surveys();        // 11.0.263
 	upgrade_2026_11_0_pick_pack();               // 11.0.264
 	upgrade_2026_11_0_lead_journey();            // 11.0.265
-	upgrade_2026_11_0_stock_taken();             // 11.0.269
+	upgrade_2026_11_0_walk_in_queue();           // 11.0.266
+	upgrade_2026_11_0_event_ticket_checkins();   // 11.0.267
+	upgrade_2026_11_0_stock_taken();             // 11.0.268
 
 }
 
@@ -8889,6 +8891,120 @@ function upgrade_2026_11_0_lead_journey() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Contacts: the visitor journey tables were added; nothing is recorded until a visitor allows marketing cookies.');
+
+}
+
+// 11.0.266 - The walk-in queue (owner, poll 206; includes/fn/walk_in_queue.php
+// and walk_in_queue_store.php). waiting_places is a queue place: its
+// services (each with its key, name, letter and starting minutes), hours and
+// dated exceptions in the bookings' shapes, and its settings (daily cap,
+// closed text, ways to take a number, notices, order rules, staff, keep
+// period) as JSON. waiting_desks is a desk of a place: the service keys it
+// serves and who has it open. waiting_tickets is one taken number: the
+// service's key and letter, the day (YYYYMMDD in the site's zone) and the
+// day's count, its state, the desk and staff member that called it, a
+// booking's id and time (0 for a walk-in), the times, and the person's name,
+// phone (as pg_sms_number() gives it) and e-mail, which the general job
+// clears after the place's keep period (cleared_at); the figures stay.
+// token_hash is the sha256 of the person's page link (pg_waiting_ticket_token());
+// the link carries the number's id and the hash is only compared, so no index.
+// No column is added to an existing table.
+function upgrade_2026_11_0_walk_in_queue() {
+
+	install_create_table('waiting_places', "CREATE TABLE waiting_places (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name        VARCHAR(150) NOT NULL DEFAULT '',
+		address     VARCHAR(255) NOT NULL DEFAULT '',
+		status      VARCHAR(10) CHARACTER SET ascii NOT NULL DEFAULT 'closed',
+		services    TEXT NULL,
+		hours       TEXT NULL,
+		exceptions  TEXT NULL,
+		settings    TEXT NULL,
+		created_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('waiting_desks', "CREATE TABLE waiting_desks (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		place_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		name        VARCHAR(100) NOT NULL DEFAULT '',
+		services    TEXT NULL,
+		state       VARCHAR(10) CHARACTER SET ascii NOT NULL DEFAULT 'closed',
+		user_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		opened_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_place (place_id),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('waiting_tickets', "CREATE TABLE waiting_tickets (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		place_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		service        VARCHAR(20) CHARACTER SET ascii NOT NULL DEFAULT '',
+		letter         CHAR(1) CHARACTER SET ascii NOT NULL DEFAULT '',
+		day            INT UNSIGNED NOT NULL DEFAULT 0,
+		number         INT UNSIGNED NOT NULL DEFAULT 0,
+		state          VARCHAR(10) CHARACTER SET ascii NOT NULL DEFAULT 'waiting',
+		source         VARCHAR(10) CHARACTER SET ascii NOT NULL DEFAULT '',
+		priority       VARCHAR(30) NOT NULL DEFAULT '',
+		party_size     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		booking_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		booking_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		desk_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		staff_user_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		moved_back     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		notices        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		joined_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		on_way_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		called_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		done_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		name           VARCHAR(100) NOT NULL DEFAULT '',
+		phone          VARCHAR(20) CHARACTER SET ascii NOT NULL DEFAULT '',
+		email          VARCHAR(190) NOT NULL DEFAULT '',
+		contact_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		token_hash     CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+		cleared_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_number (place_id, day, service, number),
+		KEY idx_place_state (place_id, state, joined_at),
+		KEY idx_place_joined (place_id, joined_at),
+		KEY idx_desk_called (desk_id, called_at),
+		KEY idx_booking (booking_id),
+		KEY idx_contact (contact_id),
+		KEY idx_phone (phone),
+		KEY idx_email (email)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Calendars: the tables of the walk-in queue (places, desks and numbers) were added; nothing changes until a place is made.');
+
+}
+
+// The entries of a series ticket (11.0.267, includes/fn/event_check_in.php):
+// a repeating event whose dates share their places gives a ticket for the
+// whole series, kept on date 0, and the door enters it once on each date. One
+// row per ticket and date: the unique key makes a second scan on the same
+// date change nothing, and undo deletes the date's row. The second key is the
+// door's count of a date. The ticket's own row keeps its state; these rows go
+// with it when its order is deleted.
+function upgrade_2026_11_0_event_ticket_checkins() {
+
+	install_create_table('event_ticket_checkins', "CREATE TABLE event_ticket_checkins (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		ticket_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		calendar_event_id INT UNSIGNED NOT NULL DEFAULT 0,
+		recurrence_number INT UNSIGNED NOT NULL DEFAULT 0,
+		checked_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		checked_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_ticket_date (ticket_id, recurrence_number),
+		KEY idx_event_date (calendar_event_id, recurrence_number)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Event tickets: a ticket of a repeating event whose dates share their places is now checked in once on each date.');
 
 }
 

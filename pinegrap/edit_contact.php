@@ -322,7 +322,8 @@ if (!$_POST) {
                                 </div>
                             </div>
                             ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($id, $contact_groups)))
-                            . pg_lead_journey_contact_card($id, $user),
+                            . pg_lead_journey_contact_card($id, $user)
+                            . pg_customer_rhythm_contact_card($id, (string) $row['email_address'], $user),
                         pg_contact_form_picture_card(false, $image) . '
                                 <div class="card mb-7">
                                     <h2 class="card-header bg-reset border-0 pg-title-section">

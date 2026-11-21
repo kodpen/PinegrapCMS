@@ -147,7 +147,7 @@ JS
 	pg_assert_false($got['not_joined'], 'nor one the viewer only reads');
 	pg_assert_false($got['archived'], 'nor an archived one');
 	pg_assert_false($got['mailbox'], 'nor a mailbox room');
-	pg_assert_false($got['guest_room'], 'nor a guest room (guests come later)');
+	pg_assert_true($got['guest_room'], 'a guest room carries them too: its guest joins from the guest page');
 	pg_assert_false($got['era'], 'nor an earlier version of a conversation');
 	pg_assert_false($got['thread'], 'nor a discussion');
 	pg_assert_false($got['calls_off'], 'nor a site whose database has no calls');

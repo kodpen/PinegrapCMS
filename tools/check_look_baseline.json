@@ -586,20 +586,8 @@
         "button": 2,
         "tabs": 0
     },
-    "includes/fn/address_autocomplete.php": {
-        "button": 1,
-        "tabs": 0
-    },
     "includes/fn/ai_write.php": {
         "button": 2,
-        "tabs": 0
-    },
-    "includes/fn/carrier_api.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/fn/carrier_labels.php": {
-        "button": 1,
         "tabs": 0
     },
     "includes/fn/comment_list_edit.php": {
@@ -628,14 +616,6 @@
     },
     "includes/fn/files.php": {
         "button": 2,
-        "tabs": 0
-    },
-    "includes/fn/geo.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/fn/google_reviews.php": {
-        "button": 1,
         "tabs": 0
     },
     "includes/fn/legacy_bootstrap_move.php": {
@@ -924,10 +904,6 @@
     },
     "includes/workspace/templates.php": {
         "button": 6,
-        "tabs": 0
-    },
-    "includes/workspace/voice.php": {
-        "button": 1,
         "tabs": 0
     },
     "includes/workspace/workdays.php": {

@@ -213,3 +213,42 @@ function test_ad_conversions_tiktok_places()
 	pg_assert_true(strpos($module, "'Access-Token: '") !== false, 'the token goes in the Access-Token header');
 	pg_assert_false(strpos($module, 'ad_click_ids') !== false, 'the click id is read from the row, never the capture');
 }
+
+// The page offers every event TikTok names (no refund, which TikTok has no
+// event for); the save keeps them, the forms and the counter sales switch.
+function test_ad_conversions_tiktok_all_events()
+{
+	pg_assert_same(array('purchase', 'add_to_cart', 'begin_checkout', 'complete_registration', 'lead'), array_keys(pg_ad_conversion_tiktok_events()), 'five, in page order');
+	pg_assert_same('', pg_ad_conversion_tiktok_event_name('refund'), 'no refund');
+
+	$saved = pg_ad_conversion_tiktok_settings_merge(pg_ad_conversion_tiktok_stored(''), array(
+		'pixel_code' => 'C4AAAAAAAAAA',
+		'events' => array('purchase', 'refund', 'add_to_cart', 'begin_checkout', 'complete_registration', 'lead'),
+		'lead_forms' => array('9'),
+		'counter_sales' => '1',
+	), 'sealed');
+	$parsed = pg_ad_conversion_settings_parse(json_encode($saved));
+	pg_assert_same(array('purchase', 'add_to_cart', 'begin_checkout', 'complete_registration', 'lead'), $parsed['events'], 'every offered event kept');
+	pg_assert_same(array(9), $parsed['lead_forms'], 'the forms sent as Lead');
+	pg_assert_true($parsed['counter_sales'], 'the counter sales switch');
+}
+
+// A Lead has no amount; a counter sale goes without the person.
+function test_ad_conversions_tiktok_lead_and_counter_sale()
+{
+	$lead = pg_ad_conversion_event(array('event' => 'lead', 'event_id' => 'lead-F1', 'person' => 1, 'ids' => json_encode(array('ttp' => 'abc')),
+		'detail' => json_encode(array('value' => 0, 'currency' => '', 'order_number' => '', 'time' => 1763600000, 'contents' => array()))), array());
+	$web = pg_ad_conversion_tiktok_web_event($lead, '', 'https://shop.example/');
+	pg_assert_same('Lead', $web['event'], 'Lead');
+	pg_assert_same('{}', json_encode($web['properties']), 'no value or currency');
+
+	$sale = pg_ad_conversion_event(array('event' => 'purchase', 'event_id' => 'R7K2Q9', 'person' => 1,
+		'ids' => json_encode(array('ttp' => '2Xk9AbCdEfGhIjKlMnOp', 'ttclid' => 'E.C.P.AbCdEf123', 'ip' => '203.0.113.9', 'user_agent' => 'Mozilla/5.0')),
+		'detail' => json_encode(array('value' => 12550, 'currency' => 'TRY', 'order_number' => '1042', 'time' => 1763600000, 'contents' => array(), 'counter_sale' => true))),
+		array('billing_email_address' => 'buyer@example.com', 'billing_phone_number' => '+90 532 111 22 33'));
+	pg_assert_same('', pg_ad_conversion_tiktok_order_phone($sale), 'no phone looked up');
+	$web = pg_ad_conversion_tiktok_web_event($sale, '', 'https://shop.example/');
+	pg_assert_same('{}', json_encode($web['user']), 'no e-mail, phone, browser or click id');
+	pg_assert_same(125.5, $web['properties']['value'], 'the amount goes');
+}
+

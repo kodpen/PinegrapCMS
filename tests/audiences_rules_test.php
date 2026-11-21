@@ -48,6 +48,7 @@ function audiences_rules_test_samples()
 		'bought_product' => array('key' => 'bought_product', 'op' => 'yes', 'value' => 12),
 		'bought_product_group' => array('key' => 'bought_product_group', 'op' => 'no', 'value' => 3),
 		'left_cart' => array('key' => 'left_cart', 'op' => 'within', 'value' => 7),
+		'rhythm_stage' => array('key' => 'rhythm_stage', 'op' => 'eq', 'value' => 'due'),
 		'returned' => array('key' => 'returned', 'op' => 'within', 'value' => 60),
 		'subscription' => array('key' => 'subscription', 'op' => 'eq', 'value' => 'past_due'),
 		'submitted_form' => array('key' => 'submitted_form', 'op' => 'yes', 'value' => 44),

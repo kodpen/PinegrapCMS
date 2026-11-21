@@ -33,7 +33,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/users.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_payloads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
-foreach (array('tasks', 'flow_run_events', 'messages', 'app_commands', 'groups', 'wtable_shares') as $webhook_payloads_test_file) {
+foreach (array('tasks', 'flow_run_events', 'messages', 'app_commands', 'groups', 'wtable_shares', 'mail_status') as $webhook_payloads_test_file) {
 	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/' . $webhook_payloads_test_file . '.php');
 }
 
@@ -79,6 +79,9 @@ function webhook_payloads_test_builders()
 		},
 		'pg_subscription_webhook_data' => function () {
 			return pg_subscription_webhook_data(array('id' => 2, 'product_id' => 3, 'status' => 'active', 'amount' => 100, 'currency' => 'USD', 'next_charge_at' => 0, 'retry_count' => 0), 8, 'renewed', 'active', 5);
+		},
+		'ws_mail_conversation_closed_event' => function () {
+			return ws_mail_conversation_closed_event(array('id' => 3, 'channel_id' => 2, 'message_id' => 4, 'box_id' => 1, 'assignee_id' => 5, 'status' => 'open'), array('status' => 'closed'), 5);
 		},
 		'pg_booking_event_payload' => function () {
 			return pg_booking_event_payload(array('id' => 1, 'service_id' => 2, 'staff_id' => 3, 'user_id' => 0, 'name' => 'A', 'email' => 'a@example.com', 'start_at' => 0, 'end_at' => 0, 'status' => 'confirmed', 'source' => 'site'));
@@ -151,6 +154,12 @@ function webhook_payloads_test_builders()
 		},
 		'pg_delivery_tower_event_payload' => function ($event = '') {
 			return pg_delivery_tower_event_payload(array('id' => 9, 'order_id' => 3, 'order_number' => '1001', 'order_type' => 'web', 'number' => 'N', 'carrier' => 'yurtici', 'state' => 'Ankara', 'city' => '', 'shipped_at' => 1000), 'stuck', 5, array(), 2000, ($event !== '') ? $event : 'shipment.problem', 'delivered');
+		},
+		'pg_customer_rhythm_event_payload' => function () {
+			return pg_customer_rhythm_event_payload(array('contact_id' => 4, 'stage' => 2, 'stage_before' => 1, 'interval_days' => 30, 'last_order_at' => 1000, 'updated_at' => 90000, 'chance' => 80, 'expected_value' => 100, 'last_order_id' => 3), '1001');
+		},
+		'pg_customer_rhythm_reorder_payload' => function () {
+			return pg_customer_rhythm_reorder_payload(array('contact_id' => 4, 'stage' => 1, 'stage_before' => 0, 'interval_days' => 30, 'last_order_at' => 1000, 'updated_at' => 90000, 'chance' => 80, 'expected_value' => 100, 'last_order_id' => 3), '1001', array(array('product_id' => 7, 'quantity' => 2, 'due' => 5000)), array(7 => array('P', 'Product')), 'https://example.com/p/reorder.php?p=7-2');
 		},
 		'pg_contact_group_members_event' => function () {
 			return pg_contact_group_members_event(3, 'Newsletter', array(4), array());

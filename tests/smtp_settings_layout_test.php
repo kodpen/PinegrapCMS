@@ -38,7 +38,8 @@ function test_smtp_settings_wide_layout()
 		$at = $here;
 	}
 
-	pg_assert_contains('pg_mail_domain_health_card(pg_mail_domain_health(), false)', $source, 'the Sending domain card comes unwrapped');
+	pg_assert_contains('pg_mail_domain_health_card($mail_domain_health, false)', $source, 'the Sending domain card comes unwrapped');
+	pg_assert_contains('$mail_domain_health = pg_mail_domain_health();', $source, 'one lookup, which the tab\'s pill reads too');
 	pg_assert_contains('id="mail_transport_card"', $source, 'the old anchor of the Sending service card stays');
 	pg_assert_false(strpos($source, 'class="buttons navigation') !== false, 'no save bar of its own: the dialog and the page have theirs');
 }
@@ -89,8 +90,8 @@ function test_mail_sending_holds_the_campaign_texts_and_mailchimp()
 	}
 
 	$anchors = pg_settings_legacy_anchors();
-	pg_assert_same(array('mail_sending', 'pgset-mail-campaign'), $anchors['pgset-campaigns'], 'an old Campaigns link');
-	pg_assert_same(array('mail_sending', 'pgset-mailchimp'), $anchors['pgset-mailchimp'], 'an old MailChimp link');
+	pg_assert_same(array('email', 'pgset-mail-campaign'), $anchors['pgset-campaigns'], 'an old Campaigns link');
+	pg_assert_same(array('email', 'pgset-mailchimp'), $anchors['pgset-mailchimp'], 'an old MailChimp link');
 }
 
 // The category speaks only of sending: its first card says so and links
@@ -102,10 +103,10 @@ function test_mail_sending_in_the_panel_look()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
 	$transport = strpos($source, 'id="pgset-mail-transport"');
 	$system = strpos($source, 'id="pgset-mail-system"');
-	$line = strpos($source, "'For incoming e-mail: {var:1}'");
+	$line = strpos($source, "E-mail sending is the way out");
 
 	pg_assert_true(($line > $transport) && ($line < $system), 'the purpose line opens the first card');
-	pg_assert_contains("pg_settings_url('mailboxes')", $source, 'it links Mailboxes');
+	pg_assert_false(strpos($source, "pg_settings_url('mailboxes')") !== false, 'no link to Mailboxes: it is the tab beside');
 
 	$parts = array(
 		$source,

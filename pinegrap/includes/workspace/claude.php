@@ -269,12 +269,12 @@ function ws_claude_setup_hint()
     if (!$api_on) {
         $parts[] = lang('The site\'s application API is switched off; an administrator switches it on first:') . ' ' . $link(lang('Site Settings › Integrations › Application API'), $base . 'settings_api.php#pgset-api');
     } elseif (!ws_claude_app() && empty(ws_claude_suitable_apps())) {
-        $parts[] = lang('There is no API application Claude could work through yet: an administrator makes it by pressing Create Claude\'s key on the card in the Workspace settings.');
+        $parts[] = lang('There is no API application Claude could work through yet: an administrator makes it by pressing Create Claude\'s key under Site Settings › Assistants and agents › Claude.');
     } else {
         $before = false;
     }
 
-    $parts[] = lang($before ? 'Then Claude is connected on this card, which explains every step:' : 'An administrator connects it on this card, which explains every step:') . ' ' . $link(lang('Workspace Settings › Claude in the channels'), $base . pg_settings_workspace_link('ws-claude'));
+    $parts[] = lang($before ? 'Then Claude is connected on this card, which explains every step:' : 'An administrator connects it on this card, which explains every step:') . ' ' . $link(lang('Site Settings › Assistants and agents › Claude'), $base . pg_settings_workspace_link('ws-claude'));
 
     if (!ws_claude_url_valid($config['routine_url']) || !$config['token_set']) {
         $parts[] = lang('The routine it asks for is made on claude.ai:') . ' ' . $link('claude.ai/code/routines', 'https://claude.ai/code/routines');
@@ -2632,7 +2632,7 @@ function ws_claude_key_post($action, $liveform, $user, $username, $refuse = null
             return;
         }
 
-        $made = api_app_create(lang('Claude'), lang('Made in Workspace settings for Claude in the channels.'), $scopes, (int) $user['id'], true, $username);
+        $made = api_app_create(lang('Claude'), lang('Made in Site Settings for Claude in the channels.'), $scopes, (int) $user['id'], true, $username);
 
         if (!$made) {
             $refuse(lang('Claude\'s key could not be made.'));

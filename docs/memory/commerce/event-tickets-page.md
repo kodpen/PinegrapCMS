@@ -14,6 +14,7 @@ module: event_tickets_page, widgets_event_tickets
 - The code is drawn again from the row (`pg_event_ticket_code()`); the QR (`pg_qr_svg()`, inline SVG only) holds the code. When the redrawn code's hash is not the row's `code_hash`, the card says "This ticket cannot be shown here" and draws no QR.
 - A void ticket draws no QR and no code, is faded, and says its order was cancelled. A used one keeps its QR and says when it was checked in.
 - The name: the guest's from the unit's product form (`pg_event_ticket_guest_name()`: first and last name fields mapped to the contact, else a field whose variable name holds `name`, `guest`, `attendee`, `ad_soyad` or `isim`), else the buyer's billing name.
+- A series ticket shows its first and last date and its file holds every date (`event-tickets-series.md`).
 - "Add to calendar" per event ticket that is not void: `&ics=<event>-<occurrence>`, only for an occurrence the order holds a ticket for; one VEVENT through `pg_calendar_event_ics()` with no repeat rule and a UID per occurrence.
 - Print: `window.print()`; the buttons carry `pg-print-none` and a ticket is never split over two pages.
 

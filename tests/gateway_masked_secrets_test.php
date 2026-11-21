@@ -75,13 +75,14 @@ function test_gateway_masked_screen_source()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.php');
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.save.php');
 
-	// The card gateways' keys are typed on their pages of Connections
-	// (connections_payment_gateways_test.php); the rest stay on the card.
-	foreach (array_diff(pg_gateway_masked_fields(), pg_payment_gateway_connection_columns()) as $column) {
+	// The card gateways' keys, PayPal Express Checkout's and Givex's are
+	// typed on their pages of Connections (connections_payment_gateways_test.php,
+	// connections_payment_services_test.php); the rest stay on the card.
+	foreach (array_diff(pg_gateway_masked_fields(), pg_payment_gateway_connection_columns(), pg_payment_method_connection_columns()) as $column) {
 		pg_assert_contains('value="\' . h(pg_gateway_secret_shown($' . $column . ')) . \'"', $screen, $column);
 		pg_assert_false(strpos($screen, 'value="\' . h($' . $column . ') . \'"') !== false, $column);
 		pg_assert_false(strpos($save, "escape(trim(post_value('" . $column . "')))") !== false, $column);
 	}
 
-	pg_assert_contains('pg_givex_password_for_save(', $save);
+	pg_assert_false(strpos($save, 'ecommerce_givex_password') !== false, 'the Givex password is written on its page');
 }

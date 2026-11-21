@@ -801,7 +801,7 @@ function pg_addr_settings_fields()
                                                             <div class="form-text">' . lang('Part of an address, as a visitor would start typing it. The provider may charge the request.') . '</div>
                                                         </div>
                                                         <div class="col-12">
-                                                            <button type="submit" name="addr_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . lang('Save and show suggestions') . '</button>
+                                                            <button type="submit" name="addr_test" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-geo-alt" aria-hidden="true"></i>' . lang('Save and show suggestions') . '</button>
                                                         </div>
                                                     </div>
                                                 </div>

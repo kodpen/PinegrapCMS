@@ -377,11 +377,15 @@ function pg_application_needs_consensus(array $scores, $bound)
  * @param array $conflicts Entry id => list of reviewer ids who declared a
  *                         conflict.
  * @param bool  $random    Break load ties at random; false keeps pool order.
+ * @param array $start_load Reviewer id => entries already given elsewhere
+ *                         (another category of the same round), counted in
+ *                         the load so a reviewer in several pools is not
+ *                         served first in each.
  * @return array array('assigned' => entry id => list of reviewer ids,
  *               'short' => entry id => how many reviewers it still lacks,
  *               only for entries the pool could not fill).
  */
-function pg_application_assign(array $entries, array $pool, $n, array $existing = array(), array $conflicts = array(), $random = true)
+function pg_application_assign(array $entries, array $pool, $n, array $existing = array(), array $conflicts = array(), $random = true, array $start_load = array())
 {
     $n = max(0, (int) $n);
     $pool = array_values(array_unique(array_map('strval', $pool)));
@@ -394,6 +398,13 @@ function pg_application_assign(array $entries, array $pool, $n, array $existing 
 
     $tie = array_flip($order);
     $load = array_fill_keys($pool, 0);
+
+    foreach ($start_load as $reviewer => $count) {
+        if (isset($load[(string) $reviewer])) {
+            $load[(string) $reviewer] += max(0, (int) $count);
+        }
+    }
+
     $kept = array();
 
     foreach ($entries as $entry) {

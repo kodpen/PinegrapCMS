@@ -8,7 +8,9 @@
  * drawer gives it to a person, keeps a note and closes it with a reason;
  * with rows chosen the bulk bar assigns or closes them together. Nothing is
  * added here and a problem is never deleted. Users with the orders right;
- * the work is in includes/fn/delivery_problems.php.
+ * the head's Settings drawer (Manager and up) switches each kind on or off
+ * and holds the two day counts. The work is in
+ * includes/fn/delivery_problems.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -40,6 +42,21 @@ if ($problems_ready && ($_SERVER['REQUEST_METHOD'] === 'POST')) {
     $problems_one = (int) ($_POST['problem'] ?? 0);
     $problems_ids = ($problems_one > 0) ? array($problems_one) : array_map('intval', array_filter((array) ($_POST['problems'] ?? array()), 'is_scalar'));
     $problems_input = array();
+
+    // The settings drawer: Manager and up.
+    if ($problems_action === 'settings') {
+        if ((int) $user['role'] < 3) {
+            if (pg_delivery_problems_settings_save(pg_delivery_problem_settings_input($_POST))) {
+                log_activity(lang('The delivery problem settings were saved.'), $_SESSION['sessionusername']);
+                $liveform->add_notice(lang('The settings were saved.'));
+            } else {
+                $liveform->add_error(lang('The settings could not be saved.'));
+            }
+        }
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . pg_delivery_problem_url($problems_back_filters));
+        exit();
+    }
 
     if ($problems_action === 'save') {
         $problems_input = array('assigned_to' => (int) ($_POST['assigned_to'] ?? 0), 'note' => is_string($_POST['note'] ?? null) ? $_POST['note'] : '');
@@ -122,6 +139,15 @@ if (($problems_filters['carrier'] !== '') && !isset($problems_carriers[$problems
 $problems_selects = pg_filter_select('kind', $problems_kinds, (string) $problems_filters['kind'], array('keep' => array('view', 'carrier'), 'label' => lang('Kind')))
     . pg_filter_select('carrier', $problems_carriers, $problems_filters['carrier'], array('keep' => array('view', 'kind'), 'label' => lang('Carrier')));
 
+// The head's Settings, for Manager and up.
+$problems_settings_button = '';
+$problems_settings_drawer = '';
+
+if ($problems_ready && ((int) $user['role'] < 3)) {
+    $problems_settings_button = '<button type="button" class="pg-button pg-button-quiet" data-delivery-drawer="delivery_problems_settings"><i class="bi bi-gear" aria-hidden="true"></i>' . h(lang('Settings')) . '</button>';
+    $problems_settings_drawer = pg_delivery_problem_settings_drawer(pg_delivery_tower_settings(), $problems_filters);
+}
+
 // The bulk bar's two buttons, each opening its drawer.
 $problems_bulk = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-delivery-drawer="delivery_problems_assign">' . h(lang('Assign to…')) . '</button>'
     . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-delivery-drawer="delivery_problems_close">' . h(lang('Close…')) . '</button>';
@@ -159,9 +185,11 @@ pg_page_shell(array(
     ' . $liveform->output_notices() . '
     ' . pg_screen_toolbar(array(
         'search' => array($problems_segments, $problems_selects),
+        'view'   => $problems_settings_button,
     )) . '
     ' . $problems_body . '
     ' . $problems_drawer . '
+    ' . $problems_settings_drawer . '
 </main>
 ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 <script>

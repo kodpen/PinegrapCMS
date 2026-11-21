@@ -11,7 +11,7 @@ description: Every Workspace screen but the channel one is padded by .ws-shell-m
 - Until 2026-11-04 the padding sat on `#ws-root`, and screens without it (settings, MCP, template, calendar subscription, tables) were named in `:is(...)` / `:not(...)` lists. Each screen left out ran its cards against the page edge with the columns touching (MCP and template before #2882, tables 2026-11-01, calendar subscription reported by the owner). The E-mails list (`workspace_mail.php`) sat outside the shell with no `workspace` body class; it now uses the shell too.
 
 ## Where do sticky columns stop?
-- `.ws-claude-status` (Claude, Pinegrap AI and voice cards) and `.ws-tl-side` (Decision Timeline side card) use `top: calc(var(--pg-navbar-h) + 1rem)`, like `.pg-settings-nav`. With `top: 1rem` they slid under the fixed 50px panel header when the window scrolled.
+- `.ws-tl-side` (Decision Timeline side card) uses `top: calc(var(--pg-navbar-h) + 1rem)`, like `.pg-settings-nav`. With `top: 1rem` it slid under the fixed 50px panel header when the window scrolled. The Claude, Pinegrap AI and Voice rows lost their sticky right column (`.ws-claude-status`) in AT2b and AT5 (#10898, #10948) and the rule went.
 
 ## How does the MCP servers card fit a phone?
 - `#ws-mcp > .card-header` and its server rows (`#ws-mcp > .card-body > .ws-dept-row`) wrap; the name column has `flex-basis: 12rem`, so the buttons drop below it. Plain `.ws-dept-row` (departments, mailboxes, tool lists) still does not wrap. Without this a 390px screen squeezed the heading and the server name to 0px wide and pushed Remove off screen (page scrolled sideways).

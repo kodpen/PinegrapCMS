@@ -231,7 +231,7 @@ function test_settings_workspace_assistants_pinegrap_ai()
 	pg_assert_contains('ws_ai_settings_check($input, (int) ws_claude_config()[\'app_id\']);', $post, 'the old screen\'s check');
 	pg_assert_contains('ws_ai_settings_write($input, $liveform, $refuse);', $post, 'the old screen\'s write');
 
-	$card = settings_workspace_assistants_test_function('includes/workspace/ai.php', 'ws_ai_settings_card');
+	$card = settings_workspace_assistants_test_function('includes/workspace/ai.php', 'ws_ai_row_html');
 	pg_assert_contains("\$dialog ? '<div class=\"ws-ai-connection\">' : '<form method=\"post\"", $card, 'no form in the dialog');
 	pg_assert_contains("name=\"ws_' . h(\$action) . '\" value=\"1\" form=\"' . h(\$form) . '\"", $card, 'named buttons of the settings form');
 }

@@ -34,6 +34,15 @@
   --pg-warning: var(--bs-warning-base);
   --pg-warning-bg-subtle: var(--bs-warning-bg-subtle);
   --pg-warning-fg-emphasis: var(--bs-warning-fg-emphasis);
+  --pg-danger-bg-subtle: var(--bs-danger-bg-subtle);
+  --pg-danger-fg-emphasis: var(--bs-danger-fg-emphasis);
+  --pg-success-bg-subtle: var(--bs-success-bg-subtle);
+  --pg-radius: var(--bs-radius-4);
+  --pg-shadow-lg: var(--bs-box-shadow-lg);
+  --pg-scrim: light-dark(rgba(22, 27, 38, 0.3), rgba(3, 4, 7, 0.6));
+  --pg-text-meta: var(--bs-font-size-xs);
+  --pg-text-figure: 1.625rem;
+  --pg-weight-strong: 550;
 }
 
 html,
@@ -957,6 +966,416 @@ div.pg-guest-poll-option {
 @media (prefers-reduced-motion: reduce) {
   .pg-guest-poll-bar {
     transition: none;
+  }
+}
+
+/* A call of the room. The bar under the head offers to join a running
+   call (assets/js/workspace_guest.js); the call window is the Workspace's
+   own (assets/js/workspace_calls.js), drawn here as the staff's screen
+   draws it, its buttons with Bootstrap's colours. */
+.pg-guest {
+  --ws-space-1: .25rem;
+  --ws-space-2: .5rem;
+  --ws-space-3: .75rem;
+}
+
+.pg-guest-call {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem 1rem;
+  border-bottom: 1px solid var(--pg-border-color);
+  background: var(--pg-success-bg-subtle);
+  font-weight: var(--pg-weight-strong);
+}
+
+.pg-guest-call-text {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.pg-guest-call .ws-call-head {
+  display: inline-flex;
+}
+
+.pg-guest .pg-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  height: 1.75rem;
+  padding: 0 .7rem;
+  border: 0;
+  border-radius: .5rem;
+  background: none;
+  color: var(--pg-fg-body);
+  font: inherit;
+  font-size: .875rem;
+  font-weight: var(--pg-weight-strong);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pg-guest .pg-button-fill {
+  background: var(--pg-primary);
+  color: var(--bs-white);
+}
+
+.pg-guest .pg-button-danger {
+  background: var(--pg-danger-bg-subtle);
+  color: var(--pg-danger-fg-emphasis);
+}
+
+.pg-guest .pg-button:disabled {
+  opacity: .5;
+  pointer-events: none;
+}
+
+.pg-guest .pg-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: .55rem;
+  background: none;
+  color: var(--pg-fg-2);
+  cursor: pointer;
+}
+
+.pg-guest .pg-icon-button:hover,
+.pg-guest .pg-icon-button.is-active,
+.pg-guest .pg-icon-button[aria-pressed="true"],
+.pg-guest .pg-icon-button[aria-expanded="true"] {
+  background: var(--pg-bg-2);
+  color: var(--pg-fg-body);
+}
+
+.pg-guest .pg-icon-button:disabled {
+  opacity: .5;
+  pointer-events: none;
+}
+
+.pg-guest .pg-button:focus-visible,
+.pg-guest .pg-icon-button:focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: 2px;
+}
+
+.pg-guest .pg-field-label {
+  display: block;
+  font-size: .875rem;
+  font-weight: var(--pg-weight-strong);
+}
+
+.pg-guest .pg-input {
+  width: 100%;
+  height: 2rem;
+  padding: 0 .5rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .5rem;
+  background: var(--pg-bg-body);
+  color: var(--pg-fg-body);
+  font: inherit;
+  font-size: .875rem;
+}
+
+.pg-card.ws-call {
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: .75rem;
+  background: var(--pg-bg-body);
+  box-shadow: var(--pg-shadow-lg);
+}
+
+.ws-call {
+  position: fixed;
+  right: var(--ws-space-3);
+  bottom: var(--ws-space-3);
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+  width: min(20rem, calc(100vw - 2rem));
+  padding: var(--ws-space-2);
+}
+
+.ws-call.is-group {
+  width: min(28rem, calc(100vw - 2rem));
+}
+
+.ws-call-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ws-space-1);
+}
+
+.ws-call-stage {
+  position: relative;
+  display: grid;
+  gap: var(--ws-space-1);
+}
+
+.ws-call-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
+  overflow: hidden;
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-2);
+  box-shadow: 0 0 0 2px transparent;
+  transition: box-shadow .15s ease;
+}
+
+.ws-call[data-kind="video"] .ws-call-tile {
+  aspect-ratio: 16 / 9;
+}
+
+.ws-call-tile.is-speaking {
+  box-shadow: 0 0 0 2px var(--pg-success-fg-emphasis);
+}
+
+.ws-call-tile.is-lost {
+  opacity: .5;
+}
+
+.ws-call-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ws-call-tile > .bi {
+  font-size: var(--pg-text-figure);
+  color: var(--pg-fg-2);
+}
+
+.ws-call[data-kind="voice"] .ws-call-video,
+.ws-call-tile.is-camera-off .ws-call-video,
+.ws-call[data-kind="video"] .ws-call-tile:not(.is-camera-off) > .bi {
+  visibility: hidden;
+}
+
+.ws-call-tile-name,
+.ws-call-share-name {
+  position: absolute;
+  left: var(--ws-space-1);
+  bottom: var(--ws-space-1);
+  max-width: calc(100% - 2 * var(--ws-space-1));
+  overflow: hidden;
+  padding: 0 var(--ws-space-1);
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-1);
+  font-size: var(--pg-text-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-call-tile-name > .bi,
+.ws-call-share-name > .bi {
+  margin-inline-end: var(--ws-space-1);
+}
+
+.ws-call-stage[data-count="2"],
+.ws-call-stage[data-count="3"],
+.ws-call-stage[data-count="4"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] .ws-call-tile.is-self {
+  position: absolute;
+  right: var(--ws-space-1);
+  bottom: var(--ws-space-1);
+  z-index: 1;
+  width: 28%;
+  min-height: 0;
+}
+
+.ws-call[data-kind="video"] .ws-call-stage[data-count="2"] .ws-call-tile.is-self .ws-call-tile-name {
+  display: none;
+}
+
+.ws-call-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  min-width: 0;
+}
+
+.ws-call-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: var(--pg-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-call-state {
+  color: var(--pg-fg-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-call.is-connected .ws-call-state {
+  color: var(--pg-success-fg-emphasis);
+}
+
+.ws-call-devices {
+  display: grid;
+  gap: var(--ws-space-1);
+}
+
+.ws-call-devices[hidden],
+.ws-call-share[hidden],
+.ws-call-notice[hidden] {
+  display: none;
+}
+
+/* Another member's shared screen: the stage, as on the staff's screen. */
+.ws-call-body {
+  position: relative;
+  display: grid;
+  gap: var(--ws-space-1);
+  min-height: 0;
+}
+
+.ws-call-share {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-2);
+  aspect-ratio: 16 / 9;
+}
+
+.ws-call-share:fullscreen {
+  border-radius: 0;
+  aspect-ratio: auto;
+}
+
+.ws-call-share-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ws-call-share-name {
+  top: var(--ws-space-1);
+  bottom: auto;
+  max-width: calc(100% - 7rem);
+}
+
+.ws-call-share-tools {
+  position: absolute;
+  top: var(--ws-space-1);
+  right: var(--ws-space-1);
+  display: flex;
+  gap: var(--ws-space-1);
+  border-radius: var(--pg-radius);
+  background: var(--pg-scrim);
+}
+
+.ws-call-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ws-space-2);
+  margin: 0;
+}
+
+.ws-call.is-showing .ws-call-stage[data-count] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ws-call.is-showing .ws-call-tile {
+  min-height: 0;
+  aspect-ratio: 16 / 9;
+}
+
+.ws-call.is-showing .ws-call-stage[data-count] .ws-call-tile.is-self {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  z-index: auto;
+  width: auto;
+}
+
+.ws-call.is-showing .ws-call-stage[data-count] .ws-call-tile.is-self .ws-call-tile-name {
+  display: block;
+}
+
+.ws-call.is-stage {
+  width: min(72rem, calc(100vw - 2rem));
+  height: min(45rem, calc(100vh - 2rem));
+}
+
+.ws-call.is-stage .ws-call-body {
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) 11rem;
+}
+
+.ws-call.is-stage .ws-call-share {
+  aspect-ratio: auto;
+}
+
+.ws-call.is-stage .ws-call-stage[data-count] {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  overflow-y: auto;
+}
+
+@media (max-width: 991.98px) {
+  .ws-call.is-stage {
+    inset: 0;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+  }
+
+  .ws-call.is-stage .ws-call-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .ws-call.is-stage .ws-call-stage[data-count] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .ws-call.is-stage .ws-call-tile {
+    height: 4.5rem;
+    aspect-ratio: auto;
+  }
+}
+
+/* At card size the window sits at the top right, under the room's head,
+   so the writing box at the bottom stays free; on a phone across the
+   width. */
+.ws-call:not(.is-stage) {
+  top: calc(4.5rem + env(safe-area-inset-top));
+  bottom: auto;
+}
+
+@media (max-width: 575.98px) {
+  .ws-call:not(.is-stage) {
+    right: .5rem;
+    left: .5rem;
+    width: auto;
   }
 }
 

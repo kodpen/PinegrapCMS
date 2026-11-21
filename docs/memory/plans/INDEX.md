@@ -16,7 +16,6 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- agent-writing-rules.md: Plan (owner 2026-11-20): the software tells every AI how a Workspace message is written (lists, tables, code, bold); one text for the agent instructions, the AI guide, the assistants; AW1, AW2
 - ai-guide-features-2.md: Plan ai-guide, features G11 to G19: the panel's door for a browser agent, the plugin, the compact tool list, the Design and Content presets, size budgets, hints on refusals, the refused calls report
 - ai-guide-features.md: Plan ai-guide, features G1 to G10: the guide's registry, its text built from code, sizes, version and digest, the topics (start, designer, the design's values, panel) and who reads it where
 - ai-guide-steps-2.md: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the Design and Content presets, the size budget, the description diet by area, hints on refusals, the refused calls report, close-out
@@ -32,10 +31,6 @@
 - application-review-screens.md: Plan application-review, how the programme's screens are put together (AR2, AR3): the programmes list, a programme's screen in tabs, Set-up as folded rows, the Reviewers tab
 - application-review-steps.md: Plan application-review, steps AR1a to AR8: pure rules, store, programme settings, reviewers and assignment, juror and correction links, combining, decisions, report and API, close-out
 - application-review.md: Plan (owner 2026-11-20, poll 196): a form as an application programme: period, eligibility, weighted criteria, reviewers and jurors, blind review, combined scores, rounds, decisions; AR1a to AR8
-- assistants-settings-tidy-screens-2.md: Plan assistants-settings-tidy, steps AT5 and AT6: Pinegrap AI's and Voice's opened rows in one column part by part, and the lists capped at five rows with "Show all N"
-- assistants-settings-tidy-screens.md: Plan assistants-settings-tidy, Claude's opened row part by part (step AT2b): what stays, what goes into the fold and the drawers, what a test pins; the other rows' check
-- assistants-settings-tidy-steps.md: Plan assistants-settings-tidy, steps AT1 to AT6: the folded rows of Assistants and agents, Claude's set-up drawer, the help lines, close-out
-- assistants-settings-tidy.md: Plan (owner 2026-11-20, urgent, in the architect's window): Site Settings › Assistants and agents tidied: each part one folded row, Claude's long guide in its drawer, repeated help cut; AT1 to AT4
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
 - automation-platforms-rules.md: Plan automation-platforms: what the API and Application Access do today that no step may lose (K1 to K9), the rules every step keeps, what a step's PR body carries
 - automation-platforms-steps-2.md: Plan automation-platforms, steps AU8 to AU10 and the order of all ten: the panel's sheet for the owner, the panel build (starting point, subscription form, sample, guide), the pages and close-out
@@ -48,11 +43,11 @@
 - canvas-data-views-screens.md: Plan canvas-data-views, how the Data menu and the data layer's panel are put together in the Design Canvas (DV2) and the Data screen's "Show on a canvas" (DV3)
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
 - canvas-group-motion-send.md: Plan (owner 2026-11-20): Artifact Canvas: a group recorded and shown as one, Attach to and Detach sound where the hand is, the main button as a split button with send and save choices; CS1 to CS5
-- channel-documents-features.md: Plan channel-documents, features N1 to N10: a note written in a channel from the composer or by an agent's route, the folded card, edits in place, versions, who may change it, the agent's name
-- channel-documents-steps.md: Plan channel-documents, steps KD1 to KD5: the server (write in a channel, the route, access by channel, the touch), the card and its windows, the agent's name, the session tool, close-out
-- channel-documents.md: Plan (owner 2026-11-20, agent channel poll 179): a document in a channel is a note written there, drawn as it reads and changed in place by people and agents, with versions; KD1 to KD5
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
+- communication-settings-tidy-screens.md: Plan communication-settings-tidy, its screen: the Communication pane as folded rows, Chat and Chat on the site with their groups, the words and what must be true
+- communication-settings-tidy-steps.md: Plan communication-settings-tidy, steps CM1 to CM3: the pane as folded rows with Chat split in two, the message cards' switches, close-out
+- communication-settings-tidy.md: Plan (owner 2026-11-21): Communication as folded rows, the Chat card's two popover levels split into "Chat" and "Chat on the site", each field saying whom it binds
 - connections-merges-build.md: Plan connections-merges, the build after poll 149: CX7 the frame, CX8 GitHub, CX9 AI providers, CX10 Google and Microsoft, CX11 the other groups; the architect's cut
 - connections-merges-cx10-google.md: CX10 of plan connections-merges, what Google's and Microsoft's pages add: the two redirect addresses, the APIs to enable, the "API not enabled" error, Google's verification warning
 - connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count (84), gates, card titles
@@ -82,6 +77,10 @@
 - feedback-loop-screens.md: Plan feedback-loop, how its panel screens are put together (FD2): the Surveys tab's list, starting points, a survey's edit screen in cards; each part's Design examples section
 - feedback-loop-steps.md: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, survey settings, touchpoints and sends, the answer page, follow-up, report and group rule, API, close-out
 - feedback-loop.md: Plan (owner 2026-11-20, poll 187): NPS, CSAT and effort surveys after a booking, ticket, course, form, delivery or mail conversation, one-click signed answers, low scores followed up; FD1a to FD8
+- general-appearance-settings-tidy-screens-appearance.md: Plan general-appearance-settings-tidy, its second screen: the Appearance pane as folded rows, the Dashboard row by who it reaches, footer links as list rows in drawers
+- general-appearance-settings-tidy-screens.md: Plan general-appearance-settings-tidy, its first screen: the General pane as folded rows, Organization in three groups, one Site address row, the words and what must be true
+- general-appearance-settings-tidy-steps.md: Plan general-appearance-settings-tidy, steps GA1 to GA5: General as folded rows, Appearance as folded rows, footer links as list rows, the Site address row's value rows, close-out
+- general-appearance-settings-tidy.md: Plan (owner 2026-11-21): General and Appearance as folded rows, one Site address row showing redirect and HTTPS, each field saying what it reaches, footer links as list rows
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed

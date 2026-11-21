@@ -92,10 +92,12 @@
 - connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
 - connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button [decision: here]
 - connections-payment-gateways-page.md: The card gateways on Connections (CX11g1): each gateway of the Payment Gateway list has a page with its keys; the card keeps the choice, Mode, Transaction Type, shop options [decision: here]
+- connections-payment-services-page.md: Stripe, PayPal (Checkout and Express Checkout), PayTR and Givex on Connections (CX11g2): their keys on their pages; the cards keep the switches, Mode, Transaction Type and choices
 - connections-provider-page.md: Google's and Microsoft's own pages on Connections (CX10a, #10512): application, accounts, both redirect addresses, Google's APIs to turn on, the "API not enabled" error, the verification warning
 - connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
 - connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
 - connections-service-page.md: A service's own page on Connections (connections.php?service=<key>, CX7): Status and Where it is used from the registry, the Connections row in Site Settings
+- connections-shipping-services-page.md: The shipping services on Connections (CX11g3): the label services' keys and UPS's, FedEx's, USPS's client ID and secret on their pages; the Shipping card keeps switches, choices, environment
 - connections-sms-providers-page.md: Netgsm's, İleti Merkezi's and Twilio's pages on Connections (CX11d2): each account typed there under the Communication gate; the SMS card keeps the switch, the Provider select and the connection [decision: here]
 - contact-delete-notice-groups.md: The contact list's Delete All Contacts notice names the groups through pg_contact_list_deleted_groups_label(): escaped, only the user's groups.
 - contact-filter-keyboards.md: Contacts Advanced Filters: no address autofill, phone and web address keyboards, an unmasked e-mail box; the panel's permissive Inputmask email alias; Submitted Forms Referring URL keyboard
@@ -278,7 +280,7 @@
 - image-editor-area-pixels.md: What a Artifact Canvas selection does to pixels (E27b, #6678): Erase inside and Adjust inside layers, Keep only, Copy to a layer, the masks a save sends, the engine's mask step under GD and Imagick
 - image-editor-area.md: The Artifact Canvas's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, outline from pixels; the actions of E27b
 - image-editor-artboard.md: The Artifact Canvas's board (E12): New image dialog, Canvas tool on a board or a photo (grow or trim with a fill), outward frames, Image tool, the ARTBOARD model section
-- image-editor-attach.md: Artifact Canvas Attach to and Detach (GC2): l.att on the follower, the target's motion composed under its own keys, the rest carry in change(), circles refused, a gone target let go, menu and Path tab [decision: decisions-made-product-80.md]
+- image-editor-attach.md: Artifact Canvas Attach to and Detach: l.att on the follower, the target's motion under its own keys, the rest carry, circles refused; menu, More, Path tab first, layers list mark [decision: decisions-made-product-80.md]
 - image-editor-builder.md: The Artifact Canvas's Shape builder: pathfinder buttons, the drag that merges or removes overlap regions, and the model's own path booleans (flatten, Martinez-Rueda, refit)
 - image-editor-callers.md: Who opens the Artifact Canvas and how (#4609): the openImageEditor alias, data-pg-image-edit buttons, the live site's copy into content, Workspace's save.url, the redirect [decision: decisions-made-product-15.md]
 - image-editor-canvas-save.md: How a photo's grown or trimmed canvas and an outward frame are saved (extend step), pictures from the computer as files rows, a canvas file keeping and reopening its document
@@ -498,6 +500,8 @@
 - messages-area-rules.md: What binds every change to the Communication area (İletişim): the owner decisions of #8961 and #9295, what a change keeps, the architect's shell and rights rulings [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - messages-area-sends-calendar.md: Communication › Sends › Calendar (MA13 #9575): what waits to be sent by day and hour, its four sources, rights, the same-group-same-hour mark, the Work Calendar's grid reused, read only [decision: decisions-made-workspace-29.md]
 - messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200, MA10b #9453): menu row 9, Incoming e-mail and the five tabs with their gates, its menu pin and dashboard card, the tab strip, doors, the Channels cards [decision: here]
+- messages-area-survey-edit.md: Add and Edit survey (edit_feedback_survey.php, FD2): Question, Sent after, Sent by, Low scores, After the answer cards, status column, the texts JSON and filters, Send me a test
+- messages-area-surveys-tab.md: Communication › Surveys (FD2): the satisfaction survey list, its gate, Add survey's starting points drawer, the row's Send me a test, Delete or Archive [decision: here]
 - messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d) [decision: here]
 - migration-screen.md: The Migration screen (migration.php): source password handling, API URL check, error details, wording
 - money-box-focus.md: A money box that opens focused is focused on document ready after the Inputmask binding, never by an inline script while the page parses (gift card Amount, #9047)
@@ -641,7 +645,9 @@
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
 - server-paged-lists.md: Lists the server searches and pages (list table driver): which moved off DataTables' server paging, what the search box finds (words, labels, Turkish I), the row cells [decision: decisions-made-product-10.md, decisions-made-product-22.md]
+- settings-ai-voice-rows.md: Pinegrap AI's and Voice's opened rows in Site Settings › Assistants and agents (AT5): one column, the fold Application, their drawers, what a test pins
 - settings-assistants-help-lines.md: Site Settings › Assistants and agents, the help (AT3): one line per part with "How does this work?" opening a drawer of numbered steps; Add an agent's "Start from an application" [decision: here]
+- settings-assistants-long-lists.md: Site Settings › Assistants and agents, the long lists (AT6): MCP servers, Workspace agents and Canvas templates show at most five rows, then "Show all N" and the part's drawer [decision: here]
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open), the pg-alert-dismissible padding rule and the gap between cards.
 - settings-card-field-widths.md: Settings card control width classes pg-f-xs/sm/md/lg, how to pick one from field attributes, and why not to write style width or malformed col classes.
 - settings-card-layout-pitfalls.md: CSS pitfalls of the settings card row layout: no nested :has(), specificity of :has() rules, tagin and form-label predicates, divider alignment with text.
@@ -652,15 +658,17 @@
 - settings-claude-row.md: Claude's opened row in Site Settings › Assistants and agents (AT2b): one column, the fold Application and key, the drawers Set up on claude.ai and The latest requests, what a test pins [decision: here]
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
+- settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab [decision: here]
 - settings-filter-autofill.md: Settings category screens: a password manager wrote the saved username ("admin") into the toolbar filter and every section card vanished; the token and the focus guard that stop it (PR #1700)
-- settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows
+- settings-firewall.md: Site Settings › Firewall and HTTPS as folded rows: the six firewall rows and their state lines, the Limits row, the bans drawer, the two segmented controls, what stayed (ids, field names, the save)
+- settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows [decision: decisions-made-panel-11.md, decisions-made-panel-12.md]
 - settings-folder-pickers.md: Site Settings and page folder pickers leave out the Workspace (settings also the Recycle Bin); settings saves refuse them; a stored one is shown marked
 - settings-group-names.md: Site Settings groups, user rights Select / Select All and the other two-list Select All switches (Organize Contacts, calendar event) named by their heading
 - settings-input-keyboards.md: Phone keyboard and auto-capitalisation of the Site Settings and Workspace mailbox boxes for web addresses, hosts, user names, address lists and Merchant numbers.
 - settings-invalid-fields.md: A refused Site Settings save marks its fields by name; the dialog marks and focuses them (#3026), a settings page puts the typed values back (pgSettingsRestore())
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
 - settings-list-headings.md: Site Settings dialog list: the five group headings (four decided #3879, built #4118; Workspace #8675), the group key per category, how a new category joins one. [decision: decisions-made-product-13.md]
-- settings-mail-sending.md: Site Settings › E-mail sending (#10404, CX3c #10434): SMTP Settings' five cards, the campaign texts and MailChimp, a save writing config.php then the config row, old anchors [decision: here]
+- settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1): SMTP Settings' five cards, the campaign texts and MailChimp, a save writing config.php then the config row, old anchors [decision: here]
 - settings-modal-architecture.md: Site Settings dialog: file map, the 20 categories under 5 headings, where moved cards went, moving a card, adding a category. [decision: decisions-made-product-14.md]
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.
@@ -677,6 +685,7 @@
 - settings-modal-search.md: The Site Settings dialog's search box (index, system tools, ranking, Turkish keywords keeping English terms) and how a text names a card's place [decision: decisions-made-product-14.md]
 - settings-organization-card.md: Site Settings General › Organization card: which fields it gathered from where, who saves them, the two support e-mail fields, the ERP Settings pointer. [decision: decisions-made-product-11.md]
 - settings-pane-stale-page.md: A settings pane asked by a page left open across an update: the panel script stamp in the dialog's address, the Reload line instead of the cards, the pure compare (#8787)
+- settings-privacy.md: Site Settings › Visitors and privacy as folded rows: the six rows and their state lines, what each row holds, what stayed (ids, field names, the save), the KVKK notice's own row
 - settings-public-image-pickers.md: Site Settings pickers whose picture is shown to everyone (Site Icon, App Icon, Default Share Image, Organization Logo, Fediverse Avatar): search and save keep only files every visitor can open
 - settings-refused-not-clamped.md: Site Settings boxes a save refuses instead of clamping or blanking: firewall and sign-in limits, tracking days, analytics IDs, merchant fields (pg_whole_number_in_range(), pg_ga_tag_id())
 - settings-security-cards.md: Accounts and sign-in and Firewall and HTTPS (keys security, firewall): where the encryption key, blocked e-mail addresses and trusted proxies sit and which save writes them. [decision: decisions-made-product-25.md]

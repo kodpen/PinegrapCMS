@@ -594,7 +594,7 @@ function pg_dashboard_v2_ai_offline($settings, $manager)
         'chip'      => array('text' => lang('Claude · not connected'), 'tone' => ''),
         'title'     => lang('Connect Claude'),
         'text'      => lang('Once connected you see a daily summary here and give Claude jobs with @Claude in the channels. Claude changes nothing by itself; you approve its proposals.'),
-        'ask'       => $buttons ? '' : lang('An administrator connects Claude in the Workspace settings.'),
+        'ask'       => $buttons ? '' : lang('An administrator connects Claude under Site Settings › Assistants and agents.'),
         'buttons'   => $buttons,
         'note'      => lang('The site is also open as an MCP server: Claude and other MCP applications can connect with OAuth.'),
     );
@@ -614,7 +614,7 @@ function pg_dashboard_v2_ai_notice($settings)
         'title'  => lang('Claude is not connected'),
         'text'   => lang('No daily summary and no jobs for Claude until it is connected.'),
         'button' => $settings ? array('label' => lang('Connect Claude'), 'url' => pg_settings_workspace_link('ws-claude'), 'main' => false) : null,
-        'ask'    => $settings ? '' : lang('An administrator connects Claude in the Workspace settings.'),
+        'ask'    => $settings ? '' : lang('An administrator connects Claude under Site Settings › Assistants and agents.'),
     );
 }
 
@@ -634,7 +634,7 @@ function pg_dashboard_v2_ai_agent_note($settings)
             lang('A channel takes an agent from its menu, Agents in this channel. A channel for agents shows what each does.'),
         ),
         'button' => $settings ? array('label' => lang('Connect an agent'), 'url' => pg_settings_workspace_link('ws-agents'), 'main' => false) : null,
-        'ask'    => $settings ? '' : lang('An administrator connects agents in the Workspace settings.'),
+        'ask'    => $settings ? '' : lang('An administrator connects agents under Site Settings › Assistants and agents.'),
     );
 }
 

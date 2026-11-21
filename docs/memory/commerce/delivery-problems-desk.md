@@ -12,7 +12,7 @@ module: delivery_problems
 - A printed list on the list table driver (`delivery_problems` in `pg_list_table_printed_lists()`), at most 2,000 rows (`PG_DELIVERY_PROBLEMS_LIST`): open ones oldest found first, closed ones newest closed first.
 - Columns: Parcel (opens the drawer), Order (link; a marketplace order carries a grey "Marketplace" pill), Carrier, Kind pill, Since (days since found, to the closing for a closed one), Assignee, the note's first words.
 - Kind pills: Stuck and Not handed over amber, Delivery problem and Returned rose; grey once closed.
-- Filters in the toolbar: Open / Closed / All as link segments; kind and carrier as `pg_filter_select()`. No fill: nothing is added here.
+- Filters in the toolbar: Open / Closed / All as link segments; kind and carrier as `pg_filter_select()`; a quiet "Settings" at the right (`delivery-problems-settings.md`). No fill: nothing is added here.
 - With rows chosen the bar offers "Assign to…" and "Close…", each a drawer whose fields belong to the list's form (`ids_field` `problems[]`). Closed rows among the chosen are skipped.
 - Empty, unfiltered: "No open delivery problems" and one line on what the pass watches (Design examples' empty state).
 

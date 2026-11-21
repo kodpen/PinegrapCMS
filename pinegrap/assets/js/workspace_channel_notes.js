@@ -4,12 +4,15 @@
  * Workspace - a note in a channel: the card a channel draws for a note
  * shared in it, and the windows it opens.
  *
- * The card draws the note whole up to a fold of about 18rem, then "Show
- * all" and "Show less" in place of an inner scroll; a card opened stays
- * open while the screen is (a redraw after a change keeps it). Its foot
- * names the owner, who changed it last (the server's changed_by: a person
- * by handle, an agent by its application) and when, and "Versions" with
- * their count. Its menu: Read, Edit, Versions, Open on the notes screen
+ * The card is look A's plain card as wide as the message column: the note
+ * icon and title, the ⋯ menu, the note drawn whole up to a fold of about
+ * 18rem, then a small quiet "Show all" / "Show less" button centred under
+ * it in place of an inner scroll; a card opened stays open while the
+ * screen is (a redraw after a change keeps it). A first line "Written up
+ * to …" is drawn as a meta line. Its foot is one muted line naming the
+ * owner, who changed it last (the server's changed_by: a person by handle,
+ * an agent by its application) and when, and "Versions" with their count
+ * at its end. Its menu: Read, Edit, Versions, Open on the notes screen
  * and, for the owner, the channel's edit switch ("People who may post here can
  * edit", ws_note_channel_edit).
  *
@@ -101,6 +104,17 @@
         }
 
         return words;
+    }
+
+    // The foot's one line: its words joined by a middle dot. Pure.
+    function footLine(card, t) {
+        return footWords(card, t).join(' · ');
+    }
+
+    // Whether a note's first line is the "Written up to …" line an agent's
+    // note opens with (the PR or message it is written up to). Pure.
+    function writtenUpTo(line) {
+        return /^written up to\b/i.test(String(line || '').replace(/^\s+/, ''));
     }
 
     // Whether the reader may change the note. Pure.
@@ -522,9 +536,99 @@
         }).catch(kit.fail);
     }
 
+    // Draws the note's first line as a small meta line when it is the
+    // "Written up to …" line. The line is the first text block's first line
+    // (up to its <br>), or the text's own first line when the note is one
+    // plain text; a note opening with a heading, a list or a table has none.
+    function metaLine(kit, text) {
+        var first = text.firstChild;
+
+        while (first && first.nodeType === 3 && !first.nodeValue.trim()) {
+            first = first.nextSibling;
+        }
+
+        if (!first) {
+            return;
+        }
+
+        var inBlock = first.nodeType === 1 && first.classList.contains('ws-text');
+
+        if (!inBlock && first.nodeType === 1 && /^(DIV|P|H[1-6]|UL|OL|TABLE|BLOCKQUOTE|HR|PRE|LABEL)$/.test(first.tagName)) {
+            return;
+        }
+
+        var holder = inBlock ? first : text;
+        var nodes = [];
+        var words = '';
+
+        for (var node = inBlock ? first.firstChild : first; node && !(node.nodeType === 1 && node.tagName === 'BR'); node = node.nextSibling) {
+            nodes.push(node);
+            words += node.textContent;
+        }
+
+        if (!nodes.length || !writtenUpTo(words)) {
+            return;
+        }
+
+        var meta = kit.el('div', 'pg-text-meta ws-cn-meta');
+        var after = nodes[nodes.length - 1].nextSibling;
+
+        if (after) {
+            holder.removeChild(after);
+        }
+
+        nodes.forEach(function (one) {
+            meta.appendChild(one);
+        });
+        text.insertBefore(meta, text.firstChild);
+
+        // The empty lines under it go: the meta line keeps its own gap.
+        var rest = inBlock ? first.firstChild : meta.nextSibling;
+
+        while (rest && ((rest.nodeType === 3 && !rest.nodeValue.trim()) || (rest.nodeType === 1 && rest.tagName === 'BR'))) {
+            var gone = rest;
+
+            rest = rest.nextSibling;
+            gone.remove();
+        }
+
+        if (inBlock && !first.children.length && !first.textContent.trim()) {
+            first.remove();
+        }
+    }
+
+    // An empty line between two paragraphs of one text block is drawn as a
+    // line break after a line break, a whole empty line high; in the card it
+    // becomes a short gap (.ws-cn-gap) so paragraphs sit close together.
+    // Only in running text: code and table cells keep their lines.
+    function tightGaps(kit, text) {
+        Array.prototype.forEach.call(text.querySelectorAll('br'), function (br) {
+            var parent = br.parentNode;
+
+            if (parent !== text && !(parent.classList && parent.classList.contains('ws-text'))) {
+                return;
+            }
+
+            var before = br.previousSibling;
+
+            while (before && before.nodeType === 3 && !before.nodeValue.trim()) {
+                before = before.previousSibling;
+            }
+
+            if (before && before.nodeType === 1 && before.classList.contains('ws-cn-gap')) {
+                // Several empty lines in a row: one gap.
+                br.remove();
+            } else if (before && before.nodeType === 1 && before.tagName === 'BR') {
+                parent.replaceChild(kit.el('span', 'ws-cn-gap'), br);
+            }
+        });
+    }
+
     // Lays the fold on the drawn note once it is on the page: a note
     // taller than the fold (18rem, as the stylesheet's) gets the toggle.
-    function fold(kit, card, text, toggle) {
+    // The toggle is a small quiet button centred under the note, in its own
+    // row (more), hidden while the note fits.
+    function fold(kit, card, text, more, toggle) {
         var key = foldKey(card);
 
         var draw = function () {
@@ -532,10 +636,10 @@
             var state = foldState(!!opened[key], text.scrollHeight > (FOLD_REM * rem) + 1);
 
             text.classList.toggle('is-folded', state === 'folded');
-            toggle.classList.toggle('d-none', state === 'whole');
+            more.classList.toggle('d-none', state === 'whole');
             toggle.setAttribute('aria-expanded', (state === 'open') ? 'true' : 'false');
             kit.clear(toggle);
-            toggle.appendChild(document.createTextNode(kit.t((state === 'open') ? 'cn_show_less' : 'cn_show_all')));
+            toggle.appendChild(kit.el('span', 'pg-btn-label', kit.t((state === 'open') ? 'cn_show_less' : 'cn_show_all')));
             toggle.appendChild(kit.icon((state === 'open') ? 'bi-chevron-up' : 'bi-chevron-down'));
         };
 
@@ -563,12 +667,12 @@
      * @return {HTMLElement}
      */
     function cardNode(kit, card, hooks) {
-        var box = kit.el('div', 'ws-nb-msg-card');
-        var top = kit.el('div', 'ws-nb-msg-card-head');
+        // Look A's plain card (pg-card), as wide as the message column.
+        var box = kit.el('div', 'pg-card ws-cn-card');
+        var top = kit.el('div', 'ws-nb-msg-card-head ws-cn-head');
 
-        top.appendChild(kit.icon('bi-journal-text'));
-        top.appendChild(kit.el('span', 'ws-nb-msg-card-kind', kit.t('notes_card')));
-        top.appendChild(kit.el('b', 'ws-grow text-truncate', card.name));
+        top.appendChild(kit.icon('bi-journal-text', 'ws-cn-icon'));
+        top.appendChild(kit.el('span', 'ws-cn-title ws-grow text-truncate', card.name));
 
         var more = kit.el('button', 'pg-icon-button pg-icon-button-sm');
 
@@ -597,30 +701,40 @@
 
         if (card.html) {
             var text = kit.el('div', 'ws-nb-msg-card-text ws-nb-msg-card-html ws-cn-fold');
-            var toggle = kit.el('button', 'pg-gather-toggle d-none');
+            var more = kit.el('div', 'ws-cn-more d-none');
+            var toggle = kit.el('button', 'pg-button pg-button-quiet pg-button-sm');
 
             hooks.setHtml(text, card.html);
+            metaLine(kit, text);
+            tightGaps(kit, text);
             hooks.chipMenus(text);
             text.id = 'ws-cn-fold-' + (++seq);
             toggle.type = 'button';
             toggle.setAttribute('aria-controls', text.id);
+            more.appendChild(toggle);
             box.appendChild(text);
-            box.appendChild(toggle);
-            fold(kit, card, text, toggle);
+            box.appendChild(more);
+            fold(kit, card, text, more, toggle);
         } else if (card.excerpt) {
             box.appendChild(kit.el('div', 'ws-nb-msg-card-text', card.excerpt));
         }
 
-        var foot = kit.el('div', 'ws-nb-msg-card-foot');
+        // The foot: one small muted line, cut short with an ellipsis where
+        // it is too long, and Versions at its end.
+        var foot = kit.el('div', 'ws-cn-foot pg-text-meta');
+        var line = footLine(card, kit.t);
+        var words = kit.el('span', 'ws-cn-foot-words text-truncate', line);
 
-        footWords(card, kit.t).forEach(function (words) {
-            foot.appendChild(kit.el('span', '', words));
-        });
+        words.title = line;
+        foot.appendChild(words);
 
         if (card.versions > 0) {
-            var list = lookButton(kit, 'quiet', kit.t('cn_versions'), 'bi-clock-history');
+            var list = lookButton(kit, 'ghost', kit.t('cn_versions'), 'bi-clock-history');
 
-            list.classList.add('pg-button-sm', 'ms-auto');
+            // On a phone the label hides (the words keep the room); the
+            // button is still named by its title.
+            list.classList.add('pg-button-sm', 'ws-cn-versions-button');
+            list.title = kit.t('cn_versions');
             list.appendChild(kit.el('span', 'pg-count', String(card.versions)));
             list.addEventListener('click', function (event) {
                 event.stopPropagation();

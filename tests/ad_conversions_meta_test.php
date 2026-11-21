@@ -156,7 +156,7 @@ function test_ad_conversions_meta_settings()
 	pg_assert_same('sealed:iv', $kept['token'], 'empty field keeps the token');
 	pg_assert_same('222222', $kept['pixel_id'], 'pixel trimmed');
 	pg_assert_same(array('purchase'), $kept['events'], 'unknown events dropped');
-	pg_assert_same(array('purchase'), $kept['without_person'], 'without the person');
+	pg_assert_same(array(), $kept['without_person'], 'a posted without the person is not saved for Meta');
 	pg_assert_false($kept['person_notice_off'], 'a cleared box is cleared');
 	pg_assert_true($kept['connected'], 'connected with pixel and token');
 
@@ -202,4 +202,121 @@ function test_ad_conversions_meta_places()
 
 	$reseal = ad_conversions_meta_test_source('includes/fn/reseal.php');
 	pg_assert_true(strpos($reseal, "'ad_conversions_meta_capi', 'connect', array('fields' => array('token'))") !== false, 'the token is sealed again on a key reset');
+}
+
+// A counter sale built for Meta carries nothing of the person, even when the
+// row held ids: user_data has no hashed e-mail or phone, no fbp or fbc, no
+// IP address and no user agent. Meta refuses an event without any of them,
+// so a counter sale is never queued for Meta, its switch is never saved and
+// the page shows it off with the reason.
+function test_ad_conversions_meta_counter_sale()
+{
+	$row = array(
+		'event' => 'purchase',
+		'event_id' => 'R7K2Q9',
+		'person' => 1,
+		'ids' => json_encode(array('fbp' => 'fb.1.1700000000000.123456789', 'fbc' => 'fb.1.1700000000000.AbCdEf', 'ip' => '203.0.113.9', 'user_agent' => 'Mozilla/5.0 (Till)')),
+		'detail' => json_encode(array('value' => 12550, 'currency' => 'try', 'order_number' => '1042', 'time' => 1763600000, 'contents' => array(), 'counter_sale' => true)),
+	);
+	$order = array('billing_email_address' => 'buyer@example.com', 'billing_phone_number' => '+90 532 111 22 33');
+	$server = pg_ad_conversion_meta_server_event(pg_ad_conversion_event($row, $order), 'https://shop.example/');
+	$user = (array) $server['user_data'];
+	$json = json_encode($server);
+
+	foreach (array('em', 'ph', 'fbp', 'fbc', 'client_ip_address', 'client_user_agent') as $key) {
+		pg_assert_false(isset($user[$key]), 'no ' . $key);
+	}
+
+	pg_assert_same('{}', json_encode($server['user_data']), 'user_data empty');
+
+	foreach (array(hash('sha256', 'buyer@example.com'), pg_ad_conversion_hash_phone($order['billing_phone_number']), 'fb.1.', '203.0.113.9', 'Mozilla/5.0 (Till)') as $value) {
+		pg_assert_false(strpos($json, str_replace('/', '\/', $value)) !== false, 'nothing of the buyer: ' . $value);
+	}
+
+	pg_assert_same(125.5, $server['custom_data']['value'], 'the amount goes');
+
+	// The same row as a site purchase does carry the person: the check above
+	// is not empty by accident.
+	$row['detail'] = json_encode(array('value' => 12550, 'currency' => 'try', 'order_number' => '1042', 'time' => 1763600000, 'contents' => array()));
+	$site = (array) pg_ad_conversion_meta_server_event(pg_ad_conversion_event($row, $order), 'https://shop.example/')['user_data'];
+	pg_assert_same(array('em', 'ph', 'fbp', 'fbc', 'client_ip_address', 'client_user_agent'), array_keys($site), 'a site purchase with consent carries the person');
+
+	// Meta takes no counter sale: never planned, never saved, shown off.
+	pg_assert_false(pg_ad_conversion_counter_sale_offered('meta_capi'), 'Meta takes no counter sale');
+	pg_assert_same(array(), pg_ad_conversion_counter_sale_plan(array('meta_capi' => array('connected' => true, 'counter_sales' => true, 'events' => array('purchase')))), 'never queued for Meta');
+
+	$stored = pg_ad_conversion_meta_stored(json_encode(array('connected' => true, 'pixel_id' => '111111', 'token' => 'sealed:iv', 'events' => array('purchase'))));
+	pg_assert_false($stored['counter_sales'], 'off on a row saved before the switch');
+	pg_assert_false(pg_ad_conversion_meta_settings_merge($stored, array('pixel_id' => '111111', 'events' => array('purchase'), 'counter_sales' => '1'), '')['counter_sales'], 'the switch is never saved for Meta');
+
+	$fields = ad_conversions_meta_test_source('includes/fn/ad_conversions.php');
+	pg_assert_contains("lang('Meta takes an event only with some customer information, so counter sales are not sent to Meta.')", $fields, 'the page says why');
+	pg_assert_contains("!\$counter_offered) . '", $fields, 'the switch is disabled');
+}
+
+// Meta asks for at least one customer information parameter with every
+// event: a purchase without consent is never queued for Meta, even when
+// "Send events without the person" was stored before; the stored value is
+// kept, the switch is shown off and disabled, and a due row without the
+// person is given up without a call.
+function test_ad_conversions_meta_no_personless_purchase()
+{
+	$meta = array('connected' => true, 'events' => array('purchase'), 'person_notice_off' => false, 'without_person' => array('purchase'));
+	$settings = array('meta_capi' => $meta, 'ga4_mp' => $meta, 'tiktok_events' => $meta);
+
+	pg_assert_false(pg_ad_conversion_without_person_offered('meta_capi'), 'Meta takes no purchase without the person');
+	pg_assert_true(pg_ad_conversion_without_person_offered('ga4_mp'), 'GA4 does');
+	pg_assert_true(pg_ad_conversion_without_person_offered('tiktok_events'), 'TikTok does');
+
+	pg_assert_same(array('ga4_mp' => 'insert', 'tiktok_events' => 'insert'), pg_ad_conversion_completion_plan(array(), $settings), 'no consent, no row: none written for Meta');
+
+	$rows = array('meta_capi' => array('status' => '0', 'person' => '0'), 'ga4_mp' => array('status' => '0', 'person' => '0'));
+	pg_assert_same(array('meta_capi' => 'give_up', 'ga4_mp' => 'due', 'tiktok_events' => 'insert'), pg_ad_conversion_completion_plan($rows, $settings), 'consent taken back: Meta left with 3');
+	pg_assert_same(array('meta_capi' => 'due'), pg_ad_conversion_completion_plan(array('meta_capi' => array('status' => '0', 'person' => '1')), array('meta_capi' => $meta)), 'with the person it still goes');
+
+	// The stored value is not deleted, and a posted one is not saved.
+	$stored = pg_ad_conversion_meta_stored(json_encode(array('connected' => true, 'pixel_id' => '111111', 'token' => 'sealed:iv') + $meta));
+	pg_assert_same(array('purchase'), pg_ad_conversion_meta_settings_merge($stored, array('pixel_id' => '111111', 'events' => array('purchase')), '')['without_person'], 'stored value kept on save');
+
+	// A due row without the person (consent taken back after completion, or
+	// queued before): no request, given up as no consent.
+	$sent = pg_ad_conversion_send_meta_capi(ad_conversions_meta_test_event(false), array());
+	pg_assert_same(array('ok' => false, 'status' => 400, 'error' => 'No consent'), $sent, 'refused without a call');
+	pg_assert_true(pg_ad_conversion_meta_without_person(ad_conversions_meta_test_event(false)), 'without the person');
+	pg_assert_false(pg_ad_conversion_meta_without_person(ad_conversions_meta_test_event()), 'with the person');
+
+	$fields = ad_conversions_meta_test_source('includes/fn/ad_conversions.php');
+	pg_assert_contains("lang('Meta asks for at least one piece of the person\\'s data with every event, so a purchase without the person is not sent to Meta.')", $fields, 'the page says why');
+	pg_assert_contains("!\$without_offered) . '", $fields, 'the switch is disabled');
+	pg_assert_contains("\$without_offered && in_array('purchase', \$stored['without_person'], true)", $fields, 'the switch is shown off');
+}
+
+// "Send a test event" carries a fixed external_id and a fixed browser name,
+// nothing of a real person; a queued event never gets either.
+function test_ad_conversions_meta_test_event_user_data()
+{
+	$test = pg_ad_conversion_meta_test_server_event(1763600000, 'try', 'https://shop.example/');
+	$expected = array('external_id' => array(hash('sha256', 'pinegrap-test')), 'client_user_agent' => 'Pinegrap test');
+
+	pg_assert_same($expected, $test['user_data'], 'the two fixed fields, nothing else');
+	pg_assert_same('Purchase', $test['event_name'], 'a purchase');
+	pg_assert_same(1.0, $test['custom_data']['value'], 'of 1.00');
+	pg_assert_same('TRY', $test['custom_data']['currency'], 'in the site currency');
+	pg_assert_same(0, strpos($test['event_id'], 'pg-test-'), 'its own id');
+
+	foreach (array(ad_conversions_meta_test_event(), ad_conversions_meta_test_event(false)) as $event) {
+		$json = json_encode(pg_ad_conversion_meta_server_event($event, 'https://shop.example/'));
+		pg_assert_false(strpos($json, 'external_id') !== false, 'no external_id on a queue event');
+		pg_assert_false(strpos($json, 'Pinegrap test') !== false, 'no test browser name on a queue event');
+		pg_assert_false(strpos($json, hash('sha256', 'pinegrap-test')) !== false, 'no test id on a queue event');
+	}
+
+	// The test send uses the test builder; the queue's sender never does.
+	$module = ad_conversions_meta_test_source('includes/fn/ad_conversions_meta.php');
+	$start = strpos($module, 'function pg_ad_conversion_send_meta_capi(');
+	$end = strpos($module, "\n}\n", $start);
+	pg_assert_false(strpos(substr($module, $start, $end - $start), '_test_') !== false, 'the queue sender builds no test data');
+	$start = strpos($module, 'function pg_ad_conversion_meta_send_test(');
+	$end = strpos($module, "\n}\n", $start);
+	pg_assert_contains('pg_ad_conversion_meta_test_server_event(', substr($module, $start, $end - $start), 'the test send uses it');
 }

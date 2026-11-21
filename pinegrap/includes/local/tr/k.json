@@ -1,6 +1,7 @@
 {
     "KVKK Notice Page": "KVKK Aydınlatma Metni Sayfası",
     "KVKK consent": "KVKK onayı",
+    "KVKK notice": "KVKK aydınlatma metni",
     "Kai Moreno": "Kai Moreno",
     "Kalecik Karası": "Kalecik Karası",
     "Kargonomi could not make the carrier's order for this shipment.": "Kargonomi bu gönderi için kargo firmasının siparişini oluşturamadı.",
@@ -154,9 +155,15 @@
     "Kept out of search results: select the page to see why": "Arama sonuçlarının dışında: nedenini görmek için sayfayı seçin",
     "Kept private and deleted when you ask": "Gizli tutulur ve istediğinizde silinir",
     "Kept to weekday mornings, never on Sundays": "Hafta içi sabahlarla sınırlı, pazar günleri asla",
+    "Kept until deleted": "Silinene kadar tutuluyor",
     "Kept up to date": "Güncel tutulur",
     "Kept warm and humid all year": "Bütün yıl sıcak ve nemli tutulur",
     "Kept with personal fields replaced": "Kişisel alanları değiştirilerek saklandı",
+    "Kept {var:1} day{suffix:1}": "{var:1} gün tutuluyor",
+    "Kept {var:1} day{suffix:1} after their last change": "Son değişikliklerinden sonra {var:1} gün tutuluyor",
+    "Kept {var:1} day{suffix:1}, at most {var:2} rows": "{var:1} gün tutuluyor, en çok {var:2} satır",
+    "Kept {var:1} year{suffix:1}": "{var:1} yıl tutuluyor",
+    "Kept {var:1} year{suffix:1}; the answer in force always": "{var:1} yıl tutuluyor; geçerli yanıt her zaman",
     "Kept: leave empty to keep it": "Saklanıyor: korumak için boş bırakın",
     "Kerem Aksoy": "Kerem Aksoy",
     "Kerem Arslan": "Kerem Arslan",
@@ -248,6 +255,7 @@
     "Kind of event": "Etkinlik türü",
     "Kind of gift": "Bağış türü",
     "Kind of group": "Grup türü",
+    "Kind of message": "İleti türü",
     "Kind of problem": "Sorun türü",
     "Kind of record": "Kayıt türü",
     "Kind of room": "Oda türü",
@@ -313,6 +321,7 @@
     "Kısmi Ödendi": "Kısmi Ödendi",
     "keep as written": "olduğu gibi",
     "key": "anahtar",
+    "key and secret": "anahtar ve gizli anahtar",
     "key code": "anahtar kod",
     "key code ({var:1}) was changed on the key code list: {var:2} from \"{var:3}\" to \"{var:4}\"": "anahtar kod ({var:1}) anahtar kodlar listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",
     "key code ({var:1}) was created because a custom form, that grants an offer, was submitted": "anahtar kodu ({var:1}), teklif veren özel bir form gönderildiği için oluşturuldu",
@@ -339,5 +348,6 @@
     "kitchen, cook, baker, bakery, chef, job": "mutfak, aşçı, fırıncı, fırın, şef, iş",
     "kitchen, cooking, tableware, food gifts": "mutfak, yemek, sofra, yiyecek hediyeleri",
     "kitchen-journal": "mutfak-gunlugu",
-    "km": "km"
+    "km": "km",
+    "kvkk, kvkk notice, personal data, explicit consent, consent sentence, privacy notice, gdpr": "kvkk, kvkk notice, personal data, explicit consent, consent sentence, privacy notice, gdpr, aydınlatma metni, kişisel veri, açık rıza, rıza metni"
 }

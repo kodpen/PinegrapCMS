@@ -493,6 +493,10 @@ function pg_local_order_complete($user, $order_id, $customer, $input)
         pg_announce('order.created', array('id' => $order_id, 'order_number' => (int) $order_number));
     }
 
+    // The purchase for the ad services with "Send counter sales" on: only
+    // queued, never with the buyer's personal data.
+    pg_ad_conversion_counter_sale_completed($order_id, (int) $totals['gross'], $order_number);
+
     $pay_method = pg_local_order_pay_method($input['pay_method'] ?? 'cash');
     $pay_till = (int) ($input['pay_till'] ?? 0);
 

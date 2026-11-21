@@ -66,6 +66,112 @@ window.pgSettingsFoldPick = function (keys, asks) {
     return '';
 };
 
+// The tabs of a settings category (E-mail's Sending and Mailboxes): a tab
+// shows its panel and hides the others, every panel's fields still post. The
+// tab is kept in the address: #settings/<category>/<panel id> in the dialog,
+// #<panel id> on the category's page, where the form posts back to it too.
+// pgSettingsTabReveal() shows the panel an element sits in, for every way
+// into a card that is not a click on its tab (a deep link, a search hit).
+(function () {
+    function panelOf(tab) {
+        return document.getElementById(tab.getAttribute('aria-controls') || '');
+    }
+
+    function remember(list, panel) {
+
+        if (!panel || !window.history || !history.replaceState) {
+            return;
+        }
+
+        if (list.closest('#pg_settings_modal')) {
+
+            // Only while the dialog holds the address (locate()).
+            if (String(window.location.hash || '').indexOf('#settings/') === 0) {
+                history.replaceState(history.state, '', location.pathname + location.search + '#settings/' + list.getAttribute('data-pg-set-pane') + '/' + panel.id);
+            }
+
+            return;
+        }
+
+        history.replaceState(history.state, '', location.pathname + location.search + '#' + panel.id);
+
+        var form = list.closest('form');
+
+        if (form) {
+            form.setAttribute('action', String(form.getAttribute('action') || '').split('#')[0] + '#' + panel.id);
+        }
+    }
+
+    function show(tab) {
+        var list = tab.closest('[role="tablist"]');
+
+        if (!list) {
+            return;
+        }
+
+        list.querySelectorAll('[role="tab"]').forEach(function (other) {
+            var on = (other === tab);
+            var panel = panelOf(other);
+
+            other.setAttribute('aria-selected', on ? 'true' : 'false');
+            other.tabIndex = on ? 0 : -1;
+
+            if (panel) {
+                panel.hidden = !on;
+            }
+        });
+
+        remember(list, panelOf(tab));
+    }
+
+    window.pgSettingsTabReveal = function (el) {
+        var panel = (el && el.closest) ? el.closest('[data-pg-set-tabpanel]') : null;
+        var tab = (panel && panel.hidden) ? document.querySelector('[data-pg-set-tab][aria-controls="' + panel.id + '"]') : null;
+
+        if (tab) {
+            show(tab);
+        }
+
+        return !!panel;
+    };
+
+    // A pane or page just drawn: the panel the address names opens.
+    window.pgSettingsTabsInit = function (list) {
+        var id = String(window.location.hash || '').replace(/^#/, '').split('/').pop();
+        var el = (id && /^[a-z0-9_-]+$/i.test(id)) ? document.getElementById(id) : null;
+
+        var scope = (list && list.closest) ? list.closest('#pg_settings_modal_pane, #pg_settings_sections') : null;
+
+        if (el && scope && scope.contains(el)) {
+            window.pgSettingsTabReveal(el);
+        }
+    };
+
+    document.addEventListener('click', function (event) {
+        var tab = event.target.closest ? event.target.closest('[data-pg-set-tab]') : null;
+
+        if (tab) {
+            show(tab);
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        var tab = event.target.closest ? event.target.closest('[data-pg-set-tab]') : null;
+        var step = {ArrowRight: 1, ArrowLeft: -1}[event.key];
+
+        if (!tab || !step) {
+            return;
+        }
+
+        var tabs = Array.prototype.slice.call(tab.closest('[role="tablist"]').querySelectorAll('[data-pg-set-tab]'));
+        var next = tabs[(tabs.indexOf(tab) + step + tabs.length) % tabs.length];
+
+        event.preventDefault();
+        show(next);
+        next.focus();
+    });
+})();
+
 // The folded rows of a settings pane: a click on a row's head opens it and
 // folds the others, as one row is open at a time; a second click folds it.
 // pgSettingsFoldReveal() opens the row an element sits in, for every way
@@ -102,6 +208,9 @@ window.pgSettingsFoldPick = function (keys, asks) {
 
     window.pgSettingsFoldReveal = function (el) {
         var item = (el && el.closest) ? el.closest('.pg-set-fold-item') : null;
+
+        // A card in a tab that is not shown: its tab first.
+        window.pgSettingsTabReveal(el);
 
         if (!item) {
             return false;
@@ -11556,6 +11665,7 @@ var pgSettingsModal = (function () {
     var form = null;            // the pane's form, which is also its scroller
     var endpoint = '';
     var anchors = {};
+    var moved = {};             // old category key => 'category|tab section'
     var helps = {};             // category => its section of the documentation
 
     var pane = '';              // the category on screen
@@ -11613,6 +11723,12 @@ var pgSettingsModal = (function () {
             anchors = JSON.parse(el.getAttribute('data-pganchors') || '{}');
         } catch (error) {
             anchors = {};
+        }
+
+        try {
+            moved = JSON.parse(el.getAttribute('data-pgmoved') || '{}');
+        } catch (error) {
+            moved = {};
         }
 
         try {
@@ -11697,6 +11813,10 @@ var pgSettingsModal = (function () {
      */
     var opener = null;
 
+    // The drawers a drawer was opened from (a mailbox's drawer under its
+    // set-up steps), each with its own opener: closing goes back to them.
+    var below = [];
+
 
     function cardDrawer() {
         return el ? el.querySelector('#pg_settings_modal_drawers > .pg-sm-drawer.is-open') : null;
@@ -11726,6 +11846,12 @@ var pgSettingsModal = (function () {
         var open = cardDrawer();
 
         if (open && (open !== target)) {
+            if (button && open.contains(button)) {
+                below.push({ drawer: open, opener: opener });
+            } else {
+                below = [];
+            }
+
             open.classList.remove('is-open');
         }
 
@@ -11752,9 +11878,25 @@ var pgSettingsModal = (function () {
             open.classList.remove('is-open');
         }
 
-        underCardDrawer(false);
-
         var back = opener;
+        var under = (giveBack !== false) ? below.pop() : null;
+
+        // Opened from another drawer: that one comes back, with the focus
+        // on the button that opened this one.
+        if (under && document.contains(under.drawer)) {
+            opener = under.opener;
+            under.drawer.classList.add('is-open');
+
+            if (back) {
+                back.setAttribute('aria-expanded', 'false');
+            }
+
+            (back && under.drawer.contains(back) ? back : under.drawer).focus({ preventScroll: true });
+            return;
+        }
+
+        below = [];
+        underCardDrawer(false);
 
         opener = null;
 
@@ -11943,7 +12085,7 @@ var pgSettingsModal = (function () {
         // headed off -- its delegated listeners sit on the document in the
         // capture phase -- so the server hands us the trigger under a name of
         // our own; see pg_settings_own_dialog_triggers().
-        $(el).on('click', '#pg_settings_modal_pane [data-pgdrawer="open"]', function (event) {
+        $(el).on('click', '#pg_settings_modal_pane [data-pgdrawer="open"], #pg_settings_modal_drawers [data-pgdrawer="open"]', function (event) {
 
             var target = byId((this.getAttribute('data-bs-target') || '').replace(/^#/, ''));
 
@@ -13648,6 +13790,14 @@ window.pgCodeEditorReady = function (markup, done) {
             return;
         }
 
+        // A category that became a tab of another opens that one on it.
+        var shift = moved[String(key || '')] ? String(moved[String(key)]).split('|') : null;
+
+        if (shift) {
+            key = shift[0];
+            section = section || shift[1] || '';
+        }
+
         if (section) {
             pending = section;
         }
@@ -13756,13 +13906,13 @@ window.pgCodeEditorReady = function (markup, done) {
             }
         }
 
-        // SMTP Settings is the E-mail sending category now; its card anchors
-        // are in the map.
+        // SMTP Settings is the E-mail category's Sending tab now; its card
+        // anchors are in the map.
         hit = href.match(/(?:^|\/)smtp_settings\.php(?:\?[^#]*)?(?:#([a-z0-9_-]+))?$/i);
 
         if (hit) {
 
-            var mailCard = (hit[1] && anchors[hit[1].toLowerCase()]) ? String(anchors[hit[1].toLowerCase()]).split('|') : ['mail_sending', ''];
+            var mailCard = (hit[1] && anchors[hit[1].toLowerCase()]) ? String(anchors[hit[1].toLowerCase()]).split('|') : String(moved.mail_sending || 'email|').split('|');
 
             return known(mailCard[0]) ? { pane: mailCard[0], section: mailCard[1] || '' } : null;
         }
@@ -13784,6 +13934,14 @@ window.pgCodeEditorReady = function (markup, done) {
             var moved = String(anchors[card]).split('|');
 
             return { pane: moved[0], section: moved[1] || '' };
+        }
+
+        // The page of a category that became a tab opens that tab.
+        if (file && moved[file]) {
+
+            var tab = String(moved[file]).split('|');
+
+            return known(tab[0]) ? { pane: tab[0], section: card || tab[1] || '' } : null;
         }
 
         if (file) {

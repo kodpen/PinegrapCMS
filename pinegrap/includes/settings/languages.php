@@ -409,7 +409,7 @@ $output_translation_engines_card = '
                     </div>
                     <div class="col-12">
                         <div class="form-text">
-                            <i class="bi bi-stars me-1"></i>' . lang('Pinegrap AI and Claude use the connections of the Workspace module: Pinegrap AI the site\'s model connection, Claude the routine set up in the Workspace Settings. Both read the style note and the glossary of the Translations screen.') . $translation_ai_state . '
+                            <i class="bi bi-stars me-1"></i>' . lang('Pinegrap AI and Claude use the connections of the Workspace module: Pinegrap AI the site\'s model connection, Claude the routine set up under Site Settings › Assistants and agents. Both read the style note and the glossary of the Translations screen.') . $translation_ai_state . '
                         </div>
                     </div>';
 

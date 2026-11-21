@@ -9,7 +9,7 @@ module: ad_conversions_tiktok
 
 ## What does its page hold?
 - `connections.php?service=tiktok_events`, under Visitors and privacy's gate (`connections_privacy_may_manage()`), for the card and the writes `tiktok_events_save` / `tiktok_events_remove`.
-- "Connection details": "Pixel code" (capital letters and digits, upper-cased on save), "Access token" (password field, never drawn back), "Test event code", "Events sent" (Purchase only: `ad-conversions.md`), "Without consent" › "Send events without the person" (C9), "Send personal data while the cookie notice is off" (C8) with its risk line and, notice off and box clear, the warning with the Cookie Consent link. "Save" filled, "Send a test event" quiet.
+- "Connection details": "Pixel code" (capital letters and digits, upper-cased on save), "Access token" (password field, never drawn back), "Test event code", then the shared choices block (`ad-conversions-counter-sales.md`): "Events sent" switches (Purchase, AddToCart, InitiateCheckout, CompleteRegistration, Lead; no refund, TikTok has no event for it, C4), "Forms sent as Lead", "Without consent", "Counter sales", the notice-off switch and its warning. "Save" filled, "Send a test event" quiet.
 - Ticking or clearing the box writes its own activity log line; "Disconnect" in Status empties the row.
 
 ## Where are the settings kept?
@@ -17,7 +17,7 @@ module: ad_conversions_tiktok
 
 ## How is a row sent?
 - `pg_ad_conversion_send_tiktok_events()`: one event per POST, the token in the `Access-Token` header. `page.url` the site's address, the event id the order reference.
-- The person only when the row has it: `email` hashed; `phone` hashed by TikTok's rule (E.164 with +) from the order found by `reference_code` (the purchase's event id), because the shared event's hash has no +. `ttp`, `ttclid`, `ip`, `user_agent` plain from the row's `ids`; never from `ad_click_ids.php`. Without the person `user` is an empty object.
+- An event without a currency (Lead, registration) has empty `properties`. A counter sale goes as a web event without the person. The person only when the row has it: `email` hashed; `phone` hashed by TikTok's rule (E.164 with +) from the order found by `reference_code` (the purchase's event id), because the shared event's hash has no +. `ttp`, `ttclid`, `ip`, `user_agent` plain from the row's `ids`; never from `ad_click_ids.php`. Without the person `user` is an empty object.
 - Refused without a call (400, given up): no pixel code or token, an event TikTok has no name for (refund).
 
 ## How are TikTok's answers read?

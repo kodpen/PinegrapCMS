@@ -40,6 +40,11 @@ const PG_WAITING_MEDIAN_FROM = 20;
 /** The estimate is shown rounded to this many minutes. */
 const PG_WAITING_ROUND_MINUTES = 5;
 
+/** Days a number's personal fields are kept: the default and the bounds. */
+const PG_WAITING_KEEP_DAYS = 30;
+const PG_WAITING_KEEP_MIN = 1;
+const PG_WAITING_KEEP_MAX = 365;
+
 /**
  * The moment a number takes its place in the order. A walk-in stands at the
  * time it joined; a booking that arrived no later than its time plus the
@@ -483,4 +488,56 @@ function pg_waiting_ticket_token_valid($token, $stored)
     }
 
     return hash_equals($stored, hash('sha256', $token));
+}
+
+/**
+ * A place's keep period in days, from its settings (keep_days): 30 when it
+ * is not set, within 1 and 365.
+ *
+ * @param mixed $settings JSON text or array
+ * @return int
+ */
+function pg_waiting_keep_days($settings)
+{
+    if (is_string($settings)) {
+        $settings = json_decode($settings, true);
+    }
+
+    if (!is_array($settings) || !isset($settings['keep_days']) || !is_numeric($settings['keep_days'])) {
+        return PG_WAITING_KEEP_DAYS;
+    }
+
+    return max(PG_WAITING_KEEP_MIN, min(PG_WAITING_KEEP_MAX, (int) $settings['keep_days']));
+}
+
+/**
+ * The moment before which a number joined has passed its keep period.
+ *
+ * @param int $days
+ * @param int $now
+ * @return int
+ */
+function pg_waiting_keep_cutoff($days, $now)
+{
+    return (int) $now - (max(PG_WAITING_KEEP_MIN, (int) $days) * 86400);
+}
+
+/**
+ * What a number's personal fields become once its keep period has passed:
+ * the name, phone, e-mail, contact and priority reason are emptied and its
+ * link stops opening (an empty hash opens nothing). The service, state,
+ * desk, staff member and times stay for the report.
+ *
+ * @return array column => value
+ */
+function pg_waiting_clear_fields()
+{
+    return array(
+        'name'       => '',
+        'phone'      => '',
+        'email'      => '',
+        'contact_id' => 0,
+        'priority'   => '',
+        'token_hash' => '',
+    );
 }

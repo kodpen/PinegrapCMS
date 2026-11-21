@@ -261,6 +261,15 @@ function test_supplier_feed_price()
 	pg_assert_same(11100, pg_supplier_feed_price(10000, $floor_whole, 1), 'rounding down under the floor goes up instead');
 }
 
+function test_supplier_feed_price_parts_floor()
+{
+	$floor90 = array('margin' => 4, 'rounding' => '90', 'floor_margin' => 10);
+	pg_assert_same(array('price' => 11090, 'floor' => true), pg_supplier_feed_price_parts(10000, $floor90, 1), 'the floor lifted it');
+	pg_assert_same(array('price' => 12990, 'floor' => false), pg_supplier_feed_price_parts(10000, array('margin' => 30, 'rounding' => '90', 'floor_margin' => 10), 1), 'over the floor: not lifted');
+	pg_assert_same(array('price' => 11000, 'floor' => false), pg_supplier_feed_price_parts(10000, array('margin' => 10, 'floor_margin' => 10), 1), 'at the floor: not lifted');
+	pg_assert_same(array('price' => 0, 'floor' => false), pg_supplier_feed_price_parts(0, $floor90, 1), 'no buy price');
+}
+
 function test_supplier_feed_rule_pick()
 {
 	$rules = array(

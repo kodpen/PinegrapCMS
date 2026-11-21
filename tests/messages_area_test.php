@@ -20,7 +20,7 @@ require_once PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php';
 
 function test_messages_area_five_tabs_in_order()
 {
-	pg_assert_same(array('mail', 'campaigns', 'automatic', 'templates', 'sends', 'channels'), array_keys(pg_messages_area_tabs()), 'Incoming e-mail first, then the five tabs in the drawn order');
+	pg_assert_same(array('mail', 'campaigns', 'automatic', 'templates', 'sends', 'surveys', 'channels'), array_keys(pg_messages_area_tabs()), 'Incoming e-mail first, then the tabs in the drawn order');
 	$tabs = pg_messages_area_tabs();
 	pg_assert_same('view_email_campaigns.php', $tabs['campaigns']['file'], 'Campaigns stays the old list address');
 }
@@ -34,11 +34,11 @@ function test_messages_area_every_tab_file_exists()
 
 function test_messages_area_tabs_by_role()
 {
-	$all = array('campaigns', 'automatic', 'templates', 'sends', 'channels');
+	$all = array('campaigns', 'automatic', 'templates', 'sends', 'surveys', 'channels');
 	pg_assert_same($all, pg_messages_tabs_for(0, false), 'administrator');
 	pg_assert_same($all, pg_messages_tabs_for(1, false), 'designer');
 	pg_assert_same($all, pg_messages_tabs_for(2, false), 'manager');
-	pg_assert_same(array('campaigns', 'automatic', 'templates', 'sends'), pg_messages_tabs_for(3, true), 'campaign manager: no Channels');
+	pg_assert_same(array('campaigns', 'automatic', 'templates', 'sends'), pg_messages_tabs_for(3, true), 'campaign manager: no Surveys, no Channels');
 	pg_assert_same(array(), pg_messages_tabs_for(3, false), 'a user without the right gets nothing');
 	pg_assert_same(array(), pg_messages_tabs_for_user(array()), 'an empty user row reads as role 3 without the right');
 	pg_assert_same(array('campaigns', 'automatic', 'templates', 'sends'), pg_messages_tabs_for_user(array('role' => '3', 'manage_emails' => '1')), 'a database row');
@@ -58,7 +58,7 @@ function test_messages_area_unknown_gate_refuses()
 
 function test_messages_area_mail_tab_follows_the_mail_list_alone()
 {
-	$all = array('campaigns', 'automatic', 'templates', 'sends', 'channels');
+	$all = array('campaigns', 'automatic', 'templates', 'sends', 'surveys', 'channels');
 	pg_assert_same(array_merge(array('mail'), $all), pg_messages_tabs_for(0, false, false, true), 'an administrator who reads a box sees Incoming e-mail first');
 	pg_assert_same($all, pg_messages_tabs_for(0, false, false, false), 'no box read: no Incoming e-mail, even for an administrator');
 	pg_assert_same(array('mail'), pg_messages_tabs_for(3, false, false, true), 'a member without campaign rights sees Incoming e-mail alone');

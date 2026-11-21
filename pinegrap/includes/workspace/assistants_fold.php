@@ -307,3 +307,91 @@ function ws_assistants_fold_facts_mcp($servers)
 
     return $facts;
 }
+
+/* ---------------------------------------------------------------------------
+   A long list: five rows in the pane, every row in the part's drawer
+   --------------------------------------------------------------------------- */
+
+/**
+ * The rows a part's list shows in its pane (MCP servers, Workspace agents,
+ * Canvas templates). With five or fewer every row stands, in the list's
+ * order; with more, the rows that need something come first, then the
+ * others, five in all, and the rest wait in the part's drawer. Pure.
+ *
+ * @param bool[] $asks  one per row in the list's order: true when the row
+ *                      needs something (a rose or amber pill)
+ * @param int    $limit
+ * @return array the keys of $asks to show, in the order they stand
+ */
+function ws_assistants_list_cut($asks, $limit = 5)
+{
+    $keys = array_keys((array) $asks);
+
+    if (count($keys) <= $limit) {
+        return $keys;
+    }
+
+    $first = array();
+    $rest = array();
+
+    foreach ((array) $asks as $key => $ask) {
+        if ($ask) {
+            $first[] = $key;
+        } else {
+            $rest[] = $key;
+        }
+    }
+
+    return array_slice(array_merge($first, $rest), 0, $limit);
+}
+
+/**
+ * A row's pill asks for something when it is rose or amber.
+ *
+ * @param string $tone the pill's pg-tone-* class
+ * @return bool
+ */
+function ws_assistants_list_asks($tone)
+{
+    return in_array((string) $tone, array('pg-tone-rose', 'pg-tone-amber'), true);
+}
+
+/**
+ * "Show all N" under a cut list, opening the part's drawer
+ * (ws_settings_assistants_all_drawer()); '' when nothing was cut.
+ *
+ * @param string $key   ws-mcp, ws-agents or ws-canvas-templates
+ * @param int    $count every row of the list
+ * @param int    $limit
+ * @return string HTML
+ */
+function ws_assistants_show_all_html($key, $count, $limit = 5)
+{
+    if ((int) $count <= $limit) {
+        return '';
+    }
+
+    $id = 'pgset-' . $key . '-all';
+
+    return '<button type="button" class="pg-button pg-button-quiet pg-button-sm mt-3" data-bs-toggle="drawer" data-bs-target="#' . h($id) . '" aria-controls="' . h($id) . '">' . h(lang(array('string' => 'Show all {var:1}', 'vars' => array((int) $count)))) . '</button>';
+}
+
+/**
+ * The drawer "Show all N" opens: every row of the part's list with the
+ * actions the rows have in the pane. Its own drawer buttons (a server's
+ * Tools and settings, an agent's Edit) open the dialog's drawers over it.
+ *
+ * @param string $key       ws-mcp, ws-agents or ws-canvas-templates
+ * @param string $body      every row, as markup
+ * @param bool   $in_dialog drawn in the settings dialog
+ * @param string $foot      buttons kept in view under the rows, as markup
+ * @return string HTML
+ */
+function ws_settings_assistants_all_drawer($key, $body, $in_dialog, $foot = '')
+{
+    if ($in_dialog) {
+        $body = str_replace('data-bs-toggle="drawer"', 'data-pgdrawer="open"', $body);
+    }
+
+    return pg_settings_drawer('pgset-' . $key . '-all', h(ws_assistants_fold_face($key)['name']), $body, $in_dialog, $foot);
+}

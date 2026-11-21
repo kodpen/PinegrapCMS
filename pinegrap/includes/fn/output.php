@@ -5083,6 +5083,8 @@ function output_menu($properties = false)
         case 'messages_automatic.php':
         case 'messages_templates.php':
         case 'messages_sends.php':
+        case 'messages_surveys.php':
+        case 'edit_feedback_survey.php':
         case 'messages_channels.php':
         case 'messages_notifications.php':
             $active_menu = 9;
@@ -8132,7 +8134,9 @@ function pg_js_bundles()
         // The flow canvas, then the quick setup's dialog (window.PGWsFlowQuick);
         // the variable chips first, for the WhatsApp box's variables.
         'assets/js/workspace_flow.min.js'          => array('assets/js/pg_var_chips.js', 'assets/js/workspace_flow.js', 'assets/js/workspace_flow_quick.js'),
-        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
+        // The guest page, after the call window it joins a room's call with
+        // (window.PGWsCalls).
+        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_calls.js', 'assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
         // team: small, and apart from the workspace's own set.
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),

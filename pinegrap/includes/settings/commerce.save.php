@@ -85,40 +85,31 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // The same for the carrier label drivers (includes/fn/carrier_labels.php).
     $label_driver_decisions = pg_label_settings_check($_POST, $liveform);
 
-    // A new gateway secret whose sealed form would not fit its column is
-    // refused rather than cut or stored plain. The card gateways' keys are
-    // written on their pages of Connections, never here.
-    $gateway_card_moved = array_flip(pg_payment_gateway_connection_columns());
-    $gateway_card_secret_fields = array_diff_key(pg_gateway_secret_fields(), $gateway_card_moved);
-    $gateway_card_masked_fields = array_values(array_diff(pg_gateway_masked_fields(), array_keys($gateway_card_moved)));
+    // UPS, FedEx or Verify US Addresses (USPS) switched on while the
+    // carrier's keys are not on its page of Connections yet is refused; a
+    // switch already on saves.
+    foreach (array_keys(pg_carrier_api_definitions()) as $carrier_api) {
+        $carrier_api_switch = pg_carrier_api_switch($carrier_api);
+        $carrier_api_refusal = pg_carrier_api_choice_refusal($carrier_api, (post_value($carrier_api_switch) == 1), pg_carrier_api_switched_on($carrier_api), pg_carrier_api_ready($carrier_api));
 
-    foreach ($gateway_card_secret_fields as $gateway_secret_column => $gateway_secret_width) {
-        $gateway_secret_posted = trim((string) post_value($gateway_secret_column));
-
-        if (($gateway_secret_posted !== pg_gateway_secret_mask()) && !pg_gateway_secret_fits($gateway_secret_posted, $gateway_secret_width)) {
-            $liveform->mark_error($gateway_secret_column, lang(array('string' => 'This secret is too long to be stored encrypted; at most {var:1} characters.', 'vars' => array(pg_gateway_secret_max_length($gateway_secret_width)))));
+        if ($carrier_api_refusal !== '') {
+            $liveform->mark_error($carrier_api_switch, $carrier_api_refusal);
         }
     }
 
-    // The other gateway keys are drawn masked: a blank or masked box keeps
-    // the stored one. The Givex password is kept only for the hostnames it
-    // was saved for, since every Givex request carries it.
-    $gateway_masked_stored = db_item("SELECT " . implode(', ', $gateway_card_masked_fields) . ", ecommerce_givex_primary_hostname, ecommerce_givex_secondary_hostname FROM config LIMIT 1");
-    $gateway_masked_values = array();
+    // The gateways' keys, PayPal Express Checkout's and Givex's are written
+    // on their pages of Connections, never here.
 
-    foreach ($gateway_card_masked_fields as $gateway_masked_column) {
-        $gateway_masked_values[$gateway_masked_column] = pg_gateway_masked_for_save(post_value($gateway_masked_column), (string) ($gateway_masked_stored[$gateway_masked_column] ?? ''));
-    }
+    // PayPal Express Checkout or Givex switched on while its keys are not on
+    // its page of Connections yet is refused; a switch already on saves.
+    $method_connection_stored = pg_payment_method_connection_stored();
 
-    $givex_password = pg_givex_password_for_save(
-        post_value('ecommerce_givex_password'),
-        (string) ($gateway_masked_stored['ecommerce_givex_password'] ?? ''),
-        array((string) ($gateway_masked_stored['ecommerce_givex_primary_hostname'] ?? ''), (string) ($gateway_masked_stored['ecommerce_givex_secondary_hostname'] ?? '')),
-        array((string) post_value('ecommerce_givex_primary_hostname'), (string) post_value('ecommerce_givex_secondary_hostname')));
-    $gateway_masked_values['ecommerce_givex_password'] = $givex_password['value'];
+    foreach (pg_payment_method_connections() as $method_id => $method_definition) {
+        $method_refusal = pg_payment_method_choice_refusal($method_id, (post_value($method_definition['switch']) == 1), !empty($method_connection_stored[$method_definition['switch']]), $method_connection_stored);
 
-    if ($givex_password['refused']) {
-        $liveform->mark_error('ecommerce_givex_password', lang('The Givex hostname changed. Enter the password again.'));
+        if ($method_refusal !== '') {
+            $liveform->mark_error($method_definition['switch'], $method_refusal);
+        }
     }
 
     // A card gateway newly chosen whose keys are not on its page of
@@ -195,17 +186,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
-    // The gateway secrets as written: kept or replaced. The Encryption Key
-    // card (security.save.php) seals them again when it resets the key.
-    $gateway_secret_key = defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
-    $gateway_secret_new_key = $gateway_secret_key;
-    $gateway_secret_stored = db_item("SELECT " . implode(', ', array_keys($gateway_card_secret_fields)) . " FROM config LIMIT 1");
-    $gateway_secret_values = array();
-
-    foreach ($gateway_card_secret_fields as $gateway_secret_column => $gateway_secret_width) {
-        $gateway_secret_values[$gateway_secret_column] = pg_gateway_secret_for_save(post_value($gateway_secret_column), (string) ($gateway_secret_stored[$gateway_secret_column] ?? ''), $gateway_secret_key, $gateway_secret_new_key, $gateway_secret_width);
-    }
-
     // Gift card validity days, grouped the panel's way ("1.095" is 1095),
     // held to the smallint(5) unsigned column.
     $gift_card_validity_days = pg_parse_whole_number(post_value('ecommerce_gift_card_validity_days'), 65535);
@@ -265,10 +245,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_gift_card = '" . escape(post_value('ecommerce_gift_card')) . "',
             ecommerce_gift_card_validity_days = '" . $gift_card_validity_days . "',
             ecommerce_givex = '" . escape(post_value('ecommerce_givex')) . "',
-            ecommerce_givex_primary_hostname = '" . escape(post_value('ecommerce_givex_primary_hostname')) . "',
-            ecommerce_givex_secondary_hostname = '" . escape(post_value('ecommerce_givex_secondary_hostname')) . "',
-            ecommerce_givex_user_id = '" . escape(trim(post_value('ecommerce_givex_user_id'))) . "',
-            ecommerce_givex_password = '" . escape($gateway_masked_values['ecommerce_givex_password']) . "',
             ecommerce_reward_program = '" . escape(post_value('ecommerce_reward_program')) . "',
             ecommerce_reward_program_points = '" . pg_parse_reward_goal(post_value('ecommerce_reward_program_points')) . "',
             ecommerce_reward_program_membership = '" . escape(post_value('ecommerce_reward_program_membership')) . "',
@@ -296,9 +272,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_paypal_express_checkout = '" . escape(post_value('ecommerce_paypal_express_checkout')) . "',
             ecommerce_paypal_express_checkout_transaction_type = '" . escape(post_value('ecommerce_paypal_express_checkout_transaction_type')) . "',
             ecommerce_paypal_express_checkout_mode = '" . escape(post_value('ecommerce_paypal_express_checkout_mode')) . "',
-            ecommerce_paypal_express_checkout_api_username = '" . escape(trim(post_value('ecommerce_paypal_express_checkout_api_username'))) . "',
-            ecommerce_paypal_express_checkout_api_password = '" . escape($gateway_secret_values['ecommerce_paypal_express_checkout_api_password']) . "',
-            ecommerce_paypal_express_checkout_api_signature = '" . escape($gateway_masked_values['ecommerce_paypal_express_checkout_api_signature']) . "',
             ecommerce_offline_payment = '" . escape(post_value('ecommerce_offline_payment')) . "',
             ecommerce_offline_payment_only_specific_orders = '" . escape(post_value('ecommerce_offline_payment_only_specific_orders')) . "',
             ecommerce_offline_payment_cancel_days = '" . min(255, max(0, (int) preg_replace('/\D/', '', (string) post_value('ecommerce_offline_payment_cancel_days')))) . "',
@@ -318,8 +291,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
-    // The carriers' API applications are kept with the connected accounts'
-    // applications, the secrets sealed (includes/fn/carrier_api.php).
+    // The carriers' environments; their client IDs and secrets are typed on
+    // their pages of Connections (includes/fn/carrier_api.php).
     pg_carrier_api_settings_save($_POST, USER_ID, $liveform);
 
     pg_payment_settings_save($payment_driver_decisions, USER_ID);

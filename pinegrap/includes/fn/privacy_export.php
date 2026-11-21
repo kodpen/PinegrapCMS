@@ -65,6 +65,7 @@ function pg_privacy_export_sections()
         'customer_rhythm'    => lang('Order rhythm'),
         'bookings'           => lang('Appointment bookings'),
         'feedback'           => lang('Satisfaction surveys'),
+        'queue'              => lang('Queue numbers'),
         'courses'            => lang('Course progress'),
         'journey_visits'     => lang('Visits tied to the contact'),
         'journey'            => lang('Journey'),
@@ -926,16 +927,31 @@ function pg_privacy_export_collect(array $found)
         );
 
         $events = array();
+        $event_of = function ($event_id, $number) use (&$events) {
+            $key = (int) $event_id . ':' . (int) $number;
 
-        foreach ($sections['event_tickets']['rows'] as $index => $row) {
-            $key = (int) $row['calendar_event_id'] . ':' . (int) $row['recurrence_number'];
-
-            if (((int) $row['calendar_event_id'] > 0) && !isset($events[$key])) {
-                $event = function_exists('get_calendar_event') ? get_calendar_event((int) $row['calendar_event_id'], (int) $row['recurrence_number']) : false;
+            if (!isset($events[$key])) {
+                $event = function_exists('get_calendar_event') ? get_calendar_event((int) $event_id, (int) $number) : false;
                 $events[$key] = is_array($event) ? $event : array();
             }
 
-            $sections['event_tickets']['rows'][$index] = pg_event_tickets_export_row($row, $events[$key] ?? array());
+            return $events[$key];
+        };
+
+        // A series ticket's entries, one per date it was checked in on.
+        $check_ins = array();
+
+        foreach (pg_event_ticket_checkins(array_column($sections['event_tickets']['rows'], 'id')) as $entry) {
+            $check_ins[(int) $entry['ticket_id']][] = array(
+                'event_date' => (string) ($event_of($entry['calendar_event_id'] ?? 0, $entry['recurrence_number'])['start_date_and_time'] ?? ''),
+                'checked_at' => (int) $entry['checked_at'],
+            );
+        }
+
+        foreach ($sections['event_tickets']['rows'] as $index => $row) {
+            $event = ((int) $row['calendar_event_id'] > 0) ? $event_of($row['calendar_event_id'], $row['recurrence_number']) : array();
+
+            $sections['event_tickets']['rows'][$index] = pg_event_tickets_export_row($row, $event, $check_ins[(int) $row['id']] ?? array());
         }
     }
 
@@ -1140,6 +1156,23 @@ function pg_privacy_export_collect(array $found)
             ($feedback_where !== '') ? array(1) : array()
         );
         $sections['feedback']['rows'] = array_map('pg_feedback_export_row', $sections['feedback']['rows']);
+    }
+
+    // Walk-in queue numbers, by the contact or by the address or number given
+    // when taking one, with the place's name and the number as shown. The
+    // link's hash and the staff columns are left out.
+    if (pg_waiting_ready()) {
+        $queue_phones = pg_privacy_export_phones(array_merge($contacts, isset($sections['orders']) ? $sections['orders']['rows'] : array()));
+        $queue_where = _pg_privacy_export_any(array(
+            _pg_privacy_export_in('t.contact_id', $contact_ids),
+            _pg_privacy_export_in('t.email', $emails),
+            _pg_privacy_export_in('t.phone', $queue_phones),
+        ));
+
+        $sections['queue'] = _pg_privacy_export_select(
+            "SELECT t.id, p.name AS place, t.service, t.letter, t.number, t.state, t.source, t.priority, t.party_size, t.booking_id, t.joined_at, t.on_way_at, t.called_at, t.done_at, t.name, t.phone, t.email, t.contact_id, t.cleared_at FROM waiting_tickets AS t LEFT JOIN waiting_places AS p ON p.id = t.place_id WHERE " . $queue_where . " ORDER BY t.id",
+            ($queue_where !== '') ? array(1) : array()
+        );
     }
 
     // Course progress: each lesson done, the first open of a course given by

@@ -175,7 +175,7 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-5">
-                                                                                        <div class="alert theme-primary py-3">' . lang('Uses the USPS Addresses API with the consumer key and secret entered above.') . '</div>
+                                                                                        <div class="alert theme-primary py-3">' . lang('Uses the USPS Addresses API with the consumer key and secret on USPS\'s page of Connections.') . '</div>
                                                                                         <div class="col-12 ">
                                                                                             <fieldset><legend class="form-label pg-field-label">'. lang('Enforcement') . '</legend>
                                                                                             <div class="form-field">
@@ -381,23 +381,7 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-5">
-                                                                                        <div class="alert theme-primary py-3">' . lang('Requires Givex service') . '</div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ecommerce_givex_primary_hostname" class="form-label">' . lang('Primary Hostname') . '</label>
-                                                                                            <input type="text" name="ecommerce_givex_primary_hostname" id="ecommerce_givex_primary_hostname" class="form-control" value="' . h($ecommerce_givex_primary_hostname) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ecommerce_givex_secondary_hostname" class="form-label">' . lang('Secondary Hostname') . '</label>
-                                                                                            <input type="text" name="ecommerce_givex_secondary_hostname" id="ecommerce_givex_secondary_hostname" class="form-control" value="' . h($ecommerce_givex_secondary_hostname) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ecommerce_givex_user_id" class="form-label">' . lang('User ID') . '</label>
-                                                                                            <input type="text" name="ecommerce_givex_user_id" id="ecommerce_givex_user_id" class="form-control" value="' . h($ecommerce_givex_user_id) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ecommerce_givex_password" class="form-label">' . lang('Password') . '</label>
-                                                                                            <input type="password" name="ecommerce_givex_password" id="ecommerce_givex_password" class="form-control" autocomplete="off" value="' . h(pg_gateway_secret_shown($ecommerce_givex_password)) . '" maxlength="100"/>
-                                                                                        </div>
+                                                                                        <div class="alert theme-primary py-3">' . lang('Requires Givex service') . '</div>' . pg_payment_method_connection_html('givex', $ecommerce_method_connection_stored) . '
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -697,20 +681,7 @@ $pg_settings_cards[] = '
                                                                                 <label class="" for="ecommerce_paypal_express_checkout_mode_live">'. lang('Live') . '</label>
                                                                             </div>
                                                                             </fieldset>
-                                                                        </div>
-
-                                                                        <div class="pg-f-lg">
-                                                                            <label class="form-label" for="ecommerce_paypal_express_checkout_api_username">'. lang('API Username') . '</label>
-                                                                            <input class="form-control" type="text" id="ecommerce_paypal_express_checkout_api_username" name="ecommerce_paypal_express_checkout_api_username" value="' . h($ecommerce_paypal_express_checkout_api_username) . '" size="40" maxlength="100" />
-                                                                        </div>
-                                                                        <div class="pg-f-lg">
-                                                                            <label class="form-label" for="ecommerce_paypal_express_checkout_api_password">'. lang('API Password') . '</label>
-                                                                            <input class="form-control" type="password" id="ecommerce_paypal_express_checkout_api_password" name="ecommerce_paypal_express_checkout_api_password" value="' . h($ecommerce_paypal_express_checkout_api_password) . '" size="40" maxlength="100" />
-                                                                        </div>
-                                                                        <div class="pg-f-lg">
-                                                                            <label class="form-label" for="ecommerce_paypal_express_checkout_api_signature">'. lang('API Signature') . '</label>
-                                                                            <input class="form-control" type="password" id="ecommerce_paypal_express_checkout_api_signature" name="ecommerce_paypal_express_checkout_api_signature" value="' . h(pg_gateway_secret_shown($ecommerce_paypal_express_checkout_api_signature)) . '" size="40" maxlength="100" />
-                                                                        </div>
+                                                                        </div>' . pg_payment_method_connection_html('paypal_express', $ecommerce_method_connection_stored) . '
                                                                     </div>
                                                                 </div>
                                                             </div>

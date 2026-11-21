@@ -6,7 +6,11 @@
  * in runs bounded in time, works out the store's median, chance curve and
  * each product's rhythm, then writes one customer_rhythm row per customer
  * and the product summary (config_text 'customer_rhythm'). Read after the
- * fact: nothing is added to the order path, and the pass announces nothing.
+ * fact: nothing is added to the order path. What a written batch has to
+ * tell (stage moves, reorder reminders) is left to customer_rhythm_tell.php;
+ * a rebuild that moves no stage and finds no new due product tells nothing.
+ * The pass also marks the order a reminded customer came back with
+ * (customer_rhythm_report.php) and counts it in the summary.
  *
  * Which orders count and who the customer is come from the Customers
  * Report (pg_customer_value_order_counts(), pg_customer_value_key(),
@@ -313,10 +317,13 @@ function pg_customer_rhythm_pass_stored($row)
  * @param array      $orders   pg_customer_rhythm_pass_orders()
  * @param array      $lines    pg_customer_rhythm_pass_lines()
  * @param array|null $stored   the customer_rhythm row, or null
- * @param array      $store    pg_customer_rhythm_pass_store()
+ * @param array      $store    pg_customer_rhythm_pass_store(), with lead (the
+ *                             window's days before a due day)
  * @param array      $available  product_id => bool
  * @param int        $now
- * @return array|null  row (column => value), moved (bool), new (bool)
+ * @return array|null  row (column => value), moved (bool), new (bool), due
+ *                     (the products in their reorder window), came_back
+ *                     (pg_customer_rhythm_came_back())
  */
 function pg_customer_rhythm_pass_row($key, $orders, $lines, $stored, $store, $available, $now)
 {
@@ -373,8 +380,9 @@ function pg_customer_rhythm_pass_row($key, $orders, $lines, $stored, $store, $av
     }
 
     $next = 0;
+    $due_products = pg_customer_rhythm_due_products($lines, $store['products'], $now, $available, isset($store['lead']) ? (int) $store['lead'] : PG_CUSTOMER_RHYTHM_LEAD_DAYS);
 
-    foreach (pg_customer_rhythm_due_products($lines, $store['products'], $now, $available) as $due) {
+    foreach ($due_products as $due) {
         $next = ($next === 0) ? (int) $due['due'] : min($next, (int) $due['due']);
     }
 
@@ -396,7 +404,10 @@ function pg_customer_rhythm_pass_row($key, $orders, $lines, $stored, $store, $av
         'updated_at' => $now,
     );
 
-    return array('row' => $row, 'moved' => $moved, 'new' => ($stored === null));
+    // An order within 14 days of the last reminder counts as coming back (H13).
+    $came_back = $stored ? pg_customer_rhythm_came_back($orders, isset($stored['reminded_at']) ? $stored['reminded_at'] : 0, isset($stored['came_back_order_id']) ? $stored['came_back_order_id'] : 0) : null;
+
+    return array('row' => $row, 'moved' => $moved, 'new' => ($stored === null), 'due' => $due_products, 'came_back' => $came_back);
 }
 
 /**
@@ -448,7 +459,10 @@ function pg_customer_rhythm_pass_write_query($rows)
  *
  * @param array $store  pg_customer_rhythm_pass_store()
  * @param int   $at
- * @param array $counts  customers, moved, stages (code => customers)
+ * @param array $counts  customers, moved, stages (code => customers),
+ *                       optional reminders ('YYYY-MM' => told, held back)
+ *                       and returns ('YYYY-MM' => came back and value, told
+ *                       and held back)
  * @return string  JSON
  */
 function pg_customer_rhythm_summary_encode($store, $at, $counts)
@@ -468,6 +482,14 @@ function pg_customer_rhythm_summary_encode($store, $at, $counts)
         'products_all' => count($products),
         'products' => (object) $products,
     );
+
+    if (isset($counts['reminders'])) {
+        $summary['reminders'] = (object) $counts['reminders'];
+    }
+
+    if (isset($counts['returns'])) {
+        $summary['returns'] = (object) $counts['returns'];
+    }
 
     $json = json_encode($summary);
 
@@ -640,11 +662,12 @@ function pg_customer_rhythm_pass_available($ids)
  * the walk is done, work out the store's figures and write the customers'
  * rows in batches, then remove the rows of customers no longer found and
  * write the product summary. A run that loses the claim, or finds another
- * run's lease alive, does nothing. Nothing is announced.
+ * run's lease alive, does nothing. Each written batch is handed to
+ * pg_customer_rhythm_tell().
  *
  * @param int      $budget  seconds
  * @param int|null $now
- * @return array|null  phase, read, written, moved, done; null when nothing ran
+ * @return array|null  phase, read, written, moved, told, done; null when nothing ran
  */
 function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $now = null)
 {
@@ -686,7 +709,8 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
         return null;
     }
 
-    $out = array('phase' => $state['phase'], 'read' => 0, 'written' => 0, 'moved' => 0, 'done' => false);
+    $out = array('phase' => $state['phase'], 'read' => 0, 'written' => 0, 'moved' => 0, 'told' => 0, 'done' => false);
+    $settings = pg_customer_rhythm_settings();
 
     if ($state['phase'] === 'walk') {
         $present = array();
@@ -742,11 +766,12 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
             if (count($rows) < PG_CUSTOMER_RHYTHM_PAGE) {
                 list($groups, $subscriptions) = pg_customer_rhythm_pass_catalog();
                 $state['store'] = pg_customer_rhythm_pass_store($state, $groups, $subscriptions);
+                $state['store']['lead'] = (int) $settings['lead_days'];
                 $state['available'] = pg_customer_rhythm_pass_available(array_keys($state['store']['products']));
                 $state['keys'] = array_keys($state['c']);
                 sort($state['keys'], SORT_STRING);
                 $state['cursor'] = 0;
-                $state['counts'] = array('customers' => 0, 'moved' => 0, 'stages' => array());
+                $state['counts'] = array('customers' => 0, 'moved' => 0, 'stages' => array(), 'months' => array(), 'back' => array());
                 $state['phase'] = 'write';
                 break;
             }
@@ -763,7 +788,7 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
         while ($state['cursor'] < $total) {
             $keys = array_slice($state['keys'], $state['cursor'], PG_CUSTOMER_RHYTHM_WRITE_BATCH);
             $stored = array();
-            $result = db_q("SELECT customer_key, contact_id, stage, stage_before, stage_at, interval_days, last_order_at, updated_at FROM customer_rhythm WHERE customer_key IN (" . implode(', ', array_fill(0, count($keys), '?')) . ")", $keys);
+            $result = db_q("SELECT customer_key, contact_id, stage, stage_before, stage_at, interval_days, last_order_at, reminded_at, held_back, came_back_order_id, updated_at FROM customer_rhythm WHERE customer_key IN (" . implode(', ', array_fill(0, count($keys), '?')) . ")", $keys);
 
             if ($result === false) {
                 break;
@@ -775,6 +800,7 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
 
             mysqli_free_result($result);
             $rows = array();
+            $batch = array();
 
             foreach ($keys as $key) {
                 $made = pg_customer_rhythm_pass_row($key, pg_customer_rhythm_pass_orders($state['c'][$key]), pg_customer_rhythm_pass_lines($key, $state['l'][$key]), isset($stored[$key]) ? $stored[$key] : null, $state['store'], $state['available'], $state['started']);
@@ -784,6 +810,7 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
                 }
 
                 $rows[] = $made['row'];
+                $batch[$key] = $made;
                 $state['counts']['customers']++;
                 $state['counts']['moved'] += $made['moved'] ? 1 : 0;
                 $code = (int) $made['row']['stage'];
@@ -800,6 +827,36 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
             $out['written'] += count($rows);
             $state['cursor'] += count($keys);
 
+            // Who came back after their last reminder, before a new
+            // reminder clears the mark.
+            $back = array();
+
+            foreach ($batch as $key => $made) {
+                if (!empty($made['came_back'])) {
+                    $back[$key] = $made['came_back'];
+                }
+            }
+
+            list($sql, $params) = pg_customer_rhythm_came_back_query($back);
+
+            if (($sql !== '') && (db_q($sql, $params) !== false)) {
+                if (!isset($state['counts']['back'])) {
+                    $state['counts']['back'] = array();
+                }
+
+                foreach ($back as $key => $came) {
+                    pg_customer_rhythm_return_count($state['counts']['back'], (int) $stored[$key]['reminded_at'], !empty($stored[$key]['held_back']), $came['amount']);
+                }
+            }
+            $told = pg_customer_rhythm_tell($batch, $stored, $settings, (int) $state['started']);
+            $out['told'] += $told['told'];
+
+            if (!isset($state['counts']['months'])) {
+                $state['counts']['months'] = array();
+            }
+
+            $state['counts']['months'] = pg_customer_rhythm_reminders_merge($state['counts']['months'], $told['months']);
+
             if ((microtime(true) - $clock) >= $budget) {
                 break;
             }
@@ -809,6 +866,8 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
             // A customer whose orders no longer count (erased, cancelled,
             // refunded) was not written this pass.
             db_q("DELETE FROM customer_rhythm WHERE updated_at < ?", array((int) $state['started']));
+            $state['counts']['returns'] = pg_customer_rhythm_returns_merge(($summary !== null) && isset($summary['returns']) ? $summary['returns'] : array(), isset($state['counts']['back']) ? $state['counts']['back'] : array());
+            $state['counts']['reminders'] = pg_customer_rhythm_reminders_merge(($summary !== null) && isset($summary['reminders']) ? $summary['reminders'] : array(), isset($state['counts']['months']) ? $state['counts']['months'] : array());
             $saved = pg_config_text_save('customer_rhythm', pg_customer_rhythm_summary_encode($state['store'], $state['started'], $state['counts']));
             @unlink($path);
             pg_config_text_claim('customer_rhythm_pass', $lease, json_encode(array('lease' => 0, 'started' => 0, 'done' => (int) $state['done'], 'total' => (int) $state['total'], 'saved' => $saved ? 1 : 0, 'ended' => time())));

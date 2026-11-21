@@ -5,10 +5,12 @@
  * Add and edit a supplier feed on the edit layout. Cards: Feed (name,
  * address, format, interval), Sign-in (one way at a time, the http box
  * folded under Advanced), and after the first read Prices (currency, VAT,
- * the ERP supplier account) and Fields (the record path and a select of the
- * feed's fields for each product field, with a sample value). The status
- * column holds the state, the counts, Test pull and Delete. A test pull's
- * figures and rows are drawn under the form; nothing is written by it.
+ * the ERP supplier account, the price rule and its rules by category or
+ * brand) and Fields (the record path and a select of the feed's fields for
+ * each product field, with a sample value). Held prices wait in their own
+ * card above them for Accept or Reject. The status column holds the state,
+ * the counts, Pull now, Test pull, the pull history and Delete. A test
+ * pull's figures and rows open in a drawer; nothing is written by it.
  * Helpers: includes/fn/supplier_feed_screen.php.
  *
  * @author      Erdal Güral (Kodpen)
@@ -35,9 +37,9 @@ if (!pg_supplier_feed_ready()) {
 $liveform = new liveform('edit_supplier_feed');
 $feed_self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_supplier_feed.php';
 
-// A row's Test pull and Delete on the list post the feed's id as the
-// button's value; the buttons here do the same.
-$feed_id = (int) ($_POST['test_pull'] ?? $_POST['submit_delete'] ?? $_POST['id'] ?? $_GET['id'] ?? 0);
+// A row's Pull now, Test pull and Delete on the list post the feed's id as
+// the button's value; the buttons here do the same.
+$feed_id = (int) ($_POST['pull_now'] ?? $_POST['test_pull'] ?? $_POST['submit_delete'] ?? $_POST['id'] ?? $_GET['id'] ?? 0);
 $feed = ($feed_id > 0) ? pg_supplier_feed_get($feed_id) : null;
 
 if (($feed_id > 0) && ($feed === null)) {
@@ -46,6 +48,7 @@ if (($feed_id > 0) && ($feed === null)) {
 
 $feed_secret = ($feed !== null) ? pg_supplier_feed_secret_decode($feed['secret']) : array();
 $feed_mapping = pg_supplier_feed_mapping_decode(($feed !== null) ? $feed['mapping'] : null);
+$feed_rules = pg_supplier_feed_rules_decode(($feed !== null) ? $feed['rules'] : null);
 $feed_input = null;
 $feed_fields_posted = null;
 $feed_test = null;
@@ -59,6 +62,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $list_form = new liveform('view_supplier_feeds');
         $list_form->add_notice(h(lang(array('string' => 'The supplier feed "{var:1}" was deleted. Its products stay and no longer follow it.', 'vars' => array($feed['name'])))));
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_supplier_feeds.php');
+    }
+
+    if (($feed !== null) && isset($_POST['held_accept_all'])) {
+        $accepted = pg_supplier_feed_held_accept_all($feed_id);
+        log_activity('supplier feed "' . $feed['name'] . '": ' . $accepted . ' held buy prices were accepted');
+        $liveform->add_notice(h(lang(array('string' => '{var:1} new buy prices were accepted. The selling prices follow at the next pull.', 'vars' => array($accepted)))));
+        go($feed_self . '?id=' . $feed_id);
+    }
+
+    if (($feed !== null) && (isset($_POST['held_accept']) || isset($_POST['held_reject']))) {
+        $accept = isset($_POST['held_accept']);
+
+        if (pg_supplier_feed_held_decide($feed_id, (int) ($accept ? $_POST['held_accept'] : $_POST['held_reject']), $accept)) {
+            log_activity('supplier feed "' . $feed['name'] . '": a held buy price was ' . ($accept ? 'accepted' : 'rejected'));
+            $liveform->add_notice(h($accept ? lang('The new buy price was accepted. The selling price follows at the next pull.') : lang('The new buy price was rejected. The last one stays.')));
+        }
+
+        go($feed_self . '?id=' . $feed_id);
+    }
+
+    if (($feed !== null) && isset($_POST['pull_now'])) {
+        if (!$feed_mapping['confirmed']) {
+            $liveform->add_error(h(lang('Save the fields first, then pull.')));
+            go($feed_self . '?id=' . $feed_id);
+        }
+
+        $pull = pg_supplier_feed_pull_now($feed);
+        $run = $pull['run'];
+        log_activity('supplier feed "' . $feed['name'] . '" was pulled by hand');
+
+        if ($pull['result'] === 'locked') {
+            $liveform->add_notice(h(lang('A pull of this feed is running already.')));
+        } elseif ($pull['result'] === 'running') {
+            $liveform->add_notice(h(lang('The pull started and goes on in the background.')));
+        } elseif (($pull['result'] === 'done') && is_array($run)) {
+            $liveform->add_notice(h(lang(array('string' => 'The pull is done: {var:1} changed, {var:2} closed, {var:3} reopened, {var:4} held.', 'vars' => array((int) $run['changed'], (int) $run['closed'], (int) $run['reopened'], (int) $run['held'])))));
+        } elseif (($pull['result'] === 'braked') && is_array($run)) {
+            $liveform->add_error(h(lang(array('string' => 'The pull stopped: {var:1}', 'vars' => array(pg_supplier_feed_detail_reason($run['detail']))))));
+        } else {
+            $liveform->add_error(h(lang('The feed is off. Save its fields to switch it on.')));
+        }
+
+        go($feed_self . '?id=' . $feed_id);
     }
 
     if (($feed !== null) && isset($_POST['test_pull'])) {
@@ -84,6 +130,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors = array_merge($errors, $feed_fields_posted['errors']);
         }
 
+        // The price rule sits in the prices card, drawn once the feed was read.
+        $rules_posted = $has_keys ? pg_supplier_feed_rules_input($_POST) : null;
+
+        if ($rules_posted !== null) {
+            $errors = array_merge($errors, $rules_posted['errors']);
+            $feed_rules = pg_supplier_feed_rules_decode(json_encode($rules_posted['rules']));
+        }
+
         if (!$errors) {
             $columns = $feed_input['feed'];
             $columns['secret'] = pg_supplier_feed_secret_encode($feed_input['secret']);
@@ -91,6 +145,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // The prices card is drawn only once the feed was read.
             if (!$has_keys) {
                 unset($columns['currency'], $columns['vat_included'], $columns['erp_account_id']);
+            } else {
+                $columns['rules'] = json_encode($rules_posted['rules']);
             }
 
             if ($save_fields) {
@@ -241,8 +297,9 @@ $output_sign_in_card = '
                             </div>
                         </div>';
 
-// Card 3: prices, once the feed was read.
+// Card 3: prices and the price rule, once the feed was read.
 $output_prices_card = '';
+$home_currency = defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '';
 
 if ($has_keys) {
     $currency_options = $option('', lang('The store\'s currency'), $values['currency']);
@@ -273,7 +330,7 @@ if ($has_keys) {
                         <div class="card mb-7">
                             <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Prices')) . '</h2>
                             <div class="card-body pt-0">
-                                <p class="pg-card-sub">' . h(lang('How the feed\'s buy prices are to be read.')) . '</p>
+                                <p class="pg-card-sub">' . h(lang('How the feed\'s buy prices are read and turned into your selling prices. With no margin, only stock follows the feed.')) . '</p>
                                 <div class="row gy-5">
                                     <div class="col-12 md:col-6">
                                         <label class="pg-field-label" for="sf_currency">' . h(lang('The feed\'s currency')) . '</label>
@@ -283,7 +340,7 @@ if ($has_keys) {
                                         <input type="checkbox" class="pg-switch" id="sf_vat_included" name="vat_included" value="1"' . ($values['vat_included'] ? ' checked' : '') . ' />
                                         <label class="pg-text-2" for="sf_vat_included">' . h(lang('The feed\'s prices include VAT')) . '</label>
                                     </div>
-                                </div>
+                                </div>' . pg_supplier_feed_rule_fields_html($feed_rules, ($values['currency'] !== '') ? $values['currency'] : $home_currency) . '
                             </div>
                         </div>';
 }
@@ -356,44 +413,14 @@ if ($has_keys) {
                         </div>';
 }
 
-// A test pull's result: four figures, under each its first rows.
-$output_test = '';
+// A test pull's result opens in a drawer as the page loads.
+$output_test = ($feed_test !== null)
+    ? pg_supplier_feed_test_drawer_html($feed_test, pg_supplier_feed_pull_button($feed, $feed_mapping, 'pg-button pg-button-fill'), ($feed['currency'] !== '') ? $feed['currency'] : $home_currency, $home_currency)
+    : '';
 
-if ($feed_test !== null) {
-    $diff = $feed_test['diff'];
-    $figures = '';
-    $rows = '';
-
-    foreach (array('added' => lang('Would be added'), 'changed' => lang('Would be changed'), 'closed' => lang('Would be closed'), 'reopened' => lang('Would be reopened')) as $kind => $label) {
-        $figures .= '<div class="pg-card pg-figure"><div class="pg-figure-label">' . h($label) . '</div><div class="pg-figure-value">' . h(pg_format_number($diff[$kind]['count'], 0)) . '</div></div>';
-
-        if ($diff[$kind]['rows'] === array()) {
-            continue;
-        }
-
-        $rows .= '<h3 class="pg-title-status mt-5">' . h($label) . '</h3><div>';
-
-        foreach ($diff[$kind]['rows'] as $row) {
-            $rows .= '<div class="pg-list-row is-read"><div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">' . h($row['code']) . '</span></div>'
-                . '<div class="pg-list-row-text">' . h(trim($row['name'] . ' · ' . $row['note'], ' ·')) . '</div></div></div>';
-        }
-
-        $rows .= '</div>';
-
-        if ($diff[$kind]['count'] > count($diff[$kind]['rows'])) {
-            $rows .= '<p class="pg-text-meta">' . h(lang(array('string' => 'The first {var:1} of {var:2}.', 'vars' => array(count($diff[$kind]['rows']), $diff[$kind]['count'])))) . '</p>';
-        }
-    }
-
-    $output_test = '
-                        <div class="card mb-7" id="sf_test_pull">
-                            <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Test pull')) . '</h2>
-                            <div class="card-body pt-0">
-                                <p class="pg-card-sub">' . h(lang(array('string' => '{var:1} records read. Nothing was written.', 'vars' => array(pg_format_number($diff['records'], 0))))) . ($feed_test['cut'] ? ' ' . h(lang(array('string' => 'Only the first {var:1} records were read.', 'vars' => array(pg_format_number(PG_SUPPLIER_FEED_TEST_RECORDS, 0))))) : '') . '</p>
-                                <div class="pg-figures">' . $figures . '</div>' . $rows . '
-                            </div>
-                        </div>';
-}
+// Buy prices held for a person's yes, above the cards.
+$output_held = ($feed !== null) ? pg_supplier_feed_held_html(pg_supplier_feed_held_items($feed_id), ($feed['currency'] !== '') ? $feed['currency'] : $home_currency) : '';
+$output_runs = ($feed !== null) ? pg_supplier_feed_runs_drawer_html(pg_supplier_feed_runs($feed_id)) : '';
 
 // The status column of a saved feed.
 $output_status = '';
@@ -424,7 +451,9 @@ if ($feed !== null) {
                                         <dt>' . h(lang('Next pull')) . '</dt><dd>' . $next . '</dd>
                                         <dt>' . h(lang('Products matched')) . '</dt><dd class="pg-tabular">' . h(pg_format_number(pg_supplier_feed_matched_count($feed_id), 0)) . '</dd>
                                     </dl>
-                                    ' . ($feed_mapping['confirmed'] ? '<div class="mt-5"><button type="submit" name="test_pull" value="' . $feed_id . '" formnovalidate class="pg-button pg-button-quiet">' . h(lang('Test pull')) . '</button></div>' : '') . '
+                                    <div class="mt-5 d-flex flex-wrap gap-3">' . pg_supplier_feed_pull_button($feed, $feed_mapping, 'pg-button pg-button-quiet')
+                                        . ($feed_mapping['confirmed'] ? '<button type="submit" name="test_pull" value="' . $feed_id . '" formnovalidate class="pg-button pg-button-quiet">' . h(lang('Test pull')) . '</button>' : '')
+                                        . '<button type="button" class="pg-button pg-button-quiet" data-bs-toggle="drawer" data-bs-target="#sf_runs" aria-controls="sf_runs"><i class="bi bi-clock-history" aria-hidden="true"></i>' . h(lang('Pull history')) . '</button></div>
                                     <div class="mt-5 pt-3 border-top"><button type="submit" name="submit_delete" value="' . $feed_id . '" formnovalidate class="pg-button pg-button-danger" data-confirm-content="' . h(lang('The feed and its pull history are deleted. Its products stay and no longer follow it.')) . '"><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete')) . '</button></div>
                                 </div>
                             </div>
@@ -457,11 +486,12 @@ echo pg_page_shell(array(
             <form name="form" action="edit_supplier_feed.php" method="post" id="supplier_feed_form">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $feed_id . '" />
+                <button type="submit" name="' . ($has_keys ? 'submit_save' : 'read_feed') . '" value="1" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
                 <div class="row">
-                    <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $output_test . $output_feed_card . $output_sign_in_card . $output_prices_card . $output_fields_card . '
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $output_held . $output_feed_card . $output_sign_in_card . $output_prices_card . $output_fields_card . '
                     </div>
                     <div class="col-12 lg:col-4 2xl:col-3 order-2">' . $output_status . '
-                    </div>
+                    </div>' . $output_test . $output_runs . '
                     <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
                         <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
@@ -477,7 +507,10 @@ echo pg_page_shell(array(
 <script>
     // Sign-in: one way at a time, the other ways\' fields hidden and not
     // sent. Folds: Advanced and More fields. Fields: the sample follows the
-    // chosen field and a changed choice is no longer "Suggested".
+    // chosen field and a changed choice is no longer "Suggested". Price
+    // rule: the rounding segments fill their hidden box; "Add a rule" copies
+    // the row template, a row\'s cross removes it. A test pull\'s drawer
+    // opens as the page loads.
     (function () {
         var form = document.getElementById(\'supplier_feed_form\');
 
@@ -499,7 +532,23 @@ echo pg_page_shell(array(
             var way = event.target.closest(\'[data-pg-sf-auth]\');
             var fold = event.target.closest(\'[data-pg-sf-fold]\');
 
-            if (way) {
+            var round = event.target.closest(\'[data-pg-sf-round]\');
+            var add = event.target.closest(\'[data-pg-sf-rule-add]\');
+            var remove = event.target.closest(\'[data-pg-sf-rule-remove]\');
+
+            if (round) {
+                document.getElementById(\'sf_rule_rounding\').value = round.getAttribute(\'data-pg-sf-round\');
+                form.querySelectorAll(\'[data-pg-sf-round]\').forEach(function (button) {
+                    button.setAttribute(\'aria-pressed\', (button === round) ? \'true\' : \'false\');
+                });
+            } else if (add) {
+                var rows = form.querySelector(\'[data-pg-sf-rules]\');
+                rows.appendChild(form.querySelector(\'[data-pg-sf-rule-template]\').content.cloneNode(true));
+                rows.lastElementChild.querySelector(\'input\').focus();
+            } else if (remove) {
+                remove.closest(\'[data-pg-sf-rule-row]\').remove();
+                form.querySelector(\'[data-pg-sf-rule-add]\').focus();
+            } else if (way) {
                 showWay(way.getAttribute(\'data-pg-sf-auth\'));
             } else if (fold) {
                 var open = (fold.getAttribute(\'aria-expanded\') !== \'true\');
@@ -524,6 +573,14 @@ echo pg_page_shell(array(
         });
 
         showWay(document.getElementById(\'sf_auth\').value);
+
+        var test = document.querySelector(\'[data-pg-sf-open-at-load]\');
+
+        if (test && window.pgUI) {
+            window.pgUI.ready(function () {
+                window.pgUI.drawer.show(test);
+            });
+        }
     }());
 </script>
 ' . output_footer();

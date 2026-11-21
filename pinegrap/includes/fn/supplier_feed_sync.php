@@ -129,23 +129,6 @@ function pg_supplier_feed_drop_brake($matched, $dropped)
 }
 
 /**
- * Whether a buy price is held for a person's yes: under half or over ten
- * times the last one.
- *
- * @param int      $last the item's last buy price, 0 for none
- * @param int|null $buy
- * @return bool
- */
-function pg_supplier_feed_price_held($last, $buy)
-{
-    if (($buy === null) || ((int) $last <= 0)) {
-        return false;
-    }
-
-    return ((int) $buy * 2 < (int) $last) || ((int) $buy > (int) $last * 10);
-}
-
-/**
  * What one record does to its product, nothing written (F6, F7, F13).
  *
  * The buy price is made net of VAT when the feed's prices include it (the

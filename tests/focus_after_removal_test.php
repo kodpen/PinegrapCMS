@@ -55,12 +55,12 @@ function test_focus_after_removal_api_sheet()
 {
 	$php = focus_after_removal_source('api_settings.php');
 
-	pg_assert_contains('Array.prototype.forEach.call(level.parentNode.children, function (node) {', $php, 'the page behind the sheet is walked level by level');
-	pg_assert_contains('node.inert = true;', $php, 'the page behind the sheet is out of reach');
-	pg_assert_contains('var first = sheet.querySelector("button:not(.disabled), input, a[href]");', $php, 'the sheet takes focus on load');
-	pg_assert_contains('inerted.forEach(function (node) { node.inert = false; });', $php, 'Close gives the page back');
+	// Step 3 is the New application drawer, modal by itself; closing it
+	// takes the values out and focuses New application.
+	pg_assert_contains('var focus = (number === 3) ? document.querySelector("#n_step_3 button, #n_done")', $php, 'step 3 takes focus');
+	pg_assert_contains('if (document.getElementById("n_step_3") && !doneAck.checked) { e.preventDefault(); }', $php, 'a shown secret keeps the sheet open until it is copied');
 	pg_assert_contains('var newButton = document.querySelector("[data-bs-target=\\"#api_new\\"]");', $php, 'Close focuses New application');
-	pg_assert_contains('document.querySelector("#d_delete_confirm .theme-danger").focus();', $php, 'Delete this application focuses Yes, delete');
+	pg_assert_contains('document.querySelector("#d_delete_confirm .pg-button-danger").focus();', $php, 'Delete focuses Yes, delete');
 	pg_assert_contains("ask.classList.remove(\"d-none\");\n\t\task.focus();", $php, 'Cancel focuses Delete this application');
 }
 

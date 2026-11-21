@@ -1,10 +1,10 @@
 ---
 name: settings-mail-sending
-description: Site Settings › E-mail sending (#10404, CX3c #10434): SMTP Settings' five cards, the campaign texts and MailChimp, a save writing config.php then the config row, old anchors
+description: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1): SMTP Settings' five cards, the campaign texts and MailChimp, a save writing config.php then the config row, old anchors
 ---
 
-## What is the category?
-- Owner (2026-11-17, poll 148, message 9374): SMTP Settings becomes the "E-posta gönderimi" (E-mail sending) category, between Communication and Mailboxes, for a manager as before (`workflow/decisions-made-product-76.md`). Key `mail_sending`, `includes/settings/mail_sending.php`, `.save.php`, `settings_mail_sending.php`.
+## What is the tab?
+- Owner (2026-11-17, poll 148, message 9374): SMTP Settings becomes "E-posta gönderimi" (E-mail sending), for a manager as before (`workflow/decisions-made-product-76.md`). Since EM1 it is the first tab of the E-mail category (`settings-email-tabs.md`), drawn by `includes/settings/mail_sending.php`, saved by `.save.php` through `email.save.php`; `settings_mail_sending.php` opens the tab.
 - Cards: Sending service `pgset-mail-transport`, System `pgset-mail-system`, Campaign `pgset-mail-campaign`, DKIM TXT Record `pgset-mail-dkim`, Sending domain `pgset-mail-domain` (read only), MailChimp `pgset-mailchimp`. Test: `tests/smtp_settings_layout_test.php`.
 - CX3c (#10434) moved Communication's Opt-In Label and Plain Text Footer into the Campaign card, below the job's fold (they apply whether the job runs or not), and the MailChimp card to the end. Same field names, columns and texts; Communication keeps Chat, SMS, WhatsApp and İYS.
 
@@ -19,8 +19,8 @@ description: Site Settings › E-mail sending (#10404, CX3c #10434): SMTP Settin
 - The dialog's save reads the pane again; `send()` in `backend.src.js` keeps that read's warnings and errors at the top of the pane and adds its notices to the "saved" toast. Before, the toast's `notice('')` wiped what the read said.
 
 ## What happened to the old screen?
-- `smtp_settings.php` redirects a manager to `settings_mail_sending.php`; the browser keeps an old `#mail_domain_card` across it, and the cards keep `mail_transport_card` and `mail_domain_card`. `pg_settings_legacy_anchors()` maps both, and the dialog's `fromUrl()` opens the category for a `smtp_settings.php[#…]` link.
-- Communication's old anchors are in the same map: `pgset-campaigns` → `mail_sending/pgset-mail-campaign`, `pgset-mailchimp` → `mail_sending/pgset-mailchimp`, so `settings_contact.php#pgset-mailchimp` lands here. My Campaigns' "Campaign settings" and the registry's Mailchimp row link the new cards.
+- `smtp_settings.php` redirects a manager to `settings_mail_sending.php`; the browser keeps an old `#mail_domain_card` across it, and the cards keep `mail_transport_card` and `mail_domain_card`. `pg_settings_legacy_anchors()` maps both (to `email`), and the dialog's `fromUrl()` opens the tab for a `smtp_settings.php[#…]` link.
+- Communication's old anchors are in the same map: `pgset-campaigns` → `email/pgset-mail-campaign`, `pgset-mailchimp` → `email/pgset-mailchimp`, so `settings_contact.php#pgset-mailchimp` lands here. My Campaigns' "Campaign settings" and the registry's Mailchimp row link the new cards.
 - SMTP Settings left System tools › Connections and its search words; the registry's mail rows name the Sending service card (API services) or the System card (Gmail, Microsoft 365 mail, where the account is chosen). The alert, Messages › Channels and Sends, the campaign screens and the Cron Jobs card link the category.
 - The Connect buttons' hidden forms return to `settings_mail_sending.php#pgset-mail-system`.
 

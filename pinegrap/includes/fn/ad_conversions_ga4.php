@@ -49,7 +49,14 @@ define('PG_AD_CONVERSION_GA4_REFUND_ROWS', 100);
  */
 function pg_ad_conversion_ga4_events()
 {
-    return array('purchase' => 'purchase', 'refund' => 'refund');
+    return array(
+        'purchase' => 'purchase',
+        'refund' => 'refund',
+        'add_to_cart' => 'add_to_cart',
+        'begin_checkout' => 'begin_checkout',
+        'complete_registration' => 'sign_up',
+        'lead' => 'generate_lead',
+    );
 }
 
 /**
@@ -60,12 +67,7 @@ function pg_ad_conversion_ga4_events()
  */
 function pg_ad_conversion_ga4_event_name($event)
 {
-    $names = pg_ad_conversion_ga4_events() + array(
-        'add_to_cart' => 'add_to_cart',
-        'begin_checkout' => 'begin_checkout',
-        'lead' => 'generate_lead',
-        'complete_registration' => 'sign_up',
-    );
+    $names = pg_ad_conversion_ga4_events();
 
     return isset($names[$event]) ? $names[$event] : '';
 }
@@ -126,31 +128,24 @@ function pg_ad_conversion_ga4_stored($raw)
 
 /**
  * The settings the page's form writes. An empty secret field keeps the
- * stored secret; the event ticks, the notice-off box and "Send events
- * without the person" are taken as posted. Only the purchase is a choice
- * there: a refund never carries the person (see
+ * stored secret; the choices are taken as posted
+ * (pg_ad_conversion_choices_merge()). "Send events without the person" is
+ * the purchase's only: a refund never carries the person (see
  * pg_ad_conversion_ga4_refund_rows()). Pure.
  *
  * @param array  $stored pg_ad_conversion_ga4_stored()
- * @param array  $post   events (string[]), person_notice_off,
- *                       without_person (string[])
+ * @param array  $post   the choices of pg_ad_conversion_choices_merge()
  * @param string $sealed the newly sealed secret, '' to keep the stored one
  * @return array what is saved as JSON
  */
 function pg_ad_conversion_ga4_settings_merge(array $stored, array $post, $sealed)
 {
-    $known = array_keys(pg_ad_conversion_ga4_events());
-    $events = array_values(array_intersect($known, is_array($post['events'] ?? null) ? $post['events'] : array()));
-    $without = array_values(array_intersect(array('purchase'), is_array($post['without_person'] ?? null) ? $post['without_person'] : array()));
     $secret = ((string) $sealed !== '') ? (string) $sealed : (string) ($stored['secret'] ?? '');
 
     return array(
         'connected' => ($secret !== ''),
         'secret' => $secret,
-        'events' => $events,
-        'person_notice_off' => !empty($post['person_notice_off']),
-        'without_person' => $without,
-    );
+    ) + pg_ad_conversion_choices_merge(array_keys(pg_ad_conversion_ga4_events()), $post);
 }
 
 /**
@@ -222,11 +217,18 @@ function pg_ad_conversion_ga4_body(array $event)
     $with_person = preg_match('/^\d+\.\d+$/D', (string) ($person['client_id'] ?? '')) === 1;
     $state = $with_person ? 'GRANTED' : 'DENIED';
 
-    $params = array(
-        'transaction_id' => pg_ad_conversion_ga4_transaction_id($event),
-        'currency' => strtoupper((string) ($event['currency'] ?? '')),
-        'value' => (float) ($event['value'] ?? 0),
-    );
+    $params = array();
+
+    // Only a purchase and a refund are joined by a transaction id; a Lead or
+    // a sign-up has no amount, so no value and no currency.
+    if (in_array((string) ($event['event'] ?? ''), array('purchase', 'refund'), true)) {
+        $params['transaction_id'] = pg_ad_conversion_ga4_transaction_id($event);
+    }
+
+    if ((string) ($event['currency'] ?? '') !== '') {
+        $params['currency'] = strtoupper((string) $event['currency']);
+        $params['value'] = (float) ($event['value'] ?? 0);
+    }
 
     $items = array();
 
@@ -258,7 +260,7 @@ function pg_ad_conversion_ga4_body(array $event)
 
     $body['events'] = array(array(
         'name' => pg_ad_conversion_ga4_event_name((string) ($event['event'] ?? '')),
-        'params' => $params,
+        'params' => $params ? $params : new stdClass(),
     ));
 
     return $body;
@@ -654,6 +656,8 @@ function pg_ad_conversion_ga4_post_page($action, array $post, $liveform)
         'events' => $post['ad_events'] ?? array(),
         'person_notice_off' => !empty($post['person_notice_off']),
         'without_person' => $post['ad_without_person'] ?? array(),
+        'lead_forms' => $post['ad_lead_forms'] ?? array(),
+        'counter_sales' => !empty($post['counter_sales']),
     ), $sealed);
 
     pg_config_text_save(PG_AD_CONVERSION_GA4_ROW, json_encode($saved));
@@ -703,31 +707,6 @@ function pg_ad_conversion_ga4_page(array $page, $may_manage, $can_seal)
     }
 
     if ($may_manage) {
-        $labels = array('purchase' => lang('Purchase'), 'refund' => lang('Refund'));
-        $ticks = '';
-
-        foreach (pg_ad_conversion_ga4_events() as $event => $ga_name) {
-            $ticks .= '
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="ad_events[]" value="' . h($event) . '" id="ga4_mp_event_' . h($event) . '"' . (in_array($event, $stored['events'], true) ? ' checked' : '') . '>
-						<label class="pg-text-2" for="ga4_mp_event_' . h($event) . '">' . h($labels[$event]) . ' <span class="pg-text-meta">(' . h($ga_name) . ')</span></label>
-					</div>';
-        }
-
-        $without = '
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="ad_without_person[]" value="purchase" id="ga4_mp_without_purchase"' . (in_array('purchase', $stored['without_person'], true) ? ' checked' : '') . '>
-						<label class="pg-text-2" for="ga4_mp_without_purchase">' . h(lang('Send events without the person')) . ' <span class="pg-text-meta">(' . h(lang('Purchase')) . ')</span></label>
-					</div>';
-
-        $notice_line = '';
-
-        if (!$notice_on && !$stored['person_notice_off']) {
-            $notice_line = '
-				<div class="alert theme-warning small py-3 mb-0">' . h(lang('The cookie notice is off: events go without the person')) . '.
-					<a href="' . h(pg_settings_link('privacy', 'pgset-cookies')) . '">' . h(lang('Cookie Consent')) . '</a></div>';
-        }
-
         $measurement_line = ($measurement_id !== '')
             ? '<input type="text" class="pg-input font-monospace" id="ga4_mp_measurement_id" value="' . h($measurement_id) . '" readonly>
 					<div class="pg-field-help">' . h(lang('The Google tag ID of the Google Analytics page.')) . '</div>'
@@ -737,7 +716,7 @@ function pg_ad_conversion_ga4_page(array $page, $may_manage, $can_seal)
         $page['details'] = '
 		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
 			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
-			<p class="pg-card-sub mb-4">' . h(lang('Purchases and refunds are sent from the server to Google Analytics, after the buyer accepted marketing cookies.')) . '</p>
+			<p class="pg-card-sub mb-4">' . h(lang('Events are sent from the server to Google Analytics, after the visitor accepted marketing cookies.')) . '</p>
 			<form method="post" action="connections.php" class="connections-app-form">
 				' . get_token_field() . '
 				<input type="hidden" name="connections_action" value="ga4_mp_save">
@@ -752,21 +731,7 @@ function pg_ad_conversion_ga4_page(array $page, $may_manage, $can_seal)
 						placeholder="' . h(($stored['secret'] !== '') ? lang('Stored. Leave empty to keep it.') : '') . '">
 					<div class="pg-field-help">' . h(lang('Google Analytics › Admin › Data streams › your stream › Measurement Protocol API secrets › Create. It is stored encrypted and never shown again.')) . '</div>
 				</div>
-				<div>
-					<div class="pg-field-label">' . h(lang('Events sent')) . '</div>' . $ticks . '
-					<div class="pg-field-help">' . h(lang('A refund goes for an order whose purchase Google Analytics received, within 72 hours of the refund.')) . '</div>
-				</div>
-				<div>
-					<div class="pg-field-label">' . h(lang('Without consent')) . '</div>' . $without . '
-					<div class="pg-field-help">' . h(lang('Only the amount and the products, when the buyer did not accept marketing cookies.')) . '</div>
-				</div>
-				<div>
-					<div class="d-flex align-items-center gap-2">
-						<input type="checkbox" class="pg-checkbox" name="person_notice_off" value="1" id="ga4_mp_person_notice_off"' . ($stored['person_notice_off'] ? ' checked' : '') . '>
-						<label class="pg-text-2" for="ga4_mp_person_notice_off">' . h(lang('Send personal data while the cookie notice is off')) . '</label>
-					</div>
-					<div class="pg-field-help">' . h(lang('The buyer was not asked, and the risk is the shop\'s. It acts only while the cookie notice is off.')) . '</div>
-				</div>' . $notice_line . '
+				' . pg_ad_conversion_choices_fields('ga4_mp', pg_ad_conversion_ga4_events(), $stored, $notice_on) . '
 				<div class="d-flex flex-wrap align-items-center gap-3">
 					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
 					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Send a test event')) . '</button>

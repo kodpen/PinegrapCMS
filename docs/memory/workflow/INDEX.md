@@ -10,7 +10,7 @@
 - agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with [decision: here]
 - agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks [decision: here]
 - agent-channel-request-wait.md: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): which request wakes it, the printed line, the interval, exits, restarting
-- agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed [decision: here]
+- agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes (a note's card too), the handles typed [decision: here]
 - api-answer-check-run.md: Working rule: who runs tools/check_api_answers.php, when and how: a running site with a database, settings from the environment only, never in CI, findings filed as bug issues
 - architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20 [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
@@ -174,6 +174,7 @@
 - decisions-made-product-94.md: Decisions list, product part 94 (2026-11-21 on): queue notices and the unfilled-shift call are service messages; a volunteer's document file is kept, no health report; Go live turns both off itself
 - decisions-made-product-95.md: Decisions list, product part 95 (2026-11-21 on): an information request's exported data reaches the person by a signed download link valid 7 days in the answer e-mail
 - decisions-made-product-96.md: Decisions list, product part 96 (2026-11-21 on): the KVKK notice gets a switch of its own; the unused Chat Retention Period field leaves Chat for an opt-in "Site chats" rule in the Privacy centre
+- decisions-made-product-97.md: Decisions list, product part 97 (2026-11-21 on): with "Allow AI training" on, the firewall lets the training crawlers through instead of refusing them as bad bots; rate limits still apply
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
 - decisions-made-schema-11.md: Decisions list, schema part 11 (2026-11-05 on): the access_scopes column of api_devices for a narrower scope asked on an OAuth refresh
@@ -215,6 +216,7 @@
 - decisions-made-schema-44.md: Decisions list, schema part 44 (2026-11-20 on): the application review desk's four tables and their columns, no reviewer right column (poll 199)
 - decisions-made-schema-45.md: Decisions list, schema part 45 (2026-11-20 on): the satisfaction loop's two tables, feedback_surveys (a survey's settings) and feedback_responses (one row per sent survey), their columns (poll 197)
 - decisions-made-schema-46.md: Decisions list, schema part 46 (2026-11-21 on): the tables of the walk-in queue, volunteer shifts, the set-up journey and prototype approval, five columns on prototype_links (poll 206)
+- decisions-made-schema-47.md: Decisions list, schema part 47 (2026-11-21 on): the agreed columns and keys of the walk-in queue's three tables (WQ1b) and the volunteer shifts' five tables (VS1b)
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace

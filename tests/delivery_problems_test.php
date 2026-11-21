@@ -154,3 +154,61 @@ function test_delivery_problems_screen_pins()
 	pg_assert_true(in_array('delivery_problems', pg_list_table_printed_lists(), true), 'the printed list keeps its sort');
 	pg_assert_contains('/view_delivery_problems.php', file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php'), 'Orders › Delivery problems in the menu');
 }
+
+function test_delivery_problems_settings_input()
+{
+	$all_off = pg_delivery_problem_settings_input(array());
+	pg_assert_same(array('stuck' => false, 'not_handed_over' => false, 'problem' => false, 'returned' => false, 'not_handed_over_days' => 1, 'stuck_extra_days' => 1), $all_off, 'a switch left out of the post is off; the day counts keep their defaults');
+
+	$posted = pg_delivery_problem_settings_input(array('kinds' => array('stuck' => '1', 'returned' => '1', 'other' => '1'), 'not_handed_over_days' => ' 3 ', 'stuck_extra_days' => '0'));
+	pg_assert_same(array('stuck' => true, 'not_handed_over' => false, 'problem' => false, 'returned' => true, 'not_handed_over_days' => 3, 'stuck_extra_days' => 0), $posted, 'the switches on and the two day counts are kept; an unknown kind is dropped');
+
+	$clamped = pg_delivery_problem_settings_input(array('kinds' => 'x', 'not_handed_over_days' => '0', 'stuck_extra_days' => '99'));
+	pg_assert_same(1, $clamped['not_handed_over_days'], 'at least one working day');
+	pg_assert_same(30, $clamped['stuck_extra_days'], 'at most 30 days');
+	pg_assert_same(false, $clamped['stuck'], 'kinds that are not a list switch every kind off');
+
+	$text = pg_delivery_problem_settings_input(array('kinds' => array(), 'not_handed_over_days' => 'two', 'stuck_extra_days' => array(5)));
+	pg_assert_same(1, $text['not_handed_over_days'], 'not a number keeps the default');
+	pg_assert_same(1, $text['stuck_extra_days'], 'a list keeps the default');
+}
+
+function test_delivery_problems_settings_drawer()
+{
+	$html = pg_delivery_problem_settings_drawer(pg_delivery_tower_settings_clean(array('problem' => false, 'not_handed_over_days' => 2, 'stuck_extra_days' => 4)), array('view' => 'closed', 'kind' => 0, 'carrier' => ''));
+
+	pg_assert_same(4, substr_count($html, 'class="pg-switch"'), 'a switch a row for each of the four kinds');
+	pg_assert_same(4, preg_match_all('/class="pg-switch"[^>]*aria-describedby="delivery_settings_[a-z_]+_help"/', $html), 'every switch is described by its help line');
+	pg_assert_same(4, substr_count($html, 'class="pg-text-meta d-block"'), 'one line of help a kind');
+	pg_assert_same(3, substr_count($html, ' checked '), 'the kind switched off is drawn off');
+	pg_assert_contains('name="kinds[not_handed_over]"', $html, 'the switch names a kind');
+
+	$fold = substr($html, strpos($html, '<details'), strpos($html, '</details>') - strpos($html, '<details'));
+	pg_assert_same(2, substr_count($fold, 'type="number"'), 'the two day counts are folded under Advanced');
+	pg_assert_same(2, substr_count($html, 'type="number"'), 'and nowhere else');
+	pg_assert_contains('name="not_handed_over_days" min="1" max="10" step="1" value="2"', $fold, 'the working days of a label, 1 to 10');
+	pg_assert_contains('name="stuck_extra_days" min="0" max="30" step="1" value="4"', $fold, 'the days beyond the usual, 0 to 30');
+	pg_assert_false(strpos($html, '<details class="pg-start-advanced" open') !== false, 'Advanced is folded');
+
+	$foot = substr($html, strpos($html, 'drawer-footer'));
+	pg_assert_same(1, substr_count($foot, 'pg-button-fill'), 'one fill: Save');
+	pg_assert_contains('name="action" value="settings" class="pg-button pg-button-fill"', $foot, 'Save posts the settings');
+	pg_assert_same(1, substr_count($foot, 'pg-button-quiet'), 'Cancel quiet');
+	pg_assert_false(strpos($html, 'pg-button-danger') !== false, 'no danger button');
+	pg_assert_contains('name="back" value="view_delivery_problems.php?view=closed"', $html, 'the list comes back with its filters');
+	pg_assert_contains('<input type="hidden" name="token"', $html, 'the form carries the token');
+
+	foreach (array('percentile', 'exception') as $word) {
+		pg_assert_false(stripos(strip_tags($html), $word) !== false, 'never "' . $word . '" on screen');
+	}
+}
+
+function test_delivery_problems_settings_screen_pins()
+{
+	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/view_delivery_problems.php');
+
+	pg_assert_contains("class=\"pg-button pg-button-quiet\" data-delivery-drawer=\"delivery_problems_settings\"", $screen, 'the head\'s quiet Settings opens the drawer');
+	pg_assert_same(2, substr_count($screen, "((int) \$user['role'] < 3)"), 'the button and the save are for Manager and up');
+	pg_assert_contains("'view'   => \$problems_settings_button", $screen, 'Settings sits at the toolbar\'s right end');
+	pg_assert_contains('pg_delivery_problems_settings_save(pg_delivery_problem_settings_input($_POST))', $screen, 'the save goes through the clean input');
+}

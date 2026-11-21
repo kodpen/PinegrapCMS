@@ -274,6 +274,18 @@ if (!$_POST) {
         return !pg_stock_is_column_heading($heading) || in_array(trim((string) $heading), $stock_import['unknown'], true);
     }));
 
+    // The shelf columns, by position, once the upgrade has added
+    // product_bins: "shelf" (the default location's address with locations)
+    // and shelf:<location name>. A shelf heading that names no location
+    // stays in the unknown list; before the upgrade every one does.
+    $bin_import = pg_bins_ready()
+        ? pg_bin_import_columns($columns, $stock_locations, $stock_locations ? pg_stock_default_location() : 0)
+        : array('positions' => array(), 'unknown' => array());
+    $bin_positions = $bin_import['positions'];
+    $unknown_headings = array_values(array_filter($unknown_headings, function ($heading) use ($bin_import) {
+        return !pg_bins_ready() || !pg_bin_is_column_heading($heading) || in_array(trim((string) $heading), $bin_import['unknown'], true);
+    }));
+
     // Assume that columns do not exist until we find out otherwise.
     $address_name_column_exists = false;
     $enabled_column_exists = false;
@@ -392,6 +404,7 @@ if (!$_POST) {
     $rows_decimal_too_large = array();
     $rows_quantity_not_whole = array();
     $rows_not_customs = array();
+    $rows_shelf_too_long = array();
     $rows_quantity_too_large = array();
     $rows_text_too_long = array();
     $rows_tax_rate_not_valid = array();
@@ -529,6 +542,15 @@ if (!$_POST) {
             }
 
             $row = $customs_row;
+
+            // The shelf addresses: an empty cell clears one, a cell longer
+            // than the column holds leaves the row out.
+            $row_bins = pg_bin_import_row($row, $bin_positions);
+
+            if ($row_bins === false) {
+                $rows_shelf_too_long[] = $row_label;
+                continue;
+            }
 
             // get product information if it exists
             $query =
@@ -789,6 +811,10 @@ if (!$_POST) {
                         pg_stock_import_write($product_id, $row_stock, $row_quantity);
                     }
 
+                    if ($row_bins && !pg_bundle_ids_among(array((int) $product_id))) {
+                        pg_bins_write($product_id, $row_bins);
+                    }
+
                     if ($stock_columns_in_file) {
                         pg_products_import_stock_flag($product_id);
                     }
@@ -969,6 +995,10 @@ if (!$_POST) {
 
                 if ($stock_locations && ($stock_positions || ($row_quantity !== null))) {
                     pg_stock_import_write($product_id, $row_stock, $row_quantity);
+                }
+
+                if ($row_bins && !pg_bundle_ids_among(array((int) $product_id))) {
+                    pg_bins_write($product_id, $row_bins);
                 }
 
                 if ($stock_columns_in_file) {
@@ -1190,6 +1220,12 @@ if (!$_POST) {
     if ($rows_not_customs) {
         $rows_listed = implode(', ', array_slice($rows_not_customs, 0, 50)) . ((count($rows_not_customs) > 50) ? ', ...' : '');
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their HS code or country of origin is not valid: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because a shelf address is longer than its column.
+    if ($rows_shelf_too_long) {
+        $rows_listed = implode(', ', array_slice($rows_shelf_too_long, 0, 50)) . ((count($rows_shelf_too_long) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their shelf address is longer than 40 characters: {var:1}.', 'vars' => array($rows_listed))));
     }
 
     // Rows left out because their name or short description is longer than

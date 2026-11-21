@@ -662,6 +662,14 @@ function pg_audit_view_settings_names()
         foreach (pg_settings_categories() as $key => $category) {
             $names[(string) $key] = (string) ($category['label'] ?? '');
         }
+
+        // A category that became a tab of another keeps the lines written
+        // under its old key, named by that category and the tab.
+        foreach (pg_settings_moved_categories() as $key => $target) {
+            if (isset($names[$target[0]])) {
+                $names[(string) $key] = $names[$target[0]] . ' › ' . (string) (pg_settings_category($target[0])['tabs'][$target[1]]['label'] ?? $target[1]);
+            }
+        }
     }
 
     return $names;

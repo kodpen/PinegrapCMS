@@ -1,0 +1,242 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Site Settings > Firewall and HTTPS as folded rows
+ * (includes/settings/fold.php): the rows' order, names and icons, and each
+ * part's one line of state with its pill. The pg_firewall_fold_<part>()
+ * lines are pure but for lang(); includes/settings/firewall.php reads the
+ * facts they take.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+/**
+ * The rows' keys in reading order. A key is its card's id without pgset-.
+ *
+ * @return string[]
+ */
+function pg_firewall_fold_order()
+{
+    return array('waf', 'limits', 'bots', 'iplists', 'countries', 'proxies');
+}
+
+/**
+ * A row's name, icon and tone.
+ *
+ * @param string $key one of pg_firewall_fold_order()
+ * @return array name, icon, tone
+ */
+function pg_firewall_fold_face($key)
+{
+    switch ($key) {
+        case 'waf':
+            return array('name' => lang('Firewall'), 'icon' => 'bi-shield-check', 'tone' => 'pg-tone-system');
+        case 'limits':
+            return array('name' => lang('Limits'), 'icon' => 'bi-speedometer2', 'tone' => 'pg-tone-amber');
+        case 'bots':
+            return array('name' => lang('Bots'), 'icon' => 'bi-robot', 'tone' => 'pg-tone-blue');
+        case 'iplists':
+            return array('name' => lang('Addresses'), 'icon' => 'bi-list-check', 'tone' => 'pg-tone-rose');
+        case 'countries':
+            return array('name' => lang('Countries'), 'icon' => 'bi-globe2', 'tone' => 'pg-tone-teal');
+        default:
+            return array('name' => lang('Trusted proxies'), 'icon' => 'bi-diagram-3', 'tone' => '');
+    }
+}
+
+/**
+ * The On or Off pill of a part one switch turns on.
+ *
+ * @param bool $on
+ * @return array words, tone class
+ */
+function pg_firewall_fold_switch_pill($on)
+{
+    return $on ? array(lang('On'), 'pg-tone-teal') : array(lang('Off'), 'pg-tone-gray');
+}
+
+/**
+ * The Firewall row's line: on or off, and its mode.
+ *
+ * @param bool   $ready       the firewall's columns exist
+ * @param bool   $on          the firewall switch
+ * @param string $mode        monitor or block
+ * @param bool   $self_banned the operator's own address is on the banned list
+ * @return array line, pill, attention
+ */
+function pg_firewall_fold_waf($ready, $on, $mode, $self_banned)
+{
+    if (!$ready) {
+        return array('line' => lang('Waits for the database upgrade'), 'pill' => null, 'attention' => true);
+    }
+
+    if (!$on) {
+        $line = lang('Off');
+    } elseif ($mode === 'block') {
+        $line = lang('On, Block');
+    } else {
+        $line = lang('On, Monitor');
+    }
+
+    if ($self_banned) {
+        $line .= ' · ' . lang('your own address is banned');
+    }
+
+    return array('line' => $line, 'pill' => pg_firewall_fold_switch_pill($on), 'attention' => (bool) $self_banned);
+}
+
+/**
+ * The Limits row's line: the per-minute limit and the automatic bans.
+ *
+ * @param bool $rate_on   Rate limiting
+ * @param int  $requests  All Requests per minute
+ * @param bool $bans_on   Automatic temporary bans
+ * @param int  $ban_after events in ten minutes that ban an address
+ * @return array line, pill, attention
+ */
+function pg_firewall_fold_limits($rate_on, $requests, $bans_on, $ban_after)
+{
+    $line = $rate_on
+        ? lang(array('string' => '{var:1} requests a minute from one address', 'vars' => (int) $requests))
+        : lang('No rate limit');
+    $line .= ' · ' . ($bans_on
+        ? lang(array('string' => 'banned after {var:1} events', 'vars' => (int) $ban_after))
+        : lang('no automatic bans'));
+
+    return array('line' => $line, 'pill' => null, 'attention' => false);
+}
+
+/**
+ * The Bots row's line: whether unknown bots are refused, and the operator's
+ * own lists.
+ *
+ * @param bool $block_unknown Block unknown bots
+ * @param int  $allowed       entries in Allowed bots
+ * @param int  $blocked       entries in Blocked bots
+ * @return array line, pill, attention
+ */
+function pg_firewall_fold_bots($block_unknown, $allowed, $blocked)
+{
+    $line = $block_unknown ? lang('Unknown bots are refused') : lang('Unknown bots are let in');
+
+    if ((int) $allowed > 0) {
+        $line .= ' · ' . lang(array('string' => '{var:1} allowed by you', 'vars' => (int) $allowed));
+    }
+
+    if ((int) $blocked > 0) {
+        $line .= ' · ' . lang(array('string' => '{var:1} blocked by you', 'vars' => (int) $blocked));
+    }
+
+    return array('line' => $line, 'pill' => pg_firewall_fold_switch_pill($block_unknown), 'attention' => false);
+}
+
+/**
+ * The sentence for the addresses the firewall has banned on its own.
+ *
+ * @param int $bans active automatic bans
+ * @return string
+ */
+function pg_firewall_fold_bans_sentence($bans)
+{
+    $bans = (int) $bans;
+
+    if ($bans <= 0) {
+        return lang('No address is banned by the firewall now');
+    }
+
+    if ($bans === 1) {
+        return lang('1 address banned now');
+    }
+
+    return lang(array('string' => '{var:1} addresses banned now', 'vars' => $bans));
+}
+
+/**
+ * The Addresses row's line: the automatic bans, then the hand-written lists.
+ *
+ * @param int $allowed entries in Allowed IP addresses
+ * @param int $banned  entries in Banned IP addresses
+ * @param int $bans    active automatic bans
+ * @return array line, pill, attention
+ */
+function pg_firewall_fold_addresses($allowed, $banned, $bans)
+{
+    $line = pg_firewall_fold_bans_sentence($bans);
+
+    if ((int) $allowed > 0) {
+        $line .= ' · ' . lang(array('string' => '{var:1} always allowed', 'vars' => (int) $allowed));
+    }
+
+    if ((int) $banned > 0) {
+        $line .= ' · ' . lang(array('string' => '{var:1} banned by hand', 'vars' => (int) $banned));
+    }
+
+    return array('line' => $line, 'pill' => null, 'attention' => false);
+}
+
+/**
+ * The Countries row's line: the restriction and how many countries it names.
+ *
+ * @param bool   $ready       the country columns exist
+ * @param string $mode        off, block or allow
+ * @param int    $count       countries listed
+ * @param bool   $you_refused the operator's own request would be refused
+ * @return array line, pill, attention
+ */
+function pg_firewall_fold_countries($ready, $mode, $count, $you_refused)
+{
+    if (!$ready) {
+        return array('line' => lang('Arrives with the 2026.4.10 upgrade'), 'pill' => null, 'attention' => false);
+    }
+
+    $count = (int) $count;
+
+    if ($mode === 'block') {
+        $line = ($count === 1) ? lang('Refuses 1 country') : lang(array('string' => 'Refuses {var:1} countries', 'vars' => $count));
+    } elseif ($mode === 'allow') {
+        $line = ($count === 1) ? lang('Lets in only 1 country') : lang(array('string' => 'Lets in only {var:1} countries', 'vars' => $count));
+    } else {
+        $line = lang('Every country is let in');
+    }
+
+    if ($you_refused) {
+        $line .= ' · ' . lang('yours is refused');
+    }
+
+    return array('line' => $line, 'pill' => pg_firewall_fold_switch_pill($mode === 'block' || $mode === 'allow'), 'attention' => (bool) $you_refused);
+}
+
+/**
+ * The Trusted proxies row's line: how many are listed, and a proxy staff
+ * came through that is not.
+ *
+ * @param int  $count    entries listed
+ * @param bool $unlisted a proxy on a public address waits to be listed
+ * @return array line, pill, attention
+ */
+function pg_firewall_fold_proxies($count, $unlisted)
+{
+    $count = (int) $count;
+
+    if ($count <= 0) {
+        $line = lang('None listed; Cloudflare is recognised on its own');
+    } elseif ($count === 1) {
+        $line = lang('1 proxy listed');
+    } else {
+        $line = lang(array('string' => '{var:1} proxies listed', 'vars' => $count));
+    }
+
+    if ($unlisted) {
+        $line .= ' · ' . lang('a proxy is not listed');
+    }
+
+    return array('line' => $line, 'pill' => null, 'attention' => (bool) $unlisted);
+}

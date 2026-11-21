@@ -1377,7 +1377,7 @@ function pg_office_xlsx_read($path, $edit = false)
     }
 
     $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
-    $workbook_xml = (string) pg_zip_entry_contents($zip, 'xl/workbook.xml', PG_OFFICE_MAX_DOM, $unread);
+    $workbook_xml = (string) pg_zip_entry_contents($zip, pg_sheet_xlsx_workbook($zip)['part'], PG_OFFICE_MAX_DOM, $unread);
     $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904($workbook_xml);
 
     if (empty($sheets)) {

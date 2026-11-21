@@ -160,6 +160,22 @@ function api_webhook_event_payloads() {
 		'name' => array('string', 'The product\'s name.')
 	);
 
+	// Customer rhythm (pg_customer_rhythm_event_payload()).
+	$rhythm = array(
+		'id'                    => array('integer', 'The customer record (GET /customers/{id}).'),
+		'stage'                 => array('string', 'The stage now: regular, due, late, slipping (slipping away), lost or won_back.'),
+		'previous_stage'        => array('string?', 'The stage before the last move, null when the customer has not moved yet.'),
+		'interval_days'         => array('integer', 'The customer\'s own days between orders as fixed at their last order (the store\'s median days to a second order for a one-order customer); 0 when not known.'),
+		'days_since_last_order' => array('integer', 'Days since the customer\'s last order.'),
+		'chance'                => array('integer', 'The chance in per cent that the customer still orders again.'),
+		'expected_value'        => array('integer', 'Expected spend in the next 12 months, in minor units (cents) of the base currency.'),
+		'last_order_id'         => array('integer', 'The customer\'s last order (GET /orders/{id}).'),
+		'last_order_number'     => array('string', 'The last order\'s number, empty when not found.')
+	);
+
+	$rhythm_sample = array('id' => 884, 'stage' => 'due', 'previous_stage' => 'regular', 'interval_days' => 30, 'days_since_last_order' => 34, 'chance' => 80,
+		'expected_value' => 96000, 'last_order_id' => 1042, 'last_order_number' => '100318');
+
 	$group = array(
 		'id'   => array('integer', 'The product group (GET /product-groups/{id}).'),
 		'name' => array('string', 'The product group\'s name.')
@@ -264,6 +280,7 @@ function api_webhook_event_payloads() {
 		'booking.confirmed'   => array('fields' => $booking, 'sample' => $booking_sample('confirmed', '2026-11-20T07:00:00Z', '2026-11-20T07:45:00Z')),
 		'booking.rescheduled' => array('fields' => $booking, 'sample' => $booking_sample('confirmed', '2026-11-21T11:00:00Z', '2026-11-21T11:45:00Z')),
 		'booking.cancelled'   => array('fields' => $booking, 'sample' => $booking_sample('cancelled', '2026-11-20T07:00:00Z', '2026-11-20T07:45:00Z')),
+		'booking.completed'   => array('fields' => $booking, 'sample' => $booking_sample('done', '2026-11-20T07:00:00Z', '2026-11-20T07:45:00Z')),
 
 		'subscription.renewed'   => array('fields' => $subscription, 'sample' => $subscription_sample('active', 'active', 'renewed', 1043, '100319', '2026-12-17T08:00:00Z', 0)),
 		'subscription.failed'    => array('fields' => $subscription, 'sample' => $subscription_sample('active', 'active', 'renewal_failed', null, '', '2026-11-18T08:00:00Z', 1)),
@@ -300,6 +317,21 @@ function api_webhook_event_payloads() {
 				'card_id'        => array('integer', 'The store credit card of the reward (GET /gift-cards/{id}).')
 			),
 			'sample' => array('id' => 65, 'reference_code' => 'C8R4T2', 'affiliate_code' => 'R15-4K2M9QX7ZA', 'order_id' => 1042, 'amount' => 2500, 'customer_id' => 41, 'account_id' => 7, 'card_id' => 90)
+		),
+
+		'customer.rhythm_stage_changed' => array('fields' => $rhythm, 'sample' => $rhythm_sample),
+
+		'customer.reorder_due' => array(
+			'fields' => $rhythm + array(
+				'products'      => array('object[]', 'The products due: id (GET /products/{id}), name, short_description, quantity (the units last bought) and due_at (UTC, the day they run out by the product\'s rhythm).'),
+				'products_text' => array('string', 'The products as one text, such as "2 × Coffee beans 1 kg".'),
+				'reorder_url'   => array('string', 'The reorder link: it shows the products and quantities and puts them into the visitor\'s cart at today\'s price and stock. Signed, it works for 30 days; it names no order, person or address and signs no one in. Empty when the site has no encryption key.')
+			),
+			'sample' => array_merge($rhythm_sample, array('previous_stage' => null, 'stage' => 'regular', 'days_since_last_order' => 27)) + array(
+				'products'      => array(array('id' => 120, 'name' => 'COFFEE-1KG', 'short_description' => 'Coffee beans 1 kg', 'quantity' => 2, 'due_at' => '2026-11-24T09:30:00Z')),
+				'products_text' => '2 × Coffee beans 1 kg',
+				'reorder_url'   => 'https://www.example.com/pinegrap/reorder.php?p=120-2&e=1766478600&s=4f9c2a7e1b0d83c6a5e2f19d7b4c0a8e'
+			)
 		),
 
 		'commission.status_changed' => array(

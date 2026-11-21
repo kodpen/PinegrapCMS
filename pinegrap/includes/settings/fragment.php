@@ -47,6 +47,13 @@ function pg_settings_fragment($key, $user, $liveform)
         output_error(lang('Access denied') . '.');
     }
 
+    // The category as this reader sees it: a category with tabs keeps the
+    // tabs the reader may open (email.php reads $pg_settings_category).
+    $reader = pg_settings_reader($user);
+    $category = pg_settings_category_for_reader($category, $reader);
+    $pg_settings_category = $category;
+    $pg_settings_tab = '';
+
     $row = pg_settings_config_row();
 
     $pg_settings_cards   = array();
@@ -59,7 +66,7 @@ function pg_settings_fragment($key, $user, $liveform)
 
     // A Workspace category reads none of what prep.php prepares, and its
     // reader may be no manager.
-    if (!pg_settings_category_is_workspace($category)) {
+    if (pg_settings_category_reads_prep($category, $reader)) {
         include(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
     }
 

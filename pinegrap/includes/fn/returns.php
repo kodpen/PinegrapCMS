@@ -4326,6 +4326,9 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     // cancellation cancels it (process_order_cancellation()).
     if (pg_return_order_fully_refunded($return['order_id'])) {
         pg_review_request_cancel($return['order_id']);
+
+        // A delivery survey still waiting is not sent either.
+        pg_feedback_cancel_record('order', $return['order_id']);
     }
 
     $release();

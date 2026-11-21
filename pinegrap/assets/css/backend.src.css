@@ -22678,10 +22678,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-claude-shot .s-bad { fill: var(--pg-danger); }
 .ws-claude-shot .s-claude { fill: #c96442; }
 .ws-claude-shot .s-ring { fill: none; stroke: #f59f00; stroke-width: 2; }
-.ws-claude-status {
-  position: sticky;
-  top: calc(var(--pg-navbar-h) + 1rem);
-}
 .ws-claude-recent-row {
   align-items: flex-start;
   font-size: var(--pg-text-2);
@@ -24073,8 +24069,91 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
     overflow: hidden;
     mask-image: linear-gradient(to bottom, var(--pg-bg-1) calc(100% - 3rem), transparent);
 }
-.ws-nb-msg-card .pg-gather-toggle {
-    margin-top: .25rem;
+/* The note card is look A's plain card (.pg-card draws its surface, line
+   and corners) as wide as the message column, on a phone too; these rules
+   only place its parts. */
+.ws-cn-card {
+    padding: 12px 14px;
+}
+.ws-cn-head {
+    gap: 8px;
+}
+.ws-cn-icon {
+    color: var(--pg-fg-2);
+}
+.ws-cn-title {
+    font-weight: var(--pg-weight-strong);
+}
+.ws-cn-card .ws-nb-msg-card-text {
+    margin-top: 6px;
+}
+/* "Show all" / "Show less": a small quiet button centred under the note */
+.ws-cn-more {
+    margin-top: 6px;
+    text-align: center;
+}
+/* The foot: one muted line (.pg-text-meta), Versions at its end */
+.ws-cn-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    margin-top: 8px;
+}
+.ws-cn-foot-words {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.ws-cn-versions-button {
+    flex: none;
+}
+/* On a phone Versions is its icon and count, so the words keep the line */
+@media (max-width: 575.98px) {
+    .ws-cn-versions-button .pg-btn-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+}
+/* Inside the note: headings measured against the text (the first one step
+   bigger), paragraphs and lists close together, the "Written up to …"
+   line as a meta line. */
+.ws-cn-card .ws-heading {
+    margin: 10px 0 2px;
+    font-size: var(--pg-text-base);
+    font-weight: var(--pg-weight-title);
+    line-height: var(--pg-leading);
+    letter-spacing: normal;
+}
+.ws-cn-card h2.ws-heading {
+    font-size: var(--pg-text-status-title);
+}
+.ws-cn-card h4.ws-heading {
+    font-weight: var(--pg-weight-strong);
+}
+.ws-cn-card .ws-cn-fold > :first-child {
+    margin-top: 0;
+}
+.ws-cn-card .ws-text + .ws-text {
+    margin-top: 6px;
+}
+.ws-cn-card .ws-list,
+.ws-cn-card .ws-quote {
+    margin: 4px 0;
+}
+.ws-cn-card .ws-list > li + li {
+    margin-top: 2px;
+}
+.ws-cn-meta {
+    margin-bottom: 6px;
+}
+/* An empty line between paragraphs (workspace_channel_notes.js tightGaps()) */
+.ws-cn-gap {
+    display: block;
+    height: 6px;
 }
 /* The writing box in the Write a note and Edit windows */
 .ws-cn-editor .ws-rich-field {
@@ -29906,6 +29985,11 @@ body.pg-measure-edit .row > .order-2 > .position-sticky > .card,
 .pg-card-inner-row + .pg-card-inner-row {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
+/* A folded row (includes/settings/fold.php) inside an inner card, under
+   plain rows: Application Access's Advanced in the drawer's summary. */
+.pg-card-inner > .pg-card-inner-row + .pg-set-fold-item {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
 /* Floating bar (the save bar's surface), also an add or edit screen's
    save bar. */
 .pg-floatbar,
@@ -32536,6 +32620,28 @@ textarea.pg-campaign-text {
   }
   .pg-figures > .pg-figure:last-child:nth-child(odd) {
     grid-column: 1 / -1;
+  }
+}
+/* The compact form (.pg-figures-sm): a few facts at the top of a drawer.
+   The value in the strong weight, not the Display cut; four a row from
+   576 px up whatever the viewport, two a row on a phone. */
+.pg-figures.pg-figures-sm {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.pg-figures-sm > .pg-figure {
+  padding: 10px 12px;
+}
+.pg-figures-sm .pg-figure-value {
+  margin: 3px 0 0;
+  font-size: 0.9375rem;
+  font-weight: var(--pg-weight-strong);
+  letter-spacing: 0;
+  font-variation-settings: normal;
+}
+@media (max-width: 575.98px) {
+  .pg-figures.pg-figures-sm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

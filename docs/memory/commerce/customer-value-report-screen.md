@@ -7,6 +7,7 @@ module: customer_values
 ## Where is it, and who opens it?
 - `view_customer_report.php`, linked as "Customers Report" in the Reports menu under the order reports. Whoever passes `validate_ecommerce_report_access()`, on a site with commerce on. Help topic `commerce-cont#customers-report` (passed in `pg_page_shell()`).
 - It reads only `pg_customer_value_summary()` (`customer-value-summary.md`); no order is summed on the screen.
+- The toolbar's Value / Rhythm switch opens the Rhythm part (`?part=rhythm`, `customer-rhythm-report.md`); the period applies to Value only.
 
 ## What does it show?
 - A period (Last month, 3, 6, 12, 24 months, All time; default 12, kept in the session, `pg_customer_value_period_pick()`). The months are the whole months before the summary's month.
