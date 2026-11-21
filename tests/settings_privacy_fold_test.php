@@ -52,7 +52,7 @@ function settings_privacy_fold_test_card($id)
 
 function test_settings_privacy_fold_order_and_names()
 {
-	pg_assert_same(array('analytics', 'cookies', 'legal', 'kvkk', 'a11y-statement', 'privacy-centre'), pg_privacy_fold_order(), 'the rows in the description\'s order');
+	pg_assert_same(array('analytics', 'retention', 'cookies', 'legal', 'kvkk', 'a11y-statement', 'privacy-centre'), pg_privacy_fold_order(), 'the rows in the description\'s order');
 
 	$names = array();
 
@@ -63,7 +63,7 @@ function test_settings_privacy_fold_order_and_names()
 		pg_assert_false(stripos($face['name'], 'Enable') === 0, $key . ': a name never starts with Enable');
 	}
 
-	pg_assert_same(array(lang('Visitor tracking'), lang('Cookie consent'), lang('Legal documents'), lang('KVKK notice'), lang('Accessibility statement'), lang('Privacy centre')), $names, 'the rows\' names');
+	pg_assert_same(array(lang('Visitor tracking'), lang('How long we keep data'), lang('Cookie consent'), lang('Legal documents'), lang('KVKK notice'), lang('Accessibility statement'), lang('Privacy centre')), $names, 'the rows\' names');
 }
 
 function test_settings_privacy_fold_lines()
@@ -96,6 +96,12 @@ function test_settings_privacy_fold_lines()
 	pg_assert_same(lang('Not filled'), pg_privacy_fold_a11y('')['line'], 'no date');
 	pg_assert_same(null, pg_privacy_fold_a11y('')['pill'], 'no pill');
 
+	pg_assert_same(lang(array('string' => 'Visitor records kept {var:1} day{suffix:1}', 'vars' => 90, 'suffix' => array('s'))) . ' · ' . lang(array('string' => 'IP addresses removed after {var:1} day{suffix:1}', 'vars' => 30, 'suffix' => array('s'))), pg_privacy_fold_retention(90, 30)['line'], 'the visitor records\' periods');
+	pg_assert_same(lang('Visitor records kept until deleted') . ' · ' . lang('IP addresses kept with the record'), pg_privacy_fold_retention(0, 0)['line'], '0 keeps them');
+	pg_assert_same(lang('Visitor records kept until deleted'), pg_privacy_fold_retention(0, null)['line'], 'no IP period before its column');
+	pg_assert_same(lang('Every period the site applies, and where each is set'), pg_privacy_fold_retention(null, null)['line'], 'no visitor fields before their columns');
+	pg_assert_same(null, pg_privacy_fold_retention(90, 30)['pill'], 'no pill');
+
 	pg_assert_contains('KVKK or GDPR', pg_privacy_fold_centre()['line'], 'the Privacy centre\'s sentence is its line');
 }
 
@@ -124,6 +130,21 @@ function test_settings_privacy_fold_cards_and_fields()
 	pg_assert_contains("lang('Paid tracking code mark')", $tracking, 'the paid mark');
 	pg_assert_contains('class="pg-card-inner connections-list"', $tracking, 'Google Analytics as a connect row');
 	pg_assert_contains("lang('Connect in Connections')", $tracking, 'which leads to Connections');
+
+	foreach (array('visitor_retention_days', 'visitor_ip_days', 'visitor_summary') as $name) {
+		pg_assert_false(strpos($tracking, 'name="' . $name . '"') !== false, $name . ' left Visitor tracking');
+	}
+
+	$retention = settings_privacy_fold_test_card('pgset-retention');
+	pg_assert_true(strpos($retention, 'name="visitor_retention_days"') < strpos($retention, 'name="visitor_ip_days"') && strpos($retention, 'name="visitor_ip_days"') < strpos($retention, 'name="visitor_summary"'), 'the periods, then the daily summary');
+	pg_assert_contains('database_engine.php#visitor-records', $retention, 'with its Database Engine link');
+	pg_assert_contains('<div class="pg-card-inner">\' . $retention_rows . \'</div>', $retention, 'one inner card of value rows');
+	pg_assert_contains("'Erasures and retention rule runs are destruction records", $retention, 'its meta line');
+
+	$pane = settings_privacy_fold_test_source('includes/settings/privacy.php');
+	pg_assert_contains('pg_privacy_retention_overview(array(', $pane, 'the rows come from the overview');
+	pg_assert_contains('<div class="pg-value-row">', $pane, 'drawn as value rows');
+	pg_assert_contains('class="pg-button pg-button-quiet pg-button-sm" href="\' . h($retention_change) . \'"', $pane, 'Change is quiet and small');
 
 	$cookies = settings_privacy_fold_test_card('pgset-cookies');
 	$details = substr($cookies, (int) strpos($cookies, '<details>'));
@@ -156,7 +177,7 @@ function test_settings_privacy_fold_names_stay()
 		pg_assert_contains('name="' . $name . '"', $pane, $name . ' posts under its name');
 	}
 
-	foreach (array('pgset-analytics', 'pgset-cookies', 'pgset-legal', 'pgset-kvkk', 'pgset-a11y-statement', 'pgset-privacy-centre') as $id) {
+	foreach (array('pgset-analytics', 'pgset-retention', 'pgset-cookies', 'pgset-legal', 'pgset-kvkk', 'pgset-a11y-statement', 'pgset-privacy-centre') as $id) {
 		pg_assert_contains('<div id="' . $id . '" class="pg-set-card">', $pane, $id . ' keeps its card inside its row');
 	}
 
@@ -177,6 +198,13 @@ function test_settings_privacy_fold_registry_and_search()
 	// An old link still lands on the card, which sits in its row.
 	$anchors = pg_settings_legacy_anchors();
 	pg_assert_same(array('privacy', 'pgset-legal'), $anchors['pgset-legal'], 'an old Legal documents link');
+
+	foreach (array('visitor_retention_days', 'visitor_ip_days', 'visitor_summary') as $field) {
+		pg_assert_same(array('privacy', 'pgset-retention'), $anchors[$field], 'an old link to ' . $field . ' opens How long we keep data');
+	}
+
+	pg_assert_contains("'pgset-retention' => lang('How long we keep data')", $privacy, 'How long we keep data is a section');
+	pg_assert_true(strpos($privacy, "'pgset-analytics' => lang(") < strpos($privacy, "'pgset-retention' => lang(") && strpos($privacy, "'pgset-retention' => lang(") < strpos($privacy, "'pgset-cookies'   => lang("), 'after Visitor tracking, before Cookie consent');
 
 	// Inside the rows the search index still reads each card's labels apart.
 	$html = pg_settings_fold(array(
