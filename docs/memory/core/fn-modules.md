@@ -140,6 +140,7 @@ description: Generated from the module field of the memory files: each includes/
 - `email_design_copies`: [[email-designs-copies]]
 - `email_designs`: [[email-designs]]
 - `email_designs_ready`: [[email-designs-ready]]
+- `email_settings_tabs`: [[settings-email-tabs]]
 - `encryption_key`: [[settings-security-cards]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `event_check_in`: [[bug-hunt-event-tickets]], [[event-tickets-check-in]]
