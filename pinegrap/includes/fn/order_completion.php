@@ -1753,7 +1753,16 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $
         }
     }
 
-    if (($inventory != 1) || ($inventory_quantity == 0)) {
+    if ($inventory != 1) {
+        return;
+    }
+
+    // The line keeps what its sale took (stock_taken), so a cancel puts back
+    // only that; an untracked product's line keeps NULL.
+    $order_item_id = (int) ($line['order_item_id'] ?? 0);
+
+    if ($inventory_quantity <= 0) {
+        pg_stock_taken_record('order_items', $order_item_id, 0);
         return;
     }
 
@@ -1762,7 +1771,13 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $
     if ($sale === null) {
         db_q("UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?",
             array((string) $line['quantity'], (string) $product_id)) or output_error('Query failed.');
-    } elseif ($sale['taken'] === 0) {
+    }
+
+    // Without locations the unsigned column stops at 0, so the sale took at
+    // most what was there; with them, what the location gave.
+    pg_stock_taken_record('order_items', $order_item_id, ($sale === null) ? min((int) $inventory_quantity, max(0, (int) $line['quantity'])) : $sale['taken']);
+
+    if (($sale !== null) && ($sale['taken'] === 0)) {
         // The location has none left: nothing is taken from another one.
         return;
     }

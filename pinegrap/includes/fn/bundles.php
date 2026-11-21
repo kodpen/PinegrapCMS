@@ -749,6 +749,10 @@ function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$
             "INSERT INTO order_item_components (order_id, order_item_id, product_id, quantity, unit_cost) VALUES (?, ?, ?, ?, ?)",
             array($order_id, $order_item_id, $product_id, $per_bundle, $unit_cost));
 
+        // The component row keeps what this sale took (stock_taken), so a
+        // cancel puts back only that; an untracked component keeps NULL.
+        $component_row = (int) mysqli_insert_id(db::$con);
+
         if (isset($stock_left[$product_id])) {
             $before = $stock_left[$product_id];
         } else {
@@ -762,6 +766,7 @@ function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$
         }
 
         if (($before <= 0) || ($quantity === 0)) {
+            pg_stock_taken_record('order_item_components', $component_row, 0);
             continue;
         }
 
@@ -769,7 +774,13 @@ function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$
 
         if ($sale === null) {
             db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . ($per_bundle * $quantity) . "') WHERE id = '" . $product_id . "'");
-        } elseif ($sale['taken'] === 0) {
+        }
+
+        // Without locations the unsigned column stops at 0, so the sale took
+        // at most what was there; with them, what the location gave.
+        pg_stock_taken_record('order_item_components', $component_row, ($sale === null) ? min($before, $per_bundle * $quantity) : $sale['taken']);
+
+        if (($sale !== null) && ($sale['taken'] === 0)) {
             continue;
         }
 
@@ -981,8 +992,9 @@ function pg_bundle_return_stock($order_item_id, $quantity, $source)
         return false;
     }
 
+    $taken_column = pg_stock_taken_ready('order_item_components') ? 'order_item_components.stock_taken' : 'NULL AS stock_taken';
     $components = db_items(
-        "SELECT order_item_components.product_id, order_item_components.quantity, products.inventory, products.inventory_quantity
+        "SELECT order_item_components.id, order_item_components.product_id, order_item_components.quantity, " . $taken_column . ", products.inventory, products.inventory_quantity
         FROM order_item_components
         INNER JOIN products ON products.id = order_item_components.product_id
         WHERE order_item_components.order_item_id = '" . (int) $order_item_id . "'");
@@ -1002,7 +1014,13 @@ function pg_bundle_return_stock($order_item_id, $quantity, $source)
 
         $product_id = (int) $component['product_id'];
         $before = (int) $component['inventory_quantity'];
-        $units = max(1, (int) $component['quantity']) * max(0, (int) $quantity);
+        // Only what the sale took goes back (stock_taken); nothing taken,
+        // nothing written and nothing announced.
+        $units = pg_stock_taken_put_back($component['stock_taken'], max(1, (int) $component['quantity']) * max(0, (int) $quantity));
+
+        if ($units === 0) {
+            continue;
+        }
 
         $written = pg_stock_total_write($product_id, 'adjust', $units, $location_id, 'return', 'order_item:' . (int) $order_item_id);
         $location = null;
@@ -1016,6 +1034,10 @@ function pg_bundle_return_stock($order_item_id, $quantity, $source)
                 'name'     => pg_stock_location_name($written['location_id']),
                 'quantity' => (int) $written['after'],
             );
+        }
+
+        if (($written === null) || $written['ok']) {
+            pg_stock_taken_returned('order_item_components', $component['id'], $units);
         }
 
         db("UPDATE products SET out_of_stock = '0' WHERE (id = '" . $product_id . "') AND (inventory_quantity > 0)");

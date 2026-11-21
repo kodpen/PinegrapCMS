@@ -102,6 +102,77 @@ function pg_stock_sale_amount($quantity, $at_location)
 }
 
 /**
+ * Whether a table records the units a sale took (stock_taken, step
+ * 11.0.269): order_items or order_item_components. Before the step the
+ * takers write nothing and a cancel puts back the whole quantity.
+ *
+ * @param string $table
+ * @return bool
+ */
+function pg_stock_taken_ready($table)
+{
+    return function_exists('pg_schema_has') && pg_schema_has((string) $table, 'stock_taken');
+}
+
+/**
+ * Keep on an order line, or a bundle line's component row, the units its
+ * sale took from the stock.
+ *
+ * @param string $table order_items or order_item_components
+ * @param int    $id    the row
+ * @param int    $taken units taken, 0 when the sale took none
+ * @return void
+ */
+function pg_stock_taken_record($table, $id, $taken)
+{
+    if (((int) $id <= 0) || !in_array($table, array('order_items', 'order_item_components'), true) || !pg_stock_taken_ready($table)) {
+        return;
+    }
+
+    db("UPDATE " . $table . " SET stock_taken = '" . max(0, (int) $taken) . "' WHERE id = '" . (int) $id . "'");
+}
+
+/**
+ * How many units a cancel puts back: the smaller of what the sale took and
+ * what is asked; all that is asked when nothing was recorded (a line from
+ * before the column, or an untracked product). Pure.
+ *
+ * @param mixed $taken the row's stock_taken: null for not recorded
+ * @param int   $asked
+ * @return int
+ */
+function pg_stock_taken_put_back($taken, $asked)
+{
+    $asked = max(0, (int) $asked);
+
+    if (($taken === null) || ($taken === '')) {
+        return $asked;
+    }
+
+    return min($asked, max(0, (int) $taken));
+}
+
+/**
+ * Lower a row's stock_taken by the units a cancel put back, so the same
+ * cancel applied twice gives the stock back once. A row with nothing
+ * recorded is left alone.
+ *
+ * @param string $table order_items or order_item_components
+ * @param int    $id
+ * @param int    $units
+ * @return void
+ */
+function pg_stock_taken_returned($table, $id, $units)
+{
+    if (((int) $id <= 0) || ((int) $units <= 0) || !in_array($table, array('order_items', 'order_item_components'), true) || !pg_stock_taken_ready($table)) {
+        return;
+    }
+
+    db("UPDATE " . $table . " SET stock_taken = GREATEST(0, CAST(stock_taken AS SIGNED) - " . (int) $units . ")
+        WHERE id = '" . (int) $id . "' AND stock_taken IS NOT NULL");
+}
+
+/**
  * The change a stock API call makes at a location that holds $at_location:
  * set writes the quantity (below 0 is 0), adjust moves by the signed amount
  * and stops at 0, as the total's GREATEST(0, ...) does.
