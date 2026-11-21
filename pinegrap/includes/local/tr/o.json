@@ -457,6 +457,8 @@
     "On this server": "Bu sunucuda",
     "On this site": "Bu sitede",
     "On time": "Zamanında",
+    "On time {var:1}% across the country": "Ülke genelinde zamanında teslim %{var:1}",
+    "On time {var:1}% in {var:2}": "{var:2} içinde zamanında teslim %{var:1}",
     "On top (card-img-top)": "Üstte (card-img-top)",
     "On tour": "Turda",
     "On tour now: new shows added": "Turnedeyiz: yeni konserler eklendi",
