@@ -23,7 +23,7 @@ module: address_autocomplete
 
 ## Where is the account kept?
 - `connect_apps` row `addr_<key>` (no schema change, like SMS): key sealed as `client_secret`, never drawn back (empty box keeps it); Photon's host in `options.host` (https only, `PG_ADDR_PHOTON_HOST` when empty). One provider on at a time: saving one on switches the others off; `pg_addr_provider()` is the first on with a complete account.
-- Settings › Ecommerce › Address Autocomplete (`pgset-address-autocomplete`): `pg_addr_settings_decide()` (pure, tested); `_check()` before anything in `commerce.save.php` is written, `_save()` after the label drivers. "Save and show suggestions" lists the Test Address's suggestions.
+- Key or host on the provider's page of Connections (CX11g4 #11007, `ui/connections-address-merchant-page.md`); the card `pgset-address-autocomplete` keeps switch and provider (`pg_addr_settings_decide()`, `_check()` before `commerce.save.php` writes, `_save()` after the label drivers).
 
 ## How was it verified?
 - `tests/address_autocomplete_test.php`: each provider's answer mapped from `tests/fixtures/address_autocomplete/`, the Turkish boxes, input clean-up, error answers, the card's decisions. No provider was called, no site run; the form script ran once in local Chromium with `fetch` mocked.

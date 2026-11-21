@@ -170,8 +170,13 @@ function test_settings_workspace_assistants_cards_have_no_form_in_the_dialog()
 	pg_assert_same(2, substr_count($card, '<form method="post"'), 'the old screen\'s forms: the connection and a button\'s');
 	pg_assert_contains("\$sheet = \$dialog ? '' :", $card, 'no window of its own in the dialog');
 
-	foreach (array('enabled', 'app_id', 'routine_url', 'token', 'token_clear', 'summary_hour', 'summary_channel') as $field) {
+	foreach (array('enabled', 'routine_url', 'token', 'token_clear') as $field) {
 		pg_assert_contains("name=\"' . \$field_name('" . $field . "') . '\"", $card, $field . ' named for the screen');
+	}
+
+	// The selects are drawn by the row's $select, which takes the name.
+	foreach (array('app_id', 'summary_hour', 'summary_channel') as $field) {
+		pg_assert_contains("\$select(\$field_name('" . $field . "'), ", $card, $field . ' named for the screen');
 	}
 
 	$bulk = settings_workspace_assistants_test_function('includes/workspace/bulk.php', 'ws_bulk_settings_card');

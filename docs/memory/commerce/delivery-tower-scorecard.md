@@ -15,7 +15,7 @@ module: delivery_scorecard
 - Month: a carrier a `pg-report-l1` row; its provinces are `pg-report-l2` rows, folded, opened by a `pg-gather-toggle` "Provinces" in the carrier's cell (a small inline script toggles `hidden`). A province is named as first written; keys fold as `pg_delivery_tower_province_key()`.
 - Last 12 months: a `.pg-seg` of the five figures above the table (`?figure=`), a carrier a row, a month a column; a month under 20 shows a dash with "Too few parcels" for screen readers.
 - Excel (`?export=xlsx`): the table as shown, through `pg_xlsx_write_plain()`; a month view row per carrier and per province.
-- The link segments "Problems" / "Carrier scorecard" wait for the Delivery problems screen (DT3).
+- Above the tools row, the link segments "Problems" / "Carrier scorecard" shared with Delivery problems (`delivery-tower-segments.md`).
 
 ## Where does the arrival suggestion show? (T12)
 - `pg_delivery_tower_arrival_check()`: the method's carrier (its own, else what its code spells) and its country figure from the nightly summary; working-day median when the method counts no weekend day as transit, calendar median otherwise; shown when it differs from `base_transit_days` by a day or more.

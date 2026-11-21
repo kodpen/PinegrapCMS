@@ -329,8 +329,8 @@ $pg_settings_cards[] = '
     </div>';
 
 // ── Address Autocomplete ──
-// The provider account is kept with the connected accounts' applications,
-// the key sealed (includes/fn/address_autocomplete.php).
+// The switch and the provider; each provider's key or server is typed on
+// its page of Connections (includes/fn/address_autocomplete.php).
 $pg_settings_cards[] = '
     <div id="pgset-address-autocomplete" class="pg-set-card">
         <div class="card">

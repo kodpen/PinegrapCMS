@@ -680,14 +680,27 @@ function pg_connections_screen_driver_pages()
  * Every page whose keys came from Site Settings › Ecommerce: the card
  * gateways, the payment drivers, Givex (pg_payment_method_connections();
  * PayPal Express Checkout's keys are on PayPal's page), the carrier label
- * services, and UPS, FedEx and USPS. Pure.
+ * services, UPS, FedEx and USPS, the address autocomplete providers, and
+ * Google Merchant Center (its account, from the Product Feeds card). Pure.
  *
  * @return array page keys
  */
 function pg_connections_screen_commerce_pages()
 {
     return array_merge(pg_connections_screen_gateway_pages(), pg_connections_screen_driver_pages(), array('givex'),
-        pg_connections_screen_label_pages(), pg_connections_screen_carrier_pages());
+        pg_connections_screen_label_pages(), pg_connections_screen_carrier_pages(),
+        pg_connections_screen_address_pages(), array('merchant_center'));
+}
+
+/**
+ * The address autocomplete providers whose key or server is typed on their
+ * own page (the keys of pg_addr_providers()). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_address_pages()
+{
+    return array('google_places', 'mapbox', 'photon');
 }
 
 /**
@@ -726,8 +739,9 @@ function pg_connections_screen_carrier_pages()
  * Translation; the WhatsApp, İYS and SMS providers' accounts, for who may
  * open Communication; Sign in with Apple's application and the CAPTCHA
  * providers' keys, for who may open Accounts and sign-in; a card
- * gateway's, a payment driver's or a shipping service's keys, for who may
- * open Ecommerce), "uses", then
+ * gateway's, a payment driver's, a shipping service's or an address
+ * provider's keys and Merchant Center's account, for who may open
+ * Ecommerce), "uses", then
  * "repositories" on
  * GitHub's page for a holder of the Workspace settings right. Each card
  * keeps the gate of the place it came from; a card the viewer may not open

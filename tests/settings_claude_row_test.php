@@ -3,12 +3,14 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings > Assistants and agents, Claude's opened row
- * (ws_claude_row_html()): one column; outside the fold one switch, two text
- * fields, one checkbox, two selects and three buttons; no help line longer
- * than 110 characters; the fold "Application and key" holds the key, the
- * secret's hint, Reset secret and the application select; the posted names
- * are the ones the save module reads. The drawer "The latest requests"
- * holds the version and the requests.
+ * (ws_claude_row_html()), as the architect's drawing has it
+ * (docs/memory/ui/settings-claude-row.md): the switch
+ * with one sentence and "How does this work?"; a grid of two columns with
+ * Application | Summary channel, then Routine address | Token; Try, then
+ * Set up on claude.ai; the fold "Key and secret" holds the key, the
+ * secret's hint and Reset secret; no help line longer than 110 characters;
+ * the posted names are the ones the save module reads. The drawer "The
+ * latest requests" holds the version and the requests.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -64,28 +66,36 @@ function test_settings_claude_row_counts_outside_the_fold()
 	$html = ws_claude_row_html(settings_claude_row_test_values());
 	list($outside) = settings_claude_row_test_split($html);
 
-	pg_assert_false((bool) preg_match('/\b(?:sm|md|lg|xl):col-[57]\b/', $html), 'no second column');
+	pg_assert_false((bool) preg_match('/\b(?:sm|md|lg|xl):col-[57]\b/', $html), 'the grid is the row\'s own, not the old two columns');
 	pg_assert_false(strpos($html, 'ws-claude-status') !== false, 'the right column is gone');
+	pg_assert_same(1, substr_count($outside, 'class="ws-claude-grid"'), 'one grid of two columns');
+	pg_assert_same(4, substr_count($outside, 'class="ws-claude-cell"'), 'four cells');
 	pg_assert_same(1, substr_count($outside, 'class="pg-switch"'), 'one switch');
 	pg_assert_same(2, preg_match_all('/<input[^>]+type="(?:url|password|text)"/', $outside), 'two text fields');
-	pg_assert_same(1, substr_count($outside, 'class="pg-checkbox"'), 'one checkbox');
-	pg_assert_same(2, substr_count($outside, '<select'), 'two selects');
-	pg_assert_same(3, substr_count($outside, '<button'), 'three buttons');
+	pg_assert_same(1, substr_count($outside, 'type="checkbox" name="ws_claude_token_clear"'), 'the bin\'s checkbox');
+	pg_assert_same(3, substr_count($outside, '<select'), 'three selects: application, channel, hour');
+	pg_assert_same(6, substr_count($outside, '<button'), 'How does this work?, the eye, the bin, Try, Set up, the last line');
 	pg_assert_false(strpos($outside, 'data-ws-copy-field') !== false, 'no copy field');
 	pg_assert_false(strpos($html, 'ws-claude-recent') !== false, 'no list of requests');
 	pg_assert_false(strpos($html, 'ws-claude-key-prompt') !== false, 'the prompt is only in the set-up drawer');
 	pg_assert_false(strpos($html, h(lang('Still missing'))) !== false, 'what is missing stands in the set-up drawer');
 	pg_assert_false(strpos($html, 'pg-button-fill') !== false, 'the dialog\'s Save is the one filled button');
 
+	// The sentence and its link, as drawn.
+	pg_assert_contains(h(lang('When @claude is written in a channel, your routine on claude.ai answers.')) . ' <button type="button" class="ws-claude-how-link" data-ws-claude-how data-bs-toggle="drawer" data-bs-target="#pgset-ws-claude-setup"', $outside, 'one sentence, then How does this work? opening the set-up drawer');
+	pg_assert_contains('>' . h(lang('How does this work?')) . '</button>', $outside, 'its name');
+	pg_assert_contains(h(lang('The record that holds who connects to the site and with which permissions.')) . ' <a class="ws-claude-how-link" href="api_settings.php">' . h(lang('Application Access')) . '</a>', $outside, 'the application\'s help leads to Application Access');
+	pg_assert_contains(h(lang('Claude writes its daily summary to this channel.')), $outside, 'the summary channel\'s help');
+
 	// The buttons in their order, the last request at their right.
 	$try = strpos($outside, 'name="ws_claude_test"');
-	$setup = strpos($outside, 'data-bs-target="#pgset-ws-claude-setup"');
+	$setup = strpos($outside, 'data-bs-target="#pgset-ws-claude-setup" aria-controls="pgset-ws-claude-setup"><i class="bi bi-box-arrow-up-right"');
 	$requests = strpos($outside, 'data-bs-target="#pgset-ws-claude-requests"');
-	pg_assert_true($try !== false && $try < $setup && $setup < $requests, 'Try the connection, Set up on claude.ai, The latest requests');
-	pg_assert_true($requests < strpos($outside, 'Last request 14:05 · Claude answered'), 'the grey line last');
+	pg_assert_true($try !== false && $try < $setup && $setup < $requests, 'Try, then Set up on claude.ai, then the last line');
+	pg_assert_true($requests < strpos($outside, 'Last request 14:05 · Claude answered'), 'the last line opens The latest requests');
 
-	// The order of the parts.
-	$order = array('ws_claude_enabled"', 'ws_claude_routine_url"', 'ws_claude_token"', 'ws_claude_summary_hour"', 'ws_claude_test"');
+	// The order of the parts: the drawing's grid, read row by row.
+	$order = array('ws_claude_enabled"', 'ws_claude_app_id"', 'ws_claude_summary_channel"', 'ws_claude_summary_hour"', 'ws_claude_routine_url"', 'ws_claude_token"', 'ws_claude_test"');
 	$last = -1;
 
 	foreach ($order as $needle) {
@@ -93,6 +103,12 @@ function test_settings_claude_row_counts_outside_the_fold()
 		pg_assert_true($at !== false && $at > $last, $needle . ' in its place');
 		$last = $at;
 	}
+
+	// Without the summary's upgrade its cell stays, empty, so the token keeps
+	// its column.
+	$none = ws_claude_row_html(settings_claude_row_test_values(array('summary' => null)));
+	pg_assert_contains('<div class="ws-claude-cell" aria-hidden="true"></div>', $none, 'an empty cell');
+	pg_assert_false(strpos($none, 'ws_claude_summary_hour') !== false, 'no hour');
 }
 
 function test_settings_claude_row_help_lines_are_short()
@@ -126,7 +142,7 @@ function test_settings_claude_row_help_lines_are_short()
 
 	$prompt = $rows[2];
 	pg_assert_contains(h(lang('Show the new prompt')), $prompt, 'an old prompt leads to the new one');
-	pg_assert_true(substr_count($prompt, 'data-bs-target="#pgset-ws-claude-setup"') === 2, 'in the set-up drawer');
+	pg_assert_same(3, substr_count($prompt, 'data-bs-target="#pgset-ws-claude-setup"'), 'the notice, How does this work? and Set up open the set-up drawer');
 }
 
 function test_settings_claude_row_fold()
@@ -134,16 +150,15 @@ function test_settings_claude_row_fold()
 	$html = ws_claude_row_html(settings_claude_row_test_values());
 	list($outside, $fold) = settings_claude_row_test_split($html);
 
-	pg_assert_contains('class="pg-gather-toggle mt-0" data-ws-claude-fold aria-expanded="false" aria-controls="ws-claude-fold">' . h(lang('Application and key')), $fold, 'shut while an application is chosen');
+	pg_assert_contains('class="pg-gather-toggle mt-0" data-ws-claude-fold aria-expanded="false" aria-controls="ws-claude-fold">' . h(lang('Key and secret')), $fold, 'shut while an application is chosen');
 	pg_assert_contains('id="ws-claude-fold" hidden', $fold, 'its body hidden');
 	pg_assert_contains('data-ws-copy-field="ws-claude-key"', $fold, 'the key with Copy');
 	pg_assert_contains('••••a1b2', $fold, 'the secret\'s last four');
 	pg_assert_contains('name="ws_claude_key_reset" value="1"', $fold, 'Reset secret');
 	pg_assert_contains('onclick="return confirm(', $fold, 'its warning in the confirm');
-	pg_assert_contains('name="ws_claude_app_id"', $fold, 'the application select');
-	pg_assert_contains('href="api_settings.php"', $fold, 'the name leads to Application Access');
 	pg_assert_contains('content:read', $fold, 'what it may read');
-	pg_assert_false(strpos($outside, 'ws_claude_app_id') !== false, 'the select is in the fold only');
+	pg_assert_false(strpos($fold, 'name="ws_claude_app_id"') !== false, 'the application select is in the grid');
+	pg_assert_contains('name="ws_claude_app_id"', $outside, 'in the grid');
 
 	// No application: the fold is open and holds Create Claude's key.
 	$none = ws_claude_row_html(settings_claude_row_test_values(array('app' => null, 'config' => array('enabled' => true, 'app_id' => 0, 'routine_url' => '', 'token_set' => false), 'missing' => array('x'))));
@@ -175,14 +190,16 @@ function test_settings_claude_row_posted_names_unchanged()
 
 	pg_assert_same(array('ws_claude_app_id', 'ws_claude_enabled', 'ws_claude_key_reset=1', 'ws_claude_routine_url', 'ws_claude_summary_channel', 'ws_claude_summary_hour', 'ws_claude_test=1', 'ws_claude_token', 'ws_claude_token_clear'), $names(ws_claude_row_html(settings_claude_row_test_values())), 'with an application');
 
-	$none = ws_claude_row_html(settings_claude_row_test_values(array('app' => null, 'missing' => array('x'))));
-	pg_assert_same(array('ws_claude_app_id', 'ws_claude_enabled', 'ws_claude_key_create=1', 'ws_claude_routine_url', 'ws_claude_summary_channel', 'ws_claude_summary_hour', 'ws_claude_token', 'ws_claude_token_clear'), $names($none), 'with none');
+	// No token stored: no bin, so no checkbox for it.
+	$none = ws_claude_row_html(settings_claude_row_test_values(array('app' => null, 'missing' => array('x'), 'config' => array('enabled' => true, 'app_id' => 0, 'routine_url' => '', 'token_set' => false))));
+	pg_assert_same(array('ws_claude_app_id', 'ws_claude_enabled', 'ws_claude_key_create=1', 'ws_claude_routine_url', 'ws_claude_summary_channel', 'ws_claude_summary_hour', 'ws_claude_token'), $names($none), 'with none');
 
 	// Somebody else who may open the settings: the fields read only, no key.
 	$other = ws_claude_row_html(settings_claude_row_test_values(array('admin' => false)));
 	pg_assert_false(strpos($other, 'ws_claude_key_') !== false, 'no key buttons');
 	pg_assert_false(strpos($other, 'data-ws-copy-field') !== false, 'no key');
-	pg_assert_contains('id="ws_claude_enabled" aria-describedby="ws_claude_enabled-help" checked disabled', $other, 'read only');
+	pg_assert_contains('id="ws_claude_enabled" aria-label="' . h(lang('Claude can be asked in the channels')) . '" aria-describedby="ws_claude_enabled-help" checked disabled', $other, 'read only');
+	pg_assert_false(strpos($other, 'data-ws-claude-clear') !== false, 'no bin');
 }
 
 function test_settings_claude_row_requests_drawer()
