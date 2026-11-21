@@ -142,6 +142,17 @@ pg_stock_notify_trim_daily();
 // already count for nothing, the sweep keeps the table small.
 pg_stock_hold_sweep_daily();
 
+// Walk-in queue numbers past their place's keep period (includes/fn/
+// walk_in_queue_store.php): name, phone, e-mail and the link go, the figures
+// stay. Once a day, a few seconds a tick until done.
+$waiting_cleared = pg_waiting_keep_clear_daily();
+
+if ($waiting_cleared > 0) {
+
+    log_activity(lang(array('string' => 'general job cleared the personal data of {var:1} queue number(s) past their keep period', 'vars' => array(pg_format_number($waiting_cleared, 0)))), 'UNKNOWN');
+
+}
+
 // Pre-orders whose date has come or whose stock is in end (includes/fn/
 // preorder.php): the flag is cleared, the back order stays. Once an hour.
 $preorders_ended = pg_preorder_end_hourly();

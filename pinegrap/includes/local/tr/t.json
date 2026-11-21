@@ -6388,6 +6388,7 @@
     "The questions could not be read: {var:1}": "Sorular okunamadı: {var:1}",
     "The questions that get answered fastest have three things in common:": "En hızlı yanıt alan soruların üç ortak özelliği var:",
     "The queue does not try it again by itself: sent again before its cause is fixed, it would fail the same way.": "Kuyruk bunu kendiliğinden yeniden denemez: nedeni giderilmeden yeniden gönderilirse aynı şekilde başarısız olur.",
+    "The queue place's keep period": "Sıra yerinin saklama süresi",
     "The quick brown fox jumps over the lazy dog.": "Pijamalı hasta yağız şoföre çabucak güvendi.",
     "The quick crossing from the north coast, the islanders' everyday route to the mainland.": "Kuzey kıyısından hızlı geçiş; adalıların anakaraya her günkü yolu.",
     "The quick switcher also finds tags and saved searches.": "Hızlı geçiş artık etiketleri ve kayıtlı aramaları da buluyor.",

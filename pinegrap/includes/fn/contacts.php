@@ -83,6 +83,7 @@ function pg_contact_holders()
         'whatsapp_outbox'              => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         'whatsapp_inbox'               => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         'feedback_responses'           => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
+        'waiting_tickets'              => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         // The nightly pass writes the contact again from the orders.
         'customer_rhythm'              => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
     );

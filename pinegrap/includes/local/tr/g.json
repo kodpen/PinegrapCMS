@@ -890,6 +890,7 @@
     "general job applied the retention rules to {var:1} record(s)": "genel görev saklama kurallarını {var:1} kayda uyguladı",
     "general job brought {var:1} file(s) back from the object store ({var:2})": "genel görev nesne depolamadan {var:1} dosyayı geri aldı ({var:2})",
     "general job cancelled unpaid bank transfer order #{var:1} after {var:2} day(s)": "genel görev, ödenmemiş #{var:1} numaralı havale siparişini {var:2} gün sonra iptal etti",
+    "general job cleared the personal data of {var:1} queue number(s) past their keep period": "genel iş, saklama süresi dolan {var:1} sıra numarasının kişisel verilerini sildi",
     "general job corrected the rating of {var:1} product(s) from their reviews": "genel iş {var:1} ürünün puanını değerlendirmelerinden yeniden hesaplayarak düzeltti",
     "general job created {var:1} shipping label(s) for paid orders": "genel görev ödenen siparişler için {var:1} kargo etiketi oluşturdu",
     "general job deleted {var:1} object(s) of deleted or replaced files from the object store": "genel görev silinen ya da değiştirilen dosyaların {var:1} nesnesini nesne deposundan sildi",
