@@ -101,6 +101,9 @@
 - lead-journey-screens.md: Plan lead-journey, how its screens are put together (LJ2 to LJ5): the Journey card, the Workspace customer card, the Interest card and its settings, the Hot contacts view, the Lead sources report
 - lead-journey-steps.md: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and the tie, the journey, the scores and interests, alerts and events, lead sources, API, close-out
 - lead-journey.md: Plan (owner 2026-11-20, poll 183): visits tied to a known person with consent, the journey, a decaying interest score and interests, hot and returning alerts, lead sources; LJ1a to LJ7
+- mail-settings-one-screens.md: Plan mail-settings-one, its screens: the E-mail category's two tabs, the Sending tab's rows, Add a mailbox with Sign in with Google, built from the architect's design files
+- mail-settings-one-steps.md: Plan mail-settings-one, steps EM1 to EM6: the E-mail category's two tabs, the Sending tab's rows, the sending domain in one place, one account for both, Sign in with Google, close-out
+- mail-settings-one.md: Plan (owner 2026-11-21): one E-mail category with Sending and Mailboxes tabs, the e-mail settings' contradictions fixed, one account for sending and reading, Sign in with Google when adding a box
 - mailboxes-tidy.md: Plan (owner 2026-11-20): Site Settings › Mailboxes tidied: folded parts, a box's drawer in four tabs, a mailbox removed from its drawer, a new box from starting points; MT1 to MT4
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-repricer-features.md: Plan marketplace-repricer, features R1 to R13: channel price rules, own channel price, the floor, buybox reads, the strategies, limits, try-first mode, the log, the report, the API
@@ -132,6 +135,8 @@
 - prototype-approval-steps.md: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the link's approval settings, the viewer's verdict, round two, the publish rule, mails, events and API, close-out
 - prototype-approval.md: Plan (owner 2026-11-20, poll 205): what prototype sharing lacks for a customer's sign-off: Approve or Request changes per page sealed to the draft, round two, publish rule, mails, events; PA1a to PA7
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
+- settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line
 - stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see
 - stock-holds-steps.md: Plan stock-holds, steps SH1 to SH5: the table and its functions, the checkout's check, placing and releasing around the payment, what people see, close-out; which files other work holds
 - stock-holds.md: Plan (owner 2026-11-20, agent channel poll 172): units are held for an order while its payment runs, so two orders cannot both take the last unit; SH1 to SH5
