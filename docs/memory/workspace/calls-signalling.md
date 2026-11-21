@@ -13,7 +13,7 @@ description: Which live read carries a Workspace call (CL1 census): ws_sync and 
 - Where `data/temp` cannot be written, the reads ask the database each time (one indexed row of the channel's live call), as there is no stamp to trust; the clean-up then runs only where a call is live.
 
 ## How often does a browser in a call look?
-- Every second while it is in a call, with `ws_call_sync` (CL2): only the call's part for the call's own channel, not the channel's look, so moving to another channel keeps the call; at the channel's usual 4 s otherwise.
+- Every second while it is in a call, with `ws_call_sync` (CL2): only the call's part for the call's own channel, not the channel's look, so moving to another channel keeps the call; at the channel's usual 4 s otherwise. A guest in a call reads the same way with the guest page's `call_sync` (`calls-guest.md`).
 - The open channel's `call` part also drives the head's Join button of a group (`calls-group.md`): no extra read.
 - The 4 s `ws_sync` also carries `rings` (calls that ring the reader in any channel of theirs), only while the stamp exists (`calls-screen.md`).
 - A browser in a call sends a keep-alive signal every 30 s: a call with no signal for 2 minutes ends and its signals are deleted (`calls-server.md`).

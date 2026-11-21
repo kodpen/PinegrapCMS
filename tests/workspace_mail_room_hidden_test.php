@@ -63,6 +63,8 @@ function workspace_mail_room_hidden_test_readers()
 		'includes/workspace/api_resources.php::ws_api_channel_groups_delete' => array('key:group_id'),
 		'includes/workspace/api_resources.php::ws_api_message_threads'     => array('id'),
 		'includes/workspace/api_threads.php::ws_api_threads_list'          => array('kinds', 'id'),
+		// The channel of a call that may ring, by the call's channel.
+		'includes/workspace/calls.php::ws_call_rings_for'                  => array('id'),
 		'includes/workspace/calendar.php::ws_calendar'                     => array('hidden'),
 		'includes/workspace/channel_memory.php::ws_memory_sweep'           => array('id'),
 		'includes/workspace/channels.php::ws_channel_name_taken'           => array('hidden'),

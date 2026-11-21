@@ -4,7 +4,9 @@
  * The guest's side of a conversation in the workspace (workspace_guest.php):
  * the token is taken from behind the "#" and claimed, then the room is read
  * and asked for news every few seconds. The guest writes text with bold,
- * italics and strike-through, answers a message and leaves an emoji.
+ * italics and strike-through, answers a message and leaves an emoji. While
+ * the room holds a call, a bar under the head offers to join it; the call
+ * window itself is assets/js/workspace_calls.js's, bundled before this file.
  *
  * Served minified as assets/js/workspace_guest.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -110,7 +112,7 @@
         return node;
     }
 
-    function post(action, data) {
+    function post(action, data, options) {
         var payload = data || {};
 
         payload.action = action;
@@ -123,6 +125,7 @@
             method: 'POST',
             credentials: 'same-origin',
             cache: 'no-store',
+            keepalive: !!(options && options.keepalive),
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         }).then(function (response) {
@@ -149,6 +152,11 @@
         state.closed = true;
         clearTimeout(state.timer);
         foot.classList.add('d-none');
+
+        if (call.bar) {
+            call.bar.classList.add('d-none');
+        }
+
         note(message || t('error'), 'closed');
     }
 
@@ -168,6 +176,99 @@
         box.classList.add('show');
         clearTimeout(toastTimer);
         toastTimer = setTimeout(function () { box.classList.remove('show'); }, 4000);
+    }
+
+    // ── The room's call ──────────────────────────────────────────────────
+
+    // The call actions of the Workspace's call window, as the guest page
+    // names them: the guest joins, signals, reads and leaves, never starts.
+    var CALL_ACTIONS = { ws_call_join: 'call_join', ws_call_signal: 'call_signal', ws_call_sync: 'call_sync', ws_call_leave: 'call_leave' };
+
+    var call = { bar: document.getElementById('pg-guest-call'), join: null, hooks: null };
+
+    function button(className, label, iconName, title) {
+        var node = el('button', className);
+
+        node.type = 'button';
+
+        if (iconName) {
+            node.appendChild(icon(iconName));
+        }
+
+        if (label) {
+            node.appendChild(document.createTextNode(label));
+        }
+
+        if (title) {
+            node.title = title;
+            node.setAttribute('aria-label', title);
+        }
+
+        return node;
+    }
+
+    function callApi(action, data, options) {
+        if (!CALL_ACTIONS[action]) {
+            return Promise.reject(new Error(t('error')));
+        }
+
+        return post(CALL_ACTIONS[action], data, options).then(function (answer) {
+            if (!answer || (answer.status !== 'ok')) {
+                throw new Error((answer && answer.message) || t('error'));
+            }
+
+            return answer;
+        });
+    }
+
+    // The bar under the head, its Join button from the call window's
+    // module: shown while the room holds a call the guest is not in, and
+    // never to a guest who only reads, or where calls are off or the
+    // browser cannot take part.
+    function drawCall(data) {
+        var Calls = window.PGWsCalls;
+
+        if (!CONF.calls || !Calls || data.read_only || !call.bar) {
+            if (call.bar) {
+                call.bar.classList.add('d-none');
+            }
+
+            return;
+        }
+
+        if (!call.join) {
+            call.hooks = {
+                helpers: { t: t, el: el, icon: icon, button: button, api: callApi, toast: toast, clear: function (node) { node.textContent = ''; } },
+                me: 0,
+                ice: CONF.calls.ice || [],
+                max: CONF.calls.max || 4,
+                soundOn: function () { return false; }
+            };
+
+            var box = Calls.joinButton(0, data.title || data.topic || t('title'), call.hooks);
+
+            if (!box) {
+                return;
+            }
+
+            call.join = box.querySelector('.ws-call-join');
+            call.join.addEventListener('click', function () { call.bar.classList.add('d-none'); });
+            call.bar.appendChild(box);
+        }
+
+        Calls.channelCall(0, data.call || null, call.hooks);
+
+        var live = (data.call && data.call.call) || null;
+        var on = !call.join.hidden && !Calls.busy();
+
+        call.bar.classList.toggle('d-none', !on);
+
+        if (on) {
+            var mark = call.bar.querySelector('.pg-guest-call-icon');
+
+            mark.className = 'bi pg-guest-call-icon ' + ((live && (live.kind === 'video')) ? 'bi-camera-video' : 'bi-telephone');
+            document.getElementById('pg-guest-call-text').textContent = t((live && (live.kind === 'video')) ? 'call_on_video' : 'call_on');
+        }
     }
 
     // ── The room ─────────────────────────────────────────────────────────
@@ -852,6 +953,7 @@
             }
 
             foot.classList.toggle('d-none', readOnly);
+            drawCall(data);
 
             if (!data.same && data.messages) {
                 state.signature = data.signature;
