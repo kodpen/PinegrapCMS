@@ -1854,8 +1854,9 @@ function waf_good_bots()
     // created by the same upgrade, so one implies the other.
     //
     // These are NOT the AI training crawlers. GPTBot, ClaudeBot, CCBot and
-    // PerplexityBot crawl in bulk and stay in waf_bad_bots() regardless of
-    // these switches. The entries added here fetch a single page because a
+    // PerplexityBot crawl in bulk and stay in waf_bad_bots() whatever these
+    // switches say; SEO's "Allow AI training" alone takes the training ones
+    // off that match (waf_ai_training_allowed()). The entries added here fetch a single page because a
     // human just asked the assistant about it (chatgpt-user, claude-user,
     // perplexity-user) or index for AI search results (oai-searchbot,
     // claude-searchbot). Blocking them keeps the site out of AI answers.
@@ -2054,6 +2055,40 @@ function waf_bad_bots()
 }
 
 /**
+ * The AI training crawlers among waf_bad_bots(), token => name as robots.txt
+ * names them: the crawling ones of pg_ai_crawler_catalog()['train'], which
+ * this file cannot load (no functions.php here).
+ * tests/waf_ai_training_test.php holds the two lists together.
+ *
+ * @return array
+ */
+function waf_ai_training_bots()
+{
+    return array(
+        'gptbot'             => 'GPTBot',
+        'claudebot'          => 'ClaudeBot',
+        'ccbot'              => 'CCBot',
+        'meta-externalagent' => 'meta-externalagent',
+        'amazonbot'          => 'Amazonbot',
+        'bytespider'         => 'Bytespider',
+    );
+}
+
+/**
+ * Whether SEO › AI Crawlers' "Allow AI training" is on
+ * (config.robots_ai_training). Then the training crawlers are taken off the
+ * built-in bad-bot match, and only that: they get no good-bot privilege, and
+ * the rate limits, bans, IP lists and attack rules treat them as any visitor.
+ * Off, or before the column exists, they are refused as bad bots.
+ *
+ * @return bool
+ */
+function waf_ai_training_allowed()
+{
+    return (bool) waf_setting('robots_ai_training', 0);
+}
+
+/**
  * Penetration testing and exploitation tooling.
  *
  * The old filter missed every one of these: none of them contain the words
@@ -2102,7 +2137,9 @@ function waf_generic_clients()
  * Classify the user agent.
  *
  * Returns array(
- *   'class' => 'human' | 'good' | 'bad' | 'attack' | 'generic' | 'empty',
+ *   'class' => 'human' | 'good' | 'bad' | 'attack' | 'generic' | 'empty'
+ *              | 'training' (an AI training crawler while "Allow AI training"
+ *              is on: neither good nor bad, a visitor to the firewall),
  *   'name'  => matched product name,
  *   'token' => matched token,
  * )
@@ -2148,8 +2185,24 @@ function waf_classify_bot($user_agent)
     // about one of them, and it is not lying about being AhrefsBot. The real
     // Googlebot never mentions a competitor's crawler in its user agent, so
     // this ordering cannot misclassify a genuine one.
+    //
+    // With "Allow AI training" on, a training crawler is skipped here and
+    // nowhere else: the match goes on, so a second bad name in the same user
+    // agent is still refused, and the class it gets below is neither good nor
+    // bad.
+    $training = waf_ai_training_allowed() ? waf_ai_training_bots() : array();
+    $training_token = '';
+
     foreach (waf_bad_bots() as $token) {
         if (strpos($lower, $token) !== false) {
+            if (isset($training[$token])) {
+                if ($training_token === '') {
+                    $training_token = $token;
+                }
+
+                continue;
+            }
+
             return array('class' => 'bad', 'name' => $token, 'token' => $token);
         }
     }
@@ -2174,6 +2227,13 @@ function waf_classify_bot($user_agent)
         if ($token !== '' && strpos($lower, $token) !== false) {
             return array('class' => 'bad', 'name' => $token, 'token' => $token);
         }
+    }
+
+    // A training crawler let in by "Allow AI training", after the operator's
+    // Blocked Bots (which still refuse it) and before the residual signal
+    // (meta-externalagent's user agent ends on "/crawler)").
+    if ($training_token !== '') {
+        return array('class' => 'training', 'name' => $training[$training_token], 'token' => $training_token);
     }
 
     // Residual crawler signals. Deliberately last and deliberately anchored
@@ -5837,6 +5897,18 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     $bot = waf_classify_bot($agent);
 
     if ($bot['class'] === 'human') {
+        return;
+    }
+
+    // An AI training crawler with "Allow AI training" on passes the bot
+    // policy as a visitor would: unverified, so it gets no rate or country
+    // exemption, and the IP lists, bans, limits and signature scan still
+    // apply. IS_BOT keeps it out of the visitor counts.
+    if ($bot['class'] === 'training') {
+        if (!defined('IS_BOT')) {
+            define('IS_BOT', true);
+        }
+
         return;
     }
 
