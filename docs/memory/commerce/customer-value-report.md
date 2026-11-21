@@ -18,7 +18,8 @@ module: customer_values
 - Owner: the screen's look (poll 111).
 
 ## What was left out?
-- A list of every customer with their figures; groups by moving fifths and a rule "the customer's group is" (their bounds move at each rebuild, so people would join groups again and flows and campaign mails would repeat); a predicted value; profit; repeat purchase per product. Each needs a later yes.
+- Groups by moving fifths and a rule "the customer's group is" (their bounds move at each rebuild, so people would join groups again and flows and campaign mails would repeat); profit. Each needs a later yes.
+- A list of every customer, a predicted value (expected 12 months) and repeat purchase per product came with customer rhythm (`customer-rhythm.md`): the Rhythm part of this report, and a group rule on rhythm stages, whose bounds stay fixed until the next order.
 
 ## Which features are built, with which PR?
 - U1 counting rule (complete or exported, not cancelled, total less refunds, other-unit marketplace orders apart), U2 key, U3 one rule for every figure, U4 one summary as a settings text, U5 rebuild in bounded runs and one write, U7 no person in the summary: #9995.

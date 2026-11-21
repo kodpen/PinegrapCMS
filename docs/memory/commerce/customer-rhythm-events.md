@@ -17,7 +17,7 @@ module: customer_rhythm_tell
 - A product bought again since gets a new due day (`pg_customer_rhythm_due_products()`), so it can be named again.
 
 ## What does the comparison share do? (H12)
-- With `share` on, `pg_customer_rhythm_held_back()` holds back one due customer in ten (crc32 of the key and the day): `reminded_at` is set with `held_back` 1 and nothing is announced. Off by default (architect, `plans/customer-rhythm.md`).
+- With `share` on, `pg_customer_rhythm_held_back()` holds back one due customer in ten (crc32 of the key and the day): `reminded_at` is set with `held_back` 1 and nothing is announced. Off by default (architect, `customer-rhythm.md`).
 - A told reminder writes `reminded_at`, `held_back` 0, `came_back_order_id` 0 before it is announced, so a run stopped between the two never tells twice.
 - The summary (config_text `customer_rhythm`) keeps `reminders`: 'YYYY-MM' => [told, held back], 24 months, added from the pass state at its end. Who came back after a reminder (H13): `customer-rhythm-report.md`.
 
