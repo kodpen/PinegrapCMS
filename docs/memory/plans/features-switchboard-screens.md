@@ -4,13 +4,15 @@ description: Plan features-switchboard, its screen: the Features pane's board of
 ---
 
 ## By which rules?
-- `ui/screen-composition-rules.md`; parts copied from the Design examples screen, its section in brackets (`workflow/screen-described-in-plan.md`). The switch row is drawn by the architect and enters that screen before FS1.
+- `ui/screen-composition-rules.md`; parts copied from the Design examples screen, its section in brackets (`workflow/screen-described-in-plan.md`). The switch row is the architect's drawing (`plans/features-switchboard-design.md`), on that screen as DX2b's "Switch rows" pattern before FS1.
 
 ## How is the Features pane laid out?
 - Head: "Features" and one purpose line [Type and text]: what the site has on, and how its search, pages and images behave.
-- The "Modules" card [Cards] of switch rows [Switch row], one a module, in this order: Commerce, Accounting, Forms, Calendars, Workspace, Courses, Tickets, Ads, Auto dialogs, Sharing buttons, Visitor notifications, Maps, Clicks and scrolling, Content approval, Mobile view.
-- A row: its icon tile [Icon tiles and people], name, one line, the switch at its end [Fields]. A row whose settings sit below adds "Settings" quiet, opening its folded row. Commerce and Accounting show their state pill [Segmented control and status] and "Open" quiet in place of the switch.
-- Below the card, folded rows [Settings pane], one open, each line saying its state: "Site search", "Sharing buttons", "Visitor notifications", "Maps", "Clicks and scrolling", "Content approval", "Speed", "Images", "Page revisions", "Signature time stamp", "Badge".
+- The "Modules" group label with its count in grey (as "9 / 15 on"), over one inner card of rows [Switch rows], one a module, in this order: Commerce, Accounting, Forms, Calendars, Workspace, Courses, Tickets, Ads, Auto dialogs, Sharing buttons, Visitor notifications, Maps, Clicks and scrolling, Content approval, Mobile view.
+- A row is a div, never a link or a button: icon tile, name in bold with one sentence under it, "Settings" quiet small on a row whose settings sit below (kept while off), then `input.pg-switch`. The name is the switch's label; the sentence is its `aria-describedby`.
+- Off: the tile turns grey and the sentence says what switching off hides. A user who may not change it: the switch disabled, the row faded, the sentence says who may. Commerce and Accounting: no switch, their pill ("On" teal, "Off" grey) and "Open" quiet.
+- Under 576 px: name and switch on one line, the sentence under them, "Settings" or the pill and "Open" under that.
+- Below the board, folded rows [Settings pane], one open, each line saying its state: "Site search", "Sharing buttons", "Visitor notifications", "Maps", "Clicks and scrolling", "Content approval", "Speed", "Images", "Page revisions", "Signature time stamp", "Badge".
 - Site search: Search type [Segmented control and status] Simple, Advanced, its help under it; Synonyms; Promoted Results.
 - Sharing buttons: Setup [Segmented control and status] Simple, Advanced; Simple shows the services as checkboxes [Fields] in two columns, Advanced the code field.
 - Speed: Page Cache with its Page Lifetime, Prefetch Menu Links, Performance Monitoring; with Mobile view on, the row's line says the page cache is off.

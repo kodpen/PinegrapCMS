@@ -23,8 +23,8 @@ priority: 8
 - Default Badge Label stays in Features as its own folded row: no other category holds members' badges.
 - Content Approval's row is drawn for designers and administrators only, as its card is (`registry.php:622-626`).
 
-## What is asked of the architect?
-- The switch row (FS1): the Design examples screen has no row with a switch at its end. A Connect row is a link and a folded row's head is a button; neither may hold a switch.
+## What did the architect decide? (2026-11-21, agent channel message 11410)
+- The switch row is a look built from existing parts, drawn in `plans/features-switchboard-design.md` (boards A at 1440 px, B at 390 px); it enters the Design examples screen as the "Switch rows" pattern in DX2b (`plans/design-examples-patterns-mail.md`). The plan's own calls above: agreed.
 
 ## What binds it?
 - Field names, ids, columns and what a save stores do not change; card ids and old anchors keep working (`pg_settings_legacy_anchors()`); one Save for the pane; a switched-off feature's settings are never hidden (`ui/settings-card-save-rules.md`).

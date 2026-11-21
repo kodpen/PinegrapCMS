@@ -4,7 +4,7 @@ description: Plan features-switchboard, steps FS1 to FS3: the board of module sw
 ---
 
 ## Which steps are there?
-- FS1 (M) first, once the switch row is on the Design examples screen: the "Modules" card of switch rows at the pane's top. The switches of Forms, Calendars, Workspace, Ads, Auto Dialogs, Mobile and Social Networking, and of the cards Courses, Tickets, Visitor notifications, Maps, Clicks and scrolling and Content Approval, move into it with their names and ids; Commerce and Accounting as rows with their state and Open. Fixes: F1, F2, F7, F8.
+- FS1 (M) first, after DX2b (`plans/design-examples-patterns-mail.md`), copying its "Switch rows" pattern: the "Modules" card of switch rows at the pane's top. The switches of Forms, Calendars, Workspace, Ads, Auto Dialogs, Mobile and Social Networking, and of the cards Courses, Tickets, Visitor notifications, Maps, Clicks and scrolling and Content Approval, move into it with their names and ids; Commerce and Accounting as rows with their state and Open. Fixes: F1, F2, F7, F8.
 - In FS1 each row's line says what the module adds and that switching off deletes nothing; Mobile's line says it turns the page cache off. Every switch is `pg-switch`. The board takes the `pgset-features` id; until FS2, Default Badge Label, Site Search Type, Prefetch Menu Links and Performance Monitoring wait below it in a card of their own. The registry gets the board's section and keywords; `pgset-courses` and `pgset-event-tickets` open the board (`pg_settings_legacy_anchors()`).
 - Tests of FS1: every switch posts under its old name, the save handlers unchanged; each old card id opens the board; a Manager gets no Content Approval row.
 
