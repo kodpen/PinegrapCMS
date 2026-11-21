@@ -1,6 +1,6 @@
 ---
 name: pick-pack-shelf-address
-description: Shelf address (product_bins): the "Shelf" box on the product screen's stock card, Modify Selected's "Shelf address", the shelf and shelf:<location> import columns, the shelf field of POST /products/{id}/inventory
+description: Shelf address (product_bins): the "Shelf" box on the stock card, Modify Selected's "Shelf address", shelf import columns, shelf in POST /products/{id}/inventory
 module: product_bins
 ---
 
