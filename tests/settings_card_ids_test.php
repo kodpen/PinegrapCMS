@@ -96,3 +96,15 @@ function test_settings_card_ids_screens_keep_off_chrome_ids()
 		}
 	}
 }
+
+function test_settings_card_ids_general_rows_keep_card_ids()
+{
+	$source = (string) file_get_contents(settings_card_ids_root() . '/includes/settings/general.php');
+
+	foreach (array('pgset-organization', 'pgset-server', 'pgset-software', 'pgset-datetime') as $id) {
+		pg_assert_same(1, substr_count($source, '<div id="' . $id . '" class="pg-set-card">'), 'general.php: ' . $id . ' is drawn once, inside its folded row');
+	}
+
+	pg_assert_false((bool) preg_match('/\bid="pgset-(?!organization"|server"|software"|datetime")/', $source), 'general.php: no other pgset- id, which would end a card for the search index');
+	pg_assert_false((bool) preg_match('/\bid="ip"/', $source), 'general.php: the IP is a line, no box');
+}

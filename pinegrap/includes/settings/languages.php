@@ -300,9 +300,7 @@ if (!empty($language_redirect_ready)) {
         }
 
         $output_language_redirect_check = '
-                    <div class="col-12">
-                        <div class="alert theme-secondary mb-0 py-3 small"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($language_redirect_sentence) . '</div>
-                    </div>';
+                        <div class="alert theme-secondary mt-3 mb-0 py-3 small"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($language_redirect_sentence) . '</div>';
     }
 
     $output_language_redirect = '
@@ -334,9 +332,9 @@ if (!empty($language_redirect_ready)) {
                                     </div>
                                 </div>
                             </div>
+                        </div>' . $output_language_redirect_check . '
+                        <div class="mt-3">' . pg_geo_settings_note() . '
                         </div>
-                    </div>' . $output_language_redirect_check . '
-                    <div class="col-12">' . pg_geo_settings_note() . '
                     </div>';
 }
 
@@ -371,7 +369,7 @@ if ($translation_settings_ready) {
 
         if ($translation_ai_engine) {
             $translation_ai_state .= '<br/>' . ($translation_ai_engine['ready']
-                ? h($translation_ai_engine['label']) . ': <span class="pg-pill pg-tone-teal">' . lang('ready') . '</span>'
+                ? h($translation_ai_engine['label']) . ': <span class="pg-pill pg-tone-teal">' . lang('Ready') . '</span>'
                 : h($translation_ai_engine['label']) . ': ' . h($translation_ai_engine['reason']));
         }
     }

@@ -338,6 +338,7 @@ function pg_supplier_feed_mapping_decode($json)
         'confirmed'   => empty($mapping['confirmed']) ? 0 : 1,
         'records'     => isset($mapping['records']) ? (int) $mapping['records'] : 0,
         'read_at'     => isset($mapping['read_at']) ? (int) $mapping['read_at'] : 0,
+        'draft_group' => isset($mapping['draft_group']) ? (int) $mapping['draft_group'] : 0,
     );
 }
 
@@ -366,6 +367,24 @@ function pg_supplier_feed_mapping_input($posted, $keys)
     }
 
     return array('fields' => $fields, 'errors' => $errors);
+}
+
+/**
+ * The group drafts go into, as Fields posted it: a browse product group that
+ * is there, else 0 (none).
+ *
+ * @param mixed $posted
+ * @return int
+ */
+function pg_supplier_feed_draft_group_input($posted)
+{
+    $id = (int) $posted;
+
+    if ($id <= 0) {
+        return 0;
+    }
+
+    return ((int) db_value("SELECT COUNT(*) FROM product_groups WHERE id = '" . $id . "' AND display_type = 'browse'") > 0) ? $id : 0;
 }
 
 /**
@@ -1239,6 +1258,10 @@ function pg_supplier_feed_delete($id)
             @unlink($file);
         }
     }
+
+    if (function_exists('pg_supplier_feed_spool_clear')) {
+        pg_supplier_feed_spool_clear($id);
+    }
 }
 
 /**
@@ -1378,6 +1401,7 @@ function pg_supplier_feed_first_read($feed, $record_path = null)
         'confirmed'   => 0,
         'records'     => count($read['records']),
         'read_at'     => time(),
+        'draft_group' => $old['draft_group'],
     ));
 }
 

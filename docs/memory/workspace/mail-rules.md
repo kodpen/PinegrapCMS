@@ -19,6 +19,7 @@ description: A support box's incoming mail rules (IB11): one condition and one a
 
 ## Where are they set?
 - "Incoming mail rules" on the Mailboxes card (Site Settings › Mailboxes), under "Blocked senders" (`ws_mail_rules_html()`): each rule as a line ("When the sender is at @shop.test → give it to Ayşe", `ws_mail_rule_text()`) with its box and Delete, then the Add rule form: Mailbox (support boxes), When, Address, domain or words, Then (Close it, or Give it to each team member). Drawn only when a support box exists.
+- The Add rule form is a flex row: each select as wide as its longest choice ("The sender's domain is" read whole; five equal columns cut it), the address field takes the rest; under 576 px every field is full width (`.ws-mail-rule-add`).
 - The fields are flat (`ws_mail_rule_box`, `_field`, `_value`, `_action`): the settings screen refuses a value posted as a list. The buttons submit the pane's form; `mailboxes.save.php` calls `ws_mail_rule_add()` (`ws_mail_rule_input()` checks) and `ws_mail_rule_delete()` (value `<box id>:<rule id>`). Both need the Workspace settings right, as Allow again does. A second rule with the same condition in one box is refused.
 - Each change is a Site Log line (`ws_mail_rule_log_line()`). No API route or MCP tool.
 

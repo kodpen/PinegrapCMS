@@ -159,7 +159,7 @@ function ws_settings_people_rows_html($candidates, $departments, $viewer, $name,
 
         $html .= '
             <tr' . ($person['excluded'] ? ' class="opacity-50"' : '') . '>
-                <td>
+                <td class="ws-people-cell-person">
                     <div class="d-flex align-items-center gap-3">
                         ' . pg_avatar_markup(array('name' => '') + $person, '', 'pg-avatar-28') . '
                         <div>
@@ -168,10 +168,10 @@ function ws_settings_people_rows_html($candidates, $departments, $viewer, $name,
                         </div>
                     </div>
                 </td>
-                <td><input class="form-control form-control-sm" type="text" name="' . h($name($person_id, 'title')) . '" maxlength="100" value="' . h($person['title']) . '"' . $locked_attr . $form_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Job title'), $person['name'])))) . '"></td>
-                <td style="width:6rem"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="' . h($name($person_id, 'day_hours')) . '" value="' . h(ws_settings_hours($day)) . '"' . $locked_attr . $form_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $person['name'])))) . '"></td>
-                <td>' . ws_settings_days_html($name($person_id, 'workdays'), $mask, 'ws_p' . $person_id, lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Working days'), $person['name']))), $locked) . '</td>
-                <td class="text-center">
+                <td class="ws-people-cell-title" data-label="' . h(lang('Job title')) . '"><input class="form-control form-control-sm" type="text" name="' . h($name($person_id, 'title')) . '" maxlength="100" value="' . h($person['title']) . '"' . $locked_attr . $form_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Job title'), $person['name'])))) . '"></td>
+                <td class="ws-people-cell-hours" data-label="' . h(lang('Hours a day')) . '"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="' . h($name($person_id, 'day_hours')) . '" value="' . h(ws_settings_hours($day)) . '"' . $locked_attr . $form_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $person['name'])))) . '"></td>
+                <td class="ws-people-cell-days" data-label="' . h(lang('Working days')) . '">' . ws_settings_days_html($name($person_id, 'workdays'), $mask, 'ws_p' . $person_id, lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Working days'), $person['name']))), $locked) . '</td>
+                <td class="ws-people-cell-out text-center" data-label="' . h(lang('Not in the team')) . '">
                     <div class="form-field d-inline-block mb-0">
                         <div class="switch"><input class="" type="checkbox" name="' . h($name($person_id, 'excluded')) . '" value="1"' . $form_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Not in the team'), $person['name'])))) . '"'
                             . ($person['excluded'] ? ' checked' : '')

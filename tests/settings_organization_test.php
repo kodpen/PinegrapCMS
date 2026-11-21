@@ -46,7 +46,11 @@ function settings_organization_test_card($file, $id)
 		return '';
 	}
 
-	$end = strpos($source, '$pg_settings_cards[]', $start);
+	$end = strpos($source, '$general_parts[', $start);
+
+	if ($end === false) {
+		$end = strpos($source, '$pg_settings_cards[]', $start);
+	}
 
 	return ($end === false) ? substr($source, $start) : substr($source, $start, $end - $start);
 }
@@ -104,7 +108,7 @@ function test_settings_organization_card_draws_every_field()
 	pg_assert_contains('$output_organization_logo_picker', $card, 'the logo picker printed on the card');
 	pg_assert_contains('name="email_address" id="setting_email_address"', $card, 'the Support E-mail Address on the card');
 	pg_assert_contains("lang('Support E-mail Address')", $card, 'under its name');
-	pg_assert_false(strpos(settings_organization_test_card('includes/settings/general.php', 'pgset-server'), 'email_address') !== false, 'Server & Domain no longer draws it');
+	pg_assert_false(strpos(settings_organization_test_card('includes/settings/general.php', 'pgset-server'), 'email_address') !== false, 'Site address does not draw it');
 }
 
 function test_settings_organization_fields_left_their_old_places()

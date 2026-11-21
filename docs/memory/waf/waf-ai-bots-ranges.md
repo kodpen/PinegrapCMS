@@ -4,7 +4,7 @@ description: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() ve
 ---
 
 ## How are AI bots split?
-- Two kinds, never mixed. Training crawlers (GPTBot, ClaudeBot, CCBot, PerplexityBot) stay in `waf_bad_bots()`. User fetchers (ChatGPT-User, Claude-User, Perplexity-User) and AI search indexers (OAI-SearchBot, Claude-SearchBot) are allowed via `waf_ai_bots()`, verified by the operator's published IP list (table `waf_bot_ranges`), not rDNS.
+- Two kinds, never mixed. Training crawlers (GPTBot, ClaudeBot, CCBot, meta-externalagent, Amazonbot, Bytespider) are in `waf_bad_bots()`, and SEO's "Allow AI training" alone decides them (`waf-ai-training-crawlers.md`); PerplexityBot stays a bad bot. User fetchers (ChatGPT-User, Claude-User, Perplexity-User) and AI search indexers (OAI-SearchBot, Claude-SearchBot) are allowed via `waf_ai_bots()`, verified by the operator's published IP list (table `waf_bot_ranges`), not rDNS.
 - Anthropic publishes its three bots in ONE list (`anthropic-bots`): the UA token proves intent, the IP proves origin. A `claudebot` UA is still blocked even if its IP is in the list.
 
 ## What are the verification rules?
@@ -27,4 +27,4 @@ description: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() ve
 - `waf_ai_bots()` + `pg_waf_ai_range_sources()`, then check the new token by hand against the bad/attack lists, both ways as substrings (no test in `tests/` does it).
 - `pg_ai_crawler_catalog()` too: robots.txt names the same bots per switch (docs/memory/visitors/ai-crawlers-llms-txt.md); `tests/seo_ai_crawlers_test.php` fails until it does.
 
-Related: docs/memory/waf/waf-score-calibration-and-bot-order.md
+Related: docs/memory/waf/waf-score-calibration-and-bot-order.md, docs/memory/waf/waf-ai-training-crawlers.md

@@ -17,8 +17,8 @@
  * a conversation opened again, a switched-off survey, a person asked in the
  * last 30 days, a staff address, "Don't ask me again", a bounced address
  * or, for a commercial survey, missing marketing consent or an İYS refusal
- * cancels the row. The message itself is pg_feedback_message_send(); while
- * no such sender is loaded, the due rows wait.
+ * cancels the row. The message itself is pg_feedback_message_send() in
+ * includes/fn/feedback_answer.php, loaded by pg_feedback_sender().
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -589,9 +589,11 @@ function pg_feedback_job_run($now)
         return;
     }
 
+    // A channel whose message is not built yet keeps its rows waiting.
+    $channels = "'" . implode("', '", array_map('e', pg_feedback_message_channels())) . "'";
     $due = (array) db_items(
         "SELECT * FROM feedback_responses
-        WHERE (status = " . PG_FEEDBACK_QUEUED . ") AND (due_at <= '" . (int) $now . "') AND (token_hash IS NOT NULL)
+        WHERE (status = " . PG_FEEDBACK_QUEUED . ") AND (due_at <= '" . (int) $now . "') AND (token_hash IS NOT NULL) AND (channel IN (" . $channels . "))
         ORDER BY due_at
         LIMIT " . PG_FEEDBACK_PASS_ROWS);
 
@@ -623,13 +625,15 @@ function pg_feedback_job_run($now)
 
 /**
  * The function that sends a survey's message (its row, its survey, whether
- * it is the reminder; true when it went), null while none is loaded: the
- * due rows then wait.
+ * it is the reminder; true when it went), loaded from
+ * includes/fn/feedback_answer.php; null while none is there.
  *
  * @return callable|null
  */
 function pg_feedback_sender()
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback_answer.php');
+
     return function_exists('pg_feedback_message_send') ? 'pg_feedback_message_send' : null;
 }
 

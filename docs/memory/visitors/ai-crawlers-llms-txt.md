@@ -8,9 +8,9 @@ description: AI section of robots.txt (Content-Signal, Disallow groups in step w
 - Code: `includes/fn/ai_crawlers.php`; `get_robots.txt.php` calls `pg_robots_txt_content()`, `get_llms.txt.php` serves llms.txt.
 
 ## Who decides which AI crawler is turned away?
-- Training (`pg_ai_crawler_catalog()['train']`: GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, meta-externalagent, Amazonbot, Bytespider): the card's own "Allow AI training" switch.
+- Training (`pg_ai_crawler_catalog()['train']`: GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, meta-externalagent, Amazonbot, Bytespider): the card's "Allow AI training", robots.txt and firewall alike (`waf/waf-ai-training-crawlers.md`).
 - Assistants (ChatGPT-User, Claude-User, Perplexity-User) and AI search (OAI-SearchBot, Claude-SearchBot): the WAF switches `waf_allow_ai_fetchers` / `waf_allow_ai_search`, on the same card. One source, so robots.txt never contradicts the firewall. `tests/seo_ai_crawlers_test.php` holds these lists to `waf_ai_bots()` and the real training crawlers to `waf_bad_bots()`.
-- PerplexityBot is left out: Perplexity calls it a search crawler, the WAF blocks it as a bad bot.
+- PerplexityBot is left out: a search crawler to Perplexity, a bad bot here.
 
 ## What is written, and where?
 - Each turned-away crawler gets its own `User-agent: X` / `Disallow: /` group at the TOP of the file. Not after the operator's text: a text ending on a User-agent line would absorb it and close the site to that crawler.

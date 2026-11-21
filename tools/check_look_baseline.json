@@ -2,7 +2,7 @@
     "assets/css/backend.src.css": {
         "size": 434,
         "weight": 228,
-        "colour": 384
+        "colour": 380
     },
     "assets/css/pg_dash.src.css": {
         "size": 21,
@@ -659,7 +659,7 @@
         "tabs": 0
     },
     "includes/fn/output.php": {
-        "button": 163,
+        "button": 162,
         "tabs": 0
     },
     "includes/fn/page_bulk.php": {
@@ -854,10 +854,6 @@
         "button": 2,
         "tabs": 0
     },
-    "includes/workspace/agents_settings.php": {
-        "button": 1,
-        "tabs": 0
-    },
     "includes/workspace/bulk.php": {
         "button": 1,
         "tabs": 0
@@ -903,7 +899,7 @@
         "tabs": 0
     },
     "includes/workspace/templates.php": {
-        "button": 6,
+        "button": 5,
         "tabs": 0
     },
     "includes/workspace/workdays.php": {
