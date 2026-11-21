@@ -323,7 +323,7 @@ console.log(JSON.stringify({
 	steps: [timelineZoomStep(1, 1, 50), timelineZoomStep(1.5, 1, 50), timelineZoomStep(2.5, 1, 50), timelineZoomStep(2.5, -1, 50), timelineZoomStep(1.2, -1, 50), timelineZoomStep(1, -1, 50), timelineZoomStep(40, 1, 50), timelineZoomStep(50, 1, 50), timelineZoomStep(3, 1, 1)],
 	wheel: [timelineZoomWheel(2, -100, 50) > 2, timelineZoomWheel(2, 100, 50) < 2, timelineZoomWheel(1, 500, 50), timelineZoomWheel(49, -5000, 50)],
 	scroll: [timelineZoomScroll(1000, 2000, 100, 50, 400), timelineZoomScroll(2000, 1000, 0, 0, 400), timelineZoomScroll(2000, 1000, 1600, 400, 400)],
-	follow: [timelineFollow(0, 400, 100, 200), timelineFollow(0, 400, 900, 1000), timelineFollow(1000, 400, 100, 200), timelineFollow(0, 400, 380, 420)]
+	follow: [timelineFollow(0, 400, 100, 200), timelineFollow(0, 400, 900, 1000), timelineFollow(1000, 400, 100, 200), timelineFollow(0, 400, 380, 420), timelineFollow(0, 100, 300, 500)]
 }));
 ');
 
@@ -339,7 +339,7 @@ console.log(JSON.stringify({
 	pg_assert_same(array(1.5, 2, 3, 2, 1, 1, 48, 50, 1), $result['steps'], 'the buttons and keys step along the levels, within one and the top');
 	pg_assert_same(array(true, true, 1, 50), $result['wheel'], 'the wheel and a pinch zoom smoothly within one and the top');
 	pg_assert_same(array(250, 0, 600), $result['scroll'], 'a zoom keeps the point under the pointer, within the strip');
-	pg_assert_same(array(0, 750, 0, 200), $result['follow'], 'the strip scrolls only to bring the part on the screen into view');
+	pg_assert_same(array(0, 750, 0, 200, 400), $result['follow'], 'the strip scrolls only to bring the part on the screen into view, its newest end when it is wider');
 }
 
 function test_workspace_conversation_timeline_js_words()

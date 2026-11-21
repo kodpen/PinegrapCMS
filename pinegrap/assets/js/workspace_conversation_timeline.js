@@ -360,10 +360,15 @@
     }
 
     // The scroll that shows a stretch of the strip: as it is when the
-    // stretch is in view, else the stretch in the middle. Pure.
+    // stretch is in view, else the stretch in the middle, or its newest end
+    // when it is wider than the view. Pure.
     function timelineFollow(scrollLeft, viewWidth, left, right) {
         if ((left >= scrollLeft) && (right <= scrollLeft + viewWidth)) {
             return scrollLeft;
+        }
+
+        if (right - left > viewWidth) {
+            return Math.max(0, Math.round(right - viewWidth));
         }
 
         return Math.max(0, Math.round(((left + right) / 2) - (viewWidth / 2)));
@@ -795,11 +800,12 @@
         view.cursor.hidden = true;
         view.track.appendChild(view.cursor);
 
+        // A strip drawn for the first time follows the part on the screen.
         if (view.place === 'head') {
             view.frame = h.el('div', 'ws-ctl-frame');
             view.frame.hidden = true;
             view.track.appendChild(view.frame);
-            frame(view);
+            frame(view, !oldFull);
         }
 
         var at = (view.at === null || view.at >= data.items.length) ? data.items.length - 1 : view.at;
