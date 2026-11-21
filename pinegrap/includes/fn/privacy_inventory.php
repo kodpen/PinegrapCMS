@@ -95,6 +95,7 @@ function pg_privacy_inventory_retentions()
         'incomplete_carts' => 'Rule: incomplete carts',
         'orders'           => 'Rule: orders',
         'closed_requests'  => 'Rule: closed requests',
+        'queue_keep'       => 'The queue place\'s keep period',
         'lead_journey'     => 'The journey\'s keep period (13 months)',
     );
 }
@@ -176,6 +177,8 @@ function pg_privacy_inventory()
             'purpose' => 'Bookings', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => array('email', 'text')),
         'feedback_responses' => array('categories' => array('contact', 'messages'), 'subjects' => array('customer'),
             'purpose' => 'Satisfaction survey answers', 'ground' => 'legitimate_interest', 'retention' => 'until_erased', 'person' => $contact),
+        'waiting_tickets' => array('categories' => array('identity', 'contact'), 'subjects' => array('customer', 'visitor'),
+            'purpose' => 'Walk-in queue numbers and who took them', 'ground' => 'legitimate_interest', 'retention' => 'queue_keep', 'person' => $contact),
         'course_progress' => array('categories' => array('identity'), 'subjects' => array('customer'),
             'purpose' => 'Members\' course progress', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => $user),
         // The visitor journey (lead_journey_store.php), only with the cookie

@@ -1026,6 +1026,18 @@ function pg_privacy_erase_tables()
             'comment'     => null,
             'answers'     => null,
         )),
+        // A walk-in queue number keeps its service, state, desk and times
+        // for the report; who took it goes, and its link stops opening. A
+        // number still waiting or called leaves the queue first
+        // (_pg_privacy_erase_apply_waiting_tickets()).
+        'waiting_tickets' => array('find' => array('contact_id' => 'contact_ids', 'email' => 'emails', 'phone' => 'phones'), 'action' => 'anonymise', 'fields' => array(
+            'name'       => '',
+            'phone'      => '',
+            'email'      => '',
+            'contact_id' => 0,
+            'priority'   => '',
+            'token_hash' => '',
+        )),
         // A member's course progress (lessons done, first open, completion)
         // goes whole; the course and its lessons stay.
         'course_progress'              => array('find' => $user, 'action' => 'delete', 'fields' => array()),
@@ -1161,6 +1173,7 @@ function pg_privacy_erase_labels()
         'customer_rhythm'              => lang('Order rhythm'),
         'bookings'                     => lang('Appointment bookings'),
         'feedback_responses'           => lang('Satisfaction survey answers'),
+        'waiting_tickets'              => lang('Queue numbers'),
         'course_progress'              => lang('Course progress'),
         'lead_visits'                  => lang('Visits tied to the contact'),
         'contact_journey'              => lang('Journey'),
@@ -2021,6 +2034,18 @@ function _pg_privacy_erase_apply_feedback_responses($where, array $fields, array
     db("UPDATE feedback_responses SET status = 3 WHERE (status = 0) AND (" . $where . ")");
 
     _pg_privacy_erase_write('feedback_responses', $where, $fields, $name);
+}
+
+/**
+ * A walk-in queue number of the person still waiting or called leaves the
+ * queue (state left), so no desk calls a number that names nobody; then the
+ * person's fields go, the figures stay.
+ */
+function _pg_privacy_erase_apply_waiting_tickets($where, array $fields, array $scope, $name)
+{
+    db("UPDATE waiting_tickets SET state = 'left', done_at = '" . time() . "' WHERE (state IN ('waiting', 'called')) AND (" . $where . ")");
+
+    _pg_privacy_erase_write('waiting_tickets', $where, $fields, $name);
 }
 
 /**

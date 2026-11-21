@@ -87,7 +87,7 @@ function test_privacy_erase_tables_are_pinned()
 			'application_reviews' => 'delete', 'application_entries' => 'delete', 'application_reviewers' => 'anonymise',
 			'forms' => 'delete',
 			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete', 'customer_rhythm' => 'delete', 'bookings' => 'anonymise',
-			'feedback_responses' => 'anonymise',
+			'feedback_responses' => 'anonymise', 'waiting_tickets' => 'anonymise',
 			'course_progress' => 'delete',
 			'lead_visits' => 'delete', 'contact_journey' => 'delete', 'contact_scores' => 'delete', 'lead_browsers' => 'delete',
 			'email_recipients' => 'delete', 'mail_outbox' => 'delete', 'mail_bounces' => 'delete', 'sms_outbox' => 'delete', 'whatsapp_outbox' => 'delete', 'whatsapp_inbox' => 'delete',
@@ -152,6 +152,7 @@ function test_privacy_erase_tables_are_pinned()
 			'bookings' => array('name' => '{name}', 'email' => '{token}', 'phone' => '', 'notes' => '', 'manage_token' => '', 'user_id' => 0),
 			'application_reviewers' => array('name' => '', 'email' => '{token}'),
 			'feedback_responses' => array('contact_id' => 0, 'person_hash' => '', 'recipient' => '', 'comment' => null, 'answers' => null),
+			'waiting_tickets' => array('name' => '', 'phone' => '', 'email' => '', 'contact_id' => 0, 'priority' => '', 'token_hash' => ''),
 	);
 
 	ksort($expected);
@@ -209,6 +210,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'customer_rhythm' => array('customer_key' => 'customer_keys', 'contact_id' => 'contact_ids'),
 			'bookings' => array('user_id' => 'user_ids', 'email' => 'emails'),
 			'feedback_responses' => array('contact_id' => 'contact_ids', 'person_hash' => 'feedback_hashes'),
+			'waiting_tickets' => array('contact_id' => 'contact_ids', 'email' => 'emails', 'phone' => 'phones'),
 			'course_progress' => $user,
 			'lead_visits' => array('contact_id' => 'contact_ids'),
 			'contact_journey' => array('contact_id' => 'contact_ids'),
