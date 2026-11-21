@@ -14,5 +14,8 @@ description: Who hears of a Workspace e-mail conversation (inbox kinds mail_assi
 - `workspace.mail.received` (`ws_event()` in `ws_mail_ingest()`, every stored incoming mail, new or not; not a bounce, loop or held mail). Payload: id and conversation_id, channel_id, message_id, box_id, new, customer, customer_email, subject, verified; transport (email); never the mail's text (untrusted, the card carries it).
 - A WhatsApp or SMS message starts the same event: `mail-phone-list-event-api.md`. In the catalogue only after the tables exist; record = its channel; placeholders {{record_title}} = subject, {{customer}}; flow outputs in `ws_flow_event_outputs()`; its parity lines in tests/workspace_flows_parity_test.php. The webhook twin with ids only is `workspace.mail.received` in `mail-api.md`.
 
+## What is announced when a conversation closes?
+- `workspace.mail.closed` (`pg_announce()` in `ws_mail_conversation_set()`, webhook only, not a flow start): ids, `assignee_id`, `closed_by`; it queues the mail surveys (`platform/feedback-sends.md`). Opened again by hand: their waiting surveys are cancelled.
+
 ## Tests?
 - `tests/workspace_mail_status_test.php` (wiring), `tests/watch_test.php` (record of the event). The notices and the event's run were not run against a database in the cloud session.

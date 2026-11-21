@@ -186,6 +186,7 @@ function pg_settings_categories()
             'description' => lang('What the site records of its visitors, how long it keeps personal data and what it asks them.'),
             'sections' => array(
                 'pgset-analytics' => lang('Visitor tracking'),
+                'pgset-retention' => lang('How long we keep data'),
                 'pgset-cookies'   => lang('Cookie consent'),
                 'pgset-legal'     => lang('Legal documents'),
                 'pgset-kvkk'      => lang('KVKK notice'),
@@ -193,7 +194,8 @@ function pg_settings_categories()
                 'pgset-privacy-centre' => lang('Privacy centre'),
             ),
             'keywords' => array(
-                'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics, retention, ip address')),
+                'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics, paid')),
+                'pgset-retention' => pg_settings_keywords(lang('retention, ip address, how long, keep, period, delete, visitor records, daily summary, log, audit trail, firewall log, api log')),
                 'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-kvkk'      => pg_settings_keywords(lang('kvkk, kvkk notice, personal data, explicit consent, consent sentence, privacy notice, gdpr')),
@@ -288,21 +290,23 @@ function pg_settings_categories()
             'label' => lang('Firewall and HTTPS'),
             'group' => 'security',
             'icon'  => 'bi-bricks',
-            'description' => lang('The request filter, trusted proxies, bot policy, address lists, HTTPS and security headers.'),
+            'description' => lang('The request filter, the limits on one address, bot policy, address lists, countries, trusted proxies, HTTPS and security headers.'),
             'sections' => array(
                 'pgset-waf'     => lang('Firewall'),
-                'pgset-proxies' => lang('Trusted Proxies'),
-                'pgset-bots'    => lang('Bot Filtering'),
-                'pgset-iplists' => lang('IP Lists'),
-                'pgset-countries' => lang('Country Restriction'),
+                'pgset-limits'  => lang('Limits'),
+                'pgset-bots'    => lang('Bots'),
+                'pgset-iplists' => lang('Addresses'),
+                'pgset-countries' => lang('Countries'),
+                'pgset-proxies' => lang('Trusted proxies'),
                 'pgset-headers' => lang('HTTPS and Security Headers'),
             ),
             'keywords' => array(
-                'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, rate limit, ban')),
-                'pgset-proxies' => pg_settings_keywords(lang('proxy, trusted proxy, load balancer, cdn, x-forwarded-for, visitor address, real ip')),
+                'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, monitor, block mode, sensitivity, log')),
+                'pgset-limits'  => pg_settings_keywords(lang('rate limit, requests per minute, ban, automatic ban, temporary ban, open at once, limit')),
                 'pgset-bots'    => pg_settings_keywords(lang('bot, crawler, googlebot, ai, gptbot, claudebot')),
-                'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, banned')),
+                'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, banned, ban, release')),
                 'pgset-countries' => pg_settings_keywords(lang('country, countries, geo, geoblocking, location, region, tor, block country, allow country')),
+                'pgset-proxies' => pg_settings_keywords(lang('proxy, trusted proxy, load balancer, cdn, x-forwarded-for, visitor address, real ip')),
                 'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer')),
             ),
         ),
@@ -1179,6 +1183,11 @@ function pg_settings_legacy_anchors()
         'google_analytics_web_property_id' => array('privacy', 'pgset-analytics'),
         'stats_url'        => array('privacy',    'pgset-analytics'),
         'ga_property'      => array('privacy',    'pgset-analytics'),
+        // The visitor records' periods and daily summary moved into How
+        // long we keep data; a link to one of their fields lands there.
+        'visitor_retention_days' => array('privacy', 'pgset-retention'),
+        'visitor_ip_days'  => array('privacy',    'pgset-retention'),
+        'visitor_summary'  => array('privacy',    'pgset-retention'),
         // The Google Cloud Translation key moved onto its page of
         // Connections; an old link to its field lands on the card that shows
         // the connection.
@@ -1226,6 +1235,17 @@ function pg_settings_legacy_anchors()
         'ecommerce_clearcommerce_client_id'                => array('commerce', 'pgset-payments'),
         'ecommerce_first_data_global_gateway_store_number' => array('commerce', 'pgset-payments'),
         'ecommerce_sage_merchant_id'                       => array('commerce', 'pgset-payments'),
+        // So did the shipping services' keys; an old link lands on the
+        // Shipping card that switches them on.
+        'ups_client_id'                => array('commerce', 'pgset-shipping'),
+        'fedex_client_id'              => array('commerce', 'pgset-shipping'),
+        'usps_client_id'               => array('commerce', 'pgset-shipping'),
+        'label_geliver__api_token'     => array('commerce', 'pgset-shipping'),
+        'label_basitkargo__api_token'  => array('commerce', 'pgset-shipping'),
+        'label_kargonomi__api_token'   => array('commerce', 'pgset-shipping'),
+        'label_aras__username'         => array('commerce', 'pgset-shipping'),
+        'label_shippo__api_token'      => array('commerce', 'pgset-shipping'),
+        'label_sendcloud__public_key'  => array('commerce', 'pgset-shipping'),
         'pgset-membership' => array('security',   'pgset-membership'),
         'pgset-waf'        => array('firewall',   'pgset-waf'),
         'pgsub-bots'       => array('firewall',   'pgset-bots'),

@@ -204,7 +204,8 @@ function test_event_tickets_export_row_has_no_code()
 {
 	$row = pg_event_tickets_export_row(event_tickets_api_test_row(), array('name' => 'Jazz Night', 'start_date_and_time' => '2026-12-01 20:00:00'));
 
-	pg_assert_same(array('id', 'order_id', 'order_number', 'unit', 'event', 'event_date', 'product', 'state', 'checked_in_at'), array_keys($row), 'its fields');
+	pg_assert_same(array('id', 'order_id', 'order_number', 'unit', 'event', 'event_date', 'product', 'state', 'checked_in_at', 'check_ins'), array_keys($row), 'its fields');
+	pg_assert_same(array(), $row['check_ins'], 'no entries for a ticket of one date');
 	pg_assert_same('Jazz Night', $row['event'], 'event');
 	pg_assert_same('2026-12-01 20:00:00', $row['event_date'], 'date');
 	pg_assert_same('1001', $row['order_number'], 'order');

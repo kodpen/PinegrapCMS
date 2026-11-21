@@ -11,4 +11,4 @@ description: Decisions list, workspace part 42 (2026-11-20 on): an Activity tab 
 - "birde sağda açılıp kapatılabilir etkinlik paneli istiyorum claude dakine benzer (Kanal bilgisi paneli tepesinde tab ile 2. sekme olarak gelebilir.) burada kanalla ilgili durumu doğrumu kaç pr birleşti gibi bilgileri tutar. ajanların bağlamları kaç token onu söyler. çalışılan proje adı yazar."
 - Poll 179: "İkisi de plana girsin": the architect writes both plans, the Activity tab first, then the document; a schema need is asked apart.
 - Why: the owner reads a channel's state out of the conversation today, and a plan told in messages is lost in them and cannot be kept current.
-- Binds: ordinary messages are not changed by it; the Activity tab is the second tab of Channel info. Built: `workspace/channel-activity-tab.md`; plan: `plans/channel-documents.md`.
+- Binds: ordinary messages are not changed by it; the Activity tab is the second tab of Channel info. Built: `workspace/channel-activity-tab.md` and `workspace/channel-notes-written.md`.

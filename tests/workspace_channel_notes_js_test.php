@@ -132,6 +132,81 @@ console.log(JSON.stringify({
 	pg_assert_same(array(), $result['nothing'], 'no card, no words');
 }
 
+// The foot is one line: its words joined by a middle dot, in their order.
+function test_workspace_channel_notes_js_foot_line()
+{
+	$changed = workspace_channel_notes_js_test_function('changedWords');
+	$foot = workspace_channel_notes_js_test_function('footWords');
+	$line = workspace_channel_notes_js_test_function('footLine');
+
+	pg_assert_true($line !== '', 'footLine() is in the card\'s script');
+
+	$result = workspace_channel_notes_js_test_node(workspace_channel_notes_js_test_t() . $changed . $foot . $line . '
+console.log(JSON.stringify({
+	both: footLine({ owner: { name: "Ayşe" }, changed_by: "Changed by @mehmet", updated: "5 min" }, t),
+	ownerOnly: footLine({ owner: { name: "Ayşe" }, changed_by: "" }, t),
+	nothing: footLine(null, t)
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('notes_owner(Ayşe) · Changed by @mehmet · 5 min', $result['both'], 'the owner, then who changed it and when, on one line');
+	pg_assert_same('notes_owner(Ayşe)', $result['ownerOnly'], 'the owner alone, no dot');
+	pg_assert_same('', $result['nothing'], 'no card, an empty line');
+}
+
+// The first line "Written up to …" is told from any other first line.
+function test_workspace_channel_notes_js_written_up_to()
+{
+	$written = workspace_channel_notes_js_test_function('writtenUpTo');
+
+	pg_assert_true($written !== '', 'writtenUpTo() is in the card\'s script');
+
+	$result = workspace_channel_notes_js_test_node($written . '
+console.log(JSON.stringify([
+	writtenUpTo("Written up to #12"),
+	writtenUpTo("  written up to <#message:5>"),
+	writtenUpTo("Written up to"),
+	writtenUpTo("Plan written up to #12"),
+	writtenUpTo("Written upto #12"),
+	writtenUpTo(""),
+	writtenUpTo(null)
+]));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, true, false, false, false, false), $result, 'only a line that opens with "Written up to" is the meta line');
+}
+
+// The card's look: look A's plain card, no coloured edge and no narrow
+// width, no "Note" label, a small quiet Show all centred under the note, a
+// one-line muted foot, headings measured against the text.
+function test_workspace_channel_notes_js_card_look()
+{
+	$card = workspace_channel_notes_js_test_function('cardNode');
+	$fold = workspace_channel_notes_js_test_function('fold');
+	$css = workspace_channel_notes_js_test_source('assets/css/backend.src.css');
+
+	pg_assert_contains("kit.el('div', 'pg-card ws-cn-card')", $card, 'the card is look A\'s plain card');
+	pg_assert_true(strpos($card, "'ws-nb-msg-card'") === false && strpos($card, 'ws-nb-msg-card-kind') === false, 'no coloured edge, narrow width or "Note" label of the old card');
+	pg_assert_true(strpos($card, "notes_card'") === false, 'the "Note" word is not written');
+	pg_assert_contains("kit.el('button', 'pg-button pg-button-quiet pg-button-sm')", $card, 'Show all is a small quiet button');
+	pg_assert_contains("kit.el('div', 'ws-cn-more d-none')", $card, 'in its own row, hidden while the note fits');
+	pg_assert_contains("more.classList.toggle('d-none', state === 'whole')", $fold, 'the fold shows the row only for a longer note');
+	pg_assert_contains("metaLine(kit, text);", $card, 'the "Written up to" line is drawn as a meta line');
+	pg_assert_contains("tightGaps(kit, text);", $card, 'an empty line between paragraphs is a short gap');
+	pg_assert_contains(".ws-cn-gap {\n    display: block;\n    height: 6px;\n}", $css, 'of 6 px');
+	pg_assert_contains("kit.el('div', 'ws-cn-foot pg-text-meta')", $card, 'the foot is one muted line');
+	pg_assert_contains("footLine(card, kit.t)", $card, 'of the foot\'s words joined');
+	pg_assert_contains(".ws-cn-more {\n    margin-top: 6px;\n    text-align: center;\n}", $css, 'the button is centred under the note');
+	pg_assert_contains(".ws-cn-card h2.ws-heading {\n    font-size: var(--pg-text-status-title);\n}", $css, 'the first heading is one step above the text');
+	pg_assert_true(!preg_match('/\.ws-cn-card[^{]*\{[^}]*(max-width|border-left)/', $css), 'no width cap or coloured edge on the card');
+}
+
 function test_workspace_channel_notes_js_version_who()
 {
 	$who = workspace_channel_notes_js_test_function('versionWho');

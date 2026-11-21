@@ -678,14 +678,38 @@ function pg_connections_screen_driver_pages()
 
 /**
  * Every page whose keys came from Site Settings › Ecommerce: the card
- * gateways, the payment drivers, and Givex (pg_payment_method_connections();
- * PayPal Express Checkout's keys are on PayPal's page). Pure.
+ * gateways, the payment drivers, Givex (pg_payment_method_connections();
+ * PayPal Express Checkout's keys are on PayPal's page), the carrier label
+ * services, and UPS, FedEx and USPS. Pure.
  *
  * @return array page keys
  */
 function pg_connections_screen_commerce_pages()
 {
-    return array_merge(pg_connections_screen_gateway_pages(), pg_connections_screen_driver_pages(), array('givex'));
+    return array_merge(pg_connections_screen_gateway_pages(), pg_connections_screen_driver_pages(), array('givex'),
+        pg_connections_screen_label_pages(), pg_connections_screen_carrier_pages());
+}
+
+/**
+ * The carrier label services whose keys are typed on their own page (the
+ * shipped drivers of pg_label_builtin_drivers()). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_label_pages()
+{
+    return array('geliver', 'basitkargo', 'shippo', 'sendcloud', 'aras', 'kargonomi');
+}
+
+/**
+ * The carriers whose API application is typed on their own page (the keys
+ * of pg_carrier_api_definitions()). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_carrier_pages()
+{
+    return array('ups', 'fedex', 'usps');
 }
 
 /**
@@ -702,7 +726,8 @@ function pg_connections_screen_commerce_pages()
  * Translation; the WhatsApp, İYS and SMS providers' accounts, for who may
  * open Communication; Sign in with Apple's application and the CAPTCHA
  * providers' keys, for who may open Accounts and sign-in; a card
- * gateway's or a payment driver's keys, for who may open Ecommerce), "uses", then
+ * gateway's, a payment driver's or a shipping service's keys, for who may
+ * open Ecommerce), "uses", then
  * "repositories" on
  * GitHub's page for a holder of the Workspace settings right. Each card
  * keeps the gate of the place it came from; a card the viewer may not open
@@ -716,7 +741,8 @@ function pg_connections_screen_commerce_pages()
  *                    sign-in application, Apple's application),
  *                    'security' (bool: may open Accounts and sign-in, the
  *                    CAPTCHA providers' keys), 'commerce' (bool: may
- *                    open Ecommerce, a card gateway's keys), 'seo' (bool: may
+ *                    open Ecommerce, a payment or shipping service's
+ *                    keys), 'seo' (bool: may
  *                    open the SEO settings, IndexNow's key), 'privacy' (bool:
  *                    may open Visitors and privacy, Google Analytics' tag
  *                    and figures), 'languages' (bool: may open Languages

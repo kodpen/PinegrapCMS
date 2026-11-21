@@ -5,9 +5,9 @@ module: booking_messages
 ---
 
 ## Who calls what when a booking changes?
-- Every path that writes a booking calls `pg_booking_changed($id, $event)` once after the write (`includes/fn/booking_messages.php`): `created`, `confirmed`, `rescheduled`, `cancelled`. It announces `booking.<event>` (`pg_booking_event_payload()`, no token), then mails and texts the customer.
+- Every path that writes a booking calls `pg_booking_changed($id, $event)` once after the write (`includes/fn/booking_messages.php`): `created`, `confirmed`, `rescheduled`, `cancelled`, `completed` (no mail). It announces `booking.<event>` (`pg_booking_event_payload()`, no token), then mails and texts the customer.
 - `pg_booking_confirm()` calls `pg_booking_created()`: `booking.created`, plus `booking.confirmed` and its mail when confirmed at once. A hold announces nothing.
-- `edit_booking.php` calls it when `pg_booking_status_event()` names `confirmed` or `cancelled`; so do the manage page and the API.
+- `edit_booking.php` calls it when `pg_booking_status_event()` names an event; so do the manage page and the API.
 
 ## Which mails go out?
 - Campaign profile actions `booking_confirmed`, `booking_reminder`, `booking_rescheduled`, `booking_cancelled` (#5032 question 3; step `upgrade_2026_11_0_booking_campaigns()`, 11.0.161, widens `email_campaign_profiles.action` and `email_campaigns.action`). Offered on the profile form once `pg_booking_ready()`, without commerce access; `action_item_id` 0. No profile, no mail.
@@ -28,7 +28,6 @@ module: booking_messages
 - No `bookings.reminded` column (#5032). The general job runs `pg_booking_reminders_run(time())` before the mail and SMS passes. It keeps its last pass time in `config_text` `booking_reminders_at` (claimed before sending, `platform/job-pass-time-claim.md`: a dying pass loses reminders, never doubles them; it looks back 15 min first, at most a day after a stop).
 - `pg_booking_reminder_due()` (pure): a reminder's moment is start − hours (`pg_booking_policy()['reminder_hours']`, else 24 and 2); due when the moment fell in (last, now], the booking is confirmed, not started, and `updated_at` ≤ the moment (booked or changed after it: no reminder). Only the nearest passed moment counts: after a stop an old 24 h reminder never goes beside the 2 h one.
 
-## How was it verified?
-- `tests/booking_messages_test.php`. No dev database or live provider run.
+Test: `tests/booking_messages_test.php`; no dev database or provider run.
 
 Related: docs/memory/commerce/bookings-model.md, docs/memory/commerce/subscriptions-mails.md, docs/memory/platform/sms-order-messages.md

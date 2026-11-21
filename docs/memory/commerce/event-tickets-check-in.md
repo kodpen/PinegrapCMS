@@ -13,7 +13,7 @@ module: event_check_in
 - Undo a check-in: role 2 (Manager) or above (`pg_check_in_may_undo()`); a role-3 user with the rights checks in but does not undo.
 
 ## What is picked?
-- `e-<event>-<recurrence_number>` for an event's date, `p-<product>` for a product's tickets (rows with no event). Listed from the tickets sold (void left out); 500 dates at most, those sold last first (`pg_check_in_picks_groups_sql()`), then an event that ended over a day ago drops off. Dates via `get_absolute_time()`, so day and month names are translated.
+- `e-<event>-<recurrence_number>` for an event's date, `p-<product>` for a product's tickets (rows with no event). Series: `event-tickets-series.md`. Listed from the tickets sold (void left out); 500 dates at most, those sold last first (`pg_check_in_picks_groups_sql()`), then an event that ended over a day ago drops off. Dates via `get_absolute_time()`, so day and month names are translated.
 
 ## How is a ticket checked in?
 - The code (camera or typed) is hashed (`pg_event_ticket_code_hash()`) and looked up by `code_hash`; the door needs no key. The script takes the first twelve code letters in the QR text, so a QR holding the code alone or inside a link both work.
@@ -31,6 +31,6 @@ module: event_check_in
 - A code typed during a camera scan's answer is not sent and stays in the field.
 - The camera: `BarcodeDetector` with `qr_code`, rear camera, a frame every 250 ms, one code read once per 4 s, stopped when the tab is hidden; without the reader (Firefox, Chromium on Linux) the screen says to type the code. No library.
 
-Test: `tests/event_check_in_test.php` (two scans at once, each answer, the rights, the pick, names, counts, undo). The camera path is not reached by a unit test.
+Test: `tests/event_check_in_test.php` (two scans, each answer, rights, pick, names, counts, undo); not the camera.
 
 Related: docs/memory/commerce/event-tickets-model.md, docs/memory/commerce/event-tickets.md

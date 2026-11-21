@@ -6,8 +6,8 @@
  * every example the lines give draws through the renderer as the lines say,
  * the lines keep their length, the agent instructions carry them (so their
  * version changes) and the guide's workspace topic lists them as its
- * writing section within the topic's size, and the assistants' prompts take
- * the short form.
+ * writing section within the topic's size, the assistants' prompts take
+ * the short form and the routes that write a message point at the section.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -78,6 +78,34 @@ function test_workspace_writing_rules_length()
 	}
 
 	pg_assert_contains('section=writing', WS_WRITING_RULES_POINTER, 'the pointer names the section');
+}
+
+// The routes that write a message (send, edit, an agent's answer) end their
+// text field's description with the pointer to the guide's writing section.
+function test_workspace_writing_rules_pointer_on_message_routes()
+{
+	$ids = array('workspace.messages.create', 'workspace.messages.update', 'workspace.agent_requests.answer', 'workspace.claude.requests.answer');
+	$found = array();
+
+	foreach (ws_api_routes() as $route) {
+		if (!in_array($route['id'], $ids, true)) {
+			continue;
+		}
+
+		foreach ($route['params'] as $param) {
+			if ($param['name'] === 'text') {
+				$found[] = $route['id'];
+				$description = (string) ($param['description'] ?? '');
+
+				pg_assert_same(WS_WRITING_RULES_POINTER, substr($description, -strlen(WS_WRITING_RULES_POINTER)), $route['id'] . ': text ends with the pointer');
+				pg_assert_same(' ', substr($description, -strlen(WS_WRITING_RULES_POINTER) - 1, 1), $route['id'] . ': the pointer is a sentence of its own');
+			}
+		}
+	}
+
+	sort($ids);
+	sort($found);
+	pg_assert_same($ids, $found, 'every message route has a text field');
 }
 
 // The instructions carry the lines before the rules; their version is not

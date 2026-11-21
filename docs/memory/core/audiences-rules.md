@@ -7,7 +7,7 @@ module: audiences
 ## Which columns hold it? (11.0.155, decided in #5033)
 - `contact_groups.kind` ENUM('static','dynamic') default `static`, `rules` TEXT NULL (JSON), `computed_at` and `compute_cursor` INT UNSIGNED (the recompute's state).
 - `contacts_contact_groups_xref.source` ENUM('hand','form','product','rule') default `hand`, INDEX `idx_group_source (contact_group_id, source)`. Every row written before the step is `hand`; a recompute removes only `rule` rows.
-- The decision named `users_contact_groups_xref` (staff access); the column went on the contact membership table it meant.
+- The decision's `users_contact_groups_xref` (staff access) meant this contact membership table.
 - Step `upgrade_2026_11_0_contact_group_rules()`; the xref is in `install_heavy_tables()` and its column is added in place where the server can. Readers ask `pg_audience_ready()` first.
 
 ## What is a rule set?
@@ -28,8 +28,9 @@ module: audiences
 - Forms: `forms.complete = 1` by page; a form answer is `form_data` of one field, equal or containing.
 - Visits: only through the order a visit made (`visitors.order_id`), always within a window on the indexed `start_timestamp` (landing page and UTM take a required `days`), never a per-contact scan (`visitors/high-volume-counter-rules.md`).
 - Groups: in or not in another group's xref rows (any source).
+- Rhythm stage: `commerce/customer-rhythm-group-rule.md`.
 
 ## Tests?
-- `tests/audiences_rules_test.php`: every key and operator compiles, nesting, nobody for no condition, hostile text only in parameters, bounds, the step.
+- `tests/audiences_rules_test.php`: every key and operator compiles, nesting, nobody for no condition, hostile text only in parameters, bounds.
 
 Related: docs/memory/core/contact-holders.md, docs/memory/core/consent-log-writers.md

@@ -313,6 +313,18 @@ function ws_webhook_event_payloads()
 			'sample' => array('conversation_id' => 310, 'channel_id' => 22, 'message_id' => 90300, 'box_id' => 1, 'new' => true, 'transport' => 'email', 'verified' => true)
 		),
 
+		'workspace.mail.closed' => array(
+			'fields' => array(
+				'conversation_id' => array('integer', 'The conversation.'),
+				'channel_id'      => array('integer', 'The channel it is in.'),
+				'message_id'      => array('integer', 'Its card in the channel.'),
+				'box_id'          => array('integer', 'The mailbox or number it came to.'),
+				'assignee_id'     => array('integer', 'Who holds it, 0 for nobody.'),
+				'closed_by'       => array('integer', 'The user who closed it.')
+			),
+			'sample' => array('conversation_id' => 310, 'channel_id' => 22, 'message_id' => 90300, 'box_id' => 1, 'assignee_id' => 12, 'closed_by' => 12)
+		),
+
 		'workspace.app.command' => array(
 			'fields' => array(
 				'command'      => array('string', 'The command typed, with its slash.'),

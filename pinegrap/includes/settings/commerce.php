@@ -175,7 +175,7 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-5">
-                                                                                        <div class="alert theme-primary py-3">' . lang('Uses the USPS Addresses API with the consumer key and secret entered above.') . '</div>
+                                                                                        <div class="alert theme-primary py-3">' . lang('Uses the USPS Addresses API with the consumer key and secret on USPS\'s page of Connections.') . '</div>
                                                                                         <div class="col-12 ">
                                                                                             <fieldset><legend class="form-label pg-field-label">'. lang('Enforcement') . '</legend>
                                                                                             <div class="form-field">

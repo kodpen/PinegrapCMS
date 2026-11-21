@@ -11888,6 +11888,9 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // cancelled the order (the guarded write above) gets here.
     pg_review_request_cancel($order_id);
 
+    // A delivery survey still waiting for the order is not sent either.
+    pg_feedback_cancel_record('order', $order_id);
+
     // Its reviews no longer count: a cancelled order is no purchase
     // (pg_review_purchase_stands_sql()).
     pg_review_refresh_order($order_id);
