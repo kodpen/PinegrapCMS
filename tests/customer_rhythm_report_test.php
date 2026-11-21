@@ -279,3 +279,24 @@ function test_customer_rhythm_report_list_is_registered()
 	pg_assert_false(strpos($select, 'billing_') !== false);
 	pg_assert_contains('LEFT JOIN contacts', pg_customer_rhythm_list_from(true)[0]);
 }
+
+// A list row: a name and the contact's link only for a name reader.
+function test_customer_rhythm_report_list_row()
+{
+	$record = array(
+		'id' => 3, 'contact_id' => 12, 'orders' => 4, 'first_order_at' => 0, 'last_order_at' => _crr_test_now() - (45 * 86400), 'last_order_id' => 9,
+		'interval_days' => 30, 'stage' => 4, 'chance' => 31, 'expected_value' => 5000, 'next_due_at' => 0,
+		'contact_first_name' => '<b>Ayşe</b>', 'contact_last_name' => 'Kaya',
+	);
+	$row = pg_customer_rhythm_list_row($record, true, _crr_test_now());
+
+	pg_assert_same('3', $row['id']);
+	pg_assert_contains('<a href="edit_contact.php?id=12">&lt;b&gt;Ayşe&lt;/b&gt; Kaya</a>', $row['cells']['customer']['html'], 'the name escaped');
+	pg_assert_contains('pg-tone-rose', $row['cells']['stage']['html']);
+	pg_assert_contains('31%', $row['cells']['chance']['html']);
+	pg_assert_same(array_keys(pg_customer_rhythm_list_columns(true)), array_keys($row['cells']), 'a cell for every column');
+
+	$row = pg_customer_rhythm_list_row($record, false, _crr_test_now());
+	pg_assert_false(isset($row['cells']['customer']));
+	pg_assert_same(array_keys(pg_customer_rhythm_list_columns(false)), array_keys($row['cells']));
+}

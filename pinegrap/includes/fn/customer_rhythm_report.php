@@ -696,12 +696,12 @@ function pg_customer_rhythm_settings_html($settings)
             <form class="pg-report-frame-body p-5" action="view_customer_report.php?part=rhythm" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="rhythm_settings" value="1">
-                ' . $switch('rhythm_on', lang('Tell flows and webhooks'), lang('Announces stage changes and due reorders to flows and webhooks. Off, nothing is announced and no reminder is counted.'), $settings['on']) . '
+                <div class="pg-card-inner">' . $switch('rhythm_on', lang('Tell flows and webhooks'), lang('Announces stage changes and due reorders to flows and webhooks. Off, nothing is announced and no reminder is counted.'), $settings['on']) . '</div>
                 <div class="row mt-5">
                     ' . $number('rhythm_brake_days', lang('Days between two reorder reminders'), lang('At most one reorder reminder per customer in these days.'), $settings['brake_days'], 1, 90)
                     . $number('rhythm_lead_days', lang('Days before the due day'), lang('A product is due this many days before its due day.'), $settings['lead_days'], 0, 30) . '
                 </div>
-                <div class="mt-5">' . $switch('rhythm_share', lang('Hold back one customer in ten'), lang('One due customer in ten gets no reminder, so the return rate of those reminded can be compared with theirs.'), $settings['share']) . '</div>
+                <div class="pg-card-inner mt-5">' . $switch('rhythm_share', lang('Hold back one customer in ten'), lang('One due customer in ten gets no reminder, so the return rate of those reminded can be compared with theirs.'), $settings['share']) . '</div>
                 <div class="mt-5"><button type="submit" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button></div>
             </form>
         </section>';
@@ -818,7 +818,7 @@ function pg_customer_rhythm_report_html($user, $stage, $names)
         }
 
         $output .= '
-        <section class="pg-report-frame-list" aria-labelledby="pg_rhythm_list_title">
+        <section aria-labelledby="pg_rhythm_list_title">
             <h3 class="pg-title-section mt-7 mb-3" id="pg_rhythm_list_title">' . h(($stage === '') ? lang('Customers') : $labels[$stage]) . '</h3>
             <div class="pg-seg mb-3" role="group" aria-label="' . h(lang('Stage')) . '">' . $filter . '</div>
             ' . (!$names ? '<p class="fg-secondary small">' . h(lang('Names are shown to users who may manage contacts.')) . '</p>' : '') . '
