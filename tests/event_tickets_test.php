@@ -165,7 +165,11 @@ function test_event_tickets_deleted_with_the_order()
 	$record = event_tickets_test_recorder();
 
 	pg_assert_same(1, pg_event_tickets_delete_for_order(9001, $record), 'reports the rows removed');
-	pg_assert_same(array(array('sql' => 'DELETE FROM event_tickets WHERE order_id = ?', 'params' => array(9001))), $GLOBALS['event_tickets_test_queries'], 'one DELETE for the order');
+	pg_assert_same(2, count($GLOBALS['event_tickets_test_queries']), 'the entries, then the tickets');
+	pg_assert_contains('DELETE event_ticket_checkins FROM event_ticket_checkins', $GLOBALS['event_tickets_test_queries'][0]['sql'], 'a series ticket\'s entries first');
+	pg_assert_contains('WHERE event_tickets.order_id = ?', $GLOBALS['event_tickets_test_queries'][0]['sql'], 'of the order\'s tickets');
+	pg_assert_same(array(9001), $GLOBALS['event_tickets_test_queries'][0]['params'], 'for the order');
+	pg_assert_same(array('sql' => 'DELETE FROM event_tickets WHERE order_id = ?', 'params' => array(9001)), $GLOBALS['event_tickets_test_queries'][1], 'one DELETE of its tickets');
 
 	$record = event_tickets_test_recorder();
 	pg_assert_same(0, pg_event_tickets_delete_for_order(0, $record), 'no order, nothing');

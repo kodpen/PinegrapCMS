@@ -1,6 +1,6 @@
 ---
 name: event-tickets
-description: Event tickets, start here: QR ticket per place, door check-in, places back on cancel, waiting list; which file holds what, T1 to T15 with PRs, decisions, what was left out
+description: Event tickets, start here: QR ticket per place, door check-in, places back on cancel, waiting list; which file holds what, T1 to T15 with PRs, decisions, left out
 module: event_tickets
 ---
 
@@ -16,6 +16,7 @@ module: event_tickets
 - `event-tickets-waiting-list.md`: places back on cancel and the waiting list in `stock_notify` (TK4, #10578).
 - `event-tickets-api.md`: `GET /calendars/events/{id}/tickets`, `ticket.checked_in`, the product's mark, the export (TK5, #10643).
 - `event-tickets-returns.md`: a refunded return voids its units' tickets and gives the places back (#10773).
+- `event-tickets-series.md`: series tickets, one entry a date (#10755).
 
 ## Which feature is where? (checked against the code at the close-out)
 - T1 lines that give tickets, one per unit, 100 a line: TK1; the product screen's "Gives tickets": TK5.
@@ -38,4 +39,4 @@ module: event_tickets
 - Seats and seat maps; a place held for the first waiting; a ticket handed on to a named guest; check-in without a connection; wallet passes; the Events template marking its products (templates paused). Each is a later yes.
 - No menu entry for the check-in screen yet, and the help section `calendars#ticket-check-in` is still to write.
 
-Related: docs/memory/commerce/calendar-reserve-occurrence.md, docs/memory/commerce/back-in-stock-notices.md, docs/memory/core/qr-code-generator.md, docs/memory/designer/design-template-events.md
+Related: [[calendar-reserve-occurrence]], [[back-in-stock-notices]], [[qr-code-generator]], [[design-template-events]]

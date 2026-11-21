@@ -1089,6 +1089,7 @@
     "Meta accepted the request but returned no message id.": "Meta isteği kabul etti ama bir mesaj kimliği döndürmedi.",
     "Meta accepted the test message to {var:1}. It should arrive in that number's WhatsApp within a minute.": "Meta, {var:1} numarasına giden deneme mesajını kabul etti. Bir dakika içinde o numaranın WhatsApp'ına ulaşması gerekir.",
     "Meta app": "Meta uygulaması",
+    "Meta asks for at least one piece of the person's data with every event, so a purchase without the person is not sent to Meta.": "Meta her olayla birlikte kişinin en az bir bilgisini ister; bu yüzden kişisiz bir satın alma Meta'ya gönderilmez.",
     "Meta calls only an https address: this site needs a certificate first.": "Meta yalnızca https adreslerini çağırır: bu sitenin önce bir sertifikası olmalı.",
     "Meta could not be reached: {var:1}": "Meta'ya ulaşılamadı: {var:1}",
     "Meta description": "Meta açıklaması",

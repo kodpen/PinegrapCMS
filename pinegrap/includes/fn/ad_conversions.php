@@ -322,6 +322,8 @@ function pg_ad_conversion_payment_step_plan($notice_on, array $choices, array $s
  *   given up
  * - no row: a row without the person when the service sends the purchase
  *   without the person
+ * - Meta never sends one without the person, whatever is stored
+ *   (pg_ad_conversion_without_person_offered())
  * - a row already due, sent or given up: nothing (a second completion)
  *
  * @param array $rows     service => the purchase row (status, person)
@@ -337,7 +339,7 @@ function pg_ad_conversion_completion_plan(array $rows, array $settings)
             continue;
         }
 
-        $without_person = in_array('purchase', $one['without_person'], true);
+        $without_person = pg_ad_conversion_without_person_offered((string) $service) && in_array('purchase', $one['without_person'], true);
 
         if (!isset($rows[$service])) {
             if ($without_person) {
@@ -577,6 +579,20 @@ function pg_ad_conversion_event(array $row, array $order)
  * @return bool
  */
 function pg_ad_conversion_counter_sale_offered($service)
+{
+    return $service !== 'meta_capi';
+}
+
+/**
+ * Whether a service takes a purchase without the person ("Send events
+ * without the person"). Meta asks for at least one customer information
+ * parameter in user_data with every event, so it never gets one, and a
+ * stored without_person of Meta is not read. Pure.
+ *
+ * @param string $service
+ * @return bool
+ */
+function pg_ad_conversion_without_person_offered($service)
 {
     return $service !== 'meta_capi';
 }
@@ -1440,6 +1456,7 @@ function pg_ad_conversion_choices_fields($service, array $names, array $stored, 
     }
 
     $counter_offered = pg_ad_conversion_counter_sale_offered($service);
+    $without_offered = pg_ad_conversion_without_person_offered($service);
     $notice_line = '';
 
     if (!$notice_on && !$stored['person_notice_off']) {
@@ -1456,9 +1473,10 @@ function pg_ad_conversion_choices_fields($service, array $names, array $stored, 
 				</div>' . $forms . '
 				<div>
 					<div class="pg-field-label">' . h(lang('Without consent')) . '</div>
-					<div class="pg-card-inner">' . pg_ad_conversion_switch_row($service . '_without_purchase', 'ad_without_person[]', 'purchase', in_array('purchase', $stored['without_person'], true),
-                        lang('Send events without the person'), lang('Purchase') . ' · ' . lang('Only the amount and the products, when the buyer did not accept marketing cookies.')) . '
-					</div>
+					<div class="pg-card-inner">' . pg_ad_conversion_switch_row($service . '_without_purchase', 'ad_without_person[]', 'purchase', $without_offered && in_array('purchase', $stored['without_person'], true),
+                        lang('Send events without the person'), lang('Purchase') . ' · ' . lang('Only the amount and the products, when the buyer did not accept marketing cookies.'), !$without_offered) . '
+					</div>' . ($without_offered ? '' : '
+					<div class="pg-field-help">' . h(lang('Meta asks for at least one piece of the person\'s data with every event, so a purchase without the person is not sent to Meta.')) . '</div>') . '
 				</div>
 				<div>
 					<div class="pg-field-label">' . h(lang('Counter sales')) . '</div>

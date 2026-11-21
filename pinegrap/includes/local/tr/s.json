@@ -2881,6 +2881,7 @@
     "Shipping method description": "Nakliye yöntemi açıklaması",
     "Shipping method name": "Nakliye yöntemi adı",
     "Shipping methods": "Kargo yöntemleri",
+    "Shipping methods with USPS services get their rates from it.": "USPS hizmetli kargo yöntemleri ücretlerini ondan alır.",
     "Shipping update": "Kargo bildirimi",
     "Shipping will be calculated at checkout.": "Kargo ödeme adımında hesaplanacaktır.",
     "Shipping zone ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Kargo bölgesi ({var:1}) API üzerinden {var:2} uygulaması tarafından değiştirildi (anahtar {var:3}).",

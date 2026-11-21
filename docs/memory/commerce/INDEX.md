@@ -110,6 +110,7 @@
 - currency-form-rules.md: What the currency create/edit screens refuse and how the currency list sorts
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - customer-rhythm-events.md: Customer rhythm events (customer_rhythm_tell.php): stage changed, reorder due, the 7-day brake, when a product stops being named, comparison share, settings row, payload, flow stage filter
+- customer-rhythm-group-rule.md: The contact group rule "Rhythm stage" is / is not (H11, RY5): the stage names it takes, the customer_rhythm rows it reads, contacts with two rows or none
 - customer-rhythm-reorder-link.md: The reorder link of customer.reorder_due (H9): reorder.php, signed products and 30 days, nothing stored, GET shows and POST fills the cart, the ended link, reorder_url
 - customer-rhythm-report.md: Customer rhythm as read: Customers Report's Rhythm part (stages, came back after a reminder, list by stage and CSV, products), the contact card's Order rhythm card, the settings form, who sees names
 - customer-rhythm-rules.md: Customer rhythm's pure rules (customer_rhythm.php): days per unit, own interval, the chance curve, stages and their moves, due products, and the choices the features left open
@@ -136,8 +137,9 @@
 - event-tickets-model.md: Event tickets (TK1): lines that give them, one event_tickets row per unit, the code stored only hashed, void on cancel and back on restore, the tickets mail, the switch [decision: here]
 - event-tickets-page.md: Event tickets (TK2): the holder's page tickets.php behind the signed link, each ticket's QR and code, void ones without a QR, print, .ics; the my account tickets section, flag and account.tickets list
 - event-tickets-returns.md: Event tickets and returns (#10756): a refund voids the returned units' tickets, unchecked first from the highest unit, gives the places back, tells the waiting list; restore keeps them void [decision: here]
+- event-tickets-series.md: Series tickets (#10755): a repeating event with shared places, one ticket for the series, entered once per date in event_ticket_checkins (11.0.267); page, .ics, API, export [decision: here]
 - event-tickets-waiting-list.md: Event tickets TK4: a cancelled order's places back (tickets on), taken again on restore; the waiting list of a full date in stock_notify (11.0.248), its line, request, send and the product/event split [decision: here]
-- event-tickets.md: Event tickets, start here: QR ticket per place, door check-in, places back on cancel, waiting list; which file holds what, T1 to T15 with PRs, decisions, what was left out [decision: decisions-made-product-64.md, decisions-made-schema-25.md, decisions-made-schema-29.md, decisions-made-schema-30.md]
+- event-tickets.md: Event tickets, start here: QR ticket per place, door check-in, places back on cancel, waiting list; which file holds what, T1 to T15 with PRs, decisions, left out [decision: decisions-made-product-64.md, decisions-made-schema-25.md, decisions-made-schema-29.md, decisions-made-schema-30.md]
 - exchange-rates-update.md: Update Exchange Rates (button and scheduled job) writes one Site Log line with the count, and a success notice only when a rate was written
 - express-order-field-labels.md: Express order widget's accessible names: labels follow the walker's shipping_<rid>_ renames, fallback aria-labels for the quantity, offer code and custom arrival date boxes (#4799)
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the checkout cart table's stacked layout below lg, its header row and the three places to update.

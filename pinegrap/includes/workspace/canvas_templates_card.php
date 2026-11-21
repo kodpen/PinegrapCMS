@@ -46,13 +46,50 @@ function ws_canvas_templates_settings_keep($stored, $shown, $checked)
 }
 
 /**
- * The card, or '' where the Workspace cannot hold canvases.
+ * One template's row: its switch, name, size and named layers. The copy in
+ * the drawer of every template carries the pane's switch under another id
+ * and posts with the settings form by its id; ws_canvas_templates_settings_script()
+ * keeps the two switches of a template alike.
  *
- * @param array $viewer
+ * @param array       $row   pg_canvas_templates_rows()'s
+ * @param bool        $admin
+ * @param bool        $copy  the drawer's copy
+ * @param string|null $form  the settings form's id, which the copy joins
+ * @return string HTML
+ */
+function ws_canvas_templates_settings_row_html($row, $admin, $copy = false, $form = null)
+{
+    $names = array();
+
+    foreach ($row['summary']['layers'] as $layer) {
+        $names[] = $layer['name'] . ' (' . $layer['kind'] . ')';
+    }
+
+    $id = 'ws_canvas_template_' . ($copy ? 'all_' : '') . (int) $row['id'];
+
+    return '
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <input class="pg-switch" type="checkbox" name="ws_canvas_template[]" value="' . (int) $row['id'] . '" id="' . $id . '" aria-describedby="' . $id . '-help" data-ws-canvas-template="' . (int) $row['id'] . '"'
+                            . (($copy && ($form !== null)) ? ' form="' . h($form) . '"' : '') . ' checked' . ($admin ? '' : ' disabled') . '>
+                        <div><label class="pg-text-2" for="' . $id . '">' . h($row['name']) . ' · ' . (int) $row['summary']['width'] . ' × ' . (int) $row['summary']['height'] . '</label>
+                        <div class="pg-field-help m-0" id="' . $id . '-help">' . h($names ? lang(array('string' => 'Named layers: {var:1}', 'vars' => implode(', ', $names))) : lang('No named layers: an agent can copy it but fill nothing.')) . '</div></div>
+                    </div>';
+}
+
+/**
+ * The card, or '' where the Workspace cannot hold canvases. Five templates
+ * stand in it; with more, every one is in the drawer "Show all N" opens.
+ *
+ * @param array       $viewer
+ * @param string|null $form the settings form's id
+ * @param string|null $all  set to every template's row for that drawer, ''
+ *                          while all fit
  * @return string
  */
-function ws_canvas_templates_settings_card($viewer)
+function ws_canvas_templates_settings_card($viewer, $form = null, &$all = null)
 {
+    $all = '';
+
     if (!function_exists('pg_file_versions_ready') || !pg_file_versions_ready()) {
         return '';
     }
@@ -60,25 +97,24 @@ function ws_canvas_templates_settings_card($viewer)
     $admin = ((int) $viewer['role'] === 0);
     $rows = pg_canvas_templates_rows();
     $items = '';
+    $copies = '';
 
-    foreach ($rows as $row) {
-        $names = array();
+    // No template asks for anything: the first five in the list's order.
+    $shown = ws_assistants_list_cut(array_fill(0, count($rows), false));
 
-        foreach ($row['summary']['layers'] as $layer) {
-            $names[] = $layer['name'] . ' (' . $layer['kind'] . ')';
+    foreach (array_values($rows) as $index => $row) {
+        if (in_array($index, $shown, true)) {
+            $items .= ws_canvas_templates_settings_row_html($row, $admin);
         }
 
-        $id = 'ws_canvas_template_' . (int) $row['id'];
-        $items .= '
-                    <div class="form-field mb-3">
-                        <div class="switch"><input type="checkbox" name="ws_canvas_template[]" value="' . (int) $row['id'] . '" id="' . $id . '" checked' . ($admin ? '' : ' disabled') . '></div>
-                        <label for="' . $id . '">' . h($row['name']) . ' · ' . (int) $row['summary']['width'] . ' × ' . (int) $row['summary']['height'] . '</label>
-                        <div class="form-text">' . h($names ? lang(array('string' => 'Named layers: {var:1}', 'vars' => implode(', ', $names))) : lang('No named layers: an agent can copy it but fill nothing.')) . '</div>
-                    </div>';
+        $copies .= ws_canvas_templates_settings_row_html($row, $admin, true, $form);
     }
 
+    $cut = (count($shown) < count($rows));
+    $all = $cut ? $copies : '';
+
     $body = ws_assistants_help_html('ws-canvas-templates')
-        . (($items !== '') ? $items : '
+        . (($items !== '') ? $items . ws_assistants_show_all_html('ws-canvas-templates', count($rows)) : '
                     <p class="small fg-secondary mb-0">' . h(lang('No templates yet.')) . '</p>');
 
     return '
@@ -89,10 +125,43 @@ function ws_canvas_templates_settings_card($viewer)
             </div>
             <div class="card-body">
                 ' . (($admin && $rows) ? '<input type="hidden" name="ws_canvas_templates_card" value="1">' : '') . $body . '
-                    ' . (($admin || !$rows) ? '' : '<div class="form-text">' . h(lang('Only an administrator can change this.')) . '</div>') . '
+                    ' . (($admin || !$rows) ? '' : '<div class="pg-field-help">' . h(lang('Only an administrator can change this.')) . '</div>') . '
             </div>
         </div>
-    </div>';
+    </div>' . ($cut ? ws_canvas_templates_settings_script() : '');
+}
+
+/**
+ * Keeps a template's two switches (the pane's and the drawer's) alike, so
+ * an unticked one is not posted ticked by its twin. Delegated to the
+ * document and bound once.
+ *
+ * @return string
+ */
+function ws_canvas_templates_settings_script()
+{
+    return '
+        <script>
+        (function () {
+            if (window.pgWsCanvasTemplatesBound) {
+                return;
+            }
+
+            window.pgWsCanvasTemplatesBound = true;
+
+            document.addEventListener(\'change\', function (event) {
+                var box = event.target;
+
+                if (!box.matches || !box.matches(\'[data-ws-canvas-template]\')) {
+                    return;
+                }
+
+                document.querySelectorAll(\'[data-ws-canvas-template="\' + box.getAttribute(\'data-ws-canvas-template\') + \'"]\').forEach(function (twin) {
+                    twin.checked = box.checked;
+                });
+            });
+        })();
+        </script>';
 }
 
 /**
