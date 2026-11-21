@@ -1991,8 +1991,9 @@ function ws_handle_action($action, $request)
                 // The days, estimates and priorities the argument popup
                 // offers after a command.
                 'command_values' => ws_command_suggestions(null, $viewer),
-                // The screen sends files as form parts (apiUpload()).
-                'upload'      => array('max' => ws_upload_form_max_bytes(), 'accept' => ''),
+                // The screen sends files as form parts (apiUpload()) and
+                // says a refusal it knows when a file is added.
+                'upload'      => array_merge(array('accept' => ''), ws_upload_browser_rules()),
                 'interact'    => ws_interact_ready(),
                 'reactions'   => ws_reaction_quick(),
                 'claude'      => function_exists('ws_claude_boot') ? ws_claude_boot() : null,

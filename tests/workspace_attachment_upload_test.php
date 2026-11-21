@@ -128,7 +128,8 @@ function test_ws_upload_receivers_share_one_check()
 	pg_assert_contains('ws_upload_form_max_bytes()', $input, 'with the same limit');
 
 	// The screen checks sizes against the limit of the way it sends them.
-	pg_assert_contains("'upload'      => array('max' => ws_upload_form_max_bytes()", $actions, 'boot limit');
+	pg_assert_contains("'upload'      => array_merge(array('accept' => ''), ws_upload_browser_rules())", $actions, 'boot limit');
+	pg_assert_contains("'max'     => ws_upload_form_max_bytes()", ws_attachment_upload_test_between($files, 'function ws_upload_browser_rules(', "\n}\n"), 'the form limit');
 
 	// api.php reads a multipart body's fields as the request.
 	$entry = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api.php');

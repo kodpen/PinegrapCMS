@@ -1004,6 +1004,7 @@
     "A figure under the minimum or over the maximum is refused, never changed. Leave a bound empty for none.": "En düşüğün altındaki ya da en yükseğin üstündeki tutar reddedilir, asla değiştirilmez. Sınır istemiyorsanız boş bırakın.",
     "A file": "Bir dosya",
     "A file answers now": "Artık bir dosya açılıyor",
+    "A file cannot be sent later. Send it now, or take it out of the message first.": "Dosya daha sonra gönderilemez. Şimdi gönderin ya da önce mesajdan çıkarın.",
     "A file exported from this screen, with its translation column filled in. Rows are matched by the hash column; a row whose source text has since changed is skipped.": "Bu ekrandan dışa aktarılmış, çeviri sütunu doldurulmuş bir dosya. Satırlar hash sütunuyla eşleştirilir; kaynak metni o zamandan beri değişmiş satır atlanır.",
     "A file goes to the recycle bin by being deleted, not moved.": "Dosya geri dönüşüm kutusuna taşınarak değil silinerek gider.",
     "A file in a folder you cannot open": "Açamadığınız bir klasördeki dosya",
