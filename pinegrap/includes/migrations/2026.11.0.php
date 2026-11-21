@@ -256,6 +256,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_pick_pack();               // 11.0.264
 	upgrade_2026_11_0_lead_journey();            // 11.0.265
 	upgrade_2026_11_0_walk_in_queue();           // 11.0.266
+	upgrade_2026_11_0_event_ticket_checkins();   // 11.0.268
 
 }
 
@@ -8978,5 +8979,30 @@ function upgrade_2026_11_0_walk_in_queue() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Calendars: the tables of the walk-in queue (places, desks and numbers) were added; nothing changes until a place is made.');
+
+}
+
+// The entries of a series ticket (11.0.268, includes/fn/event_check_in.php):
+// a repeating event whose dates share their places gives a ticket for the
+// whole series, kept on date 0, and the door enters it once on each date. One
+// row per ticket and date: the unique key makes a second scan on the same
+// date change nothing, and undo deletes the date's row. The second key is the
+// door's count of a date. The ticket's own row keeps its state; these rows go
+// with it when its order is deleted.
+function upgrade_2026_11_0_event_ticket_checkins() {
+
+	install_create_table('event_ticket_checkins', "CREATE TABLE event_ticket_checkins (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		ticket_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		calendar_event_id INT UNSIGNED NOT NULL DEFAULT 0,
+		recurrence_number INT UNSIGNED NOT NULL DEFAULT 0,
+		checked_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		checked_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_ticket_date (ticket_id, recurrence_number),
+		KEY idx_event_date (calendar_event_id, recurrence_number)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Event tickets: a ticket of a repeating event whose dates share their places is now checked in once on each date.');
 
 }
