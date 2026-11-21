@@ -1363,14 +1363,19 @@ div.pg-guest-poll-option {
   }
 }
 
-/* A phone: the window sits at the top, under the room's head, so the
-   writing box at the bottom stays free. */
+/* At card size the window sits at the top right, under the room's head,
+   so the writing box at the bottom stays free; on a phone across the
+   width. */
+.ws-call:not(.is-stage) {
+  top: calc(4.5rem + env(safe-area-inset-top));
+  bottom: auto;
+}
+
 @media (max-width: 575.98px) {
   .ws-call:not(.is-stage) {
-    top: calc(4.5rem + env(safe-area-inset-top));
     right: .5rem;
-    bottom: auto;
-    width: calc(100vw - 1rem);
+    left: .5rem;
+    width: auto;
   }
 }
 
