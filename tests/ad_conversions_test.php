@@ -243,7 +243,7 @@ function test_ad_conversions_wiring()
 	pg_assert_contains("'ad_conversion_events',", ad_conversions_test_source('install/index.php'), 'in get_tables()');
 
 	$tables = pg_privacy_erase_tables();
-	pg_assert_same(array('order_id' => 'order_ids'), $tables['ad_conversion_events']['find'], 'erased by the person\'s orders');
+	pg_assert_same(array('order_id' => 'order_ids', 'id' => 'ad_conversion_ids'), $tables['ad_conversion_events']['find'], 'erased by the person\'s orders and, for rows without one, by the hashed e-mail');
 	pg_assert_same('delete', $tables['ad_conversion_events']['action'], 'deleted');
 	pg_assert_true(isset(pg_privacy_export_sections()['ad_conversions']), 'exported');
 }

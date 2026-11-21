@@ -55,6 +55,7 @@ function privacy_erase_test_scope()
 		'application_entry_ids' => array(99),
 		'request_ids'      => array(100),
 		'feedback_hashes'  => array(str_repeat('b', 40)),
+		'ad_conversion_ids' => array(101),
 		'customer_keys'    => array('e0123456789abcdef0123', 'c7'),
 	);
 }
@@ -176,7 +177,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'order_documents' => array('order_id' => 'order_ids'),
 			'order_returns' => array('order_id' => 'order_ids'),
 			'shipment_labels' => array('order_id' => 'order_ids'),
-			'ad_conversion_events' => array('order_id' => 'order_ids'),
+			'ad_conversion_events' => array('order_id' => 'order_ids', 'id' => 'ad_conversion_ids'),
 			'gift_cards' => array('order_id' => 'order_ids', 'recipient_email_address' => 'emails'),
 			'store_credit' => array('user_id' => 'user_ids'),
 			'erp_accounts' => array('id' => 'account_ids'),
@@ -589,4 +590,27 @@ function test_privacy_wtable_rows_where()
 	pg_assert_true(strpos($where, ':30,') === false, 'an order id is not looked for');
 	pg_assert_same('', pg_privacy_wtable_rows_where(array('user_ids' => array(), 'contact_ids' => array(), 'account_ids' => array())), 'no ids');
 	pg_assert_same('', pg_privacy_wtable_rows_where(array()), 'no scope');
+}
+
+// A Lead or sign-up row has no order: the erase finds it by the person's
+// e-mail hashed as the queue writes it into ids, while it still holds it.
+// A row of an order, or one whose ids were emptied once sent or given up,
+// is not matched by the hash.
+function test_privacy_erase_finds_ad_conversion_rows_by_the_hashed_email()
+{
+	privacy_erase_test_db_stub();
+
+	$ids = json_encode(pg_ad_conversion_visitor_ids(array('_fbp' => 'fb.1.2.3'), ' Ali@Example.com '));
+	$where = pg_ad_conversion_person_where(array('ali@example.com', 'veli@example.com'));
+
+	$fragment = '"email_sha256":"' . hash('sha256', 'ali@example.com') . '"';
+	pg_assert_true(strpos($ids, $fragment) !== false, 'the pending row holds the hash');
+	pg_assert_contains("`ids` LIKE '%" . $fragment . "%'", $where, 'matched on the hash the row holds');
+	pg_assert_contains('"email_sha256":"' . hash('sha256', 'veli@example.com') . '"', $where, 'each address');
+	pg_assert_contains('(`order_id` = 0)', $where, 'only rows without an order');
+	pg_assert_same('', pg_ad_conversion_person_where(array()), 'no address, no condition');
+	pg_assert_same('', pg_ad_conversion_person_where(array('not an address')), 'nothing hashable, no condition');
+
+	$scope = pg_test_function_source('pg_privacy_erase_scope');
+	pg_assert_contains("\$scope['ad_conversion_ids'] = _pg_privacy_export_ids(db_values(\"SELECT id FROM ad_conversion_events WHERE \" . \$by_email))", $scope, 'the rows go into the scope');
 }
