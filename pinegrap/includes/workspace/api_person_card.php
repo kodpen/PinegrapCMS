@@ -38,7 +38,8 @@ function ws_person_card_api_routes()
             'handler'     => 'ws_api_channel_member_card',
             'returns'     => 'WorkspacePersonCard',
             'summary'     => 'A colleague\'s card in a channel',
-            'description' => 'The card the channel shows when a name is clicked: the person\'s name, role and title, presence, departments with their leads, working day, away days ahead (leaves on the plan that apply to them and their mail away range, within 90 days, at most 5) and local time. The person need not be in the channel, only on the team. seen (when they were last seen) is given only when the owner of the application manages the channel, else null. Refusals: the owner not a member of the workspace 403 forbidden; a channel the owner may not read, or a person who is not on the team (a guest, a former member, an application), 404 not_found.',
+            'description' => 'The card the channel shows when a name is clicked: the person\'s name, role and title, presence, departments, working day, away days ahead and local time. The person need not be in the channel, only on the team. seen is given only when the owner of the application manages the channel, else null. Refusals: the owner not a member of the workspace 403 forbidden; a channel the owner may not read, or a person who is not on the team (a guest, a former member, an application), 404 not_found.',
+            'details'     => 'Departments come with their leads. Away days ahead: leaves on the plan that apply to them and their mail away range, within 90 days, at most 5. seen is when they were last seen.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'user_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),

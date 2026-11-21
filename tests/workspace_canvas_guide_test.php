@@ -178,7 +178,8 @@ function test_workspace_canvas_guide_route_and_tool_descriptions()
 	pg_assert_true(function_exists($guide['handler']), 'its handler exists');
 
 	foreach (array('workspace.channels.canvases.create', 'workspace.messages.canvas.edit') as $id) {
-		pg_assert_contains(ws_canvas_guide_short(), $routes[$id]['description'], $id . ' carries the short guide');
+		pg_assert_contains('Draw by the drawing guide: GET /workspace/canvas/guide', $routes[$id]['description'], $id . ' points at the guide');
+		pg_assert_contains(ws_canvas_guide_short(), api_openapi_operation_description($routes[$id]), $id . ' documents the short guide');
 	}
 
 	$tools = array();

@@ -27,6 +27,7 @@ if (!defined('PG_API_ENTRY')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvas.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/openapi.php');
 
 // One operation of each kind, as an agent writes it.
 function workspace_canvas_chart_ops()
@@ -244,7 +245,8 @@ function test_workspace_canvas_chart_routes_and_tools_offer_it()
 		pg_assert_true(isset($edit['operations']['of'][$key]), 'the operation list declares ' . $key);
 	}
 
-	pg_assert_contains('chart (kind', $routes['workspace.messages.canvas.edit']['description']);
+	pg_assert_contains('chart (kind', api_openapi_operation_description($routes['workspace.messages.canvas.edit']));
+	pg_assert_contains('chart (the chart parameter', $edit['operations']['description'], 'the tool points at the chart parameter');
 	pg_assert_contains('chart', ws_canvas_edit_ops());
 
 	$tools = array();

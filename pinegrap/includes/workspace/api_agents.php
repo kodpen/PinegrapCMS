@@ -45,7 +45,8 @@ function ws_agent_api_routes()
             'handler'     => 'ws_api_channel_agents_list',
             'returns'     => array('list' => 'WorkspaceChannelAgent', 'addable' => 'WorkspaceAddableAgent[]'),
             'summary'     => 'The agents in a channel',
-            'description' => 'The agents added to a channel the owner of the application may read, in the order they were added, each with what wakes it there, its tier and whether the loop-guard text is on, and what the channel\'s agent card shows: state (paused, working, late for not seen, waiting or idle), waiting (requests queued for it), seen_at (its last call with its key), and its last report of model and usage windows (reported_at; usage_high when a window of a report younger than a day is at 90% or more). The report is the agent\'s own: the site cannot check it. Claude is no channel agent and is not listed: it answers where the channel\'s claude_access allows. Beside data, addable lists the registered agents the channel does not have yet, as the Add an agent list of Channel settings shows them (id, handle, name, status: active, paused or off), never a door or a key: an id there is the agent_id POST /workspace/channels/{id}/agents takes. The database not updated yet leaves addable empty.',
+            'description' => 'The agents added to a channel the owner of the application may read, in the order they were added, each with what wakes it, its tier, loop guard, state, waiting (requests queued for it), seen_at and its last self-report of model and usage (unchecked; usage_high: a window at 90% or more). Claude is no channel agent and is not listed. Beside data, addable lists the registered agents the channel does not have yet: an id there is the agent_id POST /workspace/channels/{id}/agents takes.',
+            'details'     => 'As the channel\'s agent card shows it: state is paused, working, late for not seen, waiting or idle; seen_at is its last call with its key; reported_at dates the report, and usage_high counts only a report younger than a day. Claude answers where the channel\'s claude_access allows. addable is listed as the Add an agent list of Channel settings shows it (id, handle, name, status: active, paused or off), never a door or a key. The database not updated yet leaves addable empty.',
             'params'      => array($id),
         ),
 
@@ -57,7 +58,8 @@ function ws_agent_api_routes()
             'handler'     => 'ws_api_channel_agent_card',
             'returns'     => 'WorkspaceAgentCard',
             'summary'     => 'The agent card of one agent of a channel',
-            'description' => 'The card the channel opens on an agent\'s name or picture, for a channel the owner of the application may read: its role, state (paused, working, late for not seen, waiting or idle) and the requests waiting for it, last seen, its last report of model and usage windows (the agent\'s own report: the site cannot check it; stale when a day old), today\'s answered and failed requests, its last message in this channel, the channels it is in that the owner may read, its tier and what wakes it here. The words fields (role, seen, wake, reported, state_words, a window\'s resets, last_message.when) are in the site\'s language. Refusals: a channel the owner may not read, or an agent not in the channel, 404 not_found; the database not updated yet 503 service_unavailable.',
+            'description' => 'The card the channel opens on an agent\'s name, for a channel the owner of the application may read: role, state and the requests waiting for it, last seen, its last self-report of model and usage (unchecked; stale when a day old), today\'s answered and failed requests, its last message here, the channels it is in that the owner reads, its tier and what wakes it here. A channel the owner may not read, or an agent not in it: 404 not_found; the database not updated yet: 503 service_unavailable.',
+            'details'     => 'The card opens on the agent\'s name or picture. state is paused, working, late for not seen, waiting or idle. The words fields (role, seen, wake, reported, state_words, a window\'s resets, last_message.when) are in the site\'s language.',
             'params'      => array(
                 $id,
                 array('name' => 'agent_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
@@ -73,7 +75,8 @@ function ws_agent_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceChannelAgent',
             'summary'     => 'Add an agent to a channel or change its row',
-            'description' => 'Adds an agent to a channel the owner of the application may post in - to a private one only when the owner manages it - or changes what wakes an agent the channel has, in a private one as a member of it. Fields left out keep their value (a new row: woken by a mention, tier 1, loop guard on). A row decides waking and the tier only, never what the agent may read. Claude is no channel agent: its agent_id answers 422 validation_failed (claude_not_channel_agent), a rehearsal too.' . $errors,
+            'description' => 'Adds an agent to a channel the owner of the application may post in (a private one only when the owner manages it), or changes what wakes an agent the channel has (in a private one as a member). Fields left out keep their value (new row: mention, tier 1, loop guard on). A row decides waking and the tier only, never what the agent may read. Claude\'s agent_id: 422 claude_not_channel_agent. A refused value: 422 validation_failed naming the field; a tier change by a non-manager: 403; database not updated: 503.',
+            'details'     => 'claude_not_channel_agent is answered to a dry run too.' . $errors,
             'params'      => array(
                 $id,
                 array('name' => 'agent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),

@@ -41,9 +41,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param bool   $scheduled an application's proposal in a channel, which
  *                          also takes a flow (and the older scheduled action)
  *                          as a draft
+ * @param bool   $brief     the short description a tool carries; the whole
+ *                          text then goes to the route's details
+ *                          (ws_api_changes_details())
  * @return array the parameter row
  */
-function ws_api_changes_param($applier, $required = false, $scheduled = false)
+function ws_api_changes_param($applier, $required = false, $scheduled = false, $brief = false)
 {
     $param = array(
         'name'        => 'changes',
@@ -63,11 +66,34 @@ function ws_api_changes_param($applier, $required = false, $scheduled = false)
         $param['description'] .= ' A flow is proposed as {type: flow, action: draft, data, reason}: data is the flow as POST /workspace/flows takes it (name, nodes, edges, notes; or template, a key of GET /workspace/flow-templates, with answers; and channel_id, its home, else this channel when it is public or private). It is checked as POST /workspace/flows checks it, for the person, and a flow they could not keep refuses the call with 422 naming changes[i]; problems that stop publishing are not refused, the card tells them. Nothing is created: the card opens it as a new draft flow of the person\'s own on the Flows canvas, to build on and publish in their own session. It is never applied. The older {type: scheduled, action: draft, data, reason} is still taken, for clients that send it: data is a scheduled action (name, rules, action, follow, and channel_id), checked as its form checked it, and its card opens it as a new draft flow the same way.';
     }
 
+    if ($brief) {
+        $param['description'] = 'Objects of {type, action, id, fields, product_ids, bulk, reason}; reason: one line on why. type: product, stock, order, contact, erp_account, erp_quote, product_group, variant_set, channel, user, page, form, file, offer, calendar_event, task, task_note or note. action: update (the default, by id), create (no id: product, contact, erp_account, erp_quote, product_group, variant_set, calendar_event, task_note, note, file), delete (no fields: product, contact, product_group, page, file, offer, calendar_event), add or remove (product_group: product_ids), invoice (erp_quote: id, no fields) or bulk. fields: field => new value; money in minor units, dates YYYY-MM-DD. A field the kind does not take is refused with 422 listing its fields, so a dry run shows them. Common fields: product name, price, enabled, short_description, full_description, track_stock; stock quantity; order status (incomplete, complete, exported, cancelled), notes, tracking_numbers; contact first_name, last_name, company, email, phone; task title, status (todo, doing, waiting, done, cancelled), priority (low, normal, high, urgent), due_date; task_note text, task_id ([id]); note title, body; channel summary (id: this channel); user role (manager or user, applied by an administrator). A new product needs name, a product group name, an ERP account title (kind customer, supplier or both), a contact one of first_name, last_name, company, email, a calendar_event name, start_time and calendar_ids, an erp_quote account_id ([id]) and lines (as POST /erp/quotes takes them), a variant_set name and two or more variants (as POST /product-groups/variant-sets takes them). bulk: {action update, delete or create (rows, product only, at most ' . (defined('WS_BULK_CREATE_MAX') ? WS_BULK_CREATE_MAX : 200) . '), scope (all, group with group_id, search with a word, ids), only_empty, field, operation (set, percent or add with value; generate with instruction; values with values: id => value), round (whole)}; delete in bulk only where an administrator allowed it. ' . ucfirst($applier) . ' applies each change.';
+
+        if ($scheduled) {
+            $param['description'] .= ' A flow is proposed as {type: flow, action: draft, data, reason}: data is the flow as POST /workspace/flows takes it (or template with answers; channel_id), checked as that route checks it (422 naming changes[i]); the card opens it as a new draft flow of the person\'s own, never applied. The older {type: scheduled, action: draft, data, reason} is still taken.';
+        }
+    }
+
     if ($required) {
         $param['required'] = true;
     }
 
     return $param;
+}
+
+/**
+ * The whole description of the changes parameter, for the details of a
+ * route whose tool carries the brief one.
+ *
+ * @param string $applier   as ws_api_changes_param()
+ * @param bool   $scheduled as ws_api_changes_param()
+ * @return string
+ */
+function ws_api_changes_details($applier, $scheduled = false)
+{
+    $param = ws_api_changes_param($applier, false, $scheduled);
+
+    return 'changes: ' . $param['description'];
 }
 
 /**
@@ -81,6 +107,8 @@ function ws_proposal_api_routes()
 {
     $what = 'Nothing is written to a record here: this only proposes, the person applies, and the application never applies or sets aside a change itself (that is done on the card, or from the person\'s own team devices session: POST /workspace/changes/{id}/apply and /dismiss answer 403 to an application key and to every OAuth connection for a change an application proposed). Each change is checked as its card will be: the person must be allowed to change that kind of record and that record, the fields are laid against what the record holds now (the card shows from and to), and a change that alters nothing or cannot be made refuses the call with 422 naming changes[i] and why, so the call can be sent again with that change fixed or left out; nothing is kept from a refused call. The application must also hold the scope the kind of record is read with elsewhere in the API (orders:read for an order, products:read for a product or its stock, customers:read for a contact...), or the answer is 403 insufficient_scope. A user account (type user) is read by no API scope, so no application proposes a change to one: 403 forbidden naming changes[i]. Every kind of record the Workspace changes is taken here; kinds added later (sales quotes, product variants, many new records at once) join this same endpoint. At most ' . WS_CHANGES_PER_ANSWER . ' changes in a call and ' . WS_PROPOSALS_PER_HOUR . ' proposals an hour for one person from one application (429 rate_limited; Retry-After and the message say in how many seconds a place frees). Proposed with an application key or through an OAuth connection (agent app:<application id> or oauth:<client id>, as GET /workspace/changes lists them); a team devices session changes the record itself and is refused with 403, as are the applications Claude and Pinegrap AI work through, which propose in their answers. Each change answers with status pending until the person applies it (applied), sets it aside (dismissed), or the record changes first (stale).';
 
+    $checks = 'Each change is checked as its card will be: 422 naming changes[i], nothing kept. Needs the kind\'s read scope (403 insufficient_scope). At most ' . WS_CHANGES_PER_ANSWER . ' changes a call, ' . WS_PROPOSALS_PER_HOUR . ' an hour (429).';
+
     return array(
 
         array(
@@ -93,11 +121,12 @@ function ws_proposal_api_routes()
             'returns'     => 'WorkspaceProposal',
             'status'      => 201,
             'summary'     => 'Propose record changes in a channel',
-            'description' => 'How an AI app or an integration proposes a change to a site record (a product, its stock, an order, a customer, a page, a task...), or a flow, instead of writing it: it writes text into a channel the owner may post in, as the application, with the person the key or the connection acts for mentioned (they are told), and each change waits under it on a card for that person to apply or set aside, with their own rights. An application key registered as an agent of the channel whose tier there covers every change of the call (a channel manager sets it: 2 a reversible change, 3 also an irreversible one) has them applied at once instead, in that person\'s name: the answer gives them as applied, and a member may undo such a change for 7 days while the record still holds it (status undone). ' . $what . ' id may also be a discussion\'s the owner is in.',
+            'description' => 'Proposes record changes (a product, stock, order, contact, page, task...) or a flow instead of writing them: the text goes into a channel (or discussion) the owner may post in, mentioning the person the key acts for; each change waits on a card for them to apply. An agent key whose tier covers every change has them applied at once. ' . $checks,
+            'details'     => 'How an AI app or an integration proposes a change to a site record (a product, its stock, an order, a customer, a page, a task...), or a flow, instead of writing it: it writes text into a channel the owner may post in, as the application, with the person the key or the connection acts for mentioned (they are told), and each change waits under it on a card for that person to apply or set aside, with their own rights. An application key registered as an agent of the channel whose tier there covers every change of the call (a channel manager sets it: 2 a reversible change, 3 also an irreversible one) has them applied at once instead, in that person\'s name: the answer gives them as applied, and a member may undo such a change for 7 days while the record still holds it (status undone). ' . $what . ' id may also be a discussion\'s the owner is in. ' . ws_api_changes_details('the person the key or the connection acts for', true),
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'required' => true, 'description' => 'What is proposed and why, for the person who reads the cards. Tags such as <#order:1045> or <@user:12> are kept as tags.'),
-                ws_api_changes_param('the person the key or the connection acts for', true, true),
+                ws_api_changes_param('the person the key or the connection acts for', true, true, true),
             ),
         ),
 
@@ -111,11 +140,12 @@ function ws_proposal_api_routes()
             'returns'     => 'WorkspaceProposal',
             'status'      => 201,
             'summary'     => 'Propose record changes on a task',
-            'description' => 'The task twin of POST /workspace/channels/{id}/changes: the text and the cards wait in the task\'s drawer, under the assistants\' runs on it, for the person the key or the connection acts for, who is told on the bell. A task_note with no task_id goes on this task; many records at once (bulk), a channel\'s summary, a flow and a scheduled action (type flow or scheduled, 422 here) are proposed in a channel, not on a task. While an assistant works on the task the answer is 409 assistant_busy (Retry-After): propose when its run has ended, or in a channel. Needs tasks:read as well, to see the task. ' . $what,
+            'description' => 'Task twin of POST /workspace/channels/{id}/changes: the text and cards wait in the task\'s drawer for the person the key acts for (told on the bell). A task_note without task_id goes on this task; bulk, a channel summary, a flow or a scheduled action are refused (422). 409 assistant_busy (Retry-After) while an assistant works on it. Needs tasks:read too. ' . $checks,
+            'details'     => 'The task twin of POST /workspace/channels/{id}/changes: the text and the cards wait in the task\'s drawer, under the assistants\' runs on it, for the person the key or the connection acts for, who is told on the bell. A task_note with no task_id goes on this task; many records at once (bulk), a channel\'s summary, a flow and a scheduled action (type flow or scheduled, 422 here) are proposed in a channel, not on a task. While an assistant works on the task the answer is 409 assistant_busy (Retry-After): propose when its run has ended, or in a channel. Needs tasks:read as well, to see the task. ' . $what . ' ' . ws_api_changes_details('the person the key or the connection acts for'),
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'required' => true, 'description' => 'What is proposed and why, for the person who reads the cards. Tags such as <#order:1045> or <@user:12> are kept as tags.'),
-                ws_api_changes_param('the person the key or the connection acts for', true),
+                ws_api_changes_param('the person the key or the connection acts for', true, false, true),
             ),
         ),
 

@@ -76,6 +76,16 @@ function pg_agent_guide_workspace_sections() {
 		),
 
 		array(
+			'id'      => 'flows',
+			'heading' => 'Building a flow',
+			'lines'   => array(
+				'Each box kind\'s settings and outcomes: {tool:workspace.flow_kinds.list}; check a draft with {tool:workspace.flows.validate}.',
+				'A task box\'s assign: creator, event_person (with fallback ids), department_lead, department:ID, user:ID or none.',
+				'An e-mail box with purpose marketing reaches only a person who consented, with an unsubscribe link.'
+			)
+		),
+
+		array(
 			'id'      => 'mistakes',
 			'heading' => 'Frequent mistakes',
 			'lines'   => array(
