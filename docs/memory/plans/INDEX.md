@@ -36,7 +36,7 @@
 - application-review-steps.md: Plan application-review, steps AR1a to AR8: pure rules, store, programme settings, reviewers and assignment, juror and correction links, combining, decisions, report and API, close-out
 - application-review.md: Plan (owner 2026-11-20, poll 196): a form as an application programme: period, eligibility, weighted criteria, reviewers and jurors, blind review, combined scores, rounds, decisions; AR1a to AR8
 - assistants-settings-tidy-screens.md: Plan assistants-settings-tidy, Claude's opened row part by part (step AT2b): what stays, what goes into the fold and the drawers, what a test pins; the other rows' check
-- assistants-settings-tidy-steps.md: Plan assistants-settings-tidy, steps AT1 to AT4: the folded rows of Assistants and agents, Claude's set-up drawer, the help lines, close-out
+- assistants-settings-tidy-steps.md: Plan assistants-settings-tidy, steps AT1 to AT6: the folded rows of Assistants and agents, Claude's set-up drawer, the help lines, close-out
 - assistants-settings-tidy.md: Plan (owner 2026-11-20, urgent, in the architect's window): Site Settings › Assistants and agents tidied: each part one folded row, Claude's long guide in its drawer, repeated help cut; AT1 to AT4
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
 - automation-platforms-rules.md: Plan automation-platforms: what the API and Application Access do today that no step may lose (K1 to K9), the rules every step keeps, what a step's PR body carries
