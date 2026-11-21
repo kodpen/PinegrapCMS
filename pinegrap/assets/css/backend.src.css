@@ -11595,8 +11595,25 @@ body.pg-side-panel-open .pg-chat-launcher {
   justify-content: flex-end;
   padding-block: 0;
 }
+/* Mailboxes' rules and blocked senders: the row's head names the part, so
+   their own heading and top margin go inside a row. */
+.pg-set-fold-body > .ws-mail-rules,
+.pg-set-fold-body > .ws-mail-blocks {
+  margin-top: 0 !important;
+}
+.pg-set-fold-body > .ws-mail-rules > .pg-title-section,
+.pg-set-fold-body > .ws-mail-blocks > .pg-title-section {
+  display: none;
+}
 @media (max-width: 575.98px) {
   .pg-set-fold-body { padding-inline: 12px; }
+  /* A mailbox's row has two buttons (Test connection, Edit): beside the
+     name on a phone they cut it to a letter, so they take a line under the
+     pill. */
+  .ws-mail-box-row > .ws-agset-edit {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .pg-set-fold-chevron { transition: none; }

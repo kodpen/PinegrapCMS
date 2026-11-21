@@ -73,6 +73,7 @@
     "E-mail draft": "E-posta taslağı",
     "E-mail each issued invoice to the customer": "Kesilen her faturayı müşteriye e-postala",
     "E-mail each person their tasks ({var:1}{var:2}) · {var:3}": "Herkese kendi görevlerini e-postayla gönder ({var:1}{var:2}) · {var:3}",
+    "E-mail file": "E-posta dosyası",
     "E-mail footer": "E-posta alt bilgisi",
     "E-mail for the back-in-stock notice (email_address) — catalog_item_view": "Stok bildirimi için e-posta (email_address) — catalog_item_view",
     "E-mail frame": "E-posta çerçevesi",

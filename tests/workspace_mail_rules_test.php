@@ -165,7 +165,7 @@ function test_workspace_mail_rules_wiring()
 	pg_assert_contains('$ruled = ($opened && function_exists(\'ws_mail_rules_run\'))', $ingest, 'only for a conversation the mail opened');
 
 	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_rules.php');", workspace_mail_rules_test_source('includes/workspace/bootstrap.php'), 'loaded with the module');
-	pg_assert_contains('ws_mail_rules_html($boxes, ws_mail_rule_people(), $form)', workspace_mail_rules_test_source('includes/workspace/mail_settings.php'), 'drawn on the Mailboxes card');
+	pg_assert_contains('ws_mail_rules_html($boxes, $support ? ws_mail_rule_people() : array(), $form)', workspace_mail_rules_test_source('includes/workspace/mail_settings.php'), 'drawn on the Mailboxes card');
 
 	$save = workspace_mail_rules_test_source('includes/settings/mailboxes.save.php');
 	pg_assert_contains("ws_mail_rule_add(\$ws_viewer,", $save, 'Add rule is saved');
