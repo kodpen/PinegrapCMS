@@ -7,7 +7,8 @@
  * top customers. Everything is read from the summary the general job
  * rebuilds (includes/fn/customer_values.php); this screen sums no order.
  * Names are read from the orders when shown, and only for a reader who may
- * read contacts.
+ * read contacts. The Rhythm part (includes/fn/customer_rhythm_report.php)
+ * reads the customer_rhythm rows and summary the same job keeps.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -34,6 +35,31 @@ $summary = pg_customer_value_summary();
 $symbol = BASE_CURRENCY_SYMBOL;
 $may_see_names = (bool) validate_contacts_access($user, true);
 $may_make_groups = pg_customer_value_may_make_groups($user);
+$rhythm_ready = pg_customer_rhythm_ready();
+$part = ($rhythm_ready && (($_GET['part'] ?? '') === 'rhythm')) ? 'rhythm' : 'value';
+$rhythm_stage = pg_customer_rhythm_stage_pick($_GET['stage'] ?? '');
+
+include_once('liveform.class.php');
+$liveform_customer_report = new liveform('view_customer_report');
+
+// The Rhythm part's settings: Manager and above.
+if (($_SERVER['REQUEST_METHOD'] === 'POST') && isset($_POST['rhythm_settings'])) {
+    validate_token_field();
+
+    if (!$rhythm_ready || !pg_customer_rhythm_may_change($user)) {
+        output_error(lang('Access denied.'), 403);
+    }
+
+    if (!pg_config_text_save('customer_rhythm_settings', pg_customer_rhythm_settings_encode(pg_customer_rhythm_settings_from_post($_POST)))) {
+        output_error(lang('Query failed.'));
+    }
+
+    log_activity(lang('order rhythm settings were changed'), $_SESSION['sessionusername']);
+    $liveform_customer_report->add_notice(lang('The rhythm settings have been saved.'));
+
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_customer_report.php?part=rhythm');
+    exit();
+}
 
 // "Make a contact group" on a cell: a group filled by the rules that stand
 // for the cell, then the group editor opened on it.
@@ -53,7 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         output_error('Query failed.');
     }
 
-    include_once('liveform.class.php');
     $liveform_edit_contact_group = new liveform('edit_contact_group', $group_id);
     $liveform_edit_contact_group->add_notice(lang('The contact group has been created. It is filled by rules that count every order but a cart, by contact, so its size can differ from the cell of the report.'));
 
@@ -83,6 +108,19 @@ if (($_GET['csv'] ?? '') === 'top') {
     exit();
 }
 
+// A stage's customers as a CSV, names included: only for a reader who may
+// read contacts.
+if (($_GET['csv'] ?? '') === 'rhythm') {
+    if (!$rhythm_ready || !$may_see_names) {
+        output_error(lang('Access denied.'), 403);
+    }
+
+    pg_list_excel_capture(array('orders' => 'number', 'interval_days' => 'number', 'days_since_last_order' => 'number', 'chance' => 'number', 'expected_value' => 'money'), lang('Order rhythm'));
+    pg_csv_download_start('customer_rhythm' . (($rhythm_stage !== '') ? '_' . $rhythm_stage : '') . '.csv');
+    pg_customer_rhythm_csv_print($rhythm_stage);
+    exit();
+}
+
 $output_periods = '';
 
 foreach (pg_customer_value_periods() as $key => $label) {
@@ -91,10 +129,10 @@ foreach (pg_customer_value_periods() as $key => $label) {
     $output_periods .= '<a class="pg-seg-item' . ($current ? ' is-active" aria-current="true"' : '"') . ' href="view_customer_report.php?period=' . h($key) . '">' . h($label) . '</a>';
 }
 
-$output_notices = '';
+$output_notices = $liveform_customer_report->output_notices();
 
 // Until the first rebuild has finished the screen says how far it is.
-if ($summary === null) {
+if (($summary === null) && ($part === 'value')) {
     list(, $pass) = pg_customer_value_pass_read();
 
     if ((int) $pass['started'] > 0) {
@@ -108,7 +146,15 @@ $output_as_of = '';
 $output_sections = '';
 $report_view = null;
 
-if ($summary !== null) {
+if ($part === 'rhythm') {
+    $rhythm_summary = pg_customer_rhythm_summary();
+
+    if ($rhythm_summary !== null) {
+        $output_as_of = h(lang(array('string' => 'As of {var:1}', 'vars' => strip_tags(get_absolute_time(array('timestamp' => (int) $rhythm_summary['at']))))));
+    }
+
+    $output_sections = pg_customer_rhythm_report_html($user, $rhythm_stage, $may_see_names);
+} elseif ($summary !== null) {
     $output_as_of = h(lang(array('string' => 'As of {var:1}', 'vars' => strip_tags(get_absolute_time(array('timestamp' => (int) $summary['at']))))));
 
     if (pg_customer_value_too_little($summary)) {
@@ -308,6 +354,19 @@ if ($summary !== null) {
     $output_sections .= '<p class="fg-secondary small">' . h(lang('Completed and exported orders count, less what was refunded; cancelled orders and orders refunded in full do not. A customer is a billing e-mail address. The figures are worked out again every day.')) . '</p>';
 }
 
+// Value and Rhythm, once the rhythm's table is there.
+$output_parts = '';
+
+if ($rhythm_ready) {
+    foreach (array('value' => lang('Value'), 'rhythm' => lang('Rhythm')) as $key => $label) {
+        $output_parts .= '<a class="pg-seg-item' . (($key === $part) ? ' is-active" aria-current="true"' : '"') . ' href="view_customer_report.php' . (($key === 'rhythm') ? '?part=rhythm' : '') . '">' . h($label) . '</a>';
+    }
+
+    $output_parts = '<div class="pg-seg" role="group" aria-label="' . h(lang('Part')) . '">' . $output_parts . '</div>';
+}
+
+$rhythm_csv = 'view_customer_report.php?csv=rhythm' . (($rhythm_stage !== '') ? '&stage=' . $rhythm_stage : '');
+
 print
     pg_page_shell(
         array(
@@ -322,9 +381,12 @@ print
     ) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
-        'secondary' => (($summary !== null) && $may_see_names) ? array(array('label' => lang('Export top customers'), 'url' => 'view_customer_report.php?csv=top', 'icon' => 'bi-download'), pg_list_excel_action('view_customer_report.php?csv=top')) : '',
-        'search' => (($summary !== null) ? '<div class="pg-seg pg-customer-periods" role="group" aria-label="' . h(lang('Period')) . '">' . $output_periods . '</div>' : '')
+        'secondary' => ($part === 'rhythm')
+            ? ($may_see_names ? array(array('label' => lang('Export customers'), 'url' => $rhythm_csv, 'icon' => 'bi-download'), pg_list_excel_action($rhythm_csv)) : '')
+            : ((($summary !== null) && $may_see_names) ? array(array('label' => lang('Export top customers'), 'url' => 'view_customer_report.php?csv=top', 'icon' => 'bi-download'), pg_list_excel_action('view_customer_report.php?csv=top')) : ''),
+        'search' => ((($summary !== null) && ($part === 'value')) ? '<div class="pg-seg pg-customer-periods" role="group" aria-label="' . h(lang('Period')) . '">' . $output_periods . '</div>' : '')
             . (($output_as_of !== '') ? '<span class="pg-report-range"><i class="bi bi-clock-history" aria-hidden="true"></i>' . $output_as_of . '</span>' : ''),
+        'view' => $output_parts,
     ), array('class' => 'pg-report-tools')) . '
     <div class="row">
         <div class="col-12">
@@ -341,3 +403,5 @@ print
 </main>
 ' .
 output_footer();
+
+$liveform_customer_report->remove_form();

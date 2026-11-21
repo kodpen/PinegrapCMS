@@ -62,6 +62,7 @@ function pg_list_table_definitions()
         'view_content_review' => array('file' => 'includes/fn/content_review_list.php', 'source' => 'pg_content_review_list_source'),
         'marketplace_repricing' => array('file' => 'includes/fn/marketplace_repricing.php', 'source' => 'mp_repricing_product_list_source'),
         'marketplace_repricing_log' => array('file' => 'includes/fn/marketplace_repricing.php', 'source' => 'mp_repricing_log_list_source'),
+        'customer_rhythm' => array('file' => 'includes/fn/customer_rhythm_report.php', 'source' => 'pg_customer_rhythm_list_source'),
     );
 }
 
