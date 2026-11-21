@@ -22,8 +22,8 @@ description: Server-side ad events to Meta CAPI, GA4 MP and TikTok Events API: t
 - Architect (2026-11-20, message 10514): add to cart and begin checkout from the server, no new public endpoint, only with consent; the owner may turn it.
 
 ## Which feature is where?
-- C1 the ids at the payment step: #10732, click ids #10781. C2 hashing at send: #10732. C3 purchase at completion: #10732; its counter sale switch: the PR of `ad-conversions-counter-sales.md`.
-- C4 refund (GA4 only): #10866. C5 Lead and registration, C6 add to cart (20 a cart) and begin checkout, C7 the receipt's event id: #10868; the switches on GA4's and TikTok's pages: `ad-conversions-counter-sales.md`.
+- C1 the ids at the payment step: #10732, click ids #10781. C2 hashing at send: #10732. C3 purchase at completion: #10732; its counter sale switch: #10960 (`ad-conversions-counter-sales.md`).
+- C4 refund (GA4 only): #10866. C5 Lead and registration, C6 add to cart (20 a cart) and begin checkout, C7 the receipt's event id: #10868; on GA4's and TikTok's pages: #10960.
 - C8 the three pages and the notice-off box: #10812, #10866, #10862. C9 without the person: same PRs. C10, C10b the table and queue: #10732. C11 log and alert, C12 the report: #10907.
 
 ## What is not built?

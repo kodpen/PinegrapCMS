@@ -5,6 +5,7 @@ module: ad_conversions
 ---
 
 ## What does each service page offer?
+- Built in #10960. Before it only Meta's page saved the visitor events and `local` orders were never sent.
 - One block, `pg_ad_conversion_choices_fields()` in `includes/fn/ad_conversions.php`, drawn by all three pages; one save rule, `pg_ad_conversion_choices_merge()` (events kept only among those the service offers, page order of `pg_ad_conversion_all_events()`).
 - "Events sent": a switch row per event, label from `pg_ad_conversion_log_event_label()`, the service's own name under it. GA4 offers all six of poll 166; Meta and TikTok all but Refund (no such event, C4).
 - Purchase is on for a row never saved (`events` missing → `purchase`); the others are off until switched on. Add to cart, begin checkout, sign-up and Lead go only with consent (`ad-conversions-visitor-events.md`); Lead only for the forms ticked under "Forms sent as Lead".
