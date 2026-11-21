@@ -115,6 +115,7 @@ function api_webhook_core_events() {
 		'booking.confirmed'   => 'A booking was confirmed, at once or after it was requested',
 		'booking.rescheduled' => 'A booking was moved to another time; start_at and end_at are the new times',
 		'booking.cancelled'   => 'A booking was cancelled, by the customer or by staff',
+		'booking.completed'   => 'Staff marked a booking done, on the agenda or through the API',
 		'subscription.renewed'   => 'A subscription was charged for its next period; order_id names the renewal order',
 		'subscription.failed'    => 'A subscription\'s renewal was refused or waits for the customer to confirm the payment; status ended when the last retry failed (the end itself is not announced again)',
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',

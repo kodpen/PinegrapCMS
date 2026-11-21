@@ -102,7 +102,7 @@ function test_api_bookings_move_event()
 	pg_assert_same('cancelled', api_booking_move_event('confirmed', 'cancelled'));
 	pg_assert_same('', api_booking_move_event('held', 'confirmed'), 'pg_booking_confirm() announces it');
 	pg_assert_same('', api_booking_move_event('held', 'cancelled'), 'a hold was never announced');
-	pg_assert_same('', api_booking_move_event('confirmed', 'done'));
+	pg_assert_same('completed', api_booking_move_event('confirmed', 'done'));
 	pg_assert_same('', api_booking_move_event('confirmed', 'no_show'));
 }
 

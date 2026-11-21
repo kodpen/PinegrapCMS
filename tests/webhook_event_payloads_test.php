@@ -33,7 +33,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/users.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_payloads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
-foreach (array('tasks', 'flow_run_events', 'messages', 'app_commands', 'groups', 'wtable_shares') as $webhook_payloads_test_file) {
+foreach (array('tasks', 'flow_run_events', 'messages', 'app_commands', 'groups', 'wtable_shares', 'mail_status') as $webhook_payloads_test_file) {
 	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/' . $webhook_payloads_test_file . '.php');
 }
 
@@ -79,6 +79,9 @@ function webhook_payloads_test_builders()
 		},
 		'pg_subscription_webhook_data' => function () {
 			return pg_subscription_webhook_data(array('id' => 2, 'product_id' => 3, 'status' => 'active', 'amount' => 100, 'currency' => 'USD', 'next_charge_at' => 0, 'retry_count' => 0), 8, 'renewed', 'active', 5);
+		},
+		'ws_mail_conversation_closed_event' => function () {
+			return ws_mail_conversation_closed_event(array('id' => 3, 'channel_id' => 2, 'message_id' => 4, 'box_id' => 1, 'assignee_id' => 5, 'status' => 'open'), array('status' => 'closed'), 5);
 		},
 		'pg_booking_event_payload' => function () {
 			return pg_booking_event_payload(array('id' => 1, 'service_id' => 2, 'staff_id' => 3, 'user_id' => 0, 'name' => 'A', 'email' => 'a@example.com', 'start_at' => 0, 'end_at' => 0, 'status' => 'confirmed', 'source' => 'site'));
