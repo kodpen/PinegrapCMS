@@ -23,6 +23,9 @@
  *
  *   workspace_file_save.php?channel=<id>   a new canvas posted in a channel
  *     { token, doc, picture, name? } -> { status, mode: 'new', name, url, message_id }
+ *     &table=<id> (the Data screen's "Show on a canvas"): only into the
+ *     table's own channel, by someone who reads the table and may post
+ *     there; a canvas holding a data layer of it binds it for reading
  *   workspace_file_save.php?note=<id>      a new canvas kept for a note
  *     { token, doc, picture, name? } -> { status, mode: 'new', id, name, url }
  *   workspace_file_save.php?note=<id>&file=<stored name>   a canvas of the
@@ -174,6 +177,17 @@ if (isset($_GET['channel'])) {
         ws_file_save_refuse(lang('Access denied.'), 403);
     }
 
+    // A table shown on a canvas: refused before anything is posted.
+    $shown = isset($_GET['table']) ? (int) $_GET['table'] : 0;
+
+    if (isset($_GET['table'])) {
+        $show = pg_image_editor_data_show_check($viewer, $shown, (int) $channel['id']);
+
+        if ($show['code'] !== '') {
+            ws_file_save_refuse(pg_image_editor_data_show_text($show['code']), 403);
+        }
+    }
+
     $picture = $canvas ? ws_canvas_picture($request) : array('error' => lang('Invalid request.'), 'data' => '');
 
     if ($picture['error'] !== '') {
@@ -188,6 +202,10 @@ if (isset($_GET['channel'])) {
 
     $saved = ws_message((int) $result['message_id']);
     $kept = $saved ? ws_canvas_keep((int) $saved['file_id'], $doc_object, $viewer['id'], $request['pictures'] ?? null) : array('pictures' => (object) array());
+
+    if ($saved && ($shown > 0) && pg_image_editor_data_doc_shows($request['doc'] ?? null, $shown)) {
+        pg_image_editor_data_show_bind((int) $result['message_id'], $shown, (int) $viewer['id']);
+    }
 
     $stored = $saved ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $saved['file_id'] . "'") : '';
 

@@ -20,6 +20,9 @@
  *       fullscreen: true,                         open filling the window
  *       ratio: { value: 16 / 9, label: '16:9' },  the shape a page shows it in:
  *                                                 the crop panel's first ratio
+ *       dataShow: { table, show },               open the Data picker on that
+ *                                                 table's views (show 'chart' or
+ *                                                 'table'; pg_image_editor_data.js)
  *       onSave: function (result) {},            result.doc, result.file
  *       onClose: function () {}
  *   }).then(function (result) {});              null when closed unsaved
@@ -332,8 +335,8 @@
         Editor.inits.forEach(function (init) { init.call(self); });
 
         // The New image dialog has nothing to ask of a canvas opened again,
-        // nor of one that takes a video's size.
-        if ((this.reopened || (opts.blank && opts.clip)) && this.board) {
+        // nor of one that takes a video's size or opens on a table's data.
+        if ((this.reopened || (opts.blank && (opts.clip || opts.dataShow))) && this.board) {
             this.board.ask = false;
         }
 
