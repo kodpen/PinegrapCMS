@@ -8790,6 +8790,7 @@
     "These rows were not imported because their HS code or country of origin is not valid: {var:1}.": "Bu satırlar, GTİP / HS kodu veya menşe ülkesi geçerli olmadığı için içe aktarılmadı: {var:1}.",
     "These rows were not imported because their name or short description is longer than 100 characters: {var:1}.": "Bu satırlar, adları ya da kısa açıklamaları 100 karakterden uzun olduğu için içe aktarılmadı: {var:1}.",
     "These rows were not imported because their product is in the Recycle Bin: {var:1}.": "Şu satırlar, ürünleri Geri Dönüşüm Kutusu'nda olduğu için içe aktarılmadı: {var:1}.",
+    "These rows were not imported because their shelf address is longer than 40 characters: {var:1}.": "Bu satırlar raf adresi 40 karakterden uzun olduğu için içe aktarılmadı: {var:1}.",
     "These rows were not imported because their stock quantity is not a whole number of zero or more: {var:1}.": "Şu satırlar, stok miktarı sıfır ya da daha büyük bir tam sayı olmadığı için içe aktarılmadı: {var:1}.",
     "These rows were not imported because their stock quantity is too large: {var:1}.": "Şu satırlar stok miktarı çok büyük olduğu için içe aktarılmadı: {var:1}.",
     "These rows were not imported because their tax rate is not a number from 0 to 100: {var:1}.": "Bu satırlar, vergi oranları 0 ile 100 arasında bir sayı olmadığı için içe aktarılmadı: {var:1}.",

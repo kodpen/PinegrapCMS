@@ -277,7 +277,8 @@ function api_schema() {
 				array('name' => 'id',       'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'op',       'in' => 'body', 'type' => 'enum', 'values' => array('set', 'adjust'), 'required' => true),
 				array('name' => 'quantity', 'in' => 'body', 'type' => 'int', 'min' => -1000000, 'max' => 1000000, 'required' => true, 'description' => 'The new quantity for set, the signed change for adjust.'),
-				array('name' => 'location', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'On a site that keeps stock per location: the location whose units change (left out or 0: the default location). An adjust stops at 0 there and takes nothing from another location; the product\'s quantity is the sum of its locations. A site without locations refuses any other value with 422 location.')
+				array('name' => 'location', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'On a site that keeps stock per location: the location whose units change (left out or 0: the default location). An adjust stops at 0 there and takes nothing from another location; the product\'s quantity is the sum of its locations. A site without locations refuses any other value with 422 location.'),
+				array('name' => 'shelf',    'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'description' => 'The shelf address at that location, such as A-03-2, written with the stock change; empty or null removes it, left out leaves it as it is. Pick lists walk the shelves in this order.')
 			)
 		),
 
@@ -6582,6 +6583,7 @@ function api_error_catalogue() {
 		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
 		'note_locked'              => array(423, 'The workspace note is behind its owner\'s notes lock, which the API never holds open: read it as title only, and change, delete or read its versions on the notes screen with the PIN.'),
 		'location'                 => array(422, 'location is not one of the site\'s stock locations, or the site keeps no stock per location. Leave it out to use the default.'),
+		'shelf'                    => array(422, 'shelf holds text that is not UTF-8. Send the shelf address as plain text, such as A-03-2.'),
 		'limit_message_mine'       => array(422, 'The person already keeps 10 highlights on this message. Remove one first.'),
 		'limit_message'            => array(422, 'The message already carries 30 highlights, as many as it can.'),
 		'limit_person'             => array(422, 'The person keeps 2,000 highlights, as many as they can. Remove some first.'),

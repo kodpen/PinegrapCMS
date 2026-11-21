@@ -90,6 +90,8 @@ if (!$_POST) {
             'hs_code_invalid' => lang('The HS code may hold only digits and dots, up to 16 characters.'),
             'origin_country_missing' => lang('Choose a country of origin, or choose to clear it.'),
             'origin_country_invalid' => lang('The country of origin is not a known country.'),
+            'shelf_missing' => lang('Enter a shelf address, or choose to clear it.'),
+            'shelf_too_long' => lang(array('string' => '{var:1} is longer than the {var:2} characters accepted.', 'vars' => array(lang('Shelf'), PG_BIN_MAX))),
         );
 
         if ($mass_edit_problem !== '') {
@@ -131,6 +133,14 @@ if (!$_POST) {
     $quantity_by_location = ($quantity_value !== null) && (bool) pg_stock_screen_locations();
     $quantity_location = (int) ($_POST['edit_inventory_location'] ?? 0);
 
+    // The shelf address to set or clear (null: left as it is), at the chosen
+    // location: one of the locations the dialog lists, else the default; 0
+    // without locations.
+    $shelf_value = pg_bins_ready() ? pg_products_mass_shelf_value($_POST) : null;
+    $shelf_location_posted = (int) ($_POST['edit_shelf_location'] ?? 0);
+    $shelf_location = pg_bin_location_key(
+        in_array($shelf_location_posted, array_map('intval', array_column(pg_stock_screen_locations(), 'id')), true) ? $shelf_location_posted : 0);
+
     // If at least one product was selected then continue.
     if ($product_ids) {
         $number_of_products = 0;
@@ -149,6 +159,7 @@ if (!$_POST) {
                     || (($_POST['edit_tax_rate_method'] ?? '') != '')
                     || ($customs_values['hs_code'] !== null)
                     || ($customs_values['origin_country'] !== null)
+                    || is_string($shelf_value)
                 ) {
                     if ($_POST['edit_allowed_zones']) {
                         $allowed_zones = explode(',', $_POST['edit_allowed_zones']);
@@ -441,6 +452,12 @@ if (!$_POST) {
                             pg_stock_refresh_out_of_stock($product_id);
                         }
 
+                        // The shelf address; a bundle keeps none, as it has
+                        // no stock of its own to pick.
+                        if (is_string($shelf_value) && !pg_bundle_ids_among(array((int) $product_id))) {
+                            pg_bins_write($product_id, array($shelf_location => $shelf_value));
+                        }
+
                         // A bundle's stock (and a summed price) is worked
                         // out from its components: whatever this edit wrote
                         // there is put back (includes/fn/bundles.php).
@@ -529,6 +546,10 @@ if (!$_POST) {
 
                         if ($customs_values['origin_country'] !== null) {
                             $changes[] = ($customs_values['origin_country'] === '') ? lang('country of origin cleared') : lang('country of origin changed');
+                        }
+
+                        if (is_string($shelf_value)) {
+                            $changes[] = ($shelf_value === '') ? lang('shelf address cleared') : lang('shelf address changed');
                         }
 
                         if ($changes) {

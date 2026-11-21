@@ -343,6 +343,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_locations.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_sales.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_pickup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_location_screens.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_bins.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/auto_dialogs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/common_regions.php');

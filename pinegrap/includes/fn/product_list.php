@@ -1158,6 +1158,14 @@ function pg_product_modify_dialog($form_id, $warning = '')
     // site without stock locations.
     $stock_locations = pg_stock_screen_locations();
 
+    // The shelf address, once the upgrade has added product_bins: set at
+    // one location (the default without a choice) or cleared there.
+    $shelf_options = pg_bins_ready() ? array(
+        lang(array('string' => 'Select to change {var:1}', 'vars' => array(lang('Shelf address')))) => '',
+        lang('Set to the value below') => 'set',
+        lang('Clear the shelf address') => 'clear',
+    ) : null;
+
     ob_start();
     require(PG_FUNCTIONS_DIR . '/includes/templates/edit_products.php');
 
