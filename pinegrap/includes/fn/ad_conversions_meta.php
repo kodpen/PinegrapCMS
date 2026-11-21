@@ -143,6 +143,8 @@ function pg_ad_conversion_meta_settings_merge(array $stored, array $post, $seale
         'pixel_id' => $pixel,
         'token' => $token,
         'test_event_code' => trim((string) ($post['test_event_code'] ?? '')),
+        // Meta takes no counter sale (pg_ad_conversion_counter_sale_offered()).
+        'counter_sales' => false,
     ) + pg_ad_conversion_choices_merge(array_keys(pg_ad_conversion_meta_events()), $post);
 }
 
@@ -165,7 +167,7 @@ function pg_ad_conversion_meta_source_url()
  * One event as Meta's server event (a member of the body's data array):
  * the hashed e-mail and phone, the browser and click ids, the address and
  * the browser's name only when the event carries the person; amounts as
- * numbers; action_source website, physical_store for a counter sale. Pure.
+ * numbers; action_source website. Pure.
  *
  * @param array  $event      pg_ad_conversion_event()
  * @param string $source_url
@@ -221,15 +223,11 @@ function pg_ad_conversion_meta_server_event(array $event, $source_url)
         $custom['order_id'] = (string) $event['order_number'];
     }
 
-    // A counter sale happened at the till: Meta asks physical_store for a
-    // store event, and a non-web event needs no page address.
-    $store = !empty($event['counter_sale']);
-
     $server = array(
         'event_name' => pg_ad_conversion_meta_event_name((string) ($event['event'] ?? '')),
         'event_time' => (int) ($event['time'] ?? 0),
         'event_id' => (string) ($event['event_id'] ?? ''),
-        'action_source' => $store ? 'physical_store' : 'website',
+        'action_source' => 'website',
         'user_data' => $user ? $user : new stdClass(),
     );
 
@@ -237,7 +235,7 @@ function pg_ad_conversion_meta_server_event(array $event, $source_url)
         $server['custom_data'] = $custom;
     }
 
-    if (!$store && ((string) $source_url !== '')) {
+    if ((string) $source_url !== '') {
         $server['event_source_url'] = (string) $source_url;
     }
 
@@ -539,7 +537,6 @@ function pg_ad_conversion_meta_post_page($action, array $post, $liveform)
             'person_notice_off' => !empty($post['person_notice_off']),
             'without_person' => $post['ad_without_person'] ?? array(),
             'lead_forms' => $post['ad_lead_forms'] ?? array(),
-            'counter_sales' => !empty($post['counter_sales']),
         ), $sealed);
 
         pg_config_text_save(PG_AD_CONVERSION_META_ROW, json_encode($saved));

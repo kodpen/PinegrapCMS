@@ -19,7 +19,7 @@ module: ad_conversions_meta
 - The token is in `pg_reseal_registry()` (area `ad_conversions`, field `token`), so a key reset seals it again.
 
 ## How is a row sent?
-- `pg_ad_conversion_send_meta_capi()`: one event per POST, the token in the JSON body, never in the address. `action_source` website, `event_source_url` the site's address, the event id the order reference. A counter sale: `physical_store` and no `event_source_url` (`meta-capi-facts.md`).
+- `pg_ad_conversion_send_meta_capi()`: one event per POST, the token in the JSON body, never in the address. `action_source` website, `event_source_url` the site's address, the event id the order reference. Counter sales never go to Meta (`ad-conversions-counter-sales.md`).
 - The person (C2) only when the row has it: `em`, `ph` hashed; `fbp`, `fbc`, address, browser name plain. The click id is read from the row's `ids` (`fbc`), never from `ad_click_ids.php`. Without the person `user_data` is an empty object.
 - Refused without a call (400, given up): no pixel or token, an event Meta has no name for (refund), an event older than 7 days less 10 minutes.
 

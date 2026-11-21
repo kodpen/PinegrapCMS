@@ -568,8 +568,22 @@ function pg_ad_conversion_event(array $row, array $order)
 }
 
 /**
+ * Whether a service takes a counter sale at all. A counter sale carries
+ * nothing of the person, and Meta refuses an event without at least one
+ * customer information parameter in user_data, so Meta never gets one.
+ * Pure.
+ *
+ * @param string $service
+ * @return bool
+ */
+function pg_ad_conversion_counter_sale_offered($service)
+{
+    return $service !== 'meta_capi';
+}
+
+/**
  * The services a counter sale's purchase goes to: connected, the purchase
- * ticked and "Send counter sales" on. Pure.
+ * ticked, "Send counter sales" on, and a service that takes one. Pure.
  *
  * @param array $settings service => pg_ad_conversion_settings_parse()
  * @return string[]
@@ -579,7 +593,7 @@ function pg_ad_conversion_counter_sale_plan(array $settings)
     $services = array();
 
     foreach ($settings as $service => $one) {
-        if (!empty($one['connected']) && !empty($one['counter_sales']) && in_array('purchase', (array) ($one['events'] ?? array()), true)) {
+        if (pg_ad_conversion_counter_sale_offered((string) $service) && !empty($one['connected']) && !empty($one['counter_sales']) && in_array('purchase', (array) ($one['events'] ?? array()), true)) {
             $services[] = $service;
         }
     }
@@ -1332,9 +1346,10 @@ function pg_ad_conversion_begin_checkout($order_id)
  * @param bool   $checked
  * @param string $title
  * @param string $meta
+ * @param bool   $disabled a switch the service does not take, shown off
  * @return string
  */
-function pg_ad_conversion_switch_row($id, $name, $value, $checked, $title, $meta)
+function pg_ad_conversion_switch_row($id, $name, $value, $checked, $title, $meta, $disabled = false)
 {
     return '
 					<div class="pg-card-inner-row">
@@ -1342,7 +1357,7 @@ function pg_ad_conversion_switch_row($id, $name, $value, $checked, $title, $meta
 							<label class="pg-list-row-title d-block" for="' . h($id) . '">' . h($title) . '</label>
 							<div class="pg-text-meta">' . h($meta) . '</div>
 						</div>
-						<input type="checkbox" class="pg-switch" role="switch" name="' . h($name) . '" value="' . h($value) . '" id="' . h($id) . '"' . ($checked ? ' checked' : '') . '>
+						<input type="checkbox" class="pg-switch" role="switch" name="' . h($name) . '" value="' . h($value) . '" id="' . h($id) . '"' . ($checked ? ' checked' : '') . ($disabled ? ' disabled' : '') . '>
 					</div>';
 }
 
@@ -1399,6 +1414,7 @@ function pg_ad_conversion_choices_fields($service, array $names, array $stored, 
 				</div>';
     }
 
+    $counter_offered = pg_ad_conversion_counter_sale_offered($service);
     $notice_line = '';
 
     if (!$notice_on && !$stored['person_notice_off']) {
@@ -1421,9 +1437,10 @@ function pg_ad_conversion_choices_fields($service, array $names, array $stored, 
 				</div>
 				<div>
 					<div class="pg-field-label">' . h(lang('Counter sales')) . '</div>
-					<div class="pg-card-inner">' . pg_ad_conversion_switch_row($service . '_counter_sales', 'counter_sales', '1', !empty($stored['counter_sales']),
-                        lang('Send counter sales'), lang('Purchase') . ' · ' . lang('A sale at the till goes with the amount and the products only: no e-mail, phone, browser or click id.')) . '
-					</div>
+					<div class="pg-card-inner">' . pg_ad_conversion_switch_row($service . '_counter_sales', 'counter_sales', '1', $counter_offered && !empty($stored['counter_sales']),
+                        lang('Send counter sales'), lang('Purchase') . ' · ' . lang('A sale at the till goes with the amount and the products only: no e-mail, phone, browser or click id.'), !$counter_offered) . '
+					</div>' . ($counter_offered ? '' : '
+					<div class="pg-field-help">' . h(lang('Meta takes an event only with some customer information, so counter sales are not sent to Meta.')) . '</div>') . '
 				</div>
 				<div>
 					<div class="pg-card-inner">' . pg_ad_conversion_switch_row($service . '_person_notice_off', 'person_notice_off', '1', $stored['person_notice_off'],

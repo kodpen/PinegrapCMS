@@ -204,30 +204,52 @@ function test_ad_conversions_meta_places()
 	pg_assert_true(strpos($reseal, "'ad_conversions_meta_capi', 'connect', array('fields' => array('token'))") !== false, 'the token is sealed again on a key reset');
 }
 
-// A counter sale: physical_store, no page address, nothing of the person
-// even when the row carried ids; the switch is saved and read back.
+// A counter sale built for Meta carries nothing of the person, even when the
+// row held ids: user_data has no hashed e-mail or phone, no fbp or fbc, no
+// IP address and no user agent. Meta refuses an event without any of them,
+// so a counter sale is never queued for Meta, its switch is never saved and
+// the page shows it off with the reason.
 function test_ad_conversions_meta_counter_sale()
 {
 	$row = array(
 		'event' => 'purchase',
 		'event_id' => 'R7K2Q9',
 		'person' => 1,
-		'ids' => json_encode(array('fbp' => 'fb.1.1700000000000.123456789', 'fbc' => 'fb.1.1700000000000.AbCdEf', 'ip' => '203.0.113.9', 'user_agent' => 'Mozilla/5.0')),
+		'ids' => json_encode(array('fbp' => 'fb.1.1700000000000.123456789', 'fbc' => 'fb.1.1700000000000.AbCdEf', 'ip' => '203.0.113.9', 'user_agent' => 'Mozilla/5.0 (Till)')),
 		'detail' => json_encode(array('value' => 12550, 'currency' => 'try', 'order_number' => '1042', 'time' => 1763600000, 'contents' => array(), 'counter_sale' => true)),
 	);
-	$server = pg_ad_conversion_meta_server_event(pg_ad_conversion_event($row, array('billing_email_address' => 'buyer@example.com', 'billing_phone_number' => '+90 532 111 22 33')), 'https://shop.example/');
+	$order = array('billing_email_address' => 'buyer@example.com', 'billing_phone_number' => '+90 532 111 22 33');
+	$server = pg_ad_conversion_meta_server_event(pg_ad_conversion_event($row, $order), 'https://shop.example/');
+	$user = (array) $server['user_data'];
 	$json = json_encode($server);
 
-	pg_assert_same('physical_store', $server['action_source'], 'a store event');
-	pg_assert_false(isset($server['event_source_url']), 'no page address for a store event');
-	pg_assert_same('{}', json_encode($server['user_data']), 'no e-mail, phone, browser or click id');
-	pg_assert_false(strpos($json, 'fb.1.') !== false || strpos($json, '203.0.113.9') !== false || strpos($json, hash('sha256', 'buyer@example.com')) !== false, 'nothing of the buyer');
+	foreach (array('em', 'ph', 'fbp', 'fbc', 'client_ip_address', 'client_user_agent') as $key) {
+		pg_assert_false(isset($user[$key]), 'no ' . $key);
+	}
+
+	pg_assert_same('{}', json_encode($server['user_data']), 'user_data empty');
+
+	foreach (array(hash('sha256', 'buyer@example.com'), pg_ad_conversion_hash_phone($order['billing_phone_number']), 'fb.1.', '203.0.113.9', 'Mozilla/5.0 (Till)') as $value) {
+		pg_assert_false(strpos($json, str_replace('/', '\/', $value)) !== false, 'nothing of the buyer: ' . $value);
+	}
+
 	pg_assert_same(125.5, $server['custom_data']['value'], 'the amount goes');
+
+	// The same row as a site purchase does carry the person: the check above
+	// is not empty by accident.
+	$row['detail'] = json_encode(array('value' => 12550, 'currency' => 'try', 'order_number' => '1042', 'time' => 1763600000, 'contents' => array()));
+	$site = (array) pg_ad_conversion_meta_server_event(pg_ad_conversion_event($row, $order), 'https://shop.example/')['user_data'];
+	pg_assert_same(array('em', 'ph', 'fbp', 'fbc', 'client_ip_address', 'client_user_agent'), array_keys($site), 'a site purchase with consent carries the person');
+
+	// Meta takes no counter sale: never planned, never saved, shown off.
+	pg_assert_false(pg_ad_conversion_counter_sale_offered('meta_capi'), 'Meta takes no counter sale');
+	pg_assert_same(array(), pg_ad_conversion_counter_sale_plan(array('meta_capi' => array('connected' => true, 'counter_sales' => true, 'events' => array('purchase')))), 'never queued for Meta');
 
 	$stored = pg_ad_conversion_meta_stored(json_encode(array('connected' => true, 'pixel_id' => '111111', 'token' => 'sealed:iv', 'events' => array('purchase'))));
 	pg_assert_false($stored['counter_sales'], 'off on a row saved before the switch');
-	$saved = pg_ad_conversion_meta_settings_merge($stored, array('pixel_id' => '111111', 'events' => array('purchase'), 'counter_sales' => '1'), '');
-	pg_assert_true(pg_ad_conversion_settings_parse(json_encode($saved))['counter_sales'], 'the switch saved, read by the queue');
-	pg_assert_false(pg_ad_conversion_meta_settings_merge($stored, array('pixel_id' => '111111'), '')['counter_sales'], 'cleared when off');
-}
+	pg_assert_false(pg_ad_conversion_meta_settings_merge($stored, array('pixel_id' => '111111', 'events' => array('purchase'), 'counter_sales' => '1'), '')['counter_sales'], 'the switch is never saved for Meta');
 
+	$fields = ad_conversions_meta_test_source('includes/fn/ad_conversions.php');
+	pg_assert_contains("lang('Meta takes an event only with some customer information, so counter sales are not sent to Meta.')", $fields, 'the page says why');
+	pg_assert_contains("!\$counter_offered) . '", $fields, 'the switch is disabled');
+}

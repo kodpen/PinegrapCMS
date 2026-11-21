@@ -286,11 +286,11 @@ function test_ad_conversions_counter_sale_rows()
 {
 	$settings = array(
 		'meta_capi' => ad_conversions_test_settings(array('counter_sales' => true)),
-		'ga4_mp' => ad_conversions_test_settings(),
+		'ga4_mp' => ad_conversions_test_settings(array('counter_sales' => true)),
 		'tiktok_events' => ad_conversions_test_settings(array('counter_sales' => true, 'events' => array('lead'))),
 		'other' => ad_conversions_test_settings(array('counter_sales' => true, 'connected' => false)),
 	);
-	pg_assert_same(array('meta_capi'), pg_ad_conversion_counter_sale_plan($settings), 'switch on, purchase ticked, connected');
+	pg_assert_same(array('ga4_mp'), pg_ad_conversion_counter_sale_plan($settings), 'switch on, purchase ticked, connected; never Meta');
 	pg_assert_same(array(), pg_ad_conversion_counter_sale_plan(array('ga4_mp' => ad_conversions_test_settings())), 'switch off: nothing, as before');
 
 	$detail = pg_ad_conversion_purchase_detail(12550, 'TRY', '1042', 1763600000, array(array('product_name' => 'SKU-1', 'quantity' => 2, 'price' => 5000)));
