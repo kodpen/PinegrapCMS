@@ -32,4 +32,4 @@ module: customer_rhythm_report
 ## Tests?
 - `tests/customer_rhythm_report_test.php`.
 
-Related: docs/memory/commerce/customer-rhythm-events.md, docs/memory/commerce/customer-rhythm-store.md, docs/memory/commerce/customer-value-report-screen.md
+Related: docs/memory/commerce/customer-rhythm-events.md, docs/memory/commerce/customer-rhythm-store.md, docs/memory/commerce/customer-value-report-screen.md, docs/memory/api/api-customer-rhythm-report.md, docs/memory/commerce/customer-rhythm-group-rule.md

@@ -130,7 +130,7 @@ function pg_audience_operators()
  * The catalogue of conditions: per key its label, family, the operators it
  * takes, the kind of value ('text', 'number', 'money', 'days', 'none',
  * 'product', 'product_group', 'contact_group', 'form', 'form_field',
- * 'consent', 'status') and the table it reads. 'window' marks a condition
+ * 'consent', 'status', 'stage') and the table it reads. 'window' marks a condition
  * that also takes days (a visit window, required).
  *
  * @return array
@@ -155,6 +155,7 @@ function pg_audience_conditions()
         'bought_product' => array('label' => lang('Bought a product'), 'family' => 'orders', 'ops' => array('yes', 'no'), 'value' => 'product', 'table' => 'order_items'),
         'bought_product_group' => array('label' => lang('Bought from a product group'), 'family' => 'orders', 'ops' => array('yes', 'no'), 'value' => 'product_group', 'table' => 'products_groups_xref'),
         'left_cart' => array('label' => lang('Left a cart'), 'family' => 'orders', 'ops' => array('within'), 'value' => 'days', 'table' => 'orders'),
+        'rhythm_stage' => array('label' => lang('Rhythm stage'), 'family' => 'orders', 'ops' => array('eq', 'neq'), 'value' => 'stage', 'table' => 'customer_rhythm'),
         'returned' => array('label' => lang('Asked for a return'), 'family' => 'returns', 'ops' => array('within', 'not_within'), 'value' => 'days', 'table' => 'order_returns'),
 
         'subscription' => array('label' => lang('Subscription'), 'family' => 'subscriptions', 'ops' => array('eq', 'neq'), 'value' => 'status', 'table' => 'subscriptions'),
@@ -386,6 +387,15 @@ function pg_audience_condition_clean(array $condition)
 
         case 'status':
             if (!is_string($value) || !in_array($value, pg_audience_subscription_statuses(), true)) {
+                return null;
+            }
+
+            $clean['value'] = $value;
+            break;
+
+        case 'stage':
+            // A stage name of customer rhythm, kept as its name.
+            if (!is_string($value) || (pg_customer_rhythm_stage_pick($value) === '')) {
                 return null;
             }
 
@@ -671,6 +681,14 @@ function pg_audience_sql_condition(array $c, $now, array &$params)
             return pg_audience_sql_in("SELECT user.user_contact FROM subscriptions"
                 . " INNER JOIN user ON user.user_id = subscriptions.user_id"
                 . " WHERE user.user_contact IS NOT NULL AND subscriptions.status = ?", $op === 'eq');
+
+        case 'rhythm_stage':
+            // Any customer_rhythm row naming the contact in that stage: a
+            // contact whose orders went under two keys can hold two rows.
+            $params[] = pg_customer_rhythm_stage_code($value);
+
+            return pg_audience_sql_in("SELECT customer_rhythm.contact_id FROM customer_rhythm"
+                . " WHERE customer_rhythm.contact_id <> 0 AND customer_rhythm.stage = ?", $op === 'eq');
 
         case 'submitted_form':
             $params[] = $value;
@@ -1441,7 +1459,7 @@ function pg_audience_job_run($budget = PG_AUDIENCE_TICK_SECONDS)
 /**
  * What the rule editor draws from: every condition with its family, value
  * kind, operators and labels, the families, contact fields, consents and
- * subscription states, and the condition cap of a level.
+ * subscription states, the rhythm stages, and the condition cap of a level.
  *
  * @return array
  */
@@ -1499,6 +1517,7 @@ function pg_audience_editor_data()
         'fields' => $options(pg_audience_contact_fields()),
         'consents' => $options(pg_audience_consents()),
         'statuses' => $statuses,
+        'stages' => $options(pg_customer_rhythm_stage_labels()),
         'max' => PG_AUDIENCE_MAX_CONDITIONS,
     );
 }

@@ -145,9 +145,9 @@ function test_api_customer_rhythm_page_query()
 	pg_assert_same(array(41), $params);
 
 	list($sql) = api_customer_rhythm_page_query(array('limit' => 5, 'names' => true, 'name_rule' => pg_contact_owner_sql(12, 'customer_rhythm.contact_id')));
-	pg_assert_contains("(customer_rhythm.contact_id IN (SELECT contacts_contact_groups_xref.contact_id", $sql, 'the user role: names in its reach only');
+	pg_assert_contains('(customer_rhythm.contact_id <> 0 AND customer_rhythm.contact_id IN (SELECT contacts_contact_groups_xref.contact_id', $sql, 'the user role: names in its reach only');
 	pg_assert_contains(') AS name_ok', $sql);
-	pg_assert_true(strpos($sql, 'WHERE') === false || strpos($sql, 'WHERE') > strpos($sql, 'AS name_ok'), 'the rule names, it does not narrow the rows');
+	pg_assert_true(strpos(substr($sql, strpos($sql, 'AS name_ok')), 'WHERE') === false, 'the rule names, it does not narrow the rows');
 	pg_assert_contains('ORDER BY customer_rhythm.expected_value DESC', $sql);
 }
 
