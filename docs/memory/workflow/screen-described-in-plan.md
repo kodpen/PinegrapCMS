@@ -29,4 +29,4 @@ description: A plan describes each screen it adds in words, by the composition r
 - The description it followed; where it left it, a line says why.
 - A pattern the step builds for the first time (a folded settings row, a drawer's foot) joins the Design examples screen in the same PR (`ui/look-design-examples.md`).
 
-Related: docs/memory/ui/screen-composition-rules.md, docs/memory/ui/look-new-parts.md, docs/memory/workflow/decisions-made-panel-12.md
+Related: docs/memory/workflow/screen-follows-drawing.md, docs/memory/ui/screen-composition-rules.md, docs/memory/ui/look-new-parts.md, docs/memory/workflow/decisions-made-panel-12.md

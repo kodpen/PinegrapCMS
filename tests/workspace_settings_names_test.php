@@ -47,9 +47,12 @@ function test_workspace_settings_names_hours_separator()
 function test_workspace_settings_names_claude_copy_fields()
 {
 	$guide = workspace_settings_names_source('includes/workspace/claude_setup.php');
-	$card = workspace_settings_names_source('includes/workspace/claude.php');
 
-	pg_assert_true(strpos($card, '$copy = function ($id, $value, $rows = 1, $label = \'\')') !== false, 'copy closure takes no label');
-	pg_assert_true(strpos($guide, "\$copy('ws-claude-prompt', \$prompt, 8, lang('The prompt for the routine'))") !== false, 'guide prompt field has no name');
-	pg_assert_true(strpos($guide, "\$copy('ws-claude-host', \$host, 1, lang('Domain'))") !== false, 'guide domain field has no name');
+	// The set-up drawer's values to copy: each field is named, by its label
+	// or by aria-label.
+	pg_assert_true(strpos($guide, "ws_claude_setup_code('ws-claude-prompt', lang('The prompt for the routine'), \$prompt)") !== false, 'guide prompt field has no name');
+	pg_assert_true(strpos($guide, "ws_claude_setup_value('ws-claude-host', lang('Domain'), \$host)") !== false, 'guide domain field has no name');
+	pg_assert_contains('<label class="pg-value-row-name ws-claude-value-name" for="ws-claude-host">' . h(lang('Domain')) . '</label>', ws_claude_setup_value('ws-claude-host', lang('Domain'), 'example.com'), 'a value row names its field');
+	pg_assert_contains('aria-label="' . h(lang('The prompt for the routine')) . '"', ws_claude_setup_code('ws-claude-prompt', lang('The prompt for the routine'), 'x'), 'the code box names its field');
+	pg_assert_contains('aria-label="' . h(lang('Copy') . ': ' . lang('Domain')) . '"', ws_claude_setup_value('ws-claude-host', lang('Domain'), 'example.com'), 'each Copy says what it copies');
 }
