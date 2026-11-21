@@ -19,10 +19,10 @@ module: customer_rhythm_tell
 ## What does the comparison share do? (H12)
 - With `share` on, `pg_customer_rhythm_held_back()` holds back one due customer in ten (crc32 of the key and the day): `reminded_at` is set with `held_back` 1 and nothing is announced. Off by default (architect, `plans/customer-rhythm.md`).
 - A told reminder writes `reminded_at`, `held_back` 0, `came_back_order_id` 0 before it is announced, so a run stopped between the two never tells twice.
-- The summary (config_text `customer_rhythm`) keeps `reminders`: 'YYYY-MM' => [told, held back], 24 months, added from the pass state at its end. The return counts (H13) are RY4's.
+- The summary (config_text `customer_rhythm`) keeps `reminders`: 'YYYY-MM' => [told, held back], 24 months, added from the pass state at its end. Who came back after a reminder (H13): `customer-rhythm-report.md`.
 
 ## Where are the settings?
-- config_text `customer_rhythm_settings` JSON, read by `pg_customer_rhythm_settings()`: `on` (default on; off announces nothing and writes no reminder), `brake_days` (7, 1 to 90), `lead_days` (3, 0 to 30; the pass reads it at the walk's end), `share` (off). No screen yet: RY4 adds it.
+- config_text `customer_rhythm_settings` JSON, read by `pg_customer_rhythm_settings()`: `on` (default on; off announces nothing and writes no reminder), `brake_days` (7, 1 to 90), `lead_days` (3, 0 to 30; the pass reads it at the walk's end), `share` (off). Form: Rhythm settings on the Customers Report (`customer-rhythm-report.md`).
 
 ## What does the payload carry?
 - `pg_customer_rhythm_event_payload()`: `id` (contact), `stage`, `previous_stage` (null for none), `interval_days`, `days_since_last_order`, `chance` (per cent), `expected_value` (minor units, base currency), `last_order_id`, `last_order_number`. Stage names are those of `pg_customer_rhythm_stage_codes()` (`slipping` for Slipping away).

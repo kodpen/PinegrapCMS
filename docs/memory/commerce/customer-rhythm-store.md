@@ -7,12 +7,12 @@ module: customer_rhythm_pass
 ## What is stored?
 - Table `customer_rhythm` (step 11.0.262), one row per Customers Report key (`pg_customer_value_key()`); columns as decided in `workflow/decisions-made-schema-40.md`. No name, e-mail or address; a buyer with only marketplace orders gets no row.
 - Stage codes: `pg_customer_rhythm_stage_codes()` (0 none, 1 Regular, 2 Due, 3 Late, 4 Slipping away, 5 Lost, 6 Won back). `interval_days` is whole days (0 = none), `chance` a per cent, amounts minor units of the base currency.
-- Product summary: config_text `customer_rhythm` (`pg_customer_rhythm_summary()`): `at`, `median`, `curve`, `customers`, `stages`, `products_all`, `products` (id => days per unit, pairs, customers, 1 when from its group). Over 60,000 bytes keeps the products with most pairs.
+- Product summary: config_text `customer_rhythm` (`pg_customer_rhythm_summary()`): `at`, `median`, `curve`, `customers`, `stages`, `products_all`, `products`, `reminders`, `returns` (id => days per unit, pairs, customers, 1 when from its group). Over 60,000 bytes keeps the products with most pairs.
 
 ## How does the pass run?
 - `job.php` calls `pg_customer_rhythm_job_run(pg_cron_time_left(20))` on a commerce site; due once a day after the summary's `at`. Claim, lease and progress as the Customers Report: config_text `customer_rhythm_pass`.
 - Walk: `pg_customer_value_page_query()` pages (2,000 orders) with their active `order_items` lines; only counting orders of a placed customer are kept, packed per key in `data/temp/customer_rhythm.state` between runs.
-- Write: store median, curve and product rhythms at the pass start (`pg_customer_rhythm_pass_store()`), then rows in batches of 500 by `INSERT … ON DUPLICATE KEY UPDATE`; `reminded_at`, `held_back`, `came_back_order_id` are never in its write statement; the tell step writes them (`customer-rhythm-events.md`). At the end rows the pass did not write are deleted and the summary saved.
+- Write: store median, curve and product rhythms at the pass start (`pg_customer_rhythm_pass_store()`), then rows in batches of 500 by `INSERT … ON DUPLICATE KEY UPDATE`; `reminded_at`, `held_back`, `came_back_order_id` are never in its write statement; the tell step writes the first two (`customer-rhythm-events.md`), the came-back statement the third (`customer-rhythm-report.md`). At the end rows the pass did not write are deleted and the summary saved.
 
 ## When does a stage move?
 - `pg_customer_rhythm_pass_row()`: a move is an existing row whose stage changed; `stage_before` and `stage_at` keep it. A new row, or a row going from no stage to one, is not a move.

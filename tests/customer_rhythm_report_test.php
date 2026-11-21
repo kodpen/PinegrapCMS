@@ -204,7 +204,7 @@ function test_customer_rhythm_report_csv_line()
 		'contact_first_name' => '=cmd', 'contact_last_name' => '', 'order_number' => '1009',
 	);
 	$line = pg_customer_rhythm_csv_line($record, _crr_test_now(), 'TRY');
-	$cells = str_getcsv($line);
+	$cells = str_getcsv($line, ',', '"', '\\');
 
 	pg_assert_same(12, count($cells));
 	pg_assert_same(count(explode(',', pg_customer_rhythm_csv_head())), count($cells));
