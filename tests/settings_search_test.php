@@ -247,7 +247,7 @@ function test_settings_search_missed_words_find_their_card()
 		'favicon'    => 'pgset-site-icon',
 		'kvkk'       => 'pgset-cookies',
 		'workspace'  => 'pgset-integration-links',
-		'prefetch'   => 'pgset-features',
+		'prefetch'   => 'pgset-page-cache',
 		'encryption' => 'pgset-encryption',
 	);
 

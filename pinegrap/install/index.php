@@ -6509,7 +6509,7 @@ else {
 
 			$install_expected_steps++;
 
-			add_install_step(lang('Pictures larger than 2560 px are shrunk on upload'), lang('Site Settings › Features › Image Optimization'));
+			add_install_step(lang('Pictures larger than 2560 px are shrunk on upload'), lang('Site Settings › Features › Images'));
 
 		}
 
@@ -6524,7 +6524,7 @@ else {
 
 			$install_expected_steps++;
 
-			add_install_step(lang('Pictures are sent as WebP at their own address to browsers that read it'), lang('Site Settings › Features › Image Optimization'));
+			add_install_step(lang('Pictures are sent as WebP at their own address to browsers that read it'), lang('Site Settings › Features › Images'));
 
 		}
 
