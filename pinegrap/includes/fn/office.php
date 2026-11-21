@@ -1376,7 +1376,7 @@ function pg_office_xlsx_read($path, $edit = false)
         return array('ok' => false, 'error' => pg_office_refusal_error($refused), 'sheets' => array(), 'truncated' => false);
     }
 
-    $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
+    $strings_part = pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml');
     $workbook_xml = (string) pg_zip_entry_contents($zip, pg_sheet_xlsx_workbook($zip)['part'], PG_OFFICE_MAX_DOM, $unread);
     $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904($workbook_xml);
 
