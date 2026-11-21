@@ -128,7 +128,7 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 		}
 	}
 
-	pg_assert_same(22, $entries, 'Cron Jobs, the three Connect forms (E-mail sending\'s among them), the firewall\'s Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers, the mailboxes\' set-up drawers and the Assistants and agents guides');
+	pg_assert_same(23, $entries, 'Cron Jobs, the three Connect forms (E-mail sending\'s among them), the firewall\'s Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, Pinegrap AI\'s latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers, the mailboxes\' set-up drawers and the Assistants and agents guides');
 }
 
 function test_settings_modal_drawer_second_dialog_path_is_gone()

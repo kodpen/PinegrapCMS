@@ -4,8 +4,8 @@
  *
  * Site Settings - Assistants and agents: Claude in the channels (its
  * connection, its key, the connection test, the latest requests and the
- * setup steps), Pinegrap AI in the channels (its switch, application, key
- * and connection test), the Workspace agents (each edited in a drawer with
+ * setup steps), Pinegrap AI in the channels (its switch, application, key,
+ * connection test and the latest requests), the Workspace agents (each edited in a drawer with
  * its waiting and failed requests), the MCP servers, the voice message
  * transcripts and spoken answers (the services' addresses, models and keys),
  * the canvas templates and the assistants' bulk changes.
@@ -103,6 +103,8 @@ $ws_card = function_exists('ws_ai_settings_card') ? ws_ai_settings_card('', $ws_
 
 if ($ws_card !== '') {
     $ws_parts['ws-ai'] = array('html' => $ws_card) + ws_assistants_fold_ai(ws_assistants_fold_facts_ai());
+    // The newest requests, opened from the row.
+    $pg_settings_modals[] = ws_settings_ai_requests_drawer($ws_viewer, !empty($pg_settings_in_dialog));
 }
 
 // ── Voice message transcripts ──
@@ -162,10 +164,16 @@ if ($ws_card !== '') {
 }
 
 // ── The parts' guides ──
-// "How does this work?" under a part's line opens its numbered steps.
+// "How does this work?" under a part's line opens its numbered steps; on
+// Pinegrap AI and Voice what is still missing stands at their top.
+$ws_guide_missing = array(
+    'ws-ai'    => isset($ws_parts['ws-ai']) ? ws_ai_missing() : array(),
+    'ws-voice' => isset($ws_parts['ws-voice']) ? array_merge(ws_voice_missing(), ws_voice_speech_missing()) : array(),
+);
+
 foreach (ws_assistants_help_keys() as $ws_key) {
     if (isset($ws_parts[$ws_key])) {
-        $pg_settings_modals[] = ws_settings_assistants_guide_drawer($ws_key, !empty($pg_settings_in_dialog));
+        $pg_settings_modals[] = ws_settings_assistants_guide_drawer($ws_key, !empty($pg_settings_in_dialog), $ws_guide_missing[$ws_key] ?? array());
     }
 }
 
