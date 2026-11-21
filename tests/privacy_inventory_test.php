@@ -176,3 +176,30 @@ function test_privacy_inventory_categories_cover_the_registry()
 		}
 	}
 }
+
+// The IP addresses of the visitor records, the firewall log and the API log
+// are counted with their periods, each named by the setting that sets it;
+// no person column, as no erasure reaches them.
+function test_privacy_inventory_names_the_logs_holding_ip_addresses()
+{
+	$catalogue = pg_privacy_inventory();
+	$retentions = pg_privacy_inventory_retentions();
+	$expected = array(
+		'visitors'        => array('visitor_records', 'visitor_ips'),
+		'waf_log'         => array('firewall_log'),
+		'api_request_log' => array('api_log'),
+	);
+
+	foreach ($expected as $table => $keys) {
+		pg_assert_true(isset($catalogue[$table]), $table . ' is in the inventory');
+		pg_assert_same(array('ip_cookie'), $catalogue[$table]['categories'], $table . ': IP address and cookies');
+		pg_assert_same(array('visitor'), $catalogue[$table]['subjects'], $table . ': visitors');
+		pg_assert_same('legitimate_interest', $catalogue[$table]['ground'], $table . ': legitimate interest');
+		pg_assert_same($keys, (array) $catalogue[$table]['retention'], $table . ': its periods');
+		pg_assert_false(isset($catalogue[$table]['person']), $table . ': no person column');
+
+		foreach ($keys as $key) {
+			pg_assert_true(isset($retentions[$key]), $key . ' is a retention');
+		}
+	}
+}
