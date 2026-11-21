@@ -344,3 +344,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_label_rates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/guarded_frame.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/quiet_hours.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_review.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_shifts.php');
