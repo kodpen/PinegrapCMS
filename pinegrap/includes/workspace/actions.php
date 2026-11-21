@@ -4496,6 +4496,18 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('channel' => ws_channel_detail($viewer, ws_channel($channel['id'])))) : ws_action_error($result['error']);
 
+        // The conversation timeline of the tabs row and of Channel info
+        // (conversation_timeline.php): every reader of the channel, the
+        // current conversation only.
+        case 'ws_conversation_timeline':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            return ws_action_ok(array('timeline' => ws_conversation_timeline($viewer, $channel)));
+
         case 'ws_channel_decisions':
             $channel = ws_action_channel($viewer, $request);
 

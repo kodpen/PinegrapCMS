@@ -5179,6 +5179,7 @@
     "Agent question: {var:1} (waiting for {var:2})": "Ajan sorusu: {var:1} ({var:2} yanıtı bekleniyor)",
     "Agent question: {var:1} — {var:2} ({var:3})": "Ajan sorusu: {var:1} — {var:2} ({var:3})",
     "Agent questions waiting for your answer · {var:1}": "Yanıtınızı bekleyen ajan soruları · {var:1}",
+    "Agent request": "Ajan isteği",
     "Agents": "Danışmanlar",
     "Agents act as members of the channels they are added to, each through its own application and within the tier the channel's manager allows.": "Ajanlar eklendikleri kanallarda birer üye gibi çalışır; her biri kendi uygulamasıyla ve kanal yöneticisinin izin verdiği kademe içinde.",
     "Agents act as members of the channels they are added to, each through its own application. In each channel its manager chooses when it is woken and what it may do by itself.": "Ajanlar eklendikleri kanalların üyesi gibi, her biri kendi uygulamasıyla çalışır. Her kanalda ne zaman uyandırılacağını ve kendi başına neler yapabileceğini o kanalın yöneticisi seçer.",

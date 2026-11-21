@@ -320,7 +320,7 @@ function pg_panel_actions()
         'ws_note_group_shares', 'ws_note_group_share', 'ws_note_group_unshare', 'ws_note_group_take_out', 'ws_note_lock', 'ws_note_lock_setup', 'ws_note_lock_open', 'ws_note_lock_now', 'ws_note_lock_change', 'ws_note_lock_time', 'ws_note_lock_off', 'ws_note_lock_code', 'ws_note_lock_note', 'ws_note_group_lock', 'ws_file_office', 'ws_file_office_save', 'ws_file_office_copy',
         'ws_file_text', 'ws_file_text_save', 'ws_file_history', 'ws_message_ref', 'ws_channel_notify', 'ws_quiet_hours_save',
         'ws_channel_pin', 'ws_channel_order', 'ws_channel_summary',
-        'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',
+        'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks', 'ws_conversation_timeline',
         'ws_memory_list', 'ws_memory_save', 'ws_memory_delete', 'ws_memory_move',
         'ws_channel_agents_list', 'ws_channel_agents_set', 'ws_channel_agents_add_many', 'ws_channel_agents_remove', 'ws_person_card',
         'ws_canvas_undo', 'ws_page_source', 'ws_page_undo', 'ws_page_call', 'ws_page_consent', 'ws_page_tables', 'ws_page_bind', 'ws_page_unbind', 'ws_canvas_binding_undo',
