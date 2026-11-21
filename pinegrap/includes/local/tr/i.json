@@ -1694,6 +1694,7 @@
     "Its {n} page(s) will be moved to the Recycle Bin.": "{n} sayfası Geri Dönüşüm Kutusuna taşınacak.",
     "Its {var:1} is Bootstrap {var:2}, not Bootstrap 3: there is no report and no trial design.": "{var:1} dosyası Bootstrap 3 değil, Bootstrap {var:2}: rapor ve deneme tasarımı yok.",
     "Its {var:1} rows of Record rows fields are deleted with it.": "Kayıt satırları alanlarındaki {var:1} satırı da onunla birlikte silinir.",
+    "Its {var:1} rules are deleted": "Bu kutunun {var:1} kuralı silinir",
     "Iyzipay 3D Secure answer matches no payment started for order #{var:1} (conversation {var:2}).": "Iyzipay 3D Secure yanıtı #{var:1} numaralı sipariş için başlatılmış hiçbir ödemeyle eşleşmiyor (konuşma {var:2}).",
     "Iyzipay 3D Secure answer was already used (conversation {var:1}).": "Iyzipay 3D Secure yanıtı zaten kullanılmış (konuşma {var:1}).",
     "Iyzipay 3D Secure could not be started: status {var:1}, code {var:2}, message {var:3}. Answer: {var:4}": "Iyzipay 3D Secure başlatılamadı: durum {var:1}, kod {var:2}, mesaj {var:3}. Yanıt: {var:4}",

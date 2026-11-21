@@ -5,7 +5,8 @@
  * The Design examples screen (design_examples.php): every class it names is
  * a rule of the stylesheet and appears in its own live example, both panes
  * keep their field ids apart, the patterns draw the screens they come from
- * (the folded settings pane, the connect row, a list's empty state), the
+ * (the folded settings pane, the connect row, a list's empty state, the
+ * parts of the e-mail settings drawing), the
  * screen is for the Designer role and above, and System tools links it under
  * the same gate.
  *
@@ -140,6 +141,113 @@ function test_look_examples_numbered_steps_drawer()
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 	pg_assert_contains('.pg-stepper-cards > .stepper-item > * { grid-column: 2; }', $css, 'a step with several children keeps them in the content column');
 	pg_assert_contains('class="drawer-header border-bottom p-5"', $html, 'the standing frame has the real drawer\'s 16 px');
+}
+
+function test_look_examples_mail_patterns_in_order()
+{
+	$ids = array_column(pg_look_examples_patterns('light'), 'id');
+	$mail = array('pattern-tabs', 'pattern-values', 'pattern-choice', 'pattern-stepline', 'pattern-signin', 'pattern-result', 'pattern-confirm');
+
+	pg_assert_same($mail, array_slice($ids, -7), 'the e-mail drawing\'s seven parts close the Patterns group, in the drawing\'s order');
+	pg_assert_same(array('pattern-choice', 'pattern-stepline'), array_keys(array_filter(array_column(pg_look_examples_patterns('light'), 'phone', 'id'))), 'the phone pane takes the choice cards and the step line');
+	pg_assert_contains('Look A: tabs with a state, value rows, choice cards, step line, provider', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'), 'the recipes in their own block');
+}
+
+function test_look_examples_tabs_with_a_state()
+{
+	$html = array_column(pg_look_examples_patterns('light'), 'html', 'id')['pattern-tabs'];
+
+	pg_assert_same(2, substr_count($html, '<div class="pg-seg pg-seg-tall" role="tablist"'), 'the taller control, as tabs');
+	pg_assert_same(4, substr_count($html, 'role="tab"'), 'two tabs a control');
+	pg_assert_same(2, substr_count($html, 'aria-selected="true"'), 'one chosen a control');
+	pg_assert_contains('<span class="pg-pill pg-tone-teal" title="' . h(lang('Ready')) . '"><span>' . h(lang('Ready')) . '</span></span>', $html, 'the state pill keeps its word as its title for the phone');
+	pg_assert_contains('pg-tone-amber" title="' . h(lang('Sign-in needed')) . '"', $html, 'waiting on the person amber');
+	pg_assert_contains('pg-tone-gray" title="' . h(lang('No box')) . '"', $html, 'nothing set up gray');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_true(preg_match('/\.pg-seg-tall \.pg-seg-item \{\s*height: 34px;/', $css) === 1, '34 px items');
+}
+
+function test_look_examples_value_rows()
+{
+	$html = array_column(pg_look_examples_patterns('light'), 'html', 'id')['pattern-values'];
+
+	pg_assert_same(1, substr_count($html, 'class="pg-card-inner"'), 'one inner card');
+	pg_assert_same(2, substr_count($html, 'class="pg-value-row"'), 'a row a kind of mail');
+	pg_assert_same(2, substr_count($html, 'class="pg-button pg-button-quiet pg-button-sm"'), 'Change quiet small at each row\'s end');
+	pg_assert_same(0, substr_count($html, 'pg-button-fill'), 'no filled button: the window\'s Save is the one');
+	pg_assert_same(1, substr_count($html, 'class="pg-field-help"'), 'one meta line under the card');
+}
+
+function test_look_examples_choice_cards()
+{
+	$html = array_column(pg_look_examples_patterns('dark'), 'html', 'id')['pattern-choice'];
+
+	pg_assert_same(2, substr_count($html, '<div class="pg-start pg-start-choice">'), 'the starting-point cards as a radio group');
+	pg_assert_same(6, substr_count($html, 'form-field form-field-card'), 'four ways, then the two sign-in set-ups');
+	pg_assert_same(6, substr_count($html, 'class="pg-start-mark"'), 'each card its mark at the head\'s end');
+	pg_assert_same(2, substr_count($html, ' checked>'), 'one chosen a group');
+	pg_assert_same(2, substr_count($html, 'class="d-block pg-start-note"'), 'a note at the card\'s end');
+	pg_assert_same(1, substr_count($html, '<label class="pg-field-label"'), 'under the group only the chosen card\'s fields');
+	pg_assert_contains('<i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Connect another Google account')), $html, 'quiet with its plus');
+	pg_assert_same(0, substr_count($html, 'pg-button-fill'), 'no filled button in the pattern');
+	pg_assert_contains('name="dark_look_way"', $html, 'the pane keeps the radio groups apart');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_true(preg_match('/@media \(min-width: 576px\) \{\s*\.pg-start\.pg-start-choice \{\s*grid-template-columns: 1fr 1fr;/', $css) === 1, 'two a row, one under 576 px');
+	pg_assert_contains('box-shadow: inset 0 0 0 2px var(--pg-accent), 0 0 0 4px', $css, 'the chosen card\'s ring');
+}
+
+function test_look_examples_step_line()
+{
+	$html = array_column(pg_look_examples_patterns('light'), 'html', 'id')['pattern-stepline'];
+
+	pg_assert_same(3, substr_count($html, '<ol class="stepper pg-steps"'), 'the line at each of the three steps');
+	pg_assert_same(9, substr_count($html, '<span class="pg-steps-name">'), 'a name a step, hidden on a phone but the current one');
+	pg_assert_same(3, substr_count($html, 'aria-current="step"'), 'one current step a line');
+	pg_assert_same(3, substr_count($html, 'stepper-item is-done'), 'step 2 has one finished step, step 3 two');
+	pg_assert_true(preg_match('/<li[^>]*>\s*\d/', $html) === 0, 'the number is never written in the markup');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_contains('content: "\F26E";', $css, 'a finished step shows the check');
+	pg_assert_contains('.pg-steps .stepper-item:not([aria-current="step"]) > .pg-steps-name {', $css, 'on a phone the other steps keep their numbers');
+}
+
+function test_look_examples_provider_sign_in()
+{
+	$html = array_column(pg_look_examples_patterns('light'), 'html', 'id')['pattern-signin'];
+
+	pg_assert_same(2, substr_count($html, 'class="pg-card-inner pg-signin"'), 'the centred inner card');
+	pg_assert_same(1, substr_count($html, '<button type="button" class="pg-signin-google"><svg width="18" height="18"'), 'Google\'s own button, its G at 18 px');
+	pg_assert_same(1, substr_count($html, '<button type="button" class="pg-signin-microsoft"><svg width="21" height="21"'), 'Microsoft\'s own button, its squares at 21 px');
+	pg_assert_same(0, substr_count($html, 'pg-button'), 'neither takes a look A button class');
+	pg_assert_same(0, substr_count($html, 'pg-tone-'), 'nor a tone');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_contains("height: 40px;\n  border: 1px solid #747775;\n  border-radius: 4px;\n  color: #1f1f1f;", $css, 'Google\'s light button');
+	pg_assert_contains("height: 41px;\n  border: 1px solid #8c8c8c;\n  border-radius: 0;\n  color: #5e5e5e;", $css, 'Microsoft\'s light button');
+}
+
+function test_look_examples_result_line()
+{
+	$html = array_column(pg_look_examples_patterns('light'), 'html', 'id')['pattern-result'];
+
+	pg_assert_same(1, substr_count($html, '<div class="pg-result" role="status">'), 'the green line, read out');
+	pg_assert_same(1, substr_count($html, 'class="pg-result-title"'), 'what happened');
+	pg_assert_same(1, substr_count($html, 'class="pg-result-line"'), 'and one line more at most');
+}
+
+function test_look_examples_confirm_with_its_effects()
+{
+	$html = array_column(pg_look_examples_patterns('dark'), 'html', 'id')['pattern-confirm'];
+
+	pg_assert_contains('role="dialog" aria-labelledby="dark_look_confirm_title"', $html, 'a dialog named by its title');
+	pg_assert_contains('pg-icon-tile pg-icon-tile-lg pg-tone-rose', $html, 'the rose tile');
+	pg_assert_same(1, substr_count($html, 'pg-effect pg-effect-keep'), 'what stays');
+	pg_assert_same(2, substr_count($html, 'pg-effect pg-effect-go'), 'what goes');
+	pg_assert_same(1, substr_count($html, 'pg-effect pg-effect-info'), 'what stays connected');
+	pg_assert_true(strpos($html, 'pg-button-quiet') < strpos($html, 'pg-button-danger'), 'Cancel quiet, the danger button last');
+	pg_assert_same(0, substr_count($html, 'pg-button-fill'), 'no filled button beside the danger one');
 }
 
 function test_look_examples_screen_gate_and_link()

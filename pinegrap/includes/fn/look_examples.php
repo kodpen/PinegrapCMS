@@ -449,6 +449,193 @@ function pg_look_examples_patterns($prefix = 'light')
             . '</div><p class="pg-text-meta">' . h(lang('From Site Settings › Assistants and agents › Claude: steps done on another site are numbered steps in their own drawer, opened by one button, never paragraphs in the form.')) . '</p>',
     );
 
+    // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
+    // the parts the one E-mail category is built from.
+    $patterns = array_merge($patterns, pg_look_examples_mail_patterns($p));
+
+    return $patterns;
+}
+
+/**
+ * The patterns of the approved e-mail settings drawing
+ * (docs/memory/plans/mail-settings-one/email-settings.html, boards A to E):
+ * tabs with a state, value rows, choice cards, the step line, the provider
+ * sign-in, the result line and the confirm with its effects. 'phone' marks
+ * the patterns the phone pane draws as well.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array list of array('id', 'title', 'classes', 'html', 'phone')
+ */
+function pg_look_examples_mail_patterns($p)
+{
+    $patterns = array();
+
+    // (A, C) The category's two tabs, each saying its state in its pill.
+    $tab = function ($label, $tone, $state, $selected) {
+        return '<button type="button" class="pg-seg-item" role="tab" aria-selected="' . ($selected ? 'true' : 'false') . '">' . h($label)
+            . ' <span class="pg-pill pg-tone-' . $tone . '" title="' . h($state) . '"><span>' . h($state) . '</span></span></button>';
+    };
+    $tabs = function ($items) {
+        return '<div class="pg-seg pg-seg-tall" role="tablist" aria-label="' . h(lang('E-mail')) . '">' . implode('', $items) . '</div>';
+    };
+
+    $patterns[] = array(
+        'id'      => 'pattern-tabs',
+        'title'   => lang('Tabs with a state'),
+        'classes' => array('.pg-seg', '.pg-seg-tall', '.pg-seg-item', 'role="tablist"', 'role="tab"', 'aria-selected="true"', '.pg-pill', '.pg-tone-teal', '.pg-tone-amber', '.pg-tone-gray'),
+        'html'    => '<div class="pg-look-stack">'
+            . '<div>' . $tabs(array($tab(lang('E-mail sending'), 'teal', lang('Ready'), true), $tab(lang('Mailboxes'), 'amber', lang('Sign-in needed'), false))) . '</div>'
+            . '<div>' . $tabs(array($tab(lang('E-mail sending'), 'amber', lang('Check the domain'), false), $tab(lang('Mailboxes'), 'gray', lang('No box'), true))) . '</div>'
+            . '</div><p class="pg-text-meta">' . h(lang('From Site Settings › E-mail: each tab says its state in its pill; under 576 px the pill is its dot and the word its title. The tab is kept in the address.')) . '</p>',
+    );
+
+    // (A) How e-mail leaves: a row a kind of mail, what happens today in one
+    // sentence, Change at the row's end.
+    $value = function ($tone, $icon, $name, $line) {
+        return '<div class="pg-value-row">'
+            . '<span class="pg-icon-tile pg-tone-' . $tone . '" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
+            . '<span class="pg-value-row-text"><span class="pg-value-row-name">' . h($name) . '</span><span class="pg-value-row-line">' . h($line) . '</span></span>'
+            . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" aria-label="' . h(lang('Change') . ': ' . $name) . '">' . h(lang('Change')) . '</button>'
+            . '</div>';
+    };
+
+    $patterns[] = array(
+        'id'      => 'pattern-values',
+        'title'   => lang('Value rows'),
+        'classes' => array('.pg-card-inner', '.pg-value-row', '.pg-value-row-text', '.pg-value-row-name', '.pg-value-row-line', '.pg-icon-tile', '.pg-button-quiet', '.pg-button-sm', '.pg-field-help'),
+        'html'    => '<div><div class="pg-card-inner">'
+            . $value('blue', 'bi-envelope-check', lang('System e-mail'), lang(array('string' => 'Leaves through the Google account {var:1}.', 'vars' => array('info@example.com'))))
+            . $value('violet', 'bi-megaphone', lang('Campaigns'), lang('Leaves the same way as system e-mail.'))
+            . '</div><div class="pg-field-help">' . h(lang('System e-mail is order, form, password and notice mail; campaigns are bulk sends.')) . '</div></div>'
+            . '<p class="pg-text-meta">' . h(lang('From Site Settings › E-mail › How e-mail leaves: the sentence says what happens today, whatever decides it.')) . '</p>',
+    );
+
+    // (B, D1, D2) The starting-point cards as a radio group: the chosen
+    // card's ring and mark, a note at a card's end, and under the group only
+    // the chosen card's fields.
+    $choice = function ($name, $value, $tone, $icon, $title, $text, $note, $checked) use ($p) {
+        $id = $p . '_look_' . $name . '_' . $value;
+
+        return '<div class="form-field form-field-card">'
+            . '<input class="radio" type="radio" name="' . $p . '_look_' . $name . '" value="' . h($value) . '" id="' . $id . '" aria-describedby="' . $id . '_help"' . ($checked ? ' checked' : '') . '>'
+            . '<label class="pg-start-head" for="' . $id . '">'
+            . (($icon !== '') ? '<span class="pg-icon-tile pg-tone-' . $tone . '" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>' : '')
+            . '<strong>' . h($title) . '</strong><span class="pg-start-mark" aria-hidden="true"><i class="bi bi-check"></i></span></label>'
+            . '<div class="form-text" id="' . $id . '_help">' . h($text) . (($note !== '') ? '<span class="d-block pg-start-note">' . h($note) . '</span>' : '') . '</div>'
+            . '</div>';
+    };
+
+    $ways = '<fieldset><legend class="visually-hidden">' . h(lang('How should system e-mail leave?')) . '</legend><div class="pg-start pg-start-choice">'
+        . $choice('way', 'google', 'blue', 'bi-google', lang('A Google account'), lang('Leaves from your Gmail or Google Workspace address.'), '', true)
+        . $choice('way', 'microsoft', 'teal', 'bi-microsoft', lang('A Microsoft account'), lang('Leaves from your Microsoft 365 or Outlook address.'), '', false)
+        . $choice('way', 'service', 'violet', 'bi-lightning-charge', lang('A sending service'), lang('With the key of a service such as Brevo, Mailgun or Amazon SES.'), '', false)
+        . $choice('way', 'server', 'gray', 'bi-hdd-rack', lang('Your own mail server'), lang('With the server name, a user and a password.'), '', false)
+        . '</div>'
+        . '<div class="pg-group-label">' . h(lang('A Google account')) . '</div>'
+        . '<label class="pg-field-label" for="' . $p . '_look_way_account">' . h(lang('Account')) . '</label>'
+        . '<span class="pg-input"><select id="' . $p . '_look_way_account" aria-describedby="' . $p . '_look_way_account_help"><option>info@example.com</option></select><span class="pg-input-end">' . h(lang('Connected for a mailbox')) . '</span></span>'
+        . '<div class="pg-field-help" id="' . $p . '_look_way_account_help">' . h(lang('One account reads and sends; no second connection.')) . '</div>'
+        . '<div class="pg-look-line mt-4"><button type="button" class="pg-button pg-button-quiet"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Connect another Google account')) . '</button></div>'
+        . '</fieldset>';
+
+    $setup = '<fieldset><legend class="visually-hidden">' . h(lang('How should the mailbox sign in?')) . '</legend><div class="pg-start pg-start-choice">'
+        . $choice('setup', 'oauth', '', '', lang('Set up Google sign-in'), lang('Once; its steps open in a drawer.'), lang('About 10 minutes'), true)
+        . $choice('setup', 'password', '', '', lang('Use an app password'), lang('The password is written to the site.'), lang('2 minutes'), false)
+        . '</div></fieldset>';
+
+    $patterns[] = array(
+        'id'      => 'pattern-choice',
+        'title'   => lang('Choice cards'),
+        'phone'   => true,
+        'classes' => array('.pg-start', '.pg-start-choice', 'form-field-card', '.pg-start-head', '.pg-start-mark', '.pg-start-note', '.pg-icon-tile', '.pg-group-label', '.pg-field-label', '.pg-input', '.pg-input-end', '.pg-field-help', '.pg-button-quiet'),
+        'html'    => '<div class="pg-look-stack">' . $ways . $setup . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From Site Settings › E-mail › Change and Add a mailbox: two a row, one on a phone; under the group only the chosen card\'s fields.')) . '</p>',
+    );
+
+    // (D1 to D3) The sheet's step line in its three states.
+    $steps = function ($current) {
+        $names = array(1 => lang('Choose'), 2 => lang('Sign in'), 3 => lang('Details'));
+        $html = '<ol class="stepper pg-steps" aria-label="' . h(lang('Add a mailbox')) . '">';
+
+        foreach ($names as $number => $name) {
+            $done = $number < $current;
+            $html .= '<li class="stepper-item' . ($done ? ' is-done' : '') . '"' . (($number === $current) ? ' aria-current="step"' : '') . '>'
+                . '<span class="pg-steps-name">' . h($name) . ($done ? '<span class="visually-hidden"> (' . h(lang('done')) . ')</span>' : '') . '</span></li>';
+        }
+
+        return $html . '</ol>';
+    };
+
+    $patterns[] = array(
+        'id'      => 'pattern-stepline',
+        'title'   => lang('Step line'),
+        'phone'   => true,
+        'classes' => array('stepper', '.pg-steps', 'stepper-item', 'aria-current="step"', '.is-done', '.pg-steps-name'),
+        'html'    => '<div class="pg-look-stack">' . $steps(1) . $steps(2) . $steps(3) . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From Add a mailbox: a number and a name a step, the current one filled, a finished one with the green check; on a phone the other steps keep their numbers.')) . '</p>',
+    );
+
+    // (D2) The providers' own buttons, their brand values in both themes.
+    $google = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" focusable="false">'
+        . '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>'
+        . '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>'
+        . '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>'
+        . '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>'
+        . '</svg>';
+    $microsoft = '<svg width="21" height="21" viewBox="0 0 21 21" aria-hidden="true" focusable="false">'
+        . '<rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/>'
+        . '<rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/>'
+        . '</svg>';
+
+    $patterns[] = array(
+        'id'      => 'pattern-signin',
+        'title'   => lang('Provider sign-in'),
+        'classes' => array('.pg-card-inner', '.pg-signin', '.pg-signin-google', '.pg-signin-microsoft', '.pg-group-label'),
+        'html'    => '<div class="pg-look-stack">'
+            . '<div class="pg-card-inner pg-signin"><button type="button" class="pg-signin-google">' . $google . h(lang('Sign in with Google')) . '</button>'
+            . '<p>' . h(lang('Pinegrap reads and answers this mailbox. Your password is not written to the site.')) . '</p></div>'
+            . '<div class="pg-group-label">' . h(lang('When Microsoft is chosen')) . '</div>'
+            . '<div class="pg-card-inner pg-signin"><button type="button" class="pg-signin-microsoft">' . $microsoft . h(lang('Sign in with Microsoft')) . '</button></div>'
+            . '</div><p class="pg-text-meta">' . h(lang('From Add a mailbox › Sign in: the provider\'s own button as its brand rules draw it, the same in both themes, and one line under it.')) . '</p>',
+    );
+
+    // (D3) The green line after a sign-in or a test.
+    $patterns[] = array(
+        'id'      => 'pattern-result',
+        'title'   => lang('Result line'),
+        'classes' => array('.pg-result', '.pg-result-title', '.pg-result-line', '.pg-icon-tile', '.pg-tone-teal', 'role="status"'),
+        'html'    => '<div class="pg-result" role="status"><span class="pg-icon-tile pg-tone-teal" aria-hidden="true"><i class="bi bi-check-lg"></i></span>'
+            . '<div><span class="pg-result-title">' . h(lang(array('string' => '{var:1} connected', 'vars' => array('info@example.com')))) . '</span>'
+            . '<span class="pg-result-line">' . h(lang('Connection tested: the inbox is read.')) . '</span></div></div>'
+            . '<p class="pg-text-meta">' . h(lang('From Add a mailbox › Details: what the sign-in or the test found, two lines at most.')) . '</p>',
+    );
+
+    // (E) The removal's dialog: every effect the removal has, read when it
+    // opens; Cancel quiet, the danger button last.
+    $effect = function ($kind, $icon, $text, $line) {
+        return '<li class="pg-effect pg-effect-' . $kind . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>'
+            . '<div>' . h($text) . (($line !== '') ? '<span class="pg-effect-line">' . h($line) . '</span>' : '') . '</div></li>';
+    };
+
+    $patterns[] = array(
+        'id'      => 'pattern-confirm',
+        'title'   => lang('Confirm with its effects'),
+        'classes' => array('role="dialog"', '.pg-card-sheet', '.pg-icon-tile-lg', '.pg-tone-rose', '.pg-card-sub', '.pg-card-inner', '.pg-effects', '.pg-effect', '.pg-effect-keep', '.pg-effect-go', '.pg-effect-info', '.pg-effect-line', '.pg-button-quiet', '.pg-button-danger'),
+        'html'    => '<div class="pg-card pg-card-sheet overflow-hidden" role="dialog" aria-labelledby="' . $p . '_look_confirm_title" style="max-width:470px">'
+            . '<div class="d-flex align-items-start gap-3 p-5 pb-0"><span class="pg-icon-tile pg-icon-tile-lg pg-tone-rose" aria-hidden="true"><i class="bi bi-trash3"></i></span>'
+            . '<div class="min-width-0"><div class="pg-title-section" id="' . $p . '_look_confirm_title">' . h(lang(array('string' => 'Remove the {var:1} mailbox?', 'vars' => array(lang('Support'))))) . '</div>'
+            . '<p class="pg-card-sub">info@example.com</p></div></div>'
+            . '<div class="p-5"><ul class="pg-card-inner pg-effects">'
+            . $effect('keep', 'bi-check-circle-fill', lang('The conversations stay'), lang(array('string' => 'The {var:1} conversations of the #{var:2} channel are not deleted.', 'vars' => array(214, 'support'))))
+            . $effect('go', 'bi-x-circle-fill', lang('Reading stops'), lang('New e-mail no longer reaches the site.'))
+            . $effect('go', 'bi-x-circle-fill', lang(array('string' => 'Its {var:1} rules are deleted', 'vars' => array(3))), '')
+            . $effect('info', 'bi-info-circle-fill', lang('The Google account stays connected'), lang('System e-mail leaves through this account.'))
+            . '</ul></div>'
+            . '<div class="border-top p-5 d-flex justify-content-end gap-3"><button type="button" class="pg-button pg-button-quiet">' . h(lang('Cancel')) . '</button>'
+            . '<button type="button" class="pg-button pg-button-danger">' . h(lang('Remove mailbox')) . '</button></div>'
+            . '</div><p class="pg-text-meta">' . h(lang('From Mailboxes › Remove mailbox: what stays green, what goes rose, what stays connected blue; the counts are read when the dialog opens.')) . '</p>',
+    );
+
     return $patterns;
 }
 
