@@ -5,7 +5,7 @@ priority: 8
 ---
 
 ## What is asked?
-- Owner (2026-11-21): fix the settings screens' contradictions, gather spread settings, make old screens modern. Item 4 of `plans/settings-tidy-census-order.md` (census K8): the Security group's two categories.
+- Owner (2026-11-21): fix the settings screens' contradictions, gather spread settings, make old screens modern. Item 4 of `plans/settings-tidy-census-order.md` (census K8).
 
 ## What contradicts today? (development 6169b52410)
 - (S1) Eleven popovers hide fields while their switch is off: in `includes/settings/firewall.php` Enable Firewall, Rate Limiting, Automatic Temporary Bans, Block Unknown Bots, Send Security Headers, Plain-text Block Log; in Accounts the sign-in throttle (`prep.php:1954-1990`), Limit devices, the three sign-in providers, the expiration warning mail.
@@ -25,11 +25,11 @@ priority: 8
 - Each limit stays in its pane (a category writes only its own columns, `ui/settings-card-save-rules.md`); the Firewall's "Limits" row shows the Accounts limits as value rows with Change, and every "allowed list" line links `#settings/firewall/pgset-iplists`.
 - Each provider becomes a [Connect row]: its pill, its sentence, the switch, "Set up in Connections".
 
-## What waits for the architect?
-- (S8) May "Allow AI training" also let the training crawlers (`pg_ai_crawler_catalog()['train']`) past the built-in list, still under the rate limits? Proposal: yes, read by the firewall, no new field; until then the Bots row's line says they are refused here. No step waits.
+## What waits for the owner?
+- (S8) May "Allow AI training" also let the training crawlers (`pg_ai_crawler_catalog()['train']`) past the built-in list (`waf/waf-ai-bots-ranges.md`), still under the rate limits? A product change, put to the owner as a poll (message 11489), proposed yes with no new field. Until then the Bots row says they are refused; no step waits.
 
 ## What binds it?
-- Field names, ids, columns and what a save stores do not change; card ids and anchors keep working (`pg_settings_legacy_anchors()`); one Save a pane; no field hidden by a switch; no schema change.
-- `firewall.php` and `security.php` take one PR at a time each.
+- Field names, ids, columns and saves do not change; card ids and anchors keep working (`pg_settings_legacy_anchors()`); one Save a pane; no schema change.
+- The architect agreed the plan (agent channel, message 11489). `firewall.php` and `security.php` take one PR at a time each.
 
 Related: docs/memory/plans/security-settings-tidy-steps.md, docs/memory/plans/security-settings-tidy-screens.md, docs/memory/plans/security-settings-tidy-screens-accounts.md, docs/memory/plans/settings-tidy-census-order.md
