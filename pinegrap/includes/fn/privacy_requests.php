@@ -363,6 +363,20 @@ function pg_privacy_requests_counts($now = null)
 }
 
 /**
+ * The query of a request's steps, newest first: audit_log names the person
+ * who took a step in user_id and username. Pure.
+ *
+ * @param int $id
+ * @return string
+ */
+function pg_privacy_request_history_query($id)
+{
+    return "SELECT created_at, action, user_id, username, after_json FROM audit_log
+        WHERE (entity_type = 'privacy_request') AND (entity_id = '" . (int) $id . "')
+        ORDER BY created_at DESC, id DESC LIMIT 200";
+}
+
+/**
  * The request's steps, newest first.
  *
  * @param int $id
@@ -374,9 +388,7 @@ function pg_privacy_request_history($id)
         return array();
     }
 
-    return db_items("SELECT created_at, action, actor_name, after_json FROM audit_log
-        WHERE (entity_type = 'privacy_request') AND (entity_id = '" . (int) $id . "')
-        ORDER BY created_at DESC, id DESC LIMIT 200");
+    return db_items(pg_privacy_request_history_query($id));
 }
 
 /**
@@ -516,7 +528,7 @@ function pg_privacy_request_send(array $request, $text, array $operator, $refuse
         }
     }
 
-    $site = (defined('ORGANIZATION_NAME') && (trim((string) ORGANIZATION_NAME) !== '')) ? (string) ORGANIZATION_NAME : (string) HOSTNAME_SETTING;
+    $site = pg_privacy_request_site();
 
     $sent = (bool) email(array(
         'to'                 => (string) $request['email'],
@@ -544,6 +556,314 @@ function pg_privacy_request_send(array $request, $text, array $operator, $refuse
     ), $refuse ? 'refuse' : 'answer');
 
     return 'ok';
+}
+
+/**
+ * The site's name an answer is signed with and its subject names.
+ *
+ * @return string
+ */
+function pg_privacy_request_site()
+{
+    return (defined('ORGANIZATION_NAME') && (trim((string) ORGANIZATION_NAME) !== '')) ? (string) ORGANIZATION_NAME : (string) HOSTNAME_SETTING;
+}
+
+/**
+ * The state of the four numbered steps of "Prepare the answer": check who
+ * asks, gather, write the answer, send. Nothing is gathered before staff
+ * has checked who asks; a gather this operator may not run (a person of a
+ * higher role, their own account) stops there. Pure.
+ *
+ * @param array      $request   verified_at
+ * @param array|null $gathered  pg_privacy_request_gather(), null when not run
+ * @return array  steps (key => done | current | later), open (the step
+ *                shown open), can_send
+ */
+function pg_privacy_request_answer_steps(array $request, $gathered)
+{
+    $checked = ((int) ($request['verified_at'] ?? 0) > 0);
+    $ok = $checked && is_array($gathered) && in_array($gathered['status'] ?? '', array('ok', 'not_found', 'empty'), true);
+
+    if (!$checked) {
+        $steps = array('check' => 'current', 'gather' => 'later', 'write' => 'later', 'send' => 'later');
+    } elseif (!$ok) {
+        $steps = array('check' => 'done', 'gather' => 'current', 'write' => 'later', 'send' => 'later');
+    } else {
+        $steps = array('check' => 'done', 'gather' => 'done', 'write' => 'current', 'send' => 'later');
+    }
+
+    return array('steps' => $steps, 'open' => $checked ? 'gather' : 'check', 'can_send' => $ok);
+}
+
+/**
+ * What the gather step runs: the erase dry run for an erasure, the
+ * personal data export for every other kind. Pure.
+ *
+ * @param string $kind
+ * @return string  erase | export
+ */
+function pg_privacy_request_gather_mode($kind)
+{
+    return ($kind === 'erasure') ? 'erase' : 'export';
+}
+
+/**
+ * The gather step's lists by their names: for the export the sections with
+ * rows (found), in the pack's order; for the erase dry run the tables
+ * deleted and those kept with their personal fields replaced. Two keys of
+ * the same name add up. Pure but for lang().
+ *
+ * @param string $mode  export | erase
+ * @param array  $raw   counts (section => rows) | tables (pg_privacy_erase_run())
+ * @return array  found | deleted, kept: name => rows
+ */
+function pg_privacy_request_gather_lists($mode, array $raw)
+{
+    $add = function (array &$list, $label, $rows) {
+        $list[$label] = ($list[$label] ?? 0) + (int) $rows;
+    };
+
+    if ($mode === 'erase') {
+        $labels = pg_privacy_erase_labels();
+        $lists = array('deleted' => array(), 'kept' => array());
+
+        foreach ((isset($raw['tables']) && is_array($raw['tables'])) ? $raw['tables'] : array() as $key => $table) {
+            if ((int) ($table['rows'] ?? 0) > 0) {
+                $add($lists[(($table['action'] ?? '') === 'delete') ? 'deleted' : 'kept'], (string) ($labels[$key] ?? $key), $table['rows']);
+            }
+        }
+
+        return $lists;
+    }
+
+    $counts = (isset($raw['counts']) && is_array($raw['counts'])) ? $raw['counts'] : array();
+    $found = array();
+
+    foreach (pg_privacy_export_sections() as $key => $label) {
+        if ((int) ($counts[$key] ?? 0) > 0) {
+            $add($found, (string) $label, $counts[$key]);
+        }
+    }
+
+    return array('found' => $found);
+}
+
+/**
+ * Run the gather step: the erase dry run (nothing is written) or the
+ * export's counts, under the export's rule of who may see whom.
+ *
+ * @param array $request
+ * @param array $operator  role, id
+ * @return array  mode, status (ok | not_found | empty | refused | self),
+ *                lists (pg_privacy_request_gather_lists())
+ */
+function pg_privacy_request_gather(array $request, array $operator)
+{
+    $mode = pg_privacy_request_gather_mode((string) $request['kind']);
+    $input = array('email' => (string) $request['email'], 'contact_id' => (int) $request['contact_id'], 'user_id' => (int) $request['user_id']);
+
+    if ($mode === 'erase') {
+        $dry = pg_privacy_erase($input, $operator, false);
+
+        return array('mode' => $mode, 'status' => $dry['status'], 'lists' => pg_privacy_request_gather_lists($mode, $dry));
+    }
+
+    $found = pg_privacy_export_find($input);
+    $out = array('mode' => $mode, 'status' => 'ok', 'lists' => pg_privacy_request_gather_lists($mode, array()));
+
+    if (pg_privacy_export_is_empty($found['person'])) {
+        $out['status'] = 'empty';
+    } elseif (!pg_privacy_export_allowed($operator['role'] ?? 3, $operator['id'] ?? 0, $found['users'])) {
+        $out['status'] = 'refused';
+    } else {
+        $document = pg_privacy_export_document($found['person'], pg_privacy_export_collect($found), array());
+        $out['lists'] = pg_privacy_request_gather_lists($mode, array('counts' => pg_privacy_export_counts($document)));
+        $out['status'] = $out['lists']['found'] ? 'ok' : 'not_found';
+    }
+
+    return $out;
+}
+
+/**
+ * The answer's text from the kind's template, for staff to change before it
+ * goes: a greeting, the kind's paragraphs with the gathered lists, the
+ * site's name. Plain text. Pure but for lang().
+ *
+ * @param string $kind
+ * @param string $name   the person's name, '' for none
+ * @param string $site
+ * @param array  $lists  pg_privacy_request_gather_lists()
+ * @return string
+ */
+function pg_privacy_request_answer_text($kind, $name, $site, array $lists)
+{
+    $lines = function ($list) {
+        $out = array();
+
+        foreach ((array) $list as $label => $rows) {
+            $out[] = '- ' . $label . ': ' . $rows;
+        }
+
+        return implode("\n", $out);
+    };
+
+    $found = (array) ($lists['found'] ?? array());
+    $deleted = (array) ($lists['deleted'] ?? array());
+    $kept = (array) ($lists['kept'] ?? array());
+    $parts = array(($name !== '') ? lang(array('string' => 'Hello {var:1},', 'vars' => array($name))) : lang('Hello,'));
+
+    switch ($kind) {
+        case 'information':
+            if ($found) {
+                $parts[] = lang('You asked which personal data we keep about you. We keep these records:');
+                $parts[] = $lines($found);
+                $parts[] = lang('We keep them for the purposes and periods in our privacy notice. Reply to this e-mail if you would like a copy of the records themselves.');
+            } else {
+                $parts[] = lang('You asked which personal data we keep about you.') . ' ' . lang('We keep no personal data about you.');
+            }
+            break;
+
+        case 'erasure':
+            if (!$deleted && !$kept) {
+                $parts[] = lang('You asked us to erase your personal data. We keep no personal data about you, so there was nothing to erase.');
+                break;
+            }
+
+            $parts[] = lang('You asked us to erase your personal data.') . ' ' . lang('We have erased your personal data.');
+
+            if ($kept) {
+                $parts[] = lang('The law obliges us to keep these records; your name and contact details in them have been replaced:');
+                $parts[] = $lines($kept);
+            }
+            break;
+
+        case 'correction':
+            $parts[] = lang('You asked us to correct your personal data. We have corrected it as you asked.');
+            break;
+
+        case 'objection':
+            $parts[] = lang('You objected to how we use your personal data. We have looked into it and stopped the use you objected to.');
+            break;
+
+        default:
+            $parts[] = lang('Thank you for your request about your personal data.');
+    }
+
+    $parts[] = lang('Kind regards,') . "\n" . $site;
+
+    return implode("\n\n", $parts);
+}
+
+/**
+ * The Answer tab's numbered steps as Bootstrap 6's stepper with cards
+ * (ui/step-rail.md): a done step green, the current one active and marked,
+ * a later one plain; the number is the stepper's counter. Each step folds
+ * in a <details> of one name, so one is open at a time; .theme-reset keeps
+ * the item's theme out of the step's own buttons and fields. Pure.
+ *
+ * @param array  $steps  key => done | current | later
+ * @param string $open   the step shown open
+ * @param array  $items  key => title, line (one line of help), body (markup)
+ * @return string
+ */
+function pg_privacy_request_answer_stepper(array $steps, $open, array $items)
+{
+    $html = '<ol class="stepper pg-stepper-cards mb-0">';
+
+    foreach ($items as $key => $item) {
+        $state = $steps[$key] ?? 'later';
+        $class = ($state === 'done') ? ' active theme-success' : (($state === 'current') ? ' active' : '');
+
+        $html .= '<li class="stepper-item' . $class . '"' . (($state === 'current') ? ' aria-current="step"' : '') . '>'
+            . '<details name="privacy_answer_step" class="theme-reset"' . (($key === $open) ? ' open' : '') . '>'
+            . '<summary class="list-unstyled"><span class="pg-list-row-title">' . h($item['title']) . '</span><span class="pg-text-meta d-block">' . h($item['line']) . '</span></summary>'
+            . '<div class="pt-4">' . $item['body'] . '</div>'
+            . '</details></li>';
+    }
+
+    return $html . '</ol>';
+}
+
+/**
+ * A label and value list of the gather step.
+ *
+ * @param array $list  name => rows
+ * @return string
+ */
+function _pg_privacy_request_gather_kv(array $list)
+{
+    $html = '<dl class="pg-kv mb-5">';
+
+    foreach ($list as $label => $rows) {
+        $html .= '<dt>' . h($label) . '</dt><dd>' . pg_format_number($rows, 0) . '</dd>';
+    }
+
+    return $html . '</dl>';
+}
+
+/**
+ * The Answer tab, "Prepare the answer": four numbered steps, one open at a
+ * time (check who asks, gather, write the answer, send). The send button is
+ * the drawer's foot. A closed request shows the answer sent, read-only.
+ *
+ * @param array      $request
+ * @param array|null $gathered  pg_privacy_request_gather(), null when not run
+ * @return string
+ */
+function pg_privacy_request_answer_pane(array $request, $gathered)
+{
+    if ($request['status'] !== 'open') {
+        return ((string) $request['answer'] !== '')
+            ? '<h6 class="pg-title-status">' . h(lang('The answer sent')) . '</h6><p class="pg-text-2 text-break">' . nl2br(h((string) $request['answer'])) . '</p>'
+            : '<p class="pg-text-2">' . h(lang('No answer was sent.')) . '</p>';
+    }
+
+    $state = pg_privacy_request_answer_steps($request, $gathered);
+    $erase = (pg_privacy_request_gather_mode((string) $request['kind']) === 'erase');
+    $lists = is_array($gathered) ? (array) $gathered['lists'] : array();
+    $first = lang('Check who asks first.');
+
+    // 1. Who asks.
+    $check = '<div class="form-field mb-4"><div class="d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" id="privacy_request_verified" name="verified" value="1"' . (((int) $request['verified_at'] > 0) ? ' checked' : '') . '><label class="pg-text-2" for="privacy_request_verified">' . h(lang('I checked who asks')) . '</label></div>'
+        . '<div class="form-text">' . h(($request['source'] === 'staff') ? lang('The request was typed in by staff: make sure it comes from the person whose data it is.') : lang('The address was proven by its link. Ask for more only when the request is about somebody else.')) . '</div></div>'
+        . '<button type="submit" name="action" value="save" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Save')) . '</button>';
+
+    // 2. Gather.
+    $problems = array(
+        'refused' => lang('Your role may not see this person\'s data: someone with a higher role answers this request.'),
+        'self'    => lang('This request is about your own account: another manager answers it.'),
+    );
+
+    if (!is_array($gathered)) {
+        $gather = '<p class="pg-text-2 mb-0">' . h($first) . '</p>';
+    } elseif (isset($problems[$gathered['status']])) {
+        $gather = '<div class="alert theme-warning small py-3 mb-0">' . h($problems[$gathered['status']]) . '</div>';
+    } elseif ($erase) {
+        $gather = (!empty($lists['deleted']) ? '<h6 class="pg-title-status">' . h(lang('What is erased')) . '</h6>' . _pg_privacy_request_gather_kv($lists['deleted']) : '')
+            . (!empty($lists['kept']) ? '<h6 class="pg-title-status">' . h(lang('What the law keeps, with the personal fields replaced')) . '</h6>' . _pg_privacy_request_gather_kv($lists['kept']) : '')
+            . ((empty($lists['deleted']) && empty($lists['kept'])) ? '<p class="pg-text-2 mb-0">' . h(lang('Nothing of this person was found.')) . '</p>' : '');
+    } else {
+        $ids = ((int) $request['contact_id'] > 0) ? 'contact_id=' . (int) $request['contact_id'] : (((int) $request['user_id'] > 0) ? 'user_id=' . (int) $request['user_id'] : '');
+        $gather = (!empty($lists['found']) ? _pg_privacy_request_gather_kv($lists['found']) : '<p class="pg-text-2">' . h(lang('Nothing of this person was found.')) . '</p>')
+            . (($ids !== '') ? '<a class="pg-button pg-button-quiet pg-button-sm" href="privacy_export.php?' . $ids . '"><i class="bi bi-download" aria-hidden="true"></i>' . h(lang('Personal data export')) . '</a>' : '');
+    }
+
+    // 3. The answer, from the kind's text.
+    $write = $state['can_send']
+        ? '<label class="visually-hidden" for="privacy_request_answer">' . h(lang('The answer')) . '</label><textarea class="pg-input" id="privacy_request_answer" name="answer" rows="12">'
+            . h(pg_privacy_request_answer_text((string) $request['kind'], (string) $request['name'], pg_privacy_request_site(), $lists)) . '</textarea>'
+        : '<p class="pg-text-2 mb-0">' . h($first) . '</p>';
+
+    // 4. Where it goes.
+    $send = '<dl class="pg-kv mb-0"><dt>' . h(lang('To')) . '</dt><dd>' . h((string) $request['email']) . '</dd>'
+        . '<dt>' . h(lang('Then')) . '</dt><dd>' . h($erase ? lang('The data is erased and the request closed') : lang('The request is closed')) . '</dd></dl>';
+
+    return pg_privacy_request_answer_stepper($state['steps'], $state['open'], array(
+        'check'  => array('title' => lang('Check who asks'), 'line' => lang('Make sure the request comes from the person whose data it is.'), 'body' => $check),
+        'gather' => array('title' => lang('Gather'), 'line' => $erase ? lang('What erasing this person removes. Nothing is erased yet.') : lang('What the site keeps about this person.'), 'body' => $gather),
+        'write'  => array('title' => lang('Write the answer'), 'line' => lang('The e-mail from the kind\'s text; change it as needed.'), 'body' => $write),
+        'send'   => array('title' => lang('Send'), 'line' => $erase ? lang('The e-mail goes first, then the data is erased.') : lang('The answer goes by e-mail and is kept with the request.'), 'body' => $send),
+    ));
 }
 
 /**
@@ -718,7 +1038,7 @@ function pg_privacy_centre_views($active, $open)
 function _pg_privacy_request_drawer_frame($id, $title, $head, $tabs, $body, $foot, $open)
 {
     return '
-    <dialog class="drawer drawer-end" id="' . h($id) . '" aria-labelledby="' . h($id) . '_title" style="width:min(480px,100%)"' . ($open ? ' data-open="1"' : '') . '>
+    <dialog class="drawer drawer-end" id="' . h($id) . '" aria-labelledby="' . h($id) . '_title" style="width:min(480px,100%);--pg-drawer-height:88vh"' . ($open ? ' data-open="1"' : '') . '>
         <form method="post" action="privacy_centre.php?view=requests" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="view" value="requests">
             <div class="drawer-header">
@@ -779,16 +1099,20 @@ function pg_privacy_request_add_drawer($open)
 }
 
 /**
- * A request's drawer: the person, the kind and the due pill; tabs Request
- * and History; Refuse, Cancel and Save at the foot. A closed request shows
- * its fields as plain text with Close only.
+ * A request's drawer: the person, the kind and the due pill; tabs Request,
+ * Answer and History. The Request and History tabs end in Refuse, Cancel
+ * and Save; the Answer tab in Cancel and Send the answer (Erase and send for
+ * an erasure). A closed request shows its fields and the answer sent as
+ * plain text with Close only.
  *
- * @param array $request
- * @param array $labels   pg_privacy_request_labels()
- * @param int   $now
+ * @param array      $request
+ * @param array      $labels    pg_privacy_request_labels()
+ * @param int        $now
+ * @param string     $tab       request | answer | history: the tab shown
+ * @param array|null $gathered  pg_privacy_request_gather(), null when not run
  * @return string
  */
-function pg_privacy_request_drawer(array $request, array $labels, $now)
+function pg_privacy_request_drawer(array $request, array $labels, $now, $tab = 'request', $gathered = null)
 {
     $id = (int) $request['id'];
     $open = ($request['status'] === 'open');
@@ -808,6 +1132,7 @@ function pg_privacy_request_drawer(array $request, array $labels, $now)
         . '<dt>' . h(lang('E-mail address')) . '</dt><dd>' . h($request['email']) . '</dd>'
         . '<dt>' . h(lang('Came from')) . '</dt><dd>' . h($labels['sources'][$request['source']] ?? $request['source']) . '</dd>'
         . '<dt>' . h(lang('Address')) . '</dt><dd>' . h(($request['source'] === 'staff') ? lang('Typed in by staff') : lang('Proven by its link')) . '</dd>'
+        . '<dt>' . h(lang('Who asks')) . '</dt><dd>' . h(((int) $request['verified_at'] > 0) ? lang('Checked') : lang('Not checked yet')) . '</dd>'
         . '<dt>' . h(lang('Received')) . '</dt><dd>' . $time($request['received_at']) . '</dd>'
         . '<dt>' . h(lang('Status')) . '</dt><dd>' . h($labels['statuses'][$request['status']] ?? $request['status']) . '</dd>'
         . ($open ? '' : '<dt>' . h(lang('Handled by')) . '</dt><dd>' . h($handler) . '</dd>'
@@ -823,11 +1148,7 @@ function pg_privacy_request_drawer(array $request, array $labels, $now)
         }
 
         $facts .= _pg_privacy_request_field('privacy_request_handler', lang('Handled by'), '<select class="pg-input" id="privacy_request_handler" name="assigned_user_id">' . $handlers . '</select>', lang('Reminders at 7 and 2 days go to this person.'))
-            . '<div class="form-field mb-5"><div class="d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" id="privacy_request_verified" name="verified" value="1"' . (((int) $request['verified_at'] > 0) ? ' checked' : '') . '><label class="pg-text-2" for="privacy_request_verified">' . h(lang('I checked who asks')) . '</label></div>'
-            . '<div class="form-text">' . h(($request['source'] === 'staff') ? lang('The request was typed in by staff: make sure it comes from the person whose data it is.') : lang('The address was proven by its link. Ask for more only when the request is about somebody else.')) . '</div></div>'
             . _pg_privacy_request_field('privacy_request_reason', lang('Why it is refused'), '<textarea class="pg-input" id="privacy_request_reason" name="reason" rows="3"></textarea>', lang('Only when you refuse: the reason is sent to the person.'));
-    } elseif ((string) $request['answer'] !== '') {
-        $facts .= '<h6 class="pg-title-status">' . h(lang('The answer sent')) . '</h6><p class="pg-text-2 text-break">' . nl2br(h((string) $request['answer'])) . '</p>';
     }
 
     // History: the request's audit lines, newest first.
@@ -836,24 +1157,38 @@ function pg_privacy_request_drawer(array $request, array $labels, $now)
     foreach (pg_privacy_request_history($id) as $line) {
         $history .= '<div class="pg-list-row is-read"><div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">'
             . h(pg_audit_view_labels('action')[$line['action']] ?? $line['action']) . '</span><span class="pg-list-row-time">' . get_relative_time(array('timestamp' => (int) $line['created_at'])) . '</span></div>'
-            . '<div class="pg-list-row-text">' . h((string) $line['actor_name']) . '</div></div></div>';
+            . '<div class="pg-list-row-text">' . h((string) $line['username']) . '</div></div></div>';
     }
 
+    $panes = array(
+        'request' => array(lang('Request'), $facts),
+        'answer'  => array(lang('Answer'), pg_privacy_request_answer_pane($request, $gathered)),
+        'history' => array(lang('History'), ($history !== '') ? '<div class="pg-look-rows">' . $history . '</div>' : '<p class="pg-text-2">' . h(lang('No step yet.')) . '</p>'),
+    );
+    $tab = isset($panes[$tab]) ? $tab : 'request';
     $tabs = '<span class="pg-seg" role="tablist" aria-label="' . h(lang('Request')) . '">';
-    $panes = array('request' => array(lang('Request'), $facts), 'history' => array(lang('History'), ($history !== '') ? '<div class="pg-look-rows">' . $history . '</div>' : '<p class="pg-text-2">' . h(lang('No step yet.')) . '</p>'));
-    $body = '<input type="hidden" name="request" value="' . $id . '">';
+    $body = '<input type="hidden" name="request" value="' . $id . '"><input type="hidden" name="tab" value="' . h($tab) . '">';
 
     foreach ($panes as $key => $pane) {
-        $first = ($key === 'request');
-        $tabs .= '<button type="button" class="pg-seg-item" role="tab" id="privacy_request_tab_' . $key . '" aria-selected="' . ($first ? 'true' : 'false') . '" aria-controls="privacy_request_pane_' . $key . '"' . ($first ? '' : ' tabindex="-1"') . '>' . h($pane[0]) . '</button>';
-        $body .= '<div role="tabpanel" id="privacy_request_pane_' . $key . '" aria-labelledby="privacy_request_tab_' . $key . '"' . ($first ? '' : ' hidden') . '>' . $pane[1] . '</div>';
+        $on = ($key === $tab);
+        $tabs .= '<button type="button" class="pg-seg-item" role="tab" id="privacy_request_tab_' . $key . '" aria-selected="' . ($on ? 'true' : 'false') . '" aria-controls="privacy_request_pane_' . $key . '"' . ($on ? '' : ' tabindex="-1"') . '>' . h($pane[0]) . '</button>';
+        $body .= '<div role="tabpanel" id="privacy_request_pane_' . $key . '" aria-labelledby="privacy_request_tab_' . $key . '"' . ($on ? '' : ' hidden') . '>' . $pane[1] . '</div>';
     }
 
+    // The foot follows the tab: Save on Request and History, the answer's
+    // own button on Answer; the drawer's script swaps them.
+    $answer = ($tab === 'answer');
+    $steps = pg_privacy_request_answer_steps($request, $gathered);
+    $erase = ($request['kind'] === 'erasure');
+
     $foot = $open
-        ? '<button type="submit" name="action" value="refuse" class="pg-button pg-button-danger" data-confirm-content="' . h(lang('The reason is sent to the person and the request is closed.')) . '">' . h(lang('Refuse')) . '</button>'
+        ? '<button type="submit" name="action" value="refuse" class="pg-button pg-button-danger" data-privacy-foot="request" data-confirm-content="' . h(lang('The reason is sent to the person and the request is closed.')) . '"' . ($answer ? ' hidden' : '') . '>' . h(lang('Refuse')) . '</button>'
             . '<span class="flex-grow-1"></span>'
             . '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>'
-            . '<button type="submit" name="action" value="save" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>'
+            . '<button type="submit" name="action" value="save" class="pg-button pg-button-fill" data-privacy-foot="request"' . ($answer ? ' hidden' : '') . '>' . h(lang('Save')) . '</button>'
+            . '<button type="submit" name="action" value="send" class="pg-button ' . ($erase ? 'pg-button-danger' : 'pg-button-fill') . '" data-privacy-foot="answer"'
+                . ($erase ? ' data-confirm-content="' . h(lang('The person\'s data is erased after the e-mail has gone. This cannot be undone.')) . '"' : '')
+                . ($steps['can_send'] ? '' : ' disabled') . ($answer ? '' : ' hidden') . '>' . h($erase ? lang('Erase and send') : lang('Send the answer')) . '</button>'
         : '<span class="flex-grow-1"></span><button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Close')) . '</button>';
 
     $person = ($request['name'] !== '') ? $request['name'] : $request['email'];
