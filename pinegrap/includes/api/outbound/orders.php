@@ -1206,7 +1206,7 @@ function mp_order_take_stock($matched, $order_ref = '') {
 		// The line keeps what the sale took, so a cancel puts back only that:
 		// down to 0 on the total, or what the location gave.
 		pg_stock_taken_record('order_items', (int) ($entry['order_item_id'] ?? 0),
-			($written === null) ? min($before, $quantity) : (!empty($written['ok']) ? -(int) $written['delta'] : 0));
+			pg_stock_taken_of($before, $quantity, ($written === null) ? null : (!empty($written['ok']) ? -(int) $written['delta'] : 0)));
 
 		// The stamp lets a system syncing with GET /products?updated_since=
 		// list the product; this path announces no webhook event.
@@ -1224,6 +1224,10 @@ function mp_order_take_stock($matched, $order_ref = '') {
 		}
 
 		$left = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
+
+		// A bundle line further down that holds this product as a component
+		// starts from what this line left, so each records its own share.
+		$stock_left[$product_id] = $left;
 
 		if ($left <= 0) {
 

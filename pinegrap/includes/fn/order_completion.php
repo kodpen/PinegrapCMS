@@ -1775,7 +1775,7 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $
 
     // Without locations the unsigned column stops at 0, so the sale took at
     // most what was there; with them, what the location gave.
-    pg_stock_taken_record('order_items', $order_item_id, ($sale === null) ? min((int) $inventory_quantity, max(0, (int) $line['quantity'])) : $sale['taken']);
+    pg_stock_taken_record('order_items', $order_item_id, pg_stock_taken_of($inventory_quantity, $line['quantity'], ($sale === null) ? null : $sale['taken']));
 
     if (($sale !== null) && ($sale['taken'] === 0)) {
         // The location has none left: nothing is taken from another one.

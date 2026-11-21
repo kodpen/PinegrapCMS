@@ -133,6 +133,27 @@ function pg_stock_taken_record($table, $id, $taken)
 }
 
 /**
+ * What a sale took from the stock: with stock locations what the location
+ * gave ($given); without them the smaller of the stock before and what was
+ * asked, the unsigned column stopping at 0. A later line of the same
+ * product passes the stock the line before left, so each line records its
+ * own share. Pure.
+ *
+ * @param int      $before the stock before this line
+ * @param int      $asked  units the line asked for
+ * @param int|null $given  units the location gave, null without locations
+ * @return int
+ */
+function pg_stock_taken_of($before, $asked, $given = null)
+{
+    if ($given !== null) {
+        return max(0, (int) $given);
+    }
+
+    return max(0, min((int) $before, (int) $asked));
+}
+
+/**
  * How many units a cancel puts back: the smaller of what the sale took and
  * what is asked; all that is asked when nothing was recorded (a line from
  * before the column, or an untracked product). Pure.

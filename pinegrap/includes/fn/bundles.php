@@ -778,7 +778,7 @@ function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$
 
         // Without locations the unsigned column stops at 0, so the sale took
         // at most what was there; with them, what the location gave.
-        pg_stock_taken_record('order_item_components', $component_row, ($sale === null) ? min($before, $per_bundle * $quantity) : $sale['taken']);
+        pg_stock_taken_record('order_item_components', $component_row, pg_stock_taken_of($before, $per_bundle * $quantity, ($sale === null) ? null : $sale['taken']));
 
         if (($sale !== null) && ($sale['taken'] === 0)) {
             continue;
