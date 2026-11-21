@@ -58,8 +58,31 @@ function api_event_ticket_present($row) {
 		'checked_in_at'     => ($used_at > 0) ? api_time($used_at) : null,
 		'checked_in_by'     => ($used_by > 0) ? $used_by : null,
 		'voided_at'         => api_time((int)($row['voided_at'] ?? 0)),
-		'created_at'        => api_time((int)($row['created_at'] ?? 0))
+		'created_at'        => api_time((int)($row['created_at'] ?? 0)),
+		'check_ins'         => api_event_ticket_check_ins_present((array)($row['check_ins'] ?? array()))
 	);
+
+}
+
+// A series ticket's entries, one per date it was checked in on, oldest date
+// first; any other ticket has none (its check-in is checked_in_at). Pure.
+function api_event_ticket_check_ins_present(array $entries) {
+
+	$out = array();
+
+	foreach ($entries as $entry) {
+
+		$by = (int)($entry['checked_by'] ?? 0);
+
+		$out[] = array(
+			'recurrence_number' => (int)($entry['recurrence_number'] ?? 0),
+			'checked_in_at'     => api_time((int)($entry['checked_at'] ?? 0)),
+			'checked_in_by'     => ($by > 0) ? $by : null
+		);
+
+	}
+
+	return $out;
 
 }
 
@@ -80,7 +103,12 @@ function api_event_ticket_schema() {
 		'checked_in_at'     => 'datetime?',
 		'checked_in_by'     => 'integer?',
 		'voided_at'         => 'datetime?',
-		'created_at'        => 'datetime?'
+		'created_at'        => 'datetime?',
+		'check_ins'         => array(array(
+			'recurrence_number' => 'integer',
+			'checked_in_at'     => 'datetime?',
+			'checked_in_by'     => 'integer?'
+		))
 	);
 
 }
@@ -131,9 +159,15 @@ function api_calendar_event_tickets($params) {
 
 	$where = array("event_tickets.calendar_event_id = '" . (int)$event['id'] . "'");
 
-	if (isset($params['recurrence_number'])) {
+	// A repeating event whose dates share their places gives series tickets,
+	// kept on date 0 and entered once on each date (event_ticket_checkins).
+	$series = pg_event_ticket_series((int)$event['id']);
+	$date = isset($params['recurrence_number']) ? (int)$params['recurrence_number'] : null;
+	$series_date = ($series !== null) && ($date !== null) && in_array($date, $series['dates'], true);
 
-		$where[] = "event_tickets.recurrence_number = '" . (int)$params['recurrence_number'] . "'";
+	if ($date !== null) {
+
+		$where[] = "event_tickets.recurrence_number = '" . ($series_date ? 0 : $date) . "'";
 
 	}
 
@@ -141,6 +175,18 @@ function api_calendar_event_tickets($params) {
 		FROM event_tickets
 		WHERE " . implode(' AND ', $where) . "
 		GROUP BY event_tickets.state"));
+
+	// Checked in on a series: the tickets entered on the date asked, or on any
+	// date when none is asked.
+	if ($series !== null) {
+
+		$counts['checked_in'] += (int)api_value("SELECT COUNT(DISTINCT c.ticket_id)
+			FROM event_ticket_checkins AS c
+			INNER JOIN event_tickets ON event_tickets.id = c.ticket_id
+			WHERE " . implode(' AND ', $where) . " AND (event_tickets.state <> 'void')"
+			. ($series_date ? " AND (c.recurrence_number = '" . $date . "')" : ''));
+
+	}
 
 	if (isset($params['state']) && ($params['state'] !== '')) {
 
@@ -210,6 +256,20 @@ function api_calendar_event_tickets($params) {
 		require_once(PG_FUNCTIONS_DIR . '/includes/fn/event_check_in.php');
 
 		$rows = pg_check_in_with_names($rows);
+
+		$entries = array();
+
+		foreach (pg_event_ticket_checkins(array_column($rows, 'id')) as $entry) {
+
+			$entries[(int)$entry['ticket_id']][] = $entry;
+
+		}
+
+		foreach ($rows as $i => $row) {
+
+			$rows[$i]['check_ins'] = $entries[(int)$row['id']] ?? array();
+
+		}
 
 	}
 
