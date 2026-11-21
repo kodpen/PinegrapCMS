@@ -14,7 +14,7 @@ description: Plan supplier-feed, steps SF1 to SF7: tables and readers, the feed 
   - SF3a tests: a pull changes only what moved; a half-dropped pull writes nothing; a person's off stays off; a price held under half and over ten times. Features: F6, F7, F12, F13.
   - SF3b after SF3a, done (#10963): card 3's price rule (F4) and "Rules by category or brand" (`supplier-feed-screens.md`), the test pull's buy and selling price with the "Floor" pill, Accept and Reject of a held price, Pull now (with `$drop_ok` past a mass-drop brake) and the runs list, the "Price from the feed" switch (F5). The sync: `commerce/supplier-feed-sync.md`.
 - SF4 (M) after SF3, done (#11010): drafts: the product writer, pictures through the address check, groups by name, variant sets by model code through `pg_catalog_variant_set_create()`; "Drafts go into" on Fields. Feature: F8. The drafts: `commerce/supplier-feed-drafts.md`.
-- SF5 (S) after SF3: several suppliers on one barcode, the choice shown on the product; the rate hook after Update Exchange Rates. Features: F9, F10.
+- SF5 (S) after SF3, done (#11040): several suppliers on one barcode, the choice shown on the product; the rate hook after Update Exchange Rates. Features: F9, F10.
 - SF6 (S) after SF3: the cost link of F11 (`includes/erp/order_profit.php`, the stock plan's supplier), the API routes in `includes/api/resources/`, their types, `php tools/check_api_schema.php`. Features: F11, F14.
 - SF7 (S) close-out: every F number checked against the code with its PR; `commerce/supplier-feed.md` written; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
