@@ -48,12 +48,12 @@ echo '<!DOCTYPE html>
 <style>
 @page { size: A4; margin: 15mm; }
 body { margin: 0; font-family: system-ui, sans-serif; color: #111; background: #fff; text-align: center; }
-.poster { max-width: 170mm; margin: 0 auto; padding: 10mm 0; }
+.poster { max-width: 170mm; margin: 0 auto; padding: 10mm 4mm; }
 .poster-site { margin: 0; font-size: 14pt; color: #555; }
 .poster h1 { margin: 4mm 0 2mm; font-size: 34pt; line-height: 1.15; }
 .poster-address { margin: 0; font-size: 13pt; color: #555; }
 .poster h2 { margin: 12mm 0 6mm; font-size: 26pt; }
-.poster-qr svg { width: 110mm; height: 110mm; }
+.poster-qr svg { width: 110mm; max-width: 100%; height: auto; aspect-ratio: 1; }
 .poster ul { list-style: none; margin: 8mm 0 0; padding: 0; font-size: 16pt; line-height: 1.6; }
 .poster-link { margin-top: 8mm; font-size: 11pt; color: #555; word-break: break-all; }
 .poster-print { margin: 6mm 0 0; padding: 2.5mm 6mm; font: inherit; font-size: 12pt; cursor: pointer; }
