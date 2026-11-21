@@ -6,7 +6,7 @@ module: image_editor
 
 ## What does Detach sound do?
 - It adds the clip's sound as an entry of `doc.sounds` on the same file and times and mutes the clip, one undo step (`M.clipDetach()`, `image-editor-clip.md`). No schema; `doc.sounds` keeps its shape.
-- Owner (2026-11-20): "videolarda ses ekle var ancak gömülü sesi olan videodan ses kopartma yok": it sat on the Select tool's clip panel only. #(this PR) put it where the hand is.
+- Owner (2026-11-20): "videolarda ses ekle var ancak gömülü sesi olan videodan ses kopartma yok": it sat on the Select tool's clip panel only. #11015 put it where the hand is.
 
 ## Where is it offered?
 - The bar over one clip in the Animate tool, after Split clip, when the clip has a sound track (`M.actionList()`, state `sound`; command `detachSound`, label `clipDetach`). The phone's bar is unchanged (approved list).
