@@ -56,12 +56,12 @@ function test_settings_workspace_channels_sections_and_anchors()
 
 	pg_assert_false(strpos($entry, "'pgset-ws-mail'") !== false, 'mailboxes have a category of their own');
 	pg_assert_false(strpos($entry, 'pgset-ws-channels-screen') !== false, 'no link card left');
-	pg_assert_same(array('mailboxes', 'pgset-ws-mail'), pg_settings_legacy_anchors()['ws-mail'] ?? null, 'the old #ws-mail lands on the card in Mailboxes');
+	pg_assert_same(array('email', 'pgset-ws-mail'), pg_settings_legacy_anchors()['ws-mail'] ?? null, 'the old #ws-mail lands on the card in E-mail\'s Mailboxes tab');
 
-	$mail = substr($source, (int) strpos($source, "        'mailboxes' => array("), 1200);
-	pg_assert_contains("'gate'  => 'mail',", $mail, 'Mailboxes follows the right, not the switch');
-	pg_assert_contains("'pgset-ws-mail' => lang('Mailboxes'),", $mail, 'its one section');
-	pg_assert_contains("'ws_mail' => 3,", $mail, 'a route is ws_mail[id][route_match][]');
+	$mail = pg_settings_email_category();
+	pg_assert_same('mail', $mail['tabs']['mailboxes']['gate'], 'the Mailboxes tab follows the right, not the switch');
+	pg_assert_same(array('pgset-ws-mail'), $mail['tabs']['mailboxes']['sections'], 'its one section');
+	pg_assert_same(3, $mail['lists']['ws_mail'], 'a route is ws_mail[id][route_match][]');
 
 	$cards = settings_workspace_channels_test_source('includes/settings/workspace_channels.php');
 	pg_assert_false(strpos($cards, 'ws_voice_settings_card(') !== false, 'the voice card is not drawn here');

@@ -3816,6 +3816,7 @@
     "The e-mail of subscription {var:1} could not be prepared: {var:2}": "{var:1} numaralı aboneliğin e-postası hazırlanamadı: {var:2}",
     "The e-mail reminder of task {var:1} could not be sent.": "{var:1} görevinin e-posta hatırlatması gönderilemedi.",
     "The e-mail still holds {var:1} sample photo(s) of a ready design: put your own pictures in the design before it is sent.": "E-postada hazır bir tasarımın {var:1} örnek fotoğrafı duruyor: göndermeden önce tasarıma kendi resimlerinizi koyun.",
+    "The e-mail the site sends, and the mailboxes it reads.": "Sitenin gönderdiği e-postalar ve okuduğu posta kutuları.",
     "The e-mail to {var:1} could not be sent.": "{var:1} adresine e-posta gönderilemedi.",
     "The e-mail was brought into its channel.": "E-posta kanalına alındı.",
     "The e-mail was kept but could not be sent; it is under Not sent.": "E-posta saklandı ama gönderilemedi; Gönderilmedi altında.",

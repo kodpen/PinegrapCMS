@@ -41,6 +41,12 @@ function connections_registry_test_cards()
 		$cards[$key] = $ids[1];
 	}
 
+	// E-mail is kept in a function of its own: its cards are its sections.
+	if (preg_match("/function pg_settings_email_category\(\).*?'sections' => array\((.*?)\n        \),/s", $source, $email)) {
+		preg_match_all("/'(pgset-[a-z0-9-]+)'/", $email[1], $ids);
+		$cards['email'] = $ids[1];
+	}
+
 	return $cards;
 }
 
@@ -257,8 +263,8 @@ function test_connections_registry_place_keys_name_each_service_at_its_place()
 	pg_assert_true(in_array('netgsm', $keys['#settings/contact/pgset-sms'], true), 'Netgsm on the SMS card');
 	pg_assert_true(in_array('i̇leti merkezi', $keys['#settings/contact/pgset-sms'], true) === false, 'no combining dot from İ');
 	pg_assert_true(in_array('ileti merkezi', $keys['#settings/contact/pgset-sms'], true), 'İleti Merkezi as typed');
-	pg_assert_true(in_array('brevo', $keys['#settings/mail_sending/pgset-mail-transport'], true), 'Brevo on the Sending service card');
-	pg_assert_true(in_array('gmail', $keys['#settings/mail_sending/pgset-mail-system'], true), 'Gmail on the System card, where its account is chosen');
+	pg_assert_true(in_array('brevo', $keys['#settings/email/pgset-mail-transport'], true), 'Brevo on the Sending service card');
+	pg_assert_true(in_array('gmail', $keys['#settings/email/pgset-mail-system'], true), 'Gmail on the System card, where its account is chosen');
 	pg_assert_false(isset($keys['smtp_settings.php']), 'SMTP Settings is no place any more');
 
 	foreach (pg_connections_registry() as $id => $row) {
@@ -269,6 +275,6 @@ function test_connections_registry_place_keys_name_each_service_at_its_place()
 function test_connections_registry_place_words_merge_without_repeats()
 {
 	pg_assert_same(array('smtp', 'mail ayar'), array_slice(pg_connections_place_words('api_settings.php', array('smtp', 'mail ayar')), 0, 2), 'the place\'s own words first');
-	pg_assert_same(1, count(array_keys(pg_connections_place_words('#settings/mail_sending/pgset-mail-transport', array('brevo')), 'brevo')), 'a name already there is not repeated');
+	pg_assert_same(1, count(array_keys(pg_connections_place_words('#settings/email/pgset-mail-transport', array('brevo')), 'brevo')), 'a name already there is not repeated');
 	pg_assert_same(array('cart'), pg_connections_place_words('#settings/features/pgset-features', array('cart')), 'a place with no service keeps its words');
 }

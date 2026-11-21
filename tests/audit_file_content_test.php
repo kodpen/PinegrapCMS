@@ -60,6 +60,19 @@ function test_audit_view_settings_names_cover_the_save_modules()
 
 	foreach (glob(PG_FUNCTIONS_DIR . '/includes/settings/*.save.php') as $module) {
 		$key = basename($module, '.save.php');
+
+		// E-mail, kept in a function of its own.
+		if ($key === 'email') {
+			pg_assert_contains("'email' => pg_settings_email_category(),", $source, $key . ' is a category of the registry');
+			continue;
+		}
+
+		// A tab's module, written under its category's key.
+		if (in_array($key, array('mail_sending', 'mailboxes'), true)) {
+			pg_assert_contains("'module'   => '" . $key . "',", $source, $key . ' is a tab of a category in the registry');
+			continue;
+		}
+
 		pg_assert_true(preg_match("/\n        '" . preg_quote($key, '/') . "' => array\(\n            'label' => /", $source) === 1, $key . ' has a label in the registry');
 	}
 }

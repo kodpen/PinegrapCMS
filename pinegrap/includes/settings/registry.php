@@ -243,51 +243,15 @@ function pg_settings_categories()
             ),
         ),
 
-        // What the site's e-mail is sent through: SMTP Settings' cards, which
-        // write config.php defines (includes/fn/mail_settings.php), then the
-        // campaign texts and MailChimp, which write the config row.
-        'mail_sending' => array(
-            'label' => lang('E-mail sending'),
-            'group' => 'site',
-            'icon'  => 'bi-envelope-at',
-            'description' => lang('The service or server the site\'s e-mail is sent through, the campaign job and its texts, DKIM, the sending domain and MailChimp.'),
-            'sections' => array(
-                'pgset-mail-transport' => lang('Sending service'),
-                'pgset-mail-system'    => lang('System'),
-                'pgset-mail-campaign'  => lang('Campaign'),
-                'pgset-mail-dkim'      => lang('DKIM TXT Record'),
-                'pgset-mail-domain'    => lang('Sending domain'),
-                'pgset-mailchimp'      => lang('MailChimp'),
-            ),
-            'keywords' => array(
-                'pgset-mail-transport' => pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')),
-                'pgset-mail-system'    => pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail')),
-                'pgset-mail-campaign'  => array_values(array_unique(array_merge(pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')), pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer'))))),
-                'pgset-mail-dkim'      => pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature')),
-                'pgset-mail-domain'    => pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')),
-                'pgset-mailchimp'      => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
-            ),
-        ),
-
-        // Incoming e-mail's boxes, read in Communication › Incoming e-mail.
-        // Opened by a holder of the Workspace settings right whatever the
-        // Workspace's switch says (gate 'mail', pg_settings_mail_settings_allowed()).
-        'mailboxes' => array(
-            'label' => lang('Mailboxes'),
-            'group' => 'site',
-            'gate'  => 'mail',
-            'icon'  => 'bi-envelope',
-            'description' => lang('The mailboxes whose e-mail is read in Communication › Incoming e-mail.'),
-            'sections' => array(
-                'pgset-ws-mail' => lang('Mailboxes'),
-            ),
-            'keywords' => array(
-                'pgset-ws-mail' => pg_settings_keywords(lang('workspace, mailbox, mailboxes, e-mail')),
-            ),
-            'lists' => array(
-                'ws_mail' => 3,
-            ),
-        ),
+        // The site's e-mail in one category with two tabs, each under the
+        // gate its category had before: Sending (SMTP Settings' cards, which
+        // write config.php defines, the campaign texts and MailChimp) for a
+        // manager, Mailboxes (incoming e-mail's boxes) for a holder of the
+        // Workspace settings right whatever the Workspace's switch says
+        // (gate 'mail', pg_settings_mail_settings_allowed()). Each tab's
+        // cards are its old module's (includes/settings/mail_sending.php,
+        // mailboxes.php); email.php draws them, email.save.php writes them.
+        'email' => pg_settings_email_category(),
 
         'security' => array(
             'label' => lang('Accounts and sign-in'),
@@ -631,6 +595,64 @@ function pg_settings_categories()
 
 
 /**
+ * The E-mail category: the e-mail the site sends and the mailboxes it reads,
+ * as two tabs, each with the gate, the cards and the module its category had
+ * before (pg_settings_moved_categories()). Kept apart from
+ * pg_settings_categories() so it is read without the database. Pure but for
+ * lang().
+ *
+ * @return array a category of pg_settings_categories(), with 'tabs': key =>
+ *               array(label, gate, module, prep, sections)
+ */
+function pg_settings_email_category()
+{
+    return array(
+        'label' => lang('E-mail'),
+        'group' => 'site',
+        'icon'  => 'bi-envelope-at',
+        'description' => lang('The e-mail the site sends, and the mailboxes it reads.'),
+        'sections' => array(
+            'pgset-mail-transport' => lang('Sending service'),
+            'pgset-mail-system'    => lang('System'),
+            'pgset-mail-campaign'  => lang('Campaign'),
+            'pgset-mail-dkim'      => lang('DKIM TXT Record'),
+            'pgset-mail-domain'    => lang('Sending domain'),
+            'pgset-mailchimp'      => lang('MailChimp'),
+            'pgset-ws-mail'        => lang('Mailboxes'),
+        ),
+        'keywords' => array(
+            'pgset-mail-transport' => pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')),
+            'pgset-mail-system'    => pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail')),
+            'pgset-mail-campaign'  => array_values(array_unique(array_merge(pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')), pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer'))))),
+            'pgset-mail-dkim'      => pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature')),
+            'pgset-mail-domain'    => pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')),
+            'pgset-mailchimp'      => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
+            'pgset-ws-mail'        => pg_settings_keywords(lang('workspace, mailbox, mailboxes, e-mail')),
+        ),
+        'tabs' => array(
+            'sending' => array(
+                'label'    => lang('E-mail sending'),
+                'gate'     => '',
+                'module'   => 'mail_sending',
+                'prep'     => true,
+                'sections' => array('pgset-mail-transport', 'pgset-mail-system', 'pgset-mail-campaign', 'pgset-mail-dkim', 'pgset-mail-domain', 'pgset-mailchimp'),
+            ),
+            'mailboxes' => array(
+                'label'    => lang('Mailboxes'),
+                'gate'     => 'mail',
+                'module'   => 'mailboxes',
+                'prep'     => false,
+                'sections' => array('pgset-ws-mail'),
+            ),
+        ),
+        'lists' => array(
+            'ws_mail' => 3,
+        ),
+    );
+}
+
+
+/**
  * The headings over the dialog's list of categories, in their order.
  *
  * Labels, not links: they only break the list into landmarks, which matters
@@ -653,14 +675,39 @@ function pg_settings_groups()
 
 
 /**
+ * Whether a reader passes a gate: 'mail' (Mailboxes) for a holder of the
+ * Workspace settings right whatever the switch, 'workspace' for that holder
+ * while the Workspace is on, anything else for a manager (role 0-2). Pure.
+ *
+ * @param string $gate
+ * @param array  $reader pg_settings_reader(): manager, workspace, mail (bool)
+ * @return bool
+ */
+function pg_settings_gate_open($gate, $reader)
+{
+    if ($gate === 'mail') {
+        return !empty($reader['mail']);
+    }
+
+    if ($gate === 'workspace') {
+        return !empty($reader['workspace']);
+    }
+
+    return !empty($reader['manager']);
+}
+
+
+/**
  * Whether a reader may open a category.
  *
  * A category gated 'workspace' opens for a holder of the Workspace settings
- * right while the Workspace is on, one gated 'mail' (Mailboxes) for that
- * holder whatever the switch, and for nobody else: a manager kept out of the team is refused it,
- * and a basic user holding the right opens it without being a manager. Every
- * other category opens for a manager (role 0-2) alone. The dialog's list, its
- * search, the page path and both save paths ask this one question. Pure.
+ * right while the Workspace is on, one gated 'mail' for that holder whatever
+ * the switch, and for nobody else: a manager kept out of the team is refused
+ * it, and a basic user holding the right opens it without being a manager.
+ * A category with tabs (E-mail) opens when the reader may open one of its
+ * tabs, each under its own gate. Every other category opens for a manager
+ * (role 0-2) alone. The dialog's list, its search, the page path and both
+ * save paths ask this one question. Pure.
  *
  * @param array $category an entry of pg_settings_categories()
  * @param array $reader   pg_settings_reader(): manager, workspace (bool)
@@ -668,15 +715,120 @@ function pg_settings_groups()
  */
 function pg_settings_category_open($category, $reader)
 {
-    if (isset($category['gate']) && ($category['gate'] === 'mail')) {
-        return !empty($reader['mail']);
+    if (!empty($category['tabs'])) {
+        return pg_settings_tabs_open($category, $reader) !== array();
     }
 
-    if (pg_settings_category_is_workspace($category)) {
-        return !empty($reader['workspace']);
+    return pg_settings_gate_open(isset($category['gate']) ? (string) $category['gate'] : '', $reader);
+}
+
+
+/**
+ * The tabs of a category a reader may open, in their order. Pure.
+ *
+ * @param array $category an entry of pg_settings_categories()
+ * @param array $reader   pg_settings_reader()
+ * @return array tab key => tab
+ */
+function pg_settings_tabs_open($category, $reader)
+{
+    $open = array();
+
+    foreach ((array) ($category['tabs'] ?? array()) as $tab_key => $tab) {
+
+        if (pg_settings_gate_open((string) ($tab['gate'] ?? ''), $reader)) {
+            $open[$tab_key] = $tab;
+        }
     }
 
-    return !empty($reader['manager']);
+    return $open;
+}
+
+
+/**
+ * A category as a reader sees it: a category with tabs keeps only the tabs
+ * the reader may open, and only their sections and keywords, so the list,
+ * the search and the section chips never name a card of a tab the reader
+ * may not open. Any other category is returned as it is. Pure.
+ *
+ * @param array $category an entry of pg_settings_categories()
+ * @param array $reader   pg_settings_reader()
+ * @return array
+ */
+function pg_settings_category_for_reader($category, $reader)
+{
+    if (empty($category['tabs'])) {
+        return $category;
+    }
+
+    $category['tabs'] = pg_settings_tabs_open($category, $reader);
+    $keep = array();
+
+    foreach ($category['tabs'] as $tab) {
+        foreach ((array) $tab['sections'] as $id) {
+            $keep[$id] = true;
+        }
+    }
+
+    $category['sections'] = array_intersect_key((array) $category['sections'], $keep);
+    $category['keywords'] = array_intersect_key((array) ($category['keywords'] ?? array()), $keep);
+
+    return $category;
+}
+
+
+/**
+ * Whether drawing a category for a reader reads prep.php's values: never
+ * for a Workspace category, whose reader may be no manager; for a category
+ * with tabs only when the reader opens a tab that reads them. Pure.
+ *
+ * @param array $category an entry of pg_settings_categories()
+ * @param array $reader   pg_settings_reader()
+ * @return bool
+ */
+function pg_settings_category_reads_prep($category, $reader)
+{
+    if (!empty($category['tabs'])) {
+
+        foreach (pg_settings_tabs_open($category, $reader) as $tab) {
+            if (!empty($tab['prep'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    return !pg_settings_category_is_workspace($category);
+}
+
+
+/**
+ * The categories that became tabs of another, by their old key: their
+ * pages, links and #settings/<key> addresses open that category on that
+ * tab. Pure.
+ *
+ * @return array old key => array(category key, tab key)
+ */
+function pg_settings_moved_categories()
+{
+    return array(
+        'mail_sending' => array('email', 'sending'),
+        'mailboxes'    => array('email', 'mailboxes'),
+    );
+}
+
+
+/**
+ * The id of a tab's panel, the section an address names to open it. Pure.
+ *
+ * @param string $key the category's key
+ * @param string $tab the tab's key
+ * @return string
+ */
+function pg_settings_tab_section($key, $tab)
+{
+    return 'pgset-' . $key . '-' . $tab;
 }
 
 
@@ -716,7 +868,7 @@ function pg_settings_categories_for($user, $reader = null, $categories = null)
     foreach ((is_array($categories) ? $categories : pg_settings_categories()) as $key => $category) {
 
         if (pg_settings_category_open($category, $reader)) {
-            $open[$key] = $category;
+            $open[$key] = pg_settings_category_for_reader($category, $reader);
         }
     }
 
@@ -726,6 +878,8 @@ function pg_settings_categories_for($user, $reader = null, $categories = null)
 
 /**
  * Whether a reader may open one category; false for a key that is not one.
+ * An old key of a category that became a tab (pg_settings_moved_categories())
+ * asks that tab's gate.
  *
  * @param string     $key
  * @param array      $user   the row validate_user() returned
@@ -734,13 +888,24 @@ function pg_settings_categories_for($user, $reader = null, $categories = null)
  */
 function pg_settings_may_open($key, $user, $reader = null)
 {
+    $reader = is_array($reader) ? $reader : pg_settings_reader($user);
+    $moved = pg_settings_moved_categories();
+
+    // A category that became a tab answers with that tab's gate.
+    if (isset($moved[$key])) {
+        $category = pg_settings_category($moved[$key][0]);
+        $tab = ($category !== null) ? ($category['tabs'][$moved[$key][1]] ?? null) : null;
+
+        return ($tab !== null) && pg_settings_gate_open((string) ($tab['gate'] ?? ''), $reader);
+    }
+
     $category = pg_settings_category($key);
 
     if ($category === null) {
         return false;
     }
 
-    return pg_settings_category_open($category, is_array($reader) ? $reader : pg_settings_reader($user));
+    return pg_settings_category_open($category, $reader);
 }
 
 
@@ -1019,9 +1184,10 @@ function pg_settings_legacy_anchors()
         'pgset-cookies'    => array('privacy',    'pgset-cookies'),
         'pgset-legal'      => array('privacy',    'pgset-legal'),
         // Communication's campaign texts and MailChimp moved into E-mail
-        // sending; an old Communication link lands there.
-        'pgset-campaigns'  => array('mail_sending', 'pgset-mail-campaign'),
-        'pgset-mailchimp'  => array('mail_sending', 'pgset-mailchimp'),
+        // sending, now the E-mail category's Sending tab; an old
+        // Communication link lands there.
+        'pgset-campaigns'  => array('email', 'pgset-mail-campaign'),
+        'pgset-mailchimp'  => array('email', 'pgset-mailchimp'),
         'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),
         // The WhatsApp and İYS accounts moved onto their pages of
@@ -1094,11 +1260,11 @@ function pg_settings_legacy_anchors()
         'ws-voice'         => array('workspace_assistants', 'pgset-ws-voice'),
         'pgset-ws-voice'   => array('workspace_assistants', 'pgset-ws-voice'),
         'ws-templates'     => array('workspace_channels', 'pgset-ws-templates'),
-        'ws-mail'          => array('mailboxes', 'pgset-ws-mail'),
-        // SMTP Settings became the E-mail sending category; its screen's
-        // card anchors (smtp_settings.php#mail_domain_card).
-        'mail_transport_card' => array('mail_sending', 'pgset-mail-transport'),
-        'mail_domain_card' => array('mail_sending', 'pgset-mail-domain'),
+        'ws-mail'          => array('email', 'pgset-ws-mail'),
+        // SMTP Settings became the E-mail category's Sending tab; its
+        // screen's card anchors (smtp_settings.php#mail_domain_card).
+        'mail_transport_card' => array('email', 'pgset-mail-transport'),
+        'mail_domain_card' => array('email', 'pgset-mail-domain'),
         // The GitHub repository links are managed on GitHub's page of
         // Connections; the card that held them keeps its place and leads there.
         'ws-github'        => array('workspace_channels', 'pgset-ws-github'),
