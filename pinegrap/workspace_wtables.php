@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
 
-    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'wt_bin', 'revision', 'name', 'description', 'type', 'target', 'level', 'channel', 'value', 'note', 'starter', 'samples'));
+    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'wt_bin', 'revision', 'name', 'description', 'type', 'target', 'level', 'channel', 'value', 'note', 'starter', 'samples', 'message', 'sheet'));
 
     $action = (string) ($_POST['wt_action'] ?? '');
     $table = ws_wtable((int) ($_POST['wt_table'] ?? 0));
@@ -315,22 +315,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'import_read':
-            // A file read and kept, its columns shown for confirmation.
+            // A file read and kept, its columns shown for confirmation. With
+            // message, the sheet of a channel's file its preview window
+            // showed ("Save as data"): a new table then belongs to that
+            // channel.
             $file = $_FILES['file'] ?? null;
+            $message_id = (int) $field('message');
             $append = ($table !== null);
             $back = $append ? $table_url . '&import=1#ws-wt-import' : $self_url . '?import=1#ws-wt-import';
 
             if ($append && !ws_wtable_may(ws_wtable_access($viewer, $table), 'write')) {
                 $refused(ws_wtable_refusal('not_found', '', 404));
                 $back = $self_url;
-            } elseif (($upload_refusal = pg_upload_file_refusal($file, pg_upload_limits()['file_max'])) !== '') {
+            } elseif (($message_id <= 0) && (($upload_refusal = pg_upload_file_refusal($file, pg_upload_limits()['file_max'])) !== '')) {
                 $liveform->add_error(h($upload_refusal));
                 $back = $append ? $table_url : $self_url;
-            } elseif (!is_array($file) || !is_string($file['tmp_name'] ?? null) || ((int) ($file['error'] ?? 1) !== UPLOAD_ERR_OK) || !is_uploaded_file($file['tmp_name'])) {
+            } elseif (($message_id <= 0) && (!is_array($file) || !is_string($file['tmp_name'] ?? null) || ((int) ($file['error'] ?? 1) !== UPLOAD_ERR_OK) || !is_uploaded_file($file['tmp_name']))) {
                 $liveform->add_error(h(lang('Choose a file to import.')));
                 $back = $append ? $table_url : $self_url;
             } else {
-                $read = ws_wtable_import_file_table($file['tmp_name'], pg_basename((string) $file['name']), ws_wtable_limits()['rows'] + 1);
+                $read = ($message_id > 0)
+                    ? ws_wtable_import_message_read($viewer, $message_id, (int) $field('sheet'), ws_wtable_limits()['rows'] + 1)
+                    : ws_wtable_import_file_table($file['tmp_name'], pg_basename((string) $file['name']), ws_wtable_limits()['rows'] + 1) + array('name' => pg_basename((string) $file['name']), 'channel_id' => 0);
 
                 if (!$read['ok']) {
                     $liveform->add_error(h($read['error']));
@@ -341,7 +347,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } elseif (count($read['table'][0]) > ws_wtable_limits()['columns']) {
                     $refused(ws_wtable_refusal('too_many_columns', '', 409));
                     $back = $append ? $table_url : $self_url;
-                } elseif (!ws_wtable_import_keep($read, pg_basename((string) $file['name']), $append ? (int) $table['id'] : 0)) {
+                } elseif (!ws_wtable_import_keep($read, $read['name'], $append ? (int) $table['id'] : 0, false, $append ? 0 : $read['channel_id'])) {
                     $liveform->add_error(h(lang('The file could not be read.')));
                     $back = $append ? $table_url : $self_url;
                 }
@@ -438,7 +444,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
 
-                $result = ws_wtable_import_create($viewer, $field('name'), $plan, $kept['rows']);
+                $result = ws_wtable_import_create($viewer, $field('name'), $plan, $kept['rows'], $kept['channel']);
 
                 if (!$result['ok']) {
                     $liveform->add_error(h((isset($result['column']) ? $result['column'] . ': ' : '') . ws_wtable_screen_error_text($result['error'])));
@@ -719,6 +725,7 @@ if ($kept) {
                 : lang('Each column of the note\'s table becomes a column of the new table, in the type its values suggest. Change a name or type, or leave a column out.')) : ($table
                 ? lang('Each file column fills the table column of its name; choose another, or leave it out. Rows the table refuses are listed afterwards.')
                 : lang('Each column of the file becomes a column of the new table, in the type its values suggest. Change a name or type, or leave a column out.'))) . '</p>
+            ' . ((!$table && ($kept['channel'] > 0) && ($kept_home = ws_wtable_home_channel($kept['channel']))) ? '<p class="small fg-secondary">' . h(lang(array('string' => 'The new table belongs to the channel {var:1}.', 'vars' => '#' . $kept_home['name']))) . '</p>' : '') . '
             <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
                 ' . get_token_field() . '
                 <input type="hidden" name="wt_action" value="import_write">

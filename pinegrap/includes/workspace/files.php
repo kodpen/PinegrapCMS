@@ -212,6 +212,27 @@ function ws_upload_form_max_bytes()
 }
 
 /**
+ * What the Workspace screen knows of a channel's refusals before it sends a
+ * file (BOOT.upload, uploadRefusal() in workspace.js): the form limit and the
+ * lists ws_upload_refused() reads, so a file put in the writing box is
+ * refused when it is added. The server still asks ws_upload_refused() at the
+ * send; a name it refuses only as prepare_file_name() stores it is said then.
+ *
+ * @return array max (bytes), names, blocked (the file manager's), refused
+ *               and macro (a channel's own) extensions
+ */
+function ws_upload_browser_rules()
+{
+    return array(
+        'max'     => ws_upload_form_max_bytes(),
+        'names'   => function_exists('pg_blocked_upload_names') ? pg_blocked_upload_names() : array(),
+        'blocked' => function_exists('pg_blocked_upload_extensions') ? pg_blocked_upload_extensions() : array(),
+        'refused' => ws_upload_refused_extensions(),
+        'macro'   => ws_upload_macro_extensions(),
+    );
+}
+
+/**
  * Why a file sent as a form part is not taken, read from what PHP says of
  * it: the panel's attachments and the external API's upload say the same.
  *

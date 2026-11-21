@@ -264,6 +264,8 @@
 - decisions-made-workspace-41.md: Decisions list, workspace part 41 (2026-11-20 on): a Data table shown on a canvas as a chart or a table that follows the data
 - decisions-made-workspace-42.md: Decisions list, workspace part 42 (2026-11-20 on): an Activity tab in Channel info and documents written in a channel, both planned
 - decisions-made-workspace-43.md: Decisions made, workspace part 43 (2026-11-20 on): a Claude Console agent wakes on a schedule, no Anthropic key on the site; @herkes in a discussion: its own agents, a hint line, a bulk add
+- decisions-made-workspace-44.md: Decisions made, workspace part 44 (2026-11-21 on): a file pasted, dropped or picked waits in the writing box until Send; the conversation timeline zooms, marks days and never leaves the tabs row
+- decisions-made-workspace-45.md: Decisions made, workspace part 45 (2026-11-21 on): a sheet or document in a channel opens in the preview by its name, Preview and Download carry their words, a sheet can be saved as a Data table
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
 - decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel: an agent's own messages, how far an unattended flow goes, decision marks, the loop-guard text, agents woken from the channel

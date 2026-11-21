@@ -115,17 +115,23 @@ function pg_firewall_fold_limits($rate_on, $requests, $bans_on, $ban_after)
 }
 
 /**
- * The Bots row's line: whether unknown bots are refused, and the operator's
- * own lists.
+ * The Bots row's line: whether unknown bots are refused, whether SEO's
+ * "Allow AI training" lets the training crawlers past the built-in list, and
+ * the operator's own lists.
  *
  * @param bool $block_unknown Block unknown bots
  * @param int  $allowed       entries in Allowed bots
  * @param int  $blocked       entries in Blocked bots
+ * @param bool $training      "Allow AI training" (config.robots_ai_training)
  * @return array line, pill, attention
  */
-function pg_firewall_fold_bots($block_unknown, $allowed, $blocked)
+function pg_firewall_fold_bots($block_unknown, $allowed, $blocked, $training = false)
 {
     $line = $block_unknown ? lang('Unknown bots are refused') : lang('Unknown bots are let in');
+
+    if ($training) {
+        $line .= ' · ' . lang('AI training crawlers let in');
+    }
 
     if ((int) $allowed > 0) {
         $line .= ' · ' . lang(array('string' => '{var:1} allowed by you', 'vars' => (int) $allowed));

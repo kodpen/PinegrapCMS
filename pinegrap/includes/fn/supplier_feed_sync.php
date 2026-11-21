@@ -19,6 +19,8 @@
  *     closing and reopening. A buy price under half or over ten times its
  *     last value is held on the item and the old price stays.
  *   - close: the matched products missing from the pull are closed.
+ *   - drafts: the records no product matched become products switched off,
+ *     records sharing a model code one variant set (supplier_feed_drafts.php).
  *
  * Only the item a product follows (active) writes to it. Each pull is one
  * supplier_feed_runs row; rows older than 90 days are swept.
@@ -34,6 +36,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_screen.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/supplier_feed_drafts.php');
 
 // Records read and written in one step of a pull.
 define('PG_SUPPLIER_FEED_CHUNK', 200);
@@ -50,7 +53,7 @@ define('PG_SUPPLIER_FEED_FAILED_LINES', 500);
  * @param array $record a flat record
  * @param array $fields product field => the feed's field
  * @return array key, barcode, buy (minor units or null), stock, vat (percent
- *               or null), name, category, brand
+ *               or null), name, category, brand, model, description, images
  */
 function pg_supplier_feed_record_values($record, $fields)
 {
@@ -76,6 +79,9 @@ function pg_supplier_feed_record_values($record, $fields)
         'name'     => $get('name'),
         'category' => $get('category'),
         'brand'    => $get('brand'),
+        'model'    => $get('model_code'),
+        'description' => $get('description'),
+        'images'   => pg_supplier_feed_record_images($record, isset($fields['image']) ? $fields['image'] : ''),
     );
 }
 
@@ -350,13 +356,23 @@ function pg_supplier_feed_pull_locked($feed_id, $deadline, $kind, $drop_ok)
 
     while (microtime(true) < $deadline) {
         if ($state['phase'] === 'close') {
-            $more = pg_supplier_feed_close_chunk($feed, $state, $context, $lines);
+            if (!pg_supplier_feed_close_chunk($feed, $state, $context, $lines)) {
+                $state['phase'] = 'drafts';
+                $state['bucket'] = 0;
+            }
 
-            if (!$more) {
+            continue;
+        }
+
+        if ($state['phase'] === 'drafts') {
+            if (!pg_supplier_feed_drafts_chunk($feed, $state, $context, $mapping, $deadline, $lines)) {
                 pg_supplier_feed_pull_finish($feed, $state, $lines);
 
                 return 'done';
             }
+
+            pg_supplier_feed_pull_save($feed, $state, $lines);
+            $lines = array();
 
             continue;
         }
@@ -436,6 +452,9 @@ function pg_supplier_feed_pull_start($feed, $kind, $drop_ok)
         'after'    => 0,
         'count'    => array('records' => 0, 'added' => 0, 'changed' => 0, 'closed' => 0, 'reopened' => 0, 'held' => 0, 'failed' => 0),
     );
+
+    // A pull dropped before its drafts were made leaves its spool behind.
+    pg_supplier_feed_spool_clear($feed['id']);
 
     $download = pg_supplier_feed_download($feed['id'], pg_supplier_feed_secret_decode($feed['secret']), !empty($feed['allow_http']));
 
@@ -765,6 +784,7 @@ function pg_supplier_feed_apply_chunk($feed, $mapping, &$state, &$context, $reco
 
     $products = pg_supplier_feed_products_of($product_ids);
     $context['rule'] = null;
+    $spool = array();
 
     foreach ($values as $lower => $value) {
         if ($context['rules'] !== null) {
@@ -777,7 +797,15 @@ function pg_supplier_feed_apply_chunk($feed, $mapping, &$state, &$context, $reco
         }
 
         pg_supplier_feed_item_write($feed, $state, $context, $items[$lower], $products, $value, $lines);
+
+        $spool_line = pg_supplier_feed_spool_line($value, $items[$lower]);
+
+        if ($spool_line !== null) {
+            $spool[] = $spool_line;
+        }
     }
+
+    pg_supplier_feed_spool_add($feed['id'], $spool);
 }
 
 /**
@@ -990,6 +1018,7 @@ function pg_supplier_feed_pull_finish($feed, $state, $lines)
         WHERE id = '" . (int) $feed['id'] . "'");
 
     @unlink($state['file']);
+    pg_supplier_feed_spool_clear($feed['id']);
 
     if (!empty($state['wrote']) && function_exists('pg_page_cache_mark_dirty')) {
         pg_page_cache_mark_dirty();
@@ -1018,6 +1047,7 @@ function pg_supplier_feed_brake($feed, $state, $reason, $lines)
         WHERE id = '" . (int) $feed['id'] . "'");
 
     @unlink($state['file']);
+    pg_supplier_feed_spool_clear($feed['id']);
 
     $detail = lang(array('string' => 'The supplier feed {var:1} was paused: {var:2}', 'vars' => array($feed['name'], $reason)));
 
@@ -1048,6 +1078,7 @@ function pg_supplier_feed_pull_drop($feed, $reason)
         }
     }
 
+    pg_supplier_feed_spool_clear($feed['id']);
     db("UPDATE supplier_feeds SET state = NULL WHERE id = '" . (int) $feed['id'] . "'");
 }
 

@@ -19,7 +19,7 @@ module: image_editor
 
 ## How does its sound play?
 - The sound part plays `this.sounds()` plus `this.soundsMore()`: the clips' own sound as sound entries (`M.clipSound()`, offset by the scene's start). Silent when muted, hidden, without a sound track, or off 1× (it would not match); the file is fetched again for `decodeAudioData()`.
-- Detach sound (`M.clipDetach()`, only at 1× with a sound track): an entry of `doc.sounds` on the same file and times, the clip muted.
+- Detach sound (`M.clipDetach()`, at 1× with a sound track): a `doc.sounds` entry on the same file and times, the clip muted (`image-editor-detach-sound.md`).
 
 ## How is a video added?
 - Import (`image-editor-import.md`): From this computer takes `.mp4`, `.m4v`, `.webm` too (and a drop on the stage): the file is opened in the browser first (a codec it cannot decode is said before any upload), then sent to `video_upload` and lands beside the open file or in the unsaved canvas's folder (edit right, not the bin; type by its bytes, `pg_image_editor_clip_format()`; in parts, `image-editor-upload.md`). A callback save (Workspace) has no Files: a message says so.

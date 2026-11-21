@@ -278,12 +278,16 @@ $firewall_parts['bots'] = array('html' => '
                         <div class="form-text">' . lang('Extra crawlers to reject. Checked after the built-in lists, so these can never override a search engine or a payment gateway.') . '</div>
                     </div>
                     <div class="col-12">
-                        <div class="form-text mt-0">' . lang('SEO scrapers and AI training crawlers (AhrefsBot, SemrushBot, GPTBot, ClaudeBot, Bytespider and similar) are already on the built-in reject list.') . '</div>
+                        <div class="form-text mt-0">' . lang('SEO scrapers and other heavy crawlers (AhrefsBot, SemrushBot, PerplexityBot and similar) are already on the built-in reject list.') . '</div>
+                        <div class="form-text">' . h(!empty($ai_crawlers['training'])
+                            ? lang(array('string' => 'AI training crawlers ({var:1}): let in, because Allow AI training is on. They are counted against the limits like any visitor.', 'vars' => array(implode(', ', waf_ai_training_bots()))))
+                            : lang(array('string' => 'AI training crawlers ({var:1}): turned away with the built-in reject list, because Allow AI training is off.', 'vars' => array(implode(', ', waf_ai_training_bots()))))) . '</div>
+                        <div class="form-text"><a class="pg-link-secondary" href="' . h(pg_settings_link('seo', 'pgset-ai')) . '">' . lang('Change under AI Crawlers') . '</a></div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>') + pg_firewall_fold_bots($block_unknown_bots_checked !== '', count(waf_parse_list($allowed_bots)), count(waf_parse_list($waf_blocked_agents)));
+    </div>') + pg_firewall_fold_bots($block_unknown_bots_checked !== '', count(waf_parse_list($allowed_bots)), count(waf_parse_list($waf_blocked_agents)), !empty($ai_crawlers['training']));
 
 // ── Addresses ──
 // The hand-written lists, and a line on the automatic bans whose table and

@@ -211,7 +211,7 @@ $pg_settings_cards[] = '
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($ai_crawlers['training'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="robots_ai_training" name="robots_ai_training"/></div>
                                                 <label class="" for="robots_ai_training">' . lang('Allow AI training') . '</label>
-                                                <div class="form-text">' . h(lang(array('string' => 'Lets {var:1} use the pages to train AI models. Turned off, robots.txt asks them to stay away and says ai-train=no. The firewall turns GPTBot, ClaudeBot and CCBot away either way, unless they are listed under Allowed Bots.', 'vars' => array(implode(', ', $ai_crawlers_catalog['train']))))) . '</div>
+                                                <div class="form-text">' . h(lang(array('string' => 'Lets {var:1} use the pages to train AI models: robots.txt says ai-train=yes, and the firewall stops turning those crawlers away, while its limits and bans still apply to them. Turned off, robots.txt asks them to stay away and says ai-train=no, and the firewall turns them away as bad bots.', 'vars' => array(implode(', ', $ai_crawlers_catalog['train']))))) . '</div>
                                             </div>
                                         </div>
                                         ' . (($output_waf_ai_block !== '') ? '<div class="col-12 mb-0"><h6 class="pg-group-label">' . lang('Firewall') . '</h6></div>
