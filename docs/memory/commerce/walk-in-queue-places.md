@@ -5,7 +5,7 @@ module: walk_in_queue_places
 ---
 
 ## Where are the places set up?
-- Calendars › Queue (`view_queue_places.php`, list table driver) and a place's screen (`edit_queue_place.php`), roles 0-2 (`validate_area_access($user, 'manager')`). The menu link sits after Bookings once `pg_waiting_ready()`. A role-3 user reaches only the desk of a place whose staff list names them (`walk-in-queue-desk.md`).
+- Calendars › Queue (`view_queue_places.php`, list table driver) and a place's screen (`edit_queue_place.php`), roles 0-2 (`validate_area_access($user, 'manager')`). The menu link sits after Bookings once `pg_waiting_ready()`. Role-3 staff: `walk-in-queue-desk.md`.
 - Code: `includes/fn/walk_in_queue_places.php`; pure parts tested in `tests/walk_in_queue_places_test.php`. Step WQ2 of the walk-in-queue plan.
 
 ## How is the screen put together?
@@ -17,7 +17,7 @@ module: walk_in_queue_places
 ## What does a place's JSON hold?
 - `services`: list of `{key, name, letter, minutes}`; keys `s1`, `s2`… stay across saves and a removed key is never given again while a higher one exists (`pg_waiting_keyed_rows()`); letters unique per place, A-Z; minutes 1-240 (the estimate's start until 20 served).
 - `hours` / `exceptions`: the bookings' shapes, read with the bookings grid helpers (`pg_booking_settings_hours_from_fields()`, `pg_booking_settings_exceptions_from_rows()`): two ranges a day, rows of days off or special hours.
-- `settings` (`pg_waiting_place_settings()`, defaults `pg_waiting_place_defaults()`): `cap` 0-9999 (0 none), `closed_text`, `ways` {qr 1, site 1, kiosk 0}, `party_size`, `staff` (user ids, kept by Save, written by the Desks tab's Staff card), `keep_days` 1-365 (30).
+- `settings` (`pg_waiting_place_settings()`, defaults `pg_waiting_place_defaults()`): `cap` 0-9999 (0 none), `closed_text`, `ways` {qr 1, site 1, kiosk 0}, `party_size`, `staff` (user ids, set on the Desks tab), `keep_days` 1-365 (30).
 - `notices`: sms 1, whatsapp 0, email 1, `ahead` 1-20 (3), `texts` {taken, ahead, called}, 500 characters each, '' for the standard text; WQ3 fills `{number}`, `{desk}`, `{link}`.
 - Order: `priority` list of `{key p1…, name}` (10 at most; a number's `priority` holds the key), `booking_staff` (booking_staff ids whose bookings join, WQ5), `grace_minutes` 0-60 (10), `not_here_minutes` 1-60 (3), `move_back` 0.
 
