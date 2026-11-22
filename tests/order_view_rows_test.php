@@ -146,18 +146,16 @@ function test_order_view_line_fact_caption_and_value()
 
 function test_order_view_line_layout()
 {
-	$html = pg_order_view_line('Product ID / SKU: Mug', '<img class="order-line-image" src="mug.jpg" alt=""/>', 'A blue mug', '<div class="order-line-fact">f</div>', '<div class="card order-line-part">g</div>');
+	$html = pg_order_view_line(array('name_html' => 'Mug', 'image_html' => '<img class="pg-line-image" src="mug.jpg" alt=""/>', 'meta' => array('MUG-1'), 'amount_html' => '1 × $5', 'total_html' => '$5', 'parts_html' => '<div class="card order-line-part">g</div>'));
 
-	pg_assert_contains('<div class="list-group-item order-line">', $html, 'one list item');
-	pg_assert_contains('<div class="flex-shrink-0 pg-print-none"><img class="order-line-image"', $html, 'the thumbnail, left out of print');
-	pg_assert_contains('<div class="fw-semibold text-break">Product ID / SKU: Mug</div>', $html, 'the name');
-	pg_assert_contains('<div class="fg-secondary text-break">A blue mug</div>', $html, 'the description under it');
-	pg_assert_contains('<div class="order-line-facts mt-3"><div class="order-line-fact">f</div></div>', $html, 'the facts grid');
-	pg_assert_contains('<div class="card order-line-part">g</div>', $html, 'the gift cards and forms');
+	pg_assert_contains('<div class="pg-line-row">', $html, 'one row');
+	pg_assert_contains('<div class="pg-line-media pg-print-none"><img class="pg-line-image"', $html, 'the picture, left out of print');
+	pg_assert_contains('<span class="pg-line-title">Mug</span>', $html, 'the name');
+	pg_assert_contains('<span class="pg-line-meta">MUG-1</span>', $html, 'the grey line under it');
+	pg_assert_contains('<div class="pg-line-parts"><div class="card order-line-part">g</div></div>', $html, 'the gift cards and forms');
 
-	$bare = pg_order_view_line('Mug', '', '', '');
-	pg_assert_false(strpos($bare, 'flex-shrink-0') !== false, 'no image, no thumbnail column');
-	pg_assert_false(strpos($bare, 'fg-secondary text-break') !== false, 'no description, no line for it');
+	$bare = pg_order_view_line(array('name_html' => 'Mug'));
+	pg_assert_false(strpos($bare, 'pg-line-meta') !== false, 'no grey line without its parts');
 }
 
 function test_order_view_line_part_caption()
