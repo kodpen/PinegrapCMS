@@ -96,6 +96,7 @@ function pg_sms_queue_list_kinds()
         'flow'      => lang('Automation flow'),
         'reply'     => lang('Answer to a customer'),
         'feedback'  => lang('Survey'),
+        'queue'     => lang('Queue'),
         'marketing' => lang('Marketing'),
     );
 }

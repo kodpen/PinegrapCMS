@@ -5,7 +5,8 @@ module: whatsapp_messages
 ---
 
 ## What sends an order's WhatsApp message?
-- `includes/fn/whatsapp_messages.php` (loaded by `functions.php`; it loads `whatsapp.php` only when an event is on). Four events (`pg_whatsapp_message_events()`): `order_received` (kind `order`), `order_shipped`, `order_delivered` (kind `shipping`), `stock_back` (kind `stock`), with the SMS events' values of the same name ([[sms-order-messages]]).
+- `includes/fn/whatsapp_messages.php` (loaded by `functions.php`; it loads `whatsapp.php` only when an event is on). Four order events (`pg_whatsapp_message_events()`): `order_received` (kind `order`), `order_shipped`, `order_delivered` (kind `shipping`), `stock_back` (kind `stock`), with the SMS events' values of the same name ([[sms-order-messages]]).
+- Three walk-in queue events (`queue_taken`, `queue_ahead`, `queue_called`, kind `queue`, values place, number, ahead, desk, link) are service messages: no marketing template, 2 hours to expire (`commerce/walk-in-queue-notices.md`).
 - Queued beside the SMS call at the same place, with the same reference (`order:<id>:received`, `order:<id>:shipped:<ship_to_id>`, `order:<id>:delivered:<ship_to_id>`, `stock:<row id>`; its own table, so no clash) and the two-day expiry. Marketplace orders are not messaged (`pg_sms_message_order()`). The shipped values come from `pg_sms_order_shipped_fields()`, shared with the text.
 - The e-mail and the SMS of the same moment go as before: WhatsApp never replaces them. The card says to switch the SMS off if WhatsApp is to take its place.
 
