@@ -32,6 +32,8 @@
  *   getproductlist               the product groups and their products
  *   get_unselected_products      the products a product group does not hold
  *                                yet
+ *   product_insights             the figures of Edit Product's Performance
+ *                                card for one period, kept ten minutes
  *   get_product_barcodes         the barcodes of a product
  *   generate_product_barcode     a unique barcode for a product (not saved)
  *   save_product_barcode         adds a barcode to a product
@@ -1088,6 +1090,71 @@ function pg_panel_get_unselected_products($request, $action)
 
     echo encode_json($response);
     exit();
+}
+
+/**
+ * The figures of Edit Product's Performance card for one product and one
+ * period (30d, 12m, all): sales, views, returns, margin for a person who may
+ * see the order's Profit card, carts and interest. A read is kept ten minutes
+ * per product and period in the person's session; the session is let go
+ * while the figures are read, so the screen's other requests do not wait on
+ * it. Read only; open to whoever may open Edit Product.
+ */
+function pg_panel_product_insights($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+    $user = validate_user();
+
+    // Edit Product's own gate (validate_ecommerce_access()), answered in JSON.
+    if (!(defined('ECOMMERCE') && ECOMMERCE) || !(((int) $user['role'] < 3) || !empty($user['manage_ecommerce']))) {
+        respond(array('status' => 'error', 'message' => lang('Access denied.')));
+    }
+
+    $product_id = (int) ($request['product_id'] ?? 0);
+
+    if (($product_id <= 0) || !db_value("SELECT id FROM products WHERE id = '" . $product_id . "'")) {
+        respond(array('status' => 'error', 'message' => lang('Product not found.')));
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_insights.php');
+
+    $period = pg_product_insights_period_in($request['period'] ?? '');
+    $margin = pg_product_insights_margin_shown($user);
+    $key = pg_product_insights_keep_key($product_id, $period, $margin);
+    $now = time();
+    $kept = pg_product_insights_kept($_SESSION['software']['product_insights'] ?? array(), $key, $now);
+
+    if ($kept !== null) {
+        respond(array('status' => 'success', 'data' => $kept));
+    }
+
+    $session_open = (session_status() === PHP_SESSION_ACTIVE);
+
+    if ($session_open) {
+        session_write_close();
+    }
+
+    $data = pg_product_insights_read($product_id, $period, $margin, $now);
+
+    if ($data === null) {
+        respond(array('status' => 'error', 'message' => lang('The figures could not be read. Try again.')));
+    }
+
+    if ($session_open && !headers_sent() && @session_start()) {
+        $_SESSION['software']['product_insights'] = pg_product_insights_keep(
+            $_SESSION['software']['product_insights'] ?? array(), $key, $data, $now);
+        session_write_close();
+    }
+
+    respond(array('status' => 'success', 'data' => $data));
 }
 
 function pg_panel_get_product_barcodes($request, $action)

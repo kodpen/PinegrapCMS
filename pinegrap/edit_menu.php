@@ -119,6 +119,10 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
+
+    // The form draws no list: a field posted as one is refused before it
+    // reaches the session.
+    pg_request_refuse_lists($liveform, 'edit_menu.php?id=' . $id . '&from=' . urlencode((string) ($_POST['from'] ?? '')) . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? '')));
     
     // if menu was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {

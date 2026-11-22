@@ -139,8 +139,12 @@ if ($private_label_save) {
         $private_label_current[$private_label_constant] = defined($private_label_constant) ? (string) constant($private_label_constant) : null;
     }
 
+    // The footer links arrive in row order; a row's Move up, Move down or
+    // Remove button names itself in footer_link_action.
+    $private_label_posted = array_merge($_POST, pg_private_label_links_order($_POST, post_value('footer_link_action')));
+
     $private_label_original = is_readable(CONFIG_FILE_PATH) ? (string) @file_get_contents(CONFIG_FILE_PATH) : '';
-    $private_label_content = pg_private_label_config_content($private_label_original, $private_label_on, $_POST, $private_label_current);
+    $private_label_content = pg_private_label_config_content($private_label_original, $private_label_on, $private_label_posted, $private_label_current);
 
     // Rewritten only from a successful read: an empty result would replace
     // config.php with an empty file. pg_write_config_file() goes through a
@@ -149,5 +153,15 @@ if ($private_label_save) {
         $liveform->add_error(lang('Config file could not be opened.'));
     } elseif (($private_label_content !== $private_label_original) && !pg_write_config_file($private_label_content)) {
         $liveform->add_error(lang('The config file could not be written.'));
+    } else {
+        // The pane drawn after this save shows what was written, not the
+        // constants this request loaded before it.
+        $private_label_written = array();
+
+        foreach (pg_private_label_config_keys() as $private_label_field => $private_label_constant) {
+            $private_label_written[$private_label_field] = $private_label_on ? pg_config_form_value(isset($private_label_posted[$private_label_field]) ? $private_label_posted[$private_label_field] : '') : '';
+        }
+
+        pg_private_label_saved_values($private_label_written);
     }
 }

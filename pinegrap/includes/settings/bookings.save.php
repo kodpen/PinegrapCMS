@@ -86,6 +86,7 @@ foreach ($booking_posted as $user_id => $row) {
 
     foreach ($hours['bad'] as $box) {
         $liveform->mark_error($name . '[' . $box . ']', lang('Type a time, and an end after the start.'));
+        pg_settings_drawer_refused(pg_booking_settings_error_drawer('booking_staff', (int) $user_id, $box));
     }
 
     $list = function ($key) use ($row) {
@@ -96,6 +97,7 @@ foreach ($booking_posted as $user_id => $row) {
 
     if ($exceptions['bad']) {
         $liveform->mark_error($name . '[x_from][]', lang('A day off or special hours row is not right: the first day must be a date, the last day not before it, and the hours must end after they start.'));
+        pg_settings_drawer_refused(pg_booking_settings_error_drawer('booking_staff', (int) $user_id, 'x_from'));
     }
 
     $booking_staff_rows[(int) $user_id] = array(
@@ -113,6 +115,31 @@ $booking_candidates = ($booking_add > 0) ? pg_booking_settings_candidates($booki
 
 if (($booking_add > 0) && !isset($booking_candidates[$booking_add])) {
     $liveform->mark_error('booking_staff_add', lang('Choose a panel user who does not take bookings yet.'));
+    pg_settings_drawer_refused(pg_booking_settings_error_drawer('booking_staff_add', '', ''));
+}
+
+// The new member's weekly hours are the add drawer's grid as it was posted,
+// checked as a member's grid is; without the grid, the hours it is
+// prefilled with.
+$booking_add_hours = array();
+
+if ($booking_add > 0) {
+
+    $booking_add_grid = (isset($_POST['booking_staff']['new']) && is_array($_POST['booking_staff']['new'])) ? $_POST['booking_staff']['new'] : null;
+
+    if ($booking_add_grid === null) {
+        $booking_add_own = pg_booking_settings_own_workdays(array($booking_add));
+        $booking_add_hours = pg_booking_settings_new_member_hours($booking_add_own[$booking_add] ?? 0, pg_booking_settings_workweek());
+    } else {
+        $hours = pg_booking_settings_hours_from_fields($booking_add_grid);
+
+        foreach ($hours['bad'] as $box) {
+            $liveform->mark_error('booking_staff[new][' . $box . ']', lang('Type a time, and an end after the start.'));
+            pg_settings_drawer_refused(pg_booking_settings_error_drawer('booking_staff', 'new', $box));
+        }
+
+        $booking_add_hours = $hours['hours'];
+    }
 }
 
 // ── Booking rules and the widget's texts ──
@@ -149,7 +176,7 @@ foreach ($booking_known as $service_id => $service) {
     }
 }
 
-pg_booking_settings_save_staff($booking_staff_rows, $booking_add, $booking_enabled_services, $booking_now);
+pg_booking_settings_save_staff($booking_staff_rows, $booking_add, $booking_enabled_services, $booking_now, $booking_add_hours);
 
 if (!pg_config_text_save('booking_policy', json_encode($booking_policy))
     || !pg_config_text_save('booking_texts', $booking_texts ? json_encode($booking_texts, JSON_UNESCAPED_UNICODE) : '')) {
