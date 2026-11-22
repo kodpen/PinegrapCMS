@@ -31,7 +31,8 @@ function pg_arrival_date_quick_edit_columns()
 {
     return array(
         'name' => array('type' => 'text', 'label' => lang('Name'), 'max' => 50, 'required' => true),
-        'arrival_date' => array('type' => 'text', 'label' => lang('Arrival Date'), 'required' => true),
+        // Blank is as soon as possible, as on the screen.
+        'arrival_date' => array('type' => 'text', 'label' => lang('Arrival Date')),
         'status' => array('type' => 'select', 'label' => lang('Status'), 'options' => array('enabled' => lang('Enabled'), 'disabled' => lang('Disabled'))),
         'start_date' => array('type' => 'text', 'label' => lang('Start Date'), 'required' => true),
         'end_date' => array('type' => 'text', 'label' => lang('End Date'), 'required' => true),
@@ -216,10 +217,11 @@ function pg_arrival_date_list_cells(array $row, array $quick_edit, $today)
         return $more + pg_list_edit_cell_attributes($quick_edit, $field, $id, pg_arrival_date_quick_value($field, $row));
     };
 
-    // An unset date (AT-ONCE, or one the customer enters) is not 0/0/0000.
+    // An unset date is not 0/0/0000: the customer enters a custom one, and
+    // a blank one (AT-ONCE) is delivered as soon as possible.
     $arrival_date = pg_arrival_date_form_date_text($row['arrival_date']);
-    if (($arrival_date === '') && ($row['custom'] == 1)) {
-        $arrival_date = lang('Chosen by the customer');
+    if ($arrival_date === '') {
+        $arrival_date = ($row['custom'] == 1) ? lang('Chosen by the customer') : lang('As soon as possible');
     }
 
     // An enabled arrival date outside its dates is not offered: the name

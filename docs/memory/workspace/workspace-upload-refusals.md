@@ -5,7 +5,7 @@ description: What a Workspace channel refuses to take (ws_upload_refused()): the
 
 ## What does a channel refuse?
 - `ws_upload_refused()` (includes/workspace/files.php): whatever the file manager refuses (`pg_upload_name_blocked()`: PHP, server config, CGI, Windows programs), plus `ws_upload_refused_extensions()`: svg, svgz, html, htm, xhtml, xht, xml, js, mjs, swf (a browser would run them as a page of this site) and `ws_upload_macro_extensions()`: docm, dotm, xlsm, xltm, xlam, pptm, potm, ppsm, ppam, sldm (PR #1322).
-- Every part of the name after the first is matched, case-insensitive: `q3.xlsm.zip` is refused too. One list, no JavaScript copy; the browser checks only the size.
+- Every part of the name after the first is matched, case-insensitive: `q3.xlsm.zip` is refused too. One PHP list; the writing box reads it (`ws_upload_browser_rules()`) when a file is added; the server asks at Send.
 - The parts come from the name as sent and as `prepare_file_name()` stores it (`ws_upload_name_parts()`), for the page and script types too: `q3.xlsm!` is stored as `q3.xlsm`, so it is refused (the `dkim.key` rule, `platform/dkim-key-in-file-manager.md`). `pg_upload_name_blocked()` asks the name as sent only: `отчет.xlsx` is stored as `file.xlsx`, not a dotfile.
 
 ## Why the macro forms, and why not .doc, .xls, .ppt or .xlsb?

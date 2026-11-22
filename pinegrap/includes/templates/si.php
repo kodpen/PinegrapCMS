@@ -54,7 +54,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 <dt><?=lang('Hosted')?></dt>
                                 <dd> <?php if (we_host()): ?> <?=lang('Yes')?> <?php else: ?> <?=lang('No')?> <?php endif ?> </dd>
                                 <dt><?=lang('Website IP Address')?></dt>
-                                <dd> <?php if (isset($_SERVER['SERVER_ADDR']) ): ?><?=h($_SERVER['SERVER_ADDR'])?><?php else: ?><?=h($_SERVER['LOCAL_ADDR'])?><?php endif ?> </dd>
+                                <dd> <?=h($_SERVER['SERVER_ADDR'] ?? ($_SERVER['LOCAL_ADDR'] ?? ''))?> </dd>
                                 <dt><?=lang('Secure Mode')?></dt>
                                 <dd> <?php if (URL_SCHEME == 'https://'): ?> <?=lang('On')?> <?php else: ?> <?=lang('Off')?> <?php endif ?> </dd>
                                 <dt><?=lang('Version')?></dt>
@@ -107,7 +107,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 <dt><?=lang('Web Server')?></dt>
                                 <dd> <?=h($_SERVER['SERVER_SOFTWARE'])?> </dd>
                                 <dt><?=lang('Disabled Functions')?></dt>
-                                <dd> <?=ini_get('disable_functions')?> </dd>
+                                <dd> <?=h(ini_get('disable_functions'))?> </dd>
                             </dl>
                         </div>
                     </div>

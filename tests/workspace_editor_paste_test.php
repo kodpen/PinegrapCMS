@@ -404,7 +404,8 @@ function test_workspace_editor_paste_wiring()
 
 	pg_assert_true(strpos($workspace, 'pasteFiles: options.pasteFiles') !== false, 'richField() passes pasteFiles on');
 	pg_assert_true(strpos($workspace, 'pasteFiles: function (files) { attach(files); }') !== false, 'a note attaches a pasted picture');
-	pg_assert_true(strpos($workspace, "pasteFiles: function (files) { self.uploadFiles(files); },\n                pasteAnyFile: true") !== false, 'the conversation\'s box posts a pasted file');
+	pg_assert_true(strpos($workspace, "pasteFiles: function (files) { self.waitFiles(files); },\n                pasteAnyFile: true") !== false, 'the conversation\'s box keeps a pasted file waiting for Send');
+	pg_assert_true(strpos($workspace, "pasteFiles: function (files) { self.uploadFiles(files); }") === false, 'a paste no longer posts the file');
 	pg_assert_same(2, substr_count($workspace, 'pasteFiles: function'), 'only the note and the conversation\'s box take pasted files');
 	pg_assert_true(strpos($workspace, "center.addEventListener('paste'") === false, 'no paste handler outside the box (a discussion\'s panel is outside the centre)');
 }

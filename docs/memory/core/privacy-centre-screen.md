@@ -5,7 +5,7 @@ module: privacy_centre
 ---
 
 ## What is it?
-- `privacy_centre.php` (manager and up, Contacts menu after Personal data erasure) has two views as link segments, Inventory and Requests (`?view=requests`, `core/privacy-requests.md`). Inventory: the catalogue of `core/privacy-inventory.md` with live counts, and the transfers. Names no person, only counts. Toolbar: Download Excel, Download PDF (only when dompdf is installed), Personal data export, Personal data erasure.
+- `privacy_centre.php` (manager and up, Contacts menu after Personal data erasure) has two views as link segments, Inventory and Requests (`?view=requests`, `core/privacy-requests.md`). Inventory: the catalogue of `core/privacy-inventory.md` with live counts, the Retention rules card (`#privacy-rules`, `core/privacy-rules-card.md`), and the transfers. Names no person, only counts. Toolbar: Download Excel, Download PDF (only when dompdf is installed), Personal data export, Personal data erasure.
 - Site Settings › Visitors and privacy has only a "Privacy centre" card (`pgset-privacy-centre`) with "Open the Privacy centre"; nothing is saved there.
 - One info line says once that grounds and retentions are suggested defaults, not legal advice, and that erased data stays in older backups. The PDF says both too.
 

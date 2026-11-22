@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Workspace Flows: three proposals for the canvas, the box panel and a live flow's counts (2026-11-22)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<style>
+.stage { width: 1512px; }
+.board { margin-bottom: 38px; }
+.cap small { display: block; margin-top: 2px; color: var(--fg3); font-size: 12.5px; }
+.cols { display: flex; gap: 28px; align-items: flex-start; }
+.part { margin: 0 4px 16px; padding: 0 0 10px; border-bottom: 1px solid var(--line); font: 650 20px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.02em; }
+.part em { font-style: normal; font-weight: 400; font-size: 13px; letter-spacing: 0; color: var(--fg2); margin-left: 10px; }
+.notes { margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--fg2); display: grid; gap: 8px; width: 480px; }
+.notes b { color: var(--fg); font-weight: 600; }
+
+/* the canvas: dotted ground, boxes 208 px wide, arrows and threads in one drawing over it */
+.cv { position: relative; flex: none; width: 960px; border-radius: 14px; border: 1px solid var(--line); overflow: hidden;
+  background-color: var(--page); background-image: radial-gradient(var(--line) 1px, transparent 1.3px); background-size: 16px 16px; }
+.cv svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.arrow { fill: none; stroke: #7d8696; stroke-width: 2; }
+.thr { fill: none; stroke-width: 1.2; }
+.thr.t { stroke: var(--amber); } .thr.n { stroke: var(--blue); }
+.bx { position: absolute; width: 208px; height: 84px; border-radius: 10px; border: 1.5px solid var(--k); background: var(--surf2); padding: 10px 12px; }
+.bx .k { display: flex; gap: 7px; align-items: center; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--k); }
+.bx .k i { font-size: 13px; }
+.bx b { display: block; font-weight: 600; font-size: 14px; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bx small { display: block; color: var(--fg2); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bx.sel { box-shadow: 0 0 0 1.5px var(--page), 0 0 0 3.5px var(--violet); }
+.bx::before, .bx::after { content: ""; position: absolute; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; background: var(--k); box-shadow: 0 0 0 1.5px var(--page); }
+.bx::before { left: -7px; } .bx::after { right: -7px; }
+.bx.first::before { display: none; } .bx.last::after { display: none; }
+.g-start { --k: var(--teal); } .g-logic { --k: var(--amber); } .g-msg { --k: var(--blue); }
+
+/* what sits on a box's bottom edge: the dots it gives, the chips it fills, and at rest one quiet mark */
+.dot, .chip, .reads { position: absolute; display: inline-flex; align-items: center; height: 18px; border-radius: 9px; background: var(--page); font-size: 11px; white-space: nowrap; }
+.dot { gap: 5px; padding: 0 7px 0 0; color: var(--fg2); }
+.dot .ring { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--c); color: var(--c); display: grid; place-items: center; font-size: 8px; font-weight: 700; }
+.dot.open { padding: 0; } .dot.open .ring { border-style: dashed; opacity: .75; }
+.chip { padding: 0 8px; border: 1px solid var(--c); color: var(--c); }
+.reads { gap: 5px; padding: 0 8px 0 6px; color: var(--fg3); box-shadow: inset 0 0 0 1px var(--line); }
+.reads u { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.c-t { --c: var(--amber); } .c-n { --c: var(--blue); }
+
+/* counts over a live flow's boxes */
+.cnt { position: absolute; display: flex; gap: 5px; }
+.cnt span { --c: var(--gray); display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600; color: var(--c); background: var(--page); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent); }
+.cnt span.on { color: var(--on-accent); background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 26%, transparent); }
+.cnt span.wait { --c: var(--amber); } .cnt span.bad { --c: var(--rose); }
+.bar { position: absolute; left: 0; right: 0; top: 0; height: 46px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); background: var(--surf2); font-size: 13px; }
+.bar b { font-weight: 600; }
+.bar .st { height: 20px; font-size: 11.5px; }
+
+/* the box's side panel */
+.sp { flex: 1; }
+.side { position: relative; flex: none; width: 304px; padding: 14px 14px 12px; }
+.side .hd { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.side .hd div { flex: 1; min-width: 0; }
+.side .hd small { display: block; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--fg3); }
+.side .hd b { display: block; font-weight: 600; font-size: 14px; line-height: 1.3; }
+.side .seg { display: flex; margin-bottom: 14px; } .side .seg span { flex: 1; font-size: 12.5px; padding: 0 6px; }
+.side .lab { margin-top: 13px; display: flex; align-items: center; gap: 6px; }
+.side .lab .q { margin-left: auto; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; color: var(--fg3); box-shadow: inset 0 0 0 1px var(--line); }
+.side .lab .q.on { color: var(--fg); background: var(--quiet); }
+.side .in { height: 34px; font-size: 13px; padding: 0 10px; }
+.side .in.val { display: block; height: auto; min-height: 34px; padding: 7px 34px 7px 10px; line-height: 1.75; white-space: normal; position: relative; }
+.side .in.val.tall { min-height: 84px; }
+.side .in.val .add { position: absolute; right: 5px; bottom: 5px; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-size: 13px; color: var(--fg2); background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.side .in.val .add.on { color: var(--on-accent); background: var(--accent); box-shadow: none; }
+.vchip { --c: var(--amber); display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11.5px; font-weight: 500; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent); vertical-align: 1px; }
+.vchip.v { --c: var(--violet); } .vchip.n { --c: var(--blue); }
+.side .help { margin-top: 5px; }
+.fold { display: flex; align-items: center; gap: 8px; height: 38px; margin-top: 14px; padding: 0 2px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 550; }
+.fold i { font-size: 11px; color: var(--fg3); } .fold span { margin-left: auto; font-weight: 400; color: var(--fg3); }
+.foot { display: flex; gap: 6px; margin-top: 12px; font-size: 12px; color: var(--fg3); }
+.foot span { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 8px; background: var(--quiet); color: var(--fg2); }
+.pop { position: absolute; z-index: 2; border-radius: 12px; background: var(--float); border: 1px solid var(--line); box-shadow: var(--shadow-float); backdrop-filter: blur(14px); font-size: 12.5px; }
+.pop.menu { left: 14px; right: 14px; padding: 6px; }
+.pop.menu p { margin: 4px 8px 6px; color: var(--fg3); font-size: 12px; line-height: 1.4; }
+.pop.menu h6 { margin: 8px 8px 3px; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--fg3); }
+.pop.menu h6 em { font-style: normal; font-weight: 400; letter-spacing: 0; text-transform: none; margin-left: 6px; }
+.pop.menu a { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 8px; color: var(--fg); }
+.pop.menu a.hov { background: var(--hover); }
+.pop.menu a .ring { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--c); color: var(--c); display: grid; place-items: center; font-size: 8px; font-weight: 700; }
+.pop.menu a small { margin-left: auto; color: var(--fg3); font-size: 11.5px; }
+.pop.tip { left: 14px; right: 14px; padding: 10px 12px; color: var(--fg2); line-height: 1.5; }
+.c-v { --c: var(--violet); }
+
+/* the runs waiting at a box */
+.runs { margin: 4px -4px 0; }
+.runs a { display: flex; align-items: center; gap: 9px; height: 40px; padding: 0 6px; border-radius: 9px; font-size: 13px; }
+.runs a.hov { background: var(--hover); }
+.runs a small { margin-left: auto; color: var(--fg3); font-size: 12px; }
+.runs a i { color: var(--fg3); font-size: 11px; }
+.more { display: block; margin-top: 6px; padding: 0 6px; font-size: 12.5px; color: var(--fg3); }
+.link { color: var(--accent); font-size: 12.5px; font-weight: 550; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <p class="part">1 · A calm canvas <em>data threads only for the box in hand</em></p>
+
+  <div class="board">
+    <p class="cap"><b>1a · At rest</b><small>No threads and no rows of dots. A box that reads values carries one quiet mark on its bottom edge, a dot per value in the value's colour.</small></p>
+    <div class="cols">
+      <div class="cv" style="height:236px">
+        <svg viewBox="0 0 960 236"><defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7d8696"/></marker></defs>
+          <path class="arrow" marker-end="url(#ah)" d="M256 122 C318 122 310 78 366 78"/><path class="arrow" marker-end="url(#ah)" d="M592 78 C652 78 646 122 702 122"/></svg>
+        <div class="bx g-start first" style="left:40px;top:80px"><span class="k"><i class="bi bi-lightning-charge"></i>Bir şey olduğunda</span><b>Bir kişi bir kişi grubuna katıldı</b></div>
+        <div class="bx g-logic" style="left:376px;top:36px"><span class="k"><i class="bi bi-hourglass-split"></i>Bekle</span><b>1 saat</b></div>
+        <div class="bx g-msg last" style="left:712px;top:80px"><span class="k"><i class="bi bi-envelope"></i>E-posta gönder</span><b>Örnek: Gruba hoş geldin</b><small>Kaydın kişisine pazarlama</small></div>
+        <span class="reads" style="left:724px;top:155px"><u class="c-t"></u><u class="c-n"></u>2 değer</span>
+      </div>
+      <ul class="notes">
+        <li><b>Today</b> every thread is drawn all the time; with a box chosen the others dim to 25%. A thread runs along the row of dots and through the names beside it, and a box's unused values stand as a row of unnamed rings.</li>
+        <li><b>The mark</b> 18 px high on the bottom edge, "2 değer" in the quiet colour; pointing at it or at the box shows the threads as in 1b.</li>
+        <li><b>The bar's "Data threads" button</b> stays: pressed, every thread of the flow is drawn at once, as today. It starts not pressed.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="board">
+    <p class="cap"><b>1b · A box chosen, or pointed at</b><small>Its threads in and out, each ending in a named dot and a named chip. A thread leaves a dot straight down and enters a chip straight up, so it never crosses a name.</small></p>
+    <div class="cols">
+      <div class="cv" style="height:262px">
+        <svg viewBox="0 0 960 262">
+          <path class="arrow" marker-end="url(#ah)" d="M256 122 C318 122 310 78 366 78"/><path class="arrow" marker-end="url(#ah)" d="M592 78 C652 78 646 122 702 122"/>
+          <path class="thr t" d="M59 172 C59 250 762 250 762 174"/><path class="thr n" d="M171 172 C171 224 750 224 750 174"/></svg>
+        <div class="bx g-start first" style="left:40px;top:80px"><span class="k"><i class="bi bi-lightning-charge"></i>Bir şey olduğunda</span><b>Bir kişi bir kişi grubuna katıldı</b></div>
+        <div class="bx g-logic" style="left:376px;top:36px"><span class="k"><i class="bi bi-hourglass-split"></i>Bekle</span><b>1 saat</b></div>
+        <div class="bx g-msg last sel" style="left:712px;top:80px"><span class="k"><i class="bi bi-envelope"></i>E-posta gönder</span><b>Örnek: Gruba hoş geldin</b><small>Kaydın kişisine pazarlama</small></div>
+        <span class="dot c-t" style="left:52px;top:155px"><span class="ring">T</span>Gerçekleşen</span>
+        <span class="dot c-n" style="left:164px;top:155px"><span class="ring">#</span>Kişi</span>
+        <span class="chip c-t" style="left:728px;top:155px">Konu</span>
+        <span class="dot open c-t" style="left:862px;top:155px"><span class="ring">T</span></span>
+        <span class="dot open c-n" style="left:882px;top:155px"><span class="ring">#</span></span>
+      </div>
+      <ul class="notes">
+        <li><b>Shown</b> only what touches the box in hand: the dots it reads from on the other boxes, its own chips, and its own unused values as dashed rings at the row's end (their names on pointing, as today), so a thread can still be drawn from one.</li>
+        <li><b>Nothing dims</b> since nothing else is drawn. Leaving the box takes its threads away after 200 ms; a chosen box keeps them.</li>
+        <li><b>Names stay clear</b> a dot's name has the ground's colour behind it, and the thread's first and last 12 px are upright.</li>
+        <li><b>The run view and the read-only card</b> draw threads by the same rule.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="part">2 · The box's panel <em>short help, one way to write a value</em></p>
+
+  <div class="board">
+    <p class="cap"><b>2a · Settings, at rest · 2b · "Add value" open · 2c · the help opened</b><small>The paragraph under each field goes: a field's help is one line, the rest opens from the "?" beside its name. "Add value" is one small button inside the field.</small></p>
+    <div class="cols">
+      <div class="pcard side">
+        <div class="hd"><span class="tile lg t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>Örnek: Gruba hoş geldin</b></div><span class="ib sm"><i class="bi bi-three-dots"></i></span><span class="ib sm"><i class="bi bi-x-lg"></i></span></div>
+        <div class="seg"><span class="on">Ayarlar</span><span>Bağlantılar <em>1</em></span><span>Dene</span></div>
+        <span class="lab" style="margin-top:0">Başlık</span><div class="in">Örnek: Gruba hoş geldin</div>
+        <span class="lab">Kime yazılsın</span><div class="in">Kaydın kişisi<i class="bi bi-chevron-down end"></i></div>
+        <span class="lab">Neden<span class="q">?</span></span><div class="in">Pazarlama<i class="bi bi-chevron-down end"></i></div>
+        <p class="help">Yalnızca pazarlama iznini veren kişiye gider.</p>
+        <span class="lab">Konu</span><div class="in val">Aramıza hoş geldiniz, <span class="vchip v">Alıcı › Ad</span><span class="add"><i class="bi bi-braces"></i></span></div>
+        <span class="lab">E-postanın metni</span><div class="in val tall">Merhaba <span class="vchip v">Alıcı › Ad</span>,<br>Üyeliğiniz başladı.<span class="add"><i class="bi bi-braces"></i></span></div>
+        <div class="fold"><i class="bi bi-chevron-right"></i>Gönderen<span>Organizasyonum</span></div>
+        <div class="foot"><span>Önce · Bekle</span></div>
+      </div>
+
+      <div class="pcard side" style="padding-bottom:112px">
+        <div class="hd"><span class="tile lg t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>Örnek: Gruba hoş geldin</b></div><span class="ib sm"><i class="bi bi-three-dots"></i></span><span class="ib sm"><i class="bi bi-x-lg"></i></span></div>
+        <div class="seg"><span class="on">Ayarlar</span><span>Bağlantılar <em>1</em></span><span>Dene</span></div>
+        <span class="lab" style="margin-top:0">Başlık</span><div class="in">Örnek: Gruba hoş geldin</div>
+        <span class="lab">Kime yazılsın</span><div class="in">Kaydın kişisi<i class="bi bi-chevron-down end"></i></div>
+        <span class="lab">Neden<span class="q">?</span></span><div class="in">Pazarlama<i class="bi bi-chevron-down end"></i></div>
+        <p class="help">Yalnızca pazarlama iznini veren kişiye gider.</p>
+        <span class="lab">Konu</span><div class="in val focus">Aramıza hoş geldiniz, <span class="vchip v">Alıcı › Ad</span><span class="add on"><i class="bi bi-braces"></i></span></div>
+        <span class="lab">E-postanın metni</span><div class="in val tall">Merhaba <span class="vchip v">Alıcı › Ad</span>,<br>Üyeliğiniz başladı.<span class="add"><i class="bi bi-braces"></i></span></div>
+        <div class="fold"><i class="bi bi-chevron-right"></i>Gönderen<span>Organizasyonum</span></div>
+        <div class="foot"><span>Önce · Bekle</span></div>
+        <div class="pop menu" style="top:428px">
+          <p>Çalışırken dolan bir değer ekler: alıcının bilgisi, çalışmayı başlatanın ya da önceki bir kutunun verdiği.</p>
+          <h6>Alıcı <em>her alıcı için ayrı dolar</em></h6>
+          <a class="hov"><span class="ring c-v">T</span>Ad</a><a><span class="ring c-v">T</span>Soyad</a>
+          <h6>Bir şey olduğunda</h6>
+          <a><span class="ring c-t">T</span>Gerçekleşen</a><a><span class="ring c-n">#</span>Kişi</a>
+          <h6>Her zaman</h6>
+          <a><span class="ring c-t">T</span>Tarih<small>{{date}}</small></a><a><span class="ring c-t">T</span>Saat<small>{{time}}</small></a>
+        </div>
+      </div>
+
+      <div class="pcard side">
+        <div class="hd"><span class="tile lg t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>Örnek: Gruba hoş geldin</b></div><span class="ib sm"><i class="bi bi-three-dots"></i></span><span class="ib sm"><i class="bi bi-x-lg"></i></span></div>
+        <div class="seg"><span class="on">Ayarlar</span><span>Bağlantılar <em>1</em></span><span>Dene</span></div>
+        <span class="lab" style="margin-top:0">Başlık</span><div class="in">Örnek: Gruba hoş geldin</div>
+        <span class="lab">Kime yazılsın</span><div class="in">Kaydın kişisi<i class="bi bi-chevron-down end"></i></div>
+        <span class="lab">Neden<span class="q on">?</span></span><div class="in">Pazarlama<i class="bi bi-chevron-down end"></i></div>
+        <p class="help">Yalnızca pazarlama iznini veren kişiye gider.</p>
+        <span class="lab">Konu</span><div class="in val">Aramıza hoş geldiniz, <span class="vchip v">Alıcı › Ad</span><span class="add"><i class="bi bi-braces"></i></span></div>
+        <span class="lab">E-postanın metni</span><div class="in val tall">Merhaba <span class="vchip v">Alıcı › Ad</span>,<br>Üyeliğiniz başladı.<span class="add"><i class="bi bi-braces"></i></span></div>
+        <div class="fold"><i class="bi bi-chevron-right"></i>Gönderen<span>Organizasyonum</span></div>
+        <div class="foot"><span>Önce · Bekle</span></div>
+        <div class="pop tip" style="top:350px">Siparişin müşterisi, formu gönderen, rezervasyonun konuğu ya da e-postayı gönderen. Pazarlama yalnızca pazarlama e-postasına izin veren kişiye, abonelikten çıkma bağlantısıyla gider; aksi halde kutu bir şey göndermez ve çalıştırma nedenini söyler.</div>
+      </div>
+
+      <ul class="notes" style="width:440px">
+        <li><b>Today</b> the same "Değer ekle…" paragraph stands under both the subject and the text, each under its own "+ Değer ekle" button, and "Neden" carries a seven-line paragraph in a narrow column.</li>
+        <li><b>One way to write a value</b> the subject takes chips while the text shows the mail's own word typed as <code>^^name^^</code>. The words the e-mail fills per recipient join the list as the group "Alıcı" and are drawn as chips; a word typed by hand still works and is drawn as its chip.</li>
+        <li><b>"Add value"</b> a 24 px button at the field's bottom right; its list opens under the field and says in its first line what a value is. No hint under the field.</li>
+        <li><b>Help</b> one line under a field at most; a "?" at the right of the field's name opens the long text in a small window over the panel, Esc closes it.</li>
+        <li><b>Sender</b> a folded row that shows what it holds ("Organizasyonum") while closed.</li>
+        <li><b>Every box's panel</b> follows the same three rules, not only the e-mail's.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="part">3 · A live flow's counts <em>where the runs are, on the canvas</em></p>
+
+  <div class="board">
+    <p class="cap"><b>3 · "Counts" pressed on a published flow</b><small>Over each box: how many runs wait at it now, how many passed and how many failed in the chosen days. A count is a button: it lists those runs in the panel.</small></p>
+    <div class="cols">
+      <div class="cv" style="height:300px">
+        <div class="bar"><b>Örnek: Gruba hoş geldin</b><span class="st t-teal">Yayında · v1</span><span class="sp"></span><span class="btn quiet sm" style="box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent)"><i class="bi bi-bar-chart"></i>Sayılar</span><span class="btn quiet sm">Son 30 gün<i class="bi bi-chevron-down" style="font-size:10px"></i></span><span class="btn quiet sm"><i class="bi bi-clock-history"></i>Çalıştırmalar</span></div>
+        <svg viewBox="0 0 960 300"><path class="arrow" marker-end="url(#ah)" d="M256 190 C318 190 310 146 366 146"/><path class="arrow" marker-end="url(#ah)" d="M592 146 C652 146 646 190 702 190"/></svg>
+        <div class="bx g-start first" style="left:40px;top:148px"><span class="k"><i class="bi bi-lightning-charge"></i>Bir şey olduğunda</span><b>Bir kişi bir kişi grubuna katıldı</b></div>
+        <div class="bx g-logic sel" style="left:376px;top:104px"><span class="k"><i class="bi bi-hourglass-split"></i>Bekle</span><b>1 saat</b></div>
+        <div class="bx g-msg last" style="left:712px;top:148px"><span class="k"><i class="bi bi-envelope"></i>E-posta gönder</span><b>Örnek: Gruba hoş geldin</b><small>Kaydın kişisine pazarlama</small></div>
+        <div class="cnt" style="left:48px;top:120px"><span>128 başladı</span></div>
+        <div class="cnt" style="left:384px;top:74px"><span class="wait on">12 bekliyor</span><span>116 geçti</span></div>
+        <div class="cnt" style="left:720px;top:120px"><span>113 gönderildi</span><span class="bad">3 hata</span></div>
+      </div>
+      <div class="pcard side">
+        <div class="hd"><span class="tile lg t-amber"><i class="bi bi-hourglass-split"></i></span><div><small>Bekle · 1 saat</small><b>12 çalıştırma burada bekliyor</b></div><span class="ib sm"><i class="bi bi-x-lg"></i></span></div>
+        <div class="runs">
+          <a class="hov"><span class="av">AD</span>Ayşe Demir<small>52 dk kaldı</small><i class="bi bi-chevron-right"></i></a>
+          <a><span class="av b">MK</span>Mehmet Kaya<small>47 dk kaldı</small><i class="bi bi-chevron-right"></i></a>
+          <a><span class="av c">ZA</span>Zeynep Arslan<small>31 dk kaldı</small><i class="bi bi-chevron-right"></i></a>
+          <a><span class="av">CY</span>Can Yıldız<small>18 dk kaldı</small><i class="bi bi-chevron-right"></i></a>
+          <a><span class="av b">EŞ</span>Elif Şahin<small>6 dk kaldı</small><i class="bi bi-chevron-right"></i></a>
+        </div>
+        <span class="more">7 tane daha</span>
+        <div class="foot" style="margin-top:14px"><span class="sp" style="background:none;padding:0"></span><a class="link">Tümünü Çalıştırmalar'da aç</a></div>
+      </div>
+      </div>
+    <div class="cols" style="margin-top:16px"><ul class="notes" style="width:1292px;grid-template-columns:repeat(3,1fr);gap:8px 28px">
+        <li><b>Today</b> "Çalıştırmalar" shows one run at a time; nothing tells how many wait at a box or where runs fail.</li>
+        <li><b>Rows</b> the run's person or record, and what it waits for; a row opens that run.</li>
+        <li><b>Rights</b> as the runs list: only who may read the flow's runs.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+<script>
+if (location.search.indexOf('light') > -1) { document.documentElement.setAttribute('data-theme', 'light'); }
+</script>
+</body>
+</html>

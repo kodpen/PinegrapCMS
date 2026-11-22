@@ -152,6 +152,30 @@ function pg_tr_source_language()
 }
 
 /**
+ * The source language a stored setting stands for: the setting, or the panel
+ * language when the setting is empty, or English when the panel language is
+ * empty or 'undefined'. init.php resolves TRANSLATION_SOURCE_LANGUAGE from
+ * the config row the same way; this is for code that has just read or is
+ * about to write the columns.
+ *
+ * @param string $stored         config.translation_source_language
+ * @param string $panel_language config.software_language
+ * @return string
+ */
+function pg_tr_effective_source_language($stored, $panel_language)
+{
+    $stored = (string) $stored;
+
+    if ($stored !== '') {
+        return $stored;
+    }
+
+    $panel_language = (string) $panel_language;
+
+    return (($panel_language !== '') && ($panel_language !== 'undefined')) ? $panel_language : 'en';
+}
+
+/**
  * The site_languages rows, enabled ones by default, in display order.
  *
  * @param bool $enabled_only

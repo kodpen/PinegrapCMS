@@ -45,7 +45,7 @@ $pg_settings_cards[] = '
                         <input type="text" class="form-control" id="erp_default_series" name="erp_default_series" value="' . h($erp_default_series) . '" maxlength="10" pattern="[A-Za-z0-9]{1,10}" autocapitalize="characters" spellcheck="false" autocomplete="off" />
                         <div class="form-text">' . lang('The letters every invoice number starts with, for example PGF (three letters in Turkey). Delivery notes add S to them, returns I, purchase invoices A.') . '</div>
                     </div>
-                    <div class="pg-f-md">
+                    <div class="pg-f-lg">
                         <label class="form-label" for="erp_number_style">' . lang('Document numbers') . '</label>
                         <select class="form-control" id="erp_number_style" name="erp_number_style">' . $erp_number_options . '</select>
                         <div class="form-text">' . lang('Applies to numbers taken from now on; documents already issued keep theirs. Changing it never repeats a number.') . '</div>

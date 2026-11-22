@@ -338,6 +338,7 @@ function pg_supplier_feed_mapping_decode($json)
         'confirmed'   => empty($mapping['confirmed']) ? 0 : 1,
         'records'     => isset($mapping['records']) ? (int) $mapping['records'] : 0,
         'read_at'     => isset($mapping['read_at']) ? (int) $mapping['read_at'] : 0,
+        'draft_group' => isset($mapping['draft_group']) ? (int) $mapping['draft_group'] : 0,
     );
 }
 
@@ -366,6 +367,24 @@ function pg_supplier_feed_mapping_input($posted, $keys)
     }
 
     return array('fields' => $fields, 'errors' => $errors);
+}
+
+/**
+ * The group drafts go into, as Fields posted it: a browse product group that
+ * is there, else 0 (none).
+ *
+ * @param mixed $posted
+ * @return int
+ */
+function pg_supplier_feed_draft_group_input($posted)
+{
+    $id = (int) $posted;
+
+    if ($id <= 0) {
+        return 0;
+    }
+
+    return ((int) db_value("SELECT COUNT(*) FROM product_groups WHERE id = '" . $id . "' AND display_type = 'browse'") > 0) ? $id : 0;
 }
 
 /**
@@ -817,7 +836,7 @@ function pg_supplier_feed_rule_fields_html($rules, $currency_code)
                                     <div class="col-12 md:col-6">
                                         <span class="pg-field-label d-block" id="sf_rule_rounding_label">' . h(lang('Rounding')) . '</span>
                                         <input type="hidden" name="rule_rounding" id="sf_rule_rounding" value="' . h($rules['rounding']) . '" />
-                                        <span class="pg-seg" role="group" aria-labelledby="sf_rule_rounding_label">' . $segments . '</span>
+                                        <span class="pg-seg pg-seg-wrap" role="group" aria-labelledby="sf_rule_rounding_label">' . $segments . '</span>
                                     </div>
                                     <div class="col-12 md:col-6">
                                         <label class="pg-field-label" for="sf_rule_floor">' . h(lang('Minimum margin %')) . '</label>
@@ -1239,6 +1258,10 @@ function pg_supplier_feed_delete($id)
             @unlink($file);
         }
     }
+
+    if (function_exists('pg_supplier_feed_spool_clear')) {
+        pg_supplier_feed_spool_clear($id);
+    }
 }
 
 /**
@@ -1378,6 +1401,7 @@ function pg_supplier_feed_first_read($feed, $record_path = null)
         'confirmed'   => 0,
         'records'     => count($read['records']),
         'read_at'     => time(),
+        'draft_group' => $old['draft_group'],
     ));
 }
 
@@ -1604,11 +1628,13 @@ function pg_supplier_feed_product_card_html($items)
 
     $follow = true;
     $rows = '';
+    $several = count($items) > 1;
 
     foreach ($items as $item) {
         $follow = $follow && !empty($item['follow_price']);
         $seen = ((int) $item['seen_at'] > 0) ? get_relative_time(array('timestamp' => (int) $item['seen_at'], 'format' => 'plain_text')) : lang('Never');
-        $rows .= '<dt><a href="edit_supplier_feed.php?id=' . (int) $item['feed_id'] . '">' . h($item['name']) . '</a></dt>'
+        $chosen = ($several && !empty($item['active'])) ? ' ' . pg_pill(lang('In use'), 'success', 'data-pg-sf-followed') : '';
+        $rows .= '<dt><a href="edit_supplier_feed.php?id=' . (int) $item['feed_id'] . '">' . h($item['name']) . '</a>' . $chosen . '</dt>'
             . '<dd>' . h(lang(array('string' => 'Buy {var:1} · seen {var:2}', 'vars' => array(pg_supplier_feed_money_text($item['buy_price'], (string) $item['currency']), $seen)))) . '</dd>';
     }
 
@@ -1616,7 +1642,8 @@ function pg_supplier_feed_product_card_html($items)
                     <div class="card mb-5" id="pg_supplier_feed_card">
                         <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Supplier feed')) . '</h2>
                         <div class="card-body pt-0">
-                            <dl class="pg-kv">' . $rows . '</dl>
+                            <dl class="pg-kv">' . $rows . '</dl>'
+                            . ($several ? '<div class="pg-field-help mt-2">' . h(lang('The product follows the feed that has stock with the lowest buy price, for price and stock both.')) . '</div>' : '') . '
                             <input type="hidden" name="supplier_feed_follow_was" value="' . ($follow ? 1 : 0) . '" />
                             <div class="d-flex align-items-start gap-3 mt-3">
                                 <input type="checkbox" class="pg-switch" id="supplier_feed_follow_price" name="supplier_feed_follow_price" value="1"' . ($follow ? ' checked' : '') . ' aria-describedby="supplier_feed_follow_help" />

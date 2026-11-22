@@ -1376,7 +1376,7 @@ function pg_office_xlsx_read($path, $edit = false)
         return array('ok' => false, 'error' => pg_office_refusal_error($refused), 'sheets' => array(), 'truncated' => false);
     }
 
-    $strings_part = ($zip->locateName('xl/sharedStrings.xml') !== false) ? 'xl/sharedStrings.xml' : '';
+    $strings_part = pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml');
     $workbook_xml = (string) pg_zip_entry_contents($zip, pg_sheet_xlsx_workbook($zip)['part'], PG_OFFICE_MAX_DOM, $unread);
     $date1904 = function_exists('pg_office_xlsx_date1904') && pg_office_xlsx_date1904($workbook_xml);
 
@@ -3438,7 +3438,33 @@ function pg_office_view_strings()
         'shift_hint'        => lang('Click a row\'s number or a column\'s letter to insert or delete it.'),
         'shift_menu'        => lang('Rows and columns'),
         'head_row'          => lang('Row {1}: insert or delete'),
-        'head_column'       => lang('Column {1}: insert or delete'),
+        'head_column'       => lang('Column {1}: sort, filter, insert or delete'),
+        'head_column_view'  => lang('Column {1}: sort and filter'),
+        'column_menu'       => lang('Column {1}'),
+        'filtered_mark'     => lang('Filtered'),
+        'sort_up'           => lang('Sort A to Z'),
+        'sort_down'         => lang('Sort Z to A'),
+        'sort_off'          => lang('Remove the sort'),
+        'filter_values'     => lang('Filter by value'),
+        'filter_menu'       => lang('Filter column {1}'),
+        'filter_all'        => lang('Show all values'),
+        'filter_empty'      => lang('(Empty)'),
+        'filter_more'       => lang('Only the first {1} values are listed.'),
+        'filter_off'        => lang('Remove the filter of column {1}'),
+        'view_sorted_up'    => lang('Sorted by column {1}, A to Z.'),
+        'view_sorted_down'  => lang('Sorted by column {1}, Z to A.'),
+        'view_filtered'     => lang('{1} of {2} rows shown.'),
+        'view_header'       => lang('Row {1} stays on top as the header.'),
+        'view_clear'        => lang('Clear sort and filter'),
+        'view_paused'       => lang('Clear the sort and filter to change cells.'),
+        'find_label'        => lang('Find in the workbook'),
+        'find_count'        => lang('{1} of {2}'),
+        'find_none'         => lang('No matches'),
+        'find_previous'     => lang('Previous match'),
+        'find_next'         => lang('Next match'),
+        'csv_download'      => lang('Download as CSV'),
+        'csv_help'          => lang('Downloads the open sheet as it is shown: its rows sorted and filtered, each cell as it is shown.'),
+        'csv_truncated'     => lang('The CSV holds only the rows shown here.'),
         'row_before'        => lang('Insert a row above'),
         'row_after'         => lang('Insert a row below'),
         'row_delete'        => lang('Delete row {1}'),

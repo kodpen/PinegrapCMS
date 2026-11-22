@@ -152,7 +152,8 @@ function test_image_editor_data_menu_limit()
 	pg_assert_same(3, $r['table']);
 }
 
-// Data in the Import menu opens the picker: the tables as rows, then a card
+// Data on the top bar, right after Import, opens the picker (the Import
+// menu no longer lists it): the tables as rows, then a card
 // for each kind the table fits; a card puts the layer in the middle of the
 // canvas and selects it; Change gives a layer another table in its box.
 function test_image_editor_data_menu_picker()
@@ -162,7 +163,11 @@ function test_image_editor_data_menu_picker()
 		. ' data_rows: { status: "success", read: { columns: F.columns, rows: F.rows } } };'
 		. 'var e = fake(answers), out = {};'
 		. 'out.item = Editor.importItems.map(function (fn) { var it = fn.call(e); return it ? it[0] : null; }).filter(Boolean);'
-		. 'e.openDataPicker(null);'
+		. 'out.after = Editor.topItems.indexOf(Editor.topData) - Editor.topItems.indexOf(Editor.topImport);'
+		. 'e.tools = { list: ["select"] }; var b = Editor.topData.call(e); out.btn = [b.className || b.attrs["class"], b.attrs["aria-label"], b.children[1].textContent];'
+		. 'e.tools = { list: ["crop"] }; out.mini = Editor.topData.call(e);'
+		. 'e.tools = { list: ["select"] }; window.pgImageEditorConfig.api = ""; out.noApi = Editor.topData.call(e); window.pgImageEditorConfig.api = "/api";'
+		. 'b.listeners.click();'
 		. 'out.rows = cls(e.confirmBox, "pgie-datatable").map(function (n) { return n.textContent; });'
 		. 'e.dataPick.search = "sto"; e.dataTableRows(cls(e.confirmBox, "pgie-datatables")[0]);'
 		. 'out.found = cls(e.confirmBox, "pgie-datatable").length;'
@@ -183,7 +188,11 @@ function test_image_editor_data_menu_picker()
 	}
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
-	pg_assert_true(in_array('layer_data', $r['item'], true), 'Data is in the Import menu');
+	pg_assert_false(in_array('layer_data', $r['item'], true), 'Data is no longer in the Import menu');
+	pg_assert_same(1, $r['after'], 'Data comes right after Import on the top bar');
+	pg_assert_same(array('pgie-btn pgie-databtn', 'layer_data', 'layer_data'), $r['btn'], 'its icon and word, named');
+	pg_assert_same(null, $r['mini'], 'not where layers cannot be added');
+	pg_assert_same(null, $r['noApi'], 'not without the editor\'s API');
 	pg_assert_same(array('Sales#team · 6 rows', 'StockNo channel · 2 rows'), $r['rows'], 'name, channel and row count');
 	pg_assert_same(1, $r['found'], 'the search narrows the rows');
 	pg_assert_same(array('data_kind_table', 'data_kind_bar', 'data_kind_line', 'data_kind_area', 'data_kind_donut'), $r['cards'], 'a card for each kind the columns fit');

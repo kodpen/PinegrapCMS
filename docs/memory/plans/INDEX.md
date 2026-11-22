@@ -52,9 +52,6 @@
 - connections-merges-cx10-google.md: CX10 of plan connections-merges, what Google's and Microsoft's pages add: the two redirect addresses, the APIs to enable, the "API not enabled" error, Google's verification warning
 - connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count (84), gates, card titles
 - connections-merges.md: Plan: Connections becomes the one place where outside services are set up (owner, poll 146); CX2 the voice card, CX3 E-mail sending, the screen accepted in poll 149, the build CX7 to CX11
-- customer-rhythm-features.md: Plan customer-rhythm, features H1 to H16: product rhythm, customer rhythm and chance, stages, reorder due, the link, events, group rule, measuring, report, card, settings, API
-- customer-rhythm-steps.md: Plan customer-rhythm, steps RY1a to RY6: the pure rules, the store and nightly pass, the events with the brake, the reorder link, report and card, API and group rule, close-out
-- customer-rhythm.md: Plan (owner 2026-11-20, poll 176): each product's reorder time and each customer's own rhythm, stages, reorder-due and stage events to flows and webhooks, list, card, API; RY1a to RY6
 - delivery-tower-features.md: Plan delivery-tower, features T1 to T14: measured times, the four problem kinds, the desk, alerts, events, the scorecard, arrival and carrier suggestions, settings, API
 - delivery-tower-screens-label.md: Plan delivery-tower, step DT4b: the Create Label chooser on the order screen for an address whose method names no carrier; its parts, the carriers' order, the label path's one argument
 - delivery-tower-screens.md: Plan delivery-tower, how its screens are put together (DT3 to DT5): the Delivery problems list, a problem's drawer, the carrier scorecard, the two suggestions, the settings drawer
@@ -75,8 +72,16 @@
 - feedback-loop-features.md: Plan feedback-loop, features Q1 to Q16: surveys, touchpoints, periodic NPS, timing, fatigue, the signed one-click answer, review invitation, follow-up, report, group rule, API, privacy
 - feedback-loop-screens-results.md: Plan feedback-loop, how the answer page and the results are put together (FD4, FD6): the public answer page, the results report, comments and frequent words, the contact card's scores
 - feedback-loop-screens.md: Plan feedback-loop, how its panel screens are put together (FD2): the Surveys tab's list, starting points, a survey's edit screen in cards; each part's Design examples section
-- feedback-loop-steps.md: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, survey settings, touchpoints and sends, the answer page, follow-up, report and group rule, API, close-out
+- feedback-loop-steps.md: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, survey settings, touchpoints and sends, the answer page, WhatsApp, follow-up, report and group rule, API, close-out
 - feedback-loop.md: Plan (owner 2026-11-20, poll 187): NPS, CSAT and effort surveys after a booking, ticket, course, form, delivery or mail conversation, one-click signed answers, low scores followed up; FD1a to FD8
+- flows-editor-next-screens-2.md: Plan flows-editor-next, in words (boards 1a, 1b, 2a to 2c): data threads only for the box in hand, and how a box panel's fields are written (help, Add value, Recipient chips)
+- flows-editor-next-screens-3.md: Plan flows-editor-next, the new functions in words (boards C1, 3, D1 to D3): the whole-flow trial, a live flow's counts, the Split box, sending hours, leaving the flow
+- flows-editor-next-screens-4.md: Plan flows-editor-next, building in words (boards B1, B2): a step added at an arrow, several boxes chosen with their tools, copy and paste, frames, notes, Tidy
+- flows-editor-next-screens.md: Plan flows-editor-next, the editor in words (board A1): the bar, the add rail, the bottom strip, the map, a box as a card, the chosen box's card over the canvas, what opens with nothing chosen
+- flows-editor-next-steps-2.md: Plan flows-editor-next, steps FE6 to FE9 (add at the arrow, several boxes, notes and frames, Tidy and the map) and the server steps beside them: FE10a the trial's walk, FE11a the counts
+- flows-editor-next-steps-3.md: Plan flows-editor-next, steps FE10b to FE15: the trial and the counts on the canvas, the Split box, sending hours, leaving the flow, close-out; what every step keeps and the order given out
+- flows-editor-next-steps.md: Plan flows-editor-next, steps FE1 to FE5 (the canvas line): boxes as cards, the rail and bottom strip, the floating panel, data threads, the panel's fields; how a step is checked
+- flows-editor-next.md: Plan (owner 2026-11-22): the Flows editor redrawn and widened: canvas edge to edge, add at the arrow, several boxes, a whole-flow trial, counts, Split, sending hours, leaving
 - general-appearance-settings-tidy-screens-appearance.md: Plan general-appearance-settings-tidy, its second screen: the Appearance pane as folded rows, the Dashboard row by who it reaches, footer links as list rows in drawers
 - general-appearance-settings-tidy-screens.md: Plan general-appearance-settings-tidy, its first screen: the General pane as folded rows, Organization in three groups, one Site address row, the words and what must be true
 - general-appearance-settings-tidy-steps.md: Plan general-appearance-settings-tidy, steps GA1 to GA5: General as folded rows, Appearance as folded rows, footer links as list rows, the Site address row's value rows, close-out
@@ -105,6 +110,11 @@
 - lead-journey-screens.md: Plan lead-journey, how its screens are put together (LJ2 to LJ5): the Journey card, the Workspace customer card, the Interest card and its settings, the Hot contacts view, the Lead sources report
 - lead-journey-steps.md: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and the tie, the journey, the scores and interests, alerts and events, lead sources, API, close-out
 - lead-journey.md: Plan (owner 2026-11-20, poll 183): visits tied to a known person with consent, the journey, a decaying interest score and interests, hot and returning alerts, lead sources; LJ1a to LJ7
+- legacy-editable-layouts.md: Plan legacy-editable, layouts: a System region becomes its widget in the run; a stock layout by carried settings, a layout file by a piece map keeping the theme's markup; what stays code
+- legacy-editable-regions.md: Plan legacy-editable, regions: one door through the move screen, the run's new page_parts step, Login, Cart and Comments in the run, the true canvas of every region left, designs moved earlier
+- legacy-editable-screens.md: Plan legacy-editable, its screens in words: the move screen's dry run in three groups, the "Designs moved earlier" card, a part that stays classic on the canvas, the Region panel's dropped pieces
+- legacy-editable-steps.md: Plan legacy-editable, steps LE1 to LE12 with size and order: the measure, page_parts, one door, the true canvas, stock layouts, the layout converter by families, earlier designs, close-out
+- legacy-editable.md: Plan (owner 2026-11-21): a classic page arrives in the visual designer as editable elements, not name boxes: regions as HTML, a true canvas for code, layouts by a piece map; LE1 to LE12
 - mail-settings-one-design-box.md: Plan mail-settings-one, the architect's design of adding and removing a mailbox (boards D, E of the picture): the three-step sheet, the provider sign-in buttons, the Remove dialog
 - mail-settings-one-design.md: Plan mail-settings-one, the architect's design (picture mail-settings-one/email-settings.jpg): the two tabs, how e-mail leaves, the ways sheet, Mailboxes with no box
 - mail-settings-one-screens.md: Plan mail-settings-one, its screens: the E-mail category's two tabs, the Sending tab's rows, Add a mailbox with Sign in with Google, built from the architect's design files
@@ -149,6 +159,7 @@
 - security-settings-tidy-screens.md: Plan security-settings-tidy, its first screen: the Firewall and HTTPS pane as folded rows, HTTPS first, Limits, Addresses with the bans drawer, Logs; the words and what must be true
 - security-settings-tidy-steps.md: Plan security-settings-tidy, steps SE1 to SE5: Firewall and HTTPS as folded rows in two steps, Accounts and sign-in as folded rows, the Limits row's overview, close-out
 - security-settings-tidy.md: Plan (owner 2026-11-21): Firewall and HTTPS and Accounts and sign-in as folded rows, no popover or plain radio, both logs in one row, every limit on one address shown in one Limits row
+- settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line
 - stock-holds-features.md: Plan stock-holds, features H1 to H9: the hold record, units free, placing under a short lock, the checkout's check, release, expiry, bundles and locations, what the visitor and the shop see
@@ -185,3 +196,9 @@
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
 - workspace-calls-share.md: Workspace calls, step CL4: how a shared screen is shown large: the same window grown to a stage, the tile rail, one's own share, the narrow width, Make smaller and Full screen
 - workspace-calls.md: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls in the Workspace, browser to browser (WebRTC), two people and groups of four at most, guests, screen sharing; steps CL1-CL8
+- workspace-interface-details.md: Plan workspace-interface, the rules a drawing cannot show: which number a row's pill holds, muted channels, the join row, Mark all as read, the tasks count, the keys' edges, the New line, the foot
+- workspace-interface-list.md: Plan workspace-interface, the list in words (boards L1 to L3): rows and their marks, the All and Unread filter, Mark all as read, the tools dock (never folded) and More, the keys
+- workspace-interface-screens.md: Plan workspace-interface, the screens in words (boards C1, S1 to S3): one bar for every Workspace screen, where each screen's controls go, the empty screen, the panel's foot, the New line
+- workspace-interface-steps-2.md: Plan workspace-interface, steps WI4 to WI9 (the screen line): the panel's foot and top bar, each screen's bar, the New line, close-out; what holds for every step, the order
+- workspace-interface-steps.md: Plan workspace-interface, steps WI1 to WI3 (the list line): rows and marks, the tools dock and the tasks count, Unread with Mark all as read and the keys; how a step is checked
+- workspace-interface.md: Plan (owner 2026-11-22): the Workspace's interface improved: the list in the main menu redrawn (tools dock, Unread filter, row marks, keys), one bar for its screens, the panel's foot, a New line

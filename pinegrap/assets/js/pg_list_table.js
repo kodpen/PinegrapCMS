@@ -1722,7 +1722,9 @@
         } else if (tools) {
             wrap = document.createElement('span');
             wrap.className = 'pg-menu-wrap';
-            wrap.innerHTML = '<button type="button" class="btn btn-sm btn-text theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-auto-close="outside" aria-expanded="false"></button>'
+            // Fixed, so the card's overflow does not cut a menu taller than a
+            // short list, and it opens upwards with no room below.
+            wrap.innerHTML = '<button type="button" class="btn btn-sm btn-text theme-secondary pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-strategy="fixed" data-bs-auto-close="outside" aria-expanded="false"></button>'
                 + '<ul class="menu pg-menu-end" style="min-width: min(20rem, 90vw);"></ul>';
             tools.insertBefore(wrap, tools.firstChild);
             this.sortDefault = [];

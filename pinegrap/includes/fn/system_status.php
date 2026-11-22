@@ -3220,7 +3220,7 @@ function get_system_status_checks()
                 'bi-filetype-jpg',
                 'fg-secondary',
                 'WebP At Own Address',
-                'Pictures are sent as uploaded at their own address. Switch on WebP at the picture\'s own address in Image Optimization to send browsers that read WebP a lighter copy.',
+                'Pictures are sent as uploaded at their own address. Switch on WebP at the picture\'s own address in Site Settings › Features › Images to send browsers that read WebP a lighter copy.',
                 lang('Off'),
                 $webp_href
             );

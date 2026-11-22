@@ -293,3 +293,55 @@ function test_office_xlsx_read_date1904_from_the_package_relationships()
 		pg_assert_same('2026-11-17', isset($book['sheets'][0]['rows'][1]['cells'][1]) ? $book['sheets'][0]['rows'][1]['cells'][1] : null, $workbook . ': the 1904 date in B2');
 	}
 }
+
+// The preview (pg_office_xlsx_read()) looked for the shared strings at
+// xl/sharedStrings.xml alone: a workbook whose relationships name
+// xl/strings/Shared.xml showed its text cells empty in Quick Look and the
+// file window, while the importers read them.
+function test_office_xlsx_read_shared_strings_from_the_relationships()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	$path = sheet_read_xlsx_parts_test_file();
+	$book = pg_office_xlsx_read($path);
+	unlink($path);
+
+	pg_assert_same(true, $book['ok'], 'the preview reads it');
+	pg_assert_same(array('Ürün adı', 'Tarih', '00123'), $book['sheets'][0]['rows'][0]['cells'], 'the heading row');
+	pg_assert_same('Çay bardağı', $book['sheets'][0]['rows'][1]['cells'][0], 'a product name');
+}
+
+// A file whose relationships name no shared strings part keeps them at
+// xl/sharedStrings.xml and reads as before; with that part missing too,
+// the text cells are empty and the file still reads.
+function test_office_xlsx_read_shared_strings_without_a_relationship()
+{
+	if (!class_exists('ZipArchive') || !class_exists('XMLReader')) {
+		return;
+	}
+
+	foreach (array(true, false) as $with_strings) {
+		$path = sheet_read_xlsx_parts_test_file();
+		$zip = new ZipArchive();
+		$zip->open($path);
+		$strings = $zip->getFromName('xl/strings/Shared.xml');
+		$rels = $zip->getFromName('xl/_rels/workbook.xml.rels');
+		$zip->deleteName('xl/strings/Shared.xml');
+		$zip->addFromString('xl/_rels/workbook.xml.rels', preg_replace('~<Relationship Id="rId2"[^>]*/>~', '', $rels));
+
+		if ($with_strings) {
+			$zip->addFromString('xl/sharedStrings.xml', $strings);
+		}
+
+		$zip->close();
+		$book = pg_office_xlsx_read($path);
+		unlink($path);
+		$label = $with_strings ? 'xl/sharedStrings.xml: ' : 'no shared strings: ';
+
+		pg_assert_same(true, $book['ok'], $label . 'the preview reads it');
+		pg_assert_same($with_strings ? 'Çay bardağı' : '', $book['sheets'][0]['rows'][1]['cells'][0], $label . 'A2');
+		pg_assert_same('12.5', $book['sheets'][0]['rows'][1]['cells'][2], $label . 'C2');
+	}
+}

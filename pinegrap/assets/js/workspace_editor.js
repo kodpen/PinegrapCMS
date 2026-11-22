@@ -4134,7 +4134,7 @@
     // The files of a paste a box takes: none when the clipboard holds words
     // (Word puts a picture of the text itself beside them, and the words are
     // pasted), else its pictures, or every file for a box that takes any
-    // (the conversation's writing box posts them as "Add file" does).
+    // (the conversation's writing box, where they wait for Send).
     function pastedFiles(files, text, anyFile) {
         if (String(text || '').trim() !== '') {
             return [];
@@ -4147,9 +4147,10 @@
 
     // A paste into a surface. A one-line field, a table cell and Ctrl+Shift+V
     // take plain text; a writing box reads the clipboard first (pasteSmart()).
-    // Files go to a box made with pasteFiles (a note, the conversation's box);
-    // the browser's own paste never runs on them, so no picture is left in a
-    // box that cannot send it.
+    // Files go to a box made with pasteFiles (a note attaches them, the
+    // conversation's box keeps them waiting for Send); the browser's own
+    // paste never runs on them, so no picture is left in a box that cannot
+    // send it.
     function paste(surface, event, singleLine) {
         var data = event.clipboardData;
         var editor = singleLine ? null : (surface.wsEditor || null);
@@ -4313,7 +4314,9 @@
      * handled, onBlockOpen(kind, markup, done), onHistory(canUndo, canRedo),
      * headings (a note's box: "# " to "### " lines are headings, "---" a
      * rule, as the server draws a note), messageRefs (a message box: a
-     * pasted message tag or link of a message becomes its chip)
+     * pasted message tag or link of a message becomes its chip),
+     * pasteFiles(files) (the files a paste with no words carries: pictures,
+     * or every file with pasteAnyFile; see paste())
      *
      * A box with onEnter sends on Enter; its row of tools (toolbar()) then
      * has the "Aa" switch to the expanded box (expand()), where Enter is a

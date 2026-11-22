@@ -55,7 +55,8 @@ function test_settings_private_label_card_is_drawn_for_the_administrator()
 	pg_assert_contains("if ((int) \$user['role'] === 0) {", $cards, 'only for an administrator');
 	pg_assert_contains('id="pgset-private-label"', $cards, 'the card');
 	pg_assert_contains('<input type="hidden" name="private_label_card" value="1"', $cards, 'a marker the save reads');
-	pg_assert_contains('data-bs-target="#private_label_fields"', $cards, 'the switch opens the fields');
+	pg_assert_contains('class="pg-switch" value="1"\' . ($private_label_on ? \' checked="checked"\' : \'\') . \' id="private_label" name="private_label"', $cards, 'the switch is a pg-switch');
+	pg_assert_same(0, substr_count($cards, 'collapse-switcher'), 'the switch hides no field: they are drawn while it is off');
 
 	foreach (array('private_label', 'logo_url', 'control_panel_stylesheet_url') as $field) {
 		pg_assert_contains('name="' . $field . '"', $cards, $field . ' posted');

@@ -145,7 +145,7 @@ function test_stock_total_routed_writers_keep_their_old_write_without_locations(
 	$routed = array(
 		'includes/api/outbound/orders.php' => array(
 			"pg_stock_total_write(\$product_id, 'adjust', -\$quantity, 0, 'marketplace', \$order_ref);",
-			"pg_stock_total_write(\$product_id, 'adjust', max(1, (int)\$item['quantity']), 0, 'cancel', \$order_ref);",
+			"pg_stock_total_write(\$product_id, 'adjust', \$units, 0, 'cancel', \$order_ref);",
 		),
 		'includes/erp/stock.php' => array(
 			"pg_stock_total_write((int) \$move['product_id'], 'adjust', \$delta, 0, 'erp', 'erp:' . (int) \$move['id']);",

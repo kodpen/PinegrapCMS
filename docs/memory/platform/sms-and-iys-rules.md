@@ -8,7 +8,7 @@ description: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #6
 
 ## What holds for every SMS?
 - Drivers under `includes/sms/<provider>.php`, credentials in `connect_apps`, no schema per provider (`sms-provider-layer.md`): Netgsm, İleti Merkezi, Twilio. Netgsm abroad is unverified (Turkish mobiles only); sites abroad use Twilio.
-- Kinds: order received, shipped, delivered, COD code, member code, ERP overdue reminder, stock, a flow's info message (`flow`, `workspace/workspace-flows-sms-box.md`): transactional, exempt from İYS, no promotion text. `marketing` is the only commercial kind (`sms-marketing-kind.md`).
+- Kinds: order received, shipped, delivered, COD code, member code, ERP overdue reminder, stock, a flow's info message (`flow`, `workspace/workspace-flows-sms-box.md`), a service survey (`feedback`, `platform/feedback-answer.md`): transactional, exempt from İYS, no promotion text. `marketing` is the only commercial kind (`sms-marketing-kind.md`).
 - Requests only queue (`sms-outbox-queue.md`); the general job sends.
 
 ## What holds for consent and İYS?

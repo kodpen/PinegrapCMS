@@ -431,7 +431,7 @@ function pg_explorer_handle_webp($type, $request, $user)
             'status' => 'error',
             'request' => $type,
             'message' => empty($settings['formats']['webp'])
-                ? lang('WebP is switched off in Site Settings › Features › Image Optimization.')
+                ? lang('WebP is switched off in Site Settings › Features › Images.')
                 : lang('This server cannot produce WebP images (neither Imagick nor GD supports it).')));
     }
 

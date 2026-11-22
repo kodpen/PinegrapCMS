@@ -354,7 +354,7 @@ function pg_dashboard_widget_18($request, $user)
 
     // The upload size cap keeps new heavy pictures from arriving at all
     // (pg_image_upload_cap_apply()); the widget says whether it is on and
-    // points to the Image Optimization card for whoever may open it.
+    // points to the Images row of Features for whoever may open it.
     $fm_cap_note = '';
 
     if (($user['role'] <= 2) && pg_schema_has('config', 'image_upload_max_dimension')) {
@@ -367,7 +367,7 @@ function pg_dashboard_widget_18($request, $user)
 
         $fm_cap_note = '
         <div class="px-5 pb-3 fg-secondary" style="font-size:.625rem">' . h($fm_cap_text) . '
-            <a href="settings_features.php#pgset-images" class="text-decoration-none">' . lang('Image Optimization') . '</a>
+            <a href="settings_features.php#pgset-images" class="text-decoration-none">' . lang('Images') . '</a>
         </div>';
     }
 

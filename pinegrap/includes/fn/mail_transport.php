@@ -524,7 +524,9 @@ function pg_mail_transport_settings_save($post, $user_id, $liveform)
 }
 
 /**
- * The card's fields on SMTP Settings.
+ * The fields of the way "A sending service" in E-mail sending's ways sheet:
+ * the service, and the chosen one's account. With none switched on the
+ * first service is shown.
  *
  * @return string
  */
@@ -532,7 +534,7 @@ function pg_mail_transport_settings_fields()
 {
     $transports = pg_mail_transports();
     $shown = pg_mail_transport();
-    $options = '<option value="smtp">' . h(lang('SMTP: the server or connected account below')) . '</option>';
+    $options = '';
     $panes = '';
     $warning = '';
 
@@ -546,13 +548,18 @@ function pg_mail_transport_settings_fields()
                 ? lang('The stored key cannot be read with this site\'s encryption key, so e-mail goes through SMTP. Enter it again.')
                 : lang('The account is not complete, so e-mail goes through SMTP.');
         }
+    }
 
+    $shown = isset($transports[$shown]) ? $shown : (string) key($transports);
+
+    foreach ($transports as $key => $transport) {
+        $settings = pg_mail_transport_settings($key);
         $options .= '<option value="' . h($key) . '">' . h($transport['label']) . '</option>';
         $pane = '';
 
         foreach (pg_mail_transport_fields($key) as $name => $field) {
             $id = 'mail_' . $key . '_' . $name;
-            $help = isset($field['help']) ? '<div class="form-text">' . h($field['help']) . '</div>' : '';
+            $help = isset($field['help']) ? '<div class="pg-field-help">' . h($field['help']) . '</div>' : '';
 
             if ($field['type'] === 'select') {
                 $choices = '';
@@ -561,17 +568,17 @@ function pg_mail_transport_settings_fields()
                     $choices .= '<option value="' . h($value) . '"' . (((string) $value === $settings['values'][$name]) ? ' selected' : '') . '>' . h($label) . '</option>';
                 }
 
-                $input = '<select name="' . h($id) . '" id="' . h($id) . '" class="form-control">' . $choices . '</select>';
+                $input = '<select name="' . h($id) . '" id="' . h($id) . '" class="pg-input">' . $choices . '</select>';
             } elseif ($field['type'] === 'secret') {
                 $placeholder = ($settings['secret'] !== '') ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '';
-                $input = '<input type="password" name="' . h($id) . '" id="' . h($id) . '" class="form-control" value="" autocomplete="new-password"' . $placeholder . '>';
+                $input = '<input type="password" name="' . h($id) . '" id="' . h($id) . '" class="pg-input" value="" autocomplete="new-password"' . $placeholder . '>';
             } else {
-                $input = '<input type="text" name="' . h($id) . '" id="' . h($id) . '" class="form-control" value="' . h($settings['values'][$name]) . '" spellcheck="false" autocapitalize="off">';
+                $input = '<input type="text" name="' . h($id) . '" id="' . h($id) . '" class="pg-input" value="' . h($settings['values'][$name]) . '" spellcheck="false" autocapitalize="off">';
             }
 
             $pane .= '
                 <div class="col-12">
-                    <label for="' . h($id) . '" class="form-label pg-field-label">' . h($field['label']) . '</label>
+                    <label for="' . h($id) . '" class="pg-field-label">' . h($field['label']) . '</label>
                     ' . $input . $help . '
                 </div>';
         }
@@ -579,7 +586,7 @@ function pg_mail_transport_settings_fields()
         $pane .= pg_mail_webhook_settings_fields($key);
 
         $panes .= '
-            <div class="row" data-mail-transport="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>' . $pane . '
+            <div class="row g-5 mt-0" data-mail-transport="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>' . $pane . '
                 <div class="col-12 pg-text-meta"><a href="' . h($transport['portal']) . '" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> ' . h(lang(array('string' => 'Your {var:1} account', 'vars' => $transport['label']))) . '</a></div>
             </div>';
     }
@@ -589,11 +596,11 @@ function pg_mail_transport_settings_fields()
     // One settings row for the choice; the chosen service's rows follow in
     // their own .row, which the script shows and hides.
     return '
-        <div class="row">
+        <div class="row g-5">
             <div class="col-12">
-                <label for="mail_transport" class="form-label pg-field-label">' . h(lang('Send through')) . '</label>
-                <select name="mail_transport" id="mail_transport" class="form-control">' . $options . '</select>
-                <div class="form-text">' . h(lang('A sending service takes the e-mail of the site over its API instead of the SMTP server. A connected account chosen below still sends its kind of mail. The domain of the From address must be verified with the service.')) . '</div>
+                <label for="mail_transport" class="pg-field-label">' . h(lang('Service')) . '</label>
+                <select name="mail_transport" id="mail_transport" class="pg-input">' . $options . '</select>
+                <div class="pg-field-help">' . h(lang('The domain of the From address must be verified with the service.')) . '</div>
             </div>
         </div>'
         . (($warning !== '') ? '<div class="alert theme-warning small my-3">' . h($warning) . '</div>' : '')

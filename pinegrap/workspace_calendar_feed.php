@@ -278,7 +278,7 @@ $help = '
         <div class="card mb-5">
             <div class="card-body small">
                 <h2 class="h6 mb-5"><i class="bi bi-info-circle me-3" aria-hidden="true"></i>' . h(lang('How to add it')) . '</h2>
-                <p class="fw-semibold mb-1">Google Calendar</p>
+                <p class="fw-semibold mb-1">' . h(lang('Google Calendar')) . '</p>
                 <p class="fg-secondary">' . h(lang('On the web, next to Other calendars choose +, then From URL, and paste the address. Google adds it to your phone as well; the Android app cannot add it by itself.')) . '</p>
                 <p class="fw-semibold mb-1">Outlook</p>
                 <p class="fg-secondary">' . h(lang('In Outlook on the web choose Add calendar, then Subscribe from web, and paste the address. In the Windows app: Add calendar, From internet.')) . '</p>

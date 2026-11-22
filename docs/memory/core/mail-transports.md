@@ -1,6 +1,6 @@
 ---
 name: mail-transports
-description: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend, Amazon SES): the driver contract, where the account is kept, when email() uses one, the E-mail sending card
+description: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend, Amazon SES): the driver contract, where the account is kept, when email() uses one, its fields in E-mail sending
 module: mail_transport
 ---
 
@@ -19,8 +19,8 @@ module: mail_transport
 - `connect_apps` row `mail_<key>` (no schema, as `platform/sms-provider-layer.md`): the driver's one `secret` field sealed as `client_secret`, the other fields in `options`, `enabled` = in use. The step line named `config.mail_transport`; a column would have been a schema change, and the enabled row already says which one is in use.
 - One is on at a time: saving one switches the others off and keeps their accounts. A switched-on transport with an unreadable or missing key is not used (SMTP sends) and the card says why.
 
-## What does the E-mail sending card do?
-- "Sending service" card at the top of `includes/settings/mail_sending.php`: the select (SMTP first), each driver's fields in a `data-mail-transport` pane (`pg_mail_transport_settings_script()` shows the chosen one), a link to the provider's portal, "Save and send a test" (the same test as the System card; the notice names the service).
+## What do its fields in E-mail sending do?
+- Since EM2 the fields are the way "A sending service" of How e-mail leaves' ways sheet (`ui/settings-mail-sending-rows.md`): the select (services only), each driver's fields in a `data-mail-transport` pane (`pg_mail_transport_settings_script()` shows the chosen one), a link to the provider's portal.
 - Every save of the screen runs `pg_mail_transport_settings_save()` first; its pure `pg_mail_transport_settings_decide()` marks a required field left empty (nothing is saved then), writes only a changed or newly chosen account, keeps a stored secret when the box is empty, refuses a write without an encryption key. The audit line records the choice and the options, never the secret.
 
 ## How was it verified?

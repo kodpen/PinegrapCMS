@@ -40,7 +40,7 @@ function settings_features_modules_all()
 	}
 
 	$rows['commerce']['href'] = 'settings_commerce.php';
-	$rows['sharing']['settings'] = 'pg-features-sharing';
+	$rows['sharing']['settings'] = 'pg-fold-sharing';
 	$rows['courses']['extra'] = '<input type="hidden" name="courses_card" value="1"/>';
 
 	return $rows;
@@ -145,8 +145,8 @@ function test_settings_features_modules_rows()
 	pg_assert_contains('<span class="pg-pill pg-tone-gray">Off</span>', $accounting, 'Accounting off');
 	pg_assert_false(strpos($accounting, '<a ') !== false, 'no Open for a reader who may not open the category');
 
-	$sharing = pg_features_module_row(array('key' => 'sharing', 'on' => false, 'settings' => 'pg-features-sharing'));
-	pg_assert_contains('data-pg-set-goto="pg-features-sharing"', $sharing, 'Settings leads to the setup');
+	$sharing = pg_features_module_row(array('key' => 'sharing', 'on' => false, 'settings' => 'pg-fold-sharing'));
+	pg_assert_contains('data-pg-set-goto="pg-fold-sharing"', $sharing, 'Settings leads to the setup');
 	pg_assert_contains('>Off: pages show no share buttons; their setup is kept.</span>', $sharing, 'off, the line says what is hidden');
 	pg_assert_false(strpos($sharing, 'checked') !== false, 'off, the switch is off');
 
@@ -167,12 +167,11 @@ function test_settings_features_modules_old_card_ids_open_the_board()
 	pg_assert_contains('<div id="pgset-features" class="pg-set-card">', $card, 'the board takes the pgset-features id');
 	pg_assert_false(strpos($card, 'id="pgset-courses"') !== false || strpos($card, 'id="pgset-event-tickets"') !== false, 'the Courses and Tickets cards are gone');
 
-	foreach (array('pgset-site-push', 'pgset-place-map', 'pgset-page-clicks', 'pgset-content-approval') as $id) {
+	foreach (array('pgset-site-push' => 'site-push', 'pgset-place-map' => 'maps', 'pgset-page-clicks' => 'page-clicks', 'pgset-content-approval' => 'content-approval', 'pgset-sharing' => 'sharing') as $id => $fold) {
 		pg_assert_contains('id="' . $id . '"', $card, $id . ': the card that keeps the module\'s settings stays');
-		pg_assert_contains("'settings' => '" . $id . "'", $card, $id . ': the row\'s Settings leads to it');
+		pg_assert_contains("'settings' => 'pg-fold-" . $fold . "'", $card, $id . ': the row\'s Settings leads to the folded row holding it');
 	}
 
-	pg_assert_contains('id="pg-features-sharing"', $card, 'the sharing setup has its place');
 	pg_assert_false(strpos($card, 'id="social_networking_type_row"') !== false, 'the switch opens no popover');
 
 	$js = settings_features_modules_source('assets/js/backend.src.js');

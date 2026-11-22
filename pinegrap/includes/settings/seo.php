@@ -76,7 +76,7 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . h(lang(array('string' => 'A page opened on another name of this site (with or without www) moves to the same address on {var:1} with a permanent redirect, so search engines see one copy of each page. Turn it on only once that name opens this site. The panel, the API and file downloads answer on every name.', 'vars' => array(HOSTNAME_SETTING)))) . '</div>
                                             </div>
                                         </div>
-                                        <div id="pgsub-indexnow" class="col-12">
+                                        <div id="pgsub-indexnow" class="col-12 pg-set-ruled">
                                             <div class="d-flex flex-column align-items-start gap-2">
                                                 <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => 'IndexNow'))) . '</span>' . ($indexnow_connected
                                                     ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
@@ -110,6 +110,12 @@ foreach (array(
     // request).
     if ($seo_card_id !== 'pgset-structured') {
         $seo_card[1] .= pg_picker_script();
+    }
+
+    // The site-wide JSON-LD field (built in prep.php) gets its editor from
+    // the card that prints it; see the note there.
+    if (($seo_card_id === 'pgset-structured') && ($output_structured_data_dependent !== '')) {
+        $seo_card[1] .= pg_code_editor_attach(array('id' => 'custom_jsonld', 'code_type' => 'application/json'));
     }
 
     $pg_settings_cards[] = '
@@ -211,7 +217,7 @@ $pg_settings_cards[] = '
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($ai_crawlers['training'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="robots_ai_training" name="robots_ai_training"/></div>
                                                 <label class="" for="robots_ai_training">' . lang('Allow AI training') . '</label>
-                                                <div class="form-text">' . h(lang(array('string' => 'Lets {var:1} use the pages to train AI models. Turned off, robots.txt asks them to stay away and says ai-train=no. The firewall turns GPTBot, ClaudeBot and CCBot away either way, unless they are listed under Allowed Bots.', 'vars' => array(implode(', ', $ai_crawlers_catalog['train']))))) . '</div>
+                                                <div class="form-text">' . h(lang(array('string' => 'Lets {var:1} use the pages to train AI models: robots.txt says ai-train=yes, and the firewall stops turning those crawlers away, while its limits and bans still apply to them. Turned off, robots.txt asks them to stay away and says ai-train=no, and the firewall turns them away as bad bots.', 'vars' => array(implode(', ', $ai_crawlers_catalog['train']))))) . '</div>
                                             </div>
                                         </div>
                                         ' . (($output_waf_ai_block !== '') ? '<div class="col-12 mb-0"><h6 class="pg-group-label">' . lang('Firewall') . '</h6></div>

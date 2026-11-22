@@ -110,6 +110,30 @@ function test_application_reviewers_plan_drops_a_reviewer_moved_out_of_the_pool(
 	pg_assert_same(array(100), $plan['deletes']);
 }
 
+function test_application_reviewers_plan_keeps_unstarted_review_of_reviewer_of_every_category()
+{
+	// Reviewers with no categories (every category, stored as null) keep
+	// their unstarted reviews: a re-run, random ties or not, changes nothing,
+	// and an entry passed on by a conflict gets no second reviewer.
+	$entries = array(array('id' => 1, 'category' => ''), array('id' => 2, 'category' => ''));
+	$reviewers = array(
+		array('id' => 1, 'categories' => null, 'revoked_at' => 0),
+		array('id' => 2, 'categories' => null, 'revoked_at' => 0),
+		array('id' => 3, 'categories' => null, 'revoked_at' => 0),
+	);
+	$reviews = array(
+		array('id' => 1, 'entry_id' => 1, 'reviewer_id' => 1, 'status' => 2),
+		array('id' => 2, 'entry_id' => 2, 'reviewer_id' => 1, 'status' => 3),
+		array('id' => 3, 'entry_id' => 2, 'reviewer_id' => 2, 'status' => 0),
+	);
+
+	for ($i = 0; $i < 12; $i++) {
+		$plan = pg_application_assignment_plan($entries, $reviewers, $reviews, 1, false, true);
+		pg_assert_same(array(), $plan['inserts'], 'nothing new');
+		pg_assert_same(array(), $plan['deletes'], 'the unstarted review stays');
+	}
+}
+
 function test_application_reviewers_tab_markup_follows_the_description()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_application_program.php');
