@@ -256,6 +256,7 @@
     "Each id in {var:1} must be the id of one of the poll's options.": "{var:1} içindeki her id oylamanın seçeneklerinden birinin kimliği olmalı.",
     "Each invoice is": "Her fatura",
     "Each is set in its own pane; Change opens it.": "Her biri kendi bölümünde ayarlanır; Değiştir o bölümü açar.",
+    "Each is set where Change leads; this row only shows it.": "Her biri Değiştir'in açtığı yerde ayarlanır; bu satır yalnızca gösterir.",
     "Each issue gathers a few stories around one idea, a place, a habit or a way of living. Stories that belong to no issue appear online between them.": "Her sayı birkaç yazıyı tek bir fikrin, bir yerin, bir alışkanlığın ya da bir yaşama biçiminin çevresinde toplar. Hiçbir sayıya ait olmayan yazılar, sayıların arasında çevrimiçi yayımlanır.",
     "Each issue gathers a few stories around one idea.": "Her sayı, tek bir fikrin çevresinde birkaç yazıyı bir araya getirir.",
     "Each issued invoice goes to the account by e-mail. Switch it off for a customer who does not want them; an invoice can still be sent from its own screen.": "Kesilen her fatura bu cariye e-postayla gider. İstemeyen müşteri için kapatın; fatura yine kendi ekranından gönderilebilir.",
