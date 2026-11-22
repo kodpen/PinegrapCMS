@@ -5,7 +5,8 @@
  * Add and edit a satisfaction survey (Communication › Surveys) on the edit
  * layout. Cards: Question (name, kind, the texts per site language, the
  * extra questions folded), Sent after (what it follows, its filter, the
- * delay), Sent by (channel, service message or commercial), Low scores (who
+ * delay), Sent by (channel, service message or commercial, the WhatsApp
+ * template and what fills its variables), Low scores (who
  * follows up, who joins after 48 hours, the Workspace channel) and After the
  * answer (the review invitation). The status column holds the On switch,
  * the e-mail's preview, "Send me a test" and Delete or Archive. A new
@@ -44,7 +45,11 @@ if (($fs_id > 0) && (($fs_survey === null) || ($fs_survey['archived_at'] > 0))) 
 $fs_languages = pg_feedback_survey_languages();
 $fs_codes = array_keys($fs_languages);
 $fs_choices = pg_feedback_survey_choices();
-$fs_known = array('users' => array_keys($fs_choices['users']), 'channels' => array_keys($fs_choices['channels']), 'languages' => $fs_codes);
+// The approved WhatsApp templates a survey's message can be sent with.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+$fs_wa_offered = pg_whatsapp_message_templates();
+$fs_known = array('users' => array_keys($fs_choices['users']), 'channels' => array_keys($fs_choices['channels']), 'languages' => $fs_codes,
+    'wa_offered' => $fs_wa_offered, 'wa_before' => ($fs_survey !== null) ? $fs_survey['whatsapp'] : null);
 
 // "Send me a test": the survey's e-mail to the signed-in person, ten an hour.
 $fs_test = function (array $survey, liveform $form) use ($user) {
@@ -247,14 +252,15 @@ $fs_sent_after = $fs_card('after', lang('Sent after'), lang($fs_point['line']),
     '<div class="pg-card-inner-row mb-5"><span class="pg-icon-tile pg-tone-' . h($fs_point['tone']) . '" aria-hidden="true"><span class="bi ' . h($fs_point['icon']) . '"></span></span><strong class="pg-list-row-title">' . h(lang($fs_point['label'])) . '</strong></div>'
     . '<input type="hidden" name="touchpoint" value="' . h($fs['touchpoint']) . '"><div class="row gy-5">' . $fs_filter . '</div>');
 
-// 3. Sent by: channel and the kind of message.
+// 3. Sent by: channel, the kind of message and the WhatsApp template.
 $fs_purpose = ($fs['touchpoint'] === 'periodic')
     ? '<span class="pg-pill pg-tone-amber">' . h(lang('Commercial')) . '</span><div class="pg-field-help">' . h(lang('A survey every few months is commercial: it goes only to people who agreed to marketing messages.')) . '</div>'
     : $fs_seg('purpose', array(0 => lang('Service message'), 1 => lang('Commercial')), $fs['purpose'], lang('Kind of message'))
         . '<div class="pg-field-help">' . h(lang('Commercial goes only to people who agreed to marketing messages and İYS did not refuse.')) . '</div>';
 $fs_sent_by = $fs_card('by', lang('Sent by'), lang('How the survey reaches the customer.'),
     '<div class="row gy-5"><div class="col-12 md:col-6"><div class="pg-field-label">' . h(lang('Channel')) . '</div>' . $fs_seg('channel', array_map('lang', pg_feedback_channel_names()), $fs['channel'], lang('Channel')) . '</div>'
-    . '<div class="col-12 md:col-6"><div class="pg-field-label">' . h(lang('Kind of message')) . '</div>' . $fs_purpose . '</div></div>');
+    . '<div class="col-12 md:col-6"><div class="pg-field-label">' . h(lang('Kind of message')) . '</div>' . $fs_purpose . '</div></div>'
+    . pg_feedback_whatsapp_card_html($fs['whatsapp'], $fs_wa_offered, pg_whatsapp_ready(), $fs['channel'] === 'whatsapp'));
 
 // 4. Low scores.
 $fs_channel_field = $fs_choices['channels']

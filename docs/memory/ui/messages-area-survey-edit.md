@@ -8,7 +8,7 @@ module: feedback_surveys
 - `edit_feedback_survey.php` on the edit layout (form column, status column, save bar), gate `manager`. Five cards follow.
 - Question: name, kind as a segmented choice, question and comment label per site language (tabs when the site has more than one), Extra questions folded: three slots, short text or single choice.
 - Sent after: the touchpoint, its filter, the delay in hours or days, at most 90 days; the periodic one: every N months, active in the last M months.
-- Sent by: E-mail, SMS, WhatsApp; Service message or Commercial, the periodic one Commercial fixed. Low scores: fallback user, the user who joins after 48 hours, a public Workspace channel.
+- Sent by: E-mail, SMS, WhatsApp; Service message or Commercial, the periodic one Commercial fixed; with WhatsApp, "WhatsApp template" and a list per variable (`platform/feedback-whatsapp.md`). Low scores: fallback user, the user who joins after 48 hours, a public Workspace channel.
 - After the answer: the review invitation switch, a line and link to Google Reviews when no place is set.
 - An empty question or comment label uses `pg_feedback_default_texts()` for the kind, shown as the field's placeholder.
 - Status column: the On switch with its pill, the e-mail preview (`pg_feedback_mail_html()`, buttons not links), Send me a test, Delete or Archive. Script `assets/js/feedback_survey.js`, served as written.

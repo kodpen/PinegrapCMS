@@ -589,11 +589,15 @@ function pg_feedback_job_run($now)
         return;
     }
 
-    // A channel whose message is not built yet keeps its rows waiting.
-    $channels = "'" . implode("', '", array_map('e', pg_feedback_message_channels())) . "'";
+    // A queued row whose link has run out can no longer be answered: a
+    // WhatsApp survey's rows wait for its template and may wait that long.
+    db("UPDATE feedback_responses SET status = " . PG_FEEDBACK_CANCELLED . "
+        WHERE (status = " . PG_FEEDBACK_QUEUED . ") AND (token_hash IS NOT NULL) AND (due_at < '" . ((int) $now - PG_FEEDBACK_TOKEN_DAYS * 86400) . "')");
+
+    // A WhatsApp survey whose template cannot be sent keeps its rows waiting.
     $due = (array) db_items(
         "SELECT * FROM feedback_responses
-        WHERE (status = " . PG_FEEDBACK_QUEUED . ") AND (due_at <= '" . (int) $now . "') AND (token_hash IS NOT NULL) AND (channel IN (" . $channels . "))
+        WHERE (status = " . PG_FEEDBACK_QUEUED . ") AND (due_at <= '" . (int) $now . "') AND (token_hash IS NOT NULL) AND " . pg_feedback_due_channel_sql(pg_feedback_whatsapp_ready_surveys()) . "
         ORDER BY due_at
         LIMIT " . PG_FEEDBACK_PASS_ROWS);
 

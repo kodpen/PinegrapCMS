@@ -1747,6 +1747,7 @@
     "WhatsApp is not set up.": "WhatsApp kurulmamış.",
     "WhatsApp is not set up: no message is sent until the WhatsApp account above is saved and switched on.": "WhatsApp kurulu değil: yukarıdaki WhatsApp hesabı kaydedilip açılana kadar mesaj gönderilmez.",
     "WhatsApp is not set up: no message is sent until the WhatsApp account is saved and switched on in the Communication settings.": "WhatsApp kurulu değil: WhatsApp hesabı İletişim ayarlarında kaydedilip açılana kadar mesaj gönderilmez.",
+    "WhatsApp is not set up: the surveys wait until the WhatsApp account is saved and switched on in the Communication settings.": "WhatsApp kurulu değil: WhatsApp hesabı İletişim ayarlarında kaydedilip açılana kadar anketler bekler.",
     "WhatsApp is reviewing this template; a review takes up to 24 hours. Its state is read again every six hours.": "WhatsApp bu şablonu inceliyor; inceleme 24 saate kadar sürer. Durumu altı saatte bir yeniden okunur.",
     "WhatsApp is switched on but cannot send until every step below is filled in.": "WhatsApp açık, ama aşağıdaki adımların hepsi doldurulana kadar gönderemez.",
     "WhatsApp is switched on but cannot send: the stored App secret and access token cannot be read with this site's encryption key. Enter them again.": "WhatsApp açık ama gönderemez: kayıtlı Uygulama Gizli Anahtarı ve erişim anahtarı bu sitenin şifreleme anahtarıyla okunamıyor. İkisini yeniden girin.",
