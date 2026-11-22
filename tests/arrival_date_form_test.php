@@ -121,7 +121,11 @@ function test_arrival_date_form_errors()
 	$custom = array('custom' => '1', 'arrival_date' => '', 'custom_maximum_arrival_date' => '') + $valid;
 	pg_assert_same(array(), pg_arrival_date_form_errors($custom), 'a customer-entered date needs no arrival date');
 	pg_assert_same(array('custom_maximum_arrival_date'), array_keys(pg_arrival_date_form_errors(array('custom_maximum_arrival_date' => 'abc') + $custom)), 'but its latest date is a real one when given');
-	pg_assert_same(array('arrival_date'), array_keys(pg_arrival_date_form_errors(array('arrival_date' => '') + $valid)), 'otherwise the arrival date is required');
+	// A blank arrival date is the starter sites' AT-ONCE choice, which the
+	// shipping methods read as no date (as soon as possible).
+	pg_assert_same(array(), pg_arrival_date_form_errors(array('arrival_date' => '') + $valid), 'a blank arrival date is as soon as possible');
+	pg_assert_same(array(), pg_arrival_date_form_errors(array('code' => 'AT-ONCE', 'arrival_date' => '0000-00-00') + $valid), 'and so is the stored unset date posted back');
+	pg_assert_same(array('arrival_date'), array_keys(pg_arrival_date_form_errors(array('arrival_date' => 'soon') + $valid)), 'one given is a real date');
 
 	foreach (array('add_arrival_date.php', 'edit_arrival_date.php') as $file) {
 		$source = arrival_date_form_test_source($file);
@@ -162,9 +166,17 @@ function test_arrival_date_form_required_dates()
 
 	pg_assert_contains('id="start_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date', $form, 'the start date is required');
 	pg_assert_contains('id="end_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date', $form, 'the end date is required');
-	pg_assert_contains('id="arrival_date" class="form-control" maxlength="10" autocomplete="off"\' . $arrival_date_required . \' data-pg-date', $form, 'the arrival date follows the custom switch');
-	pg_assert_contains('arrival_date_field.required = !custom.checked;', $form, 'and the switch moves the attribute');
-	pg_assert_contains('arrival_date_marker.classList.toggle("d-none", custom.checked);', $form, 'and its marker');
+	// Blank is as soon as possible: the box is never required, and says so.
+	pg_assert_contains('id="arrival_date" class="form-control" maxlength="10" autocomplete="off" aria-describedby="arrival_date_help" data-pg-date', $form, 'the arrival date may be left blank');
+	pg_assert_contains('lang(\'Leave blank to deliver as soon as possible.\')', $form, 'and its help says what blank means');
+	pg_assert_same(false, strpos($form, 'arrival_date_required'), 'no switch moves a required attribute');
+}
+
+function test_arrival_date_form_blank_arrival_date_saves_the_unset_date()
+{
+	$values = pg_arrival_date_form_values(array('name' => 'En kısa sürede', 'code' => 'AT-ONCE', 'arrival_date' => ''), 1);
+
+	pg_assert_same('0000-00-00', $values[3], 'a blank arrival date is stored as the unset date the shipping methods read as at once');
 }
 
 function test_arrival_date_form_error_text()
@@ -237,6 +249,7 @@ function test_arrival_date_form_wide_layout()
 	}
 
 	pg_assert_contains("lang('Chosen by the customer')", $cards, 'a custom arrival date reads as chosen by the customer');
+	pg_assert_contains("lang('As soon as possible')", $cards, 'a blank one reads as as soon as possible');
 	pg_assert_contains('MutationObserver', $cards, 'the cut-off count follows the rows');
 
 	$row = pg_arrival_date_form_status_row('A & B', '<b>1</b>');

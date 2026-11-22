@@ -86,6 +86,10 @@ function test_arrival_date_quick_cells()
 	pg_assert_same(h(lang('Chosen by the customer')), $custom['arrival_date']['html'], 'and says who chooses it');
 	pg_assert_same('start_date', $custom['start_date']['attributes']['data-pg-edit'], 'its other dates still change');
 	pg_assert_false(pg_arrival_date_quick_cell_editable('arrival_date', array('custom' => '1')), 'the write refuses it too');
+
+	$soon = pg_arrival_date_list_cells(pg_test_arrival_date_quick_row(array('code' => 'AT-ONCE', 'arrival_date' => '0000-00-00')), pg_arrival_date_quick_edit_columns(), '2026-11-15');
+	pg_assert_same(h(lang('As soon as possible')), $soon['arrival_date']['html'], 'a blank arrival date reads as as soon as possible');
+	pg_assert_same('', $soon['arrival_date']['attributes']['data-pg-edit-value'], 'and opens blank');
 }
 
 function test_arrival_date_quick_post_changes_one_value()
@@ -111,6 +115,23 @@ function test_arrival_date_quick_post_changes_one_value()
 	pg_assert_true(isset(pg_arrival_date_form_errors(pg_arrival_date_quick_post($row, 'end_date', '2026-10-01'))['end_date']), 'an end before the start is refused');
 	pg_assert_true(isset(pg_arrival_date_form_errors(pg_arrival_date_quick_post($row, 'start_date', 'soon'))['start_date']), 'a date that is not one is refused');
 	pg_assert_true(isset(pg_arrival_date_form_errors(pg_arrival_date_quick_post($row, 'name', '  '))['name']), 'a blank name is refused');
+}
+
+function test_arrival_date_quick_post_at_once()
+{
+	// The starter sites' AT-ONCE row stores no arrival date: a change on
+	// the list passes the screen's check, and a cleared arrival date makes
+	// another row as soon as possible.
+	$soon = pg_test_arrival_date_quick_row(array('code' => 'AT-ONCE', 'arrival_date' => '0000-00-00'));
+	pg_assert_same(array(), pg_arrival_date_form_errors(pg_arrival_date_quick_post($soon, 'name', 'En kısa sürede')), 'the AT-ONCE row takes a new name');
+	pg_assert_same('0000-00-00', pg_arrival_date_form_values(pg_arrival_date_quick_post($soon, 'name', 'En kısa sürede'), 9)[3], 'and keeps its unset date');
+
+	$columns = pg_arrival_date_quick_edit_columns();
+	pg_assert_true(empty($columns['arrival_date']['required']), 'the list lets the arrival date be cleared');
+
+	$cleared = pg_arrival_date_quick_post(pg_test_arrival_date_quick_row(), 'arrival_date', '');
+	pg_assert_same(array(), pg_arrival_date_form_errors($cleared), 'a cleared arrival date passes the check');
+	pg_assert_same('0000-00-00', pg_arrival_date_form_values($cleared, 9)[3], 'and is stored as the unset date');
 }
 
 function test_arrival_date_quick_cutoff_refusal()
