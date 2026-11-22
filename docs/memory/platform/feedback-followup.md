@@ -17,17 +17,17 @@ module: feedback_followup
 ## What does the follow-up make?
 - With the Workspace on (`pg_feedback_workspace()` loads it): a task by `ws_followup_task_open()` as the owner (members only), `$once` false: "Low score in {survey}: follow up", priority high, due in 2 days, on the survey's channel (dropped when the owner cannot write there).
 - Tagged with the contact and the booking, form, order or a ticket's calendar event (`pg_feedback_followup_refs()`); nothing to tag (a conversation without contact): no task.
-- The description gives the score and quotes the comment as data; `<` and `>` are turned (`pg_feedback_ws_words()`) so a customer's words never make a tag or mention.
+- The description quotes the comment as data; `pg_feedback_ws_words()` turns `<` `>` so it never makes a tag or mention.
 - A line in the survey's channel (`ws_message_system()` with the task id): score, survey, `<#task:…>`, `<#contact:…>`; never the comment.
-- Then `feedback.detractor` (`pg_feedback_detractor_payload()`: the received fields without `first`, plus `owner_id`, `task_id`). Opened at the first low write, so its `comment` may be empty when the score came first; the next `feedback.received` carries it.
+- Then `feedback.detractor` (`pg_feedback_detractor_payload()`: the received fields without `first`, plus `owner_id`, `task_id`). Its `comment` may be empty when the score came first; the next `feedback.received` carries it.
 
 ## And the 48-hour escalation?
-- `pg_feedback_job_run()` calls `pg_feedback_escalation_run()` every run, before the sending-hours check: tasks still todo, doing or waiting 48 hours after their `created_at`, `escalated_at` 0, the survey's `escalation_user_id` set (`pg_feedback_escalation_due()`), 200 a run.
-- `escalated_at` is claimed by a conditional UPDATE, then the user is added with `ws_task_set_assignees()` as the task's creator: the inbox's "assigned" notice and `workspace.task.assigned` tell them.
+- `pg_feedback_job_run()` calls `pg_feedback_escalation_run()` every run, before the sending-hours check: tasks still todo, doing or waiting 48 hours after their `created_at`, `escalated_at` 0, the survey's `escalation_user_id` set (`pg_feedback_escalation_due()`), answers of the last 90 days read by the (`survey_id`, `answered_at`) key, 200 a run.
+- `escalated_at` is claimed first, then the user is added by `ws_task_set_assignees()` as the task's creator: the "assigned" notice tells them.
 
 ## How is the outcome kept?
-- `feedback_responses.outcome`: 1 Called back, 2 Solved, 3 Not reached (`pg_feedback_outcomes()`).
-- The task drawer's "Survey answer" part (`$detail['feedback']`, `pg_feedback_followup_part()`): survey, score, comment, "How did it end?" as a `pg-seg`. Marking the task done in the drawer asks it first; Mark done without a choice closes it with none.
+- `outcome`: 1 Called back, 2 Solved, 3 Not reached (`pg_feedback_outcomes()`).
+- The task drawer's "Survey answer" part (`$detail['feedback']`, `pg_feedback_followup_part()`, found by the task's contact or record tag, so other tasks read nothing): survey, score, comment, "How did it end?" as a `pg-seg`. Marking the task done in the drawer asks it first; Mark done without a choice closes it with none.
 - Both post `ws_task_status` with `outcome` (`pg_feedback_outcome_set()`, the same edit right); the part sends the task's own status to change only the outcome. A task closed elsewhere (row, board, API) is not asked; its drawer part still sets it.
 
 ## Where are the events named?

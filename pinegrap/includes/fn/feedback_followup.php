@@ -28,6 +28,13 @@ define('PG_FEEDBACK_ESCALATE_HOURS', 48);
 /** Days after the answer a follow-up task is due. */
 define('PG_FEEDBACK_FOLLOWUP_DAYS', 2);
 
+/**
+ * Days after the answer a follow-up is still looked at for its escalation:
+ * the pass reads answers by the (survey_id, answered_at) key, never the
+ * whole table.
+ */
+define('PG_FEEDBACK_ESCALATE_WINDOW_DAYS', 90);
+
 /** Follow-ups escalated per pass. */
 define('PG_FEEDBACK_ESCALATE_ROWS', 200);
 
@@ -391,7 +398,8 @@ function pg_feedback_escalation_run($now)
         FROM feedback_responses r
         JOIN feedback_surveys s ON s.id = r.survey_id
         JOIN ws_tasks t ON t.id = r.task_id
-        WHERE (r.task_id > 0) AND (r.escalated_at = 0) AND (s.escalation_user_id > 0)
+        WHERE (s.escalation_user_id > 0) AND (r.answered_at > '" . ((int) $now - PG_FEEDBACK_ESCALATE_WINDOW_DAYS * 86400) . "')
+            AND (r.answered_at <= '" . ((int) $now - PG_FEEDBACK_ESCALATE_HOURS * 3600) . "') AND (r.task_id > 0) AND (r.escalated_at = 0)
             AND (t.status IN ('todo', 'doing', 'waiting')) AND (t.created_at <= '" . ((int) $now - PG_FEEDBACK_ESCALATE_HOURS * 3600) . "')
         ORDER BY r.id
         LIMIT " . PG_FEEDBACK_ESCALATE_ROWS);
@@ -414,16 +422,52 @@ function pg_feedback_escalation_run($now)
 }
 
 /**
+ * Where an answer whose follow-up carries these tags is found, as SQL
+ * conditions on feedback_responses: by its keyed contact or record, so a
+ * task drawer never reads the whole table. array() for a task with none of
+ * the tags a follow-up gets. Pure.
+ *
+ * @param array[] $tags the task's tags: type, id
+ * @return string[]
+ */
+function pg_feedback_followup_where(array $tags)
+{
+    $where = array();
+
+    foreach ($tags as $tag) {
+        $id = (int) ($tag['id'] ?? 0);
+        $type = (string) ($tag['type'] ?? '');
+
+        if ($id <= 0) {
+            continue;
+        }
+
+        if ($type === 'contact') {
+            $where[] = "(r.contact_id = '" . $id . "')";
+        } elseif (in_array($type, array('booking', 'form', 'order'), true)) {
+            $where[] = "((r.record_type = '" . $type . "') AND (r.record_id = '" . $id . "'))";
+        } elseif ($type === 'calendar_event') {
+            $where[] = "((r.record_type = 'ticket') AND (r.subject_id = '" . $id . "'))";
+        }
+    }
+
+    return $where;
+}
+
+/**
  * The survey answer a follow-up task is about, for its drawer: the survey,
  * the score, the comment and the outcome with its choices. Null for any
  * other task.
  *
- * @param int $task_id
+ * @param int     $task_id
+ * @param array[] $tags the task's tags: type, id
  * @return array|null
  */
-function pg_feedback_followup_part($task_id)
+function pg_feedback_followup_part($task_id, array $tags)
 {
-    if (((int) $task_id <= 0) || !pg_feedback_sends_ready()) {
+    $where = pg_feedback_followup_where($tags);
+
+    if (((int) $task_id <= 0) || !$where || !pg_feedback_sends_ready()) {
         return null;
     }
 
@@ -431,7 +475,7 @@ function pg_feedback_followup_part($task_id)
         "SELECT r.score, r.comment, r.outcome, s.name, s.kind
         FROM feedback_responses r
         JOIN feedback_surveys s ON s.id = r.survey_id
-        WHERE r.task_id = '" . (int) $task_id . "'
+        WHERE (r.task_id = '" . (int) $task_id . "') AND (" . implode(' OR ', $where) . ")
         ORDER BY r.id DESC
         LIMIT 1");
 

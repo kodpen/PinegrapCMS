@@ -97,6 +97,15 @@ function test_feedback_followup_task_input()
 	pg_assert_same(null, pg_feedback_followup_input(feedback_followup_test_row(array('contact_id' => 0, 'record_type' => 'conversation')), feedback_followup_test_survey(), 5, 0, 1800000000), 'no record, no task');
 }
 
+function test_feedback_followup_found_by_its_tags()
+{
+	$where = pg_feedback_followup_where(array(array('type' => 'contact', 'id' => 884), array('type' => 'booking', 'id' => 12), array('type' => 'calendar_event', 'id' => 3), array('type' => 'page', 'id' => 4)));
+
+	pg_assert_same(array("(r.contact_id = '884')", "((r.record_type = 'booking') AND (r.record_id = '12'))", "((r.record_type = 'ticket') AND (r.subject_id = '3'))"), $where);
+	pg_assert_same(array(), pg_feedback_followup_where(array(array('type' => 'page', 'id' => 4))), 'a task with no such tag reads nothing');
+	pg_assert_same(null, pg_feedback_followup_part(300, array()), 'and has no survey part');
+}
+
 function test_feedback_followup_line()
 {
 	$line = pg_feedback_followup_line(feedback_followup_test_row(), feedback_followup_test_survey(array('name' => 'Visit <b>')), 300);
