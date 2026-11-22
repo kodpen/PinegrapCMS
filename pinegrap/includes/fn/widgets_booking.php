@@ -442,7 +442,7 @@ function pg_booking_widget_rows($services)
             '__service_id'          => (string) (int) $service['id'],
             '__service_name'        => (string) $service['name'],
             '__service_description' => (string) $service['description'],
-            '__service_length'      => lang('{var:1} min', (int) $service['length_minutes']),
+            '__service_length'      => lang(array('string' => '{var:1} min', 'vars' => array((int) $service['length_minutes']))),
             '__service_price'       => (($price > 0) && function_exists('prepare_price_for_output')) ? html_entity_decode(prepare_price_for_output($price, false, 0, 'plain_text'), ENT_QUOTES | ENT_HTML5, 'UTF-8') : '',
         );
     }

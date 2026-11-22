@@ -836,7 +836,7 @@ function pg_supplier_feed_rule_fields_html($rules, $currency_code)
                                     <div class="col-12 md:col-6">
                                         <span class="pg-field-label d-block" id="sf_rule_rounding_label">' . h(lang('Rounding')) . '</span>
                                         <input type="hidden" name="rule_rounding" id="sf_rule_rounding" value="' . h($rules['rounding']) . '" />
-                                        <span class="pg-seg" role="group" aria-labelledby="sf_rule_rounding_label">' . $segments . '</span>
+                                        <span class="pg-seg pg-seg-wrap" role="group" aria-labelledby="sf_rule_rounding_label">' . $segments . '</span>
                                     </div>
                                     <div class="col-12 md:col-6">
                                         <label class="pg-field-label" for="sf_rule_floor">' . h(lang('Minimum margin %')) . '</label>
