@@ -5,7 +5,7 @@ module: feedback_sends
 ---
 
 ## When does the pass send?
-- `pg_feedback_job_run(time())` in `job.php`, before the mail pass: periodic rounds first, then sent rows older than 30 days become status 4 (no answer).
+- `pg_feedback_job_run(time())` in `job.php`, before the mail pass: periodic rounds first, then sent rows older than 30 days become status 4 (no answer), then the follow-ups' 48-hour escalation (`feedback-followup.md`).
 - Only between 09:00 and 20:00 site time (`pg_feedback_send_time()`, the PHP zone `init.php` sets) and only while `pg_feedback_sender()` finds `pg_feedback_message_send($row, $survey, $reminder)` (it loads `feedback_answer.php`, `platform/feedback-answer.md`): up to 200 due rows (`token_hash` set) of e-mail, SMS, or WhatsApp of a survey whose template can be sent (`pg_feedback_due_channel_sql()`, `feedback-whatsapp.md`; others wait queued), then up to 200 reminders.
 - First, a queued row due more than 30 days ago is cancelled: its link can no longer be answered.
 

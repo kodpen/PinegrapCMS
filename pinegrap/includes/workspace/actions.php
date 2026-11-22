@@ -5278,6 +5278,12 @@ function ws_handle_action($action, $request)
                 return ws_action_error($result['error']);
             }
 
+            // How a survey follow-up ended, asked by the drawer as it closes
+            // the task (includes/fn/feedback_followup.php).
+            if (function_exists('pg_feedback_outcome_set')) {
+                pg_feedback_outcome_set($task['id'], pg_feedback_outcome_valid($request['outcome'] ?? ''));
+            }
+
             $task = ws_task($task['id']);
 
             return ws_action_ok(array(

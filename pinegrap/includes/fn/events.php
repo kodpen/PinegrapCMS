@@ -342,6 +342,8 @@ function pg_event_workspace_events()
         'referral.rewarded',
         'course.completed',
         'ticket.checked_in',
+        'feedback.received',
+        'feedback.detractor',
         'erp.invoice.created',
         'erp.invoice.paid',
         'erp.invoice.overdue',

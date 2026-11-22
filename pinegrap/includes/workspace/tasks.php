@@ -333,6 +333,9 @@ function ws_task_detail($viewer, $task)
     $detail['links'] = ws_task_links_detail($viewer, $task, $detail['can_edit']);
     $detail['delegation'] = ws_task_delegation_detail($viewer, $task);
     $detail['approvals'] = function_exists('ws_task_approvals_detail') ? ws_task_approvals_detail($viewer, $task) : null;
+    // A low survey score's follow-up: the answer and how it ended
+    // (includes/fn/feedback_followup.php).
+    $detail['feedback'] = function_exists('pg_feedback_followup_part') ? pg_feedback_followup_part((int) $task['id'], $tokens) : null;
 
     // The time on the due date and the e-mail reminder (reminders.php).
     if (function_exists('ws_task_reminder_detail')) {

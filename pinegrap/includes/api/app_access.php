@@ -333,6 +333,7 @@ function api_app_event_area($name, $module_label = '') {
 		'ticket'          => 'Calendars',
 		'campaign'        => 'Campaigns',
 		'course'          => 'Courses',
+		'feedback'        => 'Surveys',
 		'erp'             => 'ERP',
 		'workspace'       => 'Workspace'
 	);

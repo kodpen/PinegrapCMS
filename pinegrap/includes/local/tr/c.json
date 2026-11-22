@@ -232,6 +232,7 @@
     "Callback URL": "Geri Çağırma Adresi",
     "Called": "Çağrıldı",
     "Called Off": "İptal Edildi",
+    "Called back": "Geri arandı",
     "Called by the staff on the day: On, Called Off or Moved.": "O gün personel belirler: Açık, İptal Edildi ya da Ertelendi.",
     "Called with @ in the channels: 2 to 32 small letters, digits, - or _.": "Kanallarda @ ile çağrılır: 2 ile 32 arası küçük harf, rakam, - ya da _.",
     "Called {var:1} min ago": "{var:1} dk önce çağrıldı",

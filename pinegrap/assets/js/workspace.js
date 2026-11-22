@@ -7170,6 +7170,11 @@
                 body.appendChild(window.PGWsTaskApproval.drawer(task, partHelpers()));
             }
 
+            // The survey answer a low score's follow-up is about.
+            if (task && task.feedback) {
+                body.appendChild(self.feedbackPart(task, editable));
+            }
+
             // Notes: anyone who can see the task may add one.
             self.notesBox = (task && task.work) ? el('div', 'ws-task-notes') : null;
 
@@ -7748,8 +7753,74 @@
             return wrap;
         },
 
-        setStatus: function (status) {
+        // A survey follow-up's answer and how it ended (called, solved, not
+        // reached): chosen here, or asked when the task is marked done.
+        feedbackPart: function (task, editable) {
+            var part = task.feedback;
+            var wrap = el('div', 'ws-task-links ws-task-feedback');
+            var head = el('div', 'ws-task-links-head');
+
+            head.appendChild(icon('bi-chat-square-heart', 'me-1'));
+            head.appendChild(el('span', 'fw-semibold', part.title));
+            wrap.appendChild(head);
+            wrap.appendChild(el('div', 'small mt-1', part.score));
+
+            if (part.comment) {
+                wrap.appendChild(el('blockquote', 'small fg-secondary mt-1 mb-0 text-break', part.comment));
+            }
+
+            wrap.appendChild(el('div', 'small fg-secondary mt-3 mb-1', part.label));
+
+            var seg = this.outcomeSeg(part, part.outcome, function (value) {
+                api('ws_task_status', { task_id: task.id, status: task.status, outcome: value }).then(function () {
+                    part.outcome = value;
+                    seg.pick(value);
+                    toast(t('task_saved'), 'success');
+                }).catch(fail);
+            });
+
+            Object.keys(seg.items).forEach(function (key) {
+                seg.items[key].disabled = !editable;
+            });
+            wrap.appendChild(seg.node);
+
+            return wrap;
+        },
+
+        // The outcome choice, its pressed item shown by pick(value).
+        outcomeSeg: function (part, current, onPick) {
+            var seg = formParts.seg(part.label, part.outcomes, onPick, 'flex-wrap');
+
+            seg.pick = function (value) {
+                Object.keys(seg.items).forEach(function (key) {
+                    seg.items[key].setAttribute('aria-pressed', (String(key) === String(value)) ? 'true' : 'false');
+                    seg.items[key].classList.toggle('is-active', String(key) === String(value));
+                });
+            };
+            seg.pick(current);
+
+            return seg;
+        },
+
+        setStatus: function (status, outcome) {
             var self = this;
+            var part = self.task.feedback;
+
+            // A survey follow-up asks how it ended before it is closed.
+            if ((status === 'done') && part && !part.outcome && !outcome) {
+                var chosen = 0;
+                var seg = self.outcomeSeg(part, 0, function (value) {
+                    chosen = value;
+                    seg.pick(value);
+                });
+
+                ask(part.label, t('mark_done'), false, seg.node).then(function (yes) {
+                    if (yes) {
+                        self.setStatus(status, chosen || -1);
+                    }
+                });
+                return;
+            }
 
             // Started while it waits for open tasks: asked, not refused.
             if ((status === 'doing') && window.PGWsTaskLinks && self.task.blocked_by && self.task.blocked_by.length && !self.startAnyway) {
@@ -7764,7 +7835,7 @@
 
             self.startAnyway = false;
 
-            api('ws_task_status', { task_id: self.task.id, status: status }).then(function () {
+            api('ws_task_status', { task_id: self.task.id, status: status, outcome: (outcome > 0) ? outcome : '' }).then(function () {
                 toast(t('task_saved'), 'success');
                 self.open(self.task.id, null, self.onSaved);
 

@@ -21,8 +21,8 @@ module: feedback_answer
 - After the answer: a thank-you line, the review invitation (`pg_feedback_review_url()`, the same for every score: a delivery's first product review form, else Google's write-a-review page of `pg_grev_state()['place_id']`; none when the survey's switch is off or nothing is set), "Change my answer" while changeable.
 - "Don't ask me again" at the foot of both states and in every e-mail: the stop page asks, its POST sets `stopped` on the row and cancels that person's queued rows (`pg_feedback_stop()`); the fatigue rule reads `stopped` for good.
 
-## What is still to come?
-- FD5: the follow-up of a low score and the `feedback.received` event on the answer write. "Send me a test" still sends unlinked buttons (no row, no token).
+## What follows a written answer?
+- `pg_feedback_answered()`: `feedback.received`, and a low score's follow-up ([[feedback-followup]]). "Send me a test" still sends unlinked buttons (no row, no token).
 
 Test: `tests/feedback_answer_test.php`.
 

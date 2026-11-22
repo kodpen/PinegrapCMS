@@ -299,6 +299,10 @@ function ws_flow_event_outputs()
     $rhythm = array($value('stage', 'text', lang('Rhythm stage')), $value('previous_stage', 'text', lang('Stage before')),
         $value('interval_days', 'number', lang('Days between orders')), $value('days_since_last_order', 'number', lang('Days since the last order')),
         $value('chance', 'number', lang('Chance of ordering again (%)')), $value('last_order_number', 'text', lang('Last order number')));
+    // A satisfaction survey's answer (pg_feedback_event_payload()).
+    $feedback = array($value('survey_name', 'text', lang('Survey')), $value('kind', 'text', lang('Kind')), $value('touchpoint', 'text', lang('Touchpoint')),
+        $value('record_type', 'text', lang('Record type')), $value('record_id', 'number', lang('Record')), $value('contact_id', 'number', lang('Contact')),
+        $value('score', 'number', lang('Score')), $value('band', 'text', lang('Band')), $value('comment', 'text', lang('Comment')));
     $booking = array($value('name', 'text', lang('Name')), $value('email', 'text', lang('E-mail')), $value('start_at', 'text', lang('Start')),
         $value('end_at', 'text', lang('End')), $value('status', 'text', lang('Status')), $value('service_name', 'text', lang('Service')),
         $value('staff_name', 'text', lang('Staff member')));
@@ -364,6 +368,8 @@ function ws_flow_event_outputs()
         'erp.quote.rejected'     => $quote,
         'course.completed'       => array($value('name', 'text', lang('Course')), $value('user_id', 'number', lang('User')), $value('contact_id', 'number', lang('Contact')),
             $value('completed_at', 'text', lang('Completed on'))),
+        'feedback.received'      => $feedback,
+        'feedback.detractor'     => array_merge($feedback, array($value('owner_id', 'number', lang('Owner')), $value('task_id', 'number', lang('Task')))),
         'credit.issued'          => $credit,
         'credit.expired'         => $credit,
         'referral.rewarded'      => array($value('customer_id', 'number', lang('Contact')), $value('order_id', 'number', lang('Order')), $value('amount', 'number', lang('Amount')),
