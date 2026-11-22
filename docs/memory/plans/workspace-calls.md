@@ -18,7 +18,7 @@ description: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls i
 - CL4 (M) after CL3: screen sharing, one at a time, shown large (done, #10908).
 - CL5, guests (done, #10975; `workspace/calls-guest.md`): the guest page's Join to a running call; a guest never starts one.
 - CL6, settings (done, #10608; `workspace/calls-settings.md`): the "Calls" card in Site Settings › Channels: on or off (off until turned on), the STUN addresses (the default named on the card), an optional TURN relay (addresses, user, sealed secret; short-lived credentials only with a granted start or join) and "Test the connection" in the browser.
-- CL7 (S) after CL5: the channel's lines, "Call started", "Call ended" with its length and who took part, a missed call to the one who did not answer; counts as activity, never as a message to an agent.
+- CL7 (S) after CL5: the channel's lines, "Call started", "Call ended" with its length and who took part, a missed call to the one who did not answer; counts as activity, never as a message to an agent. (done, #11125; `workspace/calls-lines.md`)
 - CL8 (M) after CL7: phone and endurance, the call screen on a phone, the route kept when the network changes (ICE restart), a closed tab leaves the call, a second tab of the same person does not join twice.
 - Order CL1, CL2, CL6, CL3, CL4, CL5, CL7, CL8, each waits for the one before it; one PR each, a and b where a step passes the size.
 
