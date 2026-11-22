@@ -127,7 +127,8 @@
 - marketplace-repricer-steps.md: Plan marketplace-repricer, steps RP1 to RP6: tables, rules and floor, the account's Pricing part, the buybox read, the robot with try-first and log, API, close-out
 - marketplace-repricer.md: Plan (owner 2026-11-20, poll 173): a price per marketplace account by rules, a profit floor per product, Trendyol buybox reads and a repricer that never goes under the floor; RP1 to RP6
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
-- mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
+- mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
+- mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M7), M8 given out beside the other plans, decisions, how its needs arrive
 - office-own-code-os1-census.md: OS1 census of plan office-own-code: the panel lists that export CSV today (screen, file, request, columns), most used first, those left out, the size
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2

@@ -522,6 +522,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-97.md: Where are the rules and the earlier parts?
 - decisions-made-product-97.md: Does the firewall refuse AI training crawlers while "Allow AI training" is on? (owner, 2026-11-21, agent channel poll 216, channel message 11488)
 - decisions-made-product-97.md: How does a training crawler pass? (architect, 2026-11-21)
+- decisions-made-product-98.md: Where are the rules and the earlier parts?
+- decisions-made-product-98.md: Does the mobile API work wait for the other plans? (owner, 2026-11-22, in the architect's window)
 - decisions-made-product.md: Which checkout and storefront behaviour stays?
 - decisions-made-product.md: Which translation decisions stand?
 - decisions-made-product.md: How does the visual editor save a live page?
