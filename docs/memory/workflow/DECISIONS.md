@@ -700,6 +700,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-47.md: Which columns do the volunteer tables have? (architect, 2026-11-21, #10949)
 - decisions-made-schema-47.md: How are a volunteer's document file and erasure handled? (architect, 2026-11-21)
 - decisions-made-schema-47.md: Which migration label do two table steps open at once take?
+- decisions-made-schema-48.md: Where are the rules and the earlier parts?
+- decisions-made-schema-48.md: Does erp_order_costs.source gain "supplier"? (architect, 2026-11-22, agent channel message 11988, #11121)
+- decisions-made-schema-48.md: How is a value appended to an ENUM of the open version? (architect, 2026-11-22)
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
