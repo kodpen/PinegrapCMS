@@ -588,7 +588,7 @@ function pg_captcha_settings_fields()
         $html .= '
                                         <div class="col-12">
                                             <div class="d-flex flex-wrap align-items-center gap-3">
-                                                <span class="fw-bold">' . h($definition['label']) . '</span>
+                                                <h3 class="pg-group-label mb-0">' . h($definition['label']) . '</h3>
                                                 <span class="pg-text-meta">' . h($stored ? lang('Keys stored') : lang('No keys yet')) . '</span>
                                                 <a class="pg-button pg-button-quiet pg-button-sm" href="' . h('connections.php?service=' . $key) . '"><i class="bi bi-plug" aria-hidden="true"></i>' . h($stored ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
                                             </div>
