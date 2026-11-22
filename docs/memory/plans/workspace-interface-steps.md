@@ -22,6 +22,7 @@ description: Plan workspace-interface, steps WI1 to WI3 (the list line): rows an
 - The list is checked on a Workspace screen and on one other panel screen (first click loads it), in the phone drawer, and with the menu narrowed to the rail.
 - Every new control is reached and worked from the keyboard; a mouse-only shortcut inside a link follows `workspace/workspace-nested-controls.md`.
 - Turkish for every new text with `php tools/tr_add.php`.
+- A step keeps `workspace-interface-details.md`, which holds what the boards cannot show.
 - A step that finds it needs a column, a right or an API route stops and asks the architect.
 
 Related: docs/memory/plans/workspace-interface.md, docs/memory/plans/workspace-interface-list.md, docs/memory/plans/workspace-interface-steps-2.md

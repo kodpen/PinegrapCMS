@@ -13,7 +13,7 @@ description: Plan workspace-interface, the list in words (boards L1 to L3): rows
 
 ## How is a row drawn? (board L3)
 - 30 px high. An 18 px tile in the channel's colour holds `#`, the lock of a private channel or the icon the channel was given; then the name.
-- Unread: the name at weight 600 and the count in a quiet pill. A channel that mentions the reader: the count in the accent.
+- Unread: the name at weight 600 and the count in a quiet pill. A channel that mentions the reader: the number of mentions in the accent (`workspace-interface-details.md` has the rules of the numbers, the filter and the keys).
 - A pinned channel shows its pin only when pointed at; pointing shows the pin and the "⋯" menu in the count's place. The open channel has the quiet fill and an accent line at its left.
 - Muted (`notify` none): the name in the third text colour, a bell with a stroke, a dot in place of the count.
 - A draft kept for the channel (`draftKey()` in localStorage): a pencil at the row's end; it goes when the draft is sent or cleared.

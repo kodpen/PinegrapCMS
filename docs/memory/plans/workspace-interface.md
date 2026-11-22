@@ -20,8 +20,8 @@ priority: 6
 - The top bar's description of a screen runs under the search field.
 - Nothing marks where the unread messages of a channel begin.
 
-## May its steps be given out?
-- Not before the owner's word on the drawings is in `workflow/decisions-made-workspace-48.md`. So far he accepted the tools dock and refused its folded row of icons; the channels not joined, the panel's foot and what the plan adds wait.
+## Is it accepted?
+- Yes. Owner (2026-11-22): the tools dock as drawn and never folded; then on everything else of the two sheets: "gerisi uygun detaylı açıklandıysa ok". The rules the boards cannot show are in `workspace-interface-details.md`.
 
 ## What does the plan settle itself?
 - The list's place, order and access rules stay (`workflow/decisions-made-workspace.md`, `-5.md`, `-6.md`): one list in the main menu's Workspace panel; search, Today, Channels, My discussions, Tools and More; only what the server sends is drawn.
@@ -42,4 +42,4 @@ priority: 6
 ## What binds it?
 - `workflow/decisions-made-workspace-48.md`; `ui/screen-composition-rules.md`; `ui/look-new-parts.md`; `ui/page-button-bar.md`; `ui/main-menu-panel-scripts.md`; the key rule on `ws_nav_groups()` in `workspace/README.md`.
 
-Related: docs/memory/plans/workspace-interface-list.md, docs/memory/plans/workspace-interface-screens.md, docs/memory/plans/workspace-interface-steps.md, docs/memory/plans/workspace-interface-steps-2.md, docs/memory/workspace/workspace-menu-list.md, docs/memory/workspace/workspace-menu-tools.md
+Related: docs/memory/plans/workspace-interface-list.md, docs/memory/plans/workspace-interface-details.md, docs/memory/plans/workspace-interface-screens.md, docs/memory/plans/workspace-interface-steps.md, docs/memory/plans/workspace-interface-steps-2.md, docs/memory/workspace/workspace-menu-list.md, docs/memory/workspace/workspace-menu-tools.md
