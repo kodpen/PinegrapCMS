@@ -12,8 +12,12 @@ description: Create/Edit Page and the designer's Page Type pane save an emptied 
 ## Why?
 - The columns are INT UNSIGNED and the session sql_mode is not strict (`includes/fn/core.php`), so a blank was stored as 0. The site reads 0 as none: `get_photo_gallery.php` printed an empty gallery on a system layout; the directory summary said "last 0 days" with `LIMIT 0` and listed nothing. The edit screen then showed 0, not the default.
 
+## What does the column box show for a stored 0?
+- 4, the value a save stores: `pg_page_form_photo_gallery_columns_shown()` (`includes/forms/page_form.php`) draws the stored count, or 4 when none is stored or it is below 1, on Edit Page and the designer's Page Type pane.
+- Why (PR #PRNUM): older saves and the starter's gallery pages (custom layouts, which do not read the count) store 0; the box showed 0, so saving the page as drawn failed the columns check (1-99, `ui/page-form-number-ranges.md`).
+
 ## Which zeros are kept on purpose?
-- Photo Gallery Thumbnail Max Size 0 (a full-size image) and Calendar View Number of Upcoming Events 0 (all events).
+- Photo Gallery Thumbnail Max Size 0 (a full-size image, accepted by the check: `ui/page-form-number-ranges.md`) and Calendar View Number of Upcoming Events 0 (all events).
 
 ## Tests
 - `tests/page_form_blank_defaults_test.php`.
