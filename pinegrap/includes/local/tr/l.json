@@ -521,6 +521,7 @@
     "Leave a hello on Jane's guest book and see who else dropped by.": "Ayşe'nin ziyaretçi defterine bir merhaba bırakın ve başka kimlerin uğradığını görün.",
     "Leave a legacy": "Kalıcı bir iz bırakın",
     "Leave a review on the maker's page; every review is read.": "Üreticinin sayfasına bir değerlendirme bırakın; her değerlendirme okunur.",
+    "Leave a text empty for the standard one. {name} and {programme} are filled in.": "Standart metin için boş bırakın. {name} ve {programme} doldurulur.",
     "Leave a text empty for the standard one. {number}, {desk} and {link} are filled in. At most three messages go for a number.": "Standart metin için boş bırakın. {number}, {desk} ve {link} doldurulur. Bir numara için en çok üç mesaj gider.",
     "Leave all unticked to review every category.": "Her kategoriyi değerlendirmesi için hiçbirini işaretlemeyin.",
     "Leave as is": "Olduğu gibi bırak",
