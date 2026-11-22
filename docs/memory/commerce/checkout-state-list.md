@@ -1,6 +1,6 @@
 ---
 name: checkout-state-list
-description: The checkout's state as a text box and a pick list (_eo_fit_state_lists(), #6146), one state script per address (data-pg-sa-for), the order screen's İlçe/İl billing labels
+description: The checkout's state as a text box and a pick list (_eo_fit_state_lists(), #6146), one state script per address (data-pg-sa-for)
 module: widgets_express_order, widgets_shipping_address
 ---
 
@@ -19,7 +19,7 @@ module: widgets_express_order, widgets_shipping_address
 - The editor's canvas shows the starter's text box; the list is added at render.
 
 ## What else came with it?
-- `view_order.php`'s billing card names the city and state by `pg_address_labels($billing_country)`: İlçe / İl for a Turkish address.
+- `view_order.php`'s billing card prints the address as a postal address with no City or State label (address block, `commerce/order-screen-side-panel.md`).
 - The unlisted-district note (`tr-place-list.md`) reads "Bu ilçe listede yok. …" and "Bu ilçe {il} ilçeleri arasında yok. …".
 
 ## Where is it tested?

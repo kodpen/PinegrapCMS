@@ -1716,6 +1716,7 @@
     "{var:1} order(s), by the order date": "{var:1} sipariş, sipariş tarihine göre",
     "{var:1} ordered for the first time this month, and that order is worth a look.": "{var:1} bu ay ilk kez sipariş verdi; o siparişe bakmaya değer.",
     "{var:1} ordered for the first time this month.": "{var:1} bu ay ilk kez sipariş verdi.",
+    "{var:1} orders": "{var:1} sipariş",
     "{var:1} orders came in over the last day.": "Son bir günde {var:1} sipariş geldi.",
     "{var:1} orders came in today and the day is not over yet.": "Bugün {var:1} sipariş geldi ve gün daha bitmedi.",
     "{var:1} orders came in today, ahead of yesterday.": "Bugün {var:1} sipariş geldi, dünkünden iyi.",

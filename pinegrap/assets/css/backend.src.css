@@ -36049,3 +36049,60 @@ button.pg-var-chip:focus-visible {
 }
 
 }
+
+/* ==========================================================================
+   Look A: address block.
+   A postal address in a card (View Order's Billing Information; Design
+   examples "Address block"): <address class="pg-address"> with its lines,
+   the name line set apart; a grey line under it with a check ("Same as the
+   shipping address"); a label and value list after the block starts under
+   a hairline. The order screen's own classes only place its parts: the
+   Payment card's two halves side by side when there is room, the customer's
+   picture beside the name.
+   ========================================================================== */
+@layer custom {
+
+.pg-address {
+  margin: 0;
+  font-size: var(--pg-text-2);
+  font-style: normal;
+  line-height: var(--pg-leading);
+  overflow-wrap: anywhere;
+}
+.pg-address-name {
+  font-weight: var(--pg-weight-medium);
+}
+.pg-address-same {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+.pg-address-block + .pg-kv {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: var(--pg-border-width) solid var(--pg-border-color);
+}
+
+.pg-order-pay {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 20px 32px;
+}
+.pg-order-pay-method,
+.pg-order-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pg-order-pay-method-text,
+.pg-order-who-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+}

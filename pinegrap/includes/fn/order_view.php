@@ -10,7 +10,9 @@
  * shipping card (print_order.php), the totals rows of the customer's printed
  * invoice (order_invoice_print.php), and the shipping input the screen and
  * update_order() check (ship and delivery dates, shipped quantity), the
- * column of cards the screen stacks, and the order lines under them.
+ * column of cards the screen stacks, and the order lines under them; the
+ * side panel's address block, its "Same as the shipping address" check, the
+ * count of the contact's orders and the rows of its label and value lists.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -857,4 +859,193 @@ function pg_order_view_counts_text($items, $units)
 
     return lang(array('string' => ($items === 1) ? '{var:1} item' : '{var:1} items', 'vars' => array($items)))
         . ', ' . lang(array('string' => ($units === 1) ? '{var:1} unit' : '{var:1} units', 'vars' => array($units)));
+}
+
+/**
+ * The parts of an order address the address block and the equal-address
+ * check read, trimmed: name, company, the two street lines, city, state,
+ * postcode, country (a ship_tos row, or pg_order_view_billing_address()).
+ *
+ * @param array $address
+ * @return array
+ */
+function pg_order_view_address_parts(array $address)
+{
+    $parts = array();
+
+    foreach (array('first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'zip_code', 'country') as $key) {
+        $parts[$key] = is_scalar($address[$key] ?? null) ? trim((string) $address[$key]) : '';
+    }
+
+    return $parts;
+}
+
+/**
+ * An order address as the lines of a postal address, plain text: "name ·
+ * company", the street lines, "city, state postcode, country". An empty
+ * part is left out, and a line left with nothing is not printed; the
+ * country is named as pg_order_view_country() names it.
+ *
+ * @param array $address see pg_order_view_address_parts()
+ * @return array list of strings, empty when nothing is stored
+ */
+function pg_order_view_address_lines(array $address)
+{
+    $a = pg_order_view_address_parts($address);
+
+    $join = function (array $parts, $glue) {
+        return implode($glue, array_filter($parts, 'strlen'));
+    };
+
+    $place = $join(array(
+        $a['city'],
+        $join(array($a['state'], $a['zip_code']), ' '),
+        trim((string) pg_order_view_country($a['country'])),
+    ), ', ');
+
+    return array_values(array_filter(array(
+        $join(array($join(array($a['first_name'], $a['last_name']), ' '), $a['company']), ' · '),
+        $a['address_1'],
+        $a['address_2'],
+        $place,
+    ), 'strlen'));
+}
+
+/**
+ * The address block (Design examples, "Address block"): the address's lines
+ * escaped, the name line set apart. A name and no company, or a company
+ * alone, is the first line; with neither the street comes first.
+ *
+ * @param array  $address see pg_order_view_address_parts()
+ * @param string $id      the block's id, for a copy button's selection
+ * @return string '' when nothing is stored
+ */
+function pg_order_view_address_block(array $address, $id = '')
+{
+    $lines = pg_order_view_address_lines($address);
+
+    if ($lines === array()) {
+        return '';
+    }
+
+    $a = pg_order_view_address_parts($address);
+    $html = array_map('h', $lines);
+
+    if ((($a['first_name'] !== '') || ($a['last_name'] !== '')) && ($a['company'] !== '')) {
+        $name = trim($a['first_name'] . ' ' . $a['last_name']);
+        $html[0] = '<span class="pg-address-name">' . h($name) . '</span> · ' . h($a['company']);
+    } elseif (($a['first_name'] !== '') || ($a['last_name'] !== '') || ($a['company'] !== '')) {
+        $html[0] = '<span class="pg-address-name">' . $html[0] . '</span>';
+    }
+
+    return '<address class="pg-address"' . (((string) $id !== '') ? ' id="' . h((string) $id) . '"' : '') . '>' . implode('<br>', $html) . '</address>';
+}
+
+/**
+ * The order's billing address in the keys of a ship_tos row.
+ *
+ * @param array $order the orders row
+ * @return array
+ */
+function pg_order_view_billing_address(array $order)
+{
+    $address = array();
+
+    foreach (array('first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'zip_code', 'country') as $key) {
+        $address[$key] = is_scalar($order['billing_' . $key] ?? null) ? (string) $order['billing_' . $key] : '';
+    }
+
+    return $address;
+}
+
+/**
+ * Whether the billing address reads "Same as the shipping address": the
+ * order has exactly one address and every part of it is equal to the
+ * billing one after trimming, whatever the letters' case (folded the
+ * Turkish way, pg_list_search_fold(): I, İ, ı and i are one letter). An
+ * empty address is no address.
+ *
+ * @param array $billing  pg_order_view_billing_address()
+ * @param array $ship_tos the order's lines' ship_tos rows (ship_to_id 0 for
+ *                        a line that ships nowhere)
+ * @return bool
+ */
+function pg_order_view_same_address(array $billing, array $ship_tos)
+{
+    $addresses = array();
+    foreach ($ship_tos as $ship_to) {
+        if ((int) ($ship_to['ship_to_id'] ?? 0) > 0) {
+            $addresses[(int) $ship_to['ship_to_id']] = $ship_to;
+        }
+    }
+
+    if (count($addresses) !== 1) {
+        return false;
+    }
+
+    $fold = function (array $address) {
+        return array_map('pg_list_search_fold', pg_order_view_address_parts($address));
+    };
+
+    $billing = $fold($billing);
+
+    return (implode('', $billing) !== '') && ($billing === $fold(reset($addresses)));
+}
+
+/**
+ * "First order" or "N orders": the count of the contact's orders. Plain
+ * text; '' when none is counted.
+ *
+ * @param mixed $count pg_order_view_contact_orders_count()
+ * @return string
+ */
+function pg_order_view_orders_count_text($count)
+{
+    $count = (int) $count;
+
+    if ($count < 1) {
+        return '';
+    }
+
+    if ($count === 1) {
+        return lang('First order');
+    }
+
+    return lang(array('string' => '{var:1} orders', 'vars' => array($count)));
+}
+
+/**
+ * The contact's orders that are not incomplete, this one counted: one query.
+ *
+ * @param mixed $contact_id orders.contact_id
+ * @return int 0 for no contact
+ */
+function pg_order_view_contact_orders_count($contact_id)
+{
+    $contact_id = (int) $contact_id;
+
+    if ($contact_id < 1) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT COUNT(*) FROM orders WHERE contact_id = '" . $contact_id . "' AND status <> 'incomplete'");
+}
+
+/**
+ * One row of a `.pg-kv` list of the order screen: the label and its value
+ * as a grouped pair, nothing when the value is empty.
+ *
+ * @param string $label      the label, plain text (escaped here)
+ * @param string $value_html the value: escaped text, or markup the caller built
+ * @return string
+ */
+function pg_order_view_kv($label, $value_html)
+{
+    $value_html = (string) $value_html;
+
+    if (trim($value_html) === '') {
+        return '';
+    }
+
+    return '<div><dt>' . h((string) $label) . '</dt><dd>' . $value_html . '</dd></div>';
 }
