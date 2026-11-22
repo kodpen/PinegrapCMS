@@ -1597,6 +1597,36 @@ function pg_request_list_fits($value, $levels)
     return true;
 }
 
+/**
+ * Refuses a record screen's save when a posted field carries a list its form
+ * does not draw (pg_request_unexpected_lists()): the form error "Sorry, the
+ * value you entered for {names} is not valid." and a redirect back to the
+ * screen, before the fields reach the session or anything is written.
+ * Returns when every field fits.
+ *
+ * The record saves write the fields they read, so a field read as not given
+ * would be saved blank; (string) of a list logged "Array to string
+ * conversion" and saved "Array".
+ *
+ * @param  liveform $liveform the screen's form
+ * @param  string   $screen   the screen to go back to, below the software
+ *                            directory, with its query string
+ * @param  array    $lists    name => levels of keys of the fields the form
+ *                            draws as lists
+ * @return void
+ */
+function pg_request_refuse_lists($liveform, $screen, $lists = array())
+{
+    $names = pg_request_unexpected_lists($_POST, $lists);
+
+    if (!$names) {
+        return;
+    }
+
+    $liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $names)))));
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $screen);
+}
+
 function escape_url($url)
 {
     if (!is_scalar($url) || $url === '') {
