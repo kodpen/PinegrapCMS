@@ -433,6 +433,8 @@ description: Generated from the module field of the memory files: each includes/
 - `visitor_report`: [[visitor-report-filters-and-form]]
 - `visitor_retention`: [[visitor-channel-rule]], [[visitor-daily-summary]], [[visitor-disk-unknown]]
 - `voice_text`: [[voice-browser-to-text]], [[workspace-voice-browser-route]]
+- `volunteer_board`: [[volunteer-board]]
+- `volunteer_board_view`: [[volunteer-board]]
 - `volunteer_programme_setup`: [[volunteer-programmes]]
 - `volunteer_programmes`: [[volunteer-programmes]]
 - `volunteer_shifts`: [[volunteer-shift-rules]]
