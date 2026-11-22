@@ -5,8 +5,8 @@ module: privacy_retention
 ---
 
 ## Which rules are there?
-- `pg_privacy_rules_catalogue()` (`includes/fn/privacy_retention.php`): `contacts` (passive, 3 years, 1-20), `forms` (2 years, 1-20; per form by page id, 0 keeps that form), `carts` (incomplete orders, 90 days, at least 31), `orders` (years the shop types, 1-30; empty is never), `requests` (closed privacy requests, 3 years from `closed_at`, 1-20, own entry, no person skip; `privacy-requests.md`), `chats` (`privacy-rule-site-chats.md`).
-- Every rule is off by default. Defaults are suggestions, not legal advice.
+- `pg_privacy_rules_catalogue()` (`includes/fn/privacy_retention.php`): `contacts` (passive, 3 years, 1-20), `forms` (2 years, 1-20; per form by page id, 0 keeps that form), `carts` (incomplete orders, 90 days, at least 31), `orders` (years the shop types, 1-30; empty is never), `requests` (closed privacy requests, 3 years from `closed_at`, 1-20, own entry only, no person skip; `privacy-requests.md`). Every rule is off by default. Defaults are suggestions, not legal advice.
+- `chats` (site chats): `privacy-rule-site-chats.md`.
 - The pass interval: 1 to 183 days (never longer than six months), default 1 (`pg_privacy_rules_interval_limits()`).
 
 ## Where are they kept?
@@ -14,11 +14,11 @@ module: privacy_retention
 
 ## Who may change them?
 - `pg_privacy_rules_may_change()`: role <= 2, who saves Site Settings (`pg_settings_reader()`); all who open the Privacy centre read them. `pg_privacy_rules_save()` and `pg_privacy_rule_approve()` refuse others.
-- A rule switched on, off, or given another period (forms: other per-form periods) loses its yes (`pg_privacy_rules_from_input()`), so its next run is a dry run again.
+- A rule switched on, off, or given another period (forms: other per-form periods) loses its yes (`pg_privacy_rules_from_input()`): its next run is a dry run.
 
 ## How does a rule run?
 - First `pg_privacy_rule_dry_run()`: total rows, the first 200 checked (counts per erase entry, skips), five sample ids; nothing written. The yes (`pg_privacy_rule_approve()`) lets the nightly pass run it.
-- `job.php`: `pg_privacy_rules_due()` (midnight to six, site time; a rule on, approved, past its interval or under way) and `pg_privacy_rules_run(5)`: 25 ids a query from the last id done, one row at a time inside the budget; the state is saved after each rule.
+- `job.php`: `pg_privacy_rules_due()` (midnight to six, site time; a rule on, approved, past its interval or under way) and `pg_privacy_rules_run(5)`: 25 ids a query from the last id done, a row at a time within the budget; state saved after each rule.
 - Each row goes through `pg_privacy_erase_run($scope, $apply, pg_privacy_rule_entries($key))`, the erasure's own entries and actions: contacts as the whole person (`pg_privacy_erase_scope()`); forms as the submission with its files and revisions; carts the `ship_tos` and `orders` entries (row kept, the orders entry's own field set, `pg_privacy_rule_cart_fields()`); orders `ship_tos`, `order_returns`, `shipment_labels`, `orders`.
 - No rule reaches `pg_privacy_rules_never_entries()`: ERP accounts, invoices, quotes, waybills, `order_documents`.
 - Carts and orders are picked only while still personal (`pg_privacy_rule_pending_where()`), so an anonymised row is not taken again.
