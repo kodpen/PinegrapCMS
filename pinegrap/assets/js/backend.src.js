@@ -2203,9 +2203,9 @@ $(document).ready(function () {
 
     // The bell's drawer (output.php): one list load per opening, started on
     // show so the list is on its way while the drawer slides in. The head's
-    // actions wait for the list's counts.
+    // menu stands; its items and the pill wait for the list's counts.
     pgUI.drawer.on('#notifications', 'show', function () {
-        $('#notifications').find('.pg-bell-head-menu').addClass('d-none');
+        $('#notifications').find('.pg-bell-head-menu .pg-bell-menu-item').prop('disabled', true);
         $('#notifications').find('.pg-bell-new').prop('hidden', true);
         $('#notification_toggle').addClass('show');
         get_notifications();
@@ -3338,8 +3338,15 @@ function pg_push_init() {
 
     // Delegated: the system status card is drawn by ajax and redrawn every time
     // one of its jobs finishes, so its button is never the same element twice.
+    // The bell's switch moves on the click; a click that starts nothing
+    // (a request still running, the browser refusing) puts it back, and a
+    // finished request paints the truth (pg_push_paint()).
     $(document).on('click', '.pg-push-toggle', function () {
         pg_push_toggle();
+
+        if ((this.type === 'checkbox') && !pg_push.busy) {
+            this.checked = !!pg_push.subscribed;
+        }
     });
 }
 
@@ -3764,10 +3771,16 @@ function pg_push_hint($text) {
     $('#push_widget_row').removeClass('d-none');
 
     // The element is rendered with the home-screen sentence already in it, so an
-    // empty string here means "show what is there", not "blank the row".
+    // empty string here means "show what is there", not "blank the row". A
+    // browser that refuses puts "Notifications are off for this site" over
+    // the sentence.
+    var refused = ($text !== '') && ($text === (pg_push.strings.blocked || ''));
+
     if ($text !== '') {
-        $hint.text($text);
+        $hint.find('.pg-bell-foot-hint').text(refused ? (pg_push.strings.blocked_hint || $text) : $text);
     }
+
+    $hint.find('.pg-bell-foot-refused').prop('hidden', !refused);
 
     $hint.removeClass('d-none');
 }
@@ -3794,7 +3807,10 @@ function pg_push_paint($subscribed)
     $('.pg-push-toggle').prop('disabled', false);
     $('.pg-push-label').text($subscribed ? (pg_push.strings.on || '') : (pg_push.strings.off || ''));
 
-    $('#push_toggle').toggleClass('btn-outline', !$subscribed).toggleClass('btn-solid', $subscribed);
+    // The bell's foot is a switch row: the switch says the state, the bell
+    // beside it is filled while this device is told.
+    $('#push_toggle').prop('checked', !!$subscribed);
+    $('#push_row .pg-bell-foot-icon').toggleClass('bi-bell', !$subscribed).toggleClass('bi-bell-fill', !!$subscribed);
 
     $('#push_widget_note').text($subscribed ? (pg_push.strings.state_on || '') : (pg_push.strings.state_off || ''));
     $('#push_widget_row').removeClass('d-none');
@@ -4068,6 +4084,20 @@ var notification_scrollTop = 0;
 // list (and the buttons above it) is never drawn twice.
 var pgBellLoad = 0;
 
+// What the list is doing: loading (skeleton rows), failed (the failed
+// state) or ready (the rows, or the state the filters leave).
+var pgBellState = 'loading';
+
+// The loading state: a heading's bar and four rows of a tile and two bars,
+// as the list will stand; the reader of a screen hears "Loading...".
+function pg_bell_skeleton() {
+    var row = '<div class="pg-bell-skeleton-row"><span class="pg-bell-skeleton-tile"></span><span class="pg-bell-skeleton-lines"><span class="pg-bell-skeleton-bar"></span><span class="pg-bell-skeleton-bar"></span></span></div>';
+
+    return '<div class="pg-bell-skeleton" role="status"><span class="visually-hidden">' + h(lang('Loading...')) + '</span>'
+        + '<span class="pg-bell-skeleton-bar pg-bell-skeleton-day" aria-hidden="true"></span>'
+        + '<div aria-hidden="true">' + row + row + row + row + '</div></div>';
+}
+
 // What a refused or failed bell request says: the server's own sentence (a
 // translated refusal such as an ended session) or the generic failure line.
 function pg_bell_refusal(response, xhr) {
@@ -4126,7 +4156,6 @@ function get_notifications(keep_place) {
     const notifications = $('#notifications');
     const notifications_body = $('#notifications .pg-bell-scroll');
     const notifications_content = $('#notifications .pg-bell-scroll *');
-    var notifications_empty = $('#notifications .notifications_empty');
     var scroll_area = notifications_body;
     var kept_scroll = 0;
     var kept_row = '';
@@ -4141,14 +4170,12 @@ function get_notifications(keep_place) {
         }
     } else {
         scroll_area.scrollTop(0);
-
-        notifications_empty.addClass('d-none');
-
-        var spinner_content = '<div class="spinner text-center p-5"><div class="spinner-border fg-success" role="status"><span class="visually-hidden">' + lang('Loading...') + '</span></div></div>';
         notifications_content.remove();
 
-        //first of all we put a loading spinner while processing.
-        notifications_body.prepend(spinner_content);
+        // Four skeleton rows under a heading stand where the list will be.
+        pgBellState = 'loading';
+        pg_bell_filter_apply();
+        notifications_body.prepend(pg_bell_skeleton());
     }
 
     // Puts the scroll position and the focused row back after a keep_place
@@ -4166,20 +4193,22 @@ function get_notifications(keep_place) {
         }
     };
 
-    var spinner = $('#notifications .spinner');
+    var skeleton = $('#notifications .pg-bell-skeleton');
     var load = ++pgBellLoad;
 
-    // A refused or failed load: a list the reader opened shows why it is
-    // empty in place of the spinner. A keep_place redraw keeps the list it
-    // had. The unread badge is never touched: drawing the list reads nothing.
+    // A refused or failed load: a list the reader opened shows the failed
+    // state in place of the skeleton, with the server's sentence and "Try
+    // again". A keep_place redraw keeps the list it had. The unread badge
+    // is never touched: drawing the list reads nothing.
     var load_failed = function (response, xhr) {
         if (keep_place) {
             return;
         }
 
-        spinner.remove();
-        notifications_body.find('.pg-bell-failed').remove();
-        notifications_body.prepend($('<div class="pg-bell-failed fg-danger small text-center p-5" role="alert"></div>').text(pg_bell_refusal(response, xhr)));
+        skeleton.remove();
+        notifications.find('.pg-bell-failed .pg-bell-note-text').text(pg_bell_refusal(response, xhr));
+        pgBellState = 'failed';
+        pg_bell_filter_apply();
     };
 
     // we check notifications from api.php with ajax.
@@ -4215,11 +4244,10 @@ function get_notifications(keep_place) {
                 var output_notifications = '';
                 if (keep_place) {
                     notifications_body.children().remove();
-                    notifications_empty.addClass('d-none');
                 }
+                skeleton.remove();
+                pgBellState = 'ready';
                 if (data_length > 0) {
-                    // notification loading spinner remove
-                    spinner.remove();
 
                     // Each row laid out for the drawer (pg_bell_row()),
                     // under its day heading. A fold's runs follow their head
@@ -4256,10 +4284,7 @@ function get_notifications(keep_place) {
                         scroll_area.scrollTop(0);
                     }
                 } else {
-                    // notification loading spinner remove
-                    spinner.remove();
-                    // show no notification content.
-                    notifications_empty.removeClass('d-none');
+                    // No row at all: pg_bell_filter_apply() shows the empty state.
                     pg_bell_filter_apply();
                     scroll_area.scrollTop(0);
                 }
@@ -4823,30 +4848,78 @@ function pg_bell_filter_apply() {
         pill.hidden = !counts.unread;
     }
 
-    // "No Notification" stands for a list with no row left; a list the
-    // filters empty says so in one line.
-    if (rows.length) {
-        $(box).find('.notifications_empty').toggleClass('d-none', live > 0);
+    // One state of the list at most (pg_bell_state_note()): failed, no row
+    // at all, Unread with nothing unread, or filters that leave nothing.
+    // The filters stand only over rows, or while they load.
+    var note = pg_bell_state(pgBellState, live, shown, view, counts.unread || 0);
+
+    Array.prototype.forEach.call(box.querySelectorAll('.pg-bell-note'), function (item) {
+        item.hidden = (item.getAttribute('data-pg-bell-note') !== note);
+    });
+
+    if (bar) {
+        bar.hidden = (note === 'failed') || (note === 'empty');
     }
-    $(box).find('.pg-bell-no-match').toggleClass('d-none', (live === 0) || (shown > 0));
 
     pg_bell_search_mark(box, search);
 
-    // The head's menu: "Mark all as read" while a row is unread; "Delete
-    // All Notifications" only while everything is shown (All, no chip, no
-    // search) and there is more than one row. With neither the menu goes.
+    // The head's menu always stands: "Mark all as read" acts while a row
+    // is unread; "Delete All Notifications" only while everything is shown
+    // (All, no chip, no search) and there is more than one row. Each is
+    // disabled while it has nothing to act on.
     var head_menu = $(box).find('.pg-bell-head-menu');
-    var no_delete = (filter !== 'all') || (view !== 'all') || (search !== '') || (rows.length < 2);
+    var no_delete = (pgBellState !== 'ready') || (filter !== 'all') || (view !== 'all') || (search !== '') || (rows.length < 2);
 
-    head_menu.find('.pg-bell-delete-all').prop('hidden', no_delete);
-    head_menu.find('.pg-bell-mark-all').prop('hidden', !counts.unread);
+    head_menu.find('.pg-bell-delete-all').prop('disabled', no_delete);
+    head_menu.find('.pg-bell-mark-all').prop('disabled', !counts.unread);
+}
 
-    if (no_delete && !counts.unread) {
-        pg_bell_menu_close(head_menu, false);
+// Which state the bell's list shows, '' for none: failed when the load
+// failed, empty with no row at all, all-read when Unread is chosen and
+// nothing is unread, no-match when the filters or the search leave no row.
+function pg_bell_state(state, live, shown, view, unread) {
+    if (state !== 'ready') {
+        return (state === 'failed') ? 'failed' : '';
     }
 
-    head_menu.toggleClass('d-none', no_delete && !counts.unread);
+    if (live === 0) {
+        return 'empty';
+    }
+
+    if (shown > 0) {
+        return '';
+    }
+
+    return ((view === 'unread') && (unread === 0)) ? 'all-read' : 'no-match';
 }
+
+// The states' buttons: "Try again" loads the list again; "Show all" chooses
+// All; "Clear filters" chooses All, lets go of the chip and clears the
+// search. The choice stays for the next visit, as the filters' own.
+$(document).on('click', '#notifications [data-pg-bell-note-act]', function () {
+    var act = String($(this).attr('data-pg-bell-note-act'));
+
+    // The button goes with its state, so the focus waits on Close.
+    if (act === 'failed') {
+        $('#notifications .pg-bell-close').trigger('focus');
+        get_notifications();
+        return;
+    }
+
+    pgBellView = 'all';
+    pg_bell_store_set('pg-bell-view', 'all');
+
+    if (act === 'no-match') {
+        pgBellFilter = 'all';
+        pg_bell_store_set('pg-bell-filter', 'all');
+        pgBellSearch = '';
+        $('#notifications .pg-bell-search').val('');
+        $('#notifications .pg-bell-search-clear').prop('hidden', true);
+    }
+
+    pg_bell_filter_apply();
+    $('#notifications .pg-bell-view[data-pg-bell-view="all"]').trigger('focus');
+});
 
 // A row's quick "Mark as read", a check button; a read row keeps an empty
 // mark in its place, and "Mark as unread" waits in its menu.
@@ -5141,7 +5214,7 @@ function pg_bell_menu_close($wrap, focus) {
 
 function pg_bell_menu_items($wrap) {
     return $wrap.find('.pg-bell-menu-item').filter(function () {
-        return !this.hidden;
+        return !this.hidden && !this.disabled;
     });
 }
 

@@ -84,9 +84,10 @@ function test_bell_edoc_get_notifications_shows_failure_and_drops_spinner()
 {
 	$fn = bell_edoc_js_function('get_notifications');
 	pg_assert_contains('var load_failed = function (response, xhr)', $fn);
-	pg_assert_contains('spinner.remove();', $fn);
-	pg_assert_contains('pg-bell-failed', $fn);
-	pg_assert_contains('pg_bell_refusal(response, xhr)', $fn);
+	pg_assert_contains('skeleton.remove();', $fn);
+	pg_assert_contains("notifications.find('.pg-bell-failed .pg-bell-note-text').text(pg_bell_refusal(response, xhr));", $fn);
+	pg_assert_contains("pgBellState = 'failed';", $fn);
+	pg_assert_false(strpos($fn, 'spinner') !== false, 'skeleton rows, no spinner');
 	// Drawing the list reads nothing, so the badge is never cleared and has
 	// nothing to be put back (tests/bell_read_rule_test.php).
 	pg_assert_false(strpos($fn, "has-notification-icon').html('')") !== false, 'the badge stays while the list loads');

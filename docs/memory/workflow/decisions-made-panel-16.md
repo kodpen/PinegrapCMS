@@ -15,4 +15,4 @@ description: Decisions list, panel part 16 (2026-11-22 on): the bell's drawer re
 - Why: on a phone the head's menu button was drawn as a raw browser button, and the chips, the search line and the switch took three lines before the first notification.
 
 ## How is it built? (architect, 2026-11-22)
-- `plans/bell-redraw.md`, steps BR1 to BR3, one worker at a time. The raw button itself was fixed apart, as a small fix, before the plan.
+- Plan bell-redraw, steps BR1 to BR3, one worker at a time: BR1 #11110 (head and filters), BR2 #11134 (rows), BR3 #11154 (the architect's faults, the states, the foot). The raw button itself was fixed apart, as a small fix, before the plan. The plan is deleted; what was built: `ui/bell-head.md`, `ui/bell-filters.md`, `ui/bell-row.md`, `ui/bell-states-and-foot.md`.

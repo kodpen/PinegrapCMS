@@ -2828,9 +2828,12 @@ function output_header($properties = false)
     // the "N new" pill, then Search, More actions and Close as icon buttons;
     // Search puts a search field in the head's place), then the filters,
     // the list (the only part that scrolls) and the push line at the foot.
-    // The head's menu holds "Mark all as read" and "Delete All
-    // Notifications". Printed outside the header: Bootstrap 6 hides a
+    // The head's menu always stands and holds "Mark all as read" and
+    // "Delete All Notifications", disabled while they have nothing to act
+    // on. The list's states (no row, all read, no match, failed) wait
+    // hidden beside the list. Printed outside the header: Bootstrap 6 hides a
     // drawer that sits inside a .navbar whenever the navbar resizes.
+    require_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
     $output_bell_drawer = '
         <dialog class="drawer drawer-end pg-bell-drawer pg-print-none" id="notifications" aria-labelledby="pg_bell_heading">
             <div class="drawer-header pg-bell-head">
@@ -2838,11 +2841,11 @@ function output_header($properties = false)
                     <h2 class="drawer-title pg-bell-heading" id="pg_bell_heading">' . h(lang('Notifications')) . '</h2>
                     <span class="pg-pill pg-bell-new" hidden></span>
                     <button type="button" class="pg-icon-button pg-bell-search-open no-popover" aria-controls="pg_bell_search_bar" aria-expanded="false" aria-label="' . h(lang('Search notifications')) . '" title="' . h(lang('Search notifications')) . '"><span class="bi bi-search" aria-hidden="true"></span></button>
-                    <div class="pg-bell-menu-wrap pg-bell-head-menu d-none">
+                    <div class="pg-bell-menu-wrap pg-bell-head-menu">
                         <button type="button" class="pg-icon-button pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="pg_bell_head_menu" aria-label="' . h(lang('More actions')) . '" title="' . h(lang('More actions')) . '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>
                         <div class="pg-bell-menu" id="pg_bell_head_menu" hidden>
-                            <button type="button" class="pg-bell-menu-item pg-bell-mark-all" hidden><span class="bi bi-check2-all" aria-hidden="true"></span>' . h(lang('Mark all as read')) . '</button>
-                            <button type="button" class="pg-bell-menu-item pg-bell-delete-all" hidden><span class="bi bi-trash" aria-hidden="true"></span>' . h(lang('Delete All Notifications')) . '</button>
+                            <button type="button" class="pg-bell-menu-item pg-bell-mark-all" disabled><span class="bi bi-check2-all" aria-hidden="true"></span>' . h(lang('Mark all as read')) . '</button>
+                            <button type="button" class="pg-bell-menu-item pg-bell-delete-all" disabled><span class="bi bi-trash" aria-hidden="true"></span>' . h(lang('Delete All Notifications')) . '</button>
                         </div>
                     </div>
                     <button type="button" class="pg-icon-button pg-bell-close no-popover" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>
@@ -2858,14 +2861,20 @@ function output_header($properties = false)
             </div>
             <div class="drawer-body pg-bell-body">
                 ' . $output_bell_filters . '
-                <p class="pg-bell-no-match fg-secondary small text-center m-0 px-5 py-4 d-none" role="status">' . h(lang('No notification matches these filters.')) . '</p>
                 <div class="pg-bell-scroll"></div>
-                <div class="notifications_empty text-center my-3 py-3">' . lang('No Notification') . '<br><span class="bi fs-lg bi-wind"></span></div>
-                <div id="push_row" class="d-none align-items-center justify-content-between gap-3 border-top px-5 py-3">
-                    <span class="small fg-secondary">' . lang('Notifications on this device') . '</span>
-                    <button type="button" id="push_toggle" class="btn btn-sm btn-outline theme-secondary no-popover pg-push-toggle"><span class="pg-push-label">' . lang('Turn on') . '</span></button>
+                ' . pg_bell_state_note('empty', 'gray', 'bi-bell', lang('No notifications'), lang('New orders, forms and team messages appear here.'), '') . '
+                ' . pg_bell_state_note('all-read', 'teal', 'bi-check2-all', lang('Everything is read'), lang('No unread notifications.'), lang('Show all')) . '
+                ' . pg_bell_state_note('no-match', 'gray', 'bi-funnel', '', lang('No notification matches these filters.'), lang('Clear filters')) . '
+                ' . pg_bell_state_note('failed', 'rose', 'bi-exclamation-triangle', lang('Notifications could not be loaded'), '', lang('Try again')) . '
+                <div id="push_row" class="pg-bell-foot d-none">
+                    <span class="bi bi-bell pg-bell-foot-icon" aria-hidden="true"></span>
+                    <label class="pg-bell-foot-name" for="push_toggle">' . h(lang('Notifications on this device')) . '</label>
+                    <input type="checkbox" role="switch" class="pg-switch pg-push-toggle" id="push_toggle">
                 </div>
-                <div id="push_hint" class="d-none small fg-secondary border-top px-5 py-3">' . lang('Add the panel to your home screen first, then turn notifications on from there.') . '</div>
+                <div id="push_hint" class="pg-bell-foot pg-bell-foot-off d-none">
+                    <span class="bi bi-bell-slash pg-bell-foot-icon" aria-hidden="true"></span>
+                    <span class="pg-bell-foot-text"><span class="pg-bell-foot-name pg-bell-foot-refused" hidden>' . h(lang('Notifications are off for this site')) . '</span><span class="pg-bell-foot-hint">' . h(lang('Add the panel to your home screen first, then turn notifications on from there.')) . '</span></span>
+                </div>
             </div>
         </dialog>';
 
@@ -3216,7 +3225,9 @@ function output_header($properties = false)
                                 'installed_first' => lang('Add the panel to your home screen first, then turn notifications on from there.'),
                                 'dismissed' => lang('The browser did not show the permission prompt. Allow notifications from the site settings in your browser, then try again.'),
                                 'not_ready' => lang('Notifications are not ready in this browser yet. Reload the page and try again.'),
-                                'blocked' => lang('Notifications are turned off for this site. Turn them on in the browser, or in the notification settings of the installed application.')
+                                'blocked' => lang('Notifications are turned off for this site. Turn them on in the browser, or in the notification settings of the installed application.'),
+                                // Under the bell's "Notifications are off for this site".
+                                'blocked_hint' => lang('Turn them on in the browser, or in the notification settings of the installed application.')
                             )
                         ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . '</script>
                     </li>

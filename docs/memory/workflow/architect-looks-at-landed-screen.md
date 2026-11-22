@@ -20,4 +20,6 @@ description: The architect opens each landed step of a screen the owner asked fo
 ## What does a screen step's own check add from now on?
 - Beside the drawing's sample: the empty state, the all-read or all-done state, and one row of each kind the screen can hold. The PR's "Screen check" names the states it looked at.
 
-Related: docs/memory/workflow/screen-described-in-plan.md, docs/memory/workflow/architect.md, docs/memory/plans/bell-redraw-fixes.md
+- The first such file was the bell's (`bell-redraw-fixes.md`, five faults of BR1 and BR2), fixed in BR3 #11154 and deleted with its plan (`ui/bell-head.md`, `ui/bell-row.md`, `ui/notifications-menu.md`).
+
+Related: docs/memory/workflow/screen-described-in-plan.md, docs/memory/workflow/architect.md

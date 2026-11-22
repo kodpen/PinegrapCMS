@@ -1542,6 +1542,7 @@ function ws_bell_describe($inbox_id, $user_id)
         'title' => $described['title'],
         'short' => $short['title'],
         'place' => $short['place'],
+        'who'   => (string) ($described['who'] ?? ''),
         'body'  => $described['body'],
         'url'   => $described['url'],
         'kind'  => $kind,

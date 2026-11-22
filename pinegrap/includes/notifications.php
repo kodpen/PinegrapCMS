@@ -722,7 +722,7 @@ function pg_notification_display($notification, $reader_role = null)
 				$display['glyph']       = (string) ($described['icon'] ?? '');
 				$display['join']        = (string) ($described['join'] ?? '');
 				$display['fold']        = (string) ($described['fold'] ?? '');
-				$display['short']       = h((string) ($described['short'] ?? ''));
+				$display['short']       = pg_notification_title_name((string) ($described['short'] ?? ''), (string) ($described['who'] ?? ''));
 				$display['place']       = h((string) ($described['place'] ?? ''));
 			}
 		}
@@ -1327,6 +1327,63 @@ function pg_notification_day($timestamp, $now, $timezone = '')
 	$today->modify('-1 day');
 
 	return ($that === $today->format('Y-m-d')) ? 'yesterday' : 'earlier';
+}
+
+// A Workspace row's short title as markup: the person's or application's
+// name in the title's weight, the rest of the sentence in the recipe's
+// quieter .pg-list-row-title-verb. The name is found in the translated
+// sentence, so the language's word order stays; every part is escaped. A
+// sentence without the name, or a name alone, is only escaped. Pure.
+function pg_notification_title_name($title, $name)
+{
+	$title = (string) $title;
+	$name = trim((string) $name);
+	$at = ($name === '') ? false : strpos($title, $name);
+
+	if (($at === false) || ($title === $name)) {
+		return h($title);
+	}
+
+	$verb = function ($part) {
+		$part = trim($part);
+
+		return ($part === '') ? '' : '<span class="pg-list-row-title-verb">' . h($part) . '</span>';
+	};
+	$before = $verb(substr($title, 0, $at));
+	$after = $verb(substr($title, $at + strlen($name)));
+
+	return trim($before . ' ' . h($name) . ' ' . $after);
+}
+
+// One state of the bell's list, printed hidden beside it and shown by the
+// script: no row at all (empty), Unread chosen with none unread (all-read),
+// filters or a search that leave nothing (no-match), a load refused or
+// failed (failed, its reason filled by the script). Drawn as the Design
+// examples' empty screen: the tile in its tone, the title, the sentence,
+// one quiet button. '' for a key it does not know. Pure.
+function pg_bell_state_note($key, $tone, $icon, $title, $text, $button)
+{
+	$icons = array('all-read' => '', 'no-match' => 'bi-x-lg', 'failed' => 'bi-arrow-clockwise', 'empty' => '');
+
+	if (!array_key_exists((string) $key, $icons)) {
+		return '';
+	}
+
+	$key = (string) $key;
+	$role = ($key === 'failed') ? ' role="alert"' : ' role="status"';
+	$act = '';
+
+	if ((string) $button !== '') {
+		$act = '<button type="button" class="pg-button pg-button-quiet pg-button-sm pg-bell-note-act no-popover" data-pg-bell-note-act="' . $key . '">'
+			. (($icons[$key] !== '') ? '<span class="bi ' . $icons[$key] . '" aria-hidden="true"></span>' : '')
+			. h($button) . '</button>';
+	}
+
+	return '<div class="ws-empty-screen pg-bell-note pg-bell-' . $key . '" data-pg-bell-note="' . $key . '"' . $role . ' hidden>'
+		. '<span class="pg-icon-tile ws-empty-screen-tile pg-tone-' . h($tone) . '" aria-hidden="true"><span class="bi ' . h($icon) . '"></span></span>'
+		. (((string) $title !== '') ? '<div class="pg-title-section ws-empty-screen-title">' . h($title) . '</div>' : '')
+		. '<p class="pg-text-2 ws-empty-screen-text pg-bell-note-text">' . h($text) . '</p>'
+		. $act . '</div>';
 }
 
 // A bell row's short time, the one its head shows: "5 min" and "3 h" today

@@ -7,8 +7,9 @@ description: The bell's drawer #notifications at the right edge: opened by the b
 - `<dialog class="drawer drawer-end pg-bell-drawer" id="notifications">` (`$output_bell_drawer`, `includes/fn/output.php`), full height, `--pg-drawer-width: min(30rem, 100vw)`: 30rem, the whole width on a phone. Owner 2026-11-11, #8754 (`workflow/decisions-made-panel-4.md`); built in #8783 (plan step BP2b).
 - Printed after the header, not inside it: Bootstrap hides a drawer that sits inside a `.navbar` when the window is resized.
 - Head `.pg-bell-head`: the heading, the "N new" pill and three icon buttons, Search, More actions, Close (`bell-head.md`).
-- Then the filters (`bell-filters.md`), the list `.pg-bell-scroll`, the push line `#push_row`/`#push_hint` at the foot.
+- Then the filters (`bell-filters.md`), the list `.pg-bell-scroll`, the list's states and the foot `#push_row`/`#push_hint` (`bell-states-and-foot.md`).
 - Only the list scrolls: `.pg-bell-body` `overflow: hidden`, `.pg-bell-scroll` `overflow-y: auto; min-height: 0`.
+- Its bar is the panel's thin one (BR3 #11154), as `.card.widget`'s: `::-webkit-scrollbar` 6 px with `--pg-scrollbar-thumb`; Firefox gets `scrollbar-width: thin` only under `@supports not selector(::-webkit-scrollbar)`, since `scrollbar-color` switches Chromium off its own rules. Before, the browser's bar (15 px on Windows). Headless Chromium on Linux draws none: measure it with `getComputedStyle(list, '::-webkit-scrollbar').width`.
 
 ## How is it opened and closed?
 - The bell carries `data-bs-toggle="drawer" data-bs-target="#notifications"`; it has no click handler of its own.
@@ -16,7 +17,7 @@ description: The bell's drawer #notifications at the right edge: opened by the b
 - Escape and a click outside close it (Bootstrap's defaults, no `data-bs-backdrop`/`data-bs-keyboard`). Escape goes to an open menu first (`pg_bell_menu_key()` on `window`'s capture phase, `bell-row.md`), then to an open search (`pg_bell_search_key()`, registered after it, skips an event already `defaultPrevented`), then to the drawer. Closing gives the focus back to the bell.
 
 ## Where are its events heard?
-- On the drawer (`pgUI.drawer.on('#notifications', …)`): `show` hides the head's menu and pill till the list's counts arrive, adds the bell's `show` class and loads the list once (`get_notifications()`), and `pg_push_refresh()` runs; `hidden` drops the `show` class, scrolls the list to the top, puts back the kept choice, closes and clears the search and closes an open row menu.
+- On the drawer (`pgUI.drawer.on('#notifications', …)`): `show` disables the head menu's items and hides the pill till the list's counts arrive, adds the bell's `show` class and loads the list once (`get_notifications()`), and `pg_push_refresh()` runs; `hidden` drops the `show` class, scrolls the list to the top, puts back the kept choice, closes and clears the search and closes an open row menu.
 - `shown` focuses the close button: a shut Bootstrap 6 drawer is `visibility: hidden` with a transition, so `showModal()` finds nothing to focus and left the focus on the body (#8783).
 - The 20 s poll reads `pgUI.drawer.isOpen('#notifications')`. `tests/bell_drawer_test.php` pins the markup, opening and scrolling.
 
@@ -24,10 +25,3 @@ description: The bell's drawer #notifications at the right edge: opened by the b
 - Only when the unread count rises above `$unreadsCallback`, a top-level count that holds the count the open list shows: each drawing sets it to the list's unread rows, each poll to the server's count. Opening reads nothing (`bell-read-rule.md`).
 - It used to be reset to 0 every poll, so with anything unread the open list was emptied, scrolled to the top and lost the focused row every 20 s.
 - The poll calls `get_notifications(true)` (`keep_place`): the old list stays until the new one arrives, then the scroll and the focus on the same `li[notification-id]` row come back. `tests/panel_timers_test.php` pins it.
-
-## Why is a bell title one line?
-- Look A (DL3, #8897): the title is short ("New order #1044", `bell-row.md`) and stands on one line with the time at its right, ending in an ellipsis when it does not fit; the text under it has the rest in two lines. Before, long sentences as titles wrapped (#3549 era), since `nowrap` cut 44–50 character sentences.
-- The server sends titles escaped (`pg_notification_display()`), so the script inserts them as they come. `tests/mail_queue_full_text_test.php` pins it.
-
-## Why does a device push banner decode its title?
-- The service worker shows `item.title` as text, but bell titles are escaped (`&` came as `&amp;`). `pg_panel_push_pending()` sends `pg_panel_push_title()` (strip tags, decode, trim). The push banner keeps the whole sentence, not the drawer's short title (`bell-row.md`). `tests/push_banner_title_test.php` (#3549).

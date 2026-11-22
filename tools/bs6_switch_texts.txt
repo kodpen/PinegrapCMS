@@ -379,13 +379,6 @@ the others sit under the top of the screen like v5's.
 Class API calls that switch one v5 button variant for another: in v6 the
 theme class stays on the button and only the variant (or the theme) changes.
 
-@@ assets/js/backend.src.js
-<<<
-    $('#push_toggle').toggleClass('btn-outline-secondary', !$subscribed).toggleClass('btn-secondary', $subscribed);
-===
-    $('#push_toggle').toggleClass('btn-outline', !$subscribed).toggleClass('btn-solid', $subscribed);
->>>
-
 @@ assets/js/offer_editor.js
 <<<
         btn.classList.toggle('btn-warning', n > 0);

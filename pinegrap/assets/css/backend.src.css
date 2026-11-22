@@ -4649,8 +4649,9 @@ a.link-top-row {
 }
 /* The head, 56px: the name and the "N new" pill, then Search, More actions
    (its menu holds "Mark all as read" and "Delete All Notifications") and
-   Close, three icon buttons of one kind. Search puts the search field
-   (back arrow, field, clear) in the head's place. */
+   Close, three icon buttons of one kind at the right edge whether the pill
+   shows or not. Search puts the search field (back arrow, field, clear) in
+   the head's place. */
 #notifications .pg-bell-head {
   min-height: 56px;
   padding: 0 10px 0 20px;
@@ -4680,7 +4681,10 @@ a.link-top-row {
 }
 #notifications .pg-bell-new {
   --pg-tone: var(--pg-accent);
-  margin-inline: 9px auto;
+  margin-inline-start: 9px;
+}
+#notifications .pg-bell-search-open {
+  margin-inline-start: auto;
 }
 #notifications .pg-bell-head .pg-icon-button {
   width: 34px;
@@ -4705,7 +4709,7 @@ a.link-top-row {
 #notifications .pg-bell-menu-item.pg-bell-delete-all {
   color: var(--pg-danger-fg-emphasis);
 }
-#notifications .pg-bell-mark-all:not([hidden]) + .pg-bell-delete-all:not([hidden]) {
+#notifications .pg-bell-mark-all + .pg-bell-delete-all {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
 /* The body: the filters, the list (the only part that scrolls) and the push
@@ -4723,10 +4727,118 @@ a.link-top-row {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-#notifications #push_row,
-#notifications #push_hint {
+/* The list's bar is the panel's thin one, as in the widget cards: 6 px and
+   the thumb token in Chromium and Safari; Firefox takes the standard pair,
+   which would switch Chromium off its own rules, so only where those are
+   not known. */
+#notifications .pg-bell-scroll::-webkit-scrollbar {
+  width: 6px;
+  background-color: transparent;
+}
+#notifications .pg-bell-scroll::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background-color: var(--pg-scrollbar-thumb);
+}
+@supports not selector(::-webkit-scrollbar) {
+  #notifications .pg-bell-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--pg-scrollbar-thumb) transparent;
+  }
+}
+/* The list's states (pg_bell_state_note()): the Design examples' empty
+   screen, filling the room under the filters. Loading: skeleton rows. */
+#notifications .pg-bell-note {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#notifications .pg-bell-note[hidden] {
+  display: none;
+}
+#notifications .pg-bell-skeleton {
+  padding: 10px 0;
+}
+#notifications .pg-bell-skeleton-row {
+  display: flex;
+  gap: 11px;
+  padding: 12px 20px;
+}
+#notifications .pg-bell-skeleton-tile,
+#notifications .pg-bell-skeleton-bar {
+  display: block;
+  background: var(--pg-bg-2);
+}
+#notifications .pg-bell-skeleton-tile {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+}
+#notifications .pg-bell-skeleton-lines {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  padding-top: 3px;
+}
+#notifications .pg-bell-skeleton-bar {
+  height: 8px;
+  border-radius: 4px;
+}
+#notifications .pg-bell-skeleton-bar:first-child {
+  width: 62%;
+}
+#notifications .pg-bell-skeleton-bar + .pg-bell-skeleton-bar {
+  width: 88%;
+}
+#notifications .pg-bell-skeleton-day {
+  width: 46px;
+  margin: 4px 20px 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  #notifications .pg-bell-skeleton-tile,
+  #notifications .pg-bell-skeleton-bar {
+    background: linear-gradient(90deg, var(--pg-bg-2) 25%, var(--pg-bg-1) 50%, var(--pg-bg-2) 75%);
+    background-size: 200% 100%;
+    animation: ws-skeleton-shine 1.4s ease-in-out infinite;
+  }
+}
+/* The foot: a switch row, "Notifications on this device" with the bell
+   (filled while this device is told); where the browser refuses, a muted
+   bell and "Notifications are off for this site" over the hint. */
+#notifications .pg-bell-foot {
   flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
   margin-top: auto;
+  padding: 10px 18px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+}
+#notifications .pg-bell-foot.d-none {
+  display: none;
+}
+#notifications #push_hint.pg-bell-foot:not(.d-none),
+#notifications #push_row.pg-bell-foot:not(.d-none) {
+  display: flex;
+}
+#notifications .pg-bell-foot-name {
+  flex: 1 1 auto;
+  margin: 0;
+}
+#notifications .pg-bell-foot-off .pg-bell-foot-icon {
+  color: var(--pg-warning-fg-emphasis);
+}
+#notifications .pg-bell-foot-text {
+  display: grid;
+  min-width: 0;
+}
+#notifications .pg-bell-foot-refused[hidden] {
+  display: none;
+}
+#notifications .pg-bell-foot-off .pg-bell-foot-refused:not([hidden]) + .pg-bell-foot-hint {
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
 }
 
 /* Quick note beside the bell (ws_notes_quick_markup()): placed like the
@@ -4893,8 +5005,11 @@ a.link-top-row {
   background: transparent;
   color: var(--pg-fg-body);
 }
+/* The row's title is the recipe's 14 px, not the drawer's 16 px; the text
+   and the time keep their own sizes. */
 #notifications .pg-bell-card.pg-list-row {
   margin: 0 8px 2px;
+  font-size: var(--pg-text-base);
 }
 /* An unread row carries a light tint of the accent; a read row has none and
    the recipe dims its title and tile (.is-read). */
@@ -5063,8 +5178,14 @@ a.link-top-row {
   text-align: start;
   white-space: nowrap;
 }
-#notifications .pg-bell-menu-item:hover {
+#notifications .pg-bell-menu-item:hover:not(:disabled) {
   background: var(--pg-tint-hover);
+}
+/* An item with nothing to act on now stands disabled, so the menu holds
+   the same items in every state. */
+#notifications .pg-bell-menu-item:disabled {
+  color: var(--pg-fg-3);
+  cursor: default;
 }
 #notifications .pg-bell-menu-item.pg-bell-delete {
   color: var(--pg-danger-fg-emphasis);

@@ -72,7 +72,7 @@ function test_bell_drawer_short_title_reaches_the_row()
 	pg_assert_contains("'short' => \$short['title'],", $notify);
 	pg_assert_contains("ws_mcp_agent_inbox_describe(\$viewer, \$row, \$channel_name, \$base) + array('place' => \$place);", $notify);
 	pg_assert_contains("'who'   => '@' . (\$server ? \$server['alias'] : 'mcp'),", $agent);
-	pg_assert_contains("\$display['short']       = h((string) (\$described['short'] ?? ''));", $display);
+	pg_assert_contains("\$display['short']       = pg_notification_title_name((string) (\$described['short'] ?? ''), (string) (\$described['who'] ?? ''));", $display);
 	pg_assert_contains("\$display['title']       = h(\$described['title']);", $display);
 	pg_assert_contains("'title' => ((\$display['short'] !== '') ? \$display['short'] : \$display['title']),", $endpoint);
 	pg_assert_contains("'place' => \$display['place'],", $endpoint);
@@ -106,12 +106,21 @@ function test_bell_drawer_markup()
 	pg_assert_contains('<div class="pg-bell-search-bar" id="pg_bell_search_bar" hidden>', $drawer, 'the search field waits in the head');
 	pg_assert_contains('<input type="search" class="pg-bell-search" id="pg_bell_search"', $drawer, 'the search box');
 	pg_assert_contains("h(lang('Delete All Notifications'))", $drawer, 'Delete All in the head menu');
+	// More actions always stands; its items wait disabled for the counts.
+	pg_assert_contains('<div class="pg-bell-menu-wrap pg-bell-head-menu">', $drawer, 'the head menu always stands');
+	pg_assert_contains('<button type="button" class="pg-bell-menu-item pg-bell-mark-all" disabled>', $drawer);
+	pg_assert_contains('<button type="button" class="pg-bell-menu-item pg-bell-delete-all" disabled>', $drawer);
+	// The foot is a switch row; a refusing browser gets its own line.
+	pg_assert_contains('<label class="pg-bell-foot-name" for="push_toggle">\' . h(lang(\'Notifications on this device\')) . \'</label>', $drawer);
+	pg_assert_contains('<input type="checkbox" role="switch" class="pg-switch pg-push-toggle" id="push_toggle">', $drawer);
+	pg_assert_contains("h(lang('Notifications are off for this site'))", $drawer);
+	pg_assert_false(strpos($drawer, 'btn btn-') !== false, 'no old button in the drawer');
 	// The head's More actions button wears the icon button look like the
 	// rows' toggles; without the class the browser draws its own grey box.
 	pg_assert_contains('<button type="button" class="pg-icon-button pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="pg_bell_head_menu"', $drawer, 'the head menu button is an icon button');
 
 	$last = -1;
-	foreach (array('pg-bell-head', 'pg-bell-heading', 'pg-bell-new', 'pg-bell-search-open', 'pg-bell-head-menu', 'pg-bell-mark-all', 'pg-bell-delete-all', 'pg-bell-close', 'pg-bell-search-bar', 'pg-bell-search-back', 'pg-bell-search-clear', '$output_bell_filters', 'pg-bell-no-match', 'pg-bell-scroll', 'notifications_empty', 'id="push_row"', 'id="push_hint"') as $part) {
+	foreach (array('pg-bell-head', 'pg-bell-heading', 'pg-bell-new', 'pg-bell-search-open', 'pg-bell-head-menu', 'pg-bell-mark-all', 'pg-bell-delete-all', 'pg-bell-close', 'pg-bell-search-bar', 'pg-bell-search-back', 'pg-bell-search-clear', '$output_bell_filters', 'pg-bell-scroll', "pg_bell_state_note('empty'", "pg_bell_state_note('all-read'", "pg_bell_state_note('no-match'", "pg_bell_state_note('failed'", 'id="push_row"', 'id="push_hint"') as $part) {
 		$pos = strpos($drawer, $part);
 		pg_assert_true(($pos !== false) && ($pos > $last), $part . ' in its place');
 		$last = (int) $pos;
@@ -149,17 +158,18 @@ function test_bell_drawer_open_and_close()
 	$shown = (string) substr($js, (int) $at, (int) strpos($js, '});', (int) $at) - (int) $at);
 	pg_assert_contains("\$('#notifications .pg-bell-close').trigger('focus');", $shown, 'focus on the close button');
 	pg_assert_false(strpos($shown, 'get_notifications') !== false, 'no second load once it has opened');
-	pg_assert_contains("pgUI.drawer.on('#notifications', 'show', function () {\n        \$('#notifications').find('.pg-bell-head-menu').addClass('d-none');\n        \$('#notifications').find('.pg-bell-new').prop('hidden', true);\n        \$('#notification_toggle').addClass('show');\n        get_notifications();", $js);
+	pg_assert_contains("pgUI.drawer.on('#notifications', 'show', function () {\n        \$('#notifications').find('.pg-bell-head-menu .pg-bell-menu-item').prop('disabled', true);\n        \$('#notifications').find('.pg-bell-new').prop('hidden', true);\n        \$('#notification_toggle').addClass('show');\n        get_notifications();", $js);
 	pg_assert_contains("pgUI.drawer.on('#notifications', 'hidden', function () {\n        \$('#notification_toggle').removeClass('show');", $js, 'the bell\'s show class goes when it closes');
 	pg_assert_contains("pgUI.drawer.isOpen('#notifications')", $poll, 'the poll asks the drawer');
 	pg_assert_false(strpos($js, "pgUI.menu.isOpen('#notification_toggle')") !== false, 'no Menu state is read');
 
-	// Delete All is offered under All, unnarrowed, with two rows or more;
-	// the menu goes when it holds neither of its items.
-	pg_assert_contains("var no_delete = (filter !== 'all') || (view !== 'all') || (search !== '') || (rows.length < 2);", $filter);
-	pg_assert_contains("head_menu.find('.pg-bell-delete-all').prop('hidden', no_delete);", $filter);
-	pg_assert_contains("head_menu.find('.pg-bell-mark-all').prop('hidden', !counts.unread);", $filter);
-	pg_assert_contains("head_menu.toggleClass('d-none', no_delete && !counts.unread);", $filter);
+	// Delete All acts under All, unnarrowed, with two rows or more; the
+	// menu always stands, an item with nothing to act on disabled.
+	pg_assert_contains("var no_delete = (pgBellState !== 'ready') || (filter !== 'all') || (view !== 'all') || (search !== '') || (rows.length < 2);", $filter);
+	pg_assert_contains("head_menu.find('.pg-bell-delete-all').prop('disabled', no_delete);", $filter);
+	pg_assert_contains("head_menu.find('.pg-bell-mark-all').prop('disabled', !counts.unread);", $filter);
+	pg_assert_false(strpos($filter, "toggleClass('d-none'") !== false, 'the menu is never hidden');
+	pg_assert_contains("return !this.hidden && !this.disabled;", bell_drawer_js_part($js, 'function pg_bell_menu_items('), 'the keys skip a disabled item');
 	pg_assert_contains("\$(document).on('click', '#notifications .pg-bell-delete-all', function () {", $js);
 
 	// A row's menu keeps Escape before the drawer hears it, then an open
@@ -188,4 +198,50 @@ function test_bell_drawer_only_the_list_scrolls()
 	pg_assert_contains('overflow-y: auto;', $rule('#notifications .pg-bell-scroll'));
 	pg_assert_contains('min-height: 0;', $rule('#notifications .pg-bell-scroll'));
 	pg_assert_false(strpos($css, '.menu-scroll-area') !== false, 'the old Menu list is gone');
+}
+
+// The faults of the first look: Search and Close stay at the right edge
+// with no pill, the row's title is the recipe's 14 px, the list's bar is
+// the panel's thin one.
+function test_bell_drawer_head_title_size_and_bar()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$rule = function ($selector) use ($css) {
+		$at = strpos($css, "\n" . $selector . ' {');
+		pg_assert_true($at !== false, $selector . ' rule is there');
+
+		return (string) substr($css, (int) $at, (int) strpos($css, '}', (int) $at) - (int) $at);
+	};
+
+	pg_assert_contains('margin-inline-start: auto;', $rule('#notifications .pg-bell-search-open'), 'the buttons keep the right edge');
+	pg_assert_false(strpos($rule('#notifications .pg-bell-new'), 'auto') !== false, 'the pill pushes nothing');
+	pg_assert_contains('font-size: var(--pg-text-base);', $rule('#notifications .pg-bell-card.pg-list-row'));
+	pg_assert_contains('width: 6px;', $rule('#notifications .pg-bell-scroll::-webkit-scrollbar'));
+	pg_assert_contains('background-color: var(--pg-scrollbar-thumb);', $rule('#notifications .pg-bell-scroll::-webkit-scrollbar-thumb'));
+	pg_assert_contains("@supports not selector(::-webkit-scrollbar) {\n  #notifications .pg-bell-scroll {\n    scrollbar-width: thin;", $css, 'Firefox gets the thin bar');
+}
+
+// Which state the list shows (pg_bell_state()), run in node when it is there.
+function test_bell_drawer_state_choice()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	$fn = bell_drawer_js_part($js, 'function pg_bell_state(') . "\n}";
+	$node = trim((string) @shell_exec('command -v node 2>/dev/null'));
+
+	if ($node === '') {
+		pg_assert_contains("return ((view === 'unread') && (unread === 0)) ? 'all-read' : 'no-match';", $fn);
+		return;
+	}
+
+	$cases = "console.log(JSON.stringify(["
+		. "pg_bell_state('loading', 0, 0, 'all', 0), pg_bell_state('failed', 3, 3, 'all', 1),"
+		. "pg_bell_state('ready', 0, 0, 'all', 0), pg_bell_state('ready', 4, 4, 'all', 1),"
+		. "pg_bell_state('ready', 4, 0, 'unread', 0), pg_bell_state('ready', 4, 0, 'unread', 2),"
+		. "pg_bell_state('ready', 4, 0, 'ask', 0)]));";
+	$file = tempnam(sys_get_temp_dir(), 'pgbell');
+	file_put_contents($file, $fn . "\n" . $cases);
+	$out = trim((string) shell_exec(escapeshellarg($node) . ' ' . escapeshellarg($file)));
+	unlink($file);
+
+	pg_assert_same('["","failed","empty","","all-read","no-match","no-match"]', $out);
 }

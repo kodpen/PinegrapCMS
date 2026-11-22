@@ -1,6 +1,6 @@
 ---
 name: bell-row
-description: A bell row in look A (#8897): tone tile, one-line title and time, two lines of text, a button only when asked, the unread dot, quick actions on hover; a fold as gathered lines
+description: A bell row in look A (#8897): tone tile, one-line title and time, two lines of text, a button only when asked, the unread dot, quick actions on hover; a fold in notifications-one-inbox.md
 ---
 
 ## What does a bell row carry?
@@ -13,11 +13,12 @@ description: A bell row in look A (#8897): tone tile, one-line title and time, t
 
 ## What does a title say?
 - A short title of what happened and with what (`bell-titles.md`).
+- A Workspace row's title: the name in the title's weight, the rest quieter (`bell-titles.md`).
 
 ## How is the row drawn?
 - `pg_bell_row(row, draw)` (`backend.src.js`) on the recipes (`look-type-and-recipes.md`): `li > .pg-bell-card.pg-list-row` (`.is-read` dims a read row):
   - `pg_bell_tile()`: `.pg-icon-tile.pg-tone-*`, shop teal, erp amber, content rose, team blue, system gray; a warning (and `out_stock`) amber, an error rose. The glyph names the action; a Workspace row brings its own.
-  - head: the title `.pg-list-row-title` (a button that opens the row; one line, ellipsis), `pg_bell_quick()` and the time `pg_bell_time()`: a `<time>` with the short time, the full one as its title. The quick actions ("Mark as read" check, "More actions") replace the time on hover or focus.
+  - head: the title `.pg-list-row-title` (a button that opens the row; one line, ellipsis; 14 px, `--pg-text-base` on `.pg-bell-card`, not the drawer's 16 px), `pg_bell_quick()` and the time `pg_bell_time()`: a `<time>` with the short time, the full one as its title. The quick actions ("Mark as read" check, "More actions") replace the time on hover or focus.
   - the unread tint and the phone's head order: `bell-row-time-and-tint.md`.
   - `.pg-list-row-text`, two lines: the excerpt, else the details (`<br>` as " · "), else the sender.
   - `.pg-list-row-actions` only when the row asks: an in-place act (`bell-actions.md`), Reply, Approve, Join, or Show on an unread warning or error row; plus the place. The first unread asking row's button is filled (`draw.fill`), the rest quiet. Every other row opens from its title.
@@ -25,14 +26,9 @@ description: A bell row in look A (#8897): tone tile, one-line title and time, t
 - The menu `.pg-bell-menu` holds "Mark as read" (unread rows), "Mark as unread" (read rows) and Delete: a disclosure of its own, not a Bootstrap menu; it opens upwards when there is no room below.
 - Day headings `li.pg-bell-day` (Today, Yesterday, Earlier), 12 px, sentence case, sticky (`bell-row-time-and-tint.md`); `pg_bell_filter_apply()` hides one with no shown row.
 
-## How is a fold drawn?
-- A flow's runs (`ws_bell_fold_key()`) fold under the newest: its title carries the count `.pg-count` beside it, and `.pg-gather-toggle` "Show N more" / "Hide" opens and closes the runs.
-- Each older run stays a `li` of its own (`pg_bell_run()`: read, unread and Delete work as before), drawn as one `.pg-gather-line` lined up under the head's text: the time in bold, what it says, the dot; its quick actions on hover or focus.
-- The toggle stays above the open lines (the sheet draws "Hide" under them).
-
 ## Which keys work?
 - Tab reaches the title, "Mark as read", the menu button, the row's button. In the open menu the arrows, Home and End move; Escape closes it and returns to its button; a second Escape closes the drawer.
 - Bootstrap takes menu keys on the document's capture phase: `pg_bell_menu_key()` listens on `window`'s first.
 - "Mark as read" moves the focus to the row's menu button; Delete to the next row's, or the one before, else the drawer's close button.
 
-Tests: `bell_row_test.php`, `bell_drawer_test.php`, `bell_read_rule_test.php`. BP2 #8722, BP2b #8783, look A #8897 (DL3), BR2 #11134.
+Tests: `bell_row_test.php`, `bell_drawer_test.php`, `bell_read_rule_test.php`. BP2 #8722, BP2b #8783, look A #8897 (DL3), BR2 #11134, BR3 #11154.
