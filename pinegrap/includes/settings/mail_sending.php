@@ -3,9 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings › E-mail › E-mail sending tab as folded rows: How e-mail
- * leaves (its ways sheet holds the system e-mail's account, sending service
- * and mail server), Sending domain, the DKIM record, Campaign mail,
- * MailChimp and Send a test. The rows' lines are includes/fn/
+ * leaves (its two ways sheets hold the accounts, the sending service and the
+ * mail servers of system e-mail and of campaigns), Sending domain (SPF, DKIM
+ * with the site's key, DMARC), Campaign mail, MailChimp and Send a test. The rows' lines are includes/fn/
  * mail_sending_rows.php; what the cards save and run is includes/fn/
  * mail_settings.php, config.php defines read here from the constants; the
  * campaign texts and MailChimp are config row columns, prepared by
@@ -59,6 +59,7 @@ $mail_value = function ($key) {
 $mail_kept = h(lang('Leave blank to keep the saved secret'));
 $mail_system_kept = (defined('SYSTEM_SMTP_PASSWORD') && ((string) SYSTEM_SMTP_PASSWORD !== '')) ? ' placeholder="' . $mail_kept . '"' : '';
 $mail_campaign_kept = (defined('CAMPAIGN_SMTP_PASSWORD') && ((string) CAMPAIGN_SMTP_PASSWORD !== '')) ? ' placeholder="' . $mail_kept . '"' : '';
+$mail_campaign_stored = pg_mail_campaign_way();
 $mail_campaign_on = (defined('EMAIL_CAMPAIGN_JOB') && ((EMAIL_CAMPAIGN_JOB === true) || (EMAIL_CAMPAIGN_JOB === 'true')));
 
 $mail_form = !empty($pg_settings_in_dialog) ? 'pg_settings_modal_form' : 'pg_settings_page_form';
@@ -66,8 +67,7 @@ $mail_parts = array();
 
 // ── How e-mail leaves ──
 // A row a kind of mail, saying how it leaves today (pg_mail_way_read()).
-// System e-mail's Change opens the ways sheet; the campaigns' account and
-// server are still the Campaign mail row's.
+// Each Change opens that kind's ways sheet.
 $mail_system_way = pg_mail_way_read('system');
 $mail_campaign_way = pg_mail_way_read('campaign');
 
@@ -93,7 +93,7 @@ $mail_parts['leaves'] = array('html' => '
                                 <div class="card-body">
                                     <div class="pg-card-inner">'
     . $mail_way_row('blue', 'bi-envelope-check', lang('System e-mail'), $mail_system_way['sentence'], $mail_change(lang('System e-mail'), 'data-bs-toggle="drawer" data-bs-target="#pgset-mail-way" aria-controls="pgset-mail-way"'))
-    . $mail_way_row('violet', 'bi-megaphone', lang('Campaigns'), $mail_campaign_way['sentence'], $mail_change(lang('Campaigns'), 'data-pg-set-goto="pgset-mail-campaign"')) . '
+    . $mail_way_row('violet', 'bi-megaphone', lang('Campaigns'), $mail_campaign_way['sentence'], $mail_change(lang('Campaigns'), 'data-bs-toggle="drawer" data-bs-target="#pgset-mail-campaign-way" aria-controls="pgset-mail-campaign-way"')) . '
                                     </div>
                                     <div class="pg-field-help">' . h(lang('System e-mail is order, form, password and notice mail; campaigns are bulk sends.')) . '</div>
                                 </div>
@@ -160,7 +160,79 @@ $pg_settings_modals[] = pg_settings_drawer(
     pg_settings_tile('envelope-check', 'blue')
 );
 
+// The ways sheet of campaigns: "The same way as system e-mail" first, then
+// the ways system e-mail has. Campaigns have no sending service of their
+// own: the service way names system e-mail's. Every campaign field is posted
+// whichever way is chosen, as the save writes each define it knows.
+$mail_campaign_choice = pg_mail_campaign_way_chosen($mail_campaign_stored, pg_mail_connection('campaign'), pg_mail_way_enabled_service());
+$mail_campaign_account = defined('CAMPAIGN_MAIL_CONNECTION') ? (int) CAMPAIGN_MAIL_CONNECTION : 0;
+$mail_campaign_service = pg_mail_way_enabled_service();
+$mail_campaign_transports = pg_mail_transports();
+$mail_campaign_panes = '
+                    <input type="hidden" name="campaign_mail_way_was" value="' . h($mail_campaign_choice) . '">
+                    <div class="mt-5" data-mail-way-pane="system"' . (($mail_campaign_choice === 'system') ? '' : ' hidden') . '>
+                        <h3 class="pg-group-label">' . h(lang('The same way as system e-mail')) . '</h3>
+                        <p class="pg-field-help mt-0">' . h($mail_system_way['sentence']) . ' ' . h(lang('A change of system e-mail\'s way changes how campaigns leave too.')) . '</p>
+                    </div>';
+
+foreach (array('google', 'microsoft') as $mail_provider_key) {
+    $mail_select = pg_mail_way_account_select($mail_provider_key, $mail_accounts, $mail_campaign_account, $mail_campaign_choice === $mail_provider_key, $mail_form, 'campaign_mail_connection');
+
+    $mail_campaign_panes .= '
+                    <div class="mt-5" data-mail-way-pane="' . $mail_provider_key . '"' . (($mail_campaign_choice === $mail_provider_key) ? '' : ' hidden') . '>
+                        <h3 class="pg-group-label">' . h(($mail_provider_key === 'google') ? lang('A Google account') : lang('A Microsoft account')) . '</h3>
+                        ' . $mail_select . pg_mail_settings_connect_buttons($mail_providers, $mail_provider_key, $mail_select !== '') . '
+                    </div>';
+}
+
+$mail_campaign_panes .= '
+                    <div class="mt-5" data-mail-way-pane="service"' . (($mail_campaign_choice === 'service') ? '' : ' hidden') . '>
+                        <h3 class="pg-group-label">' . h(lang('A sending service')) . '</h3>
+                        <p class="pg-field-help mt-0">' . h(isset($mail_campaign_transports[$mail_campaign_service])
+                            ? lang(array('string' => 'Campaigns leave through {var:1}, the sending service of system e-mail.', 'vars' => array($mail_campaign_transports[$mail_campaign_service]['label'])))
+                            : lang('Choose a sending service for system e-mail first: campaigns use the same service.')) . '</p>
+                    </div>
+                    <div class="mt-5" data-mail-way-pane="server"' . (($mail_campaign_choice === 'server') ? '' : ' hidden') . '>
+                        <h3 class="pg-group-label">' . h(lang('Your own mail server')) . '</h3>
+                        <div class="row g-5">
+                            <div class="col-8">
+                                <label for="campaign_smtp_hostname" class="pg-field-label">' . lang('Hostname') . '</label>
+                                <input type="text" name="campaign_smtp_hostname" id="campaign_smtp_hostname" class="pg-input" value="' . $mail_value('CAMPAIGN_SMTP_HOSTNAME') . '" inputmode="url" spellcheck="false" autocapitalize="off" aria-describedby="campaign_smtp_hostname_help">
+                                <div class="pg-field-help" id="campaign_smtp_hostname_help">' . h(lang('Without a server name, campaigns leave through PHP mail() on this server.')) . '</div>
+                            </div>
+                            <div class="col-4">
+                                <label for="campaign_smtp_port" class="pg-field-label">' . lang('Port') . '</label>
+                                <input type="number" name="campaign_smtp_port" id="campaign_smtp_port" class="pg-input" value="' . $mail_value('CAMPAIGN_SMTP_PORT') . '" placeholder="587">
+                            </div>
+                            <div class="col-12">
+                                <label for="campaign_smtp_username" class="pg-field-label">' . lang('Username') . '</label>
+                                <input type="text" name="campaign_smtp_username" id="campaign_smtp_username" class="pg-input" value="' . $mail_value('CAMPAIGN_SMTP_USERNAME') . '" autocomplete="new-password" spellcheck="false" autocapitalize="off">
+                            </div>
+                            <div class="col-12">
+                                <label for="campaign_smtp_password" class="pg-field-label">' . lang('Password') . '</label>
+                                <input type="password" name="campaign_smtp_password" id="campaign_smtp_password" class="pg-input" value="" autocomplete="new-password"' . $mail_campaign_kept . '>
+                            </div>
+                        </div>
+                    </div>';
+
+$mail_campaign_body = preg_replace('/<(input|select|textarea)\b(?![^>]*\sform=)/', '<$1 form="' . $mail_form . '"', pg_mail_way_cards($mail_campaign_choice, $mail_form, 'campaign') . $mail_campaign_panes);
+
+$pg_settings_modals[] = pg_settings_drawer(
+    'pgset-mail-campaign-way',
+    h(lang('How should campaigns leave?')),
+    $mail_campaign_body,
+    !empty($pg_settings_in_dialog),
+    '<span class="flex-grow-1"></span>'
+        . '<button type="button" class="pg-button pg-button-quiet"' . (!empty($pg_settings_in_dialog) ? ' data-pgdrawer-close' : ' data-bs-dismiss="drawer"') . '>' . h(lang('Cancel')) . '</button>'
+        . '<button type="submit" form="' . $mail_form . '" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>',
+    h(lang('Newsletters and other bulk sends.')),
+    '',
+    pg_settings_tile('megaphone', 'violet')
+);
+
 // ── Campaign mail ──
+// The scheduled job and the texts every campaign carries; how campaigns
+// leave is their ways sheet's.
 $mail_parts['campaign'] = array('html' => '
                         <div id="pgset-mail-campaign" class="pg-set-card">
                             <div class="card">
@@ -179,27 +251,8 @@ $mail_parts['campaign'] = array('html' => '
                                     <div class="collapse" id="email_campaign_job_row">
                                         <div class="row mt-3">
                                             <div class="col-12">
-                                                ' . pg_mail_settings_connection_field('campaign_mail_connection', defined('CAMPAIGN_MAIL_CONNECTION') ? CAMPAIGN_MAIL_CONNECTION : 0, $mail_accounts) . '
-                                            </div>
-                                            <div class="col-12">
-                                                <label for="campaign_smtp_hostname" class="form-label pg-field-label">' . lang('Hostname') . '</label>
-                                                <input type="text" name="campaign_smtp_hostname" id="campaign_smtp_hostname" class="form-control" value="' . $mail_value('CAMPAIGN_SMTP_HOSTNAME') . '" inputmode="url" spellcheck="false" autocapitalize="off">
-                                            </div>
-                                            <div class="col-12">
-                                                <label for="email_campaign_job_number_of_emails" class="form-label pg-field-label">' . lang('Max.') . '</label>
+                                                <label for="email_campaign_job_number_of_emails" class="form-label pg-field-label">' . lang('Max. a run') . '</label>
                                                 <input type="number" name="email_campaign_job_number_of_emails" id="email_campaign_job_number_of_emails" class="form-control" value="' . $mail_value('EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS') . '" placeholder="25">
-                                            </div>
-                                            <div class="col-12">
-                                                <label for="campaign_smtp_port" class="form-label pg-field-label">' . lang('Port') . '</label>
-                                                <input type="number" name="campaign_smtp_port" id="campaign_smtp_port" class="form-control" value="' . $mail_value('CAMPAIGN_SMTP_PORT') . '" placeholder="587">
-                                            </div>
-                                            <div class="col-12">
-                                                <label for="campaign_smtp_username" class="form-label pg-field-label">' . lang('Username') . '</label>
-                                                <input type="text" name="campaign_smtp_username" id="campaign_smtp_username" class="form-control" value="' . $mail_value('CAMPAIGN_SMTP_USERNAME') . '" autocomplete="new-password" spellcheck="false" autocapitalize="off">
-                                            </div>
-                                            <div class="col-12">
-                                                <label for="campaign_smtp_password" class="form-label pg-field-label">' . lang('Password') . '</label>
-                                                <input type="password" name="campaign_smtp_password" id="campaign_smtp_password" class="form-control" value="" autocomplete="new-password"' . $mail_campaign_kept . '>
                                             </div>
                                         </div>
                                     </div>
@@ -217,9 +270,16 @@ $mail_parts['campaign'] = array('html' => '
                             </div>
                         </div>') + pg_mail_sending_fold_campaign($mail_campaign_on, defined('EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS') ? EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS : 0);
 
-// ── DKIM TXT Record ──
-// Named after the selector and domain mail is signed with now, not the ones
-// the key was generated with.
+// ── Sending domain ──
+// SPF, DKIM and DMARC from DNS, the bounce and complaint rates. The DKIM row
+// holds the site's key: the selector and domain mail is signed with, the
+// record to publish and the button that makes a key. The record is named
+// after the selector and domain mail is signed with now, not the ones the
+// key was generated with. The card keeps id="mail_domain_card", the
+// operations alert's old target; the E-mail category's Sending tab reads the
+// same lookup for its pill.
+$mail_domain_health = pg_mail_domain_health();
+
 $mail_txt_record = pg_mail_settings_dkim_shown_record(
     (string) db_value("SELECT description FROM files WHERE name = 'dkim.key'"),
     defined('DKIM_SELECTOR') ? (string) DKIM_SELECTOR : '',
@@ -227,55 +287,27 @@ $mail_txt_record = pg_mail_settings_dkim_shown_record(
     EMAIL_ADDRESS
 );
 
-$mail_dkim_buttons = '
-                                            <button type="submit" name="generate_dkim_key" value="true" class="pg-button pg-button-quiet pg-button-sm">
-                                                <i class="bi bi-key" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and generate a DKIM key') . '</span>
-                                            </button>'
-    . ($mail_ready ? '
-                                            <button type="submit" name="test_dkim" value="true" class="pg-button pg-button-quiet pg-button-sm">
-                                                <i class="bi bi-patch-check" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and test') . '</span>
-                                            </button>' : '');
-
-$mail_dkim_record = $mail_txt_record
-    ? '<label for="textrecord" class="pg-field-label">' . lang('Add this TXT record to your DNS:') . '</label>
-                                            <textarea id="textrecord" class="pg-input font-monospace" rows="4" readonly>' . h($mail_txt_record) . '</textarea>'
-    : '<p class="pg-field-help mt-0">' . lang('No DKIM key generated yet.') . '</p>';
-
-$mail_parts['dkim'] = array('html' => '
-                        <div id="pgset-mail-dkim" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('DKIM TXT Record') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 pg-field-span-6">
-                                            <label class="visually-hidden" for="dkim_selector">' . h(lang('Selector')) . '</label>
-                                            <label class="visually-hidden" for="dkim_domain">' . h(lang('Domain')) . '</label>
-                                            <div class="pg-input font-monospace">
-                                                <input type="text" name="dkim_selector" id="dkim_selector" class="text-end" value="' . $mail_value('DKIM_SELECTOR') . '" placeholder="' . h(lang('Selector')) . '" spellcheck="false" autocapitalize="off">
-                                                <span class="pg-text-meta" aria-hidden="true">._domainkey.</span>
-                                                <input type="text" name="dkim_domain" id="dkim_domain" value="' . $mail_value('DKIM_DOMAIN') . '" placeholder="example.com" inputmode="url" spellcheck="false" autocapitalize="off">
-                                            </div>
-                                        </div>
-                                        <div class="col-12">
-                                            ' . $mail_dkim_record . '
-                                            <div class="mt-3 d-flex flex-wrap gap-2">' . $mail_dkim_buttons . '</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>') + pg_mail_sending_fold_dkim(defined('DKIM_SELECTOR') ? (string) DKIM_SELECTOR : '', defined('DKIM_DOMAIN') ? (string) DKIM_DOMAIN : '', $mail_txt_record !== '');
-
-// ── Sending domain ──
-// Read only: SPF, DKIM and DMARC from DNS, the bounce and complaint rates.
-// The card keeps id="mail_domain_card", the operations alert's old target.
-// The E-mail category's Sending tab reads the same lookup for its pill.
-$mail_domain_health = pg_mail_domain_health();
+$mail_dkim_fields = '
+                    <div class="mt-3 pg-field-span-6" role="group" aria-labelledby="dkim_names_label">
+                        <div class="pg-field-label" id="dkim_names_label">' . h(lang('Selector and domain')) . '</div>
+                        <label class="visually-hidden" for="dkim_selector">' . h(lang('Selector')) . '</label>
+                        <label class="visually-hidden" for="dkim_domain">' . h(lang('Domain')) . '</label>
+                        <div class="pg-input font-monospace">
+                            <input type="text" name="dkim_selector" id="dkim_selector" class="text-end" value="' . $mail_value('DKIM_SELECTOR') . '" placeholder="' . h(lang('Selector')) . '" spellcheck="false" autocapitalize="off">
+                            <span class="pg-text-meta" aria-hidden="true">._domainkey.</span>
+                            <input type="text" name="dkim_domain" id="dkim_domain" value="' . $mail_value('DKIM_DOMAIN') . '" placeholder="example.com" inputmode="url" spellcheck="false" autocapitalize="off">
+                        </div>
+                        <div class="pg-field-help">' . h(($mail_txt_record !== '') ? lang('A new key signs mail at once: publish its record right after.') : lang('No DKIM key generated yet.')) . '</div>
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button type="submit" name="generate_dkim_key" value="true" class="pg-button pg-button-quiet pg-button-sm">
+                                <i class="bi bi-key" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and generate a DKIM key') . '</span>
+                            </button>
+                        </div>
+                    </div>';
 
 $mail_parts['domain'] = array('html' => '
                         <div id="pgset-mail-domain" class="pg-set-card">
-                            ' . pg_mail_domain_health_card($mail_domain_health, false) . '
+                            ' . pg_mail_domain_health_card($mail_domain_health, false, array('record' => $mail_txt_record, 'fields' => $mail_dkim_fields)) . '
                         </div>') + pg_mail_sending_fold_domain($mail_domain_health);
 
 // ── MailChimp ──

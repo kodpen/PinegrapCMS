@@ -2822,6 +2822,7 @@
     "Without a limit": "Sınırsız",
     "Without a login (link or outside service)": "Oturum açmadan (bağlantı ya da dış servis)",
     "Without a number, or when it cannot be queued, an e-mail goes in its place.": "Numara yoksa ya da mesaj kuyruğa eklenemezse yerine bir e-posta gider.",
+    "Without a server name, campaigns leave through PHP mail() on this server.": "Sunucu adı olmadan kampanyalar bu sunucudaki PHP mail() ile çıkar.",
     "Without a server name, e-mail leaves through PHP mail() on this server.": "Sunucu adı yoksa e-posta bu sunucudaki PHP mail() ile gider.",
     "Without an app: paste the address the platform gives for incoming webhooks into New subscription and choose the events it should hear.": "Uygulama olmadan: platformun gelen webhook için verdiği adresi Yeni abonelik ile yapıştırın ve duyması gereken olayları seçin.",
     "Without consent": "İzin olmadan",

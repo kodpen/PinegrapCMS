@@ -33,6 +33,7 @@ require_once(dirname(dirname(__FILE__)) . '/outbound/webhooks.php');
 
 // The stock history's filters and the transfer's check and writer.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_moves.php');
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
 
 // The largest stock level or change one call may name, either way. The route
 // table declares the same bound for the single-product endpoint
@@ -678,17 +679,14 @@ function api_inventory_list($params) {
 
 	$where = api_inventory_list_where($params, $location, $default_id, api_catalog_bin_columns());
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// sort=newest walks the product id the other way (list_order.php).
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$where[] = "products.id > '" . (int)$cursor['i'] . "'";
+		$where[] = api_list_keyset_sql('', 'products.id', $cursor, $descending);
 
 	}
 
@@ -697,7 +695,7 @@ function api_inventory_list($params) {
 	$products = api_rows("SELECT products.id, products.name, products.inventory_quantity, products.out_of_stock
 		FROM products
 		WHERE " . implode(' AND ', $where) . "
-		ORDER BY products.id
+		ORDER BY " . api_list_order_sql('', 'products.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$next = null;
@@ -708,7 +706,7 @@ function api_inventory_list($params) {
 
 		$last = end($products);
 
-		$next = api_cursor_encode((int)$last['id'], (int)$last['id']);
+		$next = api_list_cursor_encode((int)$last['id'], (int)$last['id'], $descending);
 
 	}
 

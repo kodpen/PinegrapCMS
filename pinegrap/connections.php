@@ -219,6 +219,21 @@ function connections_privacy_may_manage($user) {
 
 }
 
+// May the user change an e-document provider's connection (Paraşüt, Logo
+// İşbaşı)? It came from the E-Invoice card of Site Settings › Accounting, so
+// it keeps that category's gate.
+function connections_accounting_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('accounting', $user);
+
+}
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
@@ -639,6 +654,92 @@ if ($_POST) {
 		}
 
 		log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Google Merchant Center')), $_SESSION['sessionusername']);
+
+	}
+
+	// An e-document provider's connection, saved, tried or removed on its
+	// page under the gate of the E-Invoice card it came from: Paraşüt's
+	// application and grant, or a driver's own fields (Logo İşbaşı). Which
+	// provider carries the documents is still picked on the card.
+	if (in_array($action, array('edoc_save', 'edoc_remove', 'parasut_save', 'parasut_remove'), true) && connections_accounting_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+		require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+		$edoc_code = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$edoc_info = in_array($edoc_code, pg_connections_screen_accounting_pages(), true) ? erp_edoc_info($edoc_code) : null;
+		$edoc_own = (substr($action, 0, 8) === 'parasut_');
+
+		if (($edoc_info !== null) && ($edoc_own === ($edoc_code === 'parasut'))) {
+
+			$edoc_label = $edoc_info['label'];
+
+			if (in_array($action, array('edoc_remove', 'parasut_remove'), true)) {
+
+				if ($edoc_own ? parasut_disconnect() : erp_edoc_credentials_forget($edoc_code)) {
+					$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h($edoc_label))));
+					log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $edoc_label)), $_SESSION['sessionusername']);
+				}
+
+			} elseif ($edoc_own) {
+
+				// The messages carry Paraşüt's own words, so they are escaped.
+				$edoc_answer = parasut_page_save($_POST);
+
+				foreach ($edoc_answer['notices'] as $edoc_line) {
+					$liveform->add_notice(h($edoc_line));
+				}
+
+				foreach ($edoc_answer['warnings'] as $edoc_line) {
+					$liveform->add_warning(h($edoc_line));
+				}
+
+				if (!$edoc_answer['notices']) {
+					$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => h($edoc_label))));
+				}
+
+				log_activity(($edoc_answer['log'] !== '') ? $edoc_answer['log'] : lang(array('string' => 'changed the {var:1} connection', 'vars' => $edoc_label)), $_SESSION['sessionusername']);
+
+			} else {
+
+				// Nothing is stored while a required box would be left empty.
+				$edoc_fields = erp_edoc_fields($edoc_code);
+				$edoc_page = erp_edoc_page_post($edoc_code, $edoc_fields, $_POST);
+
+				foreach ($edoc_fields as $edoc_field) {
+					if (in_array($edoc_field['name'], erp_edoc_page_missing($edoc_fields, erp_edoc_credentials($edoc_code), $edoc_page), true)) {
+						$liveform->mark_error('edoc_' . $edoc_code . '_' . $edoc_field['name'], h(lang(array('string' => '{var:1} is required.', 'vars' => $edoc_field['label']))));
+					}
+				}
+
+				if (!$liveform->check_form_errors()) {
+
+					if (erp_edoc_credentials_save($edoc_code, $edoc_page['posted'], $edoc_page['cleared'])) {
+						$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => h($edoc_label))));
+						log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $edoc_label)), $_SESSION['sessionusername']);
+					} else {
+						$liveform->add_error(lang('The database has not been upgraded yet. Run the software update first.'));
+					}
+
+					// Save and try: the provider is asked with what is stored,
+					// and the answer is the page's "last checked" line.
+					if (!empty($_POST['submit_try']) && !$liveform->check_form_errors()) {
+
+						$edoc_test = erp_edoc_test($edoc_code);
+
+						if (!empty($edoc_test['success'])) {
+							$liveform->add_notice(lang(array('string' => '{var:1} accepted the credentials.', 'vars' => array(h($edoc_label)))) . ' ' . h((string) $edoc_test['message']));
+						} else {
+							$liveform->add_error(lang(array('string' => '{var:1} refused the connection: {var:2}', 'vars' => array(h($edoc_label), h((string) $edoc_test['message'])))));
+						}
+
+					}
+
+				}
+
+			}
+
+		}
 
 	}
 
@@ -2975,6 +3076,165 @@ function connections_merchant_page($page, $may_manage) {
 
 }
 
+/* A driver's own credential boxes (Logo İşbaşı) on its page: a select for
+   a choice, a password box drawn empty with "Stored" and a "remove" tick
+   when one is kept (a stored secret never goes back to the browser), a
+   text box with its value; then Save and Save and try. */
+
+function connections_edoc_fields($id) {
+
+	$stored = erp_edoc_credentials($id);
+	$html = '';
+
+	foreach (erp_edoc_fields($id) as $field) {
+
+		$name = 'edoc_' . $id . '_' . $field['name'];
+		$value = (string) ($stored[$field['name']] ?? '');
+
+		// A required box says so to screen readers only: the server refuses
+		// what is missing and marks it, so no required attribute stops the
+		// whole form.
+		$aria = !empty($field['required']) ? ' aria-required="true"' : '';
+
+		if (($field['type'] === 'select') && !empty($field['options'])) {
+			$control = '<select class="pg-input" id="' . h($name) . '" name="' . h($name) . '"' . $aria . '>';
+
+			foreach ((array) $field['options'] as $option => $option_label) {
+				$control .= '<option value="' . h((string) $option) . '"' . (((string) $option === $value) ? ' selected' : '') . '>' . h((string) $option_label) . '</option>';
+			}
+
+			$control .= '</select>';
+		} elseif ($field['type'] === 'password') {
+			$control = '<input type="password" class="pg-input font-monospace" id="' . h($name) . '" name="' . h($name) . '" value="" autocomplete="new-password" spellcheck="false"' . $aria . (($value !== '') ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>';
+
+			if ($value !== '') {
+				$control .= '
+					<div class="form-field mb-0 mt-2">
+						<input value="1" class="check" type="checkbox" id="' . h($name) . '_clear" name="' . h($name) . '_clear">
+						<label class="fg-danger" for="' . h($name) . '_clear">' . h(lang('Remove the saved value')) . '</label>
+					</div>';
+			}
+		} else {
+			$control = '<input type="text" class="pg-input" id="' . h($name) . '" name="' . h($name) . '" value="' . h($value) . '" autocomplete="off" spellcheck="false"' . $aria . '>';
+		}
+
+		$html .= '
+				<div>
+					<label class="pg-field-label" for="' . h($name) . '">' . h($field['label']) . (!empty($field['required']) ? '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span>' : '') . '</label>
+					' . $control . (($field['help'] !== '') ? '
+					<div class="pg-field-help">' . h($field['help']) . '</div>' : '') . '
+				</div>';
+
+	}
+
+	return $html . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet">' . h(lang('Save and try')) . '</button>
+				</div>';
+
+}
+
+/* An e-document provider's page, Paraşüt or Logo İşbaşı: "Connection
+   details" holds what the E-Invoice card of Site Settings › Accounting
+   held, for who may open that category: Paraşüt's application, connect
+   steps and grant, or the driver's own boxes with Save and try; Status
+   says what is kept, the last check and the environment, with
+   Disconnect; "Where it is used" leads to the card, which picks the
+   provider, and for Paraşüt to the order screen's own buttons. */
+
+function connections_edoc_page($page, $id, $may_manage) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+	$info = erp_edoc_info($id);
+
+	if ($info === null) {
+		return $page;
+	}
+
+	$own = ($id === 'parasut');
+	$active = (erp_edoc_active() === $id);
+	// Something to disconnect: a token or a secret kept, or any stored box.
+	$kept = $own ? (erp_edoc_connected($id) || (implode('', _parasut_credentials()) !== '')) : (array_filter(array_map('strval', erp_edoc_credentials($id)), 'strlen') !== array());
+	$row = erp_edoc_provider_row($id);
+	$environment = erp_edoc_environment($id);
+
+	if ($own) {
+		$line = parasut_connection_line(parasut_connection_status())['text'];
+	} elseif (erp_edoc_connected($id)) {
+		$line = lang('The credentials are stored.');
+	} else {
+		$line = $kept ? lang('Some required credentials are missing.') : lang('No credentials are stored.');
+	}
+
+	$page['status_extra'] = '
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Connection')) . '</div>
+				<div class="pg-text-2 text-break">' . h($line) . (!empty($environment['is_test']) ? ' <span class="pg-pill pg-tone-amber">' . h((string) $environment['label']) . '</span>' : '') . '</div>
+				' . ((is_array($row) && ((int) $row['checked_at'] > 0))
+					? '<div class="pg-text-meta mt-1">' . h(lang(array('string' => 'Last checked {var:1}: {var:2}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $row['checked_at'], 'format' => 'plain_text')), (string) $row['check_message'])))) . '</div>'
+					: '') . '
+			</div>';
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The site\'s {var:1} connection. Which provider carries the documents is picked on the E-Invoice card of Site Settings › Accounting.', 'vars' => $info['label']))) . ' ' . h($info['settings_note']) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form d-flex flex-column gap-5">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="' . ($own ? 'parasut_save' : 'edoc_save') . '">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . ($own ? parasut_page_fields_html() : connections_edoc_fields($id)) . '
+			</form>
+		</section>';
+
+		if ($kept) {
+			$page['status_extra'] .= '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="' . ($own ? 'parasut_remove' : 'edoc_remove') . '" data-id="0"
+					data-confirm="' . h($active
+						? lang(array('string' => 'The {var:1} connection is removed from this site: no e-document can be sent until it is connected again.', 'vars' => $info['label']))
+						: lang(array('string' => 'The {var:1} connection is removed from this site.', 'vars' => $info['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$card = h(lang('Site Settings')) . ' › ' . h(lang('Accounting')) . ' › ' . h(lang('E-Invoice'));
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('accounting', 'pgset-invoice')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('The ERP\'s e-documents')) . '</span>
+						<span class="pg-text-meta d-block">' . $card . '</span>
+						<span class="pg-text-meta d-block">' . h($active ? lang('It is the e-document provider picked on the card.') : lang('It is not the provider picked on the card.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($active ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	if ($own) {
+		$legacy = defined('ENABLE_PARASUT') && ((int) ENABLE_PARASUT === 1);
+
+		$page['uses'] .= '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('accounting', 'pgset-invoice')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('The order screen\'s Create Invoice and E-Shipment')) . '</span>
+						<span class="pg-text-meta d-block">' . $card . ' › ' . h(lang('Enable Parasut Configuration')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($legacy ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+	}
+
+	return $page;
+
+}
+
 /* Why a provider's application cannot connect yet; '' when it can. */
 
 function connections_app_hint($app) {
@@ -3974,13 +4234,15 @@ if ($provider_page !== '') {
 			'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
 			'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
 			'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
+			'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
+			|| in_array($page_id, pg_connections_screen_accounting_pages(), true),
 	);
 
 	// A card gateway's page: its keys and the card that chooses it.
@@ -4020,6 +4282,12 @@ if ($provider_page !== '') {
 	// Google Merchant Center's page: the account, the feed and its issues.
 	if ($page_id === 'merchant_center') {
 		$page = connections_merchant_page($page, connections_commerce_may_manage($user));
+	}
+
+	// An e-document provider's page: its connection and the card that picks
+	// it.
+	if (in_array($page_id, pg_connections_screen_accounting_pages(), true)) {
+		$page = connections_edoc_page($page, $page_id, connections_accounting_may_manage($user));
 	}
 
 	// A CAPTCHA provider's page: its keys and the card that chooses it.

@@ -1767,6 +1767,41 @@ function pg_mail_connection($type)
 }
 
 /**
+ * How campaigns were set to leave on E-mail sending (config_text
+ * campaign_mail_way): 'system' (the same way as system e-mail), 'server' (the
+ * campaign server alone, no sending service), an account or service way, or
+ * '' when never chosen, which keeps the order campaigns always had.
+ *
+ * @return string
+ */
+function pg_mail_campaign_way()
+{
+    return function_exists('pg_config_text') ? pg_config_text('campaign_mail_way') : '';
+}
+
+/**
+ * Which kind's account and server a message of a type leaves through, and
+ * whether a sending service may take it. Pure.
+ *
+ * @param string $type         email()'s type: system, campaign or another
+ * @param string $campaign_way pg_mail_campaign_way()
+ * @return array kind (system, campaign, '' for a type with neither),
+ *               service (a sending service switched on may send it)
+ */
+function pg_mail_kind_route($type, $campaign_way)
+{
+    if ($type === 'campaign') {
+        if ($campaign_way === 'system') {
+            return array('kind' => 'system', 'service' => true);
+        }
+
+        return array('kind' => 'campaign', 'service' => ($campaign_way !== 'server'));
+    }
+
+    return array('kind' => ($type === 'system') ? 'system' : '', 'service' => true);
+}
+
+/**
  * The From and Reply-To of a message sent from a connected account.
  *
  * A mailbox sends as itself: Gmail rewrites any other From to the account,
@@ -2110,6 +2145,10 @@ function email($properties)
         // so the timeout is short.
         $smtp = (isset($properties['smtp']) && is_array($properties['smtp']) && !empty($properties['smtp']['host'])) ? $properties['smtp'] : null;
 
+        // The way the message's kind leaves: a campaign may be set to leave
+        // as system e-mail does, or through its own server alone.
+        $route = pg_mail_kind_route($type, ($type === 'campaign') ? pg_mail_campaign_way() : '');
+
         // 'connection' names a connected account of the message's own (a
         // Workspace mailbox's, purpose mail_read): it comes before the one
         // SMTP Settings chose, and a gone one fails the message rather than
@@ -2123,13 +2162,13 @@ function email($properties)
                 throw new Exception(lang('The connected account answers are sent through is gone or must be connected again.'));
             }
         } else {
-            $connection = (!$smtp && (($type === 'system') || ($type === 'campaign'))) ? pg_mail_connection($type) : null;
+            $connection = (!$smtp && ($route['kind'] !== '')) ? pg_mail_connection($route['kind']) : null;
         }
 
         // A sending service's API (includes/fn/mail_transport.php) takes
         // what no server or account of the message's own, and no connected
         // account chosen for its kind, sends; 'smtp' keeps the server below.
-        $transport = (!$smtp && !$connection) ? pg_mail_transport() : 'smtp';
+        $transport = (!$smtp && !$connection && $route['service']) ? pg_mail_transport() : 'smtp';
 
         // SMTP config
         if ($smtp) {
@@ -2153,7 +2192,7 @@ function email($properties)
         } elseif ($transport !== 'smtp') {
             // Built as for SMTP; handed to the service's API at the end.
             $mail->isSMTP();
-        } elseif ($type === 'system' && defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '') {
+        } elseif ($route['kind'] === 'system' && defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '') {
             $mail->isSMTP();
             $mail->Host = SYSTEM_SMTP_HOSTNAME;
             if (defined('SYSTEM_SMTP_USERNAME') && SYSTEM_SMTP_USERNAME !== '') {
@@ -2162,7 +2201,7 @@ function email($properties)
                 $mail->Password = defined('SYSTEM_SMTP_PASSWORD') ? SYSTEM_SMTP_PASSWORD : '';
             }
             $mail->Port = (defined('SYSTEM_SMTP_PORT') && SYSTEM_SMTP_PORT !== '') ? SYSTEM_SMTP_PORT : 587;
-        } elseif ($type === 'campaign' && defined('CAMPAIGN_SMTP_HOSTNAME') && CAMPAIGN_SMTP_HOSTNAME !== '') {
+        } elseif ($route['kind'] === 'campaign' && defined('CAMPAIGN_SMTP_HOSTNAME') && CAMPAIGN_SMTP_HOSTNAME !== '') {
             $mail->isSMTP();
             $mail->Host = CAMPAIGN_SMTP_HOSTNAME;
             if (defined('CAMPAIGN_SMTP_USERNAME') && CAMPAIGN_SMTP_USERNAME !== '') {

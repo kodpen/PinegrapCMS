@@ -384,7 +384,7 @@ if ($can_site_settings) {
                             ' . $organization_place . '</p>
                         <p class="small mb-3">' . lang('The address the sale was made at is on the ERP card of the accounting settings.') . '
                             ' . $settings_place . '</p>
-                        <p class="small mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) and its credentials are on the E-Invoice card of the accounting settings.') . '
+                        <p class="small mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) is picked on the E-Invoice card of the accounting settings; its credentials are on its page of Connections.') . '
                             ' . $edoc_place . '</p>';
 
     $output_cards = '

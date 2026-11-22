@@ -25,8 +25,8 @@
 'use strict';
 
 const GRID = 16;
-const BOX_W = 208;
-const BOX_H = 80;
+const BOX_W = 196;
+const BOX_H = 72;
 const SAVE_DELAY = 1500;
 
 const BOX = (id) => '#ws-root .pgc-node[data-node="' + id + '"]';

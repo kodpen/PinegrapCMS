@@ -5,8 +5,9 @@
  * Site Settings › E-mail › E-mail sending as folded rows
  * (includes/settings/mail_sending.php, includes/settings/fold.php): the
  * rows' order, names and icons, each row's line of state and pill, the
- * sentence that says how a kind of mail leaves today, the ways sheet of
- * system e-mail and what its choice posts, and the last test's result.
+ * sentence that says how a kind of mail leaves today, the ways sheets of
+ * system e-mail and of campaigns and what their choice posts, and the last
+ * test's result.
  * Pure but for lang() and the two readers at the end.
  *
  * @author      Erdal Güral (Kodpen)
@@ -26,7 +27,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_mail_sending_fold_order()
 {
-    return array('leaves', 'domain', 'dkim', 'campaign', 'mailchimp', 'test');
+    return array('leaves', 'domain', 'campaign', 'mailchimp', 'test');
 }
 
 /**
@@ -42,8 +43,6 @@ function pg_mail_sending_fold_face($key)
             return array('name' => lang('How e-mail leaves'), 'icon' => 'bi-send', 'tone' => 'pg-tone-blue');
         case 'domain':
             return array('name' => lang('Sending domain'), 'icon' => 'bi-patch-check', 'tone' => 'pg-tone-teal');
-        case 'dkim':
-            return array('name' => lang('DKIM TXT Record'), 'icon' => 'bi-key', 'tone' => 'pg-tone-teal');
         case 'campaign':
             return array('name' => lang('Campaign mail'), 'icon' => 'bi-megaphone', 'tone' => 'pg-tone-violet');
         case 'mailchimp':
@@ -56,18 +55,30 @@ function pg_mail_sending_fold_face($key)
 /**
  * How one kind of mail leaves today, in the order email() decides it: the
  * connected account chosen for the kind, the sending service switched on,
- * the kind's own mail server, PHP mail().
+ * the kind's own mail server, PHP mail(). Campaigns set to leave the same
+ * way as system e-mail take system e-mail's way.
  *
  * @param array $facts account (null, or label, provider, provider_label,
  *                     status), service (the label of the service that
  *                     sends, ''), host (the kind's server, ''), mail
- *                     (PHP mail() is there)
+ *                     (PHP mail() is there), same (system e-mail's
+ *                     pg_mail_way_now() when campaigns follow it)
  * @return array way (google, microsoft, service, server, mail, none), short
  *               (the account, service or server; '' for none), sentence,
  *               ok (it leaves), ask (an account to connect again)
  */
 function pg_mail_way_now($facts)
 {
+    if (isset($facts['same']) && is_array($facts['same'])) {
+        $same = $facts['same'];
+
+        if ($same['ok']) {
+            $same['sentence'] = lang(array('string' => 'Leaves the same way as system e-mail, through {var:1}.', 'vars' => array($same['short'])));
+        }
+
+        return $same;
+    }
+
     $account = $facts['account'] ?? null;
 
     if (is_array($account)) {
@@ -164,23 +175,6 @@ function pg_mail_sending_fold_domain($health)
 
     return array('line' => lang(array('string' => '{var:1} · SPF, DKIM and DMARC good', 'vars' => array($domain))),
         'pill' => array(lang('Good'), 'pg-tone-teal'), 'attention' => false);
-}
-
-/**
- * The DKIM row's line: the name the record is published under.
- *
- * @param string $selector DKIM_SELECTOR
- * @param string $domain   DKIM_DOMAIN
- * @param bool   $has_key  a key was generated
- * @return array line, pill, attention
- */
-function pg_mail_sending_fold_dkim($selector, $domain, $has_key)
-{
-    if (!$has_key) {
-        return array('line' => lang('No DKIM key generated yet.'), 'pill' => array(lang('No key'), 'pg-tone-gray'), 'attention' => false);
-    }
-
-    return array('line' => (($selector !== '') ? $selector : 'pinegrap') . '._domainkey.' . $domain, 'pill' => null, 'attention' => false);
 }
 
 /**
@@ -332,6 +326,83 @@ function pg_mail_way_post($post, $enabled, $accounts)
 }
 
 /**
+ * The way the ways sheet of campaigns starts on: the same way as system
+ * e-mail when chosen, else the provider of the campaigns' account, else the
+ * mail server when chosen, else a sending service when one is switched on
+ * (it takes campaigns before their server), else the mail server.
+ *
+ * @param string     $stored  pg_mail_campaign_way()
+ * @param array|null $account the account chosen for campaigns
+ * @param string     $service the service switched on, ''
+ * @return string system, google, microsoft, service or server
+ */
+function pg_mail_campaign_way_chosen($stored, $account, $service)
+{
+    if ($stored === 'system') {
+        return 'system';
+    }
+
+    if (is_array($account) && in_array($account['provider'], array('google', 'microsoft'), true)) {
+        return (string) $account['provider'];
+    }
+
+    if ($stored === 'server') {
+        return 'server';
+    }
+
+    return ($service !== '') ? 'service' : 'server';
+}
+
+/**
+ * What a save of the campaigns' ways sheet posts and stores. It runs after
+ * pg_mail_way_post(), whose mail_transport says which service system e-mail
+ * leaves a site with. An account way needs an account of its provider; a
+ * sending service needs one switched on, as campaigns use system e-mail's;
+ * every other way clears the campaigns' account. A site that never chose
+ * (nothing stored) and saves the way the sheet started on stores nothing,
+ * so its campaigns keep the order they always had.
+ *
+ * @param array  $post     the request's fields, campaign_mail_way and
+ *                         campaign_mail_way_was among them
+ * @param string $stored   pg_mail_campaign_way()
+ * @param array  $accounts account id => provider, the accounts for sending
+ * @return array post (the fields to save), mark (null, or field, sentence),
+ *               store (the way to keep in config_text, null to leave it)
+ */
+function pg_mail_campaign_way_post($post, $stored, $accounts)
+{
+    $way = (string) ($post['campaign_mail_way'] ?? '');
+
+    if (!in_array($way, array('system', 'google', 'microsoft', 'service', 'server'), true)) {
+        return array('post' => $post, 'mark' => null, 'store' => null);
+    }
+
+    if (in_array($way, array('google', 'microsoft'), true)) {
+        $id = (int) ($post['campaign_mail_connection'] ?? 0);
+
+        if (!isset($accounts[$id]) || ($accounts[$id] !== $way)) {
+            $sentence = ($way === 'google') ? lang('Choose a Google account, or connect one.') : lang('Choose a Microsoft account, or connect one.');
+
+            return array('post' => $post, 'mark' => array('campaign_mail_way', $sentence), 'store' => null);
+        }
+    } else {
+        $post['campaign_mail_connection'] = '';
+    }
+
+    if ($way === 'service') {
+        $service = (string) ($post['mail_transport'] ?? '');
+
+        if (($service === '') || ($service === 'smtp')) {
+            return array('post' => $post, 'mark' => array('campaign_mail_way', lang('Choose a sending service for system e-mail first: campaigns use the same service.')), 'store' => null);
+        }
+    }
+
+    $unchanged = ($stored === '') && ($way === (string) ($post['campaign_mail_way_was'] ?? ''));
+
+    return array('post' => $post, 'mark' => null, 'store' => $unchanged ? null : $way);
+}
+
+/**
  * The sending service switched on, complete or not; '' for none.
  *
  * @return string a pg_mail_transports() key or ''
@@ -355,9 +426,15 @@ function pg_mail_way_enabled_service()
  */
 function pg_mail_way_read($kind)
 {
+    $route = pg_mail_kind_route($kind, ($kind === 'campaign') ? pg_mail_campaign_way() : '');
+
+    if ($route['kind'] !== $kind) {
+        return pg_mail_way_now(array('same' => pg_mail_way_read($route['kind'])));
+    }
+
     $account = pg_mail_connection($kind);
     $provider = is_array($account) ? pg_connect_provider($account['provider']) : null;
-    $transport = pg_mail_transport();
+    $transport = $route['service'] ? pg_mail_transport() : 'smtp';
     $transports = pg_mail_transports();
     $host = ($kind === 'campaign') ? 'CAMPAIGN_SMTP_HOSTNAME' : 'SYSTEM_SMTP_HOSTNAME';
 
@@ -375,41 +452,53 @@ function pg_mail_way_read($kind)
 }
 
 /**
- * The ways of system e-mail as choice cards (Design examples' Choice
- * cards), the chosen one checked. Each radio is joined to the settings form.
+ * The ways of a kind of mail as choice cards (Design examples' Choice
+ * cards), the chosen one checked; campaigns have "The same way as system
+ * e-mail" first. Each radio is joined to the settings form.
  *
- * @param string $chosen pg_mail_way_chosen()
+ * @param string $chosen pg_mail_way_chosen() or pg_mail_campaign_way_chosen()
  * @param string $form   the settings form's id
+ * @param string $kind   system or campaign
  * @return string HTML
  */
-function pg_mail_way_cards($chosen, $form)
+function pg_mail_way_cards($chosen, $form, $kind = 'system')
 {
-    $ways = array(
+    $ways = ($kind === 'campaign')
+        ? array('system' => array('blue', 'bi-envelope-check', lang('The same way as system e-mail'), lang('Campaigns follow the way chosen for system e-mail.')))
+        : array();
+    $ways += array(
         'google'    => array('blue', 'bi-google', lang('A Google account'), lang('Leaves from your Gmail or Google Workspace address.')),
         'microsoft' => array('teal', 'bi-microsoft', lang('A Microsoft account'), lang('Leaves from your Microsoft 365 or Outlook address.')),
         'service'   => array('violet', 'bi-lightning-charge', lang('A sending service'), lang('With the key of a service such as Brevo, Mailgun or Amazon SES.')),
         'server'    => array('gray', 'bi-hdd-rack', lang('Your own mail server'), lang('With the server name, a user and a password.')),
     );
+
+    if ($kind === 'campaign') {
+        $ways['service'][3] = lang('Through the sending service system e-mail uses.');
+    }
+    $name = ($kind === 'campaign') ? 'campaign_mail_way' : 'system_mail_way';
     $html = '';
 
     foreach ($ways as $key => $way) {
-        $id = 'system_mail_way_' . $key;
+        $id = $name . '_' . $key;
 
         $html .= '<div class="form-field form-field-card">'
-            . '<input class="radio" type="radio" name="system_mail_way" value="' . $key . '" id="' . $id . '" form="' . h($form) . '" aria-describedby="' . $id . '_help" data-mail-way' . (($key === $chosen) ? ' checked' : '') . '>'
+            . '<input class="radio" type="radio" name="' . $name . '" value="' . $key . '" id="' . $id . '" form="' . h($form) . '" aria-describedby="' . $id . '_help" data-mail-way' . (($key === $chosen) ? ' checked' : '') . '>'
             . '<label class="pg-start-head" for="' . $id . '"><span class="pg-icon-tile pg-tone-' . $way[0] . '" aria-hidden="true"><i class="bi ' . $way[1] . '"></i></span>'
             . '<strong>' . h($way[2]) . '</strong><span class="pg-start-mark" aria-hidden="true"><i class="bi bi-check"></i></span></label>'
             . '<div class="form-text" id="' . $id . '_help">' . h($way[3]) . '</div>'
             . '</div>';
     }
 
-    return '<fieldset><legend class="visually-hidden">' . h(lang('How should system e-mail leave?')) . '</legend><div class="pg-start pg-start-choice">' . $html . '</div></fieldset>';
+    $legend = ($kind === 'campaign') ? lang('How should campaigns leave?') : lang('How should system e-mail leave?');
+
+    return '<fieldset><legend class="visually-hidden">' . h($legend) . '</legend><div class="pg-start pg-start-choice">' . $html . '</div></fieldset>';
 }
 
 /**
  * The account select of one provider's way: its accounts for sending, the
  * stored one chosen. Only the chosen way's select is enabled, so the form
- * posts one system_mail_connection.
+ * posts one account for the sheet's kind of mail.
  *
  * @param string $provider google or microsoft
  * @param array  $accounts pg_mail_sending_accounts(), one connected for a
@@ -417,9 +506,10 @@ function pg_mail_way_cards($chosen, $form)
  * @param int    $current  the stored account
  * @param bool   $enabled  this way is the chosen one
  * @param string $form     the settings form's id
+ * @param string $name     system_mail_connection or campaign_mail_connection
  * @return string HTML, '' when the provider has no account
  */
-function pg_mail_way_account_select($provider, $accounts, $current, $enabled, $form)
+function pg_mail_way_account_select($provider, $accounts, $current, $enabled, $form, $name = 'system_mail_connection')
 {
     $options = '';
 
@@ -437,8 +527,8 @@ function pg_mail_way_account_select($provider, $accounts, $current, $enabled, $f
         return '';
     }
 
-    $id = ($provider === 'google') ? 'setting_system_mail_connection' : 'setting_system_mail_connection_' . $provider;
+    $id = ($provider === 'google') ? 'setting_' . $name : 'setting_' . $name . '_' . $provider;
 
     return '<label for="' . $id . '" class="pg-field-label">' . h(lang('Account')) . '</label>'
-        . '<select name="system_mail_connection" id="' . $id . '" class="pg-input" form="' . h($form) . '" data-mail-way-account="' . h($provider) . '"' . ($enabled ? '' : ' disabled') . '>' . $options . '</select>';
+        . '<select name="' . h($name) . '" id="' . $id . '" class="pg-input" form="' . h($form) . '" data-mail-way-account="' . h($provider) . '"' . ($enabled ? '' : ' disabled') . '>' . $options . '</select>';
 }

@@ -1064,13 +1064,15 @@ if (function_exists('pg_waf_ban_notice_send')) {
 // Page cache: a write by a signed-in user or an API client may change what
 // pages show, so every stored page is made old once the request ends
 // (includes/fn/page_cache.php). The MCP server and OAuth answer reads with
-// POST too: the MCP server marks a tool call that wrote itself
+// POST too, as does the API's POST /batch (pg_page_cache_api_path_reads()):
+// the MCP server marks a tool call that wrote itself
 // (pg_mcp_route_run()), OAuth changes no page.
 if (function_exists('pg_page_cache_request_dirties') && pg_page_cache_request_dirties(
     isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : '',
     isset($_SERVER['SCRIPT_NAME']) ? (string) $_SERVER['SCRIPT_NAME'] : '',
     USER_LOGGED_IN,
-    defined('PG_API_ENTRY') && !defined('PG_MCP_ENTRY') && !defined('PG_OAUTH_ENTRY'))) {
+    defined('PG_API_ENTRY') && !defined('PG_MCP_ENTRY') && !defined('PG_OAUTH_ENTRY'),
+    pg_page_cache_request_api_path())) {
     pg_page_cache_mark_dirty();
 }
 

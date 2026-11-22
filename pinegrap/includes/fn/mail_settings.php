@@ -93,33 +93,6 @@ function pg_mail_settings_providers()
 }
 
 /**
- * The campaign's account select: no account, or one of the site's accounts
- * connected for sending.
- *
- * @param string $name the field's name (campaign_mail_connection)
- * @param int|string $current the stored account number
- * @param array $accounts pg_connect_accounts() of purpose mail
- * @return string
- */
-function pg_mail_settings_connection_field($name, $current, array $accounts)
-{
-    $options = '<option value="">' . h(lang('No connected account')) . '</option>';
-
-    foreach ($accounts as $account) {
-        $provider = pg_connect_provider($account['provider']);
-
-        $options .= '<option value="' . (int) $account['id'] . '"' . (((int) $current === (int) $account['id']) ? ' selected' : '') . '>'
-            . h($account['label'] . ' (' . (is_array($provider) ? $provider['label'] : $account['provider']) . ')'
-                . (($account['status'] !== 'active') ? ' - ' . lang('Connect again') : ''))
-            . '</option>';
-    }
-
-    return '
-                                            <label for="setting_' . h($name) . '" class="form-label pg-field-label">' . h(lang('Account')) . '</label>
-                                            <select name="' . h($name) . '" id="setting_' . h($name) . '" class="form-control">' . $options . '</select>';
-}
-
-/**
  * The Connect button of one provider's way in the ways sheet. It submits a
  * hidden form outside the settings form (includes/settings/mail_sending.php);
  * while the provider's application is not set up, a link to Connections.
@@ -144,7 +117,7 @@ function pg_mail_settings_connect_buttons(array $providers, $key, $has_accounts)
 }
 
 /**
- * The TXT record the DKIM card shows: the generated key under the selector
+ * The TXT record the DKIM row of Sending domain offers: the generated key under the selector
  * and domain mail is signed with now (email() falls back to "pinegrap" and the
  * domain of the site's address). The stored record keeps the names the key
  * was generated with, and a selector changed since would send the operator to
@@ -169,32 +142,6 @@ function pg_mail_settings_dkim_shown_record($stored, $selector, $domain, $email_
     $domain = ((string) $domain !== '') ? (string) $domain : (($at !== false) ? substr($at, 1) : '');
 
     return pg_dkim_txt_record($selector, $domain, $key);
-}
-
-/**
- * Whether one of the TXT records published for the selector carries the whole
- * generated key. A record cut short (a DNS panel stopping at 255 characters)
- * holds only the key's start and signs nothing, so it does not pass.
- *
- * @param string $txt_record the generated record (files.description of dkim.key)
- * @param array $records dns_get_record() answers, each with its 'txt'
- * @return bool
- */
-function pg_mail_settings_dkim_matches($txt_record, array $records)
-{
-    $key = pg_mail_dkim_key($txt_record);
-
-    if ($key === '') {
-        return false;
-    }
-
-    foreach ($records as $record) {
-        if (is_array($record) && isset($record['txt']) && (pg_mail_dkim_key($record['txt']) === $key)) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 /**
@@ -298,14 +245,22 @@ function pg_mail_settings_save(array $post, $liveform)
     }
 
     // A number box that would stop the mail or the campaign job is refused
-    // before anything is written. The campaign boxes are folded away while
-    // the job is off, where a mark could not be seen or put right.
+    // before anything is written. Max. is folded away while the job is off,
+    // and the campaign server's boxes are shown only while campaigns leave
+    // through it (before a way was posted, while the job is on), where a
+    // mark could not be seen or put right otherwise.
     $job_on = (isset($post['email_campaign_job']) && ($post['email_campaign_job'] === 'true'));
+    $campaign_way = (isset($post['campaign_mail_way']) && is_string($post['campaign_mail_way'])) ? $post['campaign_mail_way'] : '';
+    $checked = array(
+        'SYSTEM_SMTP_PORT'                    => true,
+        'CAMPAIGN_SMTP_PORT'                  => ($campaign_way === 'server') || (($campaign_way === '') && $job_on),
+        'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS' => $job_on,
+    );
 
-    foreach (array('SYSTEM_SMTP_PORT', 'CAMPAIGN_SMTP_PORT', 'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS') as $key) {
+    foreach ($checked as $key => $check) {
         $field = strtolower($key);
 
-        if (!$job_on && ($key !== 'SYSTEM_SMTP_PORT')) {
+        if (!$check) {
             continue;
         }
         $problem = pg_mail_settings_number_problem($key, (isset($post[$field]) && is_string($post[$field])) ? trim(preg_replace('/[\x00-\x1F\x7F]/', '', $post[$field])) : '');
@@ -494,41 +449,10 @@ function pg_mail_settings_dkim_generate(array $saved, $liveform)
     db("INSERT INTO files (name,folder,description,type,size,design,user,timestamp)
         VALUES ('dkim.pub','" . escape(getPublicRootFolderId()) . "','DKIM Public Key (PEM)','application/x-pem-file','" . escape($size) . "',1,'" . USER_ID . "',UNIX_TIMESTAMP())");
 
-    // The record to publish is on the DKIM card after the save, so the notice
-    // stays text.
-    $liveform->add_notice(lang('DKIM key pair generated successfully.') . ' ' . lang('Add the TXT record shown on the DKIM TXT Record card to your DNS.'));
+    // The record to publish is in Sending domain's DKIM row after the save,
+    // so the notice stays text.
+    $liveform->add_notice(lang('DKIM key pair generated successfully.') . ' ' . lang('Publish the TXT record shown in the DKIM row of Sending domain.'));
     log_activity(lang('DKIM key pair generated, files saved, TXT suggestion stored.'), $_SESSION['sessionusername']);
-}
-
-/**
- * "Save and test" on the DKIM card: whether the TXT record published for the
- * saved selector and domain is the generated key's.
- *
- * @param array $saved pg_mail_settings_save()'s answer
- * @param object $liveform
- * @return void
- */
-function pg_mail_settings_dkim_test(array $saved, $liveform)
-{
-    $selector = $saved['dkim_selector'];
-    $domain = $saved['dkim_domain'];
-    $txt_record = db_value("SELECT description FROM files WHERE name = 'dkim.key'");
-
-    if (!$selector || !$domain || !$txt_record) {
-        $liveform->add_warning(lang('DKIM domain/selector or key not set.'));
-
-        return;
-    }
-
-    // A failed lookup is a failed test, not a PHP warning on the pane.
-    $records = @dns_get_record($selector . '._domainkey.' . $domain, DNS_TXT);
-
-    if (pg_mail_settings_dkim_matches((string) $txt_record, is_array($records) ? $records : array())) {
-        $liveform->add_notice(lang('DKIM test successful. DNS record matches generated key.'));
-        log_activity(lang('DKIM test successful.'), $_SESSION['sessionusername']);
-    } else {
-        $liveform->add_warning(lang('DKIM test failed. DNS record not matching or not found.'));
-    }
 }
 
 /**
