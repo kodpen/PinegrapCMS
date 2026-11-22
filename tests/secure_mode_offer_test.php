@@ -61,7 +61,7 @@ function test_secure_mode_offer_box_only_for_an_offerable_peer()
 	$source = secure_mode_offer_test_source('includes/settings/firewall.php');
 
 	$start = strpos($source, '$output_secure_mode_offer = \'\';');
-	$end = strpos($source, '$pg_settings_cards[] = \'
+	$end = strpos($source, '$firewall_parts[\'headers\'] = array(\'html\' => \'
     <div id="pgset-headers"');
 	pg_assert_true(($start !== false) && ($end !== false) && ($start < $end), 'the offer block stands before the card');
 

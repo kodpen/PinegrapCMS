@@ -77,7 +77,9 @@ function api_app_new_card_html($card, $checked) {
 // others: title, sub (the line under it), tone, icon, html
 // (api_app_new_connect_html()), ack (a secret is shown, so Close waits for
 // "I have copied it"), rotated (no step line: nothing was picked).
-function api_app_new_view($cards, $permission_rows, $start_note, $connect = null) {
+// $agent_html is the agent's fields for "Agent in a channel"
+// (api_app_agent_sheet_html()), '' when that card is not offered.
+function api_app_new_view($cards, $permission_rows, $start_note, $connect = null, $agent_html = '') {
 
 	$card_html = '';
 
@@ -158,6 +160,7 @@ function api_app_new_view($cards, $permission_rows, $start_note, $connect = null
 							placeholder="' . h(lang('What is it used for?')) . '">
 					</div>
 				</div>
+				' . $agent_html . '
 				<div role="group" aria-labelledby="n_scope_title" class="mb-5">
 					<div class="form-label pg-field-label" id="n_scope_title"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>' . lang('Permissions') . '</div>
 					<div class="alert theme-primary py-3 px-5 small mb-3 d-none" id="n_start_note" role="status">

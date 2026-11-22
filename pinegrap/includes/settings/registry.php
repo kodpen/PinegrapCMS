@@ -296,22 +296,24 @@ function pg_settings_categories()
             'icon'  => 'bi-bricks',
             'description' => lang('The request filter, the limits on one address, bot policy, address lists, countries, trusted proxies, HTTPS and security headers.'),
             'sections' => array(
+                'pgset-headers' => lang('HTTPS'),
                 'pgset-waf'     => lang('Firewall'),
                 'pgset-limits'  => lang('Limits'),
                 'pgset-bots'    => lang('Bots'),
                 'pgset-iplists' => lang('Addresses'),
                 'pgset-countries' => lang('Countries'),
                 'pgset-proxies' => lang('Trusted proxies'),
-                'pgset-headers' => lang('HTTPS and Security Headers'),
+                'pgset-waf-logs' => lang('Logs'),
             ),
             'keywords' => array(
-                'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, monitor, block mode, sensitivity, log')),
+                'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, nosniff, referrer')),
+                'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, monitor, block mode, sensitivity')),
                 'pgset-limits'  => pg_settings_keywords(lang('rate limit, requests per minute, ban, automatic ban, temporary ban, open at once, limit')),
                 'pgset-bots'    => pg_settings_keywords(lang('bot, crawler, googlebot, ai, gptbot, claudebot')),
                 'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, banned, ban, release')),
                 'pgset-countries' => pg_settings_keywords(lang('country, countries, geo, geoblocking, location, region, tor, block country, allow country')),
                 'pgset-proxies' => pg_settings_keywords(lang('proxy, trusted proxy, load balancer, cdn, x-forwarded-for, visitor address, real ip')),
-                'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer')),
+                'pgset-waf-logs' => pg_settings_keywords(lang('log, firewall log, retention, log size, plain-text log, fail2ban, iptables')),
             ),
         ),
 
@@ -624,7 +626,6 @@ function pg_settings_email_category()
         'sections' => array(
             'pgset-mail-system'    => lang('How e-mail leaves'),
             'pgset-mail-domain'    => lang('Sending domain'),
-            'pgset-mail-dkim'      => lang('DKIM TXT Record'),
             'pgset-mail-campaign'  => lang('Campaign mail'),
             'pgset-mailchimp'      => lang('MailChimp'),
             'pgset-mail-test'      => lang('Send a test'),
@@ -632,8 +633,7 @@ function pg_settings_email_category()
         ),
         'keywords' => array(
             'pgset-mail-system'    => array_values(array_unique(array_merge(pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')), pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail'))))),
-            'pgset-mail-domain'    => pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')),
-            'pgset-mail-dkim'      => pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature')),
+            'pgset-mail-domain'    => array_values(array_unique(array_merge(pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')), pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature'))))),
             'pgset-mail-campaign'  => array_values(array_unique(array_merge(pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')), pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer'))))),
             'pgset-mailchimp'      => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
             'pgset-mail-test'      => pg_settings_keywords(lang('test e-mail, send a test, test')),
@@ -645,7 +645,7 @@ function pg_settings_email_category()
                 'gate'     => '',
                 'module'   => 'mail_sending',
                 'prep'     => true,
-                'sections' => array('pgset-mail-system', 'pgset-mail-domain', 'pgset-mail-dkim', 'pgset-mail-campaign', 'pgset-mailchimp', 'pgset-mail-test'),
+                'sections' => array('pgset-mail-system', 'pgset-mail-domain', 'pgset-mail-campaign', 'pgset-mailchimp', 'pgset-mail-test'),
             ),
             'mailboxes' => array(
                 'label'    => lang('Mailboxes'),
@@ -1259,6 +1259,11 @@ function pg_settings_legacy_anchors()
         'pgsub-bots'       => array('firewall',   'pgset-bots'),
         'pgsub-iplists'    => array('firewall',   'pgset-iplists'),
         'pgsub-headers'    => array('firewall',   'pgset-headers'),
+        // The firewall log's fields and the plain-text block log left the
+        // Firewall and HTTPS cards for the Logs row.
+        'waf_log_retention_days' => array('firewall', 'pgset-waf-logs'),
+        'waf_log_max_rows' => array('firewall',   'pgset-waf-logs'),
+        'waf_text_log'     => array('firewall',   'pgset-waf-logs'),
         'pgset-ecommerce'  => array('commerce',   'pgset-store'),
         'pgsub-store'      => array('commerce',   'pgset-store'),
         'pgsub-shipping'   => array('commerce',   'pgset-shipping'),
@@ -1297,6 +1302,8 @@ function pg_settings_legacy_anchors()
         'mail_transport_card' => array('email', 'pgset-mail-system'),
         'pgset-mail-transport' => array('email', 'pgset-mail-system'),
         'mail_domain_card' => array('email', 'pgset-mail-domain'),
+        // The DKIM TXT Record card went into Sending domain's DKIM row.
+        'pgset-mail-dkim'  => array('email', 'pgset-mail-domain'),
         // The GitHub repository links are managed on GitHub's page of
         // Connections; the card that held them keeps its place and leads there.
         'ws-github'        => array('workspace_channels', 'pgset-ws-github'),

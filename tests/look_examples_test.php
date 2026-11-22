@@ -294,3 +294,19 @@ function test_look_examples_screen_gate_and_link()
 	pg_assert_contains("if (\$role <= 1) {\n        \$tools[] = array('label' => lang('Design examples'), 'icon' => 'bi-palette', 'url' => 'design_examples.php');", $registry, 'System tools links it under the same gate');
 	pg_assert_contains("'design_examples.php'       => array(", $registry, 'with search words');
 }
+
+function test_look_examples_flow_box()
+{
+	$html = array_column(pg_look_examples_patterns('dark'), 'html', 'id')['pattern-flow-box'];
+
+	pg_assert_same(4, substr_count($html, 'class="pgc-node wsf-card '), 'four boxes as cards');
+	pg_assert_same(4, substr_count($html, '<span class="pg-icon-tile wsf-node-tile" aria-hidden="true">'), 'each with its tile');
+	pg_assert_same(4, substr_count($html, '<div class="wsf-node-text"><div class="wsf-node-head"><span class="wsf-node-kind">'), 'then the kind');
+	pg_assert_same(1, substr_count($html, 'pgc-selected'), 'one chosen');
+	pg_assert_same(1, substr_count($html, 'wsf-bad'), 'one with a problem');
+	pg_assert_same(1, substr_count($html, 'wsf-node-warn'), 'which carries the mark');
+	pg_assert_same(2, substr_count($html, '<rect class="pgc-edge-pill"'), 'both arrows of the Condition carry their outcome');
+	$value = substr($html, (int) strpos($html, 'wsf-card wsf-group-values'));
+	pg_assert_same(0, substr_count(substr($value, 0, (int) strpos($value, '<p ')), 'pgc-port'), 'a value box, the last, has no port');
+	pg_assert_contains('id="dark-flow-arrow"', $html, 'the arrowhead is the pane\'s own');
+}

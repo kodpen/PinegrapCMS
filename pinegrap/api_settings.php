@@ -37,6 +37,7 @@ require_once(dirname(__FILE__) . '/includes/api/app_new_view.php');
 require_once(dirname(__FILE__) . '/includes/api/app_permissions_view.php');
 require_once(dirname(__FILE__) . '/includes/api/app_guides.php');
 require_once(dirname(__FILE__) . '/includes/api/app_drawer_view.php');
+require_once(dirname(__FILE__) . '/includes/api/app_agent_view.php');
 require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
@@ -62,7 +63,7 @@ if ($_POST) {
 	// in escape() or trim(), and app_id[]=x was read as application 1, which
 	// the update and delete then changed. Nothing is written, so every
 	// application stays as it was.
-	$api_settings_lists = pg_request_unexpected_lists($_POST, array('scope' => 1, 'hook_events' => 1));
+	$api_settings_lists = pg_request_unexpected_lists($_POST, array('scope' => 1, 'hook_events' => 1, 'agent_channels' => 1));
 
 	if ($api_settings_lists) {
 
@@ -153,7 +154,7 @@ if ($_POST) {
 			// kind; its card is read again here, not trusted from the form.
 			// Only its kind and the automation note follow from it: the rows
 			// it ticked come in as the posted permissions.
-			$start_cards = api_app_templates(api_scope_groups(), array(), array());
+			$start_cards = api_app_templates(api_scope_groups(), array(), array(), null, api_app_agent_ready($user));
 
 			$start = api_app_template_posted(isset($_POST['start']) ? $_POST['start'] : '', $start_cards);
 
@@ -270,6 +271,12 @@ if ($_POST) {
 				'token'  => api_app_token($made['key'], $made['secret'])
 			);
 
+			// "Agent in a channel": the agent and its channel rows, each
+			// refused part named; the application stays either way.
+			if ($start === 'agent') {
+				api_app_agent_after_create($user, $made, $_POST, $liveform);
+			}
+
 			header('Location: ' . $screen_url);
 
 			exit();
@@ -380,6 +387,15 @@ if ($_POST) {
 			)), $_SESSION['sessionusername']);
 
 		}
+
+		header('Location: ' . $screen_url);
+
+		exit();
+
+	} elseif ($action === 'agent_setup' && $app_id > 0) {
+
+		// The AI agent tab: the agent and its channel rows (app_agent_view.php).
+		api_app_agent_setup_post($user, $app_id, $_POST, $liveform);
 
 		header('Location: ' . $screen_url);
 
@@ -1303,6 +1319,10 @@ $mcp_addresses = pg_oauth_resource_addresses();
 
 $mcp_compact = pg_oauth_mcp_compact_addresses();
 
+// Loads the Workspace while it is on, so the agent guide has its start
+// text; true for an administrator, who gets the AI agent tab.
+$agent_ready = api_app_agent_ready($user);
+
 $guides = api_app_guides(array(
 	'site'        => $site_address,
 	'api'         => $api_base_url,
@@ -1347,7 +1367,15 @@ foreach ($apps as $listed_app) {
 
 }
 
-$start_cards = api_app_templates(api_scope_groups(), pg_automation_contract_scopes(), api_app_money_scopes(api_schema()), $start_oauth_app);
+$start_cards = api_app_templates(api_scope_groups(), pg_automation_contract_scopes(), api_app_money_scopes(api_schema()), $start_oauth_app, $agent_ready);
+
+// The AI agent tab and the sheet's agent fields, for an administrator while
+// the Workspace is on.
+$agent_channels = $agent_ready ? ws_agent_app_setup_channels(ws_viewer($user)) : array();
+
+$agent_back = isset($_SESSION['software']['api_agent_back']) ? (int)$_SESSION['software']['api_agent_back'] : 0;
+
+unset($_SESSION['software']['api_agent_back']);
 
 // The Events tab's "New subscription": every event of the catalogue with its
 // module and its line, for the list the form searches.
@@ -1988,10 +2016,13 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	'permission_rows' => $permission_rows,
 	'hook_secret'     => $hook_secret_html,
 	'hook_bounds'     => $hook_bounds,
-	'fields_script'   => get_date_picker_format() . pg_fields_script()
+	'fields_script'   => get_date_picker_format() . pg_fields_script(),
+	'agent_tab'       => $agent_ready ? api_app_agent_tab_button() : '',
+	'agent_pane'      => $agent_ready ? api_app_agent_tab_html(ws_agent_roles(), $agent_channels, ws_agent_start_text($api_base_url)) : ''
 )) . '
 
-' . api_app_new_view($start_cards, api_settings_permission_rows('scope', 'n_scope'), $start_note, api_app_connect_step($new_credentials, $site_address, $guides, $start_cards));
+' . api_app_new_view($start_cards, api_settings_permission_rows('scope', 'n_scope'), $start_note, api_app_connect_step($new_credentials, $site_address, $guides, $start_cards),
+	$agent_ready ? api_app_agent_sheet_html(ws_agent_roles(), $agent_channels) : '');
 
 echo '
 <script>
@@ -2163,6 +2194,8 @@ echo '
 		var app = APPS[id];
 		if (!app) { return; }
 		current = app;
+		// The AI agent tab fills itself from the application (app_agent_view.php).
+		document.dispatchEvent(new CustomEvent("pg:api-app-open", {detail: app}));
 		// The new subscription\'s secret belongs to the request that made it.
 		if (!back || !back.secret) { dropHookSecret(); }
 		resetHookForm();
@@ -2321,10 +2354,12 @@ echo '
 		var item = e.target.closest("#api_drawer .pg-seg-item");
 		if (!item) { return; }
 		var connect = (item.dataset.bsTarget === "#d_connect");
+		// The AI agent tab saves with its own button.
+		var own = connect || (item.dataset.bsTarget === "#d_agent");
 		document.getElementById("d_foot_connections").hidden = connect;
 		document.getElementById("d_foot_docs").hidden = !connect;
-		document.getElementById("d_close").hidden = !connect;
-		document.getElementById("d_save").hidden = connect || !!(current && current.locked);
+		document.getElementById("d_close").hidden = !own;
+		document.getElementById("d_save").hidden = own || !!(current && current.locked);
 	});
 	drawerElement.addEventListener("change", function (e) {
 		if (e.target.closest("#d_perms")) { paintPermCount(); }
@@ -2807,5 +2842,8 @@ echo '
 		}
 	});
 
+	// The AI agent tab opens an application again after its save.
+	window.pgApiOpenApp = openApp;
+
 })();
-</script>' . output_footer();
+</script>' . ($agent_ready ? api_app_agent_script(api_app_agent_tab_data($app_data, $user), $agent_back) : '') . output_footer();

@@ -92,8 +92,19 @@ function erp_edoc_parasut_info()
         'description' => lang('Cloud pre-accounting by Mikrogrup. e-Invoice and e-Archive through the Paraşüt API; the store needs a Paraşüt subscription with API access.'),
         'docs_url' => 'https://apidocs.parasut.com/',
         'capabilities' => array('einvoice', 'earchive', 'accounts'),
-        'settings_note' => lang('The Paraşüt client id, secret and company id are the Paraşüt boxes further down on this card; authorize Pinegrap there with Connect (or enter the Paraşüt user name and password).'),
+        'settings_note' => lang('Paraşüt support issues the client id and secret of the API application; authorize Pinegrap with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password under Advanced.'),
     );
+}
+
+/**
+ * Connected while a token is kept that works or can be renewed, or the
+ * user name and password grant can fetch one (parasut_connection_status()).
+ */
+function erp_edoc_parasut_connected()
+{
+    $status = parasut_connection_status();
+
+    return !empty($status['connected']) || !empty($status['renewable']);
 }
 
 /**
@@ -296,7 +307,7 @@ function erp_edoc_parasut_ping($credentials)
     $company = defined('PARASUT_COMPANY_ID') ? trim((string) PARASUT_COMPANY_ID) : '';
 
     if ($company === '') {
-        return array('success' => false, 'message' => lang('The Paraşüt company id is empty. Connect on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), or enter it there.'), 'details' => array());
+        return array('success' => false, 'message' => lang('The Paraşüt company id is empty. Connect on Paraşüt\'s page of Connections, or enter it there.'), 'details' => array());
     }
 
     $token = parasut_get_token();

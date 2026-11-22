@@ -83,9 +83,10 @@ function api_app_template_safe_choices($choices, $groups, $money_scopes) {
 //   none).
 // $groups is api_scope_groups(), $contract_scopes
 // pg_automation_contract_scopes(), $money_scopes api_app_money_scopes() of
-// every route, $oauth_app the site's OAuth application (id, name) or null.
-// Pure but for lang().
-function api_app_templates($groups, $contract_scopes, $money_scopes, $oauth_app = null) {
+// every route, $oauth_app the site's OAuth application (id, name) or null,
+// $agent whether "Agent in a channel" is offered (the Workspace is on and
+// the person may add an agent). Pure but for lang().
+function api_app_templates($groups, $contract_scopes, $money_scopes, $oauth_app = null, $agent = false) {
 
 	$groups = (array)$groups;
 
@@ -116,6 +117,19 @@ function api_app_templates($groups, $contract_scopes, $money_scopes, $oauth_app 
 			// exists the card opens it rather than making a second.
 			'existing' => $oauth_id,
 			'badge'    => $oauth_id ? lang('Set up already') : ''
+		),
+
+		// Makes the agent and its channel rows too (app_agent_view.php). It
+		// answers in channels, so the Workspace row is ticked for it.
+		'agent' => array(
+			'icon'    => 'bi-robot',
+			'tone'    => 'teal',
+			'title'   => lang('Agent in a channel'),
+			'text'    => lang('An AI session that answers as itself when its @handle is called in a channel. The agent and its channels are set up with it.'),
+			'acts_as' => lang('the application itself'),
+			'kind'    => 'server',
+			'choices' => isset($groups['workspace']) ? array('workspace' => 'write') : array(),
+			'guide'   => 'agent'
 		),
 
 		'automation' => array(
@@ -163,6 +177,10 @@ function api_app_templates($groups, $contract_scopes, $money_scopes, $oauth_app 
 		)
 
 	);
+
+	if (!$agent) {
+		unset($cards['agent']);
+	}
 
 	foreach ($cards as $id => $card) {
 

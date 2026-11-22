@@ -25,7 +25,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_firewall_fold_order()
 {
-    return array('waf', 'limits', 'bots', 'iplists', 'countries', 'proxies');
+    return array('headers', 'waf', 'limits', 'bots', 'iplists', 'countries', 'proxies', 'waf-logs');
 }
 
 /**
@@ -37,6 +37,8 @@ function pg_firewall_fold_order()
 function pg_firewall_fold_face($key)
 {
     switch ($key) {
+        case 'headers':
+            return array('name' => lang('HTTPS'), 'icon' => 'bi-lock', 'tone' => 'pg-tone-violet');
         case 'waf':
             return array('name' => lang('Firewall'), 'icon' => 'bi-shield-check', 'tone' => 'pg-tone-system');
         case 'limits':
@@ -47,6 +49,8 @@ function pg_firewall_fold_face($key)
             return array('name' => lang('Addresses'), 'icon' => 'bi-list-check', 'tone' => 'pg-tone-rose');
         case 'countries':
             return array('name' => lang('Countries'), 'icon' => 'bi-globe2', 'tone' => 'pg-tone-teal');
+        case 'waf-logs':
+            return array('name' => lang('Logs'), 'icon' => 'bi-journal-text', 'tone' => '');
         default:
             return array('name' => lang('Trusted proxies'), 'icon' => 'bi-diagram-3', 'tone' => '');
     }
@@ -61,6 +65,66 @@ function pg_firewall_fold_face($key)
 function pg_firewall_fold_switch_pill($on)
 {
     return $on ? array(lang('On'), 'pg-tone-teal') : array(lang('Off'), 'pg-tone-gray');
+}
+
+/**
+ * The HTTPS row's line: Secure Mode, then the headers and the policy once
+ * their columns exist.
+ *
+ * @param bool   $secure   Secure Mode
+ * @param bool   $ready    the header columns exist
+ * @param bool   $headers  Send security headers
+ * @param bool   $hsts     Always HTTPS (HSTS)
+ * @param string $csp_mode off, report or enforce
+ * @return array line, pill, attention
+ */
+function pg_firewall_fold_https($secure, $ready, $headers, $hsts, $csp_mode)
+{
+    $line = $secure ? lang('Secure Mode on') : lang('Secure Mode off');
+
+    if ($ready) {
+        if (!$headers) {
+            $line .= ' · ' . lang('no security headers');
+        } else {
+            $line .= ' · ' . lang('security headers sent');
+
+            // HSTS is sent only over Secure Mode (waf_send_security_headers()).
+            if ($hsts && $secure) {
+                $line .= ' · ' . lang('HSTS');
+            }
+
+            if ($csp_mode === 'enforce') {
+                $line .= ' · ' . lang('policy enforced');
+            } elseif ($csp_mode !== 'off') {
+                $line .= ' · ' . lang('policy reported only');
+            }
+        }
+    }
+
+    return array('line' => $line, 'pill' => pg_firewall_fold_switch_pill($secure), 'attention' => false);
+}
+
+/**
+ * The Logs row's line: how long the firewall log keeps its rows and its
+ * ceiling, then the plain-text block log once its column exists.
+ *
+ * @param int  $days     Log retention
+ * @param int  $rows     Log size limit
+ * @param bool $ready    the plain-text log's column exists
+ * @param bool $text_log Plain-text block log
+ * @return array line, pill, attention
+ */
+function pg_firewall_fold_logs($days, $rows, $ready, $text_log)
+{
+    $days = (int) $days;
+    $rows = function_exists('pg_format_number') ? pg_format_number((int) $rows, 0) : number_format((int) $rows);
+    $line = lang(array('string' => 'Kept {var:1} day{suffix:1}, at most {var:2} rows', 'vars' => array($days, $rows), 'suffix' => array(($days === 1) ? '' : 's')));
+
+    if ($ready) {
+        $line .= ' · ' . ($text_log ? lang('plain-text block log written') : lang('no plain-text block log'));
+    }
+
+    return array('line' => $line, 'pill' => null, 'attention' => false);
 }
 
 /**
