@@ -355,3 +355,14 @@ function test_booking_agenda_list_columns_and_row()
 	pg_assert_same('a@example.com', $row['cells']['contact']['html'], 'no line break without a phone');
 	pg_assert_same('Ece', $row['cells']['staff']['html']);
 }
+
+// Any id other than 0 is an existing booking to load: a negative one ends on
+// "Record not found." instead of the existing-booking form with an empty row
+// (0 alone is a new booking).
+function test_booking_agenda_edit_loads_any_non_zero_id()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_booking.php');
+
+	pg_assert_contains('if ($booking_id !== 0) {' . "\n" . '    $booking = db_item("SELECT * FROM bookings', $source, 'a negative id is looked up too');
+	pg_assert_false(strpos($source, '$booking_id > 0') !== false, 'no branch reads only the ids above zero');
+}

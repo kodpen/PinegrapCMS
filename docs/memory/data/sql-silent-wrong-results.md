@@ -1,12 +1,16 @@
 ---
 name: sql-silent-wrong-results
-description: SQL that runs without an error but reads or writes the wrong thing: an INT or DATE compared to '', SET order, SELECT * replaced by a column list, columns a migration adds, table-specific traps.
+description: SQL that runs without an error but reads or writes the wrong thing: an INT or DATE compared to '', GREATEST() of a number and '', SET order, SELECT * vs a column list, migration columns, table traps.
 ---
 
 ## Which comparisons match the wrong rows?
 - An `INT` column compared with `''`: MySQL turns `''` into 0 and every row that belongs to nothing matches (template rows, the other form type's rows). An id from a `LEFT JOIN` may be NULL or empty: check it before it goes into a query. Case: the receipt of a deleted product (`commerce/form-fields-zero-id-query-trap.md`).
 - A `DATE` column compared with `''`: compare with `'0000-00-00'` (`date-column-empty-comparison.md`).
 - `form_data.form_id` points at `forms.id`; `form_data.id` is one field row, never a form (`content-tables.md`).
+
+## What does GREATEST() of a number and `''` do?
+- MariaDB compares the arguments as DOUBLE and logs warning 1292 "Truncated incorrect DOUBLE value: ''" for each row; MySQL compares them as strings, which orders numbers of different lengths wrongly. Fall back to `0` for a number column (`IFNULL(x, 0)`).
+- Case: the newest activity of the classic form views (`get_standard_fields_for_view()`, `get_form_view_directory_screen_content.php`) fell back to `''` for a record with no comment, and `seo_a11y_job.php` logged three such warnings each run, until PR #11114.
 
 ## Which writes go wrong without an error?
 - The assignments of a single-table `UPDATE ... SET` (and of `INSERT ... ON DUPLICATE KEY UPDATE`) run left to right, and a later one sees the NEW value of an earlier column: keep the order the code has (`designer/designer-collab-locking.md`: `session_key` last; `commerce/marketplace-listings.md`; `waf/waf-ban-ladder.md`).
