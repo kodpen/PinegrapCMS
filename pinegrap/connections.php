@@ -4066,7 +4066,8 @@ if (isset($tool_labels['api_settings.php'])) {
 				<h2 class="pg-title-status mb-1" id="connections-other-side-title">' . h(lang('What connects to the site')) . '</h2>
 				<p class="pg-card-sub mb-4">' . h(lang('Applications that connect to the site with a key, a device or OAuth are managed in Application Access.')) . '</p>
 				<dl class="pg-kv mb-5">
-					<dt>' . h(lang('Applications')) . '</dt><dd class="pg-tabular">' . pg_format_number($other['applications'], 0) . '</dd>
+					<dt>' . h(lang('Applications')) . '</dt><dd class="pg-tabular">' . pg_format_number($other['applications'], 0)
+						. (($other['errors'] > 0) ? ' <span class="fg-danger">· ' . h(lang(array('string' => 'Errors in 24 hours: {var:1}', 'vars' => pg_format_number($other['errors'], 0)))) . '</span>' : '') . '</dd>
 					<dt>' . h(lang('Devices')) . '</dt><dd class="pg-tabular">' . pg_format_number($other['devices'], 0) . '</dd>
 					<dt>' . h(lang('Connected applications')) . '</dt><dd class="pg-tabular">' . pg_format_number($other['connected'], 0) . '</dd>
 					<dt>' . h(lang('Webhook subscriptions')) . '</dt><dd class="pg-tabular">' . pg_format_number($other['webhooks'], 0) . '</dd>
