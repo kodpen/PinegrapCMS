@@ -474,6 +474,52 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Supplier feeds ---------------------------------------------- */
+
+		array(
+			'id'      => 'supplier_feeds.list',
+			'method'  => 'GET',
+			'path'    => '/supplier-feeds',
+			'scope'   => 'products:read',
+			'handler' => 'api_supplier_feeds_list',
+			'returns' => array('list' => 'SupplierFeed'),
+			'summary' => 'The supplier feeds the store pulls',
+			'description' => 'Every feed of Products > Supplier feeds, by name, one page: the host it is pulled from, the format (xml, csv, json, or auto when told from the first bytes), every how many hours, its currency (null for the store\'s own), whether its prices include VAT, the ERP supplier account it names, status (on, off, or paused by a brake with pause_reason), whether a pull is under way, the products it matched and its last run. The address, user, password and key are never returned. A site whose database has not been updated answers 503 service_unavailable.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'supplier_feeds.runs',
+			'method'  => 'GET',
+			'path'    => '/supplier-feeds/{id}/runs',
+			'scope'   => 'products:read',
+			'handler' => 'api_supplier_feeds_runs',
+			'returns' => array('list' => 'SupplierFeedRun'),
+			'summary' => 'The pulls of a supplier feed',
+			'description' => 'A feed\'s pulls, newest first and cursor paged, kept 90 days: kind (scheduled, or by_hand from Pull now or this API), status (running, ok, stopped by a brake, failed), the records read and those added as drafts, changed, closed, reopened and held, the failed count, the brake\'s or failure\'s reason and up to 500 failed lines with their reasons. 404 for an unknown feed.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Runs per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',   'in' => 'query', 'type' => 'enum', 'values' => array('newest', 'oldest'), 'default' => 'newest', 'description' => 'newest (the default) lists the latest pull first; oldest the earliest. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
+			)
+		),
+
+		array(
+			'id'      => 'supplier_feeds.run',
+			'method'  => 'POST',
+			'path'    => '/supplier-feeds/{id}/run',
+			'scope'   => 'products:write',
+			'handler' => 'api_supplier_feeds_run',
+			'dry_run' => true,
+			'returns' => 'SupplierFeed',
+			'summary' => 'Pull a supplier feed now',
+			'description' => 'The Pull now button: the feed is downloaded and its prices and stock written as the hourly pull does, for a few seconds within the call; the site\'s scheduled job goes on with the rest, so read last_run or GET /supplier-feeds/{id}/runs for the outcome. A feed paused by a brake is switched on again and pulled past the mass-drop brake. Answers the feed with this pull as last_run. 409 feed_off for a feed switched off, 409 not_mapped before its fields are confirmed on the screen, 409 already_pulling while a pull is under way; 404 for an unknown feed.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		array(
 			'id'      => 'products.reviews',
 			'method'  => 'GET',
