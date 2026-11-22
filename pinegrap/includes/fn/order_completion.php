@@ -1277,6 +1277,12 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
         pg_order_complete_line_campaigns($product, $contact_id);
     }
 
+    // Every line has taken its stock (a bundle's components inside its line,
+    // pg_bundle_take_stock()): the units the order held for its payment are
+    // freed in the same pass, after the takes, so no other checkout counts
+    // them free while they are still in stock.
+    pg_stock_hold_release($order_id);
+
     // A line that took fewer units than it asked while its product takes no
     // back orders (another order took the last ones while this one was
     // paid): one bell line for the order.

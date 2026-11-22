@@ -222,7 +222,7 @@ function pg_volunteer_shift_drawer_html(array $programme, array $shift, $to_call
 
         foreach ($shift['signups'] as $signup) {
             if (($signup['role'] === (string) $key) && in_array($signup['state'], array('signed', 'waiting'), true)) {
-                $lines .= '<div class="pg-card-inner-row"><span class="pg-text-2 flex-grow-1 min-width-0">' . h($signup['name']) . '</span>' . (($signup['state'] === 'waiting') ? '<span class="pg-pill pg-tone-gray">' . h(lang('Waitlist')) . '</span>' : '') . '</div>';
+                $lines .= '<div class="pg-card-inner-row"><span class="pg-text-2 flex-grow-1 min-width-0">' . h($signup['name']) . '</span>' . (($signup['state'] === 'waiting') ? '<span class="pg-pill pg-tone-gray">' . h(lang('Waitlisted')) . '</span>' : '') . '</div>';
             }
         }
 

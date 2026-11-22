@@ -19,8 +19,8 @@ module: image_editor_data
 - `pg_image_editor_data_card_reads()`: the tables of the open scene's data layers (`pg_image_editor_data_doc_tables()`, once each, 20 at most, `PG_IMAGE_EDITOR_DATA_CARD_TABLES`), each by `ws_canvas_data_rows()` with the reader's rights, shaped by `pg_image_editor_data_read_json()`.
 - No `ws_canvas_tables` binding is asked: the editor's `data_rows` already gives a person every table they may read, and Data menu canvases bind none.
 
-## What stays a still?
-- The stored file: Download, the Files tab's tile, a guest's page and a message's thumbnail keep the rows of the last save. A file saved to the site and an export are DV5.
+## What does the stored file show?
+- Its data layers with no rows (DV5, `ui/image-editor-data-still.md`): Download from the card, the Files tab's tile, a guest's page and a message's thumbnail are seen by readers who may not read the table. A pending canvas's picture is drawn bare too, reading no rows.
 
 ## How is it checked?
 - `tests/image_editor_data_follow_test.php`: the tables a document names, the JSON shape, the marks and the action wired, `readsFor()` under Node. Not run in a browser: the drawing is the pending canvas's renderer with reads handed in.

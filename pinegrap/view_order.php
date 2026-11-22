@@ -211,18 +211,6 @@ if (!$_POST) {
     // waits the same way, but on PayPal rather than on a bank statement.
     $order_payment_pending = $order_awaiting_payment && pg_order_payment_pending($row);
 
-    if ($order_on_account) {
-        $awaiting_badge_text = lang('On account');
-    } elseif ($order_payment_pending) {
-        $awaiting_badge_text = lang('Payment pending on PayPal');
-    } else {
-        $awaiting_badge_text = lang('Awaiting bank transfer');
-    }
-
-    $output_awaiting_badge = $order_awaiting_payment
-        ? ' <span class="badge theme-warning fg-black">' . $awaiting_badge_text . '</span>'
-        : '';
-
     $output_payment_pending_banner = $order_payment_pending
         ? '<div class="alert theme-warning d-flex align-items-center gap-3 pg-print-none" role="alert">
                 <i class="bi bi-hourglass-split"></i>
@@ -237,12 +225,8 @@ if (!$_POST) {
     // ever being shown; it belongs next to the status it explains.
     $output_cancellation_rows = '';
     if (($status == 'cancelled') && (($order_cancellation_reason !== '') || ($order_cancelled_at > 0))) {
-        $output_cancellation_rows =
-            '<div class="d-flex justify-content-between gap-3">
-                <span class="translateable fg-secondary">' . lang('Cancellation reason') . '</span>
-                <span class="text-end text-break">' . (($order_cancellation_reason !== '') ? h($order_cancellation_reason) : '-')
-                . (($order_cancelled_at > 0) ? '<br><small class="fg-secondary">' . get_absolute_time(array('timestamp' => $order_cancelled_at)) . '</small>' : '') . '</span>
-            </div>';
+        $output_cancellation_rows = pg_order_view_kv(lang('Cancellation reason'), (($order_cancellation_reason !== '') ? h($order_cancellation_reason) : '-')
+            . (($order_cancelled_at > 0) ? '<span class="pg-kv-note">' . get_absolute_time(array('timestamp' => $order_cancelled_at)) . '</span>' : ''));
     }
     $order_refund_reference = isset($row['refund_reference']) ? (string) $row['refund_reference'] : '';
     $order_customer_id = (int) $row['user_id'];
@@ -287,10 +271,6 @@ if (!$_POST) {
     $billing_zip_code = $row['billing_zip_code'] ?? '';
     $billing_postcode_province = pg_shipping_postcode_province($billing_country, $billing_state, $billing_zip_code);
     $billing_district_note = pg_place_district_note($billing_country, $billing_state, $billing_city);
-    // A Turkish address's city box is its district and its state its
-    // province: the card names them as the checkout asked for them.
-    $billing_place_labels = pg_address_labels($billing_country);
-    $billing_address_verified = $row['billing_address_verified'];
     $billing_phone_number = $row['billing_phone_number'] ?? '';
     $billing_fax_number = $row['billing_fax_number'] ?? '';
     $custom_field_1 = $row['custom_field_1'] ?? '';
@@ -338,105 +318,24 @@ if (!$_POST) {
     }
 
 
-    
-    if ($tracking_code or $http_referer or $referral_source_code or $utm_source) {
-        $source .=
-            '<div class="card pg-card mt-5">
-                <h2 class="card-header bg-reset border-0 pg-title-section">
-                    ' . lang('Source') . '
-                </h2>
-                <div class="card-body">';
-
-        if ($tracking_code) {
-            $source .=
-                '<div class="d-flex justify-content-between gap-3">
-                    <span class="translateable fg-secondary">' . lang('Tracking Code') . '</span>
-                    <span class="text-end text-break">' . h($tracking_code) . '</span>
-                </div>';
-        }
-
-        if ($http_referer) {
-
-            // if http referer is greater than 25 characters, then shorten text version
-            if (mb_strlen($http_referer) > 25) {
-                $http_referer_text = mb_substr($http_referer, 0, 25) . '...';
-            } else {
-                $http_referer_text = $http_referer;
-            }
-
-            $source .=
-                '<div class="d-flex justify-content-between gap-3">
-                    <span class="translateable fg-secondary">' . lang('Referring URL') . '</span>
-                    <span class="text-end text-break"><a href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($http_referer_text) . '</a></span>
-                </div>';
-        }
-
-        if ($referral_source_code) {
-            $source .=
-                '<div class="d-flex justify-content-between gap-3">
-                    <span class="translateable fg-secondary">' . lang('Referral Source') . '</span>
-                    <span class="text-end text-break">' . h($referral_source_code) . '</span>
-                </div>';
-        }
-
-        if ($utm_source) {
-            $source .=
-                '<hr/>
-                <div class="row" >
-                    <span class="col-12"><h3 class="pg-group-label">' . lang('UTM') . '</h3></span>
-                </div>
-                <div class="d-flex justify-content-between gap-3">
-                    <span class="translateable fg-secondary">' . lang('Source') . '</span>
-                    <span class="text-end text-break">' . h($utm_source) . '</span>
-                </div>';
-
-            if ($utm_medium) {
-                $source .=
-                    '<div class="d-flex justify-content-between gap-3">
-                        <span class="translateable fg-secondary">' . lang('Campaign Medium') . '</span>
-                        <span class="text-end text-break">' . h($utm_medium) . '</span>
-                    </div>';
-            }
-
-            if ($utm_campaign) {
-                $source .=
-                    '<div class="d-flex justify-content-between gap-3">
-                        <span class="translateable fg-secondary">' . lang('Campaign') . '</span>
-                        <span class="text-end text-break">' . h($utm_campaign) . '</span>
-                    </div>';
-            }
-
-            if ($utm_term) {
-                $source .=
-                    '<div class="d-flex justify-content-between gap-3">
-                        <span class="translateable fg-secondary">' . lang('Term') . '</span>
-                        <span class="text-end text-break">' . h($utm_term) . '</span>
-                    </div>';
-            }
-
-            if ($utm_content) {
-                $source .=
-                    '<div class="d-flex justify-content-between gap-3">
-                        <span class="translateable fg-secondary">' . lang('Content') . '</span>
-                        <span class="text-end text-break">' . h($utm_content) . '</span>
-                    </div>';
-            }
-        
-        }
-        $source .=
-            '</div>
-        </div>';
-    }
-
-    $fax = '';
-
-    if ($billing_fax_number) {
-        $fax =
-            '<div class="d-flex justify-content-between gap-3">
-                <span class="translateable fg-secondary">' . h(lang('Fax')) . '</span>
-                <span class="text-end text-break">' . h($billing_fax_number) . '</span>
-            </div>';
-    }
+    // Where the order came from: rows of the Order Information card under
+    // its "Source" label, each only with a value.
+    $http_referer_text = (mb_strlen((string) $http_referer) > 25) ? mb_substr($http_referer, 0, 25) . '...' : (string) $http_referer;
+    $output_source_rows = pg_order_view_kv(lang('Tracking Code'), h($tracking_code))
+        . ($http_referer ? pg_order_view_kv(lang('Referring URL'), '<a href="' . h(escape_url($http_referer)) . '" target="_blank" rel="noopener noreferrer">' . h($http_referer_text) . '</a>') : '')
+        . pg_order_view_kv(lang('Referral Source'), h($referral_source_code));
+    $output_utm_rows = $utm_source
+        ? pg_order_view_kv(lang('UTM') . ' ' . lang('Source'), h($utm_source))
+            . pg_order_view_kv(lang('Campaign Medium'), h($utm_medium))
+            . pg_order_view_kv(lang('Campaign'), h($utm_campaign))
+            . pg_order_view_kv(lang('Term'), h($utm_term))
+            . pg_order_view_kv(lang('Content'), h($utm_content))
+        : '';
+    $source = (($output_source_rows . $output_utm_rows) !== '')
+        ? '<h3 class="pg-group-label mt-5 pt-5 border-top">' . lang('Source') . '</h3>'
+            . (($output_source_rows !== '') ? '<dl class="pg-kv">' . $output_source_rows . '</dl>' : '')
+            . (($output_utm_rows !== '') ? '<dl class="pg-kv' . (($output_source_rows !== '') ? ' pg-kv-rule' : '') . '">' . $output_utm_rows . '</dl>' : '')
+        : '';
 
     if ($payment_method == 'Credit/Debit Card') {
         $card_type = $row['card_type'];
@@ -482,15 +381,6 @@ if (!$_POST) {
         ) {
             $card_verification_number = protect_card_verification_number($card_verification_number);
         }
-    }
-
-    // if the billing address has been verified, then output "yes"
-    if ($billing_address_verified == '1') {
-        $billing_address_verified = lang('Yes');
-
-    // else it has not been verified so output "no"
-    } else {
-        $billing_address_verified = lang('No');
     }
 
     if ($row['opt_in']) {
@@ -542,173 +432,48 @@ if (!$_POST) {
         if (count($applied_gift_cards) > 1) {
             $output_gift_card_label_plural_suffix = 's';
         }
-        $output_gift_card_discount_row =
-        '<div class="d-flex justify-content-between gap-3">
-            <span class="translateable fg-secondary">' . lang(array('string'=>'Gift Card{suffix:1}','vars'=>array(),'suffix'=>array($output_gift_card_label_plural_suffix))) . '</span>
-            <span class="text-end text-break">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</span>
-        </div>';
+        $output_gift_card_discount_row = pg_order_view_kv(lang(array('string'=>'Gift Card{suffix:1}','vars'=>array(),'suffix'=>array($output_gift_card_label_plural_suffix))), '-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL));
     }
-    $output_surcharge_row = '';
+    // A credit card surcharge and the instalment fee: rows of the Payment
+    // card's totals only when the order has them (the number of instalments
+    // is a row of how it was paid).
+    $output_surcharge_row = ($surcharge > 0) ? pg_order_view_kv(lang('Surcharge'), pg_format_money($surcharge, BASE_CURRENCY_SYMBOL)) : '';
+    $output_installment_charge_row = (($installment_charges != 0) && ($payment_installment >= 2))
+        ? pg_order_view_kv(lang('Installment Charge'), pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL))
+        : '';
+    // How it was paid, the left part of the Payment card: the method with
+    // its tile and the card's grey line, then the rows that hold a value.
+    $output_payment_method = '';
 
-    // If there is a credit card surcharge, then output row for it.
-    if ($surcharge > 0) {
-        $output_surcharge_row =
-            '<div class="d-flex justify-content-between gap-3">
-                <span class="translateable fg-secondary">' . lang('Surcharge') . '</span>
-                <span class="text-end text-break">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</span>
-            </div>';
-    }
-    //if there is installment charge and payment installment((1) is no installment)
-    $output_number_of_installment_row = '';
-    if(($installment_charges != 0)&&($payment_installment >= 2)){  
-        $output_number_of_installment_row =
-            '<div class="d-flex justify-content-between gap-3">
-                <span class="translateable fg-secondary">' . lang('Number of Installments') . '</span>
-                <span class="text-end text-break">' . $payment_installment . '</span>
-            </div>
-            <div class="d-flex justify-content-between gap-3">
-                <span class="translateable fg-secondary">' . lang('Installment Charge') . '</span>
-                <span class="text-end text-break">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</span>
-            </div>';
-    }
-    $output_payment_information = '';
-
-    // if there was a payment method, then prepare to output payment information
     if ($payment_method != '') {
-        $output_credit_debit_card_information = '';
-        
-        // if Credit/Debit Card payment method was used for order, then prepare to output values for that payment method
+        $output_card_line = '';
+        $output_card_rows = '';
+
         if ($payment_method == 'Credit/Debit Card') {
+            $output_card_line = implode(' · ', array_filter(array(
+                trim(h($card_type) . ' ' . h($card_number)),
+                ($expiration_month and $expiration_year) ? h(lang('Expiration') . ' ' . $expiration_month . '/' . $expiration_year) : '',
+            ), 'strlen'));
+            $output_card_rows = pg_order_view_kv(lang('Cardholder'), h($cardholder))
+                . pg_order_view_kv(lang('Verification Number'), h($card_verification_number));
+        }
 
-            $cardholder_row = '';
+        $output_payment_rows = ((($order_paid_at !== null) && ($order_paid_at > 0)) ? pg_order_view_kv(lang('Paid on'), get_absolute_time(array('timestamp' => $order_paid_at))) : '')
+            . $output_card_rows
+            . pg_order_view_kv(lang('Transaction ID'), h($transaction_id))
+            . pg_order_view_kv(lang('Authorization Code'), h($authorization_code))
+            . ((($installment_charges != 0) && ($payment_installment >= 2)) ? pg_order_view_kv(lang('Number of Installments'), (int) $payment_installment) : '');
 
-            if ($cardholder) {
-                $cardholder_row =
-                    '<div class="d-flex justify-content-between gap-3">
-                        <span class="translateable fg-secondary">' . lang('Cardholder') . '</span>
-                        <span class="text-end text-break">' . h($cardholder) . '</span>
-                    </div>';
-            }
-
-            $expiration_row = '';
-
-            if ($expiration_month and $expiration_year) {
-                $expiration_row =
-                    '<div class="d-flex justify-content-between gap-3">
-                        <span class="translateable fg-secondary">' . lang('Expiration') . '</span>
-                        <span class="text-end text-break">' . h($expiration_month . '/' . $expiration_year) . '</span>
-                    </div>';
-            }
-
-            $card_verification_number_row = '';
-
-            if ($card_verification_number) {
-                $card_verification_number_row =
-                    '<div class="d-flex justify-content-between gap-3">
-                        <span class="translateable fg-secondary">' . lang('Verification Number') . '</span>
-                        <span class="text-end text-break">' . h($card_verification_number) . '</span>
-                    </div>';
-            }
-            
-            $output_credit_debit_card_information =
-                '<div class="d-flex justify-content-between gap-3">
-                    <span class="translateable fg-secondary">' . lang('Card Type') . '</span>
-                    <span class="text-end text-break">' . h($card_type) . '</span>
+        $output_payment_method =
+            '<div>
+                <div class="pg-order-pay-method">
+                    <span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><span class="bi ' . (($payment_method == 'Credit/Debit Card') ? 'bi-credit-card' : ($order_on_account ? 'bi-journal-text' : 'bi-wallet2')) . '"></span></span>
+                    <div class="pg-order-pay-method-text">
+                        <strong class="pg-list-row-title">' . h($order_on_account ? lang('Put on account') : lang($payment_method)) . '</strong>
+                        ' . (($output_card_line !== '') ? '<span class="pg-text-meta">' . $output_card_line . '</span>' : '') . '
+                    </div>
                 </div>
-                ' . $cardholder_row . '
-                <div class="d-flex justify-content-between gap-3">
-                    <span class="translateable fg-secondary">' . lang('Card Number') . '</span>
-                    <span class="text-end text-break">' . $card_number . '</span>
-                </div>
-                ' . $expiration_row . '
-                ' . $card_verification_number_row;
-            
-        }
-
-        $transaction_id_row = '';
-
-        if ($transaction_id) {
-            $transaction_id_row .=
-                '<div class="d-flex justify-content-between gap-3">
-                    <span class="translateable fg-secondary">' . lang('Transaction ID') . '</span>
-                    <span class="text-end text-break">' . h($transaction_id) . '</span>
-                </div>';
-        }
-
-        $authorization_code_row = '';
-
-        if ($authorization_code) {
-            $authorization_code_row .=
-                '<div class="d-flex justify-content-between gap-3">
-                    <span class="translateable fg-secondary">' . lang('Authorization Code') . '</span>
-                    <span class="text-end text-break">' . h($authorization_code) . '</span>
-                </div>';
-        }
-        $output_payment_information =
-            '
-                <div class="card pg-card mt-5">
-                   <h2 class="card-header bg-reset border-0 pg-title-section">
-                           ' . lang('Payment Information') . '
-                       </h2>
-                       <div class="card-body">
-                           <div class="d-flex justify-content-between gap-3">
-                               <span class="translateable fg-secondary">' . lang('Payment Method') . '</span>
-                               <span class="translateable text-end text-break">' . ($order_on_account ? lang('Put on account') : lang($payment_method)) . '</span>
-                           </div>
-                           ' . (($order_paid_at !== null) && ($order_paid_at > 0) ?
-                               '<div class="d-flex justify-content-between gap-3">
-                                   <span class="translateable fg-secondary">' . lang('Paid on') . '</span>
-                                   <span class="text-end text-break">' . get_absolute_time(array('timestamp' => $order_paid_at)) . '</span>
-                               </div>'
-                           : '') . '
-                           ' . $output_credit_debit_card_information . '
-                           ' . $transaction_id_row . '
-                           ' . $authorization_code_row . '
-                           ' . ($refunded_amount_cents > 0 ?
-                               '<div class="d-flex justify-content-between gap-3 fg-danger mt-3">
-                                   <span class="translateable fg-secondary">' . lang('Total Refunded') . '</span>
-                                   <span class="text-end text-break fw-semibold">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
-                               </div>'
-                           : '') . '
-                           <br/>
-                       </div>
-                </div>';
-    }
-
-    $output_user_row = '';
-
-    // If this order has a user, then show user info.
-    if ($username != '') {
-        $output_user_row =
-            '<div class="d-flex justify-content-between gap-3">
-                <span class="translateable fg-secondary">' . lang('User') . '</span>
-                <span class="text-end text-break">' . (pg_can_open_user($user, $username_role) ? '<a class="pg-link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a>' : h($username)) . '</span>
-            </div>';
-    }
-
-    $output_contact_row = '';
-
-    // If this order has a contact, then show contact info.
-    if ($contact_id != '') {
-        // The contact's name, else the company, the e-mail address or the
-        // id marked as one (a card with none of them read as a bare number).
-        $output_contact = pg_order_view_contact_text($contact_id, $contact_first_name, $contact_last_name, $contact_company, $contact_email_address);
-
-        $output_contact_row =
-            '<div class="d-flex justify-content-between gap-3">
-                <span class="translateable fg-secondary">' . lang('Contact') . '</span>
-                <span class="text-end text-break">' . (pg_can_open_contact($user, $contact_id) ? '<a class="pg-link-secondary" href="edit_contact.php?id=' . (int) $contact_id . '">' . $output_contact . '</a>' : $output_contact) . '</span>
-            </div>';
-
-    }
-
-    $output_member_id_row = '';
-
-    if ($member_id != '') {
-        $output_member_id_row =
-            '<div class="d-flex justify-content-between gap-3">
-                <span class="fg-secondary">' . h(MEMBER_ID_LABEL) . '</span>
-                <span class="text-end text-break">' . h($member_id) . '</span>
+                ' . (($output_payment_rows !== '') ? '<dl class="pg-kv mt-5">' . $output_payment_rows . '</dl>' : '') . '
             </div>';
     }
 
@@ -717,16 +482,45 @@ if (!$_POST) {
         $ip_address = '';
     }
 
-    $output_ip_address_row = '';
+    // The Customer card of the side panel: the picture, the contact's name
+    // and the count of their placed orders (one query), then the rows that
+    // hold a value.
+    $output_customer_who = '<span class="pg-text-meta">' . h(lang('No contact')) . '</span>';
 
-    // If this order has an ip, then show ip.
-    if ($ip_address != '') {
-        $output_ip_address_row =
-            '<div class="d-flex justify-content-between gap-3">
-                <span class="translateable fg-secondary">' . lang('IP Address') . '</span>
-                <span class="text-end text-break">' . h($ip_address) . '</span>
+    if ($contact_id != '') {
+        // The contact's name, else the company, the e-mail address or the
+        // id marked as one (a card with none of them read as a bare number).
+        $output_contact = pg_order_view_contact_text($contact_id, $contact_first_name, $contact_last_name, $contact_company, $contact_email_address);
+        $contact_orders_count = pg_order_view_contact_orders_count($contact_id);
+        $output_contact_orders = h(pg_order_view_orders_count_text($contact_orders_count));
+
+        if (($contact_orders_count > 1) && pg_can_open_contact($user, $contact_id)) {
+            $output_contact_orders = '<a class="pg-link-secondary" href="view_orders_for_contact.php?id=' . (int) $contact_id . '">' . $output_contact_orders . '</a>';
+        }
+
+        $output_customer_who =
+            '<div class="pg-order-who-text">
+                <strong class="pg-list-row-title">' . (pg_can_open_contact($user, $contact_id) ? '<a class="pg-link-secondary" href="edit_contact.php?id=' . (int) $contact_id . '">' . $output_contact . '</a>' : $output_contact) . '</strong>
+                <span class="pg-text-meta">' . implode(' · ', array_filter(array(h(lang('Contact')), $output_contact_orders), 'strlen')) . '</span>
             </div>';
     }
+
+    $output_customer_rows = pg_order_view_kv(lang('Email'), ((string) $billing_email_address !== '') ? '<span id="pg_order_email">' . h($billing_email_address) . '</span> <span class="pg-copy">' . pg_copy_button($billing_email_address, lang('Copy the e-mail address'), 'pg_order_email') . '</span>' : '')
+        . pg_order_view_kv(lang('Phone'), h($billing_phone_number))
+        . pg_order_view_kv(lang('Fax'), h($billing_fax_number))
+        . (($username != '') ? pg_order_view_kv(lang('User'), pg_can_open_user($user, $username_role) ? '<a class="pg-link-secondary" href="edit_user.php?id=' . (int) $user_id . '">' . h($username) . '</a>' : h($username)) : '')
+        . pg_order_view_kv(MEMBER_ID_LABEL, h($member_id))
+        . pg_order_view_kv(lang('Opt-In'), $opt_in)
+        . pg_order_view_kv(lang('IP Address'), h($ip_address));
+
+    $output_customer_card =
+        '<div class="card pg-card">
+            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Customer') . '</h2>
+            <div class="card-body">
+                <div class="pg-order-who">' . $output_contact_image . $output_customer_who . '</div>
+                ' . (($output_customer_rows !== '') ? '<dl class="pg-kv mt-5">' . $output_customer_rows . '</dl>' : '') . '
+            </div>
+        </div>';
 
     $output_affiliate = '';
 
@@ -2013,12 +1807,7 @@ if (!$_POST) {
         if ($currency_code != '') {
             $currency_name_and_code = get_currency_name_from_code($currency_code) . ' (' . $currency_code . ')';
         }
-        $output_currency_code_row =
-        '<div class="d-flex justify-content-between gap-3">
-            <span class="fg-secondary">' . lang('Currency') . '</span>
-            <span class="text-end text-break">' . h($currency_name_and_code) . '</span>
-        </div>';
-        
+        $output_currency_code_row = pg_order_view_kv(lang('Currency'), h($currency_name_and_code));
     } else {
         $output_currency_code_row = '';
     }
@@ -2473,16 +2262,10 @@ if (!$_POST) {
                 ? '<span class="badge theme-secondary">' . lang('Not Sent') . '</span>'
                 : '<span class="badge badge-subtle theme-secondary fg-secondary">' . lang('No shippable items') . '</span>');
 
-        $output_parasut_status_rows = '
-                                    <hr/>
-                                    <div class="row align-items-center">
-                                        <span class="col fg-secondary small">' . lang('E-Invoice') . ' / ' . lang('E-Archive') . ':</span>
-                                        <span class="col text-end">' . $invoice_row_badge . '</span>
-                                    </div>
-                                    <div class="row align-items-center mt-1">
-                                        <span class="col fg-secondary small">' . lang('E-Shipment') . ':</span>
-                                        <span class="col text-end">' . $shipment_row_badge . '</span>
-                                    </div>';
+        $output_parasut_status_rows = '<dl class="pg-kv pg-kv-rule">'
+            . pg_order_view_kv(lang('E-Invoice') . ' / ' . lang('E-Archive'), $invoice_row_badge)
+            . pg_order_view_kv(lang('E-Shipment'), $shipment_row_badge)
+            . '</dl>';
 
         // With the ERP and an e-document provider on, the order's documents
         // are the ERP's (parasut_order_documents_in_erp()): no buttons, and
@@ -2686,6 +2469,91 @@ if (!$_POST) {
         }
     }
 
+    // The Payment card (board O1, mark 4): its title carries the payment
+    // pill; how it was paid on the left, the totals on the right (stacked
+    // when the card is narrow).
+    $output_payment_totals = pg_order_view_kv(lang('Subtotal'), '<span class="pg-tabular">' . prepare_amount($subtotal) . '</span>')
+        . (($discount > 0) ? '<div><dt>' . h(lang('Discount')) . (((string) $special_offer_code !== '') ? ' <span class="pg-text-meta">' . h($special_offer_code) . '</span>' : '') . '</dt><dd>-' . pg_format_money($discount, BASE_CURRENCY_SYMBOL) . '</dd></div>' : '')
+        . pg_order_view_kv(lang('Tax'), pg_format_money($tax, BASE_CURRENCY_SYMBOL))
+        . pg_order_view_kv(lang('Shipping'), pg_format_money($shipping, BASE_CURRENCY_SYMBOL))
+        . $output_gift_card_discount_row
+        . $output_surcharge_row
+        . $output_installment_charge_row;
+    $output_payment_sum = pg_order_view_kv(lang('Total'), '<strong class="pg-tabular">' . prepare_amount($total) . '</strong>')
+        . (($refunded_amount_cents > 0)
+            ? pg_order_view_kv(lang('Total Refunded'), '<span class="fg-danger">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>')
+                . pg_order_view_kv(lang('Net Total'), '<strong class="pg-tabular">' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong>')
+            : '');
+    $output_payment_card =
+        '<div class="card pg-card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
+                <h2 class="pg-title-section mb-0">' . lang('Payment') . '</h2>' . (is_array($head_states['payment']) ? pg_pill((string) $head_states['payment'][0], (string) $head_states['payment'][1]) : '') . '
+            </div>
+            <div class="card-body">
+                <div class="pg-order-pay">
+                    ' . $output_payment_method . '
+                    <div>
+                        <dl class="pg-kv">' . $output_payment_totals . '</dl>
+                        <dl class="pg-kv pg-kv-rule">' . $output_payment_sum . '</dl>
+                    </div>
+                </div>
+            </div>
+        </div>';
+
+    // Billing Information of the side panel: the address block with its copy
+    // button, "Same as the shipping address" when the order's one address
+    // equals it, the warnings about its postcode and district, then under a
+    // hairline the rows that hold a value.
+    $billing_address = pg_order_view_billing_address($head_order);
+    $billing_address_lines = pg_order_view_address_lines($billing_address);
+    $output_billing_rows = pg_order_view_kv((pg_erp_store_country() === 'TR') ? lang('VKN / TCKN') : lang('Tax number'), h($contact_tax_number))
+        . pg_order_view_kv(lang('Tax Office'), h($contact_tax_office))
+        . pg_order_view_kv(lang('EU VAT ID'), (($order_vat_note !== '') ? h($order_vat_id) . '<span class="pg-kv-note">' . h($order_vat_note) . '</span>' : ''))
+        . (!empty($head_order['tax_exempt']) ? pg_order_view_kv(lang('Tax-Exempt'), $tax_exempt) : '')
+        . pg_order_view_kv(lang('PO Number'), h($po_number))
+        . pg_order_view_kv(lang('Salutation'), h($billing_salutation))
+        . pg_order_view_kv(lang('Custom Field') . ' #1', h($custom_field_1))
+        . pg_order_view_kv(lang('Custom Field') . ' #2', h($custom_field_2));
+    $output_billing_address = trim(pg_order_view_address_block($billing_address, 'pg_billing_address')
+        . (pg_order_view_same_address($billing_address, $ship_tos) ? '<p class="pg-address-same"><i class="bi bi-check2" aria-hidden="true"></i>' . h(lang('Same as the shipping address')) . '</p>' : '')
+        . ((($head_order['billing_address_verified'] ?? '') == '1') ? '<p class="pg-address-same"><i class="bi bi-patch-check" aria-hidden="true"></i>' . h(lang('Address verified')) . '</p>' : '')
+        . (($billing_postcode_province !== '')
+            ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mt-3"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipping_postcode_province_text($billing_postcode_province)) . '</span>'
+            : '')
+        . (($billing_district_note !== '')
+            ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mt-3"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h($billing_district_note) . '</span>'
+            : ''));
+    $output_billing_card =
+        '<div class="card pg-card mt-5">
+            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                <h2 class="pg-title-section mb-0">' . lang('Billing Information') . '</h2>
+                <span class="pg-copy ms-auto">' . pg_copy_button(implode("\n", $billing_address_lines), lang('Copy the billing address'), 'pg_billing_address') . '</span>
+            </div>
+            <div class="card-body">
+                ' . (($output_billing_address !== '') ? '<div class="pg-address-block">' . $output_billing_address . '</div>' : '') . '
+                ' . (($output_billing_rows !== '') ? '<dl class="pg-kv">' . $output_billing_rows . '</dl>' : '') . '
+            </div>
+        </div>';
+
+    // Order Information of the side panel; the order's number and status are
+    // the head's. Under a hairline, where the order came from.
+    $output_order_information_card =
+        '<div class="card pg-card mt-5">
+            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Order Information') . '</h2>
+            <div class="card-body">
+                <dl class="pg-kv">
+                    ' . pg_order_view_kv(lang('Type'), lang(h(ucwords($order_type)))) . '
+                    ' . pg_order_view_kv(lang('Order Date'), $order_date) . '
+                    ' . $output_cancellation_rows . '
+                    ' . pg_order_view_kv(lang('Special Offer Code'), h($special_offer_code)) . '
+                    ' . pg_order_view_kv(lang('Reference Code'), ((string) $reference_code !== '') ? '<span id="pg_order_reference_code" class="pg-tabular">' . h($reference_code) . '</span> <span class="pg-copy">' . pg_copy_button($reference_code, lang('Copy the reference code'), 'pg_order_reference_code') . '</span>' : '') . '
+                    ' . $output_currency_code_row . '
+                </dl>
+                ' . $output_parasut_status_rows . '
+                ' . $source . '
+            </div>
+        </div>';
+
     $output_head = pg_record_head(array(
         'title' => pg_order_view_head_title($order_number, $id),
         'copy' => (string) $order_number,
@@ -2745,108 +2613,19 @@ if (!$_POST) {
                         <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <!-- Two columns of cards only from xl: in the 8/12 form
                                  column of a 1024px screen half a column is too narrow
-                                 for a label and its value side by side. Who ordered
-                                 and how they paid on the left; the parcels and what
+                                 for a label and its value side by side. How it was
+                                 paid and the totals on the left; the parcels and what
                                  followed the order on the right. -->
                             <div class="row g-7">
                                 <div class="col-12 md:col-6 lg:col-12 xl:col-6">
-                                    <div class="card pg-card">
-                                        <h2 class="card-header bg-reset border-0 pg-title-section">
-                                            ' . lang('Billing Information') . '
-                                        </h2>
-                                        <div class="card-body">
-                                            ' . pg_order_view_row(lang('Custom Field') . ' #1', h($custom_field_1)) . '
-                                            ' . pg_order_view_row(lang('Custom Field') . ' #2', h($custom_field_2)) . '
-                                            ' . pg_order_view_row(lang('Salutation'), h($billing_salutation)) . '
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('First Name') . '</span>
-                                                <span class="text-end text-break">' . h($billing_first_name) . '</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Last Name') . '</span>
-                                                <span class="text-end text-break">' . h($billing_last_name) . '</span>
-                                            </div>
-                                            ' . pg_order_view_row(lang('Company'), h($billing_company)) . '
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Address') . ' 1</span>
-                                                <span class="text-end text-break fw-medium">' . h($billing_address_1) . '</span>
-                                            </div>
-                                            ' . pg_order_view_row(lang('Address') . ' 2', h($billing_address_2), true) . '
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . h(lang($billing_place_labels['city'])) . '</span>
-                                                <span class="text-end text-break">' . h($billing_city) . '</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . h(lang($billing_place_labels['state'])) . '</span>
-                                                <span class="text-end text-break">' . h($billing_state) . '</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Country') . '</span>
-                                                <span class="text-end text-break">' . h(pg_order_view_country($billing_country)) . '</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Zip Code') . '</span>
-                                                <span class="text-end text-break">' . h($billing_zip_code) . '</span>
-                                            </div>
-                                            ' . (($billing_postcode_province !== '')
-                                                ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mb-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipping_postcode_province_text($billing_postcode_province)) . '</span>'
-                                                : '') . '
-                                            ' . (($billing_district_note !== '')
-                                                ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mb-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h($billing_district_note) . '</span>'
-                                                : '') . '
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Address Verified') . '</span>
-                                                <span class="text-end text-break">' . $billing_address_verified . '</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Phone') . '</span>
-                                                <span class="text-end text-break">' . h($billing_phone_number) . '</span>
-                                            </div>
-                                            ' . $fax . '
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Email') . '</span>
-                                                <span class="text-end text-break">' . h($billing_email_address) . '</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Opt-In') . '</span>
-                                                <span class="text-end text-break">' . $opt_in . '</span>
-                                            </div>
-                                            ' . pg_order_view_row(lang('PO Number'), h($po_number)) . '
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Tax-Exempt') . '</span>
-                                                <span class="text-end text-break">' . $tax_exempt . '</span>
-                                            </div>
-                                            ' . pg_order_view_row(lang('EU VAT ID'), (($order_vat_note !== '') ? h($order_vat_id) . '<span class="d-block small fg-secondary">' . h($order_vat_note) . '</span>' : '')) . '
-                                            ' . ($contact_tax_number !== '' || $contact_tax_office !== '' ? '
-                                            <hr/>
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . h((pg_erp_store_country() === 'TR') ? lang('VKN / TCKN') : lang('Tax number')) . '</span>
-                                                <span class="text-end text-break">' . h($contact_tax_number) . '</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary">' . lang('Tax Office') . '</span>
-                                                <span class="text-end text-break">' . h($contact_tax_office) . '</span>
-                                            </div>' : '') . '
-                                        </div>
-                                    </div>
-                                    ' . $output_custom_billing_information . '
-                                    <div class="card pg-card mt-5">
-                                        <div class="card-header bg-reset border-0 d-flex align-items-center">
-                                            <h2 class="pg-title-section mb-0">' . lang('Customer Information') . '</h2> <span class="ms-auto">' . $output_contact_image . '</span>
-                                        </div>
-                                        <div class="card-body">
-                                            ' . $output_user_row . '
-                                            ' . $output_contact_row . '
-                                            ' . $output_member_id_row . '
-                                            ' . $output_ip_address_row . '
-                                        </div>
-                                    </div>
-                                    ' . $output_payment_information . '
+                                    ' . pg_order_view_card_column(array(
+                                        $output_payment_card,
+                                        $output_custom_billing_information,
+                                    )) . '
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-12 xl:col-6">
                                     ' . pg_order_view_card_column(array(
                                         $output_shipping_details,
-                                        $source,
                                         $output_applied_gift_cards,
                                         $output_affiliate,
                                         pg_legal_documents_panel_card((int) $_GET['id']),
@@ -2859,82 +2638,15 @@ if (!$_POST) {
                                 ' . $output_order_details . '
                             </div>
                         </div>
-                        <!-- Read, not filled: the status, the number and the money stay
-                             in view while the addresses, the parcels and the lines
-                             scroll. Written after the form column, so on a narrow
-                             screen it does not push the first card off screen. -->
+                        <!-- The side panel: who ordered, the billing address and the
+                             order\'s facts. It does not stick: three cards are taller
+                             than a laptop\'s window, so a sticking column would hide
+                             its own end. Written after the form column, so on a
+                             narrow screen it does not push the first card off screen. -->
                         <div class="col-12 lg:col-4 2xl:col-3 order-2">
-                            <div class="position-sticky" style="top:3.3rem;">
-                                <div class="card">
-                                    <h2 class="card-header bg-reset border-0 pg-title-section">
-                                        ' . lang('Order Information') . '
-                                    </h2>
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Type') . '</span>
-                                            <span class="translateable text-end text-break">' . lang(h(ucwords($order_type))) . '</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Status') . '</span>
-                                            <span class="translateable text-end text-break">' . lang(h(ucwords($status))) . $output_awaiting_badge . '</span>
-                                        </div>
-                                        ' . $output_cancellation_rows . '
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Order Number') . '</span>
-                                            <span class="text-end text-break fw-medium pg-tabular">' . $order_number . '</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Order Date') . '</span>
-                                            <span class="text-end text-break">' . $order_date . '</span>
-                                        </div>
-                                        <hr/>
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Subtotal') . '</span>
-                                            <span class="text-end text-break pg-tabular">' . prepare_amount($subtotal) . '</span>
-                                        </div>
-                                        ' . ($discount > 0 ? '<div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Discount') . '</span>
-                                            <span class="text-end text-break">-' . pg_format_money($discount, BASE_CURRENCY_SYMBOL) . '</span>
-                                        </div>' : '') . '
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Tax') . '</span>
-                                            <span class="text-end text-break">' . pg_format_money($tax, BASE_CURRENCY_SYMBOL) . '</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Shipping') . '</span>
-                                            <span class="text-end text-break">' . pg_format_money($shipping, BASE_CURRENCY_SYMBOL) . '</span>
-                                        </div>
-                                        ' . $output_gift_card_discount_row . '
-                                        ' . $output_surcharge_row . '
-                                        ' . $output_number_of_installment_row . '
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Total') . '</span>
-                                            <span class="text-end text-break"><strong class="pg-tabular">' . prepare_amount($total) . '</strong></span>
-                                        </div>
-                                        ' . ($refunded_amount_cents > 0 ?
-                                            '<div class="d-flex justify-content-between gap-3 fg-danger">
-                                                <span class="translateable fg-secondary">' . lang('Total Refunded') . '</span>
-                                                <span class="text-end text-break">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between gap-3">
-                                                <span class="translateable fg-secondary fw-semibold">' . lang('Net Total') . '</span>
-                                                <span class="text-end text-break"><strong class="pg-tabular">' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong></span>
-                                            </div>'
-                                        : '') . '
-                                        <hr/>
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Special Offer Code') . '</span>
-                                            <span class="text-end text-break">' . h($special_offer_code) . '</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Reference Code') . '</span>
-                                            <span class="text-end text-break">' . h($reference_code) . '</span>
-                                        </div>
-                                        ' . $output_currency_code_row . '
-                                        ' . $output_parasut_status_rows . '
-                                    </div>
-                                </div>
-                            </div>
+                            ' . $output_customer_card . '
+                            ' . $output_billing_card . '
+                            ' . $output_order_information_card . '
                         </div>
                         <!-- Sticky on the column: the row is as tall as the whole form,
                              so the bar has the length of the form to travel in. -->

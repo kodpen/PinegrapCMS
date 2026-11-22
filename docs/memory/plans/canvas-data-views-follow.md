@@ -17,4 +17,4 @@ description: Plan canvas-data-views, DV4's census: how a channel's canvas card w
 - The tables the data layers of the canvas's newest version name (the open scene's layers, the ones its picture shows), each with `ws_canvas_data_rows()` for the reader. No `ws_canvas_tables` binding is asked: the editor's `data_rows` already gives a reader every table they may read, so a binding would guard nothing, and canvases made from the Data menu (DV2) bind none.
 
 ## What stays a still?
-- The stored file itself: Download, the Files tab's tile, a guest's page and an exported picture keep the rows of the last save (DV5 says so where it saves). The image viewer opened from the card shows the card's drawing.
+- The stored file itself draws its data layers with no rows (DV5): Download from the card, the Files tab's tile and a guest's page show it to readers who may not read the table. A copy into Files, a download from the editor and an animation keep the saver's rows and say so (`ui/image-editor-data-still.md`). The image viewer opened from the card shows the card's drawing.

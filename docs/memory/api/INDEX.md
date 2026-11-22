@@ -157,6 +157,7 @@
 - forms-api-request-checks.md: get_forms / get_form panel actions refuse a malformed limit, offset, fields, filter or sort value with a JSON error before any query
 - ga4-mp-facts.md: GA4 Measurement Protocol as Google's own documents say it (read 2026-11-20): addresses, secret, body, client id, consent, 72-hour limit, user data hashing, validation endpoint, answers
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on its Connections page, batchRunReports cached by an hourly job, state in a sealed service entry [decision: decisions-made-product-5.md]
+- mail-one-account.md: One Google or Microsoft account sends the site's e-mail and reads mailboxes (EM4): "Connected for a mailbox", Allow reading mail, Disconnect naming both uses [decision: here]
 - mailchimp-sync-running-claim.md: How the MailChimp sync in the general job keeps two overlapping runs from syncing at once.
 - mcp-agent-own-tools.md: An application agent's own routes as MCP tools ('mcp' => 'agent', AA7a #10867): which ten, only for an active app agent's own key, the callers that never see them, the budget, the second sending form
 - mcp-compact-list.md: The MCP server's compact list (mcp_compact.php, AG7): guide_read, tools_find, tools_describe, tools_read, tools_write and the money tools by name; one OAuth resource with mcp.php; refusal codes; sizes

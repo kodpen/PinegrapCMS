@@ -30,5 +30,5 @@ function test_view_order_vat_id_read_with_the_order()
 	pg_assert_true(($note !== false) && ($reused !== false), 'markers');
 	pg_assert_true(($capture < $reused) && ($note < $reused), 'before $row is reused');
 	pg_assert_same(1, substr_count($source, "\$row['vat_id']"), 'no other read of the column from $row');
-	pg_assert_contains("pg_order_view_row(lang('EU VAT ID'), ((\$order_vat_note !== '') ? h(\$order_vat_id)", $source, 'the row prints the captured id');
+	pg_assert_contains("pg_order_view_kv(lang('EU VAT ID'), ((\$order_vat_note !== '') ? h(\$order_vat_id)", $source, 'the row prints the captured id');
 }

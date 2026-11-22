@@ -113,8 +113,7 @@ function pg_mail_settings_connect_buttons(array $providers, $key, $has_accounts)
         : lang(array('string' => 'Connect a {var:1} account', 'vars' => $providers[$key]['label']));
 
     return '<div class="pg-field-help">' . h(lang('A connected account sends without an SMTP password; the message is from that account and replies go to the address it was meant to come from.')) . '</div>'
-        . '<div class="d-flex flex-wrap gap-2 mt-4"><button type="submit" form="pgset_mail_connect_' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm">'
-        . '<i class="bi bi-plus-lg" aria-hidden="true"></i><span class="pg-btn-label">' . h($label) . '</span></button></div>';
+        . '<div class="d-flex flex-wrap gap-2 mt-4">' . pg_mail_connect_button('pgset_mail_connect_' . $key, $label) . '</div>';
 }
 
 /**
@@ -305,11 +304,11 @@ function pg_mail_settings_save(array $post, $liveform)
         // longer find it.
         $value = (isset($post[$field]) && is_string($post[$field])) ? trim(preg_replace('/[\x00-\x1F\x7F]/', '', $post[$field])) : '';
 
-        // A connected account is named by its number, and only one that was
-        // connected for sending e-mail can be chosen.
+        // A connected account is named by its number, and only the site's
+        // own that may send (connected for sending or for a mailbox).
         if (($key === 'SYSTEM_MAIL_CONNECTION') || ($key === 'CAMPAIGN_MAIL_CONNECTION')) {
             $chosen = pg_connect_account((int) $value);
-            $value = (is_array($chosen) && ($chosen['user_id'] === 0) && in_array('mail', $chosen['purposes'], true)) ? (string) (int) $chosen['id'] : '';
+            $value = (is_array($chosen) && ($chosen['user_id'] === 0) && pg_mail_account_sends($chosen['purposes'])) ? (string) (int) $chosen['id'] : '';
         }
 
         $was = defined($key) ? (string) constant($key) : '';

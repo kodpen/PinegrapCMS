@@ -59,6 +59,11 @@ function get_express_order($properties) {
     
     // store page id for express order page in case we need to direct the user to the page sometime in the future
     $_SESSION['ecommerce']['express_order_page_id'] = $page_id;
+
+    // The visitor is back at the cart: units held for a payment they left
+    // (includes/fn/stock_holds.php) are freed for other checkouts; a submit
+    // holds them again.
+    pg_stock_hold_release((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
     
     // unset shopping cart page id if one exists, so we don't foward user to that page in the future
     unset($_SESSION['ecommerce']['shopping_cart_page_id']);

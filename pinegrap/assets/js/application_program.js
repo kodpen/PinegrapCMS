@@ -8,7 +8,8 @@
  * the decision e-mails' tabs. Nothing is saved here: the form posts it all.
  * On the Reviewers tab it opens the Add reviewer drawer and switches it
  * between a panel user and an outside juror. On the Entries tab a row's
- * Override or Settle opens its note drawer for that entry.
+ * Override or Settle opens its note drawer for that entry. On the Decisions
+ * tab it ticks every row from the head's box and opens the send drawer.
  *
  * Loaded with a plain <script src> by the screen; no .min twin.
  *
@@ -248,5 +249,34 @@
         drawer.classList.toggle('drawer-end', !phone.matches);
         drawer.classList.toggle('drawer-bottom', phone.matches);
         pgUI.drawer.show(drawer);
+    });
+}());
+
+(function () {
+    'use strict';
+
+    var phone = window.matchMedia('(max-width: 575.98px)');
+
+    // "Send the decision e-mails": its drawer, from the right or on a phone
+    // from the bottom.
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-pg-ap-open]');
+        var drawer = button ? document.getElementById(button.getAttribute('data-pg-ap-open')) : null;
+        if (!drawer || !window.pgUI) {
+            return;
+        }
+        drawer.classList.toggle('drawer-end', !phone.matches);
+        drawer.classList.toggle('drawer-bottom', phone.matches);
+        pgUI.drawer.show(drawer);
+    });
+
+    // The head's box ticks or clears every row.
+    document.addEventListener('change', function (event) {
+        if (!event.target.matches('[data-pg-ap-tick-all]')) {
+            return;
+        }
+        document.querySelectorAll('[data-pg-ap-tick]').forEach(function (box) {
+            box.checked = event.target.checked;
+        });
     });
 }());

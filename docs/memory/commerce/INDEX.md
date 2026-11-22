@@ -89,7 +89,7 @@
 - checkout-kvkk-notice.md: KVKK notice link and optional consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection and designer node, the kvkk copy, consent log row [decision: decisions-made-product-96.md]
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
 - checkout-requested-arrival-date.md: Requested arrival date at checkout: which one a visitor may post, how the designed checkout refills and bounds the custom date box, where an unusable date is reported
-- checkout-state-list.md: The checkout's state as a text box and a pick list (_eo_fit_state_lists(), #6146), one state script per address (data-pg-sa-for), the order screen's İlçe/İl billing labels
+- checkout-state-list.md: The checkout's state as a text box and a pick list (_eo_fit_state_lists(), #6146), one state script per address (data-pg-sa-for)
 - classic-order-pages-language.md: The classic order view, receipt and preview write every label through lang(): billing Phone/Fax/PO Number, shipping method and arrival date, the order view's headings and totals (PR #5202)
 - classic-screens-fixes-2026-11.md: Classic (system-layout) storefront screen fixes: shipping method warnings, cart edit buttons and payments asterisk, catalog RSS top group, comments switch links, receipt labels and currency
 - classic-store-pages-language.md: Classic store pages and checkout steps (cart, express order, receipt, order preview, shipping, billing) print every visitor text through lang(); {var:n} keys (PR #4472, #4795)
@@ -269,6 +269,7 @@
 - order-screen-offer-code-escape.md: (PR #5215) The panel order screen (view_order.php) escapes the order's special offer code and reference code; an offer code is free text up to 50 characters set by any commerce user
 - order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning and how Save writes them
 - order-screen-shipping-input.md: Order screen shipping card input: cancelled order read only and refused by update_order(), ship and delivery dates checked, shipped quantity 0 to ordered, paid on row
+- order-screen-side-panel.md: View Order's side panel (Customer, Billing, Order Information) and Payment card with the totals (OS2, #11139): address block, "Same as the shipping address", the contact's order count, no sticking
 - order-screen-toolbar.md: The order screen's toolbar (view_order.php): which buttons stay on the bar, which are rows of the three-dots menu, why menu rows lost their colours
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
 - order-stock-taken.md: order_items.stock_taken and order_item_components.stock_taken (step 11.0.268, #10684): what a sale took from the stock, who writes it, how a marketplace cancel puts back only that
@@ -407,7 +408,8 @@
 - short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin (list, CSV, redirect), and a name held by a short link in the bin (the form's message)
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - staff-store-credit-card.md: Store Credit card on Edit User: the answer printed on the card, typed values kept, Void asked after the reason check, the Voided state and its reason (#9008)
-- stock-holds-record.md: The stock_holds table (11.0.253) and stock_holds.php: units free, the cart checks reading them, placing under a per-product lock, release, the daily sweep (SH1 #10711, SH2)
+- stock-holds-placing.md: Where submit_order.php places the stock hold before the payment (SH3), the way back when units are not free, a payment's return, and the releases on a failed payment and at the cart
+- stock-holds-record.md: The stock_holds table (11.0.253) and stock_holds.php: units free, the cart checks reading them, placing under a lock, release at completion, the daily sweep (SH1 #10711, SH2 #10759, SH3)
 - stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events [decision: decisions-made-product-19.md]
 - stock-locations-decisions.md: Stock per location as a whole: why it exists, the sum contract, what stays on the total, and where each part is written down [decision: decisions-made-product-19.md]
 - stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location [decision: decisions-made-product-19.md, decisions-made-schema-33.md]

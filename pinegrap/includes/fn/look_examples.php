@@ -466,6 +466,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_ws_list_row_pattern($p);
     $patterns = array_merge($patterns, pg_look_examples_record_patterns($p));
     $patterns[] = pg_look_examples_figure_grid_pattern();
+    $patterns[] = pg_look_examples_address_pattern($p);
     $patterns[] = pg_look_examples_tools_dock_pattern($p);
     $patterns[] = pg_look_examples_flow_box_pattern($p);
     $patterns[] = pg_look_examples_canvas_tools_pattern();
@@ -991,6 +992,38 @@ function pg_look_examples_figure_grid_pattern()
         'classes' => array('.pg-figure-grid', '.pg-figure-grid-cell', '.pg-figure-label', '.pg-figure-value', '.pg-figure-note', '.pg-figure-grid-chart', '.pg-figure-grid-bars', '.pg-figure-grid-axis', '.pg-figure-grid-sub', '.pg-figure-grid-rows', '.pg-figure-grid-row', '.pg-figure-grid-row-link', '.pg-figure-grid-foot'),
         'html'    => '<div class="card">' . pg_product_insights_card_html($data, '20G', '&#8378;', $now) . '</div>'
             . '<p class="pg-text-meta">' . h(lang('From Edit Product\'s Performance card: the figures as cells of the card, four across and two on a phone, a change line under the value (up teal, down rose), then a bar chart, rows of icon, text and count, and a foot.')) . '</p>',
+    );
+}
+
+/**
+ * The address block (View Order's Billing Information): the card's title
+ * with the copy button, the address's lines with the name set apart, the
+ * grey "Same as the shipping address" line, the rows under a hairline.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array id, title, classes, html
+ */
+function pg_look_examples_address_pattern($p)
+{
+    $address = array(
+        'first_name' => 'Ada', 'last_name' => 'Yılmaz', 'company' => 'Test Ltd',
+        'address_1' => 'Hürriyet Mah. Pamuk Sokak No:22', 'address_2' => '',
+        'city' => 'Tire', 'state' => 'İzmir', 'zip_code' => '35960', 'country' => 'TR',
+    );
+    $id = 'pg-look-address-' . $p;
+
+    return array(
+        'id'      => 'pattern-address-block',
+        'title'   => lang('Address block'),
+        'classes' => array('.pg-address-block', '.pg-address', '.pg-address-name', '.pg-address-same', '.pg-kv', '.pg-copy'),
+        'html'    => '<div class="card pg-card" style="max-width:22rem">'
+            . '<div class="card-header bg-reset border-0 d-flex align-items-center gap-3"><h3 class="pg-title-section mb-0">' . h(lang('Billing Information')) . '</h3>'
+            . '<span class="pg-copy ms-auto">' . pg_copy_button(implode("\n", pg_order_view_address_lines($address)), lang('Copy the billing address'), $id) . '</span></div>'
+            . '<div class="card-body"><div class="pg-address-block">' . pg_order_view_address_block($address, $id)
+            . '<p class="pg-address-same"><i class="bi bi-check2" aria-hidden="true"></i>' . h(lang('Same as the shipping address')) . '</p></div>'
+            . '<dl class="pg-kv"><div><dt>' . h(lang('VKN / TCKN')) . '</dt><dd>1234567890</dd></div><div><dt>' . h(lang('Tax Office')) . '</dt><dd>Tire</dd></div></dl></div>'
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From View Order: a postal address as its lines, an empty part left out, the name set apart; the copy button copies the lines. A grey line with a check under it; the rows that hold a value under a hairline.')) . '</p>',
     );
 }
 

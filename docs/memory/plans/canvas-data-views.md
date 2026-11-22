@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-20): a Data table as a chart or table layer of 
 - DV3 (S) the Data screen: a table's head gets "Show on a canvas" with "As a chart" and "As a table": a new canvas in the table's channel holding that one layer, the table bound read-only. Done (#10926).
 - DV2b (S) Data on the top bar, Show on a canvas on every table. Done (#11035).
 - DV4 (M) following in the channel: the card's browser draws the data layers from the reader's rows, nothing kept (census: `canvas-data-views-follow.md`). Done (#11120, `workspace/canvas-data-follow.md`). A changed description is a version; changed rows are not.
-- DV5 (S) the File Manager and export: a document saved to the site's files keeps its data layers and reads the rows when opened; export writes a still and says so once; "Save as picture" in a channel does the same.
+- DV5 (S) the File Manager and export: a document saved to the site's files keeps its data layers and reads the rows when opened; export writes a still and says so once; "Save as picture" in a channel does the same. Done (#11150, `ui/image-editor-data-still.md`): the Workspace's file draws data layers with no rows.
 - DV6 (M) the API and MCP: an agent adds or changes a data layer by the description, in place of drawing a chart's picture; phone width for the menu and the panel.
 - Order DV1 to DV6, one PR each, a and b past size; DV2b (`canvas-data-views-screens.md`) before DV4; built on the layer groups (`ui/image-editor-groups.md`).
 

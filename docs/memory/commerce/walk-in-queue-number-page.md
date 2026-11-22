@@ -23,7 +23,7 @@ module: walk_in_queue_tickets
 - Taken, ahead and called, at most three: `walk-in-queue-notices.md`.
 
 ## What does the firewall do with it?
-- `queue.php` is in `waf_sensitive_scripts()` (30 a minute per address, open-request cap). The 15-second read is 4 a minute per person: people on one shared address (venue Wi-Fi, carrier NAT) share that allowance; about eight open pages on one address are refused.
+- `queue.php` is in `waf_sensitive_scripts()` (30 a minute per address, open-request cap) for opening the page, taking a number and "Leave the queue". The 15-second read (`&read=1`) has a bucket of its own, 240 a minute per address, a 429 past it, and starts no session: `waf/waf-queue-status-bucket.md` (WQ3b).
 
 ## How was it checked?
 - `tests/walk_in_queue_tickets_test.php` (join form, ways, texts, channels, bits, status view, link, wiring). No database in the cloud session: take, leave, the read and the notices were not run against MySQL.

@@ -9,6 +9,7 @@ module: look_examples
 - "Form drawer" (DX3 #11105, `pg_look_examples_form_drawer_pattern()`), after the numbered steps drawer: Application Access' `#api_drawer` at 760 px, head with tile, kind line and state pill, the tabs as `.pg-seg.pg-list-seg`, the Overview tab's groups Details, Summary (Advanced as a closed fold row) and Danger last, the foot with Cancel quiet and Save; under it the danger row in its confirm state (Cancel, Yes, delete).
 - After the form drawer: "Screen bar with filters" and "Empty screen" (#11104, `pg_look_examples_ws_screen_patterns()`, `workspace-screen-bar.md`).
 - Then, before the e-mail parts: the conversation timeline (#11047, `pg_look_examples_timeline_pattern()`), "Workspace list row" (#11079, `pg_look_examples_ws_list_row_pattern()`, live rows in a `.ws-menu-side` box), "Record head" and "Copy button" (#11098, `pg_look_examples_record_patterns()`), "Tools dock" (#11101, `pg_look_examples_tools_dock_pattern()`) and "Flow box" (#11083, `pg_look_examples_flow_box_pattern()`, `workspace/workspace-flows-box-look.md`).
+- "Address block" (#11139, `pg_look_examples_address_pattern()`, `commerce/order-screen-side-panel.md`) follows "Copy button".
 - The e-mail settings drawing's seven parts close the group (DX2b #10930, `pg_look_examples_mail_patterns()`): `look-mail-patterns.md`.
 
 ## How is a drawer pattern framed?

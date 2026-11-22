@@ -84,6 +84,7 @@ function test_application_programs_input_reads_the_screen_post()
 		),
 		'blind' => '1',
 		'blind_fields' => array('age', 'gone'),
+		'waitlist_auto' => '1',
 		'texts' => array('accepted' => array('subject' => 'Welcome', 'body' => 'You are in.'), 'rejected' => array('subject' => '', 'body' => ''), 'other' => array('subject' => 'x')),
 	);
 
@@ -114,6 +115,8 @@ function test_application_programs_input_reads_the_screen_post()
 
 	pg_assert_same(1, $program['blind']);
 	pg_assert_same(array('age'), $program['blind_fields']);
+	pg_assert_same(1, $program['waitlist_auto']);
+	pg_assert_same(0, pg_application_program_input(array('name' => 'x'), $fields)['program']['waitlist_auto']);
 	pg_assert_same(array(
 		'outside' => 'Entries are closed.',
 		'accepted' => array('subject' => 'Welcome', 'body' => 'You are in.'),

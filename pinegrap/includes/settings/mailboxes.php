@@ -60,6 +60,13 @@ if ($ws_card !== '') {
 
     $pg_settings_modals[] = ws_settings_mail_drawer(null, $ws_viewer, $ws_form, !empty($pg_settings_in_dialog));
 
+    // Allow reading mail under a box's account select: a sending account
+    // asks its provider again for reading, on the same account. Only who
+    // may connect the site's accounts (connect.php) has the button.
+    if ((int) $user['role'] <= 2) {
+        $pg_settings_modals[] = ws_mail_box_account_ask_forms(pg_settings_url('mailboxes') . '#pgset-ws-mail');
+    }
+
     // What is done at Google or Microsoft, opened from a box's Reading tab.
     foreach (array('google', 'microsoft') as $ws_provider) {
         $pg_settings_modals[] = ws_settings_mail_setup_drawer($ws_provider, $ws_viewer, !empty($pg_settings_in_dialog));
