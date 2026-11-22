@@ -6569,6 +6569,7 @@
     "An order preview page could not be found for the id that was passed.": "İletilen kimlik için bir sipariş önizleme sayfası bulunamadı.",
     "An order spent a customer's store credit card; order_id and amount_used name the order and what it took, balance what is left (giving it back when the order is cancelled is not announced)": "Bir sipariş, müşterinin mağaza kredisi kartından harcadı; order_id ve amount_used siparişi ve kullanılan tutarı, balance kalan tutarı belirtir (sipariş iptal edildiğinde kredinin geri verilmesi bildirilmez)",
     "An order the shop ships with its own carrier was reported shipped to the marketplace, with its tracking link (a parcel of the marketplace's own carrier arrives as order.shipped)": "Mağazanın kendi kargosuyla gönderdiği bir sipariş, takip bağlantısıyla birlikte pazaryerine kargoya verildi olarak bildirildi (pazaryerinin kendi kargosundaki paket order.shipped olarak gelir)",
+    "An order took more units than the stock held.": "Bir sipariş stokta olandan fazla adet aldı.",
     "An order was cancelled": "Bir sipariş iptal edildi",
     "An order was cancelled: {{record}}": "Bir sipariş iptal edildi: {{record}}",
     "An order was not invoiced automatically": "Bir sipariş kendiliğinden faturalanamadı",

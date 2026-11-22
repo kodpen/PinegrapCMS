@@ -177,12 +177,14 @@ function pg_notification_visible($notification, $rights)
 
 	// A customer's return request, or their word that the goods are on their
 	// way back: for whoever manages the orders (includes/fn/returns.php).
-	if (($action == 'new_order') || ($action == 'out_stock') || ($action == 'order_return')) {
+	// An order sold beyond the stock (pg_stock_oversold_warn()) reaches whoever
+	// the out_stock line reaches.
+	if (($action == 'new_order') || ($action == 'out_stock') || ($action == 'oversold') || ($action == 'order_return')) {
 
 		// An API caller's rights also say whether its scopes hold
 		// orders:read (api_notifications_rights()); the panel's and the
 		// push sender's carry no such key.
-		if ((($action == 'new_order') || ($action == 'order_return'))
+		if ((($action == 'new_order') || ($action == 'order_return') || ($action == 'oversold'))
 			&& isset($rights['orders_read']) && !$rights['orders_read']) {
 			return false;
 		}
@@ -627,6 +629,20 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['url']     = 'edit_product.php?id=' . (int) $notification['product_id'];
 		$display['icon']     = 'assets/images/notification-order.png';
 		$display['badge']    = 'assets/images/notification-order-badge.png';
+		$display['action']  = $action;
+
+	} elseif ($action == 'oversold') {
+
+		// title is the order number, order_total how many products the order
+		// sold beyond their stock (pg_stock_oversold_warn()).
+		$number = h($notification['title']);
+		$display['title']   = lang('An order took more units than the stock held.');
+		$display['details'] = lang('Order Number') . ': #' . $number . '<br/>' . lang(array('string' => 'Products short of stock: {var:1}', 'vars' => array((int) ($notification['order_total'] ?? 0))));
+		$display['short']   = lang(array('string' => 'Sold beyond stock #{var:1}', 'vars' => array($number)));
+		$display['brief']   = lang(array('string' => 'Products short of stock: {var:1}', 'vars' => array((int) ($notification['order_total'] ?? 0))));
+		$display['url']     = 'view_order.php?id=' . (int) $notification['order_id'];
+		$display['icon']    = 'assets/images/notification-order.png';
+		$display['badge']   = 'assets/images/notification-order-badge.png';
 		$display['action']  = $action;
 
 	} elseif ($action == 'form_submited') {
@@ -1243,7 +1259,7 @@ function pg_notification_module($action)
 {
 	$action = (string) $action;
 
-	if (in_array($action, array('new_order', 'order_return', 'out_stock', 'booking_refused', 'whatsapp_message'), true)) {
+	if (in_array($action, array('new_order', 'order_return', 'out_stock', 'oversold', 'booking_refused', 'whatsapp_message'), true)) {
 		return 'shop';
 	}
 

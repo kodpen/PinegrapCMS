@@ -822,6 +822,10 @@ if (!$_POST) {
 
     $ship_tos = array();
 
+    // What each line's sale took from the stock, for its "Taken from stock"
+    // note; NULL before the column's step.
+    $stock_taken_column = pg_stock_taken_ready('order_items') ? 'order_items.stock_taken,' : 'NULL AS stock_taken,';
+
     // assume that there are no real ship tos until we find out that there is one
     $ship_to_exists = false;
 
@@ -1420,6 +1424,7 @@ if (!$_POST) {
                         order_items.recurrence_number,
                         order_items.show_shipped_quantity,
                         order_items.shipped_quantity,
+                        " . $stock_taken_column . "
                         products.id as product_id,
                         products.image_name as image_name,
                         products.short_description,
@@ -1672,6 +1677,7 @@ if (!$_POST) {
                         $output_image,
                         $short_description,
                         pg_order_view_line_fact(lang('Qty'), $quantity)
+                            . pg_order_view_stock_taken_fact($order_item['stock_taken'], $quantity)
                             . pg_order_view_line_fact(lang('Shipped Qty'), $output_shipped_quantity_field, $shipped_quantity_field_id)
                             . pg_order_view_line_fact(lang('Price'), prepare_amount($product_price))
                             . pg_order_view_line_fact(lang('Total'), prepare_amount($product_total), '', true)
@@ -1738,6 +1744,7 @@ if (!$_POST) {
                     order_items.recurring_start_date,
                     order_items.calendar_event_id,
                     order_items.recurrence_number,
+                    " . $stock_taken_column . "
                     products.id as product_id,
                     products.image_name as image_name,
                     products.short_description,
@@ -1952,6 +1959,7 @@ if (!$_POST) {
                     $output_image,
                     $short_description,
                     pg_order_view_line_fact(lang('Qty'), $quantity)
+                        . pg_order_view_stock_taken_fact($order_item['stock_taken'], $quantity)
                         . pg_order_view_line_fact(lang('Price'), prepare_amount($product_price))
                         . pg_order_view_line_fact(lang('Total'), prepare_amount($product_total), '', true)
                         . $output_recurring_payment_period
