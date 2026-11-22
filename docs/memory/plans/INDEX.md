@@ -142,8 +142,6 @@
 - privacy-settings-tidy-screens.md: Plan privacy-settings-tidy, its screen: the Visitors and privacy pane as folded rows, the "How long we keep data" row of value rows, the words and what must be true
 - privacy-settings-tidy-steps.md: Plan privacy-settings-tidy, steps VP1 to VP4: the pane as folded rows, the "How long we keep data" row and the inventory's IP lines, the owner's two answers, close-out
 - privacy-settings-tidy.md: Plan (owner 2026-11-21): Site Settings › Visitors and privacy as folded rows, one "How long we keep data" row showing every retention, popovers gone, the KVKK fields on their own
-- product-insights-figures.md: Plan product-insights, what each figure of Edit Product's Performance card counts: sales, revenue, views, conversion, returns, margin, left carts, favourites, and how long a read is kept
-- product-insights.md: Plan (owner 2026-11-22): Edit Product gets a head and a Performance card (units sold, revenue, views, conversion, returns, left carts, favourites); the rest of the kept screen stays
 - prototype-approval-features.md: Plan prototype-approval, features A1 to A8: the link asking approval, the sealed verdict, older version, round two, publish rule, mails, the designer's side, events and API
 - prototype-approval-screens.md: Plan prototype-approval, how its parts sit: the Share prototype dialog's approval fields, the viewer's Review box and round two, the designer's Comments list and the Publish sheet's held row
 - prototype-approval-steps.md: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the link's approval settings, the viewer's verdict, round two, the publish rule, mails, events and API, close-out

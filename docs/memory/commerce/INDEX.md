@@ -342,6 +342,7 @@
 - product-import-row-refusals.md: Product import rows left out and why each list says so (too large, not whole, not a number, in the Recycle Bin); an update finds its product by id (PR #4917)
 - product-insights-card.md: Edit Product's head and Performance card (#11138): the stored row behind the head, View on site's page, the card's period control, the body the product_insights action draws, the Figure grid recipe
 - product-insights-module.md: Readers of Edit Product's Performance card (includes/fn/product_insights.php): periods, the grouped sales read, views, margin, carts, the product_insights action, ten-minute keep
+- product-insights.md: Edit Product's Performance card, start file: the owner's ask, what each figure counts (units sold, revenue, views, conversion, returns, margin, left carts), what was left out [decision: decisions-made-panel-15.md]
 - product-mass-edit-checks.md: Products › Modify Selected (edit_products.php) refuses an empty stock figure, a tax rate missing or outside 0..100, a zone in both cards and an empty submit, before any write
 - product-preorder.md: Product pre-order (11.0.151, PR #5550): columns, back order path, when it runs, tokens and notes, arrival date bound, hourly end, API field
 - product-price-bound-and-export.md: Catalog Manager and Edit Selected refuse a price past PG_PRODUCT_PRICE_MAX instead of MySQL's silent cut; the Catalog Manager export leaves the Recycle Bin out (#4441, #4443, PR #4515)

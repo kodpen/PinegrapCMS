@@ -312,7 +312,7 @@ description: Generated from the module field of the memory files: each includes/
 - `product_bins`: [[pick-pack-shelf-address]]
 - `product_customs`: [[carrier-label-customs]], [[product-customs-fields]]
 - `product_form_uploads`: [[bug-hunt-areas-product-form-uploads]], [[cart-product-form-file-field]], [[product-form-upload-api-csv-completion]], [[product-form-upload-field]], [[product-form-upload-order-readers]], [[product-form-upload-sweep]], [[product-form-uploads]]
-- `product_insights`: [[product-insights-card]], [[product-insights-module]]
+- `product_insights`: [[product-insights]], [[product-insights-card]], [[product-insights-module]]
 - `product_list`: [[product-list-paging]], [[product-modify-dialog]]
 - `product_questions`: [[comments-widget-two-forms]], [[product-questions]], [[product-questions-output]]
 - `prototype`: [[designer-prototype-viewer]], [[designer-prototype-viewer-links]], [[prototype-viewer-missed-click]], [[release-bundle-preview]]
