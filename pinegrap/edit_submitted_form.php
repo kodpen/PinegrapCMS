@@ -997,9 +997,8 @@ if (!$_POST) {
                 pg_tr_records_saved($custom_form_page_id, $user['id']);
             }
 
-            // The notice for the button that was clicked; a form submitted
-            // without one (Enter in a field of a form whose first button is
-            // missing, or a script) reads as saved.
+            // The notice for the button that was clicked; a save posted with
+            // no button name (by a script, for one) reads as saved.
             $message = lang('The form has been saved.');
 
             // If the save-for-later button was clicked.

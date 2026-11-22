@@ -19,7 +19,7 @@ description: The arrival date create and edit screens share includes/forms/arriv
 - `pg_arrival_date_form_errors($post)` (#5554), run by both screens before any write (edit: before its cut-off DELETE, not for Delete); a refusal ends on the error screen with Go back; `pg_arrival_date_form_error_text($errors)` ends every message in one full stop (they ran together, #6729).
 - Required: the name, a real start and end date (`pg_date_input_iso()`), the end not before the start, an arrival date blank or real (with `custom`, the latest allowed date too), a sort order that is a whole smallint. Before, an unreadable date was stored as `0000-00-00` and a zero start kept the record off the checkout.
 - `pg_arrival_date_form_status($post)` ('enabled' / 'disabled'), `…_values($post, $user_id)`: the twelve column values in INSERT/UPDATE order (a list posted for a field saves `''`, a blank date `0000-00-00`).
-- `…_save_cutoffs($id, $post)` inserts the posted cut-offs (a method once, a valid time between the start and end dates) and returns whether one was left out; the screen then shows the notice on the edit screen.
+- `…_save_cutoffs($id, $post)` replaces the stored cut-offs with the posted rows that pass and returns whether one was left out; the screen then shows the notice on the edit screen (`arrival-date-cutoff-rows.md`).
 
 ## What stays in the screens?
 - Create: the INSERT and the edit-screen notice after left-out cut-offs.
