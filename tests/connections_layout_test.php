@@ -79,6 +79,7 @@ function test_connections_other_side_leads_to_application_access()
 	pg_assert_contains('href="api_settings.php"', $source, 'it leads to Application Access');
 	pg_assert_contains('pg_connections_screen_other_side()', $source, 'with its counts');
 	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $source, 'in the side column');
+	pg_assert_contains("((\$other['errors'] > 0) ? ' <span class=\"fg-danger\">·", $source, 'the applications line gains the errors of the day in the danger tone, none at 0');
 }
 
 function test_connections_application_fields_are_look_a_fields()

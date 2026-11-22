@@ -19,4 +19,4 @@ description: Plan app-access-redraw, features U9 to U14: a guide per way to conn
 
 ## What does the edit drawer hold?
 - (U14) Wider (`min(760px, 100%)`), its head the application's icon, name, kind and "Acts as" line. Tabs: Overview (state, last use, errors in 24 hours, the owner), Connect (U9), Permissions (U6), Agent (U11), Events, Devices, Logs. New secret and Delete sit at the foot of Overview under "Danger". A locked row shows every tab read-only.
-- Connections shows one row "Applications that reach this site" with their count and the errors of the day, leading here; this screen's head links Connections.
+- Connections' side block "What connects to the site" shows the applications' count and the errors of the day, leading here (no registry row, architect 2026-11-22); this screen's head links Connections.

@@ -13,6 +13,9 @@ module: connections_screen
 
 ## What is the other side's block?
 - The side column "What connects to the site", for a user whose tools hold Application Access: its four counts (`pg_connections_screen_other_side()`: applications without the documentation's `__test__` ones, team devices, OAuth clients, webhook subscriptions) and one button to it. Nothing of that screen is copied.
+- The applications line also shows "Errors in 24 hours: N" in `fg-danger`, and nothing when N is 0 (AA6, #11109). N is the `errors` of the same reader (`pg_connections_screen_errors_sql()`): failed answers (400 or above) of the listed applications in the last 24 hours, the figure the drawer's Overview shows per application.
+- The link back: under Application Access's heading, through `pg_page_shell()`'s `pre_main_html`, "The services this site reaches are set up in Connections." and Open Connections (AA6, #11109).
+- Architect (2026-11-22, agent channel 11971): Application Access gets no row in `pg_connections_registry()`, no service page and no inventory country; the figure of services stays as it is. No second row is drawn for it: the side block is its place on Connections.
 
 Related: docs/memory/ui/connections-screen-layout.md
 Tests: `tests/connections_screen_test.php`, `tests/connections_layout_test.php`.

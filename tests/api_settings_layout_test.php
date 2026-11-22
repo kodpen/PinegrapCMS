@@ -141,3 +141,12 @@ function test_api_settings_sheets_and_guide_boxes_are_labelled()
 	pg_assert_contains('<div class="pg-list-row-title"\' . (($step[\'value_id\'] !== \'\') ? \' id="\' . $id . \'_label"\' : \'\') . \'>', $source, 'a guide step with a value names it');
 	pg_assert_true(strpos($source, '<div class="pg-start-copy mb-5">') === false, 'no value box carries its own spacing');
 }
+
+function test_api_settings_head_links_connections()
+{
+	$source = api_settings_layout_source();
+	$shell = substr($source, (int) strpos($source, 'echo pg_page_shell(array('), 1500);
+
+	pg_assert_contains("'pre_main_html'", $shell, 'the link is drawn under the screen\'s head');
+	pg_assert_contains('<a href="connections.php">\' . h(lang(\'Open Connections\'))', $shell, 'it leads to Connections');
+}

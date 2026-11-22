@@ -1764,6 +1764,13 @@ echo pg_page_shell(array(
 	'icon'                 => 'settings',
 	'heading'              => lang('Application Access'),
 	'heading_description'  => lang('Give an outside system a key, choose what it may see, and watch what it asks for.'),
+	// The other direction: the services the site itself reaches are set up on
+	// Connections, a screen of its own beside this one.
+	'pre_main_html'        => '
+<div class="container-fluid pg-print-none api-connections-link">
+	<p class="pg-text-meta mb-0 mt-2">' . h(lang('The services this site reaches are set up in Connections.')) . '
+		<a href="connections.php">' . h(lang('Open Connections')) . ' <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i></a></p>
+</div>',
 )) . '
 
 <style>

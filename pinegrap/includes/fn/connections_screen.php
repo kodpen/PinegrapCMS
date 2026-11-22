@@ -275,12 +275,14 @@ function pg_connections_screen_address_html($text)
 /**
  * What connects to the site, as Application Access counts it: applications
  * (keys, the documentation's temporary ones left out), team devices signed
- * in, applications people connected with OAuth, webhook subscriptions. A
- * table not yet installed counts none.
+ * in, applications people connected with OAuth, webhook subscriptions, and
+ * the errors those applications met in the last 24 hours. A table not yet
+ * installed counts none.
  *
- * @return array applications, devices, connected, webhooks (int)
+ * @param int|null $now the time the day ends at, the clock when left out
+ * @return array applications, devices, connected, webhooks, errors (int)
  */
-function pg_connections_screen_other_side()
+function pg_connections_screen_other_side($now = null)
 {
     $count = function ($table, $column, $sql) {
         return (function_exists('waf_table_has_column') && waf_table_has_column($table, $column)) ? (int) db_value($sql) : 0;
@@ -291,7 +293,27 @@ function pg_connections_screen_other_side()
         'devices'      => $count('api_devices', 'oauth_client_id', "SELECT COUNT(*) FROM api_devices WHERE oauth_client_id IS NULL OR oauth_client_id = 0"),
         'connected'    => $count('oauth_clients', 'id', "SELECT COUNT(*) FROM oauth_clients"),
         'webhooks'     => $count('api_webhooks', 'id', "SELECT COUNT(*) FROM api_webhooks"),
+        'errors'       => $count('api_request_log', 'status_code', pg_connections_screen_errors_sql(($now === null) ? time() : (int) $now)),
     );
+}
+
+/**
+ * The query that counts the errors of the day: the requests of the last 24
+ * hours that Application Access's list counts as failures (an answer of 400
+ * or above), of the applications it lists, the documentation's temporary
+ * ones left out. A refused request that named no application is no
+ * application's error. Pure.
+ *
+ * @param int $now the time the day ends at
+ * @return string
+ */
+function pg_connections_screen_errors_sql($now)
+{
+    return "SELECT COUNT(*) FROM api_request_log
+        INNER JOIN api_apps ON api_apps.id = api_request_log.app_id
+        WHERE api_request_log.timestamp >= " . ((int) $now - 86400) . "
+            AND api_request_log.status_code >= 400
+            AND api_apps.name NOT LIKE '\\_\\_test\\_\\_%'";
 }
 
 /**

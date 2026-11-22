@@ -236,3 +236,21 @@ function test_connections_screen_folds_the_mail_routes()
 	unset($rows['postmark'], $rows['gmail'], $rows['microsoft_mail']);
 	pg_assert_same($rows, pg_connections_screen_fold_mail($rows, array('name' => 'E-mail sending')), 'no route, no row');
 }
+
+function test_connections_errors_of_the_day_are_the_listed_applications_failures()
+{
+	$sql = pg_connections_screen_errors_sql(1000000);
+
+	pg_assert_contains('api_request_log.timestamp >= 913600', $sql, 'the last 24 hours');
+	pg_assert_contains('api_request_log.status_code >= 400', $sql, 'a failure as Application Access counts it');
+	pg_assert_contains('INNER JOIN api_apps ON api_apps.id = api_request_log.app_id', $sql, 'only an application\'s requests');
+	pg_assert_contains("api_apps.name NOT LIKE '\\_\\_test\\_\\_%'", $sql, 'the documentation\'s temporary applications left out');
+	pg_assert_true(strpos(pg_connections_screen_errors_sql('1000000 OR 1=1'), 'OR 1=1') === false, 'the time is a number');
+}
+
+function test_connections_other_side_counts_the_errors_without_a_table()
+{
+	$other = pg_connections_screen_other_side(1000000);
+
+	pg_assert_true(array_key_exists('errors', $other) && ($other['errors'] === 0), 'no table installed counts none');
+}

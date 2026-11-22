@@ -1229,6 +1229,7 @@
     "Errors and X-Request-Id": "Hatalar ve X-Request-Id",
     "Errors and notices appear here": "Hatalar ve bildirimler burada çıkar",
     "Errors in 24 hours": "24 saatteki hatalar",
+    "Errors in 24 hours: {var:1}": "24 saatteki hata: {var:1}",
     "Errors only": "Yalnız hatalılar",
     "Esc clears the search": "Esc aramayı temizler",
     "Esc: clear the selection": "Esc: seçimi kaldırır",
