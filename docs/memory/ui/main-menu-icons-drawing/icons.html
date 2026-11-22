@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Main menu row icons, second round: today's drawing and the new one row by row, what each means and how it moves; accepted by the owner 2026-11-22 (the Dashboard row is the tiles, not the clock)</title>
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<script>if (location.search === "?light") { document.documentElement.dataset.theme = "light"; }</script>
+<style>
+:root { --lime: #b3d968; }
+[data-theme="light"] { --lime: #5f8a14; }
+body { background: radial-gradient(700px 420px at 20% -6%, var(--glow1), transparent 62%), var(--page); }
+.stage { width: 1180px; padding: 28px 32px 30px; }
+h2 { margin: 0 0 2px; font-size: 15px; font-weight: 650; }
+.cap { margin: 0 0 14px; max-width: 760px; font-size: 13px; color: var(--fg2); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
+.sheet { padding: 4px 16px; border-radius: 16px; background: var(--surf2); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); }
+.hd { display: grid; grid-template-columns: 44px 16px 44px 1fr; gap: 10px; padding: 9px 0 7px; font-size: 10.5px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--fg3); border-bottom: 1px solid var(--line); }
+.r { --c: var(--gray); display: grid; grid-template-columns: 44px 16px 44px 1fr; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); min-height: 62px; }
+.hd + .r { border-top: 0; }
+.old { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--quiet); font-size: 11px; color: var(--fg3); }
+.old img { width: 29px; height: 29px; display: block; }
+.ar { color: var(--fg3); font-size: 13px; text-align: center; }
+.ti { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 16%, transparent); }
+.ti svg { width: 25px; height: 25px; }
+.tx { font-size: 12.5px; color: var(--fg2); line-height: 1.4; }
+.tx b { color: var(--fg); font-weight: 600; font-size: 13.5px; margin-right: 6px; }
+.tx em { font-style: normal; padding: 1px 7px; border-radius: 9px; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.tx em.k { color: var(--fg2); background: var(--quiet); }
+.tx em.n { color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.tx em.l { color: var(--teal); background: color-mix(in srgb, var(--teal) 13%, transparent); margin-left: 4px; }
+.tx span { display: block; }
+.tx span.m { color: var(--fg3); }
+.g-top { --c: var(--blue); } .g-content { --c: var(--teal); } .g-design { --c: var(--rose); } .g-shop { --c: var(--amber); }
+.g-acc { --c: var(--lime); } .g-mkt { --c: var(--violet); } .g-sys { --c: var(--gray); }
+[data-theme="dark"] .only-light, [data-theme="light"] .only-dark { display: none; }
+.foot { margin-top: 16px; display: flex; gap: 26px; align-items: flex-start; }
+.alt { flex: none; width: 546px; display: flex; gap: 14px; align-items: center; padding: 12px 16px; border-radius: 16px; background: var(--surf2); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); }
+.rules { margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--fg2); }
+.rules li { margin-bottom: 6px; }
+.rules b { color: var(--fg); font-weight: 600; }
+</style>
+<script src="icons.js"></script>
+</head>
+<body>
+<div class="stage">
+<div class="board">
+<h2>M5 · Simgeler tek tek: bugünkü ve yeni</h2>
+<p class="cap">İkinci tur. Klasör, Sayfa ve Ürün bugünkü fikirleriyle kaldı; öteki satırların simgesi satırın işinden yeniden düşünüldü. Hepsi tek çizgi ailesi, tek boy; renk satırın kategorisini söyler. Çalışma alanı, Notlarım, Gelen e-posta ve ERP deneme sitesinde kapalı olduğundan bugünkü resimleri yok.</p>
+<div class="grid"><div class="sheet" id="c1"></div><div class="sheet" id="c2"></div></div>
+<div class="foot">
+<div class="alt g-top r" style="border:0"><span class="old" style="background:none"></span><span class="ar"></span><span class="ti" id="clock"></span><div class="tx"><b>Panel için öteki seçenek: canlı saat</b><span>Bugünkü gibi sitenin saatini gösterir, yeni çizgiyle. Pano yerine bunu isterseniz söylemeniz yeter.</span></div></div>
+<ul class="rules">
+<li><b>Canlı simgeler:</b> Takvimler bugünün gününü yazar; Otomasyon akışları akış çalışırken kıpırdar.</li>
+<li><b>Hareket:</b> üstüne gelince tek küçük hareket; hepsi yarım saniye, aynı yumuşaklıkta. "Hareketi azalt" ayarında hiçbiri oynamaz.</li>
+<li><b>Renk:</b> Genel mavi, İçerik yeşil-mavi, Tasarım pembe, E-Ticaret sarı, Muhasebe açık yeşil, Pazarlama mor, Sistem gri.</li>
+</ul>
+</div>
+</div>
+</div>
+<script>
+(function () {
+  var rows = window.ICONS.filter(function (i) { return !i.hd; }), half = Math.ceil(rows.length / 2);
+  ['c1', 'c2'].forEach(function (id) { document.getElementById(id).innerHTML = '<div class="hd"><span>Bugün</span><span></span><span>Yeni</span><span>Ne anlatır, nasıl oynar</span></div>'; });
+  rows.forEach(function (ic, i) {
+    var el = document.createElement('div');
+    el.className = 'r ' + ic.g;
+    el.innerHTML = '<span class="old">' + (ic.t >= 0 ? '<img class="only-dark" src="today/dark-' + ic.t + '.png" alt=""><img class="only-light" src="today/light-' + ic.t + '.png" alt="">' : '–') + '</span><span class="ar">→</span><span class="ti">' + window.iconSvg(ic.svg) + '</span><div class="tx"><b></b>' + (ic.keep ? '<em class="k">bugünkü kaldı</em>' : (ic.same ? '<em class="k">aynı fikir, yeni çizim</em>' : '<em class="n">yeni fikir</em>')) + (ic.live || ic.k === 'calendar' ? '<em class="l">canlı</em>' : '') + '<span class="w"></span><span class="m"></span></div>';
+    el.querySelector('b').textContent = ic.n; el.querySelector('.w').textContent = ic.why; el.querySelector('.m').textContent = ic.mv;
+    document.getElementById(i < half ? 'c1' : 'c2').appendChild(el);
+  });
+  document.getElementById('clock').innerHTML = window.iconSvg(window.ICON_CLOCK);
+  window.iconLive(document);
+})();
+</script>
+</body>
+</html>

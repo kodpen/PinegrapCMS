@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Main menu row icons in motion, second round: new ideas per row, live icons, one small move on hover; accepted by the owner 2026-11-22</title>
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<script>if (location.search.indexOf("light") > -1) { document.documentElement.dataset.theme = "light"; }</script>
+<style>
+:root { --lime: #b3d968; }
+[data-theme="light"] { --lime: #5f8a14; }
+body { background: var(--page); }
+.stage { width: 560px; padding: 18px 20px 20px; display: flex; gap: 22px; align-items: flex-start; }
+.menu { position: relative; width: 250px; padding: 8px 8px 12px; border-radius: 16px; background: var(--surf2); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); }
+.mhd { padding: 12px 8px 5px; font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); white-space: nowrap; }
+.mr { --c: var(--gray); position: relative; display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px 0 5px; border-radius: 10px; font-size: 13.5px; font-weight: 500; color: color-mix(in srgb, var(--fg) 86%, transparent); white-space: nowrap; }
+.mr + .mr { margin-top: 1px; }
+.mr:hover, .mr.hv { background: var(--hover); }
+.mr.cur { background: color-mix(in srgb, var(--accent) 11%, transparent); color: var(--fg); font-weight: 600; }
+.ti { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 16%, transparent); }
+.mr.cur .ti { background: color-mix(in srgb, var(--c) 26%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent); }
+.ti svg { width: 17px; height: 17px; }
+.mr .ch { margin-left: auto; width: 6px; height: 6px; border: solid var(--fg3); border-width: 1.5px 1.5px 0 0; transform: rotate(45deg) scale(.8); margin-right: 3px; }
+.mr .bd { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 600; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.mr .bd.q { color: var(--fg2); background: var(--quiet); }
+.g-top { --c: var(--blue); } .g-content { --c: var(--teal); } .g-design { --c: var(--rose); } .g-shop { --c: var(--amber); }
+.g-acc { --c: var(--lime); } .g-mkt { --c: var(--violet); } .g-sys { --c: var(--gray); }
+.side { width: 248px; }
+.side h2 { margin: 2px 0 4px; font-size: 14px; font-weight: 650; }
+.side p { margin: 0 0 12px; font-size: 12px; color: var(--fg2); }
+.big { display: grid; place-items: center; height: 168px; border-radius: 16px; background: var(--surf2); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); }
+.big .ti { width: 104px; height: 104px; border-radius: 30px; }
+.big .ti svg { width: 68px; height: 68px; }
+.what { margin-top: 10px; min-height: 112px; font-size: 12.5px; color: var(--fg2); }
+.what b { display: block; color: var(--fg); font-weight: 600; font-size: 13.5px; }
+.what span { display: block; margin-top: 5px; color: var(--fg); }
+.what em { font-style: normal; display: inline-block; margin-top: 6px; padding: 1px 8px; border-radius: 9px; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.rules { margin: 12px 0 0; padding: 12px 0 0; list-style: none; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg2); }
+.rules li { margin-bottom: 7px; }
+.rules b { color: var(--fg); font-weight: 600; }
+.ptr { position: absolute; z-index: 5; left: 150px; top: 0; width: 14px; height: 18px; pointer-events: none; }
+</style>
+<script src="icons.js"></script>
+</head>
+<body>
+<div class="stage">
+<div class="menu" id="menu">
+<svg class="ptr" id="ptr" viewBox="0 0 14 18"><path d="M1 1v13l3.6-3.200 2.300 5.600 2.200-.9-2.300-5.500H12z" fill="#fff" stroke="#000" stroke-width="1"/></svg>
+</div>
+<div class="side">
+<h2>Yeni simgeler hareket ederken</h2>
+<p>İmlecin altındaki satırın simgesi, büyütülmüş.</p>
+<div class="big" id="big"><span class="ti"></span></div>
+<div class="what" id="what"></div>
+<ul class="rules">
+<li><b>Canlı:</b> bugünün günü ve çalışan akış.</li>
+<li><b>Ötekiler:</b> üstüne gelince tek hareket; hepsi yarım saniye, aynı yumuşaklıkta.</li>
+<li><b>Renk ve boy</b> hareket ederken değişmez.</li>
+<li><b>Hareketi azalt</b> ayarında hiçbiri oynamaz.</li>
+</ul>
+</div>
+</div>
+<script>
+(function () {
+  var menu = document.getElementById('menu');
+  window.ICONS.forEach(function (ic) {
+    var el = document.createElement('div');
+    if (ic.hd) { el.className = 'mhd'; el.textContent = ic.hd; menu.appendChild(el); return; }
+    el.className = 'mr ' + ic.g + (ic.cur ? ' cur' : '') + (ic.live ? ' live' : '');
+    el.innerHTML = '<span class="ti">' + window.iconSvg(ic.svg) + '</span><span class="nm"></span>' + (ic.badge ? '<span class="bd' + (ic.quiet ? ' q' : '') + '">' + ic.badge + '</span>' : (ic.chev ? '<i class="ch"></i>' : ''));
+    el.querySelector('.nm').textContent = ic.n;
+    el.ic = ic;
+    menu.appendChild(el);
+  });
+  window.iconLive(document);
+  window.showRow = function (row) {
+    document.querySelectorAll('.mr.hv').forEach(function (r) { r.classList.remove('hv'); });
+    if (!row) { return; }
+    var big = document.getElementById('big'), what = document.getElementById('what'), ic = row.ic;
+    row.classList.add('hv');
+    big.className = 'big hv ' + ic.g + (ic.live ? ' live' : '');
+    big.querySelector('.ti').innerHTML = window.iconSvg(ic.svg);
+    window.iconLive(big);
+    what.innerHTML = '<b></b><i></i><span></span>' + (ic.keep ? '<em>bugünkü fikir kaldı</em>' : '');
+    what.querySelector('b').textContent = ic.n; what.querySelector('i').replaceWith(document.createTextNode(ic.why)); what.querySelector('span').textContent = ic.mv;
+    document.getElementById('ptr').style.top = (row.offsetTop + 14) + 'px';
+  };
+  document.querySelectorAll('.mr').forEach(function (r) { r.addEventListener('mouseenter', function () { window.showRow(r); }); });
+  window.showRow(document.querySelector('.mr'));
+})();
+</script>
+</body>
+</html>

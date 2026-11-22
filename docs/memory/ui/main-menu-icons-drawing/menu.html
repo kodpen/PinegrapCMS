@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Main menu row icons: one family, one size, colour by category, no motion; first round, kept for the row measures only: its glyphs are superseded by icons.js (2026-11-22)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<script>if (location.search === "?light") { document.documentElement.dataset.theme = "light"; }</script>
+<style>
+:root { --lime: #b3d968; --orange: #f0985a; }
+[data-theme="light"] { --lime: #5f8a14; --orange: #c2601c; }
+body { background: radial-gradient(700px 420px at 20% -6%, var(--glow1), transparent 62%), radial-gradient(600px 380px at 100% -4%, var(--glow2), transparent 60%), var(--page); }
+.stage { width: 1290px; padding: 30px 34px 36px; }
+.rowb { display: flex; gap: 30px; align-items: flex-start; }
+.rowb + .rowb { margin-top: 40px; }
+.board { position: relative; }
+h2 { margin: 0 0 2px; font-size: 15px; font-weight: 650; }
+.cap { margin: 0 0 12px; max-width: 560px; }
+.col h3 { margin: 0 0 8px 4px; font-size: 12.5px; font-weight: 600; color: var(--fg2); }
+.col h3 b { color: var(--fg); font-weight: 650; }
+.col h3 em { font-style: normal; margin-left: 6px; padding: 1px 7px; border-radius: 9px; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.cols { display: flex; gap: 26px; align-items: flex-start; }
+/* today's menu, a picture of the sandbox */
+.shot { overflow: hidden; border-radius: 16px; box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); }
+.shot img { display: block; }
+.shot.wide { width: 250px; height: 872px; }
+.shot.wide img { width: 266px; margin-top: -48px; }
+.shot.mini { width: 60px; height: 872px; }
+.shot.mini img { width: 80px; margin-top: -48px; }
+[data-theme="dark"] .only-light, [data-theme="light"] .only-dark { display: none; }
+/* the proposal */
+.menu { width: 250px; min-height: 800px; padding: 8px 8px 14px; border-radius: 16px; background: var(--surf2); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); }
+.mhd { white-space: nowrap; margin: 0; padding: 14px 8px 5px; font-size: 10.5px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--fg3); }
+.mr { --c: var(--gray); position: relative; display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px 0 5px; border-radius: 10px; font-size: 13.5px; font-weight: 500; color: color-mix(in srgb, var(--fg) 86%, transparent); white-space: nowrap; }
+.mr + .mr { margin-top: 1px; }
+.ti { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; font-size: 14.5px; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 16%, transparent); }
+.mr .ch { margin-left: auto; font-size: 9.5px; color: var(--fg3); }
+.mr .bd { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 600; color: var(--fg2); background: var(--quiet); }
+.mr .bd.live { color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.mr .bd + .ch { margin-left: 8px; }
+.mr.hov { background: var(--hover); }
+.mr.cur { background: color-mix(in srgb, var(--accent) 11%, transparent); color: var(--fg); font-weight: 600; }
+.mr.cur .ti { background: color-mix(in srgb, var(--c) 26%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent); }
+.g-top { --c: var(--blue); } .g-content { --c: var(--teal); } .g-design { --c: var(--rose); } .g-shop { --c: var(--amber); }
+.g-acc { --c: var(--lime); } .g-mkt { --c: var(--violet); } .g-sys { --c: var(--gray); }
+/* proposal B: one colour */
+.menu.b .ti { width: 26px; background: none; box-shadow: none; color: var(--fg2); font-size: 16px; }
+.menu.b .mr.cur .ti { color: var(--accent); background: none; box-shadow: none; }
+.menu.b .mr .bd.live { color: var(--fg2); background: var(--quiet); }
+/* the rail */
+.rail { width: 56px; min-height: 800px; padding: 8px 0 14px; border-radius: 16px; background: var(--surf2); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.rail .ti { width: 34px; height: 34px; border-radius: 10px; font-size: 16.5px; position: relative; }
+.rail .sep { width: 22px; height: 1px; margin: 5px 0; background: var(--line); }
+.rail .ti.cur { background: color-mix(in srgb, var(--c) 26%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent), 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+.rail .ti i.dot { position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--surf2); }
+.rail.b .ti { background: none; box-shadow: none; color: var(--fg2); font-size: 18px; }
+.rail.b .ti.cur { color: var(--accent); background: color-mix(in srgb, var(--accent) 11%, transparent); }
+/* marks */
+.mark { position: absolute; left: -19px; top: 7px; z-index: 3; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--on-accent); background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.legend { margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--fg2); width: 300px; }
+.legend li { display: flex; gap: 9px; margin-bottom: 9px; }
+.legend li > span { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--on-accent); background: var(--accent); }
+.legend b { color: var(--fg); font-weight: 600; }
+/* the icon sheet */
+.sheet { width: 600px; padding: 16px 18px 8px; border-radius: 16px; background: var(--surf2); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); }
+.grp { display: flex; align-items: flex-start; gap: 14px; padding: 9px 0; border-top: 1px solid var(--line); }
+.grp:first-child { border-top: 0; padding-top: 0; }
+.grp > b { flex: none; width: 96px; padding-top: 9px; font-size: 12px; font-weight: 600; color: var(--c); }
+.grp > div { display: flex; flex-wrap: wrap; gap: 6px 4px; }
+.ic { width: 76px; display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 10.5px; color: var(--fg2); text-align: center; line-height: 1.2; }
+.ic .ti { width: 38px; height: 38px; border-radius: 11px; font-size: 20px; }
+/* the opened panel */
+.pan .ph { display: flex; align-items: center; gap: 9px; height: 40px; padding: 0 6px; margin-bottom: 4px; font-size: 14px; font-weight: 650; border-bottom: 1px solid var(--line); }
+.pan .ph .bk { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; color: var(--fg2); }
+.pan .mr { font-weight: 450; }
+.pan .mr .ti { width: 24px; height: 24px; border-radius: 7px; font-size: 13.5px; }
+.pan.menu { min-height: 0; padding-bottom: 10px; }
+.states { width: 250px; min-height: 0; }
+.note { margin: 8px 4px 0; font-size: 12px; color: var(--fg3); max-width: 250px; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+<div class="rowb">
+<div class="board">
+<h2>M1 · Ana menü: bugün ve iki öneri</h2>
+<p class="cap">Geniş hâl, 250 px. İç içe girilen yapı, satırlar, başlıklar ve sıra aynı; değişen yalnız satır simgeleri. Deneme sitesinde Çalışma alanı ve Muhasebe kapalı olduğu için o satırlar bugünkü resimde yok.</p>
+<div class="cols">
+<div class="col">
+<h3><b>Bugün</b></h3>
+<div class="shot wide"><img class="only-dark" src="today-wide-dark.png" alt=""><img class="only-light" src="today-wide-light.png" alt=""></div>
+</div>
+
+<div class="col" style="position:relative">
+<h3><b>Öneri A</b> · renk kategoriyi söyler <em>önerilen</em></h3>
+<div class="menu">
+<div class="mr g-top"><span class="mark">1</span><span class="ti"><i class="bi bi-speedometer2"></i></span>Panel</div>
+<div class="mr g-top"><span class="mark" style="left:auto;right:-19px">4</span><span class="ti"><i class="bi bi-diagram-3"></i></span>Otomasyon akışları<span class="bd live">3</span></div>
+<div class="mr g-top"><span class="ti"><i class="bi bi-chat-square-text"></i></span>Çalışma alanı<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-top"><span class="ti"><i class="bi bi-journal-text"></i></span>Notlarım</div>
+<div class="mr g-top"><span class="ti"><i class="bi bi-envelope"></i></span>Gelen e-posta<span class="bd">12</span></div>
+<div class="mhd">İçerik</div>
+<div class="mr g-content"><span class="mark">2</span><span class="ti"><i class="bi bi-file-earmark-text"></i></span>Sayfalar<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-content"><span class="ti"><i class="bi bi-folder2"></i></span>Dosya Yöneticisi<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-content"><span class="mark">3</span><span class="ti"><i class="bi bi-calendar3"></i></span>Takvimler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-content"><span class="ti"><i class="bi bi-ui-checks"></i></span>Formlar<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">Tasarım</div>
+<div class="mr g-design"><span class="ti"><i class="bi bi-palette"></i></span>Sayfa Tasarım Stüdyosu<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">E-Ticaret</div>
+<div class="mr g-shop cur"><span class="mark">5</span><span class="ti"><i class="bi bi-bag"></i></span>Siparişler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-shop"><span class="ti"><i class="bi bi-box-seam"></i></span>Ürünler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-shop"><span class="ti"><i class="bi bi-layers"></i></span>Katalog Yöneticisi<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-shop"><span class="ti"><i class="bi bi-tag"></i></span>Teklifler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-shop"><span class="ti"><i class="bi bi-truck"></i></span>Nakliye<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">Muhasebe</div>
+<div class="mr g-acc"><span class="ti"><i class="bi bi-calculator"></i></span>Muhasebe<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">Pazarlama</div>
+<div class="mr g-mkt"><span class="ti"><i class="bi bi-graph-up"></i></span>Ziyaretçiler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-mkt"><span class="ti"><i class="bi bi-person-vcard"></i></span>Rehber<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-mkt"><span class="ti"><i class="bi bi-send"></i></span>İletişim<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">Sistem</div>
+<div class="mr g-sys"><span class="ti"><i class="bi bi-people"></i></span>Kullanıcılar<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-sys"><span class="ti"><i class="bi bi-wrench"></i></span>Sistem Araçları<i class="bi bi-chevron-right ch"></i></div>
+</div>
+</div>
+
+<div class="col" style="position:relative">
+<h3><b>Öneri B</b> · tek renk</h3>
+<div class="menu b">
+<div class="mr g-top"><span class="mark">6</span><span class="ti"><i class="bi bi-speedometer2"></i></span>Panel</div>
+<div class="mr g-top"><span class="ti"><i class="bi bi-diagram-3"></i></span>Otomasyon akışları<span class="bd live">3</span></div>
+<div class="mr g-top"><span class="ti"><i class="bi bi-chat-square-text"></i></span>Çalışma alanı<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-top"><span class="ti"><i class="bi bi-journal-text"></i></span>Notlarım</div>
+<div class="mr g-top"><span class="ti"><i class="bi bi-envelope"></i></span>Gelen e-posta<span class="bd">12</span></div>
+<div class="mhd">İçerik</div>
+<div class="mr"><span class="ti"><i class="bi bi-file-earmark-text"></i></span>Sayfalar<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-folder2"></i></span>Dosya Yöneticisi<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-calendar3"></i></span>Takvimler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-ui-checks"></i></span>Formlar<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">Tasarım</div>
+<div class="mr"><span class="ti"><i class="bi bi-palette"></i></span>Sayfa Tasarım Stüdyosu<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">E-Ticaret</div>
+<div class="mr cur"><span class="ti"><i class="bi bi-bag"></i></span>Siparişler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-box-seam"></i></span>Ürünler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-layers"></i></span>Katalog Yöneticisi<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-tag"></i></span>Teklifler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-truck"></i></span>Nakliye<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">Muhasebe</div>
+<div class="mr"><span class="ti"><i class="bi bi-calculator"></i></span>Muhasebe<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">Pazarlama</div>
+<div class="mr"><span class="ti"><i class="bi bi-graph-up"></i></span>Ziyaretçiler<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-person-vcard"></i></span>Rehber<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-send"></i></span>İletişim<i class="bi bi-chevron-right ch"></i></div>
+<div class="mhd">Sistem</div>
+<div class="mr"><span class="ti"><i class="bi bi-people"></i></span>Kullanıcılar<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr"><span class="ti"><i class="bi bi-wrench"></i></span>Sistem Araçları<i class="bi bi-chevron-right ch"></i></div>
+</div>
+</div>
+
+<ul class="legend" style="margin-top:28px">
+<li><span>1</span><div><b>Tek simge ailesi.</b> Bütün satırlar panelin geri kalanındaki çizgi simgelerden. Her satıra özel çizim, neon ve iki ayrı vurgu rengi kalkar.</div></li>
+<li><span>2</span><div><b>Renk kategoriyi söyler.</b> Bir başlığın altındaki satırlar aynı renkte: İçerik yeşil-mavi, E-Ticaret sarı, Pazarlama mor. Renk artık "hangi bölümdeyim" demek; e-posta neden turuncu diye sorulmaz.</div></li>
+<li><span>3</span><div><b>Tek boy.</b> 26 px karo, içinde 15 px simge; satır 34 px, yazı 13,5 px. Bugün satır 40 px, çizimler 21 px ve her biri ayrı ağırlıkta.</div></li>
+<li><span>4</span><div><b>Hareket yok.</b> Üstüne gelince yalnız satırın zemini açılır. Canlı bilgi sayıyla söylenir: çalışan akış, okunmamış e-posta.</div></li>
+<li><span>5</span><div><b>Bulunduğunuz satır.</b> Zemin, kalın yazı ve dolgun karo. Başka hiçbir satır dikkat çekmez.</div></li>
+<li><span>6</span><div><b>B: tek renk.</b> Simgeler gri çizgi, yalnız bulunduğunuz satır mavi. En sakin hâl; karşılığında renk hiçbir şey söylemez ve satırlar birbirine daha çok benzer.</div></li>
+</ul>
+</div>
+</div>
+</div>
+
+<div class="rowb">
+<div class="board">
+<h2>M2 · Simgeler tek tek</h2>
+<p class="cap">Öneri A'nın yirmi iki satırı, kategorisinin rengiyle. Değerlendirmelerim yalnız değerlendirici olan kişide görünür.</p>
+<div class="sheet">
+<div class="grp g-top"><b>Genel</b><div>
+<span class="ic"><span class="ti"><i class="bi bi-speedometer2"></i></span>Panel</span>
+<span class="ic"><span class="ti"><i class="bi bi-diagram-3"></i></span>Otomasyon akışları</span>
+<span class="ic"><span class="ti"><i class="bi bi-chat-square-text"></i></span>Çalışma alanı</span>
+<span class="ic"><span class="ti"><i class="bi bi-journal-text"></i></span>Notlarım</span>
+<span class="ic"><span class="ti"><i class="bi bi-envelope"></i></span>Gelen e-posta</span>
+<span class="ic"><span class="ti"><i class="bi bi-clipboard-check"></i></span>Değerlendir-<br>melerim</span>
+</div></div>
+<div class="grp g-content"><b>İçerik</b><div>
+<span class="ic"><span class="ti"><i class="bi bi-file-earmark-text"></i></span>Sayfalar</span>
+<span class="ic"><span class="ti"><i class="bi bi-folder2"></i></span>Dosya Yöneticisi</span>
+<span class="ic"><span class="ti"><i class="bi bi-calendar3"></i></span>Takvimler</span>
+<span class="ic"><span class="ti"><i class="bi bi-ui-checks"></i></span>Formlar</span>
+</div></div>
+<div class="grp g-design"><b>Tasarım</b><div>
+<span class="ic"><span class="ti"><i class="bi bi-palette"></i></span>Sayfa Tasarım Stüdyosu</span>
+</div></div>
+<div class="grp g-shop"><b>E-Ticaret</b><div>
+<span class="ic"><span class="ti"><i class="bi bi-bag"></i></span>Siparişler</span>
+<span class="ic"><span class="ti"><i class="bi bi-box-seam"></i></span>Ürünler</span>
+<span class="ic"><span class="ti"><i class="bi bi-layers"></i></span>Katalog Yöneticisi</span>
+<span class="ic"><span class="ti"><i class="bi bi-tag"></i></span>Teklifler</span>
+<span class="ic"><span class="ti"><i class="bi bi-truck"></i></span>Nakliye</span>
+</div></div>
+<div class="grp g-acc"><b>Muhasebe</b><div>
+<span class="ic"><span class="ti"><i class="bi bi-calculator"></i></span>Muhasebe</span>
+</div></div>
+<div class="grp g-mkt"><b>Pazarlama</b><div>
+<span class="ic"><span class="ti"><i class="bi bi-graph-up"></i></span>Ziyaretçiler</span>
+<span class="ic"><span class="ti"><i class="bi bi-person-vcard"></i></span>Rehber</span>
+<span class="ic"><span class="ti"><i class="bi bi-send"></i></span>İletişim</span>
+</div></div>
+<div class="grp g-sys"><b>Sistem</b><div>
+<span class="ic"><span class="ti"><i class="bi bi-people"></i></span>Kullanıcılar</span>
+<span class="ic"><span class="ti"><i class="bi bi-wrench"></i></span>Sistem Araçları</span>
+</div></div>
+</div>
+</div>
+
+<div class="board">
+<h2>M3 · Dar hâl</h2>
+<p class="cap" style="max-width:250px">Yalnız simgeler. Başlık yerine ince çizgi; sayı yerine nokta.</p>
+<div class="cols" style="gap:18px">
+<div class="col"><h3><b>Bugün</b></h3><div class="shot mini"><img class="only-dark" src="today-mini-dark.png" alt=""><img class="only-light" src="today-mini-light.png" alt=""></div></div>
+<div class="col"><h3><b>A</b></h3>
+<div class="rail">
+<span class="ti g-top"><i class="bi bi-speedometer2"></i></span><span class="ti g-top"><i class="bi bi-diagram-3"></i><i class="dot"></i></span><span class="ti g-top"><i class="bi bi-chat-square-text"></i></span><span class="ti g-top"><i class="bi bi-journal-text"></i></span><span class="ti g-top"><i class="bi bi-envelope"></i><i class="dot"></i></span>
+<span class="sep"></span>
+<span class="ti g-content"><i class="bi bi-file-earmark-text"></i></span><span class="ti g-content"><i class="bi bi-folder2"></i></span><span class="ti g-content"><i class="bi bi-calendar3"></i></span><span class="ti g-content"><i class="bi bi-ui-checks"></i></span>
+<span class="sep"></span>
+<span class="ti g-design"><i class="bi bi-palette"></i></span>
+<span class="sep"></span>
+<span class="ti g-shop cur"><i class="bi bi-bag"></i></span><span class="ti g-shop"><i class="bi bi-box-seam"></i></span><span class="ti g-shop"><i class="bi bi-layers"></i></span><span class="ti g-shop"><i class="bi bi-tag"></i></span><span class="ti g-shop"><i class="bi bi-truck"></i></span>
+<span class="sep"></span>
+<span class="ti g-acc"><i class="bi bi-calculator"></i></span>
+<span class="sep"></span>
+<span class="ti g-mkt"><i class="bi bi-graph-up"></i></span><span class="ti g-mkt"><i class="bi bi-person-vcard"></i></span><span class="ti g-mkt"><i class="bi bi-send"></i></span>
+<span class="sep"></span>
+<span class="ti g-sys"><i class="bi bi-people"></i></span><span class="ti g-sys"><i class="bi bi-wrench"></i></span>
+</div></div>
+<div class="col"><h3><b>B</b></h3>
+<div class="rail b">
+<span class="ti"><i class="bi bi-speedometer2"></i></span><span class="ti"><i class="bi bi-diagram-3"></i></span><span class="ti"><i class="bi bi-chat-square-text"></i></span><span class="ti"><i class="bi bi-journal-text"></i></span><span class="ti"><i class="bi bi-envelope"></i></span>
+<span class="sep"></span>
+<span class="ti"><i class="bi bi-file-earmark-text"></i></span><span class="ti"><i class="bi bi-folder2"></i></span><span class="ti"><i class="bi bi-calendar3"></i></span><span class="ti"><i class="bi bi-ui-checks"></i></span>
+<span class="sep"></span>
+<span class="ti"><i class="bi bi-palette"></i></span>
+<span class="sep"></span>
+<span class="ti cur"><i class="bi bi-bag"></i></span><span class="ti"><i class="bi bi-box-seam"></i></span><span class="ti"><i class="bi bi-layers"></i></span><span class="ti"><i class="bi bi-tag"></i></span><span class="ti"><i class="bi bi-truck"></i></span>
+<span class="sep"></span>
+<span class="ti"><i class="bi bi-calculator"></i></span>
+<span class="sep"></span>
+<span class="ti"><i class="bi bi-graph-up"></i></span><span class="ti"><i class="bi bi-person-vcard"></i></span><span class="ti"><i class="bi bi-send"></i></span>
+<span class="sep"></span>
+<span class="ti"><i class="bi bi-people"></i></span><span class="ti"><i class="bi bi-wrench"></i></span>
+</div></div>
+</div>
+</div>
+
+<div class="board">
+<h2>M4 · Açılan panel ve durumlar</h2>
+<p class="cap" style="max-width:250px">Bir satıra girince: girişler bugünkü karolarıyla kalır, satırla aynı renkte.</p>
+<div class="menu pan g-shop">
+<div class="ph"><span class="bk"><i class="bi bi-arrow-left"></i></span><span class="ti"><i class="bi bi-bag"></i></span>Siparişler</div>
+<div class="mr g-shop cur"><span class="ti"><i class="bi bi-list-ul"></i></span>Tüm Siparişler</div>
+<div class="mr g-shop"><span class="ti"><i class="bi bi-plus-lg"></i></span>Sipariş ekle</div>
+<div class="mr g-shop"><span class="ti"><i class="bi bi-graph-up-arrow"></i></span>Sipariş Raporları</div>
+<div class="mr g-shop"><span class="ti"><i class="bi bi-cart3"></i></span>Terk edilen sepetler</div>
+<div class="mr g-shop"><span class="ti"><i class="bi bi-arrow-repeat"></i></span>İadeler</div>
+</div>
+<h3 style="margin:22px 4px 8px;font-size:12.5px;font-weight:600;color:var(--fg2)">Bir satırın dört durumu</h3>
+<div class="menu states">
+<div class="mr g-content"><span class="ti"><i class="bi bi-folder2"></i></span>Olağan<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-content hov"><span class="ti"><i class="bi bi-folder2"></i></span>Fare üstünde<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-content cur"><span class="ti"><i class="bi bi-folder2"></i></span>Bulunduğunuz yer<i class="bi bi-chevron-right ch"></i></div>
+<div class="mr g-top"><span class="ti"><i class="bi bi-diagram-3"></i></span>Sayılı<span class="bd live">3</span></div>
+</div>
+<p class="note">Simge kıpırdamaz, büyümez, renk değiştirmez; değişen yalnız satırın zemini ve yazının kalınlığıdır.</p>
+</div>
+</div>
+
+</div>
+</body>
+</html>
