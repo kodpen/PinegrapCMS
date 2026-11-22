@@ -461,6 +461,7 @@ function pg_look_examples_patterns($prefix = 'light')
 
     $patterns[] = pg_look_examples_timeline_pattern();
     $patterns[] = pg_look_examples_ws_list_row_pattern($p);
+    $patterns[] = pg_look_examples_tools_dock_pattern($p);
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
     // the parts the one E-mail category is built from.
@@ -810,6 +811,56 @@ function pg_look_examples_ws_list_row_pattern($p)
 }
 
 /**
+ * The Workspace list's tools dock (boards L1, L2 of plans/workspace-interface):
+ * the head line with "⋯", the cells four across with My Tasks' count, and
+ * More open as a card over the list.
+ *
+ * @param string $p the pane's prefix, keeping the ids of the two panes apart
+ * @return array id, title, classes, html
+ */
+function pg_look_examples_tools_dock_pattern($p)
+{
+    $cell = function ($key, $name, $label, $icon, $active, $count) {
+        return '<a href="#" class="ws-side-cell' . ($active ? ' active' : '') . '" data-ws-nav="' . $key . '" title="' . h($label) . '"'
+            . ($active ? ' aria-current="page"' : '') . '>'
+            . '<span class="pg-icon-tile ws-side-cell-tile" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
+            . '<span class="ws-side-cell-name">' . h($name) . '</span>'
+            . (($count > 0) ? '<span class="ws-side-cell-count ws-side-cell-due">' . (int) $count . '</span>' : '')
+            . '</a>';
+    };
+    $row = function ($key, $label, $icon) {
+        return '<a href="#" class="ws-channel-link" data-ws-nav="' . $key . '"><i class="bi ' . $icon . '" aria-hidden="true"></i><span class="ws-channel-name">' . h($label) . '</span></a>';
+    };
+
+    return array(
+        'id'      => 'pattern-tools-dock',
+        'title'   => lang('Tools dock'),
+        'classes' => array('.ws-menu-side', '.ws-side-dock', '.ws-side-dock-head', '.pg-icon-button', '.ws-side-more-card', '.ws-side-cells', '.ws-side-cell', '.ws-side-cell-tile', '.ws-side-cell-name', '.ws-side-cell-count', '.ws-side-cell-due'),
+        'html'    => '<div class="ws-menu-side pg-look-ws-list pg-look-ws-dock">'
+            . '<div class="ws-side-dock" role="group" aria-label="' . h(lang('Tools')) . '">'
+            . '<div class="ws-side-dock-head"><span>' . h(lang('Tools')) . '</span>'
+            . '<button type="button" class="pg-icon-button pg-icon-button-sm ws-side-dock-more" aria-expanded="true" aria-controls="ws-look-more-' . $p . '" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button></div>'
+            . '<div id="ws-look-more-' . $p . '" class="ws-side-more-card" role="group" aria-label="' . h(lang('More')) . '">'
+            . $row('scheduled', lang('Scheduled actions'), 'bi-alarm')
+            . $row('mcp', lang('My MCP connections'), 'bi-plug')
+            . $row('calendar_feed', lang('Calendar subscription'), 'bi-calendar-plus')
+            . $row('archived', lang('Archived channels'), 'bi-archive')
+            . '</div>'
+            . '<div class="ws-side-cells">'
+            . $cell('tasks', lang('My Tasks'), lang('My Tasks'), 'bi-check2-square', true, 3)
+            . $cell('notes', lang('My Notes'), lang('My Notes'), 'bi-journal-text', false, 0)
+            . $cell('wtables', lang('Data'), lang('Data'), 'bi-table', false, 0)
+            . $cell('flows', lang('Flows'), lang('Automation flows'), 'bi-diagram-3', false, 0)
+            . $cell('calendar', lang('Calendar'), lang('Work Calendar'), 'bi-calendar3', false, 0)
+            . $cell('my_calendar', lang('My calendar'), lang('My calendar'), 'bi-calendar-heart', false, 0)
+            . $cell('board', lang('Board'), lang('Planning Board'), 'bi-calendar-week', false, 0)
+            . $cell('timeline', lang('Decisions'), lang('Decision Timeline'), 'bi-clock-history', false, 0)
+            . '</div></div></div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Workspace list in the main menu: the tools stay at the list\'s foot with their names, four across, never folded; "⋯" opens More as a card over the list.')) . '</p>',
+    );
+}
+
+/**
  * What the look does not cover yet, for a step that meets it: parts the
  * sheet draws that are no recipe yet, and parts the sheet has not drawn.
  *
@@ -832,7 +883,7 @@ function pg_look_examples_not_done()
                 lang('Dialogs and the settings modal'),
                 lang('Dashboard cards'),
                 lang('Report screens'),
-                lang('Workspace: channel screen, tools dock and screen bars'),
+                lang('Workspace: channel screen and screen bars'),
                 lang('Phone widths'),
             ),
         ),

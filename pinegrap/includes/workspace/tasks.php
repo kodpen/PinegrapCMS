@@ -85,6 +85,46 @@ function ws_task_is_open($status)
 }
 
 /**
+ * The query counting a person's open tasks (todo, doing, waiting) assigned
+ * to them: all of them, the overdue ones and the ones due today or before.
+ * A 0000-00-00 due date is no due date.
+ *
+ * @param int    $user_id
+ * @param string $today   Y-m-d; anything else is read as today
+ * @return string
+ */
+function ws_tasks_due_counts_sql($user_id, $today)
+{
+    $today = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $today) ? (string) $today : date('Y-m-d');
+
+    return "SELECT COUNT(*) AS open_count,
+            SUM(t.due_date > '0000-00-00' AND t.due_date < '" . $today . "') AS overdue_count,
+            SUM(t.due_date > '0000-00-00' AND t.due_date <= '" . $today . "') AS due_count
+        FROM ws_tasks t
+        INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . (int) $user_id . "'
+        WHERE t.status IN ('todo', 'doing', 'waiting')";
+}
+
+/**
+ * A person's open tasks counted: Today's "Today and overdue" card and the
+ * count on My Tasks in the Workspace list read the same numbers.
+ *
+ * @param int    $user_id
+ * @param string $today Y-m-d, '' for today
+ * @return array open, overdue, due (due today or before)
+ */
+function ws_tasks_due_counts($user_id, $today = '')
+{
+    $row = db_item(ws_tasks_due_counts_sql($user_id, ($today !== '') ? $today : date('Y-m-d')));
+
+    return array(
+        'open'    => (int) ($row['open_count'] ?? 0),
+        'overdue' => (int) ($row['overdue_count'] ?? 0),
+        'due'     => (int) ($row['due_count'] ?? 0),
+    );
+}
+
+/**
  * One task row.
  *
  * @param int $task_id

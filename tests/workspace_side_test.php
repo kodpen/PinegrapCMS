@@ -298,15 +298,11 @@ function test_workspace_side_head_tools_are_round()
 	pg_assert_false((bool) preg_match('/\.ws-side-head-tools \.ws-side-tool \{[^}]*width: 1\.625rem;/', $css), 'no narrowed, taller-than-wide button');
 }
 
-// More alone in the last row of the tiles takes the whole row, and New
-// group closes the Channels section instead of standing between the groups
-// and the other channels.
-function test_workspace_side_tiles_and_new_group_keep_their_places()
+// New group closes the Channels section instead of standing between the
+// groups and the other channels.
+function test_workspace_side_new_group_keeps_its_place()
 {
-	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_side.js');
-
-	pg_assert_true((bool) preg_match('/#ws-menu-side \.ws-side-more-tile:nth-child\(odd\) \{[^}]*grid-column: 1 \/ -1;[^}]*\}/', $css), 'More alone in its row takes the row');
 
 	$others = strpos($script, "part(channelsBox, shown, false, 'ws-side-others');");
 	$new = strpos($script, "'ws-group-new");

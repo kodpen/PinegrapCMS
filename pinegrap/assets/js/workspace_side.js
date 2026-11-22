@@ -4,8 +4,8 @@
  * Workspace - the list in the main menu's Workspace panel, on every panel
  * page: the search of the workspace with a new channel and the settings
  * beside it, Today, one section of channels (pinned, the groups, the rest),
- * the person's discussions and the workspace's other screens as tiles (My
- * Tasks first), the rarer ones behind More.
+ * the person's discussions; at the foot the tools dock with the workspace's
+ * other screens (My Tasks first), the rarer ones behind More.
  *
  * What is in it comes from the server only (ws_side_payload(),
  * includes/workspace/nav.php), which leaves out whatever the person may not
@@ -97,6 +97,9 @@
         hooks: null,
         loading: false,
         threadsAll: false,
+        // More's card: open or shut on this page; null until the first draw,
+        // which opens it on one of its own screens.
+        moreOpen: null,
         // Drawn once while on the screen (draw()).
         shown: false
     };
@@ -384,7 +387,8 @@
             channels: (live && live.channels) || data.channels || [],
             groups: (live && live.groups) || data.groups || [],
             threads: (live && live.threads) || data.threads || [],
-            inbox: (live && (typeof live.inbox === 'number')) ? live.inbox : (data.inbox || 0)
+            inbox: (live && (typeof live.inbox === 'number')) ? live.inbox : (data.inbox || 0),
+            tasksDue: (live && (typeof live.tasks_due === 'number')) ? live.tasks_due : (data.tasks_due || 0)
         };
     }
 
@@ -622,10 +626,13 @@
             box.appendChild(node);
         }
 
-        // A tile of Tools: the screen's icon in its own colour and its short
-        // name; the full name is its title.
-        function navTile(item, active) {
-            var node = link('ws-side-tile no-popover' + (active ? ' active' : ''), item.url);
+        // A cell of the tools dock: the screen's icon on a tile in its own
+        // tone over its short name; the full name is its title. A number
+        // the server counted stands at the tile's corner: the tasks due
+        // today or before in the accent, the unread e-mails quiet.
+        function navCell(item, active, count) {
+            var node = link('ws-side-cell no-popover' + (active ? ' active' : ''), item.url);
+            var tile = el('span', 'pg-icon-tile ws-side-cell-tile');
 
             node.setAttribute('data-ws-nav', item.key);
             node.setAttribute('data-ws-side-key', 'nav:' + item.key);
@@ -636,12 +643,16 @@
                 node.setAttribute('aria-current', 'page');
             }
 
-            node.appendChild(icon(item.icon));
-            node.appendChild(el('span', 'ws-side-tile-name', item.short || item.label));
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(icon(item.icon));
+            node.appendChild(tile);
+            node.appendChild(el('span', 'ws-side-cell-name', item.short || item.label));
 
-            // A number the server counted, as the unread e-mails.
-            if (item.count) {
-                node.appendChild(countBadge(item.count, false));
+            if (count > 0) {
+                var shown = (count > 99) ? '99+' : String(count);
+
+                node.appendChild(el('span', 'ws-side-cell-count' + ((item.key === 'tasks') ? ' ws-side-cell-due' : ''), shown));
+                node.setAttribute('aria-label', item.label + ', ' + ((item.key === 'tasks') ? t('side_due', shown) : shown));
             }
 
             inPlace(node, navHooks[item.key]);
@@ -1093,65 +1104,89 @@
             scroll.appendChild(talks);
         }
 
-        // ── Tools: the screens of a working day as tiles, two to a row, the
-        // last tile More opening the screens visited now and then ──
+        // ── Tools: a dock at the list's foot that stays, never folded: the
+        // screens of a working day four across with their names; "⋯" opens
+        // More, the screens visited now and then, as a card over the list ──
 
         var tools = nav.tools || [];
         var more = nav.more || [];
 
         if (tools.length || more.length) {
-            var toolsPart = group(titles.tools || '', 'tools');
+            var dock = el('div', 'ws-side-dock');
+            var dockHead = el('div', 'ws-side-dock-head');
             var moreActive = more.some(navActive);
-            // More stays as the person left it; it opens by itself on one of
-            // its own screens.
-            var moreOpen = !!readKept('ws-side-open').more || moreActive;
-            var tiles = el('div', 'ws-side-tiles');
 
-            // Closed, the section still shows the screen that is open.
-            tools.forEach(function (item) {
-                var active = navActive(item);
+            // The card opens by itself on one of its own screens, once per
+            // page; after that it stays as the person left it.
+            if (state.moreOpen === null) {
+                state.moreOpen = moreActive;
+            }
 
-                if (!toolsPart.shut || active) {
-                    tiles.appendChild(navTile(item, active));
-                }
-            });
+            dock.setAttribute('role', 'group');
+            dock.setAttribute('aria-label', titles.tools || '');
+            dockHead.appendChild(el('span', 'ws-side-dock-title', titles.tools || ''));
+            dock.appendChild(dockHead);
 
-            if (more.length && !toolsPart.shut) {
-                var moreTile = button('ws-side-tile ws-side-more-tile no-popover', '', '', '');
+            if (more.length) {
+                var moreButton = button('pg-icon-button pg-icon-button-sm ws-side-dock-more', '', 'bi-three-dots', titles.more || t('more'));
 
-                moreTile.setAttribute('aria-expanded', moreOpen ? 'true' : 'false');
-                moreTile.setAttribute('aria-controls', 'ws-side-more');
-                moreTile.setAttribute('data-ws-side-key', 'more');
-                moreTile.appendChild(icon('bi-three-dots'));
-                moreTile.appendChild(el('span', 'ws-side-tile-name', titles.more || t('more')));
-                moreTile.addEventListener('click', function () {
-                    writeKept('ws-side-open', 'more', !moreOpen);
+                moreButton.setAttribute('aria-expanded', state.moreOpen ? 'true' : 'false');
+                moreButton.setAttribute('aria-controls', 'ws-side-more');
+                moreButton.setAttribute('data-ws-side-key', 'more');
+                moreButton.addEventListener('click', function () {
+                    state.moreOpen = !state.moreOpen;
                     draw();
-                });
-                tiles.appendChild(moreTile);
-            }
 
-            if (tiles.firstChild) {
-                toolsPart.box.appendChild(tiles);
-            }
+                    var first = state.moreOpen ? root.querySelector('#ws-side-more a') : null;
 
-            if (more.length && (moreOpen || moreActive)) {
-                var moreList = el('div', 'ws-side-more');
-
-                moreList.id = 'ws-side-more';
-
-                more.forEach(function (item) {
-                    var active = navActive(item);
-
-                    if (!toolsPart.shut || active) {
-                        navLink(moreList, item, active);
+                    if (first) {
+                        first.focus({ preventScroll: true });
                     }
                 });
-
-                if (moreList.firstChild) {
-                    toolsPart.box.appendChild(moreList);
-                }
+                dockHead.appendChild(moreButton);
             }
+
+            // Next to its button in the page's order, so Tab goes from "⋯"
+            // into it; drawn over the list above the dock. It keeps the
+            // widened rail open while it is used (data-pg-menu-hold).
+            if (more.length && state.moreOpen) {
+                var card = el('div', 'ws-side-more-card');
+
+                card.id = 'ws-side-more';
+                card.setAttribute('role', 'group');
+                card.setAttribute('aria-label', titles.more || t('more'));
+                card.setAttribute('data-pg-menu-hold', '');
+
+                more.forEach(function (item) {
+                    navLink(card, item, navActive(item));
+                });
+
+                // A place chosen closes the card; one opened in place draws
+                // the list again at once.
+                card.addEventListener('click', function (event) {
+                    if (event.target.closest && event.target.closest('a')) {
+                        state.moreOpen = false;
+
+                        if (event.defaultPrevented) {
+                            draw();
+                        }
+                    }
+                });
+                dock.appendChild(card);
+            }
+
+            var cells = el('div', 'ws-side-cells');
+            var due = data.tasksDue;
+
+            tools.forEach(function (item) {
+                cells.appendChild(navCell(item, navActive(item), (item.key === 'tasks') ? due : (item.count || 0)));
+            });
+
+            if (cells.firstChild) {
+                dock.appendChild(cells);
+            }
+
+            fragment.appendChild(dock);
         }
 
         clear(root).appendChild(fragment);
@@ -1275,6 +1310,49 @@
         }
     }
 
+    // More's card closes with Esc, the focus going back to "⋯", and with a
+    // click outside it. Esc is taken before the menu's own (which would
+    // close the widened rail) and only while the focus is in the list or
+    // nowhere, so a dialog of the page keeps its own Esc.
+    document.addEventListener('keydown', function (event) {
+        if (!state.moreOpen || (event.key !== 'Escape') || event.defaultPrevented) {
+            return;
+        }
+
+        var active = document.activeElement;
+
+        if (active && (active !== document.body) && !root.contains(active)) {
+            return;
+        }
+
+        event.preventDefault();
+        state.moreOpen = false;
+        draw();
+
+        var toggle = root.querySelector('.ws-side-dock-more');
+
+        if (toggle) {
+            toggle.focus({ preventScroll: true });
+        }
+    }, true);
+
+    document.addEventListener('click', function (event) {
+        if (!state.moreOpen) {
+            return;
+        }
+
+        // The path, as the toggle that was clicked has been drawn again.
+        var path = (typeof event.composedPath === 'function') ? event.composedPath() : [event.target];
+        var inside = path.some(function (node) {
+            return !!(node && (node.nodeType === 1) && ((node.id === 'ws-side-more') || node.classList.contains('ws-side-dock-more') || node.hasAttribute('data-pg-menu-hold')));
+        });
+
+        if (!inside) {
+            state.moreOpen = false;
+            draw();
+        }
+    });
+
     // A draft kept or dropped in another tab marks or clears its row here.
     window.addEventListener('storage', function (event) {
         if (state.data && ((event.key === null) || (String(event.key).indexOf(DRAFT_PREFIX) === 0))) {
@@ -1338,22 +1416,19 @@
         },
 
         // Whether the list holds a place of the workspace (ws_nav_groups()),
-        // drawn or waiting in a closed section or behind More.
+        // drawn or waiting behind More.
         has: function (key) {
             return navGroupOf(key) !== '';
         },
 
-        // Opens what keeps a place out of sight: Tools, and More for one of
-        // its screens; then draws the list again (the tour).
+        // Opens what keeps a place out of sight: More's card for one of its
+        // screens (the tools dock is never folded); then draws the list
+        // again (the tour).
         openFor: function (key) {
             var group = navGroupOf(key);
 
-            if ((group === 'tools') || (group === 'more')) {
-                writeKept('ws-side-closed', 'tools', false);
-            }
-
             if (group === 'more') {
-                writeKept('ws-side-open', 'more', true);
+                state.moreOpen = true;
             }
 
             if (group !== '') {

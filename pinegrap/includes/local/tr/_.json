@@ -1051,6 +1051,7 @@
     "{var:1} draft page{suffix:1} ready to publish": "{var:1} taslak sayfa yayına hazır",
     "{var:1} drafts left today on this site.": "Bu sitede bugün {var:1} taslak hakkı kaldı.",
     "{var:1} dropped": "{var:1} kaldırıldı",
+    "{var:1} due today or before": "süresi bugün ya da daha önce dolan {var:1} görev",
     "{var:1} dynamic regions stay PHP, edited from their node.": "{var:1} dinamik bölge PHP olarak kalır ve kendi düğümünden düzenlenir.",
     "{var:1} e-mail(s) could not be delivered and will not be tried again.": "{var:1} e-posta teslim edilemedi ve yeniden denenmeyecek.",
     "{var:1} e-mail(s) could not be delivered yet and wait for another attempt.": "{var:1} e-posta henüz teslim edilemedi ve yeniden denenmeyi bekliyor.",

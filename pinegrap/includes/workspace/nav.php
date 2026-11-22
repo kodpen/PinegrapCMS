@@ -237,7 +237,7 @@ function ws_side_js_keys()
         'th_mine', 'th_show_all', 'th_show_fewer', 'no_channels',
         'side_expand', 'side_collapse', 'grp_expand', 'grp_collapse', 'grp_access', 'grp_empty', 'grp_new',
         'more', 'loading', 'error_generic', 'join',
-        'side_find', 'side_join', 'side_draft', 'side_unread',
+        'side_find', 'side_join', 'side_draft', 'side_unread', 'side_due',
     );
 }
 
@@ -255,6 +255,7 @@ function ws_side_js_strings()
             'side_join'   => ws_js_template('{var:1} channels you could join', 1),
             'side_draft'  => lang('Unsent draft'),
             'side_unread' => lang('Unread messages'),
+            'side_due'    => ws_js_template('{var:1} due today or before', 1),
         ),
         ws_js_strings(),
         ws_threads_js_strings(),
@@ -304,6 +305,9 @@ function ws_side_payload($viewer, $screen)
         // site's api.php and the reader.
         'draft'    => array('site' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php', 'me' => (int) $viewer['id']),
         'inbox'    => ws_inbox_unread_count((int) $viewer['id']),
+        // The reader's open tasks due today or before, on My Tasks (the
+        // number Today's "Today and overdue" card counts).
+        'tasks_due' => ws_tasks_due_counts((int) $viewer['id'])['due'],
         'nav'      => ws_side_nav(ws_nav_groups($viewer)),
         'titles'   => ws_nav_group_titles(),
         'channels' => ws_channels_for($viewer),

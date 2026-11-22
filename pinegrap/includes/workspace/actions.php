@@ -2275,6 +2275,13 @@ function ws_handle_action($action, $request)
                 $out['threads'] = ws_threads_for($viewer);
                 $out['inbox'] = ws_inbox_unread_count($viewer['id']);
 
+                // The count on My Tasks, with the counts the screen asks for
+                // after something changed there (a task made, finished or
+                // moved) and every half minute.
+                if (!empty($request['due'])) {
+                    $out['tasks_due'] = ws_tasks_due_counts((int) $viewer['id'])['due'];
+                }
+
                 // The person's new inbox lines, for the sound when one is
                 // for them (asked only while their switch is on).
                 if (!empty($request['sound'])) {
