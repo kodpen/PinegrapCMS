@@ -1413,7 +1413,7 @@ if (is_array($hooks_back) && isset($hooks_back['secret']['secret'])) {
 					<b><i class="bi bi-check-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Subscription created: {var:1}', 'vars' => $hooks_back['secret']['host']))) . '</b>
 					<div class="mb-3">' . lang('The signing secret is shown only now; once you leave this tab it is not shown again.') . '</div>
 					<span class="visually-hidden" id="d_hook_secret_label">' . lang('Signing secret') . '</span>
-					<div class="api-secret-box"><code id="d_hook_secret_value">' . h($hooks_back['secret']['secret']) . '</code>
+					<div class="pg-start-copy"><code id="d_hook_secret_value">' . h($hooks_back['secret']['secret']) . '</code>
 						' . api_settings_copy_button('d_hook_secret_value', 'd_hook_secret_label', 'pg-button pg-button-quiet pg-button-sm') . '</div>
 				</div>';
 
@@ -1861,9 +1861,6 @@ echo pg_page_shell(array(
 .api-hook-meta.fg-danger { opacity: 1; }
 .api-hook-error { font-size: var(--pg-text-count); color: var(--pg-danger-fg-emphasis); margin-top: 5px; word-break: break-word; }
 .api-hook-acts { display: flex; gap: 5px; margin-top: 8px; }
-.api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--pg-bg-1);
-	border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 9px 11px; }
-.api-secret-box code { flex: 1; font-size: var(--pg-text-meta); word-break: break-all; }
 .api-guide { background: var(--pg-bg-1); border: 1px solid var(--pg-border-color); border-radius: 8px;
 	padding: 10px 12px; margin-bottom: 10px; font-size: var(--pg-text-meta); }
 .api-guide-title { font-weight: var(--pg-weight-strong); margin-bottom: 6px; }
@@ -1899,18 +1896,6 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 #api_drawer.api-locked .api-hook-new,
 #api_drawer.api-locked .api-hook-form,
 #api_drawer.api-locked .api-hook-sample { display: none; }
-/* New application\'s starting points: two cards a row from md up, each with
-   its icon tile beside the title. */
-.api-start { display: grid; gap: 8px; }
-@media (min-width: 768px) { .api-start { grid-template-columns: 1fr 1fr; } }
-.api-start .form-field-card { margin-bottom: 0; }
-.api-start-head { display: flex; align-items: center; gap: 8px; }
-.api-start-head .pg-pill { margin-left: auto; }
-.api-start-acts { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--pg-border-color);
-	font-size: var(--pg-text-count); }
-.api-start-acts .bi { margin-right: 4px; }
-.api-new-advanced { border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 10px 12px; }
-.api-new-advanced summary { cursor: pointer; }
 /* The Events tab\'s "New subscription" and "Send a sample" boxes. */
 .api-hook-form, .api-hook-sample { background: var(--pg-bg-1); border: 1px solid var(--pg-border-color);
 	border-radius: 8px; padding: 10px 12px; }

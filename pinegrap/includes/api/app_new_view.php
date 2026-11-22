@@ -52,17 +52,17 @@ function api_app_new_card_html($card, $checked) {
 		: '<i class="bi bi-shield-check" aria-hidden="true"></i>' . lang('No secret');
 
 	return '
-				<div class="form-field form-field-card api-start-card">
+				<div class="form-field form-field-card">
 					<input class="radio" type="radio" name="start" value="' . h($card['id']) . '" id="' . $id . '"'
 						. ' data-kind="' . h($card['kind']) . '" data-existing="' . (int)$card['existing'] . '"'
 						. ' aria-describedby="' . $id . '_help ' . $id . '_acts"' . ($checked ? ' checked' : '') . '>
-					<label class="api-start-head" for="' . $id . '">
+					<label class="pg-start-head" for="' . $id . '">
 						<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . h($card['tone']) . '" aria-hidden="true"><i class="bi ' . h($card['icon']) . '"></i></span>
 						<span class="fw-bold">' . h($card['title']) . '</span>'
 						. (($card['badge'] !== '') ? ' <span class="pg-pill pg-tone-teal">' . h($card['badge']) . '</span>' : '') . '
 					</label>
 					<div class="form-text mt-1" id="' . $id . '_help">' . h($card['text']) . '</div>
-					<div class="api-start-acts" id="' . $id . '_acts">
+					<div class="pg-start-acts" id="' . $id . '_acts">
 						<div>' . lang('Acts as:') . ' <b>' . h($card['acts_as']) . '</b></div>
 						<div class="fg-2">' . $secret . '</div>
 					</div>
@@ -139,7 +139,7 @@ function api_app_new_view($cards, $permission_rows, $start_note, $connect = null
 
 			<fieldset id="n_step_1" data-step="1">
 				<legend class="visually-hidden">' . lang('What connects to this site?') . '</legend>
-				<div class="api-start">' . $card_html . '
+				<div class="pg-start">' . $card_html . '
 				</div>
 				<div class="alert theme-primary py-3 px-5 small mt-5 mb-0">
 					<i class="bi bi-info-circle me-1" aria-hidden="true"></i><b>' . lang('Why does "Acts as" matter?') . '</b>
@@ -168,7 +168,7 @@ function api_app_new_view($cards, $permission_rows, $start_note, $connect = null
 					</div>
 					' . $permission_rows . '
 				</div>
-				<details class="api-new-advanced" id="n_advanced">
+				<details class="pg-start-advanced" id="n_advanced">
 					<summary class="small"><i class="bi bi-sliders me-1" aria-hidden="true"></i><b>' . lang('Advanced') . '</b> <span class="small fg-2">' . lang('IP list and rate limit') . '</span></summary>
 					<div class="form-field mt-3 mb-5">
 						<label class="form-label pg-field-label" for="n_ip">' . lang('Allowed addresses') . '</label>
