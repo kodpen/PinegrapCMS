@@ -891,7 +891,7 @@ function test_legal_documents_kvkk_switch_update_step()
 	$step = substr($source, (int) $start, (int) strpos($source, "\n}\n", (int) $start) - (int) $start);
 
 	pg_assert_contains('SELECT ecommerce_legal_documents FROM config LIMIT 1', $step, 'from the documents\' switch');
-	pg_assert_contains("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', ", $step, 'a row already there stays');
+	pg_assert_contains("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', ?)", $step, 'a row already there stays');
 	pg_assert_contains("install_table_exists('config_text')", $step, 'only where the table is');
 	pg_assert_contains("install_note('", $step, 'a note');
 

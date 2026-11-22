@@ -9041,7 +9041,7 @@ function upgrade_2026_11_0_kvkk_switch() {
 
 	$on = ((int) db_value("SELECT ecommerce_legal_documents FROM config LIMIT 1") === 1) ? '1' : '0';
 
-	db("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', '" . $on . "')");
+	db_q("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', ?)", array($on));
 
 	install_note('KVKK notice: the notice page and the consent sentence now have a switch of their own under Site Settings, Visitors and privacy, KVKK notice. It starts as the legal documents switch is now, so nothing changes until you change it.');
 
