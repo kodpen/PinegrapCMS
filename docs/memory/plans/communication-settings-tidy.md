@@ -13,12 +13,12 @@ priority: 8
 - (H3) Site Chat Operator sits above the bubble switch but serves the bubble only: a visitor not signed in gets no bubble until an operator is chosen (`pg_chat_site_enabled()`, `chat.php:2003-2008`), a signed-in member gets the panel's chat without one; the card says neither.
 - (H4) Image, file and voice attachments and Visitor Image Limit bind visitors not signed in only; members and staff send files whatever they say (`chat.php:2862-2871`); the labels do not say so.
 - (H5) The visitor puzzle (`chat_captcha`) is here, the site's other abuse settings in Accounts and sign-in; neither names the other.
-- (H6) Chat Retention Period saves a value nothing reads; it leaves with VP3 (`plans/privacy-settings-tidy-steps.md`, owner poll 215).
+- (H6) Chat Retention Period saved a value nothing read; VP3 removed it (#11096, `core/privacy-rule-site-chats.md`).
 - (H7) `div.switch` drawings in Chat, SMS (`includes/fn/sms.php:1731`), SMS Messages and WhatsApp Messages; Title Case "Enable Live Chat", "Enable Site Chat Bubble".
 
 ## What does the plan settle itself?
 - The pane becomes folded rows (`pg_settings_fold()`): "Chat", "Chat on the site", "SMS", "SMS messages", "WhatsApp", "WhatsApp messages", "İYS"; the last five hold what their functions draw today (`plans/communication-settings-tidy-screens.md`).
-- "Chat" (`pgset-chat`): the switch named "Chat" with a line saying it is the panel's team chat and the site's; Folder for chat attachments; Chat Retention Period until VP3 takes it.
+- "Chat" (`pgset-chat`): the switch named "Chat" with a line saying it is the panel's team chat and the site's; Folder for chat attachments.
 - "Chat on the site" (`pgset-chat-site`, new): the bubble switch, "Who answers visitors" (the operator) with its line on H3, the offline mail, the bubble's texts and look, a group "Visitors who are not signed in" holding the attachment switches, the image limit and the puzzle; the puzzle's line links `#settings/security/pgset-captcha`.
 - With Chat off the bubble row's fields stay drawn, its line saying nothing shows on the site; every switch `pg-switch`.
 
