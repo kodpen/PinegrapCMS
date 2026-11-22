@@ -4321,6 +4321,9 @@ function output_menu($properties = false)
     }
 
 
+    // The menu links of Calendars, also drawn for My desk alone.
+    $calendars_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
+
     // The calendar screens also need at least one calendar assigned to a role 3
     // user (validate_calendars_access()); without one every entry is refused.
     if ((CALENDARS === true) && validate_calendars_access($user, true)) {
@@ -4340,7 +4343,6 @@ function output_menu($properties = false)
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-geo-alt bi-me-2\'>' . lang('Event Locations') . '</a>';
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_calendar_event_location.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Calendar Event Location'))) . '</a>';
         }
-        $calendars_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
         // CALENDARS > Bookings: once a booking service exists, for those the
         // agenda opens to (includes/fn/booking_agenda.php).
         if (pg_booking_ready() && ((int) db_value("SELECT COUNT(*) FROM booking_services") > 0)) {
@@ -4360,6 +4362,25 @@ function output_menu($properties = false)
             }
 
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_queue_places.php\'' . $output_parent_target . ' class=\'' . $calendars_link_class . 'bi-people bi-me-2\'>' . lang('Queue') . '</a>';
+        }
+    }
+
+    // CALENDARS > My desk: a role-3 user on a queue place's staff list
+    // (queue_desk.php), with or without calendars of their own.
+    if ((CALENDARS === true) && ((int) $user['role'] === 3) && pg_waiting_ready()) {
+        $desk_scope = pg_waiting_user_desk_scope($user);
+
+        if (is_array($desk_scope)) {
+            if (empty($menu_items[4])) {
+                $menu_items[4] = array('id' => 4, 'href' => 'queue_desk.php?place=' . $desk_scope[0], 'menu_icon' => 'calendars', 'color_class' => 'calendars-color', 'title' => 'Calendars', 'context' => true, 'data-bs-content' => '');
+            } else {
+                $menu_items[4]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+            }
+
+            foreach ((array) db_items("SELECT id, name FROM waiting_places WHERE id IN (" . implode(', ', array_map('intval', $desk_scope)) . ") ORDER BY name") as $desk_place) {
+                $desk_label = (count($desk_scope) > 1) ? lang('My desk') . ' · ' . $desk_place['name'] : lang('My desk');
+                $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/queue_desk.php?place=' . (int) $desk_place['id'] . '\'' . $output_parent_target . ' class=\'' . $calendars_link_class . 'bi-person-workspace bi-me-2\'>' . h($desk_label) . '</a>';
+            }
         }
     }
 
@@ -5162,6 +5183,7 @@ function output_menu($properties = false)
         case 'edit_booking.php':
         case 'view_queue_places.php':
         case 'edit_queue_place.php':
+        case 'queue_desk.php':
             $active_menu = 4;
             break;
         case 'view_submitted_forms.php':
