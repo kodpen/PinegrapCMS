@@ -9,6 +9,7 @@ description: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the
 - AG10 (M) after AG9 and AG4: the Workspace's diet (95 descriptions, 7 tools over 4 KB), done (#10920): 102 tools in one PR, no cut. Long text into `details` or a section of `workspace`.
 - AG11 (S) after AG9 and AG4: the ERP's diet (25 descriptions), done (#10915): 28 tools, all in `includes/erp/api.php`.
 - AG12 (M) after AG9, AG2 and AG3: the diet of the rest (design 10, store 2, the others 77; 6 tools over 4 KB).
+  - Cut in two: every other tool's row sits in `includes/api/schema.php`, held by an open PR when AG12 started. AG12a: the three Translations tools (`includes/translate/api.php`), done (#PRNUM). AG12b: the 89 descriptions and 6 tools over 4 KB in `includes/api/schema.php`, once no open PR holds it.
   - In each diet step: nothing a right call needs is dropped; the worker takes each tool off the test's list as it fits; the PR body gives the tool list's bytes before and after.
 - AG13 (M) after AG2: hints, then the report. AG13a done: #10766.
   - Hints: new `includes/fn/agent_guide_hints.php` (the registry by error code, each naming a section that exists: a test), `includes/api/response.php` (`api_fail()` reads it), the designer's refusal codes made distinct where two cases share one.
