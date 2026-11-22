@@ -368,6 +368,11 @@ foreach ($order_items as $order_item) {
         .product_form td{
             border: none;
         }
+
+        .order-code{
+            height: 60px;
+            margin-top: .5em;
+        }
     }</style>
 
 
@@ -378,6 +383,7 @@ foreach ($order_items as $order_item) {
                         <h1>' . lang('Packing Slip') . '</h1>
                       <div class="text" style="display:inline">' . lang('Order') . '</div> #: ' . $order['order_number'] . '<br/>
                        <div class="text" style="display:inline">' . lang('Order Date') . ':</div> <time>' . get_absolute_time(array('timestamp' => $order['order_date'])) . '</time>
+                       <div><svg class="order-code" data-pg-order-code="' . h($order['order_number']) . '" role="img" aria-label="' . h(lang('Order code')) . ' ' . h($order['order_number']) . '"></svg></div>
                     </td>
                     <td>
                         <h2>' . h(ORGANIZATION_NAME) . '</h2>
@@ -420,6 +426,16 @@ foreach ($order_items as $order_item) {
                 ' . $output_order_item_rows . '
             </table>
         </div>
+        <script src="assets/lib/JsBarcode/JsBarcode.all.min.js"></script>
+        <script>
+            // The order code: Code 128 of the order number, the code the
+            // Pack screen scans.
+            document.querySelectorAll("[data-pg-order-code]").forEach(function (svg) {
+                try {
+                    JsBarcode(svg, svg.getAttribute("data-pg-order-code"), { format: "CODE128", height: 40, margin: 0, fontSize: 14 });
+                } catch (e) { /* a number Code 128 cannot hold stays as its label */ }
+            });
+        </script>
         <script type="text/javascript"> 
             window.onload = function(){
                 setTimeout(function(){

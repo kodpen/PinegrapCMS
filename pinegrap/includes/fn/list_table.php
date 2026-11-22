@@ -1260,6 +1260,7 @@ function pg_list_table_printed_lists()
         'view_volunteer_programmes', 'volunteer_applications', 'volunteer_people',
         'privacy_requests',
         'delivery_problems',
+        'view_pick_waves',
     );
 }
 
