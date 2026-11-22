@@ -367,3 +367,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_review.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_shifts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_programmes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_programs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/launch_journey.php');
