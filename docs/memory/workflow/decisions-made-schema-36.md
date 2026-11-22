@@ -24,4 +24,4 @@ description: Decisions list, schema part 36 (2026-11-20 on): the privacy_request
 - In `audit_log`: one line per rule and run (`entity_type = 'privacy_rule'`, the counts in `after_json`, no person), beside the erase line of one person.
 - The daily trim keeps these lines and the erase lines 3 years, whatever `audit_log_retention_years` says; the Audit Trail settings card says so.
 
-Related: docs/memory/plans/privacy-centre.md, docs/memory/workflow/decisions-made-product-87.md
+Related: docs/memory/core/privacy-centre-decisions.md, docs/memory/workflow/decisions-made-product-87.md

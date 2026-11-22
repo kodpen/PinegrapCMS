@@ -20,11 +20,11 @@ description: Decisions list, product part 87 (2026-11-20 on): server-side events
 ## Should the site keep its own personal data inventory, destroy what is past its period and track requests with their 30 days? (owner, 2026-11-20, agent channel poll 167, channel message 10254)
 - "Evet, plana girsin": all three at once: a live inventory with the services abroad, opt-in retention and destruction rules, and a request box counting the 30 days.
 - Not chosen: "Evet, önce envanter ve başvuru kutusu" (destruction later, nothing removed in the first step), "Hayır, gerek yok".
-- The plan: `plans/privacy-centre.md`.
+- Built in #10738 to #11020: `core/privacy-centre.md`.
 
 ## Should the store pull its suppliers' XML, CSV or JSON lists and keep price and stock in step? (owner, 2026-11-20, agent channel poll 168, channel message 10315)
 - "Evet, plana girsin": the connection with field mapping, price rules, hourly price and stock sync, new products as drafts, several suppliers on one barcode, the buy price as cost, a run log, a stop on a broken feed.
 - Not chosen: "Evet, önce yalnız fiyat ve stok eşitleme" (price and stock sync first), "Hayır, gerek yok".
 - The plan: `plans/supplier-feed.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/api/ad-conversions.md, docs/memory/platform/cookie-consent-notice.md, docs/memory/plans/privacy-centre.md, docs/memory/plans/supplier-feed.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/api/ad-conversions.md, docs/memory/platform/cookie-consent-notice.md, docs/memory/core/privacy-centre.md, docs/memory/plans/supplier-feed.md
