@@ -711,9 +711,9 @@ function pg_privacy_rule_pending_where(array $fields)
  * forms: submitted before the period, or before the period of a form that
  *   says otherwise (0: that form is kept).
  * carts: incomplete orders untouched for the period, still personal.
- * orders: placed before the period, still personal.
  * chats: site chats with no message since the period (team chats of the
  *   panel are never reached).
+ * orders: placed before the period, still personal.
  *
  * @param string $key
  * @param array  $rule  one rule of pg_privacy_rules_normalise()
