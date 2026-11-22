@@ -2203,6 +2203,24 @@ function pg_record_head(array $head)
 
 
 /**
+ * One cell of the figure grid (Design examples, "Figure grid").
+ *
+ * @param string $label translated
+ * @param string $value markup, escaped by the caller
+ * @param string $note  translated text, '' for none
+ * @param string $tone  is-good, is-bad or ''
+ * @return string
+ */
+function pg_figure_grid_cell($label, $value, $note = '', $tone = '')
+{
+    return '<div class="pg-figure-grid-cell"><span class="pg-figure-label">' . h($label) . '</span>'
+        . '<span class="pg-figure-value">' . $value . '</span>'
+        . (($note !== '') ? '<span class="pg-figure-note' . (($tone !== '') ? ' ' . $tone : '') . '">' . h($note) . '</span>' : '')
+        . '</div>';
+}
+
+
+/**
  * A copy button of the panel (Design examples, "Copy button"): an icon
  * button that copies the text it carries, named for a screen reader, with
  * the polite status the panel's one listener (backend.src.js, data-pg-copy)

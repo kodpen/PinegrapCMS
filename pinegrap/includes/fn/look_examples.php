@@ -462,6 +462,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_timeline_pattern();
     $patterns[] = pg_look_examples_ws_list_row_pattern($p);
     $patterns = array_merge($patterns, pg_look_examples_record_patterns($p));
+    $patterns[] = pg_look_examples_figure_grid_pattern();
     $patterns[] = pg_look_examples_tools_dock_pattern($p);
     $patterns[] = pg_look_examples_flow_box_pattern($p);
 
@@ -852,6 +853,48 @@ function pg_look_examples_record_patterns($p)
                 . '<span class="pg-copy">' . pg_copy_button('7340012288', lang('Copy the tracking number'), 'pg-look-copy-text-' . $p) . '</span></p>'
                 . '<p class="pg-text-meta">' . h(lang('An icon button that copies the text as shown, named for a screen reader. For a moment its icon turns to a check and its tooltip reads Copied, and a polite status beside it says so; when the browser refuses, the text is selected.')) . '</p>',
         ),
+    );
+}
+
+
+/**
+ * Edit Product's Performance card as the screen draws it
+ * (pg_product_insights_card_html()), with a fixed year of sales: the figure
+ * grid, the chart, "Carts and interest" and the foot.
+ *
+ * @return array id, title, classes, html
+ */
+function pg_look_examples_figure_grid_pattern()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_insights.php');
+
+    $now = mktime(12, 0, 0, 11, 22, 2026);
+    $chart = array();
+
+    foreach (array(5, 7, 6, 9, 8, 10, 12, 10, 11, 14, 13, 17) as $index => $units) {
+        $chart[] = array('start' => mktime(0, 0, 0, 12 + $index, 1, 2025), 'units' => $units);
+    }
+
+    $data = array(
+        'unit' => 'month',
+        'keep' => 600,
+        'no_sales' => false,
+        'figures' => array(
+            'units' => 128, 'revenue' => 3454024, 'orders' => 97, 'views' => 4210, 'conversion' => 2.3,
+            'returns' => 4, 'returns_share' => 3.1, 'margin' => 38.0, 'margin_state' => 'final', 'last_sale' => $now - (3 * 86400),
+            'change' => array('units' => 12.0, 'revenue' => 8.0, 'orders' => -3.0, 'views' => 21.0),
+        ),
+        'chart' => $chart,
+        'carts' => array('left_carts' => 23, 'left_units' => 31, 'open_carts' => 5, 'open_units' => 6, 'saved_carts' => 7),
+        'interest' => array('favourites' => 41, 'waiting' => 12, 'rating_avg' => 4.6, 'rating_count' => 18),
+    );
+
+    return array(
+        'id'      => 'pattern-figure-grid',
+        'title'   => lang('Figure grid'),
+        'classes' => array('.pg-figure-grid', '.pg-figure-grid-cell', '.pg-figure-label', '.pg-figure-value', '.pg-figure-note', '.pg-figure-grid-chart', '.pg-figure-grid-bars', '.pg-figure-grid-axis', '.pg-figure-grid-sub', '.pg-figure-grid-rows', '.pg-figure-grid-row', '.pg-figure-grid-row-link', '.pg-figure-grid-foot'),
+        'html'    => '<div class="card">' . pg_product_insights_card_html($data, '20G', '&#8378;', $now) . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From Edit Product\'s Performance card: the figures as cells of the card, four across and two on a phone, a change line under the value (up teal, down rose), then a bar chart, rows of icon, text and count, and a foot.')) . '</p>',
     );
 }
 

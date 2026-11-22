@@ -7,7 +7,7 @@ module: order_view
 ## What does the head show?
 - Under the breadcrumb, whose last crumb is now "#1171" ("Incomplete #428" without a number): "Order #1171" (`pg_order_view_head_title()`), a copy button copying the number without "#", then the pills. The grey line: order date, type, the contact's name (a link when `pg_can_open_contact()`), "2 items, 3 units" (`pg_order_view_counts_text()`), and "Cancellation reason: …" on a cancelled order.
 - The toolbar (`pg_screen_toolbar()`, unchanged slots) sits at the head's right; on a phone under it. The top bar keeps "View Order". Banners and notices stay over the head.
-- Drawn by `pg_record_head()` in `includes/fn/output.php` (Design examples "Record head"); its CSS is the "Look A: record head" block of `backend.src.css`.
+- Drawn by `pg_record_head()` in `includes/fn/output.php` (Design examples "Record head"); its CSS is the "Look A: record head" block of `backend.src.css`. Edit Product uses it too, with the optional `media` picture before the title (`product-insights-card.md`).
 
 ## How are the pills worked out?
 - `pg_order_view_states($order, $addresses, $today)` is pure: the screen hands it the orders row (taken as `$head_order` before `$row` is reused), and per ship-to its dates, lines and parcel statuses, gathered in the loops that already read them (`$head_addresses`).

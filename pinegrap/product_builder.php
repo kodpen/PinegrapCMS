@@ -3715,6 +3715,117 @@ function pg_pb_render_switch($props)
 
 
 /**
+ * Edit Product's head under the breadcrumb (Design examples, "Record head"):
+ * the cover picture, the Short Description, the Enabled and stock pills, the
+ * grey line (SKU with a copy button, the price, the first parent group, the
+ * last change) and the toolbar at the right. Drawn from the stored row, not
+ * from a form that failed to save, so it says what the product is now.
+ *
+ * "View on site" opens the product on the site's catalog detail page, the
+ * page the lists, the cart and the feeds link a product to
+ * (pg_sw_catalog_detail_page_name()); a product another catalog page also
+ * shows is opened on that one page only. No link without an address, a
+ * detail page or while the product is disabled.
+ *
+ * @param int  $product_id
+ * @param bool $recycled   in the Recycle Bin: no Duplicate
+ * @param bool $has_form   the product has a product form
+ * @return string
+ */
+function pg_pb_render_head($product_id, $recycled, $has_form)
+{
+    $product_id = (int) $product_id;
+    $row = db_item("SELECT name, short_description, enabled, price, inventory, inventory_quantity, backorder, image_name, address_name, timestamp
+        FROM products WHERE id = '" . $product_id . "'");
+
+    if (!is_array($row)) {
+        return '';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_insights.php');
+
+    $group = db_value("SELECT product_groups.name FROM products_groups_xref
+        INNER JOIN product_groups ON product_groups.id = products_groups_xref.product_group
+        WHERE products_groups_xref.product = '" . $product_id . "'
+        ORDER BY product_groups.id ASC LIMIT 1");
+
+    $page = (!empty($row['enabled']) && (trim((string) $row['address_name']) !== '') && function_exists('pg_sw_catalog_detail_page_name'))
+        ? pg_sw_catalog_detail_page_name()
+        : '';
+
+    $sku = (string) $row['name'];
+    $image = trim((string) $row['image_name']);
+
+    $toolbar = pg_screen_toolbar(array(
+        'secondary' => array(
+            // duplicate_product.php refuses a product in the Recycle Bin: the
+            // copy would be a live product made from one thrown away.
+            ($recycled
+                ? ''
+                : '<a class="pg-button pg-button-ghost" href="duplicate_product.php?id=' . $product_id . get_token_query_string_field() . '"><i class="bi bi-copy" aria-hidden="true"></i>' . lang('Duplicate') . '</a>'),
+            ($has_form
+                ? '<a class="pg-button pg-button-ghost" href="view_fields.php?product_id=' . $product_id . '"><i class="bi bi-ui-checks" aria-hidden="true"></i>' . lang('Product Form') . '</a>'
+                : ''),
+            (($page !== '')
+                ? '<a class="pg-button pg-button-ghost" href="' . h(PATH . encode_url_path($page) . '/' . encode_url_path(trim((string) $row['address_name']))) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . lang('View on site') . '</a>'
+                : ''),
+        ),
+    ));
+
+    return pg_record_head(array(
+        'id' => 'pg_pb_head_title',
+        'title' => (trim((string) $row['short_description']) !== '') ? (string) $row['short_description'] : $sku,
+        'pills' => pg_product_insights_head_pills($row),
+        'media' => ($image !== '')
+            ? '<img class="pg-pb-head-cover" src="' . h(preg_match('#^https?://#i', $image) ? $image : OUTPUT_PATH . $image) . '" alt="" />'
+            : '<span class="pg-icon-tile pg-pb-head-cover" aria-hidden="true"><i class="bi bi-box-seam"></i></span>',
+        'meta' => array(
+            '<span id="pg_pb_head_sku" class="pg-tabular">' . h($sku) . '</span><span class="pg-copy">' . pg_copy_button($sku, lang('Copy the Product ID / SKU'), 'pg_pb_head_sku') . '</span>',
+            '<span class="pg-tabular">' . pg_format_money(((int) $row['price']) / 100, BASE_CURRENCY_SYMBOL) . '</span>',
+            h((string) $group),
+            ((int) $row['timestamp'] > 0)
+                ? h(lang(array('string' => 'last changed {var:1}', 'vars' => array(get_relative_time(array('timestamp' => (int) $row['timestamp'], 'format' => 'plain_text', 'mid_sentence' => true))))))
+                : '',
+        ),
+        'actions' => $toolbar,
+    ));
+}
+
+/**
+ * Edit Product's Performance card, the first section: its title, the
+ * period's segmented control and skeleton rows. product_insights.js asks
+ * the product_insights action for the figures once the page has opened and
+ * puts the body it answers in place; the card writes nothing and is no part
+ * of Save.
+ *
+ * @param int $product_id
+ * @return string
+ */
+function pg_pb_render_insights_card($product_id)
+{
+    $periods = array('30d' => lang('30 days'), '12m' => lang('12 months'), 'all' => lang('All'));
+    $seg = '';
+
+    foreach ($periods as $period => $label) {
+        $seg .= '<button type="button" class="pg-seg-item" data-pg-pi-period="' . $period . '" aria-pressed="' . (($period === '30d') ? 'true' : 'false') . '">' . h($label) . '</button>';
+    }
+
+    $cell = '<div class="pg-figure-grid-cell"><span class="placeholder col-6"></span><span class="placeholder placeholder-lg col-8 mt-2"></span></div>';
+
+    return '
+                    <div class="col-12 mb-7" id="pg_pb_sec_insights">
+                        <section class="card pg-pi-card" id="pg_pi_card" data-product="' . (int) $product_id . '" data-failed="' . h(lang('The figures could not be read. Try again.')) . '" data-retry="' . h(lang('Try again')) . '" aria-labelledby="pg_pi_title">
+                            <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
+                                <i class="bi bi-graph-up-arrow fg-primary" aria-hidden="true"></i>
+                                <span class="h5 mb-0 fg-primary fw-bold" id="pg_pi_title">' . lang('Performance') . '</span>
+                                <div class="pg-seg ms-auto" role="group" aria-label="' . h(lang('Period')) . '">' . $seg . '</div>
+                            </div>
+                            <div class="pg-pi-body" aria-live="polite" aria-busy="true"><div class="pg-figure-grid placeholder-glow">' . str_repeat($cell, 4) . '</div></div>
+                        </section>
+                    </div>';
+}
+
+/**
  * Styles the v2 screens need that Bootstrap 5.3 has no utility for.
  *
  * Kept to the minimum and kept in one function so both screens stay identical:
@@ -5494,7 +5605,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     //
     // Written in the order the sections are drawn, and the rail does not ask to
     // reorder them: that order is deliberate here.
-    $pg_pb_sections = array(
+    $pg_pb_sections = (($pg_mode === 'edit') ? array('pg_pb_sec_insights' => array(lang('Performance'), 'bi-graph-up-arrow')) : array()) + array(
         'pg_pb_sec_images'      => array(lang('Images'), 'bi-images'),
         'pg_pb_sec_basic'       => array(lang('Main Informations'), 'bi-info-circle'),
         'pg_pb_sec_variants'    => array((($pg_mode === 'edit') ? lang('Product Attributes') : lang('Variants')), 'bi-diagram-3'),
@@ -5564,38 +5675,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     get_wysiwyg_editor_code(array('full_description', 'details', 'out_of_stock_message', 'order_receipt_message')) .
     pg_pb_render_styles() . '
 
-    ' . (($pg_mode === 'edit')
-        /*
-            No "view on site" link here, and it is not an omission.
-
-            A product address is only half of its URL: the catalog builds
-            {catalog page}/{address_name} (get_catalog.php:533, :622), and the
-            page half depends on which catalog the visitor arrived through. The
-            same product sits in several groups, each shown by a different page
-            with its own detail page setting, so /Software is not a shorter form
-            of /shop-product-sidebar/Software — it is a URL that resolves to
-            whatever page happens to be called Software, or to nothing.
-
-            Legacy edit_product.php offers no such link either. Listing every
-            catalog the product appears in would be truthful, but the page a
-            group is shown on lives in that page's settings blob rather than a
-            column, so answering it means reading every catalog page and walking
-            the group tree for each.
-        */
-        // The screen's one toolbar. A product in the Recycle Bin is not
-        // duplicated (duplicate_product.php refuses it): the copy would be a
-        // live product made from one the operator threw away.
-        ? pg_screen_toolbar(array(
-            'secondary' => array(
-                ($pg_recycled
-                    ? ''
-                    : '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>'),
-                (($v('product_form') or $v('pg_pb_has_form_fields'))
-                    ? '<a class="btn btn-sm btn-text theme-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1" aria-hidden="true"></i>' . lang('Product Form') . '</a>'
-                    : ''),
-            ),
-        ))
-        : '') . '
+    ' . (($pg_mode === 'edit') ? pg_pb_render_head($pg_product_id, $pg_recycled, ($v('product_form') or $v('pg_pb_has_form_fields'))) : '') . '
 
     <div class="row">
         <div class="col-12">
@@ -5633,6 +5713,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             <div class="col-12 lg:col-8 2xl:col-9 order-1">
 
                 <div class="row" id="pg_pb_sections">
+                    ' . (($pg_mode === 'edit') ? pg_pb_render_insights_card($pg_product_id) : '') . '
 
                     <!-- ----------------------------------------------- images -->
                     <!-- No card: images are the first thing an operator drops in and
@@ -6528,6 +6609,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/sortablejs/Sortable.min.js"></script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_name_check.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_name_check.js') . '"></script>
+    ' . (($pg_mode === 'edit') ? '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_insights.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_insights.js') . '"></script>' : '') . '
     ' . pg_ai_write_assets() . '
     ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
     ' . pg_editor_bridge_script() . '
