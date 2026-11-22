@@ -202,9 +202,9 @@ $qd_rows = '';
 
 foreach ($qd_waiting as $ticket) {
     $qd_rows .= '<div class="pg-card-inner-row flex-wrap">'
-        . '<strong class="pg-list-row-title pg-tabular text-nowrap" style="min-width:5rem">' . h($qd_number($ticket)) . '</strong>'
-        . '<span class="pg-text-2 flex-grow-1 min-width-0">' . h($qd_service_names[$ticket['service']] ?? '') . '</span>'
-        . '<span class="d-flex flex-wrap gap-2">' . $qd_pills($ticket) . '</span>'
+        . '<strong class="pg-list-row-title pg-tabular text-nowrap" style="flex:0 0 6rem">' . h($qd_number($ticket)) . '</strong>'
+        . '<span class="pg-text-2 text-truncate" style="flex:0 1 12rem">' . h($qd_service_names[$ticket['service']] ?? '') . '</span>'
+        . '<span class="d-flex flex-wrap gap-2 flex-grow-1">' . $qd_pills($ticket) . '</span>'
         . '<span class="pg-text-meta text-nowrap">' . h(lang(array('string' => '{var:1} min', 'vars' => array(pg_waiting_minutes_since($ticket['joined_at'], $qd_now))))) . '</span>'
         . '</div>';
 }

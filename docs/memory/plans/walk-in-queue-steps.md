@@ -13,7 +13,7 @@ description: Plan walk-in-queue, steps WQ1a to WQ9: the pure rules, the store, p
 
 - WQ3 (M) after WQ2, done in #11108: the public `queue.php` (take a number, the person's page with its 15-second read, Leave the queue) and its `waf_sensitive_scripts()` entry; staff adding a number; kind `queue` in `pg_sms_kinds()` and the WhatsApp template, a service message (poll 207), never asking marketing consent; the notices. Features: W3, W5, W6.
 
-- WQ4 (M) after WQ3: the desk screen: open and close a desk, Call next, Call again, Not here, Send to another service, Finish, Pause. Features: W2, W7.
+- WQ4 (M) after WQ3, done in #11153: the desk screen: open and close a desk, Call next, Call again, Not here, Send to another service, Finish, Pause. Features: W2, W7.
 
 - WQ5 (M) after WQ4: priority at the kiosk and the desk; bookings folded in ("I have a booking" finds today's booking with the place's staff); remote join, "I'm on my way", moved back once. Features: W4, W8.
 

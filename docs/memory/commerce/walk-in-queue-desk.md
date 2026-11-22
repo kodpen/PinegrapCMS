@@ -28,6 +28,6 @@ module: walk_in_queue_desk
 - Pause: the desk is `paused`, called to by nobody and not counted in the estimate; Close desk frees it (`user_id` and `opened_at` 0).
 
 ## How was it checked?
-- No database in the cloud session: the calls, the conditional writes and the screen were not run against MySQL or drawn in a browser.
+- On a sandbox (MariaDB, #11153): open, Call next, Call again, Finish, Send to another service, Not here, Pause, Resume and Close desk clicked, drawn at 1440 and 390 px; two desks at once and the notices not tried.
 
-Related: docs/memory/commerce/walk-in-queue-places.md, docs/memory/commerce/walk-in-queue-rules.md, docs/memory/commerce/walk-in-queue-notices.md, docs/memory/commerce/walk-in-queue-number-page.md
+Related: docs/memory/commerce/walk-in-queue-places.md, docs/memory/commerce/walk-in-queue-rules.md, docs/memory/commerce/walk-in-queue-notices.md
