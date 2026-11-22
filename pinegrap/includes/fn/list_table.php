@@ -1023,7 +1023,8 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
         . ($source['edit'] ? '<button type="button" class="pg-icon-button pg-icon-button-sm pg-list-table-quick" aria-pressed="false" aria-keyshortcuts="F2"'
             . ' aria-label="' . h(lang('Quick edit')) . '" title="' . h(lang('Quick edit')) . ' (F2)">'
             . '<i class="bi bi-pencil-square" aria-hidden="true"></i></button>' : '')
-        . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm pg-list-table-columns" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false"'
+        // Fixed: the card's overflow would cut the menu under a short list.
+        . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm pg-list-table-columns" data-bs-toggle="menu" data-bs-strategy="fixed" data-bs-auto-close="outside" aria-expanded="false"'
         . ' aria-label="' . h(lang('Columns')) . '" title="' . h(lang('Columns')) . '">'
         . '<i class="bi bi-layout-three-columns" aria-hidden="true"></i></button>'
         . '<div class="menu pg-menu-end pg-list-table-columns-menu"></div></span>'

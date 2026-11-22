@@ -8,6 +8,7 @@ description: The owner's whole-backend sweep of 2026-11-22: how every panel scre
 
 ## How was it swept?
 - A sandbox (`tools/setup_sandbox.sh`, `tools/screenshots/seed.php`) and a Playwright crawl: every root file calling `pg_page_shell()` (302, no `delete_`/`duplicate_`/`remove_`/`export_`), plus the first `?id=` link of each list screen (32 edit screens with a real record), signed in as `admin`, at 1440 px and at 390 px.
+- `tools/screenshots/open_toggles.js` at 390 px opened the 260 dialogs, drawers and menus of `screens.json`: no script error.
 - Per screen: the HTTP status, PHP error text in the page, script errors, failed same-origin requests, a page that scrolls sideways and its outermost element past the screen.
 - PHP errors are not in the server log: `includes/fn/errors.php` writes them to `data/temp/php_errors.log`; the crawl added none.
 - PHPStan at level 1 (`variable.undefined` is legacy noise, 69,650 lines): only its `arguments.count` lines were read.
@@ -16,6 +17,7 @@ description: The owner's whole-backend sweep of 2026-11-22: how every panel scre
 - Subscriptions: the price change notice was never written or mailed: `notice_read` handed the id to `db_item()`, which binds nothing; now `db_q()`.
 - Booking widget: each service read "{var:1} min": `lang()` dropped the length given as a second argument.
 - Supplier feed at 390 px: the Sign-in choice ran 94 px past the screen; `.pg-seg.pg-seg-wrap` wraps it inside its frame (the shared `.pg-seg` and the area strips unchanged).
+- List tables: the Columns menu (and the Sort menu `pg_list_table.js` adds) hung inside `.pg-list-table.pg-card`, whose `overflow: hidden` cut its lower rows under a short list at any width, and opened below a phone's screen; both toggles carry `data-bs-strategy="fixed"`, so the menu escapes the card and flips up with no room below.
 - `tests/single_argument_helpers_test.php` reads the product for `lang()`, `db_item()`, `db_value()`, `db_values()` called with a second argument.
 
 ## What read clean, or is no fault?
