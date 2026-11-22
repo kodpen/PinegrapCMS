@@ -42,6 +42,10 @@ $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_mcp.php';
 
 $servers = ws_mcp_active_servers();
 
+// Each of these carries one value; one sent as a list counts as not given,
+// where a cast would open server 1 or log "Array to string conversion".
+pg_request_single_values(array('mcp_action', 'mcp_id', 'mcp_tool', 'mcp_channel', 'mcp_connected', 'server', 'tool', 'channel'));
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */

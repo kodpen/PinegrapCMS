@@ -1393,12 +1393,13 @@ function pg_payment_return_modes()
  * carries no form token and no form fields, and it finishes the order the
  * visitor already submitted.
  *
- * @param string $mode
+ * @param mixed $mode The request's mode; anything but text is no return mode
  * @return bool
  */
 function pg_payment_is_return_mode($mode)
 {
-    $mode = (string) $mode;
+    // A mode sent as a list (?mode[]=x) is no return mode.
+    $mode = is_scalar($mode) ? (string) $mode : '';
 
     return ($mode !== '') && (($mode === 'paypal_express_checkout_return') || in_array($mode, pg_payment_return_modes(), true));
 }

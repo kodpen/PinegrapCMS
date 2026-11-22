@@ -50,6 +50,7 @@ function test_delivery_scorecard_month_keys()
 	pg_assert_same('2026-10', pg_delivery_scorecard_month('2026-10', $now), 'a past month is kept');
 	pg_assert_same('2026-11', pg_delivery_scorecard_month('2027-01', $now), 'a month to come is the current one');
 	pg_assert_same('2026-11', pg_delivery_scorecard_month('2026-13', $now), 'a broken key is the current month');
+	pg_assert_same('2026-11', pg_delivery_scorecard_month(array('2026-10'), $now), 'a key sent as a list (?month[]=x) is the current month');
 	pg_assert_same('2026-01', pg_delivery_scorecard_month_step('2025-12', 1), 'a step crosses the year');
 	pg_assert_same('2025-12', pg_delivery_scorecard_month_step('2026-01', -1), 'and back');
 	$months = pg_delivery_scorecard_months('2026-11');

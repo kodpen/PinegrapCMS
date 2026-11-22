@@ -30,6 +30,8 @@ function panel_string_params_screens()
 		'google_taxonomy_action' => array('_REQUEST', array('q')),
 		'add_order'              => array('_GET', array('request', 'q')),
 		'add_system_style'       => array('_GET', array('start')),
+		'view_carrier_scorecard' => array('_GET', array('figure')),
+		'workspace_calendar_feed' => array('_POST', array('feed_action')),
 	);
 }
 

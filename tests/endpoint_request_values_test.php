@@ -5,8 +5,9 @@
  * Tests for small root endpoints and their request values: the theme
  * designer's Cancel link (clear_theme_designer_session.php) takes one file id,
  * the catalog menu redirect (browse_catalog_menu.php) passes the back link id
- * encoded, and the shopping cart's upsell offers give a custom layout a
- * translated default button label.
+ * encoded, the shopping cart's upsell offers give a custom layout a
+ * translated default button label, and the cart's redirects read the posted
+ * page id with a default.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -46,4 +47,14 @@ function test_shopping_cart_upsell_default_label_is_translated()
 
 	pg_assert_same(0, preg_match("/upsell_action_button_label'\\] = 'More Info';/", $source), 'no hard-coded English default label');
 	pg_assert_contains("\$offer['upsell_action_button_label'] = lang('More Info');", $source, 'the custom layout default comes from lang()');
+}
+
+// A post without a page id (a stale form, a bot) goes back to the home page
+// without an "Undefined array key" warning: every read of the posted page id
+// has a default.
+function test_shopping_cart_page_id_read_with_default()
+{
+	$source = endpoint_request_values_test_source('shopping_cart.php');
+
+	pg_assert_same(0, preg_match_all('/\$_POST\[\'page_id\'\](?!\s*\?\?)/', $source), 'shopping_cart reads the posted page id without a default');
 }
