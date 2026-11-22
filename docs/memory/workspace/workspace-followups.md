@@ -24,6 +24,8 @@ description: Workspace follow-ups (followups.php, #1790): ws_followup_task_open(
 - Overdue receivables (#1860, `erp_overdue_followups()`, off unless `ERP_OVERDUE_FOLLOWUP`): as `ERP_OVERDUE_FOLLOWUP_USER` or the invoice's `created_by`, on the account's customer channel, `$once` true (erp/erp-overdue-reminders.md).
 - Prototype comments' "Make a task" (#10459, `pg_proto_comment_task_open()`): as the designer, the page tagged, no channel, `$once` false, the guest's words quoted as data (designer/designer-prototype-comments-task.md).
 
+- A low survey score (FD5, `pg_feedback_followup_start()`): as the answer's owner, on the survey's channel, the contact and record tagged, `$once` false (platform/feedback-followup.md).
+
 ## Is there an API route?
 - No new one: `POST /workspace/tasks` already takes `refs`, `channel_id`, `assignees`, `due_date`, `due_time`, `remind_minutes` (workspace-api-task-reminder.md).
 

@@ -583,6 +583,10 @@ function pg_feedback_job_run($now)
     db("UPDATE feedback_responses SET status = " . PG_FEEDBACK_NO_ANSWER . "
         WHERE (status = " . PG_FEEDBACK_SENT . ") AND (sent_at < '" . ((int) $now - PG_FEEDBACK_TOKEN_DAYS * 86400) . "')");
 
+    // A low score's follow-up still open after 48 hours
+    // (includes/fn/feedback_followup.php).
+    pg_feedback_escalation_run($now);
+
     $sender = pg_feedback_sender();
 
     if (($sender === null) || (pg_feedback_send_time($now, date_default_timezone_get()) !== (int) $now)) {

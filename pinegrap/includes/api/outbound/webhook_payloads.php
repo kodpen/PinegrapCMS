@@ -452,6 +452,27 @@ function api_webhook_event_payloads_site() {
 		'winner_variant_id' => array('integer', 'On an end, the winning variant, 0 for none; 0 on a start.')
 	);
 
+	// A satisfaction survey's answer (pg_feedback_event_payload()).
+	$feedback = array(
+		'id'          => array('integer', 'The answer (one sent survey).'),
+		'survey_id'   => array('integer', 'The survey.'),
+		'survey_name' => array('string', 'The survey\'s name.'),
+		'kind'        => array('string', 'nps (0 to 10), csat (1 to 5) or effort (1 to 7, 1 is very easy).'),
+		'touchpoint'  => array('string', 'What it followed: booking, ticket, course, form, delivery, mail or periodic.'),
+		'record_type' => array('string', 'The record it is about: booking, ticket, course, form, order, conversation or periodic.'),
+		'record_id'   => array('integer', 'That record\'s id (the survey\'s own id for periodic).'),
+		'contact_id'  => array('integer?', 'The person\'s contact (GET /customers/{id}), null for none.'),
+		'channel'     => array('string', 'How it was sent: email, sms or whatsapp.'),
+		'score'       => array('integer', 'The score given.'),
+		'band'        => array('string', 'low, middle or high for the survey\'s kind.'),
+		'comment'     => array('string', 'The person\'s comment, empty for none.'),
+		'answered_at' => array('string', 'When it was first answered (UTC, ISO 8601).')
+	);
+
+	$feedback_sample = array('id' => 5120, 'survey_id' => 4, 'survey_name' => 'After a booking', 'kind' => 'csat', 'touchpoint' => 'booking',
+		'record_type' => 'booking', 'record_id' => 771, 'contact_id' => 884, 'channel' => 'email', 'score' => 2, 'band' => 'low',
+		'comment' => 'I waited half an hour past my time.', 'answered_at' => '2026-11-21T09:40:00Z');
+
 	$named = function ($what, $route) {
 		return array(
 			'id'   => array('integer', 'The ' . $what . ($route !== '' ? ' (' . $route . ').' : '.')),
@@ -569,6 +590,12 @@ function api_webhook_event_payloads_site() {
 		),
 
 		'file.created' => array('fields' => $named('file', 'GET /files/{id}'), 'sample' => array('id' => 310, 'name' => 'price-list.pdf')),
+
+		'feedback.received'  => array('fields' => $feedback + array('first' => array('boolean', 'True for the person\'s first answer; false when they changed it or added the comment to the score they chose.')), 'sample' => $feedback_sample + array('first' => true)),
+		'feedback.detractor' => array('fields' => $feedback + array(
+			'owner_id' => array('integer', 'The user who follows it up (GET /users/{id}), 0 for nobody.'),
+			'task_id'  => array('integer', 'The Workspace follow-up task, 0 for none.')
+		), 'sample' => $feedback_sample + array('owner_id' => 12, 'task_id' => 3104)),
 
 		'course.completed' => array(
 			'fields' => array(

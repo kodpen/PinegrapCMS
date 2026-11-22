@@ -252,6 +252,14 @@ function ws_events_catalog()
         $catalog['content.review_due'] = array('label' => lang('A page or record is due for review'), 'when' => lang('When a page or collection record passes its review date'), 'record' => 'page', 'right' => 'member', 'filter' => '');
     }
 
+    // A satisfaction survey's answer, and a low one, about the person's
+    // contact (includes/fn/feedback_followup.php); listed once the survey
+    // tables exist.
+    if (function_exists('pg_feedback_sends_ready') && pg_feedback_sends_ready()) {
+        $catalog['feedback.received'] = array('label' => lang('A survey is answered'), 'when' => lang('When a person answers a satisfaction survey'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+        $catalog['feedback.detractor'] = array('label' => lang('A survey gets a low score'), 'when' => lang('When a satisfaction survey answer is a low score'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+    }
+
     // The ERP's: invoices, receipts and payments, incoming e-documents and
     // sales quotes, for the ERP's readers (a receipt for its cash right).
     if (defined('ERP_ENABLED') && ERP_ENABLED) {
@@ -766,9 +774,12 @@ function ws_events_record_of($event, $payload)
             return array('contact', (int) ($payload['id'] ?? 0));
 
         // A WhatsApp message: the contact of its number, none for a number
-        // no contact has. A course completed: the member's contact.
+        // no contact has. A course completed: the member's contact. A
+        // survey's answer: the person's contact.
         case 'whatsapp.received':
         case 'course.completed':
+        case 'feedback.received':
+        case 'feedback.detractor':
             return ((int) ($payload['contact_id'] ?? 0) > 0) ? array('contact', (int) $payload['contact_id']) : array('', 0);
 
         case 'stock.low':

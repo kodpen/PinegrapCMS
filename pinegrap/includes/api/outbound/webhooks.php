@@ -262,6 +262,10 @@ function api_webhook_core_events() {
 		// Courses (pg_course_mark_done()): once per member and course, by
 		// the "Mark as done" press that finished the last lesson.
 		'course.completed'     => 'A member completed a course: the last of its lessons was marked as done (once per member and course; a completion after Reset progress is announced again)',
+		// Satisfaction surveys (includes/fn/feedback_followup.php): every
+		// answer the answer page writes, and once per answer a low score.
+		'feedback.received'    => 'A person answered a satisfaction survey, or changed or completed their answer within 7 days (first tells which)',
+		'feedback.detractor'   => 'A satisfaction survey answer became a low score (NPS 0-6, CSAT 1-2, effort 6-7); once per answer, with the follow-up\'s owner and task',
 		'form.submitted'       => 'A visitor submitted a form',
 		// The order's completion when the payment service confirmed it, or the
 		// payment staff recorded for an offline one.

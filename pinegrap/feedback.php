@@ -52,7 +52,10 @@ if ($fb_action === 'score') {
         exit;
     }
 
-    pg_feedback_answer_write($fb_row['id'], $fb_survey['kind'], array('score' => (int) $_POST['score']), true, $fb_now);
+    if (pg_feedback_answer_write($fb_row['id'], $fb_survey['kind'], array('score' => (int) $_POST['score']), true, $fb_now)) {
+        pg_feedback_answered($fb_row, $fb_survey, $fb_now);
+    }
+
     print json_encode(array('ok' => true));
     exit;
 }
@@ -111,7 +114,10 @@ if ($fb_action === 'send') {
     if ($fb_answer === null) {
         $fb_error = lang('Please choose a score.');
     } elseif (in_array($fb_state, array('open', 'changeable'), true)) {
-        pg_feedback_answer_write($fb_row['id'], $fb_survey['kind'], $fb_answer, false, $fb_now);
+        if (pg_feedback_answer_write($fb_row['id'], $fb_survey['kind'], $fb_answer, false, $fb_now)) {
+            pg_feedback_answered($fb_row, $fb_survey, $fb_now);
+        }
+
         go($fb_link);
     } else {
         $fb_error = lang('This answer can no longer be changed.');

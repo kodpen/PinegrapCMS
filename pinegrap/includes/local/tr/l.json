@@ -1651,6 +1651,8 @@
     "Low danger": "Düşük tehlike",
     "Low energy": "Düşük enerji",
     "Low in the west after sunset": "Gün batımından sonra batıda alçakta",
+    "Low score in the survey {var:1}: {var:2} of {var:3}.": "{var:1} anketinde düşük puan: {var:3} üzerinden {var:2}.",
+    "Low score in {var:1}: follow up": "{var:1} anketinde düşük puan: ilgilenin",
     "Low scores": "Düşük puanlar",
     "Low shelves and cushions in the children's corner": "Çocuk köşesinde alçak raflar ve minderler",
     "Low stock": "Stoğu azalan",

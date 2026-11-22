@@ -83,6 +83,12 @@ function webhook_payloads_test_builders()
 		'ws_mail_conversation_closed_event' => function () {
 			return ws_mail_conversation_closed_event(array('id' => 3, 'channel_id' => 2, 'message_id' => 4, 'box_id' => 1, 'assignee_id' => 5, 'status' => 'open'), array('status' => 'closed'), 5);
 		},
+		'pg_feedback_event_payload' => function () {
+			return pg_feedback_event_payload(array('id' => 1, 'record_type' => 'booking', 'record_id' => 2, 'contact_id' => 3, 'channel' => 'email', 'score' => 2, 'band' => 1, 'comment' => '', 'answered_at' => 0), array('id' => 4, 'name' => 'A', 'kind' => 2, 'touchpoint' => 'booking'), true);
+		},
+		'pg_feedback_detractor_payload' => function () {
+			return pg_feedback_detractor_payload(pg_feedback_event_payload(array('id' => 1, 'record_type' => 'booking', 'record_id' => 2, 'contact_id' => 3, 'channel' => 'email', 'score' => 2, 'band' => 1, 'comment' => '', 'answered_at' => 0), array('id' => 4, 'name' => 'A', 'kind' => 2, 'touchpoint' => 'booking'), true), 5, 6);
+		},
 		'pg_booking_event_payload' => function () {
 			return pg_booking_event_payload(array('id' => 1, 'service_id' => 2, 'staff_id' => 3, 'user_id' => 0, 'name' => 'A', 'email' => 'a@example.com', 'start_at' => 0, 'end_at' => 0, 'status' => 'confirmed', 'source' => 'site'));
 		},

@@ -2887,6 +2887,7 @@
     "Not printed: the site repeats the first row for each payment method": "Yayında görünmez: site her ödeme yöntemi için ilk satırı yineler",
     "Not probed": "Yoklanmadı",
     "Not published": "Yayında değil",
+    "Not reached": "Ulaşılamadı",
     "Not reached in this run.": "Bu çalıştırmada bu kutuya gelinmedi.",
     "Not reached yet": "Sırası gelmedi",
     "Not read from a server": "Bir sunucudan okunmuyor",

@@ -78,7 +78,7 @@ function ws_flow_quick_areas()
         'bookings'      => $area(lang('Reservations'), 'bi-calendar-event', 'site', array('event:booking.created', 'event:booking.confirmed',
             'event:booking.rescheduled', 'event:booking.cancelled', 'event:booking.completed', 'event:calendar_event.reserved', 'event:ticket.checked_in')),
         'products'      => $area(lang('Products and stock'), 'bi-box-seam', 'site', array('event:stock.low', 'event:inventory.changed')),
-        'reviews'       => $area(lang('Reviews'), 'bi-star-half', 'site', array('event:product.review.created')),
+        'reviews'       => $area(lang('Reviews'), 'bi-star-half', 'site', array('event:product.review.created', 'event:feedback.received', 'event:feedback.detractor')),
         'subscriptions' => $area(lang('Subscriptions'), 'bi-arrow-repeat', 'site', array('event:subscription.renewed', 'event:subscription.failed',
             'event:subscription.cancelled')),
         'invoices'      => $area(lang('Invoices'), 'bi-receipt', 'site', array('event:erp.invoice.created', 'event:erp.invoice.paid',

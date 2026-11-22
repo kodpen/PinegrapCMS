@@ -629,6 +629,7 @@
     "Record the refund": "Geri ödemeyi kaydet",
     "Record the {var:1} suggested line(s)": "Önerilen {var:1} satırı kaydet",
     "Record this run, so the next one can leave these out": "Bu çalıştırmayı kaydet; sonraki çalıştırma bunları dışarıda bıraksın",
+    "Record type": "Kayıt türü",
     "Record updated successfully.": "Kayıt başarıyla güncellendi.",
     "Record visits": "Ziyaretleri kaydet",
     "Record voice message": "Sesli mesaj kaydet",

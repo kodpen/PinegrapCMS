@@ -359,7 +359,7 @@ function pg_feedback_answer_survey($id)
  * @param array $answer pg_feedback_answer_input()
  * @param bool  $score_only
  * @param int   $now
- * @return void
+ * @return bool whether the row changed
  */
 function pg_feedback_answer_write($id, $kind, array $answer, $score_only, $now)
 {
@@ -377,6 +377,8 @@ function pg_feedback_answer_write($id, $kind, array $answer, $score_only, $now)
     db("UPDATE feedback_responses
         SET " . $set . ", status = " . PG_FEEDBACK_ANSWERED . ", answered_at = IF(answered_at = 0, '" . (int) $now . "', answered_at)
         WHERE (id = '" . (int) $id . "') AND " . $where);
+
+    return mysqli_affected_rows(db::$con) === 1;
 }
 
 /**
