@@ -102,7 +102,7 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-organization' => pg_settings_keywords(lang('organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller')),
-                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, site address, ip, proxy, proxy address, outgoing proxy')),
+                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, site address, ip, proxy, proxy address, outgoing proxy, other host names, redirect, https')),
                 'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
             ),

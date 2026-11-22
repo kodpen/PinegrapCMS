@@ -759,6 +759,7 @@
     "Redirect for now to the destination's own address (302)": "Hedefin kendi adresine geçici olarak yönlendir (302)",
     "Redirect other host names to the site address": "Diğer alan adlarını site adresine yönlendir",
     "Redirect to the sign-in page": "Giriş sayfasına yönlendir",
+    "Redirected to the site address.": "Site adresine yönlendiriliyor.",
     "Redirects": "Yönlendirmeler",
     "Redirects from the old site": "Eski siteden yönlendirmeler",
     "Redo": "İleri al",
