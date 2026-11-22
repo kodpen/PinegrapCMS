@@ -6384,6 +6384,8 @@
     "An enquiry commits you to nothing.": "Soru sormak sizi hiçbir şeye bağlamaz.",
     "An enquiry commits you to nothing: a work is sold only when you and the gallery agree.": "Soru sormak sizi hiçbir şeye bağlamaz: bir eser yalnızca siz ve galeri anlaştığınızda satılır.",
     "An entry from the journal of the boutique.": "Butiğin güncesinden bir yazı.",
+    "An entry must be an object of id, path, query and if_none_match.": "Bir giriş id, path, query ve if_none_match alanlarından oluşan bir nesne olmalıdır.",
+    "An entry takes id, path, query and if_none_match, not {var:1}.": "Bir giriş id, path, query ve if_none_match alır, {var:1} değil.",
     "An episode cover with a sound wave beside its details, title, two buttons and podcast apps, over its chapters and a card of the guest.": "Ses dalgalı bölüm kapağı; yanında bilgileri, başlık, iki düğme ve podcast uygulamaları; altında zaman damgalı konu başlıkları ve konuk kartı.",
     "An episode of the network: the way to listen, the chapters, the guests, the notes and what listeners say.": "Ağın bir bölümü: dinleme yolu, kısımlar, konuklar, notlar ve dinleyicilerin söyledikleri.",
     "An error occurred": "Bir hata oluştu",

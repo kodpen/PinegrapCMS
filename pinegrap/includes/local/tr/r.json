@@ -2685,6 +2685,7 @@
     "request-a-stay": "konaklama-talebi",
     "request-enrolment": "kayit-talebi",
     "requests": "istek",
+    "requests must hold at least one entry.": "requests en az bir giriş içermelidir.",
     "requests timed": "istek süreleri ölçülüyor",
     "required": "zorunlu",
     "requires recurring payment job": "yinelenen ödeme işi gerektirir",
