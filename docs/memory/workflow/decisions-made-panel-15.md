@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-15
-description: Decisions list, panel part 15 (2026-11-22 on): View Order redrawn as its sheet shows; All Orders and Edit Product to be updated with it, Edit Product with figures about the product
+description: Decisions list, panel part 15 (2026-11-22 on): View Order, All Orders and Edit Product redrawn as their sheets show; Edit Product gets a Performance card with figures about the product
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,11 +14,11 @@ description: Decisions list, panel part 15 (2026-11-22 on): View Order redrawn a
 
 ## Are All Orders and Edit Product updated with it? (the same words)
 - Yes, both: "ürün sayfasını ve tüm siparişler ekranıyla birlikte". Plans `plans/orders-list-redraw.md` and `plans/product-insights.md`, each with its sheet in `commerce/commerce-screens-drawing/`.
-- Their drawings were shown to him on 2026-11-22 and wait for his word; until it is recorded here no step of the two is given out.
+- Shown the two drawings with what is new on each named (All Orders: quick filters with counts, the figures as one strip with the charts behind Summary, the payment and shipping pills and Items on a row, the change against the period before; Edit Product: a head and the Performance card), owner (2026-11-22): "onay". Both are built as drawn.
 
 ## Does Edit Product show figures about the product? (owner, 2026-11-22, the same message)
 - Owner: "ürün düzenleme sayfasına ürün hakkında bilgiler de yer verelim. mesela ürün kaç tane satılmış kaç kere sepette bırakılmış gibi analitikler."
-- So Edit Product gets a read-only part with the product's figures; units sold and the times it was left in a cart are his two examples. Which other figures stand there is the drawing's proposal (`plans/product-insights-figures.md`).
+- So Edit Product gets a read-only part with the product's figures; units sold and the times it was left in a cart are his two examples. The figures of the drawing he accepted are listed in `plans/product-insights-figures.md`.
 - This opens the Product Builder, one of his kept screens (`decisions-made-panel-3.md`), for this part; the rest of the screen stays as he likes it.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-panel-14.md, docs/memory/workflow/decisions-made-panel-3.md, docs/memory/plans/order-screen-redraw.md, docs/memory/plans/orders-list-redraw.md, docs/memory/plans/product-insights.md

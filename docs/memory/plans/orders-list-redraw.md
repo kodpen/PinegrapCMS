@@ -15,7 +15,7 @@ priority: 6
 - A row does not say whether the order is paid or shipped. First Name and Last Name are two columns; five columns shown by default are mostly empty.
 
 ## Is it accepted?
-- Not yet. The drawing was shown to the owner on 2026-11-22; no step is given out before his word is recorded here and in the decisions list.
+- Yes. Owner (2026-11-22), shown the drawing: "onay" (`workflow/decisions-made-panel-15.md`).
 
 ## How is the screen put together? (board A1)
 - One bar: Add Order, Export, Import Tracking Numbers, a rule, the period navigator, then at the right Sort, the status select, the type select and the filters button. Under 1280 px the period navigator takes the second row.

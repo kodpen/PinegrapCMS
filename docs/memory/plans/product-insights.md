@@ -12,7 +12,7 @@ priority: 6
 - `commerce/commerce-screens-drawing/product.html` with `product-dark.jpg` and `product-light.jpg`: board P1 the screen's top at 1440 px, P2 the card loading, with no sale, on a phone. The drawing wins over these words, but for its Turkish, which is a sample.
 
 ## Is it accepted?
-- Not yet. The Product Builder is one of the owner's kept screens (`ui/look-kept-screens.md`): its own file changes only after he has seen the picture. The drawing was shown to him on 2026-11-22; no step is given out before his word is recorded here and in the decisions list.
+- Yes. Owner (2026-11-22), shown the drawing: "onay" (`workflow/decisions-made-panel-15.md`). The Product Builder is one of his kept screens (`ui/look-kept-screens.md`): its own file changes for the head and the card only.
 
 ## What changes on the screen? (board P1)
 - A head under the breadcrumb: the cover picture, the Short Description as the title, pills (Enabled or Disabled; with inventory on, "In stock" with the quantity, "Out of stock" or "Backorder"), a grey line (Product ID / SKU with a copy button, the price, the first parent group, the last change). Right: Duplicate, Product Form, and "View on site" (the product's page in a new tab).
