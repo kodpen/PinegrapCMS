@@ -44,6 +44,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-14.md: Is the E-mail settings category built as drawn? (owner, 2026-11-21, agent channel poll 211, channel message 11311)
 - decisions-made-panel-14.md: Do the drawing's parts go into the Design examples screen? (owner, 2026-11-21, agent channel message 11316)
 - decisions-made-panel-14.md: Is the one-click Gmail broker started now? (owner, 2026-11-21, agent channel poll 212, channel message 11312)
+- decisions-made-panel-15.md: Where are the rules and the earlier parts?
+- decisions-made-panel-15.md: Is View Order redrawn? (owner, 2026-11-22, in the architect's window)
+- decisions-made-panel-15.md: Are All Orders and Edit Product updated with it? (the same words)
+- decisions-made-panel-15.md: Does Edit Product show figures about the product? (owner, 2026-11-22, the same message)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)

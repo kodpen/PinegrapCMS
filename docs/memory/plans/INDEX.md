@@ -128,6 +128,11 @@
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
+- order-screen-redraw-screens.md: Plan order-screen-redraw, the screen in words (boards O1, O3, O4): the head, the shipment card, the line row, Payment, the later cards, the side panel, the phone
+- order-screen-redraw-states.md: Plan order-screen-redraw, the rules a drawing cannot show: the head's order, payment and shipping pills, the equal-address line, the count of the customer's orders, what copy copies
+- order-screen-redraw-steps.md: Plan order-screen-redraw, steps OS1 to OS4: the head and its pills, the side panel and Payment, the shipment card with its lines, the later cards and close-out; how a step is checked
+- order-screen-redraw.md: Plan (owner 2026-11-22): View Order redrawn: a head with the order's states, a card per shipment holding its lines, payment with the totals, who and billing in the side panel
+- orders-list-redraw.md: Plan (owner 2026-11-22): All Orders redrawn: one bar, quick filters with counts, the figures as one strip with the charts behind Summary, rows with customer, three state pills and items
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
@@ -146,6 +151,8 @@
 - privacy-settings-tidy-screens.md: Plan privacy-settings-tidy, its screen: the Visitors and privacy pane as folded rows, the "How long we keep data" row of value rows, the words and what must be true
 - privacy-settings-tidy-steps.md: Plan privacy-settings-tidy, steps VP1 to VP4: the pane as folded rows, the "How long we keep data" row and the inventory's IP lines, the owner's two answers, close-out
 - privacy-settings-tidy.md: Plan (owner 2026-11-21): Site Settings › Visitors and privacy as folded rows, one "How long we keep data" row showing every retention, popovers gone, the KVKK fields on their own
+- product-insights-figures.md: Plan product-insights, what each figure of Edit Product's Performance card counts: sales, revenue, views, conversion, returns, margin, left carts, favourites, and how long a read is kept
+- product-insights.md: Plan (owner 2026-11-22): Edit Product gets a head and a Performance card (units sold, revenue, views, conversion, returns, left carts, favourites); the rest of the kept screen stays
 - prototype-approval-features.md: Plan prototype-approval, features A1 to A8: the link asking approval, the sealed verdict, older version, round two, publish rule, mails, the designer's side, events and API
 - prototype-approval-screens.md: Plan prototype-approval, how its parts sit: the Share prototype dialog's approval fields, the viewer's Review box and round two, the designer's Comments list and the Publish sheet's held row
 - prototype-approval-steps.md: Plan prototype-approval, steps PA1a to PA7: pure rules, store, the link's approval settings, the viewer's verdict, round two, the publish rule, mails, events and API, close-out
