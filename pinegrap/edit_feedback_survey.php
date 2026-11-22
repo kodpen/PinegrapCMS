@@ -270,7 +270,7 @@ $fs_place = function_exists('pg_grev_state') ? (string) pg_grev_state()['place_i
 $fs_answer = $fs_card('answer', lang('After the answer'), lang('What the customer sees once they have answered.'),
     '<div class="d-flex align-items-center gap-3"><input type="checkbox" class="pg-switch" id="fs_review" name="review_invite" value="1"' . ($fs['review_invite'] ? ' checked' : '') . '><label class="pg-text-2" for="fs_review">' . h(lang('Invite them to write a review')) . '</label></div>'
     . '<div class="pg-field-help">' . h(lang('Shown to everyone who answers, whatever the score.')) . '</div>'
-    . (($fs_place === '') ? '<p class="pg-text-2 mt-3 mb-0">' . h(lang('Set your Google place first; until then the invitation is not shown.')) . ' <a href="' . h(pg_settings_link('api', 'pgset-google-reviews')) . '">' . h(lang('Google Reviews')) . '</a></p>' : ''));
+    . (($fs_place === '') ? '<p class="pg-text-2 mt-3 mb-0">' . h(lang('Set your Google place first; until then the invitation is not shown.')) . ' <a href="' . h(pg_grev_connections_url()) . '">' . h(lang('Google Reviews')) . '</a></p>' : ''));
 
 // The status column: On, the e-mail's preview, the test, Delete or Archive.
 $fs_previews = '';
