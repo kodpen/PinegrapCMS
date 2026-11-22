@@ -283,7 +283,7 @@ $output_sign_in_card = '
                             <div class="card-body pt-0">
                                 <p class="pg-card-sub">' . h(lang('How the supplier lets you read the list. What you enter is kept encrypted and never shown again.')) . '</p>
                                 <input type="hidden" name="auth" id="sf_auth" value="' . h($values['auth']) . '" />
-                                <div class="mb-5"><span class="pg-seg" role="group" aria-label="' . h(lang('Sign-in')) . '">' . $auth_buttons . '</span></div>
+                                <div class="mb-5"><span class="pg-seg pg-seg-wrap" role="group" aria-label="' . h(lang('Sign-in')) . '">' . $auth_buttons . '</span></div>
                                 ' . $auth_group('basic', $text_field('user', lang('User name'), 'text', '', 'col-12 md:col-6', 'basic') . $text_field('password', lang('Password'), 'password', '', 'col-12 md:col-6', 'basic')) . '
                                 ' . $auth_group('header', $text_field('header_name', lang('Header name'), 'text', lang('For example X-Api-Key.'), 'col-12 md:col-6', 'header') . $text_field('key', lang('Key'), 'password', '', 'col-12 md:col-6', 'header')) . '
                                 ' . $auth_group('query', $text_field('key_param', lang('Name in the address'), 'text', lang('For example apikey, as in ?apikey=…'), 'col-12 md:col-6', 'query') . $text_field('key', lang('Key'), 'password', '', 'col-12 md:col-6', 'query')) . '
