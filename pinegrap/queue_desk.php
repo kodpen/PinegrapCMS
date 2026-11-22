@@ -139,7 +139,7 @@ $qd_pills = function ($ticket) use ($qd_place, $qd_pill_words) {
     return $html;
 };
 $qd_button = function ($key, $label, $icon, $extra = '') use ($qd_buttons) {
-    return '<button type="submit" form="qd_form" name="submit_' . $key . '" value="1" class="pg-button pg-button-' . (($key === 'call_next') ? 'fill' : 'quiet') . '"' . ($qd_buttons[$key] ? '' : ' disabled') . $extra . '><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($label) . '</button>';
+    return '<button type="submit" form="qd_form" name="submit_' . $key . '" value="1" class="pg-button pg-button-' . (($key === 'call_next') ? 'fill' : 'quiet') . (($extra !== '') ? ' no-submit' : '') . '"' . ($qd_buttons[$key] ? '' : ' disabled') . $extra . '><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($label) . '</button>';
 };
 
 // The now-serving block: the number at the desk, or what the desk waits for.

@@ -5,7 +5,8 @@
  * now-serving block and the waiting rows) again every 15 seconds while the
  * tab is shown, so numbers taken meanwhile appear without a reload. It waits
  * while a drawer or a menu is open, and stops when the answer is not the
- * live part (a signed-out session). The buttons post the page's form.
+ * live part (a signed-out session). The buttons post the page's form;
+ * Not here asks first.
  *
  * Loaded with a plain <script src> by the screen; no .min twin.
  *
@@ -54,6 +55,15 @@
             })
             .catch(function () {});
     }
+
+    // The panel's confirm handler binds to the buttons there at load, before
+    // a read replaces them: Not here (marked no-submit) asks here.
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-pg-desk-live] button.no-submit[data-confirm-content]');
+        if (button && !window.confirm(button.getAttribute('data-confirm-content'))) {
+            event.preventDefault();
+        }
+    });
 
     timer = window.setInterval(read, 15000);
 })();

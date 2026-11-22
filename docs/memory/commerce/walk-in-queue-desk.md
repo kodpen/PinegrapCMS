@@ -1,11 +1,11 @@
 ---
 name: walk-in-queue-desk
-description: The walk-in queue desk (WQ4, queue_desk.php): Today tab and My desk, Open this desk, Call next, Call again, Not here, Send to another service, Finish, Pause, Close desk; place staff; the 15-second read
+description: Walk-in queue desk (WQ4, queue_desk.php): Today tab, My desk, place staff, Open this desk, Call next, Call again, Not here, Send to another service, Finish, Pause
 module: walk_in_queue_desk
 ---
 
 ## Where is the desk?
-- `queue_desk.php?place=<id>`: a place's Today tab for roles 0-2 (tabs Set-up, Desks, Today), and "My desk" in the Calendars menu for a role-3 user on the place's staff list (one link a place, "My desk · <place>" when several; the Calendars menu is drawn with that link alone when the user has no calendar).
+- `queue_desk.php?place=<id>`: a place's Today tab for roles 0-2 (tabs Set-up, Desks, Today), and "My desk" in the Calendars menu for a role-3 user on the place's staff list ("My desk · <place>" when several; drawn alone when the user has no calendar).
 - Code: `includes/fn/walk_in_queue_desk.php`; pure parts in `tests/walk_in_queue_desk_test.php`. Step WQ4 of the walk-in-queue plan.
 
 ## Who reaches which place?
@@ -14,7 +14,7 @@ module: walk_in_queue_desk
 
 ## What does the screen show?
 - No desk of the viewer's open here: "Open this desk", a row per desk (its services, Closed / "Open · person" / "Paused · person"), the button on closed rows. A user has one desk open per place; a desk opens only while closed (one conditional UPDATE), so two people never open one desk.
-- A desk open: the now-serving card: the number in `.pg-figure-value`, its service and desk in `.pg-figure-label`, the name if given, the pills, "Called N min ago". Buttons in one row: "Call next" (the fill), "Call again", "Not here", "Send to another service", "Finish" (quiet); Pause / Resume and "Close desk" in the card's menu.
+- A desk open: the now-serving card (number, service and desk, name, pills, "Called N min ago"). Buttons in one row: "Call next" (the fill), "Call again", "Not here", "Send to another service", "Finish" (quiet); Pause / Resume and "Close desk" in the card's menu.
 - Under it "Waiting": today's waiting numbers for the desk's services (every service when no desk is open), in calling order (`pg_waiting_order()`): number, service, pills Priority (with the group's name), Booked, On the way, minutes waited.
 - The live part (`?part=live`) is read again every 15 seconds by `assets/js/queue_desk.js` while the tab is shown, no drawer or menu is open and no button in it has focus; a sign-in page as answer stops it.
 
@@ -24,7 +24,7 @@ module: walk_in_queue_desk
 - Call again: `called_at` moves to now (Not here counts from the last call; the lobby screen sees a new call). No second message.
 - Not here: `no_show` with `done_at`; with the place's "Move a person who is not here back once" on, the first time it waits again with `moved_back = 1` (where it then stands is WQ5's).
 - Send to another service: waits again in the other service, keeps `joined_at`, takes that service's letter and the day's next count (the unique key forbids keeping the old count); the person's page shows the new number.
-- Finish: `served` with `done_at`; the estimate reads `done_at - called_at`. Every move of the number at the desk is written only while it is still `called` to that desk (`pg_waiting_ticket_move()`).
+- Finish: `served` with `done_at`; the estimate reads `done_at - called_at`. Each move is written only while the number is still `called` to that desk (`pg_waiting_ticket_move()`).
 - Pause: the desk is `paused`, called to by nobody and not counted in the estimate; Close desk frees it (`user_id` and `opened_at` 0).
 
 ## How was it checked?
