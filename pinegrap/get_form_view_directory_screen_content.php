@@ -493,14 +493,14 @@ function get_form_view_directory_screen_content($properties) {
                             forms.address_name,
                             submitted_form_info.number_of_comments,
                             submitted_form_info.number_of_views,
-                            GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, '')) AS newest_activity_timestamp
+                            GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, 0)) AS newest_activity_timestamp
                         FROM forms
                         LEFT JOIN submitted_form_info ON ((forms.id = submitted_form_info.submitted_form_id) AND (submitted_form_info.page_id = '" . $form_list_view['form_item_view_page_id'] . "'))
                         LEFT JOIN comments AS newest_comment ON submitted_form_info.newest_comment_id = newest_comment.id
                         " . $form_list_view['sql_joins'] . "
                         WHERE
                             (forms.page_id = '" . $form_list_view['custom_form_page_id'] . "')
-                            AND (GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, '')) > $summary_timestamp)
+                            AND (GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, 0)) > $summary_timestamp)
                             $sql_search
                             " . $form_list_view['sql_filters'] . "
                         ORDER BY newest_activity_timestamp DESC
@@ -662,7 +662,7 @@ function get_form_view_directory_screen_content($properties) {
                             forms.address_name,
                             submitted_form_info.number_of_comments,
                             submitted_form_info.number_of_views,
-                            GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, '')) AS newest_activity_timestamp,
+                            GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, 0)) AS newest_activity_timestamp,
                             $sql_views_in_range AS number_of_views_for_date_range
                         FROM forms
                         LEFT JOIN submitted_form_info ON ((forms.id = submitted_form_info.submitted_form_id) AND (submitted_form_info.page_id = '" . $form_list_view['form_item_view_page_id'] . "'))
@@ -792,7 +792,7 @@ function get_form_view_directory_screen_content($properties) {
                             forms.address_name,
                             submitted_form_info.number_of_comments,
                             submitted_form_info.number_of_views,
-                            GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, '')) AS newest_activity_timestamp,
+                            GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, 0)) AS newest_activity_timestamp,
                             (
                                 SELECT COUNT(*)
                                 FROM comments
@@ -955,7 +955,7 @@ function get_form_view_directory_screen_content($properties) {
                 COUNT(*) AS number_of_submitted_forms,
                 SUM(submitted_form_info.number_of_comments) AS number_of_comments,
                 SUM(submitted_form_info.number_of_views) AS number_of_views,
-                MAX(GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, ''))) AS newest_activity_timestamp
+                MAX(GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, 0))) AS newest_activity_timestamp
             FROM forms
             LEFT JOIN submitted_form_info ON ((forms.id = submitted_form_info.submitted_form_id) AND (submitted_form_info.page_id = '" . $form_list_view['form_item_view_page_id'] . "'))
             LEFT JOIN comments AS newest_comment ON submitted_form_info.newest_comment_id = newest_comment.id

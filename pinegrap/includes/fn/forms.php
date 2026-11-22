@@ -4031,7 +4031,7 @@ function get_standard_fields_for_view()
         array(
             'name' => lang('Newest Activity Date & Time'),
             'value' => 'newest_activity_date_and_time',
-            'sql_name' => 'FROM_UNIXTIME(GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, \'\')))',
+            'sql_name' => 'FROM_UNIXTIME(GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, 0)))',
             'type' => 'date and time'
         ),
         array(

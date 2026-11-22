@@ -5,7 +5,8 @@
  * Tests for the newest comment a form item view or form list view prints for
  * ^^newest_comment^^ (includes/fn/forms.php): the message is cut to 100
  * characters before it is escaped, so the cut never splits an entity or the
- * <br /> of a line break.
+ * <br /> of a line break. A record with no comment has its submit time as its
+ * newest activity.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -58,5 +59,27 @@ function test_form_view_newest_comment_renderers_cut_before_escaping()
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_true(strpos($source, 'pg_form_view_newest_comment(') !== false, $file . ' uses the helper');
 		pg_assert_true(strpos($source, "mb_substr(\$data, 0, 100) . '...'") === false, $file . ' no longer cuts the escaped text');
+	}
+}
+
+// A record with no comment falls back to the number 0, so the newest activity
+// is its submit time with no string in the comparison: GREATEST() of a number
+// and '' made MariaDB warn "Truncated incorrect DOUBLE value: ''" on each row.
+function test_form_view_newest_activity_falls_back_to_a_number()
+{
+	$sql = '';
+
+	foreach (get_standard_fields_for_view() as $field) {
+		if ($field['value'] === 'newest_activity_date_and_time') {
+			$sql = $field['sql_name'];
+		}
+	}
+
+	pg_assert_same('FROM_UNIXTIME(GREATEST(forms.submitted_timestamp, IFNULL(newest_comment.created_timestamp, 0)))', $sql, 'the field of the form views');
+
+	foreach (array('includes/fn/forms.php', 'get_form_view_directory_screen_content.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_false((bool) preg_match('/IFNULL\(newest_comment\.created_timestamp, (\'\'|\\\\\'\\\\\')\)/', $source), $file . ' has no empty-string fallback');
 	}
 }
