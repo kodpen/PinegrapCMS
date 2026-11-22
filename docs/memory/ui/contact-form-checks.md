@@ -17,6 +17,11 @@ description: Create/Edit Contact save checks: date and rate refused, role 3 keep
 - Before the Contacts screens bug hunt PR, Edit Contact put PATH before every address, so an Unsplash picture loaded `/https://…` and showed the failure mark; the list printed a bare name without PATH.
 - Edit Contact prints the address back into the hidden `image_url` with `h()`. It used the SQL escape `e()`, which leaves a double quote standing in HTML: a stored address with a quote broke out of the attribute and its markup ran on the screen.
 
+## How are the number columns bound?
+- `pg_contact_form_number_posted()` gives `opt_in`, `file_id` and `affiliate_approved` as `'0'` when the box is unticked, empty, missing or posted as a list; a blank commission rate is `'0'`, which the contact reads as the default rate.
+- Before (PR #11065): they were bound as `''`. The non-strict session stored the same 0, but every Create and Edit Contact save logged warning 1366 (`contacts.file_id` on a contact without a picture, `opt_in` when unticked).
+- The activity log lines take the saved names, so a first or last name posted as a list no longer logs "Array to string conversion".
+
 ## Smaller fixes
 - Notes box: `<textarea rows="6">`, the invalid `type="text"` gone (#5264).
 - Labels: the work card's title is `lang('Job Title')` (Unvan), the membership date `lang('Membership Expiration Date')` (Üyelik Bitiş Tarihi, also in the list's advanced filters); Turkish for `Salutation` is Hitap, for the invalid e-mail error "E-posta adresi geçersiz" (#5263).
