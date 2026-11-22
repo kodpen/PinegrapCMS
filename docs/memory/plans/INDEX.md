@@ -196,3 +196,9 @@
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
 - workspace-calls-share.md: Workspace calls, step CL4: how a shared screen is shown large: the same window grown to a stage, the tile rail, one's own share, the narrow width, Make smaller and Full screen
 - workspace-calls.md: Plan (owner 2026-11-20, polls 157 and 158): voice and video calls in the Workspace, browser to browser (WebRTC), two people and groups of four at most, guests, screen sharing; steps CL1-CL8
+- workspace-interface-details.md: Plan workspace-interface, the rules a drawing cannot show: which number a row's pill holds, muted channels, the join row, Mark all as read, the tasks count, the keys' edges, the New line, the foot
+- workspace-interface-list.md: Plan workspace-interface, the list in words (boards L1 to L3): rows and their marks, the All and Unread filter, Mark all as read, the tools dock (never folded) and More, the keys
+- workspace-interface-screens.md: Plan workspace-interface, the screens in words (boards C1, S1 to S3): one bar for every Workspace screen, where each screen's controls go, the empty screen, the panel's foot, the New line
+- workspace-interface-steps-2.md: Plan workspace-interface, steps WI4 to WI9 (the screen line): the panel's foot and top bar, each screen's bar, the New line, close-out; what holds for every step, the order
+- workspace-interface-steps.md: Plan workspace-interface, steps WI1 to WI3 (the list line): rows and marks, the tools dock and the tasks count, Unread with Mark all as read and the keys; how a step is checked
+- workspace-interface.md: Plan (owner 2026-11-22): the Workspace's interface improved: the list in the main menu redrawn (tools dock, Unread filter, row marks, keys), one bar for its screens, the panel's foot, a New line

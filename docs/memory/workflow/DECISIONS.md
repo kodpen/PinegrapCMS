@@ -884,6 +884,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-47.md: Is the Flows editor redrawn and widened? (owner, 2026-11-22, in the architect's window)
 - decisions-made-workspace-47.md: What does this change of the flow window of 2026-11-12?
 - decisions-made-workspace-47.md: What did the architect add, not the owner?
+- decisions-made-workspace-48.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-48.md: Is the Workspace's interface improved, its menu included? (owner, 2026-11-22, in the architect's window)
+- decisions-made-workspace-48.md: What of his earlier decisions does the plan keep?
+- decisions-made-workspace-48.md: How do the Tools stand in the list? (owner, 2026-11-22, in the architect's window)
+- decisions-made-workspace-48.md: What else changes of them? (owner, 2026-11-22, in the architect's window)
+- decisions-made-workspace-48.md: What is added? (the same word)
+- decisions-made-workspace-48.md: When may its steps be given out?
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?
