@@ -6,8 +6,8 @@ module: privacy_retention
 
 ## Which rules are there?
 - `pg_privacy_rules_catalogue()` (`includes/fn/privacy_retention.php`): `contacts` (passive, 3 years, 1-20), `forms` (2 years, 1-20; per form by page id, 0 keeps that form), `carts` (incomplete orders, 90 days, at least 31), `orders` (years the shop types, 1-30; empty is never), `requests` (closed privacy requests, 3 years from `closed_at`, 1-20, own entry only, no person skip; `privacy-requests.md`). Every rule is off by default. Defaults are suggestions, not legal advice.
-- `chats` (site chats): `privacy-rule-site-chats.md`.
 - The pass interval: 1 to 183 days (never longer than six months), default 1 (`pg_privacy_rules_interval_limits()`).
+- `chats` (site chats): `privacy-rule-site-chats.md`.
 
 ## Where are they kept?
 - `config_text` `privacy_rules` (rules, periods, `approved_at`/`approved_by`, interval) and `privacy_rules_state` (per rule `last_run_at`, a pass under way: `started_at`, `cursor`, counts). Read directly, not through `pg_config_text()`'s cache. No schema.
