@@ -35,6 +35,11 @@
  *   erp_edoc_<code>_account($external_id)     one of those cards, whole
  *   erp_edoc_<code>_account_save($card, $external_id) create ('' id) or change one card
  *                                             (all three: includes/erp/edoc/account_sync.php)
+ *   erp_edoc_<code>_connected()               is a connection kept, for a driver that keeps
+ *                                             its own; else every required field is stored
+ *
+ * The credentials are typed on the provider's page of Connections
+ * (connections.php?service=<code>); the E-Invoice card picks the provider.
  *
  * Every operation answers an array with 'success' and 'error'; what else it
  * carries is written at each contract function below. poll() may also name
@@ -355,6 +360,142 @@ function erp_edoc_credentials_save($code, $posted, $cleared = array())
     return (erp_query("UPDATE erp_edoc_providers
         SET credentials_enc = '" . escape($encoded) . "', updated_at = '" . time() . "'
         WHERE provider = '" . escape($code) . "'") !== false);
+}
+
+/**
+ * What a post of a provider's page of Connections gives for its fields:
+ * each box as one string (a box missing or posted as an array is not
+ * given, so the stored value is kept), a select only with one of its own
+ * options, and the password fields whose "remove" tick was posted. Pure.
+ *
+ * @param string $code    the driver code, the boxes' prefix edoc_<code>_
+ * @param array  $fields  erp_edoc_fields()
+ * @param array  $post
+ * @return array ['posted' => name => value, 'cleared' => list of names]
+ */
+function erp_edoc_page_post($code, $fields, $post)
+{
+    $posted = array();
+    $cleared = array();
+
+    foreach ((array) $fields as $field) {
+        $name = 'edoc_' . $code . '_' . $field['name'];
+
+        // A password box comes empty with a "remove" tick beside it: the
+        // tick is the only way to clear a stored secret.
+        if ((($field['type'] ?? '') === 'password') && (($post[$name . '_clear'] ?? '') === '1')) {
+            $cleared[] = (string) $field['name'];
+        }
+
+        $value = $post[$name] ?? null;
+
+        if (!is_string($value)) {
+            continue;
+        }
+
+        if ((($field['type'] ?? '') === 'select') && !empty($field['options'])
+            && !array_key_exists($value, (array) $field['options'])) {
+            continue;
+        }
+
+        $posted[(string) $field['name']] = $value;
+    }
+
+    return array('posted' => $posted, 'cleared' => $cleared);
+}
+
+/**
+ * The required fields left empty when the posted boxes are laid over the
+ * stored credentials: the page refuses to store those, each marked on its
+ * box. Pure.
+ *
+ * @param array $fields   erp_edoc_fields()
+ * @param array $current  name => stored value
+ * @param array $page     erp_edoc_page_post()
+ * @return array list of field names
+ */
+function erp_edoc_page_missing($fields, $current, $page)
+{
+    $merged = erp_edoc_credentials_merge($fields, $current, $page['posted'], $page['cleared']);
+    $missing = array();
+
+    foreach ((array) $fields as $field) {
+        if (!empty($field['required']) && (trim((string) ($merged[$field['name']] ?? '')) === '')) {
+            $missing[] = (string) $field['name'];
+        }
+    }
+
+    return $missing;
+}
+
+/**
+ * Whether a provider has a connection kept: what its driver says when it
+ * keeps its own (erp_edoc_<code>_connected()), else every required field
+ * of its credentials stored. The E-Invoice card picks only a connected
+ * provider.
+ *
+ * @param string $code
+ * @return bool
+ */
+function erp_edoc_connected($code)
+{
+    if (!erp_edoc_load($code)) {
+        return false;
+    }
+
+    if (erp_edoc_supports('connected', $code)) {
+        return (bool) call_user_func('erp_edoc_' . $code . '_connected');
+    }
+
+    $fields = erp_edoc_fields($code);
+
+    return ($fields !== array()) && (erp_edoc_page_missing($fields, erp_edoc_credentials($code), array('posted' => array(), 'cleared' => array())) === array());
+}
+
+/**
+ * What the E-Invoice card's save does with the provider picked on it. Off
+ * is always taken and the provider already in use stays; another one is
+ * taken only while it is connected, else the card says where it is
+ * connected and the provider in use stays. Pure.
+ *
+ * @param string $picked     the posted driver code, '' for Off
+ * @param string $active     erp_edoc_active()
+ * @param bool   $connected  erp_edoc_connected($picked)
+ * @param string $label      the picked provider's name
+ * @return array ['activate' => bool, 'refusal' => string]
+ */
+function erp_edoc_pick_decide($picked, $active, $connected, $label)
+{
+    if ((string) $picked === (string) $active) {
+        return array('activate' => false, 'refusal' => '');
+    }
+
+    if (((string) $picked === '') || $connected) {
+        return array('activate' => true, 'refusal' => '');
+    }
+
+    return array('activate' => false, 'refusal' => lang(array(
+        'string' => '{var:1} is not connected, so it was not made the e-document provider. Connect it on its page of Connections, then pick it here.',
+        'vars' => array($label),
+    )));
+}
+
+/**
+ * Removes a provider's stored credentials (Disconnect on its page). Its row,
+ * its last check and whether it is the one in use stay.
+ *
+ * @param string $code
+ * @return bool
+ */
+function erp_edoc_credentials_forget($code)
+{
+    if (!erp_edoc_installed() || (erp_edoc_provider_row($code) === null)) {
+        return false;
+    }
+
+    return (erp_query("UPDATE erp_edoc_providers
+        SET credentials_enc = '', updated_at = '" . time() . "'
+        WHERE provider = '" . escape((string) $code) . "'") !== false);
 }
 
 /**

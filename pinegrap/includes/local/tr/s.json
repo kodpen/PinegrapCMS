@@ -4198,6 +4198,7 @@
     "Some product videos have no captions yet; a transcript is sent on request.": "Bazı ürün videolarında henüz altyazı yok; istenirse metin dökümü gönderilir.",
     "Some quick example text to build on the card title and make up the bulk of the card's content.": "Kart başlığının üstüne kurulan ve kartın içeriğinin çoğunu oluşturan kısa bir örnek metin.",
     "Some quick example text to build on the card title.": "Kart başlığının üstüne kurulacak kısa bir örnek metin.",
+    "Some required credentials are missing.": "Gerekli kimlik bilgilerinden bazıları eksik.",
     "Some scheduled tasks have stopped running, and backups and mail wait until they start again.": "Bazı zamanlanmış görevler durmuş; yeniden çalışana kadar yedekler ve e-postalar bekliyor.",
     "Some servers refuse PATCH and DELETE before the call reaches the site. So an update is a POST, and an endpoint that takes PATCH as well says so; a delete has a POST twin, its address followed by /delete, listed beside it, or its description names the POST address. A POST may also carry X-HTTP-Method-Override: PATCH, PUT or DELETE.": "Bazı sunucular PATCH ve DELETE isteklerini siteye ulaşmadan reddeder. Bu yüzden güncelleme bir POST'tur ve PATCH'i de kabul eden uç nokta bunu belirtir; silmenin yanında listelenen bir POST ikizi vardır (adresinin sonuna /delete eklenmiş hâli) ya da açıklaması POST adresini belirtir. Bir POST ayrıca X-HTTP-Method-Override: PATCH, PUT veya DELETE taşıyabilir.",
     "Some strong language": "Yer yer argo içerir",
