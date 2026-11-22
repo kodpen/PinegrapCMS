@@ -19136,15 +19136,18 @@
             // written here (workspace_channel_notes.js) for who may post.
             var attach = button('btn btn-sm btn-text theme-secondary', '', 'bi-paperclip', t('attach'));
             var noteHere = !!CFG.notes && !!window.PGWsChannelNotes && !self.isThread && !self.era && !!self.channel && !!self.channel.can_post;
+            // An empty workbook or document posted here and opened for
+            // editing (ws_file_office_new), where the preview can edit it.
+            var officeHere = !!CFG.office && !self.isThread && !self.era && !!self.channel && !!self.channel.can_post;
 
-            if (CFG.library || noteHere) {
+            if (CFG.library || noteHere || officeHere) {
                 menuButton(attach);
             }
 
             attach.addEventListener('click', function (event) {
                 var box = attach.getBoundingClientRect();
 
-                if (!CFG.library && !noteHere) {
+                if (!CFG.library && !noteHere && !officeHere) {
                     self.attach();
                     return;
                 }
@@ -19156,7 +19159,9 @@
                     CFG.library ? { icon: 'bi-folder2-open', label: t('lib_from_manager'), action: function () { self.attachFromLibrary(); } } : null,
                     noteHere ? { icon: 'bi-journal-plus', label: t('cn_write'), action: function () {
                         window.PGWsChannelNotes.write(window.PGWsKit, self.noteHooks());
-                    } } : null
+                    } } : null,
+                    officeHere ? { icon: 'bi-file-earmark-excel', label: t('file_new_sheet'), action: function () { self.newOfficeFile('xlsx'); } } : null,
+                    officeHere ? { icon: 'bi-file-earmark-word', label: t('file_new_doc'), action: function () { self.newOfficeFile('docx'); } } : null
                 ], true);
             });
             parts.push(attach);
@@ -21094,6 +21099,30 @@
             });
 
             input.click();
+        },
+
+        // "New spreadsheet" or "New document": an empty .xlsx or .docx is
+        // posted as the person's message at once and opened in the preview
+        // window for editing, where Save puts the edited file in its place.
+        newOfficeFile: function (kind) {
+            var self = this;
+            var channel = self.channel;
+
+            if (!channel || !channel.can_post) {
+                return;
+            }
+
+            api('ws_file_office_new', { channel_id: channel.id, kind: kind }).then(function (result) {
+                if (self.channel === channel) {
+                    self.sync(true);
+                }
+
+                if (result.message && result.message.file) {
+                    previewFile(result.message.file, function (saved) { self.fileEdited(saved); });
+                }
+            }).catch(function (error) {
+                toast((error && error.message) ? error.message : t('error_generic'), 'danger');
+            });
         },
 
         // A copy of a file of the file manager, waiting in the box for Send

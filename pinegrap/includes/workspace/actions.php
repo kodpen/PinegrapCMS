@@ -1911,6 +1911,35 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 
+        // "New spreadsheet" or "New document" of the attach menu: an empty
+        // workbook or document written by the product's own writer
+        // (pg_office_new_bytes()) and posted as the person's message, with
+        // the upload checks of any file; the screen then opens it for
+        // editing, where saving puts the edited file in its place.
+        case 'ws_file_office_new':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $kind = (string) ($request['kind'] ?? '');
+            $bytes = pg_office_new_bytes($kind);
+
+            if ($bytes === '') {
+                return ws_action_error(lang('Only a spreadsheet or a document is made here.'));
+            }
+
+            $result = ws_message_send_file_bytes($viewer, $channel, '', pg_office_new_name($kind), $bytes);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($result['message_id'])));
+
+            return ws_action_ok(array('message_id' => (int) $result['message_id'], 'message' => isset($payload[0]) ? $payload[0] : null));
+
         // Text files in a conversation (includes/workspace/file_edits.php):
         // read, and saved over the person's own file or sent as an edited
         // copy of somebody else's.
