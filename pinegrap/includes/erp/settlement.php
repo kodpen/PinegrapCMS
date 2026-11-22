@@ -238,6 +238,12 @@ function erp_invoice_refresh_paid($invoice_id)
     // not on every refresh that finds it still there.
     if ($updated && ($status === 'paid') && ((string) $invoice['status'] !== 'paid')) {
         erp_event_invoice($invoice_id, 'erp.invoice.paid');
+
+        // The contact of a sales invoice's account becomes a customer
+        // (first and last touch of the visitor journey).
+        if (function_exists('pg_lead_became_invoice')) {
+            pg_lead_became_invoice($invoice_id);
+        }
     }
 
     if ($updated && ($status === 'paid') && ((int) $invoice['order_id'] > 0) && function_exists('pg_order_mark_paid')) {

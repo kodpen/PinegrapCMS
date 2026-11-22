@@ -2281,6 +2281,7 @@
     "{var:1}%": "%{var:1}",
     "{var:1}% full": "%{var:1} dolu",
     "{var:1}% matched. Read {var:2}.": "%{var:1} eşleşti. Son okuma: {var:2}.",
+    "{var:1}% of leads became customers": "Potansiyel müşterilerin %{var:1} kadarı müşteriye dönüştü",
     "{var:1}% of left carts": "Terk edilen sepetlerin %{var:1}'i",
     "{var:1}% of reached": "Ulaşılanların %{var:1}'i",
     "{var:1}% of requests under {var:2} ms": "isteklerin %{var:1} kadarı {var:2} ms altında",

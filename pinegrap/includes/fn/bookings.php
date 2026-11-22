@@ -767,5 +767,11 @@ function pg_booking_confirm($booking, $status, $now, $source = 'site')
         pg_booking_created($id, $status);
     }
 
+    // A signed-in person's own booking on the site makes its contact a lead
+    // (first and last touch of the visitor journey).
+    if (in_array($source, array('site', 'link'), true) && function_exists('pg_lead_became_booking')) {
+        pg_lead_became_booking($customer['user_id'], $id);
+    }
+
     return array('answer' => 'ok', 'id' => $id, 'token' => $token);
 }

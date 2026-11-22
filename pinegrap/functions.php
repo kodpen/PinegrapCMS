@@ -158,6 +158,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/consent.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_journey_store.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_journey_view.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_comments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');

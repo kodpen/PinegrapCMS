@@ -194,6 +194,7 @@ function get_help_url($properties = array())
         'view_visitor_reports' => 'visitors#visitor-reports',
         'view_visitor_report'  => 'visitors#create-edit-visitor-report',
         'view_visitor'         => 'visitors#visit-details',
+        'lead_sources'         => 'visitors#lead-sources',
         'search_console'       => 'visitors#google-search-console',
         'visitor_search'       => 'visitors#site-search',
         'visitor_vitals'       => 'visitors#page-speed',
