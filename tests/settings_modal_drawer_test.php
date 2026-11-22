@@ -124,11 +124,13 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 			// Mailboxes' Bring in an .eml file: a hidden form its pane's
 			// fields name (ws_mail_eml_pane_form()).
 			$form = $form || (bool) preg_match('/^ws_mail_eml_pane_form\(\)$/', trim($entry));
+			// The E-mail tabs' Connect forms (includes/fn/mail_accounts.php).
+			$form = $form || (bool) preg_match('/^(pg_mail_connect_form|ws_mail_box_account_ask_forms)\(/', $entry);
 			pg_assert_true($drawer || $form, $name . ': a drawer or a hidden Connect, Release or .eml form, got ' . substr($entry, 0, 60));
 		}
 	}
 
-	pg_assert_same(29, $entries, 'Cron Jobs, the two Connect forms (E-mail sending\'s among them), E-mail sending\'s ways sheet, the firewall\'s bans drawer and Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, Pinegrap AI\'s latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers, the mailboxes\' set-up drawers, the Assistants and agents guides, the three Show all drawers and the two service drawers of Bookings');
+	pg_assert_same(30, $entries, 'Cron Jobs, the two Connect forms (E-mail sending\'s among them), Mailboxes\' Allow reading mail forms, E-mail sending\'s ways sheet, the firewall\'s bans drawer and Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, Pinegrap AI\'s latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers, the mailboxes\' set-up drawers, the Assistants and agents guides, the three Show all drawers and the two service drawers of Bookings');
 }
 
 function test_settings_modal_drawer_second_dialog_path_is_gone()
