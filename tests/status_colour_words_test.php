@@ -50,12 +50,13 @@ function test_status_colour_words_system_status_detail_rows()
 
 function test_status_colour_words_payment_methods_chart()
 {
-	$source = status_colour_words_source('view_orders.php');
+	// The payment methods are bars of one colour, each named and counted in
+	// words beside it: no method is told by its colour alone.
+	$html = pg_order_list_summary_html(array(), array(array('label' => 'Credit/Debit Card', 'value' => 201), array('label' => 'Offline Payment', 'value' => 36)));
 
-	pg_assert_contains("aria-label=\"' . h(\$payment_summary) . '\"", $source, 'canvas named with method: count');
-	pg_assert_contains('pg_format_number($payment_row[\'count\'], 0)', $source, 'counts in the panel number format');
-	pg_assert_contains('generateLabels: function (chart)', $source, 'legend carries the counts');
-	pg_assert_contains('Chart.overrides.doughnut.plugins.legend.labels.generateLabels(chart)', $source, 'built on the doughnut default');
+	pg_assert_contains('title="Credit/Debit Card">Credit/Debit Card</span>', $html, 'each method by name');
+	pg_assert_contains('<b class="pg-orders-summary-value">' . h(pg_format_number(36, 0)) . '</b>', $html, 'counts in the panel number format');
+	pg_assert_contains("'value' => (int) \$payment_row['n'],", status_colour_words_source('view_orders.php'), 'the count read per method');
 }
 
 function test_status_colour_words_search_console_chart()

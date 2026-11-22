@@ -9517,11 +9517,109 @@ button.no-popover:focus-visible {
   .pg-toolbar-grow:empty { display: none; }
 }
 
-/* The orders list's statistics strip (view_orders.php): a sparkline under a
-   figure, and the two small charts beside it. Chart.js draws with
-   maintainAspectRatio off, so the box sets the height. */
-.pg-orders-spark { position: relative; height: 56px; }
-.pg-orders-chart { position: relative; height: 160px; }
+/* All Orders (view_orders.php). The bar: a rule before the period navigator;
+   under 1280 px the rule becomes a line break, so the navigator starts the
+   bar's second row with the controls after it, in markup order. A sparkline
+   at the right of its figure: Chart.js draws with maintainAspectRatio off, so
+   the box sets the size. */
+.pg-orders-bar-rule {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 0;
+  height: 20px;
+  margin: 0 4px;
+  border-left: 1px solid var(--pg-border-color-translucent);
+}
+.pg-orders-period {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.pg-orders-period > .text-nowrap {
+  margin: 0 4px;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-body);
+}
+@media (max-width: 1279.98px) {
+  .pg-orders-bar-rule {
+    flex-basis: 100%;
+    height: 0;
+    margin: 0;
+    border: 0;
+  }
+}
+.pg-orders-spark { position: relative; flex: 1 1 0; min-width: 48px; max-width: 96px; height: 28px; }
+/* Sort, the selects and the filters button wrap as one group pushed to the
+   right (no grow slot: its minimum width would wrap the group a row lower). */
+.pg-orders-bar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
+  margin-left: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.pg-orders-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.pg-orders-summary-part {
+  min-width: 0;
+  padding: 14px 18px 16px;
+}
+.pg-orders-summary-part + .pg-orders-summary-part {
+  border-left: 1px solid var(--pg-border-color-translucent);
+}
+.pg-orders-summary-part > .pg-group-label {
+  margin: 0 0 6px;
+}
+.pg-orders-summary-bars {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pg-orders-summary-bars > li {
+  display: grid;
+  grid-template-columns: minmax(0, 170px) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 7px;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+.pg-orders-summary-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-orders-summary-track > i {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--pg-primary) 70%, transparent);
+}
+.pg-orders-summary-value {
+  min-width: 28px;
+  text-align: right;
+  font-weight: var(--pg-weight-strong);
+  font-variant-numeric: tabular-nums;
+  color: var(--pg-fg-body);
+}
+@media (max-width: 767.98px) {
+  .pg-orders-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pg-orders-summary-part + .pg-orders-summary-part {
+    border-left: 0;
+    border-top: 1px solid var(--pg-border-color-translucent);
+  }
+  .pg-orders-summary-bars > li {
+    grid-template-columns: minmax(0, 40%) minmax(0, 1fr) auto;
+  }
+}
 
 /* The design list's shared components panel carries a six column table;
    Bootstrap's 400px offcanvas would wrap every cell. */
@@ -33663,6 +33761,81 @@ textarea.pg-campaign-text {
     grid-column: 1 / -1;
   }
 }
+/* The strip form (.pg-figure-strip): a list's figures as cells of one card,
+   divided by rules, each value at the size of a phone figure with its
+   sparkline at its right; the card's last cell holds a button (Summary) and
+   the row under it what the button opens. Two cells a row on a phone, the
+   button's cell the whole row. */
+.pg-figure-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: stretch;
+  margin: 0 0 12px;
+  padding: 0;
+  overflow: hidden;
+}
+.pg-figure-strip-cell {
+  min-width: 0;
+  padding: 11px 18px;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.pg-figure-strip-cell > .pg-figure-label {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-figure-strip-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.pg-figure-strip-line > .pg-figure-value {
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 0;
+  margin: 2px 0 0;
+  font-size: var(--pg-text-figure-sm);
+}
+.pg-figure-strip-end {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+}
+.pg-figure-strip-end > .pg-button.is-open {
+  box-shadow: inset 0 0 0 1px var(--pg-primary);
+}
+.pg-figure-strip-more {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-figure-strip-more > .pg-figure-note {
+  padding: 12px 18px;
+}
+@media (max-width: 991.98px) {
+  .pg-figure-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pg-figure-strip-cell {
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+  }
+  .pg-figure-strip-cell:nth-child(2n) {
+    border-right: 0;
+  }
+  .pg-figure-strip-end {
+    grid-column: 1 / -1;
+    padding: 8px 14px;
+  }
+}
+@media (max-width: 575.98px) {
+  .pg-figure-strip-cell {
+    padding: 10px 12px;
+  }
+  .pg-figure-strip-line {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+}
+
 /* The compact form (.pg-figures-sm): a few facts at the top of a drawer.
    The value in the strong weight, not the Display cut; four a row from
    576 px up whatever the viewport, two a row on a phone. */
