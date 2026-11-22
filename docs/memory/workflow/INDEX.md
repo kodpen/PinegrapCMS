@@ -29,6 +29,7 @@
 - bug-hunt-areas-backend-layout-probe.md: Layout pass of the 2026-11-22 backend sweep: each panel screen at 390, 768 and 1440 px for covered or clipped controls and cut text; the fix, what the probe misreads
 - bug-hunt-areas-backend-sweep-2.md: Second pass of the owner's whole-backend sweep of 2026-11-22: a role without manage rights, every edit screen saved unchanged, phone dialogs, PHPStan level 2; what it fixed, what read clean
 - bug-hunt-areas-backend-sweep-3.md: Third pass of the owner's whole-backend sweep of 2026-11-22: scheduled jobs, site pages, dark theme, API answers, untranslated texts; what it fixed or reported, what read clean
+- bug-hunt-areas-backend-sweep-4.md: Fourth whole-backend sweep (2026-11-22): SQL error log while crawling, static scans, array and unknown-id probes, root files; fixed checkout recipient id, Visitors grouping, System Informations
 - bug-hunt-areas-backend-sweep.md: The owner's whole-backend sweep of 2026-11-22: how every panel screen was loaded and read, what it found and fixed (#11051), what read clean [decision: here]
 - bug-hunt-areas-booking-visitor.md: The bug hunt of bookings on the visitor's side (2026-11-20): the widget's endpoint, the slot engine, hold and confirm, the manage page, the deposit payment; what it fixed and what read clean
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
