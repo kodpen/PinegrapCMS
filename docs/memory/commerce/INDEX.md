@@ -411,6 +411,7 @@
 - staff-store-credit-card.md: Store Credit card on Edit User: the answer printed on the card, typed values kept, Void asked after the reason check, the Voided state and its reason (#9008)
 - stock-holds-placing.md: Where submit_order.php places the stock hold before the payment (SH3), the way back when units are not free, a payment's return, and the releases on a failed payment and at the cart
 - stock-holds-record.md: The stock_holds table (11.0.253) and stock_holds.php: units free, the cart checks reading them, placing under a lock, release at completion, the daily sweep (SH1 #10711, SH2 #10759, SH3)
+- stock-holds-shown.md: What people see of stock holds (SH4 #11166): the cart notice's words when other checkouts hold the units, and "Held in checkouts: n" under Edit Product's stock
 - stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events [decision: decisions-made-product-19.md]
 - stock-locations-decisions.md: Stock per location as a whole: why it exists, the sum contract, what stays on the total, and where each part is written down [decision: decisions-made-product-19.md]
 - stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location [decision: decisions-made-product-19.md, decisions-made-schema-33.md]

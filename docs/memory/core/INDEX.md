@@ -10,7 +10,9 @@
 - ai-prompt-version.md: pg_ai_prompt_version() (r + 8 hex of the rules' SHA-1), ws_ai_requests.prompt_version (11.0.112, #2829), the insert helper and its scan test, where the version is shown
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
+- application-review-correction-link.md: A not eligible application entry's correction link (AR4, V4): sent from the submitted form's Application card, application_fix.php with the named fields, the re-check, until the programme closes
 - application-review-decisions.md: A programme's Decisions tab (AR6, #11149): accepted, rejected, waitlisted, declined; the decision e-mails' preview and send; the waitlist call; the result on the submitter's form item view
+- application-review-jurors.md: An outside juror's signed link and page (AR4): application_juror.php, the HMAC link, withdrawn and expired states, Copy the link and Send the link again, reminders with the link, the waf entry
 - application-review-my-reviews.md: "My reviews" (AR3b): opened by programme membership with no Forms right, the queue, the scoring screen, blind review, "I know this applicant", reminders 3 and 1 days before a round's end [decision: here]
 - application-review-programme.md: Application programme settings (AR2): the Forms screens, the period check in the submit path, the entry row with eligibility, the override, criteria templates
 - application-review-ranking.md: A programme's Entries tab (AR5): combined scores of the current round, the consensus flag and Settle, ranking per category, the shortlist cut, "Start round N"
