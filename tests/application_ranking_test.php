@@ -189,7 +189,7 @@ function test_application_ranking_entries_tab_markup_follows_the_description()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_application_program.php');
 	$start = strpos($source, '// The Entries tab');
-	$tab = substr($source, $start, strpos($source, 'echo pg_page_shell(') - $start);
+	$tab = substr($source, $start, strpos($source, '// The Decisions tab') - $start);
 
 	// The rank order is the list's meaning and the cut is a row across it:
 	// a plain table, never the list table driver, and no form in a row.

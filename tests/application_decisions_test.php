@@ -122,3 +122,26 @@ function test_application_decisions_posted_ids_keep_only_the_programme_s()
 	pg_assert_same(array(3, 5), pg_application_posted_ids(array('3', '5', '5', 'x', '9', array(1)), array(3 => true, 5 => true, 7 => true)));
 	pg_assert_same(array(), pg_application_posted_ids('3', array(3 => true)));
 }
+
+function test_application_decisions_tab_markup_follows_the_description()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_application_program.php');
+	$start = strpos($source, '// The Decisions tab');
+	$tab = substr($source, $start, strpos($source, 'echo pg_page_shell(') - $start);
+
+	// The bulk buttons for the ticked rows, a decision select a row, and
+	// "Send the decision e-mails" as the view's one fill outside the drawer.
+	pg_assert_contains('name="submit_bulk" value="accepted"', $tab);
+	pg_assert_contains('name="submit_bulk" value="rejected"', $tab);
+	pg_assert_contains('name="submit_bulk" value="waitlisted"', $tab);
+	pg_assert_contains('name="decision[\' . $ap_eid . \']"', $tab);
+	pg_assert_contains('data-pg-ap-open="aprog_send"', $tab);
+
+	// The drawer: counts, a preview per text, Send as its one fill.
+	pg_assert_contains("1. ' . h(lang('Who gets which e-mail'))", $tab);
+	pg_assert_contains("2. ' . h(lang('Preview'))", $tab);
+	pg_assert_contains("3. ' . h(lang('Send'))", $tab);
+	pg_assert_same(2, substr_count($tab, 'pg-button-fill'), 'one fill on the screen, one in the drawer');
+	pg_assert_false(strpos($tab, 'btn btn-') !== false, 'look A buttons only');
+	pg_assert_contains("\$ap_tab('decisions', lang('Decisions'))", $source, 'the Decisions tab');
+}

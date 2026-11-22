@@ -325,6 +325,7 @@ function pg_application_program_input(array $post, array $fields)
     $program['reviewers_per_entry'] = $program['rounds'] ? $program['rounds'][0]['reviewers'] : 2;
     $program['blind'] = (($post['blind'] ?? '') === '1') ? 1 : 0;
     $program['blind_fields'] = array_values(array_intersect(array_filter($list($post['blind_fields'] ?? null), 'is_string'), array_keys($fields)));
+    $program['waitlist_auto'] = (($post['waitlist_auto'] ?? '') === '1') ? 1 : 0;
 
     $texts = is_array($post['texts'] ?? null) ? $post['texts'] : array();
     $program['texts'] = array('outside' => $text($post['outside_text'] ?? '', 2000));
@@ -473,7 +474,7 @@ function pg_application_program_decode(array $row)
         $row[$column] = is_array($value) ? $value : array();
     }
 
-    foreach (array('id', 'page_id', 'status', 'opens_at', 'closes_at', 'category_field_id', 'reviewers_per_entry', 'round', 'blind') as $column) {
+    foreach (array('id', 'page_id', 'status', 'opens_at', 'closes_at', 'category_field_id', 'reviewers_per_entry', 'round', 'blind', 'waitlist_auto') as $column) {
         $row[$column] = (int) ($row[$column] ?? 0);
     }
 
@@ -614,9 +615,9 @@ function pg_application_program_save(array $program, array $input, array $fields
     };
     $category_id = ($input['category_field'] !== '') ? $fields[$input['category_field']]['id'] : 0;
 
-    $ok = (bool) db_q("UPDATE application_programs SET name = ?, opens_at = ?, closes_at = ?, category_field_id = ?, reviewers_per_entry = ?, blind = ?,
+    $ok = (bool) db_q("UPDATE application_programs SET name = ?, opens_at = ?, closes_at = ?, category_field_id = ?, reviewers_per_entry = ?, blind = ?, waitlist_auto = ?,
         rounds = ?, eligibility = ?, blind_fields = ?, texts = ?, updated_at = UNIX_TIMESTAMP() WHERE id = ?", array(
-        $input['name'], $input['opens_at'], $input['closes_at'], $category_id, $input['reviewers_per_entry'], $input['blind'],
+        $input['name'], $input['opens_at'], $input['closes_at'], $category_id, $input['reviewers_per_entry'], $input['blind'], $input['waitlist_auto'],
         $json(pg_application_rounds_keep_cut($program['rounds'], $input['rounds'])), $json($input['eligibility']), $json($input['blind_fields']), $json($input['texts']), (int) $program['id'],
     ));
 

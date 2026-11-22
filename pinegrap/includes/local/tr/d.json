@@ -320,6 +320,7 @@
     "Declared on labels of parcels sent abroad. Empty uses the shop default of the label service.": "Yurt dışına giden kargoların etiketinde beyan edilir. Boş bırakılırsa kargo etiketi hizmetinin mağaza varsayılanı kullanılır.",
     "Decline": "Reddet",
     "Declined": "Reddedildi",
+    "Declined the place": "Yeri geri çevirdi",
     "Decorate": "Dekore Et",
     "Decoration": "Süsleme",
     "Decorative Arts": "Dekoratif Sanatlar",
