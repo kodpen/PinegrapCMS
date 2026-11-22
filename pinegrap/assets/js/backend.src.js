@@ -2205,7 +2205,8 @@ $(document).ready(function () {
     // show so the list is on its way while the drawer slides in. The head's
     // actions wait for the list's counts.
     pgUI.drawer.on('#notifications', 'show', function () {
-        $('#notifications').find('.pg-bell-mark-all, .pg-bell-head-menu').addClass('d-none');
+        $('#notifications').find('.pg-bell-head-menu').addClass('d-none');
+        $('#notifications').find('.pg-bell-new').prop('hidden', true);
         $('#notification_toggle').addClass('show');
         get_notifications();
     });
@@ -2221,14 +2222,16 @@ $(document).ready(function () {
         $('#notification_toggle').removeClass('show');
         $('#notifications .pg-bell-scroll').scrollTop(0);
         pgBellFilter = pg_bell_filter_kept();
-        pgBellSearch = '';
-        $('#notifications .pg-bell-search').val('');
+        pgBellView = pg_bell_view_kept();
+        pg_bell_search_show(false, true);
         pg_bell_menu_close($('#notifications .pg-bell-menu-wrap'), false);
     });
     // A row's menu keeps its keys: Escape closes it (not the drawer) and the
     // arrows, Home and End move between its items. Bound on the window's
     // capture phase, so the keys stop before the drawer hears Escape.
     window.addEventListener('keydown', pg_bell_menu_key, true);
+    // Then an open search takes Escape, before the drawer.
+    window.addEventListener('keydown', pg_bell_search_key, true);
     // The menu closes when the focus leaves it.
     $('#notifications').on('focusout', '.pg-bell-menu-wrap', function (event) {
         if (!event.relatedTarget || !$.contains(this, event.relatedTarget)) {
@@ -4221,9 +4224,9 @@ function get_notifications(keep_place) {
                     // Each row laid out for the drawer (pg_bell_row()),
                     // under its day heading. A fold's runs follow their head
                     // and carry its day (pg_notification_fold()), so they
-                    // never open one. "Mark all as read" and "Delete All
-                    // Notifications" stand in the drawer's head
-                    // (pg_bell_filter_apply() shows each when it applies).
+                    // never open one. "Mark all as read" waits in every
+                    // heading and in the head's menu; pg_bell_filter_apply()
+                    // shows it at the first shown heading.
                     output_notifications = '<ul class="list-group list-group-flush pg-bell-list">';
 
                     var notification_day = '';
@@ -4235,7 +4238,8 @@ function get_notifications(keep_place) {
 
                             if (row_day !== notification_day) {
                                 notification_day = row_day;
-                                output_notifications += '<li class="pg-bell-day" data-pg-bell-day="' + row_day + '">' + h(notification_days[row_day]) + '</li>';
+                                output_notifications += '<li class="pg-bell-day" data-pg-bell-day="' + row_day + '"><span class="pg-bell-day-name">' + h(notification_days[row_day]) + '</span>'
+                                    + '<button type="button" class="pg-bell-mark-all pg-bell-day-all no-popover" hidden><span class="bi bi-check2-all" aria-hidden="true"></span>' + h(lang('Mark all as read')) + '</button></li>';
                             }
                         }
 
@@ -4495,19 +4499,21 @@ function pg_bell_run(row, attributes, type, job, url, text, unread) {
         + '</li>';
 }
 
-// The bell's filters (output.php): All, a chip for each module and "Asked of
-// me", then "Unread only" and the search box, applied together. The chosen
-// chip and the switch stay for the next visit; the search is cleared when
+// The bell's filters (output.php): the selector (All, Unread, Asked of me),
+// a module chip pressed or none, and the search, applied together. The
+// selector and the chip stay for the next visit; the search is cleared when
 // the drawer closes. The Workspace's old inbox address opens the bell on
 // Team for that once (pgBellOpen()).
-var pgBellFilters = ['all', 'shop', 'erp', 'content', 'team', 'system', 'ask'];
+var pgBellFilters = ['all', 'shop', 'erp', 'content', 'team', 'system'];
+var pgBellViews = ['all', 'unread', 'ask'];
+pg_bell_kept_upgrade();
 var pgBellFilter = pg_bell_filter_kept();
-var pgBellUnreadOnly = pg_bell_unread_kept();
+var pgBellView = pg_bell_view_kept();
 var pgBellSearch = '';
 // The folded runs the reader opened, kept across the unread poll's redraw.
 var pgBellOpenFolds = {};
 
-// A filter's name as the chips know it: the old Workspace filter reads as
+// A module's name as the chips know it: the old Workspace filter reads as
 // Team, the old Site filter as All. Anything else gives fallback.
 function pg_bell_filter_name(name, fallback) {
     name = String(name || '');
@@ -4523,24 +4529,56 @@ function pg_bell_filter_name(name, fallback) {
     return (pgBellFilters.indexOf(name) > -1) ? name : fallback;
 }
 
-function pg_bell_filter_kept() {
-    var kept = 'all';
-
+function pg_bell_store_get(key) {
     try {
-        kept = String(localStorage.getItem('pg-bell-filter') || 'all');
+        return localStorage.getItem(key);
     } catch (error) {
-        kept = 'all';
+        return null;
     }
-
-    return pg_bell_filter_name(kept, 'all');
 }
 
-function pg_bell_unread_kept() {
+function pg_bell_store_set(key, value) {
     try {
-        return localStorage.getItem('pg-bell-unread') === '1';
+        if (value === null) {
+            localStorage.removeItem(key);
+        } else {
+            localStorage.setItem(key, value);
+        }
     } catch (error) {
-        return false;
+        // Kept for this page only.
     }
+}
+
+// The choices kept before the selector, read once: the "Unread only"
+// switch (pg-bell-unread) becomes Unread, a kept "Asked of me" chip
+// becomes Asked of me (it wins over the switch, being the narrower one), a
+// kept module chip stays.
+function pg_bell_kept_upgrade() {
+    if (pg_bell_store_get('pg-bell-view') !== null) {
+        return;
+    }
+
+    var view = 'all';
+
+    if (pg_bell_store_get('pg-bell-filter') === 'ask') {
+        view = 'ask';
+        pg_bell_store_set('pg-bell-filter', 'all');
+    } else if (pg_bell_store_get('pg-bell-unread') === '1') {
+        view = 'unread';
+    }
+
+    pg_bell_store_set('pg-bell-view', view);
+    pg_bell_store_set('pg-bell-unread', null);
+}
+
+function pg_bell_filter_kept() {
+    return pg_bell_filter_name(pg_bell_store_get('pg-bell-filter') || 'all', 'all');
+}
+
+function pg_bell_view_kept() {
+    var kept = String(pg_bell_store_get('pg-bell-view') || 'all');
+
+    return (pgBellViews.indexOf(kept) > -1) ? kept : 'all';
 }
 
 // Text made comparable for the search: lower case, with the dotted and
@@ -4549,14 +4587,20 @@ function pg_bell_search_text(text) {
     return String(text || '').toLocaleLowerCase().replace(/i̇/g, 'i').replace(/ı/g, 'i').replace(/\s+/g, ' ').trim();
 }
 
-// Whether a row is shown: the chosen chip, "Unread only" and the search
-// (the title, the place and the excerpt).
-function pg_bell_row_matches(row, filter, unread_only, search) {
-    if ((filter === 'ask') ? (row.getAttribute('data-pg-bell-ask') !== '1') : ((filter !== 'all') && (row.getAttribute('data-pg-bell-module') !== filter))) {
+// Whether a row is shown: the module chip, the selector and the search
+// (the title, the place and the excerpt). Unread keeps a row read since
+// the list was drawn (data-pg-bell-was-new), so it does not vanish under
+// the pointer.
+function pg_bell_row_matches(row, filter, view, search) {
+    if ((filter !== 'all') && (row.getAttribute('data-pg-bell-module') !== filter)) {
         return false;
     }
 
-    if (unread_only && !row.classList.contains('new') && (row.getAttribute('data-pg-bell-was-new') !== '1')) {
+    if ((view === 'ask') && (row.getAttribute('data-pg-bell-ask') !== '1')) {
+        return false;
+    }
+
+    if ((view === 'unread') && !row.classList.contains('new') && (row.getAttribute('data-pg-bell-was-new') !== '1')) {
         return false;
     }
 
@@ -4571,9 +4615,75 @@ function pg_bell_row_matches(row, filter, unread_only, search) {
     return pg_bell_search_text(text).indexOf(search) > -1;
 }
 
-// Shows the rows the filters leave, a chip for each module and for "Asked of
-// me" while a row of it is in the list, the unread count of each chip, and
-// one line when the filters leave nothing.
+// Marks what the search found in a shown row's title and text; the marks
+// of the search before are taken out first. Each letter is compared as
+// pg_bell_search_text() reads it, so the Turkish i matches either way.
+function pg_bell_search_mark(box, search) {
+    Array.prototype.forEach.call(box.querySelectorAll('mark.pg-bell-mark'), function (mark) {
+        var parent = mark.parentNode;
+
+        parent.replaceChild(document.createTextNode(mark.textContent), mark);
+        parent.normalize();
+    });
+
+    if (search === '') {
+        return;
+    }
+
+    Array.prototype.forEach.call(box.querySelectorAll('li.software_notification:not(.pg-bell-off) :is(.pg-bell-title, .pg-bell-excerpt)'), function (part) {
+        var walker = document.createTreeWalker(part, NodeFilter.SHOW_TEXT);
+        var nodes = [];
+
+        while (walker.nextNode()) {
+            nodes.push(walker.currentNode);
+        }
+
+        nodes.forEach(function (node) {
+            var source = node.nodeValue;
+            var folded = '';
+            var from = [];
+
+            for (var i = 0; i < source.length; i++) {
+                var letter = /\s/.test(source[i]) ? ' ' : source[i].toLocaleLowerCase().replace(/i̇/g, 'i').replace(/ı/g, 'i');
+
+                for (var j = 0; j < letter.length; j++) {
+                    folded += letter[j];
+                    from.push(i);
+                }
+            }
+
+            var at = folded.indexOf(search);
+
+            if (at < 0) {
+                return;
+            }
+
+            var piece = document.createDocumentFragment();
+            var done = 0;
+
+            while (at > -1) {
+                var start = from[at];
+                var end = from[at + search.length - 1] + 1;
+                var mark = document.createElement('mark');
+
+                mark.className = 'pg-bell-mark';
+                mark.textContent = source.slice(start, end);
+                piece.appendChild(document.createTextNode(source.slice(done, start)));
+                piece.appendChild(mark);
+                done = end;
+                at = folded.indexOf(search, at + search.length);
+            }
+
+            piece.appendChild(document.createTextNode(source.slice(done)));
+            node.parentNode.replaceChild(piece, node);
+        });
+    });
+}
+
+// Shows the rows the filters leave, a chip for each module while a row of
+// it is in the list (the line only with two modules or more), the unread
+// counts of the selector and the chips, the "N new" pill, and one line
+// when the filters leave nothing.
 function pg_bell_filter_apply() {
     var box = document.getElementById('notifications');
 
@@ -4583,28 +4693,33 @@ function pg_bell_filter_apply() {
 
     var bar = box.querySelector('.pg-bell-filters');
     var filter = bar ? pgBellFilter : 'all';
+    var view = bar ? pgBellView : 'all';
     var search = pg_bell_search_text(pgBellSearch);
     var rows = box.querySelectorAll('li.software_notification');
     var counts = {};
     var present = {};
+    var modules = 0;
     var shown = 0;
     var live = 0;
 
     Array.prototype.forEach.call(rows, function (row) {
         var module = row.getAttribute('data-pg-bell-module') || 'system';
         var ask = row.getAttribute('data-pg-bell-ask') === '1';
-        var off = !pg_bell_row_matches(row, filter, pgBellUnreadOnly, search);
+        var off = !pg_bell_row_matches(row, filter, view, search);
 
         row.classList.toggle('pg-bell-off', off);
 
         if (!row.classList.contains('pg-bell-gone')) {
             live++;
-            present[module] = true;
-            present.ask = present.ask || ask;
+
+            if (!present[module]) {
+                present[module] = true;
+                modules++;
+            }
         }
 
         if (row.classList.contains('new')) {
-            counts.all = (counts.all || 0) + 1;
+            counts.unread = (counts.unread || 0) + 1;
             counts[module] = (counts[module] || 0) + 1;
 
             if (ask) {
@@ -4617,12 +4732,19 @@ function pg_bell_filter_apply() {
         }
     });
 
-    // A day heading stays while a row under it is shown.
+    // A day heading stays while a row under it is shown; "Mark all as
+    // read" stands at the first shown one while a row is unread and no
+    // search is open.
     var heading = null;
     var heading_rows = 0;
+    var first_heading = null;
     var heading_done = function () {
         if (heading) {
             heading.classList.toggle('pg-bell-off', heading_rows === 0);
+
+            if ((heading_rows > 0) && !first_heading) {
+                first_heading = heading;
+            }
         }
     };
 
@@ -4637,27 +4759,54 @@ function pg_bell_filter_apply() {
     });
     heading_done();
 
-    // The chosen chip stays in sight while it has no row, so the reader can
-    // leave it.
+    Array.prototype.forEach.call(box.querySelectorAll('.pg-bell-day-all'), function (button) {
+        button.hidden = !counts.unread || (search !== '') || (button.parentNode !== first_heading);
+    });
+
+    var count_text = function (count) {
+        return (count > 99) ? '99+' : String(count || '');
+    };
+
+    // The pressed chip stays in sight while it has no row, so the reader
+    // can leave it.
     if (bar) {
+        Array.prototype.forEach.call(bar.querySelectorAll('[data-pg-bell-view]'), function (item) {
+            var key = item.getAttribute('data-pg-bell-view');
+            var count = item.querySelector('.pg-bell-count');
+
+            item.setAttribute('aria-pressed', (key === view) ? 'true' : 'false');
+
+            if (count) {
+                count.textContent = count_text(counts[key]);
+                count.hidden = !counts[key];
+            }
+        });
+
         Array.prototype.forEach.call(bar.querySelectorAll('[data-pg-bell-filter]'), function (chip) {
             var key = chip.getAttribute('data-pg-bell-filter');
             var count = chip.querySelector('.pg-bell-count');
 
             chip.setAttribute('aria-pressed', (key === filter) ? 'true' : 'false');
-            chip.hidden = (key !== 'all') && (key !== filter) && !present[key];
+            chip.hidden = (key !== filter) && !present[key];
 
             if (count) {
-                count.textContent = (counts[key] > 99) ? '99+' : String(counts[key] || '');
+                count.textContent = count_text(counts[key]);
                 count.hidden = !counts[key];
             }
         });
+
+        var chips = bar.querySelector('.pg-bell-chips');
+
+        if (chips) {
+            chips.hidden = (modules < 2) && (filter === 'all');
+        }
     }
 
-    var switcher = box.querySelector('.pg-bell-unread-switch');
+    var pill = box.querySelector('.pg-bell-new');
 
-    if (switcher) {
-        switcher.checked = pgBellUnreadOnly;
+    if (pill) {
+        pill.textContent = lang('{var:1} new').replace('{var:1}', count_text(counts.unread));
+        pill.hidden = !counts.unread;
     }
 
     // "No Notification" stands for a list with no row left; a list the
@@ -4667,18 +4816,22 @@ function pg_bell_filter_apply() {
     }
     $(box).find('.pg-bell-no-match').toggleClass('d-none', (live === 0) || (shown > 0));
 
-    // Deleting everything is offered only while everything is shown (All,
-    // no switch, no search) and there is more than one row; marking
-    // everything read only while something is unread.
-    var head_menu = $(box).find('.pg-bell-head-menu');
-    var no_delete = (filter !== 'all') || pgBellUnreadOnly || (search !== '') || (rows.length < 2);
+    pg_bell_search_mark(box, search);
 
-    if (no_delete) {
+    // The head's menu: "Mark all as read" while a row is unread; "Delete
+    // All Notifications" only while everything is shown (All, no chip, no
+    // search) and there is more than one row. With neither the menu goes.
+    var head_menu = $(box).find('.pg-bell-head-menu');
+    var no_delete = (filter !== 'all') || (view !== 'all') || (search !== '') || (rows.length < 2);
+
+    head_menu.find('.pg-bell-delete-all').prop('hidden', no_delete);
+    head_menu.find('.pg-bell-mark-all').prop('hidden', !counts.unread);
+
+    if (no_delete && !counts.unread) {
         pg_bell_menu_close(head_menu, false);
     }
 
-    head_menu.toggleClass('d-none', no_delete);
-    $(box).find('.pg-bell-mark-all').toggleClass('d-none', !counts.all);
+    head_menu.toggleClass('d-none', no_delete && !counts.unread);
 }
 
 // A row's quick "Mark as read", a check button; a read row keeps an empty
@@ -4731,14 +4884,19 @@ function pg_bell_fold_button(notification_id, count) {
 }
 
 // Opens the bell on one filter: the Workspace's old inbox address
-// (workspace.php?inbox=1) asks for 'workspace', which opens Team. The kept
-// choice comes back when the bell closes.
+// (workspace.php?inbox=1) asks for 'workspace', which opens Team; 'ask' and
+// 'unread' choose the selector. The kept choice comes back when the bell
+// closes.
 window.pgBellOpen = function (filter) {
     if (!document.getElementById('notifications') || !window.pgUI) {
         return false;
     }
 
-    pgBellFilter = pg_bell_filter_name(filter, '') || pg_bell_filter_kept();
+    if (pgBellViews.indexOf(String(filter || '')) > 0) {
+        pgBellView = String(filter);
+    } else {
+        pgBellFilter = pg_bell_filter_name(filter, '') || pg_bell_filter_kept();
+    }
 
     // An open drawer only takes the filter; a page that asks while it loads
     // waits for Bootstrap.
@@ -4753,28 +4911,13 @@ window.pgBellOpen = function (filter) {
     return true;
 };
 
-$(document).on('click', '#notifications [data-pg-bell-filter]', function () {
-    pgBellFilter = pg_bell_filter_name($(this).attr('data-pg-bell-filter'), 'all');
+// The selector stays for the next visit. Unread starts from the rows
+// unread now.
+$(document).on('click', '#notifications [data-pg-bell-view]', function () {
+    var view = String($(this).attr('data-pg-bell-view'));
 
-    try {
-        localStorage.setItem('pg-bell-filter', pgBellFilter);
-    } catch (error) {
-        // Kept for this page only.
-    }
-
-    pg_bell_filter_apply();
-});
-
-// "Unread only" works with the chosen chip and stays for the next visit.
-// Turning it on starts from the rows unread now.
-$(document).on('change', '#notifications .pg-bell-unread-switch', function () {
-    pgBellUnreadOnly = this.checked;
-
-    try {
-        localStorage.setItem('pg-bell-unread', pgBellUnreadOnly ? '1' : '0');
-    } catch (error) {
-        // Kept for this page only.
-    }
+    pgBellView = (pgBellViews.indexOf(view) > -1) ? view : 'all';
+    pg_bell_store_set('pg-bell-view', pgBellView);
 
     $('#notifications li.software_notification').each(function () {
         if ($(this).hasClass('new')) {
@@ -4787,10 +4930,80 @@ $(document).on('change', '#notifications .pg-bell-unread-switch', function () {
     pg_bell_filter_apply();
 });
 
-$(document).on('input', '#notifications .pg-bell-search', function () {
-    pgBellSearch = String(this.value || '');
+// A module chip is a toggle: pressed it shows that module, pressed again
+// every module. The choice stays for the next visit.
+$(document).on('click', '#notifications [data-pg-bell-filter]', function () {
+    var name = pg_bell_filter_name($(this).attr('data-pg-bell-filter'), 'all');
+
+    pgBellFilter = (name === pgBellFilter) ? 'all' : name;
+    pg_bell_store_set('pg-bell-filter', pgBellFilter);
     pg_bell_filter_apply();
 });
+
+// The search field takes the head's place; the arrow (or Escape) gives the
+// head back, clears the search and returns the focus to Search (unless
+// keep_focus: the drawer closing gives the focus back to the bell).
+function pg_bell_search_show(open, keep_focus) {
+    var box = $('#notifications');
+    var bar = box.find('.pg-bell-search-bar');
+
+    if (bar.prop('hidden') === !open) {
+        return;
+    }
+
+    if (!open) {
+        pgBellSearch = '';
+        box.find('.pg-bell-search').val('');
+        box.find('.pg-bell-search-clear').prop('hidden', true);
+    }
+
+    pg_bell_menu_close(box.find('.pg-bell-head-menu'), false);
+    bar.prop('hidden', !open);
+    box.find('.pg-bell-head-main').prop('hidden', open);
+    box.find('.pg-bell-search-open').attr('aria-expanded', open ? 'true' : 'false');
+    pg_bell_filter_apply();
+
+    if (!keep_focus) {
+        box.find(open ? '.pg-bell-search' : '.pg-bell-search-open').trigger('focus');
+    }
+}
+
+$(document).on('click', '#notifications .pg-bell-search-open', function () {
+    pg_bell_search_show(true);
+});
+
+$(document).on('click', '#notifications .pg-bell-search-back', function () {
+    pg_bell_search_show(false);
+});
+
+$(document).on('click', '#notifications .pg-bell-search-clear', function () {
+    pgBellSearch = '';
+    $('#notifications .pg-bell-search').val('').trigger('focus');
+    $(this).prop('hidden', true);
+    pg_bell_filter_apply();
+});
+
+$(document).on('input', '#notifications .pg-bell-search', function () {
+    pgBellSearch = String(this.value || '');
+    $('#notifications .pg-bell-search-clear').prop('hidden', pgBellSearch === '');
+    pg_bell_filter_apply();
+});
+
+// Escape closes an open search before the drawer. An open menu takes it
+// first (pg_bell_menu_key(), which marks the event handled).
+function pg_bell_search_key(event) {
+    if ((event.key !== 'Escape') || event.defaultPrevented || !(event.target instanceof Element) || !event.target.closest('#notifications')) {
+        return;
+    }
+
+    if ($('#notifications .pg-bell-search-bar').prop('hidden')) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    pg_bell_search_show(false);
+}
 
 $(document).on('click', '#notifications .pg-bell-more', function () {
     var head = parseInt($(this).attr('data-pg-bell-more'), 10) || 0;
@@ -5034,8 +5247,12 @@ $(document).on('click', '#notifications .pg-bell-delete-all', function () {
     remove_all_notifications();
 });
 
-// "Mark all as read" in the drawer's head: every row the reader sees.
+// "Mark all as read" at the first day heading or in the head's menu: every
+// row the reader sees. The button goes once nothing is unread, so the focus
+// stays in the drawer, on its close button.
 $(document).on('click', '#notifications .pg-bell-mark-all', function () {
+    pg_bell_menu_close($(this).closest('.pg-bell-menu-wrap'), false);
+    $('#notifications .pg-bell-close').trigger('focus');
     edit_notification(0, 'mark_all_read');
 });
 
