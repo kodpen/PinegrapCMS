@@ -339,6 +339,8 @@ function ws_openapi_objects()
         'WorkspaceFlowBoxTry'       => 'ws_api_flow_box_try_schema',
         'WorkspaceFlowTrial'        => 'ws_api_flow_trial_schema',
         'WorkspaceFlowTrialStep'    => 'ws_api_flow_trial_step_schema',
+        'WorkspaceFlowCounts'       => 'ws_api_flow_counts_schema',
+        'WorkspaceFlowBoxCount'     => 'ws_api_flow_box_count_schema',
         'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
         'WorkspaceMcpServer'        => 'ws_api_mcp_server_schema',
         'WorkspaceMcpTool'          => 'ws_api_mcp_tool_schema',
@@ -3059,8 +3061,27 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'running', 'waiting', 'done', 'failed', 'cancelled'), 'description' => 'open keeps the runs still going: running and waiting.'),
+                array('name' => 'node', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'A box id: with state, only the runs behind that count of the box (GET /workspace/flows/{id}/counts).'),
+                array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('waiting', 'passed', 'failed'), 'description' => 'With node: waiting keeps the runs still going that wait at the box now, passed those with a pass of it done, failed those with a pass of it failed in the last days.'),
+                array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => (int) (WS_FLOW_RUNS_KEEP / 86400), 'default' => 7, 'description' => 'With node and state passed or failed: the days counted back from now.'),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_runs.counts',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/counts',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_counts',
+            'returns'     => 'WorkspaceFlowCounts',
+            'summary'     => 'Count the runs at each box of a flow',
+            'description' => 'Per box of a flow the owner of the application reaches: waiting, the runs still going that wait at the box now; passed and failed, the times a run finished the box done or failed in the last days. The runs counted are those GET /workspace/flows/{id}/runs lists. boxes lists only the boxes with a count, by node id. GET /workspace/flows/{id}/runs with node and state lists the runs behind a count.',
+            'details'     => 'A box a loop passes twice counts twice in passed and failed, its run once in waiting. Node ids of every version the runs followed come back. Every run is counted for the flow\'s owner and an edit share, the runs of channels they read for others. For someone who may not edit the flow, the newest ' . WS_FLOW_COUNTS_SCAN . ' runs still going or ended in the days are looked at one by one; when there are more, partial is true and the older ones are left out. since is the moment counted from, as a Unix time.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => (int) (WS_FLOW_RUNS_KEEP / 86400), 'default' => 7, 'description' => 'The days counted back from now for passed and failed.'),
             ),
         ),
 
