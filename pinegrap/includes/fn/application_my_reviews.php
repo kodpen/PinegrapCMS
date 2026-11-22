@@ -20,6 +20,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_reviewers.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_ranking.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_jurors.php');
 
 /**
  * Whether blind review hides a form field from reviewers: the contact fields
@@ -191,14 +192,38 @@ function pg_application_my_programs($user_id)
         return array();
     }
 
+    return _pg_application_reviewer_programs('application_reviewers.user_id = ?', (int) $user_id);
+}
+
+/**
+ * The programme of an outside juror's row, open or closed, in the shape of
+ * pg_application_my_programs().
+ *
+ * @param int $reviewer_id
+ * @return array list of at most one programme
+ */
+function pg_application_juror_programs($reviewer_id)
+{
+    return _pg_application_reviewer_programs('application_reviewers.id = ? AND application_reviewers.user_id = 0', (int) $reviewer_id);
+}
+
+/**
+ * The open or closed programmes of the reviewer rows a condition finds.
+ *
+ * @param string $where SQL on application_reviewers with one placeholder
+ * @param int    $value
+ * @return array
+ */
+function _pg_application_reviewer_programs($where, $value)
+{
     $programs = array();
     $rows = _pg_application_rows("SELECT application_programs.*, application_reviewers.id AS reviewer_id,
             (SELECT COUNT(*) FROM application_reviews WHERE application_reviews.reviewer_id = application_reviewers.id AND application_reviews.round = application_programs.round AND application_reviews.status IN (0, 1, 2)) AS assigned,
             (SELECT COUNT(*) FROM application_reviews WHERE application_reviews.reviewer_id = application_reviewers.id AND application_reviews.round = application_programs.round AND application_reviews.status = 2) AS done
         FROM application_reviewers
         INNER JOIN application_programs ON application_programs.id = application_reviewers.program_id
-        WHERE application_reviewers.user_id = ? AND application_reviewers.revoked_at = 0 AND application_programs.status IN (1, 2)
-        ORDER BY application_programs.id DESC", array((int) $user_id));
+        WHERE " . $where . " AND application_reviewers.revoked_at = 0 AND application_programs.status IN (1, 2)
+        ORDER BY application_programs.id DESC", array($value));
 
     foreach ($rows as $row) {
         $program = pg_application_program_decode($row);
@@ -247,11 +272,35 @@ function pg_application_my_review($review_id, $user_id)
         INNER JOIN application_reviewers ON application_reviewers.id = application_reviews.reviewer_id
         WHERE application_reviews.id = ? AND application_reviewers.user_id = ? AND application_reviewers.revoked_at = 0 AND application_reviews.status IN (0, 1, 2)", array((int) $review_id, (int) $user_id));
 
-    if (!$rows || ((int) $user_id <= 0)) {
-        return null;
-    }
+    return ($rows && ((int) $user_id > 0)) ? _pg_application_review_context($rows[0]) : null;
+}
 
-    $review = $rows[0];
+/**
+ * One review of an outside juror, found by their reviewer row (the link's);
+ * null as pg_application_my_review() answers it.
+ *
+ * @param int $review_id
+ * @param int $reviewer_id
+ * @return array|null
+ */
+function pg_application_juror_review($review_id, $reviewer_id)
+{
+    $rows = _pg_application_rows("SELECT application_reviews.* FROM application_reviews
+        INNER JOIN application_reviewers ON application_reviewers.id = application_reviews.reviewer_id
+        WHERE application_reviews.id = ? AND application_reviewers.id = ? AND application_reviewers.user_id = 0 AND application_reviewers.revoked_at = 0 AND application_reviews.status IN (0, 1, 2)", array((int) $review_id, (int) $reviewer_id));
+
+    return $rows ? _pg_application_review_context($rows[0]) : null;
+}
+
+/**
+ * A review row with its entry and programme, as the scoring screen reads
+ * it; null when the entry is gone or the programme is a draft.
+ *
+ * @param array $review application_reviews row
+ * @return array|null
+ */
+function _pg_application_review_context(array $review)
+{
     $entries = _pg_application_rows("SELECT application_entries.*, forms.reference_code FROM application_entries LEFT JOIN forms ON forms.id = application_entries.form_id WHERE application_entries.id = ?", array((int) $review['entry_id']));
     $program = pg_application_program_get($review['program_id']);
 
@@ -400,10 +449,11 @@ function pg_application_review_conflict(array $context, $reason)
 
 /**
  * The general job's pass: three days and one day before a round's end, each
- * panel user with open reviews in it gets one e-mail with how many are left
- * and the link to "My reviews". Each reviewer's open reviews are claimed by
- * one conditional UPDATE of reminded_at before the mail, so two runs at once
- * never both send. Outside jurors are reminded with their own link (AR4).
+ * reviewer with open reviews in it gets one e-mail with how many are left
+ * and their link: "My reviews" for a panel user, their own page for an
+ * outside juror. Each reviewer's open reviews are claimed by one
+ * conditional UPDATE of reminded_at before the mail, so two runs at once
+ * never both send.
  *
  * @param int|null $now
  * @return int e-mails sent
@@ -426,18 +476,24 @@ function pg_application_reminders_run($now = null)
             continue;
         }
 
-        $reviewers = _pg_application_rows("SELECT application_reviews.reviewer_id, COUNT(*) AS open_reviews, MAX(application_reviews.reminded_at) AS reminded_at, user.user_email
+        $reviewers = _pg_application_rows("SELECT application_reviews.reviewer_id, COUNT(*) AS open_reviews, MAX(application_reviews.reminded_at) AS reminded_at,
+                application_reviewers.user_id, application_reviewers.email, application_reviewers.created_at, application_reviewers.token_hash, user.user_email
             FROM application_reviews
             INNER JOIN application_reviewers ON application_reviewers.id = application_reviews.reviewer_id
-            INNER JOIN user ON user.user_id = application_reviewers.user_id
+            LEFT JOIN user ON user.user_id = application_reviewers.user_id AND application_reviewers.user_id > 0
             WHERE application_reviews.program_id = ? AND application_reviews.round = ? AND application_reviews.status IN (0, 1)
-                AND application_reviewers.user_id > 0 AND application_reviewers.revoked_at = 0
-            GROUP BY application_reviews.reviewer_id, user.user_email", array($program['id'], $round));
+                AND application_reviewers.revoked_at = 0
+            GROUP BY application_reviews.reviewer_id, application_reviewers.user_id, application_reviewers.email, application_reviewers.created_at, application_reviewers.token_hash, user.user_email", array($program['id'], $round));
 
         foreach ($reviewers as $reviewer) {
             $stage = pg_application_reminder_stage($ends_at, (int) $reviewer['reminded_at'], $now);
 
-            if (($stage === 0) || !validate_email_address((string) $reviewer['user_email'])) {
+            // An outside juror's reminder carries their own page's link.
+            $reviewer['juror_url'] = ((int) $reviewer['user_id'] === 0)
+                ? pg_application_juror_url(array('id' => $reviewer['reviewer_id']) + $reviewer) : '';
+            $recipient = pg_application_reminder_recipient($reviewer, URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/my_reviews.php');
+
+            if (($stage === 0) || !validate_email_address($recipient['to'])) {
                 continue;
             }
 
@@ -451,11 +507,11 @@ function pg_application_reminders_run($now = null)
             $body = lang(array('string' => 'You have {var:1} entries left to review in "{var:2}". The round ends on {var:3}.', 'vars' => array((int) $reviewer['open_reviews'], $program['name'], get_absolute_time(array('timestamp' => $ends_at, 'format' => 'plain_text')))));
 
             email(array(
-                'to'                 => (string) $reviewer['user_email'],
+                'to'                 => $recipient['to'],
                 'from_email_address' => EMAIL_ADDRESS,
                 'subject'            => $subject,
                 'format'             => 'plain_text',
-                'body'               => $body . "\n\n" . URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/my_reviews.php',
+                'body'               => $body . "\n\n" . $recipient['link'],
                 'type'               => 'system',
                 'queue'              => true,
             ));
@@ -464,4 +520,265 @@ function pg_application_reminders_run($now = null)
     }
 
     return $sent;
+}
+
+/**
+ * The pills of a review's state: To do, Started, Sent.
+ *
+ * @return array status => HTML
+ */
+function pg_application_review_pills()
+{
+    return array(
+        0 => '<span class="pg-pill pg-tone-gray">' . h(lang('To do')) . '</span>',
+        1 => '<span class="pg-pill pg-tone-amber">' . h(lang('Started')) . '</span>',
+        2 => '<span class="pg-pill pg-tone-teal">' . h(lang('Sent')) . '</span>',
+    );
+}
+
+/**
+ * An entry's name for its reviewer: blind review shows only its number.
+ *
+ * @param array $program
+ * @param array $row reference_code and entry_id (or id)
+ * @return string
+ */
+function pg_application_review_entry_name(array $program, array $row)
+{
+    if ($program['blind'] || ((string) $row['reference_code'] === '')) {
+        return lang(array('string' => 'Entry {var:1}', 'vars' => array((int) ($row['entry_id'] ?? $row['id']))));
+    }
+
+    return (string) $row['reference_code'];
+}
+
+/**
+ * A round's days left in words, '' when it has no end.
+ *
+ * @param int $ends_at
+ * @return string
+ */
+function pg_application_review_days_text($ends_at)
+{
+    $left = pg_application_days_left($ends_at, time());
+
+    if ($left === null) {
+        return '';
+    }
+
+    return ($left === 0) ? lang('The round has ended') : lang(array('string' => '{var:1} days left', 'vars' => array($left)));
+}
+
+/**
+ * The list of "My reviews" and of an outside juror's page: a programme a
+ * card with its progress, then its queue as rows.
+ *
+ * @param array    $programs pg_application_my_programs()
+ * @param callable $url      review id => the scoring screen's address
+ * @return string HTML
+ */
+function pg_application_review_cards_html(array $programs, callable $url)
+{
+    $pills = pg_application_review_pills();
+    $cards = '';
+
+    foreach ($programs as $program) {
+        $choices = pg_application_category_choices($program);
+        $rows = '';
+        $queue = pg_application_my_queue($program['reviewer_id'], $program['round']);
+
+        foreach ($queue as $row) {
+            $rows .= '<div class="pg-card-inner-row">'
+                . '<div class="flex-grow-1 min-width-0"><a class="pg-list-row-title" href="' . h($url((int) $row['id'])) . '">' . h(pg_application_review_entry_name($program, $row)) . '</a>'
+                . (((string) $row['category'] !== '') ? '<div class="pg-text-meta">' . h($choices[$row['category']] ?? $row['category']) . '</div>' : '') . '</div>'
+                . ($pills[(int) $row['status']] ?? '') . '</div>';
+        }
+
+        $percent = ($program['assigned'] > 0) ? (int) floor($program['done'] * 100 / $program['assigned']) : 0;
+        $progress = lang(array('string' => '{var:1} of {var:2} sent', 'vars' => array($program['done'], $program['assigned'])));
+        $days = pg_application_review_days_text($program['ends_at']);
+        $empty = (($program['assigned'] > 0) && ($program['done'] === $program['assigned']))
+            ? '<p class="pg-text-2 mb-0" role="status">' . h(lang('Every entry given to you is sent. Thank you.')) . '</p>' : '';
+        $cards .= '<section class="pg-card p-5 mb-5" aria-labelledby="mr_program_' . $program['id'] . '">'
+            . '<div class="d-flex flex-wrap align-items-center gap-2"><h2 class="pg-title-section mb-0 flex-grow-1" id="mr_program_' . $program['id'] . '">' . h($program['name']) . '</h2>'
+            . (($days !== '') ? '<span class="pg-text-2">' . h($days) . '</span>' : '') . '</div>'
+            . '<p class="pg-card-sub mb-3">' . h(lang(array('string' => 'Round {var:1}', 'vars' => array(max(1, $program['round']))))) . ' · ' . h($progress) . '</p>'
+            . '<div class="progress mb-5" role="progressbar" aria-label="' . h($progress) . '" aria-valuenow="' . $percent . '" aria-valuemin="0" aria-valuemax="100" style="height:0.5rem"><div class="progress-bar" style="width:' . $percent . '%"></div></div>'
+            . $empty
+            . (($rows !== '') ? '<div class="pg-card-inner' . (($empty !== '') ? ' mt-4' : '') . '">' . $rows . '</div>' : '<p class="pg-text-2 mb-0">' . h(lang('No entries were given to you in this round yet.')) . '</p>')
+            . '</section>';
+    }
+
+    return $cards;
+}
+
+/**
+ * The scoring screen's form: the answers at the left, the criteria at the
+ * right, the foot with Send the review, Previous, Next and "I know this
+ * applicant", and its reason card.
+ *
+ * @param array    $mr     pg_application_my_review() or pg_application_juror_review()
+ * @param string   $action the address the form posts to
+ * @param string   $hidden hidden inputs beside the review's id (HTML)
+ * @param callable $url    review id => the scoring screen's address
+ * @return string HTML
+ */
+function pg_application_review_screen_html(array $mr, $action, $hidden, callable $url)
+{
+    $program = $mr['program'];
+    $review = $mr['review'];
+    $open = $mr['open'];
+    $id = (int) $review['id'];
+    $queue = pg_application_my_queue($review['reviewer_id'], $review['round']);
+    list($prev, $next) = pg_application_queue_neighbours(array_column($queue, 'id'), $id);
+    $answers = '';
+
+    foreach (pg_application_entry_view($program, $mr['entry']['form_id']) as $field) {
+        $answers .= '<div class="pg-card-inner-row d-block"><div class="pg-text-meta">' . h($field['label']) . '</div>'
+            . (($field['html'] === null) ? '<div class="pg-text-2 fst-italic">' . h(lang('Hidden')) . '</div>' : '<div>' . (($field['html'] !== '') ? $field['html'] : '<span class="pg-text-2">—</span>') . '</div>')
+            . '</div>';
+    }
+
+    $criteria = '';
+
+    foreach ($mr['criteria'] as $criterion) {
+        $cid = (string) $criterion['id'];
+        $stored = $mr['scores'][$cid] ?? array('score' => null, 'note' => '');
+        $choices = '';
+
+        for ($score = 1; $score <= 10; $score++) {
+            $choices .= '<label class="pg-seg-item"><input type="radio" class="visually-hidden" name="score[' . h($cid) . ']" value="' . $score . '"' . (($stored['score'] === $score) ? ' checked' : '') . ($open ? '' : ' disabled') . '>' . $score . '</label>';
+        }
+
+        $criteria .= '<div class="pg-card-inner-row d-block" data-pg-mr-criterion data-weight="' . (int) $criterion['weight'] . '">'
+            . '<div class="d-flex align-items-baseline gap-2 mb-2"><strong class="pg-list-row-title flex-grow-1" id="mr_c_' . h($cid) . '">' . h($criterion['name']) . '</strong><span class="pg-text-meta pg-tabular">' . (int) $criterion['weight'] . '%</span></div>'
+            . '<span class="pg-seg flex-wrap" role="radiogroup" aria-labelledby="mr_c_' . h($cid) . '">' . $choices . '</span>'
+            . '<details class="mt-2"' . (($stored['note'] !== '') ? ' open' : '') . '><summary class="pg-text-2">' . h(lang('Note')) . '</summary>'
+            . '<textarea class="pg-input mt-2" name="note[' . h($cid) . ']" rows="2" maxlength="1000" aria-label="' . h(lang('Note') . ': ' . $criterion['name']) . '"' . ($open ? '' : ' disabled') . '>' . h($stored['note']) . '</textarea></details>'
+            . '</div>';
+    }
+
+    $total = pg_application_weighted_sum($mr['criteria'], pg_application_review_score_map($mr['scores']));
+    $nav = function ($target, $label, $icon) use ($open, $url) {
+        if ($target <= 0) {
+            return '<button type="button" class="pg-button pg-button-quiet" disabled><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($label) . '</button>';
+        }
+
+        // An open review saves what is typed on the way.
+        return $open
+            ? '<button type="submit" name="go" value="' . (int) $target . '" class="pg-button pg-button-quiet"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($label) . '</button>'
+            : '<a class="pg-button pg-button-quiet" href="' . h($url((int) $target)) . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($label) . '</a>';
+    };
+
+    $foot = '<div class="pg-floatbar d-flex flex-wrap align-items-center gap-2 p-3 mb-5">'
+        . ($open ? '<button type="submit" name="submit_send" value="1" class="pg-button pg-button-fill" data-confirm-content="' . h(lang('A sent review can no longer be changed.')) . '">' . h(lang('Send the review')) . '</button>' : '')
+        . $nav($prev, lang('Previous'), 'bi-chevron-left') . $nav($next, lang('Next'), 'bi-chevron-right')
+        . '<span class="flex-grow-1 pg-text-meta" role="status" data-pg-mr-saved data-pg-mr-failed="' . h(lang('The scores could not be saved.')) . '"></span>'
+        . ($open ? '<button type="button" class="pg-button pg-button-quiet" aria-expanded="false" aria-controls="mr_conflict" data-pg-mr-conflict-toggle>' . h(lang('I know this applicant')) . '</button>' : '')
+        . '</div>';
+
+    $conflict = $open ? '<section class="pg-card p-5 mb-5" id="mr_conflict" aria-labelledby="mr_conflict_title" hidden>'
+        . '<h2 class="pg-title-section mb-0" id="mr_conflict_title">' . h(lang('I know this applicant')) . '</h2>'
+        . '<p class="pg-card-sub mb-4">' . h(lang('The entry goes to another reviewer and you do not score it. Your reason is kept for the programme\'s managers.')) . '</p>'
+        . '<label class="pg-field-label" for="mr_conflict_reason">' . h(lang('How you know them')) . '</label>'
+        . '<textarea class="pg-input mb-4" id="mr_conflict_reason" name="conflict_reason" rows="2" maxlength="500"></textarea>'
+        . '<button type="submit" name="submit_conflict" value="1" class="pg-button pg-button-quiet">' . h(lang('Pass the entry on')) . '</button>'
+        . '</section>' : '';
+
+    return '<form id="mr_form" action="' . h($action) . '" method="post">
+        ' . get_token_field() . '<input type="hidden" name="review" value="' . $id . '">' . $hidden . '
+        ' . ($open ? '<button type="submit" name="go" value="' . $id . '" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>' : '') . '
+        <div class="row gy-5 mb-5">
+            <div class="col-12 lg:col-7"><section class="pg-card p-5 h-100" aria-labelledby="mr_answers_title">
+                <h2 class="pg-title-section mb-0" id="mr_answers_title">' . h(lang('Answers')) . '</h2>
+                <p class="pg-card-sub mb-4">' . h($program['blind'] ? lang('Blind review: who applied is hidden. Uploaded files show as uploaded.') : lang('The entry as it was sent.')) . '</p>
+                <div class="pg-card-inner">' . $answers . '</div>
+            </section></div>
+            <div class="col-12 lg:col-5"><section class="pg-card p-5 h-100" aria-labelledby="mr_scores_title">
+                <h2 class="pg-title-section mb-0" id="mr_scores_title">' . h(lang('Scores')) . '</h2>
+                <p class="pg-card-sub mb-4">' . h($open ? lang('Score each criterion from 1 to 10. Your scores are saved as you go; send the review once.') : lang('This review was sent.')) . '</p>
+                <div class="pg-card-inner mb-4">' . $criteria . '</div>
+                <div class="d-flex align-items-baseline gap-2"><span class="pg-text-2 flex-grow-1">' . h(lang('Weighted total')) . '</span><strong class="pg-tabular" data-pg-mr-total>' . (($total !== null) ? h(number_format($total, 2)) : '—') . '</strong></div>
+            </section></div>
+        </div>
+        ' . $foot . $conflict . '
+    </form>
+<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/my_reviews.js?v=' . filemtime(PG_FUNCTIONS_DIR . '/assets/js/my_reviews.js') . '"></script>';
+}
+
+/**
+ * A post of the scoring screen, after its page checked who sends it and
+ * the form token (an autosave checks the token itself): saves, sends, moves
+ * on, or passes the entry on with "I know this applicant". Ends the request
+ * with a redirect, or with JSON for an autosave.
+ *
+ * @param array|null $mr       the review, null when it is not the sender's
+ * @param object     $liveform the screen's liveform
+ * @param callable   $url      review id => the scoring screen's address,
+ *                             0 => the list
+ * @param bool       $autosave
+ */
+function pg_application_review_post($mr, $liveform, callable $url, $autosave)
+{
+    $json = function ($status, array $body) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($body);
+        exit;
+    };
+
+    if (($mr === null) || !$mr['open']) {
+        if ($autosave) {
+            $json(409, array('ok' => false, 'message' => lang('This review was sent and can no longer be changed.')));
+        }
+
+        go($url(($mr !== null) ? (int) $mr['review']['id'] : 0));
+    }
+
+    $id = (int) $mr['review']['id'];
+    $scores = pg_application_review_scores_input($mr['criteria'], $_POST['score'] ?? null, $_POST['note'] ?? null);
+
+    if (isset($_POST['submit_conflict'])) {
+        $conflict = pg_application_review_conflict($mr, is_string($_POST['conflict_reason'] ?? null) ? $_POST['conflict_reason'] : '');
+
+        if (!$conflict['ok']) {
+            $liveform->add_error(h(lang('Say how you know the applicant: the programme\'s managers read it.')));
+            go($url($id));
+        }
+
+        $liveform->add_notice(h($conflict['moved']
+            ? lang('The entry went to another reviewer. Your reason is kept for the programme\'s managers.')
+            : lang('The entry was taken off your list. No other reviewer is free for it yet: the programme\'s managers see it.')));
+        go($url(0));
+    }
+
+    $send = isset($_POST['submit_send']);
+
+    if (!pg_application_review_save($mr, $scores, $send)) {
+        if ($autosave) {
+            $json(500, array('ok' => false, 'message' => lang('The scores could not be saved.')));
+        }
+
+        $liveform->add_error(h($send ? lang('Score every criterion before you send the review.') : lang('The scores could not be saved.')));
+        go($url($id));
+    }
+
+    if ($autosave) {
+        $json(200, array('ok' => true, 'message' => lang('Saved')));
+    }
+
+    if ($send) {
+        $liveform->add_notice(h(lang('The review was sent.')));
+
+        // On to the next entry still to do, if there is one.
+        foreach (pg_application_my_queue($mr['review']['reviewer_id'], $mr['review']['round']) as $row) {
+            if ((int) $row['status'] < 2) {
+                go($url((int) $row['id']));
+            }
+        }
+
+        go($url(0));
+    }
+
+    go($url(max(0, (int) ($_POST['go'] ?? 0))));
 }
