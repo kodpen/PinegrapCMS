@@ -36,7 +36,7 @@ function pg_contact_form_text_columns()
         'business_country', 'business_zip_code', 'business_phone', 'business_fax',
         'home_address_1', 'home_address_2', 'home_city', 'home_state',
         'home_country', 'home_zip_code', 'home_phone', 'home_fax', 'mobile_phone',
-        'email_address', 'website', 'lead_source', 'opt_in', 'description', 'member_id',
+        'email_address', 'website', 'lead_source', 'description', 'member_id',
     );
 }
 
@@ -53,9 +53,24 @@ function pg_contact_form_posted($post, $name)
 }
 
 /**
+ * A posted value for a number column, as text: a missing field, one posted
+ * as an array, an empty box or an unticked box is '0'. The column stored 0
+ * for '' anyway, but only with warning 1366 on every save.
+ *
+ * @param array $post
+ * @param string $name
+ * @return string
+ */
+function pg_contact_form_number_posted($post, $name)
+{
+    return (string) (int) pg_contact_form_posted($post, $name);
+}
+
+/**
  * The column values both screens save from a posted contact: the text
- * columns, the expiration date, the tax fields (trimmed), the picture (a
- * file id or an image URL, '' when none) and the user who saved it.
+ * columns, the opt-in status, the expiration date, the tax fields (trimmed),
+ * the picture (a file id, 0 when none, or an image URL, '' when none) and the
+ * user who saved it.
  *
  * @param array $post
  * @param int|string $user_id
@@ -75,7 +90,8 @@ function pg_contact_form_columns($post, $user_id)
     $columns['expiration_date'] = ($expiration === '') ? '0000-00-00' : $expiration;
     $columns['tax_number'] = trim(pg_contact_form_posted($post, 'tax_number'));
     $columns['tax_office'] = trim(pg_contact_form_posted($post, 'tax_office'));
-    $columns['file_id'] = pg_contact_form_posted($post, 'file_id');
+    $columns['opt_in'] = pg_contact_form_number_posted($post, 'opt_in');
+    $columns['file_id'] = pg_contact_form_number_posted($post, 'file_id');
     $columns['image'] = pg_contact_form_posted($post, 'image_url');
     $columns['user'] = (string) $user_id;
 
@@ -151,7 +167,7 @@ function pg_contact_form_keeps_a_group($user, $contact_groups, $post, $may_edit)
 function pg_contact_form_affiliate_columns($post, $affiliate_code)
 {
     return array(
-        'affiliate_approved' => pg_contact_form_posted($post, 'affiliate_approved'),
+        'affiliate_approved' => pg_contact_form_number_posted($post, 'affiliate_approved'),
         'affiliate_name' => pg_contact_form_posted($post, 'affiliate_name'),
         'affiliate_code' => (string) $affiliate_code,
         'affiliate_commission_rate' => pg_contact_form_commission_rate_posted($post),
@@ -162,7 +178,8 @@ function pg_contact_form_affiliate_columns($post, $affiliate_code)
  * The posted commission rate as the decimal(5,2) column stores it: "8,25"
  * and "8.25" are both 8.25 (pg_parse_commission_rate(), as the importer and
  * Site Settings read it), so a comma is not dropped into 825 or cut to 8.
- * A blank box stays blank: the contact uses the default rate.
+ * A blank box is 0, which the contact reads as the default rate; a bound ''
+ * stored the same 0 with warning 1366.
  *
  * @param array $post
  * @return string
@@ -171,7 +188,7 @@ function pg_contact_form_commission_rate_posted($post)
 {
     $raw = trim(pg_contact_form_posted($post, 'affiliate_commission_rate'));
 
-    return ($raw === '') ? '' : pg_parse_commission_rate($raw);
+    return ($raw === '') ? '0' : pg_parse_commission_rate($raw);
 }
 
 /**

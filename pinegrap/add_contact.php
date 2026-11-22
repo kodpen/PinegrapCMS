@@ -132,7 +132,7 @@ if (!$_POST) {
         pg_contact_form_affiliate_key_code($affiliate_code, $user['id']);
     }
 
-    log_activity(lang(array('string' => '{var:1} ({var:2}) was created', 'vars' => array(lang('contact'), $_POST['first_name'] . ' ' . $_POST['last_name']))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => '{var:1} ({var:2}) was created', 'vars' => array(lang('contact'), $columns['first_name'] . ' ' . $columns['last_name']))), $_SESSION['sessionusername']);
 
     $liveform_view_contacts = new liveform('view_contacts');
     $liveform_view_contacts->add_notice(lang('The contact has been created.'));

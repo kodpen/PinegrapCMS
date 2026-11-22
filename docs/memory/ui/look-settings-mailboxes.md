@@ -1,22 +1,29 @@
 ---
 name: look-settings-mailboxes
-description: Site Settings › Mailboxes in look A (S5d, #10431): purpose line and link to E-mail sending, box rows as list rows, button ranks, the box form's fields and switches
+description: Site Settings › E-mail › Mailboxes in look A: the folded rows, a box row with its state pill and menu, Accounts for mailboxes, button ranks, the drawer's parts
 ---
 
-## What does the Mailboxes card look like?
-- Since S5d (#10431). First line (`pg-card-sub`): what the category is for, incoming mail only, then "For sending: E-mail sending", a link to `pg_settings_url('mail_sending')`. E-mail sending gets the mirror line ("Gelen e-posta için: Posta kutuları") in its own PR.
-- Each box is a `pg-list-row` with a `pg-icon-tile pg-tone-team` (`bi-inbox`): the name as title; address, place and last e-mail on one text line; the last check on the next; Test connection and Edit as `pg-button pg-button-quiet pg-button-sm` under them, in `pg-list-row-actions flex-wrap`: without the wrap Edit ran off the card at 320 px (#10543). An off box stays at `opacity-50`.
-- Add a mailbox in the card header, Connect a Microsoft account for mailboxes and Bring in (the .eml form): quiet small buttons. The drawer's Save is the one `pg-button pg-button-fill`, no icon.
-- Blocked senders and Incoming mail rules were already list rows (`workspace/mail-blocks.md`, `workspace/mail-rules.md`).
+## How is the Mailboxes tab laid out?
+- Owner (2026-11-20): the tab was "çorba gibi" and had no way to remove a box; tidied by MT1 (#10900), MT2 (#10934), MT3 (#10950). It follows `ui/screen-composition-rules.md`, parts copied from the Design examples screen.
+- Folded rows (`pg_settings_fold()`, `ws_mail_settings_rows()`, `ui/settings-fold-rows.md`), in this order: Mailboxes (open unless another row needs a look), Accounts for mailboxes, Incoming mail rules, Blocked senders, Bring in an .eml file.
+- No purpose line of its own since EM1 (#10983): the E-mail category's tabs set Mailboxes beside E-mail sending (`ui/settings-email-tabs.md`).
 
-## What moved in the box form?
-- `form-label` → `pg-field-label`, `form-control form-control-sm` → `pg-input` (selects and the signature textarea too), `form-text` → `pg-field-help`, the switches (On, Support box, Automatic answer, Pinegrap AI suggests) are `input.pg-switch`, the check boxes (bounces, sent copy, Sent folder, the room's people and departments) `input.pg-checkbox`, each beside its label in a `d-flex align-items-center gap-3` row.
-- The sent copy's check box sat in a `form-field` wrapper, its label under the box at a heading's size, until #10543. Section titles (Reading the mailbox, Sending answers, Routing, Automatic answer) are `h3.pg-group-label`.
-- The helpers of other files drawn only in this form moved with it: `mail_room.php`, `mail_route.php`, `mail_status.php`, `mail_triage.php`. Field names, ids, what a save stores and the texts stayed.
-- The Gmail part between the service and the user name: `workspace/mail-google.md`.
-- `tools/check_look_baseline.json`: `mail_settings.php` 11 → 0 old buttons.
+## What does a box's row show?
+- A list row (`ws_mail_settings_box_row()`): `pg-icon-tile` with `bi-inbox`, the name, the address, where it is kept and the last check (with the failed check's first sentence), the state pill, then Test connection (a box read from a server and not off) and Edit as `pg-button pg-button-quiet pg-button-sm`, last the "More actions" menu.
+- The pill (`ws_mail_box_state()`): Reading (teal), Off (gray), Sign-in needed (amber: refused or missing password or account), Error (rose). A box with no server has no pill; its line says "Not read from a server".
+- The Mailboxes row's own line and pill (`ws_mail_settings_boxes_face()`): how many boxes; Error, then Sign-in needed, opens the row; else Reading, else Off when all are off.
+- The menu (`ws_mail_box_menu()`): Turn off or Turn on, a divider, Remove in danger (`workspace/mail-box-remove.md`).
+- "Add a mailbox": quiet small button in the Mailboxes row's header; it opens the drawer on starting points (`workspace/mail-box-start-setup.md`). An empty list shows "No mailbox yet." in the Design examples' empty state.
+
+## What does Accounts for mailboxes show?
+- Google and Microsoft as connect rows (`ws_mail_account_row()`, the Design examples' connect row): the state in Connections' words (Connected, Connected for another purpose, Not connected) and Manage or Connect, a link to the provider's page of Connections (`ui/connections-mailboxes-accounts.md`). Below manager: no link, the line says who connects it.
+
+## How is a box's drawer drawn?
+- Parts and fields: `workspace/mail-box-drawer.md`. Tabs are `pg-seg` segments in the band under the head; the foot: Remove mailbox `pg-button-danger`, Cancel quiet, Save the one `pg-button-fill`, no icon.
+- Fields: `pg-field-label`, `pg-input`, one `pg-field-help` line a field, `input.pg-switch` (On, Support box, Automatic answer, Pinegrap AI suggests), `input.pg-checkbox` each beside its label. Server, port, checking server and bounces fold under "Advanced" for a known service.
+- The helpers drawn only in this form share the look: `mail_room.php`, `mail_route.php`, `mail_status.php`, `mail_triage.php`. `tools/check_look_baseline.json` holds no old button of `mail_settings.php`.
 
 ## What is not done?
-- The Workspace Settings branch of `ws_mail_settings_card()` (no `$form`) has no caller left; its buttons moved too, its markup did not.
+- The Workspace Settings branch of `ws_mail_settings_card()` (no `$form`) has no caller left; its buttons share the look, its markup does not.
 
-Related: docs/memory/ui/look-settings-screens.md, docs/memory/workspace/workspace-mail-settings-dialog.md
+Related: docs/memory/ui/look-settings-screens.md, docs/memory/workspace/workspace-mail-settings-dialog.md, docs/memory/workspace/mail-box-drawer.md

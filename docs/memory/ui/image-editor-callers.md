@@ -21,7 +21,7 @@ module: image_editor
 - `save.url` mode posts the save body (doc, overlay, redact, colour) to `workspace_file_save.php?message=<id>&as=replace|send`; `pg_image_editor_render()` draws it from the message's file (first frame, the file's own format) and the result goes to `ws_message_file_replace()` / `ws_message_file_send()` as before. The workspace screen prints the loader; `loadImageEditor()` is `pgImageEditor.load()`. A canvas drawn there (New canvas) sends its PNG instead and opens again with its layers: `image-editor-workspace.md`.
 
 ## What is beside the main button?
-- A split button whose menu sends the canvas to a channel or downloads it: `image-editor-send.md`.
+- A split button whose menu sends the canvas to a channel, saves a channel's canvas to Files or downloads it: `image-editor-send.md`.
 
 ## What happened to the old editor?
 - Removed in #4609: `assets/lib/image_editor/` (Pintura, 2.3 MB), `assets/js/image_editor_modal.js`, `image_editor_save.php`, `get_image_editor_includes()`; `clean_up.php` lists the three paths, and its button image `icon_image_editor.png` since 2026-11-04. `image_editor_edit.php` only redirects to the file's folder in the File Manager with `#pg-image-edit=<name>`, which the loader opens.
