@@ -99,6 +99,11 @@ function test_edit_submitted_form_missing_row_and_query()
 	pg_assert_true(strpos($source, "\$row = mysqli_fetch_assoc(\$result) ?: array();") !== false, 'form item view row fallback');
 	pg_assert_true(strpos($source, "\$hook_code = \$row['hook_code'] ?? '';") !== false, 'hook code default');
 	pg_assert_true(strpos($source, "((\$send_to_parts['query'] ?? '') != '')") !== false, 'query part may be absent');
+
+	// A save posted without any of the four buttons reads as saved: the
+	// notice was an undefined variable.
+	$default = strpos($source, "\$message = lang('The form has been saved.');");
+	pg_assert_true(($default !== false) && ($default < strpos($source, "if (\$liveform->field_in_session('save_for_later_button'))")), 'the notice has a default before the buttons are read');
 }
 
 // Delete with no box ticked, a new field without information, and an export

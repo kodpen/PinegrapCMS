@@ -123,3 +123,81 @@ function test_request_unexpected_lists_screens()
 		}
 	}
 }
+
+// The bracketed field names a source draws: name="x[", name=\"x[ inside
+// JavaScript, and liveform's 'name' => 'x[.
+function request_unexpected_lists_test_drawn($source)
+{
+	preg_match_all('/(?:name=\\\\?["\']|\'name\'\s*=>\s*\')([a-z][a-z0-9_]*)\[/', $source, $fields);
+
+	return array_values(array_unique($fields[1]));
+}
+
+// Edit Page, Edit File, Edit Theme File and the product screens refuse a
+// field posted as a list after the token and before the save reads the
+// first posted field. Before, trim(), escape() or mb_strrpos() of such a
+// field stopped the save with an error page.
+function test_request_unexpected_lists_record_screens()
+{
+	$pinegrap = dirname(__DIR__) . '/pinegrap';
+
+	// screen => array(the check, what the save reads first after it)
+	$screens = array(
+		'edit_page.php'       => array('pg_request_unexpected_lists($_POST);', "\$name = trim(\$_POST['name']);"),
+		'edit_file.php'       => array('pg_request_unexpected_lists($_POST);', "\$name = prepare_file_name(\$_POST['name']);"),
+		'edit_theme_file.php' => array('pg_request_unexpected_lists($_POST);', '$liveform->add_fields_to_session();'),
+		'add_product.php'     => array('pg_request_unexpected_lists($_POST, pg_pb_list_fields());', "if (trim(\$_POST['name']) === '')"),
+		'edit_product.php'    => array('pg_request_unexpected_lists($_POST, pg_pb_list_fields());', "\$_POST['merchant_push']"),
+	);
+
+	foreach ($screens as $screen => $rule) {
+		$source = (string) file_get_contents($pinegrap . '/' . $screen);
+		$call = strpos($source, $rule[0]);
+		$token = strpos($source, 'validate_token_field();');
+		$read = strpos($source, $rule[1]);
+
+		pg_assert_true($call !== false, $screen . ' checks the request for lists');
+		pg_assert_true(($token !== false) && ($token < $call), $screen . ' checks after the token');
+		pg_assert_true(($read !== false) && ($call < $read), $screen . ' checks before the save reads ' . $rule[1]);
+		pg_assert_contains("'Sorry, the value you entered for {var:1} is not valid.'", substr($source, (int) $call, 600), $screen . ' names the fields with the settings screens\' words');
+	}
+
+	// The page, file and theme file forms draw no list: one drawn later is
+	// refused on every save until the check names it.
+	$plain = array('edit_page.php', 'includes/forms/page_form.php', 'includes/fn/page_type_pane.php', 'seo.php', 'seo_structure.php', 'edit_file.php', 'edit_theme_file.php', 'includes/forms/theme_file_form.php', 'includes/forms/design_file_form.php');
+
+	foreach ($plain as $file) {
+		pg_assert_same(array(), request_unexpected_lists_test_drawn((string) file_get_contents($pinegrap . '/' . $file)), $file . ' draws no list field');
+	}
+
+	// Every list the product form draws, the image picker's included, is
+	// named in pg_pb_list_fields(), and every name there is drawn.
+	require_once($pinegrap . '/product_builder.php');
+	$named = pg_pb_list_fields();
+	$drawn = array();
+
+	foreach (array('product_builder.php', 'add_product.php', 'edit_product.php', 'includes/fn/product_bins.php') as $file) {
+		$drawn = array_merge($drawn, request_unexpected_lists_test_drawn((string) file_get_contents($pinegrap . '/' . $file)));
+	}
+
+	$js = (string) file_get_contents($pinegrap . '/assets/js/backend.src.js');
+	pg_assert_contains('name="selected_images[]"', $js, 'the image picker adds picked images as a list');
+	$drawn = array_values(array_unique(array_merge($drawn, array('selected_images'))));
+	sort($drawn);
+
+	foreach ($drawn as $name) {
+		pg_assert_same(1, $named[$name] ?? null, 'the product form draws ' . $name . '[...] one level deep and pg_pb_list_fields() names it');
+	}
+
+	$names = array_keys($named);
+	sort($names);
+	pg_assert_same($drawn, $names, 'pg_pb_list_fields() names only fields the product form draws');
+
+	// The lists as the form posts them fit; a single value posted as one,
+	// or a list inside a list, is named.
+	pg_assert_same(array(), pg_request_unexpected_lists(array('name' => 'SKU-1', 'allowed_zones' => array('1', '2'), 'product_bin' => array(0 => 'A-03-2'), 'stock_location' => array(3 => '5')), $named), 'as drawn');
+	pg_assert_same(array('code', 'catalog_group_ids'), pg_request_unexpected_lists(array('code' => array('x'), 'catalog_group_ids' => array(array('1'))), $named), 'a list where one value is drawn, and one level too deep');
+
+	// An id sent as a list opens no product; (int) read it as product 1.
+	pg_assert_contains("\$product_id = is_scalar(\$_REQUEST['id'] ?? null) ? (int) \$_REQUEST['id'] : 0;", (string) file_get_contents($pinegrap . '/edit_product.php'), 'edit_product.php reads one id');
+}

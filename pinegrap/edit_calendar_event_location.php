@@ -137,7 +137,7 @@ if (!$_POST) {
 
         // if there is an error, forward user back to edit calendar event location screen
         if ($liveform->check_form_errors() == true) {
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event_location.php?id=' . $_POST['id']);
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event_location.php?id=' . $id);
             exit();
         }
         
@@ -146,7 +146,7 @@ if (!$_POST) {
             $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
             
             // forward user to edit calendar event location screen
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event_location.php?id=' . $_POST['id']);
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event_location.php?id=' . $id);
             exit();
         }
         

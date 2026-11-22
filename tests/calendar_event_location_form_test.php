@@ -31,6 +31,10 @@ function test_calendar_event_location_form_screens_use_shared_form()
 		pg_assert_contains("\$user['role'] == 3", $source, $file . ' keeps the role 3 refusal');
 		pg_assert_false(strpos($source, "'name'=>'name', 'id'=>'name'") !== false, $file . ' keeps no copy of the card');
 	}
+
+	// A refused edit goes back to the checked record, not to the posted id.
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_calendar_event_location.php');
+	pg_assert_same(false, strpos($edit, "?id=' . \$_POST['id']"), 'edit_calendar_event_location.php redirects with the checked id');
 }
 
 function test_calendar_event_location_form_defines_its_functions()

@@ -58,6 +58,12 @@ function test_currency_form_screens_use_shared_form()
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' keeps the commerce gate');
 		pg_assert_false(strpos($source, "'id'=>'exchange_rate'") !== false, $file . ' keeps no copy of the card');
 	}
+
+	// A refused edit goes back to the checked record: the redirect read the
+	// posted id, missing ("Undefined array key") when the form was posted to
+	// edit_currency.php?id=N without it.
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_currency.php');
+	pg_assert_same(false, strpos($edit, "?id=' . \$_POST['id']"), 'edit_currency.php redirects with the checked id');
 }
 
 function test_currency_form_rate_above_column_is_refused()
