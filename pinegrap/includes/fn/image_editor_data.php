@@ -123,7 +123,18 @@ function pg_image_editor_action_data_rows($request, $user)
     $table = (int) ($request['table'] ?? 0);
     $read = (($viewer !== null) && ($table > 0)) ? ws_canvas_data_rows($viewer, $table) : array('state' => 'refused');
 
-    // An empty list of columns or cells stays an object in JSON.
+    return array(array('status' => 'success', 'read' => pg_image_editor_data_read_json($read)), 200);
+}
+
+/**
+ * A table's read as editor.dataRead() takes it in JSON: its columns and
+ * each row's cells stay objects, empty ones too. Pure.
+ *
+ * @param array $read ws_canvas_data_rows()
+ * @return array
+ */
+function pg_image_editor_data_read_json($read)
+{
     if (isset($read['columns'])) {
         $read['columns'] = (object) $read['columns'];
 
@@ -132,7 +143,61 @@ function pg_image_editor_action_data_rows($request, $user)
         }
     }
 
-    return array(array('status' => 'success', 'read' => $read), 200);
+    return $read;
+}
+
+/**
+ * How many tables a canvas's card reads at most: as many as a canvas may
+ * bind (WS_CANVAS_MAX_TABLES); a layer of a table past them draws as no rows.
+ */
+define('PG_IMAGE_EDITOR_DATA_CARD_TABLES', 20);
+
+/**
+ * The tables a canvas's card reads: those the data layers of its open
+ * scene name (the layers its picture shows), once each, in the order they
+ * first come, PG_IMAGE_EDITOR_DATA_CARD_TABLES at most. Pure.
+ *
+ * @param array|object|null $doc the editor's document
+ * @return int[]
+ */
+function pg_image_editor_data_doc_tables($doc)
+{
+    $doc = json_decode((string) json_encode($doc), true);
+    $tables = array();
+
+    foreach ((is_array($doc) && is_array($doc['layers'] ?? null)) ? $doc['layers'] : array() as $layer) {
+        $id = (is_array($layer) && (($layer['type'] ?? '') === 'data') && is_array($layer['data'] ?? null)) ? (int) ($layer['data']['table'] ?? 0) : 0;
+
+        if (($id > 0) && !in_array($id, $tables, true) && (count($tables) < PG_IMAGE_EDITOR_DATA_CARD_TABLES)) {
+            $tables[] = $id;
+        }
+    }
+
+    return $tables;
+}
+
+/**
+ * The rows a canvas's card shows, read for the person looking at it: each
+ * table its data layers name (pg_image_editor_data_doc_tables()) with that
+ * person's rights (ws_canvas_data_rows(), a table they may not read as
+ * state refused). The card draws the document again from them in the
+ * browser; nothing is written. No ws_canvas_tables binding is asked: the
+ * editor's data_rows already gives a person every table they may read.
+ *
+ * @param array             $viewer ws_viewer()
+ * @param array|object|null $doc    the canvas's newest document
+ * @return array table id => read
+ */
+function pg_image_editor_data_card_reads($viewer, $doc)
+{
+    $reads = array();
+    $ready = function_exists('ws_canvas_data_rows') && function_exists('ws_wtables_ready') && ws_wtables_ready();
+
+    foreach (pg_image_editor_data_doc_tables($doc) as $id) {
+        $reads[$id] = pg_image_editor_data_read_json($ready ? ws_canvas_data_rows($viewer, $id) : array('state' => 'refused'));
+    }
+
+    return $reads;
 }
 
 /* ---------------------------------------------------------------------------

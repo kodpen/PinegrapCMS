@@ -73,6 +73,27 @@ function pg_whatsapp_message_events()
             'label'  => lang('Product back in stock'),
             'fields' => array('store', 'product', 'url'),
         ),
+        // A walk-in queue number's notices (walk_in_queue_tickets.php):
+        // service messages, so only a utility template is sent, and stale
+        // within two hours.
+        'queue_taken' => array(
+            'kind'    => 'queue',
+            'label'   => lang('Queue: number taken'),
+            'fields'  => array('store', 'place', 'number', 'link'),
+            'service' => true,
+        ),
+        'queue_ahead' => array(
+            'kind'    => 'queue',
+            'label'   => lang('Queue: almost your turn'),
+            'fields'  => array('store', 'place', 'number', 'ahead', 'link'),
+            'service' => true,
+        ),
+        'queue_called' => array(
+            'kind'    => 'queue',
+            'label'   => lang('Queue: called'),
+            'fields'  => array('store', 'place', 'number', 'desk'),
+            'service' => true,
+        ),
     );
 }
 
@@ -93,6 +114,11 @@ function pg_whatsapp_message_field_labels()
         'tracking_url'    => lang('Tracking link'),
         'product'         => lang('Product name'),
         'url'             => lang('Product link'),
+        'place'           => lang('Queue place'),
+        'number'          => lang('Queue number'),
+        'ahead'           => lang('People ahead'),
+        'desk'            => lang('Desk'),
+        'link'            => lang('Link to the number\'s page'),
     );
 }
 
@@ -847,6 +873,12 @@ function pg_whatsapp_message_queue($event, $to, $values, $reference)
     $values += array('store' => defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '');
     $filled = pg_whatsapp_message_components($template, $settings[$event]['vars'], $values);
 
+    // A service message never goes with a marketing template, whose consent
+    // it does not ask for.
+    if ($filled['ok'] && !empty($definitions[$event]['service']) && (strtoupper((string) $template['category']) === 'MARKETING')) {
+        $filled = array('ok' => false, 'error' => lang('A service message needs a utility template.'));
+    }
+
     if (!$filled['ok']) {
         if (function_exists('log_activity')) {
             log_activity('WhatsApp message "' . $definitions[$event]['label'] . '" was not queued: ' . $filled['error']);
@@ -866,7 +898,7 @@ function pg_whatsapp_message_queue($event, $to, $values, $reference)
     ), array(
         'kind'       => $definitions[$event]['kind'],
         'reference'  => $reference,
-        'expires_at' => time() + 2 * 86400,
+        'expires_at' => time() + (empty($definitions[$event]['service']) ? 2 * 86400 : 7200),
     ));
 
     return $queued['ok'];

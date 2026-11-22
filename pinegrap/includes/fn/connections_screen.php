@@ -776,7 +776,8 @@ function pg_connections_screen_carrier_pages()
  * gateway's, a payment driver's, a shipping service's or an address
  * provider's keys and Merchant Center's account, for who may open
  * Ecommerce; an e-document provider's connection, for who may open
- * Accounting), "uses", then
+ * Accounting; Google reviews' key and Place ID, for who may open
+ * Integrations), "uses", then
  * "repositories" on
  * GitHub's page for a holder of the Workspace settings right. Each card
  * keeps the gate of the place it came from; a card the viewer may not open
@@ -800,7 +801,9 @@ function pg_connections_screen_carrier_pages()
  *                    WhatsApp, İYS and SMS providers' accounts),
  *                    'mailboxes' (bool: may open Mailboxes, the accounts
  *                    that read mailboxes), 'accounting' (bool: may open
- *                    Accounting, Paraşüt's and Logo İşbaşı's connection)
+ *                    Accounting, Paraşüt's and Logo İşbaşı's connection),
+ *                    'integrations' (bool: may open Integrations, Google
+ *                    reviews' key and Place ID)
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -835,6 +838,8 @@ function pg_connections_screen_page_cards($id, $can)
     } elseif (in_array($id, pg_connections_screen_commerce_pages(), true) && !empty($can['commerce'])) {
         $cards[] = 'details';
     } elseif (in_array($id, pg_connections_screen_accounting_pages(), true) && !empty($can['accounting'])) {
+        $cards[] = 'details';
+    } elseif (($id === 'google_reviews') && !empty($can['integrations'])) {
         $cards[] = 'details';
     }
 

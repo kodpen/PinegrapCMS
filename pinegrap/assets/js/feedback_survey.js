@@ -4,8 +4,9 @@
  * The survey edit screen (edit_feedback_survey.php): the segmented choices
  * that write their hidden field, the language tabs of the texts, the extra
  * questions (three slots, shown and cleared), the form's choice fields
- * narrowed to the chosen form, and the e-mail preview following the score
- * and the question. Served as written.
+ * narrowed to the chosen form, the e-mail preview following the score
+ * and the question, and the WhatsApp template's part shown for that channel
+ * with the chosen template's variables. Served as written.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -100,6 +101,12 @@
                     box.hidden = (box.getAttribute('data-fs-preview') !== item.getAttribute('data-fs-value'));
                 });
                 preview();
+            } else if (group.getAttribute('data-fs-seg') === 'channel') {
+                var whatsapp = form.querySelector('[data-fs-wa]');
+
+                if (whatsapp) {
+                    whatsapp.hidden = (item.getAttribute('data-fs-value') !== 'whatsapp');
+                }
             }
         } else if (tab) {
             active = tab.getAttribute('data-fs-tab');
@@ -134,6 +141,10 @@
             apply();
         } else if (event.target.matches('#fs_filter_form, #fs_filter_field')) {
             showFields();
+        } else if (event.target.matches('[data-fs-wa-template]')) {
+            form.querySelectorAll('[data-fs-wa-vars]').forEach(function (box) {
+                box.hidden = (box.getAttribute('data-fs-wa-vars') !== event.target.value);
+            });
         }
     });
 

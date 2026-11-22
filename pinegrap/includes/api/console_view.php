@@ -40,6 +40,7 @@ function api_console_group_labels() {
 		'product_attributes' => lang('Product Attributes'),
 		'inventory'      => lang('Inventory'),
 		'marketplaces'   => lang('Marketplaces'),
+		'supplier_feeds' => lang('Supplier feeds'),
 		'orders'         => lang('Orders'),
 		'shipments'      => lang('Shipments'),
 		'customers'      => lang('Customers'),

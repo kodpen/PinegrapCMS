@@ -26,6 +26,6 @@ module: walk_in_queue_places
 - Delete removes the place and its desks, only while no number was taken there today (`day` = `pg_waiting_today()`); its older numbers stay for the report and are cleared at the default keep period.
 
 ## Where does the QR poster lead?
-- `queue_poster.php?id=<place>`: a printable A4 page: name, address, "Scan to take a number", the QR of `pg_waiting_place_url($id, 'qr')`, the services. The link is `queue.php?place=<id>&from=qr`; `queue.php` is built in WQ3, so a poster printed before it lands leads to a missing page.
+- `queue_poster.php?id=<place>`: a printable A4 page: name, address, "Scan to take a number", the QR of `pg_waiting_place_url($id, 'qr')`, the services. The link is `queue.php?place=<id>&from=qr`, the public number page (`walk-in-queue-number-page.md`).
 
 Related: docs/memory/commerce/walk-in-queue-store.md, docs/memory/commerce/walk-in-queue-rules.md, docs/memory/plans/walk-in-queue-screens.md

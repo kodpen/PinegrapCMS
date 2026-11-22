@@ -5,7 +5,7 @@ description: Every Workspace screen but the channel one is padded by .ws-shell-m
 
 ## Where does a Workspace screen get its side padding?
 - From `.ws-shell-main`, on every screen but the channel one: `body.workspace .ws-shell-main { padding: 0 .75rem .75rem }`.
-- A `.row` inside keeps its gutter (its side margins fall inside the padding; its top margin rises over the breadcrumb bar, below), so a screen drawn in `#ws-root` by its script and one whose columns the server prints get the same 12px edge. `#ws-root` has no padding of its own; its `.pg-toolbar` and a server-drawn `#button_bar` stretch over the padding with `-.75rem` side margins.
+- A `.row` inside keeps its gutter (its side margins fall inside the padding; its top margin rises over the breadcrumb bar, below), so a screen drawn in `#ws-root` by its script and one whose columns the server prints get the same 12px edge. `#ws-root` has no padding of its own; its `.pg-toolbar` and a server-drawn `#button_bar` stretch over the padding with `-.75rem` side margins; a screen's one-line bar (`.ws-bar` in its `.ws-bar-frame`) stays inside it (`ui/workspace-screen-bar.md`).
 - A new Workspace screen only needs `'extra classes' => 'workspace workspace_<name>'` and `<main id="content" class="container-fluid p-0"><div class="ws-shell"><div class="ws-shell-main">`; `tests/workspace_screen_frame_test.php` checks every `workspace_*.php` that draws `#content`.
 
 ## Why no list of screens?

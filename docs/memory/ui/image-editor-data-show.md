@@ -24,7 +24,7 @@ module: image_editor_data
 - Unlike Bind a table (`workspace/canvas-tables.md`), writing the table is not asked: the binding is read only and the layer reads with each reader's rights.
 
 ## What is bound?
-- After the save, when the document holds a data layer of that table (`pg_image_editor_data_doc_shows()`): one `ws_canvas_tables` row for the new canvas in the channel it went to, access `read`, bound by the person (`pg_image_editor_data_show_binding()`, `INSERT IGNORE`). Following the rows in the channel is DV4.
+- After the save, when the document holds a data layer of that table (`pg_image_editor_data_doc_shows()`): one `ws_canvas_tables` row for the new canvas in the channel it went to, access `read`, bound by the person (`pg_image_editor_data_show_binding()`, `INSERT IGNORE`). The card follows the rows: `workspace/canvas-data-follow.md`.
 
 ## How is it checked?
 - `tests/image_editor_data_show_test.php`: who may and the words, the save and open addresses with and without a channel, the read-only binding, the menu's markup, the kinds, the picker opened on the table, the channel asked at the send under Node.

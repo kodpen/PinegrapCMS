@@ -26,4 +26,4 @@ description: The hourly buybox read (2026.11.0): the Trendyol connector ability 
 ## What is tested?
 - `tests/marketplace_buybox_test.php` with `tests/fixtures/trendyol/buybox-information.json` (the documented shape): body, header, stage address, the 10-barcode limit, refused barcodes, a 429, the packing, the stored state, the due query.
 
-Related: docs/memory/commerce/marketplace-channel-price.md, docs/memory/commerce/marketplace-outbound-layer.md, docs/memory/plans/marketplace-repricer-features.md
+Related: docs/memory/commerce/marketplace-channel-price.md, docs/memory/commerce/marketplace-outbound-layer.md, docs/memory/commerce/marketplace-repricer.md

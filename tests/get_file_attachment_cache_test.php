@@ -26,7 +26,7 @@ function test_get_file_attachment_is_private_to_caches()
 {
 	$source = get_file_attachment_cache_test_source();
 	$rule = strpos($source, "if (\$file['attachment'] == 1) {\n    \$cache_control_type = 'private';\n}");
-	$header = strpos($source, "header('Cache-Control: ' . ((\$erp_document || \$chat_attachment)");
+	$header = strpos($source, "header('Cache-Control: ' . ((\$erp_document || \$chat_attachment || \$volunteer_document)");
 
 	pg_assert_true($rule !== false, 'an attachment is private to shared caches');
 	pg_assert_true(($rule !== false) && ($header !== false) && ($rule < $header), 'decided before the header is sent');

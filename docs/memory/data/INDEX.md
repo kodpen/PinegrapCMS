@@ -5,6 +5,7 @@
 - backup-rowless-tables.md: Tables every backup dumps without rows, the SEO, search and log tables that keep theirs and why, and how Search Console refills after a restore.
 - capital-i-search-term.md: Why older panel searches lowercase the typed term with pg_search_lower() (capital İ and U+0307), and why Find & Replace counts, highlights and replaces with one Unicode matcher.
 - catalog-search-turkish-i.md: Product and product group search (site search, catalog search) folds I, İ, ı and i as one letter through pg_catalog_search_condition(); why, what it reuses, the issue it fixed.
+- code-lookup-ignorable-characters.md: utf8mb4_unicode_ci weighs NUL, U+0001 and a zero-width space as nothing, so a lookup by a code column that can be empty matched them; the campaign web version checks the code's shape
 - comment-page-copy-columns.md: Which comment columns Duplicate Page writes on the copied comments (stars, store answer, question kind) and why verified_order_id stays 0.
 - comments-author-index.md: comments.idx_author (created_user_id, created_timestamp), 2026.11.0 step 11.0.36: why it exists, what reads it, how the step pauses, how it was checked
 - comments-table.md: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes and their readers, copy cost on MyISAM, code that copies or exports rows.
@@ -50,7 +51,7 @@
 - orders-table-write-traps.md: Traps when INSERTing into orders, the next_order_number lock and where it is taken, when the Commerce settings save writes the next number, and the orders.type values.
 - slug-generation.md: Which function builds address/slug names for forms, products, files and pages, the two transliteration tables, the lowercase-order rule, and the files.name invariant.
 - sql-mysql8-reserved-words.md: A column or table alias that MySQL 8 reserves (stored, rank, row, groups…) runs on MariaDB and is a syntax error on MySQL 8; the guard test, the two Workspace queries it broke.
-- sql-silent-wrong-results.md: SQL that runs without an error but reads or writes the wrong thing: an INT or DATE compared to '', SET order, SELECT * replaced by a column list, columns a migration adds, table-specific traps.
+- sql-silent-wrong-results.md: SQL that runs without an error but reads or writes the wrong thing: an INT or DATE compared to '', GREATEST() of a number and '', SET order, SELECT * vs a column list, migration columns, table traps.
 - submitted-form-delete-thread.md: What deleting a submitted form removes besides forms/form_data (comments, attachments, notifications, watchers, counters), the shared helper and the three delete paths.
 - table-engines-and-row-size.md: Table engines since 2026.4.8 (InnoDB, MyISAM left over the limits), why a write over several tables validates first, InnoDB's 8126-byte row rule, pg_innodb_row_estimate(), maintenance code.
 - widget-pages-index.md: How pg_sw_widget_pages() finds the pages carrying a system widget type: one read of the page trees per request into a sharedId map instead of a LIKE scan per component (#4459)

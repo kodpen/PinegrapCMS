@@ -383,7 +383,7 @@ function ws_flow_actions_without_workspace()
         'ws_flow_template_setup', 'ws_flow_quick_setup', 'ws_flow_ai_sketch',
         'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
         'ws_flow_run_start', 'ws_flow_run_now', 'ws_flow_runs_list', 'ws_flow_run_get',
-        'ws_flow_run_cancel', 'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_web_address',
+        'ws_flow_run_cancel', 'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_web_address',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
     );
 }
@@ -1169,6 +1169,30 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('try' => $result));
 
+        // The whole draft tried from its start (flow_trial.php): the record
+        // and the outcomes chosen so far in, every step out; nothing sent or
+        // written. The check the API's trial route makes.
+        case 'ws_flow_trial':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            $result = ws_flow_trial($viewer, $flow, array(
+                'run_id'     => (int) ($request['run_id'] ?? 0),
+                'contact_id' => (int) ($request['contact_id'] ?? 0),
+                'outcomes'   => $request['outcomes'] ?? null,
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            unset($result['ok'], $result['error'], $result['status'], $result['field']);
+
+            return ws_action_ok(array('trial' => $result));
+
         // The web address of a flow started by one (flow_web_start.php):
         // shown to and renewed by those who may edit the flow; a renewed
         // address ends the old one.
@@ -1887,6 +1911,35 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 
+        // "New spreadsheet" or "New document" of the attach menu: an empty
+        // workbook or document written by the product's own writer
+        // (pg_office_new_bytes()) and posted as the person's message, with
+        // the upload checks of any file; the screen then opens it for
+        // editing, where saving puts the edited file in its place.
+        case 'ws_file_office_new':
+            $channel = ws_action_channel($viewer, $request, 'post');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $kind = (string) ($request['kind'] ?? '');
+            $bytes = pg_office_new_bytes($kind);
+
+            if ($bytes === '') {
+                return ws_action_error(lang('Only a spreadsheet or a document is made here.'));
+            }
+
+            $result = ws_message_send_file_bytes($viewer, $channel, '', pg_office_new_name($kind), $bytes);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($result['message_id'])));
+
+            return ws_action_ok(array('message_id' => (int) $result['message_id'], 'message' => isset($payload[0]) ? $payload[0] : null));
+
         // Text files in a conversation (includes/workspace/file_edits.php):
         // read, and saved over the person's own file or sent as an edited
         // copy of somebody else's.
@@ -2274,6 +2327,13 @@ function ws_handle_action($action, $request)
                 $out['groups'] = ws_groups_for($viewer);
                 $out['threads'] = ws_threads_for($viewer);
                 $out['inbox'] = ws_inbox_unread_count($viewer['id']);
+
+                // The count on My Tasks, with the counts the screen asks for
+                // after something changed there (a task made, finished or
+                // moved) and every half minute.
+                if (!empty($request['due'])) {
+                    $out['tasks_due'] = ws_tasks_due_counts((int) $viewer['id'])['due'];
+                }
 
                 // The person's new inbox lines, for the sound when one is
                 // for them (asked only while their switch is on).

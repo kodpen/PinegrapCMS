@@ -204,6 +204,9 @@ if (!$_POST) {
     // date, once it is invoiced.
     $order_on_account = !empty($row['erp_on_account']);
 
+    // The order row as read, for the head's pills: $row is reused below.
+    $head_order = $row;
+
     // A PayPal Checkout payment PayPal left pending (under review, an eCheck)
     // waits the same way, but on PayPal rather than on a bank statement.
     $order_payment_pending = $order_awaiting_payment && pg_order_payment_pending($row);
@@ -842,6 +845,12 @@ if (!$_POST) {
     // the save and cancel buttons will only be outputted if a real ship to exists
     $output_save_button = '';
 
+    // What the head's pills and grey line are worked out from, gathered as
+    // the addresses, their parcels and the lines are read below.
+    $head_addresses = array();
+    $head_items = 0;
+    $head_units = 0;
+
     $output_order_details = '<h2 class="list-group-item mb-0 pg-title-section">' . lang('Order Details') . '</h2>';
 
     if ($ship_to_exists == true) {
@@ -896,6 +905,13 @@ if (!$_POST) {
         foreach ($ship_tos as $key => $recipient) {
             // if ship to is a real ship to, prepare header with ship to information
             if ($ship_tos[$key]['ship_to_id'] > 0) {
+                $head_addresses[(int) $ship_tos[$key]['ship_to_id']] = array(
+                    'ship_date' => (string) $ship_tos[$key]['ship_date'],
+                    'delivery_date' => (string) $ship_tos[$key]['delivery_date'],
+                    'lines' => array(),
+                    'parcels' => array(),
+                );
+
                 // if this shipping address is verified, then convert salutation and country to all uppercase
                 if ($ship_tos[$key]['address_verified'] == 1) {
                     $ship_tos[$key]['salutation'] = mb_strtoupper($ship_tos[$key]['salutation']);
@@ -1048,6 +1064,8 @@ if (!$_POST) {
                         if ($shipment['number'] === '') {
                             continue;
                         }
+
+                        $head_addresses[$ship_to_id]['parcels'][] = (string) $shipment['status'];
 
                         $shipment_automatic = pg_shipment_view(array('number' => $shipment['number']), $shipment_method, $shipment_default);
 
@@ -1442,6 +1460,12 @@ if (!$_POST) {
             // loop through order items in order to add them to array
             while ($row = mysqli_fetch_assoc($result)) {
                 $order_items[] = $row;
+                $head_items++;
+                $head_units += (int) $row['quantity'];
+            }
+
+            if (isset($head_addresses[(int) $ship_tos[$key]['ship_to_id']])) {
+                $head_addresses[(int) $ship_tos[$key]['ship_to_id']]['lines'] = $order_items;
             }
             
             // loop through order items in order to output them
@@ -1762,6 +1786,8 @@ if (!$_POST) {
         // loop through order items in order to add them to array
         while ($row = mysqli_fetch_assoc($result)) {
             $order_items[] = $row;
+            $head_items++;
+            $head_units += (int) $row['quantity'];
         }
         
 
@@ -2648,6 +2674,43 @@ if (!$_POST) {
             </div>'
         : '';
 
+    // The head: the order's number with its copy button and the order,
+    // payment and shipping pills; the grey line; the toolbar at the right.
+    $head_states = pg_order_view_states($head_order, $head_addresses, date('Y-m-d'));
+
+    $head_customer = '';
+    if ($contact_id != '') {
+        $head_customer = pg_order_view_contact_text($contact_id, $contact_first_name, $contact_last_name, $contact_company, $contact_email_address);
+        if (pg_can_open_contact($user, $contact_id)) {
+            $head_customer = '<a class="pg-link-secondary" href="edit_contact.php?id=' . (int) $contact_id . '">' . $head_customer . '</a>';
+        }
+    }
+
+    $output_head = pg_record_head(array(
+        'title' => pg_order_view_head_title($order_number, $id),
+        'copy' => (string) $order_number,
+        'copy_label' => lang('Copy the order number'),
+        'pills' => array($head_states['order'], $head_states['payment'], $head_states['shipping']),
+        'meta' => array(
+            $order_date,
+            lang(h(ucwords($order_type))),
+            $head_customer,
+            h(pg_order_view_counts_text($head_items, $head_units)),
+            (($status == 'cancelled') && ($order_cancellation_reason !== ''))
+                ? h(lang(array('string' => 'Cancellation reason: {var:1}', 'vars' => array($order_cancellation_reason))))
+                : '',
+        ),
+        'actions' => pg_screen_toolbar(array(
+                    'primary' => $output_mark_paid_button,
+                    'secondary' => array(
+                        $output_refund_button,
+                        '<button type="button" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Print Order')) . '" aria-label="' . h(lang('Print Order')) . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</button>',
+                        $output_cancel_button,
+                    ),
+                    'overflow' => $output_toolbar_more,
+                ), array('class' => 'pg-print-none')),
+    ));
+
     echo
 
     pg_page_shell(
@@ -2660,7 +2723,7 @@ if (!$_POST) {
             'heading_description' => lang('View the details of this order and update shipping information.'),
             'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_orders.php'))
         ,
-            'breadcrumb' => array(array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'), array('label' => lang('View Order'))),
+            'breadcrumb' => array(array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'), array('label' => ((string) $order_number !== '') ? '#' . $order_number : lang('Incomplete') . ' #' . (int) $id)),
         )
     ) . '<main id="content" class="container-fluid">' . get_date_picker_format() . '
 
@@ -2671,15 +2734,7 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 ' . $output_payment_pending_banner . '
                 ' . $output_refund_banner . '
-                ' . pg_screen_toolbar(array(
-                    'primary' => $output_mark_paid_button,
-                    'secondary' => array(
-                        $output_refund_button,
-                        '<button type="button" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Print Order')) . '" aria-label="' . h(lang('Print Order')) . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</button>',
-                        $output_cancel_button,
-                    ),
-                    'overflow' => $output_toolbar_more,
-                ), array('class' => 'pg-print-none')) . '
+                ' . $output_head . '
                 ' . $output_erp_documents . '
                 <form method="post">
                     ' . get_token_field() . '

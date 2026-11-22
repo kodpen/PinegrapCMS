@@ -26,10 +26,10 @@ module: connections_screen
 ## Which cards does an AI provider's page have? (CX9a)
 - Status, "Connection details" (the provider's key), Where it is used (its model assistants, own key or the connection's); gates and rows in `api/ai-connections.md`. `pg_connections_screen_page_cards()` adds details with `$can['ai']`.
 
-## Which pages did CX11 give a key service? (Status, "Connection details" under the card's gate, Where it is used)
+## Which pages did CX11 give a key service? (Status, details under the card's gate, uses)
 - IndexNow (CX11a): the key, SEO gate, `connections-indexnow-page.md`. Google Analytics (CX11b): tag and GA4 property, Visitors gate, `connections-google-analytics-page.md`.
 - Google Cloud Translation (CX11c): the API key, Languages gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers: `connections-sms-providers-page.md`. Ads: `api/ad-conversions.md` (Meta, GA4, TikTok).
-- Paraşüt, Logo İşbaşı (CX11h): `connections-accounting-page.md`.
+- Paraşüt, Logo İşbaşı (CX11h): `connections-accounting-page.md`; Google reviews (CX11i): `connections-google-reviews-page.md`.
 
 ## Where does a write from it return?
 - The page's hidden `connections_return` sends Check/Disconnect back to `?service=<key>`; Connect again returns there through `pg_connect_start_fields()`'s return path.
@@ -37,4 +37,4 @@ module: connections_screen
 ## How is Connections reached from Site Settings?
 - A "Connections" ("Bağlantılar ›") row just above "System tools ›" at the end of the Site Settings list, for a manager only (`pg_settings_connections_link()` in `includes/settings/modal.php`), owner poll 149.
 
-Tests: `tests/connections_screen_test.php`, `tests/connections_layout_test.php`, `tests/settings_system_tools_test.php`.
+Tests: `tests/connections_screen_test.php`, `connections_layout_test.php`, `settings_system_tools_test.php`.

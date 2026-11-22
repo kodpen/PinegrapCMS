@@ -19,6 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 // The module files hold functions and constants only; loading them runs nothing.
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+require_once(__DIR__ . '/helpers/source_reader.php');
 
 // Every flag of ws_nav_groups() on, for the tests that switch one off.
 function workspace_nav_tools_test_flags($changes = array())
@@ -108,7 +109,7 @@ function test_workspace_nav_tools_long_names_have_short_ones()
 
 	// Flows is named Automation flows, as its main menu row; the tile keeps
 	// the short name.
-	pg_assert_same(array('flows' => 'Flows', 'calendar' => 'Calendar', 'board' => 'Board', 'timeline' => 'Decisions'), $short, 'Flows, Calendar, Board and Decisions');
+	pg_assert_same(array('tasks' => 'Tasks', 'notes' => 'Notes', 'flows' => 'Flows', 'calendar' => 'Calendar', 'board' => 'Board', 'timeline' => 'Decisions'), $short, 'Tasks, Notes, Flows, Calendar, Board and Decisions: whole in a cell four across');
 }
 
 // Workflow tables are the workspace's Data: the tile says so, while its key,
@@ -127,4 +128,56 @@ function test_workspace_nav_tools_tables_are_named_data()
 	pg_assert_same('Data', $tile['label'] ?? '', 'the tile is named Data');
 	pg_assert_same('/pg/workspace_wtables.php', $tile['url'] ?? '', 'the address keeps its name');
 	pg_assert_same('wtables', ws_side_screen('/pg/workspace_wtables.php'), 'the screen keeps its key');
+}
+
+// The count on My Tasks (board L1 of plans/workspace-interface): the reader's
+// open tasks due today or before, read by one query that Today's "Today and
+// overdue" card shares.
+function test_workspace_nav_tools_due_count_query()
+{
+	$sql = ws_tasks_due_counts_sql(7, '2026-11-22');
+
+	pg_assert_contains("INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '7'", $sql, 'the reader\'s own tasks');
+	pg_assert_contains("WHERE t.status IN ('todo', 'doing', 'waiting')", $sql, 'open ones only');
+	pg_assert_contains("SUM(t.due_date > '0000-00-00' AND t.due_date <= '2026-11-22') AS due_count", $sql, 'due today or before, a zero date is no date');
+	pg_assert_contains("SUM(t.due_date > '0000-00-00' AND t.due_date < '2026-11-22') AS overdue_count", $sql, 'overdue before today');
+
+	// Anything but a date is not written into the query.
+	pg_assert_false(strpos(ws_tasks_due_counts_sql(7, "2026-11-22' OR 1"), "OR 1") !== false, 'a bad date falls back to today');
+}
+
+function test_workspace_nav_tools_due_count_is_shared()
+{
+	pg_assert_contains('ws_tasks_due_counts(', pg_test_function_source('ws_home'), 'Today reads the shared count');
+	pg_assert_false(strpos(pg_test_function_source('ws_home'), 'ws_task_assignees a ON') !== false && strpos(pg_test_function_source('ws_home'), 'AS due_count') !== false, 'no second copy of the query in Today');
+	pg_assert_contains("'tasks_due'", pg_test_function_source('ws_side_payload'), 'the list\'s data carries the count');
+	pg_assert_contains('ws_tasks_due_counts(', pg_test_function_source('ws_side_payload'));
+}
+
+// On the channel screen the count is read again with the counts the screen
+// asks for after something changed there (ws_sync's due flag).
+function test_workspace_nav_tools_due_count_follows_the_channel_screen()
+{
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$app = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("\$out['tasks_due'] = ws_tasks_due_counts(", $actions, 'ws_sync answers the count when asked');
+	pg_assert_contains('BOOT.tasks_due = data.tasks_due;', $app, 'the screen keeps it');
+	pg_assert_contains('tasks_due: BOOT.tasks_due', $app, 'and hands it to the list');
+}
+
+// The dock (boards L1, L2): one state, four cells across with their names,
+// More as a card that keeps the widened rail open.
+function test_workspace_nav_tools_dock_never_folds()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_side.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_false(strpos($script, "'ws-side-closed', 'tools'") !== false, 'the old fold is not written');
+	pg_assert_false(strpos($script, "group(titles.tools") !== false, 'Tools is no closing section');
+	pg_assert_contains("setAttribute('data-pg-menu-hold', '')", $script, 'the More card keeps the widened rail open');
+	pg_assert_contains("'99+'", $script, 'a long count is cut');
+	pg_assert_true((bool) preg_match('/\.ws-menu-side \.ws-side-dock \{[^}]*position: sticky;[^}]*bottom: 0;/', $css), 'the dock stays at the list\'s foot');
+	pg_assert_true((bool) preg_match('/\.ws-menu-side \.ws-side-cells \{[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/', $css), 'four cells across');
+	pg_assert_contains('#menu .menu-body:has(.pg-menu-panel.is-open #ws-menu-side) {' . "\n" . '  padding-bottom: 0;', $css, 'no room under the dock');
 }

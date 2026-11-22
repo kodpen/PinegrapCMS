@@ -38,12 +38,7 @@ function ws_home($viewer)
     $person = ws_people(array($me));
     $today = date('Y-m-d');
 
-    $counts = db_item("SELECT COUNT(*) AS open_count,
-            SUM(t.due_date > '0000-00-00' AND t.due_date < '" . e($today) . "') AS overdue_count,
-            SUM(t.due_date > '0000-00-00' AND t.due_date <= '" . e($today) . "') AS due_count
-        FROM ws_tasks t
-        INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . $me . "'
-        WHERE t.status IN ('todo', 'doing', 'waiting')");
+    $counts = ws_tasks_due_counts($me, $today);
 
     $timeline = ws_timeline($viewer, ws_timeline_filters(array()), null, 5);
 
@@ -110,16 +105,16 @@ function ws_home($viewer)
             'approvals' => count($approvals),
             'acks'      => count($acks),
             'questions' => count($questions),
-            'due'       => (int) ($counts['due_count'] ?? 0),
+            'due'       => $counts['due'],
         )),
         'due'           => $due,
-        'tasks_due'     => (int) ($counts['due_count'] ?? 0),
+        'tasks_due'     => $counts['due'],
         'calendar'      => ws_home_calendar($viewer, $today),
         'digest'        => ws_home_digest($viewer, $channels, 5),
         'tasks'         => $tasks,
         'tasks_hot'     => max($hot_count, count($hot)),
-        'tasks_open'    => (int) ($counts['open_count'] ?? 0),
-        'tasks_overdue' => (int) ($counts['overdue_count'] ?? 0),
+        'tasks_open'    => $counts['open'],
+        'tasks_overdue' => $counts['overdue'],
         'talk'          => ws_home_talk($viewer, 5),
         'approvals'     => array_slice($approvals, 0, 5),
         'acks'          => array_slice($acks, 0, 5),

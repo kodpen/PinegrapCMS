@@ -846,6 +846,9 @@
         var chips = h.el('div', 'd-none sm:d-flex flex-wrap gap-1 ms-auto');
         var chipsUnder = h.el('div', 'd-flex sm:d-none flex-wrap gap-1 mt-2');
         var pageMessage = { id: message.id, file: { name: joinedCard.name + '.html', url: '', page: page } };
+        // The drawing part as the canvas picture's helpers take a file: its
+        // drawing of the reader's rows (drawn) stays across the tabs.
+        var drawingFile = { canvas_pending: joinedCard.drawing.pending, canvas_part: 'drawing', canvas_data: !!joinedCard.drawing.data, url: joinedCard.drawing.url };
 
         root.dataset.pageMessage = message.id;
         // The canvas's own drawing in one colour (CFG.canvas_icon); the
@@ -926,14 +929,20 @@
             link.addEventListener('click', function (event) {
                 if (opts.showImage && !(event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1)) {
                     event.preventDefault();
-                    opts.showImage(joinedCard.drawing.url);
+                    opts.showImage(drawingFile.drawn || joinedCard.drawing.url);
                 }
             });
 
             // An agent's drawing still blank: this browser draws its picture
             // (assets/js/workspace_canvas_picture.js) for the drawing part.
             if (joinedCard.drawing.pending && window.PGWsCanvasPicture) {
-                window.PGWsCanvasPicture.mount({ id: message.id, file: { canvas_pending: joinedCard.drawing.pending, canvas_part: 'drawing', url: joinedCard.drawing.url } }, img, link, h);
+                window.PGWsCanvasPicture.mount({ id: message.id, file: drawingFile }, img, link, h);
+            }
+
+            // A drawing with data layers: drawn again from the rows this
+            // reader may read.
+            if (joinedCard.drawing.data && window.PGWsCanvasPicture) {
+                window.PGWsCanvasPicture.follow({ id: message.id, file: drawingFile }, img, h);
             }
 
             stage.appendChild(link);

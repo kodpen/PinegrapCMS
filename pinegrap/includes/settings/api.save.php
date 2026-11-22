@@ -3,7 +3,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the Integrations screen writes: the application API (master switch, HTTPS, public description, log retention, upload folder) and Google reviews.
+ * Site Settings - what the Integrations screen writes: the application API (master switch, HTTPS, public description, log retention, upload folder). Google reviews' key and Place ID are saved on their page of Connections.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -19,11 +19,6 @@
 if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
-
-// ── Google Reviews ──
-// A key or a Place ID that is not one refuses the whole category before
-// anything is written; the sealed key is stored after the API columns.
-$google_reviews_post = pg_grev_settings_check($_POST, $liveform);
 
 // API uploads are not filed in the Workspace's folders nor in the Recycle
 // Bin (pg_settings_folder_choice_ok()): they would show up as a
@@ -80,5 +75,3 @@ if (waf_table_has_column('config', 'api_enabled')) {
         api_device_switch_save(post_value('api_team_devices') ? true : false, USER_ID, $_SESSION['sessionusername']);
     }
 }
-
-pg_grev_settings_save($google_reviews_post, $liveform);

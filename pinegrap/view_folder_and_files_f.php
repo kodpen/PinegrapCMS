@@ -1431,6 +1431,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
             pg_explorer_handle_create_file($type, $request, $user);
             break;
 
+        // ── Create an empty workbook or document, opened for editing ────
+        case 'explorer_create_office':
+            pg_explorer_handle_create_office($type, $request, $user);
+            break;
+
         // ── Rename ──────────────────────────────────────────────────────
         case 'explorer_rename':
             pg_explorer_handle_rename($type, $request, $user);

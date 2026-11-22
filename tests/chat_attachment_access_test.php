@@ -39,5 +39,5 @@ function test_get_file_gates_chat_attachments()
 	pg_assert_true($gate !== false, 'the gate is asked');
 	pg_assert_true($gate < strpos($source, '$access_control_type = ($erp_document'), 'before the folder decides');
 	pg_assert_contains("c.channel = 'backend'", $source, 'panel conversations only');
-	pg_assert_contains("(\$erp_document || \$chat_attachment) ? 'private, no-store'", $source, 'kept by no cache');
+	pg_assert_contains("(\$erp_document || \$chat_attachment || \$volunteer_document) ? 'private, no-store'", $source, 'kept by no cache');
 }

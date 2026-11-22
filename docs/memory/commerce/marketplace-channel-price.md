@@ -36,4 +36,4 @@ module: marketplace_pricing
 ## What is tested?
 - `tests/marketplace_pricing_test.php`: rule order, rounding endings, a floor with and without a listing commission, no cost, the site price unchanged.
 
-Related: docs/memory/commerce/marketplace-price.md, docs/memory/commerce/product-price-history.md, docs/memory/plans/marketplace-repricer.md
+Related: docs/memory/commerce/marketplace-price.md, docs/memory/commerce/product-price-history.md, docs/memory/commerce/marketplace-repricer.md

@@ -58,6 +58,7 @@ function pg_privacy_inventory_subjects()
         'customer'  => 'Customers',
         'visitor'   => 'Visitors',
         'applicant' => 'Applicants',
+        'volunteer' => 'Volunteers',
         'staff'     => 'Staff',
     );
 }
@@ -101,6 +102,7 @@ function pg_privacy_inventory_retentions()
         'incomplete_carts' => 'Rule: incomplete carts',
         'orders'           => 'Rule: orders',
         'closed_requests'  => 'Rule: closed requests',
+        'left_volunteers'  => 'Rule: volunteers who left',
         'queue_keep'       => 'The queue place\'s keep period',
         'lead_journey'     => 'The journey\'s keep period (13 months)',
     );
@@ -197,6 +199,14 @@ function pg_privacy_inventory()
             'purpose' => 'A contact\'s interest score from their visits', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
         'lead_browsers' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor', 'customer'),
             'purpose' => 'Browsers that allowed marketing cookies and the contact each is tied to', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
+
+        // Volunteering.
+        'volunteers' => array('categories' => array('identity', 'contact'), 'subjects' => array('volunteer'),
+            'purpose' => 'Volunteer profiles, skills and free hours', 'ground' => 'legitimate_interest', 'retention' => 'left_volunteers', 'person' => $contact),
+        'volunteer_documents' => array('categories' => array('identity', 'uploads'), 'subjects' => array('volunteer'),
+            'purpose' => 'Volunteers\' dated documents', 'ground' => 'legitimate_interest', 'retention' => 'left_volunteers', 'person' => array('volunteer_id', 'int')),
+        'volunteer_signups' => array('categories' => array('identity', 'messages'), 'subjects' => array('volunteer'),
+            'purpose' => 'Volunteers\' shifts, check-ins and hours', 'ground' => 'legitimate_interest', 'retention' => 'left_volunteers', 'person' => array('volunteer_id', 'int')),
 
         // Accounting.
         'erp_accounts' => array('categories' => array('identity', 'contact', 'address'), 'subjects' => array('customer'),

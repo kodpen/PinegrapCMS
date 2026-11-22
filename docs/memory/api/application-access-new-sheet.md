@@ -9,6 +9,9 @@ description: Application Access's New application sheet: a drawer in three steps
 - Step 2: the head takes the picked card's tile and title with Change; Application name and Description side by side, the automation note, the permission picker (`application-access-permission-picker.md`), and a closed "Advanced" (IP list and rate limit). The footer: Back, "Nothing is saved before Create.", Create.
 - Step 3 opens by itself on the request after Create or a new secret: the one-time values and the starting point's guide (`application-access-drawer-guides.md`). Since AA3.
 
+## Which classes draw it?
+- Look A's recipe "starting-point cards" in `backend.src.css`: `.pg-start` (the cards' grid), `.pg-start-head`, `.pg-start-acts`, `.pg-start-advanced` (Advanced, and "Connecting another way?" in step 3), `.pg-start-copy` (every value box of `api_app_value_box()` and the Events tab's one-time signing secret). `api_settings.php` keeps no rule of its own for them since DX3 (#11105); the Design examples screen draws the same sheet (`ui/look-design-examples.md`).
+
 ## Which starting points are there and what do they tick?
 - `api_app_templates($groups, $contract_scopes, $money_scopes, $oauth_app)` (`includes/api/app_templates.php`, pure but for `lang()`), in order:
   - AI assistant with sign-in: kind `oauth`, nothing ticked, no secret.

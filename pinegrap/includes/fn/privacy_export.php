@@ -65,6 +65,9 @@ function pg_privacy_export_sections()
         'customer_rhythm'    => lang('Order rhythm'),
         'bookings'           => lang('Appointment bookings'),
         'feedback'           => lang('Satisfaction surveys'),
+        'volunteers'         => lang('Volunteering'),
+        'volunteer_documents' => lang('Volunteer documents'),
+        'volunteer_hours'    => lang('Volunteer shifts and hours'),
         'queue'              => lang('Queue numbers'),
         'courses'            => lang('Course progress'),
         'journey_visits'     => lang('Visits tied to the contact'),
@@ -1156,6 +1159,29 @@ function pg_privacy_export_collect(array $found)
             ($feedback_where !== '') ? array(1) : array()
         );
         $sections['feedback']['rows'] = array_map('pg_feedback_export_row', $sections['feedback']['rows']);
+    }
+
+    // Volunteering, by the person's contacts: each profile with its
+    // programme's name, the documents (never the file, the signed link's
+    // hash or who saw them) and every shift and hours row with the shift's
+    // place and times.
+    if (pg_schema_has('volunteers', 'contact_id')) {
+        $volunteer_ids = $contact_ids ? _pg_privacy_export_ids(db_values("SELECT id FROM volunteers WHERE " . _pg_privacy_export_in('contact_id', $contact_ids))) : array();
+        $volunteer_where = _pg_privacy_export_in('v.id', $volunteer_ids);
+        $needs = ($volunteer_where !== '') ? array(1) : array();
+
+        $sections['volunteers'] = _pg_privacy_export_select(
+            "SELECT v.id, p.name AS programme, v.state, v.skills, v.hours, v.calls, v.call_channel, v.applied_at, v.approved_at, v.left_at FROM volunteers AS v LEFT JOIN volunteer_programmes AS p ON p.id = v.programme_id WHERE " . $volunteer_where . " ORDER BY v.id",
+            $needs
+        );
+        $sections['volunteer_documents'] = _pg_privacy_export_select(
+            "SELECT d.id, p.name AS programme, d.kind, d.number, d.valid_until, d.created_at FROM volunteer_documents AS d INNER JOIN volunteers AS v ON v.id = d.volunteer_id LEFT JOIN volunteer_programmes AS p ON p.id = v.programme_id WHERE " . $volunteer_where . " ORDER BY d.id",
+            $needs
+        );
+        $sections['volunteer_hours'] = _pg_privacy_export_select(
+            "SELECT s.id, p.name AS programme, sh.place, sh.start_time, sh.end_time, s.role, s.state, s.outcome, s.check_in, s.check_out, s.worked_on, s.minutes, s.note, s.approved_at, s.cancelled_at, s.created_at FROM volunteer_signups AS s INNER JOIN volunteers AS v ON v.id = s.volunteer_id LEFT JOIN volunteer_programmes AS p ON p.id = s.programme_id LEFT JOIN volunteer_shifts AS sh ON sh.id = s.shift_id WHERE " . $volunteer_where . " ORDER BY s.id",
+            $needs
+        );
     }
 
     // Walk-in queue numbers, by the contact or by the address or number given

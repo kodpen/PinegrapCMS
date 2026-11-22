@@ -1826,7 +1826,7 @@ function pg_page_cache_panel_sub_actions()
         ),
         'file_explorer' => array(
             'key' => 'type',
-            'dirty' => array('explorer_create_folder', 'explorer_create_file', 'explorer_rename', 'explorer_move',
+            'dirty' => array('explorer_create_folder', 'explorer_create_file', 'explorer_create_office', 'explorer_rename', 'explorer_move',
                 'explorer_paste', 'explorer_delete_files', 'explorer_upload', 'explorer_folder_access_set',
                 'explorer_recycle_delete', 'explorer_recycle_restore', 'explorer_hard_delete',
                 'explorer_optimize', 'explorer_webp', 'explorer_folder_settings_set',

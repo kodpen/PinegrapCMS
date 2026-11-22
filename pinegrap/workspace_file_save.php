@@ -44,6 +44,9 @@
  *   workspace_file_save.php?message=<id>   { token, action: 'canvas' }
  *     -> { status, doc }: the canvas document the message's picture was
  *     drawn from, or null
+ *   workspace_file_save.php?message=<id>   { token, action: 'canvas_data' }
+ *     -> { status, reads }: the rows of each table the canvas's data layers
+ *     name, read with the reader's rights (a card drawing it again)
  *   workspace_file_save.php?message=<id>   { token, action: 'canvas_picture',
  *     version, picture } -> { status, url }: the PNG a member's browser drew
  *     of an agent's canvas still pending, taken once from a member who may
@@ -96,6 +99,15 @@ unset($body, $objects);
 
 if (!is_array($request)) {
     ws_file_save_refuse(lang('Invalid request.'));
+}
+
+// The keys read as text or a number. One sent as a list or an object counts
+// as not given, where (string) logged "Array to string conversion" and (int)
+// read the version as 1.
+foreach (array('token', 'action', 'name', 'photo', 'version', 'picture') as $file_save_key) {
+    if (isset($request[$file_save_key]) && !is_scalar($request[$file_save_key])) {
+        unset($request[$file_save_key]);
+    }
 }
 
 // The JSON body never fills $_POST, so the token is compared here.
@@ -255,6 +267,14 @@ if (($request['action'] ?? '') === 'canvas_picture') {
 // drawn from, if it was one.
 if (($request['action'] ?? '') === 'canvas') {
     echo encode_json(array('status' => 'success', 'doc' => ws_canvas_open_doc((int) $message['file_id'])));
+    exit();
+}
+
+// The rows a canvas card's data layers show, each table read with this
+// reader's rights; the card draws the canvas again from them and keeps
+// nothing.
+if (($request['action'] ?? '') === 'canvas_data') {
+    echo encode_json(array('status' => 'success', 'reads' => (object) pg_image_editor_data_card_reads($viewer, ws_canvas_open_doc((int) $message['file_id']))));
     exit();
 }
 

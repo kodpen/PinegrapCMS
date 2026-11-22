@@ -34,6 +34,7 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . 
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback_report.php');
 
 // if user does not have access to contact, then output error
 if (validate_contact_access($user, $id) == false) {
@@ -323,7 +324,8 @@ if (!$_POST) {
                             </div>
                             ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($id, $contact_groups)))
                             . pg_lead_journey_contact_card($id, $user)
-                            . pg_customer_rhythm_contact_card($id, (string) $row['email_address'], $user),
+                            . pg_customer_rhythm_contact_card($id, (string) $row['email_address'], $user)
+                            . pg_feedback_contact_card($id, $row),
                         pg_contact_form_picture_card(false, $image) . '
                                 <div class="card mb-7">
                                     <h2 class="card-header bg-reset border-0 pg-title-section">

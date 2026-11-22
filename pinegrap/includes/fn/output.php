@@ -114,6 +114,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Mark as unread' => lang('Mark as unread'),
         'Mark as read' => lang('Mark as read'),
         'Mark all as read' => lang('Mark all as read'),
+        '{var:1} new' => lang('{var:1} new'),
         'Remove this notification' => lang('Remove this notification'),
         'Delete All Notifications' => lang('Delete All Notifications'),
         'Unlimited' => lang('Unlimited'),
@@ -2140,6 +2141,93 @@ function pg_pill($text, $theme = 'secondary', $attributes = '')
 
 
 /**
+ * The head's grey line: its parts joined by a middle dot, an empty part
+ * left out.
+ *
+ * @param array $parts markup the caller escaped
+ * @return string
+ */
+function pg_record_head_meta(array $parts)
+{
+    $parts = array_values(array_filter(array_map('trim', array_map('strval', $parts)), 'strlen'));
+
+    if ($parts === array()) {
+        return '';
+    }
+
+    return '<p class="pg-record-head-meta">' . implode(' · ', $parts) . '</p>';
+}
+
+/**
+ * The head of a record screen (Design examples, "Record head"; View Order):
+ * the title with a copy button and the state pills, the grey line under it,
+ * the screen's toolbar at the right.
+ *
+ * @param array $head title (plain text), copy (text the button copies, ''
+ *                    for none), copy_label, pills (array(text, tone) or
+ *                    null each), meta (see pg_record_head_meta()),
+ *                    actions (the toolbar's markup), id (the title's id,
+ *                    default pg_record_head_title)
+ * @return string
+ */
+function pg_record_head(array $head)
+{
+    $pills = '';
+    foreach ((array) ($head['pills'] ?? array()) as $pill) {
+        if (is_array($pill) && isset($pill[0], $pill[1])) {
+            $pills .= pg_pill((string) $pill[0], (string) $pill[1]);
+        }
+    }
+
+    $id = ((string) ($head['id'] ?? '') !== '') ? (string) $head['id'] : 'pg_record_head_title';
+
+    $copy = ((string) ($head['copy'] ?? '') !== '')
+        ? '<span class="pg-copy">' . pg_copy_button((string) $head['copy'], (string) ($head['copy_label'] ?? lang('Copy')), $id) . '</span>'
+        : '';
+
+    $actions = (string) ($head['actions'] ?? '');
+
+    return '<div class="pg-record-head">
+                <div class="pg-record-head-main">
+                    <div class="pg-record-head-line">
+                        <h2 class="pg-record-head-title" id="' . h($id) . '">' . h((string) ($head['title'] ?? '')) . '</h2>' . $copy . (($pills !== '') ? '<span class="pg-record-head-pills">' . $pills . '</span>' : '') . '
+                    </div>
+                    ' . pg_record_head_meta((array) ($head['meta'] ?? array())) . '
+                </div>' . (($actions !== '') ? '
+                <div class="pg-record-head-actions">' . $actions . '</div>' : '') . '
+            </div>';
+}
+
+
+/**
+ * A copy button of the panel (Design examples, "Copy button"): an icon
+ * button that copies the text it carries, named for a screen reader, with
+ * the polite status the panel's one listener (backend.src.js, data-pg-copy)
+ * fills with "Copied" or the refusal. The text is what the screen shows,
+ * with no label.
+ *
+ * @param string $text      the text copied; '' prints nothing
+ * @param string $label     the button's name, translated ("Copy the order number")
+ * @param string $source_id the id of the element showing the text, selected
+ *                          when the browser refuses the copy
+ * @return string
+ */
+function pg_copy_button($text, $label, $source_id = '')
+{
+    $text = (string) $text;
+
+    if ($text === '') {
+        return '';
+    }
+
+    return '<button type="button" class="pg-icon-button pg-icon-button-sm" data-pg-copy="' . h($text) . '"'
+        . (((string) $source_id !== '') ? ' data-pg-copy-source="' . h((string) $source_id) . '"' : '')
+        . ' title="' . h($label) . '" aria-label="' . h($label) . '"><i class="bi bi-copy" aria-hidden="true"></i></button>'
+        . '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>';
+}
+
+
+/**
  * Where to send a browser that has finished with a tool and wants the settings.
  *
  * There is no settings screen to redirect TO any more, so the address names a
@@ -2690,43 +2778,62 @@ function output_header($properties = false)
         $output_quick_note = ws_notes_quick_markup($output_workspace_rights, $output_parent_target);
     }
 
-    // The bell's filters, for everybody: All, a chip for each module and
-    // "Asked of me" (backend.src.js shows a chip only while the list holds a
-    // row of it), then the search box and the "Unread only" switch. The list
-    // is loaded whole, so the script applies all of them together.
-    $output_bell_filters = '<div class="pg-bell-filters" role="group" aria-label="' . h(lang('Filter')) . '">';
+    // The bell's filters, for everybody: one segmented control (All, Unread,
+    // Asked of me) over the whole width, then the module chips on one line,
+    // toggles with no All chip (backend.src.js shows a chip only while the
+    // list holds a row of it, and the line only with two modules or more).
+    // The list is loaded whole, so the script applies all of them together.
+    $output_bell_filters = '<div class="pg-bell-filters">
+                <div class="pg-seg pg-bell-seg" role="group" aria-label="' . h(lang('Filter')) . '">';
 
-    foreach (array('all' => lang('All'), 'shop' => lang('Shop'), 'erp' => lang('Accounting'), 'content' => lang('Content'), 'team' => lang('Team'), 'system' => lang('System'), 'ask' => lang('Asked of me')) as $filter => $label) {
-        $output_bell_filters .= '<button type="button" class="pg-bell-filter no-popover" data-pg-bell-filter="' . $filter . '" aria-pressed="' . (($filter === 'all') ? 'true' : 'false') . '"' . (($filter === 'all') ? '' : ' hidden') . '>'
-            . '<span class="pg-bell-filter-name">' . h($label) . '</span><span class="pg-bell-count" hidden></span></button>';
+    foreach (array('all' => lang('All'), 'unread' => lang('Unread'), 'ask' => lang('Asked of me')) as $view => $label) {
+        $output_bell_filters .= '<button type="button" class="pg-seg-item pg-bell-view no-popover" data-pg-bell-view="' . $view . '" aria-pressed="' . (($view === 'all') ? 'true' : 'false') . '">'
+            . h($label) . (($view === 'all') ? '' : ' <span class="pg-seg-count pg-bell-count" hidden></span>') . '</button>';
     }
 
     $output_bell_filters .= '</div>
-                <div class="pg-bell-tools">
-                    <input type="search" class="form-control form-control-sm pg-bell-search" id="pg_bell_search" placeholder="' . h(lang('Search notifications')) . '" aria-label="' . h(lang('Search notifications')) . '" autocomplete="off">
-                    <div class="pg-bell-unread-only">
-                        <div class="switch"><input type="checkbox" role="switch" id="pg_bell_unread_only" class="pg-bell-unread-switch"></div>
-                        <label for="pg_bell_unread_only">' . h(lang('Unread only')) . '</label>
-                    </div>
-                </div>';
+                <div class="pg-bell-chips" role="group" aria-label="' . h(lang('Modules')) . '" hidden>';
+
+    // Each chip wears its module's tone, as the rows' tiles do.
+    foreach (array('shop' => array(lang('Shop'), 'teal'), 'erp' => array(lang('Accounting'), 'amber'), 'content' => array(lang('Content'), 'rose'), 'team' => array(lang('Team'), 'blue'), 'system' => array(lang('System'), 'gray')) as $filter => $chip) {
+        $output_bell_filters .= '<button type="button" class="pg-bell-filter pg-tone-' . $chip[1] . ' no-popover" data-pg-bell-filter="' . $filter . '" aria-pressed="false" hidden>'
+            . '<span class="pg-bell-filter-name">' . h($chip[0]) . '</span><span class="pg-bell-count" hidden></span></button>';
+    }
+
+    $output_bell_filters .= '</div>
+            </div>';
 
     // The bell's drawer at the right edge, full height: the head (the name,
-    // "Mark all as read", a menu holding "Delete All Notifications", close),
-    // then the filters, the list (the only part that scrolls) and the push
-    // line at the foot. Printed outside the header: Bootstrap 6 hides a
+    // the "N new" pill, then Search, More actions and Close as icon buttons;
+    // Search puts a search field in the head's place), then the filters,
+    // the list (the only part that scrolls) and the push line at the foot.
+    // The head's menu holds "Mark all as read" and "Delete All
+    // Notifications". Printed outside the header: Bootstrap 6 hides a
     // drawer that sits inside a .navbar whenever the navbar resizes.
     $output_bell_drawer = '
         <dialog class="drawer drawer-end pg-bell-drawer pg-print-none" id="notifications" aria-labelledby="pg_bell_heading">
             <div class="drawer-header pg-bell-head">
-                <h2 class="drawer-title pg-bell-heading" id="pg_bell_heading">' . h(lang('Notifications')) . '</h2>
-                <button type="button" class="pg-bell-head-btn pg-bell-mark-all no-popover d-none"><span class="bi bi-check2-all" aria-hidden="true"></span><span>' . h(lang('Mark all as read')) . '</span></button>
-                <div class="pg-bell-menu-wrap pg-bell-head-menu d-none">
-                    <button type="button" class="pg-icon-button pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="pg_bell_head_menu" aria-label="' . h(lang('More actions')) . '" title="' . h(lang('More actions')) . '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>
-                    <div class="pg-bell-menu" id="pg_bell_head_menu" hidden>
-                        <button type="button" class="pg-bell-menu-item pg-bell-delete-all"><span class="bi bi-trash" aria-hidden="true"></span>' . h(lang('Delete All Notifications')) . '</button>
+                <div class="pg-bell-head-main">
+                    <h2 class="drawer-title pg-bell-heading" id="pg_bell_heading">' . h(lang('Notifications')) . '</h2>
+                    <span class="pg-pill pg-bell-new" hidden></span>
+                    <button type="button" class="pg-icon-button pg-bell-search-open no-popover" aria-controls="pg_bell_search_bar" aria-expanded="false" aria-label="' . h(lang('Search notifications')) . '" title="' . h(lang('Search notifications')) . '"><span class="bi bi-search" aria-hidden="true"></span></button>
+                    <div class="pg-bell-menu-wrap pg-bell-head-menu d-none">
+                        <button type="button" class="pg-icon-button pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="pg_bell_head_menu" aria-label="' . h(lang('More actions')) . '" title="' . h(lang('More actions')) . '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>
+                        <div class="pg-bell-menu" id="pg_bell_head_menu" hidden>
+                            <button type="button" class="pg-bell-menu-item pg-bell-mark-all" hidden><span class="bi bi-check2-all" aria-hidden="true"></span>' . h(lang('Mark all as read')) . '</button>
+                            <button type="button" class="pg-bell-menu-item pg-bell-delete-all" hidden><span class="bi bi-trash" aria-hidden="true"></span>' . h(lang('Delete All Notifications')) . '</button>
+                        </div>
                     </div>
+                    <button type="button" class="pg-icon-button pg-bell-close no-popover" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>
                 </div>
-                <button type="button" class="btn-close pg-bell-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"></button>
+                <div class="pg-bell-search-bar" id="pg_bell_search_bar" hidden>
+                    <button type="button" class="pg-icon-button pg-bell-search-back no-popover" aria-label="' . h(lang('Close search')) . '" title="' . h(lang('Close search')) . '"><span class="bi bi-arrow-left" aria-hidden="true"></span></button>
+                    <span class="pg-input pg-bell-search-field">
+                        <span class="bi bi-search" aria-hidden="true"></span>
+                        <input type="search" class="pg-bell-search" id="pg_bell_search" placeholder="' . h(lang('Search notifications')) . '" aria-label="' . h(lang('Search notifications')) . '" autocomplete="off">
+                        <button type="button" class="pg-icon-button pg-icon-button-sm pg-bell-search-clear no-popover" aria-label="' . h(lang('Clear search')) . '" title="' . h(lang('Clear search')) . '" hidden><span class="bi bi-x-circle-fill" aria-hidden="true"></span></button>
+                    </span>
+                </div>
             </div>
             <div class="drawer-body pg-bell-body">
                 ' . $output_bell_filters . '
@@ -5112,6 +5219,7 @@ function output_menu($properties = false)
         case 'messages_sends.php':
         case 'messages_surveys.php':
         case 'edit_feedback_survey.php':
+        case 'messages_survey_results.php':
         case 'messages_channels.php':
         case 'messages_notifications.php':
             $active_menu = 9;

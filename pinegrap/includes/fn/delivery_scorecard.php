@@ -51,13 +51,14 @@ function pg_delivery_scorecard_figure_keys()
 /**
  * A month key (YYYY-MM) checked, else the current month's. Pure.
  *
- * @param string $key
+ * @param mixed  $key The requested key; anything but text is a broken key
  * @param int    $now
  * @return string
  */
 function pg_delivery_scorecard_month($key, $now)
 {
-    $key = (string) $key;
+    // A key sent as a list (?month[]=x) is a broken key.
+    $key = is_scalar($key) ? (string) $key : '';
     if (preg_match('/^(\d{4})-(\d{2})$/', $key, $match) && (int) $match[2] >= 1 && (int) $match[2] <= 12 && (int) $match[1] >= 2000) {
         $current = date('Y-m', (int) $now);
         return strcmp($key, $current) > 0 ? $current : $key;

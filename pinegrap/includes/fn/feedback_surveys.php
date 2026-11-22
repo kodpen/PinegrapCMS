@@ -19,6 +19,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback_whatsapp.php');
+
 /** At most this many extra questions a survey. */
 define('PG_FEEDBACK_EXTRA_MAX', 3);
 
@@ -107,6 +109,7 @@ function pg_feedback_survey_start($start)
         'filter' => $point['filter'], 'delay_minutes' => $point['delay'], 'channel' => 'email',
         'purpose' => ($start === 'periodic') ? 1 : 0, 'fallback_user_id' => 0, 'escalation_user_id' => 0,
         'ws_channel_id' => 0, 'review_invite' => 1, 'texts' => pg_feedback_texts_decode(null), 'enabled' => 0, 'archived_at' => 0,
+        'whatsapp' => pg_feedback_whatsapp_normalize(null),
     );
 }
 
@@ -135,6 +138,7 @@ function pg_feedback_survey_decode(array $row)
     }
 
     $survey['texts'] = pg_feedback_texts_decode($row['texts'] ?? null);
+    $survey['whatsapp'] = pg_feedback_whatsapp_from_texts($row['texts'] ?? null);
 
     return $survey;
 }
@@ -248,7 +252,9 @@ function pg_feedback_delay_split($minutes)
  *
  * @param array  $post      $_POST
  * @param array  $known     users, channels (id lists) and languages (codes,
- *                          the site's first one first)
+ *                          the site's first one first); wa_offered
+ *                          (pg_whatsapp_message_offered()) and wa_before
+ *                          (the stored WhatsApp choice), both optional
  * @param string $touchpoint the survey's touchpoint (fixed once made)
  * @return array survey, errors (list of sentences)
  */
@@ -358,6 +364,11 @@ function pg_feedback_survey_input(array $post, array $known, $touchpoint)
 
     $survey['texts'] = $texts;
 
+    // The WhatsApp template and what fills its variables.
+    $whatsapp = pg_feedback_whatsapp_input($post, $survey['channel'], pg_feedback_whatsapp_normalize($known['wa_before'] ?? null), (array) ($known['wa_offered'] ?? array()));
+    $survey['whatsapp'] = $whatsapp['choice'];
+    $errors = array_merge($errors, $whatsapp['errors']);
+
     return array('survey' => $survey, 'errors' => $errors);
 }
 
@@ -376,7 +387,14 @@ function pg_feedback_survey_columns(array $survey)
     }
 
     $columns['filter'] = $survey['filter'] ? json_encode($survey['filter'], JSON_UNESCAPED_UNICODE) : null;
-    $columns['texts'] = json_encode($survey['texts'], JSON_UNESCAPED_UNICODE);
+    $texts = $survey['texts'];
+
+    // The WhatsApp choice rides in the texts JSON: no column of its own.
+    if (isset($survey['whatsapp']['template']) && ($survey['whatsapp']['template'] !== '')) {
+        $texts['whatsapp'] = $survey['whatsapp'];
+    }
+
+    $columns['texts'] = json_encode($texts, JSON_UNESCAPED_UNICODE);
 
     return $columns;
 }

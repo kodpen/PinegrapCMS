@@ -34,7 +34,7 @@ description: Order profit (2026.11.0, #10626 to #10792): each order's costs, net
 - Never: a figure read becomes the order's cost row only. No receipt, till, bank or account move, no invoice settled, no payout record; Trendyol's invoice and payout reads are never made (`erp-not-built-on-purpose.md`).
 
 ## What was left out?
-- Payout reconciliation, n11 and PayTR real fees, repricing (`plans/marketplace-repricer.md` reads these rates), advertising costs. Each is a later yes.
+- Payout reconciliation, n11 and PayTR real fees, advertising costs. Each is a later yes. The repricer's floor reads these rates (`commerce/marketplace-repricer.md`).
 
 ## Where is it tested?
 - `tests/erp_order_profit_test.php`, `_label_test.php`, `_view_test.php`, `_break_even_test.php`, `_deductions_test.php`, `_api_test.php`, `erp_profitability_test.php`, and the payment and label drivers' tests on recorded answers. No live payment, label or Trendyol call was run.

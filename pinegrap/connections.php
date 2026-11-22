@@ -234,6 +234,20 @@ function connections_accounting_may_manage($user) {
 
 }
 
+// May the user change Google reviews' key and Place ID? They came from Site
+// Settings › Integrations, so they keep that category's gate.
+function connections_integrations_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('api', $user);
+
+}
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
@@ -241,6 +255,10 @@ function connections_accounting_may_manage($user) {
 if ($_POST) {
 
 	validate_token_field();
+
+	// Each of these carries one value; one sent as a list counts as not given,
+	// where a cast would log "Array to string conversion" or open connection 1.
+	pg_request_single_values(array('connections_action', 'connection_id', 'provider'));
 
 	$action = isset($_POST['connections_action']) ? (string) $_POST['connections_action'] : '';
 
@@ -617,6 +635,35 @@ if ($_POST) {
 					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $addr_definition['label'])), $_SESSION['sessionusername']);
 				}
 
+			}
+
+		}
+
+	}
+
+	// Google reviews' Places API key and Place ID, saved, tried or removed on
+	// its page under the gate of the Integrations card they came from. The
+	// key is sealed and never drawn back.
+	if (in_array($action, array('grev_save', 'grev_remove'), true) && connections_integrations_may_manage($user)) {
+
+		if ($action === 'grev_remove') {
+
+			pg_grev_page_remove();
+
+			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h(lang('Google reviews')))));
+			log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => 'Google reviews')), $_SESSION['sessionusername']);
+
+		} else {
+
+			$grev_decision = pg_grev_page_decide($_POST, pg_grev_state());
+
+			foreach ($grev_decision['marks'] as $grev_field => $grev_mark) {
+				$liveform->mark_error($grev_field, h($grev_mark));
+			}
+
+			if (!$liveform->check_form_errors() && pg_grev_page_save($grev_decision, $liveform) && $grev_decision['changed']) {
+				$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => h(lang('Google reviews')))));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Google reviews')), $_SESSION['sessionusername']);
 			}
 
 		}
@@ -2922,6 +2969,81 @@ function connections_addr_page($page, $id, $may_manage) {
 
 }
 
+/* Google reviews' page: "Connection details" takes the Places API key
+   (sealed, never drawn back) and the Place ID for who may open Site
+   Settings › Integrations, Status has Disconnect, and "Where it is used"
+   leads to the Google Reviews card, the widget's home, and the feedback
+   survey's review invitation, which reads the Place ID. */
+
+function connections_grev_page($page, $may_manage, $can_seal) {
+
+	$state = pg_grev_state();
+	$connected = pg_grev_configured();
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('The key and the place the Google Reviews widget reads the rating and reviews of.')) . '</p>
+			' . ($can_seal ? '' : '<div class="alert theme-warning small py-3 mb-4">' . h(lang('Google reviews need the site\'s encryption key to keep the API key.')) . '</div>') . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="grev_save">
+				<input type="hidden" name="connections_return" value="google_reviews">
+				<div>
+					<label class="pg-field-label" for="google_reviews_key">' . h(lang('Places API Key')) . '</label>
+					<input type="password" class="pg-input font-monospace" id="google_reviews_key" name="google_reviews_key" value="" maxlength="200" autocomplete="new-password" spellcheck="false"
+						placeholder="' . h(($state['key'] !== '') ? lang('Stored. Leave empty to keep it.') : '') . '">
+					<div class="pg-field-help">' . h(lang('The key of a Google Cloud project with billing and the Places API (New) on. Restrict the key to this server. It is stored encrypted and never shown again.')) . '</div>
+				</div>
+				<div>
+					<label class="pg-field-label" for="google_reviews_place_id">' . h(lang('Place ID')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="google_reviews_place_id" name="google_reviews_place_id" value="' . h($state['place_id']) . '" maxlength="300" autocomplete="off" spellcheck="false">
+					<div class="pg-field-help">' . lang(array(
+						'string' => 'Find your business with Google\'s {var:1} and copy its Place ID.',
+						'vars'   => array('<a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" rel="noopener">' . h(lang('Place ID Finder')) . '</a>'))) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if (($state['key'] !== '') || ($state['place_id'] !== '')) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="grev_remove" data-id="0"
+					data-confirm="' . h(lang('The Places API key and the Place ID are removed: the Google Reviews widget shows nothing and the review invitation is not shown until they are typed again.')) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('api', 'pgset-google-reviews')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('The Google Reviews widget')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Integrations')) . ' › ' . h(lang('Google Reviews')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($connected ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>
+				<a class="pg-card-inner-row connections-row" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/messages_surveys.php') . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('The review invitation after a survey answer')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Messages')) . ' › ' . h(lang('Surveys')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($state['place_id'] !== '') ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
 /* Google Merchant Center's page: "Connection details" holds what the
    Product Feeds card held, the Merchant Center account, its country, the
    feed registered as a data source and the product issues, for who may
@@ -4236,6 +4358,7 @@ if ($provider_page !== '') {
 			'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
 			'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
 			'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
+			'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
@@ -4243,7 +4366,7 @@ if ($provider_page !== '') {
 		'uses'         => '',
 		'status_extra' => '',
 		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
-			|| in_array($page_id, pg_connections_screen_accounting_pages(), true),
+			|| in_array($page_id, pg_connections_screen_accounting_pages(), true) || ($page_id === 'google_reviews'),
 	);
 
 	// A card gateway's page: its keys and the card that chooses it.
@@ -4289,6 +4412,11 @@ if ($provider_page !== '') {
 	// it.
 	if (in_array($page_id, pg_connections_screen_accounting_pages(), true)) {
 		$page = connections_edoc_page($page, $page_id, connections_accounting_may_manage($user));
+	}
+
+	// Google reviews' page: its key and Place ID, and what reads them.
+	if ($page_id === 'google_reviews') {
+		$page = connections_grev_page($page, connections_integrations_may_manage($user), $can_seal);
 	}
 
 	// A CAPTCHA provider's page: its keys and the card that chooses it.

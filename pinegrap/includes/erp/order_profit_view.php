@@ -89,6 +89,8 @@ function erp_order_profit_source_label($source)
             return lang('average cost');
         case 'bundle':
             return lang('bundle components');
+        case 'supplier':
+            return lang('supplier feed buy price');
         case 'gateway':
             return lang('from the payment service');
         case 'marketplace':

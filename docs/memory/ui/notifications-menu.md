@@ -6,17 +6,17 @@ description: The bell's drawer #notifications at the right edge: opened by the b
 ## What is the bell's panel?
 - `<dialog class="drawer drawer-end pg-bell-drawer" id="notifications">` (`$output_bell_drawer`, `includes/fn/output.php`), full height, `--pg-drawer-width: min(30rem, 100vw)`: 30rem, the whole width on a phone. Owner 2026-11-11, #8754 (`workflow/decisions-made-panel-4.md`); built in #8783 (plan step BP2b).
 - Printed after the header, not inside it: Bootstrap hides a drawer that sits inside a `.navbar` when the window is resized.
-- Head `.pg-bell-head`: the heading "Notifications", "Mark all as read" (shown while a row is unread), a menu holding "Delete All Notifications" (under All with two rows or more), the close button. Then the filter chips, the list `.pg-bell-scroll`, the push line `#push_row`/`#push_hint` at the foot.
-- The head's "More actions" button is `pg-icon-button`, as the rows' toggles; without it the browser drew a bordered grey button (#11086).
+- Head `.pg-bell-head`: the heading, the "N new" pill and three icon buttons, Search, More actions, Close (`bell-head.md`).
+- Then the filters (`bell-filters.md`), the list `.pg-bell-scroll`, the push line `#push_row`/`#push_hint` at the foot.
 - Only the list scrolls: `.pg-bell-body` `overflow: hidden`, `.pg-bell-scroll` `overflow-y: auto; min-height: 0`.
 
 ## How is it opened and closed?
 - The bell carries `data-bs-toggle="drawer" data-bs-target="#notifications"`; it has no click handler of its own.
 - Ctrl+Q (window `keydown`, `case 'q'`) calls `pgUI.drawer.toggle('#notifications')` in a `setTimeout` (Firefox opened its find bar otherwise). `pgBellOpen()` shows it, or only applies the filter when it is open.
-- Escape and a click outside close it (Bootstrap's defaults, no `data-bs-backdrop`/`data-bs-keyboard`). A row's or the head's menu keeps its Escape: `pg_bell_menu_key()` listens on `window`'s capture phase (`bell-row.md`). Closing gives the focus back to the bell.
+- Escape and a click outside close it (Bootstrap's defaults, no `data-bs-backdrop`/`data-bs-keyboard`). Escape goes to an open menu first (`pg_bell_menu_key()` on `window`'s capture phase, `bell-row.md`), then to an open search (`pg_bell_search_key()`, registered after it, skips an event already `defaultPrevented`), then to the drawer. Closing gives the focus back to the bell.
 
 ## Where are its events heard?
-- On the drawer (`pgUI.drawer.on('#notifications', …)`): `show` hides the head's actions till the list's counts arrive, adds the bell's `show` class and loads the list once (`get_notifications()`), and `pg_push_refresh()` runs; `hidden` drops the `show` class, scrolls the list to the top, keeps the filter and closes an open row menu.
+- On the drawer (`pgUI.drawer.on('#notifications', …)`): `show` hides the head's menu and pill till the list's counts arrive, adds the bell's `show` class and loads the list once (`get_notifications()`), and `pg_push_refresh()` runs; `hidden` drops the `show` class, scrolls the list to the top, puts back the kept choice, closes and clears the search and closes an open row menu.
 - `shown` focuses the close button: a shut Bootstrap 6 drawer is `visibility: hidden` with a transition, so `showModal()` finds nothing to focus and left the focus on the body (#8783).
 - The 20 s poll reads `pgUI.drawer.isOpen('#notifications')`. `tests/bell_drawer_test.php` pins the markup, opening and scrolling.
 

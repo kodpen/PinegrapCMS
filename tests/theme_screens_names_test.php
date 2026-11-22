@@ -100,7 +100,7 @@ function test_theme_screens_private_label_cards_and_labels()
 		pg_assert_contains('name="' . $field . '" id="' . $field . '"', $source, $field . ' id');
 	}
 
-	// The five footer link pairs are drawn in a loop, each with its own id.
-	pg_assert_contains("<label for=\"footer_link_' . \$private_label_link . '_label\" class=\"form-label\">", $source, 'footer label label');
-	pg_assert_contains("name=\"footer_link_' . \$private_label_link . '_url\" id=\"footer_link_' . \$private_label_link . '_url\"", $source, 'footer url id');
+	// A footer link's pair is drawn in its drawer, each box with its own id.
+	pg_assert_contains("<label for=\"footer_link_' . \$n . '_label\" class=\"form-label\">", $source, 'footer label label');
+	pg_assert_contains("name=\"footer_link_' . \$n . '_url\" id=\"footer_link_' . \$n . '_url\"", $source, 'footer url id');
 }

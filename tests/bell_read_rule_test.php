@@ -107,7 +107,8 @@ function test_bell_read_rule_the_script_reads_on_open()
 	pg_assert_false(strpos($get, 'read_mark') !== false, 'the list request asks to read nothing');
 	pg_assert_false(strpos($get, "\$('#notification_toggle .has-notification-icon').html('');") !== false, 'opening the bell keeps the count');
 	// "Mark all as read" and "Delete All Notifications" stand in the
-	// drawer's head (output.php), no longer drawn with the list.
+	// drawer's head menu (output.php); "Mark all as read" also at the
+	// list's first day heading.
 	$output = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
 	$at = strpos($output, '<div class="drawer-header pg-bell-head">');
 	$head = ($at === false) ? '' : substr($output, $at, strpos($output, 'drawer-body', $at) - $at);
@@ -115,6 +116,7 @@ function test_bell_read_rule_the_script_reads_on_open()
 	pg_assert_contains('pg-bell-mark-all', $head, 'Mark all as read is in the head');
 	pg_assert_contains("h(lang('Mark all as read'))", $head, 'its label');
 	pg_assert_true(strpos($head, 'pg-bell-mark-all') < strpos($head, 'pg-bell-delete-all'), 'Mark all as read stands before Delete All');
+	pg_assert_contains('pg-bell-mark-all pg-bell-day-all', $get, 'and at the day heading');
 	pg_assert_contains('pg_bell_row(', $get, 'every row is drawn by pg_bell_row()');
 	pg_assert_contains('pg_bell_read_button(', bell_read_rule_js_function('pg_bell_quick'), 'every row has Mark as read');
 	pg_assert_contains('pg_bell_quick(', bell_read_rule_js_function('pg_bell_row'), 'in its quick actions');

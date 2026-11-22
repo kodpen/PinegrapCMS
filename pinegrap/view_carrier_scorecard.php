@@ -29,7 +29,7 @@ $now = time();
 $month = pg_delivery_scorecard_month($_GET['month'] ?? '', $now);
 $year = (($_GET['view'] ?? '') === 'year');
 $figure_keys = pg_delivery_scorecard_figure_keys();
-$figure = (string) ($_GET['figure'] ?? '');
+$figure = is_string($_GET['figure'] ?? null) ? $_GET['figure'] : '';
 
 if (!isset($figure_keys[$figure])) {
     $figure = 'on_time';

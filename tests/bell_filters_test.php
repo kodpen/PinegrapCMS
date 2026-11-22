@@ -2,10 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the bell's filters: the chips printed for everybody (All, the
- * modules, "Asked of me"), the "Unread only" switch and the search box, the
- * rows that ask something of the reader (pg_notification_asks()), and the
- * kept choice read under the chips' names.
+ * Tests for the bell's filters: the selector printed for everybody (All,
+ * Unread, Asked of me), the module chips, the search in the head and its
+ * marks, the rows that ask something of the reader (pg_notification_asks()),
+ * and the kept choice, the one kept before the selector read once.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -48,27 +48,33 @@ function test_bell_filters_asked_of_me_rows()
 	pg_assert_contains("'ask' => (pg_notification_asks(\$display['action'], \$display['kind']) ? 1 : 0)", $endpoint);
 }
 
-// The chips, the switch and the search box are printed for everybody, not
-// only for a member of the team.
+// The selector, the chips and the search are printed for everybody, not
+// only for a member of the team: one segmented control (All, Unread, Asked
+// of me), the module chips as toggles with no All chip, the search in the
+// head.
 function test_bell_filters_markup()
 {
 	$output = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
-	$at = strpos($output, "\$output_bell_filters = '<div class=\"pg-bell-filters\"");
+	$at = strpos($output, "\$output_bell_filters = '<div class=\"pg-bell-filters\">");
 	pg_assert_true($at !== false, 'the filters are printed');
 	$part = (string) substr($output, (int) $at, (int) strpos($output, '$output_bell_drawer = ', (int) $at) - (int) $at);
 
 	pg_assert_false(strpos($output, "\$output_workspace_rights['member']) {\n        \$output_bell_filters") !== false, 'not only for the team');
-	pg_assert_contains("array('all' => lang('All'), 'shop' => lang('Shop'), 'erp' => lang('Accounting'), 'content' => lang('Content'), 'team' => lang('Team'), 'system' => lang('System'), 'ask' => lang('Asked of me'))", $part);
-	pg_assert_contains("((\$filter === 'all') ? '' : ' hidden')", $part, 'a chip waits hidden till the list has a row of it');
-	pg_assert_contains('<input type="search" class="form-control form-control-sm pg-bell-search" id="pg_bell_search"', $part);
-	pg_assert_contains('<input type="checkbox" role="switch" id="pg_bell_unread_only" class="pg-bell-unread-switch">', $part);
-	pg_assert_contains("h(lang('Unread only'))", $part);
+	pg_assert_contains('<div class="pg-seg pg-bell-seg" role="group"', $part, 'one segmented control');
+	pg_assert_contains("array('all' => lang('All'), 'unread' => lang('Unread'), 'ask' => lang('Asked of me'))", $part);
+	pg_assert_contains('class="pg-seg-item pg-bell-view no-popover" data-pg-bell-view="', $part);
+	pg_assert_contains("array('shop' => array(lang('Shop'), 'teal'), 'erp' => array(lang('Accounting'), 'amber'), 'content' => array(lang('Content'), 'rose'), 'team' => array(lang('Team'), 'blue'), 'system' => array(lang('System'), 'gray'))", $part, 'a chip per module, no All chip');
+	pg_assert_contains('data-pg-bell-filter="\' . $filter . \'" aria-pressed="false" hidden>', $part, 'a chip waits hidden till the list has a row of it');
+	pg_assert_contains('<div class="pg-bell-chips" role="group"', $part, 'the chips on one line');
+	pg_assert_false(strpos($output, 'pg_bell_unread_only') !== false, 'no Unread only switch');
+	pg_assert_false(strpos($part, 'pg-bell-search') !== false, 'the search is no line of its own');
 	pg_assert_false(strpos($part, "lang('Site')") !== false, 'no Site chip');
 	pg_assert_contains("h(lang('No notification matches these filters.'))", $output, 'one line for an empty result');
 }
 
-// The kept choice reads under the chips' names; pgBellOpen('workspace')
-// opens Team; a row carries its module and ask for the chips.
+// The kept choice reads under the new names; the switch and an "Asked of
+// me" chip kept before are read once; pgBellOpen('workspace') opens Team; a
+// row carries its module and ask.
 function test_bell_filters_kept_choice()
 {
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
@@ -77,29 +83,59 @@ function test_bell_filters_kept_choice()
 	$row = bell_filters_js_part($js, 'function pg_bell_row(');
 	$match = bell_filters_js_part($js, 'function pg_bell_row_matches(');
 	$apply = bell_filters_js_part($js, 'function pg_bell_filter_apply(');
+	$upgrade = bell_filters_js_part($js, 'function pg_bell_kept_upgrade(');
 
-	pg_assert_contains("var pgBellFilters = ['all', 'shop', 'erp', 'content', 'team', 'system', 'ask'];", $js);
+	pg_assert_contains("var pgBellFilters = ['all', 'shop', 'erp', 'content', 'team', 'system'];", $js);
+	pg_assert_contains("var pgBellViews = ['all', 'unread', 'ask'];", $js);
 	pg_assert_contains("if (name === 'workspace') {\n        return 'team';", $name);
 	pg_assert_contains("if (name === 'site') {\n        return 'all';", $name);
-	pg_assert_contains("return pg_bell_filter_name(kept, 'all');", bell_filters_js_part($js, 'function pg_bell_filter_kept('));
+	pg_assert_contains("return pg_bell_filter_name(pg_bell_store_get('pg-bell-filter') || 'all', 'all');", bell_filters_js_part($js, 'function pg_bell_filter_kept('));
 	pg_assert_contains("pgBellFilter = pg_bell_filter_name(filter, '') || pg_bell_filter_kept();", $open);
+
+	// Read once: a kept view means it ran; the kept ask chip becomes Asked
+	// of me, the switch Unread, and the switch's key goes.
+	pg_assert_contains("if (pg_bell_store_get('pg-bell-view') !== null) {\n        return;", $upgrade);
+	pg_assert_contains("if (pg_bell_store_get('pg-bell-filter') === 'ask') {\n        view = 'ask';\n        pg_bell_store_set('pg-bell-filter', 'all');", $upgrade);
+	pg_assert_contains("} else if (pg_bell_store_get('pg-bell-unread') === '1') {\n        view = 'unread';", $upgrade);
+	pg_assert_contains("pg_bell_store_set('pg-bell-unread', null);", $upgrade);
+	pg_assert_true(strpos($js, 'pg_bell_kept_upgrade();') < strpos($js, 'var pgBellFilter = pg_bell_filter_kept();'), 'read before the kept choice');
 
 	pg_assert_contains("var ask = (parseInt(row.ask, 10) === 1);", $row);
 	pg_assert_contains("(ask ? ' data-pg-bell-ask=\"1\"' : '')", $row);
 	pg_assert_contains("(unread ? ' data-pg-bell-was-new=\"1\"' : '')", $row);
 
-	// Chip, switch and search apply together; the search reads the title,
+	// Chip, selector and search apply together; the search reads the title,
 	// the place and the excerpt.
-	pg_assert_contains("(filter === 'ask') ? (row.getAttribute('data-pg-bell-ask') !== '1')", $match);
-	pg_assert_contains("if (unread_only && !row.classList.contains('new')", $match);
+	pg_assert_contains("if ((view === 'ask') && (row.getAttribute('data-pg-bell-ask') !== '1')) {", $match);
+	pg_assert_contains("if ((view === 'unread') && !row.classList.contains('new')", $match);
 	pg_assert_contains("row.querySelectorAll('.pg-bell-title, .pg-bell-place, .pg-bell-excerpt')", $match);
-	pg_assert_contains('pg_bell_row_matches(row, filter, pgBellUnreadOnly, search)', $apply);
-	pg_assert_contains("chip.hidden = (key !== 'all') && (key !== filter) && !present[key];", $apply);
+	pg_assert_contains('pg_bell_row_matches(row, filter, view, search)', $apply);
+	pg_assert_contains("chip.hidden = (key !== filter) && !present[key];", $apply);
+	pg_assert_contains("chips.hidden = (modules < 2) && (filter === 'all');", $apply, 'the chips only with two modules or more');
 	pg_assert_contains("\$(box).find('.pg-bell-no-match').toggleClass('d-none', (live === 0) || (shown > 0));", $apply);
+	pg_assert_contains("pill.hidden = !counts.unread;", $apply, 'the N new pill while a row is unread');
+	pg_assert_contains("button.hidden = !counts.unread || (search !== '') || (button.parentNode !== first_heading);", $apply, 'Mark all as read at the first shown heading');
 
-	// The switch stays for the next visit; the search is cleared on close.
-	pg_assert_contains("localStorage.setItem('pg-bell-unread', pgBellUnreadOnly ? '1' : '0');", $js);
-	pg_assert_contains("pgBellSearch = '';\n        \$('#notifications .pg-bell-search').val('');", $js);
+	// A chip pressed again shows every module; both choices stay for the
+	// next visit; the search is cleared on close.
+	pg_assert_contains("pgBellFilter = (name === pgBellFilter) ? 'all' : name;", $js);
+	pg_assert_contains("pg_bell_store_set('pg-bell-filter', pgBellFilter);", $js);
+	pg_assert_contains("pg_bell_store_set('pg-bell-view', pgBellView);", $js);
+	pg_assert_contains("pgBellSearch = '';\n        box.find('.pg-bell-search').val('');", bell_filters_js_part($js, 'function pg_bell_search_show('));
+}
+
+// The search's marks are taken out before each new search, and a match is
+// found letter by letter as the search reads the Turkish i.
+function test_bell_filters_search_marks()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	$mark = bell_filters_js_part($js, 'function pg_bell_search_mark(');
+
+	pg_assert_contains("box.querySelectorAll('mark.pg-bell-mark')", $mark, 'old marks go first');
+	pg_assert_contains("li.software_notification:not(.pg-bell-off) :is(.pg-bell-title, .pg-bell-excerpt)", $mark, 'only shown titles and texts');
+	pg_assert_contains(".replace(/i̇/g, 'i').replace(/ı/g, 'i')", $mark, 'the Turkish i as one letter');
+	pg_assert_contains('mark.textContent = source.slice(start, end);', $mark, 'inserted as text, never as markup');
+	pg_assert_contains('pg_bell_search_mark(box, search);', bell_filters_js_part($js, 'function pg_bell_filter_apply('));
 }
 
 // A chip waiting for its rows stays hidden although the chips are flex
@@ -107,5 +143,5 @@ function test_bell_filters_kept_choice()
 function test_bell_filters_hidden_chip_rule()
 {
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
-	pg_assert_contains("#notifications .pg-bell-filter[hidden] {\n  display: none;\n}", $css);
+	pg_assert_contains("#notifications .pg-bell-chips[hidden],\n#notifications .pg-bell-filter[hidden] {\n  display: none;\n}", $css);
 }

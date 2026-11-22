@@ -30,7 +30,7 @@ description: Plan lead-journey, features J1 to J15: the browser key and the tie,
 - (J12) For each contact that became a lead (a form or booking) and each that became a customer (a first order or a paid invoice): first and last touch. A report by channel, campaign and landing or content page: leads, customers, the revenue of commerce sites, over a period; Excel.
 
 ## How does KVKK hold?
-- (J13) The journey, ties and scores are in the person's export and erased with the person; the keep period trims older journey rows; the privacy notice text names the profiling (`plans/privacy-centre.md` inventory catalogue gets the store).
+- (J13) The journey, ties and scores are in the person's export and erased with the person; the keep period trims older journey rows; the privacy notice text names the profiling (the inventory catalogue, `core/privacy-inventory.md`, gets the store).
 - (J14) No tie, score or event for users with a panel role.
 
 ## Which API?

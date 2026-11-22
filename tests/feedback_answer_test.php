@@ -143,10 +143,10 @@ function test_feedback_answer_texts_in()
 function test_feedback_answer_job_finds_the_sender()
 {
 	pg_assert_same('pg_feedback_message_send', pg_feedback_sender());
-	pg_assert_same(array('email', 'sms'), pg_feedback_message_channels(), 'WhatsApp waits for its message');
+	pg_assert_same(array('email', 'sms', 'whatsapp'), pg_feedback_message_channels(), 'WhatsApp too, its rows held by the due channel condition');
 
 	$sends = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/feedback_sends.php');
-	pg_assert_contains('AND (channel IN (" . $channels . "))', $sends, 'only the built channels are sent');
+	pg_assert_contains('AND " . pg_feedback_due_channel_sql(pg_feedback_whatsapp_ready_surveys())', $sends, 'a WhatsApp survey that cannot be sent keeps its rows waiting');
 }
 
 function test_feedback_answer_page_rules()

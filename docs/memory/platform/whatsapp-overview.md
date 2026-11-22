@@ -28,10 +28,10 @@ module: whatsapp
 - A customer's message: bell and customer history (`whatsapp-webhook-events.md`).
 
 ## Where is each part?
-- Meta's API as of 2026-11-12: `whatsapp-cloud-api-facts.md`, `whatsapp-cloud-api-webhooks.md`.
-- `includes/fn/whatsapp.php` (account, webhook check, queue, templates), driver `includes/whatsapp/cloud_api.php` and `cloud_templates.php`; `whatsapp_webhook.php` and `includes/fn/whatsapp_webhook.php` (events); `whatsapp_design.php` (designer); `whatsapp_offer.php` (offer codes); `whatsapp_messages.php` (slots, filling, order moments); `whatsapp_forms.php`.
+- Meta's API (2026-11-12): `whatsapp-cloud-api-facts.md`, `whatsapp-cloud-api-webhooks.md`.
+- `includes/fn/whatsapp.php` (account, webhook check, queue, templates), driver `includes/whatsapp/cloud_api.php` and `cloud_templates.php`; `whatsapp_webhook.php` and `includes/fn/whatsapp_webhook.php` (events); `whatsapp_design.php` (designer); `whatsapp_offer.php` (offer codes); `whatsapp_messages.php` (slots, filling, order moments); `whatsapp_forms.php`; `feedback_whatsapp.php`.
 - Tables: `whatsapp_outbox` (`whatsapp-outbox-queue.md`), `whatsapp_templates`, `whatsapp_inbox`.
 
 ## How is a new sender added?
-- Find the approved template (`pg_whatsapp_template_find()`), let the person choose a value per slot (`pg_whatsapp_message_slots()` with the template's offer), fill with `pg_whatsapp_message_components()` and queue with `pg_whatsapp_enqueue()`: kind, a UNIQUE reference, an expiry, the contact. Never call `pg_whatsapp_cloud_send()` from a request; never fill the offer code yourself.
-- Its switch off by default, its tests beside `tests/whatsapp_messages_test.php`, its file listed here.
+- Find the approved template (`pg_whatsapp_template_find()`), let them choose a value per slot (`pg_whatsapp_message_slots()` with the template's offer), fill with `pg_whatsapp_message_components()` and queue with `pg_whatsapp_enqueue()`: kind, a UNIQUE reference, an expiry, the contact. Never call `pg_whatsapp_cloud_send()` from a request; never fill the offer code yourself.
+- Off by default, tests beside `tests/whatsapp_messages_test.php`, its file listed here.

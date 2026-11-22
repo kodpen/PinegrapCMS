@@ -88,8 +88,9 @@ function bell_drawer_js_part($js, $start)
 }
 
 // The drawer at the right edge, printed outside the header's navbar: the
-// head (the name, "Mark all as read", the menu holding "Delete All
-// Notifications", close), then the filters, the list and the push line.
+// head (the name, the "N new" pill, Search, the menu holding "Mark all as
+// read" and "Delete All Notifications", Close), the search field that takes
+// the head's place, then the filters, the list and the push line.
 function test_bell_drawer_markup()
 {
 	$output = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
@@ -98,14 +99,19 @@ function test_bell_drawer_markup()
 
 	pg_assert_contains('<dialog class="drawer drawer-end pg-bell-drawer pg-print-none" id="notifications" aria-labelledby="pg_bell_heading">', $drawer);
 	pg_assert_contains('<h2 class="drawer-title pg-bell-heading" id="pg_bell_heading">\' . h(lang(\'Notifications\')) . \'</h2>', $drawer);
-	pg_assert_contains('class="btn-close pg-bell-close" data-bs-dismiss="drawer"', $drawer, 'the close button');
+	pg_assert_contains('class="pg-icon-button pg-bell-close no-popover" data-bs-dismiss="drawer"', $drawer, 'the close button is an icon button');
+	pg_assert_contains('class="pg-icon-button pg-bell-search-open no-popover" aria-controls="pg_bell_search_bar"', $drawer, 'Search is an icon button');
+	pg_assert_contains('<span class="pg-pill pg-bell-new" hidden></span>', $drawer, 'the N new pill waits hidden');
+	pg_assert_false(strpos($drawer, 'pg-bell-head-btn') !== false, 'no text button in the head');
+	pg_assert_contains('<div class="pg-bell-search-bar" id="pg_bell_search_bar" hidden>', $drawer, 'the search field waits in the head');
+	pg_assert_contains('<input type="search" class="pg-bell-search" id="pg_bell_search"', $drawer, 'the search box');
 	pg_assert_contains("h(lang('Delete All Notifications'))", $drawer, 'Delete All in the head menu');
 	// The head's More actions button wears the icon button look like the
 	// rows' toggles; without the class the browser draws its own grey box.
 	pg_assert_contains('<button type="button" class="pg-icon-button pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="pg_bell_head_menu"', $drawer, 'the head menu button is an icon button');
 
 	$last = -1;
-	foreach (array('pg-bell-head', 'pg-bell-mark-all', 'pg-bell-head-menu', 'pg-bell-delete-all', 'pg-bell-close', '$output_bell_filters', 'pg-bell-no-match', 'pg-bell-scroll', 'notifications_empty', 'id="push_row"', 'id="push_hint"') as $part) {
+	foreach (array('pg-bell-head', 'pg-bell-heading', 'pg-bell-new', 'pg-bell-search-open', 'pg-bell-head-menu', 'pg-bell-mark-all', 'pg-bell-delete-all', 'pg-bell-close', 'pg-bell-search-bar', 'pg-bell-search-back', 'pg-bell-search-clear', '$output_bell_filters', 'pg-bell-no-match', 'pg-bell-scroll', 'notifications_empty', 'id="push_row"', 'id="push_hint"') as $part) {
 		$pos = strpos($drawer, $part);
 		pg_assert_true(($pos !== false) && ($pos > $last), $part . ' in its place');
 		$last = (int) $pos;
@@ -143,17 +149,27 @@ function test_bell_drawer_open_and_close()
 	$shown = (string) substr($js, (int) $at, (int) strpos($js, '});', (int) $at) - (int) $at);
 	pg_assert_contains("\$('#notifications .pg-bell-close').trigger('focus');", $shown, 'focus on the close button');
 	pg_assert_false(strpos($shown, 'get_notifications') !== false, 'no second load once it has opened');
-	pg_assert_contains("pgUI.drawer.on('#notifications', 'show', function () {\n        \$('#notifications').find('.pg-bell-mark-all, .pg-bell-head-menu').addClass('d-none');\n        \$('#notification_toggle').addClass('show');\n        get_notifications();", $js);
+	pg_assert_contains("pgUI.drawer.on('#notifications', 'show', function () {\n        \$('#notifications').find('.pg-bell-head-menu').addClass('d-none');\n        \$('#notifications').find('.pg-bell-new').prop('hidden', true);\n        \$('#notification_toggle').addClass('show');\n        get_notifications();", $js);
 	pg_assert_contains("pgUI.drawer.on('#notifications', 'hidden', function () {\n        \$('#notification_toggle').removeClass('show');", $js, 'the bell\'s show class goes when it closes');
 	pg_assert_contains("pgUI.drawer.isOpen('#notifications')", $poll, 'the poll asks the drawer');
 	pg_assert_false(strpos($js, "pgUI.menu.isOpen('#notification_toggle')") !== false, 'no Menu state is read');
 
-	// Delete All is offered under All, unnarrowed, with two rows or more.
-	pg_assert_contains("var no_delete = (filter !== 'all') || pgBellUnreadOnly || (search !== '') || (rows.length < 2);", $filter);
+	// Delete All is offered under All, unnarrowed, with two rows or more;
+	// the menu goes when it holds neither of its items.
+	pg_assert_contains("var no_delete = (filter !== 'all') || (view !== 'all') || (search !== '') || (rows.length < 2);", $filter);
+	pg_assert_contains("head_menu.find('.pg-bell-delete-all').prop('hidden', no_delete);", $filter);
+	pg_assert_contains("head_menu.find('.pg-bell-mark-all').prop('hidden', !counts.unread);", $filter);
+	pg_assert_contains("head_menu.toggleClass('d-none', no_delete && !counts.unread);", $filter);
 	pg_assert_contains("\$(document).on('click', '#notifications .pg-bell-delete-all', function () {", $js);
 
-	// A row's menu keeps Escape before the drawer hears it.
+	// A row's menu keeps Escape before the drawer hears it, then an open
+	// search; the search is closed and cleared when the drawer closes.
 	pg_assert_contains("window.addEventListener('keydown', pg_bell_menu_key, true);", $js);
+	pg_assert_true(strpos($js, "window.addEventListener('keydown', pg_bell_menu_key, true);") < strpos($js, "window.addEventListener('keydown', pg_bell_search_key, true);"), 'the menu hears Escape before the search');
+	$key = bell_drawer_js_part($js, 'function pg_bell_search_key(');
+	pg_assert_contains('event.defaultPrevented', $key, 'an Escape the menu took is left alone');
+	pg_assert_contains('pg_bell_search_show(false);', $key, 'Escape closes the search');
+	pg_assert_contains("pg_bell_search_show(false, true);", $js, 'closing the drawer closes the search');
 }
 
 // Only the list scrolls; the drawer is 30rem, the whole width on a phone.

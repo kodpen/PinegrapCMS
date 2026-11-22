@@ -735,7 +735,8 @@ function pg_connections_registry()
             'state' => array('kind' => 'reader', 'function' => 'pg_ad_conversion_ga4_connected')),
 
         // Maps and places. An address provider's key or server is typed on
-        // its page; the Address Autocomplete card switches one on.
+        // its page; the Address Autocomplete card switches one on. Google
+        // reviews' key and Place ID are typed on its page too.
         'google_places' => array('name' => 'Google Places', 'group' => 'maps', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
             'state' => array('kind' => 'app', 'key' => 'addr_google_places'),
             'covers' => array('address' => array('google_places'))),
@@ -745,7 +746,7 @@ function pg_connections_registry()
         'photon' => array('name' => 'Photon', 'group' => 'maps', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
             'state' => array('kind' => 'app', 'key' => 'addr_photon'),
             'covers' => array('address' => array('photon'))),
-        'google_reviews' => array('name' => 'Google reviews', 'group' => 'maps', 'place' => '#settings/api/pgset-google-reviews', 'uses' => 'The place\'s reviews on the site',
+        'google_reviews' => array('name' => 'Google reviews', 'group' => 'maps', 'place' => 'connections.php', 'found_at' => '#settings/api/pgset-google-reviews', 'uses' => 'The place\'s reviews on the site',
             'state' => array('kind' => 'reader', 'function' => 'pg_grev_configured')),
         'dbip' => array('name' => 'DB-IP', 'group' => 'maps', 'place' => '#settings/firewall/pgset-countries', 'uses' => 'The country of a visitor\'s address',
             'state' => null, 'no_state' => 'A free database the site fetches; no account or key.'),

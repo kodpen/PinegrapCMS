@@ -5,7 +5,7 @@ description: The joined card of a canvas with a drawing and a page (CO7c, #9274)
 
 ## When is it drawn?
 - For a message whose canvas has two parts (`workspace/canvas-parts.md`): `ws_canvas_joined_card()` (`includes/workspace/canvas_card.php`) fills `file.joined` in the message payload, and `filePreview()` in workspace.js draws `PGWsPageCard.joined()` (`workspace_page_card.js`) before a part's own card. A canvas with one part keeps its own card (the page card, or the canvas picture).
-- `file.joined`: `name`, `drawing` {`url` (the picture's `?v=` address), `version`, `pending` (the version a member's browser draws, 0 for none)}, `page` (the page card's state from `ws_page_card()` on the page part), `versions`, `can_restore` (may write in the channel).
+- `file.joined`: `name`, `drawing` {`url` (the picture's `?v=` address), `version`, `pending` (the version a member's browser draws, 0 for none), `data` (a data layer in it: drawn again from the reader's rows, `canvas-data-follow.md`)}, `page` (the page card's state from `ws_page_card()` on the page part), `versions`, `can_restore` (may write in the channel).
 
 ## What does the card show?
 - The name, part chips Drawing, Page and "Data n" when tables are bound, the agent's line, a segmented switch Drawing / Page, and Versions at the foot. Drawing shows the picture (a click opens the image viewer); Page holds the page card itself (`card(…, {bare: true})`: no name, maker or Download), so Open, Full screen, View source, Undo, the line of tables, Bind a table and the first-write question stay as they are.

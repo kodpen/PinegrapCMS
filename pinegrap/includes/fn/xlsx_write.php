@@ -174,7 +174,7 @@ function pg_xlsx_sheet_title($title)
  * as a <c> element of pg_xlsx_write_book(): text inline, a number as it is
  * written, a boolean, an error, a date (style 1), a date and time (style 2)
  * or a time alone (style 3 with seconds, 4 without). A number or date that is not one stays text;
- * no cell, or empty text, gives ''.
+ * no cell, or empty text, gives ''; t blank gives a cell without a value.
  *
  * @param string     $reference A1
  * @param array|null $cell
@@ -182,6 +182,12 @@ function pg_xlsx_sheet_title($title)
  */
 function pg_xlsx_typed_cell($reference, $cell)
 {
+    // A cell that is there but holds nothing: an empty grid's cell the file
+    // window can type into (includes/fn/office_new.php).
+    if (is_array($cell) && isset($cell['t']) && ($cell['t'] === 'blank')) {
+        return '<c r="' . $reference . '"/>';
+    }
+
     if (!is_array($cell) || !isset($cell['t'], $cell['v'])) {
         return '';
     }

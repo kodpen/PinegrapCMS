@@ -1303,6 +1303,45 @@ function pg_image_editor_photo_pixels($edit, $parts, $request, $file, $source, $
     return array('refusal' => null, 'data' => pg_image_editor_export_camera($report['data'], $export, $picture), 'export' => $export);
 }
 
+/**
+ * The keys of an image editor request that carry one value: text, a number,
+ * a yes or no, or an id. The document, the export and extend settings, the
+ * redactions, masks, pictures and motion are lists or objects. Pure.
+ *
+ * @return array
+ */
+function pg_image_editor_single_keys()
+{
+    return array(
+        'token', 'action', 'mode', 'file_id', 'file_name', 'folder_id', 'version_id', 'base', 'name',
+        'kind', 'object_type', 'object_id', 'column', 'from', 'to', 'target', 'upload', 'family',
+        'weight', 'italic', 'search', 'svg', 'png', 'on', 'picture', 'overlay', 'colour', 'size',
+        'offset', 'table', 'language', 'stamp', 'fit',
+    );
+}
+
+/**
+ * An image editor request without the one-value keys that hold a list or an
+ * object, which then count as not given. (string) logged "Array to string
+ * conversion" for them, and (int) read file_id, version_id, base, to or
+ * target as 1: the action opened, saved over or copied file 1, where
+ * pg_image_editor_request_files() and the chat attachment check before it
+ * read the same value as no file. Pure.
+ *
+ * @param  array $request the body decoded as arrays
+ * @return array
+ */
+function pg_image_editor_request_values($request)
+{
+    foreach (pg_image_editor_single_keys() as $key) {
+        if (isset($request[$key]) && !is_scalar($request[$key])) {
+            unset($request[$key]);
+        }
+    }
+
+    return $request;
+}
+
 // A value of json_decode() without assoc as json_decode($body, true) gives
 // it: objects become arrays. Pure.
 function pg_image_editor_arrays($value)
@@ -1382,7 +1421,7 @@ function pg_image_editor_api($body, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
-    $request = pg_image_editor_arrays($objects);
+    $request = pg_image_editor_request_values(pg_image_editor_arrays($objects));
     $request['doc_object'] = isset($objects->doc) ? $objects->doc : null;
     $request['binary'] = $binary;
 

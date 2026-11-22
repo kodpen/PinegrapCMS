@@ -38,7 +38,7 @@ function whatsapp_messages_test_template($overrides = array())
 function test_whatsapp_messages_normalize()
 {
 	$events = pg_whatsapp_message_normalize(null);
-	pg_assert_same(array('order_received', 'order_shipped', 'order_delivered', 'stock_back'), array_keys($events));
+	pg_assert_same(array('order_received', 'order_shipped', 'order_delivered', 'stock_back', 'queue_taken', 'queue_ahead', 'queue_called'), array_keys($events));
 	pg_assert_same(array('on' => false, 'template' => '', 'vars' => array()), $events['order_received']);
 
 	// On without a template cannot be on; a broken var is dropped.

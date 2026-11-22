@@ -337,6 +337,8 @@ function ws_openapi_objects()
         'WorkspaceFlowRunStep'      => 'ws_api_flow_run_step_schema',
         'WorkspaceFlowShare'        => 'ws_api_flow_share_schema',
         'WorkspaceFlowBoxTry'       => 'ws_api_flow_box_try_schema',
+        'WorkspaceFlowTrial'        => 'ws_api_flow_trial_schema',
+        'WorkspaceFlowTrialStep'    => 'ws_api_flow_trial_step_schema',
         'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
         'WorkspaceMcpServer'        => 'ws_api_mcp_server_schema',
         'WorkspaceMcpTool'          => 'ws_api_mcp_tool_schema',
@@ -3017,6 +3019,26 @@ function ws_api_routes()
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the draft.'),
                 array('name' => 'run_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'A run of this flow whose settled boxes give the {{node.*}} values.'),
+            ),
+        ),
+
+        // A trial walks the draft and reads records, rows and counts with
+        // the flow owner's rights, as trying a box does: no MCP tool.
+        array(
+            'id'          => 'workspace.flows.trial',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/trial',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flows_trial',
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowTrial',
+            'summary'     => 'Try a flow\'s draft from start to end',
+            'description' => 'Walks the draft of a flow of the owner of the application\'s own from its start box to its end as a run would, without running it: nothing is sent, written or called, and nothing is kept. Each box reached is answered as GET /workspace/flows/{id}/boxes/{node}/try answers it, with the values of the boxes before it filled in. Boxes that read do read, with the rights the flow\'s owner holds now: a condition is looked at, a record, the rows of a table and the records of a list page are read, and what they read is handed on in values. A box that sends, writes or calls hands on only what it knows without doing it, so a value only a real send knows (a message id, a status code) is left out. A Wait is passed at once and hands on its moment. A box whose outcome a person or an answer decides (a task, an approval, Pinegrap AI, an agent) takes the outcome sent in outcomes for it, else its first, and lists the others in choices. The boxes of a loop are walked once, with its first item. steps are in the order walked; status is done or failed, outcome the arrow taken (null when none is); skipped lists the boxes the walk passed by; state is how the run would end, done or failed. Send run_id to start as an earlier run of this flow started (its event and record), or contact_id to try a flow started by hand about that customer; neither, the start gives no values. Only the flow\'s owner tries it, as only they try its boxes: a colleague it is shared with at edit is refused with 403. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'run_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'An earlier run of this flow the owner of the application reaches: the trial starts with what started it and the record it was about.'),
+                array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'A customer the trial is about, as a run started by hand about them; not with run_id (422).'),
+                array('name' => 'outcomes', 'in' => 'query', 'type' => 'string', 'max_length' => 4000, 'description' => 'The outcomes chosen so far for boxes a person decides, as box:outcome pairs separated by commas (ask:rejected,call:cancelled); an outcome the box cannot take is refused with 422 (field outcomes).'),
             ),
         ),
 
