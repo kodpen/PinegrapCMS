@@ -4,9 +4,9 @@
  *
  * Site Settings > Firewall and HTTPS as folded rows: each part's line of
  * state, the rows' order, no popover or old switch left in the rows, every
- * switch's fields drawn whatever its state, the Limits row, the bans drawer,
- * the two segmented controls, and the names that stay (card ids, field names,
- * the save, the Release form).
+ * switch's fields drawn whatever its state, the HTTPS, Limits and Logs rows,
+ * the bans drawer, the three segmented controls, and the names that stay
+ * (card ids, field names, the save, the Release form).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -59,17 +59,17 @@ function settings_firewall_fold_test_card($id)
 	return $ends ? substr($source, $start, min($ends) - $start) : substr($source, $start);
 }
 
-// The rows' part of firewall.php: everything before the HTTPS card.
+// The rows' part of firewall.php: everything before the rows are drawn.
 function settings_firewall_fold_test_rows()
 {
 	$source = settings_firewall_fold_test_source('includes/settings/firewall.php');
 
-	return substr($source, 0, (int) strpos($source, '// ── HTTPS and Security Headers ──'));
+	return substr($source, 0, (int) strpos($source, '// ── The rows ──'));
 }
 
 function test_settings_firewall_fold_order_and_names()
 {
-	pg_assert_same(array('waf', 'limits', 'bots', 'iplists', 'countries', 'proxies'), pg_firewall_fold_order(), 'the rows in the description\'s order');
+	pg_assert_same(array('headers', 'waf', 'limits', 'bots', 'iplists', 'countries', 'proxies', 'waf-logs'), pg_firewall_fold_order(), 'the rows in the description\'s order');
 
 	$names = array();
 
@@ -80,7 +80,7 @@ function test_settings_firewall_fold_order_and_names()
 		pg_assert_false(stripos($face['name'], 'Enable') === 0, $key . ': a name never starts with Enable');
 	}
 
-	pg_assert_same(array(lang('Firewall'), lang('Limits'), lang('Bots'), lang('Addresses'), lang('Countries'), lang('Trusted proxies')), $names, 'the rows\' names');
+	pg_assert_same(array(lang('HTTPS'), lang('Firewall'), lang('Limits'), lang('Bots'), lang('Addresses'), lang('Countries'), lang('Trusted proxies'), lang('Logs')), $names, 'the rows\' names');
 }
 
 function test_settings_firewall_fold_lines()
@@ -124,20 +124,40 @@ function test_settings_firewall_fold_lines()
 	pg_assert_true($proxies['attention'], 'an unlisted proxy opens the row');
 }
 
+function test_settings_firewall_fold_https_and_logs_lines()
+{
+	$https = pg_firewall_fold_https(true, true, true, true, 'report');
+	pg_assert_same(lang('Secure Mode on') . ' · ' . lang('security headers sent') . ' · ' . lang('HSTS') . ' · ' . lang('policy reported only'), $https['line'], 'all on, the policy reported');
+	pg_assert_same(array(lang('On'), 'pg-tone-teal'), $https['pill'], 'Secure Mode decides the pill');
+	pg_assert_false($https['attention'], 'nothing to look at');
+
+	pg_assert_same(lang('Secure Mode off') . ' · ' . lang('security headers sent') . ' · ' . lang('policy enforced'), pg_firewall_fold_https(false, true, true, true, 'enforce')['line'], 'no HSTS without Secure Mode');
+	pg_assert_same(lang('Secure Mode on') . ' · ' . lang('security headers sent'), pg_firewall_fold_https(true, true, true, false, 'off')['line'], 'no policy');
+	pg_assert_same(lang('Secure Mode on') . ' · ' . lang('no security headers'), pg_firewall_fold_https(true, true, false, true, 'enforce')['line'], 'headers off say nothing of the rest');
+	pg_assert_same(array(lang('Off'), 'pg-tone-gray'), pg_firewall_fold_https(false, false, true, true, 'report')['pill'], 'off');
+	pg_assert_same(lang('Secure Mode off'), pg_firewall_fold_https(false, false, true, true, 'report')['line'], 'before the header columns exist');
+
+	$logs = pg_firewall_fold_logs(14, 20000, true, true);
+	pg_assert_same(lang(array('string' => 'Kept {var:1} day{suffix:1}, at most {var:2} rows', 'vars' => array(14, pg_format_number(20000, 0)), 'suffix' => array('s'))) . ' · ' . lang('plain-text block log written'), $logs['line'], 'kept 14 days, the text log on');
+	pg_assert_same(null, $logs['pill'], 'no pill');
+	pg_assert_same(lang(array('string' => 'Kept {var:1} day{suffix:1}, at most {var:2} rows', 'vars' => array(1, pg_format_number(500, 0)), 'suffix' => array(''))) . ' · ' . lang('no plain-text block log'), pg_firewall_fold_logs(1, 500, true, false)['line'], 'one day, the text log off');
+	pg_assert_same(lang(array('string' => 'Kept {var:1} day{suffix:1}, at most {var:2} rows', 'vars' => array(30, pg_format_number(1000, 0)), 'suffix' => array('s'))), pg_firewall_fold_logs(30, 1000, false, true)['line'], 'before the text log\'s column exists');
+}
+
 function test_settings_firewall_fold_pane_is_rows()
 {
 	$pane = settings_firewall_fold_test_source('includes/settings/firewall.php');
 	$rows = settings_firewall_fold_test_rows();
 
 	pg_assert_contains('$pg_settings_cards[] = pg_settings_fold($firewall_rows);', $pane, 'the firewall parts are one list of folded rows');
-	pg_assert_same(2, substr_count($pane, '$pg_settings_cards[]'), 'the rows, then the HTTPS card');
+	pg_assert_same(1, substr_count($pane, '$pg_settings_cards[]'), 'the pane is the rows alone');
 	pg_assert_same(0, substr_count($rows, 'popover'), 'no popover is left in the rows');
 	pg_assert_same(0, substr_count($rows, 'collapse-switcher'), 'no switch hides fields');
 	pg_assert_same(0, substr_count($rows, 'class="switch"'), 'no old switch drawing');
 	pg_assert_same(0, substr_count($rows, 'class="radio"'), 'no plain radio');
-	pg_assert_same(2, substr_count($rows, '<div class="pg-seg flex-wrap">'), 'Mode and Restriction are segmented controls');
+	pg_assert_same(3, substr_count($rows, '<div class="pg-seg flex-wrap">'), 'Mode, Restriction and Content security policy are segmented controls');
 
-	foreach (array('Enable Firewall', 'Rate Limiting', 'Automatic Temporary Bans', 'Block Unknown Bots', 'Bot Filtering', 'IP Lists', 'Country Restriction') as $old) {
+	foreach (array('Enable Firewall', 'Rate Limiting', 'Automatic Temporary Bans', 'Block Unknown Bots', 'Bot Filtering', 'IP Lists', 'Country Restriction', 'Send Security Headers', 'Refuse Framing by Other Sites', 'Plain-text Block Log', 'HTTPS and Security Headers', 'Policy Reports') as $old) {
 		pg_assert_false(strpos($rows, "lang('" . $old . "')") !== false, 'no "' . $old . '" label');
 	}
 }
@@ -149,6 +169,40 @@ function test_settings_firewall_fold_cards_and_fields()
 	pg_assert_contains('$output_waf_ai_state', $waf, 'the AI crawlers\' state line');
 	pg_assert_false(strpos($waf, 'waf_rate_limit') !== false, 'Rate limiting left the Firewall row');
 	pg_assert_false(strpos($waf, 'waf_auto_ban') !== false, 'the bans left the Firewall row');
+	pg_assert_false(strpos($waf, 'waf_log_retention_days') !== false, 'the log fields left the Firewall row');
+
+	$https = settings_firewall_fold_test_card('pgset-headers');
+	$source = settings_firewall_fold_test_source('includes/settings/firewall.php');
+	$start = strpos($source, '// ── HTTPS ──');
+	$block = substr($source, $start, strpos($source, "\$firewall_parts['headers']", $start) - $start);
+
+	pg_assert_contains('name="secure_mode"', $https, 'Secure Mode in HTTPS');
+	pg_assert_true(strpos($https, 'name="secure_mode"') < strpos($https, '$output_security_headers_block'), 'Secure Mode first, then the headers');
+	pg_assert_contains('name="secure_mode_trust_proxy"', $block, 'the trusted-proxy offer');
+
+	foreach (array('security_headers', 'security_frame_protection', 'security_hsts', 'security_csp_mode', 'security_csp_policy') as $name) {
+		pg_assert_contains('name="' . $name . '"', $block, $name . ' in HTTPS');
+	}
+
+	pg_assert_contains("<legend class=\"form-label pg-field-label\">' . lang('Content security policy')", $block, 'the policy\'s choice keeps its legend');
+	pg_assert_contains('<label class="pg-seg-item" for="security_csp_mode_', $block, 'the policy\'s choice is a segmented control');
+	pg_assert_contains("lang('Policy reports')", $block, 'Policy reports under the policy');
+	pg_assert_false(strpos($block . $https, 'waf_text_log') !== false, 'the plain-text log left HTTPS');
+
+	$logs = settings_firewall_fold_test_card('pgset-waf-logs');
+
+	foreach (array('waf_log_retention_days', 'waf_log_max_rows') as $name) {
+		pg_assert_contains('name="' . $name . '"', $logs, $name . ' in Logs');
+	}
+
+	pg_assert_contains("lang('Open the firewall log')", $logs, 'the firewall log opens from Logs');
+	pg_assert_contains('$output_waf_text_log', $logs, 'with the plain-text log');
+
+	$pane = settings_firewall_fold_test_source('includes/settings/firewall.php');
+	$text_log = substr($pane, (int) strpos($pane, '$output_waf_text_log = \''));
+	pg_assert_contains('name="waf_text_log"', $text_log, 'the plain-text log\'s switch');
+	pg_assert_true(strpos($text_log, 'name="waf_text_log"') < strpos($text_log, '<details>'), 'its files under a details, after the switch');
+	pg_assert_contains("lang('Log file and fail2ban')", $text_log, 'the details\' summary');
 
 	$limits = settings_firewall_fold_test_card('pgset-limits');
 
@@ -180,11 +234,11 @@ function test_settings_firewall_fold_names_stay()
 {
 	$pane = settings_firewall_fold_test_source('includes/settings/firewall.php');
 
-	foreach (array('waf_enabled', 'waf_mode', 'waf_sensitivity', 'waf_log_retention_days', 'waf_log_max_rows', 'waf_signature_scan', 'waf_block_attack_tools', 'waf_verify_bots', 'waf_exclusions', 'block_unknown_bots', 'allowed_bots', 'waf_blocked_agents', 'allowed_ip_addresses', 'banned_ip_addresses', 'waf_country_mode', 'waf_country_list', 'waf_country_unknown', 'waf_trusted_proxies', 'waf_trust_unlisted_proxy', 'secure_mode') as $name) {
+	foreach (array('waf_enabled', 'waf_mode', 'waf_sensitivity', 'waf_log_retention_days', 'waf_log_max_rows', 'waf_signature_scan', 'waf_block_attack_tools', 'waf_verify_bots', 'waf_exclusions', 'block_unknown_bots', 'allowed_bots', 'waf_blocked_agents', 'allowed_ip_addresses', 'banned_ip_addresses', 'waf_country_mode', 'waf_country_list', 'waf_country_unknown', 'waf_trusted_proxies', 'waf_trust_unlisted_proxy', 'secure_mode', 'security_headers', 'security_frame_protection', 'security_hsts', 'security_csp_policy', 'waf_text_log') as $name) {
 		pg_assert_contains('name="' . $name . '"', $pane, $name . ' posts under its name');
 	}
 
-	foreach (array('pgset-waf', 'pgset-limits', 'pgset-bots', 'pgset-iplists', 'pgset-countries', 'pgset-proxies', 'pgset-headers') as $id) {
+	foreach (array('pgset-headers', 'pgset-waf', 'pgset-limits', 'pgset-bots', 'pgset-iplists', 'pgset-countries', 'pgset-proxies', 'pgset-waf-logs') as $id) {
 		pg_assert_contains('<div id="' . $id . '" class="pg-set-card">', $pane, $id . ' keeps its card');
 	}
 
@@ -201,6 +255,7 @@ function test_settings_firewall_fold_registry_and_anchors()
 
 	pg_assert_contains("'pgset-limits'  => lang('Limits')", $firewall, 'Limits is a section');
 	pg_assert_contains("lang('rate limit, requests per minute, ban,", $firewall, 'the search finds rate limit and ban in Limits');
+	pg_assert_contains("'pgset-waf-logs' => lang('Logs')", $firewall, 'Logs is a section');
 	pg_assert_contains('fail2ban', $firewall, 'and fail2ban');
 	pg_assert_contains('hsts', $firewall, 'and HSTS');
 
@@ -209,6 +264,9 @@ function test_settings_firewall_fold_registry_and_anchors()
 	pg_assert_same(array('firewall', 'pgset-waf'), $anchors['pgset-waf'], 'an old Firewall link');
 	pg_assert_same(array('firewall', 'pgset-bots'), $anchors['pgsub-bots'], 'an old bots link');
 	pg_assert_same(array('firewall', 'pgset-iplists'), $anchors['pgsub-iplists'], 'an old IP lists link');
+	pg_assert_same(array('firewall', 'pgset-headers'), $anchors['pgsub-headers'], 'an old headers link');
+	pg_assert_same(array('firewall', 'pgset-waf-logs'), $anchors['waf_log_retention_days'], 'the log retention field opens Logs');
+	pg_assert_same(array('firewall', 'pgset-waf-logs'), $anchors['waf_text_log'], 'the plain-text log opens Logs');
 	pg_assert_contains('window.pgSettingsFoldReveal(section);', settings_firewall_fold_test_source('assets/js/backend.src.js'), 'an anchor opens its row');
 
 	$html = pg_settings_fold(array(

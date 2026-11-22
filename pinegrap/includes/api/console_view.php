@@ -79,6 +79,7 @@ function api_console_group_labels() {
 		'returns'        => lang('Returns'),
 		'cart_quotes'    => lang('Cart quotes'),
 		'audit_log'      => lang('Audit trail'),
+		'changes'        => lang('Deleted records'),
 		'affiliates'     => lang('Affiliates'),
 		'subscriptions'  => lang('Subscriptions'),
 		'experiments'    => lang('Experiments'),

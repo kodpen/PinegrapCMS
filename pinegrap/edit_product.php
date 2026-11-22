@@ -49,7 +49,8 @@ $liveform = new liveform('edit_product');
  * Which product
  * ------------------------------------------------------------------ */
 
-$product_id = isset($_REQUEST['id']) ? (int) $_REQUEST['id'] : 0;
+// An id sent as a list is no product: (int) read it as product 1.
+$product_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $product    = pg_pb_load_product($product_id);
 
 // Where to land after saving or deleting: the screen that opened this one when
@@ -86,6 +87,17 @@ $product_binned = pg_catalog_product_binned($product_id);
 if ($_POST) {
 
     validate_token_field();
+
+    // A field posted as a list where the form draws one value (name[]=x)
+    // stopped the save in trim() or escape() with an error page. The save is
+    // refused before anything is written; pg_pb_list_fields() names the
+    // fields the form draws as lists.
+    $product_lists = pg_request_unexpected_lists($_POST, pg_pb_list_fields());
+
+    if ($product_lists) {
+        $liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $product_lists)))));
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
+    }
 
     if ($product_binned) {
         go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));

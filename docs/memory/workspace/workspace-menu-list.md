@@ -9,9 +9,10 @@ description: The Workspace list in the main menu (#2545, layout #3794, #3817, #6
 - Printed only inside slot 23's gate (`ws_rights()['member']`). The data comes only from `ws_channels_for()`, `ws_groups_for()`, `ws_threads_for()`, `ws_inbox_unread_count()` and `ws_nav_groups()` (each place under its gate); the script hides nothing. `ws_side_payload()` is `array()` for a non-member.
 
 ## What is its order, top to bottom?
-- Owner #3794, #6281 (`workflow/decisions-made-workspace-6.md`): the search alone on its row ("Ctrl K" where it opens the palette); "+" and the gear (`ws_nav_groups()['head']`) in the panel's head (`.ws-side-head-tools`), 1.75rem squares: the solid "+" a circle, not the old 1.625×1.9rem oval; Today alone (`top`; no Inbox entry, the bell is the one inbox: `ui/notifications-one-inbox.md`); one Channels section (pinned, group tree, other joined, not joined dimmed, New group last for managers; heading key `channels`, a channel dropped on it leaves its group); My discussions (`th_mine`); Tools tiles, My Tasks first, and More (`workspace-menu-tools.md`).
+- Owner #3794, #6281 (`workflow/decisions-made-workspace-6.md`): the search alone on its row ("Ctrl K" where it opens the palette); "+" and the gear (`ws_nav_groups()['head']`) in the panel's head (`.ws-side-head-tools`), 1.75rem squares: the solid "+" a circle, not the old 1.625×1.9rem oval.
+- Today alone (`top`; no Inbox entry, the bell is the one inbox: `ui/notifications-one-inbox.md`); one Channels section (pinned, group tree, other joined, the not-joined ones behind one row, New group last for managers; heading key `channels`, a channel dropped on it leaves its group); My discussions (`th_mine`); Tools tiles, My Tasks first, and More (`workspace-menu-tools.md`).
 - A group: a folder row, its name as written (no capitals), the chevron last (hover, closed), its channels on a thin line of its colour (`.ws-group-inner`).
-- Mentions in `--ws-accent`, unread neutral.
+- A row's look and marks: `workspace-menu-rows.md`.
 
 ## When is the data read?
 - Workspace screens (`ws_side_screen()`): with the page (`#ws-side-data`); navigator screens, so the menu (or the rail, never hidden; `ui/main-menu-navigator-screens.md`) and the panel open by themselves. `workspace.js` asks `ws_bootstrap` with `lean`, so `ws_threads_for()` runs once.

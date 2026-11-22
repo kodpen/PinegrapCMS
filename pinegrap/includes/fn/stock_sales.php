@@ -194,6 +194,120 @@ function pg_stock_taken_returned($table, $id, $units)
 }
 
 /**
+ * Whether a line took fewer units than it asked: stock_taken recorded and
+ * below the quantity. A line with nothing recorded (an untracked product, an
+ * order from before the column) is never short. Pure.
+ *
+ * @param mixed $taken the row's stock_taken: null for not recorded
+ * @param int   $asked
+ * @return bool
+ */
+function pg_stock_taken_short($taken, $asked)
+{
+    if (($taken === null) || ($taken === '')) {
+        return false;
+    }
+
+    return max(0, (int) $taken) < max(0, (int) $asked);
+}
+
+/**
+ * The products a completed sale sold beyond their stock: a line, or a
+ * bundle line's component row, that took fewer units than it asked while
+ * its product takes no back orders. A product with back orders on is
+ * allowed to sell beyond its stock and is left out. Each product once, in
+ * the order of its first short line. Pure.
+ *
+ * @param array $rows product_id, asked (units the line asked for), taken
+ *                    (stock_taken, null for not recorded), backorder
+ * @return int[]
+ */
+function pg_stock_oversold_products(array $rows)
+{
+    $products = array();
+
+    foreach ($rows as $row) {
+        $product_id = (int) ($row['product_id'] ?? 0);
+
+        if (($product_id <= 0) || ((int) ($row['backorder'] ?? 0) === 1)
+            || !pg_stock_taken_short($row['taken'] ?? null, $row['asked'] ?? 0)
+            || in_array($product_id, $products, true)) {
+            continue;
+        }
+
+        $products[] = $product_id;
+    }
+
+    return $products;
+}
+
+/**
+ * After a sale's takers ran (checkout, counter sale, marketplace import):
+ * one bell line, kind oversold, when the order sold a product beyond its
+ * stock (pg_stock_oversold_products()). The line carries the order number
+ * as its title and the number of products in order_total, and reaches
+ * whoever the out_stock line reaches. Nothing is cancelled, refunded or
+ * held: the shop decides what to do with the order.
+ *
+ * @param int    $order_id
+ * @param string $actor        user name on the line
+ * @param string $order_number shown on the line; read from the order when ''
+ * @return int[] the products sold beyond their stock
+ */
+function pg_stock_oversold_warn($order_id, $actor = '', $order_number = '')
+{
+    $order_id = (int) $order_id;
+
+    if (($order_id <= 0) || !pg_stock_taken_ready('order_items')) {
+        return array();
+    }
+
+    $rows = array();
+    $result = db("SELECT order_items.product_id, order_items.quantity AS asked, order_items.stock_taken AS taken, products.backorder
+        FROM order_items
+        INNER JOIN products ON products.id = order_items.product_id
+        WHERE order_items.order_id = '" . $order_id . "' AND order_items.stock_taken IS NOT NULL");
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $rows[] = $row;
+    }
+
+    // A bundle line asks its components for per-bundle x bundles sold.
+    if (pg_stock_taken_ready('order_item_components')) {
+        $result = db("SELECT order_item_components.product_id, (order_item_components.quantity * order_items.quantity) AS asked, order_item_components.stock_taken AS taken, products.backorder
+            FROM order_item_components
+            INNER JOIN order_items ON order_items.id = order_item_components.order_item_id
+            INNER JOIN products ON products.id = order_item_components.product_id
+            WHERE order_item_components.order_id = '" . $order_id . "' AND order_item_components.stock_taken IS NOT NULL");
+
+        while ($result && ($row = mysqli_fetch_assoc($result))) {
+            $rows[] = $row;
+        }
+    }
+
+    $products = pg_stock_oversold_products($rows);
+
+    if (!$products || !function_exists('create_notification')) {
+        return $products;
+    }
+
+    if ((string) $order_number === '') {
+        $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . $order_id . "'");
+    }
+
+    create_notification(array(
+        'action'      => 'oversold',
+        'type'        => 'warning',
+        'title'       => ((string) $order_number !== '') ? (string) $order_number : (string) $order_id,
+        'order_id'    => $order_id,
+        'order_total' => (string) count($products),
+        'user'        => (string) $actor
+    ));
+
+    return $products;
+}
+
+/**
  * The change a stock API call makes at a location that holds $at_location:
  * set writes the quantity (below 0 is 0), adjust moves by the signed amount
  * and stops at 0, as the total's GREATEST(0, ...) does.

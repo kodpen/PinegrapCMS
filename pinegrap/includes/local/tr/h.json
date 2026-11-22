@@ -7,6 +7,7 @@
     "HS Code": "GTİP / HS kodu",
     "HS code changed": "GTİP / HS kodu değişti",
     "HS code cleared": "GTİP / HS kodu temizlendi",
+    "HSTS": "HSTS",
     "HTML": "HTML",
     "HTML / SEO check": "HTML / SEO denetimi",
     "HTML Body": "HTML Gövde",
@@ -28,6 +29,7 @@
     "HTTP Basic: the user name is the key above, the password is the secret. This line is the whole handshake - hand it to the integrator with the key.": "HTTP Basic: kullanıcı adı yukarıdaki anahtar, parola gizli anahtardır. Bağlanmanın tamamı bu satırdır — anahtarla birlikte entegratöre verin.",
     "HTTP allowed": "HTTP'ye izin veriliyor",
     "HTTP method": "Yöntem",
+    "HTTPS": "HTTPS",
     "HTTPS and Security Headers": "HTTPS ve Güvenlik Başlıkları",
     "HTTPS required": "HTTPS zorunlu",
     "Habitat": "Yaşam alanı",
@@ -1554,6 +1556,7 @@
     "hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy": "hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy, sunucu, alan adi, alan adı, guvenli mod, eposta, destek, vekil",
     "hostname, domain, ip, ssl, https, secure mode, secure, proxy": "hostname, domain, ip, ssl, https, secure mode, secure, proxy, sunucu, alan adi, alan adı, guvenli mod, vekil",
     "hostname, domain, site address, ip, proxy, proxy address, outgoing proxy": "hostname, domain, site address, ip, proxy, proxy address, outgoing proxy, sunucu, alan adi, alan adı, site adresi, ip adresi, vekil, proxy adresi, giden proxy, giden vekil sunucu",
+    "hostname, domain, site address, ip, proxy, proxy address, outgoing proxy, other host names, redirect, https": "hostname, domain, site address, ip, proxy, proxy address, outgoing proxy, other host names, redirect, https, sunucu, alan adi, alan adı, site adresi, ip adresi, vekil, proxy adresi, giden proxy, giden vekil sunucu, diğer alan adları, yönlendirme, güvenli mod",
     "hosts": "sunucular",
     "hosts, presenters, interviewers, team": "sunucular, programcılar, söyleşi yapanlar, ekip",
     "hosts, presenters, team": "sunucular, programcılar, ekip",
@@ -1598,6 +1601,7 @@
     "how-we-work": "nasil-calisiyoruz",
     "hp": "hp",
     "https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer": "https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer, guvenli mod, güvenli mod, sertifika, baslik",
+    "https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, nosniff, referrer": "https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, nosniff, referrer, guvenli mod, güvenli mod, sertifika, baslik",
     "https://… , {{1}} at the end for a value": "https://… , bir değer için sonda {{1}}",
     "hunger, nutrition, school meals, farming, seeds, harvest": "açlık, beslenme, okul yemeği, tarım, tohum, hasat"
 }

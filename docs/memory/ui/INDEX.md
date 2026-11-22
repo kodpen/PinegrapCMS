@@ -21,6 +21,7 @@
 - app-screen-messages.md: Application-like screens (File Manager, visual designer) show liveform messages as their own toasts; a send_to redirect leaves its notice on the screen it opens [decision: decisions-made-panel-2.md]
 - approve-affiliate-shared-form.md: approve_affiliate.php draws its request card, Summary and save bar through includes/forms/approve_affiliate_form.php (wide layout, step B11); what the screen keeps, the website link rule
 - area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab (owner 2026-11-19, poll 153): the shared class .pg-area-tabs, the screens that have it, the strips that are not area strips [decision: decisions-made-panel-10.md]
+- arrival-date-cutoff-rows.md: Shipping Cut-offs table on the arrival date screen: how rows are numbered, which posted rows the save reads, when the left-out notice shows, a deleted row
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS hands non-ASCII paths over in the ANSI code page: file names made ASCII, the request address read back as UTF-8 (pg_request_uri_utf8); no stored file name ends in a dot
 - audit-log-paging.md: The audit trail list (view_audit_log.php) on the list table driver, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
@@ -530,7 +531,7 @@
 - page-edit-layout.md: Create Page and Edit Page: wide layout (form, sticky status and save bar columns, Summary card), rows hidden with d-none via pg_page_row(), bindPageTypePicker(), no fake popovers
 - page-form-count-defaults.md: Create/Edit Page and the designer's Page Type pane save an emptied or zero Photo Gallery column count or Form View Directory summary box as the form's default (4 / 30 / 5), not 0
 - page-form-group-names.md: Create/Edit Page type properties and the ERP accounts import: radio questions are legends, the custom form's two e-mail blocks are named by their switch
-- page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask
+- page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask [decision: here]
 - page-form-page-fields.md: Create Page / Edit Page and the designer's page type pane: page settings are typed page picker fields (pg_page_form_page_field()); Settings and the user start page too (#8782)
 - page-form-refused-save.md: Create Page and Edit Page come back with what was typed when a save is refused: the stored post, the redraw helpers in includes/forms/page_form.php, what is not redrawn
 - page-list-paging.md: The pages list (view_pages.php) on the list table driver (paged since #6114, issues #6076 #6088): views, source, bulk actions by selection, folder access in SQL, inherited styles
@@ -572,6 +573,7 @@
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page [decision: here]
 - panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()
+- panel-shell-foot.md: Panel foot at the window's bottom, none on the Workspace channel view; top bar description ends 16px before the search field; no Ctrl+K there on Workspace screens
 - panel-small-select-arrow.md: A small select (select.form-control.form-control-sm) keeps its longest option clear of the arrow: 1.75rem end padding, the arrow 0.5rem in
 - panel-spacing-tokens.md: B10 spacing (#5356): cards on Bootstrap 6's card padding with the header in line, menu rows inset with rounded corners, on Bootstrap 6's --bs-spacer-N scale
 - panel-stepper-and-product-names.md: Accessible names of number steppers, catalog landmarks, the Modify Selected (Products) value boxes and the product screen fields, and the tests that pin them
@@ -669,7 +671,8 @@
 - settings-features-rows.md: Site Settings › Features below the Modules board: the folded rows Site search, Sharing buttons, Speed, Badge and the rest, their card ids, state lines and what moved into them
 - settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed [decision: here]
 - settings-filter-autofill.md: Settings category screens: a password manager wrote the saved username ("admin") into the toolbar filter and every section card vanished; the token and the focus guard that stop it (PR #1700)
-- settings-firewall.md: Site Settings › Firewall and HTTPS as folded rows: the six firewall rows and their state lines, the Limits row, the bans drawer, the two segmented controls, what stayed (ids, field names, the save)
+- settings-firewall-https-logs.md: Site Settings › Firewall and HTTPS, the HTTPS row (Secure Mode first, the headers, the policy) and the Logs row (both logs, fail2ban files under a details): lines, fields, anchors
+- settings-firewall.md: Site Settings › Firewall and HTTPS as folded rows: the eight rows in order and their state lines, the Limits row, the bans drawer, the segmented controls, what stayed (ids, names, the save)
 - settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows [decision: decisions-made-panel-11.md, decisions-made-panel-12.md]
 - settings-folder-pickers.md: Site Settings and page folder pickers leave out the Workspace (settings also the Recycle Bin); settings saves refuse them; a stored one is shown marked
 - settings-general.md: Site Settings › General as folded rows: the four rows and their state lines, what each row holds, the IP as a line, Outgoing proxy, what stayed (ids, field names, the save, the search words)

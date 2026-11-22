@@ -89,7 +89,7 @@ function test_privacy_retention_overview_change_opens_its_card()
 	$rows = privacy_retention_overview_test_rows(privacy_retention_overview_test_facts());
 
 	pg_assert_same(array('security', 'pgset-audit'), array($rows['audit']['category'], $rows['audit']['card']), 'the Audit Trail card');
-	pg_assert_same(array('firewall', 'pgset-waf'), array($rows['waf']['category'], $rows['waf']['card']), 'the firewall card');
+	pg_assert_same(array('firewall', 'pgset-waf-logs'), array($rows['waf']['category'], $rows['waf']['card']), 'the firewall\'s Logs row');
 	pg_assert_same(array('api', 'pgset-api-storage'), array($rows['api']['category'], $rows['api']['card']), 'Uploads & Logs');
 
 	foreach (array('chats', 'contacts', 'forms', 'carts', 'orders', 'requests') as $key) {

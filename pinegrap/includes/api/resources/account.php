@@ -823,6 +823,7 @@ function api_notification_subjects() {
 		'new_order'     => array('order', 'order_id'),
 		'order_return'  => array('order', 'order_id'),
 		'out_stock'     => array('product', 'product_id'),
+		'oversold'      => array('order', 'order_id'),
 		'form_submited' => array('form_submission', 'form_id'),
 		'new_comment'   => array('comment', 'comment_id'),
 		'erp_money'     => array('erp_receipt', 'form_id'),

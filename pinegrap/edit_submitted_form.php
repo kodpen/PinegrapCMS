@@ -997,6 +997,10 @@ if (!$_POST) {
                 pg_tr_records_saved($custom_form_page_id, $user['id']);
             }
 
+            // The notice for the button that was clicked; a save posted with
+            // no button name (by a script, for one) reads as saved.
+            $message = lang('The form has been saved.');
+
             // If the save-for-later button was clicked.
             if ($liveform->field_in_session('save_for_later_button')) {
                 $message = lang('The form has been saved for later.');

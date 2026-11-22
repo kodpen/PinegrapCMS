@@ -258,6 +258,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_walk_in_queue();           // 11.0.266
 	upgrade_2026_11_0_event_ticket_checkins();   // 11.0.267
 	upgrade_2026_11_0_stock_taken();             // 11.0.268
+	upgrade_2026_11_0_starter_twitter();         // 11.0.269
 	upgrade_2026_11_0_kvkk_switch();             // 11.0.270
 
 }
@@ -4074,6 +4075,69 @@ function upgrade_2026_11_0_workspace_visit_contact() {
 	install_add_index('ws_events', 'idx_contact', "INDEX idx_contact (contact_id)");
 
 	install_note('Workspace: a customer visit on the Work Calendar can name the customer, and it shows on that customer\'s card and history.');
+
+}
+
+// The starter sites' Twitter feeds (2026.11.0, 11.0.269). Three common
+// regions of both starter dumps embedded Twitter timelines (platform.twitter.com
+// widgets or the theme's twitterFetcher with a widget id). Twitter no longer
+// serves them: the regions stayed empty, and every page with the footer got
+// a 429, a script error and CSP reports. The dumps now ship a social icons
+// widget in the footer column (twitter-feed) and empty the two page regions
+// (home-firm-twitter-feed, home-event-twitter-strip), whose rows stay so the
+// layouts keep their region tags. On a running site a region changes only
+// while its content is still, byte for byte, one of the stock values of the
+// two dumps: a region the owner wrote or edited stays. BINARY keeps the
+// comparison exact (case, trailing spaces, CR LF). A second run finds no
+// stock value and changes nothing.
+function upgrade_2026_11_0_starter_twitter() {
+
+	$footer_tr = "<div class=\"widget\">\r\n    <h6 class=\"title\">Bizi Takip Edin</h6>\r\n    <hr>\r\n    <ul class=\"list-inline social-list\">\r\n        <li><a href=\"#\"><i class=\"ti-twitter-alt\"></i></a></li>\r\n        <li><a href=\"#\"><i class=\"ti-facebook\"></i></a></li>\r\n        <li><a href=\"#\"><i class=\"ti-instagram\"></i></a></li>\r\n        <li><a href=\"#\"><i class=\"ti-linkedin\"></i></a></li>\r\n        <li><a href=\"#\"><i class=\"ti-youtube\"></i></a></li>\r\n    </ul>\r\n</div>";
+	$footer_en = "<div class=\"widget\">\r\n    <h6 class=\"title\">Follow Us</h6>\r\n    <hr>\r\n    <ul class=\"list-inline social-list\">\r\n        <li><a href=\"#\"><i class=\"ti-twitter-alt\"></i></a></li>\r\n        <li><a href=\"#\"><i class=\"ti-facebook\"></i></a></li>\r\n        <li><a href=\"#\"><i class=\"ti-instagram\"></i></a></li>\r\n        <li><a href=\"#\"><i class=\"ti-linkedin\"></i></a></li>\r\n        <li><a href=\"#\"><i class=\"ti-youtube\"></i></a></li>\r\n    </ul>\r\n</div>";
+
+	$stock_footer = array(
+		// Turkish dump: the @TwitterDev timeline.
+		"<div class=\"widget\">\n    <h6 class=\"title\">En Son Güncellemeler</h6>\n    <hr>\n<a class=\"twitter-timeline\" \n   data-lang=\"tr\" \n   data-height=\"300\" \n   data-dnt=\"true\" \n   data-theme=\"dark\" \n   data-link-color=\"#2B7BB9\" \n   href=\"https://twitter.com/TwitterDev?ref_src=twsrc%5Etfw\">TwitterDev Tweetleri</a>\n   <script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"></script>\n</div>\n\n\n\n" => $footer_tr,
+		// English dump: twitterFetcher with a widget id.
+		"<div class=\"widget\">\r\n    <h6 class=\"title\">Latest Updates</h6>\r\n    <hr>\r\n    <a href=\"//twitter.com/ilovelivesite\" target=\"_blank\">\r\n    <div class=\"twitter-feed\">\r\n        <div class=\"tweets-feed\" data-widget-id=\"714599501978214400\"></div>\r\n    </div>\r\n    </a>\r\n</div>" => $footer_en,
+	);
+
+	$stock_emptied = array(
+		// Turkish dump: home-firm-twitter-feed.
+		"<section>\n    <div class=\"container\">\n        <div class=\"row\">\n            <div class=\"col-sm-12\">\n                <h6 class=\"uppercase\">Güncellemeler ve Bilgiler</h6>\n                <hr class=\"mb160 mb-xs-24\">\n            </div>\n        </div>\n        <div class=\"row\">\n            <div class=\"col-md-10\">\n                <a class=\"h1 thin color-primary inline-block mb24\" href=\"#\">@ilovePinegrap</a>\n            </div>\n        </div>\n        <div class=\"row mb160 mb-xs-0\">\n            <div class=\"col-md-6 col-sm-8\">\n                <p class=\"lead\">\n                    Katılım ve bilgi paylaşımı başarımızın temel taşlarıdır. Pinegrap ile ilgili görüşler için bizi takip edin.\n                </p>\n            </div>\n        </div>\n        <div class=\"row\">\n           <a class=\"twitter-timeline\" href=\"https://twitter.com/ilovepinegrap?ref_src=twsrc%5Etfw\">ilovepinegrap etiketli twittler</a> \n            <script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"></script>\n        </div>\n    </div>\n</section>",
+		// English dump: home-firm-twitter-feed.
+		"<section>\r\n    <div class=\"container\">\r\n        <div class=\"row\">\r\n            <div class=\"col-sm-12\">\r\n                <h6 class=\"uppercase\">Updates & Insights</h6>\r\n                <hr class=\"mb160 mb-xs-24\">\r\n            </div>\r\n        </div>\r\n        <div class=\"row\">\r\n            <div class=\"col-md-10\">\r\n                <a class=\"h1 thin color-primary inline-block mb24\" href=\"#\">@ilovelivesite</a>\r\n            </div>\r\n        </div>\r\n        <div class=\"row mb160 mb-xs-0\">\r\n            <div class=\"col-md-6 col-sm-8\">\r\n                <p class=\"lead\">\r\n                    Engagement and sharing knowledge are the cornerstones of our success. Follow us for SV related insights.\r\n                </p>\r\n            </div>\r\n        </div>\r\n        <div class=\"row\">\r\n            <div class=\"twitter-feed thirds\">\r\n                <div class=\"tweets-feed\" data-widget-id=\"714599501978214400\">\r\n                </div>\r\n            </div>\r\n        </div>\r\n    </div>\r\n</section>",
+		// Turkish dump: home-event-twitter-strip.
+		"<section class=\"bg-dark\">\r\n    <div class=\"container\">\r\n        <div class=\"row\">\r\n            <div class=\"col-md-10 col-md-offset-1 text-center\">\r\n                <i class=\"ti-twitter-alt icon icon color-primary mb40 mb-xs-24\"></i>\r\n                <div class=\"twitter-feed tweets-slider large\">\r\n                    <div class=\"tweets-feed\" data-widget-id=\"714599501978214400\">\r\n                    </div>\r\n                </div>\r\n            </div>\r\n        </div>\r\n    </div>\r\n</section>\r\n<section class=\"bg-secondary\">\r\n    <div class=\"container\">\r\n        <div class=\"row mb32 mb-xs-24\">\r\n            <div class=\"col-md-8 col-md-offset-2 text-center\">\r\n                <h2 class=\"uppercase mt8 mb16\">#Pinegrapkon</h2>\r\n                <h6 class=\"uppercase mb0\">Güncellemeler İçin Bizi Takip Edin</h6>\r\n            </div>\r\n        </div>\r\n    </div>\r\n</section>",
+		// English dump: home-event-twitter-strip.
+		"<section class=\"bg-dark\">\r\n    <div class=\"container\">\r\n        <div class=\"row\">\r\n            <div class=\"col-md-10 col-md-offset-1 text-center\">\r\n                <i class=\"ti-twitter-alt icon icon color-primary mb40 mb-xs-24\"></i>\r\n                <div class=\"twitter-feed tweets-slider large\">\r\n                    <div class=\"tweets-feed\" data-widget-id=\"714599501978214400\">\r\n                    </div>\r\n                </div>\r\n            </div>\r\n        </div>\r\n    </div>\r\n</section>\r\n<section class=\"bg-secondary\">\r\n    <div class=\"container\">\r\n        <div class=\"row mb32 mb-xs-24\">\r\n            <div class=\"col-md-8 col-md-offset-2 text-center\">\r\n                <h2 class=\"uppercase mt8 mb16\">#Pinegrapcon</h2>\r\n                <h6 class=\"uppercase mb0\">Follow Us For Updates</h6>\r\n            </div>\r\n        </div>\r\n    </div>\r\n</section>",
+	);
+
+	$changed = 0;
+
+	foreach ($stock_footer as $stock => $replacement) {
+
+		db("UPDATE cregion SET cregion_content = '" . e($replacement) . "'
+			WHERE BINARY cregion_content = '" . e($stock) . "'");
+
+		$changed += max(0, (int) mysqli_affected_rows(db::$con));
+
+	}
+
+	db("UPDATE cregion SET cregion_content = ''
+		WHERE BINARY cregion_content IN ('" . implode("', '", array_map('e', $stock_emptied)) . "')");
+
+	$changed += max(0, (int) mysqli_affected_rows(db::$con));
+
+	if ($changed > 0) {
+
+		if (function_exists('pg_page_cache_bump')) {
+			pg_page_cache_bump();
+		}
+
+		install_note('Starter content: the Twitter feeds the starter sites came with are replaced where they were never changed (the footer column shows social links, the two page sections are emptied), since Twitter no longer serves them. A region edited on the site stays.');
+
+	}
 
 }
 

@@ -2820,51 +2820,37 @@
     }
 
     // ── The composer's unsent text, kept on this browser ──
-    // One slot per site, viewer, channel and discussion, so two people on one
-    // browser or two sites on one host never read each other's text. Only
-    // the stored markup and its chips' labels are kept, never files.
-    var DRAFT_PREFIX = 'ws-draft:';
-    var DRAFT_DAYS = 14;
+    // The slot's name and the reading of a kept value are the list's
+    // (window.PGWsDraft, workspace_side.js), so the list marks a row that
+    // holds a draft with the same key. Only the stored markup and its chips'
+    // labels are kept, never files. Without the list on the page no draft is
+    // kept.
     var DRAFT_KEEP = 50;
 
     // The pictures the Files tab's gallery draws at a time (drawFiles()).
     var FILE_PAGE = 60;
 
+    function draftHelper() {
+        return window.PGWsDraft || null;
+    }
+
+    // The slot of a channel or a discussion; '' without the helper.
     function draftKey(site, viewer, channelId, threadId) {
-        var thread = parseInt(threadId, 10) || 0;
+        var helper = draftHelper();
 
-        return DRAFT_PREFIX + String(site || '') + '|' + (parseInt(viewer, 10) || 0)
-            + ':c' + (parseInt(channelId, 10) || 0) + (thread ? ':t' + thread : '');
+        return helper ? helper.key(site, viewer, channelId, threadId) : '';
     }
 
-    // A kept value as { raw, labels, at } while it is younger than DRAFT_DAYS
-    // and holds words; null otherwise.
     function draftFresh(stored, now) {
-        var value = null;
+        var helper = draftHelper();
 
-        try {
-            value = JSON.parse(String(stored || ''));
-        } catch (error) {
-            return null;
-        }
-
-        if (!value || (typeof value.raw !== 'string') || (value.raw.trim() === '') || (typeof value.at !== 'number')) {
-            return null;
-        }
-
-        if (!(value.at > now - DRAFT_DAYS * 86400000)) {
-            return null;
-        }
-
-        var labels = (value.labels && (typeof value.labels === 'object') && !Array.isArray(value.labels)) ? value.labels : {};
-
-        return { raw: value.raw, labels: labels, at: value.at };
+        return helper ? helper.fresh(stored, now) : null;
     }
 
-    // The slots to remove from [{ key, at }]: every expired one, then the
-    // oldest beyond DRAFT_KEEP.
-    function draftPrune(entries, now) {
-        var limit = now - DRAFT_DAYS * 86400000;
+    // The slots to remove from [{ key, at }]: every older than the days a
+    // draft is kept, then the oldest beyond DRAFT_KEEP.
+    function draftPrune(entries, now, days) {
+        var limit = now - days * 86400000;
         var live = [];
         var drop = [];
 
@@ -2882,12 +2868,26 @@
         return drop;
     }
 
+    // The list's rows marked again when a slot started or stopped holding a
+    // draft.
+    function draftTold(had, has) {
+        if ((had !== has) && window.PGWsSide) {
+            window.PGWsSide.redraw();
+        }
+    }
+
     function draftRead(key) {
+        if (!key) {
+            return null;
+        }
+
         try {
-            var value = draftFresh(window.localStorage.getItem(key), Date.now());
+            var stored = window.localStorage.getItem(key);
+            var value = draftFresh(stored, Date.now());
 
             if (!value) {
                 window.localStorage.removeItem(key);
+                draftTold(stored !== null, false);
             }
 
             return value;
@@ -2897,13 +2897,23 @@
     }
 
     // Keeps the text, or drops the slot when it is empty; the others are
-    // pruned first so a full storage still takes the newest.
+    // pruned first so a full storage still takes the newest. When the slot
+    // starts or stops holding a draft the list is told, so its row's pencil
+    // follows (another tab hears the storage event instead).
     function draftWrite(key, raw, labels) {
+        var helper = draftHelper();
+
+        if (!helper || !key) {
+            return;
+        }
+
         try {
             var store = window.localStorage;
+            var had = store.getItem(key) !== null;
 
             if (String(raw || '').trim() === '') {
                 store.removeItem(key);
+                draftTold(had, false);
                 return;
             }
 
@@ -2913,15 +2923,16 @@
             for (var i = 0; i < store.length; i++) {
                 var name = store.key(i);
 
-                if (name && (name !== key) && (name.indexOf(DRAFT_PREFIX) === 0)) {
+                if (name && (name !== key) && (name.indexOf(helper.prefix) === 0)) {
                     var kept = draftFresh(store.getItem(name), now);
 
                     entries.push({ key: name, at: kept ? kept.at : 0 });
                 }
             }
 
-            draftPrune(entries, now).forEach(function (name) { store.removeItem(name); });
+            draftPrune(entries, now, helper.days).forEach(function (name) { store.removeItem(name); });
             store.setItem(key, JSON.stringify({ raw: raw, labels: labels || {}, at: now }));
+            draftTold(had, true);
         } catch (error) {
             // Blocked storage or a full quota: the box works the same,
             // nothing is kept.
@@ -9218,6 +9229,11 @@
                     }
                 },
                 pin: function (channel, pinned) { self.pinChannel(channel, pinned); },
+                // The row's "⋯": the channel's right-click menu under it.
+                channelMenu: function (channel, x, y) { ctxMenu(x, y, self.channelActions(channel)); },
+                joinChannel: function (channel) {
+                    api('ws_channel_join', { channel_id: channel.id }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
+                },
                 decorateChannel: function (link, channel, box, sortable) {
                     if (sortable) {
                         self.makeSortable(link, box, channel);

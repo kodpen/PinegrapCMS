@@ -44,6 +44,7 @@
 - api-customer-subscriptions.md: GET /customers/{id}/subscriptions, the pause/resume/cancel moves with dry_run (PR #4399), and the subscription.* webhooks announced from pg_subscription_mail_send()
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
 - api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)
+- api-deleted-records.md: GET /changes/deleted (M8c): deleted record ids from the audit trail's delete lines, the covered types and why the others are not, the since rule (410 since_too_old), who is answered for which type
 - api-delivery-tower.md: GET /reports/delivery (the carrier scorecard, DeliveryReport) and GET /shipments/problems (ShipmentProblem list), orders:read, MCP tools (DT5, #10969)
 - api-design-ads.md: Ads and ad regions over the external API (/design/ads, /design/ad-regions): the write path the four screens share, the routes, refusals, the region that keeps its ads
 - api-design-bundles.md: The release bundle API (/design/bundles): read, add and remove pages, publish with the dry run's page list, take back; its 409 codes, design:read/write, and release_bundle_held on the page delete
@@ -133,6 +134,7 @@
 - api-webhook-subscription-limit.md: How many event subscriptions one application may hold (50), the one function that holds the number, the 409 too_many_webhooks text, and why 50 subscribers of one event drain [decision: here]
 - api-workspace-highlights.md: Readers' highlights over the Workspace API (#10341): the WorkspaceMessage keys, who gets For me rows, the three person-only writes, what quote indexes, how changes reach devices
 - api-workspace-quiet-hours.md: A person's own quiet hours over the API: quiet_hours on GET /auth/me, POST /workspace/quiet-hours from a team devices session only, the quiet_hours feature key (issue #10347, PR #10388)
+- application-access-agent-tab.md: Application Access's AI agent tab and the Agent in a channel starting point: an agent and its channel rows made through the Agents card's functions; who, refusals, a second save
 - application-access-automation.md: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks [decision: here]
 - application-access-drawer-guides.md: Application Access's edit drawer (head, tabs, Overview, Connect) and the connection guides of api_app_guides(), also shown in step 3 of New application; which guide suits which application [decision: here]
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
