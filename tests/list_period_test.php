@@ -215,8 +215,8 @@ function test_list_period_date_filter_selects_are_named()
 	foreach (array('view_orders.php', 'view_submitted_forms.php', 'view_contacts.php', 'view_commissions.php') as $screen) {
 		$source = file_get_contents(dirname(__DIR__) . '/pinegrap/' . $screen);
 
-		pg_assert_contains("<legend class=\"form-label\">' . lang('Start') . '</legend>", $source, $screen . ' names the start date');
-		pg_assert_contains("<legend class=\"form-label\">' . lang('End') . '</legend>", $source, $screen . ' names the end date');
+		pg_assert_contains("<legend class=\"pg-field-label\">' . lang('Start') . '</legend>", $source, $screen . ' names the start date');
+		pg_assert_contains("<legend class=\"pg-field-label\">' . lang('End') . '</legend>", $source, $screen . ' names the end date');
 
 		foreach (array('start_month' => 'Month', 'start_day' => 'Day', 'start_year' => 'Year', 'stop_month' => 'Month', 'stop_day' => 'Day', 'stop_year' => 'Year') as $field => $name) {
 			pg_assert_contains('name="' . $field . "\" aria-label=\"' . h(lang('" . $name . "')) . '\"", $source, $screen . ' names ' . $field);

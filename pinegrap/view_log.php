@@ -23,6 +23,7 @@ validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_log_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/advanced_filters.php');
 $liveform = new liveform('view_log');
 
 // Path to error log file (can be extended later to include other locations)
@@ -508,18 +509,15 @@ if (!$_POST) {
         $saved_stop_day    = isset($saved_filters['stop_day'])    ? $saved_filters['stop_day']    : $stop_day;
 
         $output_advanced_filters = '
-        <div class="advanced_filters advanced-filter-bar position-fixed-md" id="advanced_filters">
-            <div class="p-3 border justify-content-between d-flex flex-wrap header">
-                <p class="m-0"><span class="material-icons pe-1" aria-hidden="true">filter_list</span>' . lang('Filters') . '</p>
-                <a class="btn btn-close" title="' . $output_advanced_filters_label . '" href="view_log.php?advanced_filters=' . $output_advanced_filters_value . '"></a>
-            </div>
-            <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_log.php" method="get" name="form">
-                <div class="row">
+        <div class="advanced_filters advanced-filter-bar" id="advanced_filters">
+            ' . pg_advanced_filters_head('view_log.php?advanced_filters=' . $output_advanced_filters_value, $output_advanced_filters_label, 0) . '
+            <form class="advanced-filter-body disable_shortcut" id="search_advanced" action="view_log.php" method="get" name="form">
+                <div class="advanced-filter-scroll"><div class="row">
                     <div class="col-12">
                         <h5 class="pg-group-label mt-7 mb-3">' . lang('Date Range') . '</h5>
                     </div>
                     <fieldset class="col-12" data-pg-date-selects>
-                        <legend class="form-label">' . lang('Start') . '</legend>
+                        <legend class="pg-field-label">' . lang('Start') . '</legend>
                         <select class="form-control my-1" name="start_month" aria-label="' . h(lang('Month')) . '">' . select_month($saved_start_month) . '</select>
                         <div class="input-group input-group-sm">
                             <select class="form-control my-1" name="start_day" aria-label="' . h(lang('Day')) . '">' . select_day($saved_start_day) . '</select>
@@ -527,19 +525,15 @@ if (!$_POST) {
                         </div>
                     </fieldset>
                     <fieldset class="col-12" data-pg-date-selects>
-                        <legend class="form-label">' . lang('End') . '</legend>
+                        <legend class="pg-field-label">' . lang('End') . '</legend>
                         <select class="form-control my-1" name="stop_month" aria-label="' . h(lang('Month')) . '">' . select_month($saved_stop_month) . '</select>
                         <div class="input-group input-group-sm">
                             <select class="form-control my-1" name="stop_day" aria-label="' . h(lang('Day')) . '">' . select_day($saved_stop_day) . '</select>
                             <select class="form-control my-1" name="stop_year" aria-label="' . h(lang('Year')) . '">' . $year_options . '</select>
                         </div>
                     </fieldset>
-                    <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
-                        <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1">
-                            <i class="material-icons me-3" aria-hidden="true">sync</i>' . lang('Update') . '
-                        </button>
-                    </div>
-                </div>
+                </div></div>
+                ' . pg_advanced_filters_foot() . '
         
                 <script>
                     // Set initial values for date selectors using escaped JS-safe values. The form is

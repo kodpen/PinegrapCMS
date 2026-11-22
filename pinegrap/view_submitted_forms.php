@@ -20,6 +20,7 @@ include('init.php');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/advanced_filters.php');
 
 // A value changed in place on the list (pg_list_edit_request() in
 // includes/fn/output.php), answered in JSON before the screen is drawn.
@@ -560,52 +561,49 @@ if ((($_GET['submit_data'] ?? '') == 'Export Forms') || pg_list_excel_asked()) {
         }
 
         $output_advanced_filters =
-            '<div class="advanced_filters advanced-filter-bar  position-fixed-md"  id="advanced_filters" >
-                <div class="p-3 border justify-content-between d-flex flex-wrap header">
-                    <p class="m-0"><span class="material-icons pe-1" aria-hidden="true">filter_list</span>' . lang('Filters') . '</p>
-                    <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
-                </div>
-                <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_submitted_forms.php" method="get">
-                    <div class="row">
+            '<div class="advanced_filters advanced-filter-bar" id="advanced_filters">
+                ' . pg_advanced_filters_head('view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value, $output_advanced_filters_label, 0) . '
+                <form class="advanced-filter-body disable_shortcut" id="search_advanced" action="view_submitted_forms.php" method="get">
+                    <div class="advanced-filter-scroll"><div class="row">
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('General') . '</h5></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="reference_code" class="form-label">' . lang('Reference Code') . '</label>
+                            <label for="reference_code" class="pg-field-label">' . lang('Reference Code') . '</label>
                             <input type="text" id="reference_code" name="reference_code" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['reference_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="status" class="form-label">' . lang('Status') . '</label>
+                            <label for="status" class="pg-field-label">' . lang('Status') . '</label>
                             <select name="status" id="status" class="form-control"><option value="any"' . $status_any_selected . '>[' . lang('Any') . ']</option><option value="incomplete"' . $status_incomplete_selected . '>' . lang('Incomplete') . '</option><option value="complete"' . $status_complete_selected . '>' . lang('Complete') . '</option></select>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
+                            <label for="tracking_code" class="pg-field-label">' . lang('Tracking Code') . '</label>
                             <input type="text" id="tracking_code" name="tracking_code" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['tracking_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
+                            <label for="affiliate_code" class="pg-field-label">' . lang('Affiliate Code') . '</label>
                             <input type="text" id="affiliate_code" name="affiliate_code" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="http_referer" class="form-label">' . lang('Referring URL') . '</label>
+                            <label for="http_referer" class="pg-field-label">' . lang('Referring URL') . '</label>
                             <input type="text" id="http_referer" name="http_referer" class="form-control" inputmode="url" spellcheck="false" autocapitalize="off" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="contact_name" class="form-label">' . lang('Contact Name') . '</label>
+                            <label for="contact_name" class="pg-field-label">' . lang('Contact Name') . '</label>
                             <input type="text" id="contact_name" name="contact_name" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['contact_name'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
+                            <label for="member_id" class="pg-field-label">' . h(MEMBER_ID_LABEL) . '</label>
                             <input type="text" id="member_id" name="member_id" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="ip_address" class="form-label">' . lang('IP Address') . '</label>
+                            <label for="ip_address" class="pg-field-label">' . lang('IP Address') . '</label>
                             <input type="text" id="ip_address" name="ip_address" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['ip_address'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="username" class="form-label">' . lang('Username') . '</label>
+                            <label for="username" class="pg-field-label">' . lang('Username') . '</label>
                             <input type="text" id="username" name="username" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['username'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="form_editor" class="form-label">' . lang('Form Editor') . '</label>
+                            <label for="form_editor" class="pg-field-label">' . lang('Form Editor') . '</label>
                             <input type="text" id="form_editor" name="form_editor" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['form_editor'] ?? '')) . '"/>
                         </div>
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Custom Forms') . '</h5></div>
@@ -635,7 +633,7 @@ if ((($_GET['submit_data'] ?? '') == 'Export Forms') || pg_list_excel_asked()) {
                         </div>
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
                         <fieldset class="col-12" data-pg-date-selects>
-                            <legend class="form-label">' . lang('Start') . '</legend>
+                            <legend class="pg-field-label">' . lang('Start') . '</legend>
                             <select class="form-control my-1" name="start_month" aria-label="' . h(lang('Month')) . '">' . select_month(($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
                                 <select class="form-control my-1" name="start_day" aria-label="' . h(lang('Day')) . '">' . select_day(($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? '')) . '</select>
@@ -643,7 +641,7 @@ if ((($_GET['submit_data'] ?? '') == 'Export Forms') || pg_list_excel_asked()) {
                             </div>
                         </fieldset>
                         <fieldset class="col-12" data-pg-date-selects>
-                            <legend class="form-label">' . lang('End') . '</legend>
+                            <legend class="pg-field-label">' . lang('End') . '</legend>
                             <select class="form-control my-1" name="stop_month" aria-label="' . h(lang('Month')) . '">' . select_month(($_SESSION['software']['forms']['view_submitted_forms']['stop_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
                                 <select class="form-control my-1" name="stop_day" aria-label="' . h(lang('Day')) . '">' . select_day(($_SESSION['software']['forms']['view_submitted_forms']['stop_day'] ?? '')) . '</select>
@@ -651,10 +649,8 @@ if ((($_GET['submit_data'] ?? '') == 'Export Forms') || pg_list_excel_asked()) {
                             </div>
                         </fieldset>
                         ' . get_date_picker_format() . pg_fields_script() . '
-                        <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3" aria-hidden="true">sync</i>' . lang('Update') . '</button>
-                        </div>
-                    </div>
+                    </div></div>
+                    ' . pg_advanced_filters_foot() . '
                 </form>
             </div>';
     }

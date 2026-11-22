@@ -49,7 +49,8 @@ function test_contact_list_advanced_filters_keep_the_view()
 	$form = contact_user_list_view_kept_test_form($source, 'search_advanced');
 
 	pg_assert_true(strpos($form, '<input type="hidden" name="filter" value="\' . h($filter) . \'">') !== false, 'Update keeps the view');
-	pg_assert_same(2, substr_count($source, 'href="view_contacts.php?advanced_filters=\' . $output_advanced_filters_value . \'&amp;filter=\' . h(urlencode($filter)) . \'"'), 'the toggle and the close button keep the view');
+	pg_assert_same(1, substr_count($source, 'href="view_contacts.php?advanced_filters=\' . $output_advanced_filters_value . \'&amp;filter=\' . h(urlencode($filter)) . \'"'), 'the toggle keeps the view');
+	pg_assert_same(1, substr_count($source, 'pg_advanced_filters_head(\'view_contacts.php?advanced_filters=\' . $output_advanced_filters_value . \'&filter=\' . urlencode($filter),'), 'the close button keeps the view');
 	pg_assert_same(0, substr_count($source, 'href="view_contacts.php?advanced_filters=\' . $output_advanced_filters_value . \'"'), 'no Advanced Filters link drops the view');
 }
 
