@@ -87,7 +87,7 @@ function test_order_list_one_bar_holds_the_period()
 	$import = strpos($bar, "lang('Import Tracking Numbers')");
 	$rule = strpos($bar, '<span class="pg-orders-bar-rule" aria-hidden="true"></span>');
 	$period = strpos($bar, '$output_period_navigator');
-	$grow = strpos($bar, '<div class="pg-toolbar-grow"></div>');
+	$grow = strpos($bar, '<div class="pg-orders-bar-end">');
 	$sort = strpos($bar, 'pg_list_sort_menu(');
 
 	pg_assert_true($import !== false && $rule > $import, 'the rule after Import Tracking Numbers');

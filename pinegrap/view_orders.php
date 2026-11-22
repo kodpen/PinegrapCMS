@@ -3274,12 +3274,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <a class="btn btn-sm btn-text theme-secondary" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>
                     <span class="pg-orders-bar-rule" aria-hidden="true"></span>
                     ' . $output_period_navigator . '
-                    <div class="pg-toolbar-grow"></div>
+                    <div class="pg-orders-bar-end">
                     ' . pg_list_sort_menu('view_orders.php', $sort_columns, $sort_levels, $sort_default) . '
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
                     ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
                     ' . ($order_profit_on ? pg_filter_select('profit', array('' => lang('Any profit'), 'loss' => lang('Sold at a loss')), (string) ($_SESSION['software']['ecommerce']['view_orders']['profit'] ?? ''), array('label' => lang('Profit'), 'action' => 'view_orders.php', 'id' => 'profit')) : '') . '
                     <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                    </div>
                 </nav>
                 ' . $output_advanced_filters . '
                 ' . $output_order_stats . '

@@ -5,8 +5,9 @@ module: order_list
 ---
 
 ## How is the bar put together?
-- One bar (`#button_bar`): Add Order, Export, Import Tracking Numbers, a rule (`.pg-orders-bar-rule`), the period navigator (`pg_period_nav()` with ` pg-orders-period`), the grow, then Sort, the status select, the type select, the profit select when profit is on, and the filters button.
-- Under 1280 px the rule becomes a line break, so the navigator starts the second row with the controls after it; nothing is moved with `order`, so Tab follows the rows (`admin-screen-toolbar-rules.md`).
+- One bar (`#button_bar`): Add Order, Export, Import Tracking Numbers, a rule (`.pg-orders-bar-rule`), the period navigator (`pg_period_nav()` with ` pg-orders-period`), then one group pushed right (`.pg-orders-bar-end`, no grow slot): Sort, the status select, the type select, the profit select when profit is on, the filters button.
+- Under 1280 px the rule becomes a line break, so the navigator starts the second row with the group after it; nothing is moved with `order`, so Tab follows the rows (`admin-screen-toolbar-rules.md`).
+- With the main menu expanded the bar is about 1,330 px wide: at a 1440 px window the group wraps to a second row at the right; the list starts at 247 px (was about 610).
 
 ## What is the figure strip?
 - Today's four figures (Total Sales Amount Online, Total Sales Amount and Orders of the current filter, Refund Pending) as cells of one card, `.pg-figure-strip` (`ui/look-figure-cards.md`), each sparkline at its value's right. Refund Pending above zero is `.is-bad`.

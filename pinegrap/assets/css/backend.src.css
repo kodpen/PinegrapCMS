@@ -9522,7 +9522,18 @@ button.no-popover:focus-visible {
     border: 0;
   }
 }
-.pg-orders-spark { position: relative; flex: 0 0 72px; height: 28px; }
+.pg-orders-spark { position: relative; flex: 1 1 0; min-width: 48px; max-width: 96px; height: 28px; }
+/* Sort, the selects and the filters button wrap as one group pushed to the
+   right (no grow slot: its minimum width would wrap the group a row lower). */
+.pg-orders-bar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
+  margin-left: auto;
+  min-width: 0;
+  max-width: 100%;
+}
 .pg-orders-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -33454,7 +33465,8 @@ textarea.pg-campaign-text {
   min-width: 0;
 }
 .pg-figure-strip-line > .pg-figure-value {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  max-width: 100%;
   min-width: 0;
   margin: 2px 0 0;
   font-size: var(--pg-text-figure-sm);
