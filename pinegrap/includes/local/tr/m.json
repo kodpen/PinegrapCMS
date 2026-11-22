@@ -438,6 +438,7 @@
     "Mark this answer wrong": "Bu yanıtı yanlış diye işaretle",
     "Mark this order as sent to the supplier (by phone, on paper)? Sending it by e-mail does this by itself.": "Sipariş tedarikçiye gönderildi (telefonla, kâğıt üzerinde) olarak işaretlensin mi? E-postayla gönderince bu kendiliğinden olur.",
     "Mark this task done and stop the copies? The copies already handed out stay as they are.": "Görev tamamlandı olarak işaretlenip kopyalar durdurulsun mu? Önceden açılmış kopyalar olduğu gibi kalır.",
+    "Mark {var:1} channels as read?": "{var:1} kanal okundu olarak işaretlensin mi?",
     "Mark {var:1} done": "{var:1}: bitti olarak işaretle",
     "Mark {var} machine translation(s) here as reviewed? The ones flagged suspicious are left to be looked at one by one.": "Buradaki {var} makine çevirisi gözden geçirildi olarak işaretlensin mi? Şüpheli işaretlenenler tek tek bakılmak üzere bırakılır.",
     "Markdown exports now include images and attachments, in a folder beside the notes.": "Markdown dışa aktarımları artık görselleri ve ekleri, notların yanındaki bir klasörde içeriyor.",

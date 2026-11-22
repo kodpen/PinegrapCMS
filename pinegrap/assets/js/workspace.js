@@ -9218,6 +9218,8 @@
                     memory: function () { self.showMemory(); },
                     audit: function () { self.showAudit(); }
                 },
+                // The list asked for again after Mark all as read.
+                reload: function () { self.reloadChannels(0); },
                 openChannel: function (id) { self.open(id, 0); },
                 openThread: function (thread) { self.threadGo({ id: thread.id, channel_id: thread.channel_id, mine: true }); },
                 newChannel: function () {
@@ -10422,6 +10424,7 @@
             api('ws_channels').then(function (data) {
                 BOOT.channels = data.channels;
                 BOOT.groups = data.groups || [];
+                BOOT.threads = data.threads || BOOT.threads || [];
                 self.drawSide();
 
                 if (openId) {

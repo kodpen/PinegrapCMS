@@ -6015,6 +6015,7 @@
     "Alt while dragging a handle breaks a smooth point into a corner.": "Tutamacı sürüklerken Alt, yumuşak noktayı köşeye çevirir.",
     "Alt+Up and Alt+Down move a line or a task up and down.": "Alt+Yukarı ve Alt+Aşağı bir satırı ya da görevi yukarı ve aşağı taşır.",
     "Alt+Up and Alt+Down: move a line or a task": "Alt+Yukarı ve Alt+Aşağı: bir satırı ya da görevi taşı",
+    "Alt+Up and Alt+Down: the channel before or after; with Shift: the next unread one": "Alt+Yukarı ve Alt+Aşağı: önceki ya da sonraki kanal; Shift ile: okunmamış bir sonraki",
     "Alteration, maintenance and repair of machinery, equipment, fixtures and vehicles": "Makine, teçhizat, demirbaş ve taşıtlara ait tadil, bakım ve onarım hizmetleri",
     "Alternative Next Page": "Alternatif Sonraki Sayfa",
     "Alternative: add the line below to your config file, then reload this page. Only do this if this server cannot be reached directly, bypassing the proxy, because these headers can be forged by anyone who can.": "Alternatif: aşağıdaki satırı yapılandırma dosyanıza ekleyin ve bu sayfayı yeniden yükleyin. Bu başlıklar, sunucuya doğrudan erişebilen herkes tarafından taklit edilebildiği için bunu yalnızca bu sunucuya proxy atlanarak doğrudan erişilemiyorsa yapın.",

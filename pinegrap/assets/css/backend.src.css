@@ -23926,6 +23926,38 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-menu-side .ws-side-toggle:is(:hover, :focus-visible, [aria-expanded="false"]) .ws-side-toggle-chevron {
   opacity: 1;
 }
+/* All / Unread (board L2 of plans/workspace-interface): the segmented
+   control across the list's width under the search field, the two
+   segments sharing it. */
+.ws-menu-side .ws-side-filter {
+  display: flex;
+  margin: 0 0 4px;
+}
+.ws-menu-side .ws-side-filter > .pg-seg-item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Mark all as read at the Channels heading's right while Unread is chosen. */
+.ws-menu-side .ws-side-read-all {
+  flex: none;
+  height: 22px;
+  padding: 0 6px;
+  font-size: var(--pg-text-meta);
+}
+/* Nothing unread: one quiet line in place of the rows. */
+.ws-menu-side .ws-side-all-read {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-2);
+}
+.ws-menu-side .ws-group-toggle:disabled {
+  color: inherit;
+  cursor: default;
+}
 /* "N channels you could join": a quiet row that opens them in place. */
 .ws-menu-side .ws-side-join {
   display: flex;

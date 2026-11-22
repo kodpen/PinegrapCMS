@@ -238,6 +238,7 @@ function ws_side_js_keys()
         'side_expand', 'side_collapse', 'grp_expand', 'grp_collapse', 'grp_access', 'grp_empty', 'grp_new',
         'more', 'loading', 'error_generic', 'join',
         'side_find', 'side_join', 'side_draft', 'side_unread', 'side_due',
+        'side_filter', 'side_all', 'side_unread_tab', 'side_keys', 'side_read_all', 'side_read_ask', 'side_read_yes', 'side_all_read',
     );
 }
 
@@ -256,6 +257,15 @@ function ws_side_js_strings()
             'side_draft'  => lang('Unsent draft'),
             'side_unread' => lang('Unread messages'),
             'side_due'    => ws_js_template('{var:1} due today or before', 1),
+            // The All / Unread filter, Mark all as read and the keys.
+            'side_filter'     => lang('Show'),
+            'side_all'        => lang('All'),
+            'side_unread_tab' => lang('Unread'),
+            'side_keys'       => lang('Alt+Up and Alt+Down: the channel before or after; with Shift: the next unread one'),
+            'side_read_all'   => lang('Mark all as read'),
+            'side_read_ask'   => ws_js_template('Mark {var:1} channels as read?', 1),
+            'side_read_yes'   => lang('Mark as read'),
+            'side_all_read'   => lang('Everything is read'),
         ),
         ws_js_strings(),
         ws_threads_js_strings(),

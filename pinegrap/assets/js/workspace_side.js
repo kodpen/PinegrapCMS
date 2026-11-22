@@ -79,6 +79,51 @@
         fresh: draftFresh
     };
 
+    // Whether a row holds something new for the list's Unread filter: a
+    // joined channel or a discussion with an unread count; a muted channel
+    // (notify none) only when it mentions the reader.
+    function sideUnread(item, isThread) {
+        if (!item || !((parseInt(item.unread, 10) || 0) > 0)) {
+            return false;
+        }
+
+        if (isThread) {
+            return true;
+        }
+
+        return !!item.joined && ((item.notify !== 'none') || ((parseInt(item.mentions, 10) || 0) > 0));
+    }
+
+    // The row Alt+Up / Alt+Down go to. rows are the list's rows in their
+    // order, each { key, unread }; step is 1 (down) or -1 (up); unreadOnly
+    // (with Shift) passes over the rows with nothing new. From the open row
+    // the next that fits, '' past the first or the last; with no row open,
+    // from the top whichever the direction.
+    function sideStep(rows, currentKey, step, unreadOnly) {
+        var list = rows || [];
+        var at = -1;
+        var i;
+
+        for (i = 0; i < list.length; i++) {
+            if (currentKey && (list[i].key === currentKey)) {
+                at = i;
+                break;
+            }
+        }
+
+        if (at < 0) {
+            step = 1;
+        }
+
+        for (i = at + step; (i >= 0) && (i < list.length); i += step) {
+            if (!unreadOnly || list[i].unread) {
+                return list[i].key;
+            }
+        }
+
+        return '';
+    }
+
     var root = document.getElementById('ws-menu-side');
 
     if (!root) {
@@ -101,8 +146,16 @@
         // which opens it on one of its own screens.
         moreOpen: null,
         // Drawn once while on the screen (draw()).
-        shown: false
+        shown: false,
+        // The rows the keys walk, in the list's order, from the last draw.
+        order: [],
+        // A key pressed before the list's data had come (load()).
+        pendingStep: null,
+        // "Mark all as read" on its way.
+        reading: false
     };
+
+    var FILTER_KEY = 'ws-side-filter';
 
     var S = {};
 
@@ -297,6 +350,23 @@
         }
     }
 
+    // The list's filter, the person's on every page: 'unread' or 'all'.
+    function readFilter() {
+        try {
+            return (window.localStorage.getItem(FILTER_KEY) === 'unread') ? 'unread' : 'all';
+        } catch (error) {
+            return 'all';
+        }
+    }
+
+    function writeFilter(value) {
+        try {
+            window.localStorage.setItem(FILTER_KEY, (value === 'unread') ? 'unread' : 'all');
+        } catch (error) {
+            // Not kept: this page still shows the choice.
+        }
+    }
+
     // Which group of the list holds a place (ws_nav_groups()), '' for none.
     function navGroupOf(key) {
         var nav = (state.data && state.data.nav) || {};
@@ -467,6 +537,12 @@
         var closedParts = readKept('ws-side-closed');
         var closedGroups = readKept('ws-groups-closed');
         var fragment = document.createDocumentFragment();
+        // Unread: only the channels and discussions holding something new,
+        // and the open one; Today stays.
+        var unreadOnly = readFilter() === 'unread';
+        var unreadRows = data.channels.filter(function (channel) { return sideUnread(channel, false); }).length
+            + data.threads.filter(function (thread) { return sideUnread(thread, true); }).length;
+        var order = [];
 
         var nav = state.data.nav || {};
         var titles = state.data.titles || {};
@@ -580,6 +656,42 @@
         }
 
         fragment.appendChild(head);
+
+        // ── All / Unread across the width; Unread counts the rows holding
+        // something new, and its title names the keys ──
+
+        var filter = el('div', 'pg-seg ws-side-filter');
+
+        filter.setAttribute('role', 'group');
+        filter.setAttribute('aria-label', t('side_filter'));
+
+        [['all', t('side_all')], ['unread', t('side_unread_tab')]].forEach(function (choice) {
+            var chosen = (choice[0] === 'unread') === unreadOnly;
+            var item = el('button', 'pg-seg-item no-popover');
+
+            item.type = 'button';
+            item.setAttribute('aria-pressed', chosen ? 'true' : 'false');
+            item.setAttribute('data-ws-side-key', 'filter:' + choice[0]);
+            item.appendChild(document.createTextNode(choice[1]));
+
+            if (choice[0] === 'unread') {
+                item.title = t('side_keys');
+
+                if (unreadRows) {
+                    item.appendChild(el('span', 'pg-seg-count', (unreadRows > 99) ? '99+' : String(unreadRows)));
+                }
+            }
+
+            item.addEventListener('click', function () {
+                if (!chosen) {
+                    writeFilter(choice[0]);
+                    draw();
+                }
+            });
+            filter.appendChild(item);
+        });
+
+        fragment.appendChild(filter);
 
         var scroll = el('div', 'ws-side-scroll');
 
@@ -712,9 +824,15 @@
             return !channel.pinned && channel.group_id && groupKnown[channel.group_id];
         }
 
+        // Whether a channel is drawn: every one with All; with Unread those
+        // holding something new and the open one.
+        function listed(channel) {
+            return !unreadOnly || (now.channel === channel.id) || sideUnread(channel, false);
+        }
+
         var joined = data.channels.filter(function (channel) { return channel.joined; });
-        var pinned = joined.filter(function (channel) { return channel.pinned; });
-        var mine = joined.filter(function (channel) { return !channel.pinned && !inGroup(channel); });
+        var pinned = joined.filter(function (channel) { return channel.pinned && listed(channel); });
+        var mine = joined.filter(function (channel) { return !channel.pinned && !inGroup(channel) && listed(channel); });
         var others = data.channels.filter(function (channel) { return !channel.joined && !inGroup(channel); });
         var byGroup = {};
 
@@ -767,6 +885,11 @@
 
             node.setAttribute('data-ws-channel', channel.id);
             node.setAttribute('data-pg-menu-label', channel.name);
+
+            // A joined channel is a stop of the keys, in drawn order.
+            if (channel.joined) {
+                order.push({ key: 'c:' + channel.id, unread: sideUnread(channel, false), channel: channel.id, thread: 0, href: node.href });
+            }
 
             // The channel's own colour on its tile.
             if (channel.hex) {
@@ -860,13 +983,25 @@
 
         var children = groupTree(data.groups);
 
+        function groupListed(id) {
+            return groupTreeIds(children, id).some(function (groupId) {
+                return (byGroup[groupId] || []).some(listed);
+            });
+        }
+
         function groupBox(item, parent, depth) {
+            // With Unread a group is drawn when something under it is
+            // listed, and its fold is set aside so nothing new hides in it.
+            if (unreadOnly && !groupListed(item.id)) {
+                return;
+            }
+
             var box = el('div', 'ws-side-group' + (depth ? ' ws-side-subgroup' : ''));
             var heading = el('div', 'ws-side-title ws-group-title');
             var inner = el('div', 'ws-group-inner ws-sortable');
-            var shut = !!closedGroups[item.id];
+            var shut = !unreadOnly && !!closedGroups[item.id];
             var toggle = el('button', 'ws-group-toggle no-popover');
-            var channels = byGroup[item.id] || [];
+            var channels = (byGroup[item.id] || []).filter(listed);
             var kids = children[item.id] || [];
 
             box.setAttribute('data-ws-group-box', item.id);
@@ -881,6 +1016,7 @@
             toggle.setAttribute('aria-expanded', shut ? 'false' : 'true');
             toggle.setAttribute('data-ws-side-key', 'group:' + item.id);
             toggle.title = shut ? t('grp_expand') : t('grp_collapse');
+            toggle.disabled = unreadOnly;
             toggle.appendChild(icon(shut ? 'bi-folder2' : 'bi-folder2-open', 'ws-group-icon'));
             toggle.appendChild(el('span', 'ws-group-name', item.name));
 
@@ -925,7 +1061,7 @@
                     groupBox(child, inner, depth + 1);
                 });
 
-                if (!channels.length && !kids.length) {
+                if (!channels.length && !kids.length && !unreadOnly) {
                     var empty = el('div', 'small fg-secondary px-3 ws-group-empty', manage ? t('grp_empty') : t('no_channels'));
 
                     if (manage && (typeof hooks.dropTarget === 'function')) {
@@ -949,6 +1085,21 @@
         var channelsShut = !!closedParts.channels;
 
         sectionToggle(channelsHead, 'channels', t('channels'), '', channelsShut, channelsBadge(joined));
+        channelsHead.querySelector('.ws-side-toggle').title += ' \u00b7 ' + t('side_keys');
+
+        // Mark all as read, at the heading's right while Unread is chosen
+        // and something is new.
+        if (unreadOnly && unreadRows) {
+            var readAll = button('pg-button pg-button-ghost pg-button-sm ws-side-read-all no-popover', t('side_read_all'));
+
+            readAll.setAttribute('data-ws-side-key', 'read-all');
+            readAll.disabled = state.reading;
+            readAll.addEventListener('click', function () {
+                markAllRead(unreadRows);
+            });
+            channelsHead.appendChild(readAll);
+        }
+
         channelsBox.appendChild(channelsHead);
 
         // A channel dropped on the heading comes out of its group.
@@ -981,7 +1132,19 @@
             // The channels not joined that stand in no group, behind one row
             // that opens them in place; open or shut is the person's
             // (ws-side-open). Shut, the one on the screen still shows.
-            if (others.length) {
+            if (unreadOnly) {
+                // No join row: only the open channel, when it is not joined.
+                part(channelsBox, others.filter(function (channel) { return now.channel === channel.id; }), false, 'ws-side-others');
+
+                if (!unreadRows) {
+                    var allRead = el('div', 'ws-side-all-read');
+
+                    allRead.setAttribute('role', 'status');
+                    allRead.appendChild(icon('bi-check2-circle'));
+                    allRead.appendChild(el('span', '', t('side_all_read')));
+                    channelsBox.appendChild(allRead);
+                }
+            } else if (others.length) {
                 var joinOpen = !!readKept('ws-side-open').join;
                 var joinRow = el('button', 'ws-side-join no-popover');
 
@@ -1013,13 +1176,13 @@
                 }
             }
 
-            if (!data.channels.length) {
+            if (!data.channels.length && !unreadOnly) {
                 channelsBox.appendChild(emptyLine('channels', t('no_channels'), 'ws-empty-side'));
             }
 
             // New group closes the section, a quiet row for whoever
             // manages the groups.
-            if (manage && (typeof hooks.newGroup === 'function')) {
+            if (manage && !unreadOnly && (typeof hooks.newGroup === 'function')) {
                 var newGroup = el('button', 'ws-group-new no-popover');
 
                 newGroup.type = 'button';
@@ -1041,7 +1204,10 @@
         var rank = function (item) {
             return (item.thread.id === now.thread) ? 0 : ((item.thread.channel_id === now.channel) ? 1 : (item.thread.unread ? 2 : 3));
         };
-        var threads = data.threads.map(function (thread, index) {
+        var threadsListed = data.threads.filter(function (thread) {
+            return !unreadOnly || (now.thread === thread.id) || sideUnread(thread, true);
+        });
+        var threads = threadsListed.map(function (thread, index) {
             return { thread: thread, index: index };
         }).sort(function (a, b) {
             return (rank(a) - rank(b)) || (a.index - b.index);
@@ -1054,6 +1220,14 @@
             // own panel beside the channel and opens again with the address
             // (&thread=), so keeping it left the section looking open.
             var talksShut = !!closedParts.threads;
+
+            // The keys walk the discussions in their own order (the latest
+            // first), not the ranks above, which change as one is opened.
+            if (!talksShut) {
+                threadsListed.forEach(function (thread) {
+                    order.push({ key: 't:' + thread.id, unread: sideUnread(thread, true), channel: thread.channel_id, thread: thread.id, href: workspaceUrl('channel=' + thread.channel_id + '&thread=' + thread.id) });
+                });
+            }
             var talksUnread = threads.reduce(function (sum, thread) { return sum + (thread.unread || 0); }, 0);
 
             sectionToggle(talksHead, 'threads', t('th_mine'), '', talksShut, countBadge(talksUnread, false));
@@ -1191,6 +1365,7 @@
 
         clear(root).appendChild(fragment);
         root.removeAttribute('aria-busy');
+        state.order = order;
 
         if (scroller) {
             scroller.scrollTop = keep.top;
@@ -1270,15 +1445,7 @@
         state.loading = true;
         drawLoading();
 
-        fetch(API_URL, {
-            method: 'POST',
-            credentials: 'same-origin',
-            cache: 'no-store',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'ws_side', token: (typeof window.software_token !== 'undefined') ? window.software_token : '' })
-        }).then(function (response) {
-            return response.json();
-        }).then(function (json) {
+        request('ws_side').then(function (json) {
             state.loading = false;
 
             if (!json || (json.status !== 'success') || !json.data || !json.data.v) {
@@ -1288,10 +1455,173 @@
 
             state.data = json.data;
             draw();
+
+            // A key pressed while the list was being asked for.
+            if (state.pendingStep) {
+                var pending = state.pendingStep;
+
+                state.pendingStep = null;
+                stepTo(pending.step, pending.unread);
+            }
         }).catch(function () {
             state.loading = false;
+            state.pendingStep = null;
             drawError('');
         });
+    }
+
+    // One action of the panel's api.php (includes/workspace/actions.php).
+    function request(action) {
+        return fetch(API_URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action, token: (typeof window.software_token !== 'undefined') ? window.software_token : '' })
+        }).then(function (response) {
+            return response.json();
+        });
+    }
+
+    // The list asked for again, the rows drawn so far staying until the
+    // answer comes: through the channel screen where it keeps the list,
+    // else with ws_side.
+    function refresh() {
+        var hooks = state.hooks || {};
+
+        if (typeof hooks.reload === 'function') {
+            hooks.reload();
+            return;
+        }
+
+        if (!API_URL) {
+            return;
+        }
+
+        request('ws_side').then(function (json) {
+            if (json && (json.status === 'success') && json.data && json.data.v) {
+                state.data = json.data;
+                draw();
+            }
+        }).catch(function () {});
+    }
+
+    // "Mark all as read" (ws_read_all): asked once, then every channel and
+    // discussion the person is in is read and the list asked again.
+    function markAllRead(count) {
+        if (state.reading || !API_URL) {
+            return;
+        }
+
+        var ask = (typeof window.pgConfirm === 'function')
+            ? window.pgConfirm({ title: t('side_read_all'), message: t('side_read_ask', count), confirmText: t('side_read_yes'), variant: 'primary' })
+            : Promise.resolve(window.confirm(t('side_read_ask', count)));
+
+        ask.then(function (agreed) {
+            if (!agreed) {
+                return;
+            }
+
+            state.reading = true;
+            draw();
+
+            request('ws_read_all').then(function (json) {
+                state.reading = false;
+
+                if (!json || (json.status !== 'success')) {
+                    draw();
+
+                    if (typeof window.pgToast === 'function') {
+                        window.pgToast({ message: (json && json.message) ? String(json.message) : t('error_generic'), variant: 'danger' });
+                    }
+
+                    return;
+                }
+
+                refresh();
+
+                // The button is gone with what it read: the focus waits on
+                // the filter.
+                var unread = root.querySelector('[data-ws-side-key="filter:unread"]');
+
+                if (unread) {
+                    unread.focus({ preventScroll: true });
+                }
+            }).catch(function () {
+                state.reading = false;
+                draw();
+            });
+        });
+    }
+
+    // The keys: Alt+Up and Alt+Down the row before and after the open one,
+    // with Shift the next holding something new. On the channel screen in
+    // place, elsewhere by the row's address.
+    function stepTo(step, unreadOnly) {
+        var now = here();
+        var currentKey = now.thread ? 't:' + now.thread : (now.channel ? 'c:' + now.channel : '');
+        var key = sideStep(state.order, currentKey, step, unreadOnly);
+        var hooks = state.hooks || {};
+        var row = null;
+
+        state.order.some(function (item) {
+            if (item.key === key) {
+                row = item;
+            }
+
+            return !!row;
+        });
+
+        if (!row) {
+            return;
+        }
+
+        if (row.thread && (typeof hooks.openThread === 'function')) {
+            hooks.openThread({ id: row.thread, channel_id: row.channel });
+        } else if (!row.thread && (typeof hooks.openChannel === 'function')) {
+            hooks.openChannel(row.channel);
+        } else {
+            go(row.href);
+        }
+    }
+
+    // Whether the keys are left to the page: a dialog, a drawer or the Flows
+    // editor is open, the field already uses Alt and an arrow (a select, a
+    // date or time field), or a writing box holds a selection.
+    function keysBusy(target) {
+        if ((window.pgUI && (window.pgUI.anyOpen('dialog') || window.pgUI.anyOpen('drawer'))) || document.querySelector('.wsf-app:not(.d-none)')) {
+            return true;
+        }
+
+        if (!target || (target.nodeType !== 1)) {
+            return false;
+        }
+
+        var tag = target.tagName;
+
+        if ((tag === 'SELECT') || target.closest('[data-pg-date], [data-pg-datetime], [data-pg-time], .flatpickr-calendar')) {
+            return true;
+        }
+
+        if ((tag === 'INPUT') && /^(date|datetime-local|time|month|week|number|range)$/i.test(target.type || '')) {
+            return true;
+        }
+
+        if ((tag === 'TEXTAREA') || (tag === 'INPUT')) {
+            try {
+                return target.selectionStart !== target.selectionEnd;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        if (target.isContentEditable) {
+            var selection = window.getSelection ? window.getSelection() : null;
+
+            return !!(selection && !selection.isCollapsed);
+        }
+
+        return false;
     }
 
     function inlineData() {
@@ -1354,6 +1684,26 @@
             state.moreOpen = false;
             draw();
         }
+    });
+
+    window.addEventListener('keydown', function (event) {
+        if (event.defaultPrevented || !event.altKey || event.ctrlKey || event.metaKey
+            || ((event.key !== 'ArrowUp') && (event.key !== 'ArrowDown')) || keysBusy(event.target)) {
+            return;
+        }
+
+        event.preventDefault();
+
+        var step = (event.key === 'ArrowUp') ? -1 : 1;
+
+        if (!state.data) {
+            // Asked for the first time; the step waits for it.
+            state.pendingStep = { step: step, unread: event.shiftKey };
+            load();
+            return;
+        }
+
+        stepTo(step, event.shiftKey);
     });
 
     // A draft kept or dropped in another tab marks or clears its row here.
