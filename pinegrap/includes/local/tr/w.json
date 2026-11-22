@@ -821,6 +821,7 @@
     "We'll be back soon": "Yakında geri döneceğiz",
     "We're sorry, shipping information can only be gathered during the checkout process.": "Üzgünüz, teslimat bilgileri yalnızca ödeme sırasında alınabilir.",
     "We're sorry, shipping information can only be gathered during the checkout process. <a href=\"javascript:history.go(-1)\">Go back</a>": "Üzgünüz, kargo bilgileri yalnızca ödeme işlemi sırasında toplanabilir. <a href=\"javascript:history.go(-1)\">Geri git</a>",
+    "We're sorry, the availability of an item in your order could not be confirmed. Please review your order and submit it again.": "Üzgünüz, siparişinizdeki bir ürünün stok durumu doğrulanamadı. Lütfen siparişinizi gözden geçirip yeniden gönderin.",
     "We're sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.": "Üzgünüz, {var:1} için girdiğiniz miktar düşürüldü çünkü öğenin mevcut durumu şu anda sınırlı.",
     "We're sorry, we allow a maximum quantity of {var:1} for {var:2}, so we have decreased the quantity for you.": "Üzgünüz, {var:2} için maksimum miktar {var:1} olmalıdır, bu nedenle miktarı sizin için azalttık.",
     "We're sorry, we encountered a problem while retrieving your edited image from Editor. Your image was not updated on the website. Please try again later.": "Üzgünüz, düzenlediğiniz resmi Editör'den alırken bir sorunla karşılaştık. Resminiz web sitesinde güncellenmedi. Lütfen daha sonra tekrar deneyiniz.",

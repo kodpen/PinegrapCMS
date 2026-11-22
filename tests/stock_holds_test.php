@@ -242,3 +242,81 @@ function test_stock_holds_checks_read_units_free()
 	pg_assert_contains('$allowance = pg_bundle_cart_allowance($lines, $stock);', $check, 'one pool for the lines');
 	pg_assert_true(strpos($check, 'pg_bundle_stock_at_location(') < strpos($check, 'pg_bundle_stock_less_held(') && strpos($check, 'pg_bundle_stock_less_held(') < strpos($check, 'pg_bundle_cart_allowance('), 'location, then holds, then the allowance');
 }
+
+// The part of a source between two markers.
+function stock_holds_test_between($source, $from, $to)
+{
+	$start = strpos($source, $from);
+	pg_assert_true($start !== false, 'marker found: ' . $from);
+	$end = strpos($source, $to, (int) $start);
+	pg_assert_true($end !== false, 'marker found: ' . $to);
+
+	return substr($source, (int) $start, (int) $end - (int) $start);
+}
+
+// The submit places the hold once every check passed, right before the
+// payment; not enough sends the visitor back with the check's notice.
+function test_stock_holds_submit_places_before_payment()
+{
+	$submit = stock_holds_test_source('submit_order.php');
+	$place = strpos($submit, '$stock_hold = pg_stock_hold_place($stock_hold_order_id);');
+	$checks_done = strpos($submit, '// if an error or notice exists, then send user back to previous screen');
+	$payment = strpos($submit, "switch (\$liveform->get_field_value('payment_method')) {\n            // is credit/debit card payment method was selected");
+
+	pg_assert_true($place !== false, 'the hold is placed');
+	pg_assert_true(($checks_done !== false) && ($checks_done < $place), 'after every check');
+	pg_assert_true(($payment !== false) && ($place < $payment), 'before the payment is asked for');
+	pg_assert_same(1, substr_count($submit, 'pg_stock_hold_place('), 'placed once');
+
+	$refused = stock_holds_test_between($submit, '$stock_hold = pg_stock_hold_place(', "header('Location: ");
+	pg_assert_contains("if (!\$stock_hold['placed']) {", $refused, 'not enough is refused');
+	pg_assert_contains('check_inventory($liveform);', $refused, 'the check cuts or removes the line');
+	pg_assert_contains('$liveform->check_form_notices() == FALSE', $refused, 'a lock not got still gives a notice');
+
+	// A payment's return is not held again: the payment may already be
+	// taken, and one that outlived its hold completes as before.
+	$guard = stock_holds_test_between($submit, '$stock_hold_order_id = ', '$stock_hold = pg_stock_hold_place(');
+	pg_assert_contains("!pg_payment_is_return_mode(\$_GET['mode'] ?? '')", $guard, 'not on a payment\'s return');
+}
+
+// Every way back to the checkout after the hold, a failed or refused payment
+// included (in the request or on the 3-D Secure return), releases it.
+function test_stock_holds_submit_releases_on_way_back()
+{
+	$submit = stock_holds_test_source('submit_order.php');
+	// From the payment on; the refusal above it is released by the placing.
+	$from = strpos($submit, "switch (\$liveform->get_field_value('payment_method')) {\n            // is credit/debit card payment method was selected");
+	$to = strpos($submit, '$order_number = pg_order_complete(');
+	$part = substr($submit, (int) $from, (int) $to - (int) $from);
+	$back = "header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name(\$page_id));";
+
+	pg_assert_true(substr_count($part, $back) > 10, 'the ways back are found');
+	pg_assert_same(substr_count($part, $back), preg_match_all('/pg_stock_hold_release\(\$stock_hold_order_id\);\s*' . preg_quote($back, '/') . '/', $part), 'each way back releases the hold first');
+
+	$checks = stock_holds_test_between($submit, '// if an error or notice exists, then send user back to previous screen', '$stock_hold_order_id = ');
+	pg_assert_contains('pg_stock_hold_release((int) ($_SESSION[\'ecommerce\'][\'order_id\'] ?? 0));', $checks, 'a refused submit or return frees an earlier hold');
+}
+
+// Completion deletes the order's holds once every line has taken its stock
+// (a bundle's components through pg_bundle_take_stock() inside the line).
+function test_stock_holds_completion_releases_with_take()
+{
+	$completion = stock_holds_test_source('includes/fn/order_completion.php');
+	$lines = stock_holds_test_between($completion, 'function pg_order_complete_lines(', 'function pg_order_receipt_bcc');
+	$take = strpos($lines, 'pg_order_complete_line_stock($product,');
+	$release = strpos($lines, 'pg_stock_hold_release($order_id);');
+
+	pg_assert_true(($take !== false) && ($release !== false) && ($take < $release), 'released after the takes');
+	pg_assert_true($release < strpos($lines, 'pg_stock_oversold_warn('), 'in the same pass, before the warning');
+
+	$bundles = stock_holds_test_source('includes/fn/bundles.php');
+	pg_assert_same(1, substr_count($bundles . $completion, 'pg_bundle_take_stock($line'), 'a bundle takes only inside the line stage');
+}
+
+// The visitor's return to the cart frees the order's holds.
+function test_stock_holds_cart_return_releases()
+{
+	foreach (array('get_shopping_cart.php', 'get_express_order.php') as $path) {
+		pg_assert_contains('pg_stock_hold_release((int) ($_SESSION[\'ecommerce\'][\'order_id\'] ?? 0));', stock_holds_test_source($path), $path . ' releases');
+	}
+}

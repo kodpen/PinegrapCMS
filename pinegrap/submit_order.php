@@ -1570,6 +1570,10 @@ function submit_order($type) {
     
     // if an error or notice exists, then send user back to previous screen
     if (($liveform->check_form_errors() == TRUE) || ($liveform->check_form_notices() == TRUE)) {
+        // A hold left by an earlier submit (the visitor came back from the
+        // bank's page) or kept for a payment that came back refused is freed.
+        pg_stock_hold_release((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
         // The checkout comes back with "Put it on my account" still chosen.
         if ($erp_on_account_requested) {
             $liveform->assign_field_value('payment_method', 'On Account');
@@ -1579,6 +1583,41 @@ function submit_order($type) {
         exit();
     }
     
+    // Every check has passed: the units the order needs are held for a few
+    // minutes before the payment is asked for (includes/fn/stock_holds.php),
+    // so another checkout cannot pay for the same last unit meanwhile. Each
+    // product is locked only for the read and the write of its row. When the
+    // units are not free (another checkout holds them, or a lock was not got
+    // in time), nothing is charged: the check cuts or removes the line with
+    // its notice and the visitor is sent back. A payment's return is not held
+    // again: the payment may already be taken, and one that outlived its
+    // hold completes as before and is flagged as sold beyond the stock.
+    $stock_hold_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+
+    if (!pg_payment_is_return_mode($_GET['mode'] ?? '')) {
+        $stock_hold = pg_stock_hold_place($stock_hold_order_id);
+
+        if (!$stock_hold['placed']) {
+            check_inventory($liveform);
+
+            if ($liveform->check_form_notices() == FALSE) {
+                $liveform->add_notice(lang('We\'re sorry, the availability of an item in your order could not be confirmed. Please review your order and submit it again.'));
+            }
+
+            log_activity(pg_log_lang(array(
+                'string' => 'Order (id: {var:1}) was sent back before payment because the stock of product {var:2} could not be held for it.',
+                'vars' => array($stock_hold_order_id, (int) $stock_hold['product_id']),
+            )));
+
+            if ($erp_on_account_requested) {
+                $liveform->assign_field_value('payment_method', 'On Account');
+            }
+
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
+            exit();
+        }
+    }
+
     // if a nonrecurring transaction or recurring transaction is required, then prepare for communication with payment service differently based on selected payment method
     if (($nonrecurring_transaction == TRUE) || ($recurring_transaction == TRUE)) {
         switch ($liveform->get_field_value('payment_method')) {
@@ -1590,6 +1629,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
                         
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -1601,6 +1641,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
                         
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -1653,6 +1694,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
 
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -1731,6 +1773,7 @@ function submit_order($type) {
                         // if there is a communication error with PayPal Payflow Pro, then prepare error and send user back to previous screen
                         if (!$payment_gateway_communication_method) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL or the Payflow Pro Client (i.e. PHP pfpro extension for Unix, Payflow Pro COM Object for Windows).'));
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -1751,6 +1794,7 @@ function submit_order($type) {
                         // if cURL is not installed, then prepare error and send user back to previous screen
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -1794,6 +1838,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
 
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -1814,6 +1859,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
 
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -1825,6 +1871,7 @@ function submit_order($type) {
                         if (function_exists('curl_init') == false) {
                             $liveform->mark_error('payment_gateway', lang('This website cannot communicate with the payment gateway. The administrator of this website should install cURL.'));
 
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -1840,6 +1887,7 @@ function submit_order($type) {
                 if (function_exists('curl_init') == false) {
                     $liveform->mark_error('paypal_express_checkout', lang('This website cannot communicate with PayPal. The administrator of this website should install cURL.'));
 
+                    pg_stock_hold_release($stock_hold_order_id);
                     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                     exit();
                 }
@@ -1860,6 +1908,7 @@ function submit_order($type) {
                 }
 
                 $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
+                pg_stock_hold_release($stock_hold_order_id);
                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                 exit();
         }
@@ -1929,6 +1978,7 @@ function submit_order($type) {
 
         if (!$payment_answer['success']) {
             $liveform->mark_error('payment_gateway', h($payment_answer['error']));
+            pg_stock_hold_release($stock_hold_order_id);
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
             exit();
         }
@@ -2162,6 +2212,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
                             // send user back to previous screen
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -2295,6 +2346,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
                             // send user back to previous screen
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -2425,6 +2477,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
                             // send user back to previous screen
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -2593,6 +2646,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
                             // send user back to previous screen
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -2788,6 +2842,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
                             // send user back to previous screen
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -2937,6 +2992,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
                             // send user back to previous screen
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -2959,6 +3015,7 @@ function submit_order($type) {
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
                             // send user back to previous screen
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -3018,6 +3075,7 @@ function submit_order($type) {
 
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
+                            pg_stock_hold_release($stock_hold_order_id);
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                             exit();
                         }
@@ -3029,6 +3087,7 @@ function submit_order($type) {
                     // refuse rather than record an order nobody was charged for.
                     case 'Iyzipay':
                         $liveform->mark_error('payment_gateway', lang('The selected payment method is not available.'));
+                        pg_stock_hold_release($stock_hold_order_id);
                         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                         exit();
                 }
@@ -3278,6 +3337,7 @@ function submit_order($type) {
                     $liveform->mark_error('paypal_express_checkout', h($paypal_express_checkout_error_message));
 
                     // send user back to previous screen
+                    pg_stock_hold_release($stock_hold_order_id);
                     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                     exit();
                 }
@@ -3310,6 +3370,7 @@ function submit_order($type) {
             // order without a charge.
             default:
                 $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
+                pg_stock_hold_release($stock_hold_order_id);
                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id));
                 exit();
         }

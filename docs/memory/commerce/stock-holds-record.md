@@ -1,6 +1,6 @@
 ---
 name: stock-holds-record
-description: The stock_holds table (11.0.253) and stock_holds.php: units free, the cart checks reading them, placing under a per-product lock, release, the daily sweep (SH1 #10711, SH2)
+description: The stock_holds table (11.0.253) and stock_holds.php: units free, the cart checks reading them, placing under a lock, release at completion, the daily sweep (SH1 #10711, SH2 #10759, SH3)
 module: stock_holds
 ---
 
@@ -24,12 +24,12 @@ module: stock_holds
 - `pg_stock_hold_place($order_id)` → `array(placed, product_id)`. Location: `pg_stock_order_location()`. Rows of products the order no longer needs go first. Each product in id order under `GET_LOCK(pg_stock_hold_lock_name(), 5)` for the read and the upsert only (`ON DUPLICATE KEY UPDATE`), then `RELEASE_LOCK`.
 - The lock name carries a hash of the database (`pg_stock_hold_<16 hex>_<id>`): GET_LOCK names are server-wide, as `pg_tr_job_lock_sql()` and `mp_webhook_lock_name()` do.
 - Not enough units, or the lock not got in 5 s: every hold of the order is removed and the product is named. Before the upgrade it answers placed with nothing written.
-- Nothing calls it yet: SH3 calls it in `submit_order.php`.
+- Called by `submit_order.php` before the payment: `stock-holds-placing.md`.
 
 ## Who removes rows?
-- `pg_stock_hold_release($order_id)`: `delete_order.php`; SH3 adds completion, a failed payment and the return to the cart.
+- `pg_stock_hold_release($order_id)`: `delete_order.php`; `pg_order_complete_lines()` after every line's take, bundles included, before `pg_stock_oversold_warn()`. A failed payment and the cart: `stock-holds-placing.md`.
 - `pg_stock_hold_forget_product($product_id)`: `pg_pb_delete_product()` (`product_builder.php`), the one product delete.
 - `pg_stock_hold_sweep_daily()` from `job.php`: once a day (marker `data/temp/stock_holds_swept.txt`), rows with `expires_at` a day past, 1,000 a statement, 20 statements a run.
 
 ## What guards it?
-- `tests/stock_holds_test.php`: units free with other orders, expired and own rows; held by others and less held; plain and bundle needs; a location; the lock name; the sweep's statement; source pins of the callers, the step, `get_tables()` and both checks' statements.
+- `tests/stock_holds_test.php`: units free, held by others, needs, a location, the lock name, the sweep; source pins of the callers, the step, `get_tables()`, both checks, the placing and the releases.
