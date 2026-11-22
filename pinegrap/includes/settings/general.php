@@ -95,9 +95,22 @@ $general_parts['organization'] = array('html' => '
     </div>') + pg_general_fold_organization($organization_name, $organization_city);
 
 // ── Site address ──
-// The Hostname, this server's IP as a line, and the outgoing proxy
-// (PROXY_ADDRESS): the proxy this site's own requests go out through, not
-// the trusted proxies in front of it, which Firewall keeps.
+// The Hostname, this server's IP as a line, what the other host names and
+// HTTPS do today (value rows leading to SEO and Firewall, which keep those
+// settings), and the outgoing proxy (PROXY_ADDRESS): the proxy this site's
+// own requests go out through, not the trusted proxies in front of it, which
+// Firewall keeps.
+$general_site_values = '';
+
+foreach (pg_general_site_values(!empty($main_host_redirect), (isset($secure_mode_checked) && ($secure_mode_checked !== ''))) as $general_value) {
+    $general_site_values .= '
+                            <div class="pg-value-row">
+                                <span class="pg-icon-tile pg-tone-' . $general_value['tone'] . '" aria-hidden="true"><i class="bi ' . $general_value['icon'] . '"></i></span>
+                                <span class="pg-value-row-text"><span class="pg-value-row-name">' . h($general_value['name']) . '</span><span class="pg-value-row-line">' . h($general_value['line']) . '</span></span>
+                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($general_value['href']) . '" aria-label="' . h(lang('Change') . ': ' . $general_value['name']) . '">' . h(lang('Change')) . '</a>
+                            </div>';
+}
+
 $general_parts['server'] = array('html' => '
     <div id="pgset-server" class="pg-set-card">
         <div class="card">
@@ -110,6 +123,11 @@ $general_parts['server'] = array('html' => '
                         <label for="hostname" class="form-label">' . lang('Hostname') . '</label>
                         <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="hostname" id="hostname" maxlength="255" class="form-control" value="' . h($hostname) . '" aria-describedby="hostname_ip"/>
                         <div class="pg-text-meta mt-2" id="hostname_ip">' . h(lang(array('string' => 'This server\'s IP: {var:1}', 'vars' => $server_addr))) . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="pg-card-inner">' . $general_site_values . '
+                        </div>
+                        <div class="pg-field-help">' . h(lang('Each is set in its own pane; Change opens it.')) . '</div>
                     </div>
                     <div class="pg-f-lg">
                         <label for="proxy_address" class="form-label">' . lang('Outgoing proxy') . '</label>

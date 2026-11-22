@@ -43,7 +43,7 @@ $id = is_scalar($requested_page_id) ? (int) $requested_page_id : 0;
 // The visual designer's page type pane reads and saves the page's type
 // fields here (includes/fn/page_type_pane.php): JSON, no redirect, and only
 // the type fields and the layout type are written.
-if ((string) ($_GET['properties'] ?? '') === '1') {
+if (($_GET['properties'] ?? '') === '1') {
     pg_page_type_pane_request($user, $id);
 }
 
@@ -1128,7 +1128,18 @@ if (!$_POST) {
 // else -> process
 } else {
     validate_token_field();
-    
+
+    // The page form draws no list: a field posted as one (name[]=x) stopped
+    // the save in trim() or escape() with an error page. The save is refused
+    // before anything is written.
+    $page_lists = pg_request_unexpected_lists($_POST);
+
+    if ($page_lists) {
+        $liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $page_lists)))));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $id . ((($_POST['send_to'] ?? '') !== '') ? '&send_to=' . urlencode((string) $_POST['send_to']) : ''));
+        exit();
+    }
+
     // get current page data
     $query =
         "SELECT

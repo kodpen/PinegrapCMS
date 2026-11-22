@@ -48,6 +48,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-15.md: Is View Order redrawn? (owner, 2026-11-22, in the architect's window)
 - decisions-made-panel-15.md: Are All Orders and Edit Product updated with it? (the same words)
 - decisions-made-panel-15.md: Does Edit Product show figures about the product? (owner, 2026-11-22, the same message)
+- decisions-made-panel-16.md: Where are the rules and the earlier parts?
+- decisions-made-panel-16.md: Is the bell's drawer redrawn? (owner, 2026-11-22, agent channel poll 218, message 11888)
+- decisions-made-panel-16.md: How is it built? (architect, 2026-11-22)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
@@ -1324,6 +1327,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d)
 - ui/notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
 - ui/notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
+- ui/page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - ui/panel-top-bar-phone.md: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark or page heading), below 390px no logo, why, the test that keeps it
 - ui/picker-field.md: The picker field pg_picker_field() (PK5): combobox with the chosen value and its picture, search list, Browse, clear, phone sheet, marks; which screens use it and who prints the script

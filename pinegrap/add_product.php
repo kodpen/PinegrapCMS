@@ -45,6 +45,17 @@ if ($_POST) {
 
     validate_token_field();
 
+    // A field posted as a list where the form draws one value (name[]=x)
+    // stopped the save in trim() or escape() with an error page. Nothing is
+    // created; pg_pb_list_fields() names the fields the form draws as lists.
+    $product_lists = pg_request_unexpected_lists($_POST, pg_pb_list_fields());
+
+    if ($product_lists) {
+        output_error(
+            lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $product_lists)))) .
+            ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     // Deliberately output_error + "go back" rather than a liveform redirect:
     // this form is long, and a redirect would throw away everything typed. The
     // browser's back button keeps it. Same choice the previous screen made.

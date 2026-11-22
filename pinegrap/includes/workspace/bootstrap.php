@@ -38,6 +38,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/highlights.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agents_settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_start_text.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_agents_panel.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_app_setup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_card.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_activity.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_activity_repo.php');

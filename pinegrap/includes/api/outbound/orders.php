@@ -802,6 +802,10 @@ function mp_order_write($account, $package, $map_id) {
 
 	mp_order_take_stock($matched, (string)$order_number);
 
+	// A line the stock could not cover while its product takes no back
+	// orders: the same warning a web order raises.
+	pg_stock_oversold_warn($order_id, 'system', (string)$order_number);
+
 	log_activity(lang(array(
 		'string' => 'Order {var:1} was imported from {var:2}.',
 		'vars'   => array((string)$package['remote_order_id'], mp_provider_name($account['provider']))

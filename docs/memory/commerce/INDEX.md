@@ -236,6 +236,7 @@
 - order-gift-card-owed.md: The gift card part an order owes back is what the cards gave (applied_gift_cards.amount) less gift card returns, never gift_card_discount; pg_order_gift_card_owed*() and the ERP settlement (#10260)
 - order-legal-documents-writers.md: Which order completions keep legal document copies (checkout, payment message) and which keep none (subscription renewal #10666, API, counter, marketplaces); the NULL legal_acceptance limit
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card [decision: decisions-made-product-83.md]
+- order-oversold-warning.md: Oversold warning (#10682): a sale line short of stock with back orders off raises one oversold bell line per order; the order screen notes "Taken from stock: a of b"
 - order-page-stored-figures.md: Order view (My Account) and receipt page/e-mail show a placed order's own orders.discount, tax and total (pg_order_page_figures), never the session cart's order_discount; what an unplaced order shows
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
 - order-preview-later-recipient-shipping.md: The classic Order Preview shows and counts the shipping of a recipient whose lines all start later, as submit_order.php charges it

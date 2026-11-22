@@ -102,7 +102,7 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-organization' => pg_settings_keywords(lang('organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller')),
-                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, site address, ip, proxy, proxy address, outgoing proxy')),
+                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, site address, ip, proxy, proxy address, outgoing proxy, other host names, redirect, https')),
                 'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
             ),
@@ -296,22 +296,24 @@ function pg_settings_categories()
             'icon'  => 'bi-bricks',
             'description' => lang('The request filter, the limits on one address, bot policy, address lists, countries, trusted proxies, HTTPS and security headers.'),
             'sections' => array(
+                'pgset-headers' => lang('HTTPS'),
                 'pgset-waf'     => lang('Firewall'),
                 'pgset-limits'  => lang('Limits'),
                 'pgset-bots'    => lang('Bots'),
                 'pgset-iplists' => lang('Addresses'),
                 'pgset-countries' => lang('Countries'),
                 'pgset-proxies' => lang('Trusted proxies'),
-                'pgset-headers' => lang('HTTPS and Security Headers'),
+                'pgset-waf-logs' => lang('Logs'),
             ),
             'keywords' => array(
-                'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, monitor, block mode, sensitivity, log')),
+                'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, nosniff, referrer')),
+                'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, monitor, block mode, sensitivity')),
                 'pgset-limits'  => pg_settings_keywords(lang('rate limit, requests per minute, ban, automatic ban, temporary ban, open at once, limit')),
                 'pgset-bots'    => pg_settings_keywords(lang('bot, crawler, googlebot, ai, gptbot, claudebot')),
                 'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, banned, ban, release')),
                 'pgset-countries' => pg_settings_keywords(lang('country, countries, geo, geoblocking, location, region, tor, block country, allow country')),
                 'pgset-proxies' => pg_settings_keywords(lang('proxy, trusted proxy, load balancer, cdn, x-forwarded-for, visitor address, real ip')),
-                'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer')),
+                'pgset-waf-logs' => pg_settings_keywords(lang('log, firewall log, retention, log size, plain-text log, fail2ban, iptables')),
             ),
         ),
 
@@ -1259,6 +1261,11 @@ function pg_settings_legacy_anchors()
         'pgsub-bots'       => array('firewall',   'pgset-bots'),
         'pgsub-iplists'    => array('firewall',   'pgset-iplists'),
         'pgsub-headers'    => array('firewall',   'pgset-headers'),
+        // The firewall log's fields and the plain-text block log left the
+        // Firewall and HTTPS cards for the Logs row.
+        'waf_log_retention_days' => array('firewall', 'pgset-waf-logs'),
+        'waf_log_max_rows' => array('firewall',   'pgset-waf-logs'),
+        'waf_text_log'     => array('firewall',   'pgset-waf-logs'),
         'pgset-ecommerce'  => array('commerce',   'pgset-store'),
         'pgsub-store'      => array('commerce',   'pgset-store'),
         'pgsub-shipping'   => array('commerce',   'pgset-shipping'),

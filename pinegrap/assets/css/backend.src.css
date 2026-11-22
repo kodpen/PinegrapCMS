@@ -2386,6 +2386,25 @@ body:not(.toolbar) .software-content {
   padding: 0rem;
 }
 
+/* The foot (output_footer()) stands at the window's bottom when a screen is
+   short and after the content when it scrolls: the content column is at least
+   the window under the top bar, and the foot takes the space left over above
+   it. No fixed foot laid over the content. The visual editor (.toolbar) prints
+   no foot and keeps its own frame. */
+body:not(.toolbar) .software-content {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--pg-navbar-h));
+}
+@supports (height: 100dvh) {
+  body:not(.toolbar) .software-content {
+    min-height: calc(100dvh - var(--pg-navbar-h));
+  }
+}
+body:not(.toolbar) .software-content > #footer {
+  margin-top: auto;
+}
+
 .software-sidebar {
   top: calc(var(--pg-navbar-h) - 1px);
   height: calc(100vh - var(--pg-navbar-h) + 1px);
@@ -3713,16 +3732,25 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
     width: var(--pg-searchbar-w);
     transform: translateX(-50%);
   }
-  /* The heading gives way instead of the field sliding off centre: half the
-     viewport, less half the field, less the logo group and a gap. Where the
-     screen is wide enough the plain 26rem wins and nothing is given up. */
+  /* The heading gives way instead of the field sliding off centre, and its
+     description ends 16px before the field with an ellipsis: half the bar
+     (the field's centre), less half the field, less where the heading starts
+     (the menu button, the logo group and the separator: 234px) and 12px
+     (the 16px gap less the 4px of padding at the heading's end). Where the screen is wide
+     enough the plain 26rem wins and nothing is given up. A private-label
+     logo is narrower, so the gap there is only wider. */
   #header:has(.pg-searchbar) .pg-navhead {
-    max-width: min(26rem, calc(50vw - (var(--pg-searchbar-w) / 2) - 12rem));
+    max-width: min(26rem, calc(50% - (var(--pg-searchbar-w) / 2) - 15.375rem));
   }
   /* One search per screen. */
   #header:has(.pg-searchbar) #EnableSearch {
     display: none;
   }
+}
+/* On a Workspace screen Ctrl+K opens the Workspace's own search, which the
+   list's field in the main menu names; the top bar's field shows no key. */
+body.workspace #header .pg-searchbar-kbd {
+  display: none;
 }
 #header .pg-navhead-title,
 #header .pg-navhead-desc {
@@ -12693,6 +12721,21 @@ body.workspace .ws-shell-main > #button_bar {
 }
 @supports (height: 100dvh) {
   .ws-app { height: calc(100dvh - 8.5rem); }
+}
+/* The channel view prints no foot, so the conversation and its writing box
+   reach the window's bottom. Today (.ws-home, drawn in the same root by
+   showHome()) keeps the foot and the height above. The foot is hidden here
+   rather than left out by output_footer() because the script switches
+   between the two views without loading the page again. */
+body.workspace_channels .software-content:not(:has(.ws-home)) > #footer {
+  /* The foot carries d-flex, and @layer utilities beats @layer custom. */
+  display: none !important;
+}
+.ws-app:not(:has(.ws-home)) {
+  height: calc(100vh - var(--pg-navbar-h));
+}
+@supports (height: 100dvh) {
+  .ws-app:not(:has(.ws-home)) { height: calc(100dvh - var(--pg-navbar-h)); }
 }
 /* A discussion beside the channel (threads.php): a third column on a wide
    screen; on a phone it covers the channel until it is closed (below). */
@@ -23540,9 +23583,11 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   text-transform: none;
 }
 #ws-menu-side .ws-group-toggle {
-  gap: .4rem;
-  padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
-  border-radius: var(--ws-radius-sm);
+  align-items: center;
+  gap: 8px;
+  min-height: calc(30px - .3rem + var(--ws-row-y, .3rem));
+  padding: 0 8px;
+  border-radius: 8px;
 }
 #ws-menu-side .ws-group-icon {
   width: 1rem;
@@ -23570,16 +23615,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   margin-left: 0;
   padding-left: 0;
   border-left: 0;
-}
-/* A mention count in the workspace accent; an unread count stays neutral. */
-#ws-menu-side .ws-count.ws-count-mention {
-  background: var(--ws-accent);
-  color: #fff;
-}
-/* White on the dark theme's light lavender reads at 2.2:1; the panel's
-   near-black ink on it reads at 7:1. */
-html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
-  color: var(--pg-on-accent);
 }
 /* Tools: two tiles to a row, each the screen's icon in the colour its row
    had (the [data-ws-nav] rules) and a short name; More, the last tile,
@@ -23671,6 +23706,196 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
   padding: .5rem .25rem;
   color: var(--pg-fg-2);
   font-size: .85rem;
+}
+/* The rows of the Workspace list (workspace_side.js; board L3 of
+   plans/workspace-interface): 30 px (a little less in the compact density,
+   through --ws-row-y), the channel's 18 px tile, the name, its marks at the
+   end. Written on the box's class, so the Design examples
+   screen draws the same row ("Workspace list row"). */
+.ws-menu-side .ws-channel-link {
+  gap: 8px;
+  min-height: calc(30px - .3rem + var(--ws-row-y, .3rem));
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-base);
+}
+.ws-menu-side .ws-channel-link:hover {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+/* The open entry: the quiet fill and an accent line at its left. */
+.ws-menu-side .ws-channel-link.active {
+  background: var(--pg-quiet);
+  box-shadow: inset 2px 0 0 var(--pg-accent);
+  color: var(--pg-fg-emphasis);
+  font-weight: inherit;
+}
+.ws-menu-side .ws-channel-link.ws-unread {
+  color: var(--pg-fg-emphasis);
+}
+.ws-menu-side .ws-channel-link.ws-unread .ws-channel-name {
+  font-weight: var(--pg-weight-title);
+}
+/* Today and the rarer screens keep their icon in the tiles' column. */
+.ws-menu-side .ws-channel-link[data-ws-nav] > .bi {
+  flex: none;
+  width: 18px;
+  text-align: center;
+}
+/* The tile: the look's icon tile at 18 px, in the channel's colour; its
+   icon keeps the ink the [data-ws-colored] rule pulls toward the text
+   colour, 3:1 on every tone. */
+.ws-menu-side .ws-side-ch-tile {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  font-size: var(--pg-text-count);
+}
+.ws-menu-side .ws-channel-link[data-ws-colored] .ws-side-ch-tile {
+  --pg-tone: var(--ws-ch);
+}
+/* Muted, or not joined: the tile grey and the name in the third ink. */
+.ws-menu-side .ws-channel-link:is(.ws-side-muted, .ws-notjoined) .ws-side-ch-tile {
+  --pg-tone: var(--pg-tone-gray);
+  color: var(--pg-fg-3);
+}
+.ws-menu-side .ws-channel-link.ws-side-muted:not(.active) {
+  color: var(--pg-fg-3);
+}
+/* The marks at the row's end: the draft's pencil, the struck bell, the
+   count or a muted channel's dot. */
+.ws-menu-side .ws-side-marks {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.ws-menu-side :is(.ws-side-draft, .ws-side-muted-bell) {
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+}
+.ws-menu-side .ws-side-dot {
+  width: 7px;
+  height: 7px;
+  margin: 0 5px;
+  border-radius: 50%;
+  background: var(--pg-fg-3);
+}
+/* The count: unread in a quiet pill, mentions in the accent. */
+.ws-menu-side .ws-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--pg-quiet);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-count);
+  font-weight: var(--pg-weight-title);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.ws-menu-side .ws-count.ws-count-mention {
+  background: var(--pg-accent);
+  color: var(--pg-on-accent-fill);
+}
+/* Pointing at a row the screen can pin shows the pin and "⋯" in the place
+   of its marks; a pinned channel's pin shows only then too. */
+.ws-menu-side .ws-side-row-tools {
+  display: none;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+.ws-menu-side .ws-channel-link.ws-side-has-tools:hover .ws-side-row-tools {
+  display: inline-flex;
+}
+.ws-menu-side .ws-channel-link.ws-side-has-tools:hover .ws-side-marks {
+  display: none;
+}
+.ws-menu-side .ws-side-row-tools > .no-popover {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  cursor: pointer;
+}
+.ws-menu-side .ws-side-row-tools > .no-popover:hover {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+/* Join on a channel not joined, on the channel screen. */
+.ws-menu-side .ws-side-join-now {
+  color: var(--pg-accent);
+  font-size: var(--pg-text-count);
+  font-weight: var(--pg-weight-strong);
+  cursor: pointer;
+}
+/* A hairline closes the pinned channels when more follows. */
+.ws-menu-side .ws-side-pinned:not(:last-child) {
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+/* Section names as written, small and in the third ink; the chevron at the
+   end shows on pointing, on focus and while the section is closed. */
+.ws-menu-side .ws-side-title {
+  min-height: 28px;
+  padding: 0 8px;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.ws-menu-side .ws-side-toggle-chevron {
+  margin-left: auto;
+  font-size: var(--pg-text-count);
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.ws-menu-side .ws-side-toggle:is(:hover, :focus-visible, [aria-expanded="false"]) .ws-side-toggle-chevron {
+  opacity: 1;
+}
+/* "N channels you could join": a quiet row that opens them in place. */
+.ws-menu-side .ws-side-join {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: calc(30px - .3rem + var(--ws-row-y, .3rem));
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-2);
+  text-align: start;
+}
+.ws-menu-side .ws-side-join:hover {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+.ws-menu-side .ws-side-join-icon {
+  flex: none;
+  width: 18px;
+  text-align: center;
+}
+.ws-menu-side .ws-side-join-chevron {
+  margin-left: auto;
+  font-size: var(--pg-text-count);
+}
+/* The Design examples screen draws the rows at the menu panel's width. */
+.pg-look-ws-list {
+  width: 250px;
+  max-width: 100%;
 }
 /* The workspace screens other than the channels: the screen beside the
    main menu, whose Workspace panel is the way around them. */
