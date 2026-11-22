@@ -14,7 +14,7 @@ description: pg_request_refuse_lists(): nine record forms (ad, ad region, auto d
 - The edit screens go back to `?id=` with the id the screen checked (`$id`). Edit Ad and Edit Ad Region keep `send_to`; Edit Menu keeps `from` and `send_to`.
 
 ## Why refuse?
-- Why (PR #PRNUM): a field posted as a list (`name[]=x`) logged "Array to string conversion" and saved "Array" as the name of a contact group, login region or menu. Posting every create and edit form with each field as a list found it.
+- Why (PR #11095): a field posted as a list (`name[]=x`) logged "Array to string conversion" and saved "Array" as the name of a contact group, login region or menu. Posting every create and edit form with each field as a list found it.
 - Refused, not read as not given: these saves write the fields they read, so a field taken as not given would be saved blank. The settings saves refuse a list for the same reason (`ui/settings-invalid-vs-error.md`).
 - A list field added to one of these forms needs its name in the screen's call, or every save of that form is refused.
 
