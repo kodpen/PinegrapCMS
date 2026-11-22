@@ -21,7 +21,7 @@ priority: 6
 - Nothing marks where the unread messages of a channel begin.
 
 ## May its steps be given out?
-- Not before the owner's word on the drawings is in `workflow/decisions-made-workspace-48.md`: the plan changes how the Tools and the channels not joined stand in the list and where the panel's foot stands, which he decided or saw before.
+- Not before the owner's word on the drawings is in `workflow/decisions-made-workspace-48.md`. So far he accepted the tools dock and refused its folded row of icons; the channels not joined, the panel's foot and what the plan adds wait.
 
 ## What does the plan settle itself?
 - The list's place, order and access rules stay (`workflow/decisions-made-workspace.md`, `-5.md`, `-6.md`): one list in the main menu's Workspace panel; search, Today, Channels, My discussions, Tools and More; only what the server sends is drawn.

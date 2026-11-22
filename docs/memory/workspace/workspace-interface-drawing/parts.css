@@ -55,17 +55,13 @@
 
 /* the tools: a dock that stays at the list's foot */
 .dk { flex: none; margin: 0 -6px; padding: 4px 8px 8px; border-top: 1px solid var(--line); background: var(--surf1); }
-.dk-h { display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 4px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+.dk-h { display: flex; align-items: center; gap: 10px; height: 28px; padding: 0 0 0 4px; font-size: 12px; font-weight: 550; color: var(--fg3); }
 .dk-g { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
 .dk-g a { position: relative; display: grid; justify-items: center; gap: 4px; padding: 6px 0 5px; border-radius: 9px; font-size: 10.5px; color: var(--fg2); }
 .dk-g a.on { background: var(--quiet); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
 .dk .tile { position: relative; width: 26px; height: 26px; border-radius: 8px; font-size: 13px; }
 .dk u { position: absolute; left: 50%; top: 2px; margin-left: 5px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 8px; display: grid; place-items: center; font: 600 10px/1 Inter, sans-serif; text-decoration: none; color: var(--on-accent); background: var(--accent); box-shadow: 0 0 0 2px var(--surf1); }
-.dk.folded { padding: 7px 6px; }
-.dk-r { display: flex; align-items: center; justify-content: space-between; }
-.dk-r .tile u { left: auto; right: -5px; top: -4px; margin: 0; }
-.dk.folded { padding-top: 9px; }
-.more { position: absolute; left: 8px; right: 8px; bottom: 50px; padding: 6px; font-size: 13px; }
+.more { position: absolute; left: 8px; right: 8px; bottom: 152px; padding: 6px; font-size: 13px; }
 .more a { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 8px; color: var(--fg2); }
 .more a i { color: var(--fg3); font-size: 14px; }
 

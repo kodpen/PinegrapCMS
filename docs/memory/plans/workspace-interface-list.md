@@ -1,6 +1,6 @@
 ---
 name: workspace-interface-list
-description: Plan workspace-interface, the list in words (boards L1 to L3): rows and their marks, the All and Unread filter, Mark all as read, the tools dock and More, the keys
+description: Plan workspace-interface, the list in words (boards L1 to L3): rows and their marks, the All and Unread filter, Mark all as read, the tools dock (never folded) and More, the keys
 ---
 
 ## How is the list put together? (board L1, top to bottom, 250 px)
@@ -25,8 +25,8 @@ description: Plan workspace-interface, the list in words (boards L1 to L3): rows
 - "Mark all as read" stands at the Channels heading's right while Unread is chosen: it asks once (`pgConfirm()`), then reads every joined channel and discussion. Nothing unread: one line "Everything is read".
 
 ## How do the tools stand? (boards L1, L2)
-- Open: a head line "Tools" with "⋯" (More) and the fold chevron; under it cells four across, a 26 px tile in the tool's colour over its short name at 10.5 px; the open screen's cell has the quiet fill. The order is `ws_nav_groups()['tools']`.
-- Folded: one row of the tiles alone, their names as titles, "⋯" last. The fold is the person's (`ws-side-closed` keeps its `tools` key).
+- A head line "Tools" with "⋯" (More) at its right; under it cells four across, a 26 px tile in the tool's colour over its short name at 10.5 px; the open screen's cell has the quiet fill. The order is `ws_nav_groups()['tools']`.
+- The dock has one state. Owner (2026-11-22): it never folds and never shows as a row of icons without their names; the Tools heading's old fold (`ws-side-closed`, key `tools`) goes.
 - My Tasks carries the count of the reader's open tasks due today or before, in the accent; no count at zero.
 - More is a card over the list above the dock, listing `more` as rows; Esc or a click outside closes it; it opens by itself on one of its screens, as today.
 - In the phone drawer the dock stands at the drawer's foot.
