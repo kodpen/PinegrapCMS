@@ -104,9 +104,28 @@ function pg_order_view_line_fact($label, $value_html, $for = '', $strong = false
 }
 
 /**
- * The "Taken from stock: a of b" fact of an order line whose sale took fewer
- * units than its quantity (stock_taken recorded and below it; a back order
- * line too); '' otherwise.
+ * A part of a line row's grey line: "label: value", nothing when the value
+ * is empty (the payment plan, a custom product field).
+ *
+ * @param string $label_html the label, ready to print
+ * @param string $value_html the value: escaped text, or markup the caller built
+ * @return string
+ */
+function pg_order_view_line_meta_part($label_html, $value_html)
+{
+    $value_html = trim((string) $value_html);
+
+    if ($value_html === '') {
+        return '';
+    }
+
+    return $label_html . ': ' . $value_html;
+}
+
+/**
+ * The "Taken from stock: a of b" part of a line row's grey line, for a line
+ * whose sale took fewer units than its quantity (stock_taken recorded and
+ * below it; a back order line too); '' otherwise.
  *
  * @param mixed $taken    order_items.stock_taken, null for not recorded
  * @param int   $quantity the line's quantity
@@ -118,7 +137,7 @@ function pg_order_view_stock_taken_fact($taken, $quantity)
         return '';
     }
 
-    return pg_order_view_line_fact(lang('Taken from stock'), h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array((int) $taken, (int) $quantity)))));
+    return pg_order_view_line_meta_part(h(lang('Taken from stock')), h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array((int) $taken, (int) $quantity)))));
 }
 
 /**

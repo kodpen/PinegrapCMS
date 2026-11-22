@@ -467,6 +467,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns = array_merge($patterns, pg_look_examples_record_patterns($p));
     $patterns[] = pg_look_examples_figure_grid_pattern();
     $patterns[] = pg_look_examples_address_pattern($p);
+    $patterns[] = pg_look_examples_line_row_pattern($p);
     $patterns[] = pg_look_examples_tools_dock_pattern($p);
     $patterns[] = pg_look_examples_flow_box_pattern($p);
     $patterns[] = pg_look_examples_canvas_tools_pattern();
@@ -1024,6 +1025,50 @@ function pg_look_examples_address_pattern($p)
             . '<dl class="pg-kv"><div><dt>' . h(lang('VKN / TCKN')) . '</dt><dd>1234567890</dd></div><div><dt>' . h(lang('Tax Office')) . '</dt><dd>Tire</dd></div></dl></div>'
             . '</div>'
             . '<p class="pg-text-meta">' . h(lang('From View Order: a postal address as its lines, an empty part left out, the name set apart; the copy button copies the lines. A grey line with a check under it; the rows that hold a value under a hairline.')) . '</p>',
+    );
+}
+
+/**
+ * The line row (View Order's shipment card): the card's title with the
+ * address's pill, the heading row, a line that ships with its shipped
+ * quantity over the ordered one, a line with a gift card box under it.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array id, title, classes, html
+ */
+function pg_look_examples_line_row_pattern($p)
+{
+    $field = 'pg-look-line-shipped-' . $p;
+    $stepper = '<div class="input-group number-controls">'
+        . '<button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>'
+        . '<input type="text" class="form-control text-center border-start-0 border-end-0" id="' . $field . '" value="1" inputmode="numeric" aria-label="' . h(lang('Shipped Qty')) . '">'
+        . '<button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button></div>';
+    $rows = pg_order_view_line(array(
+            'name_html' => '<a href="#" class="pg-link-secondary">' . h(lang('Office chair')) . '</a>',
+            'meta' => array('20M', h(lang('Taken from stock')) . ': 1'),
+            'amount_html' => '2 × ' . h(pg_format_money(299.95, '$')),
+            'shipped_html' => pg_order_view_line_shipped($stepper, 2),
+            'total_html' => h(pg_format_money(599.90, '$')),
+        ))
+        . pg_order_view_line(array(
+            'name_html' => h(lang('Gift Card')),
+            'meta' => array('GC-250'),
+            'amount_html' => '1 × ' . h(pg_format_money(250, '$')),
+            'shipped_html' => pg_order_view_line_shipped('<span class="pg-tabular">0</span>', 1),
+            'total_html' => h(pg_format_money(250, '$')),
+            'parts_html' => pg_order_view_line_part(h(lang('Gift Card')), '<div class="order-line-facts">' . pg_order_view_line_fact(h(lang('Recipient Email')), 'ayse@example.com') . pg_order_view_line_fact(h(lang('Delivery Date')), h(lang('Immediate'))) . '</div>'),
+        ));
+
+    return array(
+        'id'      => 'pattern-line-row',
+        'title'   => lang('Line row'),
+        'classes' => array('.pg-shipment', '.pg-shipment-head', '.pg-line-list', '.pg-line-list-ship', '.pg-line-head', '.pg-line-row', '.pg-line-image', '.pg-line-title', '.pg-line-meta', '.pg-line-amount', '.pg-line-shipped', '.pg-line-of', '.pg-line-total', '.pg-line-parts'),
+        'html'    => '<div class="card pg-card pg-shipment">'
+            . '<div class="card-header bg-reset border-0 pg-shipment-head"><h3 class="pg-title-section mb-0">' . h(lang('Shipment')) . '</h3>'
+            . pg_pill(lang('Partially shipped'), 'amber') . '</div>'
+            . '<div class="card-body">' . pg_order_view_line_list($rows, true) . '</div>'
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From View Order: one row per line, a picture, the name over a grey line, quantity × price, the shipped quantity over the ordered one, the total; a heading row names the columns once. Gift cards and form answers are boxes under the row. On a phone a line is two rows.')) . '</p>',
     );
 }
 
