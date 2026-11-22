@@ -29,6 +29,13 @@ if (!defined('PG_PACK_OPEN')) {
     define('PG_PACK_SHORT', 2);
 }
 
+// pick_waves.status values.
+if (!defined('PG_WAVE_OPEN')) {
+    define('PG_WAVE_OPEN', 0);
+    define('PG_WAVE_PICKED', 1);
+    define('PG_WAVE_CLOSED', 2);
+}
+
 // Most addresses one wave holds.
 if (!defined('PG_PICK_WAVE_MAX')) {
     define('PG_PICK_WAVE_MAX', 200);
@@ -178,11 +185,13 @@ function pg_pick_ship_by($ship_date, $paid_at, $handling_days)
 }
 
 /**
- * Whether an address may join a wave by the rule: paid, not cancelled, no
- * checked pack yet, in no other open wave, and through every filter the
- * rule sets. A filter left empty (or 0) lets every address through.
+ * Whether an address may join a wave by the rule: paid, not cancelled, not
+ * shipped, no checked pack yet, in no other open wave, and through every
+ * filter the rule sets. A filter left empty (or 0) lets every address
+ * through.
  *
- * @param array $address 'status' (orders.status), 'paid' (bool), 'packed'
+ * @param array $address 'status' (orders.status), 'paid' (bool), 'shipped'
+ *                       (bool, a tracking number or a shipped unit), 'packed'
  *                       (bool, a packed pack), 'in_wave' (bool, in an open
  *                       wave), 'carrier', 'marketplace', 'location_id',
  *                       'ship_by' (pg_pick_ship_by()), 'units' (units on
@@ -194,7 +203,7 @@ function pg_pick_ship_by($ship_date, $paid_at, $handling_days)
  */
 function pg_pick_wave_rule_match(array $address, array $rule)
 {
-    if (empty($address['paid']) || !empty($address['packed']) || !empty($address['in_wave'])) {
+    if (empty($address['paid']) || !empty($address['shipped']) || !empty($address['packed']) || !empty($address['in_wave'])) {
         return false;
     }
 
@@ -366,6 +375,196 @@ function pg_pick_list_totals(array $items)
     }
 
     return pg_pick_sort_lines($lines);
+}
+
+/**
+ * The rule a wave is made by, from what the Make a wave drawer sent: a
+ * carrier key, a marketplace account id, a stock location id, the ship-by
+ * choice ('today': due today or late, 'tomorrow': due by tomorrow) and
+ * single-item addresses only. A value it does not know lets every address
+ * through, as an empty field does.
+ *
+ * @param array $in    the posted fields
+ * @param int   $today unix time of today's start
+ * @return array 'carrier', 'marketplace', 'location_id', 'ship_by',
+ *               'ship_by_until' (0 for any day), 'single_item'
+ */
+function pg_pick_wave_rule_clean(array $in, $today)
+{
+    $text = function ($key) use ($in) {
+        return (isset($in[$key]) && is_scalar($in[$key])) ? trim((string) $in[$key]) : '';
+    };
+
+    $marketplace = $text('marketplace');
+    $location_id = $text('location_id');
+    $ship_by = $text('ship_by');
+    $days = array('today' => 0, 'tomorrow' => 1);
+    $until = 0;
+
+    if (isset($days[$ship_by])) {
+        $today = (int) $today;
+        $until = (int) mktime(0, 0, 0, (int) date('n', $today), (int) date('j', $today) + $days[$ship_by], (int) date('Y', $today));
+    } else {
+        $ship_by = '';
+    }
+
+    return array(
+        'carrier' => substr($text('carrier'), 0, 20),
+        'marketplace' => ctype_digit($marketplace) ? (string) (int) $marketplace : '',
+        'location_id' => ctype_digit($location_id) ? (int) $location_id : 0,
+        'ship_by' => $ship_by,
+        'ship_by_until' => $until,
+        'single_item' => $text('single_item') === '1',
+    );
+}
+
+/**
+ * The key of a pick list line, as the wave's picked list keeps it.
+ *
+ * @param int $product_id
+ * @param int $location_id
+ * @return string "product:location"
+ */
+function pg_pick_line_key($product_id, $location_id)
+{
+    return (int) $product_id . ':' . (int) $location_id;
+}
+
+/**
+ * Ticks or unticks one line in a wave's picked list.
+ *
+ * @param array  $picked the line keys ticked so far
+ * @param string $key    pg_pick_line_key()
+ * @param bool   $on     tick (true) or untick
+ * @return array the keys, each once, sorted; unchanged for a malformed key
+ */
+function pg_pick_picked_toggle(array $picked, $key, $on)
+{
+    $key = (string) $key;
+    $out = array();
+
+    foreach ($picked as $one) {
+        if (is_string($one) && preg_match('/^[0-9]+:[0-9]+$/', $one)) {
+            $out[$one] = true;
+        }
+    }
+
+    if (preg_match('/^[0-9]+:[0-9]+$/', $key)) {
+        if ($on) {
+            $out[$key] = true;
+        } else {
+            unset($out[$key]);
+        }
+    }
+
+    $out = array_keys($out);
+    sort($out, SORT_STRING);
+
+    return $out;
+}
+
+/**
+ * The pick list as the picker sees it: each line with its key and whether
+ * it is ticked, the lines still to pick in shelf order and the ticked ones
+ * after them, and how many of all are ticked.
+ *
+ * @param array $lines  pg_pick_list_totals() lines, in shelf order
+ * @param array $picked the wave's ticked line keys
+ * @return array 'lines', 'done', 'total'
+ */
+function pg_pick_list_ticked(array $lines, array $picked)
+{
+    $picked = array_flip(array_map('strval', $picked));
+    $open = array();
+    $done = array();
+
+    foreach ($lines as $line) {
+        $line['key'] = pg_pick_line_key($line['product_id'], isset($line['location_id']) ? $line['location_id'] : 0);
+        $line['picked'] = isset($picked[$line['key']]);
+
+        if ($line['picked']) {
+            $done[] = $line;
+        } else {
+            $open[] = $line;
+        }
+    }
+
+    return array('lines' => array_merge($open, $done), 'done' => count($done), 'total' => count($lines));
+}
+
+/**
+ * A wave's status after a line was ticked or unticked: picked once every
+ * line is ticked, open again when one is unticked. A closed wave stays
+ * closed.
+ *
+ * @param int $status PG_WAVE_*
+ * @param int $done   lines ticked
+ * @param int $total  lines on the list
+ * @return int PG_WAVE_*
+ */
+function pg_pick_wave_status_after($status, $done, $total)
+{
+    if ((int) $status === PG_WAVE_CLOSED) {
+        return PG_WAVE_CLOSED;
+    }
+
+    return ((int) $total > 0 && (int) $done >= (int) $total) ? PG_WAVE_PICKED : PG_WAVE_OPEN;
+}
+
+/**
+ * How a ship-by day reads against today: 'late' before today, 'today' on
+ * it, '' after it or when no day is known.
+ *
+ * @param int $ship_by unix time of the day's start, 0 unknown
+ * @param int $today   unix time of today's start
+ * @return string
+ */
+function pg_pick_ship_by_tone($ship_by, $today)
+{
+    $ship_by = (int) $ship_by;
+
+    if ($ship_by <= 0) {
+        return '';
+    }
+
+    if ($ship_by < (int) $today) {
+        return 'late';
+    }
+
+    return ($ship_by === (int) $today) ? 'today' : '';
+}
+
+/**
+ * In a single-item wave, the address a scanned product goes to: of the
+ * addresses that want it and are not packed yet, the oldest ship-by day
+ * (an unknown day last), then the older order, then the lower address id.
+ *
+ * @param array $rows       the wave's addresses: 'ship_to_id', 'order_id',
+ *                          'product_id' (its one unit), 'ship_by', 'done'
+ *                          (packed or left the wave)
+ * @param int   $product_id the scanned product
+ * @return int|null the ship_to_id, null when no address wants it
+ */
+function pg_pick_single_item_address(array $rows, $product_id)
+{
+    $best = null;
+    $order = function ($row) {
+        $ship_by = (int) $row['ship_by'];
+
+        return array($ship_by > 0 ? 0 : 1, $ship_by, (int) $row['order_id'], (int) $row['ship_to_id']);
+    };
+
+    foreach ($rows as $row) {
+        if ((int) $row['product_id'] !== (int) $product_id || !empty($row['done'])) {
+            continue;
+        }
+
+        if ($best === null || $order($row) < $order($best)) {
+            $best = $row;
+        }
+    }
+
+    return ($best === null) ? null : (int) $best['ship_to_id'];
 }
 
 /**
