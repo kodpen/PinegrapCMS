@@ -1,6 +1,6 @@
 ---
 name: booking-settings-rows
-description: Settings › Bookings as folded rows with lines of state; services and staff as list rows edited in drawers, Move up and Move down, a new member's hours, the drawer a refused save opens
+description: Settings › Bookings as folded rows with lines of state; services as list rows edited in drawers, Move up and Move down, the drawer a refused save opens
 module: booking_settings
 ---
 
@@ -14,21 +14,11 @@ module: booking_settings
 - Edit opens the service's drawer `pgset-booking-service-<id>` (`pg_settings_drawer()`, `ui/settings-drawer-card-form.md`): Name, Duration, the two breaks, Price, Deposit and its product, Description, Can be booked; its boxes carry `form=` and post as `booking_service[<id>][…]`; its foot Save is the pane's Save.
 - "Add a service" in the row's head opens `pgset-booking-service-new` (`booking_service[new]`); a typed name adds it, an empty one is passed over. No empty block is drawn (#11008).
 
-## How is a staff member shown and edited?
-- One list row each (their letters `pg-initials`, name, `pg_booking_settings_staff_line()`: "Takes bookings · 3 services · Mon–Fri", or "Takes no bookings"; a run of three days or more is "Mon–Fri", fewer are listed; no hours: "No weekly hours"), Edit. The row keeps the hidden `booking_staff[<id>][seen]` in the pane.
-- Edit opens `pgset-booking-member-<id>` (`pg_booking_settings_member_drawer()`): Takes bookings, Bookable services, Weekly hours with "Copy the first day to every day", Days off and special hours with "Add a row", the time zone line and "Holidays are kept in Team and working hours" (link `#settings/workspace_team/pgset-ws-calendar`). Every box carries `form=` and posts under its old name.
-- Under 576 px both tables (`.pg-booking-hours`) become blocks: the day across, the four boxes two by two under their labels; nothing scrolls sideways.
-
-## How is a staff member added, and with which hours?
-- "Add a staff member" in the Staff row's head (only while a panel user can be added) opens `pgset-booking-member-new`: the picker `booking_staff_add` (Panel user) and the weekly grid `booking_staff[new][h…]`. Save adds the member with every enabled service and the hours shown.
-- The hours: the picked user's own working days in Team and working hours (`ws_profiles.workdays`), else the company's week (`ws_workweek()`), else Monday to Friday; each day 09:00-17:00 (`pg_booking_settings_new_member_hours()`). Each option carries its prefill (`data-pg-booking-hours`); a pick fills the grid, which can be changed before Save.
-- The save checks the posted grid as a member's grid and stores it as posted (an emptied grid is no hours); a post without the grid gets the prefill. Rows already stored do not change.
-- Before: a new member always got Monday to Friday, 09:00 to 17:00, whatever their working days, and the picker sat at the card's foot.
-
 ## How is the order changed?
 - No Display order box any more. Each row posts a hidden `booking_service[<id>][order]` in the pane; Move up / Move down swap the row, rewrite every row's order from 0 and submit the form (a save at once: hidden inputs do not make the dialog's Save active). The add drawer's order is one past the highest.
 
 ## Which drawer opens on a refused save?
-- `bookings.save.php` names the drawer of the first refused service box with `pg_settings_drawer_refused(pg_booking_settings_error_drawer('booking_service', $key, $error))`; `settings_pane.php` answers it as `drawer`, and the dialog's `refused(fields, drawer)` opens it (`reopen()`) and focuses its marked box. The page path opens the shut drawer of the first marked field itself (`pgSettingsRestore()`). A staff box (`h<day><a-d>`, `x_from`, `enabled`, `services`) opens the member's drawer; a refused user to add or a new member's hour box opens the add drawer (`test_booking_settings_error_drawer`).
+- `bookings.save.php` names the drawer of the first refused box with `pg_settings_drawer_refused(pg_booking_settings_error_drawer($list, $key, $error))`; `settings_pane.php` answers it as `drawer`, and the dialog's `refused(fields, drawer)` opens it (`reopen()`) and focuses its marked box.
+- The page path opens the shut drawer of the first marked field itself (`pgSettingsRestore()`). Staff boxes open their drawers too (`ui/booking-settings-staff-rows.md`, `test_booking_settings_error_drawer`).
 
-Related: docs/memory/ui/booking-settings.md, docs/memory/ui/settings-drawer-card-form.md
+Related: docs/memory/ui/booking-settings.md, docs/memory/ui/booking-settings-staff-rows.md, docs/memory/ui/settings-drawer-card-form.md
