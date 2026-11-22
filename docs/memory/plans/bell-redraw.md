@@ -7,7 +7,7 @@ priority: 6
 ## What is asked?
 - Owner (2026-11-22, agent channel message 11882): "bildirim panelinde kapatma düğmesi yanındaki düğme html buton gibi kalmış masaüstünde sorun yoktu. Bildirim panelini baştan cizermisin olmuşken tam olsun modernize edelim tekrar".
 - The raw button was the head's "More actions" toggle without `pg-icon-button`; it is fixed on its own as a small fix, outside this plan.
-- The drawing: `ui/bell-redraw-drawing/bell.html` (Z1 desktop, Z2 phone, Z3 states), asked as poll 218 (message 11888). Status: waits for the owner's answer; no step starts before it.
+- The drawing: `ui/bell-redraw-drawing/bell.html` (Z1 desktop, Z2 phone, Z3 states), accepted by the owner in poll 218 (message 11888, `workflow/decisions-made-panel-16.md`).
 
 ## What does the drawer look like?
 - Parts copied from the Design examples screen (`design_examples.php`): Buttons (icon buttons), Segmented control and status, Icon tiles and people, Rows and gathered rows, Menus, Fields, Switch rows.
