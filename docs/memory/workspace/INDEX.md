@@ -118,6 +118,7 @@
 - discussion-agents-panel.md: A discussion's people panel lists its agents and "Agents in this discussion" for whoever may change them, with the channel's agents added in one go; ws_channel_member_agent_rows() [decision: decisions-made-workspace-43.md]
 - guest-agent-lines.md: The guest page lists the agents' and assistants' messages beside people's (GV1): which senders, how drawn, what a guest may do on them, and that nothing a guest does asks an agent [decision: decisions-made-workspace-24.md]
 - guest-page-content.md: What a guest sees of what agents and canvases put in a room (GP1-GP3): role and model, files, a canvas as its picture, task cards, a live page card in the guarded frame; read only
+- mail-add-sheet.md: Add a mailbox as the three-step sheet (EM5 #11175): Choose, Sign in, Details; the provider buttons on the site's own applications, the return, Test connection before the box is stored, Finish
 - mail-api-html-files.md: HTML and files in Workspace e-mail sent or drafted over the API and MCP (MT5, #9541): html, file_ids, file right at Send, draft_files, draft_app_id [decision: decisions-made-schema-19.md]
 - mail-api-reading.md: A chat reading Workspace e-mail over the API and MCP (MT2): one mail whole, its cleaned HTML on request, its files listed and fetched as JSON, the outside mark, text_max
 - mail-api-reply.md: The API's plain-text answer to an e-mail conversation (POST …/reply without html or file_ids): sent at once by ws_mail_reply_send(), the bounce list and the hourly limit it keeps (#9674), its refusals
@@ -129,7 +130,7 @@
 - mail-bounce-dev-check.md: Why conversation 48 on dev seemed to get no "Not delivered" line after an answer to a mistyped domain, and why mail_bounces has no row for a Workspace bounce (checked 2026-11-13) [decision: decisions-made-workspace-23.md]
 - mail-box-drawer.md: A mailbox's drawer in Site Settings › Mailboxes since #10934: head with the state pill, tabs General / Reading / Answers / Routing, the Advanced fold, routes as rows, the foot with Remove mailbox
 - mail-box-remove.md: Removing a mailbox (Site Settings › Mailboxes, MT1 #10900): the row, its settings, password, rules and own blocks go; every conversation stays; the check, posted name and confirm [decision: here]
-- mail-box-start-setup.md: Site Settings › Mailboxes since MT3: Add a mailbox's four starting points, and the Google and Microsoft set-up drawers opened from a box's Reading tab
+- mail-box-start-setup.md: Site Settings › Mailboxes: the Google and Microsoft set-up drawers opened from a box's Reading tab or Add a mailbox's Sign in step
 - mail-card-answered.md: The conversation's mail card in a channel since MA10b (#9453): "Answered · who · time" with no column, the Open e-mail link to Communication, what left the card, the touch after an answer [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - mail-card-quote.md: What a reply's quote line says of a mail card in a channel (plain() and quoteText() in workspace.js): the head, Show all and refused files left out, blocks read apart (#9011)
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(): first lines, Answered, Open e-mail; sender like a guest) and the Mailboxes card with the .eml upload (mail_settings.php)
