@@ -309,7 +309,8 @@ function pg_pick_waves_sync_leavers($wave_id = 0)
  * still in it, their units and how many are packed.
  *
  * @return array rows: id, name, location_id, status, single_item, created_by,
- *               created_at, created_by_name, addresses, units, packed
+ *               created_at, created_by_name, addresses, units, packed,
+ *               has_closed_pack (a packed or short pack: no delete)
  */
 function pg_pick_wave_list()
 {
@@ -326,7 +327,10 @@ function pg_pick_wave_list()
                 WHERE member.wave_id = pick_waves.id AND member.removed_at = 0) AS units,
             (SELECT COUNT(*) FROM pick_wave_orders AS member
                 INNER JOIN order_packs ON order_packs.ship_to_id = member.ship_to_id AND order_packs.status = '" . PG_PACK_PACKED . "'
-                WHERE member.wave_id = pick_waves.id AND member.removed_at = 0) AS packed
+                WHERE member.wave_id = pick_waves.id AND member.removed_at = 0) AS packed,
+            EXISTS (SELECT 1 FROM pick_wave_orders AS member
+                INNER JOIN order_packs ON order_packs.ship_to_id = member.ship_to_id AND order_packs.status <> '" . PG_PACK_OPEN . "'
+                WHERE member.wave_id = pick_waves.id) AS has_closed_pack
         FROM pick_waves
         LEFT JOIN user ON user.user_id = pick_waves.created_by
         ORDER BY pick_waves.created_at DESC, pick_waves.id DESC

@@ -90,7 +90,7 @@ foreach (pg_pick_wave_list() as $wave) {
     $location = ((int) $wave['location_id'] > 0 && isset($choices['locations'][(int) $wave['location_id']]))
         ? h($choices['locations'][(int) $wave['location_id']])
         : '<span class="pg-text-meta">' . h(lang('Any')) . '</span>';
-    $delete = ((int) $wave['packed'] === 0 && pg_pick_wave_deletable($id))
+    $delete = empty($wave['has_closed_pack'])
         ? '<li><button type="submit" form="pick_waves_form" name="submit_delete" value="' . $id . '" formnovalidate class="menu-item fg-emphasis-danger" data-confirm-content="' . h(lang('The wave is deleted and its orders wait to be picked again.')) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Delete')) . '</button></li>'
         : '';
 
