@@ -12,7 +12,7 @@ description: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside
 - M8a (S) `sort=newest` on the lists a device scope reads that lack it, by the walk of `api/api-list-newest-first.md` (`list_order.php`); the PR lists which lists got it and which cannot (no stable key). Done: PR #11087 (`api/api-list-newest-device-lists.md`).
 - M8b (M) several reads in one request: done, PR #11085 (`api/api-batch-reads.md`).
 - M8c (M) the deleted records list. Done: #11084 (products and offers covered; `api/api-deleted-records.md`).
-- M8d (S) the CORS allow-list.
+- M8d (S) the CORS allow-list. Done: #11170 (`api/api-cors-allow-list.md`); the close-out follows.
 
 ## How does one request carry several reads? (M8b)
 - `POST /batch`, body `{"requests":[{"id","path","query","if_none_match"}]}`, at most 20. Reads only: each entry is a GET of the API, run in process the way the MCP server runs a handler (`api/api-mcp-server.md`), so input still comes through `api_request_input()`.

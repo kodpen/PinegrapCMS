@@ -17,8 +17,8 @@ description: External API manners (#10142): HEAD as GET without a body, Location
 - On an answer whose `error.message` is a sentence: the language of the texts, `api_text_language()` (`api-meta-language-timezone.md`). A record's answer has none: its fields are data.
 
 ## What may a cross-origin page read?
-- Where an answer carries `Access-Control-Allow-Origin` (today `GET /discovery`) and names no list of its own, `api_send()` adds `Access-Control-Expose-Headers`: `X-Request-Id`, `Content-Language`, `Location`, `ETag`, `Retry-After`, `Idempotent-Replay`, `X-RateLimit-*` (`api_exposed_headers()`).
-- The rest of the REST API sends no CORS header on purpose (a key does not belong in a web page). MCP keeps its own list in `pg_mcp_cors()`.
+- Where an answer carries `Access-Control-Allow-Origin` (`GET /discovery`, or any answer to an origin on the allow-list, `api-cors-allow-list.md`) and names no list of its own, `api_send()` adds `Access-Control-Expose-Headers`: `X-Request-Id`, `Content-Language`, `Location`, `ETag`, `Retry-After`, `Idempotent-Replay`, `X-RateLimit-*` (`api_exposed_headers()`).
+- With the allow-list empty the rest of the REST API sends no CORS header (a key does not belong in a web page). MCP keeps its own list in `pg_mcp_cors()`.
 
 ## Which 401s carry WWW-Authenticate?
 - `credentials_missing` (nothing sent) and `unauthorized` (wrong key) both carry `Basic realm="Pinegrap API"` through `api_basic_challenge()`, unless `X-Requested-With: XMLHttpRequest` marks a script-made call (the /docs console). Before, `credentials_missing` carried none while OAuth was off.

@@ -28,6 +28,7 @@ require_once($pg_api_directory . '/db.php');
 require_once($pg_api_directory . '/response.php');
 require_once($pg_api_directory . '/fault.php');
 require_once($pg_api_directory . '/manners.php');
+require_once($pg_api_directory . '/cors.php');
 require_once($pg_api_directory . '/preconditions.php');
 require_once($pg_api_directory . '/time.php');
 require_once($pg_api_directory . '/log.php');
@@ -199,6 +200,19 @@ function api_run() {
 
 	}
 
+	// A browser origin on Application Access's list reads every answer from
+	// here on, errors included (includes/api/cors.php); with the list empty
+	// nothing is added and the API answers as it always did.
+	$cors_origin = (string)api_header('Origin');
+
+	$cors_list = api_cors_origins();
+
+	foreach (api_cors_headers($cors_origin, $cors_list, false) as $cors_name => $cors_value) {
+
+		api_extra_headers($cors_name, $cors_value);
+
+	}
+
 	if (!$settings['enabled']) {
 
 		api_fail(503, 'api_disabled', lang('The API is switched off for this site.'));
@@ -233,8 +247,15 @@ function api_run() {
 	if ($method === 'OPTIONS') {
 
 		// Answered so that a browser-based client's preflight does not look like
-		// a broken endpoint. Nothing is granted: no cross-origin header is sent,
-		// because an API key does not belong in a web page in the first place.
+		// a broken endpoint. Only a listed origin is granted anything; for any
+		// other no cross-origin header is sent, because an API key does not
+		// belong in a web page in the first place.
+		foreach (api_cors_headers($cors_origin, $cors_list, true) as $cors_name => $cors_value) {
+
+			api_extra_headers($cors_name, $cors_value);
+
+		}
+
 		api_send(204, array());
 
 	}
@@ -259,6 +280,14 @@ function api_run() {
 	if ($route === null) {
 
 		api_fail(404, 'unknown_endpoint', lang('No such endpoint.'));
+
+	}
+
+	// The token routes sign a person in: a page on another origin must not
+	// drive them through a visitor's browser unless the site listed it.
+	if (api_cors_token_route_refused($route, $cors_origin, $cors_list)) {
+
+		api_fail(403, 'forbidden', lang('This browser origin may not call this endpoint. Add it to the allowed browser origins on Application Access.'));
 
 	}
 

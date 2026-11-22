@@ -44,6 +44,7 @@ require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
 require_once(dirname(__FILE__) . '/includes/api/resources/webhooks.php');
 require_once(dirname(__FILE__) . '/includes/fn/automation_contract.php');
 require_once(dirname(__FILE__) . '/includes/api/devices.php');
+require_once(dirname(__FILE__) . '/includes/api/cors.php');
 require_once(dirname(__FILE__) . '/includes/oauth/server.php');
 
 $liveform = new liveform('api_settings');
@@ -82,6 +83,56 @@ if ($_POST) {
 	$action = isset($_POST['api_action']) ? $_POST['api_action'] : '';
 
 	$app_id = isset($_POST['app_id']) ? (int)$_POST['app_id'] : 0;
+
+	// The browser origins the API answers (includes/api/cors.php): a site-wide
+	// setting, so only an administrator or a designer saves it. A list with
+	// one entry that is not an origin is refused whole, so nothing typed is
+	// dropped in silence.
+	if ($action === 'cors_origins') {
+
+		$cors_text = isset($_POST['cors_origins']) ? (string)$_POST['cors_origins'] : '';
+
+		$cors_parsed = api_cors_origins_parse($cors_text);
+
+		$cors_before = pg_config_text(api_cors_setting_name());
+
+		$cors_after = api_cors_origins_text($cors_parsed['origins']);
+
+		if ((int)$user['role'] > 1) {
+
+			$liveform->add_error(lang('Only an administrator or a designer can change the allowed browser origins.'));
+
+		} elseif ($cors_parsed['invalid']) {
+
+			$liveform->add_error(lang(array(
+				'string' => 'These are not browser origins: {var:1}. An origin is https:// and a host, such as https://app.example.com, or the fixed origin of an app shell.',
+				'vars'   => h(implode(', ', $cors_parsed['invalid']))
+			)));
+
+		} elseif ($cors_after === $cors_before) {
+
+			$liveform->add_notice(lang('The allowed browser origins were not changed.'));
+
+		} elseif (!pg_config_text_save(api_cors_setting_name(), $cors_after)) {
+
+			$liveform->add_error(lang('The allowed browser origins could not be saved.'));
+
+		} else {
+
+			$liveform->add_notice(lang('The allowed browser origins were saved.'));
+
+			log_activity(lang(array(
+				'string' => 'The allowed browser origins of the API were changed: {var:1}',
+				'vars'   => ($cors_after === '') ? '-' : str_replace("\n", ', ', $cors_after)
+			)), $_SESSION['sessionusername']);
+
+		}
+
+		header('Location: ' . $screen_url . '#api_cors');
+
+		exit();
+
+	}
 
 	// Every action on an existing row (save, new secret, delete, its webhooks
 	// and devices) is refused when the row's owner outranks the editor: the
@@ -1630,6 +1681,35 @@ if (!empty($webhook_all)) {
 // screen like the event card, because they belong to the site's OAuth server
 // rather than to one application row, and drawn only once OAuth is in use - an
 // OAuth application exists, or a client is still on record from when one did.
+// The browser origins the API answers (includes/api/cors.php), for an
+// administrator or a designer only: the list opens the API to pages on those
+// origins, which is the site's decision, not one application's.
+$cors_card = '';
+
+if ((int)$user['role'] <= 1) {
+
+	$cors_card = '
+	<div class="card mt-5" id="api_cors">
+		<h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Allowed browser origins') . '</h2>
+		<div class="card-body px-5 py-3">
+			<form method="post" action="api_settings.php" class="disable_shortcut">
+				' . get_token_field() . '
+				<div class="mb-5">
+					<label class="pg-field-label" for="cors_origins">' . lang('Origins') . '</label>
+					<textarea class="pg-input" name="cors_origins" id="cors_origins" rows="4" maxlength="20000"
+						spellcheck="false" autocomplete="off" aria-describedby="cors_origins_help"
+						placeholder="https://app.example.com">' . h(api_cors_origins_text(api_cors_origins())) . '</textarea>
+					<div class="pg-field-help" id="cors_origins_help">'
+						. lang('One origin per line. A web page on a listed origin may call the API with a bearer token; with the list empty no web page can, and servers and native apps call as before. An origin is https:// and a host, such as https://app.example.com. A native app shell loads its pages from a fixed origin: capacitor://localhost and https://localhost (Capacitor), ionic://localhost, tauri://localhost or http://localhost.') . '
+					</div>
+				</div>
+				<button type="submit" name="api_action" value="cors_origins" class="pg-button pg-button-fill">' . lang('Save') . '</button>
+			</form>
+		</div>
+	</div>';
+
+}
+
 $oauth_clients_card = '';
 
 $oauth_in_use = false;
@@ -1961,6 +2041,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	' . $oauth_clients_card . '
 
 	' . $webhook_card . '
+
+	' . $cors_card . '
 	</div>
 
 	<!-- Status column: what is read, not filled. Written after the list so that

@@ -5982,6 +5982,7 @@
     "Allowed Zones": "İzin Verilen Bölgeler",
     "Allowed addresses": "İzin verilen adresler",
     "Allowed bots": "İzin verilen botlar",
+    "Allowed browser origins": "İzin verilen tarayıcı kökenleri",
     "Allowed large image previews in search results": "Arama sonuçlarında büyük görsel önizlemesine izin verildi",
     "Allowing an address puts it on the allowed list in Site Settings and releases any automatic ban on it.": "Bir adrese izin vermek onu Site Ayarları'ndaki izin verilen listeye ekler ve üzerindeki otomatik yasağı kaldırır.",
     "Allows to view and update site data from outside the site": "Site verilerinin site dışından görüntülenmesine ve güncellenmesine izin verir",
