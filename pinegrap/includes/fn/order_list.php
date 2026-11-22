@@ -10,6 +10,11 @@
  * apart from a charged total: it is what the cart holds, not money taken.
  * The filter totals and the chart keep adding orders.total only.
  *
+ * The Customer, Payment, Shipping and Items columns: the page's rows are
+ * read once per column (the first line of each order, the lines with their
+ * address, the parcels) and the payment and shipping pills come from View
+ * Order's own function (pg_order_view_states()).
+ *
  * Also the tax of one order line for the orders CSV exports, the
  * discount of each line of the Paraşüt export, and the list's Summary (the
  * best sellers and the payment methods opened under the figure strip).
@@ -25,6 +30,27 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The positive order ids among those given, each once, as integers.
+ *
+ * @param mixed $order_ids
+ * @return array id => id
+ */
+function pg_order_list_ids($order_ids)
+{
+    $ids = array();
+
+    foreach ((array) $order_ids as $order_id) {
+        $order_id = (int) $order_id;
+
+        if ($order_id > 0) {
+            $ids[$order_id] = $order_id;
+        }
+    }
+
+    return $ids;
+}
+
+/**
  * The query that sums the cart lines of the given orders, one row per order
  * (order_id, cart_total in minor units). Lines saved for later are left out,
  * as the cart's own subtotal leaves them out. The price may be negative and
@@ -36,15 +62,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_order_list_cart_totals_sql($order_ids, $active_sql = '')
 {
-    $ids = array();
-
-    foreach ((array) $order_ids as $order_id) {
-        $order_id = (int) $order_id;
-
-        if ($order_id > 0) {
-            $ids[$order_id] = $order_id;
-        }
-    }
+    $ids = pg_order_list_ids($order_ids);
 
     if (!$ids) {
         return '';
@@ -476,4 +494,253 @@ function pg_order_list_summary_html(array $top, array $payments)
         . pg_order_list_summary_part_html(lang('Top 5 products'), pg_order_list_summary_bars($top), $empty)
         . pg_order_list_summary_part_html(lang('Payment methods'), pg_order_list_summary_bars($payments), $empty)
         . '</div>';
+}
+
+/**
+ * The Customer cell's text: the billing first and last name, else the
+ * billing company. Plain text, not escaped.
+ *
+ * @param mixed $first_name   orders.billing_first_name
+ * @param mixed $last_name    orders.billing_last_name
+ * @param mixed $company      orders.billing_company
+ * @return string
+ */
+function pg_order_list_customer_text($first_name, $last_name, $company)
+{
+    $name = trim(trim((string) $first_name) . ' ' . trim((string) $last_name));
+
+    return ($name !== '') ? $name : trim((string) $company);
+}
+
+/**
+ * The query that reads the first line of each order and how many lines it
+ * has (order_id, product_name, line_count). Lines saved for later are left
+ * out, as the cart and the order leave them out.
+ *
+ * @param array  $order_ids  order ids; anything but a positive integer is dropped
+ * @param string $active_sql pg_order_item_active_sql() of the caller
+ * @return string '' when no id is left
+ */
+function pg_order_list_items_sql($order_ids, $active_sql = '')
+{
+    $ids = pg_order_list_ids($order_ids);
+
+    if (!$ids) {
+        return '';
+    }
+
+    return "SELECT
+            first_line.order_id,
+            order_items.product_name,
+            first_line.line_count
+        FROM (
+            SELECT
+                order_items.order_id,
+                MIN(order_items.id) AS first_id,
+                COUNT(*) AS line_count
+            FROM order_items
+            WHERE
+                (order_items.order_id IN (" . implode(', ', $ids) . "))" . $active_sql . "
+            GROUP BY order_items.order_id
+        ) AS first_line
+        INNER JOIN order_items ON order_items.id = first_line.first_id";
+}
+
+/**
+ * The query that reads every line with an address of the given orders,
+ * with its address's dates, as View Order reads its addresses: from the
+ * lines, so an address no line points to is not one of the order's.
+ *
+ * @param array $order_ids
+ * @return string '' when no id is left
+ */
+function pg_order_list_ship_lines_sql($order_ids)
+{
+    $ids = pg_order_list_ids($order_ids);
+
+    if (!$ids) {
+        return '';
+    }
+
+    return "SELECT
+            order_items.order_id,
+            order_items.ship_to_id,
+            order_items.quantity,
+            order_items.show_shipped_quantity,
+            order_items.shipped_quantity,
+            ship_tos.ship_date,
+            ship_tos.delivery_date
+        FROM order_items
+        LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
+        WHERE
+            (order_items.order_id IN (" . implode(', ', $ids) . "))
+            AND (order_items.ship_to_id > 0)
+        ORDER BY order_items.ship_to_id ASC, order_items.id ASC";
+}
+
+/**
+ * The query that reads the parcels of the given orders (ship_to_id, number,
+ * status).
+ *
+ * @param array $order_ids
+ * @param bool  $status_ready pg_shipment_rows_ready(): the status column exists
+ * @return string '' when no id is left
+ */
+function pg_order_list_parcels_sql($order_ids, $status_ready)
+{
+    $ids = pg_order_list_ids($order_ids);
+
+    if (!$ids) {
+        return '';
+    }
+
+    return "SELECT
+            ship_to_id,
+            number,
+            " . ($status_ready ? 'status' : "'' AS status") . "
+        FROM shipping_tracking_numbers
+        WHERE order_id IN (" . implode(', ', $ids) . ")
+        ORDER BY ship_to_id ASC, id ASC";
+}
+
+/**
+ * The addresses of each order as pg_order_view_states() takes them, built
+ * from the rows of pg_order_list_ship_lines_sql() and
+ * pg_order_list_parcels_sql(). A parcel without a number is left out and a
+ * status that is not known reads as created, as View Order reads them
+ * (pg_shipment_view()).
+ *
+ * @param array $lines   rows of the lines query
+ * @param array $parcels rows of the parcels query
+ * @return array order id => ship_to_id => ship_date, delivery_date, lines, parcels
+ */
+function pg_order_list_addresses(array $lines, array $parcels)
+{
+    $orders = array();
+    $owner = array();
+
+    foreach ($lines as $line) {
+        $order_id = (int) ($line['order_id'] ?? 0);
+        $ship_to_id = (int) ($line['ship_to_id'] ?? 0);
+
+        if (($order_id <= 0) || ($ship_to_id <= 0)) {
+            continue;
+        }
+
+        if (!isset($orders[$order_id][$ship_to_id])) {
+            $orders[$order_id][$ship_to_id] = array(
+                'ship_date' => (string) ($line['ship_date'] ?? ''),
+                'delivery_date' => (string) ($line['delivery_date'] ?? ''),
+                'lines' => array(),
+                'parcels' => array(),
+            );
+            $owner[$ship_to_id] = $order_id;
+        }
+
+        $orders[$order_id][$ship_to_id]['lines'][] = array(
+            'quantity' => (int) ($line['quantity'] ?? 0),
+            'show_shipped_quantity' => (int) ($line['show_shipped_quantity'] ?? 0),
+            'shipped_quantity' => (int) ($line['shipped_quantity'] ?? 0),
+        );
+    }
+
+    foreach ($parcels as $parcel) {
+        $ship_to_id = (int) ($parcel['ship_to_id'] ?? 0);
+
+        if (!isset($owner[$ship_to_id]) || (trim((string) ($parcel['number'] ?? '')) === '')) {
+            continue;
+        }
+
+        $status = (string) ($parcel['status'] ?? '');
+        $orders[$owner[$ship_to_id]][$ship_to_id]['parcels'][] = in_array($status, pg_shipment_statuses(), true) ? $status : 'created';
+    }
+
+    return $orders;
+}
+
+/**
+ * What the Payment, Shipping and Items cells of a page of the orders list
+ * show, read in one query each.
+ *
+ * @param array $rows       the list's rows (id, status, total, payment_method,
+ *                          paid_at, refunded_amount, erp_on_account)
+ * @param bool  $paid_known whether orders.paid_at exists
+ * @param string $today     Y-m-d
+ * @return array order id => array('payment' => pill|null, 'shipping' => pill|null, 'items' => first line row|null)
+ */
+function pg_order_list_row_states(array $rows, $paid_known, $today)
+{
+    $ids = pg_order_list_ids(array_column($rows, 'id'));
+
+    if (!$ids) {
+        return array();
+    }
+
+    $first_lines = array();
+    foreach (db_items(pg_order_list_items_sql($ids, pg_order_item_active_sql())) as $line) {
+        $first_lines[(int) $line['order_id']] = $line;
+    }
+
+    $addresses = pg_order_list_addresses(
+        db_items(pg_order_list_ship_lines_sql($ids)),
+        db_items(pg_order_list_parcels_sql($ids, pg_shipment_rows_ready()))
+    );
+
+    $states = array();
+
+    foreach ($rows as $row) {
+        $id = (int) $row['id'];
+
+        // Without the paid_at column nothing tells an unpaid transfer from a
+        // paid one, so the awaiting state is off, as on View Order.
+        if (!$paid_known) {
+            unset($row['paid_at']);
+        }
+
+        $pills = pg_order_view_states($row, $addresses[$id] ?? array(), $today);
+        $states[$id] = array(
+            'payment' => $pills['payment'],
+            'shipping' => $pills['shipping'],
+            'items' => $first_lines[$id] ?? null,
+        );
+    }
+
+    return $states;
+}
+
+/**
+ * A Payment or Shipping cell: the pill, or nothing.
+ *
+ * @param array|null $pill array(translated text, tone) from pg_order_view_states()
+ * @return string HTML
+ */
+function pg_order_list_pill_html($pill)
+{
+    if (!is_array($pill) || !isset($pill[0], $pill[1])) {
+        return '';
+    }
+
+    return pg_pill((string) $pill[0], (string) $pill[1]);
+}
+
+/**
+ * The Items cell: the first line's product and "+N more" for the others.
+ *
+ * @param array|null $line pg_order_list_items_sql() row
+ * @return string HTML
+ */
+function pg_order_list_items_html($line)
+{
+    if (!is_array($line)) {
+        return '';
+    }
+
+    $html = h((string) ($line['product_name'] ?? ''));
+    $others = (int) ($line['line_count'] ?? 0) - 1;
+
+    if ($others > 0) {
+        $html .= ' <small class="fg-secondary">' . h(lang(array('string' => '+{var:1} more', 'vars' => array($others)))) . '</small>';
+    }
+
+    return $html;
 }
