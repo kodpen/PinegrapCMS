@@ -5430,6 +5430,7 @@
     "The most travellers on one departure.": "Bir kalkıştaki en fazla yolcu sayısı.",
     "The motor and battery read out, the firmware updated and the brakes checked for the extra weight.": "Motor ve batarya verileri okunur, yazılım güncellenir ve frenler fazladan ağırlık için kontrol edilir.",
     "The motorcycle for the test": "Sınav için motosiklet",
+    "The move": "Taşıma",
     "The move could not be started: data/temp is not writable.": "Taşıma başlatılamadı: data/temp yazılabilir değil.",
     "The move of booking #{var:1} in your calendar was not kept": "Takviminizdeki randevu #{var:1} taşıması korunmadı",
     "The move of {var:1} in your calendar was not kept": "{var:1} görevinin takviminizdeki taşıması kabul edilmedi",
