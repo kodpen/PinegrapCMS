@@ -44,7 +44,7 @@ function pg_messages_area_tabs()
         'automatic' => array('file' => 'messages_automatic.php', 'label' => 'Automatic sends', 'icon' => 'bi-diagram-3', 'gate' => 'email_or_flows'),
         'templates' => array('file' => 'messages_templates.php', 'label' => 'Templates', 'icon' => 'bi-card-text', 'gate' => 'email'),
         'sends'     => array('file' => 'messages_sends.php', 'label' => 'Sends', 'icon' => 'bi-send', 'gate' => 'email'),
-        'surveys'   => array('file' => 'messages_surveys.php', 'label' => 'Surveys', 'icon' => 'bi-emoji-smile', 'gate' => 'manager'),
+        'surveys'   => array('file' => 'messages_surveys.php', 'label' => 'Surveys', 'icon' => 'bi-emoji-smile', 'gate' => 'surveys'),
         'channels'  => array('file' => 'messages_channels.php', 'label' => 'Channels', 'icon' => 'bi-broadcast', 'gate' => 'manager'),
     );
 }
@@ -52,16 +52,21 @@ function pg_messages_area_tabs()
 /**
  * Whether a person passes a tab's gate.
  *
- * @param string $gate          'mail', 'email', 'manager' or 'email_or_flows'
+ * @param string $gate          'mail', 'email', 'manager', 'surveys' or 'email_or_flows'
  * @param int    $role          0 administrator to 3 user
  * @param bool   $manage_emails the Campaign Manager right
  * @param bool   $flows         may open the Flows screen (pg_flows_user_may())
  * @param bool   $mail          reads a mailbox (ws_mail_list_visible())
+ * @param bool   $contacts      a user with the contacts right (the survey results)
  * @return bool
  */
-function pg_messages_gate_allows($gate, $role, $manage_emails, $flows = false, $mail = false)
+function pg_messages_gate_allows($gate, $role, $manage_emails, $flows = false, $mail = false, $contacts = false)
 {
     $role = (int) $role;
+
+    if ($gate === 'surveys') {
+        return ($role <= 2) || (bool) $contacts;
+    }
 
     if ($gate === 'mail') {
         return (bool) $mail;
@@ -89,14 +94,15 @@ function pg_messages_gate_allows($gate, $role, $manage_emails, $flows = false, $
  * @param bool $manage_emails
  * @param bool $flows may open the Flows screen
  * @param bool $mail  reads a mailbox
+ * @param bool $contacts a user with the contacts right
  * @return array
  */
-function pg_messages_tabs_for($role, $manage_emails, $flows = false, $mail = false)
+function pg_messages_tabs_for($role, $manage_emails, $flows = false, $mail = false, $contacts = false)
 {
     $keys = array();
 
     foreach (pg_messages_area_tabs() as $key => $tab) {
-        if (pg_messages_gate_allows($tab['gate'], $role, $manage_emails, $flows, $mail)) {
+        if (pg_messages_gate_allows($tab['gate'], $role, $manage_emails, $flows, $mail, $contacts)) {
             $keys[] = $key;
         }
     }
@@ -107,7 +113,8 @@ function pg_messages_tabs_for($role, $manage_emails, $flows = false, $mail = fal
 /**
  * The same for a signed-in user row (validate_user()). The Flows screen's
  * gate is asked only of a role 3 user without the Campaign Manager right:
- * everyone else passes Automatic sends' gate already.
+ * everyone else passes Automatic sends' gate already; the contacts right
+ * (the survey results) of a role 3 user only.
  *
  * @param array     $user
  * @param bool|null $mail whether they read a mailbox; null asks
@@ -125,7 +132,10 @@ function pg_messages_tabs_for_user($user, $mail = null)
         $mail = pg_messages_mail_visible($user);
     }
 
-    return pg_messages_tabs_for($role, $manage_emails, $flows, $mail);
+    // The survey results open to a user with the contacts right.
+    $contacts = ($role >= 3) && !empty($user['manage_contacts']) && validate_contacts_access($user, true);
+
+    return pg_messages_tabs_for($role, $manage_emails, $flows, $mail, $contacts);
 }
 
 /**

@@ -40,6 +40,7 @@ function test_messages_area_tabs_by_role()
 	pg_assert_same($all, pg_messages_tabs_for(2, false), 'manager');
 	pg_assert_same(array('campaigns', 'automatic', 'templates', 'sends'), pg_messages_tabs_for(3, true), 'campaign manager: no Surveys, no Channels');
 	pg_assert_same(array(), pg_messages_tabs_for(3, false), 'a user without the right gets nothing');
+	pg_assert_same(array('surveys'), pg_messages_tabs_for(3, false, false, false, true), 'a user with the contacts right sees Surveys (its results) alone');
 	pg_assert_same(array(), pg_messages_tabs_for_user(array()), 'an empty user row reads as role 3 without the right');
 	pg_assert_same(array('campaigns', 'automatic', 'templates', 'sends'), pg_messages_tabs_for_user(array('role' => '3', 'manage_emails' => '1')), 'a database row');
 }

@@ -130,7 +130,7 @@ function pg_audience_operators()
  * The catalogue of conditions: per key its label, family, the operators it
  * takes, the kind of value ('text', 'number', 'money', 'days', 'none',
  * 'product', 'product_group', 'contact_group', 'form', 'form_field',
- * 'consent', 'status', 'stage') and the table it reads. 'window' marks a condition
+ * 'consent', 'status', 'stage', 'band') and the table it reads. 'window' marks a condition
  * that also takes days (a visit window, required).
  *
  * @return array
@@ -167,6 +167,9 @@ function pg_audience_conditions()
         'landing_page' => array('label' => lang('Landing page'), 'family' => 'visits', 'ops' => array('eq'), 'value' => 'text', 'window' => true, 'table' => 'visitors'),
         'utm_source' => array('label' => lang('UTM source'), 'family' => 'visits', 'ops' => array('eq'), 'value' => 'text', 'window' => true, 'table' => 'visitors'),
         'utm_campaign' => array('label' => lang('UTM campaign'), 'family' => 'visits', 'ops' => array('eq'), 'value' => 'text', 'window' => true, 'table' => 'visitors'),
+
+        'feedback_band' => array('label' => lang('Last survey score'), 'family' => 'feedback', 'ops' => array('eq', 'neq'), 'value' => 'band', 'table' => 'feedback_responses'),
+        'feedback_answered' => array('label' => lang('Answered a survey'), 'family' => 'feedback', 'ops' => array('within', 'not_within'), 'value' => 'days', 'table' => 'feedback_responses'),
 
         'group' => array('label' => lang('Contact group'), 'family' => 'groups', 'ops' => array('in', 'not_in'), 'value' => 'contact_group', 'table' => 'contacts_contact_groups_xref'),
     );
@@ -396,6 +399,15 @@ function pg_audience_condition_clean(array $condition)
         case 'stage':
             // A stage name of customer rhythm, kept as its name.
             if (!is_string($value) || (pg_customer_rhythm_stage_pick($value) === '')) {
+                return null;
+            }
+
+            $clean['value'] = $value;
+            break;
+
+        case 'band':
+            // A survey score's band, kept as its word: low, middle, high.
+            if (!is_string($value) || !in_array($value, array('low', 'middle', 'high'), true)) {
                 return null;
             }
 
@@ -689,6 +701,22 @@ function pg_audience_sql_condition(array $c, $now, array &$params)
 
             return pg_audience_sql_in("SELECT customer_rhythm.contact_id FROM customer_rhythm"
                 . " WHERE customer_rhythm.contact_id <> 0 AND customer_rhythm.stage = ?", $op === 'eq');
+
+        case 'feedback_band':
+            // The band of the contact's latest answer; "is not" also takes
+            // a contact who never answered, as "Rhythm stage" does.
+            $params[] = array('low' => PG_FEEDBACK_BAND_LOW, 'middle' => PG_FEEDBACK_BAND_MIDDLE, 'high' => PG_FEEDBACK_BAND_HIGH)[$value];
+
+            return pg_audience_sql_in("SELECT feedback_responses.contact_id FROM feedback_responses"
+                . " WHERE feedback_responses.contact_id <> 0 AND feedback_responses.answered_at <> 0 AND feedback_responses.band = ?"
+                . " AND feedback_responses.answered_at = (SELECT MAX(later.answered_at) FROM feedback_responses AS later"
+                . " WHERE later.contact_id = feedback_responses.contact_id)", $op === 'eq');
+
+        case 'feedback_answered':
+            $params[] = $since;
+
+            return pg_audience_sql_in("SELECT feedback_responses.contact_id FROM feedback_responses"
+                . " WHERE feedback_responses.contact_id <> 0 AND feedback_responses.answered_at >= ?", $op === 'within');
 
         case 'submitted_form':
             $params[] = $value;
@@ -1512,12 +1540,14 @@ function pg_audience_editor_data()
             'subscriptions' => lang('Subscriptions'),
             'forms' => lang('Forms'),
             'visits' => lang('Visits'),
+            'feedback' => lang('Surveys'),
             'groups' => lang('Contact Groups'),
         ),
         'fields' => $options(pg_audience_contact_fields()),
         'consents' => $options(pg_audience_consents()),
         'statuses' => $statuses,
         'stages' => $options(pg_customer_rhythm_stage_labels()),
+        'bands' => $options(array('low' => lang('Low'), 'middle' => lang('Middle'), 'high' => lang('High'))),
         'max' => PG_AUDIENCE_MAX_CONDITIONS,
     );
 }
