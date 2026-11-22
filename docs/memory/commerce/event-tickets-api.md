@@ -7,6 +7,7 @@ module: event_tickets
 ## What does GET /calendars/events/{id}/tickets answer?
 - Route `calendars.event_tickets`, handler `api_calendar_event_tickets()` in `includes/api/resources/event_tickets.php`, scope `orders:read` (T14: a ticket reaches a person only through its order). The event follows the calendar row rule (`api_calendar_event_visible_or_fail()`, 404 outside); 503 `service_unavailable` before the tickets table.
 - `data`: `EventTicket` rows oldest first, cursor on the ticket id; filters `recurrence_number`, `state` (valid, used, void). `guest_name` as the tickets page names the guest (`pg_event_ticket_guest_name()` on the unit's product form), else the buyer's (`pg_check_in_with_names()`, one query a page).
+- Each ticket carries `check_ins`, a series ticket's entries per date (`event-tickets-series.md`).
 - `counts` beside the page (`EventTicketCounts`): sold (valid and used), checked_in, void, for the event or the repeat asked, whatever the state filter.
 - A key with only `calendars:*` is refused; an owner without the e-commerce right cannot give a key `orders:read` (`api_owner_scopes()`). No new scope or right.
 - No product route: a product's tickets are read on the check-in screen only. A product ticket route would be a new endpoint for the architect.
@@ -16,7 +17,7 @@ module: event_tickets
 
 ## When is ticket.checked_in announced?
 - From `event_check_in.php` when `pg_check_in_run()` answers `valid`, which it does only when this request's conditional UPDATE marked the ticket used: two phones scanning one ticket announce it once. An undone check-in and a second scan are not announced.
-- Payload `pg_check_in_ticket_event()`: id, order_id, order_number, order_item_id, unit, product_id (null for none), calendar_event_id, recurrence_number, checked_in_at (UTC), checked_in_by. Fields and sample in `api_webhook_event_payloads()`; area Calendars in `api_app_event_area()`. Not a Workspace flow trigger.
+- Payload `pg_check_in_ticket_event()`: id, order_id, order_number, order_item_id, unit, product_id (null for none), calendar_event_id, recurrence_number, checked_in_at (UTC), checked_in_by. Fields and sample in `api_webhook_event_payloads()`; area Calendars in `api_app_event_area()`. A flow start since FD3, about its calendar event; it queues the surveys that follow events (`platform/feedback-sends.md`).
 
 ## Where is a product marked "Gives tickets"?
 - Product screen (`product_builder.php`), Advanced Settings, section "Event Tickets", switch "Gives tickets". Drawn only while Tickets is on in Site Settings and `products.gives_tickets` exists (`pg_pb_tickets_mark_drawn()`); not drawn, it posts nothing and the stored mark is kept.

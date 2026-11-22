@@ -53,16 +53,20 @@ function workspace_mail_room_hidden_test_readers()
 		'includes/fn/image.php::pg_image_warmup_fetch'                     => array('key:folder_id'),
 		'includes/fn/privacy_export.php::pg_privacy_export_collect'        => array('key:contact_id'),
 		'includes/fn/content_proposals.php::pg_content_proposals_channel_offered' => array('kinds'),
+		// The public channels a survey's low scores may be told in.
+		'includes/fn/feedback_surveys.php::pg_feedback_survey_choices'      => array('kinds'),
 		// The channel a waiting content change is also asked in.
 		'includes/settings/features.php::(file)'                           => array('kinds'),
 		'includes/workspace/access.php::ws_channel'                        => array('id'),
 		'includes/workspace/agent_activity.php::ws_agent_activity_open'    => array('id'),
 		'includes/workspace/agent_instructions.php::ws_agent_instructions_channels' => array('id'),
 		'includes/workspace/agent_queue.php::ws_agent_brief'               => array('id'),
-		'includes/workspace/ai.php::ws_ai_settings_card'                   => array('id'),
+		'includes/workspace/ai.php::ws_ai_latest_requests'                 => array('id'),
 		'includes/workspace/api_resources.php::ws_api_channel_groups_delete' => array('key:group_id'),
 		'includes/workspace/api_resources.php::ws_api_message_threads'     => array('id'),
 		'includes/workspace/api_threads.php::ws_api_threads_list'          => array('kinds', 'id'),
+		// The channel of a call that may ring, by the call's channel.
+		'includes/workspace/calls.php::ws_call_rings_for'                  => array('id'),
 		'includes/workspace/calendar.php::ws_calendar'                     => array('hidden'),
 		'includes/workspace/channel_memory.php::ws_memory_sweep'           => array('id'),
 		'includes/workspace/channels.php::ws_channel_name_taken'           => array('hidden'),

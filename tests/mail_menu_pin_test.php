@@ -160,7 +160,7 @@ function test_mail_menu_pin_row_in_the_menu()
 {
 	$categories = pg_menu_categories();
 
-	pg_assert_same(array(0, 26, 23, 24, 27), $categories['']['slots'], 'in the untitled group, under the Workspace and My Notes');
+	pg_assert_same(array(0, 26, 23, 24, 27, 28), $categories['']['slots'], 'in the untitled group, under the Workspace and My Notes, before My reviews');
 	pg_assert_same(array(0, 27), pg_menu_layout(array(27, 0, 9), $categories)[0]['slots'], 'with the Workspace off it follows the Dashboard');
 
 	$menu = mail_menu_pin_test_function('output_menu');

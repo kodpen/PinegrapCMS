@@ -141,6 +141,13 @@ function pg_ops_alert_codes()
         // The bell row links the product it names first
         // (pg_sales_watch_price_check()); the e-mail and the chat targets the
         // products list.
+        // A supplier feed stopped by a brake (includes/fn/supplier_feed_sync.php):
+        // nothing was written and the feed is paused. Once per feed a day.
+        'supplier_feed' => array(
+            'label' => lang('A supplier feed was paused'),
+            'type'  => 'warning',
+            'url'   => 'view_supplier_feeds.php',
+        ),
         'price_error' => array(
             'label' => lang('A product sells at a wrong price'),
             'type'  => 'error',

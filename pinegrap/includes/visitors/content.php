@@ -90,7 +90,9 @@ function pg_visitors_content_read($kind, array $window, $limit)
 
     if ($kind === 'page') {
         $where = "item_type = ''";
-        $group = "page_id, CASE WHEN page_id > 0 THEN '' ELSE page_name END";
+        // The table's columns: the select list names its MAX() results
+        // page_id and page_name too, so bare names here are ambiguous.
+        $group = "visitor_content_hourly.page_id, CASE WHEN visitor_content_hourly.page_id > 0 THEN '' ELSE visitor_content_hourly.page_name END";
         $item = "'' AS item_type, 0 AS item_id";
     } else {
         $where = "item_type = '" . e($kind) . "' AND item_id > 0";

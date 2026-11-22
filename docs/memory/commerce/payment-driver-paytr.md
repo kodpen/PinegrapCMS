@@ -5,7 +5,7 @@ description: PayTR iFrame driver (method 'PayTR', 11.0.122, PR #3036): get-token
 
 ## What is it?
 - `includes/payments/paytr.php`, key `paytr`, redirect driver for the payment method `PayTR` (appended to the `orders.payment_method` ENUM by 11.0.122, `upgrade_2026_11_0_paytr()`).
-- `connect_apps` `payment_paytr`: `merchant_id`, `merchant_key` and `merchant_salt` (sealed), `mode` (`live`/`test` → PayTR's `test_mode`), `max_installment` (installments, `payment-driver-paytr-installments.md`). Switch and fields on the Ecommerce card's redirect rows. No `complete()`, so no return mode.
+- `connect_apps` `payment_paytr`: `merchant_id`, `merchant_key` and `merchant_salt` (sealed), `mode` (`live`/`test` → PayTR's `test_mode`), `max_installment` (installments, `payment-driver-paytr-installments.md`). Switch and choices on the card, keys on Connections. No `complete()`, so no return mode.
 - No SDK: `pg_curl_run()` POST to `https://www.paytr.com/odeme/api/get-token`; `pg_payment_paytr_authorize_with()` / `_notify_with()` take settings and the HTTP caller for tests.
 
 ## How does a payment go?

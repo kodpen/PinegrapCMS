@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the names screen readers get in the Site Settings cards: radio
- * groups are headed by a legend, the Custom CSS and cron command code fields
+ * groups are headed by a legend, the Panel CSS and cron command code fields
  * and the default barcode type select are named, the e-document check time
  * follows the site's date and time format, and required markers are not
  * read as "star".
@@ -31,7 +31,7 @@ function settings_card_names_quoted($text)
 function test_settings_card_radio_groups_have_a_legend()
 {
 	$groups = array(
-		'appearance.php' => array('Editor Version'),
+		'appearance.php' => array('Editor version'),
 		'commerce.php' => array('Recipient Mode', 'Enforcement', 'Transaction Type', 'Mode', 'Price before the discount'),
 		'features.php' => array('Site Search Type', 'Setup'),
 		'firewall.php' => array('Mode', 'Restriction', 'Content Security Policy'),
@@ -54,7 +54,11 @@ function test_settings_card_radio_groups_have_a_legend()
 	pg_assert_same(2, preg_match_all('/<legend class="form-label pg-field-label">\'\s*\.\s*lang\(\'Transaction Type\'\)/', $commerce), 'commerce.php: both Transaction Type groups have a legend');
 
 	$general = settings_card_names_source('general.php');
-	pg_assert_contains('<div class="form-label">\' . lang(\'Current Site Time\') . \'</div>', $general, 'Current Site Time names no control, so it is not a label');
+	pg_assert_contains('<div class="pg-text-meta">\' . lang(\'Current Site Time\') . \': \'', $general, 'Current Site Time names no control, so it is a meta line, not a label');
+
+	foreach (array('pgset-organization', 'pgset-server', 'pgset-software', 'pgset-datetime') as $id) {
+		pg_assert_contains('<div id="' . $id . '" class="pg-set-card">', $general, 'general.php: ' . $id . ' keeps its card id inside its row');
+	}
 }
 
 function test_settings_card_social_setup_legend_heads_only_its_radios()
@@ -71,7 +75,7 @@ function test_settings_card_social_setup_legend_heads_only_its_radios()
 function test_settings_card_code_fields_are_named()
 {
 	$appearance = settings_card_names_source('appearance.php');
-	pg_assert_contains('<label class="form-label" for="custom_css">', $appearance, 'the Custom CSS label points at its textarea');
+	pg_assert_contains('<label class="form-label" for="custom_css">', $appearance, 'the Panel CSS label points at its textarea');
 
 	$general = settings_card_names_source('maintenance.php');
 	pg_assert_contains('<textarea id="cron_job_general_dispatch" aria-label="\' . h(lang(\'General job command\')) . \'">', $general, 'the dispatch command box has a translated name');
@@ -107,8 +111,8 @@ function test_settings_card_required_markers_are_not_read()
 	pg_assert_false(strpos($prep, "\$erp_edoc_required ? ' required") !== false, 'the e-document fields carry no required attribute that would refuse the whole save');
 
 	$privacy = settings_card_names_source('privacy.php');
-	pg_assert_false(strpos($privacy, '>*\' . lang(\'Tracking Code Duration\')') !== false, 'Tracking Code Duration has no leading star');
-	pg_assert_contains('lang(\'Tracking Code Duration\') . \'<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>', $privacy, 'Tracking Code Duration has the hidden trailing marker');
+	pg_assert_false(strpos($privacy, '>*\' . lang(\'Remember a tracking code for\')') !== false, 'Remember a tracking code for has no leading star');
+	pg_assert_contains('lang(\'Remember a tracking code for\') . \'<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>', $privacy, 'Remember a tracking code for has the hidden trailing marker');
 }
 
 function test_settings_card_tsa_placeholder_is_neutral()

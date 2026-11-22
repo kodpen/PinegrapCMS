@@ -287,6 +287,7 @@ if ($liveform->check_form_errors()) {
         'pane'   => $pane,
         'errors' => $errors,
         'fields' => $fields ? $fields : new stdClass(),
+        'drawer' => pg_settings_drawer_refused(),
         'token'  => (isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : ''),
     ));
 }

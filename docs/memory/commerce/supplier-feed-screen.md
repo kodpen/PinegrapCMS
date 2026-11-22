@@ -9,7 +9,7 @@ module: supplier_feed_screen
 - Reached from the Products menu panel ("Supplier feeds", last, after the catalogue entries) and the panel search; the row stays lit on both screens. The panel's links after its first group are one loop over screen, icon and label, so `tools/check_look.php`'s count for `output.php` fell (architect, 2026-11-20, channel message 11049).
 
 ## What does the list show?
-- Printed whole (`pg_list_table_printed()`): name, host (never the address), format, Pulled every, Last pull with its pill, Products matched, and Edit / Test pull (quiet small), then the row's "more" menu with Delete (Design examples › Menus). Test pull and Delete post the feed's id as the button's value to the edit screen; Delete asks the shared confirm (`data-confirm-content`).
+- Printed whole (`pg_list_table_printed()`): name, host (never the address), format, Pulled every, Last pull with its pill, Products matched, and Edit / Pull now / Test pull (quiet small), then the row's "more" menu with Delete (Design examples › Menus). Pull now, Test pull and Delete post the feed's id as the button's value to the edit screen; Delete asks the shared confirm (`data-confirm-content`).
 - No feed: one line on what a feed does and "Add supplier feed" (fill), no toolbar.
 
 ## How is the sign-in kept?
@@ -23,15 +23,12 @@ module: supplier_feed_screen
 - A read sets an on feed (status 1) back to 0 until the fields are saved again.
 
 ## What do Prices and Fields save?
-- Shown only after a read. Prices: the feed's currency ('' the store's), prices include VAT, the ERP supplier account (only with Accounting on; `kind` supplier or both, active).
+- Shown only after a read. Prices: the feed's currency ('' the store's), prices include VAT, the ERP supplier account (only with Accounting on; `kind` supplier or both, active), then the price rule (`supplier-feed-price-card.md`).
 - Fields: a row a product field (Supplier code, Buy price, Stock required; the rest under "More fields"), a select of the feed's fields, the first record's value. A proposed choice wears "Suggested" until saved.
-- Save sets `confirmed` 1 and an off feed's status to 1, so the sync (SF3) picks it up. Another record path in the select reads the feed again instead of saving the fields.
+- Save sets `confirmed` 1 and an off or paused feed's status to 1 for the sync. Another record path in the select reads the feed again instead of saving the fields.
 
 ## What does a test pull count? (F3)
-- Reads up to 50,000 records, matches by the code to `products.name`, else by `product_barcodes.barcode`. Added: no product. Closed: stock 0 on an open product (tracked: quantity over 0; untracked: enabled), or a product the feed's items follow missing from the pull. Reopened: stock back on a product the feed itself closed. Changed: a tracked product whose stock differs.
-- The selling price is not compared: the price rule's form is not on the screen yet. Nothing is written; the result is drawn under the form, four figures and up to 20 rows each.
-
-## What is not here yet?
-- Pull now and the runs list (with the sync, SF3); the F4 price rule's card goes to SF3 (architect, 2026-11-20, message 11049). Delete is also at the foot of the status column.
+- Reads up to 50,000 records, matches by the code to `products.name`, else by `product_barcodes.barcode`. Added: no product. Closed: stock 0 on an open product (tracked: quantity over 0; untracked: enabled), or a product the feed's active items follow missing from the pull. Reopened: stock back on a product the feed itself closed. Changed: a tracked product whose stock differs, or a product following the feed's price whose selling price would differ (a held buy price changes none).
+- Nothing is written. The drawer `#sf_test_pull` opens as the page loads (SF3b): four figures, up to 20 rows each with buy and selling price (`supplier-feed-price-card.md`); foot Close, Pull now.
 
 Related: `commerce/supplier-feed-readers.md`, `commerce/supplier-feed-price-rule.md`.

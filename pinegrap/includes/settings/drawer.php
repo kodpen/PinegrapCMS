@@ -46,9 +46,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
  * @param string $line a line under the title (an address, a state pill), as markup
  * @param string $bar  a band under the head that does not scroll (the
  *                     segmented control of the drawer's tabs), as markup
+ * @param string $tile an icon tile before the title (.pg-icon-tile-lg), as markup
  * @return string
  */
-function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = '', $bar = '')
+function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = '', $bar = '', $tile = '')
 {
     $id = (string) $id;
     $close = lang('Close');
@@ -58,7 +59,7 @@ function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = 
         return '
                 <div class="pg-sm-drawer" id="' . h($id) . '" role="dialog" aria-modal="true" aria-labelledby="' . h($id . '_title') . '" tabindex="-1">
                     <div class="pg-sm-drawer-head">
-                        ' . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h3 class="pg-sm-drawer-title" id="' . h($id . '_title') . '">' . $title . '</h3>' . (($under !== '') ? $under . '</div>' : '') . '
+                        ' . $tile . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h3 class="pg-sm-drawer-title" id="' . h($id . '_title') . '">' . $title . '</h3>' . (($under !== '') ? $under . '</div>' : '') . '
                         <button type="button" class="btn-close" data-pgdrawer-close aria-label="' . h($close) . '" title="' . h($close) . '"></button>
                     </div>' . (($bar !== '') ? '
                     <div class="pg-sm-drawer-bar">' . $bar . '</div>' : '') . '
@@ -69,12 +70,32 @@ function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = 
 
     return '
                 <dialog class="drawer drawer-end pg-set-drawer" id="' . h($id) . '" aria-labelledby="' . h($id . '_title') . '">
-                    <div class="drawer-header border-bottom">
-                        ' . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h5 class="drawer-title" id="' . h($id . '_title') . '">' . $title . '</h5>' . (($under !== '') ? $under . '</div>' : '') . '
+                    <div class="drawer-header border-bottom' . (($tile !== '') ? ' gap-3' : '') . '">
+                        ' . $tile . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h5 class="drawer-title" id="' . h($id . '_title') . '">' . $title . '</h5>' . (($under !== '') ? $under . '</div>' : '') . '
                         <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h($close) . '"></button>
                     </div>' . (($bar !== '') ? '
                     <div class="pg-sm-drawer-bar border-bottom">' . $bar . '</div>' : '') . '
                     <div class="drawer-body">' . $body . '</div>' . (($foot !== '') ? '
                     <div class="drawer-footer pg-set-drawer-foot">' . $foot . '</div>' : '') . '
                 </dialog>';
+}
+
+
+/**
+ * The drawer holding the box a refused save marked, named by the save module
+ * so the pane opens it again: the box cannot be seen or fixed in a shut
+ * drawer. The first module's call wins; a call without an id only reads.
+ *
+ * @param string|null $id the drawer's element id; '' names none
+ * @return string the drawer named so far, '' for none
+ */
+function pg_settings_drawer_refused($id = null)
+{
+    static $drawer = '';
+
+    if (($drawer === '') && ($id !== null)) {
+        $drawer = (string) $id;
+    }
+
+    return $drawer;
 }

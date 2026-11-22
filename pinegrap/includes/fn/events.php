@@ -60,6 +60,14 @@ function pg_announce($event, $data = array())
         pg_contact_group_joined_heard($event, (array) $data);
     }
 
+    // A booking done, a ticket checked in, a course completed, a form sent,
+    // an order delivered or a mail conversation closed queues the
+    // satisfaction surveys that follow it; a cancelled booking or order
+    // cancels them (includes/fn/feedback_sends.php).
+    if (function_exists('pg_feedback_heard')) {
+        pg_feedback_heard($event, (array) $data);
+    }
+
     // Chosen Workspace events to the Slack, Teams and Telegram targets.
     if (function_exists('pg_notify_announced')) {
         pg_notify_announced($event, (array) $data);
@@ -303,6 +311,7 @@ function pg_event_workspace_events()
         'booking.confirmed',
         'booking.rescheduled',
         'booking.cancelled',
+        'booking.completed',
         'product.review.created',
         'order.return.approved',
         'order.return.received',
@@ -312,6 +321,8 @@ function pg_event_workspace_events()
         'marketplace.order.imported',
         'shipment.problem',
         'shipment.problem_resolved',
+        'customer.rhythm_stage_changed',
+        'customer.reorder_due',
         'subscription.failed',
         'subscription.renewed',
         'subscription.cancelled',
@@ -330,6 +341,7 @@ function pg_event_workspace_events()
         'credit.expired',
         'referral.rewarded',
         'course.completed',
+        'ticket.checked_in',
         'erp.invoice.created',
         'erp.invoice.paid',
         'erp.invoice.overdue',
@@ -380,11 +392,13 @@ function pg_event_contact_of_address($address)
 }
 
 // The site's events kept only while an active scheduled action or flow
-// names them: a stock change comes with every line of every sale, and rows
-// nobody waits for would hold up the run's batch for the events people do.
+// names them: a stock change comes with every line of every sale, and the
+// customer rhythm pass may announce thousands of customers in one night;
+// rows nobody waits for would hold up the run's batch for the events people
+// do.
 function pg_event_workspace_on_demand()
 {
-    return array('inventory.changed');
+    return array('inventory.changed', 'customer.rhythm_stage_changed', 'customer.reorder_due');
 }
 
 // Is the event kept, given the rules of the active scheduled actions that

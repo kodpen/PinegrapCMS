@@ -115,6 +115,7 @@ function api_webhook_core_events() {
 		'booking.confirmed'   => 'A booking was confirmed, at once or after it was requested',
 		'booking.rescheduled' => 'A booking was moved to another time; start_at and end_at are the new times',
 		'booking.cancelled'   => 'A booking was cancelled, by the customer or by staff',
+		'booking.completed'   => 'Staff marked a booking done, on the agenda or through the API',
 		'subscription.renewed'   => 'A subscription was charged for its next period; order_id names the renewal order',
 		'subscription.failed'    => 'A subscription\'s renewal was refused or waits for the customer to confirm the payment; status ended when the last retry failed (the end itself is not announced again)',
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',
@@ -196,6 +197,14 @@ function api_webhook_core_events() {
 		// unsubscribe pages, checkout, custom forms) or İYS sent back; a
 		// cookie answer names no customer, an import is a bulk path.
 		'customer.consent_changed' => 'A customer gave or withdrew a consent: on a sign-up, account or unsubscribe page, at checkout, on a form, or as a refusal pulled back from İYS (not imports or cookie answers); GET /customers/{id}/consents lists them',
+		// Customer rhythm (includes/fn/customer_rhythm_tell.php), from the
+		// nightly pass on a site with the shop: id is the customer's contact;
+		// the stage, the one before, the own interval, the days since the last
+		// order, the chance, the expected 12 months and the last order follow,
+		// never a name or an address. A customer without a contact, or with
+		// only marketplace orders, is never announced.
+		'customer.rhythm_stage_changed' => 'The nightly customer rhythm pass moved a customer to another stage: regular, due, late, slipping (slipping away), lost or won_back. Between two orders a stage only moves forward, once per stage; a rebuild that only changes the store\'s figures, and a customer\'s first stage, are not announced. Only for a customer with a contact, never a marketplace buyer',
+		'customer.reorder_due' => 'Products a customer buys again are due by their own rhythm: each product named once per purchase, from 3 days before its due day until 7 days after it, and at most one event per customer in 7 days (these days are the shop\'s settings). Not for a product bought again since, off sale or out of stock; with the comparison share on, one due customer in ten is held back and not announced. Only for a customer with a contact, never a marketplace buyer',
 		// Announced where a person or an integration moves contacts on
 		// purpose: the API and the panel's contact screens (add, edit, and
 		// organizing selected contacts). The visitor-facing paths that file a

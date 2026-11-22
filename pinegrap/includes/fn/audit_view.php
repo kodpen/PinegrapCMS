@@ -592,6 +592,7 @@ function pg_audit_view_labels($kind)
             'person'       => lang('Person'),
             'privacy_rule' => lang('Retention rule'),
             'privacy_request' => lang('Privacy request'),
+            'shipment_problem' => lang('Delivery problem'),
             'audit'        => lang('Audit trail'),
         ),
         'action' => array(
@@ -611,6 +612,9 @@ function pg_audit_view_labels($kind)
             'run'     => lang('Rule run'),
             'answer'  => lang('Answered'),
             'refuse'  => lang('Refused'),
+            'close'   => lang('Closed'),
+            'link'    => lang('Download link sent'),
+            'download' => lang('Downloaded'),
         ),
         'source' => array(
             'panel' => lang('Panel'),
@@ -657,6 +661,14 @@ function pg_audit_view_settings_names()
 
         foreach (pg_settings_categories() as $key => $category) {
             $names[(string) $key] = (string) ($category['label'] ?? '');
+        }
+
+        // A category that became a tab of another keeps the lines written
+        // under its old key, named by that category and the tab.
+        foreach (pg_settings_moved_categories() as $key => $target) {
+            if (isset($names[$target[0]])) {
+                $names[(string) $key] = $names[$target[0]] . ' › ' . (string) (pg_settings_category($target[0])['tabs'][$target[1]]['label'] ?? $target[1]);
+            }
         }
     }
 

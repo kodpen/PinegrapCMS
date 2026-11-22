@@ -9,7 +9,7 @@ description: Screen sharing in a Workspace call (CL4, #10908): one share at a ti
 - The live reads' call part says who: `call.sharer` (member id, 0 for none) from `ws_call_present()`. The API's call route does not name the sharer.
 
 ## What are the rules?
-- Any member in the live call may share (a guest too, once CL5 lets guests in); one share at a time: a `share` while another member's share holds is refused with "Someone else is sharing their screen."
+- Any member in the live call may share (a guest too, `calls-guest.md`); one share at a time: a `share` while another member's share holds is refused with "Someone else is sharing their screen."
 - `ws_call_share_send()` reads the sharer and writes the mark under the channel's call lock, so two shares at once cannot both win.
 - `unshare` is the sharer's own: from anyone else nothing is written (it would end another's share).
 - The share ends when its sharer leaves (`ws_call_leave()` deletes the member's signals, its marks with them), when the call ends, and 75 s after a closed tab's last renewal. Marks count in the member's 300 signals a minute.

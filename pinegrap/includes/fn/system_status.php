@@ -3220,7 +3220,7 @@ function get_system_status_checks()
                 'bi-filetype-jpg',
                 'fg-secondary',
                 'WebP At Own Address',
-                'Pictures are sent as uploaded at their own address. Switch on WebP at the picture\'s own address in Image Optimization to send browsers that read WebP a lighter copy.',
+                'Pictures are sent as uploaded at their own address. Switch on WebP at the picture\'s own address in Site Settings › Features › Images to send browsers that read WebP a lighter copy.',
                 lang('Off'),
                 $webp_href
             );
@@ -4075,10 +4075,10 @@ function get_system_status_checks()
             $merchant_counts = $merchant_state['issues']['counts'];
             $merchant_tiles = array(
                 'fail' => array('bi-bag-x', 'fg-danger', ($merchant_state['register_error'] !== '')
-                    ? 'The product feed could not be registered in Merchant Center. Register it again from the Product Feeds card.'
+                    ? 'The product feed could not be registered in Merchant Center. Register it again on its page of Connections.'
                     : 'Merchant Center disapproves some products, so they are not shown on Google. Its own description of each issue is in the list.',
                     'DISAPPROVED', '{var:1} disapproving'),
-                'warn' => array('bi-bag-dash', 'fg-warning', 'Merchant Center demotes some products, the issues could not be read, or the feed is not registered yet. The Product Feeds card has the details.',
+                'warn' => array('bi-bag-dash', 'fg-warning', 'Merchant Center demotes some products, the issues could not be read, or the feed is not registered yet. Its page of Connections has the details.',
                     'DEMOTED', '{var:1} demoting'),
                 'ok'   => array('bi-bag-check', 'fg-success', 'Merchant Center fetches the product feed and reports no issue that disapproves or demotes a product.',
                     'NOT_IMPACTED', '{var:1} warnings'),
@@ -4144,7 +4144,7 @@ function get_system_status_checks()
                         'bi-envelope-exclamation-fill',
                         'fg-danger',
                         'Incoming E-mail',
-                        'A mailbox could not be read, so the mail sent to it does not reach its channel. The reason is on the Mailboxes card of Workspace Settings.',
+                        'A mailbox could not be read, so the mail sent to it does not reach its channel. The reason is under Site Settings › Mailboxes.',
                         lang(array('string' => '{var:1} failing', 'vars' => pg_format_number($mail_health['failing'], 0))),
                         $mail_href,
                         $mail_detail

@@ -1791,6 +1791,17 @@ function ws_handle_action($action, $request)
                 $answer['can_send'] = true;
             }
 
+            // "Save as data" for a sheet: the Data tables' import reads the
+            // sheet shown (workspace_wtables.php, import_read with message)
+            // into a new table of this channel or a table the person may write.
+            if (ws_wtables_ready() && ws_wtable_import_file_offered($message['file_name'], ws_can_post_channel($viewer, $channel), ws_wtable_home_writable($viewer, (int) $channel['id']) !== null)) {
+                $answer['table_import'] = array(
+                    'url'     => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_wtables.php',
+                    'channel' => (string) $channel['name'],
+                    'tables'  => ws_wtable_import_file_targets(ws_wtables_reached($viewer, 'all')),
+                );
+            }
+
             return ws_action_ok($answer);
 
         // The cells changed in a workbook's preview, or the paragraphs in a
@@ -1991,8 +2002,9 @@ function ws_handle_action($action, $request)
                 // The days, estimates and priorities the argument popup
                 // offers after a command.
                 'command_values' => ws_command_suggestions(null, $viewer),
-                // The screen sends files as form parts (apiUpload()).
-                'upload'      => array('max' => ws_upload_form_max_bytes(), 'accept' => ''),
+                // The screen sends files as form parts (apiUpload()) and
+                // says a refusal it knows when a file is added.
+                'upload'      => array_merge(array('accept' => ''), ws_upload_browser_rules()),
                 'interact'    => ws_interact_ready(),
                 'reactions'   => ws_reaction_quick(),
                 'claude'      => function_exists('ws_claude_boot') ? ws_claude_boot() : null,
@@ -4495,6 +4507,18 @@ function ws_handle_action($action, $request)
             $result = ws_channel_set_summary($viewer, $channel, (string) ($request['summary'] ?? ''));
 
             return $result['ok'] ? ws_action_ok(array('channel' => ws_channel_detail($viewer, ws_channel($channel['id'])))) : ws_action_error($result['error']);
+
+        // The conversation timeline of the tabs row and of Channel info
+        // (conversation_timeline.php): every reader of the channel, the
+        // current conversation only.
+        case 'ws_conversation_timeline':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            return ws_action_ok(array('timeline' => ws_conversation_timeline($viewer, $channel)));
 
         case 'ws_channel_decisions':
             $channel = ws_action_channel($viewer, $request);

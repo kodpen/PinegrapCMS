@@ -93,17 +93,17 @@ function pg_mail_settings_providers()
 }
 
 /**
- * What a kind of mail is sent through: this server (SMTP or mail()) or one
- * of the site's connected accounts.
+ * The campaign's account select: no account, or one of the site's accounts
+ * connected for sending.
  *
- * @param string $name the field's name (system_mail_connection, campaign_mail_connection)
+ * @param string $name the field's name (campaign_mail_connection)
  * @param int|string $current the stored account number
  * @param array $accounts pg_connect_accounts() of purpose mail
  * @return string
  */
 function pg_mail_settings_connection_field($name, $current, array $accounts)
 {
-    $options = '<option value="">' . h(lang('This server: the SMTP account below, or PHP mail() without one')) . '</option>';
+    $options = '<option value="">' . h(lang('No connected account')) . '</option>';
 
     foreach ($accounts as $account) {
         $provider = pg_connect_provider($account['provider']);
@@ -115,38 +115,33 @@ function pg_mail_settings_connection_field($name, $current, array $accounts)
     }
 
     return '
-                                            <label for="setting_' . h($name) . '" class="form-label pg-field-label">' . h(lang('Send through')) . '</label>
+                                            <label for="setting_' . h($name) . '" class="form-label pg-field-label">' . h(lang('Account')) . '</label>
                                             <select name="' . h($name) . '" id="setting_' . h($name) . '" class="form-control">' . $options . '</select>';
 }
 
 /**
- * The Connect buttons under the system mail's account, and the line above
- * them. Each button submits a hidden form outside the settings form
- * (includes/settings/mail_sending.php).
+ * The Connect button of one provider's way in the ways sheet. It submits a
+ * hidden form outside the settings form (includes/settings/mail_sending.php);
+ * while the provider's application is not set up, a link to Connections.
  *
- * @param array $providers pg_mail_settings_providers()
- * @param array $accounts pg_connect_accounts() of purpose mail
+ * @param array  $providers    pg_mail_settings_providers()
+ * @param string $key          google or microsoft
+ * @param bool   $has_accounts the provider has an account for sending
  * @return string
  */
-function pg_mail_settings_connect_buttons(array $providers, array $accounts)
+function pg_mail_settings_connect_buttons(array $providers, $key, $has_accounts)
 {
-    $buttons = '';
-
-    foreach ($providers as $key => $provider) {
-        $buttons .= '
-                                                <button type="submit" form="pgset_mail_connect_' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm">
-                                                    <i class="bi ' . h($provider['icon']) . '" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</span></button>';
+    if (!isset($providers[$key])) {
+        return '<div class="pg-field-help"><a href="connections.php">' . h(lang('Set up the application on Connections first.')) . '</a></div>';
     }
 
-    $text = $accounts
-        ? lang('A connected account sends without an SMTP password; the message is from that account and replies go to the address it was meant to come from.')
-        : lang('Or send from a Google or Microsoft account, without an SMTP password.');
+    $label = $has_accounts
+        ? lang(array('string' => 'Connect another {var:1} account', 'vars' => $providers[$key]['label']))
+        : lang(array('string' => 'Connect a {var:1} account', 'vars' => $providers[$key]['label']));
 
-    $link = $providers
-        ? ''
-        : ' <a href="connections.php">' . h(lang('Set up the application on Connections first.')) . '</a>';
-
-    return '<div class="pg-field-help mt-0">' . h($text) . $link . '</div>' . (($buttons !== '') ? '<div class="d-flex flex-wrap gap-2 mt-2">' . $buttons . '</div>' : '');
+    return '<div class="pg-field-help">' . h(lang('A connected account sends without an SMTP password; the message is from that account and replies go to the address it was meant to come from.')) . '</div>'
+        . '<div class="d-flex flex-wrap gap-2 mt-4"><button type="submit" form="pgset_mail_connect_' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm">'
+        . '<i class="bi bi-plus-lg" aria-hidden="true"></i><span class="pg-btn-label">' . h($label) . '</span></button></div>';
 }
 
 /**
@@ -554,8 +549,14 @@ function pg_mail_settings_send_test($liveform)
 
     unset($_SESSION['smtp_settings_send_test']);
 
+    // The Send a test row shows the last result (pg_mail_sending_fold_test()).
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_sending_rows.php');
+
     if (!pg_mail_settings_ready()) {
-        $liveform->add_warning(h(lang('No test email was sent: the saved settings name no sending service, SMTP account or connected account.')));
+        $reason = lang('No test email was sent: the saved settings name no sending service, SMTP account or connected account.');
+        pg_config_text_save('mail_test_last', pg_mail_test_result_encode(time(), false, $reason));
+        $liveform->add_warning(h($reason));
 
         return;
     }
@@ -575,6 +576,9 @@ function pg_mail_settings_send_test($liveform)
 
     $transport = pg_mail_transport();
     $transports = pg_mail_transports();
+    $reason = $result ? '' : pg_mail_failure_sentence(lang('Test email could not be sent.'), true);
+
+    pg_config_text_save('mail_test_last', pg_mail_test_result_encode(time(), (bool) $result, $reason));
 
     if ($result && ($transport !== 'smtp') && (pg_mail_connection('system') === null)) {
         $liveform->add_notice(lang(array('string' => 'Test email accepted by {var:1}. Please check mailbox: {var:2}', 'vars' => array(h($transports[$transport]['label']), h(EMAIL_ADDRESS)))));
@@ -583,6 +587,6 @@ function pg_mail_settings_send_test($liveform)
         $liveform->add_notice(lang(array('string' => 'Test email accepted by SMTP server. Please check mailbox: {var:1}', 'vars' => array(h(EMAIL_ADDRESS)))));
         log_activity(lang(array('string' => 'Test email accepted by SMTP server. Mailbox: {var:1}', 'vars' => array(EMAIL_ADDRESS))), $_SESSION['sessionusername']);
     } else {
-        $liveform->add_warning(h(pg_mail_failure_sentence(lang('Test email could not be sent.'), true)));
+        $liveform->add_warning(h($reason));
     }
 }

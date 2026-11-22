@@ -582,7 +582,7 @@ function test_site_push_block_features_card()
 	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.php');
 	pg_assert_contains('id="pgset-site-push"', $card);
 	pg_assert_contains('<input type="hidden" name="site_push_card" value="1"/>', $card);
-	pg_assert_contains("(pg_site_push_switch_on() ? ' checked=\"checked\"' : '')", $card);
+	pg_assert_contains("\$features_modules['site_push'] = array('on' => pg_site_push_switch_on(), 'settings' => 'pg-fold-site-push');", $card, 'its switch is a row of the Modules board');
 
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.save.php');
 	pg_assert_contains("pg_site_push_switch_save((bool) post_value('site_push_on'));", $save);

@@ -1342,6 +1342,7 @@ function ws_scheduled_rule_input($viewer, $rule)
                 'outcome'     => function_exists('ws_events_approval_outcomes') ? ws_events_approval_outcomes() : array(),
                 'transport'   => function_exists('ws_mail_transport_labels') ? ws_mail_transport_labels() : array(),
                 'problem_kind' => function_exists('ws_events_problem_kinds') ? ws_events_problem_kinds() : array(),
+                'rhythm_stage' => function_exists('ws_events_rhythm_stages') ? ws_events_rhythm_stages() : array(),
             );
 
             if (isset($filter_values[$info['filter']])) {
@@ -2412,6 +2413,10 @@ function ws_scheduled_rule_text($viewer, $rule)
 
                     case 'problem_kind':
                         $text = lang(array('string' => '{var:1}: {var:2}', 'vars' => array($text, ws_events_problem_kinds()[$status] ?? $status)));
+                        break;
+
+                    case 'rhythm_stage':
+                        $text = lang(array('string' => '{var:1}: {var:2}', 'vars' => array($text, ws_events_rhythm_stages()[$status] ?? $status)));
                         break;
 
                     case 'group':

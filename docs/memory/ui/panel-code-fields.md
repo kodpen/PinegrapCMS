@@ -17,6 +17,7 @@ description: Code fields on panel screens: pg_code_editor_attach(), loading thro
 
 ## What must happen around AJAX markup?
 - The settings dialog: `pgCodeEditorReady(markup, done)` waits for the facade and its engine when the markup calls `pgCodeEditorUse`, so the pane is painted with its editors.
+- A Site Settings code field is attached by the card that prints it, never in `includes/settings/prep.php` (`settings-code-field-texts.md`).
 - `window.pgReleaseEditors(scope)` destroys every editor of `window.pgCodeEditors` inside the scope (it keeps document listeners and a resize observer). Call it before replacing or closing markup that may hold one, like `destroy_widget_charts()` for charts; the settings dialog does it for the pane, a card's drawer (`clearExtras()`) and on close.
 
 ## Which other places use the facade?

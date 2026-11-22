@@ -329,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $same_address = pg_image_delivery()['same_address'];
 
         if (empty($same_address['on'])) {
-            $liveform->mark_error('error', lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Image Optimization first.'));
+            $liveform->mark_error('error', lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Images first.'));
         } else {
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php');
 
@@ -816,7 +816,7 @@ if (pg_image_delivery_ready()) {
             <button type="submit" class="pg-button pg-button-quiet"' . (empty($image_same_address['on']) ? ' disabled aria-describedby="image_vary_check_off"' : '') . '><i class="bi bi-check2-circle" aria-hidden="true"></i>' . lang('Check through Cloudflare') . '</button>
           </form>
         </div>
-        ' . (empty($image_same_address['on']) ? '<div id="image_vary_check_off" class="form-text">' . lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Image Optimization first.') . '</div>' : '') . '
+        ' . (empty($image_same_address['on']) ? '<div id="image_vary_check_off" class="form-text">' . lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Images first.') . '</div>' : '') . '
         <details class="mt-5"' . $image_vary_steps_open . '>
           <summary>' . lang('Add the rule by hand') . '</summary>
           <ol class="small mt-3">

@@ -6509,7 +6509,7 @@ else {
 
 			$install_expected_steps++;
 
-			add_install_step(lang('Pictures larger than 2560 px are shrunk on upload'), lang('Site Settings › Features › Image Optimization'));
+			add_install_step(lang('Pictures larger than 2560 px are shrunk on upload'), lang('Site Settings › Features › Images'));
 
 		}
 
@@ -6524,7 +6524,7 @@ else {
 
 			$install_expected_steps++;
 
-			add_install_step(lang('Pictures are sent as WebP at their own address to browsers that read it'), lang('Site Settings › Features › Image Optimization'));
+			add_install_step(lang('Pictures are sent as WebP at their own address to browsers that read it'), lang('Site Settings › Features › Images'));
 
 		}
 
@@ -9059,6 +9059,7 @@ function get_tables() {
 		'erp_stock_plan',
 		'erp_waybill_items',
 		'erp_waybills',
+		'event_ticket_checkins',
 		'event_tickets',
 		'excluded_transit_dates',
 		'experiment_hourly',
@@ -9236,6 +9237,9 @@ function get_tables() {
 		'volunteer_shifts',
 		'volunteer_signups',
 		'volunteers',
+		'waiting_desks',
+		'waiting_places',
+		'waiting_tickets',
 		'watchers',
 		'whatsapp_outbox',
 		'whatsapp_templates',

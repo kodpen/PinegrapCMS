@@ -1,6 +1,6 @@
 ---
 name: ad-conversions-visitor-events
-description: Ad events besides the purchase (SC5): Lead for picked forms, CompleteRegistration, add to cart (20 a cart), begin checkout once per order, only with consent; the receipt's data-pg-event-id
+description: Ad events besides the purchase (#10868): Lead for picked forms, CompleteRegistration, add to cart (20 a cart), begin checkout once per order, only with consent; the receipt's data-pg-event-id
 module: ad_conversions
 ---
 
@@ -18,10 +18,10 @@ module: ad_conversions
 
 ## Where is the person's e-mail for a Lead or a registration?
 - They have no order to read it from at send time, so the e-mail goes into the row's `ids` already SHA-256 hashed (`email_sha256`, `pg_ad_conversion_visitor_ids()`); the plain address is never kept. `ids` is emptied once sent or given up, as for a purchase.
-- The click id held in the session (`ad-conversions-click-ids.md`) goes only into the purchase row: SC1b's reader has one call in `ad_conversions.php` (its test counts it). These rows carry the `_fbc` cookie when the browser has it; a sender reads the row's `ids`.
+- The click id held in the session (`ad-conversions-click-ids.md`) goes only into the purchase row: the click id reader has one call in `ad_conversions.php` (its test counts it). These rows carry the `_fbc` cookie when the browser has it; a sender reads the row's `ids`.
 
 ## Where does the browser pixel find the purchase's event id?
 - The receipt carries `<span hidden data-pg-event-id="<order reference>">` (`pg_ad_conversion_receipt_marker()`): in `get_order_receipt.php` (both layouts) and in the designer's order view widget for the order this session just completed, never in an e-mail. A pasted pixel sends that id as its `eventID` and Meta counts the purchase once (C7).
 
 ## How does Meta take them?
-- Its page ticks all five (`pg_ad_conversion_meta_events()`), "Forms sent as Lead" lists the form pages, "Send events without the person" only the purchase. An event without an amount (Lead, registration) goes without `custom_data`.
+- Its page offers all five (`pg_ad_conversion_meta_events()`), as GA4's and TikTok's do (`ad-conversions-counter-sales.md`); "Forms sent as Lead" lists the form pages, "Send events without the person" only the purchase. An event without an amount (Lead, registration) goes without `custom_data`.

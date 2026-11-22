@@ -537,19 +537,20 @@ function pg_connections_registry()
 
     $rows = array(
         // Payments. The card gateways keep their config columns, and are
-        // connected while one takes the cards with its keys stored; the
-        // redirect drivers keep their connect_apps switch.
+        // connected while one takes the cards with its keys stored; Stripe,
+        // PayPal, PayTR and Givex are connected while chosen or switched on
+        // with their keys stored.
         'iyzico' => array('name' => 'iyzico', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments and Pay with iyzico at checkout',
             'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('iyzico')),
             'covers' => array('payment' => array('iyzico', 'pay_with_iyzico'))),
-        'stripe' => array('name' => 'Stripe', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
-            'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_PAYMENT_GATEWAY'), 'equals' => 'Stripe PaymentIntents'),
+        'stripe' => array('name' => 'Stripe', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_connection_ready', 'args' => array('stripe')),
             'covers' => array('payment' => array('stripe'))),
-        'paypal' => array('name' => 'PayPal', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'PayPal Checkout',
-            'state' => array('kind' => 'app', 'key' => 'payment_paypal'),
+        'paypal' => array('name' => 'PayPal', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'PayPal Checkout and PayPal Express Checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_connection_ready', 'args' => array('paypal')),
             'covers' => array('payment' => array('paypal'))),
-        'paytr' => array('name' => 'PayTR', 'group' => 'payments', 'place' => '#settings/commerce/pgset-payments', 'uses' => 'Payments in PayTR\'s page at checkout',
-            'state' => array('kind' => 'app', 'key' => 'payment_paytr'),
+        'paytr' => array('name' => 'PayTR', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Payments in PayTR\'s page at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_connection_ready', 'args' => array('paytr')),
             'covers' => array('payment' => array('paytr'))),
         // The older PayPal and Stripe card gateways have keys of their own,
         // each typed on its own page.
@@ -567,34 +568,37 @@ function pg_connections_registry()
             'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('first_data'))),
         'sage' => array('name' => 'Sage', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-payments', 'uses' => 'Card payments at checkout',
             'state' => array('kind' => 'reader', 'function' => 'pg_payment_gateway_ready', 'args' => array('sage'))),
-        'givex' => array('name' => 'Givex', 'group' => 'payments', 'place' => '#settings/commerce/pgset-giftcards', 'uses' => 'Gift cards at checkout',
-            'state' => array('kind' => 'config', 'names' => array('ECOMMERCE_GIVEX', 'ECOMMERCE_GIVEX_PRIMARY_HOSTNAME'))),
+        'givex' => array('name' => 'Givex', 'group' => 'payments', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-giftcards', 'uses' => 'Gift cards at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_payment_connection_ready', 'args' => array('givex'))),
 
-        // Shipping: label drivers, live rates, the order reader.
-        'geliver' => array('name' => 'Geliver', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
+        // Shipping: label drivers, live rates, the order reader. The label
+        // services' and the carriers' keys are typed on their own pages; a
+        // label service is connected while it is on with its keys stored, UPS
+        // and FedEx while their rates are on, USPS with its keys alone.
+        'geliver' => array('name' => 'Geliver', 'group' => 'shipping', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
             'state' => array('kind' => 'reader', 'function' => 'pg_label_ready', 'args' => array('geliver')),
             'covers' => array('label' => array('geliver'))),
-        'basitkargo' => array('name' => 'Basit Kargo', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
+        'basitkargo' => array('name' => 'Basit Kargo', 'group' => 'shipping', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
             'state' => array('kind' => 'reader', 'function' => 'pg_label_ready', 'args' => array('basitkargo')),
             'covers' => array('label' => array('basitkargo'))),
-        'kargonomi' => array('name' => 'Kargonomi', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
+        'kargonomi' => array('name' => 'Kargonomi', 'group' => 'shipping', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
             'state' => array('kind' => 'reader', 'function' => 'pg_label_ready', 'args' => array('kargonomi')),
             'covers' => array('label' => array('kargonomi'))),
-        'aras' => array('name' => 'Aras Kargo', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
+        'aras' => array('name' => 'Aras Kargo', 'group' => 'shipping', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
             'state' => array('kind' => 'reader', 'function' => 'pg_label_ready', 'args' => array('aras')),
             'covers' => array('label' => array('aras'))),
-        'shippo' => array('name' => 'Shippo', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
+        'shippo' => array('name' => 'Shippo', 'group' => 'shipping', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
             'state' => array('kind' => 'reader', 'function' => 'pg_label_ready', 'args' => array('shippo')),
             'covers' => array('label' => array('shippo'))),
-        'sendcloud' => array('name' => 'Sendcloud', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
+        'sendcloud' => array('name' => 'Sendcloud', 'group' => 'shipping', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-shipping', 'uses' => 'Shipping labels and tracking',
             'state' => array('kind' => 'reader', 'function' => 'pg_label_ready', 'args' => array('sendcloud')),
             'covers' => array('label' => array('sendcloud'))),
-        'ups' => array('name' => 'UPS', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Live shipping rates at checkout',
-            'state' => array('kind' => 'reader', 'function' => 'pg_carrier_api_ready', 'args' => array('ups'))),
-        'fedex' => array('name' => 'FedEx', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Live shipping rates at checkout',
-            'state' => array('kind' => 'reader', 'function' => 'pg_carrier_api_ready', 'args' => array('fedex'))),
-        'usps' => array('name' => 'USPS', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Live shipping rates at checkout',
-            'state' => array('kind' => 'reader', 'function' => 'pg_carrier_api_ready', 'args' => array('usps'))),
+        'ups' => array('name' => 'UPS', 'group' => 'shipping', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-shipping', 'uses' => 'Live shipping rates at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_carrier_api_connected', 'args' => array('ups'))),
+        'fedex' => array('name' => 'FedEx', 'group' => 'shipping', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-shipping', 'uses' => 'Live shipping rates at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_carrier_api_connected', 'args' => array('fedex'))),
+        'usps' => array('name' => 'USPS', 'group' => 'shipping', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-shipping', 'uses' => 'Live shipping rates at checkout',
+            'state' => array('kind' => 'reader', 'function' => 'pg_carrier_api_connected', 'args' => array('usps'))),
         'shipworks' => array('name' => 'ShipWorks', 'group' => 'shipping', 'place' => '#settings/commerce/pgset-shipping', 'uses' => 'Reads orders through shipworks.php',
             'state' => null, 'no_state' => 'It signs in as a user of the site; nothing stored says it is used.'),
 
@@ -605,7 +609,9 @@ function pg_connections_registry()
         'trendyol' => array('name' => 'Trendyol', 'group' => 'marketplaces', 'place' => 'marketplace_settings.php', 'uses' => 'Listings, stock, prices and orders',
             'state' => array('kind' => 'marketplace', 'key' => 'trendyol'),
             'covers' => array('marketplace' => array('trendyol'))),
-        'merchant_center' => array('name' => 'Google Merchant Center', 'group' => 'marketplaces', 'place' => '#settings/commerce/pgset-feeds', 'uses' => 'The product feed and each product\'s push',
+        // Merchant Center's account is chosen on its page; the Product Feeds
+        // card shows the connection.
+        'merchant_center' => array('name' => 'Google Merchant Center', 'group' => 'marketplaces', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-feeds', 'uses' => 'The product feed and each product\'s push',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'merchant_center', 'attention' => true),
             'apis' => array('merchantapi.googleapis.com' => 'Merchant API'),
             'covers' => array('marketplace' => array('merchant_center'), 'purpose' => array('merchant_center'))),
@@ -623,29 +629,29 @@ function pg_connections_registry()
             'state' => null, 'no_state' => 'No key or switch of its own; it runs whenever tax is on.'),
 
         // E-mail.
-        'postmark' => array('name' => 'Postmark', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
+        'postmark' => array('name' => 'Postmark', 'group' => 'email', 'place' => '#settings/email/pgset-mail-system', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_postmark'),
             'covers' => array('mail' => array('postmark'))),
-        'mailgun' => array('name' => 'Mailgun', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
+        'mailgun' => array('name' => 'Mailgun', 'group' => 'email', 'place' => '#settings/email/pgset-mail-system', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_mailgun'),
             'covers' => array('mail' => array('mailgun'))),
-        'brevo' => array('name' => 'Brevo', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
+        'brevo' => array('name' => 'Brevo', 'group' => 'email', 'place' => '#settings/email/pgset-mail-system', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_brevo'),
             'covers' => array('mail' => array('brevo'))),
-        'resend' => array('name' => 'Resend', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
+        'resend' => array('name' => 'Resend', 'group' => 'email', 'place' => '#settings/email/pgset-mail-system', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_resend'),
             'covers' => array('mail' => array('resend'))),
-        'ses' => array('name' => 'Amazon SES', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-transport', 'uses' => 'Sending the site\'s mail',
+        'ses' => array('name' => 'Amazon SES', 'group' => 'email', 'place' => '#settings/email/pgset-mail-system', 'uses' => 'Sending the site\'s mail',
             'state' => array('kind' => 'app', 'key' => 'mail_ses'),
             'covers' => array('mail' => array('ses'))),
-        'gmail' => array('name' => 'Gmail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
+        'gmail' => array('name' => 'Gmail', 'group' => 'email', 'place' => '#settings/email/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
             'state' => array('kind' => 'account', 'provider' => 'google', 'purpose' => 'mail', 'attention' => true),
             'apis' => array('gmail.googleapis.com' => 'Gmail API'),
             'covers' => array('purpose' => array('mail', 'mail_read'))),
-        'microsoft_mail' => array('name' => 'Microsoft 365 mail', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
+        'microsoft_mail' => array('name' => 'Microsoft 365 mail', 'group' => 'email', 'place' => '#settings/email/pgset-mail-system', 'uses' => 'Sending the site\'s mail, and reading mailboxes',
             'state' => array('kind' => 'account', 'provider' => 'microsoft', 'purpose' => 'mail', 'attention' => true),
             'covers' => array('purpose' => array('mail', 'mail_read'))),
-        'mailchimp' => array('name' => 'Mailchimp', 'group' => 'email', 'place' => '#settings/mail_sending/pgset-mailchimp', 'uses' => 'Keeps a list of subscribers in step',
+        'mailchimp' => array('name' => 'Mailchimp', 'group' => 'email', 'place' => '#settings/email/pgset-mailchimp', 'uses' => 'Keeps a list of subscribers in step',
             'state' => array('kind' => 'config', 'names' => array('MAILCHIMP'))),
 
         // SMS, consent and messaging.
@@ -727,14 +733,15 @@ function pg_connections_registry()
         'ga4_mp' => array('name' => 'GA4 Measurement Protocol', 'group' => 'analytics', 'place' => 'connections.php', 'found_at' => '#settings/privacy/pgset-cookies', 'uses' => 'Purchases and refunds sent from the server to Google Analytics',
             'state' => array('kind' => 'reader', 'function' => 'pg_ad_conversion_ga4_connected')),
 
-        // Maps and places.
-        'google_places' => array('name' => 'Google Places', 'group' => 'maps', 'place' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
+        // Maps and places. An address provider's key or server is typed on
+        // its page; the Address Autocomplete card switches one on.
+        'google_places' => array('name' => 'Google Places', 'group' => 'maps', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
             'state' => array('kind' => 'app', 'key' => 'addr_google_places'),
             'covers' => array('address' => array('google_places'))),
-        'mapbox' => array('name' => 'Mapbox', 'group' => 'maps', 'place' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
+        'mapbox' => array('name' => 'Mapbox', 'group' => 'maps', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
             'state' => array('kind' => 'app', 'key' => 'addr_mapbox'),
             'covers' => array('address' => array('mapbox'))),
-        'photon' => array('name' => 'Photon', 'group' => 'maps', 'place' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
+        'photon' => array('name' => 'Photon', 'group' => 'maps', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-address-autocomplete', 'uses' => 'Address autocomplete',
             'state' => array('kind' => 'app', 'key' => 'addr_photon'),
             'covers' => array('address' => array('photon'))),
         'google_reviews' => array('name' => 'Google reviews', 'group' => 'maps', 'place' => '#settings/api/pgset-google-reviews', 'uses' => 'The place\'s reviews on the site',

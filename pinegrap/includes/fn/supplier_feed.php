@@ -1026,11 +1026,29 @@ function pg_supplier_feed_lower($text)
  */
 function pg_supplier_feed_price($buy, $rule, $rate, $home_decimals = 2, $feed_decimals = 2)
 {
+    $parts = pg_supplier_feed_price_parts($buy, $rule, $rate, $home_decimals, $feed_decimals);
+
+    return $parts['price'];
+}
+
+/**
+ * pg_supplier_feed_price() with whether the floor lifted the price: the
+ * rounded price was under buy price plus the minimum margin.
+ *
+ * @param int   $buy
+ * @param array $rule
+ * @param float $rate
+ * @param int   $home_decimals
+ * @param int   $feed_decimals
+ * @return array 'price' (minor units of the home currency), 'floor' (bool)
+ */
+function pg_supplier_feed_price_parts($buy, $rule, $rate, $home_decimals = 2, $feed_decimals = 2)
+{
     $buy = (int) $buy;
     $rate = (float) $rate;
 
     if (($buy <= 0) || ($rate <= 0)) {
-        return 0;
+        return array('price' => 0, 'floor' => false);
     }
 
     $margin = isset($rule['margin']) ? (float) $rule['margin'] : 0.0;
@@ -1043,12 +1061,30 @@ function pg_supplier_feed_price($buy, $rule, $rate, $home_decimals = 2, $feed_de
     $floor = ($floor_margin > 0) ? (int) round($buy * (1 + $floor_margin / 100) * $scale) : 0;
 
     $price = pg_supplier_feed_round_price($price, $rounding, (int) $home_decimals, false);
+    $lifted = ($price < $floor);
 
-    if ($price < $floor) {
+    if ($lifted) {
         $price = pg_supplier_feed_round_price($floor, $rounding, (int) $home_decimals, true);
     }
 
-    return max(0, $price);
+    return array('price' => max(0, $price), 'floor' => $lifted);
+}
+
+/**
+ * Whether a buy price is held for a person's yes: under half or over ten
+ * times the last one.
+ *
+ * @param int      $last the item's last buy price, 0 for none
+ * @param int|null $buy
+ * @return bool
+ */
+function pg_supplier_feed_price_held($last, $buy)
+{
+    if (($buy === null) || ((int) $last <= 0)) {
+        return false;
+    }
+
+    return ((int) $buy * 2 < (int) $last) || ((int) $buy > (int) $last * 10);
 }
 
 /**
@@ -1094,4 +1130,54 @@ function pg_supplier_feed_round_price($price, $rounding, $decimals, $up)
     }
 
     return $price;
+}
+
+/**
+ * A run's detail with failed lines and a brake's reason added, as JSON:
+ * 'reason' (the brake's or the failure's, '' for none) and 'failed' (lines of
+ * 'line' and 'reason', never more than $max: the first ones are kept). A
+ * detail that is not JSON is read as a reason.
+ *
+ * @param string      $detail the stored detail, '' for none
+ * @param array       $lines  failed lines to add
+ * @param int         $max
+ * @param string|null $reason a reason to set, null to keep the stored one
+ * @return string
+ */
+function pg_supplier_feed_detail_add($detail, $lines, $max, $reason = null)
+{
+    $data = json_decode((string) $detail, true);
+
+    if (!is_array($data)) {
+        $data = array('reason' => trim((string) $detail), 'failed' => array());
+    }
+
+    $data += array('reason' => '', 'failed' => array());
+
+    foreach ((array) $lines as $line) {
+        if (count($data['failed']) >= (int) $max) {
+            break;
+        }
+
+        $data['failed'][] = array('line' => (string) $line['line'], 'reason' => (string) $line['reason']);
+    }
+
+    if ($reason !== null) {
+        $data['reason'] = (string) $reason;
+    }
+
+    return (string) json_encode(array('reason' => (string) $data['reason'], 'failed' => array_values($data['failed'])), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+/**
+ * The reason a run's detail gives, '' for none.
+ *
+ * @param string|null $detail
+ * @return string
+ */
+function pg_supplier_feed_detail_reason($detail)
+{
+    $data = json_decode((string) $detail, true);
+
+    return is_array($data) ? (isset($data['reason']) ? (string) $data['reason'] : '') : trim((string) $detail);
 }

@@ -1,12 +1,12 @@
 ---
 name: ad-conversions-click-ids
-description: Ad click ids of the landing address (fbclid, gclid, ttclid, SC1b): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache
+description: Ad click ids of the landing address (fbclid, gclid, ttclid, #10781): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache
 module: ad_click_ids
 ---
 
 ## Where is it?
-- `includes/fn/ad_click_ids.php`; tests `tests/ad_click_ids_test.php`. Plan step SC1b of `plans/ad-conversions.md`, after SC1 (`ad-conversions-queue.md`). No column of its own: the ids go into `ad_conversion_events.ids`.
-- Architect (2026-11-20): a step apart from SC1 and SC2 (agent channel message 10637), the session before consent, one reader call in `ad_conversions.php`.
+- `includes/fn/ad_click_ids.php`; tests `tests/ad_click_ids_test.php`. Built after the queue (`ad-conversions-queue.md`). No column of its own: the ids go into `ad_conversion_events.ids`.
+- Architect (2026-11-20): built apart from the queue and the Meta sender (agent channel message 10637), the session before consent, one reader call in `ad_conversions.php`.
 
 ## Which parameters are read?
 - `pg_ad_click_id_parameters()`: `meta_capi` → `fbclid`, `ga4_mp` → `gclid`, `tiktok_events` → `ttclid`. No other parameter is read, case as written.
@@ -19,10 +19,10 @@ module: ad_click_ids
 
 ## How does it reach a row?
 - At the payment step, only on the keep (consent) branch: `pg_ad_conversion_ids_for(...) + pg_ad_click_ids_held_for($service)`. Meta gets `fbc` = `fb.1.<click time ms>.<fbclid>`, GA4 `gclid`, TikTok `ttclid`. A browser's own `_fbc` cookie wins over the built one.
-- Senders (SC2 on) read the id from the row's `ids`, never from this module.
+- Senders read the id from the row's `ids`, never from this module.
 
 ## When is it removed?
-- `consent_answer.php`: an answer that refuses marketing → `pg_ad_click_ids_consent_changed()` empties the session key (beside SC1's row withdrawal). Without consent the payment step takes the row's ids off, so a held id is never used.
+- `consent_answer.php`: an answer that refuses marketing → `pg_ad_click_ids_consent_changed()` empties the session key (beside the rows' withdrawal, `ad-conversions-queue.md`). Without consent the payment step takes the row's ids off, so a held id is never used.
 
 ## Does it work with the page cache?
 - Yes: an address with any query is never served from the file cache (router check) and is not cacheable (reason `query`, `platform/page-cache-gate.md`), so the landing is always drawn and captures. A CDN set to ignore query strings would skip it.

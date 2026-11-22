@@ -258,7 +258,8 @@ function pg_products_mass_change_besides_price($post, $quantity_value)
         || !empty($post['edit_allowed_zones'])
         || !empty($post['edit_disallowed_zones'])
         || ((string) ($post['edit_tax_rate_method'] ?? '') !== '')
-        || (pg_products_mass_customs_values($post) !== array('hs_code' => null, 'origin_country' => null));
+        || (pg_products_mass_customs_values($post) !== array('hs_code' => null, 'origin_country' => null))
+        || (pg_products_mass_shelf_value($post) !== null);
 }
 
 // The HS code and the country of origin Modify Selected asks for: null for
@@ -292,7 +293,9 @@ function pg_products_mass_customs_values($post)
 // ('zones_overlap': the allow ran first and the disallow removed it again),
 // or an HS code or a country of origin to set that is empty
 // ('hs_code_missing', 'origin_country_missing') or not valid
-// ('hs_code_invalid', 'origin_country_invalid'). The screen refuses the whole submit, before any product is touched.
+// ('hs_code_invalid', 'origin_country_invalid'), or a shelf address to set
+// that is empty ('shelf_missing') or too long ('shelf_too_long'). The screen
+// refuses the whole submit, before any product is touched.
 function pg_products_mass_edit_problem($post)
 {
     $process = (string) ($post['edit_inventory_quantity_process'] ?? '');
@@ -327,6 +330,10 @@ function pg_products_mass_edit_problem($post)
             $typed = $post['edit_' . $column] ?? '';
             return (is_scalar($typed) && (trim((string) $typed) === '')) ? $column . '_missing' : $column . '_invalid';
         }
+    }
+
+    if (pg_products_mass_shelf_value($post) === false) {
+        return (pg_bin_clean($post['edit_shelf'] ?? '') === '') ? 'shelf_missing' : 'shelf_too_long';
     }
 
     return '';

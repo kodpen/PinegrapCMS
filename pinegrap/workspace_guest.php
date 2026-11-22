@@ -57,14 +57,20 @@ $version = function ($path) {
     return (string) @filemtime(PG_FUNCTIONS_DIR . $path);
 };
 
+$calls = function_exists('ws_calls_on') && ws_calls_on();
+
 $config = array(
     'endpoint' => PATH . SOFTWARE_DIRECTORY . '/workspace_guest.php',
     'emoji'    => explode(',', WS_GUEST_EMOJI),
     'max'      => WS_GUEST_MESSAGE_MAX,
     'site'     => (string) ORGANIZATION_NAME,
-    'strings'  => ws_guest_page_strings(),
+    'strings'  => ws_guest_page_strings() + ($calls ? ws_guest_call_strings() : array()),
     // A waiting canvas shows the canvas's own drawing in one colour.
     'canvas_icon' => pg_design_canvas_icon_one_colour(),
+    // The room's running call, joined from the bar under the head: the
+    // public route the browser asks for (the relay's credentials come only
+    // with a granted join), null while calls are off.
+    'calls'    => $calls ? array('ice' => ws_call_ice_servers(), 'max' => WS_CALL_MAX_MEMBERS) : null,
 );
 
 $title = h(lang('Conversation') . (((string) ORGANIZATION_NAME !== '') ? ' · ' . ORGANIZATION_NAME : ''));
@@ -91,6 +97,10 @@ echo '<!DOCTYPE html>
         </div>
         <div class="pg-guest-staff" id="pg-guest-staff"></div>
     </header>
+    <div class="pg-guest-call d-none" id="pg-guest-call" role="status">
+        <i class="bi bi-telephone pg-guest-call-icon" aria-hidden="true"></i>
+        <span class="pg-guest-call-text" id="pg-guest-call-text"></span>
+    </div>
     <main class="pg-guest-log" id="pg-guest-log" role="log" aria-live="polite" aria-busy="true">
         <div class="pg-guest-note" id="pg-guest-note">' . h(lang('Opening the conversation…')) . '</div>
     </main>

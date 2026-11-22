@@ -8,6 +8,7 @@ module: arrival_date_list_edit
 - Every list value `edit_arrival_date.php` changes (`pg_arrival_date_quick_edit_columns()`): Name (at most 50, the screen's box), Arrival Date, Status (Enabled/Disabled), Start Date, End Date. Text: Last Modified. `tests/arrival_date_list_edit_test.php` fails for a new column that is neither.
 - Dates are typed in the site's date format, as the screen shows them (`pg_arrival_date_form_date_text()`).
 - The Arrival Date of a record the customer chooses (`custom`) stays text, "Chosen by the customer"; the write refuses it (`pg_arrival_date_quick_cell_editable()`).
+- A blank Arrival Date reads "As soon as possible" (the starter `AT-ONCE` row) and may be cleared: not `required` (`commerce/arrival-date-blank-as-soon-as-possible.md`). Before, every change of the AT-ONCE row was refused.
 
 ## How is a change checked and written?
 - The list builds what the screen would post from the stored record plus the one change (`pg_arrival_date_quick_post()`): the switches post 1 or nothing, the code, description, sort order, default and the custom dates go back as stored.

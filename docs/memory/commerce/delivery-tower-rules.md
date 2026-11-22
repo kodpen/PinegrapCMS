@@ -32,4 +32,4 @@ module: delivery_tower
 - A delivery closes every open kind with reason `delivered`. Otherwise a kind closes once the status left its own statuses: `scanned` for not_handed_over, `status_changed` for the rest. A stuck parcel still in transit stays open even when a new figure no longer finds it.
 
 ## Which settings are there?
-- `pg_delivery_tower_settings_clean()`: each kind on by default; `not_handed_over_days` 1 to 10, `stuck_extra_days` 0 to 30; not a number gives the default; unknown keys dropped. Kept in `config_text` `delivery_tower_settings`: read by the passes (`delivery-tower-passes.md`), written by the settings from DT5.
+- `pg_delivery_tower_settings_clean()`: each kind on by default; `not_handed_over_days` 1 to 10, `stuck_extra_days` 0 to 30; not a number gives the default; unknown keys dropped. Kept in `config_text` `delivery_tower_settings`: read by the passes (`delivery-tower-passes.md`), written by the Settings drawer of Delivery problems (`delivery-problems-settings.md`).

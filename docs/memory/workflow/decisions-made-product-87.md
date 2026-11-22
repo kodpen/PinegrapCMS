@@ -10,7 +10,7 @@ description: Decisions list, product part 87 (2026-11-20 on): server-side events
 - "Evet, plana girsin": Meta's Conversions API, the GA4 Measurement Protocol and TikTok's Events API; six events (purchase, refund, add to cart, begin checkout, sign-up, lead); a queue and a log on the panel; the shop pastes its own keys, with no Meta app review and no middle server.
 - Personal data (hashed e-mail and phone, browser and click ids) goes only for a buyer who accepted marketing cookies; marketplace orders are never sent.
 - Not chosen: "Evet, önce yalnız Meta ve satın alma" (Meta and the purchase event first), "Hayır, gerek yok".
-- The plan: `plans/ad-conversions.md`.
+- Built in #10732 to #10907: `api/ad-conversions.md`.
 
 ## Does personal data go to the ad platforms while the cookie notice is off? (owner, 2026-11-20, agent channel poll 175, message 10513)
 - "Varsayılan gitmesin, mağaza açabilsin": with the notice off nobody is asked, so no personal data goes by default; each service's Connections page has "Send personal data while the cookie notice is off", which the shop ticks at its own risk; off by default, per service, it acts only while the notice is off, and ticking or clearing it writes an activity log line (architect, message 10516).
@@ -27,4 +27,4 @@ description: Decisions list, product part 87 (2026-11-20 on): server-side events
 - Not chosen: "Evet, önce yalnız fiyat ve stok eşitleme" (price and stock sync first), "Hayır, gerek yok".
 - The plan: `plans/supplier-feed.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/plans/ad-conversions.md, docs/memory/platform/cookie-consent-notice.md, docs/memory/plans/privacy-centre.md, docs/memory/plans/supplier-feed.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/api/ad-conversions.md, docs/memory/platform/cookie-consent-notice.md, docs/memory/plans/privacy-centre.md, docs/memory/plans/supplier-feed.md

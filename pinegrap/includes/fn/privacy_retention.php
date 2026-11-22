@@ -1369,3 +1369,80 @@ function pg_privacy_rules_run($seconds = 5, $now = null)
 
     return $done;
 }
+
+/* ---------------------------------------------------------------------------
+   The overview: every period set outside Visitors and privacy
+   --------------------------------------------------------------------------- */
+
+/**
+ * The periods Site Settings › Visitors and privacy › How long we keep data
+ * shows under its own fields, in the screen's order: each its name, its
+ * value today and the card that changes it (category and card of the
+ * settings, or the Privacy centre's address); a fixed period has none. Pure
+ * but for lang().
+ *
+ * @param array $facts audit_years (int, null: no column yet), consent_years,
+ *                     waf_days, waf_rows, api_days, booking_days (int, null:
+ *                     no bookings), rules (pg_privacy_rules_normalise())
+ * @return array list of key, name, line, icon, tone, category, card, url
+ */
+function pg_privacy_retention_overview(array $facts)
+{
+    $kept = function ($number, $unit) {
+        $number = (int) $number;
+
+        return lang(array('string' => ($unit === 'years') ? 'Kept {var:1} year{suffix:1}' : 'Kept {var:1} day{suffix:1}', 'vars' => $number, 'suffix' => array(($number === 1) ? '' : 's')));
+    };
+    $row = function ($key, $name, $line, $icon, $tone, $category = '', $card = '', $url = '') {
+        return array('key' => $key, 'name' => $name, 'line' => $line, 'icon' => $icon, 'tone' => $tone, 'category' => $category, 'card' => $card, 'url' => $url);
+    };
+    $rows = array();
+
+    if (isset($facts['audit_years'])) {
+        $years = (int) $facts['audit_years'];
+        $rows[] = $row('audit', lang('Audit trail lines'), ($years > 0) ? $kept($years, 'years') : lang('Kept until deleted'), 'bi-journal-text', 'pg-tone-blue', 'security', 'pgset-audit');
+    }
+
+    $consent = (int) ($facts['consent_years'] ?? 0);
+    $rows[] = $row('consent', lang('Consent history'), lang(array('string' => 'Kept {var:1} year{suffix:1}; the answer in force always', 'vars' => $consent, 'suffix' => array(($consent === 1) ? '' : 's'))), 'bi-check2-square', 'pg-tone-teal');
+
+    $waf = (int) ($facts['waf_days'] ?? 0);
+    $rows[] = $row('waf', lang('Firewall log'), lang(array('string' => 'Kept {var:1} day{suffix:1}, at most {var:2} rows', 'vars' => array($waf, pg_format_number((int) ($facts['waf_rows'] ?? 0), 0)), 'suffix' => array(($waf === 1) ? '' : 's'))), 'bi-shield-check', 'pg-tone-rose', 'firewall', 'pgset-waf');
+    $rows[] = $row('api', lang('API log'), $kept($facts['api_days'] ?? 0, 'days'), 'bi-plug', 'pg-tone-violet', 'api', 'pgset-api-storage');
+
+    if (isset($facts['booking_days'])) {
+        $days = (int) $facts['booking_days'];
+        $rows[] = $row('bookings', lang('Cancelled bookings'), lang(array('string' => 'Kept {var:1} day{suffix:1} after their last change', 'vars' => $days, 'suffix' => array(($days === 1) ? '' : 's'))), 'bi-calendar-x', 'pg-tone-amber');
+    }
+
+    // Nothing removes a site chat yet: its period is set nowhere.
+    $rows[] = $row('chats', lang('Site chats'), lang('Kept until deleted'), 'bi-chat-dots', 'pg-tone-blue');
+
+    // The Privacy centre's rules: a rule runs only while on, with a period
+    // and the yes after its dry run.
+    $catalogue = pg_privacy_rules_catalogue();
+    $rules = (isset($facts['rules']) && is_array($facts['rules'])) ? $facts['rules'] : pg_privacy_rules_normalise(array());
+    $names = array(
+        'contacts' => array(lang('Passive contacts'), 'bi-person-dash'),
+        'forms'    => array(lang('Form submissions'), 'bi-ui-checks'),
+        'carts'    => array(lang('Incomplete carts'), 'bi-cart-x'),
+        'orders'   => array(lang('Orders'), 'bi-bag'),
+        'requests' => array(lang('Closed requests'), 'bi-envelope-check'),
+    );
+
+    foreach ($names as $key => $face) {
+        $rule = isset($rules[$key]) ? $rules[$key] : array();
+
+        if (empty($rule['on']) || !isset($rule['period'])) {
+            $line = lang('Off: kept until deleted');
+        } elseif (empty($rule['approved_at'])) {
+            $line = lang('On, waiting for a dry run and your yes: kept until deleted');
+        } else {
+            $line = $kept($rule['period'], $catalogue[$key]['unit']);
+        }
+
+        $rows[] = $row($key, $face[0], $line, $face[1], 'pg-tone-gray', '', '', 'privacy_centre.php');
+    }
+
+    return $rows;
+}

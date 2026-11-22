@@ -62,6 +62,7 @@ function pg_list_table_definitions()
         'view_content_review' => array('file' => 'includes/fn/content_review_list.php', 'source' => 'pg_content_review_list_source'),
         'marketplace_repricing' => array('file' => 'includes/fn/marketplace_repricing.php', 'source' => 'mp_repricing_product_list_source'),
         'marketplace_repricing_log' => array('file' => 'includes/fn/marketplace_repricing.php', 'source' => 'mp_repricing_log_list_source'),
+        'customer_rhythm' => array('file' => 'includes/fn/customer_rhythm_report.php', 'source' => 'pg_customer_rhythm_list_source'),
     );
 }
 
@@ -1022,7 +1023,8 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
         . ($source['edit'] ? '<button type="button" class="pg-icon-button pg-icon-button-sm pg-list-table-quick" aria-pressed="false" aria-keyshortcuts="F2"'
             . ' aria-label="' . h(lang('Quick edit')) . '" title="' . h(lang('Quick edit')) . ' (F2)">'
             . '<i class="bi bi-pencil-square" aria-hidden="true"></i></button>' : '')
-        . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm pg-list-table-columns" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false"'
+        // Fixed: the card's overflow would cut the menu under a short list.
+        . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm pg-list-table-columns" data-bs-toggle="menu" data-bs-strategy="fixed" data-bs-auto-close="outside" aria-expanded="false"'
         . ' aria-label="' . h(lang('Columns')) . '" title="' . h(lang('Columns')) . '">'
         . '<i class="bi bi-layout-three-columns" aria-hidden="true"></i></button>'
         . '<div class="menu pg-menu-end pg-list-table-columns-menu"></div></span>'
@@ -1253,7 +1255,10 @@ function pg_list_table_printed_lists()
         'view_supplier_feeds',
         'workspace_wtables',
         'messages_automatic',
+        'view_application_programs',
+        'view_queue_places',
         'privacy_requests',
+        'delivery_problems',
     );
 }
 

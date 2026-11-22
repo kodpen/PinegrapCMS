@@ -8,13 +8,15 @@ description: Plan application-review, steps AR1a to AR8: pure rules, store, prog
 
 - AR1b (M) after AR1a (owner yes, poll 199). Done (#10832, `core/application-review-store.md`): the four tables as a migration step in the open version, the columns of `decisions-made-schema-44.md`, in the PR body, asked of the architect before ready; the erase of the four tables; the export of state, decision, combined and criterion scores, never jurors' notes or names (poll 200, `decisions-made-product-91.md`); their tests; the `audit_log` entity type. Features: V16 (privacy).
 
-- AR2 (M) after AR1b: the programme settings screen under Forms (`validate_forms_access()` and the folder rule): period, categories, criteria and templates, rounds, blind, decision texts; the period check in the form's submit path; eligibility and its override. Features: V1, V2, V3, V5.
+- AR2 (M) after AR1b. Done (#10880, `core/application-review-programme.md`): the programme settings screen under Forms (`validate_forms_access()` and the folder rule): period, categories, criteria and templates, rounds, blind, decision texts; the period check in the form's submit path; eligibility and its override. Features: V1, V2, V3, V5.
 
-- AR3 (M) after AR2: reviewers and pools, the assignment run, conflicts, "My reviews" opened by membership with no Forms right, blind, the reminders. Features: V6 to V9.
+- AR3 (M) after AR2, cut in two:
+  - AR3a after AR2. Done (#10962, `core/application-review-reviewers.md`): the programme's Reviewers tab (a panel user or an outside juror by name and e-mail, the categories of their pool, Remove), the "Give out entries" run with its confirm, the conflicts gathered under the list. Features: V6, V7 (the list).
+  - AR3b after AR3a. Done (#11024, `core/application-review-my-reviews.md`): "My reviews" opened by membership with no Forms right, the scoring screen, blind, "I know this applicant" moving the entry, the reminders 3 and 1 days before the round's end. Features: V7 to V9.
 
-- AR4 (M) after AR3: the external juror's link and page, its `waf.php` entry; the correction link. Features: V4, V10.
+- AR4 (M) after AR3b: the external juror's link and page, its `waf.php` entry; the reminders of AR3b to outside jurors with their link (`pg_application_reminders_run()` sends to panel users only); the correction link. Features: V4, V10.
 
-- AR5 (M) after AR3: combining, the consensus flag, ranking and the shortlist, the next round. Features: V11 to V13.
+- AR5 (M) after AR3b: combining, the consensus flag, ranking and the shortlist, the next round. Features: V11 to V13.
 
 - AR6 (M) after AR5: decisions, the decision e-mails with their preview, the result on the submitter's view, the waitlist call. Features: V14.
 
@@ -23,6 +25,6 @@ description: Plan application-review, steps AR1a to AR8: pure rules, store, prog
 - AR8 (S) close-out: every V number checked against the code with its PR; `core/application-review.md` written; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
-- AR1a can start before the polls' answers. After AR3: AR4 and AR5. AR2 enters `includes/fn/custom_form.php` (the submit path) and AR4 `waf.php`: check the open PRs before claiming.
+- AR1a can start before the polls' answers. After AR3b: AR4 and AR5. AR2 enters `includes/fn/custom_form.php` (the submit path) and AR4 `waf.php`: check the open PRs before claiming.
 
 Related: docs/memory/plans/application-review.md, docs/memory/plans/application-review-features.md

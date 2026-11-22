@@ -643,6 +643,10 @@ function test_code_editor_attach_offers_a_format_button()
 		pg_assert_contains('editor.hasMinimap()', $html, $kind . ': starting from the current state');
 		pg_assert_contains('editor.setMinimap(', $html, $kind . ': switching the instance');
 	}
+
+	// A read-only line (a cron command in Site Settings) gets no row: the
+	// row is placed only for an editable field or text of several lines.
+	pg_assert_contains('if (!options.readOnly || (editor.getValue().indexOf("\n") !== -1)) {', $ro, 'a one-line read-only field has no tools row');
 }
 
 // The code editor dialog's footer shows "Format code" only for CSS,

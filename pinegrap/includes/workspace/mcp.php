@@ -957,7 +957,7 @@ function ws_mcp_error_text($server, $status, $error, $person = false)
     if (((string) ($server['auth_kind'] ?? '') === 'oauth') && ((int) $status === 401)) {
         return $person
             ? lang(array('string' => 'Your own connection to @{var:1} ended. Connect your account again.', 'vars' => $server['alias']))
-            : lang(array('string' => '@{var:1} is not connected, or its connection ended. An administrator connects it again under Workspace settings › MCP servers.', 'vars' => $server['alias']));
+            : lang(array('string' => '@{var:1} is not connected, or its connection ended. An administrator connects it again under Site Settings › Assistants and agents › MCP servers.', 'vars' => $server['alias']));
     }
 
     return (string) $error;
@@ -1003,7 +1003,7 @@ function ws_mcp_person_connect_start($viewer, $server, $return)
     $key = ws_mcp_connect_key($server);
 
     if (!pg_connect_app_ready(pg_connect_app($key)) || !ws_mcp_connect_provider($key)) {
-        return $fail(lang(array('string' => 'The sign-in to @{var:1} is not set up yet. An administrator saves the server again under Workspace settings › MCP servers.', 'vars' => $server['alias'])));
+        return $fail(lang(array('string' => 'The sign-in to @{var:1} is not set up yet. An administrator saves the server again under Site Settings › Assistants and agents › MCP servers.', 'vars' => $server['alias'])));
     }
 
     $mine = ws_mcp_person_account($server, (int) $viewer['id']);
@@ -1202,10 +1202,10 @@ function ws_mcp_server_state($server)
         $reason = lang(array('string' => '@{var:1} is turned off. Nothing is sent to it until it is turned on again.', 'vars' => $server['alias']));
     } elseif ($oauth && $account && !$connected) {
         $state = 'connect_again';
-        $reason = lang('The site\'s connection to the service ended: connect it again in the Workspace settings.');
+        $reason = lang('The site\'s connection to the service ended: connect it again under Site Settings › Assistants and agents › MCP servers.');
     } elseif ($oauth && !$account) {
         $state = 'not_connected';
-        $reason = lang('The site is not connected to the service yet: connect it in the Workspace settings.');
+        $reason = lang('The site is not connected to the service yet: connect it under Site Settings › Assistants and agents › MCP servers.');
     } elseif ($error !== '') {
         $state = 'unreachable';
         $reason = $error;
@@ -2484,10 +2484,14 @@ function ws_mcp_settings_button($self_url, $form, $action, $id, $class, $inner, 
  * @param object|null   $liveform the screen's, or a ws_mcp_settings_relay
  *                                holding what a refused form kept
  * @param string|null   $form     the Site Settings form's id
+ * @param string|null   $all      set to every server's row for the drawer
+ *                                "Show all N" opens, '' while all fit
  * @return string
  */
-function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null)
+function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null, &$all = null)
 {
+    $all = '';
+
     if (!ws_mcp_ready()) {
         return '';
     }
@@ -2495,6 +2499,11 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
     $admin = ((int) $viewer['role'] === 0);
     $servers = ws_mcp_servers(true);
     $list = '';
+    // Site Settings: each server's row for the pane and its copy for the
+    // drawer of every server, and whether it needs something.
+    $rows = array();
+    $copies = array();
+    $asks = array();
     $agents = false;
     $kept = ws_mcp_settings_kept($admin ? $liveform : null);
 
@@ -2608,10 +2617,16 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
 
         // Site Settings: the form and the tools open in the server's drawer.
         if ($form !== null) {
-            $list .= '
-            <div class="ws-agset-row' . (($server['status'] !== 'active') ? ' opacity-75' : '') . '" id="pgset-ws-mcp-row-' . $id . '">' . $line . '
+            $row = '<div class="ws-agset-row' . (($server['status'] !== 'active') ? ' opacity-75' : '') . '"';
+            $inner = '>' . $line . '
                 ' . $end . '
             </div>';
+            $rows[$id] = '
+            ' . $row . ' id="pgset-ws-mcp-row-' . $id . '"' . $inner;
+            $copies[$id] = '
+            ' . $row . $inner;
+            // A form a check refused waits in its drawer, opened from the pane.
+            $asks[$id] = ws_assistants_list_asks($badge[0]) || !empty($typed);
             continue;
         }
 
@@ -2627,9 +2642,22 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
             </div>';
     }
 
+    // Five servers in the pane, the ones that need something first; every
+    // server in the drawer "Show all N" opens.
+    $shown = ws_assistants_list_cut($asks);
+
+    foreach ($shown as $id) {
+        $list .= $rows[$id];
+    }
+
+    if (count($shown) < count($rows)) {
+        $all = '<div class="pg-card-inner ws-agset-list">' . implode('', $copies) . '</div>';
+    }
+
     // An administrator's empty list is the catalogue below it.
     if ($list !== '') {
-        $list = '<h4 class="pg-group-label">' . h(lang('Added servers')) . '</h4><div class="pg-card-inner ws-agset-list mb-5">' . $list . '</div>';
+        $list = '<h4 class="pg-group-label">' . h(lang('Added servers')) . '</h4><div class="pg-card-inner ws-agset-list' . (($all !== '') ? '' : ' mb-5') . '">' . $list . '</div>'
+            . (($all !== '') ? '<div class="mb-5">' . ws_assistants_show_all_html('ws-mcp', count($rows)) . '</div>' : '');
     } elseif (!$admin) {
         $list = '<div class="ws-empty py-5"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('No MCP server yet.')) . '</div>';
     }

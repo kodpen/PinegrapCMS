@@ -13,7 +13,7 @@ module: supplier_feed
 ## How is the selling price worked out?
 - `pg_supplier_feed_price($buy, $rule, $rate, $home_decimals = 2, $feed_decimals = 2)`, pure: (buy net of VAT × (1 + margin %) + fixed) × rate. `fixed` is in minor units of the feed's currency; `rate` is home currency per unit of the feed's currency (1 for the same). 0 when there is no buy price or rate.
 - Rounding: `none`, `whole` (nearest whole unit, half up), `90` / `99` (nearest price ending in ,90 or ,99, a tie goes up, never 0 or below). A currency without two decimals rounds `90` and `99` as whole.
-- Floor: buy × (1 + `floor_margin` %) at the same rate. A rounded price under it becomes the first price at or above the floor that has the rounding's ending.
+- Floor: buy × (1 + `floor_margin` %) at the same rate. A rounded price under it becomes the first price at or above the floor that has the rounding's ending. `pg_supplier_feed_price_parts()` also says whether the floor lifted it (the test pull's "Floor" pill).
 
 ## Which rule applies?
 - `pg_supplier_feed_rule_pick($rules, $category, $brand)` on the feed's `rules` JSON: `margin`, `fixed`, `rounding`, `floor_margin`, `specific` (a list of rules with `category` and/or `brand`).

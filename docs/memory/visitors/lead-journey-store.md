@@ -33,4 +33,6 @@ module: lead_journey_store
 - A panel user (`pg_user_has_panel_access()`) or staff browsing as a customer: no key read or written, no visit, no tie.
 
 ## What do merge and erase do?
-- `pg_contact_holders()`: the three row tables `move`; `contact_scores` `drop` (a new merge answer: merged contacts' rows deleted, the survivor is scored again). Erase is `none` until LJ2 adds the export and erase hooks.
+- `pg_contact_holders()`: the three row tables `move`; `contact_scores` `drop` (a new merge answer: merged contacts' rows deleted, the survivor is scored again). Erase and export: `visitors/lead-journey-view.md`.
+
+Related: docs/memory/visitors/lead-journey-view.md

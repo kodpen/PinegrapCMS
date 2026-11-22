@@ -28,7 +28,7 @@ module: connections_screen
 
 ## Which pages did CX11 give a key service? (Status, "Connection details" under the card's gate, Where it is used)
 - IndexNow (CX11a): the key, SEO gate, `connections-indexnow-page.md`. Google Analytics (CX11b): tag and GA4 property, Visitors and privacy gate, `connections-google-analytics-page.md`.
-- Google Cloud Translation (CX11c): the API key, Languages and Translation gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers: `connections-sms-providers-page.md`. Ads: `api/ad-conversions-meta.md`, `api/ad-conversions-tiktok.md`.
+- Google Cloud Translation (CX11c): the API key, Languages and Translation gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers: `connections-sms-providers-page.md`. Ads: `api/ad-conversions.md` (Meta, GA4 Measurement Protocol, TikTok).
 
 ## Where does a write from it return?
 - The page's hidden `connections_return` sends Check/Disconnect back to `?service=<key>`; Connect again returns there through `pg_connect_start_fields()`'s return path.

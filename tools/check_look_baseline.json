@@ -2,7 +2,7 @@
     "assets/css/backend.src.css": {
         "size": 434,
         "weight": 228,
-        "colour": 384
+        "colour": 380
     },
     "assets/css/pg_dash.src.css": {
         "size": 21,
@@ -586,20 +586,8 @@
         "button": 2,
         "tabs": 0
     },
-    "includes/fn/address_autocomplete.php": {
-        "button": 1,
-        "tabs": 0
-    },
     "includes/fn/ai_write.php": {
         "button": 2,
-        "tabs": 0
-    },
-    "includes/fn/carrier_api.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/fn/carrier_labels.php": {
-        "button": 1,
         "tabs": 0
     },
     "includes/fn/comment_list_edit.php": {
@@ -628,14 +616,6 @@
     },
     "includes/fn/files.php": {
         "button": 2,
-        "tabs": 0
-    },
-    "includes/fn/geo.php": {
-        "button": 1,
-        "tabs": 0
-    },
-    "includes/fn/google_reviews.php": {
-        "button": 1,
         "tabs": 0
     },
     "includes/fn/legacy_bootstrap_move.php": {
@@ -679,7 +659,7 @@
         "tabs": 0
     },
     "includes/fn/output.php": {
-        "button": 163,
+        "button": 162,
         "tabs": 0
     },
     "includes/fn/page_bulk.php": {
@@ -874,10 +854,6 @@
         "button": 2,
         "tabs": 0
     },
-    "includes/workspace/agents_settings.php": {
-        "button": 1,
-        "tabs": 0
-    },
     "includes/workspace/bulk.php": {
         "button": 1,
         "tabs": 0
@@ -923,11 +899,7 @@
         "tabs": 0
     },
     "includes/workspace/templates.php": {
-        "button": 6,
-        "tabs": 0
-    },
-    "includes/workspace/voice.php": {
-        "button": 1,
+        "button": 5,
         "tabs": 0
     },
     "includes/workspace/workdays.php": {

@@ -74,9 +74,9 @@ function test_settings_privacy_category_holds_its_three_cards()
 	$commerce = settings_privacy_test_category('commerce');
 
 	pg_assert_contains("'label' => lang('Visitors and privacy')", $privacy, 'its label');
-	pg_assert_contains("'pgset-analytics' => lang('Visitor Tracking')", $privacy, 'the Visitor Tracking card');
-	pg_assert_contains("'pgset-cookies'   => lang('Cookie Consent')", $privacy, 'the Cookie Consent card');
-	pg_assert_contains("'pgset-legal'     => lang('Legal Documents')", $privacy, 'the Legal Documents card');
+	pg_assert_contains("'pgset-analytics' => lang('Visitor tracking')", $privacy, 'the Visitor tracking card');
+	pg_assert_contains("'pgset-cookies'   => lang('Cookie consent')", $privacy, 'the Cookie consent card');
+	pg_assert_contains("'pgset-legal'     => lang('Legal documents')", $privacy, 'the Legal documents card');
 	pg_assert_true(strpos($privacy, "'pgset-analytics'") < strpos($privacy, "'pgset-cookies'"), 'visitor tracking first');
 	pg_assert_true(strpos($privacy, "'pgset-cookies'") < strpos($privacy, "'pgset-legal'"), 'legal documents last');
 
@@ -165,6 +165,6 @@ function test_settings_privacy_has_a_page()
 
 function test_settings_privacy_links_name_the_new_place()
 {
-	pg_assert_contains('settings_privacy.php#pgset-analytics', settings_privacy_test_source('database_engine.php'), 'the Database Engine link');
+	pg_assert_contains('settings_privacy.php#pgset-retention', settings_privacy_test_source('database_engine.php'), 'the Database Engine link opens How long we keep data');
 	pg_assert_contains('connections.php?service=google_analytics', settings_privacy_test_source('includes/dashboard/widgets/widget_32.php'), 'the dashboard widget leads to Google Analytics\' page');
 }

@@ -539,7 +539,7 @@ function ws_js_strings()
         'direct_message_to'      => ws_js_template('Message {var:1}', 1),
         'documents'              => lang('Documents'),
         'download'               => lang('Download'),
-        'drop_here'              => ws_js_template('Drop the files to post them in #{var:1}', 1),
+        'drop_here'              => ws_js_template('Drop the files to add them to the message in #{var:1}', 1),
         'drop_rules'             => lang('What the file manager takes: no PHP, .htaccess, web.config, shell scripts or programs.'),
         'everyone'               => lang('Everyone'),
         'fig_channels'           => lang('channels opened'),
@@ -549,6 +549,13 @@ function ws_js_strings()
         'fig_overdue'            => lang('late'),
         'fig_tasks'              => lang('tasks'),
         'file_too_large_named'   => ws_js_template('{var:1} is larger than {var:2} MB.', 2),
+        // A file put in the writing box: refused when it is added, the chip
+        // of one waiting for Send, the strip of them.
+        'file_refused_named'     => ws_js_template('Sorry, {var:1} was not accepted. Files of that type cannot be uploaded here.', 1),
+        'file_refused_macro'     => ws_js_template('Sorry, {var:1} was not accepted. Office files with macros cannot be added here; save it without macros (.docx, .xlsx or .pptx) and try again.', 1),
+        'wait_remove'            => ws_js_template('Take {var:1} out of the message', 1),
+        'wait_files'             => lang('Files to send with the message'),
+        'sm_no_files'            => lang('A file cannot be sent later. Send it now, or take it out of the message first.'),
         'give_task'              => lang('Give a task'),
         'hand_to'                => ws_js_template('Hand over to {var:1}', 1),
         'images'                 => lang('Pictures'),
@@ -963,7 +970,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_channel_activity_js_strings(), ws_agent_card_js_strings(), ws_agent_feedback_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_channel_activity_js_strings(), ws_conversation_timeline_js_strings(), ws_agent_card_js_strings(), ws_agent_feedback_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());

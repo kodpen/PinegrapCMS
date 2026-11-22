@@ -210,10 +210,10 @@ function test_connections_screen_folds_the_mail_routes()
 
 	foreach (pg_connections_screen_mail_routes() as $id) {
 		pg_assert_true(isset($registry[$id]) && ($registry[$id]['group'] === 'email'), $id . ' is a mail row of the registry');
-		pg_assert_same(0, strpos($registry[$id]['place'], '#settings/mail_sending/'), $id . ' is set up in E-mail sending');
+		pg_assert_same(0, strpos($registry[$id]['place'], '#settings/email/'), $id . ' is set up in E-mail\'s Sending tab');
 	}
 
-	pg_assert_same('#settings/mail_sending/pgset-mailchimp', $registry['mailchimp']['place'], 'Mailchimp is set up in E-mail sending too');
+	pg_assert_same('#settings/email/pgset-mailchimp', $registry['mailchimp']['place'], 'Mailchimp is set up there too');
 	pg_assert_same(84, pg_connections_count(), 'the figure stays');
 
 	$rows = array(

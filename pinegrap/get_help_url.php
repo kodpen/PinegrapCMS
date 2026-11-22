@@ -75,6 +75,7 @@ function get_help_url($properties = array())
         'settings_seo'        => 'site-settings#seo',
         'settings_languages'  => 'site-settings#languages',
         'settings_contact'    => 'site-settings#communication',
+        'settings_email'      => 'site-settings#smtp-settings',
         'settings_mail_sending' => 'site-settings#smtp-settings',
         'settings_mailboxes'  => 'workspace-cont#e-mails',
         'settings_security'   => 'site-settings#security',
@@ -265,6 +266,8 @@ function get_help_url($properties = array())
         'messages_automatic'             => 'campaigns',
         'messages_templates'             => 'campaigns',
         'messages_sends'                 => 'site-settings#mail-queue',
+        'messages_surveys'               => 'campaigns',
+        'edit_feedback_survey'           => 'campaigns',
         'messages_channels'              => 'site-settings',
 
         // Commerce
@@ -277,6 +280,7 @@ function get_help_url($properties = array())
         'view_returns'                       => 'commerce#returns',
         'view_return'                        => 'commerce#view-return',
         'add_return'                         => 'commerce#returns',
+        'view_delivery_problems'             => 'commerce#orders',
         'view_cart_quotes'                   => 'commerce#cart-quotes',
         'view_subscriptions'                 => 'commerce#subscriptions',
         'add_cart_quote'                     => 'commerce#cart-quotes',

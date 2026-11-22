@@ -277,7 +277,8 @@ function api_schema() {
 				array('name' => 'id',       'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'op',       'in' => 'body', 'type' => 'enum', 'values' => array('set', 'adjust'), 'required' => true),
 				array('name' => 'quantity', 'in' => 'body', 'type' => 'int', 'min' => -1000000, 'max' => 1000000, 'required' => true, 'description' => 'The new quantity for set, the signed change for adjust.'),
-				array('name' => 'location', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'On a site that keeps stock per location: the location whose units change (left out or 0: the default location). An adjust stops at 0 there and takes nothing from another location; the product\'s quantity is the sum of its locations. A site without locations refuses any other value with 422 location.')
+				array('name' => 'location', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'On a site that keeps stock per location: the location whose units change (left out or 0: the default location). An adjust stops at 0 there and takes nothing from another location; the product\'s quantity is the sum of its locations. A site without locations refuses any other value with 422 location.'),
+				array('name' => 'shelf',    'in' => 'body', 'type' => 'string', 'max_length' => 40, 'nullable' => true, 'description' => 'The shelf address at that location, such as A-03-2, written with the stock change; empty or null removes it, left out leaves it as it is. Pick lists walk the shelves in this order.')
 			)
 		),
 
@@ -411,6 +412,44 @@ function api_schema() {
 			'description' => 'One row per marketplace account the product is matched to: the account and its provider (n11, trendyol), the code the marketplace knows the product by (the seller code on n11, the barcode on Trendyol), the id the marketplace gave the listing once it took it (null before), the mapping\'s status (active, paused, error), the last refusal or note (null when there is none) and when its stock and price last went out. One page, newest account last. The marketplace screen is the manager role\'s, so an application whose owner has the user role answers 403 forbidden here even with products:read. Account credentials are never part of the answer. A product matched to no marketplace answers an empty list.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'marketplaces.repricing',
+			'method'  => 'GET',
+			'path'    => '/marketplaces/{account}/repricing',
+			'scope'   => 'products:read',
+			'handler' => 'api_marketplace_repricing_list',
+			'returns' => array('list' => 'MarketplaceRepricing', 'try_first' => 'boolean'),
+			'summary' => 'A marketplace account\'s repricing: each listing\'s price, floor, buybox rank and last change',
+			'description' => 'The listings of a marketplace account, by product id and cursor paged: the price each goes out at and price_from (own, robot, rule, site), the floor (null with no cost known), the strategy (fixed, win, grow), the last buybox read (rank 1 is winning; Trendyol only) and the robot\'s last change. Prices are minor units with VAT. try_first true: the robot only logs. Manager role up (403 for the user role).',
+			'details' => 'Products in the Recycle Bin are left out; the account ids are those of GET /products/{id}/marketplaces. price_from own is the price typed on the listing, robot the repricer\'s, rule the account\'s price rules, site the site price with VAT when no rule applies. The floor is the lowest price that keeps the minimum margin over the cost; the robot leaves a listing with no floor alone. buybox_rank, buybox_price and buybox_read_at are null before the first read. The last change\'s reason is lost (stepped under the seller holding the buybox), floor (stopped at the floor), raised (Grow while winning went up) or back (stepped back after losing the buybox); sent false is a change written in Try first. filter floor and no_cost work every listing of the account out before the page is read. A site whose database has not been updated answers 503 service_unavailable.',
+			'params'  => array(
+				array('name' => 'account', 'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'filter',  'in' => 'query', 'type' => 'enum', 'values' => array('winning', 'losing', 'floor', 'no_cost'), 'description' => 'Only the listings winning the buybox, losing it, at or under the floor, or with no floor.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Listings per page.'),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'           => 'marketplaces.repricing.update',
+			'method'       => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'         => '/marketplaces/{account}/repricing/{product}',
+			'scope'        => 'products:write',
+			'handler'      => 'api_marketplace_repricing_update',
+			'dry_run'      => true,
+			'returns'      => 'MarketplaceRepricing',
+			'summary'      => 'Set a marketplace listing\'s strategy and own price',
+			'description'  => 'Only the fields sent change. strategy: fixed keeps the rules\' price, win goes one step under the buybox holder (never under the floor), grow raises one step a day while winning; win and grow are Trendyol only (422 otherwise). own_price wins over the rules and the floor; null clears it. A changed own price goes out on the next run. Answers the listing as the list does; 404 for a product not matched to the account.',
+			'details'      => 'The site\'s own price is never changed. An own price is sent as typed, so one under the floor is sent too. Manager role up: an application whose owner has the user role answers 403 forbidden.',
+			'params'       => array(
+				array('name' => 'account',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'product',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'strategy',  'in' => 'body', 'type' => 'enum', 'values' => array('fixed', 'win', 'grow'), 'description' => 'fixed, win or grow (grow while winning).'),
+				array('name' => 'own_price', 'in' => 'body', 'type' => 'money', 'min' => 1, 'max' => 100000000, 'nullable' => true, 'description' => 'The listing\'s own price in minor units with VAT; null to price it by the rules again.')
 			)
 		),
 
@@ -899,6 +938,26 @@ function api_schema() {
 				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('open', 'requested', 'approved', 'rejected', 'shipped', 'received', 'refunded', 'closed')),
 				array('name' => 'order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the returns of this order.'),
 				array('name' => 'modified_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only returns changed at or after this moment (modified_at), oldest change first.'),
+				array('name' => 'limit',    'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',   'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'shipments.problems',
+			'method'  => 'GET',
+			'path'    => '/shipments/problems',
+			'scope'   => 'orders:read',
+			'handler' => 'api_shipments_problems',
+			'returns' => array('list' => 'ShipmentProblem'),
+			'summary' => 'Delivery problems found on parcels',
+			'description' => 'The problems the hourly delivery check found on parcels, as Orders > Delivery problems lists them, newest first, cursor paged. kind: stuck, not_handed_over, problem (a failed delivery) or returned. Each carries its order, the parcel, the province (never the street address or the buyer\'s name), days_in_transit and usual_days. status=open (the default) gives the open ones. Read only: assigning, the note and closing are done on the screen.',
+			'details' => 'stuck is a parcel in transit longer than the carrier usually takes to the province plus a margin; not_handed_over a label the carrier has not scanned. usual_days is the carrier\'s median days to the province over the last 90 days (the whole country when the province has too few parcels). A later status closes a problem by itself (close_reason delivered, scanned, status_changed, order_cancelled or parcel_removed); staff close one with sent_again, refunded, found or other. order_type marketplace is an order a marketplace sold, whose buyer the shop does not write to. The same problems are announced as the shipment.problem and shipment.problem_resolved webhook events. A site not yet updated to the version that keeps problems has an empty list.',
+			'params'  => array(
+				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all'), 'default' => 'open'),
+				array('name' => 'kind',     'in' => 'query', 'type' => 'enum', 'values' => array('stuck', 'not_handed_over', 'problem', 'returned')),
+				array('name' => 'carrier',  'in' => 'query', 'type' => 'string', 'max_length' => 20, 'description' => 'Only the parcels of this carrier key.'),
+				array('name' => 'order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the problems of this order.'),
 				array('name' => 'limit',    'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',   'in' => 'query', 'type' => 'string', 'max_length' => 200)
 			)
@@ -1655,7 +1714,7 @@ function api_schema() {
 				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name checkout shows.'),
 				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The line under the name at checkout.'),
 				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders keep.'),
-				array('name' => 'arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'The day the order arrives, YYYY-MM-DD. Required unless custom is true.'),
+				array('name' => 'arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'The day the order arrives, YYYY-MM-DD; empty or null for as soon as possible. With custom true the customer enters it at checkout.'),
 				array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'The first day checkout offers it, YYYY-MM-DD.'),
 				array('name' => 'end_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'The last day checkout offers it, YYYY-MM-DD, not before start_date.'),
 				array('name' => 'enabled', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether checkout offers it. Defaults to true.'),
@@ -1683,7 +1742,7 @@ function api_schema() {
 				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name checkout shows.'),
 				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The line under the name at checkout.'),
 				array('name' => 'code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders keep.'),
-				array('name' => 'arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'The day the order arrives, YYYY-MM-DD. Required unless custom is true.'),
+				array('name' => 'arrival_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'nullable' => true, 'description' => 'The day the order arrives, YYYY-MM-DD; empty or null for as soon as possible. With custom true the customer enters it at checkout.'),
 				array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The first day checkout offers it, YYYY-MM-DD.'),
 				array('name' => 'end_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The last day checkout offers it, YYYY-MM-DD, not before start_date.'),
 				array('name' => 'enabled', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether checkout offers it. Defaults to true.'),
@@ -3812,6 +3871,22 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'reports.delivery',
+			'method'  => 'GET',
+			'path'    => '/reports/delivery',
+			'scope'   => 'orders:read',
+			'handler' => 'api_reports_delivery',
+			'returns' => 'DeliveryReport',
+			'summary' => 'The carrier scorecard: parcels, on time, median days, problems and returns per carrier',
+			'description' => 'The Carrier Scorecard of one month (period=month: a carrier a row with its provinces) or of the twelve months ending with it (period=year: a carrier a row with its months). Figures: parcels, on_time (percent delivered by the checkout estimate), median (days shipped to delivered), problem and returned (percent). arrival lists the shipping methods whose typed transit days differ by a day or more from what their carrier measured. Read only.',
+			'details' => 'A parcel counts in the month it was shipped, in the site\'s time zone; parcels of incomplete or cancelled orders are left out. on_time counts only delivered parcels that had a checkout estimate; problem counts parcels with a delivery problem found, open or closed. A carrier or a province with fewer than min_parcels parcels has enough false and null figures but parcels, as the screen\'s "Too few parcels". carrier is null for parcels with no known carrier; a province is the address\'s state, else its city, as first written. arrival compares with the carrier\'s median over the last 90 days, worked out nightly (measured_at). shipping false is a site whose shipping is off: empty figures, not an error. A month in the future reads as the current month.',
+			'params'  => array(
+				array('name' => 'month',  'in' => 'query', 'type' => 'string', 'max_length' => 7, 'description' => 'The month as YYYY-MM; with period=year, the last of the twelve. Defaults to the current month.'),
+				array('name' => 'period', 'in' => 'query', 'type' => 'enum', 'values' => array('month', 'year'), 'default' => 'month')
+			)
+		),
+
+		array(
 			'id'      => 'reports.ad_conversions',
 			'method'  => 'GET',
 			'path'    => '/reports/ad-conversions',
@@ -3849,6 +3924,24 @@ function api_schema() {
 			'summary' => 'Repeat purchase, value per customer, cohorts and customer groups',
 			'description' => 'The figures of the Customers report, read from the summary the scheduled jobs work out again once a day, never summed at the call: as_of says when. Completed and exported orders count, less what was refunded; cancelled orders and orders refunded in full do not. A customer is a billing e-mail address, else the contact of its order; not_placed counts the orders with neither. Amounts are minor units of currency, the base currency; marketplace orders kept in another currency are left out and counted in apart. periods holds the last 1, 3, 6, 12 and 24 whole months and all: customers who ordered in them, those with two orders or more, orders, value and the average days between orders. months is the last 36 months, the last one not whole yet. cohorts is the last 24 months of first orders with, for each of the 12 months after that has begun, the customers who ordered again (a younger cohort has fewer entries). groups is every customer of all time by the age of their last order and their number of orders, each cell with its group (new, returning, loyal, at_risk, lost). top lists 20 customers by value of all time and of the last 12 months, kept by the number of their last order; name is read from that order and given only when the key also holds customers:read (names_shown), else null. Before the first rebuild has finished, ready is false, the lists are empty and progress says how many orders of how many the rebuild under way has read.',
 			'params'  => array()
+		),
+
+		array(
+			'id'      => 'reports.customer_rhythm',
+			'method'  => 'GET',
+			'path'    => '/reports/customer-rhythm',
+			'scope'   => 'orders:read',
+			'handler' => 'api_reports_customer_rhythm',
+			'returns' => array('list' => 'CustomerRhythmCustomer', 'rhythm' => 'CustomerRhythmReport'),
+			'summary' => 'Customer rhythm: customers per stage, each customer\'s own interval, chance and next due day',
+			'description' => 'From the table the scheduled jobs rebuild nightly (rhythm.as_of). rhythm.stages counts customers and expected 12-month value per stage: regular, due, late, slipping, lost, won_back, none. data is the customers, most expected value first, cursor paged; stage filters it. contact_id answers the one row the contact card shows, with the products due in rhythm.due. Names need customers:read too. Read only.',
+			'details' => 'A customer is a billing e-mail address, else the contact of its orders, as in GET /reports/customer-value; a buyer with only marketplace orders has no row. interval_days is the customer\'s own median days between orders, fixed at their last order; with one order (own_interval false) it is the store\'s median days to a second order. Stages by days since the last order d and the interval i: regular d < i, due i to 2i, late 2i to 3i, slipping 3i or more and still 10% or more likely to order, lost under 10%, won_back the first order after late, slipping or lost until d reaches i; none until the store has an interval. chance is the percent likely still to order; expected_value and average_order are minor units of currency. Between orders a stage only moves forward; stage_before and stage_changed_at keep the last move. reminded_at is the last customer.reorder_due event, held_back true when the comparison share held it back, came_back_order_id the order placed within 14 days after it. name is the contact\'s, else the last order\'s billing name; for an account with the user role only on contacts in its contact groups, else null. Before the first rebuild has finished, rhythm.ready is false, data is empty and rhythm.progress tells the pass. The contact group rule Rhythm stage selects by the same stages.',
+			'params'  => array(
+				array('name' => 'stage',      'in' => 'query', 'type' => 'enum', 'values' => array('regular', 'due', 'late', 'slipping', 'lost', 'won_back', 'none'), 'description' => 'Only the customers of this stage.'),
+				array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the row of this contact, as its contact card shows it, with the products due.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
 		),
 
 		array(
@@ -6582,6 +6675,7 @@ function api_error_catalogue() {
 		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
 		'note_locked'              => array(423, 'The workspace note is behind its owner\'s notes lock, which the API never holds open: read it as title only, and change, delete or read its versions on the notes screen with the PIN.'),
 		'location'                 => array(422, 'location is not one of the site\'s stock locations, or the site keeps no stock per location. Leave it out to use the default.'),
+		'shelf'                    => array(422, 'shelf holds text that is not UTF-8. Send the shelf address as plain text, such as A-03-2.'),
 		'limit_message_mine'       => array(422, 'The person already keeps 10 highlights on this message. Remove one first.'),
 		'limit_message'            => array(422, 'The message already carries 30 highlights, as many as it can.'),
 		'limit_person'             => array(422, 'The person keeps 2,000 highlights, as many as they can. Remove some first.'),

@@ -135,8 +135,8 @@ function test_workspace_mail_drawer_help_is_a_line()
 {
 	$html = ws_mail_box_form('', workspace_mail_drawer_test_box(array('provider' => 'other', 'host' => 'imap.example.com', 'routes' => array(array('match' => '+billing', 'channel_id' => 4)))),
 		array(4 => array('id' => 4, 'name' => 'support')), true, 'f');
-	// The Gmail part's steps go to their own drawer in a later step.
-	$html = preg_replace('#<div class="md:col-12[^"]*" data-ws-mail-when="provider=gmail">\s*<div class="pg-card-inner p-3">.*?</div>\s*</div>\s*</div>#s', '', $html);
+
+	pg_assert_same(false, strpos($html, '<ol'), 'no numbered steps in the form: they are in the set-up drawers');
 
 	preg_match_all('#<div class="pg-field-help[^"]*"[^>]*>([^<]*)</div>#', $html, $m);
 	pg_assert_true(count($m[1]) > 10, 'help lines are found');
@@ -171,4 +171,45 @@ function test_workspace_mail_drawer_foot_and_head()
 	pg_assert_contains('Support</h3><p class="small fg-2 mb-0 mt-1 d-flex flex-wrap align-items-center gap-3">support@example.com <span class="pg-pill pg-tone-teal">Reading</span></p>', $drawer, 'the head: name, address, pill');
 	pg_assert_contains('<div class="pg-sm-drawer-bar"><span class="pg-seg"></span></div>', $drawer, 'the tabs in a band under the head');
 	pg_assert_same(false, strpos(pg_settings_drawer('x', 'T', 'b', true), 'pg-sm-drawer-bar'), 'other drawers are unchanged');
+}
+
+function test_workspace_mail_drawer_starting_points()
+{
+	$points = ws_mail_start_points();
+
+	pg_assert_same(array('gmail', 'microsoft', 'other', 'none'), array_keys($points), 'Gmail, Microsoft, another server, no server');
+	pg_assert_same(array('gmail', 'microsoft', 'other', ''), array_column($points, 'provider'), 'each sets a mail service');
+
+	foreach ($points as $point) {
+		pg_assert_true(($point['provider'] === '') || isset(ws_mail_providers()[$point['provider']]), 'a service the form offers: ' . $point['provider']);
+	}
+
+	$html = ws_mail_start_html('ws_mail_0_');
+
+	pg_assert_contains('<div class="pg-start">', $html, 'the starting-point cards');
+	pg_assert_same(4, substr_count($html, '<div class="form-field form-field-card">'), 'a card a starting point');
+	pg_assert_same(4, substr_count($html, '<span class="pg-icon-tile pg-icon-tile-lg'), 'each with its icon');
+	pg_assert_same(4, substr_count($html, '<div class="form-text mt-1" id="ws_mail_0_start_'), 'and one line');
+	pg_assert_same(0, substr_count($html, ' checked'), 'none is chosen before the person chooses');
+	pg_assert_contains('value="" id="ws_mail_0_start_none"', $html, 'no server leaves the service empty');
+	pg_assert_same(array('ws_mail_start'), workspace_mail_drawer_test_names($html), 'nothing the save reads is posted');
+	pg_assert_contains('<legend class="visually-hidden">' . h(lang('How is the mailbox read?')) . '</legend>', $html);
+
+	$script = ws_mail_settings_script();
+	pg_assert_contains('function leaveStart(root, provider)', $script, 'a card moves on to the form');
+	pg_assert_contains('_tab_reading', $script, 'and opens the Reading tab');
+	pg_assert_contains('[data-ws-mail-start-form]', $script, 'a refused save shows the form');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
+	pg_assert_contains('$body = ws_mail_start_html(\'ws_mail_0_\') . \'<div data-ws-mail-start-form hidden>\' . $body . \'</div>\';', $source, 'Add a mailbox opens on the cards');
+	pg_assert_contains('<div data-ws-mail-start-tabs hidden>', $source, 'the tabs wait in the band');
+}
+
+function test_workspace_mail_drawer_opens_a_drawer_over_it()
+{
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+
+	pg_assert_contains('#pg_settings_modal_drawers [data-pgdrawer="open"]', $script, 'a button in a dialog\'s drawer opens another drawer');
+	pg_assert_contains('below.push({ drawer: open, opener: opener });', $script, 'the drawer under it is kept');
+	pg_assert_contains('var under = (giveBack !== false) ? below.pop() : null;', $script, 'closing goes back to it');
 }

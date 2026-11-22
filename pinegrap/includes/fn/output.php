@@ -4233,6 +4233,7 @@ function output_menu($properties = false)
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-geo-alt bi-me-2\'>' . lang('Event Locations') . '</a>';
             $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_calendar_event_location.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Calendar Event Location'))) . '</a>';
         }
+        $calendars_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
         // CALENDARS > Bookings: once a booking service exists, for those the
         // agenda opens to (includes/fn/booking_agenda.php).
         if (pg_booking_ready() && ((int) db_value("SELECT COUNT(*) FROM booking_services") > 0)) {
@@ -4240,8 +4241,18 @@ function output_menu($properties = false)
 
             if (pg_booking_agenda_user_scope($user) !== false) {
                 $menu_items[4]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-                $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_bookings.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-check bi-me-2\'>' . lang('Bookings') . '</a>';
+                $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_bookings.php\'' . $output_parent_target . ' class=\'' . $calendars_link_class . 'bi-calendar-check bi-me-2\'>' . lang('Bookings') . '</a>';
             }
+        }
+        // CALENDARS > Queue: the walk-in queue's places, roles 0-2
+        // (view_queue_places.php).
+        if (($user['role'] < 3) && pg_waiting_ready()) {
+            // Beside Bookings, or after a line of its own without them.
+            if (strpos($menu_items[4]['data-bs-content'], 'view_bookings.php') === false) {
+                $menu_items[4]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+            }
+
+            $menu_items[4]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_queue_places.php\'' . $output_parent_target . ' class=\'' . $calendars_link_class . 'bi-people bi-me-2\'>' . lang('Queue') . '</a>';
         }
     }
 
@@ -4253,9 +4264,23 @@ function output_menu($properties = false)
         $menu_items[5]['color_class'] = 'forms-color';
         $menu_items[5]['title'] = 'Forms';
         $menu_items[5]['context'] = true;
-        $menu_items[5]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-ui-checks bi-me-2\'>' . lang('All Forms') . '</a>';
+        $forms_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
+        $menu_items[5]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-ui-checks bi-me-2\'>' . lang('All Forms') . '</a>';
         // add_submitted_form.php opens to the same people (validate_forms_access()).
-        $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Add {var:1}', 'vars' => lang('Form'))) . '</a>';
+        $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Add {var:1}', 'vars' => lang('Form'))) . '</a>';
+        // view_application_programs.php opens to the same people.
+        $menu_items[5]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_application_programs.php\'' . $output_parent_target . ' class=\'' . $forms_link_class . 'bi-clipboard-check bi-me-2\'>' . lang('Application programmes') . '</a>';
+    }
+
+    // MY REVIEWS. Slot 28, the next free one (slots are never reused): a
+    // reviewer of an open or closed application programme, by membership
+    // alone, with no Forms right (my_reviews.php). One screen, no panel.
+    if (pg_application_review_member((int) $user['id'])) {
+        $menu_items[28]['id'] = 28;
+        $menu_items[28]['href'] = 'my_reviews.php';
+        $menu_items[28]['menu_icon'] = 'forms';
+        $menu_items[28]['color_class'] = 'forms-color';
+        $menu_items[28]['title'] = 'My reviews';
     }
 
     if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
@@ -4435,7 +4460,11 @@ function output_menu($properties = false)
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?status=any&type=local\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-shop-window bi-me-2\'>' . lang('Local Orders') . ' </a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_order.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(['string' => 'Add {var:1}', 'vars' => [lang('Order')]]) . '</a>';
             $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_returns.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-return-left bi-me-2\'>' . lang('Returns') . '</a>';
+            // Returns and Delivery problems share the menu's link look,
+            // each followed by its icon.
+            $orders_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-me-2 ';
+            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_returns.php\'' . $output_parent_target . ' class=\'' . $orders_link_class . 'bi-arrow-return-left\'>' . lang('Returns') . '</a>';
+            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_delivery_problems.php\'' . $output_parent_target . ' class=\'' . $orders_link_class . 'bi-truck\'>' . lang('Delivery problems') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_cart_quotes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart3 bi-me-2\'>' . lang('Cart quotes') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_subscriptions.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-repeat bi-me-2\'>' . lang('Subscriptions') . '</a>';
 
@@ -5024,13 +5053,20 @@ function output_menu($properties = false)
         case 'edit_calendar_event_location.php':
         case 'view_bookings.php':
         case 'edit_booking.php':
+        case 'view_queue_places.php':
+        case 'edit_queue_place.php':
             $active_menu = 4;
             break;
         case 'view_submitted_forms.php':
         case 'add_submitted_form.php':
         case 'edit_submitted_form.php':
         case 'import_submitted_forms.php':
+        case 'view_application_programs.php':
+        case 'edit_application_program.php':
             $active_menu = 5;
+            break;
+        case 'my_reviews.php':
+            $active_menu = 28;
             break;
         case 'visitors.php':
         case 'view_visitor_reports.php':
@@ -5074,6 +5110,8 @@ function output_menu($properties = false)
         case 'messages_automatic.php':
         case 'messages_templates.php':
         case 'messages_sends.php':
+        case 'messages_surveys.php':
+        case 'edit_feedback_survey.php':
         case 'messages_channels.php':
         case 'messages_notifications.php':
             $active_menu = 9;
@@ -5578,8 +5616,8 @@ function pg_menu_categories()
         // Automation flows (26) between the Dashboard and the Workspace: they
         // reach every part of the site, so they sit under no heading. A
         // person's pinned Incoming e-mail (27) comes after the Workspace and
-        // My Notes.
-        ''           => array('label' => '', 'slots' => array(0, 26, 23, 24, 27)),
+        // My Notes, then a reviewer's My reviews (28).
+        ''           => array('label' => '', 'slots' => array(0, 26, 23, 24, 27, 28)),
         'content'    => array('label' => 'Content', 'slots' => array(2, 1, 4, 5)),
         'design'     => array('label' => 'Design', 'slots' => array(21)),
         'ecommerce'  => array('label' => 'Ecommerce', 'slots' => array(10, 11, 12, 14, 15)),
@@ -8092,6 +8130,7 @@ function pg_js_bundles()
             'assets/js/workspace_memory.js',
             'assets/js/workspace_channel_agents.js',
             'assets/js/workspace_channel_activity.js',
+            'assets/js/workspace_conversation_timeline.js',
             'assets/js/workspace_my_calendar_roadmap.js',
             'assets/js/workspace_my_calendar.js',
             'assets/js/workspace_translate.js',
@@ -8122,7 +8161,9 @@ function pg_js_bundles()
         // The flow canvas, then the quick setup's dialog (window.PGWsFlowQuick);
         // the variable chips first, for the WhatsApp box's variables.
         'assets/js/workspace_flow.min.js'          => array('assets/js/pg_var_chips.js', 'assets/js/workspace_flow.js', 'assets/js/workspace_flow_quick.js'),
-        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
+        // The guest page, after the call window it joins a room's call with
+        // (window.PGWsCalls).
+        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_calls.js', 'assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
         // team: small, and apart from the workspace's own set.
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),

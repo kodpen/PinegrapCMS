@@ -563,6 +563,11 @@ function ws_customer_js_strings()
         'cust_history'       => lang('History'),
         'cust_older'         => lang('Show older'),
         'cust_history_empty' => lang('Nothing in the history yet.'),
+        // The folded Journey row (lead_journey_view.php).
+        'cust_journey'       => lang('Journey'),
+        'cust_journey_first' => lang('First came from'),
+        'cust_journey_open'  => lang('Open the contact'),
+        'cust_journey_pages' => lang('Pages'),
         // "Remind me about this customer" (includes/workspace/followups.php).
         'cust_remind'         => lang('Remind me'),
         'cust_remind_help'    => lang('Remind me about this customer'),
@@ -1038,6 +1043,12 @@ function ws_customer_card($viewer, $channel)
 
         $card['roadmap'] = ws_customer_card_roadmap_offer($viewer, $identity, $base);
     }
+
+    // The contact's journey (includes/fn/lead_journey_view.php), folded under
+    // the history; only for a contact the reader may open.
+    $card['journey'] = function_exists('pg_lead_journey_card')
+        ? pg_lead_journey_card($viewer, (int) (ws_customer_contacts_open($viewer, array($identity['contact_id']))[0] ?? 0), $base)
+        : null;
 
     return $card;
 }

@@ -43,12 +43,16 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
         $translation_source = '';
     }
 
+    // The language the pages will be taken as written in once this is
+    // saved: an empty setting stands for the panel language, which this
+    // screen does not write.
+    $translation_panel_language = (string) db_value("SELECT software_language FROM config");
+    $translation_effective_source = pg_tr_effective_source_language($translation_source, $translation_panel_language);
+
     // ── the language to add, checked before anything is written ──
     $translation_add = trim((string) post_value('translation_add_language'));
 
     if ($translation_add !== '') {
-
-        $translation_effective_source = ($translation_source !== '') ? $translation_source : pg_tr_source_language();
 
         if (!isset($translation_known[$translation_add]) || isset($translation_existing[$translation_add]) || ($translation_add === $translation_effective_source)) {
             $liveform->mark_error('translation_add_language', lang('The language cannot be added: it is the source language or is already in the list.'));
@@ -119,8 +123,11 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
 
     // ── config ──
     // What the source language was, to tell below whether the pages' kept
-    // answers still hold.
-    $translation_source_before = (string) db_value("SELECT translation_source_language FROM config");
+    // answers still hold. Both sides are compared resolved: the screen always
+    // posts a language, the panel language when the setting is empty, so a
+    // site that never chose one would otherwise count its first save as a
+    // change.
+    $translation_source_before = pg_tr_effective_source_language((string) db_value("SELECT translation_source_language FROM config"), $translation_panel_language);
 
     $translation_sets = array(
         "translation_source_language = '" . e($translation_source) . "'",
@@ -221,9 +228,8 @@ if (waf_table_has_column('config', 'translation_prefixes')) {
     // language address out of sitemap.xml and the alternates until each page
     // is drawn again. A removed language lost its rows in
     // pg_tr_language_purge().
-    $translation_panel_language = (string) db_value("SELECT software_language FROM config");
-    pg_tr_prefixes_rewrite(($translation_source !== '') ? $translation_source : (($translation_panel_language !== '') ? $translation_panel_language : 'en'));
-    pg_tr_invalidate_pages('', 0, ($translation_source !== $translation_source_before) || $translation_policy_changed);
+    pg_tr_prefixes_rewrite($translation_effective_source);
+    pg_tr_invalidate_pages('', 0, ($translation_effective_source !== $translation_source_before) || $translation_policy_changed);
 }
 
 // ── the automatic language redirect (2026.4.10) ──

@@ -127,6 +127,29 @@ $select_options = function ($options) {
                     </div>
                 </div>
             </div>
+            <?php if ($shelf_options !== null): ?>
+            <div class="col-12 md:col-6">
+                <label for="shelf_method" class="form-label"><?=h(lang('Shelf address'))?></label>
+                <select id="shelf_method" name="edit_shelf_method" class="form-control collapse-if-selected" data-bs-target="#shelf_row"<?=$owner?>><?=$select_options($shelf_options)?></select>
+                <div class="collapse" id="shelf_row">
+                    <div class="border rounded-4 p-5 mt-5">
+                        <div id="shelf_value_row">
+                            <label for="shelf" class="form-label"><?=h(lang('Shelf'))?></label>
+                            <input type="text" id="shelf" name="edit_shelf" maxlength="<?=PG_BIN_MAX?>" placeholder="A-03-2" autocomplete="off" aria-describedby="shelf_hint" class="form-control"<?=$owner?>>
+                            <div class="form-text" id="shelf_hint"><?=h(lang('Shelf: where it sits in the store room, such as A-03-2.'))?></div>
+                        </div>
+                        <?php if ($stock_locations): ?>
+                        <label for="shelf_location" class="form-label mt-5"><?=h(lang('Location'))?></label>
+                        <select id="shelf_location" name="edit_shelf_location" class="form-control"<?=$owner?>>
+                            <?php foreach ($stock_locations as $stock_location): ?>
+                            <option value="<?=(int) $stock_location['id']?>"><?=h($stock_location['name'])?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
             <?php if ($zones !== null): ?>
             <?php foreach (array('allowed' => lang('Allow Shipping Zones'), 'disallowed' => lang('Disallow Shipping Zones')) as $zone_list => $zone_title): ?>
             <div class="col-12 md:col-6">
@@ -233,6 +256,13 @@ $select_options = function ($options) {
                 change_price_methodfunc();
             }
 
+            // Clear needs no address, only the location it is cleared at
+            // (nothing at all without locations).
+            if (box.id == "shelf_method") {
+                field("shelf_value_row").hidden = (box.value == "clear");
+                field("shelf_row").firstElementChild.hidden = (box.value == "clear") && !field("shelf_location");
+            }
+
             // A zone is either allowed or disallowed: ticking it in one list
             // clears it in the other.
             if (box.checked && ((box.name == "allowed_zones") || (box.name == "disallowed_zones"))) {
@@ -271,6 +301,17 @@ $select_options = function ($options) {
                     if (!customs_valid) {
                         return;
                     }
+                }
+            }
+            // A shelf address being set needs one; Clear removes it.
+            var shelf_method = field("shelf_method");
+            if (shelf_method && (shelf_method.value == "set")) {
+                var shelf_box = field("shelf");
+                shelf_box.setCustomValidity(shelf_box.value.trim() == "" ? <?=json_encode(lang('Enter a shelf address, or choose to clear it.'))?> : "");
+                var shelf_valid = shelf_box.reportValidity();
+                shelf_box.setCustomValidity("");
+                if (!shelf_valid) {
+                    return;
                 }
             }
             if ((field("inventory_quantity_process").value != "") && (field("inventory_quantity").value == "")) {

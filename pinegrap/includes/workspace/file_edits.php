@@ -555,6 +555,8 @@ function ws_file_edit_js_strings()
         'file_edit_image'      => lang('Edit the picture'),
         'file_edit_text'       => lang('Open the text'),
         'file_edit_put'        => lang('Put the edited picture in its place'),
+        // Its words on a narrow phone (under 576 px).
+        'file_edit_put_short'  => lang('Put in place'),
         'file_edit_send'       => lang('Edit and send'),
         'file_text_save'       => lang('Save'),
         'file_text_send'       => lang('Send the edited copy'),
@@ -573,5 +575,13 @@ function ws_file_edit_js_strings()
         'file_editor_missing'  => lang('The Artifact Canvas could not be loaded.'),
         'file_cells_unsaved'   => lang('The changed cells are not saved. Close the window anyway?'),
         'file_paragraphs_unsaved' => lang('The changed paragraphs are not saved. Close the window anyway?'),
+        // "Save as data" in a sheet's preview window: the Data tables'
+        // import of the sheet shown (workspace_wtables.php).
+        'file_table_save'      => lang('Save as data'),
+        'file_table_into'      => lang('Into'),
+        'file_table_new'       => ws_js_template('A new table in #{var:1}', 1),
+        'file_table_rows'      => lang('Rows added to a table'),
+        'file_table_read'      => lang('Read the sheet'),
+        'file_table_help'      => lang('The sheet shown becomes the rows of a table; you confirm its columns next. The file stays as it is.'),
     );
 }

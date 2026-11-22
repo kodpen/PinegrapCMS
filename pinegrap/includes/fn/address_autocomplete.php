@@ -17,8 +17,11 @@
  *
  * The account is kept in connect_apps under 'addr_<key>', like the SMS
  * accounts: the key sealed with the site's key and never drawn back into the
- * form, the Photon host among the options, the card's switch as enabled. One
- * provider is on at a time. A provider that fails or is not set up gives no
+ * form, the Photon host among the options, the card's switch as enabled. The
+ * key or host is typed on the provider's page of Connections
+ * (connections.php?service=<key>); the Address Autocomplete card of Site
+ * Settings › Ecommerce keeps the switch and the provider. One provider is on
+ * at a time. A provider that fails or is not set up gives no
  * suggestions; what the visitor typed always stays.
  *
  * @author      Erdal Güral (Kodpen)
@@ -113,14 +116,15 @@ function pg_addr_app_key($provider)
  * A provider's account on this site.
  *
  * @param string $provider
- * @return array key ('' when none or unreadable), key_stored, host, enabled
+ * @return array key ('' when none or unreadable), key_stored, host, enabled,
+ *               exists (a row is stored)
  */
 function pg_addr_app($provider)
 {
     $app = function_exists('pg_connect_app') ? pg_connect_app(pg_addr_app_key($provider)) : null;
 
     if (!is_array($app)) {
-        return array('key' => '', 'key_stored' => false, 'host' => '', 'enabled' => false);
+        return array('key' => '', 'key_stored' => false, 'host' => '', 'enabled' => false, 'exists' => false);
     }
 
     return array(
@@ -128,6 +132,7 @@ function pg_addr_app($provider)
         'key_stored' => (bool) $app['secret_stored'],
         'host'       => (isset($app['options']['host']) && is_string($app['options']['host'])) ? $app['options']['host'] : '',
         'enabled'    => (bool) $app['enabled'],
+        'exists'     => true,
     );
 }
 
@@ -468,12 +473,18 @@ function pg_addr_items_split($items)
  * @param string $text    raw
  * @param string $country raw
  * @param string $lang    raw
+ * @param string $through a provider to ask even while it is not the one on
+ *                        (its page's "Save and try"); '' for the site's
  * @return array ok, error, items (id, label)
  */
-function pg_addr_suggest($text, $country, $lang)
+function pg_addr_suggest($text, $country, $lang, $through = '')
 {
     $provider = pg_addr_provider();
     $text = pg_addr_text($text);
+
+    if ($through !== '') {
+        $provider = pg_addr_app_complete($through, pg_addr_app($through)) ? $through : '';
+    }
 
     if (($provider === '') || ($text === '') || !pg_addr_driver($provider)) {
         return array('ok' => ($provider !== ''), 'error' => '', 'items' => array());
@@ -668,8 +679,9 @@ JS
         . '})();</script>';
 }
 
+
 /* ---------------------------------------------------------------------------
-   Settings › Ecommerce › Address Autocomplete
+   Settings › Ecommerce › Address Autocomplete: the switch and the provider
    --------------------------------------------------------------------------- */
 
 /**
@@ -718,24 +730,75 @@ function pg_addr_settings_provider()
 }
 
 /**
- * The card's fields: the switch, the provider, its key (never drawn back)
- * or host, and the test box.
+ * The address of a provider's page on Connections, where its key or server
+ * is kept.
+ *
+ * @param string $provider
+ * @return string
+ */
+function pg_addr_connections_url($provider)
+{
+    return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
+        . '/connections.php?service=' . rawurlencode((string) $provider);
+}
+
+/**
+ * One provider's connection on the card: its state and the way to its page
+ * on Connections. A provider is connected when a request has what it needs
+ * (Photon always: it needs no account); only then can the card's switch
+ * turn it on. Pure.
+ *
+ * @param string $provider
+ * @param array  $definition pg_addr_providers() entry
+ * @param array  $app        pg_addr_app()
+ * @param bool   $shown      the select names it
+ * @return string HTML
+ */
+function pg_addr_settings_connection_html($provider, $definition, $app, $shown)
+{
+    $connected = pg_addr_app_complete($provider, $app);
+
+    if (!$definition['needs_key']) {
+        $line = lang('No account is needed. A server of the store\'s own is entered on its page of Connections.');
+    } elseif ($connected) {
+        $line = lang('The key is kept on the provider\'s page of Connections.');
+    } elseif ($app['key_stored']) {
+        $line = lang('The stored key cannot be read with this site\'s encryption key. Enter it again on the provider\'s page of Connections.');
+    } else {
+        $line = lang('This provider is not connected, so address autocomplete cannot be switched on with it. Connect it on its page of Connections.');
+    }
+
+    return '
+                                        <div class="col-12" id="pgsub-addr-' . h($provider) . '-connection" data-addr-provider="' . h($provider) . '" data-addr-connected="' . ($connected ? '1' : '0') . '"' . ($shown ? '' : ' hidden') . '>
+                                            <div class="d-flex flex-column align-items-start gap-2">
+                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => $definition['label']))) . '</span>' . ($connected
+                                                    ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                    : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                <div class="form-text mt-0">' . h($line) . '</div>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(pg_addr_connections_url($provider)) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                            </div>
+                                        </div>';
+}
+
+/**
+ * The card's fields: the switch, the provider and its connection. No key:
+ * each provider's is kept on its page of Connections. The switch cannot be
+ * turned on while the chosen provider is not connected
+ * (pg_addr_settings_script()).
  *
  * @return string HTML
  */
 function pg_addr_settings_fields()
 {
     $shown = pg_addr_settings_provider();
-    $shown_app = pg_addr_app($shown);
-    $enabled = $shown_app['enabled'];
-    $warning = pg_addr_settings_refusal();
+    $apps = array();
 
-    if (($warning === '') && $enabled && !pg_addr_app_complete($shown, $shown_app)) {
-        $warning = $shown_app['key_stored']
-            ? lang('Address autocomplete is switched on but gives no suggestions: the stored key cannot be read with this site\'s encryption key. Enter it again.')
-            : lang('Address autocomplete is switched on but gives no suggestions until a key is entered.');
+    foreach (array_keys(pg_addr_providers()) as $provider) {
+        $apps[$provider] = pg_addr_app($provider);
     }
 
+    $enabled = $apps[$shown]['enabled'];
+    $connected = pg_addr_app_complete($shown, $apps[$shown]);
     $options = '';
 
     foreach (pg_addr_providers() as $key => $definition) {
@@ -745,74 +808,34 @@ function pg_addr_settings_fields()
     $html = '
                                         <div class="col-12">
                                             <div class="form-field">
-                                                <div class="switch"><input type="checkbox" name="addr_enabled" id="addr_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#addr_row"/></div>
+                                                <div class="switch"><input type="checkbox" name="addr_enabled" id="addr_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ((!$enabled && !$connected) ? ' disabled="disabled"' : '') . '/></div>
                                                 <label class="" for="addr_enabled">' . lang('Suggest addresses as they are typed') . '</label>
                                                 <div class="form-text">' . lang('The street box of checkout, the address book and the panel\'s address forms lists matching addresses; a pick fills the other boxes. The site asks the provider itself, so no key or provider script reaches the visitor, and what the visitor typed is never replaced unless they pick.') . '</div>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0" id="addr_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">';
+                                        </div>';
 
-    if ($warning !== '') {
+    if ($enabled && !$connected) {
         $html .= '
-                                                        <div class="col-12"><div class="alert theme-warning mb-0 py-3">' . h($warning) . '</div></div>';
+                                        <div class="col-12"><div class="alert theme-warning mb-0 py-3">' . h(lang('Address autocomplete is switched on but gives no suggestions until the provider is connected in Connections.')) . '</div></div>';
     }
 
     $html .= '
-                                                        <div class="pg-f-md">
-                                                            <label for="addr_provider" class="form-label">' . lang('Provider') . '</label>
-                                                            <select name="addr_provider" id="addr_provider" class="form-control">' . $options . '</select>
-                                                        </div>';
+                                        <div class="pg-f-md">
+                                            <label for="addr_provider" class="form-label">' . lang('Provider') . '</label>
+                                            <select name="addr_provider" id="addr_provider" class="form-control">' . $options . '</select>
+                                        </div>';
 
     foreach (pg_addr_providers() as $key => $definition) {
-        $app = ($key === $shown) ? $shown_app : pg_addr_app($key);
-
-        $html .= '
-                                                        <div class="col-12" data-addr-provider="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>
-                                                            <div class="row gy-5">
-                                                                <div class="col-12 form-text">' . $definition['help'] . '</div>';
-
-        if ($definition['needs_key']) {
-            $placeholder = ($app['key'] !== '') ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '';
-
-            $html .= '
-                                                                <div class="pg-f-md">
-                                                                    <label for="addr_' . h($key) . '_key" class="form-label">' . h($definition['key_label']) . '</label>
-                                                                    <input type="password" name="addr_' . h($key) . '_key" id="addr_' . h($key) . '_key" class="form-control" value="" maxlength="500" autocomplete="new-password"' . $placeholder . '/>
-                                                                </div>';
-        } else {
-            $html .= '
-                                                                <div class="pg-f-md">
-                                                                    <label for="addr_' . h($key) . '_host" class="form-label">' . lang('Server Address') . '</label>
-                                                                    <input type="url" name="addr_' . h($key) . '_host" id="addr_' . h($key) . '_host" class="form-control" value="' . h($app['host']) . '" maxlength="255" autocomplete="off" placeholder="' . h(PG_ADDR_PHOTON_HOST) . '"/>
-                                                                </div>';
-        }
-
-        $html .= '
-                                                            </div>
-                                                        </div>';
+        $html .= pg_addr_settings_connection_html($key, $definition, $apps[$key], $key === $shown);
     }
-
-    $html .= '
-                                                        <div class="pg-f-md">
-                                                            <label for="addr_test_text" class="form-label">' . lang('Test Address') . '</label>
-                                                            <input type="text" name="addr_test_text" id="addr_test_text" class="form-control" value="" maxlength="200" autocomplete="off"/>
-                                                            <div class="form-text">' . lang('Part of an address, as a visitor would start typing it. The provider may charge the request.') . '</div>
-                                                        </div>
-                                                        <div class="col-12">
-                                                            <button type="submit" name="addr_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>' . lang('Save and show suggestions') . '</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>';
 
     return $html;
 }
 
 /**
- * The card's script: shows the fields of the provider the select names.
+ * The card's script: shows the connection of the provider the select names
+ * and hides the others; the switch cannot be turned on while that provider
+ * is not connected, and one that is on can always be turned off.
  *
  * @return string
  */
@@ -822,18 +845,36 @@ function pg_addr_settings_script()
     <script>
         (function () {
             var select = document.getElementById("addr_provider");
+            var toggle = document.getElementById("addr_enabled");
 
             if (!select) {
                 return;
             }
 
             function sync() {
+                var connected = false;
+
                 Array.prototype.forEach.call(document.querySelectorAll("[data-addr-provider]"), function (pane) {
-                    pane.hidden = pane.getAttribute("data-addr-provider") !== select.value;
+                    var chosen = pane.getAttribute("data-addr-provider") === select.value;
+
+                    pane.hidden = !chosen;
+
+                    if (chosen) {
+                        connected = pane.getAttribute("data-addr-connected") === "1";
+                    }
                 });
+
+                if (toggle) {
+                    toggle.disabled = !connected && !toggle.checked;
+                }
             }
 
             select.addEventListener("change", sync);
+
+            if (toggle) {
+                toggle.addEventListener("change", sync);
+            }
+
             sync();
         })();
     </script>';
@@ -852,19 +893,22 @@ function pg_addr_post($post, $name)
 }
 
 /**
- * What a post of the card asks for, from the post and the stored account
- * alone: no database, no provider.
+ * What a post of the card asks for: the switch and the provider, from the
+ * post and the stored accounts alone. No key or host is written here; each
+ * is kept on its provider's page of Connections.
+ *
+ * Only a change is written, so a store whose autocomplete is on keeps it on
+ * whatever else the Ecommerce pane saves.
  *
  * @param array  $post
- * @param array  $before  provider key => pg_addr_app(), every provider
- * @param string $active  pg_addr_provider() before the save
+ * @param array  $apps    provider key => pg_addr_app(), every provider
  * @param string $refusal pg_addr_settings_refusal()
  * @return array|null null when the post has no card; else provider, enabled,
- *                    key (as typed, '' keeps the stored one), host, action
- *                    ('none' or 'save'), test (text to test with, '' for
- *                    none), marks (field => sentence)
+ *                    action ('none' or 'switch'), create (the provider is
+ *                    switched on with no row stored: Photon), marks
+ *                    (field => sentence)
  */
-function pg_addr_settings_decide($post, $before, $active, $refusal)
+function pg_addr_settings_decide($post, $apps, $refusal)
 {
     if (!isset($post['addr_provider'])) {
         return null;
@@ -873,50 +917,227 @@ function pg_addr_settings_decide($post, $before, $active, $refusal)
     $provider = pg_addr_post($post, 'addr_provider');
     $definition = pg_addr_provider_definition($provider);
 
-    if (($definition === null) || !isset($before[$provider])) {
+    if (($definition === null) || !isset($apps[$provider])) {
         return null;
     }
-
-    $app = $before[$provider];
 
     $decision = array(
         'provider' => $provider,
         'enabled'  => (pg_addr_post($post, 'addr_enabled') === '1'),
-        'key'      => $definition['needs_key'] ? pg_addr_post($post, 'addr_' . $provider . '_key') : '',
-        'host'     => $definition['needs_key'] ? '' : rtrim(pg_addr_post($post, 'addr_' . $provider . '_host'), '/'),
         'action'   => 'none',
-        'test'     => (pg_addr_post($post, 'addr_test') === '1') ? pg_addr_text(pg_addr_post($post, 'addr_test_text')) : '',
+        'create'   => false,
         'marks'    => array(),
     );
 
-    if (($decision['host'] !== '') && (pg_addr_photon_host_valid($decision['host']) === false)) {
-        $decision['marks']['addr_' . $provider . '_host'] = lang('Enter the server\'s address starting with https://.');
-    }
+    $others_on = false;
 
-    if ($decision['enabled'] && $definition['needs_key'] && ($decision['key'] === '') && ($app['key'] === '')) {
-        $decision['marks']['addr_' . $provider . '_key'] = lang('Enter the key, or switch address autocomplete off.');
-    }
-
-    if ((pg_addr_post($post, 'addr_test') === '1') && ($decision['test'] === '')) {
-        $decision['marks']['addr_test_text'] = lang('Type at least three characters of an address.');
-    }
-
-    $changed = ($decision['key'] !== '')
-        || ($decision['host'] !== $app['host'])
-        || ($decision['enabled'] !== $app['enabled'])
-        || ($decision['enabled'] && ($active !== $provider));
-
-    if ($changed) {
-        $decision['action'] = 'save';
-
-        if ($refusal !== '') {
-            $decision['marks']['addr_enabled'] = $refusal;
+    foreach ($apps as $key => $app) {
+        if (($key !== $provider) && !empty($app['enabled'])) {
+            $others_on = true;
         }
     }
 
-    // A test asks the provider as saved, so it runs only with it on.
-    if (($decision['test'] !== '') && !$decision['enabled']) {
-        $decision['marks']['addr_enabled'] = lang('Switch address autocomplete on to test it.');
+    if (!$decision['enabled']) {
+        if (!empty($apps[$provider]['enabled']) || $others_on) {
+            $decision['action'] = 'switch';
+        }
+
+        return $decision;
+    }
+
+    if (!empty($apps[$provider]['enabled']) && !$others_on) {
+        return $decision;
+    }
+
+    if (!pg_addr_app_complete($provider, $apps[$provider])) {
+        $decision['marks']['addr_enabled'] = lang(array(
+            'string' => '{var:1} is not connected. Connect it in Connections, then switch address autocomplete on.',
+            'vars'   => array($definition['label'])));
+
+        return $decision;
+    }
+
+    $decision['action'] = 'switch';
+    $decision['create'] = empty($apps[$provider]['exists']);
+
+    if ($decision['create'] && ($refusal !== '')) {
+        $decision['marks']['addr_enabled'] = $refusal;
+    }
+
+    return $decision;
+}
+
+/**
+ * Decides the card's post and marks what it refuses. Runs before the
+ * Ecommerce screen writes anything.
+ *
+ * @param array    $post
+ * @param liveform $liveform
+ * @return array|null pg_addr_settings_decide()
+ */
+function pg_addr_settings_check($post, $liveform)
+{
+    if (!isset($post['addr_provider'])) {
+        return null;
+    }
+
+    $apps = array();
+
+    foreach (array_keys(pg_addr_providers()) as $provider) {
+        $apps[$provider] = pg_addr_app($provider);
+    }
+
+    $decision = pg_addr_settings_decide($post, $apps, pg_addr_settings_refusal());
+
+    if ($decision !== null) {
+        foreach ($decision['marks'] as $field => $sentence) {
+            $liveform->mark_error($field, h($sentence));
+        }
+    }
+
+    return $decision;
+}
+
+/**
+ * Writes the card's switch: the chosen provider on, every other one off.
+ * Only the switch is written; every stored key and host stays.
+ *
+ * @param array|null $decision pg_addr_settings_check()
+ * @param int        $user_id
+ * @param liveform   $liveform
+ */
+function pg_addr_settings_save($decision, $user_id, $liveform)
+{
+    if (!is_array($decision) || $decision['marks'] || ($decision['action'] !== 'switch')) {
+        return;
+    }
+
+    if ($decision['create'] && !pg_connect_app_save(pg_addr_app_key($decision['provider']), '', '', array(), true, $user_id)) {
+        $liveform->add_warning(h(pg_addr_settings_refusal()));
+        return;
+    }
+
+    foreach (array_keys(pg_addr_providers()) as $provider) {
+        $on = ($decision['enabled'] && ($provider === $decision['provider'])) ? 1 : 0;
+
+        db("UPDATE connect_apps
+            SET
+                enabled = '" . $on . "',
+                updated_user_id = '" . (int) $user_id . "',
+                updated_timestamp = UNIX_TIMESTAMP()
+            WHERE
+                provider = '" . e(pg_addr_app_key($provider)) . "'
+                AND enabled <> '" . $on . "'");
+    }
+
+    unset($_SESSION['software']['address_suggest']);
+}
+
+/* ---------------------------------------------------------------------------
+   Connections › the provider's page: its key or server
+   --------------------------------------------------------------------------- */
+
+/**
+ * The fields of a provider's page: its help line, its key (never drawn
+ * back) or Photon's server, the test address, Save and Save and try.
+ *
+ * @param string $provider
+ * @param bool   $can_keep an account can be kept (pg_addr_settings_refusal())
+ * @return string HTML
+ */
+function pg_addr_page_fields($provider, $can_keep)
+{
+    $definition = pg_addr_provider_definition($provider);
+    $app = pg_addr_app($provider);
+
+    $html = '
+				<p class="pg-text-meta mb-0">' . $definition['help'] . '</p>';
+
+    if ($definition['needs_key']) {
+        // "Stored" only for a key this site can still read.
+        $placeholder = ($app['key'] !== '') ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '';
+
+        $html .= '
+				<div>
+					<label class="pg-field-label" for="addr_' . h($provider) . '_key">' . h($definition['key_label']) . '</label>
+					<input type="password" class="pg-input font-monospace" id="addr_' . h($provider) . '_key" name="addr_' . h($provider) . '_key" value="" maxlength="500" autocomplete="new-password" spellcheck="false"' . $placeholder . '>
+				</div>';
+    } else {
+        $html .= '
+				<div>
+					<label class="pg-field-label" for="addr_' . h($provider) . '_host">' . h(lang('Server Address')) . '</label>
+					<input type="url" class="pg-input" id="addr_' . h($provider) . '_host" name="addr_' . h($provider) . '_host" value="' . h($app['host']) . '" maxlength="255" autocomplete="off" spellcheck="false" placeholder="' . h(PG_ADDR_PHOTON_HOST) . '">
+				</div>';
+    }
+
+    $html .= '
+				<div>
+					<label class="pg-field-label" for="addr_test_text">' . h(lang('Test Address')) . '</label>
+					<input type="text" class="pg-input" id="addr_test_text" name="addr_test_text" value="" maxlength="200" autocomplete="off">
+					<div class="pg-field-help">' . h(lang('Part of an address, as a visitor would start typing it, for Save and try. The provider may charge the request.')) . '</div>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill"' . ($can_keep ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_keep ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>
+				</div>';
+
+    return $html;
+}
+
+/**
+ * What a post of a provider's page asks for, from the post and the stored
+ * account alone. The stored switch is kept: the page never turns
+ * autocomplete on or off.
+ *
+ * @param string $provider
+ * @param array  $post
+ * @param array  $app     pg_addr_app()
+ * @param string $refusal pg_addr_settings_refusal()
+ * @return array|null null for no provider; else key (as typed, '' keeps the
+ *                    stored one), host, changed, test (text to try with, ''
+ *                    for none), marks (field => sentence)
+ */
+function pg_addr_page_decide($provider, $post, $app, $refusal)
+{
+    $definition = pg_addr_provider_definition($provider);
+
+    if ($definition === null) {
+        return null;
+    }
+
+    $key_field = 'addr_' . $provider . '_key';
+    $host_field = 'addr_' . $provider . '_host';
+    $try = (pg_addr_post($post, 'submit_try') === '1');
+
+    $decision = array(
+        'key'     => $definition['needs_key'] ? pg_addr_post($post, $key_field) : '',
+        'host'    => $definition['needs_key'] ? '' : rtrim(pg_addr_post($post, $host_field), '/'),
+        'changed' => false,
+        'test'    => $try ? pg_addr_text(pg_addr_post($post, 'addr_test_text')) : '',
+        'marks'   => array(),
+    );
+
+    if (($decision['host'] !== '') && !pg_addr_photon_host_valid($decision['host'])) {
+        $decision['marks'][$host_field] = lang('Enter the server\'s address starting with https://.');
+    }
+
+    if ($definition['needs_key'] && ($decision['key'] === '') && ($app['key'] === '')) {
+        $decision['marks'][$key_field] = $app['key_stored']
+            ? lang('The stored key cannot be read with this site\'s encryption key. Enter it again.')
+            : lang('Enter the key.');
+    }
+
+    if ($try && ($decision['test'] === '')) {
+        $decision['marks']['addr_test_text'] = lang('Type at least three characters of an address.');
+    }
+
+    // Photon's first save keeps its row, even for the public server.
+    $decision['changed'] = ($decision['key'] !== '')
+        || ($decision['host'] !== $app['host'])
+        || (!$definition['needs_key'] && empty($app['exists']));
+
+    if ($decision['changed'] && ($refusal !== '')) {
+        $decision['marks'][$definition['needs_key'] ? $key_field : $host_field] = $refusal;
     }
 
     return $decision;
@@ -934,72 +1155,40 @@ function pg_addr_photon_host_valid($host)
 }
 
 /**
- * Decides the card's post and marks what it refuses. Runs before the
- * Ecommerce screen writes anything.
+ * Writes what pg_addr_page_decide() decided, with the stored switch, then
+ * asks this provider for the test address, even while another one is on.
  *
- * @param array    $post
+ * @param string   $provider
+ * @param array    $decision
+ * @param array    $app      pg_addr_app() before the save
+ * @param int      $user_id
  * @param liveform $liveform
- * @return array|null pg_addr_settings_decide()
+ * @return bool whether something was written
  */
-function pg_addr_settings_check($post, $liveform)
+function pg_addr_page_save($provider, $decision, $app, $user_id, $liveform)
 {
-    if (!isset($post['addr_provider'])) {
-        return null;
+    if ($decision['marks']) {
+        return false;
     }
 
-    $before = array();
+    $written = false;
 
-    foreach (array_keys(pg_addr_providers()) as $provider) {
-        $before[$provider] = pg_addr_app($provider);
-    }
-
-    $decision = pg_addr_settings_decide($post, $before, pg_addr_provider(), pg_addr_settings_refusal());
-
-    if ($decision !== null) {
-        foreach ($decision['marks'] as $field => $sentence) {
-            $liveform->mark_error($field, h($sentence));
-        }
-    }
-
-    return $decision;
-}
-
-/**
- * Writes what pg_addr_settings_check() decided: the account, the others
- * switched off when this one is on, then the test.
- *
- * @param array|null $decision
- * @param int        $user_id
- * @param liveform   $liveform
- */
-function pg_addr_settings_save($decision, $user_id, $liveform)
-{
-    if (!is_array($decision) || $decision['marks']) {
-        return;
-    }
-
-    if ($decision['action'] === 'save') {
+    if ($decision['changed']) {
         $options = ($decision['host'] !== '') ? array('host' => $decision['host']) : array();
 
-        if (!pg_connect_app_save(pg_addr_app_key($decision['provider']), '', $decision['key'], $options, $decision['enabled'], $user_id)) {
-            $liveform->add_warning(h(pg_addr_settings_refusal()));
-            return;
+        if (!pg_connect_app_save(pg_addr_app_key($provider), '', $decision['key'], $options, $app['enabled'], $user_id)) {
+            $liveform->add_error(h(pg_addr_settings_refusal()));
+            return false;
         }
 
-        if ($decision['enabled']) {
-            foreach (array_keys(pg_addr_providers()) as $provider) {
-                if ($provider !== $decision['provider']) {
-                    db("UPDATE connect_apps SET enabled = '0' WHERE provider = '" . e(pg_addr_app_key($provider)) . "'");
-                }
-            }
-        }
+        $written = true;
     }
 
     if ($decision['test'] === '') {
-        return;
+        return $written;
     }
 
-    $result = pg_addr_suggest($decision['test'], '', defined('SOFTWARE_LANGUAGE') ? (string) SOFTWARE_LANGUAGE : 'en');
+    $result = pg_addr_suggest($decision['test'], '', defined('SOFTWARE_LANGUAGE') ? (string) SOFTWARE_LANGUAGE : 'en', $provider);
 
     if (!$result['ok']) {
         $liveform->add_warning(lang(array('string' => 'The provider did not answer the test: {var:1}', 'vars' => array(h($result['error'] !== '' ? $result['error'] : lang('not set up'))))));
@@ -1013,6 +1202,24 @@ function pg_addr_settings_save($decision, $user_id, $liveform)
         }
 
         $liveform->add_notice(lang(array('string' => 'Suggestions for the test address: {var:1}', 'vars' => array(implode(' · ', $labels)))));
+    }
+
+    unset($_SESSION['software']['address_suggest']);
+
+    return $written;
+}
+
+/**
+ * Removes a provider's account, its key or server and its switch: while it
+ * was on, the forms give no suggestions until a provider is switched on
+ * again.
+ *
+ * @param string $provider
+ */
+function pg_addr_account_forget($provider)
+{
+    if ((pg_addr_provider_definition($provider) !== null) && function_exists('pg_connect_app_remove')) {
+        pg_connect_app_remove(pg_addr_app_key($provider));
     }
 
     unset($_SESSION['software']['address_suggest']);

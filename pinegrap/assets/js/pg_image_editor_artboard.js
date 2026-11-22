@@ -844,21 +844,24 @@
     };
 
     // The Import button, before Save, where layers can be added: not on the
-    // mini bar or a file being optimised.
-    Editor.topItems.push(function () {
+    // mini bar or a file being optimised. Named, so a part may put its own
+    // button beside it (the data layer's Data).
+    Editor.topImport = function () {
         var self = this;
 
         if (this.tools.list.indexOf('select') < 0) {
             return null;
         }
 
-        this.importBtn = el('button', { type: 'button', class: 'pgie-btn pgie-importbtn', title: t('import'), 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: function () {
+        this.importBtn = el('button', { type: 'button', class: 'pgie-btn pgie-importbtn', title: t('import'), 'aria-label': t('import'), 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: function () {
             self.toggleImportMenu();
         } }, [X.icon('import'), el('span', { class: 'pgie-vlabel', text: t('import') })]);
         this.importBox = el('div', { class: 'pgie-importwrap' }, [this.importBtn]);
 
         return this.importBox;
-    });
+    };
+
+    Editor.topItems.push(Editor.topImport);
 
     Editor.inits.push(function () {
         this.importMenu = null;
@@ -1165,6 +1168,33 @@
             // picture that cannot be read back) gets the general sentence.
             self.pictureLayering = false;
             self.showMessage((err && (err.name === 'Error') && err.message) || t('pictureLayerError'), true);
+        });
+    };
+
+    // What a send to a channel posts (pg_image_editor.js, sendTo()): a
+    // canvas as it is; a photo as a copy turned into a canvas the way
+    // Convert to a layer turns it (M.pictureLayer(): the picture as the
+    // server draws it, the bottom layer of a canvas of its size, the edits
+    // above), the open document left as it is. photo names that layer, so
+    // the channel refuses it with its own sentence when it is too large.
+    Editor.prototype.canvasCopy = function () {
+        var self = this, before;
+        var stem = String(this.opts.fileName || this.nameEl.textContent || '').replace(/\.[a-z0-9]{2,5}$/i, '');
+
+        if (this.doc.artboard) {
+            return Promise.resolve({ doc: this.doc, photo: '' });
+        }
+
+        if (!this.pictureLayerOn()) {
+            return Promise.reject(new Error(t('sendError')));
+        }
+
+        before = M.clone(this.doc);
+
+        return this.fetchBase(true, t('sendError')).then(function (img) {
+            var pic = layerPicture(img), doc = M.pictureLayer(before, pic.url, (stem ? stem + '-' : '') + t('boardBackground') + '.' + pic.ext);
+
+            return { doc: doc, photo: doc.layers[0].id };
         });
     };
 
@@ -1504,7 +1534,7 @@
             return null;
         }
 
-        this.langBtn = el('button', { type: 'button', class: 'pgie-btn pgie-langbtn', title: t('languages'), hidden: true, 'aria-haspopup': 'dialog', onclick: function () {
+        this.langBtn = el('button', { type: 'button', class: 'pgie-btn pgie-langbtn', title: t('languages'), 'aria-label': t('languages'), hidden: true, 'aria-haspopup': 'dialog', onclick: function () {
             self.openLanguages();
         } }, [X.icon('languages'), el('span', { class: 'pgie-vlabel', text: t('languages') })]);
 

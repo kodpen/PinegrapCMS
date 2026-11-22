@@ -175,7 +175,7 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-5">
-                                                                                        <div class="alert theme-primary py-3">' . lang('Uses the USPS Addresses API with the consumer key and secret entered above.') . '</div>
+                                                                                        <div class="alert theme-primary py-3">' . lang('Uses the USPS Addresses API with the consumer key and secret on USPS\'s page of Connections.') . '</div>
                                                                                         <div class="col-12 ">
                                                                                             <fieldset><legend class="form-label pg-field-label">'. lang('Enforcement') . '</legend>
                                                                                             <div class="form-field">
@@ -329,8 +329,8 @@ $pg_settings_cards[] = '
     </div>';
 
 // ── Address Autocomplete ──
-// The provider account is kept with the connected accounts' applications,
-// the key sealed (includes/fn/address_autocomplete.php).
+// The switch and the provider; each provider's key or server is typed on
+// its page of Connections (includes/fn/address_autocomplete.php).
 $pg_settings_cards[] = '
     <div id="pgset-address-autocomplete" class="pg-set-card">
         <div class="card">
@@ -381,23 +381,7 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-5">
-                                                                                        <div class="alert theme-primary py-3">' . lang('Requires Givex service') . '</div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ecommerce_givex_primary_hostname" class="form-label">' . lang('Primary Hostname') . '</label>
-                                                                                            <input type="text" name="ecommerce_givex_primary_hostname" id="ecommerce_givex_primary_hostname" class="form-control" value="' . h($ecommerce_givex_primary_hostname) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ecommerce_givex_secondary_hostname" class="form-label">' . lang('Secondary Hostname') . '</label>
-                                                                                            <input type="text" name="ecommerce_givex_secondary_hostname" id="ecommerce_givex_secondary_hostname" class="form-control" value="' . h($ecommerce_givex_secondary_hostname) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ecommerce_givex_user_id" class="form-label">' . lang('User ID') . '</label>
-                                                                                            <input type="text" name="ecommerce_givex_user_id" id="ecommerce_givex_user_id" class="form-control" value="' . h($ecommerce_givex_user_id) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ecommerce_givex_password" class="form-label">' . lang('Password') . '</label>
-                                                                                            <input type="password" name="ecommerce_givex_password" id="ecommerce_givex_password" class="form-control" autocomplete="off" value="' . h(pg_gateway_secret_shown($ecommerce_givex_password)) . '" maxlength="100"/>
-                                                                                        </div>
+                                                                                        <div class="alert theme-primary py-3">' . lang('Requires Givex service') . '</div>' . pg_payment_method_connection_html('givex', $ecommerce_method_connection_stored) . '
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -485,7 +469,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="ecommerce_reward_program_email_page_id">' . lang('Page') . '</label>
-                                                                                            ' . pg_picker_field('page', 'ecommerce_reward_program_email_page_id', $ecommerce_reward_program_email_page_id) . pg_picker_script() . '
+                                                                                            ' . pg_picker_field('page', 'ecommerce_reward_program_email_page_id', $ecommerce_reward_program_email_page_id, array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -697,20 +681,7 @@ $pg_settings_cards[] = '
                                                                                 <label class="" for="ecommerce_paypal_express_checkout_mode_live">'. lang('Live') . '</label>
                                                                             </div>
                                                                             </fieldset>
-                                                                        </div>
-
-                                                                        <div class="pg-f-lg">
-                                                                            <label class="form-label" for="ecommerce_paypal_express_checkout_api_username">'. lang('API Username') . '</label>
-                                                                            <input class="form-control" type="text" id="ecommerce_paypal_express_checkout_api_username" name="ecommerce_paypal_express_checkout_api_username" value="' . h($ecommerce_paypal_express_checkout_api_username) . '" size="40" maxlength="100" />
-                                                                        </div>
-                                                                        <div class="pg-f-lg">
-                                                                            <label class="form-label" for="ecommerce_paypal_express_checkout_api_password">'. lang('API Password') . '</label>
-                                                                            <input class="form-control" type="password" id="ecommerce_paypal_express_checkout_api_password" name="ecommerce_paypal_express_checkout_api_password" value="' . h($ecommerce_paypal_express_checkout_api_password) . '" size="40" maxlength="100" />
-                                                                        </div>
-                                                                        <div class="pg-f-lg">
-                                                                            <label class="form-label" for="ecommerce_paypal_express_checkout_api_signature">'. lang('API Signature') . '</label>
-                                                                            <input class="form-control" type="password" id="ecommerce_paypal_express_checkout_api_signature" name="ecommerce_paypal_express_checkout_api_signature" value="' . h(pg_gateway_secret_shown($ecommerce_paypal_express_checkout_api_signature)) . '" size="40" maxlength="100" />
-                                                                        </div>
+                                                                        </div>' . pg_payment_method_connection_html('paypal_express', $ecommerce_method_connection_stored) . '
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -748,7 +719,7 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label class="form-label" for="ecommerce_retrieve_order_next_page_id">'. lang('Reorder/Retrieve Order Next Page') . '</label>
-                                                            ' . pg_picker_field('page', 'ecommerce_retrieve_order_next_page_id', $ecommerce_retrieve_order_next_page_id) . pg_picker_script() . '
+                                                            ' . pg_picker_field('page', 'ecommerce_retrieve_order_next_page_id', $ecommerce_retrieve_order_next_page_id, array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label class="form-label" for="ecommerce_custom_product_field_1_label">'. lang(array('string'=>'Custom Product Field {var:1} Label','vars'=>array('#1') )) . '</label>
@@ -851,7 +822,7 @@ $pg_settings_cards[] = '
                                                             <label for="affiliate_email_address" class="form-label">' . lang('Affiliate Program E-mail Address') . '</label>
                                                             <input type="text" name="affiliate_email_address" id="affiliate_email_address" class="form-control" value="' . h($affiliate_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
                                                         </div>
-                                                        <div class="pg-f-md">
+                                                        <div class="pg-f-lg">
                                                             <label class="form-label" for="affiliate_group_offer_id">'. lang('Group Offer') . '</label>
                                                             <select class="form-control" id="affiliate_group_offer_id" name="affiliate_group_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Offer')) )) . '-</option>' . select_offer($affiliate_group_offer_id) . '</select>
                                                         </div>
@@ -894,7 +865,7 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . lang('A customer with an order shares their own link; when a friend\'s first order is completed, the customer earns store credit. An approved affiliate keeps the commission programme instead. Off, nothing changes.') . '</div>
                                             </div>
                                         </div>
-                                        <div class="pg-f-md">
+                                        <div class="pg-f-lg">
                                             <label class="form-label" for="referral_offer_id">' . lang('Offer for the friend') . '</label>
                                             <select class="form-control" id="referral_offer_id" name="referral_offer_id"><option value="">-' . lang('None') . '-</option>' . select_offer($referral_settings['offer_id']) . '</select>
                                             <div class="form-text">' . lang('Put in the friend\'s cart when they arrive by a referral link, while the offer runs.') . '</div>

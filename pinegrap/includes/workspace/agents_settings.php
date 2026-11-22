@@ -699,9 +699,11 @@ function ws_agents_settings_summary($agent)
  * @param array  $counts   ws_agent_request_counts() of every agent
  * @param int    $now
  * @param string $warnings HTML: the door's error and the double door
+ * @param bool   $anchor   false for the copy in the drawer of every agent,
+ *                         whose id stays the pane row's
  * @return string HTML
  */
-function ws_agents_settings_row_html($agent, $counts, $now, $warnings = '')
+function ws_agents_settings_row_html($agent, $counts, $now, $warnings = '', $anchor = true)
 {
     $drawer = 'pgset-ws-agent-' . (int) $agent['id'];
     $state = ws_agents_settings_state($agent, $counts, $now);
@@ -709,7 +711,7 @@ function ws_agents_settings_row_html($agent, $counts, $now, $warnings = '')
     $summary = ws_agents_settings_summary($agent);
 
     return '
-            <div class="ws-agset-row" id="pgset-ws-agent-row-' . (int) $agent['id'] . '">
+            <div class="ws-agset-row"' . ($anchor ? ' id="pgset-ws-agent-row-' . (int) $agent['id'] . '"' : '') . '>
                 ' . ws_agents_settings_face_html($agent) . '
                 <div class="ws-agset-main">
                     <div class="ws-agset-name">
@@ -791,10 +793,14 @@ function ws_agents_settings_facts_html($agent, $counts, $now)
  * @param string      $self_url
  * @param array       $viewer
  * @param string|null $form
+ * @param string|null $all  set to every agent's row for the drawer "Show
+ *                          all N" opens, '' while all fit
  * @return string
  */
-function ws_agents_settings_card($self_url, $viewer, $form = null)
+function ws_agents_settings_card($self_url, $viewer, $form = null, &$all = null)
 {
+    $all = '';
+
     if (!ws_agents_ready()) {
         return '';
     }
@@ -808,6 +814,11 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
     // The dialog's rows tell each agent's state as the channels do (PF2).
     $requests = ($form !== null) ? ws_agent_request_counts($agents, $now) : array();
     $intro = ws_assistants_help_html('ws-agents');
+    // The dialog's rows, their copies for the drawer of every agent, and
+    // whether each needs something.
+    $rows = array();
+    $copies = array();
+    $asks = array();
 
     foreach ($agents as $agent) {
         $door_error = ws_agent_door_error_shown($agent);
@@ -815,7 +826,10 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
         $error .= ws_agent_door_double($agent) ? '<div class="small fg-danger" data-ws-agent-door-double>' . h(ws_agent_door_double_words()) . '</div>' : '';
 
         if ($form !== null) {
-            $list .= ws_agents_settings_row_html($agent, $requests, $now, $error);
+            $key = (int) $agent['id'];
+            $rows[$key] = ws_agents_settings_row_html($agent, $requests, $now, $error);
+            $copies[$key] = ws_agents_settings_row_html($agent, $requests, $now, $error, false);
+            $asks[$key] = ws_assistants_list_asks(ws_agents_settings_state($agent, $requests, $now)['tone']) || ($error !== '');
             continue;
         }
 
@@ -825,6 +839,18 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
                 </summary>
                 ' . $error . (function_exists('ws_agent_activity_block') ? ws_agent_activity_block($self_url, $viewer, $agent, $counts) : '') . ws_agents_settings_form($self_url, $agent, $apps, $admin) . '
             </details>';
+    }
+
+    // Five agents in the pane, the ones that need something first; every
+    // agent in the drawer "Show all N" opens.
+    $shown = ws_assistants_list_cut($asks);
+
+    foreach ($shown as $key) {
+        $list .= $rows[$key];
+    }
+
+    if (count($shown) < count($rows)) {
+        $all = '<div class="pg-card-inner ws-agset-list">' . implode('', $copies) . '</div>';
     }
 
     if ($list === '') {
@@ -839,11 +865,11 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
                 <span class="pg-title-section ws-grow">' . h(lang('Workspace agents')) . '</span>
-                ' . ($admin ? '<button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-agent-0" aria-controls="pgset-ws-agent-0"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add an agent')) . '</button>' : '') . '
+                ' . ($admin ? '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#pgset-ws-agent-0" aria-controls="pgset-ws-agent-0"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add an agent')) . '</button>' : '') . '
             </div>
             <div class="card-body">
                 ' . $intro . '
-                ' . (empty($agents) ? $list : '<div class="pg-card-inner ws-agset-list">' . $list . '</div>') . '
+                ' . (empty($agents) ? $list : '<div class="pg-card-inner ws-agset-list">' . $list . '</div>' . ws_assistants_show_all_html('ws-agents', count($rows))) . '
             </div>
         </div>
     </div>' . ws_agents_settings_script();

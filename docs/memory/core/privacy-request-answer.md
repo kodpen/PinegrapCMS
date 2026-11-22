@@ -12,7 +12,7 @@ module: privacy_requests
 ## What does each step do?
 - Check who asks: the "I checked who asks" box (`verified_at`, moved here from the Request tab) and a quiet Save; the screen comes back on the Answer tab (`tab` field).
 - Gather runs only once checked, when the drawer is drawn (`pg_privacy_request_gather()`): an erasure runs the erase dry run (`pg_privacy_erase(..., false)`), listing what is erased and what the law keeps with personal fields replaced; every other kind the export's counts by section, and a link to Personal data export. Nothing is written and no audit line.
-- Write the answer: a textarea filled from `pg_privacy_request_answer_text()` (greeting, the kind's paragraphs with the gathered lists, "Kind regards," and the site's name); staff changes it. The e-mail carries no file (`email()` takes none): the information answer lists the records instead.
+- Write the answer: a textarea filled from `pg_privacy_request_answer_text()` (greeting, the kind's paragraphs with the gathered lists, "Kind regards," and the site's name); staff changes it. The e-mail carries no file: the information answer lists the records and, under the text, a signed download link valid 7 days (`privacy-request-export-link.md`).
 - Send: who it goes to and what follows. The button is the drawer's foot.
 
 ## How does the foot change?

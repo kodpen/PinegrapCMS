@@ -22,10 +22,10 @@ module: carrier_labels
 - Reset Encryption Key re-seals `connect_apps` (`platform/encryption-key-reseal-registry.md`).
 
 ## What does the Shipping card do?
-- `pg_label_settings_rows()` after FedEx in `includes/settings/commerce.php`: nothing while no driver exists; per driver a switch, its fields (secrets never drawn back, a `__present` marker) and "Save and test the connection" (`label_test` = key) when it defines `test`.
-- `commerce.save.php`: `pg_label_settings_check()` before the card's UPDATE (marks refuse it), `pg_label_settings_save()` after, which then runs the test with the stored settings and adds "accepted" / "refused the connection" notices, and puts the tracking job in the dispatch list for a service on that can track.
-- `pg_label_settings_decide()` (pure): only posted drivers; empty secret keeps; select outside options keeps; required only while on; no row while off with defaults.
+- `pg_label_settings_rows()` after FedEx in `includes/settings/commerce.php`: nothing while no driver exists; per driver a switch, its connection block, the fields that are no keys (a `__present` marker) and "Save and test the connection" (`label_test` = key) when it defines `test`. Keys: `ui/connections-shipping-services-page.md`.
+- `commerce.save.php`: `pg_label_settings_check()` before the card's UPDATE (marks refuse it), `pg_label_settings_save()` after: the test with the stored settings ("accepted" / "refused the connection"), the tracking job listed for a service on that can track.
+- `pg_label_settings_decide()` (pure): only posted drivers; empty secret keeps; select outside options keeps; required only while on; no row while off with defaults; a stored field not given is kept.
 
 ## How was it verified?
-- `tests/carrier_labels_test.php` with a test driver in the file (contract, answers, masking, row options, decide). Not opened on a sandbox; since #3096 the card draws Geliver.
+- `tests/carrier_labels_test.php` with a test driver in the file (contract, answers, masking, row options, decide). Not opened on a sandbox.
 - Each `tests/carrier_label_<key>_test.php` calls `pg_label_load('<key>')` at its top: a test run alone found no `pg_label_<key>_transport()` (#4356).

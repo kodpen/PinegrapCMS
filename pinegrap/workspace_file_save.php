@@ -22,10 +22,12 @@
  * again:
  *
  *   workspace_file_save.php?channel=<id>   a new canvas posted in a channel
- *     { token, doc, picture, name? } -> { status, mode: 'new', name, url, message_id }
+ *     { token, doc, picture, name?, photo? } -> { status, mode: 'new', name, url, message_id }
  *     &table=<id> (the Data screen's "Show on a canvas"): only into the
  *     table's own channel, by someone who reads the table and may post
  *     there; a canvas holding a data layer of it binds it for reading
+ *     photo: the layer a photo of Files became when sent as a canvas; its
+ *     picture over the Workspace file size is refused before the post
  *   workspace_file_save.php?note=<id>      a new canvas kept for a note
  *     { token, doc, picture, name? } -> { status, mode: 'new', id, name, url }
  *   workspace_file_save.php?note=<id>&file=<stored name>   a canvas of the
@@ -192,6 +194,14 @@ if (isset($_GET['channel'])) {
 
     if ($picture['error'] !== '') {
         ws_file_save_refuse($picture['error']);
+    }
+
+    // A photo sent as a canvas: its picture must be kept beside it, or the
+    // canvas would arrive flat; refused before anything is posted.
+    $photo = ws_canvas_photo_refusal($request['pictures'] ?? null, (string) ($request['photo'] ?? ''), ws_upload_max_bytes());
+
+    if ($photo !== '') {
+        ws_file_save_refuse($photo);
     }
 
     $result = ws_message_send_file_bytes($viewer, $channel, '', ws_canvas_file_name($request['name'] ?? ''), $picture['data']);

@@ -666,6 +666,66 @@ function pg_connections_screen_gateway_pages()
 }
 
 /**
+ * The payment drivers whose keys are typed on their own page
+ * (pg_payment_driver_pages()). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_driver_pages()
+{
+    return array('stripe', 'paypal', 'paytr');
+}
+
+/**
+ * Every page whose keys came from Site Settings › Ecommerce: the card
+ * gateways, the payment drivers, Givex (pg_payment_method_connections();
+ * PayPal Express Checkout's keys are on PayPal's page), the carrier label
+ * services, UPS, FedEx and USPS, the address autocomplete providers, and
+ * Google Merchant Center (its account, from the Product Feeds card). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_commerce_pages()
+{
+    return array_merge(pg_connections_screen_gateway_pages(), pg_connections_screen_driver_pages(), array('givex'),
+        pg_connections_screen_label_pages(), pg_connections_screen_carrier_pages(),
+        pg_connections_screen_address_pages(), array('merchant_center'));
+}
+
+/**
+ * The address autocomplete providers whose key or server is typed on their
+ * own page (the keys of pg_addr_providers()). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_address_pages()
+{
+    return array('google_places', 'mapbox', 'photon');
+}
+
+/**
+ * The carrier label services whose keys are typed on their own page (the
+ * shipped drivers of pg_label_builtin_drivers()). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_label_pages()
+{
+    return array('geliver', 'basitkargo', 'shippo', 'sendcloud', 'aras', 'kargonomi');
+}
+
+/**
+ * The carriers whose API application is typed on their own page (the keys
+ * of pg_carrier_api_definitions()). Pure.
+ *
+ * @return array page keys
+ */
+function pg_connections_screen_carrier_pages()
+{
+    return array('ups', 'fedex', 'usps');
+}
+
+/**
  * The cards of a service's page, in their order: "status", on Google's
  * and Microsoft's pages "mailboxes" (Connect an account for mailboxes, for
  * a manager who may open the Mailboxes settings, drawn inside Status), on
@@ -679,7 +739,9 @@ function pg_connections_screen_gateway_pages()
  * Translation; the WhatsApp, İYS and SMS providers' accounts, for who may
  * open Communication; Sign in with Apple's application and the CAPTCHA
  * providers' keys, for who may open Accounts and sign-in; a card
- * gateway's keys, for who may open Ecommerce), "uses", then
+ * gateway's, a payment driver's, a shipping service's or an address
+ * provider's keys and Merchant Center's account, for who may open
+ * Ecommerce), "uses", then
  * "repositories" on
  * GitHub's page for a holder of the Workspace settings right. Each card
  * keeps the gate of the place it came from; a card the viewer may not open
@@ -693,7 +755,8 @@ function pg_connections_screen_gateway_pages()
  *                    sign-in application, Apple's application),
  *                    'security' (bool: may open Accounts and sign-in, the
  *                    CAPTCHA providers' keys), 'commerce' (bool: may
- *                    open Ecommerce, a card gateway's keys), 'seo' (bool: may
+ *                    open Ecommerce, a payment or shipping service's
+ *                    keys), 'seo' (bool: may
  *                    open the SEO settings, IndexNow's key), 'privacy' (bool:
  *                    may open Visitors and privacy, Google Analytics' tag
  *                    and figures), 'languages' (bool: may open Languages
@@ -733,7 +796,7 @@ function pg_connections_screen_page_cards($id, $can)
         $cards[] = 'details';
     } elseif (in_array($id, array('turnstile', 'hcaptcha'), true) && !empty($can['security'])) {
         $cards[] = 'details';
-    } elseif (in_array($id, pg_connections_screen_gateway_pages(), true) && !empty($can['commerce'])) {
+    } elseif (in_array($id, pg_connections_screen_commerce_pages(), true) && !empty($can['commerce'])) {
         $cards[] = 'details';
     }
 

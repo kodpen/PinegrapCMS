@@ -6,7 +6,7 @@ module: ad_conversions_tiktok
 
 ## Where were these read?
 - 2026-11-20 from business-api.tiktok.com: `portal/docs/events-api-2.0/v1.3`, `report-app-web-offline-or-crm-events/v1.3`, `event-deduplication/v1.3`, `events-api-v1-web-set-up-external-id/v1.3`; ads.tiktok.com help: `standard-events-parameters`, the Tealium and Hightouch Events API guides (test code).
-- The portal draws its pages by script; they were read through search excerpts of those pages, not as whole pages. Read them again before changing the sender (`plans/ad-conversions.md`: never from memory).
+- The portal draws its pages by script; they were read through search excerpts of those pages, not as whole pages. Read them again before changing the sender (`ad-conversions.md`: never from memory).
 
 ## What is the request?
 - `POST https://business-api.tiktok.com/open_api/v1.3/event/track/` (`PG_AD_CONVERSION_TIKTOK_URL`), the recommended endpoint for web, app, offline and CRM events. Events API 1.0 (`pixel/track`) is the old one.
@@ -28,3 +28,4 @@ module: ad_conversions_tiktok
 - The return codes appendix: 40100 (too many requests) and codes of 50000 and up (TikTok's fault) are read as "try again" from TikTok's general API codes, not from the page; any other code is given up.
 - How old an event may be: no limit was found, so no age refusal is made.
 - No pixel to try against: the test event's acceptance was not seen.
+- Whether an event with an empty `user` is taken: read 2026-11-21, ads.tiktok.com `how-to-set-up-matching-events-with-events-api` and `standard-events-parameters` present the user keys as improving the match, not as required; no TikTok page found asks for one. So TikTok keeps "Send events without the person" (#10993 checked it).

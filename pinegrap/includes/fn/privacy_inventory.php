@@ -81,14 +81,20 @@ function pg_privacy_inventory_grounds()
 
 /**
  * How long a line's data is kept: until a person is erased, the log
- * retention of the Audit Trail card, or a retention rule of the Privacy
- * centre by its kind. Pure.
+ * retention of the Audit Trail card, a log's own period, or a retention
+ * rule of the Privacy centre by its kind. Pure.
  *
  * @return array key => label
  */
 function pg_privacy_inventory_retentions()
 {
     return array(
+        // The periods of the logs holding IP addresses, by the setting
+        // that sets each.
+        'visitor_records'  => 'How long we keep data: visitor records',
+        'visitor_ips'      => 'How long we keep data: IP addresses',
+        'firewall_log'     => 'Firewall and HTTPS: the firewall log\'s period',
+        'api_log'          => 'Integrations: the API log\'s period',
         'until_erased'     => 'Until erased',
         'log_retention'    => 'The audit trail\'s retention',
         'passive_contact'  => 'Rule: passive contacts',
@@ -97,6 +103,8 @@ function pg_privacy_inventory_retentions()
         'orders'           => 'Rule: orders',
         'closed_requests'  => 'Rule: closed requests',
         'left_volunteers'  => 'Rule: volunteers who left',
+        'queue_keep'       => 'The queue place\'s keep period',
+        'lead_journey'     => 'The journey\'s keep period (13 months)',
     );
 }
 
@@ -177,8 +185,20 @@ function pg_privacy_inventory()
             'purpose' => 'Bookings', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => array('email', 'text')),
         'feedback_responses' => array('categories' => array('contact', 'messages'), 'subjects' => array('customer'),
             'purpose' => 'Satisfaction survey answers', 'ground' => 'legitimate_interest', 'retention' => 'until_erased', 'person' => $contact),
+        'waiting_tickets' => array('categories' => array('identity', 'contact'), 'subjects' => array('customer', 'visitor'),
+            'purpose' => 'Walk-in queue numbers and who took them', 'ground' => 'legitimate_interest', 'retention' => 'queue_keep', 'person' => $contact),
         'course_progress' => array('categories' => array('identity'), 'subjects' => array('customer'),
             'purpose' => 'Members\' course progress', 'ground' => 'contract', 'retention' => 'until_erased', 'person' => $user),
+        // The visitor journey (lead_journey_store.php), only with the cookie
+        // notice's marketing yes; trimmed after the keep period.
+        'lead_visits' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor', 'customer'),
+            'purpose' => 'Visits of a browser that allowed marketing cookies, tied to its contact', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
+        'contact_journey' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor', 'customer'),
+            'purpose' => 'A contact\'s journey: newsletter, campaign e-mails, downloads', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
+        'contact_scores' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor', 'customer'),
+            'purpose' => 'A contact\'s interest score from their visits', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
+        'lead_browsers' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor', 'customer'),
+            'purpose' => 'Browsers that allowed marketing cookies and the contact each is tied to', 'ground' => 'consent', 'retention' => 'lead_journey', 'person' => $contact),
 
         // Volunteering.
         'volunteers' => array('categories' => array('identity', 'contact'), 'subjects' => array('volunteer'),
@@ -264,6 +284,15 @@ function pg_privacy_inventory()
             'purpose' => 'Proof of cookie and marketing consents', 'ground' => 'legal_obligation', 'retention' => 'log_retention', 'person' => array('person_token', 'text')),
         'audit_log' => array('categories' => array('identity', 'ip_cookie', 'security'), 'subjects' => array('staff', 'customer'),
             'purpose' => 'The audit trail of changes', 'ground' => 'legal_obligation', 'retention' => 'log_retention'),
+
+        // Visitor records and request logs: an IP address with no person
+        // the erasure finds, removed by their own periods.
+        'visitors' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor'),
+            'purpose' => 'Visits of the site\'s pages, for the visitor reports', 'ground' => 'legitimate_interest', 'retention' => array('visitor_records', 'visitor_ips')),
+        'waf_log' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor'),
+            'purpose' => 'Requests the firewall stopped or noted', 'ground' => 'legitimate_interest', 'retention' => 'firewall_log'),
+        'api_request_log' => array('categories' => array('ip_cookie'), 'subjects' => array('visitor'),
+            'purpose' => 'Requests to the site\'s API', 'ground' => 'legitimate_interest', 'retention' => 'api_log'),
     );
 }
 

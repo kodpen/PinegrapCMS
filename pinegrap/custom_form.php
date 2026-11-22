@@ -198,6 +198,15 @@ if (!$enabled) {
     output_error(lang('The form is disabled.'));
 }
 
+// An application programme's period (includes/fn/application_programs.php):
+// before it opens and after it closes, a new entry or draft is refused with
+// the programme's own text. A form with no open programme is not touched.
+$application_refusal = pg_application_submit_refusal((int) $_POST['page_id']);
+
+if ($application_refusal !== '') {
+    output_error(h($application_refusal));
+}
+
 include_once('liveform.class.php');
 $liveform = new liveform($_POST['page_id']);
 
@@ -1013,6 +1022,13 @@ if ($liveform->check_form_errors() == false) {
         pg_signature_store_pending($form_id, $_POST['page_id'] ?? 0, $signature_pending);
     }
 
+    // A completed entry of an open application programme: its entry row,
+    // with its eligibility checked now that every answer is stored. It never
+    // refuses the entry.
+    if ($complete == 1) {
+        pg_application_entry_record((int) $_POST['page_id'], (int) $form_id);
+    }
+
     // If pretty URLs are enabled, then update address name.
     if ($pretty_urls == true) {
         update_submitted_form_address_name($form_id);
@@ -1738,13 +1754,19 @@ if ($liveform->check_form_errors() == false) {
     // from /forms/{id}/submissions with the permission that takes.
     require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
 
-    api_webhook_enqueue('form.submitted', array(
+    $form_submitted_event = array(
         'id'             => (int) $form_id,
         'form_id'        => (int) $_POST['page_id'],
         'form_name'      => $form_name,
         'reference_code' => $reference_code,
         'contact_id'     => ((int) $contact_id > 0) ? (int) $contact_id : null
-    ));
+    );
+
+    api_webhook_enqueue('form.submitted', $form_submitted_event);
+
+    // The satisfaction surveys that follow this form (pg_announce() tells
+    // them elsewhere; this event goes to the queue directly).
+    pg_feedback_heard('form.submitted', $form_submitted_event);
 
     // A form the shop picked on an ad service's page is a Lead there, sent
     // only with the visitor's consent (includes/fn/ad_conversions.php).

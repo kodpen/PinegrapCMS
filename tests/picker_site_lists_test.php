@@ -90,7 +90,9 @@ function test_picker_site_lists_workspace_paperclip()
 	$attach = substr($workspace, $start, strpos($workspace, 'uploadFiles: function', $start) - $start);
 
 	pg_assert_contains("window.pgPicker.open({ kind: 'channel_file'", $attach, 'the one picker under the paperclip');
-	pg_assert_true(strpos($attach, "api('ws_library_attach'") > strpos($attach, 'pgPicker.open('), 'the copy is posted once a file is picked');
+	pg_assert_true(strpos($attach, 'waitingFiles().push({ library: file.id') > strpos($attach, 'pgPicker.open('), 'a picked file waits in the box for Send');
+	$upload = substr($workspace, strpos($workspace, 'uploadFiles: function'), 6000);
+	pg_assert_contains("api('ws_library_attach', { channel_id: channel.id, file_id: file.library, body: body })", $upload, 'Send posts the copy');
 	pg_assert_false(strpos($workspace, 'function libraryPicker(') !== false, 'the drawer is gone');
 	pg_assert_false(strpos($workspace, "'ws_library_browse'") !== false);
 	pg_assert_contains('$lightbox .= pg_picker_script();', $screen, 'a channel prints the picker');

@@ -569,6 +569,79 @@ if ($_POST) {
 
 	}
 
+	// An address autocomplete provider's key or server, saved, tried or
+	// removed on its page under the gate of the Address Autocomplete card it
+	// came from. The switch stays the card's: a save keeps it as it was.
+	if (in_array($action, array('addr_save', 'addr_remove'), true) && connections_commerce_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+		$addr_provider = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$addr_definition = in_array($addr_provider, pg_connections_screen_address_pages(), true) ? pg_addr_provider_definition($addr_provider) : null;
+
+		if ($addr_definition !== null) {
+
+			if ($action === 'addr_remove') {
+
+				pg_addr_account_forget($addr_provider);
+
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h($addr_definition['label']))));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $addr_definition['label'])), $_SESSION['sessionusername']);
+
+			} else {
+
+				$addr_app = pg_addr_app($addr_provider);
+				$addr_decision = pg_addr_page_decide($addr_provider, $_POST, $addr_app, pg_addr_settings_refusal());
+
+				foreach ($addr_decision['marks'] as $addr_field => $addr_mark) {
+					$liveform->mark_error($addr_field, h($addr_mark));
+				}
+
+				if (!$liveform->check_form_errors() && pg_addr_page_save($addr_provider, $addr_decision, $addr_app, (int) $user['id'], $liveform)) {
+					$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => h($addr_definition['label']))));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $addr_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			}
+
+		}
+
+	}
+
+	// Google Merchant Center: the account, its country, the feed's data
+	// source and the product issues, on its page under the gate of the
+	// Product Feeds card they came from. The messages carry Google's own
+	// words, so they are escaped whole.
+	if (($action === 'merchant_save') && connections_commerce_may_manage($user)) {
+
+		$merchant_post = function ($name) {
+			return (isset($_POST[$name]) && is_string($_POST[$name])) ? $_POST[$name] : '';
+		};
+
+		$merchant_messages = pg_merchant_save_from_screen(array(
+			'account'  => $merchant_post('merchant_account'),
+			'country'  => $merchant_post('merchant_center_country'),
+			'register' => ($merchant_post('merchant_register') === '1'),
+			'check'    => ($merchant_post('merchant_check') === '1'),
+			'unlink'   => ($merchant_post('merchant_unlink') === '1'),
+		));
+
+		foreach ($merchant_messages as $merchant_message) {
+			if ($merchant_message[0] === 'error') {
+				$liveform->add_error(h($merchant_message[1]));
+			} else {
+				$liveform->add_notice(h($merchant_message[1]));
+			}
+		}
+
+		if (!$merchant_messages) {
+			$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => 'Google Merchant Center')));
+		}
+
+		log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Google Merchant Center')), $_SESSION['sessionusername']);
+
+	}
+
 	// The Sign in with Google application, saved on Google's page under the
 	// gate of the sign-in settings it came from. The switch that shows the
 	// button stays there.
@@ -699,6 +772,240 @@ if ($_POST) {
 		}
 
 		header('Location: ' . $screen_url . (($gateway_definition !== null) ? '?service=' . $gateway_id : ''));
+		exit();
+
+	}
+
+	// Stripe's, PayPal Checkout's or PayTR's keys, saved or removed on its
+	// page under the gate of the Payment Methods card they came from. A
+	// refused box writes nothing; the driver's Mode and other choices, and
+	// whether it takes payments, are still set on the card.
+	if (in_array($action, array('driver_save', 'driver_remove'), true)) {
+
+		$driver_id = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$driver_definition = pg_payment_driver_has_page($driver_id) ? pg_payment_driver($driver_id) : null;
+
+		if (($driver_definition !== null) && connections_commerce_may_manage($user)) {
+
+			$driver_fields = pg_payment_fields($driver_id);
+			$driver_settings = pg_payment_settings($driver_id);
+
+			if ($action === 'driver_remove') {
+
+				if (pg_payment_settings_forget_keys($driver_id, $user['id'])) {
+					$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $driver_definition['label'])));
+					log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $driver_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			} else {
+
+				// Its keys are required while it takes payments.
+				$driver_active = ($driver_definition['kind'] === 'card')
+					? (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY === $driver_definition['gateway']))
+					: $driver_settings['enabled'];
+				$driver_decision = pg_payment_settings_decide($driver_definition, pg_payment_fields_part($driver_fields, 'keys'),
+					pg_payment_driver_page_post($driver_definition, $driver_fields, $_POST, $driver_settings), $driver_settings, $driver_active);
+
+				foreach ($driver_decision['marks'] as $driver_input => $driver_mark) {
+					$liveform->mark_error($driver_input, $driver_mark);
+				}
+
+				if (($driver_decision['secrets'] !== array()) && !pg_connect_can_seal()) {
+					$liveform->mark_error(pg_payment_input_name($driver_id, (string) key($driver_decision['secrets'])), lang('This site has no encryption key, so it cannot keep the keys of a payment service.'));
+				}
+
+				if (!$liveform->check_form_errors() && $driver_decision['changed']) {
+					pg_payment_settings_store($driver_id, $driver_decision['values'], $driver_decision['secrets'], $driver_decision['enabled'], $user['id']);
+					$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $driver_definition['label'])));
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $driver_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($driver_definition !== null) ? '?service=' . $driver_id : ''));
+		exit();
+
+	}
+
+	// PayPal Express Checkout's keys (on PayPal's page) or Givex's, saved or
+	// removed under the gate of the card they came from. A refused box
+	// writes nothing; the switch, Transaction Type and Mode stay on the card.
+	if (in_array($action, array('method_save', 'method_remove'), true)) {
+
+		$method_page = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$method_id = pg_payment_method_connection_for_page($method_page);
+		$method_definitions = pg_payment_method_connections();
+		$method_definition = ($method_id !== '') ? $method_definitions[$method_id] : null;
+
+		if (($method_definition !== null) && connections_commerce_may_manage($user)) {
+
+			if ($action === 'method_remove') {
+
+				$method_values = array_fill_keys(array_keys($method_definition['fields']), '');
+
+			} else {
+
+				$method_decision = pg_payment_method_keys_decide($method_id, $method_definition, $_POST, pg_payment_method_connection_stored(), defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
+
+				foreach ($method_decision['marks'] as $method_field => $method_mark) {
+					$liveform->mark_error($method_field, $method_mark);
+				}
+
+				$method_values = $method_decision['values'];
+
+			}
+
+			if ($method_values) {
+
+				$method_sets = array();
+
+				foreach ($method_values as $method_column => $method_value) {
+					$method_sets[] = $method_column . " = '" . escape($method_value) . "'";
+				}
+
+				db("UPDATE config SET " . implode(', ', $method_sets) . ", last_modified_user_id = '" . (int) $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()");
+
+			}
+
+			if ($action === 'method_remove') {
+				$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $method_definition['label'])));
+				log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $method_definition['label'])), $_SESSION['sessionusername']);
+			} elseif (!$liveform->check_form_errors() && $method_values) {
+				$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $method_definition['label'])));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $method_definition['label'])), $_SESSION['sessionusername']);
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($method_definition !== null) ? '?service=' . $method_definition['page'] : ''));
+		exit();
+
+	}
+
+	// A carrier label service's keys, saved, tried or removed on its page
+	// under the gate of the Shipping card they came from. A refused box
+	// writes nothing; the switch and the service's other choices are still
+	// set on the card.
+	if (in_array($action, array('label_save', 'label_remove'), true)) {
+
+		$label_id = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$label_definition = in_array($label_id, pg_connections_screen_label_pages(), true) ? pg_label_driver($label_id) : null;
+
+		if (($label_definition !== null) && connections_commerce_may_manage($user)) {
+
+			require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_webhook.php');
+
+			if ($action === 'label_remove') {
+
+				// The status webhook goes first, while the keys can still
+				// reach the service.
+				pg_carrier_webhook_sync($label_id, array('enabled' => false, 'secrets' => array()), $liveform);
+
+				if (pg_label_forget_keys($label_id, $user['id'])) {
+					$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $label_definition['label'])));
+					log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $label_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			} else {
+
+				$label_fields = pg_label_fields($label_id);
+				$label_settings = pg_label_settings($label_id);
+				$label_decision = pg_label_settings_decide($label_id, pg_label_fields_part($label_fields, 'keys'),
+					pg_label_page_post($label_id, $label_fields, $_POST, $label_settings), $label_settings);
+
+				foreach ($label_decision['marks'] as $label_input => $label_mark) {
+					$liveform->mark_error($label_input, $label_mark);
+				}
+
+				if ($label_decision['changed'] && !pg_connect_schema_ready()) {
+					$liveform->add_error(lang('The database has not been upgraded yet. Run the software update first.'));
+				} elseif (($label_decision['secrets'] !== array()) && !pg_connect_can_seal()) {
+					$liveform->mark_error(pg_label_input_name($label_id, (string) key($label_decision['secrets'])), lang('This site has no encryption key, so it cannot keep the keys of a carrier label service.'));
+				}
+
+				if (!$liveform->check_form_errors()) {
+
+					// Stored, then the connection test when Save and try was
+					// pressed, and the status webhook for newly typed keys.
+					pg_label_settings_save(array($label_id => $label_decision), (int) $user['id'], $liveform);
+
+					if ($label_decision['changed']) {
+						$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $label_definition['label'])));
+						log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $label_definition['label'])), $_SESSION['sessionusername']);
+					}
+
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($label_definition !== null) ? '?service=' . $label_id : ''));
+		exit();
+
+	}
+
+	// UPS's, FedEx's or USPS's application, saved, tried or removed on its
+	// page under the gate of the Shipping card it came from. The environment,
+	// the switches and the account numbers are still set on the card.
+	if (in_array($action, array('carrier_save', 'carrier_remove'), true)) {
+
+		$carrier_id = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$carrier_definition = in_array($carrier_id, pg_connections_screen_carrier_pages(), true) ? pg_carrier_api_definition($carrier_id) : null;
+
+		if (($carrier_definition !== null) && connections_commerce_may_manage($user)) {
+
+			if ($action === 'carrier_remove') {
+
+				if (pg_carrier_api_forget($carrier_id, $user['id'])) {
+					$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $carrier_definition['label'])));
+					log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $carrier_definition['label'])), $_SESSION['sessionusername']);
+				}
+
+			} else {
+
+				$carrier_app = pg_carrier_api_app($carrier_id);
+				$carrier_decision = pg_carrier_api_keys_decide($carrier_id, $_POST, $carrier_app, pg_carrier_api_switched_on($carrier_id));
+
+				foreach ($carrier_decision['marks'] as $carrier_input => $carrier_mark) {
+					$liveform->mark_error($carrier_input, $carrier_mark);
+				}
+
+				if (!$liveform->check_form_errors() && $carrier_decision['changed']) {
+
+					if (pg_carrier_api_save($carrier_id, $carrier_decision['client_id'], $carrier_decision['client_secret'], $carrier_app['environment'], (int) $user['id'])) {
+						$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $carrier_definition['label'])));
+						log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $carrier_definition['label'])), $_SESSION['sessionusername']);
+					} else {
+						$liveform->add_error(lang(array(
+							'string' => 'The {var:1} credentials were not saved: {var:2}',
+							'vars'   => array($carrier_definition['label'], !pg_connect_schema_ready()
+								? lang('The database has not been upgraded yet. Run the software update first.')
+								: lang('This site has no encryption key, so it cannot keep the client secret of a carrier.')))));
+					}
+
+				}
+
+				// Save and try: a token is asked for with the stored keys.
+				if (!$liveform->check_form_errors() && !empty($_POST['submit_try'])) {
+
+					$carrier_token = pg_carrier_api_token($carrier_id, true);
+
+					if ($carrier_token['token'] !== '') {
+						$liveform->add_notice(lang(array('string' => '{var:1} accepted the credentials.', 'vars' => array($carrier_definition['label']))));
+					} else {
+						$liveform->add_error(lang(array('string' => '{var:1} refused the connection: {var:2}', 'vars' => array($carrier_definition['label'], h($carrier_token['error'])))));
+					}
+
+				}
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . (($carrier_definition !== null) ? '?service=' . $carrier_id : ''));
 		exit();
 
 	}
@@ -1207,7 +1514,7 @@ $list_rows = pg_connections_screen_fold_mail($rows, array(
 	'kind'   => 'settings',
 	'name'   => lang('E-mail sending'),
 	'group'  => 'email',
-	'line'   => lang('Site Settings') . ' › ' . lang('E-mail sending'),
+	'line'   => lang('Site Settings') . ' › ' . lang('E-mail') . ' › ' . lang('E-mail sending'),
 	'uses'   => '',
 	'url'    => pg_settings_link('mail_sending'),
 	'search' => array(lang('E-mail sending'), 'E-mail sending', $group_labels['email']),
@@ -1674,6 +1981,416 @@ function connections_gateway_page($page, $id, $may_manage) {
 
 }
 
+/* A payment driver's page (Stripe, PayPal, PayTR): "Connection details"
+   holds the keys the Payment Methods card held (a secret never drawn back)
+   with where to find them and the webhook address, for who may open Site
+   Settings › Ecommerce; Status has Disconnect while any key is stored;
+   "Where it is used" leads to the card, where Stripe is chosen, PayPal
+   Checkout and PayTR are switched on, and their Mode is set. */
+
+function connections_driver_page($page, $id, $may_manage) {
+
+	$definition = pg_payment_driver($id);
+	$fields = pg_payment_fields($id);
+	$settings = pg_payment_settings($id);
+	$card = ($definition['kind'] === 'card');
+	$active = $card
+		? (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY === $definition['gateway']))
+		: $settings['enabled'];
+	$connected = pg_payment_driver_keys_complete($fields, $settings);
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$lines = '';
+
+		if (!$settings['readable']) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang(array('string' => 'The stored keys of {var:1} cannot be read with this site\'s encryption key. Enter them again.', 'vars' => $definition['label']))) . '</div>';
+		}
+
+		if ($definition['portal'] !== '') {
+			$lines .= '
+				<p class="pg-text-meta mb-4">' . lang(array('string' => 'The keys are in your {var:1} account.', 'vars' => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</p>';
+		}
+
+		// A service that sends its own messages needs this site's address
+		// entered on its side; it is copied from here.
+		if (pg_payment_can($id, 'notify')) {
+			$lines .= '
+				<div class="mb-4">
+					<label class="pg-field-label" for="connections-driver-callback">' . h(lang('Webhook Address')) . '</label>
+					<input type="text" class="pg-input font-monospace" id="connections-driver-callback" value="' . h(pg_payment_callback_url($id)) . '" readonly>
+					<div class="pg-field-help">' . h(lang(array('string' => 'Add this address as a webhook endpoint in your {var:1} account.', 'vars' => $definition['label']))) . '</div>
+				</div>';
+		}
+
+		$inputs = '';
+
+		foreach (pg_payment_fields_part($fields, 'keys') as $field) {
+
+			$input_id = pg_payment_input_name($id, $field['name']);
+			$help = ($field['help'] !== '') ? '<div class="pg-field-help">' . h($field['help']) . '</div>' : '';
+
+			if ($field['type'] === 'secret') {
+				$input = '<input type="password" class="pg-input font-monospace" id="' . h($input_id) . '" name="' . h($input_id) . '" value="" maxlength="' . (int) $field['max_length'] . '" autocomplete="new-password" spellcheck="false"'
+					. (isset($settings['secrets'][$field['name']]) ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>';
+			} else {
+				$value = isset($settings['values'][$field['name']]) ? $settings['values'][$field['name']] : $field['default'];
+				$input = '<input type="text" class="pg-input font-monospace" id="' . h($input_id) . '" name="' . h($input_id) . '" value="' . h($value) . '" maxlength="' . (int) $field['max_length'] . '" autocomplete="off" spellcheck="false">';
+			}
+
+			$inputs .= '
+				<div>
+					<label class="pg-field-label" for="' . h($input_id) . '">' . h($field['label']) . '</label>
+					' . $input . '
+					' . $help . '
+				</div>';
+
+		}
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h($card
+				? lang(array('string' => 'The site\'s {var:1} keys. Which gateway takes cards, and its Transaction Type, are chosen on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))
+				: lang(array('string' => 'The site\'s {var:1} keys. Whether it is offered at checkout, and its Mode, are set on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			' . $lines . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="driver_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . $inputs . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if (pg_payment_driver_keys_stored($fields, $settings)) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="driver_remove" data-id="0"
+					data-confirm="' . h($active
+						? ($card
+							? lang(array('string' => 'The {var:1} keys are removed from this site: card payments stop at checkout until they are entered again or another gateway is chosen.', 'vars' => $definition['label']))
+							: lang(array('string' => 'The {var:1} keys are removed from this site: it is no longer offered at checkout until they are entered again.', 'vars' => $definition['label'])))
+						: lang(array('string' => 'The {var:1} keys are removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $definition['label']))) . '</button>
+			</div>';
+		}
+
+	}
+
+	if ($card) {
+		$use_name = lang('Card payments at checkout');
+		$use_line = $active ? lang('It takes the card payments now.') : lang('Another gateway, or none, takes the card payments now.');
+	} else {
+		$use_name = $definition['label'];
+		$use_line = $active ? lang('It is offered at checkout.') : lang('It is switched off on the card, so it is not offered at checkout.');
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-payments')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h($use_name) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Payment Methods')) . '</span>
+						<span class="pg-text-meta d-block">' . h($use_line) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($connected && $active) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* PayPal Express Checkout's keys on PayPal's page, below PayPal Checkout's,
+   or Givex's on its own: the keys the card held in config columns (a secret
+   never drawn back), for who may open Site Settings › Ecommerce; Disconnect
+   in Status while any key is stored; a row under "Where it is used" leading
+   to the card that switches it on. */
+
+function connections_method_page($page, $id, $may_manage) {
+
+	$definitions = pg_payment_method_connections();
+	$definition = $definitions[$id];
+	$stored = pg_payment_method_connection_stored();
+	$connected = pg_payment_gateway_connected($definition, $stored);
+	$active = !empty($stored[$definition['switch']]);
+	$beside = ($page['details'] !== '');
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$fields = '';
+
+		foreach ($definition['fields'] as $column => $field) {
+
+			$value = isset($stored[$column]) ? (string) $stored[$column] : '';
+
+			if ($field['kind'] === 'text') {
+				$input = '<input type="text" class="pg-input font-monospace" id="' . h($column) . '" name="' . h($column) . '" value="' . h($value) . '" maxlength="' . (int) $field['width'] . '" autocomplete="off" spellcheck="false">';
+			} else {
+				$input = '<input type="password" class="pg-input font-monospace" id="' . h($column) . '" name="' . h($column) . '" value="" maxlength="' . (int) $field['width'] . '" autocomplete="new-password" spellcheck="false"'
+					. (($value !== '') ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>';
+			}
+
+			$fields .= '
+				<div>
+					<label class="pg-field-label" for="' . h($column) . '">' . h($field['label']) . '</label>
+					' . $input . '
+				</div>';
+
+		}
+
+		$section = $beside ? 'connections-details-' . $id : 'connections-details';
+
+		$page['details'] .= '
+		<section class="pg-card p-5 mb-6" id="' . h($section) . '" aria-labelledby="' . h($section) . '-title">
+			<h2 class="pg-title-section mb-1" id="' . h($section) . '-title">' . h($beside ? $definition['label'] : lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(($id === 'givex')
+				? lang('The site\'s Givex account. Whether Givex cards are accepted is set on the Gift Cards & Rewards card of Site Settings › Ecommerce.')
+				: lang(array('string' => 'The site\'s {var:1} keys. Whether it is offered at checkout, its Transaction Type and Mode are set on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="method_save">
+				<input type="hidden" name="connections_return" value="' . h($definition['page']) . '">
+				' . $fields . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if (pg_payment_gateway_stored($definition, $stored)) {
+			$page['status_extra'] .= '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="method_remove" data-id="0"
+					data-confirm="' . h($active
+						? lang(array('string' => 'The {var:1} keys are removed from this site: it is no longer offered at checkout until they are entered again.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} keys are removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $definition['label']))) . '</button>
+			</div>';
+		}
+
+	}
+
+	$card_name = ($definition['card'] === 'pgset-giftcards') ? lang('Gift Cards & Rewards') : lang('Payment Methods');
+
+	$page['uses'] .= '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', $definition['card'])) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(($id === 'givex') ? lang('Gift cards at checkout') : $definition['label']) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h($card_name) . '</span>
+						<span class="pg-text-meta d-block">' . h($active ? lang('It is offered at checkout.') : lang('It is switched off on the card, so it is not offered at checkout.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($connected && $active) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* A carrier label service's page (Geliver, Basit Kargo, Kargonomi, Aras
+   Kargo, Shippo, Sendcloud): "Connection details" holds the keys the
+   Shipping card held (a secret never drawn back), with Save and try where
+   the service has a connection test, for who may open Site Settings ›
+   Ecommerce; Status has Disconnect while any key is stored; "Where it is
+   used" leads to the card, where it is switched on and its other choices
+   are set. */
+
+function connections_label_page($page, $id, $may_manage) {
+
+	$definition = pg_label_driver($id);
+	$fields = pg_label_fields($id);
+	$settings = pg_label_settings($id);
+	$can_seal = pg_connect_can_seal();
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$lines = '';
+
+		if (!$can_seal) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang('This site has no encryption key, so it cannot keep the keys of a carrier label service.')) . '</div>';
+		} elseif (!$settings['readable']) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang(array('string' => 'The stored keys of {var:1} cannot be read with this site\'s encryption key. Enter them again.', 'vars' => $definition['label']))) . '</div>';
+		}
+
+		if ($definition['portal'] !== '') {
+			$lines .= '
+				<p class="pg-text-meta mb-4">' . lang(array('string' => 'The keys are in your {var:1} account.', 'vars' => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</p>';
+		}
+
+		$inputs = '';
+
+		foreach (pg_label_fields_part($fields, 'keys') as $field) {
+
+			$input_id = pg_label_input_name($id, $field['name']);
+			$help = ($field['help'] !== '') ? '<div class="pg-field-help">' . h($field['help']) . '</div>' : '';
+
+			if ($field['type'] === 'secret') {
+				$input = '<input type="password" class="pg-input font-monospace" id="' . h($input_id) . '" name="' . h($input_id) . '" value="" maxlength="' . (int) $field['max_length'] . '" autocomplete="new-password" spellcheck="false"'
+					. (isset($settings['secrets'][$field['name']]) ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>';
+			} else {
+				$value = isset($settings['values'][$field['name']]) ? $settings['values'][$field['name']] : $field['default'];
+				$input = '<input type="text" class="pg-input font-monospace" id="' . h($input_id) . '" name="' . h($input_id) . '" value="' . h($value) . '" maxlength="' . (int) $field['max_length'] . '" autocomplete="off" spellcheck="false">';
+			}
+
+			$inputs .= '
+				<div>
+					<label class="pg-field-label" for="' . h($input_id) . '">' . h($field['label']) . '</label>
+					' . $input . '
+					' . $help . '
+				</div>';
+
+		}
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The site\'s {var:1} keys. Whether labels are made with it, and its other choices, are set on the Shipping card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			' . $lines . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="label_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . $inputs . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>' . (pg_label_can($id, 'test') ? '
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>' : '') . '
+				</div>
+			</form>
+		</section>';
+
+		if (pg_label_keys_stored($fields, $settings)) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="label_remove" data-id="0"
+					data-confirm="' . h($settings['enabled']
+						? lang(array('string' => 'The {var:1} keys are removed from this site: no labels are made with it until they are entered again.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} keys are removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $definition['label']))) . '</button>
+			</div>';
+		}
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-shipping')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Shipping labels')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Shipping')) . '</span>
+						<span class="pg-text-meta d-block">' . h($settings['enabled'] ? lang('The Shipping card has it switched on.') : lang('It is switched off on the card, so no labels are made with it.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(pg_label_ready($id) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* UPS's, FedEx's or USPS's page: "Connection details" holds the client ID
+   and secret of the application made in the carrier's developer portal (the
+   secret never drawn back), with Save and try, for who may open Site
+   Settings › Ecommerce; Status has Disconnect while either is stored;
+   "Where it is used" leads to the Shipping card, where the real-time rates
+   or the address check are switched on and the environment is chosen. */
+
+function connections_carrier_page($page, $id, $may_manage) {
+
+	$definition = pg_carrier_api_definition($id);
+	$app = pg_carrier_api_app($id);
+	$labels = pg_carrier_api_labels($id);
+	$active = pg_carrier_api_switched_on($id);
+	$can_keep = pg_connect_schema_ready() && pg_connect_can_seal();
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$lines = '';
+
+		if (!pg_connect_schema_ready()) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang('The database has not been upgraded yet. Run the software update first.')) . '</div>';
+		} elseif (!pg_connect_can_seal()) {
+			$lines .= '
+				<div class="alert theme-warning small py-3 mb-4">' . h(lang('This site has no encryption key, so it cannot keep the client secret of a carrier.')) . '</div>';
+		}
+
+		$lines .= '
+				<p class="pg-text-meta mb-4">' . lang(array(
+					'string' => 'Create an application at {var:1} with these APIs: {var:2}. Then enter its {var:3} and {var:4} here.',
+					'vars'   => array(
+						'<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h(preg_replace('#^https://|/$#', '', $definition['portal'])) . '</a>',
+						h($definition['products']),
+						h($labels['id']),
+						h($labels['secret'])))) . '</p>';
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(($id === 'usps')
+				? lang('The site\'s USPS application. Its environment, and whether US addresses are verified with it, are set on the Shipping card of Site Settings › Ecommerce.')
+				: lang(array('string' => 'The site\'s {var:1} application. Whether its real-time rates are used, its environment and account number are set on the Shipping card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			' . $lines . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="carrier_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				<div>
+					<label class="pg-field-label" for="' . h($id) . '_client_id">' . h($labels['id']) . '</label>
+					<input type="text" class="pg-input font-monospace" id="' . h($id) . '_client_id" name="' . h($id) . '_client_id" value="' . h($app['client_id']) . '" maxlength="255" autocomplete="off" spellcheck="false">
+				</div>
+				<div>
+					<label class="pg-field-label" for="' . h($id) . '_client_secret">' . h($labels['secret']) . '</label>
+					<input type="password" class="pg-input font-monospace" id="' . h($id) . '_client_secret" name="' . h($id) . '_client_secret" value="" maxlength="255" autocomplete="new-password" spellcheck="false"'
+						. ($app['secret_stored'] ? ' placeholder="' . h(lang('Stored. Leave empty to keep it.')) . '"' : '') . '>
+				</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill"' . ($can_keep ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+					<button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_keep ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>
+				</div>
+			</form>
+		</section>';
+
+		if (($app['client_id'] !== '') || $app['secret_stored']) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="carrier_remove" data-id="0"
+					data-confirm="' . h($active
+						? lang(array('string' => 'The {var:1} keys are removed from this site: real-time information from it stops until they are entered again.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} keys are removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $definition['label']))) . '</button>
+			</div>';
+		}
+
+	}
+
+	if ($id === 'usps') {
+		$use_name = lang('USPS rates and US address verification');
+		$use_line = $active ? lang('US addresses are verified with it at checkout.') : lang('Shipping methods with USPS services get their rates from it.');
+	} else {
+		$use_name = lang('Live shipping rates at checkout');
+		$use_line = $active ? lang('Its real-time rates are switched on.') : lang('Its real-time rates are switched off on the card.');
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-shipping')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h($use_name) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Shipping')) . '</span>
+						<span class="pg-text-meta d-block">' . h($use_line) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(pg_carrier_api_connected($id) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
 /* A CAPTCHA provider's page, Cloudflare Turnstile or hCaptcha: "Connection
    details" holds the site key and secret key the Spam Protection card held
    (the secret never drawn back), for who may open Accounts and sign-in;
@@ -2039,6 +2756,218 @@ function connections_ga_page($page, $may_manage) {
 						<span class="pg-text-meta d-block">' . h(lang('Dashboard')) . '</span>
 					</span>
 					<span class="connections-row-side">' . connections_state_pill(pg_ga_linked($ga_state) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* An address autocomplete provider's page, Google Places, Mapbox or Photon:
+   "Connection details" holds the key (never drawn back) or Photon's server
+   the Address Autocomplete card of Site Settings › Ecommerce held, with
+   Save and try on a test address, for who may open that category; Status
+   has Disconnect while an account is stored; "Where it is used" leads to the
+   card, which keeps the switch and the provider. */
+
+function connections_addr_page($page, $id, $may_manage) {
+
+	$definition = pg_addr_provider_definition($id);
+	$app = pg_addr_app($id);
+	$on = (pg_addr_provider() === $id);
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$refusal = pg_addr_settings_refusal();
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The site\'s {var:1} connection. Address autocomplete is switched on, and its provider chosen, on the Address Autocomplete card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
+			' . (($refusal !== '') ? '<div class="alert theme-warning small py-3 mb-4">' . h($refusal) . '</div>' : '') . '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="addr_save">
+				<input type="hidden" name="connections_return" value="' . h($id) . '">
+				' . pg_addr_page_fields($id, $refusal === '') . '
+			</form>
+		</section>';
+
+		if ($app['exists']) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="addr_remove" data-id="0"
+					data-confirm="' . h($on
+						? lang(array('string' => 'The {var:1} connection is removed from this site: the address forms give no suggestions until a provider is connected and switched on again.', 'vars' => $definition['label']))
+						: lang(array('string' => 'The {var:1} connection is removed from this site.', 'vars' => $definition['label']))) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-address-autocomplete')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Address suggestions in the address forms')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Address Autocomplete')) . '</span>
+						<span class="pg-text-meta d-block">' . h($on ? lang('The forms ask it for suggestions.') : lang('It is not the provider switched on on the card.')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($on ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
+/* Google Merchant Center's page: "Connection details" holds what the
+   Product Feeds card held, the Merchant Center account, its country, the
+   feed registered as a data source and the product issues, for who may
+   open Site Settings › Ecommerce; Status lists the Google accounts
+   connected for it and has Connect; "Where it is used" leads to the feed's
+   card and the Marketplaces screen, where each product's push runs. */
+
+function connections_merchant_page($page, $may_manage) {
+
+	$state = pg_merchant_state();
+	$connection = pg_merchant_connection($state);
+	$account_name = $state['account_name'] . (($state['account_name'] !== $state['account']) ? ' (' . $state['account'] . ')' : '');
+
+	$page['status_extra'] = '
+			<div class="mt-4">
+				<div class="pg-field-label">' . h(lang('Merchant Center account')) . '</div>
+				<div class="pg-text-2 text-break">' . h(($state['account'] !== '') ? $account_name : lang('None chosen')) . '</div>
+			</div>';
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$country = ($state['country'] !== '')
+			? $state['country']
+			: pg_merchant_default_country(defined('ORGANIZATION_COUNTRY') ? ORGANIZATION_COUNTRY : '', defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '');
+
+		$country_field = '
+				<div>
+					<label for="merchant_center_country" class="pg-field-label">' . h(lang('Country')) . '</label>
+					<input type="text" name="merchant_center_country" id="merchant_center_country" class="pg-input text-uppercase" maxlength="2" pattern="[A-Za-z]{2}" value="' . h($country) . '" placeholder="TR" autocomplete="off">
+					<div class="pg-field-help">' . h(lang('Two letters, the country the products are sold in.')) . '</div>
+				</div>';
+
+		if (!pg_merchant_ready()) {
+
+			$body = '<div class="alert theme-warning small py-3 mb-0">' . h(lang('The database has not been upgraded yet. Run the software update first.')) . '</div>';
+
+		} elseif (!is_array($connection)) {
+
+			$body = '<p class="pg-text-2 mb-0">' . (pg_connect_app_ready(pg_connect_app('google'))
+				? h(lang('Connect a Google account under Status, then choose the Merchant Center account here.'))
+				: h(lang('To connect Merchant Center, set up the Google application first.')) . ' <a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>') . '</p>';
+
+		} elseif ($state['account'] === '') {
+
+			$offered = pg_merchant_accounts($connection['id']);
+			$options = '';
+
+			foreach ($offered['accounts'] as $merchant_id => $merchant_name) {
+				$options .= '<option value="' . h($merchant_id) . '">' . h($merchant_name . (($merchant_name !== (string) $merchant_id) ? ' (' . $merchant_id . ')' : '')) . '</option>';
+			}
+
+			$body = ($options !== '') ? '
+				<div>
+					<label class="pg-field-label" for="merchant_account">' . h(lang('Merchant Center account')) . '</label>
+					<select class="pg-input" id="merchant_account" name="merchant_account"><option value="">' . h(lang('Choose')) . '</option>' . $options . '</select>
+					<div class="pg-field-help">' . h(lang(array('string' => 'Connected as {var:1}.', 'vars' => $connection['label']))) . '</div>
+				</div>' . $country_field . '
+				<p class="pg-field-help my-0">' . h(lang('When you save, Google is given the address of the Google Merchant Center feed and fetches it every day.')) . '</p>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>' : '
+				<div class="alert theme-warning small py-3 mb-0 text-break">' . h(($offered['error'] !== '')
+					? lang(array('string' => 'The Merchant Center accounts could not be read: {var:1}', 'vars' => $offered['error']))
+					: lang('The connected Google account has no Merchant Center account.')) . '</div>';
+
+		} else {
+
+			// The data source line: registered, failed, or not yet.
+			if ($state['register_error'] !== '') {
+				$source = '<div class="alert theme-warning small py-3 mb-0 text-break">' . h(lang(array('string' => 'The feed could not be registered in Merchant Center: {var:1}', 'vars' => $state['register_error']))) . '</div>';
+			} elseif ($state['data_source'] !== '') {
+				$source = '<p class="pg-text-2 mb-0">' . h(lang(array('string' => 'Merchant Center fetches the feed every day (registered {var:1}).', 'vars' => get_relative_time(array('timestamp' => $state['registered_at'], 'format' => 'plain_text'))))) . '</p>';
+			} else {
+				$source = '<p class="pg-text-2 mb-0">' . h(lang('The feed is not registered in Merchant Center yet.')) . '</p>';
+			}
+
+			// The issues line: the last reading, or why there is none.
+			$counts = $state['issues']['counts'];
+
+			if ($state['check_error'] !== '') {
+				$issues = '<div class="alert theme-warning small py-3 mb-0 text-break">' . h(lang(array('string' => 'The product issues could not be read: {var:1}', 'vars' => $state['check_error']))) . '</div>';
+			} elseif ($state['checked_at'] > 0) {
+				$list = '';
+
+				foreach ($state['issues']['top'] as $issue) {
+					$text = h($issue['description']) . ' · ' . h(lang(array('string' => '{var:1} product(s)', 'vars' => (int) $issue['products'])));
+
+					$list .= '<li>' . (($issue['help'] !== '')
+						? '<a href="' . h($issue['help']) . '" target="_blank" rel="noopener noreferrer">' . $text . '</a>'
+						: $text) . '</li>';
+				}
+
+				$issues = '<p class="pg-text-2 mb-0">' . h(lang(array('string' => 'Issues: {var:1} disapproving, {var:2} demoting, {var:3} warnings (read {var:4}).', 'vars' => array(
+					(int) $counts['DISAPPROVED'],
+					(int) $counts['DEMOTED'],
+					(int) $counts['NOT_IMPACTED'],
+					get_relative_time(array('timestamp' => $state['checked_at'], 'format' => 'plain_text')),
+				)))) . '</p>' . (($list !== '') ? '<ul class="pg-text-2 mb-0">' . $list . '</ul>' : '');
+			} else {
+				$issues = '<p class="pg-text-2 mb-0">' . h(lang('The product issues have not been read yet.')) . '</p>';
+			}
+
+			$body = '
+				<dl class="pg-kv mb-0"><dt>' . h(lang('Merchant Center account')) . '</dt><dd class="text-break"><a href="' . h(pg_merchant_center_url($state['account'])) . '" target="_blank" rel="noopener noreferrer">' . h($account_name) . '</a></dd></dl>
+				' . $source . '
+				' . $issues . '
+				' . $country_field . '
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+					<button type="submit" name="merchant_register" value="1" class="pg-button pg-button-sm pg-button-quiet"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang('Register the feed again')) . '</button>
+					<button type="submit" name="merchant_check" value="1" class="pg-button pg-button-sm pg-button-quiet"><i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>' . h(lang('Check issues now')) . '</button>
+					<button type="submit" name="merchant_unlink" value="1" class="pg-button pg-button-sm pg-button-danger" onclick="return confirm(' . h(json_encode(lang('Stop using this Merchant Center account? The data source stays in Merchant Center until you delete it there.'))) . ')"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Stop using this account')) . '</button>
+				</div>';
+
+		}
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('Gives Google the address of the product feed to fetch every day and shows the product problems Merchant Center reports.')) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="merchant_save">
+				<input type="hidden" name="connections_return" value="merchant_center">
+				' . $body . '
+			</form>
+		</section>';
+
+	}
+
+	$registered = ($state['data_source'] !== '') && ($state['register_error'] === '');
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', 'pgset-feeds')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('The Google Merchant Center feed')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Ecommerce')) . ' › ' . h(lang('Product Feeds')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill($registered ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>
+				<a class="pg-card-inner-row connections-row" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/marketplace_settings.php') . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Each product\'s price and stock')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('System tools')) . ' › ' . h(lang('Marketplaces')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($state['account'] !== '') ? 'connected' : 'not_connected') . '</span>
 					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
 				</a>';
 
@@ -3044,19 +3973,53 @@ if ($provider_page !== '') {
 			'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
 			'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
 			'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
-			'commerce'     => in_array($page_id, pg_connections_screen_gateway_pages(), true) && connections_commerce_may_manage($user),
+			'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_gateway_pages(), true),
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true),
 	);
 
 	// A card gateway's page: its keys and the card that chooses it.
 	if (in_array($page_id, pg_connections_screen_gateway_pages(), true)) {
 		$page = connections_gateway_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// Stripe's, PayPal's and PayTR's pages: their keys and the card that
+	// chooses or switches them on.
+	if (in_array($page_id, pg_connections_screen_driver_pages(), true)) {
+		$page = connections_driver_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// PayPal Express Checkout's keys below PayPal Checkout's, and Givex's page.
+	if (pg_payment_method_connection_for_page($page_id) !== '') {
+		$page = connections_method_page($page, pg_payment_method_connection_for_page($page_id), connections_commerce_may_manage($user));
+	}
+
+	// A carrier label service's page: its keys and the Shipping card that
+	// switches it on.
+	if (in_array($page_id, pg_connections_screen_label_pages(), true) && (pg_label_driver($page_id) !== null)) {
+		$page = connections_label_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// UPS's, FedEx's and USPS's pages: the application and the Shipping card
+	// that puts it to use.
+	if (in_array($page_id, pg_connections_screen_carrier_pages(), true)) {
+		$page = connections_carrier_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// An address autocomplete provider's page: its key or server and the card
+	// that switches it on.
+	if (in_array($page_id, pg_connections_screen_address_pages(), true) && (pg_addr_provider_definition($page_id) !== null)) {
+		$page = connections_addr_page($page, $page_id, connections_commerce_may_manage($user));
+	}
+
+	// Google Merchant Center's page: the account, the feed and its issues.
+	if ($page_id === 'merchant_center') {
+		$page = connections_merchant_page($page, connections_commerce_may_manage($user));
 	}
 
 	// A CAPTCHA provider's page: its keys and the card that chooses it.

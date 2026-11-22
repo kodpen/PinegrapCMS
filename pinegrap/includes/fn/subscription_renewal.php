@@ -501,7 +501,11 @@ function pg_subscription_renewal_io()
         },
         'price_notice' => 'pg_subscription_price_notice_latest',
         'notice_read' => function ($id) {
-            return db_item(pg_subscription_price_notice_sql(true), array((int) $id));
+            // The SQL carries a placeholder: db_q() binds it (db_item()
+            // would run the bare "?" and fail).
+            $result = db_q(pg_subscription_price_notice_sql(true), array((int) $id));
+
+            return $result ? mysqli_fetch_assoc($result) : null;
         },
     );
 }

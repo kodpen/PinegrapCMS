@@ -23,7 +23,7 @@ description: The "reviewed" policy's one rule for a translated page's robots met
 - `pg_tr_invalidate_pages($language, $page_id, $verdicts = true)` (`store.php`, `pg_tr_invalidate_sql()`) deletes body and answer; with `$verdicts = false` a `1` keeps its row, body emptied; `0` and empty rows go.
 - Keeping: a reviewed translation (`pg_tr_write_keeps_verdicts()`), `pg_tr_set_status('reviewed')`, `pg_tr_review_all()`, the rules check below.
 - Dropping: any machine translation; back to machine, clearing, an emptied box, the API's `pending`.
-- Settings > Languages save: bodies always; answers only when the source language or an index policy changed.
+- Settings > Languages save: bodies always; answers only when the source language (`translation-source-save.md`) or an index policy changed.
 - Page save: `pg_tr_owner_saved('page', id)`; a shared component's `update` / `content_update`: `pg_tr_owner_saved('shared', id)` for the pages whose `page_ref` rows name it.
 - `pg_purge_caches()`: every row.
 

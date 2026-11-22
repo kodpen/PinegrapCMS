@@ -61,6 +61,7 @@ foreach ($booking_posted as $key => $row) {
 
     if ($answer['error'] !== '') {
         $liveform->mark_error('booking_service[' . $key . '][' . $answer['error'] . ']', $booking_service_errors[$answer['error']]);
+        pg_settings_drawer_refused(pg_booking_settings_error_drawer('booking_service', $key, $answer['error']));
     } elseif ($key === 'new') {
         $booking_service_new[] = $answer['values'];
     } else {

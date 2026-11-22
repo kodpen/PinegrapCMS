@@ -4,9 +4,9 @@ description: The Mailboxes card in Site Settings (category Mailboxes, gate mail)
 ---
 
 ## Where is the Mailboxes card?
-- Since MA10b (#9453): a category of its own, Mailboxes (`settings_mailboxes.php`, `includes/settings/mailboxes.php` and `.save.php`), under Site beside Communication, section `pgset-ws-mail`.
-- Its gate `mail` (`pg_settings_mail_settings_allowed()`): the Workspace's tables and its settings right (`ws_rights()`), whatever the switch, so the Workspace's switch never hides it (owner: "ayarları da ayarlara taşınsın"). It reads no `prep.php`, like the Workspace categories (`pg_settings_category_is_workspace()` is true for both gates).
-- Before, it sat in Channels, mail and voice (PR #8899, SW6b). `pg_settings_legacy_anchors()` maps `ws-mail` to the new category.
+- Since EM1: the Mailboxes tab of the E-mail category (`ui/settings-email-tabs.md`), drawn by `includes/settings/mailboxes.php`, saved by `.save.php` through `email.save.php`; `settings_mailboxes.php` opens the tab. Section `pgset-ws-mail`. A category of its own from MA10b (#9453) to EM1.
+- Its gate `mail` (`pg_settings_mail_settings_allowed()`): the Workspace's tables and its settings right (`ws_rights()`), whatever the switch, so the Workspace's switch never hides it (owner: "ayarları da ayarlara taşınsın"). The tab alone reads no `prep.php` (`pg_settings_category_reads_prep()`).
+- Before, it sat in Channels, mail and voice (PR #8899, SW6b). `pg_settings_legacy_anchors()` maps `ws-mail` to `email/pgset-ws-mail`.
 
 ## What opens in a drawer?
 - Each box's line keeps its channel ("Kept in the mailbox itself", a link to its list, for a box kept in no channel), last e-mail and last check; Test connection is a named submit button `ws_mail_test` (value the box's id), run after the pane's save. Edit opens `pgset-ws-mail-<id>`, Add a mailbox `pgset-ws-mail-0` (`ws_settings_mail_drawer()`).

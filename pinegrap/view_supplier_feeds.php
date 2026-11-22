@@ -4,8 +4,9 @@
  *
  * Products › Supplier feeds: every feed with its host (never the address),
  * format, interval, the state of its last pull and the products it matched.
- * A row opens the feed (edit_supplier_feed.php), starts its test pull there,
- * or deletes it from its "more" menu (posted to the same screen). Helpers: includes/fn/supplier_feed_screen.php.
+ * A row opens the feed (edit_supplier_feed.php), starts its pull or its test
+ * pull there, or deletes it from its "more" menu (posted to the same
+ * screen). Helpers: includes/fn/supplier_feed_screen.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -60,6 +61,7 @@ foreach ($feeds as $feed) {
                 'align-middle', array('data-pg-sort-value' => $last)),
             'matched' => pg_list_cell(h(pg_format_number((int) $feed['matched'], 0)), 'align-middle', array('data-pg-sort-value' => (int) $feed['matched'])),
             'actions' => pg_list_cell('<a class="pg-button pg-button-quiet pg-button-sm" href="edit_supplier_feed.php?id=' . $id . '">' . h(lang('Edit')) . '</a>'
+                . ' ' . pg_supplier_feed_pull_button($feed, $mapping, 'pg-button pg-button-quiet pg-button-sm')
                 . ($mapping['confirmed'] ? ' <button type="submit" name="test_pull" value="' . $id . '" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Test pull')) . '</button>' : '')
                 . ' <span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" aria-expanded="false" aria-label="' . h(lang('More actions')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>'
                 . '<ul class="menu pg-menu-end"><li><button type="submit" name="submit_delete" value="' . $id . '" formnovalidate class="menu-item fg-emphasis-danger" data-confirm-content="' . h(lang('The feed and its pull history are deleted. Its products stay and no longer follow it.')) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Delete')) . '</button></li></ul></span>',

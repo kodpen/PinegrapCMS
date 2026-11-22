@@ -182,8 +182,23 @@ function ws_events_catalog()
             );
         }
 
+        // Customer rhythm, about the customer's contact, narrowed to one
+        // stage (includes/fn/customer_rhythm_tell.php).
+        if (function_exists('pg_customer_rhythm_ready') && pg_customer_rhythm_ready()) {
+            $catalog += array(
+                'customer.rhythm_stage_changed' => array('label' => lang('A customer moves to another rhythm stage'), 'when' => lang('When a customer moves to another rhythm stage'), 'record' => 'contact', 'right' => 'contacts', 'filter' => 'rhythm_stage'),
+                'customer.reorder_due'          => array('label' => lang('A customer\'s reorder is due'), 'when' => lang('When products a customer buys again are due'), 'record' => 'contact', 'right' => 'contacts', 'filter' => 'rhythm_stage'),
+            );
+        }
+
         // Spots of a calendar event taken by a placed order.
         $catalog['calendar_event.reserved'] = array('label' => lang('A calendar event is reserved'), 'when' => lang('When an order reserves a calendar event'), 'record' => 'calendar_event', 'right' => 'calendars', 'filter' => '');
+
+        // A ticket checked in at the door, about its calendar event
+        // (event_check_in.php); listed once the tickets table exists.
+        if (function_exists('pg_event_tickets_ready') && pg_event_tickets_ready()) {
+            $catalog['ticket.checked_in'] = array('label' => lang('A ticket is checked in'), 'when' => lang('When a ticket is checked in at the door'), 'record' => 'calendar_event', 'right' => 'calendars', 'filter' => '');
+        }
 
         // Store credit, about the customer's contact.
         if (function_exists('pg_credit_ready') && pg_credit_ready()) {
@@ -261,6 +276,7 @@ function ws_events_catalog()
             'booking.confirmed'   => array('label' => lang('A booking is confirmed'), 'when' => lang('When a booking is confirmed'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
             'booking.rescheduled' => array('label' => lang('A booking is moved'), 'when' => lang('When a booking is moved to another time'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
             'booking.cancelled'   => array('label' => lang('A booking is cancelled'), 'when' => lang('When a booking is cancelled'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+            'booking.completed'   => array('label' => lang('A booking is done'), 'when' => lang('When staff mark a booking done'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
         );
     }
 
@@ -390,6 +406,24 @@ function ws_events_problem_kinds()
         'not_handed_over' => lang('Not handed over'),
         'problem'         => lang('Delivery problem'),
         'returned'        => lang('Returned'),
+    );
+}
+
+/**
+ * The customer rhythm stages a rule of customer.rhythm_stage_changed and
+ * customer.reorder_due may be narrowed to (pg_customer_rhythm_stage_codes()).
+ *
+ * @return array stage => label
+ */
+function ws_events_rhythm_stages()
+{
+    return array(
+        'regular'  => lang('Regular'),
+        'due'      => lang('Due to reorder'),
+        'late'     => lang('Late'),
+        'slipping' => lang('Slipping away'),
+        'lost'     => lang('Lost'),
+        'won_back' => lang('Won back'),
     );
 }
 
@@ -723,7 +757,12 @@ function ws_events_record_of($event, $payload)
         case 'calendar_event.reserved':
             return array('calendar_event', (int) ($payload['id'] ?? 0));
 
+        case 'ticket.checked_in':
+            return array('calendar_event', (int) ($payload['calendar_event_id'] ?? 0));
+
         case 'customer.consent_changed':
+        case 'customer.rhythm_stage_changed':
+        case 'customer.reorder_due':
             return array('contact', (int) ($payload['id'] ?? 0));
 
         // A WhatsApp message: the contact of its number, none for a number
@@ -836,6 +875,11 @@ function ws_events_filter_value($event, $payload)
     // A delivery problem's kind.
     if (strpos((string) $event, 'shipment.problem') === 0) {
         return (string) ($payload['kind'] ?? '');
+    }
+
+    // A customer's rhythm stage.
+    if (((string) $event === 'customer.rhythm_stage_changed') || ((string) $event === 'customer.reorder_due')) {
+        return (string) ($payload['stage'] ?? '');
     }
 
     // How a conversation's message came; one kept before the transport was
@@ -1627,6 +1671,7 @@ function ws_events_js_config($viewer)
         'outcome'     => array('filter_label' => lang('How it ended'), 'any' => lang('However it ended'), 'options' => $pairs(ws_events_approval_outcomes())),
         'transport'   => array('filter_label' => lang('How it came'), 'any' => lang('Any way'), 'options' => $pairs(ws_mail_transport_labels())),
         'problem_kind' => array('filter_label' => lang('Kind of problem'), 'any' => lang('Any kind'), 'options' => $pairs(ws_events_problem_kinds())),
+        'rhythm_stage' => array('filter_label' => lang('Rhythm stage'), 'any' => lang('Any stage'), 'options' => $pairs(ws_events_rhythm_stages())),
     );
 
     $list = array();

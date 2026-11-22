@@ -255,6 +255,18 @@
   background: var(--pgie-hover);
 }
 
+/* The main button's short words show only under 576 px (the narrow-phone
+   rules below). */
+.pgie-savebtn .pgie-saveshort {
+  display: none;
+}
+
+/* A button the editor hides (hidden) stays hidden on a page without a reset
+   that says so: .pgie-btn's display would show it. */
+.pgie-btn[hidden] {
+  display: none;
+}
+
 .pgie-btn.pgie-primary {
   border-color: var(--pgie-primary);
   background: var(--pgie-primary);
@@ -322,6 +334,63 @@
 
 .pgie-menu button:hover {
   background: var(--pgie-hover);
+}
+
+/* Save to Files from a channel: the folder window */
+
+.pgie-files-box .pgie-files-label {
+  display: block;
+  margin: 4px 0 6px;
+}
+
+.pgie-files-box .pgie-select {
+  width: 100%;
+}
+
+.pgie-toast a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* The channels a canvas may be sent to, inside the same menu */
+
+.pgie-menu.pgie-sendmenu {
+  width: 280px;
+  max-width: calc(100vw - 24px);
+}
+
+.pgie-menuhead {
+  padding: 6px 12px 8px;
+  color: var(--pgie-muted);
+}
+
+.pgie-sendnote {
+  margin: 0;
+  padding: 4px 12px 8px;
+  color: var(--pgie-muted);
+}
+
+.pgie-sendfind {
+  height: 36px;
+  margin: 0 4px 6px;
+  padding: 0 10px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 8px;
+  background: var(--pgie-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.pgie-sendlist {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.pgie-sendlist button {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* While a save runs nothing on the stage moves. */
@@ -663,6 +732,21 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* A follower's link and its target's name, after its own name. */
+.pgie-lname .pgie-lfollow {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+  color: var(--pgie-muted);
+}
+
+.pgie-lfollow .pgie-ic {
+  width: 14px;
+  height: 14px;
 }
 
 /* Select all above the list. */
@@ -3141,6 +3225,54 @@ a.pgie-langthumb:focus-visible {
 
   .pgie-tool {
     padding: 9px 2px;
+  }
+}
+
+/* A narrow phone: the top bar's secondary buttons (Import, Data, Languages,
+   Save animation, Present) show their glyph only, square as undo and redo, their
+   name kept as aria-label and title; the split button keeps its words and
+   the file's name gives way, so the bar never scrolls sideways. */
+
+@media (max-width: 575.98px) {
+  .pgie-top .pgie-importbtn,
+  .pgie-top .pgie-databtn,
+  .pgie-top .pgie-langbtn,
+  .pgie-top .pgie-animbtn,
+  .pgie-top .pgie-presentbtn {
+    flex: none;
+    width: 36px;
+    padding: 0;
+    gap: 0;
+  }
+
+  .pgie-top .pgie-importbtn .pgie-vlabel,
+  .pgie-top .pgie-databtn .pgie-vlabel,
+  .pgie-top .pgie-langbtn .pgie-vlabel,
+  .pgie-top .pgie-animbtn .pgie-vlabel,
+  .pgie-top .pgie-presentbtn .pgie-vlabel {
+    display: none;
+  }
+
+  .pgie-top {
+    gap: 1px;
+  }
+
+  .pgie-top .pgie-file {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0 2px;
+  }
+
+  .pgie-top .pgie-savebox {
+    flex: none;
+  }
+
+  .pgie-savebtn .pgie-savefull {
+    display: none;
+  }
+
+  .pgie-savebtn .pgie-saveshort {
+    display: inline;
   }
 }
 

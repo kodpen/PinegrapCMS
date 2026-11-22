@@ -1,10 +1,10 @@
 ---
 name: agent-instructions-note-lines
-description: The agent instructions' block (KD4b): a plan or long explanation is a note shared in the channel, changed in place with its revision; API routes only, no repository tool
+description: The agent instructions' block: a plan or long explanation is a note shared in the channel, changed in place with its revision; API routes only, no repository tool
 ---
 
 ## What does the block tell an application agent?
-- `ws_agent_instructions_note_lines()` in `includes/workspace/agent_instructions.php`, between the writing lines and the never-list of `ws_agent_instructions_text()` (plan `channel-documents`, KD4b).
+- `ws_agent_instructions_note_lines()` in `includes/workspace/agent_instructions.php`, between the writing lines and the never-list of `ws_agent_instructions_text()`. The feature: `channel-notes-written.md`.
 - A plan or a long explanation (more than a few paragraphs, or a text kept up to date) is a note shared in the channel, not messages.
 - Written once with `POST /workspace/channels/{id}/notes` (`title`, Markdown `body`, `channel_edit` true when the channel's people should change it too); the answer gives `note_id` and `revision`.
 - Its first line says up to which PR or message it is written (a PR's full address or `<#message:ID>`), changed with every update.

@@ -938,7 +938,11 @@ function pg_code_editor_attach($properties)
                         if (tools.parentNode) tools.parentNode.removeChild(tools);
                         return destroy.apply(editor, arguments);
                     };
-                    editor.container.parentNode.insertBefore(tools, editor.container.nextSibling);';
+                    // A read-only line (a command to copy) has nothing a
+                    // minimap could show, so it gets no row under it.
+                    if (!options.readOnly || (editor.getValue().indexOf("\\n") !== -1)) {
+                        editor.container.parentNode.insertBefore(tools, editor.container.nextSibling);
+                    }';
 
     return pg_code_editor_includes() . '<script>
         (function () {

@@ -170,8 +170,13 @@ function test_settings_workspace_assistants_cards_have_no_form_in_the_dialog()
 	pg_assert_same(2, substr_count($card, '<form method="post"'), 'the old screen\'s forms: the connection and a button\'s');
 	pg_assert_contains("\$sheet = \$dialog ? '' :", $card, 'no window of its own in the dialog');
 
-	foreach (array('enabled', 'app_id', 'routine_url', 'token', 'token_clear', 'summary_hour', 'summary_channel') as $field) {
+	foreach (array('enabled', 'routine_url', 'token', 'token_clear') as $field) {
 		pg_assert_contains("name=\"' . \$field_name('" . $field . "') . '\"", $card, $field . ' named for the screen');
+	}
+
+	// The selects are drawn by the row's $select, which takes the name.
+	foreach (array('app_id', 'summary_hour', 'summary_channel') as $field) {
+		pg_assert_contains("\$select(\$field_name('" . $field . "'), ", $card, $field . ' named for the screen');
 	}
 
 	$bulk = settings_workspace_assistants_test_function('includes/workspace/bulk.php', 'ws_bulk_settings_card');
@@ -231,7 +236,7 @@ function test_settings_workspace_assistants_pinegrap_ai()
 	pg_assert_contains('ws_ai_settings_check($input, (int) ws_claude_config()[\'app_id\']);', $post, 'the old screen\'s check');
 	pg_assert_contains('ws_ai_settings_write($input, $liveform, $refuse);', $post, 'the old screen\'s write');
 
-	$card = settings_workspace_assistants_test_function('includes/workspace/ai.php', 'ws_ai_settings_card');
+	$card = settings_workspace_assistants_test_function('includes/workspace/ai.php', 'ws_ai_row_html');
 	pg_assert_contains("\$dialog ? '<div class=\"ws-ai-connection\">' : '<form method=\"post\"", $card, 'no form in the dialog');
 	pg_assert_contains("name=\"ws_' . h(\$action) . '\" value=\"1\" form=\"' . h(\$form) . '\"", $card, 'named buttons of the settings form');
 }

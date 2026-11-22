@@ -142,12 +142,12 @@ function pg_image_editor_action_data_rows($request, $user)
    --------------------------------------------------------------------------- */
 
 /**
- * Why a person may not show a table on a new canvas in its channel, ''
+ * Why a person may not show a table on a new canvas in a channel, ''
  * when they may. Pure.
  *
- * @param array $facts table (they may read it), channel (it belongs to a
- *                     channel, the one the canvas goes to), may_post (they
- *                     may post in that channel)
+ * @param array $facts table (they may read it), channel (the channel the
+ *                     canvas goes to was found, or is still to be asked),
+ *                     may_post (they may post in that channel)
  * @return string '' or table, channel, post
  */
 function pg_image_editor_data_show_refusal($facts)
@@ -187,30 +187,35 @@ function pg_image_editor_data_show_text($code)
 
 /**
  * May this person show the table on a new canvas, and where does it go?
- * With a channel id, the canvas is asked to go there: any channel but the
- * table's own is refused.
+ * A table of a channel goes there: with a channel id, any other channel is
+ * refused. A table of no channel goes to the channel asked at the send;
+ * without a channel id (the Data screen) it is still to be asked.
  *
  * @param array    $viewer
  * @param int      $table_id
  * @param int|null $channel_id
- * @return array code ('' when they may), table, channel (the table's)
+ * @return array code ('' when they may), table, channel (where the canvas
+ *               goes; null for a table of no channel before the send)
  */
 function pg_image_editor_data_show_check($viewer, $table_id, $channel_id = null)
 {
     $table = (!empty($viewer['member']) && ((int) $table_id > 0) && ws_wtables_ready()) ? ws_wtable_for($viewer, (int) $table_id, 'view') : null;
     $home = $table ? ws_wtable_home($table) : null;
+    $asked = $table && !is_array($home) && ($channel_id === null);
 
     if (is_array($home) && ($channel_id !== null) && ((int) $home['id'] !== (int) $channel_id)) {
-        $home = null;
+        $home = false;
+    } elseif ($table && ($home === null) && ($channel_id !== null)) {
+        $home = ws_channel((int) $channel_id);
     }
 
     $code = pg_image_editor_data_show_refusal(array(
         'table'    => (bool) $table,
-        'channel'  => is_array($home),
-        'may_post' => is_array($home) && ws_can_post_channel($viewer, $home),
+        'channel'  => $asked || is_array($home),
+        'may_post' => $asked || (is_array($home) && ws_can_post_channel($viewer, $home)),
     ));
 
-    return array('code' => $code, 'table' => $table, 'channel' => $home);
+    return array('code' => $code, 'table' => $table, 'channel' => is_array($home) ? $home : null);
 }
 
 /**
@@ -279,32 +284,41 @@ function pg_image_editor_data_show_bind($message_id, $table_id, $user_id)
 /**
  * What the Data screen's "Show on a canvas" hands the editor: the table as
  * the picker lists it (pg_image_editor_data_tables_shape()) and where the
- * canvas is sent.
+ * canvas is sent. A table of no channel gets the channels to ask from
+ * (ws_library_channels(): the ones the person may post in), and its save
+ * and open addresses end where the chosen channel's id is added.
  *
- * @param array $table   ws_wtable_for() row
- * @param array $channel the table's channel
- * @return array table, channel (id), save (URL)
+ * @param array      $table    ws_wtable_for() row
+ * @param array|null $channel  the table's channel, null for none
+ * @param array      $channels for a table of no channel: id, name
+ * @return array table, channel (id, 0 to ask), save, open (URLs), channels
  */
-function pg_image_editor_data_show_config($table, $channel)
+function pg_image_editor_data_show_config($table, $channel, $channels = array())
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_chart.php');
 
     $shape = pg_image_editor_data_tables_shape(array($table), function () use ($channel) {
         return $channel;
     }, ws_canvas_guide_values()['palettes']);
+    $id = is_array($channel) ? (int) $channel['id'] : 0;
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
 
     return array(
-        'table'   => $shape[0],
-        'channel' => (int) $channel['id'],
-        'save'    => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_file_save.php?channel=' . (int) $channel['id'] . '&table=' . (int) $table['id'],
-        'open'    => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'],
+        'table'    => $shape[0],
+        'channel'  => $id,
+        'save'     => $base . '/workspace_file_save.php?table=' . (int) $table['id'] . '&channel=' . ($id ?: ''),
+        'open'     => $base . '/workspace.php?channel=' . ($id ?: ''),
+        'channels' => $id ? array() : array_map(function ($c) {
+            return array('id' => (int) $c['id'], 'name' => (string) $c['name']);
+        }, array_values((array) $channels)),
     );
 }
 
 /**
- * "Show on a canvas" on a table's head: the Menus pattern of the Design
- * examples screen (a quiet small pg-button opening .menu) with "As a chart"
- * and "As a table" (pg_image_editor_data_show_assets() prints the rest).
+ * "Show on a canvas" on a table's head, first in its bar: the Menus pattern
+ * of the Design examples screen (a pg-button with its word opening .menu)
+ * with "As a chart" and "As a table" (pg_image_editor_data_show_assets()
+ * prints the rest).
  * Each entry opens the Data picker's second step on the table
  * (workspace_wtables.php's script, dataShow in pg_image_editor_data.js).
  *
@@ -313,7 +327,7 @@ function pg_image_editor_data_show_config($table, $channel)
 function pg_image_editor_data_show_menu()
 {
     return '<span class="pg-menu-wrap" id="ws_wt_canvas_wrap">'
-        . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" id="ws_wt_canvas_button" data-bs-toggle="menu" aria-expanded="false">'
+        . '<button type="button" class="pg-button pg-button-ghost" id="ws_wt_canvas_button" data-bs-toggle="menu" aria-expanded="false">'
         . pg_design_canvas_icon_one_colour('me-1') . h(lang('Show on a canvas')) . '<i class="bi bi-chevron-down ms-1" aria-hidden="true"></i></button>'
         . '<ul class="menu">'
         . '<li><button type="button" class="menu-item" data-ws-wt-canvas="chart"><i class="bi bi-bar-chart me-3" aria-hidden="true"></i>' . h(lang('As a chart')) . '</button></li>'

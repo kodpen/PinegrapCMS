@@ -210,7 +210,7 @@ function test_settings_assistants_fold_what_opens_a_row()
 	// over a save (spot() / paint()).
 	$js = settings_assistants_fold_test_source('assets/js/backend.src.js');
 
-	foreach (array('function jump(section)', 'function refused(fields)', 'function reopen(place)', 'function initSettingsAnchors()') as $name) {
+	foreach (array('function jump(section)', 'function refused(fields, drawer)', 'function reopen(place)', 'function initSettingsAnchors()') as $name) {
 		$from = strpos($js, $name);
 		$body = ($from === false) ? '' : substr($js, $from, 2200);
 		pg_assert_contains('pgSettingsFoldReveal(', $body, $name . ' opens the row it lands in');

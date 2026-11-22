@@ -70,6 +70,25 @@ function pg_image_editor_strings_core()
         'save'           => lang('Save'),
         'saveCopy'       => lang('Save as a copy'),
         'moreSave'       => lang('More save options'),
+        // The main button's menu (M.sendMenu()) and its channel list.
+        'sendOther'      => lang('Send to another channel…'),
+        'sendChannel'    => lang('Send to a channel as a canvas…'),
+        'download'       => lang('Download'),
+        'sendFind'       => lang('Find a channel'),
+        'sendLoading'    => lang('Finding your channels…'),
+        'sendNone'       => lang('There is no channel you can write in.'),
+        'sendError'      => lang('The canvas could not be sent.'),
+        'sendSent'       => lang('The canvas was sent to {name}.'),
+        // Save to Files from a channel's canvas: the folder window.
+        'savePicture'    => lang('Save to Files as a picture'),
+        'saveVideo'      => lang('Save to Files as a video'),
+        'filesFolder'    => lang('Folder'),
+        'filesLoading'   => lang('Finding your folders…'),
+        'filesNone'      => lang('There is no folder you can save into.'),
+        'filesError'     => lang('The folders could not be loaded.'),
+        'filesNext'      => lang('Next'),
+        'filesSaved'     => lang('Saved to Files > {folder}'),
+        'filesOpen'      => lang('Open in Files'),
         'saving'         => lang('Saving…'),
         'saveError'      => lang('The image could not be saved.'),
         'done'           => lang('Done'),
@@ -193,6 +212,10 @@ function pg_image_editor_config()
         // known); a file larger than one part is sent in parts.
         'animationLimit' => pg_image_editor_upload_limits()['max'],
         'uploadPart'     => pg_image_editor_upload_limits()['part'],
+        // Save to Files from a channel's canvas: offered only to someone who
+        // may edit a folder; the File Manager's address for its link.
+        'filesEdit'      => pg_image_editor_files_edit(),
+        'filesUrl'       => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php',
         // The Design Canvas's icon before the file name in the top bar.
         'brandIcon'      => pg_design_canvas_icon(),
         // Its one-colour form, for the buttons of a screen that opens it
@@ -1507,6 +1530,8 @@ function pg_image_editor_strings_layers()
         'attachNone'     => lang('Not attached'),
         'attachNote'     => lang('An attached layer takes the other layer\'s move, turn and size at every moment, with its own place and keys on top.'),
         'detach'         => lang('Detach'),
+        'attachedTo'     => lang('Attached to {name}'),
+        'attachGroupNote' => lang('To make a layer follow this group, pick that layer alone and choose this group under Attach to.'),
     );
 }
 
@@ -5961,6 +5986,10 @@ function pg_image_editor_strings_clip()
         'clipNoSound'     => lang('This video has no sound.'),
         'clipDetach'      => lang('Detach sound'),
         'clipDetachNote'  => lang('Mutes the clip and adds its sound as a row of its own'),
+        'clipDetachFrom'  => lang('Detach from a video'),
+        'clipDetachSpeed' => lang('The sound is detached only at 1× speed: set the clip\'s speed to 1× first.'),
+        'clipDetachLocked' => lang('Unlock the clip to detach its sound.'),
+        'clipDetachFull'  => lang('This canvas already holds {max} sounds: delete one to detach another.'),
         'clipReplace'     => lang('Replace'),
         'clipBroken'      => lang('This video could not be opened in this browser.'),
         'clipNote'        => lang('The video plays with the play bar in the Animate tool. A saved picture shows its frame at the source in.'),
@@ -6740,4 +6769,132 @@ function pg_image_editor_action_sound_upload($request, $user)
     }
 
     return pg_image_editor_upload_place($request, $user, $format, lang('Sound'), $head, $id);
+}
+
+/**
+ * May the person save into a folder of Files at all? Staff edit every
+ * folder; a user, the folders granted edit rights and below them. Only
+ * whether to offer Save to Files from a channel (pg_image_editor_config());
+ * the save itself asks check_edit_access() of the folder chosen.
+ *
+ * @param array         $user   validate_user()'s row, or null for whoever is signed in
+ * @param callable|null $grants fn(int user id): how many folders the user was
+ *                              granted edit rights to; null reads aclfolder
+ * @return bool
+ */
+function pg_image_editor_files_edit($user = null, $grants = null)
+{
+    if ($user === null) {
+        if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
+            return false;
+        }
+
+        $user = array('id' => USER_ID, 'role' => USER_ROLE);
+    }
+
+    if ((int) ($user['role'] ?? 3) < 3) {
+        return true;
+    }
+
+    if ($grants === null) {
+        $grants = function ($id) {
+            return (int) db_value("SELECT COUNT(*) FROM aclfolder WHERE aclfolder_user = '" . (int) $id . "' AND aclfolder_rights = '2'");
+        };
+    }
+
+    return (int) $grants((int) ($user['id'] ?? 0)) > 0;
+}
+
+/**
+ * The folders Save to Files offers, in the tree's order with their depth:
+ * those the person may edit, never inside a closed branch (the bin,
+ * archived folders, the Workspace's own). Depth counts the listed folders
+ * above it, so the indented list reads as a tree. Pure.
+ *
+ * @param array    $folders  folder id => array(parent, name, order)
+ * @param callable $editable fn(int folder id): bool
+ * @param int[]    $closed   folders whose branch is left out
+ * @return array[] id, name, depth
+ */
+function pg_image_editor_folder_choices($folders, $editable, $closed)
+{
+    $children = array();
+
+    foreach ((array) $folders as $id => $folder) {
+        $children[(int) ($folder['parent'] ?? 0)][] = (int) $id;
+    }
+
+    $sort = function ($a, $b) use ($folders) {
+        $order = (int) ($folders[$a]['order'] ?? 0) - (int) ($folders[$b]['order'] ?? 0);
+
+        return ($order !== 0) ? $order : strnatcasecmp((string) ($folders[$a]['name'] ?? ''), (string) ($folders[$b]['name'] ?? ''));
+    };
+    $closed = array_flip(array_map('intval', (array) $closed));
+    $out = array();
+    $seen = array();
+
+    $walk = function ($parent, $depth) use (&$walk, &$out, &$seen, $children, $folders, $editable, $closed, $sort) {
+        $ids = $children[$parent] ?? array();
+        usort($ids, $sort);
+
+        foreach ($ids as $id) {
+            if (isset($seen[$id]) || isset($closed[$id])) {
+                continue;
+            }
+
+            $seen[$id] = true;
+            $shown = $editable($id);
+
+            if ($shown) {
+                $out[] = array('id' => $id, 'name' => (string) ($folders[$id]['name'] ?? ''), 'depth' => $depth);
+            }
+
+            $walk($id, $shown ? $depth + 1 : $depth);
+        }
+    };
+
+    $walk(0, 0);
+
+    return $out;
+}
+
+/**
+ * Action folders: where Save to Files may put a canvas from a channel.
+ * Someone who may edit no folder is refused (403), as the save would be.
+ *
+ *   { token, action: 'folders' } -> { status, folders: [{id, name, depth}] }
+ *
+ * @param array         $request
+ * @param array         $user
+ * @param callable|null $grants as for pg_image_editor_files_edit()
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_folders($request, $user, $grants = null)
+{
+    if (!pg_image_editor_files_edit($user, $grants)) {
+        return pg_image_editor_refusal(lang('Access denied'), 403);
+    }
+
+    $folders = array();
+    $closed = array();
+
+    foreach ((array) db_items("SELECT folder_id, folder_parent, folder_name, folder_order, folder_archived FROM folder") as $row) {
+        $folders[(int) $row['folder_id']] = array('parent' => (int) $row['folder_parent'], 'name' => (string) $row['folder_name'], 'order' => (int) $row['folder_order']);
+
+        if ((int) $row['folder_archived'] === 1) {
+            $closed[] = (int) $row['folder_id'];
+        }
+    }
+
+    if (function_exists('pg_recycle_bin_folder_id')) {
+        $closed[] = (int) pg_recycle_bin_folder_id();
+    }
+
+    if (function_exists('ws_library_workspace_folder')) {
+        $closed[] = (int) ws_library_workspace_folder();
+    }
+
+    return array(array('status' => 'success', 'folders' => pg_image_editor_folder_choices($folders, function ($id) {
+        return check_edit_access($id) && !pg_folder_binned($id);
+    }, $closed)), 200);
 }

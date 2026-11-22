@@ -88,7 +88,8 @@ function test_settings_assistants_help_cards()
 	);
 
 	foreach ($cards as $key => $file) {
-		pg_assert_contains("ws_assistants_help_html('" . $key . "')", settings_assistants_help_test_source($file), $key . ': the card draws its line');
+		$source = settings_assistants_help_test_source($file);
+		pg_assert_true(strpos($source, "ws_assistants_help_html('" . $key . "')") !== false || strpos($source, "ws_assistants_help_line('" . $key . "')") !== false, $key . ': the card draws its line');
 	}
 
 	$gone = array(

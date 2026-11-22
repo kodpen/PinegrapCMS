@@ -570,7 +570,9 @@ function mp_order_cancel_returns_stock($status) {
 // Put back what the cancelled order took.
 function mp_order_return_stock($order_id) {
 
-	$items = (array) db_items("SELECT order_items.id, order_items.product_id, order_items.quantity, products.inventory
+	$taken_column = pg_stock_taken_ready('order_items') ? 'order_items.stock_taken' : 'NULL AS stock_taken';
+
+	$items = (array) db_items("SELECT order_items.id, order_items.product_id, order_items.quantity, " . $taken_column . ", products.inventory
 		FROM order_items
 		INNER JOIN products ON products.id = order_items.product_id
 		WHERE order_items.order_id = '" . e((int)$order_id) . "'");
@@ -595,22 +597,39 @@ function mp_order_return_stock($order_id) {
 
 		$product_id = (int) $item['product_id'];
 
+		// Only what the sale took goes back (stock_taken; a line from before
+		// it was recorded gives back its quantity). Nothing taken: nothing
+		// written and nothing announced.
+		$units = pg_stock_taken_put_back($item['stock_taken'], max(1, (int)$item['quantity']));
+
+		if ($units === 0) {
+
+			continue;
+
+		}
+
 		// With stock locations the units go back to the default location
 		// through the writer, which keeps the total the sum of the rows.
-		$written = pg_stock_total_write($product_id, 'adjust', max(1, (int)$item['quantity']), 0, 'cancel', $order_ref);
+		$written = pg_stock_total_write($product_id, 'adjust', $units, 0, 'cancel', $order_ref);
 
 		// The stamp lets a system syncing with GET /products?updated_since=
 		// list the product; this path announces no webhook event.
 		if ($written === null) {
 
 			db("UPDATE products
-				SET inventory_quantity = inventory_quantity + " . max(1, (int)$item['quantity']) . ",
+				SET inventory_quantity = inventory_quantity + " . $units . ",
 					timestamp = UNIX_TIMESTAMP()
 				WHERE id = '" . e($product_id) . "'");
 
 		} else {
 
 			db("UPDATE products SET timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($product_id) . "'");
+
+		}
+
+		if (($written === null) || !empty($written['ok'])) {
+
+			pg_stock_taken_returned('order_items', $item['id'], $units);
 
 		}
 
@@ -1177,9 +1196,17 @@ function mp_order_take_stock($matched, $order_ref = '') {
 
 		$product_id = (int) $product['id'];
 
+		// The stock before the sale, for what the line took (stock_taken).
+		$before = max(0, (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e($product_id) . "'"));
+
 		// With stock locations the units come off the default location
 		// through the writer: what it holds, nothing from another location.
 		$written = pg_stock_total_write($product_id, 'adjust', -$quantity, 0, 'marketplace', $order_ref);
+
+		// The line keeps what the sale took, so a cancel puts back only that:
+		// down to 0 on the total, or what the location gave.
+		pg_stock_taken_record('order_items', (int) ($entry['order_item_id'] ?? 0),
+			pg_stock_taken_of($before, $quantity, ($written === null) ? null : (!empty($written['ok']) ? -(int) $written['delta'] : 0)));
 
 		// The stamp lets a system syncing with GET /products?updated_since=
 		// list the product; this path announces no webhook event.
@@ -1197,6 +1224,10 @@ function mp_order_take_stock($matched, $order_ref = '') {
 		}
 
 		$left = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
+
+		// A bundle line further down that holds this product as a component
+		// starts from what this line left, so each records its own share.
+		$stock_left[$product_id] = $left;
 
 		if ($left <= 0) {
 

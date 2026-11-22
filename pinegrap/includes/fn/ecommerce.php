@@ -2768,8 +2768,8 @@ function pg_catalog_bin_group($group_id, $user_id)
  *
  * @param string $sql
  * @param string $answer 'exec' (a write), 'insert' (a write answered with the
- *                       new row's id), 'value' (one scalar or null) or 'rows'
- *                       (a list of rows)
+ *                       new row's id), 'value' (one scalar or null), 'row'
+ *                       (one row, or null) or 'rows' (a list of rows)
  * @param array  $opts   api: run through the external API's helpers
  * @return mixed
  */
@@ -2783,6 +2783,12 @@ function pg_catalog_query($sql, $answer, $opts = array())
 
     if ($answer === 'value') {
         return $api ? api_value($sql) : db_value($sql);
+    }
+
+    if ($answer === 'row') {
+        $row = $api ? api_row($sql) : db_item($sql);
+
+        return is_array($row) ? $row : null;
     }
 
     $result = $api ? api_exec($sql) : db($sql);
@@ -11881,6 +11887,9 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // tell the customer the order was not bought. Only the request that
     // cancelled the order (the guarded write above) gets here.
     pg_review_request_cancel($order_id);
+
+    // A delivery survey still waiting for the order is not sent either.
+    pg_feedback_cancel_record('order', $order_id);
 
     // Its reviews no longer count: a cancelled order is no purchase
     // (pg_review_purchase_stands_sql()).

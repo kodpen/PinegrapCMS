@@ -294,6 +294,11 @@ function ws_flow_event_outputs()
     $problem = array($order, $value('order_type', 'text', lang('Order type')), $value('number', 'text', lang('Tracking number')),
         $value('carrier', 'text', lang('Carrier')), $value('kind', 'text', lang('Kind of problem')), $value('province', 'text', lang('Province')),
         $value('days_in_transit', 'number', lang('Days in transit')), $value('usual_days', 'text', lang('Usual days')));
+    // Customer rhythm (pg_customer_rhythm_event_payload()); the amounts in
+    // minor units are not offered.
+    $rhythm = array($value('stage', 'text', lang('Rhythm stage')), $value('previous_stage', 'text', lang('Stage before')),
+        $value('interval_days', 'number', lang('Days between orders')), $value('days_since_last_order', 'number', lang('Days since the last order')),
+        $value('chance', 'number', lang('Chance of ordering again (%)')), $value('last_order_number', 'text', lang('Last order number')));
     $booking = array($value('name', 'text', lang('Name')), $value('email', 'text', lang('E-mail')), $value('start_at', 'text', lang('Start')),
         $value('end_at', 'text', lang('End')), $value('status', 'text', lang('Status')), $value('service_name', 'text', lang('Service')),
         $value('staff_name', 'text', lang('Staff member')));
@@ -311,6 +316,8 @@ function ws_flow_event_outputs()
         'marketplace.order.imported' => array($order, $value('provider', 'text', lang('Marketplace')), $value('remote_order_id', 'text', lang('The marketplace\'s order number'))),
         'shipment.problem'       => $problem,
         'shipment.problem_resolved' => array_merge($problem, array($value('reason', 'text', lang('What settled it')))),
+        'customer.rhythm_stage_changed' => $rhythm,
+        'customer.reorder_due'   => array_merge($rhythm, array($value('products_text', 'text', lang('Products due')), $value('reorder_url', 'text', lang('Reorder link')))),
         'cart_quote.created'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact'))),
         'cart_quote.ordered'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact')), $order),
         'subscription.renewed'   => $subscription,
@@ -341,6 +348,9 @@ function ws_flow_event_outputs()
         'booking.confirmed'      => $booking,
         'booking.rescheduled'    => $booking,
         'booking.cancelled'      => $booking,
+        'booking.completed'      => $booking,
+        'ticket.checked_in'      => array($value('order_id', 'number', lang('Order')), $order, $value('product_id', 'number', lang('Product')),
+            $value('recurrence_number', 'number', lang('Repeat')), $value('checked_in_at', 'text', lang('Checked in at')), $value('checked_in_by', 'number', lang('Checked in by'))),
         'erp.invoice.created'    => $invoice,
         'erp.invoice.paid'       => $invoice,
         'erp.invoice.overdue'    => array_merge($invoice, array($value('days_overdue', 'number', lang('Days overdue')))),

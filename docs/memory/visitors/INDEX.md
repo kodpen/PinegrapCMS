@@ -12,6 +12,7 @@
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - lead-journey-rules.md: The visitor journey's pure rules (lead_journey.php, LJ1a): browser key verdict, tie and move on a shared browser, tying back in the keep period, interest score half-life
 - lead-journey-store.md: The visitor journey's four tables (step 11.0.265), the pg_lead browser key cookie under the marketing yes, the visit rows, the ties at each act's save path, a refusal, panel users (LJ1b)
+- lead-journey-view.md: The visitor journey read and drawn (LJ2, #10946): the merge by time, the contact screen's Journey card, the Workspace card's folded row, erase, export, inventory, the keep period trim
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
 - page-clicks-designer-layer.md: The designer's Clicks layer (part clicks #10056, wired #10715): toolbar toggle and panel, the read page_clicks, sdDesign.clicks, badges, tenth lines, side list, empty state
 - page-clicks-scope.md: What the clicks and scroll depth counter is for and where it stops: the owner's and the architect's lines of 2026-11-16 (polls 67 and 75, messages 5763, 5774), the bounds, what is left out, whose look [decision: here]
@@ -35,6 +36,7 @@
 - sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records
 - translation-head-alternates.md: When a drawn page names its language versions (hreflang links) in its head: own address, none named yet, and not noindex under any language policy
 - translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it [decision: decisions-made-product-38.md]
+- translation-source-save.md: How a Languages and Translation save tells a changed source language: both sides resolved (an empty setting is the panel language), so an unchanged save keeps the kept index answers
 - visitor-channel-rule.md: The channel of a visit (paid, email, ai, organic, social, referral, direct), the search-engine table of init_tracking() and the ENUM step that appended today's engines [decision: decisions-made-schema-10.md]
 - visitor-counter-dedup-key.md: Why http_referer is not part of the visitor dedup key in init_tracking(), how the visitor IP is resolved, and the defensive user_agent column probe (2026.2.5).
 - visitor-daily-summary.md: The daily visitor summary written for every day through yesterday: what a day holds, the day order of a run, where the raw rows take over (pg_visitor_rows_from), who reads it

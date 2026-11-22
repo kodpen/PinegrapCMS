@@ -247,12 +247,31 @@
 
     // ---- the Data menu ----
 
-    // "Data" in the Import menu, where layers are added, with the API.
-    Editor.importItems.push(function () {
+    // A bar chart: the top bar's Data.
+    X.icons.data = X.icons.data || 'M4.5 19.5h15M7.5 16v-4.5M12 16V6.5M16.5 16V9.5';
+
+    // "Data" on the top bar right after Import (where layers are added),
+    // with the editor's API: it opens the picker. Its word gives way to the
+    // icon under 576 px, as Import's does.
+    Editor.topData = function () {
         var self = this;
 
-        return X.config().api ? [t('layer_data'), function () { self.openDataPicker(null); }] : null;
-    });
+        if (!X.config().api || (this.tools.list.indexOf('select') < 0)) {
+            return null;
+        }
+
+        this.dataBtn = el('button', { type: 'button', class: 'pgie-btn pgie-databtn', title: t('layer_data'), 'aria-label': t('layer_data'), 'aria-haspopup': 'dialog', onclick: function () {
+            self.openDataPicker(null);
+        } }, [X.icon('data'), el('span', { class: 'pgie-vlabel', text: t('layer_data') })]);
+
+        return this.dataBtn;
+    };
+
+    (function () {
+        var at = Editor.topItems.indexOf(Editor.topImport);
+
+        Editor.topItems.splice((at < 0) ? Editor.topItems.length : at + 1, 0, Editor.topData);
+    }());
 
     // The picker over the editor in two steps: "Pick a table" (a search
     // and the tables as rows), then "Pick a view" (a sample card for each
@@ -268,7 +287,7 @@
         this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-data-title' }, [
             el('div', { class: 'pgie-confirm-box pgie-importbox pgie-databox' })
         ]);
-        this.confirmReturn = (back && this.root.contains(back)) ? back : this.importBtn;
+        this.confirmReturn = (back && this.root.contains(back)) ? back : (this.dataBtn || this.importBtn);
         this.root.appendChild(this.confirmBox);
 
         if (start) {

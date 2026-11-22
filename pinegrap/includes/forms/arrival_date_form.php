@@ -117,20 +117,11 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
         $custom_checked = ' checked="checked"';
         $custom_maximum_arrival_date_row_style = '';
         $shipping_cutoff_row_style = ' style="display: none"';
-        $arrival_date_required = '';
-        $arrival_date_marker_class = ' d-none';
     } else {
         $custom_checked = '';
         $custom_maximum_arrival_date_row_style = ' style="display: none"';
         $shipping_cutoff_row_style = '';
-        $arrival_date_required = ' required';
-        $arrival_date_marker_class = '';
     }
-
-    // The arrival date is required only while the customer does not enter
-    // it; its label carries its own marker, which the script below shows
-    // and hides with the attribute (the load-time marker script runs once).
-    $arrival_date_marker = '<span id="arrival_date_required_marker" class="pg-required-marker fg-danger ms-1' . $arrival_date_marker_class . '" aria-hidden="true">*</span>';
 
     $output_cutoffs_js = (string) $cutoffs_js . '
                                         var shipping_method_id_options = new Array();
@@ -146,8 +137,14 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                         };';
     }
 
+    // A blank arrival date is delivered as soon as possible (the starter
+    // sites' AT-ONCE row); a custom one is entered by the customer.
     $customer_text = lang('Chosen by the customer');
+    $soon_text = lang('As soon as possible');
     $summary_arrival_date = ($v['custom'] == 1) ? $customer_text : $date('arrival_date');
+    if ($summary_arrival_date === '') {
+        $summary_arrival_date = $soon_text;
+    }
 
     $summary = pg_arrival_date_form_status_row(lang('Name'), '<span id="arrival_date_summary_name">' . h($v['name']) . '</span>', false)
         . pg_arrival_date_form_status_row(lang('Arrival Date'), '<span id="arrival_date_summary_arrival_date">' . h($summary_arrival_date) . '</span>', false)
@@ -206,9 +203,9 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-3 my-3">
-                                            <label for="arrival_date" class="form-label">' . lang('Arrival Date') . $arrival_date_marker . '</label>
-                                            <input value="' . $date('arrival_date') . '" placeholder="' . $date_placeholder . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off"' . $arrival_date_required . ' data-pg-date/>
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                            <label for="arrival_date" class="form-label">' . lang('Arrival Date') . '</label>
+                                            <input value="' . $date('arrival_date') . '" placeholder="' . $date_placeholder . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off" aria-describedby="arrival_date_help" data-pg-date/>
+                                            <div id="arrival_date_help" class="form-text">' . lang('Leave blank to deliver as soon as possible.') . '</div>
                                         </div>
                                         <div class="col-12 my-3">
                                             <div class="form-field">
@@ -286,6 +283,7 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                             // follows the rows of the table.
                             (function () {
                                 var customer_text = ' . json_encode($customer_text) . ';
+                                var soon_text = ' . json_encode($soon_text) . ';
                                 var custom = document.getElementById("custom");
                                 function follow(id, summary_id, read) {
                                     var field = document.getElementById(id);
@@ -300,17 +298,9 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                 follow("start_date", "arrival_date_summary_start_date", value);
                                 follow("end_date", "arrival_date_summary_end_date", value);
                                 var arrival_date = follow("arrival_date", "arrival_date_summary_arrival_date", function (field) {
-                                    return custom.checked ? customer_text : field.value;
+                                    return custom.checked ? customer_text : (field.value.trim() || soon_text);
                                 });
                                 custom.addEventListener("change", arrival_date);
-                                // The customer enters a custom arrival date, so the
-                                // box is required only while the switch is off.
-                                var arrival_date_field = document.getElementById("arrival_date");
-                                var arrival_date_marker = document.getElementById("arrival_date_required_marker");
-                                custom.addEventListener("change", function () {
-                                    arrival_date_field.required = !custom.checked;
-                                    arrival_date_marker.classList.toggle("d-none", custom.checked);
-                                });
                                 var rows = document.getElementById("shipping_cutoff_table").tBodies[0];
                                 new MutationObserver(function () {
                                     document.getElementById("arrival_date_summary_cutoffs").textContent = String(rows.rows.length);
@@ -373,11 +363,14 @@ function pg_arrival_date_form_status($post)
 /**
  * What keeps a posted arrival date from being saved: field => message for
  * the error screen. The name and the start and end dates are required and
- * real dates, the end not before the start; the arrival date is a real
- * date unless the customer enters it (custom), and then the latest allowed
- * date is blank or a real date; the sort order is a whole number. A date
- * the screens could not read was stored as 0000-00-00 without a word, and
- * a zero start date kept the arrival date off the checkout for good.
+ * real dates, the end not before the start; the arrival date is blank
+ * (delivered as soon as possible: the starter sites' AT-ONCE row, which
+ * the shipping methods read as no date) or a real date, and with custom
+ * (the customer enters it) the latest allowed date is blank or a real
+ * date too; the stored unset date 0000-00-00 posted back counts as blank;
+ * the sort order is a whole number. A date the screens could not read was
+ * stored as 0000-00-00 without a word, and a zero start date kept the
+ * arrival date off the checkout for good.
  *
  * @param array $post
  * @return array
@@ -396,7 +389,7 @@ function pg_arrival_date_form_errors($post)
 
     $custom = ($text('custom') == '1');
 
-    $dates = array('start_date' => array(lang('Start Date'), true), 'end_date' => array(lang('End Date'), true), 'arrival_date' => array(lang('Arrival Date'), !$custom));
+    $dates = array('start_date' => array(lang('Start Date'), true), 'end_date' => array(lang('End Date'), true), 'arrival_date' => array(lang('Arrival Date'), false));
 
     if ($custom) {
         $dates['custom_maximum_arrival_date'] = array(lang('Latest Allowed Arrival Date'), false);
@@ -404,6 +397,10 @@ function pg_arrival_date_form_errors($post)
 
     foreach ($dates as $field => $rule) {
         $value = $text($field);
+
+        if (!$rule[1] && ($value === '0000-00-00')) {
+            continue;
+        }
 
         if ((($value !== '') || $rule[1]) && (pg_date_input_iso($value) === '')) {
             $errors[$field] = lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => $rule[0]));
@@ -454,12 +451,14 @@ function pg_arrival_date_form_values($post, $user_id)
     $text = function ($field) use ($post) {
         return (isset($post[$field]) && is_scalar($post[$field])) ? (string) $post[$field] : '';
     };
-    // pg_arrival_date_form_errors() has checked the dates; a blank one
-    // (a custom arrival date) is stored as before.
+    // pg_arrival_date_form_errors() has checked the dates; a blank one (an
+    // AT-ONCE or customer-entered arrival date, no latest allowed date) is
+    // stored as the unset date 0000-00-00, which the shipping methods and
+    // checkout read as no date, without leaning on a non-strict SQL mode.
     $date = function ($field) use ($text) {
         $iso = pg_date_input_iso($text($field));
 
-        return ($iso !== '') ? $iso : (string) prepare_form_data_for_input($text($field), 'date');
+        return ($iso !== '') ? $iso : '0000-00-00';
     };
 
     return array(

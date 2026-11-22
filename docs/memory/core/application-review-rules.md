@@ -24,6 +24,7 @@ module: application_review
 
 ## How are reviewers given out?
 - `pg_application_assign($entries, $pool, $n, $existing, $conflicts, $random)`: fewest assigned first, ties at random (pool order with `$random` false), never one reviewer twice on an entry or one with a conflict on it.
+- `$start_load` (reviewer => count) adds load given in another category's call, so a reviewer in several pools is not served first in each (AR3a).
 - A re-run keeps `$existing` reviewers (their load counts) and only tops up; a kept reviewer who declared a conflict since is dropped and replaced. An entry the pool cannot fill is listed in `short` with how many it lacks (a pool of one, everyone in conflict).
 
 ## How are ranking and the shortlist cut?

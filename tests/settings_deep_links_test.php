@@ -38,6 +38,11 @@ function settings_deep_links_test_cards()
 		$cards[$key] = $ids[1];
 	}
 
+	// E-mail is kept in a function of its own, read without the database.
+	if (strpos($source, "'email' => pg_settings_email_category(),") !== false) {
+		$cards['email'] = array_keys(pg_settings_email_category()['sections']);
+	}
+
 	return $cards;
 }
 
@@ -84,11 +89,16 @@ function test_settings_deep_links_name_a_listed_card()
 	$cards = settings_deep_links_test_cards();
 	$links = settings_deep_links_test_links();
 
-	pg_assert_same(20, count($cards), 'the registry\'s categories are read');
+	pg_assert_same(19, count($cards), 'the registry\'s categories are read');
+
+	// The old key of a category that became a tab is that category's page
+	// on the tab (pg_settings_moved_categories()).
+	$moved = array('mail_sending' => 'email', 'mailboxes' => 'email');
 	pg_assert_true(count($links) >= 30, 'the links are found (' . count($links) . ')');
 
 	foreach ($links as $link) {
 		list($file, $category, $card) = $link;
+		$category = isset($moved[$category]) ? $moved[$category] : $category;
 
 		pg_assert_true(
 			isset($cards[$category]) && in_array($card, $cards[$category], true),

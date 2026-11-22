@@ -618,29 +618,32 @@ function ws_wtable_import_utf8($value)
  * The one reader of a table file: the bulk product drafts read through it
  * too (ws_bulk_file_table()), capped at a product card's rows.
  *
+ * A .tsv is read as a CSV: its first line's tabs name the separator.
+ *
  * @param string $path
  * @param string $file_name the name the person's machine gave it
  * @param int    $max       lines to keep, header included
+ * @param int    $sheet     a workbook's worksheet, 0 for the first
  * @return array ok, error, table, more
  */
-function ws_wtable_import_file_table($path, $file_name, $max)
+function ws_wtable_import_file_table($path, $file_name, $max, $sheet = 0)
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'table' => array(), 'more' => false);
     };
 
-    if (!preg_match('/\.(csv|xlsx|xlsm|xls|ods)$/i', (string) $file_name)) {
+    if (!preg_match('/\.(csv|tsv|xlsx|xlsm|xls|ods)$/i', (string) $file_name)) {
         return $fail(lang('Import a CSV, Excel or OpenDocument file.'));
     }
 
     $csv = (string) $path;
-    $spreadsheet = !preg_match('/\.csv$/i', (string) $file_name);
+    $spreadsheet = !preg_match('/\.(csv|tsv)$/i', (string) $file_name);
 
     if ($spreadsheet) {
         require_once(PG_FUNCTIONS_DIR . '/import_products_f.php');
 
         $error = '';
-        $csv = pg_products_import_to_csv($path, $file_name, $error);
+        $csv = pg_products_import_to_csv($path, $file_name, $error, max(0, (int) $sheet));
 
         if ($csv === '') {
             return $fail(($error !== '') ? $error : lang('The file could not be read.'));
@@ -951,6 +954,141 @@ function ws_wtable_import_note_read($viewer, $note_id, $block, $max)
 }
 
 /* ---------------------------------------------------------------------------
+   A sheet posted in a channel ("Save as data" in its preview window)
+   --------------------------------------------------------------------------- */
+
+/**
+ * Is this file a sheet a channel's preview window offers to save as data:
+ * an Excel workbook (.xlsx, .xls), an OpenDocument one (.ods), a .csv or a
+ * .tsv. Pure.
+ *
+ * @param string $name the file's name
+ * @return bool
+ */
+function ws_wtable_import_sheet_name($name)
+{
+    return (bool) preg_match('/\.(xlsx|xls|ods|csv|tsv)$/i', (string) $name);
+}
+
+/**
+ * Does the preview window of a channel's file show "Save as data": a sheet,
+ * for someone who may post in the channel and make a table there. Pure.
+ *
+ * @param string $name     the file's name
+ * @param bool   $can_post ws_can_post_channel()
+ * @param bool   $can_make the channel takes a table from them (ws_wtable_home_writable())
+ * @return bool
+ */
+function ws_wtable_import_file_offered($name, $can_post, $can_make)
+{
+    return ws_wtable_import_sheet_name($name) && $can_post && $can_make;
+}
+
+/**
+ * The worksheet the import reads for the sheet the preview window shows: the
+ * preview lists a workbook's chart and dialog sheets as tabs too, the import
+ * counts worksheets only (pg_products_import_xlsx_sheet_part()). -1 when the
+ * tab shown has no cells; the index as given when the list is unknown. Pure.
+ *
+ * @param array $types the workbook's sheets' types in order (pg_office_xlsx_sheets())
+ * @param int   $shown the tab's index in the preview
+ * @return int
+ */
+function ws_wtable_import_worksheet_at($types, $shown)
+{
+    $shown = max(0, (int) $shown);
+
+    if (empty($types)) {
+        return $shown;
+    }
+
+    if (($types[$shown] ?? '') !== 'worksheet') {
+        return -1;
+    }
+
+    return count(array_filter(array_slice(array_values($types), 0, $shown), function ($type) {
+        return $type === 'worksheet';
+    }));
+}
+
+/**
+ * The tables "Save as data" may add rows to: those the person may write, as
+ * reached (ws_wtables_reached(), the latest changed first), at most $limit.
+ * Pure.
+ *
+ * @param array[] $tables ws_wtables rows with access
+ * @param int     $limit
+ * @return array[] id, name
+ */
+function ws_wtable_import_file_targets($tables, $limit = 50)
+{
+    $out = array();
+
+    foreach ((array) $tables as $table) {
+        if ((count($out) < $limit) && ws_wtable_may((string) ($table['access'] ?? ''), 'write')) {
+            $out[] = array('id' => (int) $table['id'], 'name' => (string) $table['name']);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The sheet of a channel's file read as an uploaded file is: the message
+ * must be one the person reads, in a channel they may post in and make a
+ * table in, and its file a sheet.
+ *
+ * @param array $viewer
+ * @param int   $message_id
+ * @param int   $sheet the tab the preview window shows, 0 for the first
+ * @param int   $max   rows to keep, header included
+ * @return array ok, error, table, more, name (the file's), channel_id
+ */
+function ws_wtable_import_message_read($viewer, $message_id, $sheet, $max)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'table' => array(), 'more' => false, 'name' => '', 'channel_id' => 0);
+    };
+
+    $message = ws_message((int) $message_id);
+    $channel = $message ? ws_channel($message['channel_id']) : null;
+
+    if (!$message || !$channel || !ws_can_read_channel($viewer, $channel) || ((int) $message['deleted_at'] > 0) || ((int) $message['file_id'] <= 0)) {
+        return $fail(lang('That message could not be found.'));
+    }
+
+    $name = (string) $message['file_name'];
+
+    if (!ws_wtable_import_file_offered($name, ws_can_post_channel($viewer, $channel), ws_wtable_home_writable($viewer, (int) $channel['id']) !== null)) {
+        return $fail(lang('Import a CSV, Excel or OpenDocument file.'));
+    }
+
+    // The file may be in the object store: the reader gets a copy.
+    $path = pg_file_reader_path((string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'"));
+
+    if ($path === '') {
+        return $fail(lang('The file could not be read.'));
+    }
+
+    if (preg_match('/\.xlsx$/i', $name)) {
+        $zip = pg_office_open($path, $error);
+        $types = $zip ? array_column(pg_office_xlsx_sheets($zip, $refused), 'type') : array();
+
+        if ($zip) {
+            $zip->close();
+        }
+
+        $sheet = ws_wtable_import_worksheet_at($types, $sheet);
+
+        if ($sheet < 0) {
+            return $fail(lang('This sheet holds no cells to import.'));
+        }
+    }
+
+    return ws_wtable_import_file_table($path, $name, $max, $sheet) + array('name' => $name, 'channel_id' => (int) $channel['id']);
+}
+
+/* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
 
@@ -1084,7 +1222,7 @@ function ws_wtable_import_rows($viewer, $table, $rows, $map)
  *
  * @param array      $viewer
  * @param array|null $table  ws_wtable() with rows added to it, null for a new table
- * @param array      $read   names (the source's column names), rows (header left out)
+ * @param array      $read   names (the source's column names), rows (header left out), channel (a new table's, optional)
  * @param array      $choice map (source index => column id) for a table; name and plan (list of index, name, type) for a new one
  * @return array ok, error, field, status; columns (source, column_id, name, type, new), rows, refused, refused_count
  */
@@ -1109,7 +1247,7 @@ function ws_wtable_import_check($viewer, $table, $read, $choice)
 
         $room = max(0, ws_wtable_limits()['rows'] - (int) $table['row_count']);
     } else {
-        $made = ws_wtable_create_check($viewer, array('name' => (string) ($choice['name'] ?? ''), 'description' => ''));
+        $made = ws_wtable_create_check($viewer, array('name' => (string) ($choice['name'] ?? ''), 'description' => '', 'channel_id' => (int) ($read['channel'] ?? 0)));
 
         if (!$made['ok']) {
             return $made;
@@ -1279,11 +1417,12 @@ function ws_wtable_import_plan($names, $rows, $types = array())
  * @param string $name     the table's name
  * @param array  $plan     list of index (file column), name, type
  * @param array  $rows     the file's rows, header left out
+ * @param int    $channel_id the channel the table belongs to, 0 for the person's own
  * @return array ok, error, table_id, report (as ws_wtable_import_rows())
  */
-function ws_wtable_import_create($viewer, $name, $plan, $rows)
+function ws_wtable_import_create($viewer, $name, $plan, $rows, $channel_id = 0)
 {
-    $made = ws_wtable_create($viewer, array('name' => $name, 'description' => ''));
+    $made = ws_wtable_create($viewer, array('name' => $name, 'description' => '', 'channel_id' => max(0, (int) $channel_id)));
 
     if (!$made['ok']) {
         return array('ok' => false, 'error' => $made['error'], 'table_id' => 0, 'report' => array());
@@ -1340,9 +1479,10 @@ function ws_wtable_import_keep_json($table)
  * @param string $file_name
  * @param int    $table_id  the table rows are added to, 0 for a new one
  * @param bool   $note      read from a note: $file_name is the name to offer
+ * @param int    $channel_id a new table's channel (a channel's file), 0 for none
  * @return bool
  */
-function ws_wtable_import_keep($read, $file_name, $table_id, $note = false)
+function ws_wtable_import_keep($read, $file_name, $table_id, $note = false, $channel_id = 0)
 {
     ws_wtable_import_drop();
 
@@ -1358,15 +1498,15 @@ function ws_wtable_import_keep($read, $file_name, $table_id, $note = false)
         return false;
     }
 
-    $_SESSION['software']['ws_wtable_import'] = array('path' => $path, 'file' => (string) $file_name, 'table' => (int) $table_id, 'more' => !empty($read['more']), 'note' => (bool) $note);
+    $_SESSION['software']['ws_wtable_import'] = array('path' => $path, 'file' => (string) $file_name, 'table' => (int) $table_id, 'more' => !empty($read['more']), 'note' => (bool) $note, 'channel' => max(0, (int) $channel_id));
 
     return true;
 }
 
 /**
  * The file kept by ws_wtable_import_keep(), or null: file (name), table
- * (id, 0 for a new one), more, note (read from a note), names (the
- * header), rows.
+ * (id, 0 for a new one), more, note (read from a note), channel (a new
+ * table's channel, 0 for the person's own), names (the header), rows.
  *
  * @return array|null
  */
@@ -1392,6 +1532,7 @@ function ws_wtable_import_kept()
         'table' => (int) $kept['table'],
         'more'  => !empty($kept['more']),
         'note'  => !empty($kept['note']),
+        'channel' => (int) ($kept['channel'] ?? 0),
         'names' => ws_wtable_import_names(array_shift($table)),
         'rows'  => $table,
     );

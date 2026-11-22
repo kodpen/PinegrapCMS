@@ -329,6 +329,122 @@ function pg_booking_settings_service_clean($row)
 }
 
 /**
+ * The id of a service's drawer in the Bookings pane: the service's id, or
+ * 'new' for the add drawer.
+ *
+ * @param int|string $key
+ * @return string
+ */
+function pg_booking_settings_service_drawer($key)
+{
+    return 'pgset-booking-service-' . $key;
+}
+
+/**
+ * The drawer holding a box a save refused, so the pane opens it again: a
+ * service's boxes sit in its drawer. '' for a box drawn in the pane itself
+ * (the order, every staff box) or a row that is no service. Pure.
+ *
+ * @param string     $list  the posted list (booking_service, booking_staff)
+ * @param int|string $row   the row's key: a service id or 'new'
+ * @param string     $error the box's key, as pg_booking_settings_service_clean() names it
+ * @return string drawer id or ''
+ */
+function pg_booking_settings_error_drawer($list, $row, $error)
+{
+    $boxes = array('name', 'length', 'before', 'after', 'price', 'deposit', 'deposit_product', 'description', 'enabled');
+
+    if (($list !== 'booking_service') || !is_scalar($row) || !in_array((string) $error, $boxes, true)) {
+        return '';
+    }
+
+    $row = (string) $row;
+
+    return (($row === 'new') || (preg_match('/^[1-9]\d*$/', $row) === 1)) ? pg_booking_settings_service_drawer($row) : '';
+}
+
+/**
+ * A service's line in its row: its length, its price when it has one, and
+ * whether it can be booked; a service switched off says only that.
+ *
+ * @param array  $service    a booking_services row
+ * @param array  $separators decimal, thousands (pg_number_separators())
+ * @param string $currency
+ * @return string
+ */
+function pg_booking_settings_service_line($service, $separators, $currency)
+{
+    if (empty($service['enabled'])) {
+        return lang('Switched off');
+    }
+
+    $parts = array(lang(array('string' => '{var:1} min', 'vars' => (int) ($service['length_minutes'] ?? 0))));
+
+    if ((int) ($service['price'] ?? 0) > 0) {
+        $parts[] = trim(pg_booking_settings_price_text((int) $service['price'], $separators) . ' ' . $currency);
+    }
+
+    $parts[] = lang('Can be booked');
+
+    return implode(' · ', $parts);
+}
+
+/**
+ * The line of state of each folded row of the Bookings pane.
+ *
+ * @param array $services id => booking_services row
+ * @param array $staff    user id => booking_staff row
+ * @param array $policy   as pg_booking_policy()
+ * @param array $texts    as pg_booking_texts()
+ * @return array services, staff, policy, texts => line
+ */
+function pg_booking_settings_fold_lines($services, $staff, $policy, $texts)
+{
+    $count = function ($rows) {
+        return count(array_filter((array) $rows, function ($row) {
+            return !empty($row['enabled']);
+        }));
+    };
+
+    $services = (array) $services;
+    $bookable = $count($services);
+    $taking = $count($staff);
+    $days = (int) ($policy['horizon_days'] ?? 0);
+
+    if (!$services) {
+        $services_line = lang('No service yet');
+    } else {
+        $services_line = lang(array(
+            'string' => '{var:1} service{suffix:1}, {var:2} can be booked',
+            'vars'   => array(count($services), $bookable),
+            'suffix' => array((count($services) === 1) ? '' : 's'),
+        ));
+    }
+
+    if ($taking === 0) {
+        $staff_line = lang('Nobody takes bookings yet');
+    } elseif ($taking === 1) {
+        $staff_line = lang('1 takes bookings');
+    } else {
+        $staff_line = lang(array('string' => '{var:1} take bookings', 'vars' => $taking));
+    }
+
+    $filled = count(array_filter(array_intersect_key((array) $texts, pg_booking_settings_text_fields()), function ($text) {
+        return trim((string) $text) !== '';
+    }));
+
+    return array(
+        'services' => $services_line,
+        'staff'    => $staff_line,
+        'policy'   => lang(array('string' => 'Up to {var:1} day{suffix:1} ahead', 'vars' => $days, 'suffix' => array(($days === 1) ? '' : 's')))
+            . ' · ' . (!empty($policy['auto_confirm']) ? lang('confirmed at once') : lang('staff confirm each booking')),
+        'texts'    => ($filled > 0)
+            ? lang(array('string' => '{var:1} of {var:2} texts set', 'vars' => array($filled, count(pg_booking_settings_text_fields()))))
+            : lang('The widget\'s own wording'),
+    );
+}
+
+/**
  * The ISO weekdays in the order the week starts on.
  *
  * @param int $first_day 0 (Sunday) or 1 (Monday), as date('w') counts

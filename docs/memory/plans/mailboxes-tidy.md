@@ -32,10 +32,10 @@ priority: 8
 ## Which steps are there?
 - MT1 (M) first, after #10825's fix has landed: the pane's rows, the box row with its pill and menu, Remove (check and write; tests: conversations stay, the box's rules and password go). Done: #10900.
 - MT2 (M) after MT1: the drawer in tabs, Routing as rows, the folds, help cut to a line. Done: #10934.
-- MT3 (S) after MT2: the starting points and the set-up drawers.
+- MT3 (S) after MT2: the starting points and the set-up drawers. Done: #10950.
 - MT4 (S) close-out: `ui/look-settings-mailboxes.md`, `workspace/workspace-mail-settings-dialog.md` and `workspace/mail-google.md` corrected, this plan deleted.
 
 ## What binds it?
 - Field names, ids and what a save stores do not change: the save module and the settings search read them; a test pins the posted names.
-- `mail_settings.php` is entered by one step at a time. The folded row is the one AT1 of `plans/assistants-settings-tidy-steps.md` builds.
+- `mail_settings.php` is entered by one step at a time. The folded row is `pg_settings_fold()` (`ui/settings-fold-rows.md`).
 - Architect (2026-11-20): Remove deletes the box's settings and never a conversation.

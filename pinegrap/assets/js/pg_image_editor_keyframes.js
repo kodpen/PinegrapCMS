@@ -10,8 +10,10 @@
  * one; dragging a layer on the stage while the playhead stands away from 0
  * sets its place at that moment; a diamond per key on the layer's track
  * (a press seeks to it, a drag moves it, Delete removes it); the path the
- * layer's centre takes, drawn over the stage; Attach to, naming the layer
- * or group whose motion the layer takes (M.attachTargets()).
+ * layer's centre takes, drawn over the stage; Attach to, first on one
+ * layer's tab, naming the layer or group whose motion the layer takes
+ * (M.attachTargets()), and with a group picked a line saying how a layer
+ * follows it.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -136,6 +138,9 @@
 
         if (groupOfKey(l.id)) {
             this.groupOwnLine(body, groupOfKey(l.id));
+            // A group is never attached itself: the line says how a layer
+            // is made to follow it.
+            body.appendChild(el('p', { class: 'pgie-note pgie-attgrp', text: t('attachGroupNote') }));
         }
 
         if (keys.length) {
@@ -168,10 +173,6 @@
             body.appendChild(el('button', { type: 'button', class: 'pgie-link', text: t('keysClear'), onclick: function () {
                 self.editKeys(l.id, function () { return []; });
             } }));
-        }
-
-        if (!groupOfKey(l.id) && this.attachOffer) {
-            this.attachField(body, l);
         }
     };
 
@@ -600,10 +601,21 @@
         this.keyPanelSig = '';
     });
 
+    // Attach to for one layer, first on the tab: above Record and the keys
+    // the other parts put round keysPanel().
+    Editor.prototype.keysTop = function (body, layers) {
+        var l = this.keyTarget(layers);
+
+        if (l && !groupOfKey(l.id) && this.attachOffer) {
+            this.attachField(body, l);
+        }
+    };
+
     Editor.motionPanes.push({
         id: 'keys',
         label: 'keysTab',
         has: function (a) { return !!(a && a.keys && a.keys.length); },
+        top: Editor.prototype.keysTop,
         panel: Editor.prototype.keysPanel
     });
 

@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Features cards: which parts of the software are switched on, and how images are handled.
+ * Site Settings - the Features pane: the Modules board of switches, then the
+ * rest as folded rows (includes/settings/fold.php), each row holding its card.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -19,189 +20,160 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
-// ── Feature Options ──
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/features_modules.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/features_fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
+
+// ── Modules ──
+//
+// One board of module switches (includes/fn/features_modules.php). Each
+// switch keeps the field name and id of its old card, so features.save.php
+// reads it unchanged; a card with nothing but its switch (Courses, Tickets)
+// posts its marker from the row. Commerce and Accounting keep their switch
+// at the head of their own category, where their save needs it: the board
+// shows their state and opens them.
+$features_modules = array(
+    'commerce'     => array('on' => ($ecommerce_checked !== ''), 'href' => pg_settings_may_open('commerce', $user) ? pg_settings_link('commerce') : ''),
+    'accounting'   => array('on' => ($erp_enabled_checked !== ''), 'href' => pg_settings_may_open('accounting', $user) ? pg_settings_link('accounting') : ''),
+    'forms'        => array('on' => ($forms_checked !== '')),
+    'calendars'    => array('on' => ($calendars_checked !== '')),
+    'ads'          => array('on' => ($ads_checked !== '')),
+    'auto_dialogs' => array('on' => ($auto_dialogs_checked !== '')),
+    'sharing'      => array('on' => ($social_networking_checked !== ''), 'settings' => 'pg-fold-sharing'),
+    'mobile'       => array('on' => ($mobile_checked !== '')),
+);
+
+if ($workspace_setting_available) {
+    $features_modules['workspace'] = array('on' => ($workspace_enabled_checked !== ''));
+}
+
+if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('config_text')) {
+    $features_modules['courses'] = array('on' => pg_course_switch_on(), 'extra' => '<input type="hidden" name="courses_card" value="1"/>');
+}
+
+if (function_exists('pg_event_tickets_ready') && pg_event_tickets_ready() && pg_schema_has('config_text')) {
+    $features_modules['tickets'] = array('on' => pg_event_tickets_switch_on(), 'extra' => '<input type="hidden" name="event_tickets_card" value="1"/>');
+}
+
+if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
+    $features_modules['site_push'] = array('on' => pg_site_push_switch_on(), 'settings' => 'pg-fold-site-push');
+}
+
+if (pg_schema_has('config_text')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_tiles.php');
+    $features_modules['maps'] = array('on' => pg_place_tiles_switch_on(), 'settings' => 'pg-fold-maps');
+}
+
+if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
+    $features_modules['page_clicks'] = array('on' => pg_page_clicks_switch_on(), 'settings' => 'pg-fold-page-clicks');
+}
+
+// Drawn for designers and administrators only, as its card is: a Manager's
+// own saves are the ones it holds.
+$features_content_approval_shown = pg_content_proposals_ready() && pg_content_proposals_may_set($user);
+
+if ($features_content_approval_shown) {
+    $content_approval = pg_content_proposals_settings();
+    $features_modules['content_approval'] = array('on' => $content_approval['on'], 'settings' => 'pg-fold-content-approval');
+}
+
 $pg_settings_cards[] = '
                         <div id="pgset-features" class="pg-set-card">
+                            ' . pg_features_modules_board($features_modules) . '
+                        </div>';
+
+// ── The rows below the board ──
+//
+// Each part is one folded row (includes/fn/features_fold.php), its card
+// drawn here with its own pgset- id, fields and names, so the anchors, the
+// search index and features.save.php read it as before.
+$features_parts = array();
+
+// ── Sharing buttons ──
+//
+// The board switches them; their setup is here: Simple ticks the services,
+// Advanced takes the site's own code. The Setup control shows the one its
+// choice uses (collapse-switcher); both are posted.
+$sharing_services = array(
+    'facebook' => array('Facebook', $social_networking_facebook_checked),
+    'twitter'  => array('X (Twitter)', $social_networking_twitter_checked),
+    'linkedin' => array('LinkedIn', $social_networking_linkedin_checked),
+    'whatsapp' => array('WhatsApp', $social_networking_whatsapp_checked),
+    'telegram' => array('Telegram', $social_networking_telegram_checked),
+    'pinterest' => array('Pinterest', $social_networking_pinterest_checked),
+    'reddit'   => array('Reddit', $social_networking_reddit_checked),
+    'email'    => array(lang('Email'), $social_networking_email_checked),
+);
+$sharing_chosen = array();
+
+foreach ($sharing_services as $sharing_service) {
+    if ($sharing_service[1] !== '') {
+        $sharing_chosen[] = $sharing_service[0];
+    }
+}
+
+$features_parts['sharing'] = array('html' => '
+                        <div id="pgset-sharing" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Feature Options') . '
+                                    ' . lang('Sharing buttons') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-5">
+                                    <div class="row gy-5">
+                                        <div class="col-12">
+                                            <fieldset><legend class="form-label pg-field-label">' . lang('Setup') . '</legend>
+                                            <div class="pg-seg flex-wrap">
+                                                <label class="pg-seg-item" for="social_networking_type_simple"><input value="simple" class="visually-hidden collapse-switcher" type="radio" id="social_networking_type_simple" name="social_networking_type"' . $social_networking_type_simple_checked . ' data-bs-target="#social_networking_services_row"/>' . lang('Simple') . '</label>
+                                                <label class="pg-seg-item" for="social_networking_type_advanced"><input value="advanced" class="visually-hidden collapse-switcher" type="radio" id="social_networking_type_advanced" name="social_networking_type"' . $social_networking_type_advanced_checked . ' data-bs-target="#social_networking_code_row"/>' . lang('Advanced') . '</label>
+                                            </div>
+                                            </fieldset>
+                                        </div>
+                                        <div class="col-12" id="social_networking_services_row"' . (($social_networking_type_advanced_checked !== '') ? ' style="display:none"' : '') . '>
+                                            <div class="form-label">' . lang('Services') . '</div>
+                                            <div class="row gy-5">
+                                                <div class="sm:col-6 d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" name="social_networking_facebook" id="social_networking_facebook" value="1"' . $social_networking_facebook_checked . '/><label class="pg-text-2" for="social_networking_facebook">Facebook</label></div>
+                                                <div class="sm:col-6 d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" name="social_networking_twitter" id="social_networking_twitter" value="1"' . $social_networking_twitter_checked . '/><label class="pg-text-2" for="social_networking_twitter">X (Twitter)</label></div>
+                                                <div class="sm:col-6 d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" name="social_networking_linkedin" id="social_networking_linkedin" value="1"' . $social_networking_linkedin_checked . '/><label class="pg-text-2" for="social_networking_linkedin">LinkedIn</label></div>
+                                                <div class="sm:col-6 d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" name="social_networking_whatsapp" id="social_networking_whatsapp" value="1"' . $social_networking_whatsapp_checked . '/><label class="pg-text-2" for="social_networking_whatsapp">WhatsApp</label></div>
+                                                <div class="sm:col-6 d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" name="social_networking_telegram" id="social_networking_telegram" value="1"' . $social_networking_telegram_checked . '/><label class="pg-text-2" for="social_networking_telegram">Telegram</label></div>
+                                                <div class="sm:col-6 d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" name="social_networking_pinterest" id="social_networking_pinterest" value="1"' . $social_networking_pinterest_checked . '/><label class="pg-text-2" for="social_networking_pinterest">Pinterest</label></div>
+                                                <div class="sm:col-6 d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" name="social_networking_reddit" id="social_networking_reddit" value="1"' . $social_networking_reddit_checked . '/><label class="pg-text-2" for="social_networking_reddit">Reddit</label></div>
+                                                <div class="sm:col-6 d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" name="social_networking_email" id="social_networking_email" value="1"' . $social_networking_email_checked . '/><label class="pg-text-2" for="social_networking_email">' . lang('Email') . '</label></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12" id="social_networking_code_row"' . (($social_networking_type_advanced_checked === '') ? ' style="display:none"' : '') . '>
+                                            <label for="social_networking_code" class="form-label">' . lang('Code') . '</label>
+                                            <textarea class="form-control" id="social_networking_code" name="social_networking_code">' . h($social_networking_code) . '</textarea>
+                                            ' . pg_code_editor_attach(array('id' => 'social_networking_code', 'code_type' => 'mixed')) . '
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>') + pg_features_fold_sharing($social_networking_checked !== '', $social_networking_type_advanced_checked !== '', $sharing_chosen);
+
+// ── Badge ──
+//
+// The label a member gets by default in comments and form records; no other
+// category holds members' badges.
+$features_parts['badge'] = array('html' => '
+                        <div id="pgset-badge" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('Badge') . '
+                                </div>
+                                <div class="card-body">
+                                    <div class="row gy-5">
                                         <div class="pg-f-md">
                                             <label for="setting_badge_label" class="form-label">' . lang('Default Badge Label') . '</label>
                                             <input type="text" name="badge_label" id="setting_badge_label" maxlength="100" class="form-control" value="' . h($badge_label) . '" />
                                         </div>
-                                        <div class="col-12 ">
-                                            <fieldset><legend class="form-label pg-field-label">'. lang('Site Search Type') . '</legend>
-                                            <div class="form-field">
-                                                <input value="simple" class="radio" type="radio" id="search_type_simple" name="search_type" ' . $search_type_simple_checked . '>
-                                                <label class="" for="search_type_simple">'. lang('Simple') . '</label>
-                                            </div>
-                                            <div class="form-field">
-                                                <input value="advanced" class="radio" type="radio" id="search_type_advanced" name="search_type" ' . $search_type_advanced_checked . '>
-                                                <label class="" for="search_type_advanced">'. lang('Advanced') . '</label>
-                                            </div>
-                                            <div class="form-text">' . lang('Advanced searches the search index, which the search index job rebuilds once a day: pages, linked files and the records of public form lists. Simple searches the text of pages as it is now and finds no form records.') . '</div>
-                                            </fieldset>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $perf_monitor_checked . ' class="" type="checkbox" id="perf_monitor" name="perf_monitor"/></div>
-                                                <label class="" for="perf_monitor">' . lang('Enable Performance Monitoring') . '</label>
-                                                <div class="form-text">' . lang('Records how long each request takes, so slow pages can be found. The measurement is written after the response has been sent, so visitors do not wait for it.') . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $mobile_checked . ' class="" type="checkbox" id="mobile" name="mobile"/></div>
-                                                <label class="" for="mobile">' . lang('Enable Mobile') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $auto_dialogs_checked . ' class="" type="checkbox" id="auto_dialogs" name="auto_dialogs"/></div>
-                                                <label class="" for="auto_dialogs">' . lang('Enable Auto Dialogs') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $social_networking_checked . '  id="social_networking" name="social_networking" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#social_networking_type_row"/></div>
-                                                <label class="d-inline" for="social_networking">' . lang('Enable Social Networking') . '</label>
-                                            </div>
-                                            <div class="collapse popover  fade bs-popover-bottom p-0  w-100" id="social_networking_type_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">
-                                                        <div class="col-12 ">
-                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Setup') . '</legend>
-                                                            <div class="form-field d-inline-grid me-5">
-                                                                <input value="simple" class="radio collapse-switcher" type="radio" id="social_networking_type_simple" name="social_networking_type" ' . $social_networking_type_simple_checked . ' data-bs-target="#social_networking_services_row">
-                                                                <label class="" for="social_networking_type_simple">'. lang('Simple') . '</label>
-                                                            </div>
-                                                            <div class="form-field d-inline-grid me-5">
-                                                                <input value="advanced" class="radio collapse-switcher" type="radio" id="social_networking_type_advanced" name="social_networking_type" ' . $social_networking_type_advanced_checked . ' data-bs-target="#social_networking_code_row">
-                                                                <label class="" for="social_networking_type_advanced">'. lang('Advanced') . '</label>
-                                                            </div>
-                                                            </fieldset>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="social_networking_services_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(15px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                   <div class="row gy-5">
-                                                                        <label class="form-label">'. lang('Services') . '</label>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input type="checkbox" name="social_networking_facebook" id="social_networking_facebook" value="1"' . $social_networking_facebook_checked . ' class="" /></div>
-                                                                                <label class="" for="social_networking_facebook">Facebook</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input type="checkbox" name="social_networking_twitter" id="social_networking_twitter" value="1"' . $social_networking_twitter_checked . ' class="" /></div>
-                                                                                <label class="" for="social_networking_twitter">X (Twitter)</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input type="checkbox" name="social_networking_linkedin" id="social_networking_linkedin" value="1"' . $social_networking_linkedin_checked . ' class="" /></div>
-                                                                                <label class="" for="social_networking_linkedin">LinkedIn</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input type="checkbox" name="social_networking_whatsapp" id="social_networking_whatsapp" value="1"' . $social_networking_whatsapp_checked . ' class="" /></div>
-                                                                                <label class="" for="social_networking_whatsapp">WhatsApp</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input type="checkbox" name="social_networking_telegram" id="social_networking_telegram" value="1"' . $social_networking_telegram_checked . ' class="" /></div>
-                                                                                <label class="" for="social_networking_telegram">Telegram</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input type="checkbox" name="social_networking_pinterest" id="social_networking_pinterest" value="1"' . $social_networking_pinterest_checked . ' class="" /></div>
-                                                                                <label class="" for="social_networking_pinterest">Pinterest</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input type="checkbox" name="social_networking_reddit" id="social_networking_reddit" value="1"' . $social_networking_reddit_checked . ' class="" /></div>
-                                                                                <label class="" for="social_networking_reddit">Reddit</label>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input type="checkbox" name="social_networking_email" id="social_networking_email" value="1"' . $social_networking_email_checked . ' class="" /></div>
-                                                                                <label class="" for="social_networking_email">'. lang('Email') . '</label>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="social_networking_code_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(90px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                   <div class="row gy-5">
-                                                                        <div class="col-12 ">
-                                                                            <label for="social_networking_code" class="form-label">'. lang('Code') . '</label>
-                                                                            <textarea class="form-control" id="social_networking_code" name="social_networking_code">' . h($social_networking_code) . '</textarea>
-                                                                            ' . pg_code_editor_attach(array('id' => 'social_networking_code', 'code_type' => 'mixed')) . '
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $forms_checked . ' class="" type="checkbox" id="forms" name="forms"/></div>
-                                                <label class="" for="forms">' . lang('Enable Forms') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $calendars_checked . ' class="" type="checkbox" id="calendars" name="calendars"/></div>
-                                                <label class="" for="calendars">' . lang('Enable Calendars') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $ads_checked . ' class="" type="checkbox" id="ads" name="ads"/></div>
-                                                <label class="" for="ads">' . lang('Enable Ads') . '</label>
-                                            </div>
-                                        </div>
-                                        ' . ($workspace_setting_available ? '
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $workspace_enabled_checked . ' class="" type="checkbox" id="workspace_enabled" name="workspace_enabled"/></div>
-                                                <label class="" for="workspace_enabled">' . lang('Enable Workspace') . '</label>
-                                                <div class="form-text">' . lang('Channels for the team, tasks with owners and dates, and a planning board. Basic users are given it from their user screen.') . '</div>
-                                            </div>
-                                        </div>' : '') . '
-                                        ' . (array_key_exists('speculation_prefetch', $row) ? '
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (!empty($row['speculation_prefetch']) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="speculation_prefetch" name="speculation_prefetch"/></div>
-                                                <label class="" for="speculation_prefetch">' . lang('Prefetch Menu Links') . '</label>
-                                                <div class="form-text">' . lang('Pages tell the browser the addresses in their menus, so a page a visitor points at or presses is fetched a moment before it is opened and appears at once. Chrome and Edge do this; other browsers ignore it. Not for signed-in members and staff, and never for sign-in, cart, download or panel links. A page fetched this way and then opened is counted once.') . '</div>
-                                            </div>
-                                        </div>' : '') . '
-                                   </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_features_fold_badge($badge_label);
 
-// Hidden entirely on an install that has not run the 2026.4.4 upgrade: the
-// defaults are already in force there, so the block would show numbers that
-// look editable and then save into columns that do not exist.
-
-
-    // ── Image limits ────────────────────────────────────
+    // ── Images ──────────────────────────────────────────
     //
     // Hidden entirely on an install that has not run the 2026.4.4 upgrade.
     // The defaults are already in force there, so the block would show numbers
@@ -211,6 +183,7 @@ $pg_settings_cards[] = '
     if ($image_settings_ready) {
 
         $image_product_optimize_checked = ($image_settings['product_optimize'] == 1) ? ' checked="checked"' : '';
+        $image_formats_offered = array();
 
         // Which library will actually do the work. Worth printing: the two
         // produce different file sizes from the same settings, and on a host
@@ -256,17 +229,21 @@ $pg_settings_cards[] = '
 
                 $image_format_checked = (($image_settings['derivative_formats'] & $image_format_row['bit']) === $image_format_row['bit']) ? ' checked="checked"' : '';
 
+                if (($image_format_checked !== '') && !empty($image_formats_written[$image_format])) {
+                    $image_formats_offered[] = $image_format_row['name'];
+                }
+
                 $image_format_note = empty($image_formats_written[$image_format])
                     ? '<div class="form-text fg-emphasis-warning">' . lang(array('string' => 'This server cannot write {var:1}, so it is not offered while that stays so.', 'vars' => array($image_format_row['name']))) . '</div>'
                     : '';
 
                 $output_image_delivery_fields .= '
-                            <div class="col-12 ">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $image_format_checked . ' class="" type="checkbox" id="image_derivative_' . $image_format . '" name="image_derivative_' . $image_format . '"/></div>
-                                    <label class="" for="image_derivative_' . $image_format . '">' . $image_format_row['label'] . '</label>
-                                    <div class="form-text">' . $image_format_row['text'] . '</div>' . $image_format_note . '
+                            <div class="col-12">
+                                <div class="d-flex align-items-center gap-3">
+                                    <input type="checkbox" class="pg-switch" value="1"' . $image_format_checked . ' id="image_derivative_' . $image_format . '" name="image_derivative_' . $image_format . '" aria-describedby="image_derivative_' . $image_format . '_help"/>
+                                    <label class="pg-text-2" for="image_derivative_' . $image_format . '">' . $image_format_row['label'] . '</label>
                                 </div>
+                                <div class="form-text" id="image_derivative_' . $image_format . '_help">' . $image_format_row['text'] . '</div>' . $image_format_note . '
                             </div>';
             }
 
@@ -283,41 +260,38 @@ $pg_settings_cards[] = '
                 : '';
 
             $output_image_delivery_fields .= '
-                            <div class="col-12 ">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . ($image_same_address['on'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="image_same_address" name="image_same_address"/></div>
-                                    <label class="" for="image_same_address">' . lang('Send WebP at the picture\'s own address') . '</label>
-                                    <div class="form-text">' . lang('A JPEG or PNG keeps its address and its file; a browser that reads WebP gets a lighter WebP copy there, every other reader the original. Needs WebP offered above.') . '</div>' . $image_same_address_note . '
+                            <div class="col-12">
+                                <div class="d-flex align-items-center gap-3">
+                                    <input type="checkbox" class="pg-switch" value="1"' . ($image_same_address['on'] ? ' checked="checked"' : '') . ' id="image_same_address" name="image_same_address" aria-describedby="image_same_address_help"/>
+                                    <label class="pg-text-2" for="image_same_address">' . lang('Send WebP at the picture\'s own address') . '</label>
                                 </div>
+                                <div class="form-text" id="image_same_address_help">' . lang('A JPEG or PNG keeps its address and its file; a browser that reads WebP gets a lighter WebP copy there, every other reader the original. Needs WebP offered above.') . '</div>' . $image_same_address_note . '
                             </div>
-                            <div class="col-12 ">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . ($image_same_address['cdn'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="image_same_address_cdn" name="image_same_address_cdn"/></div>
-                                    <label class="" for="image_same_address_cdn">' . lang('The CDN keeps a copy per format') . '</label>
-                                    <div class="form-text">' . lang('Until this is on, requests through a CDN get WebP marked private, so the CDN keeps no copy of pictures. A daily check turns it on once it sees the CDN keep a copy per Accept value (on Cloudflare, a Cache Rule), and turns it off again, even when ticked here, once it finds the CDN handing one copy to everyone or keeping none.') . '</div>
+                            <div class="col-12">
+                                <div class="d-flex align-items-center gap-3">
+                                    <input type="checkbox" class="pg-switch" value="1"' . ($image_same_address['cdn'] ? ' checked="checked"' : '') . ' id="image_same_address_cdn" name="image_same_address_cdn" aria-describedby="image_same_address_cdn_help"/>
+                                    <label class="pg-text-2" for="image_same_address_cdn">' . lang('The CDN keeps a copy per format') . '</label>
                                 </div>
+                                <div class="form-text" id="image_same_address_cdn_help">' . lang('Until this is on, requests through a CDN get WebP marked private, so the CDN keeps no copy of pictures. A daily check turns it on once it sees the CDN keep a copy per Accept value (on Cloudflare, a Cache Rule), and turns it off again, even when ticked here, once it finds the CDN handing one copy to everyone or keeping none.') . '</div>
                             </div>';
 
-            // The % sign goes on the side the panel language writes it
-            // (Turkish: %80), as on the resize quality slider above.
-            $image_quality_sign_first = (strpos(lang('{var:1}%'), '%') === 0);
-            $image_quality_adorn = $image_quality_sign_first ? 'form-adorn' : 'form-adorn form-adorn-end';
-            $image_quality_align = $image_quality_sign_first ? '' : ' text-end';
+            // A unit is the field's suffix, after the number, in every panel
+            // language (ui/screen-composition-nesting.md).
 
             $output_image_delivery_fields .= '
                             <div class="pg-f-xs">
                                 <label for="image_quality_webp" class="form-label">' . lang('WebP Quality') . '</label>
-                                <label class="form-control ' . $image_quality_adorn . '">
+                                <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
-                                    <input type="text" name="image_quality_webp" id="image_quality_webp" maxlength="3" inputmode="numeric" class="form-ghost' . $image_quality_align . '" value="' . h($image_settings['quality_webp']) . '" />
+                                    <input type="text" name="image_quality_webp" id="image_quality_webp" maxlength="3" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['quality_webp']) . '" />
                                 </label>
                                 <div class="form-text">' . lang('A changed quality makes the pictures again as they are next asked for. Resized JPEG and PNG pictures use the quality when resizing above.') . '</div>
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_quality_avif" class="form-label">' . lang('AVIF Quality') . '</label>
-                                <label class="form-control ' . $image_quality_adorn . '">
+                                <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
-                                    <input type="text" name="image_quality_avif" id="image_quality_avif" maxlength="3" inputmode="numeric" class="form-ghost' . $image_quality_align . '" value="' . h($image_settings['quality_avif']) . '" />
+                                    <input type="text" name="image_quality_avif" id="image_quality_avif" maxlength="3" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['quality_avif']) . '" />
                                 </label>
                                 <div class="form-text">' . lang('AVIF holds up at a lower number than WebP, so its quality is set apart.') . '</div>
                             </div>';
@@ -370,16 +344,16 @@ $pg_settings_cards[] = '
             '<div id="pgset-images" class="pg-set-card">
                 <div class="card">
                     <div class="card-header bg-reset border-0 pg-title-section">
-                        ' . lang('Image Optimization') . '
+                        ' . lang('Images') . '
                     </div>
                     <div class="card-body">
                        <div class="row gy-5">
-                            <div class="col-12 ">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $image_product_optimize_checked . ' class="" type="checkbox" id="image_product_optimize" name="image_product_optimize"/></div>
-                                    <label class="" for="image_product_optimize">' . lang('Optimize Product Images On Upload') . '</label>
-                                    <div class="form-text">' . lang('Photos added from the product and variant set screens are compressed as they arrive, and scaled down when they are larger than the limit below. Images picked from the file library are left exactly as they are.') . '</div>
+                            <div class="col-12">
+                                <div class="d-flex align-items-center gap-3">
+                                    <input type="checkbox" class="pg-switch" value="1"' . $image_product_optimize_checked . ' id="image_product_optimize" name="image_product_optimize" aria-describedby="image_product_optimize_help"/>
+                                    <label class="pg-text-2" for="image_product_optimize">' . lang('Optimize Product Images On Upload') . '</label>
                                 </div>
+                                <div class="form-text" id="image_product_optimize_help">' . lang('Photos added from the product and variant set screens are compressed as they arrive, and scaled down when they are larger than the limit below. Images picked from the file library are left exactly as they are.') . '</div>
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_product_max_dimension" class="form-label">' . lang('Product Image Size Limit') . '</label>
@@ -428,33 +402,35 @@ $pg_settings_cards[] = '
                 </div>
             </div>';
     }
+
 if ($output_image_settings_card !== '') {
-    $pg_settings_cards[] = $output_image_settings_card;
+    $features_parts['images'] = array('html' => $output_image_settings_card) + pg_features_fold_images($image_formats_offered, $image_library);
 }
 
-// ── Page Revisions ──
+// ── Site search ──
 //
-// Site search tuning (includes/fn/site_search_tuning.php): synonym groups and
-// promoted results, each one config_text row as JSON, so the card needs only
-// that table.
+// The search type, and the tuning (includes/fn/site_search_tuning.php):
+// synonym groups and promoted results, each one config_text row as JSON,
+// drawn once that table exists.
+$search_tuning_fields = '';
+$search_synonyms_count = null;
+$search_promoted_count = null;
+
 if (pg_schema_has('config_text')) {
-    $search_synonyms_text = pg_search_synonyms_format(pg_search_synonyms());
-    $search_promoted_text = pg_search_promoted_format(pg_search_promoted());
+    $search_synonyms = pg_search_synonyms();
+    $search_promoted = pg_search_promoted();
+    $search_synonyms_count = count($search_synonyms);
+    $search_promoted_count = count($search_promoted);
+    $search_synonyms_text = pg_search_synonyms_format($search_synonyms);
+    $search_promoted_text = pg_search_promoted_format($search_promoted);
     // Opened from the site search report's "promote" button: a line for the
     // term, the address left for the operator to write.
     if (isset($_GET['search_promote']) && is_string($_GET['search_promote'])) {
         $search_promoted_text = pg_search_promoted_add_line($search_promoted_text, $_GET['search_promote']);
     }
 
-    $pg_settings_cards[] = '
-                        <div id="pgset-search-tuning" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Search Tuning') . '
-                                </div>
-                                <div class="card-body">
-                                    <input type="hidden" name="search_tuning_card" value="1"/>
-                                    <div class="row gy-5">
+    $search_tuning_fields = '
+                                        <input type="hidden" name="search_tuning_card" value="1"/>
                                         <div class="col-12">
                                             <label class="form-label" for="search_synonyms">' . lang('Synonyms') . '</label>
                                             <textarea class="form-control" id="search_synonyms" name="search_synonyms" rows="5" spellcheck="false">' . h($search_synonyms_text) . '</textarea>
@@ -464,19 +440,37 @@ if (pg_schema_has('config_text')) {
                                             <label class="form-label" for="search_promoted">' . lang('Promoted Results') . '</label>
                                             <textarea class="form-control" id="search_promoted" name="search_promoted" rows="5" spellcheck="false">' . h($search_promoted_text) . '</textarea>
                                             <div class="form-text">' . lang('One per line: the search terms separated by commas, then => and the address on this site, optionally | and a title, such as: return, refund => return-policy | Returns. A search for one of the terms lists the address first, marked Recommended.') . '</div>
-                                        </div>
+                                        </div>';
+}
+
+$features_parts['search'] = array('html' => '
+                        <div id="pgset-search-tuning" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('Site search') . '
+                                </div>
+                                <div class="card-body">
+                                    <div class="row gy-5">
+                                        <div class="col-12">
+                                            <fieldset><legend class="form-label pg-field-label">' . lang('Site Search Type') . '</legend>
+                                            <div class="pg-seg flex-wrap">
+                                                <label class="pg-seg-item" for="search_type_simple"><input value="simple" class="visually-hidden" type="radio" id="search_type_simple" name="search_type"' . $search_type_simple_checked . ' aria-describedby="search_type_help"/>' . lang('Simple') . '</label>
+                                                <label class="pg-seg-item" for="search_type_advanced"><input value="advanced" class="visually-hidden" type="radio" id="search_type_advanced" name="search_type"' . $search_type_advanced_checked . ' aria-describedby="search_type_help"/>' . lang('Advanced') . '</label>
+                                            </div>
+                                            </fieldset>
+                                            <div class="form-text" id="search_type_help">' . lang('Advanced searches the search index, which the search index job rebuilds once a day: pages, linked files and the records of public form lists. Simple searches the text of pages as it is now and finds no form records.') . '</div>
+                                        </div>' . $search_tuning_fields . '
                                     </div>
                                 </div>
                             </div>
-                        </div>';
-}
+                        </div>') + pg_features_fold_search($search_type_advanced_checked !== '', $search_synonyms_count, $search_promoted_count);
 
 // Clicks and scrolling (includes/fn/page_clicks.php): off on every site, a
 // new install too, until it is switched on here or with the Visitors
 // section's button. Read and saved only through the module's one reader and
 // saver. The privacy sentence is for the site to copy into its own text.
 if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
-    $pg_settings_cards[] = '
+    $features_parts['page-clicks'] = array('html' => '
                         <div id="pgset-page-clicks" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
@@ -486,20 +480,16 @@ if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
                                     <input type="hidden" name="page_clicks_card" value="1"/>
                                     <div class="row gy-12">
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (pg_page_clicks_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="page_clicks_on" name="page_clicks_on"/></div>
-                                                <label for="page_clicks_on">' . h(lang('Count clicks and scrolling on public pages')) . '</label>
-                                                <div class="form-text">' . h(lang('Which links and buttons visitors click on each page and how far down they scroll, per page, day and device type, shown in Visitors. Signed-in members and visitors who refused statistics in the cookie notice are not counted.')) . '</div>
-                                            </div>
+                                            <div class="form-text mt-0">' . h(lang('Which links and buttons visitors click on each page and how far down they scroll, per page, day and device type, shown in Visitors. Signed-in members and visitors who refused statistics in the cookie notice are not counted.')) . '</div>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-label" id="page_clicks_privacy_label">' . h(lang('For your privacy text')) . '</div>
-                                            <p class="form-text border rounded p-3 mb-0 user-select-all" id="page_clicks_privacy" aria-labelledby="page_clicks_privacy_label">' . h(lang('We count which links and buttons are clicked on our pages and how far down they are scrolled, as totals per page, day and device type (desktop, phone or tablet). No cookie is set and nothing that identifies you is kept: no IP address, no identifier and no record per visitor. Nothing is counted if you refuse statistics in our cookie notice.')) . '</p>
+                                            <p class="form-text mt-0 mb-0 user-select-all" id="page_clicks_privacy" aria-labelledby="page_clicks_privacy_label">' . h(lang('We count which links and buttons are clicked on our pages and how far down they are scrolled, as totals per page, day and device type (desktop, phone or tablet). No cookie is set and nothing that identifies you is kept: no IP address, no identifier and no record per visitor. Nothing is counted if you refuse statistics in our cookie notice.')) . '</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_features_fold_page_clicks(pg_page_clicks_switch_on());
 }
 
 // Maps (includes/fn/place_tiles.php): off on every site, a new install too.
@@ -508,10 +498,9 @@ if (function_exists('pg_page_clicks_ready') && pg_page_clicks_ready()) {
 // OpenStreetMap's until another is typed; a provider's key is kept sealed,
 // drawn empty and never shown back.
 if (pg_schema_has('config_text')) {
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_tiles.php');
     $place_tiles = pg_place_tiles_settings();
 
-    $pg_settings_cards[] = '
+    $features_parts['maps'] = array('html' => '
                         <div id="pgset-place-map" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
@@ -521,15 +510,11 @@ if (pg_schema_has('config_text')) {
                                     <input type="hidden" name="place_map_card" value="1"/>
                                     <div class="row gy-12">
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (pg_place_tiles_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="place_map_on" name="place_map_on"/></div>
-                                                <label for="place_map_on">' . h(lang('Show places on a map')) . '</label>
-                                                <div class="form-text">' . h(lang('The Map of places block draws its places on a map beside its list; off, it shows the list alone. While the cookie notice is on, the map loads only after the visitor allows marketing, and the block shows a Show the map button until then.')) . '</div>
-                                            </div>
+                                            <div class="form-text mt-0">' . h(lang('The Map of places block draws its places on a map beside its list; off, it shows the list alone. While the cookie notice is on, the map loads only after the visitor allows marketing, and the block shows a Show the map button until then.')) . '</div>
                                         </div>
                                         <div class="col-12">
                                             <label for="place_map_tiles" class="form-label">' . h(lang('Tile Address')) . '</label>
-                                            <input type="url" name="place_map_tiles" id="place_map_tiles" maxlength="' . PG_PLACE_TILES_URL_MAX . '" class="form-control font-monospace" spellcheck="false" value="' . h(($place_tiles['url'] === PG_PLACE_TILES_DEFAULT_URL) ? '' : $place_tiles['url']) . '" placeholder="' . h(PG_PLACE_TILES_DEFAULT_URL) . '"/>
+                                            <input type="url" name="place_map_tiles" id="place_map_tiles" maxlength="' . PG_PLACE_TILES_URL_MAX . '" class="form-control" spellcheck="false" value="' . h(($place_tiles['url'] === PG_PLACE_TILES_DEFAULT_URL) ? '' : $place_tiles['url']) . '" placeholder="' . h(PG_PLACE_TILES_DEFAULT_URL) . '"/>
                                             <div class="form-text">' . h(lang('Picture tiles with {z}, {x} and {y} in the address. Empty uses OpenStreetMap\'s own tiles, which are free but may be limited for a busy site; a map provider gives an address of its own, with {key} where its key goes.')) . '</div>
                                         </div>
                                         <div class="col-12">
@@ -550,50 +535,7 @@ if (pg_schema_has('config_text')) {
                                     </div>
                                 </div>
                             </div>
-                        </div>';
-}
-
-// Courses (includes/fn/courses.php): off on every site, a new install too.
-// On, the Pages menu offers the Courses screen and the lesson gate runs.
-if (function_exists('pg_course_ready') && pg_course_ready() && pg_schema_has('config_text')) {
-    $pg_settings_cards[] = '
-                        <div id="pgset-courses" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . h(lang('Courses')) . '
-                                </div>
-                                <div class="card-body">
-                                    <input type="hidden" name="courses_card" value="1"/>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <input type="checkbox" class="pg-switch" value="1"' . (pg_course_switch_on() ? ' checked="checked"' : '') . ' id="courses_on" name="courses_on" aria-describedby="courses_on_help"/>
-                                        <label class="pg-text-2" for="courses_on">' . h(lang('Courses with ordered and timed lessons')) . '</label>
-                                    </div>
-                                    <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="courses_on_help">' . h(lang('A course is a private folder a product already opens: its pages become lessons that open in order or some days after enrolment, and each member\'s progress is kept. On, the Pages menu offers the Courses screen.')) . '</p>
-                                </div>
-                            </div>
-                        </div>';
-}
-
-// Event tickets (includes/fn/event_tickets.php): off on every site, a new
-// install too. On, a completed order's event reservation or "Gives tickets"
-// product line makes one ticket per unit and the buyer gets their link.
-if (function_exists('pg_event_tickets_ready') && pg_event_tickets_ready() && pg_schema_has('config_text')) {
-    $pg_settings_cards[] = '
-                        <div id="pgset-event-tickets" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . h(lang('Tickets')) . '
-                                </div>
-                                <div class="card-body">
-                                    <input type="hidden" name="event_tickets_card" value="1"/>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <input type="checkbox" class="pg-switch" value="1"' . (pg_event_tickets_switch_on() ? ' checked="checked"' : '') . ' id="event_tickets_on" name="event_tickets_on" aria-describedby="event_tickets_on_help"/>
-                                        <label class="pg-text-2" for="event_tickets_on">' . h(lang('Tickets with a QR code for events')) . '</label>
-                                    </div>
-                                    <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="event_tickets_on_help">' . h(lang('A completed order gives one ticket per place for each calendar event reservation and each product marked Gives tickets, and the buyer gets a link to them by e-mail. A cancelled order\'s tickets become void.')) . '</p>
-                                </div>
-                            </div>
-                        </div>';
+                        </div>') + pg_features_fold_maps(pg_place_tiles_switch_on(), $place_tiles['url'] !== PG_PLACE_TILES_DEFAULT_URL);
 }
 
 // Visitor notifications (includes/fn/site_push.php): off on every site, a new
@@ -602,7 +544,7 @@ if (function_exists('pg_event_tickets_ready') && pg_event_tickets_ready() && pg_
 // nothing and site_push.php takes no subscription. App mode, its own switch
 // that also starts off, works only beside it (pg_site_push_app_mode()).
 if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
-    $pg_settings_cards[] = '
+    $features_parts['site-push'] = array('html' => '
                         <div id="pgset-site-push" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
@@ -612,32 +554,26 @@ if (function_exists('pg_site_push_ready') && pg_site_push_ready()) {
                                     <input type="hidden" name="site_push_card" value="1"/>
                                     <div class="row gy-12">
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (pg_site_push_switch_on() ? ' checked="checked"' : '') . ' type="checkbox" id="site_push_on" name="site_push_on"/></div>
-                                                <label for="site_push_on">' . h(lang('Let visitors turn on notifications from this site')) . '</label>
-                                                <div class="form-text">' . h(lang('A visitor presses the Notify Me block of the visual editor and gets your news as a notification in the browser, on a phone or a computer, without an account or an email address. The block shows only where the browser can subscribe. Messages are sent from Communication, Channels. Off: the block shows nothing and no new subscription is taken.')) . '</div>
-                                            </div>
+                                            <div class="form-text mt-0">' . h(lang('A visitor presses the Notify Me block of the visual editor and gets your news as a notification in the browser, on a phone or a computer, without an account or an email address. The block shows only where the browser can subscribe. Messages are sent from Communication, Channels. Off: the block shows nothing and no new subscription is taken.')) . '</div>
                                         </div>
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (pg_site_push_app_on() ? ' checked="checked"' : '') . ' type="checkbox" id="site_push_app_on" name="site_push_app_on"/></div>
-                                                <label for="site_push_app_on">' . h(lang('App mode')) . '</label>
-                                                <div class="form-text">' . h(lang('A visitor who adds the site to the home screen opens it as an app, without the browser\'s address bar. On an iPhone, notifications reach only a site added this way. A page that cannot be loaded without a connection shows an offline page. Works while visitor notifications are on and a site icon is set.')) . '</div>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="checkbox" class="pg-switch" value="1"' . (pg_site_push_app_on() ? ' checked="checked"' : '') . ' id="site_push_app_on" name="site_push_app_on" aria-describedby="site_push_app_on_help"/>
+                                                <label class="pg-text-2" for="site_push_app_on">' . h(lang('App mode')) . '</label>
                                             </div>
+                                            <div class="form-text" id="site_push_app_on_help">' . h(lang('A visitor who adds the site to the home screen opens it as an app, without the browser\'s address bar. On an iPhone, notifications reach only a site added this way. A page that cannot be loaded without a connection shows an offline page. Works while visitor notifications are on and a site icon is set.')) . '</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_features_fold_site_push(pg_site_push_switch_on(), pg_site_push_app_on());
 }
 
 // Content changes that wait for approval (includes/fn/content_proposals.php):
 // off on every site until it is switched on here, by a designer or an
 // administrator only (a Manager's own saves are the ones held). The channel
 // the change is also asked in is offered while the Workspace is on.
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
-if (pg_content_proposals_ready() && pg_content_proposals_may_set($user)) {
-    $content_approval = pg_content_proposals_settings();
+if ($features_content_approval_shown) {
     $content_approval_channel = '';
 
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && pg_schema_has('ws_channels')) {
@@ -657,26 +593,22 @@ if (pg_content_proposals_ready() && pg_content_proposals_may_set($user)) {
                                         </div>';
     }
 
-    $pg_settings_cards[] = '
+    $features_parts['content-approval'] = array('html' => '
                         <div id="pgset-content-approval" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Content Approval') . '
+                                    ' . lang('Content approval') . '
                                 </div>
                                 <div class="card-body">
                                     <input type="hidden" name="content_approval_card" value="1"/>
                                     <div class="row gy-12">
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . ($content_approval['on'] ? ' checked="checked"' : '') . ' type="checkbox" id="content_approval_on" name="content_approval_on"/></div>
-                                                <label for="content_approval_on">' . lang('Content changes wait for approval') . '</label>
-                                                <div class="form-text">' . lang('A Manager or User who saves a change in the Page Design Studio to a page already on the site does not publish it: it waits until a Designer or Administrator applies it. Drafts, new pages, classic pages and the changes of Designers and Administrators are not held.') . '</div>
-                                            </div>
+                                            <div class="form-text mt-0">' . lang('A Manager or User who saves a change in the Page Design Studio to a page already on the site does not publish it: it waits until a Designer or Administrator applies it. Drafts, new pages, classic pages and the changes of Designers and Administrators are not held.') . '</div>
                                         </div>' . $content_approval_channel . '
                                     </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_features_fold_content_approval($content_approval['on'], ($content_approval_channel !== '') && ($content_approval['channel_id'] > 0));
 }
 
 // How long the published revisions of visual-designer pages and the
@@ -688,11 +620,11 @@ if (function_exists('pg_page_revisions_retention') && array_key_exists('page_rev
 
     $page_revisions_retention = pg_page_revisions_retention((int) $row['page_revisions_keep'], (int) $row['page_revisions_days']);
 
-    $pg_settings_cards[] = '
+    $features_parts['revisions'] = array('html' => '
                         <div id="pgset-revisions" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Page Revisions') . '
+                                    ' . lang('Page revisions') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row gy-5">
@@ -715,31 +647,27 @@ if (function_exists('pg_page_revisions_retention') && array_key_exists('page_rev
                                     </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_features_fold_revisions($page_revisions_retention['keep'], $page_revisions_retention['days']);
 }
 
-// ── Page Cache ──
+// ── Speed ──
 //
-// The lifetime is PAGE_CACHE_TTL in data/config.php rather than a config
+// The page cache, Prefetch Menu Links and Performance Monitoring. The page
+// lifetime is PAGE_CACHE_TTL in data/config.php rather than a config
 // column, so it is known before any query (includes/fn/page_cache.php).
-if (function_exists('pg_page_cache_ttl')) {
+$speed_cache_fields = '';
+$page_cache_ttl = null;
 
+if (function_exists('pg_page_cache_ttl')) {
     $page_cache_ttl = pg_page_cache_ttl();
 
-    $pg_settings_cards[] = '
-                        <div id="pgset-page-cache" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Page Cache') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row gy-5">
+    $speed_cache_fields = '
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (($page_cache_ttl > 0) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="page_cache" name="page_cache"/></div>
-                                                <label class="" for="page_cache">' . lang('Enable Page Cache') . '</label>
-                                                <div class="form-text">' . lang('A page that looks the same for every visitor who is not signed in is kept on this server and sent from there, and goes out with standard cache headers, so a CDN or reverse proxy in front of the site (Cloudflare, Varnish, nginx) may keep it too. Pages with a form, a cart or member content, private pages, pages that run PHP, pages for a visitor with a cart, a sign-in or a cookie choice, and error pages are never kept. Off on a site whose mobile view is switched on. A visit answered from a kept page is counted by a small request the browser sends.') . '</div>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="checkbox" class="pg-switch" value="1"' . (($page_cache_ttl > 0) ? ' checked="checked"' : '') . ' id="page_cache" name="page_cache" aria-describedby="page_cache_help"/>
+                                                <label class="pg-text-2" for="page_cache">' . lang('Enable Page Cache') . '</label>
                                             </div>
+                                            <div class="form-text" id="page_cache_help">' . lang('A page that looks the same for every visitor who is not signed in is kept on this server and sent from there, and goes out with standard cache headers, so a CDN or reverse proxy in front of the site (Cloudflare, Varnish, nginx) may keep it too. Pages with a form, a cart or member content, private pages, pages that run PHP, pages for a visitor with a cart, a sign-in or a cookie choice, and error pages are never kept. Off on a site whose mobile view is switched on. A visit answered from a kept page is counted by a small request the browser sends.') . '</div>
                                         </div>
                                         <div class="pg-f-xs">
                                             <label for="page_cache_ttl" class="form-label">' . lang('Page Lifetime') . '</label>
@@ -748,14 +676,40 @@ if (function_exists('pg_page_cache_ttl')) {
                                                 <input type="text" name="page_cache_ttl" id="page_cache_ttl" maxlength="4" inputmode="numeric" class="form-ghost text-end" value="' . h(($page_cache_ttl > 0) ? $page_cache_ttl : PG_PAGE_CACHE_TTL_DEFAULT) . '" />
                                             </label>
                                             <div class="form-text">' . lang(array('string' => 'A change to a page reaches visitors within this time. {var:1} to {var:2}.', 'vars' => array(PG_PAGE_CACHE_TTL_MIN, PG_PAGE_CACHE_TTL_MAX))) . '</div>
+                                        </div>';
+}
+
+$speed_prefetch_on = !empty($row['speculation_prefetch']);
+
+$features_parts['speed'] = array('html' => '
+                        <div id="pgset-page-cache" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('Speed') . '
+                                </div>
+                                <div class="card-body">
+                                    <div class="row gy-5">' . $speed_cache_fields
+    . (array_key_exists('speculation_prefetch', $row) ? '
+                                        <div class="col-12">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="checkbox" class="pg-switch" value="1"' . ($speed_prefetch_on ? ' checked="checked"' : '') . ' id="speculation_prefetch" name="speculation_prefetch" aria-describedby="speculation_prefetch_help"/>
+                                                <label class="pg-text-2" for="speculation_prefetch">' . lang('Prefetch Menu Links') . '</label>
+                                            </div>
+                                            <div class="form-text" id="speculation_prefetch_help">' . lang('Pages tell the browser the addresses in their menus, so a page a visitor points at or presses is fetched a moment before it is opened and appears at once. Chrome and Edge do this; other browsers ignore it. Not for signed-in members and staff, and never for sign-in, cart, download or panel links. A page fetched this way and then opened is counted once.') . '</div>
+                                        </div>' : '') . '
+                                        <div class="col-12">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input type="checkbox" class="pg-switch" value="1"' . $perf_monitor_checked . ' id="perf_monitor" name="perf_monitor" aria-describedby="perf_monitor_help"/>
+                                                <label class="pg-text-2" for="perf_monitor">' . lang('Enable Performance Monitoring') . '</label>
+                                            </div>
+                                            <div class="form-text" id="perf_monitor_help">' . lang('Records how long each request takes, so slow pages can be found. The measurement is written after the response has been sent, so visitors do not wait for it.') . '</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>';
-}
+                        </div>') + pg_features_fold_speed($page_cache_ttl, $mobile_checked !== '', $speed_prefetch_on, $perf_monitor_checked !== '');
 
-// ── Signature Time Stamp ──
+// ── Signature time stamp ──
 //
 // The address is a setting and not a line in data/config.php because it is an
 // ordinary choice an operator makes, and it is here rather than under Security
@@ -768,11 +722,11 @@ $signature_tsa_username = isset($row['signature_tsa_username']) ? (string) $row[
 // the browser (pg_signature_tsa_password_to_store()).
 $signature_tsa_password = isset($row['signature_tsa_password']) ? (string) $row['signature_tsa_password'] : '';
 
-$pg_settings_cards[] = '
+$features_parts['signature'] = array('html' => '
                         <div id="pgset-signature" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
-                                    ' . lang('Signature Time Stamp') . '
+                                    ' . lang('Signature time stamp') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row gy-5">
@@ -814,4 +768,15 @@ $pg_settings_cards[] = '
                                     </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_features_fold_signature($signature_tsa_url);
+
+// ── The rows ──
+$features_rows = array();
+
+foreach (pg_features_fold_order() as $features_key) {
+    if (isset($features_parts[$features_key])) {
+        $features_rows[] = array('key' => $features_key) + pg_features_fold_face($features_key) + $features_parts[$features_key];
+    }
+}
+
+$pg_settings_cards[] = pg_settings_fold($features_rows);

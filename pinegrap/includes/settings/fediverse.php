@@ -65,7 +65,7 @@ foreach (array('Organization' => lang('Organization'), 'Person' => lang('Person'
 // The avatar is shown to everyone, so the picker field searches only
 // pictures every visitor may open (kind public_image,
 // settings-public-image-pickers).
-$ap_icon_field = pg_picker_field('public_image', 'ap_icon', $ap_stored['icon'], array('title' => lang('Choose a picture'), 'describedby' => 'ap_icon_help'));
+$ap_icon_field = pg_picker_field('public_image', 'ap_icon', $ap_stored['icon'], array('title' => lang('Choose a picture'), 'placeholder' => lang('Choose a picture'), 'describedby' => 'ap_icon_help'));
 
 $ap_on = $ap_stored['enabled'] && pg_ap_handle_valid($ap_stored['handle']);
 $ap_address = $ap_on ? '@' . $ap_stored['handle'] . '@' . $ap_host : '';

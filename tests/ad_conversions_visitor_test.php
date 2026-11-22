@@ -126,10 +126,10 @@ function test_ad_conversions_receipt_marker()
 	pg_assert_contains('pg_ad_conversion_receipt_marker(', ad_conversions_visitor_test_source('includes/fn/widgets.php'), 'designer order view');
 }
 
-// Meta's page ticks every event; without the person only for the purchase.
+// Meta's page ticks every event; without the person is never saved from it.
 function test_ad_conversions_visitor_meta_ticks()
 {
-	pg_assert_same(array('purchase', 'lead', 'complete_registration', 'add_to_cart', 'begin_checkout'), array_keys(pg_ad_conversion_meta_events()), 'the ticks');
+	pg_assert_same(array('purchase', 'add_to_cart', 'begin_checkout', 'complete_registration', 'lead'), array_keys(pg_ad_conversion_meta_events()), 'the ticks, in page order');
 
 	$saved = pg_ad_conversion_meta_settings_merge(pg_ad_conversion_meta_stored(''), array(
 		'pixel_id' => '123456',
@@ -138,8 +138,8 @@ function test_ad_conversions_visitor_meta_ticks()
 		'lead_forms' => array('9', 'x', 4),
 	), 'sealed');
 
-	pg_assert_same(array('lead', 'add_to_cart'), $saved['events'], 'known events only');
-	pg_assert_same(array('purchase'), $saved['without_person'], 'without the person: the purchase only');
+	pg_assert_same(array('add_to_cart', 'lead'), $saved['events'], 'known events only, in page order');
+	pg_assert_same(array(), $saved['without_person'], 'without the person: not taken from Meta\'s page');
 	pg_assert_same(array(9, 4), $saved['lead_forms'], 'the picked forms');
 }
 

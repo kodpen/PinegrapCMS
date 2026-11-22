@@ -41,9 +41,16 @@ function settings_search_test_registry_groups()
 {
 	$source = settings_search_test_source('includes/settings/registry.php');
 
-	preg_match_all("/\n        '([a-z_]+)' => array\(\n            'label' => .*?\n            'group' => '([a-z_]+)',/", $source, $match);
+	preg_match_all("/\n        '([a-z_]+)' => (?:array\(\n            'label' => .*?\n            'group' => '([a-z_]+)',|pg_settings_([a-z_]+)_category\(\),)/", $source, $match, PREG_SET_ORDER);
 
-	return array_combine($match[1], $match[2]);
+	$groups = array();
+
+	// A category kept in a function of its own (E-mail) names its group there.
+	foreach ($match as $hit) {
+		$groups[$hit[1]] = (isset($hit[3]) && ($hit[3] !== '')) ? call_user_func('pg_settings_' . $hit[3] . '_category')['group'] : $hit[2];
+	}
+
+	return $groups;
 }
 
 // Each section's keyword lists as the registry writes them: section id =>
@@ -120,8 +127,7 @@ function test_settings_search_every_category_names_its_group()
 		'privacy'     => 'site',
 		'languages'   => 'site',
 		'contact'     => 'site',
-		'mail_sending' => 'site',
-		'mailboxes'   => 'site',
+		'email'       => 'site',
 		'security'    => 'security',
 		'firewall'    => 'security',
 		'commerce'    => 'selling',
@@ -241,7 +247,7 @@ function test_settings_search_missed_words_find_their_card()
 		'favicon'    => 'pgset-site-icon',
 		'kvkk'       => 'pgset-cookies',
 		'workspace'  => 'pgset-integration-links',
-		'prefetch'   => 'pgset-features',
+		'prefetch'   => 'pgset-page-cache',
 		'encryption' => 'pgset-encryption',
 	);
 
@@ -459,10 +465,10 @@ function test_settings_search_finds_a_service_by_its_name()
 	pg_assert_true(in_array('netgsm', $index[1]['services'], true), 'Netgsm finds the SMS card');
 
 	$mail = pg_settings_search_index(
-		array('mail_sending' => array('label' => 'E-mail sending', 'sections' => array('pgset-mail-transport' => 'Sending service'), 'keywords' => array('pgset-mail-transport' => array('smtp')))),
+		array('email' => array('label' => 'E-mail', 'sections' => array('pgset-mail-system' => 'How e-mail leaves'), 'keywords' => array('pgset-mail-system' => array('smtp')))),
 		array());
 
-	pg_assert_true(in_array('postmark', $mail[1]['services'], true), 'Postmark finds the Sending service card');
+	pg_assert_true(in_array('postmark', $mail[1]['services'], true), 'Postmark finds How e-mail leaves, where its way is chosen');
 
 	$rows = pg_settings_search_tool_rows(array(array('label' => 'Connections', 'icon' => 'bi-plug', 'items' => array(
 		array('label' => 'Marketplaces', 'icon' => 'bi-buildings', 'url' => 'marketplace_settings.php'),

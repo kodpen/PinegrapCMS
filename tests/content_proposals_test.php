@@ -244,7 +244,8 @@ function test_content_proposals_switch_is_designers_only()
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.save.php');
 	$registry = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 
-	pg_assert_contains('if (pg_content_proposals_ready() && pg_content_proposals_may_set($user)) {', $card, 'the card is drawn for a designer only');
+	pg_assert_contains('$features_content_approval_shown = pg_content_proposals_ready() && pg_content_proposals_may_set($user);', $card, 'the card and its board row are drawn for a designer only');
+	pg_assert_contains('if ($features_content_approval_shown) {', $card, 'the card is drawn under that gate');
 	pg_assert_contains("if (array_key_exists('content_approval_card', \$_POST) && pg_content_proposals_may_set(\$user)) {", $save, 'a Manager\'s post is ignored');
 	pg_assert_contains("unset(\$categories['features']['sections']['pgset-content-approval'], \$categories['features']['keywords']['pgset-content-approval']);", $registry, 'no chip or search result for a Manager');
 }

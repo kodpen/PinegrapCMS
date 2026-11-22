@@ -4,14 +4,19 @@ description: Every Workspace screen but the channel one is padded by .ws-shell-m
 ---
 
 ## Where does a Workspace screen get its side padding?
-- From `.ws-shell-main`, on every screen but the channel one: `body.workspace .ws-shell-main { padding: 0 .75rem .75rem }`. A `.row` inside keeps its gutter (its negative margins fall inside the padding), so a screen drawn in `#ws-root` by its script and one whose columns the server prints get the same 12px edge. `#ws-root` has no padding of its own; its `.pg-toolbar` and a server-drawn `#button_bar` stretch over the padding with `-.75rem` side margins.
+- From `.ws-shell-main`, on every screen but the channel one: `body.workspace .ws-shell-main { padding: 0 .75rem .75rem }`.
+- A `.row` inside keeps its gutter (its side margins fall inside the padding; its top margin rises over the breadcrumb bar, below), so a screen drawn in `#ws-root` by its script and one whose columns the server prints get the same 12px edge. `#ws-root` has no padding of its own; its `.pg-toolbar` and a server-drawn `#button_bar` stretch over the padding with `-.75rem` side margins.
 - A new Workspace screen only needs `'extra classes' => 'workspace workspace_<name>'` and `<main id="content" class="container-fluid p-0"><div class="ws-shell"><div class="ws-shell-main">`; `tests/workspace_screen_frame_test.php` checks every `workspace_*.php` that draws `#content`.
 
 ## Why no list of screens?
 - Until 2026-11-04 the padding sat on `#ws-root`, and screens without it (settings, MCP, template, calendar subscription, tables) were named in `:is(...)` / `:not(...)` lists. Each screen left out ran its cards against the page edge with the columns touching (MCP and template before #2882, tables 2026-11-01, calendar subscription reported by the owner). The E-mails list (`workspace_mail.php`) sat outside the shell with no `workspace` body class; it now uses the shell too.
 
+## Why does a screen's top row not cover the breadcrumb bar?
+- `.ws-shell-main` has no top padding, so a `.row` at its top rises by its vertical gutter over the bar (24px for `g-7`, 16px for `g-5`), and `.ws-shell-main`, a flex item, paints after the bar. The back arrow and the first crumb took no click at any width: all of them on Channel template (`workspace_template.php`), their lower third on Calendar subscription (`workspace_calendar_feed.php`). Found in the 2026-11-22 sweep, fixed in #11054.
+- `.pg-breadcrumb` is `position: relative` with no z-index, on every screen: it paints and takes clicks above the content after it, moves nothing and makes no stacking context. `tests/workspace_screen_frame_test.php` checks both.
+
 ## Where do sticky columns stop?
-- `.ws-claude-status` (Claude, Pinegrap AI and voice cards) and `.ws-tl-side` (Decision Timeline side card) use `top: calc(var(--pg-navbar-h) + 1rem)`, like `.pg-settings-nav`. With `top: 1rem` they slid under the fixed 50px panel header when the window scrolled.
+- `.ws-tl-side` (Decision Timeline side card) uses `top: calc(var(--pg-navbar-h) + 1rem)`, like `.pg-settings-nav`. With `top: 1rem` it slid under the fixed 50px panel header when the window scrolled. The Claude, Pinegrap AI and Voice rows lost their sticky right column (`.ws-claude-status`) in AT2b and AT5 (#10898, #10948) and the rule went.
 
 ## How does the MCP servers card fit a phone?
 - `#ws-mcp > .card-header` and its server rows (`#ws-mcp > .card-body > .ws-dept-row`) wrap; the name column has `flex-basis: 12rem`, so the buttons drop below it. Plain `.ws-dept-row` (departments, mailboxes, tool lists) still does not wrap. Without this a 390px screen squeezed the heading and the server name to 0px wide and pushed Remove off screen (page scrolled sideways).

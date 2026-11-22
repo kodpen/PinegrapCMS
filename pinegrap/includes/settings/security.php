@@ -423,7 +423,7 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="membership_expiration_warning_email_page_id" class="form-label">' . lang('Page') . '</label>
-                                                            ' . pg_picker_field('page', 'membership_expiration_warning_email_page_id', $membership_expiration_warning_email_page_id) . pg_picker_script() . '
+                                                            ' . pg_picker_field('page', 'membership_expiration_warning_email_page_id', $membership_expiration_warning_email_page_id, array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="membership_expiration_warning_email_days_before_expiration" class="form-label">' . lang('Send') . '</label>

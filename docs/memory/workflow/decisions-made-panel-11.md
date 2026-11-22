@@ -14,4 +14,4 @@ description: Decisions list, panel part 11 (2026-11-20 on): the Site Settings di
 ## Is Assistants and agents tidied? (owner, 2026-11-20, in the architect's window)
 - "Asistanlar ve ajanlar ayar sekmesi korkun durumda birsürü seçenek var kopya içerik gibi sürekli. mesela claude ai bağlama alanı uzunca scrolla sebep oluyor uzun çok. ardından bağdaştırıcılarda olan MCP sunucuları alanı geliyor. ayarları bir toparlayalım."
 - Why: the category is one long scroll of cards that repeat each other, Claude's set-up guide the longest.
-- Binds: the category is gathered so that its parts are seen at a glance and the long guide leaves the pane. How (folded rows, the guide in a drawer, one help line a part) is the architect's: `plans/assistants-settings-tidy.md`.
+- Binds: the category is gathered so that its parts are seen at a glance and the long guide leaves the pane. How (folded rows, the guide in a drawer, one help line a part) is the architect's: built by AT1 to AT6 (#10807 to the close-out), `ui/settings-fold-rows.md`.
