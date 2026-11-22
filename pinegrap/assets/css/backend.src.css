@@ -4647,52 +4647,66 @@ a.link-top-row {
 #notifications.pg-bell-drawer {
   --pg-drawer-width: min(30rem, 100vw);
 }
-/* The head: the name, then "Mark all as read", the menu holding "Delete All
-   Notifications" and the close button at the right. */
+/* The head, 56px: the name and the "N new" pill, then Search, More actions
+   (its menu holds "Mark all as read" and "Delete All Notifications") and
+   Close, three icon buttons of one kind. Search puts the search field
+   (back arrow, field, clear) in the head's place. */
 #notifications .pg-bell-head {
-  gap: 0.25rem;
-  padding: 0.75rem 0.75rem 0.75rem 1rem;
-  border-bottom: 1px solid var(--pg-border-color-translucent);
+  min-height: 56px;
+  padding: 0 10px 0 20px;
+}
+#notifications .pg-bell-head-main,
+#notifications .pg-bell-search-bar {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+#notifications .pg-bell-head > [hidden],
+#notifications .pg-bell-new[hidden],
+#notifications .pg-bell-search-clear[hidden] {
+  display: none;
+}
+#notifications .pg-bell-search-bar {
+  gap: 6px;
+  margin-inline-start: -10px;
 }
 #notifications .pg-bell-heading {
-  margin-inline-end: auto;
-  font-size: 1.0625rem;
-  font-weight: 600;
+  margin: 0;
+  font-size: var(--pg-text-section-title);
+  font-weight: var(--pg-weight-title);
   white-space: nowrap;
 }
-#notifications .pg-bell-head-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  min-width: 0;
-  height: 2rem;
-  padding: 0 0.625rem;
-  border: 0;
-  border-radius: 0.5rem;
-  background: none;
-  color: var(--pg-primary-fg-emphasis);
-  font-size: 0.8125rem;
-  font-weight: 500;
+#notifications .pg-bell-new {
+  --pg-tone: var(--pg-accent);
+  margin-inline: 9px auto;
 }
-#notifications .pg-bell-head-btn > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+#notifications .pg-bell-head .pg-icon-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
 }
-#notifications .pg-bell-head-btn:hover {
-  background: var(--pg-tint-hover);
+#notifications .pg-bell-search-field {
+  flex: 1 1 auto;
+  padding-inline-end: 4px;
 }
-#notifications .pg-bell-head .pg-bell-menu-toggle {
-  width: 2rem;
-  height: 2rem;
+#notifications .pg-bell-search-field > .bi {
+  color: var(--pg-fg-3);
 }
-#notifications .pg-bell-close {
-  flex: 0 0 auto;
-  margin-block: 0;
-  margin-inline-start: 0.25rem;
+#notifications .pg-bell-search-field .pg-bell-search-clear {
+  width: 28px;
+  height: 28px;
+  color: var(--pg-fg-3);
+}
+#notifications .pg-bell-search::-webkit-search-cancel-button {
+  display: none;
 }
 #notifications .pg-bell-menu-item.pg-bell-delete-all {
   color: var(--pg-danger-fg-emphasis);
+}
+#notifications .pg-bell-mark-all:not([hidden]) + .pg-bell-delete-all:not([hidden]) {
+  border-top: 1px solid var(--pg-border-color-translucent);
 }
 /* The body: the filters, the list (the only part that scrolls) and the push
    line at the foot. min-height: 0 lets the list shrink below its content, so
@@ -4748,92 +4762,84 @@ a.link-top-row {
   font-weight: normal !important;
 }
 
-/* The filters over the list (output.php, backend.src.js): All, a chip for
-   each module that has a row and "Asked of me", each with its unread count;
-   then the search box and the "Unread only" switch. */
-/* One row however narrow the phone: it scrolls sideways before it wraps. */
+/* The filters over the list (output.php, backend.src.js): the selector
+   over the whole width (All, Unread and Asked of me with their unread
+   counts), then the module chips on one line, each with its tone's dot and
+   unread count; the line scrolls sideways before it wraps. */
 #notifications .pg-bell-filters {
-  display: flex;
   flex: 0 0 auto;
-  gap: 0.375rem;
-  padding: 0.625rem 0.75rem;
+  padding: 0 16px 10px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-seg {
+  display: flex;
+}
+#notifications .pg-bell-seg > .pg-seg-item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+#notifications .pg-bell-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
   overflow-x: auto;
   scrollbar-width: none;
-  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-chips[hidden],
+#notifications .pg-bell-filter[hidden] {
+  display: none;
 }
 #notifications .pg-bell-filter {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.375rem;
-  min-height: 1.875rem;
-  padding: 0.125rem 0.625rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: 999px;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px 0 9px;
+  border: 0;
+  border-radius: 13px;
   background: transparent;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
   color: var(--pg-fg-2);
-  font-size: 0.8125rem;
-  line-height: 1.2;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-medium);
   white-space: nowrap;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
-#notifications .pg-bell-filter[hidden] {
-  display: none;
+#notifications .pg-bell-filter::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pg-tone, var(--pg-tone-gray));
 }
 #notifications .pg-bell-filter:hover {
-  background: var(--pg-tint);
+  background: var(--pg-hover);
   color: var(--pg-fg-body);
 }
 #notifications .pg-bell-filter:focus-visible {
-  outline: 2px solid var(--pg-primary);
+  outline: 2px solid var(--pg-accent);
   outline-offset: 1px;
 }
 #notifications .pg-bell-filter[aria-pressed="true"] {
-  border-color: var(--pg-primary);
-  background: var(--pg-primary);
-  color: var(--pg-on-accent);
-  font-weight: 600;
-}
-#notifications .pg-bell-count {
-  min-width: 1.25rem;
-  padding: 0 0.3rem;
-  border-radius: 999px;
-  background: var(--pg-tint-strong);
+  background: color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-to), transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) 34%, transparent);
   color: var(--pg-fg-body);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  line-height: 1.25rem;
-  text-align: center;
 }
-#notifications .pg-bell-filter[aria-pressed="true"] .pg-bell-count {
-  background: color-mix(in srgb, var(--pg-on-accent) 16%, transparent);
+#notifications .pg-bell-filter .pg-bell-count {
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+}
+#notifications .pg-bell-count[hidden] {
+  display: none;
+}
+/* What the search found, marked in a row's title and text. */
+#notifications mark.pg-bell-mark {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--pg-tone-amber) 30%, transparent);
   color: inherit;
-}
-/* The search box takes the room the switch leaves. */
-#notifications .pg-bell-tools {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--pg-border-color-translucent);
-}
-#notifications .pg-bell-search {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-#notifications .pg-bell-unread-only {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--pg-fg-2);
-  font-size: 0.8125rem;
-  white-space: nowrap;
-}
-#notifications .pg-bell-unread-only label {
-  margin: 0;
-  cursor: pointer;
 }
 /* A bell row in look A (pg_bell_row()): the recipes' .pg-list-row draws it
    (tile, one-line title with the time, two lines of text, the button only
@@ -4843,6 +4849,9 @@ a.link-top-row {
   padding-bottom: 0.25rem;
 }
 #notifications .pg-bell-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 12px 20px 6px;
   color: var(--pg-fg-3);
   font-size: var(--pg-text-meta);
@@ -4850,6 +4859,26 @@ a.link-top-row {
   list-style: none;
 }
 #notifications .pg-bell-day.pg-bell-off {
+  display: none;
+}
+/* "Mark all as read" at the right of the first shown heading. */
+#notifications .pg-bell-day-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: -4px -8px -4px auto;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--pg-accent);
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+}
+#notifications .pg-bell-day-all:hover {
+  background: var(--pg-hover);
+}
+#notifications .pg-bell-day-all[hidden] {
   display: none;
 }
 #notifications .pg-bell-row {
@@ -4996,7 +5025,7 @@ a.link-top-row {
 #notifications .pg-bell-menu-item.pg-bell-delete {
   color: var(--pg-danger-fg-emphasis);
 }
-#notifications :is(.pg-bell-title, .pg-bell-menu-item, .pg-bell-more, .pg-bell-head-btn):focus-visible {
+#notifications :is(.pg-bell-title, .pg-bell-menu-item, .pg-bell-more, .pg-bell-day-all):focus-visible {
   outline: 2px solid var(--pg-primary);
   outline-offset: 1px;
 }
