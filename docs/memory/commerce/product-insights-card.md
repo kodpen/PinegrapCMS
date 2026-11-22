@@ -28,4 +28,4 @@ module: product_insights
 ## What is the Figure grid?
 - The recipe "Look A: figure grid" in `backend.src.css`: `.pg-figure-grid` cells four across divided by rules (two on a phone), `-chart`, `-bars`, `-axis`, `-sub`, `-rows`, `-row` (`.is-wide` the whole row), `-row-link`, `-foot`, `-empty`. One cell from PHP: `pg_figure_grid_cell()` (`includes/fn/output.php`). Design examples "Figure grid" draws the card with fixed figures (`pg_look_examples_figure_grid_pattern()`).
 
-Related: docs/memory/commerce/product-insights-module.md, docs/memory/commerce/order-screen-head.md, docs/memory/plans/product-insights.md
+Related: docs/memory/commerce/product-insights-module.md, docs/memory/commerce/order-screen-head.md, docs/memory/commerce/product-insights.md

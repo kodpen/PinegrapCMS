@@ -5,7 +5,7 @@ module: product_insights
 ---
 
 ## Where is it?
-- `includes/fn/product_insights.php`, loaded only by the panel action `product_insights` (`pg_panel_product_insights()`, `includes/panel/commerce.php`), not by `functions.php`. Read only. Tests: `tests/product_insights_test.php`. What each figure counts: plan `plans/product-insights-figures.md` until its last step moves it to this folder.
+- `includes/fn/product_insights.php`, loaded only by the panel action `product_insights` (`pg_panel_product_insights()`, `includes/panel/commerce.php`), not by `functions.php`. Read only. Tests: `tests/product_insights_test.php`. What each figure counts: `product-insights.md`.
 
 ## What does the action take and answer?
 - JSON body `product_id`, `period` (`30d`, `12m`, `all`; anything else is `30d`). Exempt row, no token, no write: the handler answers an ended session with `panel_login_refusal()`, then Edit Product's own gate (role below 3 or `manage_ecommerce`, `ECOMMERCE` on) in JSON, then "Product not found.".
@@ -27,4 +27,4 @@ module: product_insights
 ## How long is a read kept?
 - Ten minutes in the person's session, `$_SESSION['software']['product_insights']`, keyed product, period and whether the margin is in it, at most 20 reads (`pg_product_insights_keep()`). The session is closed while the figures are read and reopened to keep them. Saving the product does not empty it.
 
-Related: docs/memory/plans/product-insights.md, docs/memory/core/panel-action-table.md, docs/memory/erp/erp-order-profit-profitability.md
+Related: docs/memory/commerce/product-insights.md, docs/memory/core/panel-action-table.md, docs/memory/erp/erp-order-profit-profitability.md

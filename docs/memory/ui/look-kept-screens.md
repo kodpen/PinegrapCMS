@@ -12,7 +12,8 @@ description: The owner's kept panel screens in look A (Edit Offer, Product Build
 - A change in a kept screen's own file is made only after the owner has seen its picture; the architect asks him.
 
 ## What did the owner let in?
-- Owner (2026-11-15, `workflow/decisions-made-panel-9.md`): Edit User's Sessions drawer Done and Offers' New Offer take `pg-button pg-button-fill` (KS1, #9721); Add Product's field widths (KS2, #9754, `look-field-widths.md`). Nothing else in a kept screen's own file changed.
+- Owner (2026-11-15, `workflow/decisions-made-panel-9.md`): Edit User's Sessions drawer Done and Offers' New Offer take `pg-button pg-button-fill` (KS1, #9721); Add Product's field widths (KS2, #9754, `look-field-widths.md`). Nothing else in a kept screen's own file changed then.
+- Owner (2026-11-22, `workflow/decisions-made-panel-15.md`), shown the drawing: Edit Product's head and Performance card in `product_builder.php` (#11138, `commerce/product-insights.md`); every other section, the Preview column and the save bar stay.
 - All Offers' record count beside its title (owner, poll 46, `workflow/decisions-made-product-57.md`), #9804.
 
 ## What did the shared steps leave out of them?
