@@ -9,8 +9,8 @@ description: Supplier feeds (SF6, #11121, F11 and F14): the feed's buy price as 
 - `erp_order_profit_supplier_costs()` reads `supplier_feed_items` only: `buy_price > 0`, not dismissed, the item in use (`active`) first, else the newest `changed_at`. Nothing in the feed's or ERP tables is written.
 - The item's buy price is net of VAT in the feed's currency; `erp_order_profit_supplier_unit()` (pure) converts it with `erp_to_base()` at 1 / `currencies.exchange_rate`. No rate: no feed cost, the line stays incomplete.
 
-## Why the 11.0.271 step?
-- `erp_order_costs.source` was an ENUM without `supplier`; the non-strict session would store '' in silence. Step 11.0.271 `upgrade_2026_11_0_order_cost_supplier()` widens it only when the value is missing.
+## Why the 11.0.272 step?
+- `erp_order_costs.source` was an ENUM without `supplier`; the non-strict session would store '' in silence. Step 11.0.272 `upgrade_2026_11_0_order_cost_supplier()` appends it only when it is missing, keeping every value, NOT NULL and the default `rate`; the CREATE of 11.0.250 holds it too. Architect (2026-11-22, agent channel message 11991): the column gains the value; an ERP table's addition is approved in advance (owner 2026-10-26, #1773).
 - Until it has run, `erp_order_profit_supplier_ready()` is false and no feed cost is read.
 
 ## Which supplier does the stock plan name? (F11)
@@ -24,4 +24,4 @@ description: Supplier feeds (SF6, #11121, F11 and F14): the feed's buy price as 
 - `POST /supplier-feeds/{id}/run` (`products:write`, dry run): `pg_supplier_feed_pull_now()` with an 8-second budget (`API_SUPPLIER_FEED_RUN_BUDGET`), the job goes on with the rest. 409 `feed_off`, `not_mapped`, `already_pulling`.
 
 ## What is not verified?
-- No run of step 11.0.271 on a database, no pull through the API on a real feed, no order computed with a feed cost on real data: unit tests only (`tests/erp_order_profit_test.php`, `tests/erp_stock_plan_forecast_test.php`).
+- No run of step 11.0.272 on a database (not twice either), no pull through the API on a real feed, no order computed with a feed cost on real data: unit tests only (`tests/erp_order_profit_test.php`, `tests/erp_stock_plan_forecast_test.php`).

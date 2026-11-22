@@ -259,7 +259,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_event_ticket_checkins();   // 11.0.267
 	upgrade_2026_11_0_stock_taken();             // 11.0.268
 	upgrade_2026_11_0_starter_twitter();         // 11.0.269
-	upgrade_2026_11_0_order_cost_supplier();     // 11.0.271
+	upgrade_2026_11_0_order_cost_supplier();     // 11.0.272
 
 }
 
@@ -4142,7 +4142,7 @@ function upgrade_2026_11_0_starter_twitter() {
 }
 
 // An order line's cost may come from a supplier feed's buy price (2026.11.0,
-// 11.0.271; includes/erp/order_profit.php): erp_order_costs.source gains
+// 11.0.272; includes/erp/order_profit.php): erp_order_costs.source gains
 // 'supplier' for a line with no average cost, kept like an average. The
 // ENUM is widened only when the value is missing, so a second run rebuilds
 // nothing; a value added by another step is kept.
@@ -8184,7 +8184,7 @@ function upgrade_2026_11_0_erp_order_profit() {
 		id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 		order_id    INT UNSIGNED NOT NULL DEFAULT 0,
 		kind        ENUM('product','payment','marketplace','shipping','other') NOT NULL DEFAULT 'other',
-		source      ENUM('invoice','average','bundle','gateway','marketplace','label','rate','estimate') NOT NULL DEFAULT 'rate',
+		source      ENUM('invoice','average','bundle','gateway','marketplace','label','rate','estimate','supplier') NOT NULL DEFAULT 'rate',
 		source_ref  VARCHAR(100) NOT NULL DEFAULT '',
 		amount      BIGINT NOT NULL DEFAULT 0,
 		created_at  INT UNSIGNED NOT NULL DEFAULT 0,

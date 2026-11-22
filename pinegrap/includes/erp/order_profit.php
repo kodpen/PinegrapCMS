@@ -720,7 +720,7 @@ function erp_order_profit_supplier_costs($product_ids)
 }
 
 /**
- * Whether erp_order_costs.source can hold 'supplier' (2026.11.0, 11.0.271):
+ * Whether erp_order_costs.source can hold 'supplier' (2026.11.0, 11.0.272):
  * before that step a row would be stored with an empty source.
  *
  * @return bool

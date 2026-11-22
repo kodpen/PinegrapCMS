@@ -4,7 +4,7 @@ description: Each order's cost rows and net profit (#10626): the three tables of
 ---
 
 ## Where is an order's profit kept?
-- `includes/erp/order_profit.php` (2026.11.0, step 11.0.250). `erp_order_costs`: an order's cost rows, kind (product, payment, marketplace, shipping, other), source, `source_ref`, amount; unique on (order_id, kind, source_ref), so a rerun adds no row.
+- `includes/erp/order_profit.php` (2026.11.0, step 11.0.250). `erp_order_costs`: an order's cost rows, kind (product, payment, marketplace, shipping, other), source (`supplier` added by 11.0.272), `source_ref`, amount; unique on (order_id, kind, source_ref), so a rerun adds no row.
 - Architect (2026-11-20, channel message 10292): amounts are minor units in the order's own currency (the unit of `orders.total`); a real fee read in another currency (NP2, NP4) is converted before it is written, only through `includes/erp/money.php` with `round()`.
 - `erp_order_profit`: one row per order: revenue, `cost_product` … `cost_other`, net, margin, state (`final`, `estimate`, `incomplete`), channel (`web` or `marketplace:<account id>`; no counter yet), `basis` (md5 of the order figures), `stale`.
 - `erp_cost_rates`: typed rates, kind (payment, shipping, marketplace) + `rate_key` (`orders.payment_method`, shipping method id, marketplace account id), `percent` DECIMAL(6,3) and `fixed` minor units.
