@@ -874,6 +874,11 @@
             main.appendChild(el('p', { class: 'pgie-note pgie-anim-warn', role: 'alert', text: t('animTooLong').replace('{n}', X.decimal(f.maxMs / 1000)) }));
         }
 
+        // A saved animation of a document with data layers is a still.
+        if (this.dataStillLine && this.dataStillLine()) {
+            main.appendChild(this.dataStillLine());
+        }
+
         this.animEls.limit = el('div', { class: 'pgie-anim-limit', 'aria-live': 'polite' });
         main.appendChild(this.animEls.limit);
 

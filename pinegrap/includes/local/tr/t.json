@@ -6956,6 +6956,7 @@
     "The rows of another table whose row link points at this row, and the column to total.": "Satır bağlantısı bu satırı gösteren başka bir tablonun satırları ve toplanacak sütun.",
     "The rows of {var:1} are too long to be sent. Please shorten them.": "{var:1} satırları gönderilemeyecek kadar uzun. Lütfen kısaltın.",
     "The rows show unfiltered.": "Satırlar süzülmeden gösteriliyor.",
+    "The rows show where the canvas is opened.": "Satırlar, tuval açıldığı yerde görünür.",
     "The rule is over, but I still listen this way most of the time. A whole album takes about forty minutes. It turns out I almost always have forty minutes.": "Kural sona erdi, ama hâlâ çoğu zaman böyle dinliyorum. Bir albümün tamamı kırk dakika kadar sürüyor. Meğer neredeyse her zaman kırk dakikam varmış.",
     "The rule runs from the next night on.": "Kural bir sonraki geceden itibaren çalışır.",
     "The rule was added.": "Kural eklendi.",

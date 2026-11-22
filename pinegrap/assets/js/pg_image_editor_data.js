@@ -35,14 +35,17 @@
 
     // A layer's marks (M.dataMarks()) in its box; a description that does
     // not pass its check draws as an empty layer.
+    // A painter made without the editor's inits (a language's picture) holds
+    // no reads: its layers draw with no rows, as the Workspace's file does.
     Editor.prototype.dataMarksOf = function (l) {
-        var c = M.dataCheck(l.data), read, words = { empty: t('dataEmpty'), refused: t('dataRefused'), more: t('dataMore'), count: t('dataCount'), other: t('dataOther') };
+        var c = M.dataCheck(l.data), read, bare = this.dataBareDraw || !this.dataReads;
+        var words = { empty: t(bare ? 'dataBare' : 'dataEmpty'), refused: t('dataRefused'), more: t('dataMore'), count: t('dataCount'), other: t('dataOther') };
 
         if (!c.ok) {
             return M.dataMarks(M.dataCheck({ table: 1, label: 'x', values: ['x'] }).data, l.w, l.h, { labels: [], series: [] }, words);
         }
 
-        read = this.dataReads[String(c.data.table)];
+        read = bare ? null : this.dataReads[String(c.data.table)];
 
         if (read === undefined) {
             this.dataLoad(c.data.table);
@@ -190,6 +193,37 @@
             this.openDataPicker(null, start);
         }
     });
+
+    // ---- stills ----
+
+    // The artboard as the Workspace keeps it (M.dataSendBare()): its data
+    // layers drawn with no rows and a line saying they show where the canvas
+    // is opened. The file is seen by every reader of the channel and a
+    // guest; the rows follow each reader's rights only in the card's drawing
+    // and the editor.
+    Editor.prototype.drawArtboardBare = function () {
+        this.dataBareDraw = true;
+
+        try {
+            return this.drawArtboard();
+        } finally {
+            this.dataBareDraw = false;
+        }
+    };
+
+    // The line an export of a document with data layers shows: the picture
+    // keeps the rows of now. null without a data layer.
+    Editor.prototype.dataStillLine = function () {
+        return M.dataTablesOf(this.doc).length ? el('p', { class: 'pgie-note pgie-datastill', text: t('dataStill') }) : null;
+    };
+
+    // The same once over the stage, after a download: once an editor.
+    Editor.prototype.dataStillSay = function () {
+        if (!this.dataStillSaid && M.dataTablesOf(this.doc).length) {
+            this.dataStillSaid = true;
+            this.showMessage(t('dataStill'));
+        }
+    };
 
     // ---- reading ----
 
