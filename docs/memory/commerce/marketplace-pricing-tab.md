@@ -33,4 +33,4 @@ module: marketplace_pricing_settings
 - `marketplace_price_rules.step_unit` TINYINT (step 11.0.261), read on the account's row: 0 `step` is minor units, 1 hundredths of a percent. Decision: `workflow/decisions-made-schema-39.md`.
 - `mp_pricing_step($from, $step, $unit)` works the step out: a percent of the price it moves from (the buybox price for Win, the own price for Grow while winning), rounded, never under 1 minor unit. Before the step has run, the column is read as 0 and not written.
 
-Related: docs/memory/commerce/marketplace-channel-price.md, docs/memory/plans/marketplace-repricer.md
+Related: docs/memory/commerce/marketplace-channel-price.md, docs/memory/commerce/marketplace-repricer.md
