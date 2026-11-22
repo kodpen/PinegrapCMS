@@ -2314,9 +2314,10 @@ function ws_guest_handle($action, $request)
         // A guest joins the room's live call, leaves it and sends its
         // connection messages; it never starts one (calls.php).
         case 'call_join':
-            $joined = ws_call_join(ws_call_party_guest($context), $context['channel'], (int) ($request['call_id'] ?? 0));
+            $joined = ws_call_join(ws_call_party_guest($context), $context['channel'], (int) ($request['call_id'] ?? 0), !empty($request['again']));
 
-            return $joined['ok'] ? array('status' => 'ok', 'call_id' => $joined['call_id'], 'member_id' => $joined['member_id'], 'ice' => ws_call_member_ice()) : array('status' => 'error', 'message' => $joined['error']);
+            return $joined['ok'] ? array('status' => 'ok', 'call_id' => $joined['call_id'], 'member_id' => $joined['member_id'], 'ice' => ws_call_member_ice())
+                : array('status' => 'error', 'message' => $joined['error'], 'code' => (string) ($joined['code'] ?? ''));
 
         // The look of a guest in the call, every second: the room's call
         // and the signals sent to the guest, nothing of the conversation.
@@ -2325,13 +2326,13 @@ function ws_guest_handle($action, $request)
                 ? ws_call_live_part(ws_call_party_guest($context), (int) $context['channel']['id'], (int) ($request['call_after'] ?? 0)) : null);
 
         case 'call_leave':
-            $left = ws_call_leave(ws_call_party_guest($context), (int) ($request['call_id'] ?? 0));
+            $left = ws_call_leave(ws_call_party_guest($context), (int) ($request['call_id'] ?? 0), (int) ($request['member_id'] ?? 0));
 
             return array('status' => 'ok', 'ended' => $left['ended']);
 
         case 'call_signal':
             $sent = ws_call_signal_send(ws_call_party_guest($context), (int) ($request['call_id'] ?? 0), (int) ($request['to_member_id'] ?? 0),
-                ws_guest_request_text($request['kind'] ?? ''), ws_guest_request_text($request['body'] ?? ''));
+                ws_guest_request_text($request['kind'] ?? ''), ws_guest_request_text($request['body'] ?? ''), (int) ($request['member_id'] ?? 0));
 
             return $sent['ok'] ? array('status' => 'ok', 'signal_id' => $sent['signal_id']) : array('status' => 'error', 'message' => $sent['error']);
 

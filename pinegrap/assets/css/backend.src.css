@@ -20635,6 +20635,48 @@ a.ws-chip-message:hover,
     aspect-ratio: auto;
   }
 }
+/* A phone: at card size the window sits at the top under the panel's bar,
+   across the width, so the writing box at the bottom stays free; it never
+   runs off a short screen, and scrolls inside itself. On its side (a short
+   landscape screen) it keeps to the right half, the conversation beside
+   it. */
+.ws-call:not(.is-stage) {
+  max-height: calc(100dvh - 2 * var(--ws-space-3));
+  overflow-y: auto;
+}
+@media (max-width: 575.98px) {
+  .ws-call:not(.is-stage) {
+    top: calc(var(--pg-navbar-h, 3.5rem) + .5rem + env(safe-area-inset-top));
+    right: .5rem;
+    bottom: auto;
+    left: .5rem;
+    width: auto;
+    max-height: calc(100dvh - var(--pg-navbar-h, 3.5rem) - 1rem - env(safe-area-inset-top));
+  }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .ws-call:not(.is-stage) {
+    top: .5rem;
+    right: max(.5rem, env(safe-area-inset-right));
+    bottom: auto;
+    left: auto;
+    width: min(24rem, 48vw);
+    max-height: calc(100dvh - 1rem);
+  }
+  .ws-call:not(.is-stage) .ws-call-stage[data-count="3"],
+  .ws-call:not(.is-stage) .ws-call-stage[data-count="4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+/* The head's Join button in a narrow head: its words give way first. */
+@container (max-width: 40rem) {
+  .ws-head-channel .ws-call-join {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
 .ws-composer.ws-voice-recording > :not(.ws-voice-rec) {
   display: none;
 }

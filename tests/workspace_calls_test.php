@@ -138,7 +138,7 @@ function test_workspace_calls_the_full_call_and_its_clean_up()
 	$join = workspace_calls_test_function('ws_call_join');
 
 	pg_assert_true(strpos($start, 'return ws_call_join($party, $channel, (int) $live[\'id\']);') !== false, 'a start where a call is on joins that call: one live call a channel');
-	pg_assert_true(strpos($join, "'member_id' => (int) \$mine['id']") !== false, 'a party already in the call keeps its one row');
+	pg_assert_true(strpos($join, "ws_call_join_place(\$mine, \$again)") !== false, 'a party already in the call gets no second row (tests/workspace_calls_endurance_test.php)');
 	pg_assert_true(strpos($leave, 'if (!ws_call_members_live($call_id)) {') !== false && strpos($leave, 'ws_call_end_row($call);') !== false, 'the last one out ends the call');
 	pg_assert_true(strpos($end, "DELETE FROM ws_call_signals WHERE call_id = '\" . \$id . \"'") !== false, 'an ended call\'s signals are deleted');
 	pg_assert_true(strpos($end, "SET left_at = '\" . \$now . \"' WHERE call_id") !== false, 'everyone is out of an ended call');

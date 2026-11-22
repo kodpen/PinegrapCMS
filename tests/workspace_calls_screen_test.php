@@ -229,9 +229,9 @@ JS
 	pg_assert_false($got['two_no_group'], 'a conversation of two does not');
 	pg_assert_false($got['no_call']['show'], 'no Join without a call');
 	pg_assert_false($got['ended']['show'], 'nor once it ended');
-	pg_assert_same(array('show' => true, 'full' => false, 'count' => 2, 'callId' => 7, 'kind' => 'video'), $got['two_in'], 'a call of two in a channel: Join, with how many are in it and its kind');
+	pg_assert_same(array('show' => true, 'full' => false, 'here' => false, 'count' => 2, 'callId' => 7, 'kind' => 'video'), $got['two_in'], 'a call of two in a channel: Join, with how many are in it and its kind');
 	pg_assert_true($got['full']['show'] && $got['full']['full'], 'four in it: the fifth sees that the call is full');
-	pg_assert_false($got['in_it']['show'], 'no Join for one already in it');
+	pg_assert_true($got['in_it']['show'] && $got['in_it']['here'], 'one already in it in another window gets Join here, never a second place');
 	pg_assert_false($got['this_screen']['show'], 'nor for the call this screen is in');
 	pg_assert_same('', $got['group_waits'], 'a group\'s call waits while one is alone in it');
 	pg_assert_same('call_ended', $got['group_gives_up'], 'for five minutes');

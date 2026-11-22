@@ -2856,6 +2856,7 @@
     "The call could not be kept.": "Çağrı kaydedilemedi.",
     "The call could not be started.": "Görüşme başlatılamadı.",
     "The call ended.": "Arama sona erdi.",
+    "The call goes on in another window.": "Arama başka bir pencerede sürüyor.",
     "The call was not answered.": "Arama yanıtlanmadı.",
     "The callback URL and verify token to enter in the app appear here once the account is saved.": "Uygulamaya girilecek geri çağırma adresi ve doğrulama anahtarı, hesap kaydedilince burada görünür.",
     "The camera could not be opened. Allow it for this site, or type the code.": "Kamera açılamadı. Bu site için izin verin veya kodu yazın.",

@@ -5511,10 +5511,10 @@ function ws_handle_action($action, $request)
             $party = ws_call_party_person($viewer, $channel);
             $result = ($action === 'ws_call_start')
                 ? ws_call_start($party, $channel, (string) ($request['kind'] ?? ''))
-                : ws_call_join($party, $channel, (int) ($request['call_id'] ?? 0));
+                : ws_call_join($party, $channel, (int) ($request['call_id'] ?? 0), !empty($request['again']));
 
             if (!$result['ok']) {
-                return ws_action_error($result['error']);
+                return ws_action_error($result['error']) + array('code' => (string) ($result['code'] ?? ''));
             }
 
             // The relay's short-lived credentials go to a member of the
@@ -5554,14 +5554,15 @@ function ws_handle_action($action, $request)
             }
 
             if ($action === 'ws_call_leave') {
-                $result = ws_call_leave($party, (int) $call['id']);
+                $result = ws_call_leave($party, (int) $call['id'], (int) ($request['member_id'] ?? 0));
 
                 return ws_action_ok(array('ended' => $result['ended']));
             }
 
             $result = ($action === 'ws_call_end')
                 ? ws_call_end($party, $call, ws_can_manage_channel($viewer, $channel))
-                : ws_call_signal_send($party, (int) $call['id'], (int) ($request['to_member_id'] ?? 0), (string) ($request['kind'] ?? ''), (string) ($request['body'] ?? ''));
+                : ws_call_signal_send($party, (int) $call['id'], (int) ($request['to_member_id'] ?? 0), (string) ($request['kind'] ?? ''), (string) ($request['body'] ?? ''),
+                    (int) ($request['member_id'] ?? 0));
 
             return $result['ok'] ? ws_action_ok(array('signal_id' => (int) ($result['signal_id'] ?? 0))) : ws_action_error($result['error']);
 

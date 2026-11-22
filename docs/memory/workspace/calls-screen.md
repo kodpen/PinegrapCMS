@@ -5,7 +5,7 @@ description: Workspace calls of two people on the channel screen (CL2, #10522): 
 
 ## Where are the call buttons?
 - In the channel head, before the tour: a telephone (Voice call) and a camera (Video call), `pg-icon-button`s from `PGWsCalls.headButtons()` (`assets/js/workspace_calls.js`, in `workspace.min.js`).
-- In a channel of two people or more the viewer is a member of (`callable()`, groups in `calls-group.md`), or a guest room with one of the team (`calls-guest.md`): not archived, not a mailbox or discussion, not an earlier version; only with WebRTC and `CFG.calls` (the call tables exist and the Calls card's switch is on). Marked `ws-head-wide`, so a phone's narrow head hides them until CL8.
+- In a channel of two people or more the viewer is a member of (`callable()`, groups in `calls-group.md`), or a guest room with one of the team (`calls-guest.md`): not archived, not a mailbox or discussion, not an earlier version; only with WebRTC and `CFG.calls` (the call tables exist and the Calls card's switch is on). Kept in a phone's narrow head (`calls-endurance.md`).
 - A group's call: `calls-group.md` (CL3). A guest's: `calls-guest.md` (CL5).
 
 ## How does the other person hear it?
@@ -17,7 +17,7 @@ description: Workspace calls of two people on the channel screen (CL2, #10522): 
 ## What does the call window do?
 - Fixed at the bottom right on the body, so it stays while the person opens other channels; the name opens the call's conversation. Video: the other side large, one's own picture small; voice: the name.
 - Mute, camera off/on (video calls), Microphone and camera (a select of each, `replaceTrack()` into every connection), Hang up (`ws_call_leave`). Calling…, Connecting…, then the length (m:ss).
-- The call ends on this side when the other one leaves, when a connection stays broken 15 s ("The connection was lost."), and when the tab is closed (`pagehide`, `ws_call_leave` with keepalive).
+- The call ends on this side when the other one leaves, when a connection stays broken 30 s after its ICE restarts ("The connection was lost."), and when the tab is closed (`pagehide`, `ws_call_leave` with keepalive and its `member_id`; a phone, the restarts and a second window: `calls-endurance.md`).
 - One call at a time: a second start says "You are already in a call.", and a ring during a call is not shown.
 
 ## How do the two browsers connect?
