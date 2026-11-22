@@ -1194,6 +1194,7 @@
     "Remove this condition": "Bu koşulu kaldır",
     "Remove this item from the plan?": "Bu kayıt plandan kaldırılsın mı?",
     "Remove this link and delete its webhook from the repository?": "Bu bağlantı kaldırılsın ve webhook'u depodan silinsin mi?",
+    "Remove this link from the panel's footer?": "Bu bağlantı panelin alt bilgisinden kaldırılsın mı?",
     "Remove this marketplace?": "Bu pazaryeri kaldırılsın mı?",
     "Remove this notification": "Bu bildirimi kaldır",
     "Remove this page from the bundle? The draft stays in Drafts.": "Bu sayfa paketten çıkarılsın mı? Taslak, Taslaklar klasöründe kalır.",

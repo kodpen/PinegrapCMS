@@ -5318,6 +5318,71 @@ function pg_private_label_config_keys() {
     return $keys;
 }
 
+// What a save of the private label fields wrote to data/config.php, field =>
+// value, for the pane drawn after it in the same request: the constants
+// still hold what config.php said when the request began, and a pane drawn
+// from them shows the old values, which its next save writes back. A call
+// with $values keeps them; one without reads them, null before any save.
+function pg_private_label_saved_values($values = null) {
+    static $saved = null;
+
+    if ($values !== null) {
+        $saved = $values;
+    }
+
+    return $saved;
+}
+
+// The five footer links of private label branding in the order they are
+// saved. $values holds footer_link_<n>_label / _url (n 1 to 5) in row order,
+// as Site Settings › Appearance posts them; $action is a row's menu button,
+// "up:<n>", "down:<n>" or "remove:<n>", naming the row as posted. A link that
+// holds neither a label nor an address is no link: the ones under it move up,
+// so a link removed or emptied in its drawer leaves no gap. Returns all ten
+// fields, the links first and '' after them. Pure.
+function pg_private_label_links_order($values, $action = '') {
+    $links = array();
+
+    for ($n = 1; $n <= 5; $n++) {
+        $label = isset($values['footer_link_' . $n . '_label']) && is_string($values['footer_link_' . $n . '_label']) ? $values['footer_link_' . $n . '_label'] : '';
+        $url = isset($values['footer_link_' . $n . '_url']) && is_string($values['footer_link_' . $n . '_url']) ? $values['footer_link_' . $n . '_url'] : '';
+
+        if ((trim($label) !== '') || (trim($url) !== '')) {
+            $links[$n] = array($label, $url);
+        }
+    }
+
+    $rows = array_keys($links);
+    $links = array_values($links);
+
+    if (is_string($action) && preg_match('/^(up|down|remove):([1-5])$/', $action, $match)) {
+        $at = array_search((int) $match[2], $rows, true);
+
+        if ($at !== false) {
+            if ($match[1] === 'remove') {
+                array_splice($links, $at, 1);
+            } else {
+                $to = ($match[1] === 'up') ? $at - 1 : $at + 1;
+
+                if (isset($links[$to])) {
+                    $moved = $links[$to];
+                    $links[$to] = $links[$at];
+                    $links[$at] = $moved;
+                }
+            }
+        }
+    }
+
+    $order = array();
+
+    for ($n = 1; $n <= 5; $n++) {
+        $order['footer_link_' . $n . '_label'] = isset($links[$n - 1]) ? $links[$n - 1][0] : '';
+        $order['footer_link_' . $n . '_url'] = isset($links[$n - 1]) ? $links[$n - 1][1] : '';
+    }
+
+    return $order;
+}
+
 // The text of data/config.php after the private label screen is saved.
 //
 // $posted holds the form (field => value), $current what each constant holds

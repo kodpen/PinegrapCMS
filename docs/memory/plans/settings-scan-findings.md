@@ -14,7 +14,6 @@ description: Faults found by the 2026-11-21 scan of the Site Settings panes and 
 
 ## Which plan step takes which fault?
 - General, GA4: Organization's 11 flat fields under group labels. The logo picker's size is the shared PR's.
-- Appearance, GA3: the Extra CSS placeholder translated; Private label branding's help inside the row's padding; Editor version as a segmented control.
 - Bookings, BT1 (#11008): "New service" is a card in a card and always open, it becomes the drawer the plan names. BT2: the staff list at full width.
 - Communication, CM1: the channel list cut in two places; warning boxes in help size. CM2: WhatsApp's event name and general label in one size; SMS's 11 open text fields folded, one open at a time.
 - Security, SE3: the lock-out fields' white card in a grey card to one surface; the blocked e-mail field's red frame only when refused; the "Device" help that explains itself rewritten or dropped; the key reset as a button with a confirm, not a switch.
