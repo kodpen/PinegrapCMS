@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Integrations cards: the application API (master switch, HTTPS, public description, log retention, upload folder), Google reviews and the related screens.
+ * Site Settings - the Integrations cards: the application API (master switch, HTTPS, public description, log retention, upload folder), Google reviews' connection and the related screens.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -129,8 +129,8 @@ $pg_settings_cards[] = '
     </div>';
 
 // ── Google Reviews ──
-// The Places API key and the Place ID, kept sealed with the cache of what
-// Google answered (includes/fn/google_reviews.php).
+// No key here: the Places API key and the Place ID are typed on Google
+// reviews' page of Connections; the card shows that connection.
 $pg_settings_cards[] = '
                         <div id="pgset-google-reviews" class="pg-set-card">
                             <div class="card">
@@ -138,7 +138,7 @@ $pg_settings_cards[] = '
                                     ' . lang('Google Reviews') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-5">' . pg_grev_settings_fields() . '
+                                   <div class="row gy-5">' . pg_grev_settings_connection_html(pg_grev_configured()) . '
                                     </div>
                                 </div>
                             </div>

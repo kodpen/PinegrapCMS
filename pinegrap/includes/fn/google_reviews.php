@@ -401,136 +401,131 @@ function pg_grev_job_run()
 }
 
 /**
- * The Google Reviews card of Site Settings › Integrations: the key (never
- * drawn back), the Place ID and the test button.
+ * The address of Google reviews' page on Connections, where the key and the
+ * Place ID are typed. Pure.
  *
  * @return string
  */
-function pg_grev_settings_fields()
+function pg_grev_connections_url()
 {
-    $ready = function_exists('pg_connect_schema_ready') && pg_connect_schema_ready() && pg_connect_can_seal();
-    $state = $ready ? pg_grev_state() : array('key' => '', 'place_id' => '');
-    $html = '';
-
-    if (!$ready) {
-        $html .= '
-                                        <div class="col-12"><div class="alert theme-warning mb-0">' . h(lang('Google reviews need the site\'s encryption key to keep the API key.')) . '</div></div>';
-    }
-
-    $kept = ($state['key'] !== '')
-        ? lang(array('string' => 'A key ending in {var:1} is saved. Leave the box empty to keep it.', 'vars' => array(h(substr($state['key'], -4)))))
-        : lang('The key of a Google Cloud project with billing and the Places API (New) on. Restrict the key to this server.');
-
-    $html .= '
-                                        <div class="col-12 form-text">' . h(lang('Shows the rating and up to five reviews of the business from Google in the Google Reviews widget of the Page Design Studio.')) . '</div>
-                                        <div class="pg-f-md">
-                                            <label for="google_reviews_key" class="form-label">' . lang('Places API Key') . '</label>
-                                            <input type="password" name="google_reviews_key" id="google_reviews_key" class="form-control" value="" maxlength="200" autocomplete="new-password"/>
-                                            <div class="form-text">' . $kept . '</div>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="google_reviews_place_id" class="form-label">' . lang('Place ID') . '</label>
-                                            <input type="text" name="google_reviews_place_id" id="google_reviews_place_id" class="form-control" value="' . h($state['place_id']) . '" maxlength="300" autocomplete="off" spellcheck="false"/>
-                                            <div class="form-text">' . lang(array(
-                                                'string' => 'Find your business with Google\'s {var:1} and copy its Place ID. Empty: the widget shows nothing.',
-                                                'vars'   => array('<a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" rel="noopener">' . h(lang('Place ID Finder')) . '</a>'))) . '</div>
-                                        </div>';
-
-    if ($state['key'] !== '') {
-        $html .= '
-                                        <div class="col-12">
-                                            <div class="form-field mb-0">
-                                                <input value="1" class="check" type="checkbox" id="google_reviews_forget" name="google_reviews_forget"/>
-                                                <label class="fg-danger" for="google_reviews_forget">' . lang('Remove the saved key') . '</label>
-                                            </div>
-                                        </div>';
-    }
-
-    $html .= '
-                                        <div class="col-12">
-                                            <button type="submit" name="google_reviews_test" value="1" class="pg-button pg-button-quiet pg-button-sm"' . ($ready ? '' : ' disabled') . '><i class="bi bi-google" aria-hidden="true"></i>' . lang('Save and test') . '</button>
-                                        </div>';
-
-    return $html;
+    return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
+        . '/connections.php?service=google_reviews';
 }
 
 /**
- * Checks the card's fields before anything is written.
+ * The Google Reviews card of Site Settings › Integrations: no key, only the
+ * connection's state and the way to its page on Connections. Pure.
  *
- * @param array    $post
- * @param liveform $liveform
- * @return array key (null: keep the saved one), place_id, forget, test
+ * @param bool $connected pg_grev_configured()
+ * @return string HTML
  */
-function pg_grev_settings_check($post, $liveform)
+function pg_grev_settings_connection_html($connected)
 {
-    $key = isset($post['google_reviews_key']) && is_string($post['google_reviews_key']) ? trim($post['google_reviews_key']) : '';
-    $place_id = isset($post['google_reviews_place_id']) && is_string($post['google_reviews_place_id']) ? trim($post['google_reviews_place_id']) : '';
+    return '
+                                        <div class="col-12 form-text">' . h(lang('Shows the rating and up to five reviews of the business from Google in the Google Reviews widget of the Page Design Studio.')) . '</div>
+                                        <div class="col-12" id="pgsub-google-reviews-connection">
+                                            <div class="d-flex flex-column align-items-start gap-2">
+                                                <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang('Google reviews connection')) . '</span>' . ($connected
+                                                    ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                    : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                <div class="form-text mt-0">' . h($connected
+                                                    ? lang('The Places API key and the Place ID are kept on the Google reviews page of Connections.')
+                                                    : lang('Type the Places API key and the Place ID on the Google reviews page of Connections; until then the widget shows nothing.')) . '</div>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(pg_grev_connections_url()) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                            </div>
+                                        </div>';
+}
 
-    if (($key !== '') && !preg_match('/^[\x21-\x7e]{1,200}$/', $key)) {
-        $liveform->mark_error('google_reviews_key', lang('This is not an API key.'));
+/**
+ * What a save on Google reviews' page of Connections does: the key (an
+ * empty box keeps the stored one) and the Place ID are both needed, as a
+ * connection without either reads nothing. Pure.
+ *
+ * @param array $post   google_reviews_key, google_reviews_place_id, submit_try
+ * @param array $stored key, place_id (pg_grev_state())
+ * @return array marks (field => message), key, place_id (what to keep),
+ *               changed (bool: the cache is emptied), try (bool)
+ */
+function pg_grev_page_decide($post, $stored)
+{
+    $key = (isset($post['google_reviews_key']) && is_string($post['google_reviews_key'])) ? trim($post['google_reviews_key']) : '';
+    $place_id = (isset($post['google_reviews_place_id']) && is_string($post['google_reviews_place_id'])) ? trim($post['google_reviews_place_id']) : '';
+    $stored_key = isset($stored['key']) ? (string) $stored['key'] : '';
+    $stored_place = isset($stored['place_id']) ? (string) $stored['place_id'] : '';
+    $marks = array();
+
+    if (($key === '') && ($stored_key === '')) {
+        $marks['google_reviews_key'] = lang('Type the Places API key.');
+    } elseif (($key !== '') && !preg_match('/^[\x21-\x7e]{1,200}$/', $key)) {
+        $marks['google_reviews_key'] = lang('This is not an API key.');
     }
 
-    if (($place_id !== '') && !pg_grev_place_id_valid($place_id)) {
-        $liveform->mark_error('google_reviews_place_id', lang('This is not a Place ID.'));
+    if ($place_id === '') {
+        $marks['google_reviews_place_id'] = lang('Type the Place ID.');
+    } elseif (!pg_grev_place_id_valid($place_id)) {
+        $marks['google_reviews_place_id'] = lang('This is not a Place ID.');
     }
+
+    $kept_key = ($key !== '') ? $key : $stored_key;
 
     return array(
-        'key'      => ($key === '') ? null : $key,
+        'marks'    => $marks,
+        'key'      => $kept_key,
         'place_id' => $place_id,
-        'forget'   => !empty($post['google_reviews_forget']),
-        'test'     => !empty($post['google_reviews_test']),
+        'changed'  => ($kept_key !== $stored_key) || ($place_id !== $stored_place),
+        'try'      => !empty($post['submit_try']),
     );
 }
 
 /**
- * Writes the card and runs its test when asked.
+ * Writes what pg_grev_page_decide() kept and runs its try when asked.
  *
- * @param array    $decision pg_grev_settings_check()
+ * @param array    $decision pg_grev_page_decide() without marks
  * @param liveform $liveform
+ * @return bool written (or nothing to write)
  */
-function pg_grev_settings_save($decision, $liveform)
+function pg_grev_page_save($decision, $liveform)
 {
     if (!function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready() || !pg_connect_can_seal()) {
-        return;
+        $liveform->add_error(lang('Google reviews need the site\'s encryption key to keep the API key.'));
+        return false;
     }
 
-    $state = pg_grev_state();
-    $key = $decision['forget'] ? '' : (($decision['key'] !== null) ? $decision['key'] : $state['key']);
-    $changed = ($key !== $state['key']) || ($decision['place_id'] !== $state['place_id']);
+    // Another key or place: nothing read with the old one is shown.
+    if ($decision['changed'] && !pg_grev_state_put(array('key' => $decision['key'], 'place_id' => $decision['place_id'], 'cache' => array()))) {
+        $liveform->add_error(lang('The connection could not be saved.'));
+        return false;
+    }
 
-    if (($key === '') && ($decision['place_id'] === '')) {
-        if ($state['key'] !== '' || $state['place_id'] !== '') {
-            pg_connect_service_delete('google_reviews');
-            pg_grev_state(array('key' => '', 'place_id' => '', 'cache' => array()));
+    if ($decision['try']) {
+        $result = pg_grev_fetch($decision['key'], $decision['place_id'], pg_grev_language());
+
+        if ($result['ok']) {
+            $liveform->add_notice(lang(array(
+                'string' => 'Google found {var:1}: rated {var:2} from {var:3} ratings, {var:4} reviews to show.',
+                'vars'   => array(
+                    h($result['place']['name']),
+                    number_format((float) $result['place']['rating'], 1),
+                    (int) $result['place']['count'],
+                    count($result['place']['reviews'])))));
+        } else {
+            $liveform->add_error(lang(array(
+                'string' => 'Google did not answer with the place: {var:1}',
+                'vars'   => array(h($result['error'])))));
         }
-    } elseif ($changed) {
-        // Another key or place: nothing read with the old one is shown.
-        pg_grev_state_put(array('key' => $key, 'place_id' => $decision['place_id'], 'cache' => array()));
     }
 
-    if (!$decision['test']) {
-        return;
+    return true;
+}
+
+/**
+ * Disconnect on the page: the key, the Place ID and the cache are deleted.
+ */
+function pg_grev_page_remove()
+{
+    if (function_exists('pg_connect_service_delete')) {
+        pg_connect_service_delete('google_reviews');
     }
 
-    if (!pg_grev_configured()) {
-        $liveform->add_notice(lang('Enter the Places API key and the Place ID to test them.'));
-        return;
-    }
-
-    $state = pg_grev_state();
-    $result = pg_grev_fetch($state['key'], $state['place_id'], pg_grev_language());
-
-    if ($result['ok']) {
-        $liveform->add_notice(lang(array(
-            'string' => 'Google found {var:1}: rated {var:2} from {var:3} ratings, {var:4} reviews to show.',
-            'vars'   => array(
-                h($result['place']['name']),
-                number_format((float) $result['place']['rating'], 1),
-                (int) $result['place']['count'],
-                count($result['place']['reviews'])))));
-    } else {
-        $liveform->add_notice(lang(array(
-            'string' => 'Google did not answer with the place: {var:1}',
-            'vars'   => array(h($result['error'])))));
-    }
+    pg_grev_state(array('key' => '', 'place_id' => '', 'cache' => array()));
 }

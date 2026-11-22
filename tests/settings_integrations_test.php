@@ -81,7 +81,7 @@ function test_settings_integrations_google_reviews_card_moved()
 	pg_assert_same(false, strpos($contact, 'id="pgset-google-reviews"'), 'not drawn in Communication');
 	pg_assert_same(false, strpos($contact, 'pg_grev_settings_fields('), 'nor its fields');
 	pg_assert_contains('id="pgset-google-reviews"', $cards, 'drawn here');
-	pg_assert_contains('pg_grev_settings_fields()', $cards, 'with its fields');
+	pg_assert_contains('pg_grev_settings_connection_html(pg_grev_configured())', $cards, 'with its connection, the fields being on Connections');
 	pg_assert_contains('id="pgset-integration-links"', $cards, 'and the links card');
 	pg_assert_contains('pg_settings_integration_links($user)', $cards, 'from the gated list');
 }
@@ -91,16 +91,8 @@ function test_settings_integrations_google_reviews_save_moved()
 	$save = settings_integrations_test_source('includes/settings/api.save.php');
 	$contact = settings_integrations_test_source('includes/settings/contact.save.php');
 
-	pg_assert_same(false, strpos($contact, 'pg_grev_settings_'), 'Communication no longer checks or saves it');
-
-	$check = strpos($save, 'pg_grev_settings_check($_POST, $liveform)');
-	$stop = strpos($save, 'if ($liveform->check_form_errors())');
-	$write = strpos($save, 'db("UPDATE config SET');
-	$keep = strpos($save, 'pg_grev_settings_save($google_reviews_post, $liveform)');
-
-	pg_assert_true($check !== false, 'checked here');
-	pg_assert_true(($check < $stop) && ($stop < $write), 'a refused key or Place ID stops the save before anything is written');
-	pg_assert_true($keep > $write, 'saved after the API columns');
+	pg_assert_same(false, strpos($contact, 'pg_grev_'), 'Communication does not check or save it');
+	pg_assert_same(false, strpos($save, 'pg_grev_'), 'nor Integrations: the key and Place ID are saved on Connections');
 }
 
 // An emptied or mistyped Log Retention box is refused before the write, not

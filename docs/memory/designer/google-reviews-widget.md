@@ -8,8 +8,8 @@ module: google_reviews, widgets_google_reviews
 - Decided in #3180: the business's Google rating and up to five reviews, read-only, with a Places API key; no OAuth, no schema. Kind `google_reviews`, label "Google Reviews", renderer `_render_system_widget_google_reviews()` (`includes/fn/widgets_google_reviews.php`); reading, cache and settings in `includes/fn/google_reviews.php`.
 
 ## Where are the key and the Place ID?
-- Site Settings › Integrations › Google Reviews (`pgset-google-reviews`, `includes/settings/api.php`; saved by `pg_grev_settings_check()` / `pg_grev_settings_save()` from `api.save.php`; in Communication until #4067). The key is never drawn back: an empty box keeps it, the form text names its last four characters, "Remove the saved key" clears it. Both empty: the entry is deleted. "Save and test" (named submit, `ui/settings-card-own-button.md`) reads the place and names it with its rating.
-- One sealed service entry `pg_connect_service_put('google_reviews', …)`: `key`, `place_id`, `cache`. Without `ENCRYPTION_KEY` the card warns and keeps nothing. A changed key or Place ID empties the cache.
+- On Google reviews' page of Connections since CX11i (#11117): `ui/connections-google-reviews-page.md`. The Site Settings › Integrations card (`pgset-google-reviews`) only shows the connection. The key is never drawn back: an empty box keeps it; "Disconnect" deletes the entry.
+- One sealed service entry `pg_connect_service_put('google_reviews', …)`: `key`, `place_id`, `cache`. Without `ENCRYPTION_KEY` the page warns and keeps nothing. A changed key or Place ID empties the cache.
 
 ## How is Google asked?
 - `pg_grev_request()`: `GET https://places.googleapis.com/v1/places/<id>?languageCode=<page language>`, headers `X-Goog-Api-Key` and `X-Goog-FieldMask: id,displayName,rating,userRatingCount,reviews,googleMapsUri` (the mask is what Google bills). Through `pg_curl_run()` with `check_address` (TLS, private-address guard), 10 s, 256 KB cap.
@@ -21,7 +21,7 @@ module: google_reviews, widgets_google_reviews
 
 ## Tokens and flags?
 - Static: `__place_name`, `__place_rating` (one decimal), `__place_review_count`, `__place_maps_url`, `__review_total`, `__google_attribution` ("Google Maps", never translated). Row: `__review_author_name`, `__review_author_url`, `__review_author_photo`, `__review_rating`, `__review_text`, `__review_relative_time` (Google's words in the language asked), `__review_url`. All escaped.
-- Flags `has_reviews`, `no_reviews`; row `review_has_photo`, `review_has_text`. No Messages block, no settings in the widget panel (a note points to Site Settings).
+- Flags `has_reviews`, `no_reviews`; row `review_has_photo`, `review_has_text`. No Messages block, no settings in the widget panel (a note points to the settings).
 - Not configured, nothing read or past the ceiling: the renderer returns '' (nothing on the site).
 
 ## Default layout?
