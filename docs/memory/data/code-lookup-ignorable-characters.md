@@ -17,7 +17,7 @@ description: utf8mb4_unicode_ci weighs NUL, U+0001 and a zero-width space as not
 ## What else changed with it?
 - A recipient whose campaign is gone ends on the same error. The screen read the values of a missing row: 8 warnings and an empty page.
 - The Turkish starter shipped 36 recipient rows for campaigns it does not ship, some with codes anyone can read in the dump. They are gone from the dump. Running sites keep theirs; no campaign has those ids, as the starter's campaign counter starts at 37.
-- PR #PRNUM; `tests/email_campaign_web_version_test.php`.
+- PR #11114; `tests/email_campaign_web_version_test.php`.
 
 ## What should a new lookup by a code do?
 - Check the value's shape, or add `<> ''` to the query, before looking up a column that may hold an empty code.

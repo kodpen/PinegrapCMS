@@ -10,7 +10,7 @@ description: SQL that runs without an error but reads or writes the wrong thing:
 
 ## What does GREATEST() of a number and `''` do?
 - MariaDB compares the arguments as DOUBLE and logs warning 1292 "Truncated incorrect DOUBLE value: ''" for each row; MySQL compares them as strings, which orders numbers of different lengths wrongly. Fall back to `0` for a number column (`IFNULL(x, 0)`).
-- Case: the newest activity of the classic form views (`get_standard_fields_for_view()`, `get_form_view_directory_screen_content.php`) fell back to `''` for a record with no comment, and `seo_a11y_job.php` logged three such warnings each run, until PR #PRNUM.
+- Case: the newest activity of the classic form views (`get_standard_fields_for_view()`, `get_form_view_directory_screen_content.php`) fell back to `''` for a record with no comment, and `seo_a11y_job.php` logged three such warnings each run, until PR #11114.
 
 ## Which writes go wrong without an error?
 - The assignments of a single-table `UPDATE ... SET` (and of `INSERT ... ON DUPLICATE KEY UPDATE`) run left to right, and a later one sees the NEW value of an earlier column: keep the order the code has (`designer/designer-collab-locking.md`: `session_key` last; `commerce/marketplace-listings.md`; `waf/waf-ban-ladder.md`).

@@ -10,6 +10,6 @@ description: The booking screen (edit_booking.php) opens an existing booking for
 
 ## Why?
 - The lookup ran only for ids above zero, while the new-booking branches test `=== 0`. `?id=-1` drew the form of an existing booking with an empty row: 18 PHP warnings per load.
-- PR #PRNUM; `tests/booking_agenda_test.php` (`test_booking_agenda_edit_loads_any_non_zero_id`).
+- PR #11114; `tests/booking_agenda_test.php` (`test_booking_agenda_edit_loads_any_non_zero_id`).
 
 Related: docs/memory/ui/booking-agenda.md
