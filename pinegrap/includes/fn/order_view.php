@@ -261,14 +261,15 @@ function pg_order_view_shipment_title($number, $count)
 
 /**
  * The title of the card of lines with no address: "Items not shipped" after
- * the shipments, "Items" when the order has no address. Plain text.
+ * the shipments, "Products" when the order has no address. Plain text.
  *
  * @param bool $has_address
  * @return string
  */
 function pg_order_view_unshipped_title($has_address)
 {
-    return $has_address ? lang('Items not shipped') : lang('Items');
+    // "Products": the key "Items" already reads as a count of items.
+    return $has_address ? lang('Items not shipped') : lang('Products');
 }
 
 /**

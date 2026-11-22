@@ -4,8 +4,9 @@ description: The panel order screen's shipping cards (view_order.php): one card 
 ---
 
 ## What does the shipping card show? (PR #931)
-- One card per address that has order lines (the recipient list comes from `order_items`). Before, `$output_shipping_details` was assigned rather than appended, so an order to two addresses showed only the last card.
-- Under "Tracking Numbers" every parcel of `pg_shipment_rows()` is listed, also numbers whose carrier is unknown (before, only linked numbers were): the number (linked when `pg_shipment_view()` finds a URL: the row's own `tracking_url`, else the named or guessed carrier's pattern), a status badge (`pg_shipment_status_label()` / `pg_shipment_status_class()`; delivered shows the date as its title), a carrier select and, when `format_warning` is set, a yellow note (`pg_shipment_warning_text()`, naming the carrier checked against). The note never blocks the save.
+- One card per address that has order lines (the shipment card: `order-screen-shipment-card.md`) (the recipient list comes from `order_items`). Before, `$output_shipping_details` was assigned rather than appended, so an order to two addresses showed only the last card.
+- Under "Tracking Numbers" every parcel of `pg_shipment_rows()` is listed, also numbers whose carrier is unknown: the number (linked when `pg_shipment_view()` finds a URL), a copy button, a status pill (`pg_shipment_status_label()`, tone from `pg_shipment_status_class()`; delivered shows the date as its title), a carrier select.
+- When `format_warning` is set, a yellow note (`pg_shipment_warning_text()`, naming the carrier checked against); it never blocks the save.
 - The tag field for adding and removing numbers stays; its id is `ship_to_id_tracking_numbers_<ship_to_id>`, so each address gets its own `tagin` (the shared id left the second one a plain text box).
 
 ## How does the carrier select work?

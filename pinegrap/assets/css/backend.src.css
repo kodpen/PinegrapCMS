@@ -36108,6 +36108,9 @@ button.pg-var-chip:focus-visible {
 .pg-line-list-ship {
   --pg-line-cols: 44px minmax(0, 1fr) 8rem 11rem 7rem;
 }
+.pg-line-list:first-child {
+  margin-top: 0;
+}
 .pg-line-head,
 .pg-line-row {
   display: grid;
@@ -36173,7 +36176,10 @@ button.pg-var-chip:focus-visible {
   font-size: var(--pg-text-2);
   color: var(--pg-fg-3);
 }
+/* The last column, whether or not the row has a shipped cell (a cancelled
+   order's line that kept no shipped quantity has none). */
 .pg-line-total {
+  grid-column: -2;
   text-align: right;
   font-weight: var(--pg-weight-title);
 }
@@ -36262,7 +36268,7 @@ button.pg-var-chip:focus-visible {
   }
   .pg-line-shipped {
     grid-column: 2 / -1;
-    justify-content: space-between;
+    justify-content: flex-start;
   }
   .pg-shipment-fields-row {
     grid-template-columns: 1fr 1fr;

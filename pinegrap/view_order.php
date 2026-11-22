@@ -1140,7 +1140,7 @@ if (!$_POST) {
                     'actions' => $output_shipment_label_actions,
                     'top' =>
                         '<div class="pg-shipment-top">
-                            <div class="pg-address-block">
+                            <div class="pg-shipment-address">
                                 <div class="pg-shipment-caption">' . h(lang('Shipping address')) . '<span class="pg-copy pg-print-none">' . pg_copy_button(implode("\n", pg_order_view_address_lines($shipping_address)), lang('Copy the shipping address'), $shipping_address_id) . '</span></div>
                                 ' . pg_order_view_address_block($shipping_address, $shipping_address_id) . '
                                 ' . (($shipping_address_meta !== '') ? '<p class="pg-address-meta">' . $shipping_address_meta . '</p>' : '') . '
@@ -2467,7 +2467,7 @@ if (!$_POST) {
     }
 
     // The lines of no address: "Items not shipped" after the shipments,
-    // "Items" when the order has no address.
+    // "Products" when the order has no address.
     if ($unshipped_lines !== '') {
         $output_shipping_details .=
             '<section class="card pg-card pg-shipment' . (($output_shipping_details !== '') ? ' mt-5' : '') . '" aria-labelledby="pg_shipment_title_0">

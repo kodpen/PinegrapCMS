@@ -4,7 +4,7 @@
  *
  * Tests for View Order's shipment card (includes/fn/order_view.php): the
  * line row with its heading row, the shipped quantity "/ ordered", the
- * card titles ("Shipment 1 / 2", "Items not shipped", "Items") and the
+ * card titles ("Shipment 1 / 2", "Items not shipped", "Products") and the
  * district in a shipping address's place line.
  *
  * @author      Erdal Güral (Kodpen)
@@ -76,7 +76,7 @@ function test_order_view_shipment_titles()
 	pg_assert_same(lang('Shipment'), pg_order_view_shipment_title(1, 1), 'one address: Shipment');
 	pg_assert_same(lang(array('string' => 'Shipment {var:1} / {var:2}', 'vars' => array(2, 3))), pg_order_view_shipment_title(2, 3), 'two or more: numbered');
 	pg_assert_same(lang('Items not shipped'), pg_order_view_unshipped_title(true), 'lines with no address beside shipments');
-	pg_assert_same(lang('Items'), pg_order_view_unshipped_title(false), 'an order with no address');
+	pg_assert_same(lang('Products'), pg_order_view_unshipped_title(false), 'an order with no address');
 }
 
 function test_order_view_address_lines_district()

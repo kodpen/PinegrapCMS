@@ -1062,7 +1062,7 @@ function pg_look_examples_line_row_pattern($p)
     return array(
         'id'      => 'pattern-line-row',
         'title'   => lang('Line row'),
-        'classes' => array('.pg-shipment', '.pg-shipment-head', '.pg-line-list', '.pg-line-list-ship', '.pg-line-head', '.pg-line-row', '.pg-line-image', '.pg-line-title', '.pg-line-meta', '.pg-line-amount', '.pg-line-shipped', '.pg-line-of', '.pg-line-total', '.pg-line-parts'),
+        'classes' => array('.pg-shipment-head', '.pg-line-list', '.pg-line-list-ship', '.pg-line-head', '.pg-line-row', '.pg-line-image', '.pg-line-title', '.pg-line-meta', '.pg-line-amount', '.pg-line-shipped', '.pg-line-of', '.pg-line-total', '.pg-line-parts'),
         'html'    => '<div class="card pg-card pg-shipment">'
             . '<div class="card-header bg-reset border-0 pg-shipment-head"><h3 class="pg-title-section mb-0">' . h(lang('Shipment')) . '</h3>'
             . pg_pill(lang('Partially shipped'), 'amber') . '</div>'
