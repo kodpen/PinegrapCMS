@@ -1,12 +1,12 @@
 ---
 name: orders-list-redraw-fixes
-description: All Orders as landed after OL2 (#11142) against the drawing: four differences OL3 takes first (Products cell shows the SKU, Status badge, bar in two rows at 1440 px, six bar rows on a phone)
+description: All Orders as landed after OL2 (#11142) and OL2b (#11167) against the drawing: five differences OL3 takes first (SKU in Products, Status badge, bar in two rows, phone bar, Total hidden)
 priority: 6
 ---
 
 ## What is this?
 - All Orders (`view_orders.php`) opened on a sandbox at development 76e2da72, 1440 px and 390 px, Turkish, beside board A1 of `commerce/commerce-screens-drawing/orders.html` (`workflow/architect-looks-at-landed-screen.md`).
-- OL3 (`plans/orders-list-redraw.md`) takes these four first, then its own work. Its close-out deletes this file.
+- OL3 (`plans/orders-list-redraw.md`) takes these five first, then its own work. The Filters panel of OL2b itself is as its step says. Its close-out deletes this file.
 
 ## 1. Why does the Products cell show a code?
 - It prints `order_items.product_name`, which is the SKU (`products.name`): a row reads "20M" where Summary's "Top 5 products" reads "Yeşil Ofis Sandalyesi".
@@ -25,6 +25,10 @@ priority: 6
 ## 4. Why does the list start so low on a phone?
 - At 390 px the bar is six rows, about 290 px: Add Order and Export; Import Tracking Numbers; the period; Sort; the status select; the type select and the filters button.
 - Fix, four rows: Sort stands at the end of the Import Tracking Numbers row; the status select, the type select and the filters button share one row, the status select taking the free width (`min-width: 0`).
+
+## 5. Why is Total gone when the Filters panel is open?
+- At 1440 px with the panel open the list is 1030 px wide and the nine default columns need 1114 px: Total stands under the sticking Action column until the table is scrolled sideways.
+- Fix: Customer and Products give way (a `max-width` with an ellipsis, the full text as the cell's title) so the default set fits 1030 px. Checked at 1440 px with the panel open, in Turkish and English.
 
 ## What is not a difference of this plan?
 - Rows of 52 px with 16 px text, the boxed Action buttons, "1 hour ago" dates and no checkbox per row are the list table driver's, the same on every list (`ui/list-table-overview.md`). OL3 does not change them.
