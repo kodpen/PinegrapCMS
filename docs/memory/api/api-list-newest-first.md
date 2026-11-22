@@ -6,7 +6,7 @@ description: sort=newest on cursor-paged lists (the automation samples, and the 
 ## Which lists take sort=newest?
 - `GET /customers` and `GET /forms/{id}/submissions` (by id), `GET /products` and `GET /subscriptions` (last change, then id), `GET /erp/invoices` and `GET /erp/quotes` (`updated_at`, then id). Added by PR #10174 (step AU2 of plan automation-platforms) for the samples an automation platform shows (`automation-contract.md`).
 - `sort` takes `oldest` (the default) or `newest`. The default walk of every list is unchanged: an integration paging forward still never re-reads a row.
-- The lists a team device reads got it in M8a (PR #M8A): `api-list-newest-device-lists.md` names them and the ones that are newest first already or cannot take it.
+- The lists a team device reads got it in M8a (PR #11087): `api-list-newest-device-lists.md` names them and the ones that are newest first already or cannot take it.
 - Not yet: the Workspace task list. `GET /orders` has its own `sort=placed_desc`; `GET /returns` is newest first by itself; a table's rows take `dir=desc`.
 
 ## How does the newest-first walk page?
