@@ -125,7 +125,7 @@ function test_api_settings_new_dialog_kind_is_a_named_choice_group()
 	$view = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/api/app_new_view.php');
 
 	pg_assert_contains('<legend class="visually-hidden">\' . lang(\'What connects to this site?\') . \'</legend>', $dialog, 'the starting points are a fieldset named by its legend');
-	pg_assert_contains('<div class="form-field form-field-card api-start-card">', $view, 'each starting point is a choice card');
+	pg_assert_contains('<div class="form-field form-field-card">', $view, 'each starting point is a choice card');
 	pg_assert_contains('aria-describedby="\' . $id . \'_help \' . $id . \'_acts"', $view, 'a card is described by its text and its acts-as lines');
 	pg_assert_contains('<div class="form-text mt-1" id="\' . $id . \'_help">', $view, 'its text is a form text');
 	pg_assert_contains('<div role="group" aria-labelledby="n_scope_title" class="mb-5">', $dialog, 'the permission rows are a group named by their title');
@@ -139,5 +139,5 @@ function test_api_settings_sheets_and_guide_boxes_are_labelled()
 	pg_assert_contains('<div class="pg-list-row-title" id="\' . $id . \'_label">\' . h($label) . \'</div>', $source, 'each one-time value is named by its row');
 	pg_assert_contains('api_app_value_box($id, $value, $id . \'_label\', $masked)', $source, 'and its Copy button says what it copies');
 	pg_assert_contains('<div class="pg-list-row-title"\' . (($step[\'value_id\'] !== \'\') ? \' id="\' . $id . \'_label"\' : \'\') . \'>', $source, 'a guide step with a value names it');
-	pg_assert_true(strpos($source, '<div class="api-secret-box mb-5">') === false, 'no value box carries its own spacing');
+	pg_assert_true(strpos($source, '<div class="pg-start-copy mb-5">') === false, 'no value box carries its own spacing');
 }
