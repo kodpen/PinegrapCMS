@@ -1329,6 +1329,56 @@ function pg_notification_day($timestamp, $now, $timezone = '')
 	return ($that === $today->format('Y-m-d')) ? 'yesterday' : 'earlier';
 }
 
+// A bell row's short time, the one its head shows: "5 min" and "3 h" today
+// (whole minutes and hours, at least one minute, a time after now too),
+// "Yesterday", then the day and month ("9 Nov", "Nov 9" where the site writes
+// the month first), with the year only when it is not this year. Read in the
+// site's time zone like pg_notification_day(), so the time and the heading
+// above it never disagree. The full date and time stays in the title
+// attribute. Pure: now is passed in.
+function pg_notification_short_time($timestamp, $now, $timezone = '', $date_format = 'day_month')
+{
+	$timestamp = (int) $timestamp;
+	$now = (int) $now;
+	$day = pg_notification_day($timestamp, $now, $timezone);
+
+	if ($day === 'today') {
+		$seconds = max(0, $now - $timestamp);
+
+		if ($seconds < 3600) {
+			return lang(array('string' => '{var:1} min', 'vars' => array(max(1, (int) floor($seconds / 60)))));
+		}
+
+		return lang(array('string' => '{var:1} h', 'vars' => array((int) floor($seconds / 3600))));
+	}
+
+	if ($day === 'yesterday') {
+		return lang('Yesterday');
+	}
+
+	$timezone = (string) $timezone;
+
+	try {
+		$zone = new DateTimeZone(($timezone !== '') ? $timezone : date_default_timezone_get());
+	} catch (Exception $error) {
+		$zone = new DateTimeZone('UTC');
+	}
+
+	$date = new DateTime('@' . $timestamp);
+	$date->setTimezone($zone);
+	$today = new DateTime('@' . $now);
+	$today->setTimezone($zone);
+
+	$month = lang($date->format('M'));
+	$text = ($date_format === 'month_day') ? ($month . ' ' . $date->format('j')) : ($date->format('j') . ' ' . $month);
+
+	if ($date->format('Y') !== $today->format('Y')) {
+		$text .= ' ' . $date->format('Y');
+	}
+
+	return $text;
+}
+
 // The one button at a bell row's right, named by the job it opens: reply to a
 // message or a comment, approve what waits on the reader, join a meeting about
 // to start (only when it has a call), show everything else. A custom row has

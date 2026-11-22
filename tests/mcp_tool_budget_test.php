@@ -126,9 +126,6 @@ function mcp_tool_budget_test_long_descriptions()
 		'notifications_list',
 		'bookings_list',
 		'bookings_slots',
-		'translations_strings_list',
-		'translations_refresh',
-		'translations_status',
 	);
 }
 

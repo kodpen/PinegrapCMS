@@ -4,7 +4,7 @@
  *
  * Site Settings - the Bookings cards: the services that can be booked, the
  * staff who take them (their services, weekly hours and dated exceptions),
- * the booking rules and the booking widget's texts.
+ * the booking rules, the booking messages and the booking widget's texts.
  *
  * Each card is one folded row (includes/settings/fold.php) with its line of
  * state; the services are list rows, each edited in its drawer, whose boxes
@@ -18,6 +18,10 @@
  * member" opens a drawer with the picker and the weekly hours. Every staff
  * member's row posts booking_staff[<user id>][seen], so the save tells a
  * member who was drawn with every switch off from one who was not drawn.
+ *
+ * The Messages row shows which booking mails and texts go and leads to the
+ * campaign profiles and the SMS messages, where they are set; it posts
+ * nothing.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -59,6 +63,7 @@ $booking_faces = array(
     array('services', 'pgset-booking-services', lang('Bookable services'), 'bi-card-checklist', 'pg-tone-shop'),
     array('staff', 'pgset-booking-staff', lang('Staff'), 'bi-people', 'pg-tone-team'),
     array('policy', 'pgset-booking-policy', lang('Booking rules'), 'bi-sliders', 'pg-tone-violet'),
+    array('messages', 'pgset-booking-messages', lang('Messages'), 'bi-envelope', 'pg-tone-blue'),
     array('texts', 'pgset-booking-texts', lang('Booking widget texts'), 'bi-chat-left-text', 'pg-tone-teal'),
 );
 
@@ -119,6 +124,7 @@ if (!$booking_ready) {
         'services' => array($booking_not_ready, $booking_note),
         'staff'    => array($booking_not_ready, $booking_note),
         'policy'   => array($booking_not_ready, $booking_note),
+        'messages' => array($booking_not_ready, $booking_note),
         'texts'    => array($booking_not_ready, $booking_note),
     ));
 
@@ -605,13 +611,61 @@ $output_booking_policy =
                     </div>
                     <div class="pg-f-sm">
                         <label for="booking_reminder_hours" class="form-label">' . lang('Reminders') . '</label>
-                        <input type="text" name="booking_reminder_hours" id="booking_reminder_hours" class="form-control" value="' . h(implode(', ', $booking_policy['reminder_hours'])) . '" maxlength="20" spellcheck="false" autocomplete="off"/>
-                        <div class="form-text">' . lang('Hours before the start a reminder is sent, separated by commas; at most three, between 1 and 168. Empty sends none.') . '</div>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('hours before') . '</span>
+                            <input type="text" name="booking_reminder_hours" id="booking_reminder_hours" class="form-ghost" value="' . h(implode(', ', $booking_policy['reminder_hours'])) . '" maxlength="20" spellcheck="false" autocomplete="off" aria-describedby="booking_reminder_hours_help"/>
+                        </label>
+                        <div class="form-text" id="booking_reminder_hours_help">' . lang('Up to three, separated by commas, each between 1 and 168, such as 24, 2. Empty sends none. Whether a mail or a text goes is shown under Messages.') . '</div>
                     </div>'
     . $booking_switch('booking_reschedule', 'booking_reschedule', lang('Visitors may move their booking'), $booking_policy['reschedule'],
         lang('The link in the confirmation offers another time within the cancellation window.'))
     . $booking_switch('booking_auto_confirm', 'booking_auto_confirm', lang('Confirm bookings at once'), $booking_policy['auto_confirm'],
         lang('Off, a booking made on the site waits as a request until staff confirm it; the time stays taken meanwhile.'));
+
+
+// ── Messages ──
+// Which booking mails and texts go: a switched-on campaign profile with a
+// booking action, a switched-on SMS event. Each is set on its own screen;
+// this row only shows it and posts nothing.
+$booking_mail_actions = db_values(
+    "SELECT DISTINCT action FROM email_campaign_profiles
+    WHERE (enabled = '1') AND (action_item_id = '0')
+        AND (action IN ('" . implode("', '", array_map('e', pg_booking_mail_actions())) . "'))");
+
+$booking_sms_events = array();
+
+if (function_exists('pg_sms_message_settings')) {
+    foreach (pg_sms_message_settings() as $event => $row) {
+        if (!empty($row['on'])) {
+            $booking_sms_events[] = $event;
+        }
+    }
+}
+
+$booking_messages = pg_booking_settings_messages(is_array($booking_mail_actions) ? $booking_mail_actions : array(), $booking_sms_events, $booking_policy['reminder_hours']);
+
+$booking_message_faces = array(
+    'mails' => array('bi-envelope', 'blue', OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_profiles.php'),
+    'texts' => array('bi-chat-dots', 'teal', '#settings/contact/pgset-sms-messages'),
+);
+
+$booking_message_rows = '';
+
+foreach ($booking_messages['rows'] as $key => $row) {
+    $booking_message_rows .= '
+                            <div class="pg-value-row">
+                                <span class="pg-icon-tile pg-tone-' . $booking_message_faces[$key][1] . '" aria-hidden="true"><i class="bi ' . $booking_message_faces[$key][0] . '"></i></span>
+                                <span class="pg-value-row-text"><span class="pg-value-row-name">' . h($row['name']) . '</span><span class="pg-value-row-line">' . h($row['line']) . '</span></span>
+                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($booking_message_faces[$key][2]) . '" aria-label="' . h(lang('Change') . ': ' . $row['name']) . '">' . h(lang('Change')) . '</a>
+                            </div>';
+}
+
+$output_booking_messages = '
+                    <div class="col-12">
+                        <div class="pg-card-inner">' . $booking_message_rows . '
+                        </div>
+                        <div class="pg-text-meta mt-2">' . h($booking_messages['meta']) . '</div>
+                    </div>';
 
 
 // ── Booking widget texts ──
@@ -643,5 +697,6 @@ $pg_settings_cards[] = $booking_fold(array(
     'services' => array($booking_lines['services'], $output_booking_services, $booking_add_service),
     'staff'    => array($booking_lines['staff'], $output_booking_staff, $booking_add_staff),
     'policy'   => array($booking_lines['policy'], $output_booking_policy),
+    'messages' => array($booking_messages['line'], $output_booking_messages),
     'texts'    => array($booking_lines['texts'], $output_booking_texts),
 ));

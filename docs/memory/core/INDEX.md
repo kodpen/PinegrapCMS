@@ -234,6 +234,7 @@
 - vanilla-calendar-library.md: The vendored vanilla-calendar-pro (assets/lib/vanilla-calendar-pro/, 3.4.0, unmodified) behind the one date-and-time control: why, how it loads once, how to update it [decision: decisions-made-panel-2.md, decisions-made-panel.md]
 - visitor-form-list-fields.md: Visitor form handlers with a field posted as a list: member registration and activation, the reservation and watcher forms' session index, the built-in CAPTCHA answer (PR #11061)
 - volunteer-document-file.md: A volunteer document's file: a files row (attachment 1, folder 0, volunteer-doc- name), get_file.php's door, and the search and picker exclusion due with uploading [decision: here]
+- volunteer-programmes.md: Contacts › Volunteers (VS2): the programmes list, a programme's Set-up rows, applications from its form with Approve, the Volunteers tab and the profile drawer; who sees what
 - volunteer-shift-rules.md: Pure rules of volunteer shifts: who fits a role on a shift, the waitlist pass, the cancel cut-off, the unfilled call's pick, show-up rate, hours sums, document notices, the signed link's token
 - volunteer-store.md: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, NULL shift_id for outside hours, erasure, export, inventory, the left-volunteers rule [decision: here]
 - web-address-rule.md: Short link destination and auto dialog URL share pg_web_address_problem() on save; pg_address_opens_as_web() and its JS twin guard a stored address where it is printed

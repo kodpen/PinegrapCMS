@@ -363,4 +363,5 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/guarded_frame.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/quiet_hours.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_review.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_shifts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_programmes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_programs.php');

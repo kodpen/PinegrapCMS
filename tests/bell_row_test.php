@@ -121,6 +121,28 @@ function test_bell_row_day_in_the_site_time_zone()
 	pg_assert_same('today', pg_notification_day($now - 60, $now, 'No/Such_Zone'), 'an unknown zone falls back, still a day');
 }
 
+function test_bell_row_short_time()
+{
+	// 2026-11-22 10:00 in Istanbul (UTC+3) is 07:00 UTC.
+	$now = gmmktime(7, 0, 0, 11, 22, 2026);
+	$zone = 'Europe/Istanbul';
+
+	pg_assert_same('1 min', pg_notification_short_time($now - 20, $now, $zone), 'under a minute reads as one');
+	pg_assert_same('1 min', pg_notification_short_time($now + 600, $now, $zone), 'a time after now reads as one minute');
+	pg_assert_same('5 min', pg_notification_short_time($now - 5 * 60 - 59, $now, $zone), 'whole minutes, not rounded up');
+	pg_assert_same('59 min', pg_notification_short_time($now - 3599, $now, $zone), 'the last minute of the hour');
+	pg_assert_same('1 h', pg_notification_short_time($now - 3600, $now, $zone), 'one hour');
+	pg_assert_same('3 h', pg_notification_short_time($now - 3 * 3600 - 1800, $now, $zone), 'whole hours');
+	pg_assert_same('10 h', pg_notification_short_time(gmmktime(21, 0, 0, 11, 21, 2026), $now, $zone), 'local midnight is still today');
+	pg_assert_same('Yesterday', pg_notification_short_time(gmmktime(20, 59, 0, 11, 21, 2026), $now, $zone), 'a minute before local midnight');
+	pg_assert_same('Yesterday', pg_notification_short_time(gmmktime(21, 0, 0, 11, 20, 2026), $now, $zone), 'the first minute of yesterday');
+	pg_assert_same('20 Nov', pg_notification_short_time(gmmktime(20, 59, 0, 11, 20, 2026), $now, $zone), 'the day before yesterday: day and month');
+	pg_assert_same('Nov 20', pg_notification_short_time(gmmktime(20, 59, 0, 11, 20, 2026), $now, $zone, 'month_day'), 'month first where the site writes it so');
+	pg_assert_same('9 Jan', pg_notification_short_time(gmmktime(9, 0, 0, 1, 9, 2026), $now, $zone), 'this year has no year');
+	pg_assert_same('30 Dec 2025', pg_notification_short_time(gmmktime(9, 0, 0, 12, 30, 2025), $now, $zone), 'another year shows it');
+	pg_assert_same('Yesterday', pg_notification_short_time(gmmktime(21, 0, 0, 11, 21, 2026), $now, 'No/Such_Zone'), 'an unknown zone falls back to UTC');
+}
+
 function test_bell_row_button_names_the_job()
 {
 	pg_assert_same('reply', pg_notification_button('new_comment'), 'a comment is answered');
@@ -282,6 +304,34 @@ function test_bell_row_script_draws_the_row()
 	pg_assert_contains('class="pg-bell-day"', $get, 'day headings');
 	pg_assert_contains('fold_head', $get, 'a fold\'s runs open no heading of their own');
 	pg_assert_contains('pg_bell_row(response.data[i], draw)', $get, 'each row');
+}
+
+function test_bell_row_short_time_tint_and_sticky_days()
+{
+	$endpoint = bell_row_function('includes/panel/notifications.php', 'pg_panel_get_notifications');
+	$row = bell_row_function('assets/js/backend.src.js', 'pg_bell_row');
+	$run = bell_row_function('assets/js/backend.src.js', 'pg_bell_run');
+	$time = bell_row_function('assets/js/backend.src.js', 'pg_bell_time');
+	$css = bell_row_source('assets/css/backend.src.css');
+
+	// The endpoint sends the short time, the full one and the moment.
+	pg_assert_contains("'time' => pg_notification_short_time(", $endpoint, 'the short time');
+	pg_assert_contains("'time_title' => get_absolute_time(", $endpoint, 'the full date and time');
+	pg_assert_contains("'datetime' => gmdate(", $endpoint, 'the moment');
+	pg_assert_false(strpos($endpoint, 'get_relative_time') !== false, 'no relative sentence any more');
+
+	// The script draws one escaped <time> with the full date as its title.
+	pg_assert_contains("' title=\"' + h(full) + '\"'", $time, 'the full date and time is the title');
+	pg_assert_contains("h(String(row.time || ''))", $time, 'the short time is escaped');
+	pg_assert_contains("pg_bell_time(row, 'pg-list-row-time pg-bell-time')", $row, 'the row head');
+	pg_assert_contains("pg_bell_time(row, '')", $run, 'a fold\'s run');
+	pg_assert_contains('pg-bell-dot-head', $row, 'the phone\'s dot after the time');
+
+	// The unread tint, the phone's order and 32 px menu button, sticky days.
+	pg_assert_contains("#notifications .pg-bell-row.new > .pg-bell-card.pg-list-row {\n  background: color-mix(in srgb, var(--pg-accent) 6.5%, transparent);", $css, 'an unread row is tinted');
+	pg_assert_contains("#notifications .pg-bell-card.pg-list-row .pg-bell-menu-toggle {\n    width: 32px;\n    height: 32px;", $css, 'the phone\'s 32 px menu button');
+	pg_assert_contains("#notifications .pg-bell-card.pg-list-row .pg-bell-quick {\n    order: 3;", $css, 'the menu after the dot');
+	pg_assert_contains("#notifications .pg-bell-day {\n  position: sticky;\n  top: 0;", $css, 'day headings stay at the top');
 }
 
 function test_bell_row_menu_keeps_its_keys()

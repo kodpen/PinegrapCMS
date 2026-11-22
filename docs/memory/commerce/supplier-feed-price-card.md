@@ -14,6 +14,7 @@ module: supplier_feed_screen
 
 ## How are held prices decided?
 - Card "Held prices" first in the form column, only while an item has `held_price`: last and held buy price, Accept and Reject (`pg_supplier_feed_held_decide()`); "Accept all" at its head (`pg_supplier_feed_held_accept_all()`); 20 rows, the rest in the "Show all" drawer `#sf_held_all` (500 at most).
+- Architect (2026-11-21, #10963): "Held prices" has no filled button (Accept, Reject and "Accept all" are quiet); the save bar holds the only filled one.
 - Accept: `buy_price = held_price`; the selling price follows at the next pull, which reads that price in range. Reject: `held_price` 0; a pull with the same price holds it again.
 
 ## What does Pull now do?
@@ -25,6 +26,7 @@ module: supplier_feed_screen
 
 ## What does the product screen show?
 - `product_builder.php`'s side column, under Stock by location: card "Supplier feed" (`pg_supplier_feed_product_card()`) for a product a feed's item carries: each feed with its link, buy price and last seen (with several feeds, the one in use first with the green "In use" pill and a line on how it is chosen, `supplier-feed-several.md`), and the switch "Price from the feed" (F5). Saving the product writes `follow_price` on all its items, only when the switch moved (`supplier_feed_follow_was`).
+- Architect (2026-11-21, #10963): the product's "Supplier feed" card sits in the side column under Stock by location and is not drawn when no feed carries the product.
 
 ## What keeps the form safe?
 - The form starts with a hidden default submit (Save, or Read the feed before a read), so Return never presses Accept or Pull now (`ui/return-key-default-button.md`).

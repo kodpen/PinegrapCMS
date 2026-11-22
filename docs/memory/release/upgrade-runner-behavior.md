@@ -19,5 +19,7 @@ description: How the upgrade runner reacts to failing statements, locks and fata
 - The endpoint does `session_write_close()` after the auth check (a long step must not lock the panel).
 - Without JS, form submit falls back to the old single-request flow.
 - A new version that rewrites a big table: add `'<version>' => array('<table>')` to the `install_heavy_tables()` map; the preflight card builds its row-count / size warning from it. Preflight warns, never blocks.
+## What does the runner write to config when the last version is done?
+- `software_update_available = '0'` and `last_software_update_check_timestamp = 0`, so the next update check starts from a clean slate. Both columns are integers: never write `''` into them (MariaDB warning 1366 under the session's non-strict sql_mode, a failed statement under a strict one). Fixed in bug #11122; `tests/upgrade_end_config_reset_test.php` scans `runner.php` for it.
 
 Related: docs/memory/release/upgrade-automation-and-testing.md

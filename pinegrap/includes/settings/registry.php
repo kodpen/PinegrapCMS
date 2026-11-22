@@ -389,17 +389,19 @@ function pg_settings_categories()
             'label' => lang('Bookings'),
             'group' => 'selling',
             'icon'  => 'bi-calendar-check',
-            'description' => lang('The services that can be booked, the staff who take them, the booking rules and the booking widget\'s texts.'),
+            'description' => lang('The services that can be booked, the staff who take them, the booking rules, which booking messages go and the booking widget\'s texts.'),
             'sections' => array(
                 'pgset-booking-services' => lang('Bookable services'),
                 'pgset-booking-staff'    => lang('Staff'),
                 'pgset-booking-policy'   => lang('Booking rules'),
+                'pgset-booking-messages' => lang('Messages'),
                 'pgset-booking-texts'    => lang('Booking widget texts'),
             ),
             'keywords' => array(
                 'pgset-booking-services' => pg_settings_keywords(lang('booking, appointment, service, duration, length, buffer, price, deposit, reservation')),
                 'pgset-booking-staff'    => pg_settings_keywords(lang('booking, appointment, staff, working hours, opening hours, time off, holiday, day off, schedule')),
                 'pgset-booking-policy'   => pg_settings_keywords(lang('booking, appointment, lead time, horizon, cancellation, reschedule, hold, reminder, confirmation')),
+                'pgset-booking-messages' => pg_settings_keywords(lang('booking, appointment, reminder, mail, e-mail, text message, SMS, campaign profile, notification')),
                 'pgset-booking-texts'    => pg_settings_keywords(lang('booking, appointment, widget, text, heading, message')),
             ),
             'lists' => array(

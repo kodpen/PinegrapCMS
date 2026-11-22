@@ -25,6 +25,6 @@ description: Decisions list, product part 87 (2026-11-20 on): server-side events
 ## Should the store pull its suppliers' XML, CSV or JSON lists and keep price and stock in step? (owner, 2026-11-20, agent channel poll 168, channel message 10315)
 - "Evet, plana girsin": the connection with field mapping, price rules, hourly price and stock sync, new products as drafts, several suppliers on one barcode, the buy price as cost, a run log, a stop on a broken feed.
 - Not chosen: "Evet, önce yalnız fiyat ve stok eşitleme" (price and stock sync first), "Hayır, gerek yok".
-- The plan: `plans/supplier-feed.md`.
+- Built in #10771 to #11121: `commerce/supplier-feed.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/api/ad-conversions.md, docs/memory/platform/cookie-consent-notice.md, docs/memory/core/privacy-centre.md, docs/memory/plans/supplier-feed.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/api/ad-conversions.md, docs/memory/platform/cookie-consent-notice.md, docs/memory/core/privacy-centre.md, docs/memory/commerce/supplier-feed.md
