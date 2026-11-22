@@ -645,7 +645,14 @@ if (!$_POST) {
     $head_items = 0;
     $head_units = 0;
 
-    $output_order_details = '<h2 class="list-group-item mb-0 pg-title-section">' . lang('Order Details') . '</h2>';
+    // The shipment cards (board O1, marks 2 and 3), one per address with
+    // lines, in the order the addresses are read: their parts are gathered
+    // here and drawn once the head's pills are known, each card with its
+    // address's pill. The lines of no address go into one card after them.
+    $shipment_cards = array();
+    $shipment_lines = array();
+    $unshipped_lines = '';
+    $unshipped_ships = false;
 
     if ($ship_to_exists == true) {
         // get all custom shipping form data for this order
@@ -789,6 +796,7 @@ if (!$_POST) {
                 $output_shipping_tracking_numbers = '';
                 $output_shipping_tracking_numbers_field = '';
                 $output_shipment_labels = '';
+                $output_shipment_label_actions = '';
 
                 // An incomplete order takes no shipment, so its card shows no
                 // empty ship date, delivery date or tracking number labels.
@@ -879,12 +887,16 @@ if (!$_POST) {
                             $shipment_status_title = ' title="' . h(get_absolute_time(array('timestamp' => (int) $shipment_row['delivered_at'], 'type' => 'date', 'format' => 'plain_text'))) . '"';
                         }
 
+                        // A parcel: its number (a link when its carrier is
+                        // known) with a copy button, its status pill, its
+                        // carrier select.
                         $output_shipping_tracking_numbers .=
-                            '<li class="d-flex flex-wrap align-items-center gap-3 py-3 border-bottom">
+                            '<li class="pg-shipment-parcel">
                                 ' . (($shipment['url'] !== '')
-                                    ? '<a class="pg-link-secondary fw-medium text-break" href="' . h($shipment['url']) . '" target="_blank" rel="noopener noreferrer">' . h($shipment['number']) . '</a>'
-                                    : '<span class="fw-medium text-break">' . h($shipment['number']) . '</span>') . '
-                                <span class="badge ' . pg_shipment_status_class($shipment['status']) . '"' . $shipment_status_title . '>' . h(pg_shipment_status_label($shipment['status'])) . '</span>
+                                    ? '<a class="pg-link-secondary pg-shipment-number" href="' . h($shipment['url']) . '" target="_blank" rel="noopener noreferrer">' . h($shipment['number']) . '</a>'
+                                    : '<span class="pg-shipment-number">' . h($shipment['number']) . '</span>') . '
+                                <span class="pg-copy pg-print-none">' . pg_copy_button($shipment['number'], lang('Copy the tracking number')) . '</span>
+                                ' . pg_pill(pg_shipment_status_label($shipment['status']), str_replace('theme-', '', pg_shipment_status_class($shipment['status'])), trim($shipment_status_title)) . '
                                 <span class="ms-auto pg-print-none">' . (($status == 'cancelled') ? h($shipment['carrier_name']) :
                                     $liveform->output_field(array(
                                         'type'    => 'select',
@@ -902,7 +914,7 @@ if (!$_POST) {
                     }
 
                     if ($output_shipping_tracking_numbers !== '') {
-                        $output_shipping_tracking_numbers = '<ul class="list-unstyled mb-3">' . $output_shipping_tracking_numbers . '</ul>';
+                        $output_shipping_tracking_numbers = '<ul class="pg-shipment-parcels">' . $output_shipping_tracking_numbers . '</ul>';
                     }
 
                     // The address's carrier labels (includes/fn/shipment_labels.php):
@@ -987,21 +999,22 @@ if (!$_POST) {
                     $shipment_label_chooser_shown = !empty($shipment_label_chooser_shown) || $shipment_label_choose;
 
                     if (($shipment_label_drivers || $shipment_label_by_marketplace) && !in_array($status, array('incomplete', 'cancelled'), true)) {
-                        $output_shipment_labels .= '<div class="d-flex flex-wrap align-items-center gap-2 pg-print-none">'
+                        // The label buttons sit at the right of the card's title.
+                        $output_shipment_label_actions = '<span class="d-contents">'
                             . ($shipment_label_by_marketplace
                                 ? '<label class="visually-hidden" for="label_boxes_' . $ship_to_id . '">' . lang('Boxes') . '</label>'
                                     . '<input type="number" form="shipment-label-form" id="label_boxes_' . $ship_to_id . '" name="label_boxes_' . $ship_to_id . '" value="1" min="1" max="' . mp_label_max_boxes() . '" step="1" class="form-control form-control-sm" style="max-width:5rem" onkeydown="if (event.key === \'Enter\') { event.preventDefault(); document.getElementById(\'label_marketplace_' . $ship_to_id . '\').click(); }">'
-                                    . '<button type="submit" form="shipment-label-form" id="label_marketplace_' . $ship_to_id . '" name="label_request" value="marketplace-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} makes the shipping label of this package for its carrier, one per box. A package not accepted yet is accepted first, which starts its dispatch time. Continue?', 'vars' => array($shipment_label_marketplace['name'])))) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Get {var:1} label', 'vars' => array($shipment_label_marketplace['name'])))) . '</button>'
-                                : (($shipment_label_active[0] || !$shipment_label_drivers) ? '' : '<button ' . ($shipment_label_choose ? 'type="button" data-pg-label-chooser="' . $ship_to_id . '"' : 'type="submit" form="shipment-label-form" name="label_request" value="create-' . $ship_to_id . '" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"') . ' class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>'))
-                            . (($shipment_label_active[1] || !$shipment_label_drivers) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="return-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A return shipment, collected from this address and delivered to the store, is opened at the carrier label service and its label is bought. Continue?')) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . lang('Create Return Label') . '</button>')
-                            . (!$shipment_label_pickup ? '' : '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_' . $ship_to_id . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>'
+                                    . '<button type="submit" form="shipment-label-form" id="label_marketplace_' . $ship_to_id . '" name="label_request" value="marketplace-' . $ship_to_id . '" class="pg-button pg-button-quiet pg-button-sm" data-confirm-content="' . h(lang(array('string' => '{var:1} makes the shipping label of this package for its carrier, one per box. A package not accepted yet is accepted first, which starts its dispatch time. Continue?', 'vars' => array($shipment_label_marketplace['name'])))) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Get {var:1} label', 'vars' => array($shipment_label_marketplace['name'])))) . '</button>'
+                                : (($shipment_label_active[0] || !$shipment_label_drivers) ? '' : '<button ' . ($shipment_label_choose ? 'type="button" data-pg-label-chooser="' . $ship_to_id . '"' : 'type="submit" form="shipment-label-form" name="label_request" value="create-' . $ship_to_id . '" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"') . ' class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>'))
+                            . (($shipment_label_active[1] || !$shipment_label_drivers) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="return-' . $ship_to_id . '" class="pg-button pg-button-quiet pg-button-sm" data-confirm-content="' . h(lang('A return shipment, collected from this address and delivered to the store, is opened at the carrier label service and its label is bought. Continue?')) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . lang('Create Return Label') . '</button>')
+                            . (!$shipment_label_pickup ? '' : '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_' . $ship_to_id . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>'
                                 . pg_shipment_label_pickup_dialog('shipment_pickup_' . $ship_to_id, 'shipment-label-form', 'pickup-' . $ship_to_id, pg_shipment_label_pickup_warning(pg_shipment_label_pickup_booked(array($shipment_label_pickup)))))
-                            . '</div>';
+                            . '</span>';
                     }
 
                     if ($output_shipment_labels !== '') {
                         $output_shipment_labels =
-                            '<div class="form-field mb-5">
+                            '<div class="form-field mt-5">
                                 <span class="form-label d-block">' . lang('Shipping Labels') . '</span>
                                 ' . $output_shipment_labels . '
                             </div>';
@@ -1055,16 +1068,6 @@ if (!$_POST) {
                     $shipping_method = h($recipient['shipping_method_code']);
                 }
 
-                $packages = '';
-
-                if ($ship_tos[$key]['packages']) {
-                    $packages =
-                        '<div class="d-flex justify-content-between gap-3 my-3">
-                            <span class="fg-secondary">' . lang('Packages') . '</span>
-                            <span class="text-end text-break">' . h($ship_tos[$key]['packages']) . '</span>
-                        </div>';
-                    }
-                
                 $output_custom_field_cells = '';
                 
                 // loop through the custom field names in order to output cells for values
@@ -1086,111 +1089,89 @@ if (!$_POST) {
                         $prepare_for_html = FALSE;
                     }
                     
-                    // A row like the card's others, labelled by the field's
-                    // name in words ("delivery_note" reads "Delivery note"),
-                    // and left out when the address has no answer for it.
-                    $output_custom_field_cells .= pg_order_view_row(
-                        h(lang(ucfirst(str_replace('_', ' ', (string) $custom_field_name)))),
+                    // A row of the card's list, labelled by the field's name
+                    // in words ("delivery_note" reads "Delivery note"), and
+                    // left out when the address has no answer for it.
+                    $output_custom_field_cells .= pg_order_view_kv(
+                        lang(ucfirst(str_replace('_', ' ', (string) $custom_field_name))),
                         prepare_form_data_for_output($data, $type, $prepare_for_html)
                     );
                 }
                 
                 $output_ship_dates_row = '';
 
-                // Labelled boxes side by side; a cancelled order shows its
-                // dates as text, so their captions name no field.
+                // Labelled boxes, in one row with the tracking numbers; a
+                // cancelled order shows its dates as text, so their captions
+                // name no field.
                 if ($status != 'incomplete') {
                     $ship_dates_field_id = 'ship_to_id_' . (int) $ship_tos[$key]['ship_to_id'];
-                    $output_ship_dates_row = '<div class="row g-5 mt-0 mb-5">';
 
                     foreach (array('ship_date' => array(lang('Ship Date'), $output_ship_date_field), 'delivery_date' => array(lang('Delivery Date'), $output_delivery_date_field)) as $date_column => $date_box) {
                         $output_ship_dates_row .= '
-                            <div class="col-12 sm:col-6">
-                                <div class="form-field">
-                                    ' . (($status == 'cancelled')
-                                        ? '<span class="form-label d-block">' . $date_box[0] . '</span>'
-                                        : '<label class="form-label" for="' . $ship_dates_field_id . '_' . $date_column . '">' . $date_box[0] . '</label>') . '
-                                    ' . (($date_box[1] !== '') ? $date_box[1] : '<span class="form-control-plaintext p-0">&mdash;</span>') . '
-                                </div>
+                            <div class="form-field">
+                                ' . (($status == 'cancelled')
+                                    ? '<span class="form-label d-block">' . $date_box[0] . '</span>'
+                                    : '<label class="form-label" for="' . $ship_dates_field_id . '_' . $date_column . '">' . $date_box[0] . '</label>') . '
+                                ' . (($date_box[1] !== '') ? $date_box[1] : '<span class="form-control-plaintext p-0">&mdash;</span>') . '
                             </div>';
                     }
-
-                    $output_ship_dates_row .= '
-                        </div>';
                 }
 
                 // The order list's shipment tracking button jumps to the first
-                // card; the others carry their address id, so no id repeats.
-                $tracking_anchor_id = ($output_shipping_details === '')
+                // card's shipping fields; the others carry their address id,
+                // so no id repeats.
+                $tracking_anchor_id = ($shipment_cards === array())
                     ? 'trackin_number_from_view_orders'
                     : 'trackin_number_from_view_orders_' . (int) $ship_tos[$key]['ship_to_id'];
 
-                // Appended, one card per address: an order shipped to two
-                // addresses shows both, and saving it keeps the first one's
-                // tracking numbers.
-                $output_shipping_details .=
-                    '<div class="card pg-card mt-5">
-                            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                                <h2 class="pg-title-section mb-0">' . lang('Shipping Information') . '</h2>
-                                <div class="print_packing_slip pg-print-none">
-                                    <button type="button" class="btn btn-sm btn-text theme-secondary position-relative" title="' . lang('Print Packing Slip') . '" aria-label="' . h(lang('Print Packing Slip')) . '" onclick="window.open(\'print_packing_slip.php?ship_to_id=' . $ship_tos[$key]['ship_to_id'] . '\', \'\', \'width=750, height=600, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</button>
+                // The shipping address as an address block, the salutation
+                // before the name; phone and address type in grey under it,
+                // then the postcode and district notes and Address verified.
+                $shipping_address = $ship_tos[$key];
+                $shipping_address['first_name'] = trim($ship_tos[$key]['salutation'] . ' ' . $ship_tos[$key]['first_name']);
+                $shipping_address_id = 'pg_ship_address_' . (int) $ship_tos[$key]['ship_to_id'];
+                $shipping_address_meta = implode(' · ', array_filter(array(
+                    h($ship_tos[$key]['phone_number']),
+                    pg_order_view_address_type($ship_tos[$key]['address_type']),
+                ), 'strlen'));
+
+                $shipment_cards[(int) $ship_tos[$key]['ship_to_id']] = array(
+                    'name' => (string) $ship_tos[$key]['ship_to_name'],
+                    'actions' => $output_shipment_label_actions,
+                    'top' =>
+                        '<div class="pg-shipment-top">
+                            <div class="pg-shipment-address">
+                                <div class="pg-shipment-caption">' . h(lang('Shipping address')) . '<span class="pg-copy pg-print-none">' . pg_copy_button(implode("\n", pg_order_view_address_lines($shipping_address)), lang('Copy the shipping address'), $shipping_address_id) . '</span></div>
+                                ' . pg_order_view_address_block($shipping_address, $shipping_address_id) . '
+                                ' . (($shipping_address_meta !== '') ? '<p class="pg-address-meta">' . $shipping_address_meta . '</p>' : '') . '
+                                ' . str_replace('col-12 small', 'd-block small', $output_postcode_province) . '
+                                ' . (($ship_tos[$key]['address_verified'] == 1) ? '<p class="pg-address-same"><i class="bi bi-patch-check" aria-hidden="true"></i>' . h(lang('Address verified')) . '</p>' : '') . '
+                            </div>
+                            <dl class="pg-kv">
+                                ' . pg_order_view_kv(lang('Shipping Method'), $shipping_method) . '
+                                ' . pg_order_view_kv(lang('Req. Arrival Date'), $output_arrival_date) . '
+                                ' . pg_order_view_kv(lang('Shipping Cost'), '<span class="pg-tabular">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>') . '
+                                ' . pg_order_view_kv(lang('Packages'), h($ship_tos[$key]['packages'])) . '
+                                ' . $output_custom_field_cells . '
+                            </dl>
+                        </div>',
+                    // Under the lines, on a hairline: the two dates and the
+                    // tracking numbers in one row, the parcels under them,
+                    // then the labels. An incomplete order has none of them.
+                    'fields' => ($status != 'incomplete')
+                        ? '<div class="pg-shipment-fields" id="' . $tracking_anchor_id . '">
+                            <div class="pg-shipment-fields-row">
+                                ' . $output_ship_dates_row . '
+                                <div class="form-field pg-shipment-numbers">
+                                    ' . $output_tracking_numbers_caption . '
+                                    ' . (($output_shipping_tracking_numbers_field !== '') ? $output_shipping_tracking_numbers_field : (($output_shipping_tracking_numbers === '') ? '<span class="form-control-plaintext p-0">&mdash;</span>' : '')) . '
                                 </div>
                             </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-12">
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Ship to Name') . '</span>
-                                            <span class="text-end text-break">' . h($ship_tos[$key]['ship_to_name']) . '</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Full Name') . '</span>
-                                            <span class="text-end text-break">' . h($name) . '</span>
-                                        </div>
-                                        ' . pg_order_view_row(lang('Company'), h($ship_tos[$key]['company'])) . '
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Address') . '</span>
-                                            <span class="text-end text-break fw-medium">' . h($address) . '</span>
-                                            ' . $output_postcode_province . '
-                                        </div>
-                                        ' . pg_order_view_row(lang('Address Type'), pg_order_view_address_type($ship_tos[$key]['address_type'])) . '
-                                        ' . pg_order_view_row(lang('Address Verified'), $output_address_verified_check_mark) . '
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="translateable fg-secondary">' . lang('Phone') . '</span>
-                                            <span class="text-end text-break">' . h($ship_tos[$key]['phone_number']) . '</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12">
-                                        <div class="d-flex justify-content-between gap-3 mb-3">
-                                            <span class="translateable fg-secondary">' . lang('Req. Arrival Date') . '</span>
-                                            <span class="text-end text-break">' . $output_arrival_date . '</span>
-                                        </div>
-                                        ' . $output_ship_dates_row . '
-
-                                    </div>
-
-                                    <div class="col-12 pt-7" id="' . $tracking_anchor_id . '">
-                                        <div class="d-flex justify-content-between gap-3">
-                                            <span class="fg-secondary">' . lang('Shipping Method') . '</span>
-                                            <span class="text-end text-break">' . $shipping_method . '</span>
-                                        </div>
-                                        ' . (($output_tracking_numbers_caption !== '') ? '<div class="form-field my-5">
-                                            ' . $output_tracking_numbers_caption . '
-                                            ' . $output_shipping_tracking_numbers . '
-                                            ' . $output_shipping_tracking_numbers_field . '
-                                        </div>' : '') . '
-                                        ' . $output_shipment_labels . '
-                                        <div class="d-flex justify-content-between gap-3 my-3">
-                                            <span class="fg-secondary">' . lang('Shipping Cost') . '</span>
-                                            <span class="text-end text-break">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
-                                        </div>
-                                        ' . $packages . '
-                                        ' . $output_custom_field_cells . '
-                                    </div> 
-                                </div>
-                            </div>
-                        </div>';
+                            ' . $output_shipping_tracking_numbers . '
+                            ' . $output_shipment_labels . '
+                        </div>'
+                        : '<span id="' . $tracking_anchor_id . '"></span>',
+                );
             }
             
             $output_custom_field_1_heading = '';
@@ -1280,42 +1261,37 @@ if (!$_POST) {
                 $product_id = $order_item['product_id'];
                 $short_description = h($order_item['short_description']);
                 
-                $output_image = '';
-                // if a product was found, include link to product
-                if ($product_id) {
-                    $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="fg-primary text-decoration-none">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</a>';
-                    // if a product image_name found, output
-                    if ($image_name) {
-                        $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block" tabindex="-1" aria-hidden="true"><img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/></a>';
-                    } 
-                
-                // else a product was not found, so do not include a link to product   
-                } else {
-                    $output_product_name = lang('Product ID / SKU') . ': ' .h($product_name);
-                    // if a product image_name found, output
-                    if ($image_name) {
-                        $output_image = '<img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/>';
-                    } 
+                // The product's name (its short description, else its SKU), a link
+                // to the product while it exists; the SKU and a calendar event's name
+                // and time join the row's grey line.
+                $output_line_meta = array();
+                $output_product_name = ($short_description !== '') ? $short_description : h($product_name);
+
+                if ($short_description !== '') {
+                    $output_line_meta[] = h($product_name);
                 }
-                
-                // if calendars is enabled and this order item is for a calendar event reservation, then add calendar event name and date and time range to short description
+
+                $output_image = $image_name ? '<img class="pg-line-image" src="' . PATH . h($image_name) . '" alt=""/>' : '';
+
+                if ($product_id) {
+                    $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="pg-link-secondary">' . $output_product_name . '</a>';
+
+                    if ($output_image !== '') {
+                        $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block" tabindex="-1" aria-hidden="true">' . $output_image . '</a>';
+                    }
+                }
+
                 if ((CALENDARS == TRUE) && ($calendar_event_id != 0)) {
                     $calendar_event = get_calendar_event($calendar_event_id, $recurrence_number);
-                    
-                    $short_description .=
-                        '<p>
-                            ' . h($calendar_event['name']) . '<br />
-                            ' . $calendar_event['date_and_time_range'] . '
-                        </p>';
+                    $output_line_meta[] = h($calendar_event['name']) . ' ' . $calendar_event['date_and_time_range'];
                 }
                 
                 $output_shipped_quantity_field = '';
-                $shipped_quantity_field_id = '';
                 
                 // A cancelled order shows the quantity it had, read only.
                 if ($status == 'cancelled') {
                     if ($show_shipped_quantity == 1) {
-                        $output_shipped_quantity_field = '<span class="form-control-plaintext text-center">' . (int) $shipped_quantity . '</span>';
+                        $output_shipped_quantity_field = '<span class="pg-tabular">' . (int) $shipped_quantity . '</span>';
                     }
 
                 // if the order is complete, then show shipped quantity field
@@ -1330,7 +1306,6 @@ if (!$_POST) {
                     // A whole number from 0 to the ordered quantity (update_order()
                     // refuses anything else); max stops the + button there.
                     // Inputmask's right alignment would override text-center.
-                    $shipped_quantity_field_id = 'order_item_id_' . $order_item_id . '_shipped_quantity';
                     $output_shipped_quantity_field = $liveform->output_field(array('class'=>'form-control text-center border-start-0 border-end-0','type'=>'text', 'id'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'name'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'size'=>'2', 'maxlength'=>'9', 'min'=>'0', 'max'=>(string) (int) $quantity, 'inputmode'=>'numeric', 'aria-label'=>lang('Shipped Qty'), 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false', 'data-inputmask-rightalign'=>'false', 'data-inputmask-placeholder'=>'0'));
                     
                     
@@ -1353,7 +1328,7 @@ if (!$_POST) {
                 
                 // if order item is a recurring order item, then prepare 
                 if ($recurring_payment_period != '') {
-                    $output_recurring_payment_period = pg_order_view_line_fact(lang('Payment Period'), lang($recurring_payment_period));
+                    $output_recurring_payment_period = pg_order_view_line_meta_part(h(lang('Payment Period')), lang($recurring_payment_period));
                     
                     // if the number of payments is set to 0, then change value to "No limit"
                     if ($recurring_number_of_payments == 0) {
@@ -1363,37 +1338,37 @@ if (!$_POST) {
                     } else {
                         $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                     }
-                    $output_recurring_number_of_payments = pg_order_view_line_fact(lang('Number of Payments'), $output_recurring_number_of_payments);
+                    $output_recurring_number_of_payments = pg_order_view_line_meta_part(h(lang('Number of Payments')), $output_recurring_number_of_payments);
                         
-                    $output_recurring_start_date = pg_order_view_line_fact(lang('Start Date'), get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')));
+                    $output_recurring_start_date = pg_order_view_line_meta_part(h(lang('Start Date')), get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')));
                 }
 
                 $output_custom_field_1 = '';
                 // If the first custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
 
-                    $output_custom_field_1 = pg_order_view_line_fact($output_custom_field_1_heading, h($order_item['custom_field_1']));
+                    $output_custom_field_1 = pg_order_view_line_meta_part($output_custom_field_1_heading, h($order_item['custom_field_1']));
                 }
 
                 $output_custom_field_2= '';
 
                 // If the second custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                    $output_custom_field_2 = pg_order_view_line_fact($output_custom_field_2_heading, h($order_item['custom_field_2']));
+                    $output_custom_field_2 = pg_order_view_line_meta_part($output_custom_field_2_heading, h($order_item['custom_field_2']));
                 }
 
                 $output_custom_field_3 = '';
 
                 // If the third custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                    $output_custom_field_3 = pg_order_view_line_fact($output_custom_field_3_heading, h($order_item['custom_field_3']));
+                    $output_custom_field_3 = pg_order_view_line_meta_part($output_custom_field_3_heading, h($order_item['custom_field_3']));
                 }
 
                 $output_custom_field_4 = '';
 
                 // If the fourth custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                    $output_custom_field_4 = pg_order_view_line_fact($output_custom_field_4_heading, h($order_item['custom_field_4']));
+                    $output_custom_field_4 = pg_order_view_line_meta_part($output_custom_field_4_heading, h($order_item['custom_field_4']));
                 }
 
                 $output_gift_cards = '';
@@ -1487,27 +1462,34 @@ if (!$_POST) {
                     }
                 }
                 
-                // A line that ships: the shipped quantity sits beside the
-                // ordered one; its caption names the field when it is one.
-                $output_order_details .=
-                    pg_order_view_line(
-                        $output_product_name,
-                        $output_image,
-                        $short_description,
-                        pg_order_view_line_fact(lang('Qty'), $quantity)
-                            . pg_order_view_stock_taken_fact($order_item['stock_taken'], $quantity)
-                            . pg_order_view_line_fact(lang('Shipped Qty'), $output_shipped_quantity_field, $shipped_quantity_field_id)
-                            . pg_order_view_line_fact(lang('Price'), prepare_amount($product_price))
-                            . pg_order_view_line_fact(lang('Total'), prepare_amount($product_total), '', true)
-                            . $output_recurring_payment_period
-                            . $output_recurring_number_of_payments
-                            . $output_recurring_start_date
-                            . $output_custom_field_1
-                            . $output_custom_field_2
-                            . $output_custom_field_3
-                            . $output_custom_field_4,
-                            $output_gift_cards . $output_forms
-                        );
+                // The line's row: quantity × price, the shipped quantity over
+                // the ordered one, the total; the rest in its grey line. A
+                // line with no address goes into the card after the shipments.
+                $output_line_row = pg_order_view_line(array(
+                    'name_html' => $output_product_name,
+                    'image_html' => $output_image,
+                    'meta' => array_merge($output_line_meta, array(
+                        pg_order_view_stock_taken_fact($order_item['stock_taken'], $quantity),
+                        $output_recurring_payment_period,
+                        $output_recurring_number_of_payments,
+                        $output_recurring_start_date,
+                        $output_custom_field_1,
+                        $output_custom_field_2,
+                        $output_custom_field_3,
+                        $output_custom_field_4,
+                    )),
+                    'amount_html' => (int) $quantity . ' × ' . prepare_amount($product_price),
+                    'shipped_html' => pg_order_view_line_shipped($output_shipped_quantity_field, $quantity),
+                    'total_html' => prepare_amount($product_total),
+                    'parts_html' => $output_gift_cards . $output_forms,
+                ));
+
+                if ((int) $ship_tos[$key]['ship_to_id'] > 0) {
+                    $shipment_lines[(int) $ship_tos[$key]['ship_to_id']] = ($shipment_lines[(int) $ship_tos[$key]['ship_to_id']] ?? '') . $output_line_row;
+                } else {
+                    $unshipped_lines .= $output_line_row;
+                    $unshipped_ships = ($status != 'incomplete');
+                }
             }
             
 
@@ -1602,33 +1584,29 @@ if (!$_POST) {
             $short_description = h($order_item['short_description']);
             
 
-            $output_image = '';
-            // if a product was found, include link to product
-            if ($product_id) {
-                $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="fg-primary text-decoration-none">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</a>';
-                // if a product image_name found, output
-                if ($image_name) {
-                    $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block" tabindex="-1" aria-hidden="true"><img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/></a>';
-                } 
-            
-            // else a product was not found, so do not include a link to product   
-            } else {
-                $output_product_name = lang('Product ID / SKU') . ': ' .h($product_name);
-                // if a product image_name found, output
-                if ($image_name) {
-                    $output_image = '<img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/>';
-                } 
+            // The product's name (its short description, else its SKU), a link
+            // to the product while it exists; the SKU and a calendar event's name
+            // and time join the row's grey line.
+            $output_line_meta = array();
+            $output_product_name = ($short_description !== '') ? $short_description : h($product_name);
+
+            if ($short_description !== '') {
+                $output_line_meta[] = h($product_name);
             }
-            
-            // if calendars is enabled and this order item is for a calendar event reservation, then add calendar event name and date and time range to short description
+
+            $output_image = $image_name ? '<img class="pg-line-image" src="' . PATH . h($image_name) . '" alt=""/>' : '';
+
+            if ($product_id) {
+                $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="pg-link-secondary">' . $output_product_name . '</a>';
+
+                if ($output_image !== '') {
+                    $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block" tabindex="-1" aria-hidden="true">' . $output_image . '</a>';
+                }
+            }
+
             if ((CALENDARS == TRUE) && ($calendar_event_id != 0)) {
                 $calendar_event = get_calendar_event($calendar_event_id, $recurrence_number);
-                
-                $short_description .=
-                    '<p>
-                        ' . h($calendar_event['name']) . '<br />
-                        ' . $calendar_event['date_and_time_range'] . '
-                    </p>';
+                $output_line_meta[] = h($calendar_event['name']) . ' ' . $calendar_event['date_and_time_range'];
             }
             
             $output_recurring_payment_period = '';
@@ -1637,7 +1615,7 @@ if (!$_POST) {
             
             // if order item is a recurring order item, then prepare 
             if ($recurring_payment_period != '') {
-                $output_recurring_payment_period = pg_order_view_line_fact(lang('Payment Period'), lang($recurring_payment_period));
+                $output_recurring_payment_period = pg_order_view_line_meta_part(h(lang('Payment Period')), lang($recurring_payment_period));
                 
                 // if the number of payments is set to 0, then change value to "No limit"
                 if ($recurring_number_of_payments == 0) {
@@ -1647,37 +1625,37 @@ if (!$_POST) {
                 } else {
                     $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                 }
-                $output_recurring_number_of_payments = pg_order_view_line_fact(lang('Number of Payments'), $output_recurring_number_of_payments);
+                $output_recurring_number_of_payments = pg_order_view_line_meta_part(h(lang('Number of Payments')), $output_recurring_number_of_payments);
                         
-                $output_recurring_start_date = pg_order_view_line_fact(lang('Start Date'), get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')));
+                $output_recurring_start_date = pg_order_view_line_meta_part(h(lang('Start Date')), get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')));
             }
 
             $output_custom_field_1 = '';
 
             // If the first custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                $output_custom_field_1 = pg_order_view_line_fact($output_custom_field_1_heading, h($order_item['custom_field_1']));
+                $output_custom_field_1 = pg_order_view_line_meta_part($output_custom_field_1_heading, h($order_item['custom_field_1']));
             }
 
             $output_custom_field_2 = '';
 
             // If the second custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                $output_custom_field_2 = pg_order_view_line_fact($output_custom_field_2_heading, h($order_item['custom_field_2']));
+                $output_custom_field_2 = pg_order_view_line_meta_part($output_custom_field_2_heading, h($order_item['custom_field_2']));
             }
 
             $output_custom_field_3 = '';
 
             // If the third custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                $output_custom_field_3 = pg_order_view_line_fact($output_custom_field_3_heading, h($order_item['custom_field_3']));
+                $output_custom_field_3 = pg_order_view_line_meta_part($output_custom_field_3_heading, h($order_item['custom_field_3']));
             }
 
             $output_custom_field_4 = '';
 
             // If the fourth custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                $output_custom_field_4 = pg_order_view_line_fact($output_custom_field_4_heading, h($order_item['custom_field_4']));
+                $output_custom_field_4 = pg_order_view_line_meta_part($output_custom_field_4_heading, h($order_item['custom_field_4']));
             }
 
             $output_gift_cards = '';
@@ -1772,25 +1750,25 @@ if (!$_POST) {
                 }
             }
             
-            // A line that does not ship (a download, a membership, a gift card).
-            $output_order_details .=
-                pg_order_view_line(
-                    $output_product_name,
-                    $output_image,
-                    $short_description,
-                    pg_order_view_line_fact(lang('Qty'), $quantity)
-                        . pg_order_view_stock_taken_fact($order_item['stock_taken'], $quantity)
-                        . pg_order_view_line_fact(lang('Price'), prepare_amount($product_price))
-                        . pg_order_view_line_fact(lang('Total'), prepare_amount($product_total), '', true)
-                        . $output_recurring_payment_period
-                        . $output_recurring_number_of_payments
-                        . $output_recurring_start_date
-                        . $output_custom_field_1
-                        . $output_custom_field_2
-                        . $output_custom_field_3
-                        . $output_custom_field_4,
-                        $output_gift_cards . $output_forms
-                    );
+            // A line of an order with no address (a download, a
+            // membership, a gift card): no shipped quantity.
+            $unshipped_lines .= pg_order_view_line(array(
+                'name_html' => $output_product_name,
+                'image_html' => $output_image,
+                'meta' => array_merge($output_line_meta, array(
+                    pg_order_view_stock_taken_fact($order_item['stock_taken'], $quantity),
+                    $output_recurring_payment_period,
+                    $output_recurring_number_of_payments,
+                    $output_recurring_start_date,
+                    $output_custom_field_1,
+                    $output_custom_field_2,
+                    $output_custom_field_3,
+                    $output_custom_field_4,
+                )),
+                'amount_html' => (int) $quantity . ' × ' . prepare_amount($product_price),
+                'total_html' => prepare_amount($product_total),
+                'parts_html' => $output_gift_cards . $output_forms,
+            ));
         }
     }
 
@@ -2461,6 +2439,47 @@ if (!$_POST) {
     // payment and shipping pills; the grey line; the toolbar at the right.
     $head_states = pg_order_view_states($head_order, $head_addresses, date('Y-m-d'));
 
+    // The shipment cards, each titled with its place among the order's
+    // addresses, the name the customer gave the address and its pill; at
+    // the title's right Print Packing Slip and the label buttons. Inside:
+    // the address and the shipping method, the lines, the shipping fields.
+    $shipment_number = 0;
+    foreach ($shipment_cards as $shipment_card_id => $shipment_card) {
+        $shipment_number++;
+        $shipment_pill = $head_states['addresses'][$shipment_card_id] ?? null;
+        $output_shipping_details .=
+            '<section class="card pg-card pg-shipment' . (($output_shipping_details !== '') ? ' mt-5' : '') . '" aria-labelledby="pg_shipment_title_' . (int) $shipment_card_id . '">
+                <div class="card-header bg-reset border-0 pg-shipment-head">
+                    <h2 class="pg-title-section mb-0" id="pg_shipment_title_' . (int) $shipment_card_id . '">' . h(pg_order_view_shipment_title($shipment_number, count($shipment_cards))) . '</h2>
+                    ' . (($shipment_card['name'] !== '') ? '<span class="pg-text-meta">' . h($shipment_card['name']) . '</span>' : '') . '
+                    ' . (is_array($shipment_pill) ? pg_pill((string) $shipment_pill[0], (string) $shipment_pill[1]) : '') . '
+                    <div class="pg-shipment-actions pg-print-none">
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" aria-label="' . h(lang('Print Packing Slip')) . '" onclick="window.open(\'print_packing_slip.php?ship_to_id=' . (int) $shipment_card_id . '\', \'\', \'width=750, height=600, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer" aria-hidden="true"></i>' . lang('Print Packing Slip') . '</button>
+                        ' . $shipment_card['actions'] . '
+                    </div>
+                </div>
+                <div class="card-body">
+                    ' . $shipment_card['top'] . '
+                    ' . pg_order_view_line_list($shipment_lines[$shipment_card_id] ?? '', $status != 'incomplete') . '
+                    ' . $shipment_card['fields'] . '
+                </div>
+            </section>';
+    }
+
+    // The lines of no address: "Items not shipped" after the shipments,
+    // "Products" when the order has no address.
+    if ($unshipped_lines !== '') {
+        $output_shipping_details .=
+            '<section class="card pg-card pg-shipment' . (($output_shipping_details !== '') ? ' mt-5' : '') . '" aria-labelledby="pg_shipment_title_0">
+                <div class="card-header bg-reset border-0 pg-shipment-head">
+                    <h2 class="pg-title-section mb-0" id="pg_shipment_title_0">' . h(pg_order_view_unshipped_title($ship_to_exists)) . '</h2>
+                </div>
+                <div class="card-body">
+                    ' . pg_order_view_line_list($unshipped_lines, $unshipped_ships) . '
+                </div>
+            </section>';
+    }
+
     $head_customer = '';
     if ($contact_id != '') {
         $head_customer = pg_order_view_contact_text($contact_id, $contact_first_name, $contact_last_name, $contact_company, $contact_email_address);
@@ -2616,6 +2635,7 @@ if (!$_POST) {
                                  for a label and its value side by side. How it was
                                  paid and the totals on the left; the parcels and what
                                  followed the order on the right. -->
+                            ' . (($output_shipping_details !== '') ? '<div class="pg-order-shipments mb-7">' . $output_shipping_details . '</div>' : '') . '
                             <div class="row g-7">
                                 <div class="col-12 md:col-6 lg:col-12 xl:col-6">
                                     ' . pg_order_view_card_column(array(
@@ -2625,7 +2645,6 @@ if (!$_POST) {
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-12 xl:col-6">
                                     ' . pg_order_view_card_column(array(
-                                        $output_shipping_details,
                                         $output_applied_gift_cards,
                                         $output_affiliate,
                                         pg_legal_documents_panel_card((int) $_GET['id']),
@@ -2633,9 +2652,6 @@ if (!$_POST) {
                                         $output_order_profit,
                                     )) . '
                                 </div>
-                            </div>
-                            <div class="list-group list-group-flush order-list-group pg-card mt-7">
-                                ' . $output_order_details . '
                             </div>
                         </div>
                         <!-- The side panel: who ordered, the billing address and the

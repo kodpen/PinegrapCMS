@@ -8,7 +8,7 @@ description: Plan order-screen-redraw, steps OS1 to OS4: the head and its pills,
 - OS1 adds the patterns "Record head" and "Copy button" to Design examples.
 - OS2 (M, done #11139): the side panel and Payment (marks 4 and 6). The address block (pure: parts left out when empty, the country named as `pg_order_view_country()` does, escaped) and the equal-address check, with tests; Customer, Billing Information and Order Information with Source as `.pg-kv`; the totals move from the status column into the Payment card; the status column stops sticking. The count of the contact's orders is one query.
 - OS2 adds the pattern "Address block".
-- OS3 (M): the shipment card (marks 2 and 3, board O3). The address's lines move into its card, `pg_order_view_line()` is redrawn as the one row, the shipping fields go under the lines; "Items not shipped". No field's name, id or script changes: `update_order()`, `tagin`, the label form and the chooser are not touched. Pattern "Line row".
+- OS3 (M, done #11171): the shipment card (marks 2 and 3, board O3). The address's lines move into its card, `pg_order_view_line()` is redrawn as the one row, the shipping fields go under the lines; "Items not shipped". No field's name, id or script changes: `update_order()`, `tagin`, the label form and the chooser are not touched. Pattern "Line row".
 - OS4 (S): the later cards' place and two-across grid (mark 5), the phone round (board O4), and the close-out.
 
 ## What does the close-out do?

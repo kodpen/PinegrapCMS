@@ -6489,34 +6489,17 @@ div#software_image_picker_container {
   -webkit-backdrop-filter: brightness(0.7) saturate(1.7) blur(100px); backdrop-filter: brightness(0.7) saturate(1.7) blur(100px);
 }
 
-/* The order's lines: a flush list framed as the look's card (pg-card), its
-   rows on the card's surface. */
-.list-group.order-list-group {
-  --bs-list-group-bg: transparent;
-  --bs-list-group-item-padding-x: 1rem;
-  --bs-list-group-item-padding-y: 1rem;
-}
 
-/* An order line's facts flow into as many equal columns as the form column
-   holds; 9rem fits the shipped quantity's minus, field and plus. */
+/* A gift card's facts under an order line flow into as many equal columns
+   as the card holds. */
 .order-line-facts {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: 0.75rem 1.5rem;
 }
-.order-line-image {
-  display: block;
-  width: 4.5rem;
-  height: 4.5rem;
-  object-fit: cover;
-  border-radius: var(--pg-radius-lg);
-}
 
 @media print {
 
-  .list-group.order-list-group {
-    --bs-list-group-border-width: 0px;
-  }
   a{
     text-decoration: none !important;
   }
@@ -36396,6 +36379,196 @@ button.pg-var-chip:focus-visible {
   flex-direction: column;
   flex: 1;
   min-width: 0;
+}
+
+}
+
+/* ==========================================================================
+   Look A: line row.
+   One line of an order (View Order's shipment cards; Design examples "Line
+   row"): a 44 px picture, the name over a grey line, "quantity × price",
+   the shipped quantity over the ordered one, the total. A heading row names
+   the columns once per list; the gift cards and forms bought with a line
+   sit under it. On a phone a line is two rows: name and total, then the
+   shipped quantity. The shipment card's own classes only place its parts.
+   ========================================================================== */
+@layer custom {
+
+.pg-line-list {
+  --pg-line-cols: 44px minmax(0, 1fr) 8rem 7rem;
+  margin: 20px 0 0;
+}
+.pg-line-list-ship {
+  --pg-line-cols: 44px minmax(0, 1fr) 8rem 11rem 7rem;
+}
+.pg-line-list:first-child {
+  margin-top: 0;
+}
+.pg-line-head,
+.pg-line-row {
+  display: grid;
+  grid-template-columns: var(--pg-line-cols);
+  align-items: center;
+  gap: 8px 14px;
+}
+.pg-line-head {
+  padding-bottom: 6px;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-medium);
+  color: var(--pg-fg-3);
+}
+.pg-line-head > span:nth-child(n+3) {
+  text-align: right;
+}
+.pg-line-row {
+  padding: 12px 0;
+  border-top: var(--pg-border-width) solid var(--pg-border-color);
+}
+.pg-line-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--pg-radius-lg);
+  object-fit: cover;
+}
+.pg-line-image-none {
+  background: var(--pg-bg-2);
+  color: var(--pg-fg-3);
+}
+.pg-line-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pg-line-title {
+  font-weight: var(--pg-weight-medium);
+}
+.pg-line-meta {
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+}
+.pg-line-amount {
+  text-align: right;
+  color: var(--pg-fg-2);
+}
+.pg-line-shipped {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.pg-line-shipped .number-controls {
+  flex: 0 1 7.5rem;
+  flex-wrap: nowrap;
+}
+.pg-line-of {
+  flex: none;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+}
+/* The last column, whether or not the row has a shipped cell (a cancelled
+   order's line that kept no shipped quantity has none). */
+.pg-line-total {
+  grid-column: -2;
+  text-align: right;
+  font-weight: var(--pg-weight-title);
+}
+.pg-line-parts {
+  grid-column: 2 / -1;
+}
+
+.pg-shipment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.pg-shipment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.pg-shipment-top {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 20px 32px;
+}
+.pg-shipment-caption {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-address-meta {
+  margin: 2px 0 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+}
+.pg-shipment-fields {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: var(--pg-border-width) solid var(--pg-border-color);
+}
+.pg-shipment-fields-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(9rem, 11rem)) minmax(12rem, 1fr);
+  gap: 16px;
+}
+.pg-shipment-parcels {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pg-shipment-parcel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px 0;
+  border-top: var(--pg-border-width) solid var(--pg-border-color);
+}
+.pg-shipment-parcel:first-child {
+  border-top: 0;
+}
+.pg-shipment-number {
+  font-weight: var(--pg-weight-medium);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 575.98px) {
+  .pg-line-list,
+  .pg-line-list-ship {
+    --pg-line-cols: 44px minmax(0, 1fr) auto;
+  }
+  .pg-line-head {
+    display: none;
+  }
+  .pg-line-amount {
+    grid-column: 2;
+    grid-row: 2;
+    text-align: left;
+  }
+  .pg-line-total {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .pg-line-shipped {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+  .pg-shipment-fields-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pg-shipment-numbers {
+    grid-column: 1 / -1;
+  }
 }
 
 }

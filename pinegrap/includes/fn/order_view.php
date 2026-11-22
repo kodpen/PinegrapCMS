@@ -104,9 +104,28 @@ function pg_order_view_line_fact($label, $value_html, $for = '', $strong = false
 }
 
 /**
- * The "Taken from stock: a of b" fact of an order line whose sale took fewer
- * units than its quantity (stock_taken recorded and below it; a back order
- * line too); '' otherwise.
+ * A part of a line row's grey line: "label: value", nothing when the value
+ * is empty (the payment plan, a custom product field).
+ *
+ * @param string $label_html the label, ready to print
+ * @param string $value_html the value: escaped text, or markup the caller built
+ * @return string
+ */
+function pg_order_view_line_meta_part($label_html, $value_html)
+{
+    $value_html = trim((string) $value_html);
+
+    if ($value_html === '') {
+        return '';
+    }
+
+    return $label_html . ': ' . $value_html;
+}
+
+/**
+ * The "Taken from stock: a of b" part of a line row's grey line, for a line
+ * whose sale took fewer units than its quantity (stock_taken recorded and
+ * below it; a back order line too); '' otherwise.
  *
  * @param mixed $taken    order_items.stock_taken, null for not recorded
  * @param int   $quantity the line's quantity
@@ -118,7 +137,7 @@ function pg_order_view_stock_taken_fact($taken, $quantity)
         return '';
     }
 
-    return pg_order_view_line_fact(lang('Taken from stock'), h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array((int) $taken, (int) $quantity)))));
+    return pg_order_view_line_meta_part(h(lang('Taken from stock')), h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array((int) $taken, (int) $quantity)))));
 }
 
 /**
@@ -138,36 +157,119 @@ function pg_order_view_line_part($legend_html, $content_html)
 }
 
 /**
- * One line of the order's list of products: the thumbnail, the name and the
- * short description, then a grid of facts (quantity, shipped quantity,
- * price, total, the payment plan, the custom product fields) and the gift
- * cards and forms bought with it. The facts flow into as many columns as
- * the form column allows, instead of the boxes of uneven width that wrapped
- * one under another.
+ * One line of the order (Design examples, "Line row"): the picture, the
+ * product's name over a grey line (SKU, the payment plan, the custom
+ * product fields), "quantity × price", the shipped quantity over the
+ * ordered one when the line ships, the total; the gift cards and forms
+ * bought with it as boxes under the row. Its columns are the heading row's
+ * (pg_order_view_line_list()).
  *
- * @param string $name_html        the product name, escaped or a link
- * @param string $image_html       the thumbnail, '' for none
- * @param string $description_html the short description, escaped
- * @param string $facts_html       pg_order_view_line_fact() cells, joined
- * @param string $parts_html       pg_order_view_line_part() boxes, joined
+ * @param array $line name_html (escaped or a link), image_html ('' for the
+ *                    box icon), meta (escaped parts of the grey line, an
+ *                    empty one left out), amount_html, shipped_html
+ *                    (pg_order_view_line_shipped(), '' for none),
+ *                    total_html, parts_html (pg_order_view_line_part())
  * @return string
  */
-function pg_order_view_line($name_html, $image_html, $description_html, $facts_html, $parts_html = '')
+function pg_order_view_line(array $line)
 {
-    $image_html = trim((string) $image_html);
-    $description_html = trim((string) $description_html);
+    $text = function ($key) use ($line) {
+        return isset($line[$key]) && is_scalar($line[$key]) ? trim((string) $line[$key]) : '';
+    };
 
-    return '<div class="list-group-item order-line">
-                        <div class="d-flex gap-4">
-                            ' . ($image_html !== '' ? '<div class="flex-shrink-0 pg-print-none">' . $image_html . '</div>' : '') . '
-                            <div class="flex-grow-1 min-w-0">
-                                <div class="fw-semibold text-break">' . $name_html . '</div>
-                                ' . ($description_html !== '' ? '<div class="fg-secondary text-break">' . $description_html . '</div>' : '') . '
-                                <div class="order-line-facts mt-3">' . $facts_html . '</div>
-                                ' . $parts_html . '
-                            </div>
-                        </div>
-                    </div>';
+    $image_html = $text('image_html');
+    if ($image_html === '') {
+        $image_html = '<span class="pg-line-image pg-line-image-none"><i class="bi bi-box-seam" aria-hidden="true"></i></span>';
+    }
+
+    $meta = isset($line['meta']) && is_array($line['meta'])
+        ? implode(' · ', array_filter(array_map('trim', array_map('strval', $line['meta'])), 'strlen'))
+        : '';
+    $parts_html = $text('parts_html');
+
+    return '<div class="pg-line-row">'
+        . '<div class="pg-line-media pg-print-none">' . $image_html . '</div>'
+        . '<div class="pg-line-name"><span class="pg-line-title">' . $text('name_html') . '</span>'
+            . (($meta !== '') ? '<span class="pg-line-meta">' . $meta . '</span>' : '') . '</div>'
+        . '<div class="pg-line-amount pg-tabular"><span class="visually-hidden">' . h(lang('Qty × Price')) . ': </span>' . $text('amount_html') . '</div>'
+        . $text('shipped_html')
+        . '<div class="pg-line-total pg-tabular"><span class="visually-hidden">' . h(lang('Total')) . ': </span>' . $text('total_html') . '</div>'
+        . (($parts_html !== '') ? '<div class="pg-line-parts">' . $parts_html . '</div>' : '')
+        . '</div>';
+}
+
+/**
+ * The shipped quantity cell of a line row: the stepper (or the number of a
+ * cancelled order) over "/ ordered". '' when there is no field (an
+ * incomplete order, a line that does not keep a shipped quantity).
+ *
+ * @param string $field_html the stepper or the number, ready to print
+ * @param mixed  $quantity   the ordered quantity
+ * @return string
+ */
+function pg_order_view_line_shipped($field_html, $quantity)
+{
+    $field_html = trim((string) $field_html);
+
+    if ($field_html === '') {
+        return '';
+    }
+
+    return '<div class="pg-line-shipped">' . $field_html . '<span class="pg-line-of">/ ' . (int) $quantity . '</span></div>';
+}
+
+/**
+ * A card's lines under one heading row naming their columns. The heading is
+ * hidden from a screen reader: each cell names itself.
+ *
+ * @param string $rows_html pg_order_view_line() rows, joined
+ * @param bool   $ships     the lines carry a shipped quantity column
+ * @return string '' when there is no line
+ */
+function pg_order_view_line_list($rows_html, $ships)
+{
+    $rows_html = trim((string) $rows_html);
+
+    if ($rows_html === '') {
+        return '';
+    }
+
+    return '<div class="pg-line-list' . ($ships ? ' pg-line-list-ship' : '') . '">'
+        . '<div class="pg-line-head" aria-hidden="true"><span></span><span>' . h(lang('Product')) . '</span><span>' . h(lang('Qty × Price')) . '</span>'
+        . ($ships ? '<span>' . h(lang('Shipped')) . '</span>' : '')
+        . '<span>' . h(lang('Total')) . '</span></div>'
+        . $rows_html
+        . '</div>';
+}
+
+/**
+ * A shipment card's title: "Shipment", or "Shipment 1 / 2" when the order
+ * goes to two or more addresses. Plain text.
+ *
+ * @param int $number the address's place, from 1
+ * @param int $count  the order's addresses with lines
+ * @return string
+ */
+function pg_order_view_shipment_title($number, $count)
+{
+    if ((int) $count < 2) {
+        return lang('Shipment');
+    }
+
+    return lang(array('string' => 'Shipment {var:1} / {var:2}', 'vars' => array((int) $number, (int) $count)));
+}
+
+/**
+ * The title of the card of lines with no address: "Items not shipped" after
+ * the shipments, "Products" when the order has no address. Plain text.
+ *
+ * @param bool $has_address
+ * @return string
+ */
+function pg_order_view_unshipped_title($has_address)
+{
+    // "Products": the key "Items" already reads as a count of items.
+    return $has_address ? lang('Items not shipped') : lang('Products');
 }
 
 /**
@@ -882,11 +984,11 @@ function pg_order_view_address_parts(array $address)
 
 /**
  * An order address as the lines of a postal address, plain text: "name ·
- * company", the street lines, "city, state postcode, country". An empty
+ * company", the street lines, "district, city, state postcode, country". An empty
  * part is left out, and a line left with nothing is not printed; the
  * country is named as pg_order_view_country() names it.
  *
- * @param array $address see pg_order_view_address_parts()
+ * @param array $address see pg_order_view_address_parts(), and district
  * @return array list of strings, empty when nothing is stored
  */
 function pg_order_view_address_lines(array $address)
@@ -897,7 +999,10 @@ function pg_order_view_address_lines(array $address)
         return implode($glue, array_filter($parts, 'strlen'));
     };
 
+    // A shipping address's district, when it does not repeat the city,
+    // comes before it (the billing address has none).
     $place = $join(array(
+        trim((string) pg_order_view_district($address['district'] ?? '', $a['city'])),
         $a['city'],
         $join(array($a['state'], $a['zip_code']), ' '),
         trim((string) pg_order_view_country($a['country'])),

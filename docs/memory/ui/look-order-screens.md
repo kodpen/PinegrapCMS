@@ -8,8 +8,8 @@ description: The order screens in look A (C1, #9681): View Order and View Return
 - View Order and View Return take `pg-measure-edit`: the form column is 1300 px since #9269, wide enough for their item tables.
 
 ## Which cards are look cards?
-- Only a card straight in its column takes the look by the measure. View Order's cards sit in an inner two-column row, so each prints `card pg-card` (Source, Payment, Affiliate, Custom Billing, Shipping, Applied Gift Cards, Billing, Customer, Legal Documents, Returns, the ERP documents card). `pg_order_view_card_column()` drops the first card's `mt-5` with or without `pg-card`.
-- The order lines are `list-group list-group-flush order-list-group pg-card`: the card frames them; `.order-list-group` only clears the list's own fill and keeps its padding.
+- Only a card straight in its column takes the look by the measure. View Order's cards sit in an inner two-column row, so each prints `card pg-card` (Source, Payment, Affiliate, Custom Billing, Applied Gift Cards, Billing, Customer, Legal Documents, Returns, the ERP documents card). `pg_order_view_card_column()` drops the first card's `mt-5` with or without `pg-card`.
+- The order lines are line rows inside the shipment cards and "Items not shipped" since #11171 (`commerce/order-screen-shipment-card.md`).
 - Orders' summary boxes are `card pg-card h-100`; the sale screen's status cards (Summary, Payment, Ledger account, done) are `card pg-card`.
 
 ## How are titles and values drawn?
