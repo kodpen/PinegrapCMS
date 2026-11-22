@@ -11,6 +11,10 @@ description: SQL that runs without an error but reads or writes the wrong thing:
 ## Which writes go wrong without an error?
 - The assignments of a single-table `UPDATE ... SET` (and of `INSERT ... ON DUPLICATE KEY UPDATE`) run left to right, and a later one sees the NEW value of an earlier column: keep the order the code has (`designer/designer-collab-locking.md`: `session_key` last; `commerce/marketplace-listings.md`; `waf/waf-ban-ladder.md`).
 - Sessions are non-strict, so an ENUM value out of range is stored as `''` and a too long string is cut (`orders-table-write-traps.md`, `files-type-column-width.md`).
+- An empty id bound as text into an `INT` column is stored as 0, with warning 1366 on every write. `USER_ID` and `USER_CONTACT_ID` are `''` for a visitor, so bind ids with `(int)`.
+- Guest orders (`initialize_order()`), the billing step (`billing_information.php`: `contacts.user`, `orders.user_id`), custom form rows (`forms`, `form_data.file_id`, `files.user`, `contacts.user`) and offer codes (`key_codes`) bind them this way since PR #11061.
+- Compare such ids as numbers too. A user with no contact (the administrator an install creates has none) has `USER_CONTACT_ID` null where the order holds 0; `initialize_order()` compared them as text and rewrote the order on every cart change until PR #11061.
+- A `NOT NULL` text column left out of an INSERT (`key_codes.notes`, `contacts.description`) gives warning 1364: write it as `''`.
 
 ## Why not replace a SELECT * with a column list?
 - Some readers depend on columns added after they were written. `pg_pb_copy_row()` (`product_builder.php`) copies a row as `SELECT *` minus its identity, so a column added later is copied too. The OG image resolvers (`pg_og_image_from_file_*()`, `includes/fn/seo.php`) read `files` with `SELECT *` because `image_width`/`image_height` arrived in 2026.1.25 and naming them breaks the query on an older database. A hand-kept list silently stops copying the next column.

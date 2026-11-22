@@ -7,7 +7,8 @@
  * do not require the address a second time (email_verify, or
  * email_address_verify on the membership entrance's own screen), and a
  * second copy that was typed in still has to match the first
- * (pg_member_email_repeat_ok()).
+ * (pg_member_email_repeat_ok()); and on both, a field posted as a list
+ * counts as not given.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -172,4 +173,36 @@ function test_member_activate_asks_the_address_once()
 	$result = member_email_test_post('pg_member_activate', 'membership_entrance',
 		$base + array('email_address' => 'jane@example.com', 'email_address_verify' => 'jane@example.org'));
 	pg_assert_same('The two email addresses you entered did not match.', member_email_test_message($result, 'email_address'), 'entrance screen: another address');
+}
+
+// A field posted as a list (first_name[]=) counts as not given on both
+// entrances. Before, the string casts made it "Array" with a warning: a list
+// first name passed as given and was stored as "Array", and on the membership
+// entrance escape() of it stopped the request.
+function test_member_forms_list_fields_count_as_not_given()
+{
+	$base = array(
+		'first_name' => array('Jane'),
+		'last_name' => 'Cooper',
+		'email' => array('jane@example.com'),
+		'password' => 'a',
+		'password_verify' => 'b',
+	);
+
+	$result = member_email_test_post('pg_member_register', 'register', $base + array('username' => array('jane')));
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same('First Name is required.', member_email_test_message($result, 'first_name'), 'registration: first name');
+	pg_assert_same('Email is required.', member_email_test_message($result, 'email'), 'registration: address');
+	pg_assert_same('Username is required.', member_email_test_message($result, 'username'), 'registration: username');
+
+	$result = member_email_test_post('pg_member_activate', 'membership_entrance', $base + array('member_id' => array('7')));
+	pg_assert_false(isset($result['error']), isset($result['error']) ? $result['error'] : 'ran');
+	pg_assert_same('First Name is required.', member_email_test_message($result, 'first_name'), 'membership: first name');
+	pg_assert_same('Email is required.', member_email_test_message($result, 'email'), 'membership: address');
+	pg_assert_same('Member ID is required.', member_email_test_message($result, 'member_id'), 'membership: member number');
 }
