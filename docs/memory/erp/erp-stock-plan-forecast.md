@@ -17,7 +17,7 @@ description: Stock plan forecast (erp_stock_plan, 11.0.251, #10654): units a day
 - 1 when either window sold under 10 units or the earlier window starts before the record. That is why the fill reads 420 days and rows are kept 430.
 
 ## Supplier and lead time?
-- Supplier: account of the latest issued purchase invoice with the product (not draft, not cancelled), else of the latest non-cancelled purchase order whose `line_data` has it (the newest 5000 orders are read).
+- Supplier: account of the latest issued purchase invoice with the product (not draft, not cancelled), else of the latest non-cancelled purchase order whose `line_data` has it (the newest 5000 orders are read), else its supplier feed's ERP account (`commerce/supplier-feed-cost-api.md`).
 - Lead time: median days from order date to its first purchase invoice over the supplier's last five such orders (even count: the two middle ones averaged with `round()`); else `erp_accounts.lead_days` when above 0; else unknown, `lead_source = 'none'`, no order-by day.
 
 ## Days left, quantity and states? (`erp_stock_plan_forecast()`)

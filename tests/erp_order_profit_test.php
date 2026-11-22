@@ -142,6 +142,44 @@ function test_erp_order_profit_unknown_cost_is_incomplete()
 	pg_assert_same('incomplete', $result['profit']['state']);
 }
 
+// A plain line with no average takes the supplier feed's buy price (base
+// minor units net of VAT), kept like an average, and the order is an
+// Estimate; an average, when there is one, wins.
+function test_erp_order_profit_supplier_buy_price()
+{
+	$result = erp_order_profit_compute(erp_order_profit_test_input(array(
+		'averages' => array(7 => 1000),
+		'suppliers' => array(7 => 800, 9 => 1500),
+	)));
+
+	pg_assert_same(array('item:501' => array('average', 2000), 'item:502' => array('supplier', 1500)),
+		erp_order_profit_test_rows($result, 'product'));
+	pg_assert_same('estimate', $result['profit']['state'], 'a feed cost is an estimate');
+
+	$later = erp_order_profit_compute(erp_order_profit_test_input(array(
+		'averages' => array(7 => 1000, 9 => 2000),
+		'suppliers' => array(),
+		'kept' => array('item:501' => 2000, 'item:502' => 1500),
+		'kept_sources' => array('item:501' => 'average', 'item:502' => 'supplier'),
+	)));
+
+	pg_assert_same(array('item:501' => array('average', 2000), 'item:502' => array('supplier', 1500)),
+		erp_order_profit_test_rows($later, 'product'), 'the kept feed cost is never rewritten');
+	pg_assert_same('estimate', $later['profit']['state'], 'and the order stays an estimate');
+}
+
+// The feed's buy price in the base currency: as kept in the base currency,
+// else divided by units per base unit with round(); none without a rate.
+function test_erp_order_profit_supplier_unit()
+{
+	pg_assert_same(1250, erp_order_profit_supplier_unit(1250, '', 'TRY', 0), 'no currency is the base');
+	pg_assert_same(1250, erp_order_profit_supplier_unit(1250, 'try', 'TRY', 0), 'the base currency');
+	pg_assert_same(35000, erp_order_profit_supplier_unit(1000, 'USD', 'TRY', 1 / 35), 'converted');
+	pg_assert_same(3333, erp_order_profit_supplier_unit(100, 'EUR', 'TRY', 0.03), 'rounded, not cut');
+	pg_assert_same(0, erp_order_profit_supplier_unit(1000, 'USD', 'TRY', 0), 'no rate, no cost');
+	pg_assert_same(0, erp_order_profit_supplier_unit(0, '', 'TRY', 0), 'no buy price');
+}
+
 // Typed rates: percent plus fixed per payment method, a fixed cost per
 // shipping method; either makes the order an Estimate.
 function test_erp_order_profit_typed_rates()
