@@ -182,6 +182,20 @@ function test_order_form_array_scripts_single_values()
 	pg_assert_contains("} elseif (!\$pg_item_posted_as_list && isset(\$_POST['quantity'][\$order_item['id']])) {", $source, 'shopping cart: quantity as a list kept');
 }
 
+// The shipping address and arrival and the shipping method screens are opened
+// with the recipient in the address (?ship_to_id=5). One sent as a list
+// (?ship_to_id[]=5) counts as not given before either screen reads it: both
+// answered it with an error page, since escape() of an array is a TypeError.
+function test_order_form_array_screens_recipient_id()
+{
+	foreach (array('get_shipping_address_and_arrival', 'get_shipping_method') as $script) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $script . '.php');
+		$guard = strpos($source, "pg_request_single_values(array('ship_to_id'));");
+
+		pg_assert_true(($guard !== false) && ($guard < strpos($source, "\$_GET['ship_to_id']")), $script . ': recipient id checked before it is read');
+	}
+}
+
 // The cart and the express order post their quantities and donation amounts as
 // lists keyed by item (quantity[<item>]=). One posted as a single value
 // (quantity=5) counts as not given before any item reads it: the cart page

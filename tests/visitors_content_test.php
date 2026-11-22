@@ -4,8 +4,8 @@
  *
  * Tests for the content section of the Visitors overview
  * (includes/visitors/content.php): the rollup window, the row keys and the
- * earlier figure, the landing pages with the home page folded, and the
- * escaping of the tables.
+ * earlier figure, the landing pages with the home page folded, the escaping
+ * of the tables, and the columns the page rows are grouped by.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -126,4 +126,15 @@ function test_visitors_content_tables_escape_names()
 	pg_assert_true(strpos($html, lang('Homepage')) !== false, 'the home page by name');
 	pg_assert_false(strpos($html, lang('Orders')) !== false, 'no orders column with commerce off');
 	pg_assert_false(strpos($html, lang('Previous period')) !== false, 'no earlier column when not compared');
+}
+
+// The page rows are grouped by the table's columns. The select list names its
+// MAX() results page_id and page_name as well, so a bare name in the grouping
+// is ambiguous: MariaDB answered every load of the Visitors screen with
+// warning 1052. It grouped by the column, so the figures were right.
+function test_visitors_content_page_grouping_names_the_table()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/visitors/content.php');
+
+	pg_assert_contains("\$group = \"visitor_content_hourly.page_id, CASE WHEN visitor_content_hourly.page_id > 0 THEN '' ELSE visitor_content_hourly.page_name END\";", $source, 'page grouping');
 }
