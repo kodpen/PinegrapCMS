@@ -383,7 +383,7 @@ function ws_flow_actions_without_workspace()
         'ws_flow_template_setup', 'ws_flow_quick_setup', 'ws_flow_ai_sketch',
         'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
         'ws_flow_run_start', 'ws_flow_run_now', 'ws_flow_runs_list', 'ws_flow_run_get',
-        'ws_flow_run_cancel', 'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_web_address',
+        'ws_flow_run_cancel', 'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_web_address',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
     );
 }
@@ -1168,6 +1168,30 @@ function ws_handle_action($action, $request)
             unset($result['ok'], $result['error'], $result['status'], $result['field']);
 
             return ws_action_ok(array('try' => $result));
+
+        // The whole draft tried from its start (flow_trial.php): the record
+        // and the outcomes chosen so far in, every step out; nothing sent or
+        // written. The check the API's trial route makes.
+        case 'ws_flow_trial':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            $result = ws_flow_trial($viewer, $flow, array(
+                'run_id'     => (int) ($request['run_id'] ?? 0),
+                'contact_id' => (int) ($request['contact_id'] ?? 0),
+                'outcomes'   => $request['outcomes'] ?? null,
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            unset($result['ok'], $result['error'], $result['status'], $result['field']);
+
+            return ws_action_ok(array('trial' => $result));
 
         // The web address of a flow started by one (flow_web_start.php):
         // shown to and renewed by those who may edit the flow; a renewed

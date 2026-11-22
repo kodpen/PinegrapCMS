@@ -6284,6 +6284,7 @@
     "An assistant does not share a flow; the person does.": "Bir asistan akış paylaşmaz; paylaşımı kişinin kendisi yapar.",
     "An assistant does not share a table; the person does.": "Bir tabloyu asistan paylaşmaz; kişinin kendisi paylaşır.",
     "An assistant does not start or cancel the runs of a flow; the person does.": "Bir asistan bir akışın çalıştırmalarını başlatmaz ya da iptal etmez; bunu kişi yapar.",
+    "An assistant does not try a flow; the person does.": "Asistan bir akışı denemez; bunu kişi yapar.",
     "An assistant does not try again or skip the boxes of a flow's run; the person does.": "Bir asistan bir akış çalışmasının kutularını yeniden denemez veya atlamaz; bunu kişi yapar.",
     "An assistant does not try the boxes of a flow; the person does.": "Bir asistan akışın kutularını denemez; bunu kişinin kendisi yapar.",
     "An assistant finished a run on a workspace task (outcome: answered or failed; agent, request_id, requested_by). The answer itself, and what it proposed, are read with GET /workspace/assistant-requests and GET /workspace/changes by task_id": "Bir asistan bir çalışma alanı görevindeki çalışmasını bitirdi (outcome: answered ya da failed; agent, request_id, requested_by). Yanıtın kendisi ve önerdikleri task_id ile GET /workspace/assistant-requests ve GET /workspace/changes üzerinden okunur",

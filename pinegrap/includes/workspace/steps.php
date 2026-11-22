@@ -2345,9 +2345,14 @@ function ws_step_run($run, $step, $node, $graph, $owner)
  * owner tries its boxes, as only they publish it: the checks and sentences
  * use their rights.
  *
+ * A trial of the whole draft (ws_flow_trial()) tries each box it reaches
+ * here with the values it carried (data trial): the run it stands in for,
+ * the values of the boxes before, and what the texts read beside them.
+ *
  * @param array $viewer
  * @param array $flow ws_flow_for() with access
- * @param array $data node_id, run_id (0 for none)
+ * @param array $data node_id, run_id (0 for none); trial (run, values, fill)
+ *                    from ws_flow_trial() alone, never from a request
  * @return array ok, error, status, field; node_id, kind, label, outcome (what
  *               the box would leave on, '' when it would fail), refusal (why
  *               it would fail), said, texts (key, text), empty (values left
@@ -2397,8 +2402,15 @@ function ws_flow_box_try($viewer, $flow, $data)
     $values = array();
     $fill = null;
     $run_id = (int) ($data['run_id'] ?? 0);
+    $trial = is_array($data['trial'] ?? null) ? $data['trial'] : null;
 
-    if ($run_id > 0) {
+    // A trial's box reads what the trial carried to it.
+    if ($trial !== null) {
+        $run = $trial['run'];
+        $values = (array) $trial['values'];
+        $fill = $trial['fill'];
+        $run_id = 0;
+    } elseif ($run_id > 0) {
         $run = ws_flow_run_for($viewer, $run_id);
 
         if (!$run || ((int) $run['flow_id'] !== (int) $flow['id'])) {
@@ -2422,6 +2434,8 @@ function ws_flow_box_try($viewer, $flow, $data)
     }
 
     $values = ws_flow_pure_values($graph, $values) + $values;
+    // The run's values are known: a run was chosen, or a trial carried them.
+    $known = ($run_id > 0) || ($trial !== null);
 
     $kind = (string) $node['kind'];
     $answer = array(
@@ -2447,7 +2461,7 @@ function ws_flow_box_try($viewer, $flow, $data)
         // The person of the run's record, as the run reads them: only a
         // chosen run has one; one it may not write to sends nothing.
         if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person')) {
-            if ($run_id <= 0) {
+            if (!$known) {
                 return array('outcome' => 'done', 'said' => lang('Writes to the person of the record the run is about: choose a run to see who.')) + $answer;
             }
 
@@ -2468,7 +2482,7 @@ function ws_flow_box_try($viewer, $flow, $data)
         // An SMS to the person of the run's record, as the run reads them;
         // a marketing one only to a number whose person agreed to it.
         if (($kind === 'sms') && (($config['recipient'] ?? '') === 'record_person')) {
-            if ($run_id <= 0) {
+            if (!$known) {
                 return array('outcome' => 'done', 'said' => lang('Writes to the person of the record the run is about: choose a run to see who.')) + $answer;
             }
 
@@ -2486,7 +2500,7 @@ function ws_flow_box_try($viewer, $flow, $data)
         // reads them; the consent of a marketing template is asked as it
         // is queued.
         if (($kind === 'whatsapp') && (($config['recipient'] ?? '') === 'record_person')) {
-            if ($run_id <= 0) {
+            if (!$known) {
                 return array('outcome' => 'done', 'said' => lang('Writes to the person of the record the run is about: choose a run to see who.')) + $answer;
             }
 
@@ -2504,7 +2518,7 @@ function ws_flow_box_try($viewer, $flow, $data)
         // checked.
         $later = ($kind === 'change') && is_string($config['id'] ?? null);
 
-        if ($later && ($run_id > 0)) {
+        if ($later && $known) {
             $config['id'] = ws_step_change_id($config['id'], $values);
             $later = false;
 
@@ -2525,7 +2539,7 @@ function ws_flow_box_try($viewer, $flow, $data)
 
         // Without a run the address's values are only empty, as the texts'
         // are; with one, it is refused as the run would refuse it.
-        $refusal = ($run_id > 0) ? ws_step_url_refusal($kind, $check['action'], $values) : '';
+        $refusal = $known ? ws_step_url_refusal($kind, $check['action'], $values) : '';
 
         if ($refusal !== '') {
             return array('outcome' => 'failed', 'refusal' => $refusal) + $answer;
@@ -2599,6 +2613,14 @@ function ws_flow_box_try($viewer, $flow, $data)
             return array('refusal' => (string) $check['error']) + $answer;
         }
 
+        // A rule on a value of the run reads the values known, as the run
+        // does (ws_flow_condition_run()).
+        if ($check['rule']['type'] === 'value') {
+            $held = ws_flow_condition_value_holds($check['rule'], $values, $graph);
+
+            return array('outcome' => ws_flow_condition_settlement($held['holds'])['outcome'], 'said' => $held['text']) + $answer;
+        }
+
         $held = ws_scheduled_rules_hold($owner, array($check['rule']), array('last_run_at' => 0));
         $end = ws_flow_condition_settlement(!empty($held['ok']));
 
@@ -2628,7 +2650,7 @@ function ws_flow_box_try($viewer, $flow, $data)
     $told = ws_flow_value_try($node, $values);
 
     if ($told === null) {
-        $told = ws_flow_loop_try($graph, $node, $values, $run_id > 0);
+        $told = ws_flow_loop_try($graph, $node, $values, $known);
     }
 
     if ($told !== null) {
@@ -2638,6 +2660,9 @@ function ws_flow_box_try($viewer, $flow, $data)
     switch ($kind) {
         case 'manual':
             return array('outcome' => 'next', 'said' => lang('The flow starts when somebody runs it.')) + $answer;
+
+        case 'web':
+            return array('outcome' => 'next', 'said' => lang('The flow starts when its web address is called.')) + $answer;
 
         // Its title and description as the run opens the task with them.
         case 'task':
