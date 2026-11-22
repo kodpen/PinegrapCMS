@@ -164,7 +164,7 @@
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
 - mcp-form-guidance.md: What MCP tells a model before it writes a form record (PR #8042): guidance on the form write tools, the pinegrap://forms/{id}/fields resource, the blog_post prompt and its text argument
 - mcp-resources-prompts.md: MCP resources (pinegrap://workspace/my-day, channels/{id}/context and /customer, refs/{type}/{id}, forms/{id}/fields) read by their GET routes; prompts; who sees them, errors, caching
-- mcp-tool-budget.md: The MCP tool size budget (AG9): 600 characters a description, 4,096 bytes a tool, the shrink-only lists in the test, and the route key details only OpenAPI reads
+- mcp-tool-budget.md: The MCP tool size budget (AG9): 600 characters a description, 4,096 bytes a tool, every tool held to both by the test since AG12b, and the route key details only OpenAPI reads
 - meta-capi-facts.md: Meta Conversions API as Meta's own documents say it (read 2026-11-20): address and version, body, required fields, hashing, 7-day limit, test code, answers and error codes
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - oauth-client-automation-platforms.md: Whether one OAuth client could serve an automation platform on every site (read 2026-11-17): the client metadata document a site reads, what Zapier, Make, Pabbly and n8n allow, why it is not used [decision: here]

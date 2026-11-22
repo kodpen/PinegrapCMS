@@ -38,6 +38,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - `stock-locations-*`: 7 files.
 - `store-credit-*`: 9 files.
 - `supplier-feed-*`: 9 files; start at `supplier-feed.md`.
+- `walk-in-*`: 6 files.
 
 ## Files
 
