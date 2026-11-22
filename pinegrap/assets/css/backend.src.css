@@ -2386,6 +2386,25 @@ body:not(.toolbar) .software-content {
   padding: 0rem;
 }
 
+/* The foot (output_footer()) stands at the window's bottom when a screen is
+   short and after the content when it scrolls: the content column is at least
+   the window under the top bar, and the foot takes the space left over above
+   it. No fixed foot laid over the content. The visual editor (.toolbar) prints
+   no foot and keeps its own frame. */
+body:not(.toolbar) .software-content {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--pg-navbar-h));
+}
+@supports (height: 100dvh) {
+  body:not(.toolbar) .software-content {
+    min-height: calc(100dvh - var(--pg-navbar-h));
+  }
+}
+body:not(.toolbar) .software-content > #footer {
+  margin-top: auto;
+}
+
 .software-sidebar {
   top: calc(var(--pg-navbar-h) - 1px);
   height: calc(100vh - var(--pg-navbar-h) + 1px);
@@ -3713,16 +3732,25 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
     width: var(--pg-searchbar-w);
     transform: translateX(-50%);
   }
-  /* The heading gives way instead of the field sliding off centre: half the
-     viewport, less half the field, less the logo group and a gap. Where the
-     screen is wide enough the plain 26rem wins and nothing is given up. */
+  /* The heading gives way instead of the field sliding off centre, and its
+     description ends 16px before the field with an ellipsis: half the bar
+     (the field's centre), less half the field, less where the heading starts
+     (the menu button, the logo group and the separator: 234px) and 12px
+     (the 16px gap less the 4px of padding at the heading's end). Where the screen is wide
+     enough the plain 26rem wins and nothing is given up. A private-label
+     logo is narrower, so the gap there is only wider. */
   #header:has(.pg-searchbar) .pg-navhead {
-    max-width: min(26rem, calc(50vw - (var(--pg-searchbar-w) / 2) - 12rem));
+    max-width: min(26rem, calc(50% - (var(--pg-searchbar-w) / 2) - 15.375rem));
   }
   /* One search per screen. */
   #header:has(.pg-searchbar) #EnableSearch {
     display: none;
   }
+}
+/* On a Workspace screen Ctrl+K opens the Workspace's own search, which the
+   list's field in the main menu names; the top bar's field shows no key. */
+body.workspace #header .pg-searchbar-kbd {
+  display: none;
 }
 #header .pg-navhead-title,
 #header .pg-navhead-desc {
@@ -12693,6 +12721,21 @@ body.workspace .ws-shell-main > #button_bar {
 }
 @supports (height: 100dvh) {
   .ws-app { height: calc(100dvh - 8.5rem); }
+}
+/* The channel view prints no foot, so the conversation and its writing box
+   reach the window's bottom. Today (.ws-home, drawn in the same root by
+   showHome()) keeps the foot and the height above. The foot is hidden here
+   rather than left out by output_footer() because the script switches
+   between the two views without loading the page again. */
+body.workspace_channels .software-content:not(:has(.ws-home)) > #footer {
+  /* The foot carries d-flex, and @layer utilities beats @layer custom. */
+  display: none !important;
+}
+.ws-app:not(:has(.ws-home)) {
+  height: calc(100vh - var(--pg-navbar-h));
+}
+@supports (height: 100dvh) {
+  .ws-app:not(:has(.ws-home)) { height: calc(100dvh - var(--pg-navbar-h)); }
 }
 /* A discussion beside the channel (threads.php): a third column on a wide
    screen; on a phone it covers the channel until it is closed (below). */
