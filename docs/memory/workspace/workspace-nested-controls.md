@@ -4,9 +4,9 @@ description: Why the channel list's pin and the search palette's account link ar
 ---
 
 ## Why is the channel pin aria-hidden with no button role?
-- `channelLink()` in `workspace_side.js` appends the pin inside the `<a class="ws-channel-link">`. A `role="button"` there was a control nested in a link that the keyboard could not reach, and on a pinned channel (pin always visible) its title joined the link's name ("general Unpin, link").
+- `channelLink()` in `workspace_side.js` builds the pin, "⋯" and Join with `rowShortcut()` inside the `<a class="ws-channel-link">`; since #11079 they show on pointing only, a pinned row's pin included. A `role="button"` there was a control nested in a link that the keyboard could not reach, and on a pinned channel (pin always visible) its title joined the link's name ("general Unpin, link").
 - It is now `aria-hidden="true"` and stays a mouse shortcut. The keyboard pins from the channel's context menu: Shift+F10 or the menu key on the focused link opens `channelActions()` with Pin/Unpin (workspace.js).
-- Moving the pin out of the `<a>` as a real button would need the `.ws-channel-link .ws-pin` rules in backend.src.css changed too.
+- "⋯" opens the same `channelActions()` menu (`hooks.channelMenu`); Join is reached by opening the channel, whose screen has its button.
 
 ## Why is the palette's 'Open the account' link out of the Tab order?
 - `addRow()` in `workspace_palette.js` puts the link inside a `role="option"` of a listbox driven by `aria-activedescendant`. Its text joined the option name, and Tab from the search box walked onto a row of links all named 'Open the account'.

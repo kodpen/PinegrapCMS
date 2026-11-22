@@ -4,8 +4,10 @@ description: The Workspace composer's unsent text kept on the browser (localStor
 ---
 
 ## Where is an unsent text kept?
-- In `localStorage`, one slot per site, viewer, channel and discussion: `draftKey(CFG.api_url, CFG.me, channel, thread)` (`assets/js/workspace.js`) gives `ws-draft:<api url>|<viewer>:c<channel>[:t<discussion>]`. A person's direct channel is a channel too. Two people on one browser, or two sites on one host, never share a slot.
+- In `localStorage`, one slot per site, viewer, channel and discussion: `draftKey(CFG.api_url, CFG.me, channel, thread)` gives `ws-draft:<api url>|<viewer>:c<channel>[:t<discussion>]`. A person's direct channel is a channel too. Two people on one browser, or two sites on one host, never share a slot.
 - The value is `{ raw, labels, at }`: the box's stored markup (as `send()` would post it, tags as tokens) and the chips' labels, so `setMarkup()` draws the chips back with their names.
+- `draftKey()` and `draftFresh()` live in `assets/js/workspace_side.js` as `window.PGWsDraft` (`prefix`, `days`, `key`, `fresh`), set before the list looks for its box; workspace.js only calls them (#11079). Without the list's script on the page no draft is kept.
+- The list marks a channel or discussion row that holds a draft with a pencil (`workspace-menu-rows.md`).
 - No server side, no schema; another browser or device does not see it.
 
 ## When is it saved, restored, cleared?
@@ -18,8 +20,9 @@ description: The Workspace composer's unsent text kept on the browser (localStor
 - Attachments, files, voice, polls in their form; notes (they save themselves); boxes where nothing can be posted.
 
 ## What are the limits?
-- `DRAFT_DAYS` 14: an older value is not restored and is removed. `DRAFT_KEEP` 50 slots on the browser: `draftPrune()` removes the expired, then the oldest, before every write.
+- `DRAFT_DAYS` 14 (workspace_side.js): an older value is not restored and is removed. `DRAFT_KEEP` 50 slots (workspace.js): `draftPrune()` removes the expired, then the oldest, before every write.
+- `draftWrite()` and `draftRead()` call `PGWsSide.redraw()` when a slot starts or stops holding a draft; another tab hears the `storage` event.
 - Every read and write is in `try`/`catch`: a private window, blocked storage or a full quota keeps nothing and the box works the same.
 
 ## How is it tested?
-- tests/workspace_unsent_draft_test.php runs `draftKey()`, `draftFresh()`, `draftPrune()` under Node and holds the wiring. Restore after a reload and two tabs on one channel (the last save wins) were not run in a browser.
+- tests/workspace_unsent_draft_test.php runs `draftKey()`, `draftFresh()` (from workspace_side.js) and `draftPrune()` under Node and holds the wiring. Restore after a reload and two tabs on one channel (the last save wins) were not run in a browser.
