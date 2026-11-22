@@ -14287,13 +14287,19 @@
                     }
 
                     event.preventDefault();
-                    self.showImage(file.url);
+                    self.showImage(file.drawn || file.url);
                 });
 
                 // An agent's canvas still blank: this browser draws its
                 // picture (assets/js/workspace_canvas_picture.js).
                 if (file.canvas_pending && window.PGWsCanvasPicture) {
                     window.PGWsCanvasPicture.mount(message, img, link, featureHelpers());
+                }
+
+                // A canvas with data layers: drawn again from the rows this
+                // reader may read.
+                if (file.canvas_data && window.PGWsCanvasPicture) {
+                    window.PGWsCanvasPicture.follow(message, img, featureHelpers());
                 }
 
                 // A person's canvas an agent edited: who did, and Undo for
@@ -14837,11 +14843,15 @@
 
             this.messages.forEach(function (message) {
                 if (message.file && message.file.image && !message.deleted) {
-                    if (message.file.url === url) {
+                    // A canvas following its tables shows the card's drawing
+                    // of the reader's rows (PGWsCanvasPicture.follow()).
+                    var shown = message.file.drawn || message.file.url;
+
+                    if (shown === url) {
                         start = images.length;
                     }
 
-                    images.push({ src: message.file.url, alt: message.file.name, caption: (message.sender ? message.sender.name + ' · ' : '') + message.time + ' · ' + message.file.name });
+                    images.push({ src: shown, alt: message.file.name, caption: (message.sender ? message.sender.name + ' · ' : '') + message.time + ' · ' + message.file.name });
                 }
             });
 

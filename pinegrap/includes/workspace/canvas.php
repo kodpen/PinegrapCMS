@@ -400,7 +400,7 @@ function ws_canvas_picture_url($url, $newest)
  * query; null for a picture with no kept document.
  *
  * @param int $file_id
- * @return array|null version_no, pending, server, edited_by
+ * @return array|null version_no, pending, server, data, edited_by
  */
 function ws_canvas_message_state($file_id)
 {
@@ -413,7 +413,7 @@ function ws_canvas_message_state($file_id)
     // document. Whether an earlier version is there tells an edit from
     // the version the agent made the canvas with.
     $row = db_item("SELECT version_no, source, doc_json <> '' AS has_doc, doc_json LIKE '%\"picture\":\"pending\"%' AS marked,
-            doc_json LIKE '%\"picture\":\"server\"%' AS served,
+            doc_json LIKE '%\"picture\":\"server\"%' AS served, doc_json LIKE '%\"type\":\"data\"%' AS charted,
             IF(source = 'agent', SUBSTRING(doc_json, LOCATE('\"by\":{', doc_json), 300), '') AS by_part,
             (SELECT COUNT(*) FROM file_versions AS older WHERE older.file_id = file_versions.file_id AND older.version_no < file_versions.version_no) AS earlier
         FROM file_versions WHERE file_id = '" . (int) $file_id . "' ORDER BY version_no DESC LIMIT 1");
@@ -425,6 +425,9 @@ function ws_canvas_message_state($file_id)
     }
 
     return $state + array(
+        // A data layer in it: the card draws it again from the reader's
+        // rows (workspace_canvas_picture.js, follow()).
+        'data'      => !empty($row['charted']),
         'edited_by' => (((string) $row['source'] === 'agent') && ((int) $row['earlier'] > 0)) ? ws_canvas_by_handle((string) $row['by_part']) : '',
     );
 }

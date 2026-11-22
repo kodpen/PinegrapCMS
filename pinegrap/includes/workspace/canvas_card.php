@@ -143,6 +143,8 @@ function ws_canvas_joined_card($message, $can_post, $viewer)
             'version' => (int) $state['version_no'],
             // The version a browser draws and posts, 0 for none.
             'pending' => (($state['pending'] || $state['server']) && $can_post) ? (int) $state['version_no'] : 0,
+            // A data layer in it: drawn again from the reader's rows.
+            'data'    => !empty($state['data']),
         ),
         'page'     => $page,
         'versions' => ws_canvas_card_versions(array(

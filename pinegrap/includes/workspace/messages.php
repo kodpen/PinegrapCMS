@@ -507,6 +507,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 'thumb'    => ($kind === 'image') ? ws_file_thumb_url(ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas)) : '',
                 // The version a browser draws and posts (canvas_picture), 0 for none.
                 'canvas_pending' => ($canvas && ($canvas['pending'] || $canvas['server']) && $can_post) ? $canvas['version_no'] : 0,
+                // A canvas with a data layer: this browser draws it again
+                // from the rows its reader may read (pg_image_editor_data_card_reads()).
+                'canvas_data'    => $canvas && !empty($canvas['data']),
                 // A person's canvas an agent edited: "Edited by @handle", and
                 // Undo for whoever may edit the message (ws_canvas_undo()
                 // checks it again).
