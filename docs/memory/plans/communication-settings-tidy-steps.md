@@ -4,7 +4,7 @@ description: Plan communication-settings-tidy, steps CM1 to CM3: the pane as fol
 ---
 
 ## Which steps are there?
-- CM1 (M) first: Communication as folded rows (`pg_settings_fold()`); the Chat card rebuilt as "Chat" (`pgset-chat`) and "Chat on the site" (`pgset-chat-site`, new) with no popover; SMS, SMS messages, WhatsApp, WhatsApp messages and İYS wrapped as rows around what their functions draw.
+- CM1 (M) first, done (#11151): Communication as folded rows (`pg_settings_fold()`); the Chat card rebuilt as "Chat" (`pgset-chat`) and "Chat on the site" (`pgset-chat-site`, new) with no popover; SMS, SMS messages, WhatsApp, WhatsApp messages and İYS wrapped as rows around what their functions draw.
 - In CM1 the bubble's fields' anchors (`chat_site_enabled`, `chat_operator_user_id`, `chat_captcha`) open "Chat on the site" (`pg_settings_legacy_anchors()`); the registry keywords split between the two rows. Fixes: H1 to H5.
 - Tests of CM1: `tests/settings_card_ids_test.php` and `settings_card_names_test.php` with the new id; every chat field posts under its old name, `contact.save.php` unchanged; a row an anchor names arrives open.
 
