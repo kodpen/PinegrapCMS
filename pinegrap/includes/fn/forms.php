@@ -4278,6 +4278,23 @@ function generate_email_recipient_reference_code()
         return $reference_code;
     }
 }
+
+/**
+ * Whether a value can be an e-mail recipient's reference code: letters and
+ * digits, at most ten, as generate_email_recipient_reference_code() writes
+ * them. A recipient gets its code when the campaign is sent, so one still
+ * waiting has an empty code, and the column's collation ignores characters
+ * such as NUL or a zero-width space: a value made only of those equalled the
+ * empty code in a lookup. Pure.
+ *
+ * @param mixed $code the value sent
+ * @return bool
+ */
+function pg_email_recipient_code_valid($code)
+{
+    return is_string($code) && (preg_match('/^[A-Za-z0-9]{1,10}\z/', $code) === 1);
+}
+
 function generate_form_reference_code()
 {
     $characters = array(

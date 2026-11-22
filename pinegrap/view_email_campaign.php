@@ -24,17 +24,27 @@ $_GET['r'] = (isset($_GET['r']) && is_string($_GET['r'])) ? $_GET['r'] : '';
 
 // if there is a reference code, check to see if it exists
 if ($_GET['r']) {
-    // get e-mail campaign id and contact id based on reference id
-    $query =
-        "SELECT
-            email_address,
-            email_campaign_id,
-            contact_id
-        FROM email_recipients
-        WHERE reference_code = ?";
-    $result = db_q($query, array((string) $_GET['r'])) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
-    
+    $row = null;
+
+    // Only a value shaped like a code the campaign send writes is looked up,
+    // and never the empty code of a recipient still waiting for the send: the
+    // column's collation reads NUL, U+0001 or a zero-width space as nothing,
+    // so ?r=%00 matched such a recipient and showed its unsent campaign.
+    if (pg_email_recipient_code_valid($_GET['r'])) {
+        // get e-mail campaign id and contact id based on reference id
+        $query =
+            "SELECT
+                email_address,
+                email_campaign_id,
+                contact_id
+            FROM email_recipients
+            WHERE
+                (reference_code = ?)
+                AND (reference_code <> '')";
+        $result = db_q($query, array((string) $_GET['r'])) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
+    }
+
     // An unknown reference code leaves these empty and ends on the "could not
     // be found" error below.
     $email_address = $row['email_address'] ?? '';
@@ -86,6 +96,12 @@ $query =
     WHERE id = ?";
 $result = db_q($query, array((string) $email_campaign_id)) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
+
+// A recipient whose campaign is gone (deleted meanwhile, or a recipient row
+// left with no campaign) has nothing to show.
+if (!$row) {
+    output_error(lang('The e-mail campaign could not be found. The reference code might be invalid or missing.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
 
 $type = $row['type'];
 $action = $row['action'];

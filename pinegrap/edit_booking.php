@@ -47,7 +47,9 @@ $booking_now = time();
 $booking_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $booking = array();
 
-if ($booking_id > 0) {
+// Any id but 0 (a new booking) names an existing one: a negative id ends on
+// "Record not found." like an unknown one, not on the form with an empty row.
+if ($booking_id !== 0) {
     $booking = db_item("SELECT * FROM bookings WHERE id = '" . $booking_id . "'" . pg_booking_agenda_scope_sql($booking_scope));
 
     if (!$booking) {
