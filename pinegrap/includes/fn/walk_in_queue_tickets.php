@@ -336,6 +336,8 @@ function pg_waiting_take($place, $values, $way, $now = null)
     // Few ahead already: the "taken" notice says so, no second one.
     $notices = pg_waiting_ahead_due($ahead, $place['settings']['notices']['ahead'], 0) ? pg_waiting_notice_bit('ahead') : 0;
 
+    $written = false;
+
     for ($try = 0; $try < 5; $try++) {
         $count = pg_waiting_next_count(db_value("SELECT MAX(number) FROM waiting_tickets WHERE place_id = '" . (int) $place['id'] . "' AND day = '" . $day . "' AND service = '" . e($values['service']) . "'"));
         $written = db_q("INSERT INTO waiting_tickets (place_id, service, letter, day, number, state, source, party_size, notices, joined_at, name, phone, email) VALUES (?, ?, ?, ?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?)", array(
@@ -509,7 +511,7 @@ function pg_waiting_notify($ticket, $place, $kind, $extra = array())
         'number' => pg_waiting_number($ticket['letter'], $ticket['number']),
         'desk'   => (string) ($extra['desk'] ?? ''),
         'ahead'  => (string) (int) ($extra['ahead'] ?? 0),
-        'link'   => ($kind === 'called') ? '' : pg_waiting_ticket_link(pg_waiting_page_url(), $ticket['id'], pg_waiting_ticket_token($ticket['id'], $ticket['joined_at'], pg_booking_key())),
+        'link'   => pg_waiting_ticket_link(pg_waiting_page_url(), $ticket['id'], pg_waiting_ticket_token($ticket['id'], $ticket['joined_at'], pg_booking_key())),
     );
     $text = pg_waiting_notice_text($kind, $notices['texts'][$kind] ?? '', $values);
     $reference = 'queue:' . (int) $ticket['id'] . ':' . $kind;
