@@ -51,6 +51,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-16.md: Where are the rules and the earlier parts?
 - decisions-made-panel-16.md: Is the bell's drawer redrawn? (owner, 2026-11-22, agent channel poll 218, message 11888)
 - decisions-made-panel-16.md: How is it built? (architect, 2026-11-22)
+- decisions-made-panel-17.md: Where are the rules and the earlier parts?
+- decisions-made-panel-17.md: Are the main menu's row icons redrawn? (owner, 2026-11-22, agent channel)
+- decisions-made-panel-17.md: Does the menu's structure change? (owner, 2026-11-22, message 12156)
+- decisions-made-panel-17.md: What does the System tools row open? (owner, 2026-11-22, agent channel poll 220, message 12163)
+- decisions-made-panel-17.md: How is it built? (architect, 2026-11-22)
 - decisions-made-panel-2.md: Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why are the panel entries' icons on coloured tiles? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)

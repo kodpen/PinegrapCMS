@@ -111,6 +111,8 @@
 - mail-settings-one-screens.md: Plan mail-settings-one, its screens: the E-mail category's two tabs, the Sending tab's rows, Add a mailbox with Sign in with Google, built from the architect's design files
 - mail-settings-one-steps.md: Plan mail-settings-one, steps EM1 to EM6: the E-mail category's two tabs, the Sending tab's rows, the sending domain in one place, one account for both, Sign in with Google, close-out
 - mail-settings-one.md: Plan (owner 2026-11-21): one E-mail category with Sending and Mailboxes tabs, the e-mail settings' contradictions fixed, one account for sending and reading, Sign in with Google when adding a box
+- main-menu-icons-redraw-rows.md: Plan main-menu-icons-redraw, the rows: which drawing of ui/main-menu-icons-drawing/icons.js each menu_icon name takes, its idea and hover move, the timing and the live parts
+- main-menu-icons-redraw.md: Plan (owner 2026-11-22): main menu row icons redrawn as one line family on category-coloured tiles with one hover move each; the System tools row's panel as one list; steps MI1 to MI3
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
