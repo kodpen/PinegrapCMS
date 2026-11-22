@@ -2848,16 +2848,8 @@
         return (start < 0 || end < 0) ? null : [Math.min(start, end), Math.max(start, end)];
     }
 
-    // A paragraph's own text drawn plain, tabs and line breaks the way the
-    // server draws them; an empty one keeps its line.
-    function drawText(node, text) {
-        node.textContent = '';
-
-        if (text === '') {
-            node.appendChild(document.createTextNode(' '));
-            return;
-        }
-
+    // Text into a node, tabs and line breaks the way the server draws them.
+    function appendText(node, text) {
         text.split('\n').forEach(function (line, index) {
             if (index > 0) {
                 node.appendChild(document.createElement('br'));
@@ -2875,6 +2867,125 @@
         });
     }
 
+    // A paragraph's own text drawn plain, or with bold, italic and underline
+    // (bits, one a character: 1, 2 and 4) as the server draws them; an
+    // empty one keeps its line.
+    function drawText(node, text, bits) {
+        node.textContent = '';
+
+        if (text === '') {
+            node.appendChild(document.createTextNode(' '));
+            return;
+        }
+
+        if (!bits) {
+            appendText(node, text);
+            return;
+        }
+
+        var start = 0;
+
+        for (var index = 1; index <= text.length; index++) {
+            if (index < text.length && (bits[index] || 0) === (bits[start] || 0)) {
+                continue;
+            }
+
+            var look = bits[start] || 0;
+            var outer = node;
+
+            [[4, 'u'], [2, 'em'], [1, 'strong']].forEach(function (pair) {
+                if (look & pair[0]) {
+                    outer = outer.appendChild(document.createElement(pair[1]));
+                }
+            });
+
+            appendText(outer, text.slice(start, index));
+            start = index;
+        }
+    }
+
+    // The bits of bold (1), italic (2) and underline (4) a format sends.
+    var DOC_FORMATS = [['bold', 1], ['italic', 2], ['underline', 4]];
+
+    // A paragraph's look, a number for each UTF-16 unit of its text, from
+    // the stretches the server sent ([[characters, bits], ...]), which count
+    // characters: one outside the basic plane takes two units.
+    function expandMarks(marks, text) {
+        var bits = [];
+        var points = Array.from(text);
+        var at = 0;
+
+        (marks || []).forEach(function (mark) {
+            for (var count = 0; count < mark[0] && at < points.length; count++, at++) {
+                for (var unit = 0; unit < points[at].length; unit++) {
+                    bits.push(mark[1]);
+                }
+            }
+        });
+
+        while (bits.length < text.length) {
+            bits.push(0);
+        }
+
+        return bits;
+    }
+
+    // A look carried over to a changed text: the characters kept at the
+    // start and the end keep theirs, the ones typed between take the look
+    // of the character before them (after them at the start), as the
+    // server puts typed text into the run before it.
+    function carryMarks(bits, before, after) {
+        var head = 0;
+        var tail = 0;
+
+        while (head < before.length && head < after.length && before[head] === after[head]) {
+            head++;
+        }
+
+        while (tail < before.length - head && tail < after.length - head && before[before.length - 1 - tail] === after[after.length - 1 - tail]) {
+            tail++;
+        }
+
+        var middle = after.length - head - tail;
+        var near = head > 0 ? bits[head - 1] : (tail > 0 ? bits[before.length - tail] : 0);
+        var out = bits.slice(0, head);
+
+        for (var count = 0; count < middle; count++) {
+            out.push(near || 0);
+        }
+
+        return out.concat(bits.slice(before.length - tail));
+    }
+
+    // The stretches whose bold, italic or underline differ between the
+    // file's look and the one asked for, as a save sends them.
+    function formatRanges(base, want) {
+        var list = [];
+
+        DOC_FORMATS.forEach(function (format) {
+            var bit = format[1];
+            var start = -1;
+
+            for (var index = 0; index <= want.length; index++) {
+                var differs = index < want.length && (want[index] & bit) !== (base[index] & bit);
+
+                if (start >= 0 && (!differs || !!(want[index] & bit) !== !!(want[start] & bit))) {
+                    var set = {};
+
+                    set[format[0]] = !!(want[start] & bit);
+                    list.push({ start: start, end: index, set: set });
+                    start = -1;
+                }
+
+                if (differs && start < 0) {
+                    start = index;
+                }
+            }
+        });
+
+        return list;
+    }
+
     // A document as the safe HTML the server made. Read for editing, the
     // paragraphs it marked (data-p) may be given a new text, except those it
     // marked as holding more than text (data-lock); the server checks the
@@ -2888,16 +2999,26 @@
         var edit = office.edit || null;
         var editable = !!(options && options.editable) && !!edit;
         var texts = (edit && edit.ok && edit.paragraphs) ? edit.paragraphs : {};
+        var marks = (edit && edit.ok && edit.marks) ? edit.marks : {};
 
         // By position: the text typed, and the server's drawing of a
         // paragraph opened, to put back when its change is undone.
         var changes = {};
         var drawn = {};
 
+        // By position, the bold, italic and underline of a paragraph whose
+        // text was selected for them: the text they are counted in, the
+        // file's look and the one asked for, a number a character
+        // (DOC_FORMATS). The bar above the document sets them.
+        var looks = {};
+        var bar = null;
+        var controls = {};
+
         // The paragraphs marked, the one picked, the one pressed on while it
-        // was already picked, the open editor, and what the status line adds.
+        // was already picked, the open editor, what was selected in it when
+        // it closed, and what the status line adds.
         var nodes = [];
-        var shown = { node: null, pressed: null, editor: null, note: '' };
+        var shown = { node: null, pressed: null, editor: null, last: null, note: '' };
 
         doc.setAttribute('aria-label', strings.doc || '');
 
@@ -2953,8 +3074,64 @@
             return list;
         }
 
+        // The text a paragraph has now: typed in its open box, changed, or
+        // the file's.
+        function textNow(position) {
+            if (shown.editor && shown.editor.position === position) {
+                return normal(shown.editor.input.value);
+            }
+
+            return own(changes, position) ? changes[position] : texts[position];
+        }
+
+        // A paragraph's look carried over to the text it has now; made from
+        // the file's when asked to, else null when none was touched.
+        function lookOf(position, make) {
+            var text = textNow(position);
+            var look = own(looks, position) ? looks[position] : null;
+
+            if (!look) {
+                if (!make) {
+                    return null;
+                }
+
+                var bits = expandMarks(marks[position], texts[position]);
+
+                look = looks[position] = { text: texts[position], base: bits, want: bits.slice() };
+            }
+
+            if (look.text !== text) {
+                look.base = carryMarks(look.base, look.text, text);
+                look.want = carryMarks(look.want, look.text, text);
+                look.text = text;
+            }
+
+            return look;
+        }
+
+        function formatted(position) {
+            var look = lookOf(position, false);
+
+            return !!look && look.want.some(function (bits, index) {
+                return bits !== look.base[index];
+            });
+        }
+
+        // The paragraphs changed: a new text, a format, or both.
+        function positionsNow() {
+            var list = Object.keys(changesNow());
+
+            Object.keys(looks).forEach(function (position) {
+                if (list.indexOf(position) < 0 && formatted(position)) {
+                    list.push(position);
+                }
+            });
+
+            return list;
+        }
+
         function count() {
-            return Object.keys(changesNow()).length;
+            return positionsNow().length;
         }
 
         function drawStatus() {
@@ -2992,6 +3169,102 @@
             }
         }
 
+        // The text selected for the bar, counted in the paragraph's text as
+        // it is now: in the open box, or in the box of the paragraph still
+        // picked when it closed. null when none.
+        function selectedText() {
+            var range = null;
+
+            if (shown.editor) {
+                var input = shown.editor.input;
+
+                range = {
+                    node: shown.editor.node,
+                    position: shown.editor.position,
+                    start: Math.min(input.selectionStart, input.selectionEnd),
+                    end: Math.max(input.selectionStart, input.selectionEnd)
+                };
+            } else if (shown.last && shown.last.node === shown.node) {
+                range = shown.last;
+            }
+
+            return (range && range.start < range.end) ? range : null;
+        }
+
+        // Sets bold, italic or underline on the selected text, or takes it
+        // off when all of it has it already, as a word processor does.
+        function applyFormat(format) {
+            var range = selectedText();
+
+            if (!range) {
+                shown.note = strings.doc_format_select || '';
+                drawStatus();
+                return;
+            }
+
+            var look = lookOf(range.position, true);
+            var bit = format[1];
+            var end = Math.min(range.end, look.want.length);
+            var all = true;
+            var index;
+
+            for (index = range.start; index < end; index++) {
+                all = all && !!(look.want[index] & bit);
+            }
+
+            for (index = range.start; index < end; index++) {
+                look.want[index] = all ? (look.want[index] & ~bit) : (look.want[index] | bit);
+            }
+
+            shown.note = '';
+
+            if (!shown.editor) {
+                redraw(range.node);
+            }
+
+            drawBar();
+            notify();
+        }
+
+        // Ctrl+B, Ctrl+I and Ctrl+U (Cmd on a Mac) format the selection.
+        function formatKey(event) {
+            if (!bar || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) {
+                return false;
+            }
+
+            var index = ['b', 'i', 'u'].indexOf(String(event.key).toLowerCase());
+
+            if (index < 0) {
+                return false;
+            }
+
+            event.preventDefault();
+            applyFormat(DOC_FORMATS[index]);
+
+            return true;
+        }
+
+        // The bar's buttons pressed when all of the selected text has theirs.
+        function drawBar() {
+            if (!bar) {
+                return;
+            }
+
+            var range = selectedText();
+            var look = range ? lookOf(range.position, true) : null;
+
+            DOC_FORMATS.forEach(function (format) {
+                var on = !!look;
+
+                for (var index = range ? range.start : 0; on && index < Math.min(range.end, look.want.length); index++) {
+                    on = !!(look.want[index] & format[1]);
+                }
+
+                controls[format[0]].setAttribute('aria-pressed', on ? 'true' : 'false');
+                controls[format[0]].classList.toggle('is-active', on);
+            });
+        }
+
         function paragraphOf(target) {
             var node = (target && target.closest) ? target.closest('[data-p]') : null;
 
@@ -3008,6 +3281,10 @@
                 shown.node.tabIndex = -1;
             }
 
+            if (shown.last && shown.last.node !== node) {
+                shown.last = null;
+            }
+
             shown.node = node;
             node.classList.add('office-selected');
             node.tabIndex = 0;
@@ -3021,6 +3298,7 @@
             // pointer to show its title.
             shown.note = node.classList.contains('office-locked') ? (node.title || '') : '';
             drawStatus();
+            drawBar();
         }
 
         // The marked paragraph before or after one, in the order they read.
@@ -3034,14 +3312,16 @@
         // drawing when it has none.
         function redraw(node) {
             var position = node.getAttribute('data-p');
+            var look = lookOf(position, false);
+            var shaped = formatted(position);
 
-            if (own(changes, position)) {
-                drawText(node, changes[position]);
+            if (own(changes, position) || shaped) {
+                drawText(node, textNow(position), look ? look.want : null);
             } else if (own(drawn, position)) {
                 node.innerHTML = drawn[position];
             }
 
-            node.classList.toggle('office-edited', own(changes, position));
+            node.classList.toggle('office-edited', own(changes, position) || shaped);
         }
 
         // Remembers a paragraph's text as a change, unless it is the file's
@@ -3067,6 +3347,17 @@
             if (!editor) {
                 return;
             }
+
+            var input = editor.input;
+
+            // What was selected stays the bar's to change, unless the text
+            // typed was undone (or holds a line end the text counts apart).
+            shown.last = (save && normal(input.value) === input.value) ? {
+                node: editor.node,
+                position: editor.position,
+                start: Math.min(input.selectionStart, input.selectionEnd),
+                end: Math.max(input.selectionStart, input.selectionEnd)
+            } : null;
 
             shown.editor = null;
             editor.node.classList.remove('office-editing');
@@ -3120,6 +3411,10 @@
                 notify();
             });
 
+            ['select', 'keyup', 'mouseup'].forEach(function (type) {
+                input.addEventListener(type, drawBar);
+            });
+
             input.addEventListener('blur', function () {
                 if (shown.editor && shown.editor.input === input) {
                     closeEditor(true);
@@ -3137,6 +3432,10 @@
                 }
 
                 var key = event.key;
+
+                if (formatKey(event)) {
+                    return;
+                }
 
                 if ((event.ctrlKey || event.metaKey) && (key === 's' || key === 'S')) {
                     event.preventDefault();
@@ -3259,6 +3558,11 @@
                 return;
             }
 
+            if (event.target === shown.node && formatKey(event)) {
+                event.stopPropagation();
+                return;
+            }
+
             if (event.target !== shown.node) {
                 return;
             }
@@ -3277,6 +3581,39 @@
             }
         });
 
+        // The bar over a document with a paragraph that may change.
+        if (edit.ok && nodes.some(function (node) { return !node.classList.contains('office-locked'); })) {
+            bar = el('div', 'office-format');
+            bar.setAttribute('role', 'toolbar');
+            bar.setAttribute('aria-label', strings.doc_format_bar || '');
+
+            [['bi-type-bold', strings.format_bold], ['bi-type-italic', strings.format_italic], ['bi-type-underline', strings.doc_underline]].forEach(function (item, index) {
+                var button = el('button', 'pg-icon-button pg-icon-button-sm');
+                var glyph = el('span', 'bi ' + item[0]);
+
+                button.type = 'button';
+                button.setAttribute('aria-pressed', 'false');
+                button.setAttribute('aria-label', item[1] || '');
+                button.title = item[1] || '';
+                glyph.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+
+                // A press keeps the focus, and so the selection, in the box.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    applyFormat(DOC_FORMATS[index]);
+                });
+
+                controls[DOC_FORMATS[index][0]] = button;
+                bar.appendChild(button);
+            });
+
+            container.insertBefore(bar, doc);
+        }
+
+        drawBar();
         drawStatus();
         container.appendChild(status);
 
@@ -3287,18 +3624,40 @@
             edits: function () {
                 var list = changesNow();
 
-                return Object.keys(list).map(Number).sort(function (a, b) {
+                return positionsNow().map(Number).sort(function (a, b) {
                     return a - b;
                 }).map(function (position) {
-                    return { p: position, text: list[position] };
+                    var key = String(position);
+                    var item = { p: position };
+
+                    if (own(list, key)) {
+                        item.text = list[key];
+                    }
+
+                    if (formatted(key)) {
+                        var look = lookOf(key, false);
+
+                        // The server counts characters, not the UTF-16
+                        // units of a string here.
+                        item.format = formatRanges(look.base, look.want).map(function (range) {
+                            range.start = Array.from(look.text.slice(0, range.start)).length;
+                            range.end = Array.from(look.text.slice(0, range.end)).length;
+
+                            return range;
+                        });
+                    }
+
+                    return item;
                 });
             },
             reset: function () {
                 closeEditor(false);
 
-                var positions = Object.keys(changes);
+                var positions = Object.keys(changes).concat(Object.keys(looks));
 
                 changes = {};
+                looks = {};
+                shown.last = null;
 
                 positions.forEach(function (position) {
                     var node = doc.querySelector('[data-p="' + position + '"]');
@@ -3546,6 +3905,14 @@
             csvField: csvField,
             csvText: csvText,
             csvName: csvName
+        },
+        // A document's bold, italic and underline, which read no page: the
+        // look the server sent, carried over a changed text, and the
+        // stretches a save sends.
+        docMarks: {
+            expandMarks: expandMarks,
+            carryMarks: carryMarks,
+            formatRanges: formatRanges
         },
         render: function (container, office, strings, options) {
             strings = strings || {};

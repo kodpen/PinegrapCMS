@@ -4,7 +4,9 @@ description: What the Word and Excel support does not do and why: edits stop at 
 ---
 
 ## What does "simple editing" mean?
-- Cell edits, one inserted or deleted row or column, or one added, renamed, deleted or moved sheet at a time in a workbook (`office-cell-edits.md`, `office-sheet-rows-columns.md`, `office-sheets.md`) and paragraph text in a document (`office-paragraph-edits.md`), in the file window and a channel's preview (owner request 2026-10-19). An editor that keeps the whole layout needs a document server such as OnlyOffice, which shared hosting cannot run, so none is planned.
+- Cell edits, one inserted or deleted row or column, or one added, renamed, deleted or moved sheet at a time in a workbook (`office-cell-edits.md`, `office-sheet-rows-columns.md`, `office-sheets.md`) and paragraph text in a document (`office-paragraph-edits.md`), in the file window and a channel's preview (owner request 2026-10-19).
+- A document's selected text also takes bold, italic and underline (`office-docx-format.md`).
+- An editor that keeps the whole layout needs a document server such as OnlyOffice, which shared hosting cannot run, so none is planned.
 
 ## Which files are out?
 - .pptx: shown as a list of slides, only looked at (`office-pptx-preview.md`); never edited.

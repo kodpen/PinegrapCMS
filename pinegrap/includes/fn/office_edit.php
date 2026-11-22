@@ -3110,7 +3110,9 @@ function pg_office_docx_edit_refusal($zip)
  * Writes changed paragraph texts into a document on disk.
  *
  * @param string $path      the document
- * @param array  $changes   list of [p => the paragraph's position (pg_office_docx_paragraphs()), text => the new text]
+ * @param array  $changes   list of [p => the paragraph's position (pg_office_docx_paragraphs()), text => the new text,
+ *                          format => stretches to make bold, italic or underlined (pg_office_docx_format_request())];
+ *                          text or format may be left out when the other is there
  * @param string $version   what the person opened (pg_office_version())
  * @param string $directory where the new package is built; data/temp when ''
  * @return array ok, code, error, size, version, changed
@@ -3133,7 +3135,9 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
         return $fail('many');
     }
 
-    // A paragraph named twice takes the last text.
+    // A paragraph named twice takes the last change. A change holds a new
+    // text, a format change of stretches of the text (written after the
+    // text, counted in it: includes/fn/office_docx_format.php), or both.
     $wanted = array();
 
     foreach ($changes as $change) {
@@ -3141,17 +3145,31 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
             return $fail('none');
         }
 
-        $text = pg_office_xlsx_clean_text(isset($change['text']) ? $change['text'] : '');
+        $format = null;
 
-        if ($text === null) {
-            return $fail('text');
+        if (isset($change['format'])) {
+            $format = pg_office_docx_format_request($change['format']);
+
+            if ($format === null) {
+                return $fail('none');
+            }
         }
 
-        if (mb_strlen($text, 'UTF-8') > PG_OFFICE_EDIT_MAX_PARAGRAPH) {
-            return $fail('long');
+        $text = null;
+
+        if (($format === null) || isset($change['text'])) {
+            $text = pg_office_xlsx_clean_text(isset($change['text']) ? $change['text'] : '');
+
+            if ($text === null) {
+                return $fail('text');
+            }
+
+            if (mb_strlen($text, 'UTF-8') > PG_OFFICE_EDIT_MAX_PARAGRAPH) {
+                return $fail('long');
+            }
         }
 
-        $wanted[(int) $change['p']] = $text;
+        $wanted[(int) $change['p']] = array('text' => $text, 'format' => $format);
     }
 
     $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
@@ -3180,7 +3198,7 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
  * in, and writes it to a file.
  *
  * @param ZipArchive $zip
- * @param array      $wanted paragraph position => new text
+ * @param array      $wanted paragraph position => [text => the new text or null, format => stretches or null]
  * @param callable   $fail
  * @param callable   $spool  writes a part to a file (pg_office_save_package())
  * @return array ok, parts (part name => file), changed; or a refusal
@@ -3217,7 +3235,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
     // Every paragraph is checked before any is written.
     $edits = array();
 
-    foreach ($wanted as $position => $text) {
+    foreach ($wanted as $position => $change) {
         if (!isset($paragraphs[$position])) {
             return $fail('missing', (string) ($position + 1));
         }
@@ -3228,7 +3246,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
             return $fail('locked', (string) ($position + 1));
         }
 
-        if ($edit['text'] !== $text) {
+        if (($change['text'] !== null) && ($edit['text'] !== $change['text'])) {
             $edits[$position] = $edit;
         }
     }
@@ -3239,12 +3257,28 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool)
     $budget = 2000000;
 
     foreach ($edits as $position => $edit) {
-        $cost = min(250000, count(pg_office_text_tokens($edit['text'])) * count(pg_office_text_tokens($wanted[$position])));
+        $text = $wanted[$position]['text'];
+        $cost = min(250000, count(pg_office_text_tokens($edit['text'])) * count(pg_office_text_tokens($text)));
         $limit = ($cost <= $budget) ? 250000 : 0;
         $budget -= ($cost <= $budget) ? $cost : 0;
 
-        pg_office_docx_paragraph_write($paragraphs[$position], $edit, $wanted[$position], $limit);
+        pg_office_docx_paragraph_write($paragraphs[$position], $edit, $text, $limit);
         $changed++;
+    }
+
+    // Formats go on the texts as they now stand.
+    foreach ($wanted as $position => $change) {
+        if ($change['format'] === null) {
+            continue;
+        }
+
+        $code = pg_office_docx_paragraph_format($paragraphs[$position], $change['format']);
+
+        if ($code !== '') {
+            return $fail($code, (string) ($position + 1));
+        }
+
+        $changed += isset($edits[$position]) ? 0 : 1;
     }
 
     $xml = $document->saveXML();
@@ -3293,6 +3327,8 @@ function pg_office_docx_edit_message($code, $paragraph = '')
             return lang(array('string' => 'Paragraph {var:1} holds more than text and cannot be changed here.', 'vars' => array($paragraph)));
         case 'missing':
             return lang(array('string' => 'Paragraph {var:1} is not in the file.', 'vars' => array($paragraph)));
+        case 'format_range':
+            return lang(array('string' => 'The text to format is not in paragraph {var:1} any more. Open the file again.', 'vars' => array($paragraph)));
         case 'unusual':
             return lang('This document cannot be changed here.');
     }
