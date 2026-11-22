@@ -34,7 +34,7 @@ function test_settings_card_radio_groups_have_a_legend()
 		'appearance.php' => array('Editor version'),
 		'commerce.php' => array('Recipient Mode', 'Enforcement', 'Transaction Type', 'Mode', 'Price before the discount'),
 		'features.php' => array('Site Search Type', 'Setup'),
-		'firewall.php' => array('Mode', 'Restriction', 'Content Security Policy'),
+		'firewall.php' => array('Mode', 'Restriction', 'Content security policy'),
 		'general.php' => array('Date Format', 'Time Format'),
 		'languages.php' => array('What decides the language', 'Pages that are redirected'),
 	);

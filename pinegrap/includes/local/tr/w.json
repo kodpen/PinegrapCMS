@@ -3493,6 +3493,7 @@
     "Wrote my first line of CSS": "İlk CSS satırımı yazdım",
     "Wrote the configuration": "Yapılandırma yazıldı",
     "Wrote the web server rules": "Web sunucusu kuralları yazıldı",
+    "waf, firewall, attack, signature, monitor, block mode, sensitivity": "waf, firewall, attack, signature, monitor, block mode, sensitivity, guvenlik duvari, saldiri, imza, izleme, engelleme, hassasiyet",
     "waf, firewall, attack, signature, monitor, block mode, sensitivity, log": "waf, firewall, attack, signature, monitor, block mode, sensitivity, log, guvenlik duvari, saldiri, imza, izleme, engelleme, hassasiyet, kayit",
     "waf, firewall, attack, signature, rate limit, ban": "waf, firewall, attack, signature, rate limit, ban, guvenlik duvari, saldiri, imza, hiz siniri, yasak",
     "waiting": "bekliyor",
