@@ -9527,6 +9527,29 @@ button.no-popover:focus-visible {
    Bootstrap's 400px offcanvas would wrap every cell. */
 #sd-comp-offcanvas { --pg-drawer-width: min(100vw, 860px); }
 
+/* A pick wave's pick list (pick_wave.php): each row is the tick's label, the
+   shelf address at its left in the figure type, the units at its right. A
+   ticked row is dimmed (.is-read) and moved to the end by pick_waves.js.
+   On a phone the whole row stays a large tick target. */
+.pg-pick-card { padding: 14px 16px; }
+.pg-pick-bar { margin: 0 0 2px; font-weight: var(--pg-weight-strong); }
+.pg-pick-rows { margin: 10px -12px 0; padding: 0; list-style: none; }
+.pg-pick-row { align-items: center; }
+.pg-pick-row > .pg-checkbox { flex: none; }
+.pg-pick-label { display: flex; flex: 1; align-items: center; gap: 14px; min-width: 0; min-height: 48px; margin: 0; cursor: pointer; }
+.pg-pick-bin { flex: none; min-width: 6.5rem; margin: 0; }
+.pg-pick-image { flex: none; width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
+.pg-pick-units { display: flex; flex: none; flex-direction: column; align-items: flex-end; text-align: right; }
+.pg-pick-units > .pg-figure-value { margin: 0; }
+.pg-pick-row.is-read .pg-pick-bin,
+.pg-pick-row.is-read .pg-pick-image,
+.pg-pick-row.is-read .pg-pick-units { opacity: .45; }
+@media (max-width: 575.98px) {
+  .pg-pick-label { flex-wrap: wrap; gap: 6px 12px; }
+  .pg-pick-bin { min-width: 0; }
+  .pg-pick-row .pg-list-row-main { flex-basis: 100%; order: 3; }
+}
+
 /* ── Settings screen section anchors ──────────────────────────────────────
    The settings cards carry an id (#pgset-security, #pgset-waf, …) so the
    global search can link straight to a section of that very long screen.
