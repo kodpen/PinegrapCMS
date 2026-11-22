@@ -10,7 +10,7 @@ description: Plan lead-journey, steps LJ1a to LJ7: the pure rules, the store and
 - LJ2 (M) done (#10946), after LJ1b, started first when LJ1b lands, before LJ3 (erase is `none` in LJ1b only because `includes/fn/privacy.php` and `privacy_inventory.php` were held by #10877 and #10878): the journey read (pure merge of the sources by time), the contact screen and the Workspace customer card, the export and erase hooks, the keep period trim. Features: J5, J13.
 - LJ3 (M) after LJ1b: the fit score, the job pass, the settings, interests from the page's folder and the product's category. Features: J6 to J9.
 - LJ4 (S) after LJ3: `contact.hot` and `contact.returned`, flow boxes and filters, the Hot contacts list, the ops alert in `includes/fn/ops_alerts.php` (shared with sales-watch SW1: check the open PRs). Features: J10, J11.
-- LJ5 (M) after LJ2: first and last touch, the Lead sources report and its Excel. Feature: J12.
+- LJ5 (M) done (#11116), after LJ2: first and last touch, the Lead sources report and its Excel. Feature: J12.
 - LJ6 (S) after LJ4 and LJ5: the API routes and types (`php tools/check_api_schema.php`), the MCP read tool. Feature: J15.
 - LJ7 (S) close-out: every J number checked against the code with its PR; `visitors/lead-journey.md` written, `visitors/visitor-channel-rule.md` and `core/contact-holders.md` pointing to it; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 
