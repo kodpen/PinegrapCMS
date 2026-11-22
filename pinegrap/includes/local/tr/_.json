@@ -1308,6 +1308,7 @@
     "{var:1} is not a field of upsell.": "{var:1}, upsell alanlarından biri değil.",
     "{var:1} is not a file type the marketplace takes: send a picture, PDF, Word document or video.": "{var:1} pazaryerinin kabul ettiği bir dosya türü değil: resim, PDF, Word belgesi veya video gönderin.",
     "{var:1} is not a task status. Write one of: {var:2}.": "{var:1} bir görev durumu değil. Şunlardan birini yazın: {var:2}.",
+    "{var:1} is not a type this list knows.": "{var:1} bu listenin bildiği bir tür değil.",
     "{var:1} is not a value the audit trail holds.": "{var:1}, denetim izinin tuttuğu bir değer değil.",
     "{var:1} is not a version this installation knows. The schema version was not changed.": "{var:1} bu kurulumun tanıdığı bir sürüm değil. Şema sürümü değiştirilmedi.",
     "{var:1} is not an e-mail address.": "{var:1} geçerli bir e-posta adresi değil.",

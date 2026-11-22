@@ -66,6 +66,9 @@ function api_meta_read($params) {
 		'security'       => api_meta_security(),
 		'jobs'           => api_meta_jobs(),
 		'uploads'        => api_meta_uploads(),
+		// The types GET /changes/deleted answers, and those it knows but
+		// cannot: their deletes are not recorded on every path.
+		'deleted_records' => api_changes_deleted_coverage(),
 		'scopes'         => api_current_scopes(),
 		'server_time'    => api_time(time())
 	);
@@ -444,6 +447,10 @@ function api_meta_schema() {
 				'file_max_dimension'    => 'integer',
 				'quality'               => 'integer'
 			)
+		),
+		'deleted_records' => array(
+			'covered'     => 'string[]',
+			'not_covered' => 'string[]'
 		),
 		'scopes'      => 'string[]',
 		// Left out while the Workspace is off.
