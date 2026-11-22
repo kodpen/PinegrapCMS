@@ -3547,6 +3547,7 @@ function submit_order($type) {
     // marketing cookies is tied to the order's contact (visitor journey).
     if ($order_number && ((int) $contact_id > 0)) {
         pg_lead_tie('order', (int) $contact_id, (int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+        pg_lead_became('order', (int) $contact_id, (int) ($_SESSION['ecommerce']['order_id'] ?? 0));
     }
 
     // Another request completed this order first (a second submit of the
