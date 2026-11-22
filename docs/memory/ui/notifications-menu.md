@@ -7,7 +7,7 @@ description: The bell's drawer #notifications at the right edge: opened by the b
 - `<dialog class="drawer drawer-end pg-bell-drawer" id="notifications">` (`$output_bell_drawer`, `includes/fn/output.php`), full height, `--pg-drawer-width: min(30rem, 100vw)`: 30rem, the whole width on a phone. Owner 2026-11-11, #8754 (`workflow/decisions-made-panel-4.md`); built in #8783 (plan step BP2b).
 - Printed after the header, not inside it: Bootstrap hides a drawer that sits inside a `.navbar` when the window is resized.
 - Head `.pg-bell-head`: the heading "Notifications", "Mark all as read" (shown while a row is unread), a menu holding "Delete All Notifications" (under All with two rows or more), the close button. Then the filter chips, the list `.pg-bell-scroll`, the push line `#push_row`/`#push_hint` at the foot.
-- The head's "More actions" button is `pg-icon-button`, as the rows' toggles; without it the browser drew a bordered grey button (#PRNUM).
+- The head's "More actions" button is `pg-icon-button`, as the rows' toggles; without it the browser drew a bordered grey button (#11086).
 - Only the list scrolls: `.pg-bell-body` `overflow: hidden`, `.pg-bell-scroll` `overflow-y: auto; min-height: 0`.
 
 ## How is it opened and closed?
