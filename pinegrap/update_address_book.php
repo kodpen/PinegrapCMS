@@ -32,7 +32,12 @@ if (!$_POST) {
 } else {
 
     validate_token_field();
-    
+
+    // The page, the widget, the recipient and the return path each post one
+    // value; one sent as a list counts as not given, where a cast would log
+    // "Array to string conversion" or pick the recipient with id 1.
+    pg_request_single_values(array('page_id', 'pg_widget_id', 'id', 'send_to'));
+
     // get address type value for page, so we know if it was enabled or not
     $query = "SELECT address_type FROM update_address_book_pages WHERE page_id = ?";
     $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
@@ -137,7 +142,7 @@ if (!$_POST) {
     // if an error does not exist
     if ($liveform->check_form_errors() == false) {
         // if an id was supplied, then update current recipient in address book
-        if ($_POST['id']) {
+        if (!empty($_POST['id'])) {
             $sql_address_type = "";
             $sql_address_type_values = array();
             

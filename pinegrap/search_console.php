@@ -49,6 +49,11 @@ if ($_POST) {
 	ignore_user_abort(true);
 	@set_time_limit(300);
 
+	// The action and the account each carry one value; one sent as a list
+	// counts as not given, where a cast would log "Array to string conversion"
+	// or open connection 1.
+	pg_request_single_values(array('search_console_action', 'connection_id'));
+
 	$action = isset($_POST['search_console_action']) ? (string) $_POST['search_console_action'] : '';
 
 	if ($action === 'link') {

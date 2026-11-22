@@ -49,7 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
 
-    $action = (string) ($_POST['feed_action'] ?? '');
+    // An action sent as a list (feed_action[]=x) is no action.
+    $action = is_string($_POST['feed_action'] ?? null) ? $_POST['feed_action'] : '';
     $kinds = ws_calendar_feed_clean_kinds(isset($_POST['kinds']) ? (array) $_POST['kinds'] : array());
     $details = !empty($_POST['details']);
 

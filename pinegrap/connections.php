@@ -242,6 +242,10 @@ if ($_POST) {
 
 	validate_token_field();
 
+	// Each of these carries one value; one sent as a list counts as not given,
+	// where a cast would log "Array to string conversion" or open connection 1.
+	pg_request_single_values(array('connections_action', 'connection_id', 'provider'));
+
 	$action = isset($_POST['connections_action']) ? (string) $_POST['connections_action'] : '';
 
 	// A GitHub repository link saved or removed on GitHub's page, under the
