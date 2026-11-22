@@ -42,6 +42,7 @@
 - bookings-settings-tidy-screens.md: Plan bookings-settings-tidy, its screen: the Bookings pane as folded rows, services and staff as list rows with their drawers, the Messages row, the words and what must be true
 - bookings-settings-tidy-steps.md: Plan bookings-settings-tidy, steps BT1 to BT4: folded rows and services in drawers, staff in drawers, the rules and the Messages row, close-out
 - bookings-settings-tidy.md: Plan (owner 2026-11-21): Site Settings › Bookings as folded rows, services and staff as list rows each edited in a drawer, one "Messages" row saying which booking mails and texts go
+- canvas-data-views-follow.md: Plan canvas-data-views, DV4's census: how a channel's canvas card with data layers shows the current rows (drawn in the card by the reader's browser), and what it leaves to DV5
 - canvas-data-views-screens.md: Plan canvas-data-views, how the Data menu and the data layer's panel are put together in the Design Canvas (DV2) and the Data screen's "Show on a canvas" (DV3)
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0

@@ -96,6 +96,7 @@
 - connections-address-merchant-page.md: Address autocomplete providers and Merchant Center on Connections (CX11g4): keys, server, account, country on their pages; the card keeps switch and provider
 - connections-communication-page.md: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection
 - connections-google-analytics-page.md: Google Analytics' page on Connections (CX11b): the tag and the GA4 figures set there under the Visitors and privacy gate; the Visitor Tracking card shows the connection
+- connections-google-reviews-page.md: Google reviews' page on Connections (CX11i): the Places API key and Place ID typed there under the Integrations gate; the Google Reviews card shows the connection
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
 - connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
 - connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button [decision: here]
@@ -436,6 +437,7 @@
 - look-check.md: tools/check_look.php (#8905): off-recipe CSS sizes, weights, colours and old btn btn- / nav-tabs panel markup may only fall against its baseline; what it skips, --update
 - look-commerce-settings-screens.md: Site Settings categories Commerce, Accounting and Bookings in look A (S5a, #10426): buttons by rank, group headings, the stock and staff hours tables, what stayed
 - look-content-screens.md: Comments, short links, the 404 log, the accessibility report and page tests in look A (S1, #9773): titles, field spans per field, inline sizes to classes, what stayed
+- look-design-examples-patterns.md: The Patterns group of the Design examples screen: settings pane, connect row, empty list, starting-point sheet, numbered steps drawer, form drawer, Workspace parts, e-mail parts; their order and frame
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from [decision: decisions-made-workspace-26.md]
 - look-edit-field.md: Add and edit screens in look A: .form-label and .form-control in the screen's cards take the field label (13 / 550) and input (36 px) through one shared rule; what keeps its own [decision: decisions-made-panel-9.md]
 - look-edit-screens-wrapped-cards.md: Add and edit screens in look A: a card takes the look card only straight in its column; how wrapped cards, forms and full-width cards are handled
@@ -784,4 +786,5 @@
 - waf-log-paging.md: The firewall log's events (view_waf_log.php) on the list table driver, sorted and searched on the server; period, category and search filters stay in the address and drive the summary
 - whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand; the auto dialog boxes take none
 - workspace-avatar-faces.md: A face from avatar() in the Workspace scripts keeps Bootstrap's .avatar (classList.add, never className =) and is sized by --bs-avatar-size; why a check-in answer's photo once covered the channel
+- workspace-screen-bar.md: A Workspace screen's one-line bar (My Tasks first): "Filter", its box and tags line, views as a select when narrow, the empty screen; barFilter(), emptyScreen() in workspace.js
 - zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps
