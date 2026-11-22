@@ -255,6 +255,7 @@ function pg_application_program_input(array $post, array $fields)
 
     $program['rounds'] = array();
     $weight_error = false;
+    $bound_error = false;
     $next_id = 1;
 
     foreach ($list($post['rounds'] ?? null) as $round) {
@@ -297,15 +298,28 @@ function pg_application_program_input(array $post, array $fields)
             continue;
         }
 
+        $ranking = pg_application_round_ranking_input($round);
+
+        if ($ranking === false) {
+            $bound_error = true;
+            $ranking = array('spread' => null, 'rank_by' => 'raw');
+        }
+
         $program['rounds'][] = array(
             'criteria' => $criteria,
             'reviewers' => max(1, min(10, (int) (is_string($round['reviewers'] ?? null) ? $round['reviewers'] : 2))),
             'ends_at' => pg_application_time_from_input($round['ends'] ?? ''),
+            'spread' => $ranking['spread'],
+            'rank_by' => $ranking['rank_by'],
         );
     }
 
     if ($weight_error) {
         $errors[] = lang('Each criterion needs a weight from 1 to 100.');
+    }
+
+    if ($bound_error) {
+        $errors[] = lang('Write the spread that needs consensus as a number from 0 to 9, or leave it empty.');
     }
 
     $program['reviewers_per_entry'] = $program['rounds'] ? $program['rounds'][0]['reviewers'] : 2;
@@ -323,6 +337,50 @@ function pg_application_program_input(array $post, array $fields)
     }
 
     return array('program' => $program, 'errors' => $errors);
+}
+
+/**
+ * The Set-up tab's two ranking fields of a round read: the consensus bound
+ * ('' for none, else 0 to 9 with up to two decimals) and the score that
+ * ranks.
+ *
+ * @param array $round the posted round
+ * @return array|false array('spread' => float|null, 'rank_by' => string);
+ *                     false for a bound that is not such a number
+ */
+function pg_application_round_ranking_input(array $round)
+{
+    $spread = is_string($round['spread'] ?? null) ? str_replace(',', '.', trim($round['spread'])) : '';
+    $rank_by = (($round['rank_by'] ?? '') === 'corrected') ? 'corrected' : 'raw';
+
+    if ($spread === '') {
+        return array('spread' => null, 'rank_by' => $rank_by);
+    }
+
+    if (!preg_match('/^[0-9](\.[0-9]{1,2})?$/', $spread)) {
+        return false;
+    }
+
+    return array('spread' => (float) $spread, 'rank_by' => $rank_by);
+}
+
+/**
+ * Keeps each round's shortlist cut across a Set-up save: the cut is set on
+ * the Entries tab, so the Set-up form does not post it.
+ *
+ * @param array $stored the stored rounds
+ * @param array $posted the rounds read from the Set-up form
+ * @return array $posted with each round's stored 'cut'
+ */
+function pg_application_rounds_keep_cut(array $stored, array $posted)
+{
+    foreach ($posted as $i => $round) {
+        if (is_array($stored[$i]['cut'] ?? null)) {
+            $posted[$i]['cut'] = $stored[$i]['cut'];
+        }
+    }
+
+    return $posted;
 }
 
 /**
@@ -559,7 +617,7 @@ function pg_application_program_save(array $program, array $input, array $fields
     $ok = (bool) db_q("UPDATE application_programs SET name = ?, opens_at = ?, closes_at = ?, category_field_id = ?, reviewers_per_entry = ?, blind = ?,
         rounds = ?, eligibility = ?, blind_fields = ?, texts = ?, updated_at = UNIX_TIMESTAMP() WHERE id = ?", array(
         $input['name'], $input['opens_at'], $input['closes_at'], $category_id, $input['reviewers_per_entry'], $input['blind'],
-        $json($input['rounds']), $json($input['eligibility']), $json($input['blind_fields']), $json($input['texts']), (int) $program['id'],
+        $json(pg_application_rounds_keep_cut($program['rounds'], $input['rounds'])), $json($input['eligibility']), $json($input['blind_fields']), $json($input['texts']), (int) $program['id'],
     ));
 
     if ($ok) {

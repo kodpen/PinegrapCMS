@@ -7,7 +7,8 @@
  * until 100), copies a kept template's criteria into a round and switches
  * the decision e-mails' tabs. Nothing is saved here: the form posts it all.
  * On the Reviewers tab it opens the Add reviewer drawer and switches it
- * between a panel user and an outside juror.
+ * between a panel user and an outside juror. On the Entries tab a row's
+ * Override or Settle opens its note drawer for that entry.
  *
  * Loaded with a plain <script src> by the screen; no .min twin.
  *
@@ -225,5 +226,27 @@
         if (drawer.hasAttribute('data-open')) {
             open();
         }
+    });
+}());
+
+(function () {
+    'use strict';
+
+    var phone = window.matchMedia('(max-width: 575.98px)');
+
+    // A row's Override or Settle: the drawer named by the button, filled
+    // with the row's entry, from the right or on a phone from the bottom.
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-pg-ap-note]');
+        var drawer = button ? document.getElementById(button.getAttribute('data-pg-ap-note')) : null;
+        if (!drawer || !window.pgUI) {
+            return;
+        }
+        drawer.querySelector('[data-pg-ap-note-entry]').value = button.getAttribute('data-pg-ap-entry');
+        drawer.querySelector('[data-pg-ap-note-name]').textContent = button.getAttribute('data-pg-ap-entry-name');
+        drawer.querySelector('textarea').value = '';
+        drawer.classList.toggle('drawer-end', !phone.matches);
+        drawer.classList.toggle('drawer-bottom', phone.matches);
+        pgUI.drawer.show(drawer);
     });
 }());

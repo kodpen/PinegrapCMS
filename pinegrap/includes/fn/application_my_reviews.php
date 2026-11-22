@@ -19,6 +19,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_reviewers.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_ranking.php');
 
 /**
  * Whether blind review hides a form field from reviewers: the contact fields
@@ -321,7 +322,8 @@ function pg_application_entry_view(array $program, $form_id)
 /**
  * Saves a reviewer's scores as typed; with $send, sends the review: every
  * criterion must be scored, the weighted total is kept, and it can no
- * longer be changed. Sending is an audit_log line on the entry.
+ * longer be changed. Sending is an audit_log line on the entry and
+ * recombines the round's scores (pg_application_scores_refresh()).
  *
  * @param array $context pg_application_my_review(), open
  * @param array $scores  pg_application_review_scores_input()
@@ -350,6 +352,10 @@ function pg_application_review_save(array $context, array $scores, $send)
     }
 
     pg_audit('score', 'application_entry', (int) $review['entry_id'], array(), array('review_id' => (int) $review['id'], 'round' => (int) $review['round'], 'total' => $total));
+
+    // The entry's stored means, spread and consensus flag follow each sent
+    // review; the corrected means of the reviewer's other entries move too.
+    pg_application_scores_refresh($context['program']);
 
     return true;
 }

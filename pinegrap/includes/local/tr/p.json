@@ -2011,6 +2011,7 @@
     "Point {var:1}": "Madde {var:1}",
     "Point {var}": "Nokta {var}",
     "Points": "Köşe sayısı",
+    "Points between the highest and lowest score of an entry; empty: never.": "Bir başvurunun en yüksek ve en düşük puanı arasındaki fark; boş: hiçbir zaman.",
     "Points checked on every used car": "Her ikinci el araçta kontrol edilen nokta",
     "Points per unit of store credit": "Bir birim mağaza kredisi için puan",
     "Points to convert": "Çevrilecek puan",
