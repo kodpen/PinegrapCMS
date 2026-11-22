@@ -67,7 +67,46 @@ function erp_order_profit_kinds()
  */
 function erp_order_profit_pass_sources()
 {
-    return array('invoice', 'average', 'bundle', 'rate', 'estimate');
+    return array('invoice', 'average', 'bundle', 'supplier', 'rate', 'estimate');
+}
+
+/**
+ * The sources of the product rows the pass keeps once written, so a later
+ * figure never rewrites a line already costed.
+ *
+ * @return string[]
+ */
+function erp_order_profit_kept_sources()
+{
+    return array('average', 'supplier');
+}
+
+/**
+ * A supplier feed's buy price in minor units of the store's base currency,
+ * or 0 when it cannot be known. The buy price is kept net of VAT in the
+ * feed's currency; currencies.exchange_rate is units of that currency per
+ * base unit. Pure.
+ *
+ * @param int    $buy       minor units in $currency
+ * @param string $currency  '' or the base currency for no conversion
+ * @param string $base      the store's base currency
+ * @param float  $per_base  units of $currency per base unit, 0 when none
+ * @return int
+ */
+function erp_order_profit_supplier_unit($buy, $currency, $base, $per_base)
+{
+    $buy = (int) $buy;
+    $currency = strtoupper(trim((string) $currency));
+
+    if ($buy <= 0) {
+        return 0;
+    }
+
+    if (($currency === '') || ($currency === strtoupper(trim((string) $base)))) {
+        return $buy;
+    }
+
+    return ((float) $per_base > 0) ? erp_to_base($buy, 1 / (float) $per_base) : 0;
 }
 
 /**
@@ -146,8 +185,10 @@ function erp_order_profit_line_gross($item)
  * product had a cost row holds 0). Otherwise each line: a bundle by the unit
  * cost its components were sold with (order_item_components), a plain line by
  * the average cost the pass first met, kept so a later average never
- * rewrites it. A line with no cost known adds no row and the order is
- * incomplete.
+ * rewrites it. A plain line with no average takes the buy price of the
+ * supplier feed that carries the product (source supplier), kept the same
+ * way; it makes the order an estimate. A line with no cost known adds no row
+ * and the order is incomplete.
  *
  * @param array $input  see erp_order_profit_compute()
  * @return array ['rows' => array, 'incomplete' => bool]
@@ -179,6 +220,8 @@ function erp_order_profit_product_rows($input)
     }
 
     $kept = (array) ($input['kept'] ?? array());
+    $kept_sources = (array) ($input['kept_sources'] ?? array());
+    $suppliers = (array) ($input['suppliers'] ?? array());
     $averages = (array) ($input['averages'] ?? array());
     $components = (array) ($input['components'] ?? array());
     $rows = array();
@@ -194,7 +237,9 @@ function erp_order_profit_product_rows($input)
         }
 
         if (array_key_exists($ref, $kept)) {
-            $rows[] = array('kind' => 'product', 'source' => 'average', 'ref' => $ref, 'amount' => (int) $kept[$ref]);
+            $source = (string) ($kept_sources[$ref] ?? 'average');
+            $rows[] = array('kind' => 'product', 'source' => in_array($source, erp_order_profit_kept_sources(), true) ? $source : 'average',
+                'ref' => $ref, 'amount' => (int) $kept[$ref]);
             continue;
         }
 
@@ -235,6 +280,13 @@ function erp_order_profit_product_rows($input)
         $average = (int) ($averages[$product_id] ?? 0);
 
         if ($average <= 0) {
+            $buy = (int) ($suppliers[$product_id] ?? 0);
+
+            if ($buy > 0) {
+                $rows[] = array('kind' => 'product', 'source' => 'supplier', 'ref' => $ref, 'amount' => (int) erp_line_total($buy, $quantity));
+                continue;
+            }
+
             $incomplete = true;
             continue;
         }
@@ -314,8 +366,10 @@ function erp_order_profit_break_even($group, $target = null)
  *                    shipping, payment_method, erp_invoice_id
  *   items            the charged order_items rows: id, product_id, quantity, price, tax_total
  *   invoice_moves    the sale moves of the order's invoice: product_id, quantity, cost_total
- *   kept             product rows the pass wrote before from an average, ref => amount
+ *   kept             product rows the pass wrote before from an average or a feed, ref => amount
+ *   kept_sources     ref => the kept row's source (average, supplier)
  *   averages         product_id => avg_cost today
+ *   suppliers        product_id => a supplier feed's buy price, base minor units net of VAT
  *   components       order_item_id => list of product_id, quantity (per bundle), unit_cost
  *   rates            kind (payment, shipping, marketplace) => key => ['percent', 'fixed']
  *   shipping_methods the shipping method ids of the order's recipients
@@ -431,7 +485,7 @@ function erp_order_profit_compute($input)
         $kind = in_array($row['kind'], erp_order_profit_kinds(), true) ? $row['kind'] : 'other';
         $by_kind[$kind] += (int) $row['amount'];
 
-        if (in_array($row['source'], array('rate', 'estimate'), true)) {
+        if (in_array($row['source'], array('rate', 'estimate', 'supplier'), true)) {
             $estimate = true;
         }
     }
@@ -529,12 +583,14 @@ function erp_order_profit_input($order, $rates)
     }
 
     $kept = array();
+    $kept_sources = array();
     $recorded = array();
 
     foreach ((array) db_items("SELECT kind, source, source_ref, amount FROM erp_order_costs WHERE order_id = '" . $order_id . "'") as $row) {
         if (in_array((string) $row['source'], erp_order_profit_pass_sources(), true)) {
-            if (((string) $row['kind'] === 'product') && ((string) $row['source'] === 'average')) {
+            if (((string) $row['kind'] === 'product') && in_array((string) $row['source'], erp_order_profit_kept_sources(), true)) {
                 $kept[(string) $row['source_ref']] = (int) $row['amount'];
+                $kept_sources[(string) $row['source_ref']] = (string) $row['source'];
             }
         } else {
             $recorded[] = array('kind' => (string) $row['kind'], 'source' => (string) $row['source'],
@@ -569,6 +625,8 @@ function erp_order_profit_input($order, $rates)
         }
     }
 
+    $suppliers = erp_order_profit_supplier_costs(array_diff($ids, array_keys(array_filter($averages))));
+
     $shipping_methods = array();
     $shipping_costs = array();
 
@@ -602,7 +660,9 @@ function erp_order_profit_input($order, $rates)
         'items' => $items,
         'invoice_moves' => $moves,
         'kept' => $kept,
+        'kept_sources' => $kept_sources,
         'averages' => $averages,
+        'suppliers' => $suppliers,
         'components' => $components,
         'rates' => $rates,
         'shipping_methods' => $shipping_methods,
@@ -610,6 +670,71 @@ function erp_order_profit_input($order, $rates)
         'marketplace' => $marketplace,
         'recorded' => $recorded,
     );
+}
+
+/**
+ * The buy prices supplier feeds keep for these products, in minor units of
+ * the base currency net of VAT: the item the product follows (active) first,
+ * else the newest item with a buy price. Read only: the feed's tables are
+ * never written here. Empty without the feeds' tables or before the step
+ * that lets erp_order_costs.source hold 'supplier' has run.
+ *
+ * @param int[] $product_ids
+ * @return array product_id => minor units
+ */
+function erp_order_profit_supplier_costs($product_ids)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $product_ids)));
+
+    if (empty($ids) || !pg_schema_has('supplier_feed_items') || !erp_order_profit_supplier_ready()) {
+        return array();
+    }
+
+    $base = function_exists('erp_base_currency') ? erp_base_currency() : (defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '');
+    $rates = array();
+    $costs = array();
+
+    foreach ((array) db_items("SELECT product_id, buy_price, currency FROM supplier_feed_items
+        WHERE product_id IN (" . implode(',', $ids) . ") AND buy_price > 0 AND dismissed = 0
+        ORDER BY active DESC, changed_at DESC, id DESC") as $row) {
+        $product_id = (int) $row['product_id'];
+
+        if (isset($costs[$product_id])) {
+            continue;
+        }
+
+        $currency = strtoupper(trim((string) $row['currency']));
+
+        if (($currency !== '') && !isset($rates[$currency])) {
+            $rates[$currency] = (float) db_value("SELECT exchange_rate FROM currencies WHERE code = '" . escape($currency) . "' LIMIT 1");
+        }
+
+        $unit = erp_order_profit_supplier_unit((int) $row['buy_price'], $currency, $base, ($currency !== '') ? $rates[$currency] : 0);
+
+        if ($unit > 0) {
+            $costs[$product_id] = $unit;
+        }
+    }
+
+    return $costs;
+}
+
+/**
+ * Whether erp_order_costs.source can hold 'supplier' (2026.11.0, 11.0.271):
+ * before that step a row would be stored with an empty source.
+ *
+ * @return bool
+ */
+function erp_order_profit_supplier_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $column = db_item("SHOW COLUMNS FROM erp_order_costs WHERE Field = 'source'");
+        $ready = is_array($column) && (strpos((string) $column['Type'], "'supplier'") !== false);
+    }
+
+    return $ready;
 }
 
 /**

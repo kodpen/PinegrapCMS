@@ -1064,13 +1064,15 @@ function erp_stock_plan_season(array $days, $today, $history_from)
 
 /**
  * (P5) Each product's supplier: the account of its latest purchase
- * invoice, else of its latest purchase order. Pure.
+ * invoice, else of its latest purchase order, else the ERP account of the
+ * supplier feed that carries it. Pure.
  *
  * @param array $invoice_lines product_id, account_id, issue_date, id
  * @param array $orders account_id, issue_date, id, lines (each product_id)
+ * @param array $feeds product id => the feed's ERP account id (erp_stock_plan_feed_accounts())
  * @return array<int,array{account_id:int,source:string}> product id => supplier
  */
-function erp_stock_plan_suppliers(array $invoice_lines, array $orders)
+function erp_stock_plan_suppliers(array $invoice_lines, array $orders, array $feeds = array())
 {
     $newer = function ($row, $than) {
         return ($than === null)
@@ -1103,6 +1105,12 @@ function erp_stock_plan_suppliers(array $invoice_lines, array $orders)
     }
 
     $suppliers = array();
+
+    foreach ($feeds as $id => $account_id) {
+        if (((int) $id > 0) && ((int) $account_id > 0)) {
+            $suppliers[(int) $id] = array('account_id' => (int) $account_id, 'source' => 'feed');
+        }
+    }
 
     foreach ($from_order as $id => $order) {
         $suppliers[$id] = array('account_id' => (int) $order['account_id'], 'source' => 'order');
@@ -1407,6 +1415,43 @@ function erp_stock_plan_history_from(array $marks, $today)
 }
 
 /**
+ * The ERP account of the supplier feed each of these products follows: the
+ * item in use (active) first, else the newest item, among feeds that name an
+ * account. Read only; empty without the feeds' tables.
+ *
+ * @param int[] $product_ids
+ * @return array|false product id => account id
+ */
+function erp_stock_plan_feed_accounts(array $product_ids)
+{
+    $ids = array_values(array_filter(array_map('intval', $product_ids)));
+
+    if (empty($ids) || !pg_schema_has('supplier_feed_items') || !pg_schema_has('supplier_feeds')) {
+        return array();
+    }
+
+    $rows = erp_stock_plan_select("SELECT i.product_id, f.erp_account_id
+        FROM supplier_feed_items i
+        JOIN supplier_feeds f ON f.id = i.feed_id
+        WHERE i.product_id IN (" . implode(',', $ids) . ") AND f.erp_account_id > 0 AND i.dismissed = 0
+        ORDER BY i.active DESC, i.id DESC");
+
+    if ($rows === false) {
+        return false;
+    }
+
+    $accounts = array();
+
+    foreach ($rows as $row) {
+        if (!isset($accounts[(int) $row['product_id']])) {
+            $accounts[(int) $row['product_id']] = (int) $row['erp_account_id'];
+        }
+    }
+
+    return $accounts;
+}
+
+/**
  * What every batch of the rebuild shares: suppliers' lead times, the typed
  * lead days, the open quantities and the purchase orders scanned for a
  * supplier.
@@ -1543,7 +1588,13 @@ function erp_stock_plan_rebuild_batch($cursor, array $shared, $today, $history_f
         $last_sale[(int) $row['product_id']] = (string) $row['last_sale'];
     }
 
-    $suppliers = erp_stock_plan_suppliers($invoice_lines, $shared['orders']);
+    $feeds = erp_stock_plan_feed_accounts(array_keys($stock));
+
+    if ($feeds === false) {
+        return false;
+    }
+
+    $suppliers = erp_stock_plan_suppliers($invoice_lines, $shared['orders'], $feeds);
     $write = array();
 
     foreach ($stock as $id => $level) {

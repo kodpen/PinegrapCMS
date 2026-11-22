@@ -259,6 +259,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_event_ticket_checkins();   // 11.0.267
 	upgrade_2026_11_0_stock_taken();             // 11.0.268
 	upgrade_2026_11_0_starter_twitter();         // 11.0.269
+	upgrade_2026_11_0_order_cost_supplier();     // 11.0.271
 
 }
 
@@ -4137,6 +4138,44 @@ function upgrade_2026_11_0_starter_twitter() {
 		install_note('Starter content: the Twitter feeds the starter sites came with are replaced where they were never changed (the footer column shows social links, the two page sections are emptied), since Twitter no longer serves them. A region edited on the site stays.');
 
 	}
+
+}
+
+// An order line's cost may come from a supplier feed's buy price (2026.11.0,
+// 11.0.271; includes/erp/order_profit.php): erp_order_costs.source gains
+// 'supplier' for a line with no average cost, kept like an average. The
+// ENUM is widened only when the value is missing, so a second run rebuilds
+// nothing; a value added by another step is kept.
+function upgrade_2026_11_0_order_cost_supplier() {
+
+	$info = install_column_info('erp_order_costs', 'source');
+
+	if (!is_array($info)) {
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'erp_order_costs.source')));
+
+		return;
+	}
+
+	if (strpos((string) $info['Type'], "'supplier'") !== false) {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'erp_order_costs.source supplier')));
+
+		return;
+	}
+
+	preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $info['Type'], $matches);
+	$values = array();
+
+	foreach ($matches[1] as $value) {
+		$values[] = "'" . $value . "'";
+	}
+
+	$values[] = "'supplier'";
+
+	$default = ((string) $info['Default'] !== '') ? (string) $info['Default'] : 'rate';
+
+	install_modify_column('erp_order_costs', 'source', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	install_note('Order profit: a product with no average cost can take its supplier feed\'s buy price as an estimate.');
 
 }
 

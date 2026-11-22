@@ -1808,7 +1808,7 @@ function erp_api_routes()
             'returns' => 'ErpOrderProfit',
             'summary' => 'An order\'s costs and net profit',
             'description' => 'What the order screen\'s Profit card shows: revenue without tax less refunds, each cost kind (product, payment fee, marketplace deductions, shipping, other), net profit and margin (null without revenue), with the cost rows and their source. state: final, estimate or incomplete (no product cost known). Worked out by the general job after the order is finished: until then computed is false and figures null; stale true means it is being redone. Minor units of the store currency.',
-            'details' => 'Cost sources: invoice, average cost, bundle, the payment service, the marketplace, the carrier label, a typed rate, an estimate. estimate means a rate or an estimate is in it. Margin is a percentage.',
+            'details' => 'Cost sources: invoice, average cost, bundle, the payment service, the marketplace, the carrier label, a supplier feed\'s buy price (source supplier, for a line with no average cost), a typed rate, an estimate. estimate means a rate, an estimate or a supplier feed\'s buy price is in it. Margin is a percentage.',
             'params' => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
