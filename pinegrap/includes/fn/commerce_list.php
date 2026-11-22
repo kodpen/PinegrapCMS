@@ -68,9 +68,11 @@ function pg_commerce_list_open_link($url, $html)
 
 /**
  * The orders list's columns: the order (its number, or the billing name of
- * a cart that has none), then the columns the list always had. Affiliate
- * Code only while the affiliate program is on; Profit (the order's net
- * profit) only for a user who may see it (erp_order_profit_shown()).
+ * a cart that has none), then the default set (Order Date, Customer,
+ * Status, Payment, Shipping, Items, Total), the columns the list always had
+ * off until the user shows them, and Action last. Affiliate Code only while
+ * the affiliate program is on; Profit (the order's net profit) only for a
+ * user who may see it (erp_order_profit_shown()).
  *
  * @param bool   $affiliate    whether the affiliate program is on
  * @param string $member_label the site's name for the member id
@@ -81,18 +83,22 @@ function pg_order_list_columns($affiliate, $member_label, $profit = false)
 {
     $specs = array(
         'order_number' => array('heading' => lang('Order Number'), 'kind' => 'link'),
-        'first_name' => array('heading' => lang('First Name')),
-        'last_name' => array('heading' => lang('Last Name')),
-        'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
-        'type' => array('heading' => lang('Type')),
-        'total' => array('heading' => lang('Total'), 'kind' => 'money'),
-        'profit' => array('heading' => lang('Profit'), 'kind' => 'money'),
-        'user' => array('heading' => lang('User')),
-        'tracking_code' => array('heading' => lang('Tracking Code')),
-        'member_id' => array('heading' => (string) $member_label),
-        'affiliate_code' => array('heading' => lang('Affiliate Code')),
-        'card_data' => array('heading' => lang('Card Data'), 'kind' => 'check'),
         'order_date' => array('heading' => lang('Order Date'), 'kind' => 'date'),
+        'customer' => array('heading' => lang('Customer')),
+        'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
+        'payment' => array('heading' => lang('Payment'), 'kind' => 'badge'),
+        'shipping' => array('heading' => lang('Shipping'), 'kind' => 'badge'),
+        'items' => array('heading' => lang('Products')),
+        'total' => array('heading' => lang('Total'), 'kind' => 'money'),
+        'first_name' => array('heading' => lang('First Name'), 'hidden' => true),
+        'last_name' => array('heading' => lang('Last Name'), 'hidden' => true),
+        'type' => array('heading' => lang('Type'), 'hidden' => true),
+        'user' => array('heading' => lang('User'), 'hidden' => true),
+        'tracking_code' => array('heading' => lang('Tracking Code'), 'hidden' => true),
+        'member_id' => array('heading' => (string) $member_label, 'hidden' => true),
+        'affiliate_code' => array('heading' => lang('Affiliate Code'), 'hidden' => true),
+        'card_data' => array('heading' => lang('Card Data'), 'kind' => 'check', 'hidden' => true),
+        'profit' => array('heading' => lang('Profit'), 'kind' => 'money', 'hidden' => true),
         'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
     );
 

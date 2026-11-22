@@ -123,6 +123,11 @@ $refund_columns_exist = pg_schema_has('orders', 'refund_status');
 // order that is still unpaid from one whose money came in. Probed the same way.
 $paid_at_column_exists = pg_schema_has('orders', 'paid_at');
 
+// The refunded amount (2026.1.14) and the account flag (2026.4.10) feed the
+// Payment column's pill; probed the same way.
+$refunded_amount_exists = pg_schema_has('orders', 'refunded_amount');
+$on_account_exists = pg_schema_has('orders', 'erp_on_account');
+
 $sql_status = "";
 
 // Prepare SQL status filter differently based on the selected status.
@@ -2451,12 +2456,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // survives a language change, and falls back to the default for anything
     // else. Affiliate Code is a column only while the affiliate program is on.
     $sort_columns = array(
+        'order_number'  => lang('Order Number'),
+        'order_date'    => lang('Order Date'),
+        'customer'      => lang('Customer'),
+        'status'        => lang('Status'),
+        'total'         => lang('Total'),
         'first_name'    => lang('First Name'),
         'last_name'     => lang('Last Name'),
-        'status'        => lang('Status'),
         'type'          => lang('Type'),
-        'order_number'  => lang('Order Number'),
-        'total'         => lang('Total'),
         'user'          => lang('User'),
         'tracking_code' => lang('Tracking Code'),
         'member_id'     => MEMBER_ID_LABEL,
@@ -2466,8 +2473,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $sort_columns['affiliate_code'] = lang('Affiliate Code');
     }
 
-    $sort_columns['order_date'] = lang('Order Date');
-
     $sort_default = array('sort' => 'order_date', 'order' => 'desc');
 
     $list_state = pg_list_state('view_orders', $sort_columns, $sort_default);
@@ -2476,6 +2481,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // What each sort code orders by. Only codes pg_list_state() let through
     // reach pg_list_order_by(), and it writes nothing but these.
     $order_by = pg_list_order_by($sort_levels, array(
+        'customer'       => "IF(TRIM(CONCAT(orders.billing_first_name, orders.billing_last_name)) = '', orders.billing_company, TRIM(CONCAT(orders.billing_first_name, ' ', orders.billing_last_name)))",
         'first_name'     => 'orders.billing_first_name',
         'last_name'      => 'orders.billing_last_name',
         'status'         => 'orders.status',
@@ -2522,9 +2528,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 orders.id,
                 orders.billing_first_name,
                 orders.billing_last_name,
+                orders.billing_company,
                 orders.status,
                 orders.payment_method,
                 " . ($paid_at_column_exists ? "orders.paid_at" : "0 AS paid_at") . ",
+                " . ($refunded_amount_exists ? "orders.refunded_amount" : "0 AS refunded_amount") . ",
+                " . ($on_account_exists ? "orders.erp_on_account" : "0 AS erp_on_account") . ",
                 orders.parasut_exported,
                 orders.parasut_invoice_id,
                 orders.order_number,
@@ -2561,6 +2570,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // An incomplete order has no total yet: the cell shows its cart instead
     // (includes/fn/order_list.php), one query for the whole page.
     $cart_totals = pg_order_list_cart_totals($order_rows);
+
+    // The Payment, Shipping and Items cells: View Order's pills and the
+    // first line, read for the page's rows in one query each.
+    $row_states = pg_order_list_row_states($order_rows, $paid_at_column_exists, date('Y-m-d'));
 
     // The page's profit rows, one read for the whole list.
     $order_profits = $order_profit_on ? erp_order_profit_for_orders(array_column($order_rows, 'id')) : array();
@@ -2693,10 +2706,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $output_row_name = '#' . $id;
         }
 
+        $output_customer = pg_order_list_customer_text($billing_first_name, $billing_last_name, $row['billing_company']);
+
         $list_rows[] = array(
             'id' => (int) $id,
             'cells' => array(
                 'order_number' => pg_list_cell(pg_commerce_list_open_link('view_order.php?id=' . (int) $id . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_orders.php'), h($output_row_name)), 'align-middle', array('data-pg-sort-value' => (string) $order_number)),
+                'customer' => pg_list_cell(h($output_customer), 'align-middle', array('data-pg-sort-value' => $output_customer)),
+                'payment' => pg_list_cell(pg_order_list_pill_html($row_states[(int) $id]['payment'] ?? null), 'align-middle text-nowrap'),
+                'shipping' => pg_list_cell(pg_order_list_pill_html($row_states[(int) $id]['shipping'] ?? null), 'align-middle text-nowrap'),
+                'items' => pg_list_cell(pg_order_list_items_html($row_states[(int) $id]['items'] ?? null)),
                 'first_name' => pg_list_cell(h($billing_first_name)),
                 'last_name' => pg_list_cell(h($billing_last_name)),
                 'status' => pg_list_cell($output_status, 'align-middle', $output_status_edit + array('data-pg-sort-value' => (string) $status)),
