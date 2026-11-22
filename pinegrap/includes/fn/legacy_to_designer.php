@@ -415,6 +415,191 @@ function pg_ltd_stays_classic($report, $frozen_gateway = '')
 }
 
 /**
+ * The region nodes left in a page's tree and in the components it places,
+ * by kind (the node's regionType). A page with none is fully editable: what
+ * is left is drawn by classic code (a System, Dynamic, Mobile Switch or PDF
+ * region) or waits for a converter (a common or designer region, a menu,
+ * menu sequence, ad, tag cloud, login, cart or comments block).
+ *
+ * A Page region (`page`) is not counted: it is the page's own content area,
+ * edited as the page. Each placed component is walked once a page, so a
+ * component placed twice or a component placing its own ancestor counts
+ * its regions once and never loops. A component missing from $components
+ * is passed over.
+ *
+ * Pure: no query.
+ *
+ * @param mixed $tree        a page tree (its root node, or a list of nodes)
+ * @param array $components  shared component id => its decoded tree
+ * @return array  'total' (int), 'kinds' (kind => count, by kind name),
+ *                'components' (the placed ids walked, ascending),
+ *                'editable' (bool: total is 0)
+ */
+function pg_classic_closed_census($tree, $components = array())
+{
+    $kinds = array();
+    $walked = array();
+    $stack = array();
+    if (is_array($tree)) {
+        $stack[] = isset($tree['type']) ? $tree : array('type' => 'root', 'children' => $tree);
+    }
+    while ($stack) {
+        $node = array_pop($stack);
+        if (!is_array($node)) continue;
+        $type = isset($node['type']) ? (string)$node['type'] : '';
+        $props = (isset($node['props']) && is_array($node['props'])) ? $node['props'] : array();
+        if ($type === 'region') {
+            $kind = isset($props['regionType']) ? (string)$props['regionType'] : '';
+            if ($kind === 'page') continue;
+            if ($kind === '') $kind = 'unknown';
+            $kinds[$kind] = (isset($kinds[$kind]) ? $kinds[$kind] : 0) + 1;
+            continue;
+        }
+        if ($type === 'shared_ref') {
+            $id = isset($props['sharedId']) ? (int)$props['sharedId'] : 0;
+            if ($id > 0 && !isset($walked[$id]) && isset($components[$id]) && is_array($components[$id])) {
+                $walked[$id] = true;
+                $placed = $components[$id];
+                $stack[] = isset($placed['type']) ? $placed : array('type' => 'root', 'children' => $placed);
+            }
+            continue;
+        }
+        if (isset($node['children']) && is_array($node['children'])) {
+            foreach (array_reverse($node['children']) as $child) $stack[] = $child;
+        }
+    }
+    ksort($kinds);
+    $ids = array_keys($walked);
+    sort($ids);
+    $total = (int)array_sum($kinds);
+    return array('total' => $total, 'kinds' => $kinds, 'components' => $ids, 'editable' => ($total === 0));
+}
+
+/**
+ * The move screen's four figures from the census of every page a Legacy
+ * design serves: pages fully editable, pages with a classic part, styles
+ * still classic, designs moved; and on how many pages each kind is left,
+ * most pages first, then by kind name.
+ *
+ * Pure: no query.
+ *
+ * @param array $censuses  list of pg_classic_closed_census() results
+ * @param int   $styles    classic styles left
+ * @param int   $designs   Legacy designs
+ * @return array  'pages', 'editable', 'classic', 'styles', 'designs', 'kinds'
+ */
+function pg_ltd_closed_figures($censuses, $styles, $designs)
+{
+    $pages = 0;
+    $editable = 0;
+    $kinds = array();
+    foreach ((array)$censuses as $c) {
+        ++$pages;
+        if ((int)($c['total'] ?? 0) === 0) {
+            ++$editable;
+            continue;
+        }
+        foreach ((array)($c['kinds'] ?? array()) as $kind => $n) {
+            if ((int)$n > 0) $kinds[(string)$kind] = (isset($kinds[(string)$kind]) ? $kinds[(string)$kind] : 0) + 1;
+        }
+    }
+    $names = array_keys($kinds);
+    $counts = array_values($kinds);
+    array_multisort($counts, SORT_DESC, SORT_NUMERIC, $names, SORT_ASC, SORT_STRING);
+    return array(
+        'pages' => $pages,
+        'editable' => $editable,
+        'classic' => $pages - $editable,
+        'styles' => (int)$styles,
+        'designs' => (int)$designs,
+        'kinds' => $names ? array_combine($names, $counts) : array(),
+    );
+}
+
+/**
+ * The census of every page a Legacy design serves (a page with a tree whose
+ * own style, else its folder's, is a visual design with the `legacy`
+ * framework), binned pages left out, and the number of Legacy designs.
+ * The components a page places are read once each, as the walk meets them.
+ *
+ * @return array  'censuses' (page id => pg_classic_closed_census()),
+ *                'designs' (int)
+ */
+function pg_ltd_closed_measure()
+{
+    $out = array('censuses' => array(), 'designs' => 0);
+    if (!pg_multi_page_design_ready() || !pg_style_framework_ready()) return $out;
+    $legacy = array();
+    foreach ((array)db_items("SELECT style_id FROM style WHERE style_layout = 'visual_designer' AND style_framework = 'legacy'") as $r) {
+        $legacy[(int)$r['style_id']] = true;
+    }
+    $out['designs'] = count($legacy);
+    if (!$legacy) return $out;
+
+    $folders = db_items("SELECT folder_id, folder_parent, folder_style, folder_level FROM folder");
+    $folder_styles = pg_classic_style_folder_styles(is_array($folders) ? $folders : array());
+    $rows = db_items("SELECT page_id, page_folder, page_style, page_tree_json FROM page
+                      WHERE page_tree_json IS NOT NULL AND page_tree_json <> ''" . pg_designer_not_binned_sql() . "
+                      ORDER BY page_id ASC");
+    $components = array();
+    foreach ((is_array($rows) ? $rows : array()) as $r) {
+        $style = (int)$r['page_style'];
+        if ($style <= 0) $style = (int)($folder_styles[(int)$r['page_folder']] ?? 0);
+        if (!isset($legacy[$style])) continue;
+        $tree = json_decode((string)$r['page_tree_json'], true);
+        // Read the components this page places, and the ones they place,
+        // before the census walks them; each row once for the whole screen.
+        $want = pg_ltd_placed_ids($tree);
+        while ($want) {
+            $ids = array();
+            foreach ($want as $id) {
+                if (!array_key_exists($id, $components)) $ids[] = (int)$id;
+            }
+            $want = array();
+            if (!$ids) break;
+            foreach ($ids as $id) $components[$id] = null;
+            $found = db_items("SELECT id, tree_json FROM shared_components WHERE id IN (" . implode(',', $ids) . ")");
+            foreach ((is_array($found) ? $found : array()) as $c) {
+                $t = json_decode((string)$c['tree_json'], true);
+                $components[(int)$c['id']] = is_array($t) ? $t : null;
+                if (is_array($t)) $want = array_merge($want, pg_ltd_placed_ids($t));
+            }
+        }
+        $out['censuses'][(int)$r['page_id']] = pg_classic_closed_census($tree, $components);
+    }
+    return $out;
+}
+
+/**
+ * The shared component ids a tree places (its `shared_ref` nodes), in
+ * order of first appearance.
+ *
+ * Pure: no query.
+ *
+ * @param mixed $tree
+ * @return int[]
+ */
+function pg_ltd_placed_ids($tree)
+{
+    $ids = array();
+    $stack = is_array($tree) ? array($tree) : array();
+    while ($stack) {
+        $node = array_pop($stack);
+        if (!is_array($node)) continue;
+        if (isset($node['type']) && $node['type'] === 'shared_ref') {
+            $id = (int)($node['props']['sharedId'] ?? 0);
+            if ($id > 0) $ids[$id] = $id;
+            continue;
+        }
+        $children = isset($node['type']) ? ($node['children'] ?? array()) : $node;
+        if (is_array($children)) {
+            foreach (array_reverse($children) as $child) $stack[] = $child;
+        }
+    }
+    return array_values($ids);
+}
+
+/**
  * The readiness report: one entry per classic style, by name. Reads the
  * styles, folders, pages (binned ones left out), common regions, page
  * region counts and the designer's live page locks and presence.

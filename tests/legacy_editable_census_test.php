@@ -133,3 +133,11 @@ function test_lec_figures()
 	$f = pg_ltd_closed_figures(array(), 0, 0);
 	pg_assert_same(array(0, 0, 0, array()), array($f['pages'], $f['editable'], $f['classic'], $f['kinds']));
 }
+
+function test_lec_placed_ids()
+{
+	$tree = _lec_root(array(_lec_ref(5), _lec_box(array(_lec_ref(2), _lec_ref(5))), _lec_ref(0)));
+	pg_assert_same(array(5, 2), pg_ltd_placed_ids($tree));
+	pg_assert_same(array(4), pg_ltd_placed_ids(array(_lec_ref(4))));
+	pg_assert_same(array(), pg_ltd_placed_ids(null));
+}
