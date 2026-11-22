@@ -38,6 +38,7 @@
 - waf-offence-fold-and-staff-address.md: A rate refusal registers one offence per subject and minute (the burst flag of waf_register_offence()), a staff sign-in's address is never auto-banned (would-ban), Release and Allow forget offences
 - waf-outgoing-user-agent.md: Every outgoing cURL call must set CURLOPT_USERAGENT via pinegrap_user_agent(); an empty UA made one Pinegrap install block another as bot-empty.
 - waf-path-exemption-and-robots.md: waf_is_excluded() matches the resolved script path only (never query, PATH_INFO or encoded tricks); /robots.txt, /.well-known/ and health.php are exempt from bot policy; feed readers are good bots.
+- waf-queue-status-bucket.md: The walk-in queue's status read (queue.php?n=&t=&read=1) skips the sensitive allowance and open-request cap; own bucket of 240/min per address, excess gets a 429, no offence
 - waf-score-calibration-and-bot-order.md: WAF signature score bands (thresholds 15/10/6, dead zone 7-9), targets key, and the fixed bot classification order with token-boundary residual signal.
 - waf-secure-mode-enable-guard.md: firewall.save.php refuses to enable Secure Mode from a request not seen as HTTPS: predicate, the messages per peer kind, the one-step Trusted Proxies offer, early return, why disabling is unchecked.
 - waf-secure-mode-query-param.md: The ?secure_mode=false query parameter in init.php and get_file.php: ignored on a Secure Mode site, a 302 to http only on a site without it (#5146).
