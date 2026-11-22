@@ -126,14 +126,14 @@ function pg_mcp_tool_guide_line($route_id) {
 // The lines a few tools carry for themselves, beside the guide's.
 function pg_mcp_tool_guidance_own($route_id) {
 
-	$fields = 'Read the form\'s fields first with the tool forms_fields (or the resource pinegrap://forms/{id}/fields): an answer is addressed by the field name, the answer to a choice field is one of its option values, and a field with rich_text true takes HTML - only the tags, attributes, style properties, address schemes and image hosts its html_allowed lists are kept (anything else is removed or unwrapped, and class is never kept), up to its max_length characters.';
+	$fields = 'Read the form\'s fields first with forms_fields (or pinegrap://forms/{id}/fields): answers by field name, choice answers are option values, rich_text takes HTML within html_allowed (no class) and max_length.';
 
 	switch ($route_id) {
 
 		case 'forms.submission_create':
 		case 'forms.submission_update':
 
-			return $fields . ' Send it with dry_run true first to see the answer without writing anything.';
+			return $fields . ' Try dry_run true first.';
 
 		case 'forms.get':
 

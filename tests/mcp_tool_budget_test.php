@@ -3,11 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the size budget of the MCP tool list: a tool's description at
- * most 600 characters, a whole tool at most 4,096 bytes as JSON. The tools
- * over a budget today are listed here; the lists may only shrink, so a
- * listed tool that fits fails until it is taken off, and a new tool over a
- * budget fails at once. Reference detail goes into a route's 'details' key,
- * which only the OpenAPI document reads.
+ * most 600 characters, a whole tool at most 4,096 bytes as JSON. Every tool
+ * of the core and of the modules fits both, so a tool over a budget fails at
+ * once. Reference detail goes into a route's 'details' key, which only the
+ * OpenAPI document reads.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -31,117 +30,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/protocol.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
-
-// Tools whose description passes 600 characters today. Take a tool off when
-// its description fits; never add one.
-function mcp_tool_budget_test_long_descriptions()
-{
-	return array(
-		'products_update',
-		'products_delete',
-		'inventory_transfer',
-		'products_price_history',
-		'products_marketplaces',
-		'product_groups_variant_sets_create',
-		'product_groups_delete',
-		'orders_list',
-		'orders_create',
-		'orders_get',
-		'orders_update',
-		'orders_labels_create',
-		'orders_documents',
-		'orders_returns',
-		'orders_returns_create',
-		'returns_list',
-		'returns_update',
-		'cart_quotes_list',
-		'cart_quotes_create',
-		'store_shipping_methods',
-		'store_feeds',
-		'campaigns_create',
-		'campaigns_update',
-		'campaigns_sms_list',
-		'contact_groups_list',
-		'contact_groups_members_update',
-		'contact_groups_refresh',
-		'fediverse_deliveries',
-		'audit_log_list',
-		'commissions_list',
-		'commissions_recurring_profiles_list',
-		'affiliates_approve',
-		'calendars_event_tickets',
-		'webhooks_update',
-		'customers_wishlist',
-		'customers_consents',
-		'customers_subscriptions',
-		'customers_credit',
-		'customers_credit_issue',
-		'customers_allow_mail',
-		'customers_subscriptions_cancel',
-		'subscriptions_list',
-		'users_list',
-		'users_create',
-		'system_status',
-		'reports_sales',
-		'reports_cart_recovery',
-		'reports_customer_value',
-		'reports_visitors',
-		'reports_search',
-		'reports_pages',
-		'reports_ai_visibility',
-		'reports_vitals',
-		'reports_page_clicks',
-		'seo_not_found',
-		'content_review_list',
-		'content_review_update',
-		'forms_get',
-		'forms_submissions',
-		'forms_submission_update',
-		'forms_fields',
-		'forms_submission_create',
-		'forms_submission_revisions',
-		'forms_submission_revision_get',
-		'forms_submission_revision_restore',
-		'pages_update',
-		'pages_delete',
-		'folders_update',
-		'comments_list',
-		'comments_answer',
-		'experiments_list',
-		'short_links_list',
-		'short_links_create',
-		'short_links_update',
-		'offers_create',
-		'design_designs_list',
-		'design_pages_create',
-		'design_pages_get',
-		'design_pages_update',
-		'design_revisions_list',
-		'design_revisions_restore',
-		'design_bundles_list',
-		'design_bundles_pages_add',
-		'design_bundles_publish',
-		'design_bundles_take_back',
-		'design_proposals_create',
-		'notifications_list',
-		'bookings_list',
-		'bookings_slots',
-	);
-}
-
-// Tools larger than 4,096 bytes as JSON today. Take a tool off when it fits;
-// never add one.
-function mcp_tool_budget_test_large_tools()
-{
-	return array(
-		'products_create',
-		'products_update',
-		'returns_update',
-		'store_shipping_methods_create',
-		'store_shipping_methods_update',
-		'offers_create',
-	);
-}
 
 // Every route of the core and of the modules, as tools for a caller holding
 // every scope they use, on a site with every module on; an application
@@ -198,19 +86,9 @@ function mcp_tool_budget_test_over($budget)
 	return $over;
 }
 
-function mcp_tool_budget_test_check($budget, $listed, $what)
+function mcp_tool_budget_test_check($budget, $what)
 {
-	$over = mcp_tool_budget_test_over($budget);
-
-	pg_assert_same(count($listed), count(array_unique($listed)), 'the ' . $what . ' list names each tool once');
-
-	$new = array_values(array_diff($over, $listed));
-
-	pg_assert_same(array(), $new, 'tools over the ' . $what . ' budget that are not on its list: fit them, do not list them');
-
-	$fits = array_values(array_diff($listed, $over));
-
-	pg_assert_same(array(), $fits, 'listed tools that fit the ' . $what . ' budget now: take them off the list');
+	pg_assert_same(array(), mcp_tool_budget_test_over($budget), 'tools over the ' . $what . ' budget: shorten them, move reference detail to details');
 }
 
 function test_mcp_tool_budget_values()
@@ -230,14 +108,14 @@ function test_mcp_tool_budget_values()
 	pg_assert_same(array('tool'), pg_mcp_tool_over_budget($large));
 }
 
-function test_mcp_tool_budget_descriptions_only_shrink()
+function test_mcp_tool_budget_descriptions_fit()
 {
-	mcp_tool_budget_test_check('description', mcp_tool_budget_test_long_descriptions(), 'description');
+	mcp_tool_budget_test_check('description', 'description');
 }
 
-function test_mcp_tool_budget_tools_only_shrink()
+function test_mcp_tool_budget_tools_fit()
 {
-	mcp_tool_budget_test_check('tool', mcp_tool_budget_test_large_tools(), 'tool size');
+	mcp_tool_budget_test_check('tool', 'tool size');
 }
 
 // A route's details reach the OpenAPI operation, after its description and

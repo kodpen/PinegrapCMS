@@ -347,11 +347,15 @@ function test_api_order_returns_list_route()
 	pg_assert_true(function_exists($route['handler']), 'the handler is declared');
 	pg_assert_same(array('list' => 'OrderReturn'), $route['returns']);
 	pg_assert_same(1, count($route['params']), 'the order id and nothing else: one page, no cursor');
-	pg_assert_contains('but no reference', $route['description'], 'says what the event carries of the refund the return keeps');
-	pg_assert_contains('a closed return keeps it', $route['description']);
-	pg_assert_contains('while it is being asked', $route['description'], 'names the unconfirmed state of a refund in flight');
-	pg_assert_false(strpos($route['description'], 'come only with') !== false, 'the refund is no longer only in the event');
-	pg_assert_contains('requested_in_time', $route['description'], 'names the withdrawal timing');
+
+	// The reference text is split between description and details; both are published.
+	$documented = $route['description'] . ' ' . (isset($route['details']) ? $route['details'] : '');
+
+	pg_assert_contains('but no reference', $documented, 'says what the event carries of the refund the return keeps');
+	pg_assert_contains('a closed return keeps it', $documented);
+	pg_assert_contains('while it is being asked', $documented, 'names the unconfirmed state of a refund in flight');
+	pg_assert_false(strpos($documented, 'come only with') !== false, 'the refund is no longer only in the event');
+	pg_assert_contains('requested_in_time', $documented, 'names the withdrawal timing');
 }
 
 function test_api_order_returns_create_route()
@@ -395,16 +399,18 @@ function test_api_order_returns_create_route()
 	pg_assert_true(empty(api_order_returns_test_param($route, 'ship_to_id')['required']), 'optional while the goods went to one address');
 	pg_assert_same('bool', api_order_returns_test_param($route, 'notify')['type']);
 
+	$documented = $route['description'] . ' ' . (isset($route['details']) ? $route['details'] : '');
+
 	foreach (array('order_not_returnable', 'no_shipping_address', 'return_in_progress', 'order.return.requested') as $named) {
-		pg_assert_contains($named, $route['description'], 'the description names ' . $named);
+		pg_assert_contains($named, $documented, 'the description names ' . $named);
 	}
 
 	foreach (array('withdrawal period', 'goods have left', 'delivery date is known', 'customer_rules') as $named) {
-		pg_assert_contains($named, $route['description'], 'the description names the customer\'s timing rules and the switch: ' . $named);
+		pg_assert_contains($named, $documented, 'the description names the customer\'s timing rules and the switch: ' . $named);
 	}
 
 	foreach (array('409 not_sent', '409 delivery_date_unknown', '409 return_period_ended') as $named) {
-		pg_assert_contains($named, $route['description'], 'the description names ' . $named);
+		pg_assert_contains($named, $documented, 'the description names ' . $named);
 	}
 
 	pg_assert_contains('ship_to_id', $items['description'], 'lines are matched to the delivery by their ship_to_id');
