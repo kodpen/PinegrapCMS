@@ -22,18 +22,18 @@ description: Plan (owner 2026-11-23): pinegrap.com documentation from 2026.4.10 
 
 ## Which steps are there?
 One step is one page (or one new page), one session on the owner's machine, one docs-only PR for the mark. Order: the screens every user meets first, then the big modules, then the new pages.
-- UD1 `/introduction`, done 2026-11-23 (four new sections). Left: smaller changes since #500, the new logo; Content review moved to UD14 `/pages`.
+- UD1 `/introduction`, done 2026-11-23 (four sections). Left: smaller changes since #500, the new logo.
 - UD2 `/site-settings`, `/system`, done 2026-11-23 (six sections). Left: Docker and the importers (to UD14 `/installation`), smaller changes since #500.
 - UD3 `/visual-page-editor`, part 1 done 2026-11-23 (eight sections; the page is ~21,000 words, its split into `-cont` is still open). Left: the `-cont` subjects in the modules file.
 - UD4 `/templates` (new).
 - UD5 `/commerce`, `/commerce-cont`, done 2026-11-23: sections `returns`, `cart-quotes`, `subscriptions`, `checkout` (help anchors), six h3s. Left: order report dashboard, POST /orders (UD6).
 - UD6 `/marketplaces` (new) and the commerce part of `/api`.
-- UD7 `/erp` and `/erp-cont`: automatic invoices and the ERP changes since #500 (git log recipe).
-- UD8 `/workspace`: channel changes, calls, e-mail, live pages, the canvas, notes groups and export.
-- UD9 `/workspace-cont`: assistants and agents, MCP connectors, voice answers, GitHub link.
+- UD7 `/erp`, done 2026-11-23: h3 `order-flow-auto-invoice`. Left: other ERP changes since #500 (git log recipe).
+- UD8 `/workspace`, done 2026-11-23: eight h3s; at ~20,500 words its new subjects went to `-cont` (`e-mails`, `calls`, `canvas`).
+- UD9 `/workspace-cont`, done 2026-11-23: notes, agents, voice, MCP h3s, `repository-links`. Help anchors `#flows`, `#workflow-tables` point here: UD10/UD11 add a short linking section.
 - UD10 `/flows` (new). UD11 `/workflow-tables` (new).
 - UD12 `/communication` (new) and `/campaigns`.
-- UD13 `/privacy` (new) and `/security`: passkeys, CAPTCHA providers, personal data export and erasure.
+- UD13 `/privacy` (new) and `/security`: `/security` done 2026-11-23 (sections `passkeys`, `spam-protection`, `signed-updates`); `/privacy` left.
 - UD14 `/visitors`, `/seo`, `/multilingual`, `/pages-cont`, `/files`, `/folders`, `/calendars`, `/users`, `/contacts`, `/installation`: their rows in the pages file.
 - UD15 release round, when 2026.11.0 is released: remove the "Available from" notes, `/changelog` article `v2026-11-0`, the home page's Recent releases box.
 
