@@ -108,3 +108,16 @@ function test_settings_card_ids_general_rows_keep_card_ids()
 	pg_assert_false((bool) preg_match('/\bid="pgset-(?!organization"|server"|software"|datetime")/', $source), 'general.php: no other pgset- id, which would end a card for the search index');
 	pg_assert_false((bool) preg_match('/\bid="ip"/', $source), 'general.php: the IP is a line, no box');
 }
+
+function test_settings_card_ids_communication_rows_keep_card_ids()
+{
+	$source = (string) file_get_contents(settings_card_ids_root() . '/includes/settings/contact.php');
+	$ids = array('pgset-chat', 'pgset-chat-site', 'pgset-sms', 'pgset-sms-messages', 'pgset-whatsapp', 'pgset-whatsapp-messages', 'pgset-iys');
+
+	foreach ($ids as $id) {
+		pg_assert_same(1, substr_count($source, '<div id="' . $id . '" class="pg-set-card">'), 'contact.php: ' . $id . ' is drawn once, inside its folded row');
+	}
+
+	pg_assert_false((bool) preg_match('/\bid="pgset-(?!chat"|chat-site"|sms"|sms-messages"|whatsapp"|whatsapp-messages"|iys")/', $source), 'contact.php: no other pgset- id, which would end a card for the search index');
+	pg_assert_false((bool) preg_match('/\bid="live_chat(?:_site)?_row"/', $source), 'contact.php: the popovers\' boxes are gone');
+}
