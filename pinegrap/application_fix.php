@@ -85,17 +85,17 @@ foreach ($af_fields as $field) {
     $name = 'answer[' . $id . ']';
 
     if ((string) $field['type'] === 'file upload') {
-        $control = (($field['file'] !== '') ? '<div class="form-text mb-2">' . h(lang(array('string' => 'Sent now: {var:1}', 'vars' => array($field['file'])))) . '</div>' : '')
-            . '<input type="file" class="form-control" id="af_' . $id . '" name="' . $name . '">';
+        $control = (($field['file'] !== '') ? '<div class="pg-field-help mb-2">' . h(lang(array('string' => 'Sent now: {var:1}', 'vars' => array($field['file'])))) . '</div>' : '')
+            . '<input type="file" class="pg-input" id="af_' . $id . '" name="' . $name . '">';
     } elseif ($field['options'] && ((string) $field['type'] === 'check box')) {
         $control = '';
 
         foreach ($field['options'] as $value => $option) {
-            $control .= '<div class="form-check"><input class="form-check-input" type="checkbox" name="' . $name . '[]" value="' . h($value) . '" id="af_' . $id . '_' . md5($value) . '"' . (in_array((string) $value, $field['values'], true) ? ' checked' : '') . '>'
-                . '<label class="form-check-label" for="af_' . $id . '_' . md5($value) . '">' . h($option) . '</label></div>';
+            $control .= '<div class="d-flex align-items-start gap-3 mb-2"><input class="pg-checkbox mt-1" type="checkbox" name="' . $name . '[]" value="' . h($value) . '" id="af_' . $id . '_' . md5($value) . '"' . (in_array((string) $value, $field['values'], true) ? ' checked' : '') . '>'
+                . '<label for="af_' . $id . '_' . md5($value) . '">' . h($option) . '</label></div>';
         }
     } elseif ($field['options']) {
-        $control = '<select class="form-select" id="af_' . $id . '" name="' . $name . '"><option value=""></option>';
+        $control = '<select class="pg-input" id="af_' . $id . '" name="' . $name . '"><option value=""></option>';
 
         foreach ($field['options'] as $value => $option) {
             $control .= '<option value="' . h($value) . '"' . (in_array((string) $value, $field['values'], true) ? ' selected' : '') . '>' . h($option) . '</option>';
@@ -103,10 +103,10 @@ foreach ($af_fields as $field) {
 
         $control .= '</select>';
     } else {
-        $control = '<input type="text" class="form-control" id="af_' . $id . '" name="' . $name . '" value="' . h($field['values'][0] ?? '') . '" maxlength="1000">';
+        $control = '<input type="text" class="pg-input" id="af_' . $id . '" name="' . $name . '" value="' . h($field['values'][0] ?? '') . '" maxlength="1000">';
     }
 
-    $af_inputs .= '<div class="mb-5">' . ((string) $field['type'] === 'check box' && $field['options'] ? '<div class="form-label">' . h($label) . '</div>' : '<label class="form-label" for="af_' . $id . '">' . h($label) . '</label>') . $control . '</div>';
+    $af_inputs .= '<div class="mb-5">' . ((string) $field['type'] === 'check box' && $field['options'] ? '<div class="pg-field-label">' . h($label) . '</div>' : '<label class="pg-field-label" for="af_' . $id . '">' . h($label) . '</label>') . $control . '</div>';
 }
 
 $af_content = (($af_error !== '') ? '<div class="alert theme-danger" role="alert">' . h($af_error) . '</div>' : '')
@@ -116,7 +116,7 @@ $af_content = (($af_error !== '') ? '<div class="alert theme-danger" role="alert
     . '<form method="post" action="' . h($af_page) . '" enctype="multipart/form-data">' . get_token_field()
     . '<input type="hidden" name="t" value="' . h($af_token) . '">'
     . $af_inputs
-    . '<p class="form-text">' . h(lang('Only these answers can be changed; the rest of your entry stays as you sent it.')) . '</p>'
+    . '<p class="pg-field-help">' . h(lang('Only these answers can be changed; the rest of your entry stays as you sent it.')) . '</p>'
     . '<button type="submit" class="pg-button pg-button-fill">' . h(lang('Save the corrections')) . '</button></form>';
 
 print output_header_secure(array('title' => $af_title))
