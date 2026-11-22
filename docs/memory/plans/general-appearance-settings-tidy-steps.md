@@ -12,7 +12,7 @@ description: Plan general-appearance-settings-tidy, steps GA1 to GA5: General as
 
 - GA3 (S) after GA2: the five footer links as list rows (label and address), "Add a link" while fewer than five, each edited in a drawer (`pg_settings_drawer()`), "Move up" / "Move down" and "Remove" in a row's menu; the drawer's fields post `footer_link_<n>_label` / `_url` in row order, a removed link posts empty. The order from one pure `pg_private_label_links_order()`, red test first. Fixes: G8.
 
-- GA4 (S) after GA1 and DX2b (`plans/design-examples-patterns-mail.md`, "Value rows"): in "Site address", value rows "Other host names" (Redirected / Not redirected, Change to `#settings/seo/pgset-seo`) and "HTTPS" (Secure Mode on / off, Change to `#settings/firewall/pgset-headers`). Writes nothing. Fixes: G1.
+- GA4 (S) done (#11071), after GA1 and DX2b (`plans/design-examples-patterns-mail.md`, "Value rows"): in "Site address", value rows "Other host names" (Redirected / Not redirected, Change to `#settings/seo/pgset-seo`) and "HTTPS" (Secure Mode on / off, Change to `#settings/firewall/pgset-headers`). Writes nothing. Fixes: G1.
 
 - GA5 (S) close-out: `ui/settings-general.md` and `ui/settings-appearance.md` written (rows, what moved, what stayed); `ui/settings-dashboard-card.md`, `ui/theme-screens.md` and `ui/look-settings-other-categories.md` corrected; item 5 of `plans/settings-tidy-census-order.md` removed; this plan's files deleted.
 
