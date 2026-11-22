@@ -3853,8 +3853,15 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
    markup was a .container with pt-2 wrapped around an <ol> that picked up a
    30px top margin from the global .breadcrumb rule - that margin, not the
    crumbs, was the empty band under the header. The global rule is left alone
-   because a dozen pages render their own breadcrumb inside forms and cards. */
+   because a dozen pages render their own breadcrumb inside forms and cards.
+   The bar is positioned, with no z-index: it paints, and takes clicks, above
+   the content that follows it. A row whose negative top margin rises over it
+   (the first .row of a Workspace screen, inside the flex item .ws-shell-main,
+   which paints after the bar) then leaves the back arrow and the crumbs
+   reachable. Making no stacking context, the bar leaves the z-index of a
+   layer inside it as it is. */
 .pg-breadcrumb {
+  position: relative;
   display: flex;
   align-items: center;
   min-height: 34px;
@@ -12651,8 +12658,10 @@ body.workspace .card .table {
    of the panel's toolbar, so the rounded cards do not meet the edge of the
    page and line up with the first button above them. The padding is on the
    shared wrapper, never on a list of screens: a row in it keeps its own
-   gutter (its negative margins fall inside the padding), and a screen drawn
-   in #ws-root by its script gets the same edge as one drawn by the server.
+   gutter (its side margins fall inside the padding; its top margin rises
+   over the breadcrumb bar, which stays on top, see .pg-breadcrumb), and a
+   screen drawn in #ws-root by its script gets the same edge as one drawn by
+   the server.
    The toolbar runs across the whole width over that padding. */
 body.workspace #content.p-0 > .row {
   --bs-gutter-x: 0;

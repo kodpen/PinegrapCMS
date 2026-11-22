@@ -48,6 +48,18 @@ function test_ws_frame_shell_main_pads_every_screen()
 	pg_assert_true(preg_match('/(^|\n)[^\n{]*#ws-root\s*\{\s*padding/', $source) !== 1, '#ws-root adds no second padding');
 }
 
+// .ws-shell-main has no top padding, so a row at its top rises by its
+// vertical gutter over the breadcrumb bar, and .ws-shell-main is a flex item,
+// painted after the bar: the bar is positioned so its back arrow and crumbs
+// stay on top, and has no z-index, so it makes no stacking context.
+function test_ws_frame_breadcrumb_stays_above_a_rising_row()
+{
+	$rule = ws_frame_css_rule(ws_frame_css_source(), "\n.pg-breadcrumb");
+
+	pg_assert_contains('position: relative;', $rule);
+	pg_assert_true(strpos($rule, 'z-index') === false, 'the breadcrumb bar makes no stacking context');
+}
+
 // The toolbar runs over the padding, across the whole width.
 function test_ws_frame_toolbar_spans_the_padding()
 {
