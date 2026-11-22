@@ -246,8 +246,13 @@ if ((int) $user['role'] === 0) {
 
     $private_label_values = array();
 
+    // Drawn after a save in the same request, the values it wrote.
+    $private_label_saved = pg_private_label_saved_values();
+
     foreach (pg_private_label_config_keys() as $private_label_field => $private_label_constant) {
-        $private_label_values[$private_label_field] = defined($private_label_constant) ? (string) constant($private_label_constant) : '';
+        $private_label_values[$private_label_field] = is_array($private_label_saved)
+            ? (isset($private_label_saved[$private_label_field]) ? (string) $private_label_saved[$private_label_field] : '')
+            : (defined($private_label_constant) ? (string) constant($private_label_constant) : '');
     }
 
     if ($private_label_values['logo_url'] === PATH . SOFTWARE_DIRECTORY . '/assets/images/logo.png?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/images/logo.png')) {

@@ -205,3 +205,18 @@ function test_private_label_links_order_moves_and_removes()
 	pg_assert_same(private_label_links_test_values(array(array('C', '/c'), array('A', '/a'))), pg_private_label_links_order($gap, 'up:3'), 'C passes the emptied row and A');
 	pg_assert_same(private_label_links_test_values(array(array('A', '/a'), array('C', '/c'))), pg_private_label_links_order($gap, 'down:2'), 'an emptied row does not move');
 }
+
+// A save keeps what it wrote for the pane drawn after it in the same
+// request, whose constants still hold the file as the request found it.
+function test_private_label_saved_values_kept_for_the_pane()
+{
+	pg_private_label_saved_values(array('footer_link_1_label' => 'Help'));
+	pg_assert_same(array('footer_link_1_label' => 'Help'), pg_private_label_saved_values(), 'read back');
+	pg_assert_same(array('footer_link_1_label' => 'Help'), pg_private_label_saved_values(null), 'a read changes nothing');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/appearance.php');
+	pg_assert_contains('$private_label_saved = pg_private_label_saved_values();', $source, 'the pane prefers them to the constants');
+
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/appearance.save.php');
+	pg_assert_contains('pg_private_label_saved_values($private_label_written);', $save, 'the save hands them over once written');
+}

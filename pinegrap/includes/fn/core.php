@@ -5288,6 +5288,21 @@ function pg_private_label_config_keys() {
     return $keys;
 }
 
+// What a save of the private label fields wrote to data/config.php, field =>
+// value, for the pane drawn after it in the same request: the constants
+// still hold what config.php said when the request began, and a pane drawn
+// from them shows the old values, which its next save writes back. A call
+// with $values keeps them; one without reads them, null before any save.
+function pg_private_label_saved_values($values = null) {
+    static $saved = null;
+
+    if ($values !== null) {
+        $saved = $values;
+    }
+
+    return $saved;
+}
+
 // The five footer links of private label branding in the order they are
 // saved. $values holds footer_link_<n>_label / _url (n 1 to 5) in row order,
 // as Site Settings › Appearance posts them; $action is a row's menu button,

@@ -153,5 +153,15 @@ if ($private_label_save) {
         $liveform->add_error(lang('Config file could not be opened.'));
     } elseif (($private_label_content !== $private_label_original) && !pg_write_config_file($private_label_content)) {
         $liveform->add_error(lang('The config file could not be written.'));
+    } else {
+        // The pane drawn after this save shows what was written, not the
+        // constants this request loaded before it.
+        $private_label_written = array();
+
+        foreach (pg_private_label_config_keys() as $private_label_field => $private_label_constant) {
+            $private_label_written[$private_label_field] = $private_label_on ? pg_config_form_value(isset($private_label_posted[$private_label_field]) ? $private_label_posted[$private_label_field] : '') : '';
+        }
+
+        pg_private_label_saved_values($private_label_written);
     }
 }
