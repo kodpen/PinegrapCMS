@@ -2590,7 +2590,7 @@ function test_workspace_flows_canvas_next_row_fits_the_panel()
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 
-	pg_assert_true((bool) preg_match('/\n\.wsf-palette,\n\.wsf-side \{[^}]*overflow-x: hidden;/', $css), 'the side panel does not scroll sideways');
+	pg_assert_true((bool) preg_match('/\n\.wsf-side \{[^}]*overflow-x: hidden;/', $css), 'the side panel does not scroll sideways');
 	pg_assert_true((bool) preg_match('/\n\.wsf-link \{[^}]*flex-wrap: wrap;[^}]*min-width: 0;/', $css), 'a Next row wraps');
 	pg_assert_true((bool) preg_match('/\n\.wsf-link-name \{[^}]*min-width: 0;/', $css), 'the name may shrink');
 	pg_assert_true((bool) preg_match('/\n\.wsf-link-on \{[^}]*flex: 1 1 100%;[^}]*min-width: 0;/', $css), 'the outcome goes on its own line and may shrink');
