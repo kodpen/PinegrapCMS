@@ -868,7 +868,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // Everything in here exists ONLY as structured data output, so it
         // hides with the switch, the way the other dependent groups on this
         // screen do. The share image above stays out of it: it feeds Open
-        // Graph, which has its own setting.
+        // Graph, which has its own setting. The JSON-LD field gets its editor
+        // from the Structured Data card (seo.php), which prints this block:
+        // the first code field of a request carries the editor's translated
+        // texts (pg_code_editor_includes()), and every category reads this
+        // file, so an attach here would leave the others without them.
         $output_structured_data_dependent = '
                                         <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="strutured_data_dependent_row">
                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
@@ -877,7 +881,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     <div class="col-12 ">
                                                         <label for="custom_jsonld" class="form-label">' . lang('Site-Wide JSON-LD') . '</label>
                                                         <textarea name="custom_jsonld" id="custom_jsonld" class="form-control" >' . h($site_custom_jsonld) . '</textarea>
-                                                        ' . pg_code_editor_attach(array('id' => 'custom_jsonld', 'code_type' => 'application/json')) . '
                                                         <div class="form-text">' . lang('Added to every page as structured data. Must be valid JSON. Use this for blocks you would otherwise paste into a template by hand, such as an Organization or SoftwareApplication description.') . '</div>
                                                     </div>
                                                     <div class="col-12 ">
