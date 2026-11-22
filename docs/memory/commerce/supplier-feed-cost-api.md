@@ -1,6 +1,6 @@
 ---
 name: supplier-feed-cost-api
-description: Supplier feeds (SF6, F11 and F14): the feed's buy price as an order line's cost, the stock plan's supplier from the feed's ERP account, and the three API routes
+description: Supplier feeds (SF6, #11121, F11 and F14): the feed's buy price as an order line's cost, the stock plan's supplier from the feed's ERP account, and the three API routes
 ---
 
 ## When does an order line take the feed's buy price? (F11)
