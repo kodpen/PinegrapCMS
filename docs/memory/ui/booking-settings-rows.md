@@ -5,7 +5,8 @@ module: booking_settings
 ---
 
 ## How is the pane laid out?
-- Four folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`), each holding its card with its id: Bookable services, Staff, Booking rules, Booking widget texts. Lines from `pg_booking_settings_fold_lines()`: "3 services, 2 can be booked" (none: "No service yet"), "2 take bookings", "Up to 60 days ahead · confirmed at once", "1 of 4 texts set" (none: "The widget's own wording"). Bookable services opens first; an anchor opens its row. Before the tables every row holds the upgrade note.
+- Five folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`), each holding its card with its id: Bookable services, Staff, Booking rules, Messages (`ui/booking-settings-messages.md`), Booking widget texts.
+- Lines from `pg_booking_settings_fold_lines()`: "3 services, 2 can be booked" (none: "No service yet"), "2 take bookings", "Up to 60 days ahead · confirmed at once", "1 of 4 texts set" (none: "The widget's own wording"). Bookable services opens first; an anchor opens its row. Before the tables every row holds the upgrade note.
 - Row names keep the registry's section labels: "Bookable services", not "Services", whose Turkish key reads as a shuttle (`test_booking_settings_pane_labels_and_reminder_keyboard`).
 - Switches are look A's `pg-switch` (Can be booked, Takes bookings, the two rules). The services' search keywords include "deposit".
 

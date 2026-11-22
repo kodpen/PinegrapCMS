@@ -956,3 +956,61 @@ function pg_booking_settings_workweek()
 
     return function_exists('ws_workweek') ? (int) ws_workweek() : 0;
 }
+
+/**
+ * The Messages row of Settings > Bookings: which booking mails and texts go.
+ * A mail goes for an event while a campaign profile with its action is
+ * switched on; a text while its SMS event is switched on. Both are set on
+ * their own screens; this row only shows them and writes nothing.
+ *
+ * @param string[] $mail_actions   actions of the switched-on campaign profiles
+ * @param string[] $sms_events     the switched-on SMS events
+ * @param int[]    $reminder_hours the policy's reminder_hours
+ * @return array rows (mails, texts: name, line), line (the folded row's),
+ *               warning (reminders set but nothing sends one), meta
+ */
+function pg_booking_settings_messages($mail_actions, $sms_events, $reminder_hours)
+{
+    // In the order the profile form lists them (pg_booking_mail_actions()).
+    $phrases = array(
+        'booking_confirmed'   => lang('when confirmed'),
+        'booking_reminder'    => lang('as a reminder'),
+        'booking_rescheduled' => lang('when moved'),
+        'booking_cancelled'   => lang('when cancelled'),
+    );
+
+    $sentence = function ($on) use ($phrases) {
+        $parts = array_values(array_intersect_key($phrases, array_flip($on)));
+
+        if (!$parts) {
+            return lang('Nothing is sent');
+        }
+
+        $last = array_pop($parts);
+        $list = $parts ? lang(array('string' => '{var:1} and {var:2}', 'vars' => array(implode(', ', $parts), $last))) : $last;
+        $line = lang(array('string' => 'Goes out {var:1}', 'vars' => $list));
+
+        if (!in_array('booking_reminder', $on, true)) {
+            $line .= ' · ' . lang('Reminder: Not sent');
+        }
+
+        return $line;
+    };
+
+    $mails = array_values(array_intersect(array_keys($phrases), array_map('strval', (array) $mail_actions)));
+    $texts = array_values(array_intersect(array_keys($phrases), array_map('strval', (array) $sms_events)));
+    $warning = (count((array) $reminder_hours) > 0)
+        && !in_array('booking_reminder', $mails, true) && !in_array('booking_reminder', $texts, true);
+
+    return array(
+        'rows'    => array(
+            'mails' => array('name' => lang('Mails'), 'line' => $sentence($mails)),
+            'texts' => array('name' => lang('Text messages'), 'line' => $sentence($texts)),
+        ),
+        'line'    => lang(array('string' => '{var:1} of {var:2} mails · {var:3} of {var:2} texts', 'vars' => array(count($mails), count($phrases), count($texts)))),
+        'warning' => $warning,
+        'meta'    => $warning
+            ? lang('No reminder mail or text is switched on: Reminders send nothing.')
+            : lang('Each is set where Change leads; this row only shows it.'),
+    );
+}

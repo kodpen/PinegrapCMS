@@ -1056,6 +1056,7 @@
     "Reminder set: {var:1}, {var:2}": "Hatırlatma kuruldu: {var:1}, {var:2}",
     "Reminder threshold (days)": "Hatırlatma eşiği (gün)",
     "Reminder threshold must be a whole number of days, 0 to 3650.": "Hatırlatma eşiği 0 ile 3650 arasında tam gün olmalıdır.",
+    "Reminder: Not sent": "Hatırlatma: Gönderilmez",
     "Reminder: {var:1}": "Hatırlatma: {var:1}",
     "Reminders": "Hatırlatmalar",
     "Reminders are switched off on the ERP settings card.": "Hatırlatmalar ERP ayar kartında kapalı.",

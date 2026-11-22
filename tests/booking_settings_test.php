@@ -432,3 +432,64 @@ function test_booking_settings_staff_rows_and_drawers()
 	pg_assert_contains("\$liveform->mark_error('booking_staff[new][' . \$box . ']'", $save);
 	pg_assert_contains('pg_booking_settings_save_staff($booking_staff_rows, $booking_add, $booking_enabled_services, $booking_now, $booking_add_hours);', $save);
 }
+
+// The Messages row: which booking mails (a switched-on campaign profile per
+// action) and texts (a switched-on SMS event) go; a reminder nothing sends
+// says so, and with neither the meta line warns that Reminders send nothing.
+function test_booking_settings_messages()
+{
+	$messages = pg_booking_settings_messages(
+		array('booking_confirmed', 'booking_reminder', 'contact_group_joined'),
+		array('booking_cancelled'),
+		array(24, 2)
+	);
+
+	pg_assert_same(array('mails', 'texts'), array_keys($messages['rows']));
+	pg_assert_same('Mails', $messages['rows']['mails']['name']);
+	pg_assert_same('Goes out when confirmed and as a reminder', $messages['rows']['mails']['line']);
+	pg_assert_same('Text messages', $messages['rows']['texts']['name']);
+	pg_assert_same('Goes out when cancelled · Reminder: Not sent', $messages['rows']['texts']['line']);
+	pg_assert_same('2 of 4 mails · 1 of 4 texts', $messages['line']);
+	pg_assert_same(false, $messages['warning']);
+
+	$messages = pg_booking_settings_messages(
+		array('booking_cancelled', 'booking_rescheduled', 'booking_reminder', 'booking_confirmed'),
+		array(),
+		array(24)
+	);
+
+	pg_assert_same('Goes out when confirmed, as a reminder, when moved and when cancelled', $messages['rows']['mails']['line']);
+	pg_assert_same('Nothing is sent', $messages['rows']['texts']['line']);
+
+	$messages = pg_booking_settings_messages(array('booking_rescheduled'), array(), array(24, 2));
+
+	pg_assert_same('Goes out when moved · Reminder: Not sent', $messages['rows']['mails']['line']);
+	pg_assert_same(true, $messages['warning']);
+	pg_assert_same('No reminder mail or text is switched on: Reminders send nothing.', $messages['meta']);
+
+	// No reminder hours: nothing to warn about.
+	$messages = pg_booking_settings_messages(array(), array(), array());
+
+	pg_assert_same(false, $messages['warning']);
+	pg_assert_same('0 of 4 mails · 0 of 4 texts', $messages['line']);
+}
+
+// The pane draws the Messages row as value rows leading to the campaign
+// profiles and the SMS messages, in the registry with its keywords; the save
+// reads nothing of it. Reminders carry their unit.
+function test_booking_settings_messages_row()
+{
+	$pane = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/bookings.php');
+	$registry = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/bookings.save.php');
+
+	pg_assert_contains("'pgset-booking-messages'", $pane);
+	pg_assert_contains('pg_booking_settings_messages(', $pane);
+	pg_assert_contains('class="pg-value-row"', $pane);
+	pg_assert_contains('/view_email_campaign_profiles.php', $pane);
+	pg_assert_contains('#settings/contact/pgset-sms-messages', $pane);
+	pg_assert_contains("'pgset-booking-messages' => lang('Messages')", $registry);
+	pg_assert_contains("'pgset-booking-messages' => pg_settings_keywords(", $registry);
+	pg_assert_same(false, strpos($save, 'message'), 'the row writes nothing');
+	pg_assert_true(preg_match("/lang\\('hours before'\\)[\\s\\S]{0,200}id=\"booking_reminder_hours\"/", $pane) === 1, 'Reminders show their unit');
+}

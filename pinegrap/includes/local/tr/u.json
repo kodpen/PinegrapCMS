@@ -305,6 +305,7 @@
     "Up to five pages.": "En fazla beş sayfa.",
     "Up to one hour": "Bir saate kadar",
     "Up to three hours at your home": "Evinizde üç saate kadar",
+    "Up to three, separated by commas, each between 1 and 168, such as 24, 2. Empty sends none. Whether a mail or a text goes is shown under Messages.": "En çok üç tane, virgülle ayrılmış, her biri 1 ile 168 arasında; örneğin 24, 2. Boş bırakılırsa hiçbiri gönderilmez. E-posta mı SMS mi gittiği Mesajlar altında görünür.",
     "Up to two years": "İki yıla kadar",
     "Up to {var:1} MB": "En fazla {var:1} MB",
     "Up to {var:1} MB.": "En fazla {var:1} MB.",
