@@ -26,6 +26,9 @@
 - bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone [decision: here]
 - bug-hunt-areas-ai-connections.md: The bug hunt in the AI provider connections (agent channel message 10241, area b, #10616): the faults fixed, the issues opened and what was read clean
 - bug-hunt-areas-api-shared-layer.md: The bug hunt of the external API's shared layer (fault, manners, response, router, preconditions, idempotency; channel message 10241, area c, PR #10615): three faults fixed, what was read clean
+- bug-hunt-areas-backend-layout-probe.md: Layout pass of the 2026-11-22 backend sweep: each panel screen at 390, 768 and 1440 px for covered or clipped controls and cut text; the fix, what the probe misreads
+- bug-hunt-areas-backend-sweep-2.md: Second pass of the owner's whole-backend sweep of 2026-11-22: a role without manage rights, every edit screen saved unchanged, phone dialogs, PHPStan level 2; what it fixed, what read clean
+- bug-hunt-areas-backend-sweep.md: The owner's whole-backend sweep of 2026-11-22: how every panel screen was loaded and read, what it found and fixed (#11051), what read clean [decision: here]
 - bug-hunt-areas-booking-visitor.md: The bug hunt of bookings on the visitor's side (2026-11-20): the widget's endpoint, the slot engine, hold and confirm, the manage page, the deposit payment; what it fixed and what read clean
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
