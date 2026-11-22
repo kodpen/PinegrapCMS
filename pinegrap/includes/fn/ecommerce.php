@@ -7984,17 +7984,11 @@ function initialize_order()
 
                 WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
             // If the order's user/contact info is different from this user, then update
-            // user/contact info for order.
-            if ($order['user_id'] != USER_ID or $order['contact_id'] != USER_CONTACT_ID) {
-                db("UPDATE orders
-
-                    SET
-
-                        user_id = '" . e(USER_ID) . "',
-
-                        contact_id = '" . e(USER_CONTACT_ID) . "'
-
-                    WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
+            // user/contact info for order. Both sides are numbers: a user with no
+            // contact has USER_CONTACT_ID null where the row holds 0, and compared
+            // as text the order was rewritten (with '', warning 1366) on every change.
+            if ($order && (((int) $order['user_id'] !== (int) USER_ID) || ((int) $order['contact_id'] !== (int) USER_CONTACT_ID))) {
+                db_q("UPDATE orders SET user_id = ?, contact_id = ? WHERE id = ?", array((int) USER_ID, (int) USER_CONTACT_ID, (int) $_SESSION['ecommerce']['order_id']));
             }
         }
         // Otherwise the visitor does not have an active order in session, so create order.

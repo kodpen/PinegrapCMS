@@ -4,8 +4,9 @@
  *
  * Tests for the form handlers a signed-out visitor posts to (order_form.php,
  * custom_form.php, add_comment.php, add_or_remove_watcher.php,
- * reserve_calendar_event.php): the refusals they log, a field posted as a
- * list, and the visitor's ids in the rows a guest submission writes.
+ * reserve_calendar_event.php, billing_information.php): the refusals they
+ * log, a field posted as a list, and the visitor's ids in the rows a guest
+ * submission writes.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -108,4 +109,15 @@ function test_custom_form_guest_rows_bind_numbers()
 	pg_assert_contains("VALUES ('', ?, UNIX_TIMESTAMP())\";\n            \$result = db_q(\$query, array((int) \$user_id))", $source, 'new contact');
 	pg_assert_contains("\$expiration_date = '0000-00-00';", $source, 'offer code with no end date');
 	pg_assert_contains("'\" . (int) USER_ID . \"',", $source, 'offer code user');
+}
+
+// The billing step of a guest checkout wrote the guest's user id '' into
+// contacts.user (insert and update) and orders.user_id, and left out the
+// NOT NULL contacts.description: warnings 1366 and 1364 on each guest order.
+function test_billing_guest_rows_bind_numbers()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/billing_information.php');
+
+	pg_assert_contains("    \$user_id = 0;\n    \$contact_id = 0;\n", $source, 'a guest has user 0');
+	pg_assert_contains("\"INSERT INTO contacts (\n                description,\n                user,\n                timestamp)\n            VALUES (\n                '',\n                ?,", $source, 'new contact names its description');
 }
