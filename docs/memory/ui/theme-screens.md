@@ -16,7 +16,7 @@ description: Create and Edit Theme, the themes list and Private Label Branding o
 
 ## How is Private Label Branding drawn?
 - The Private Label Branding card of Site Settings › Appearance (`includes/settings/appearance.php`, administrator only, #4095; `private_label.php` redirects there). The Enable Private Label switch is a `collapse-switcher` for `#private_label_fields` (opened with `show` when the setting is on), replacing an inline `style.display` script.
-- Logo URL and Control Panel Stylesheet URL, then the five footer link label/URL pairs (drawn in a loop), each with a label and id equal to its posted name. The logo hint is `form-text` under the field.
+- Logo URL and Control Panel Stylesheet URL, then the footer links as list rows whose drawers hold each label/URL pair (`settings-appearance-footer-links.md`), each box with a label and id equal to its posted name. The logo hint is `form-text` under the field.
 
 ## Which test covers it?
 - `tests/theme_screens_names_test.php` (source scans); the save itself: `tests/private_label_config_test.php`.

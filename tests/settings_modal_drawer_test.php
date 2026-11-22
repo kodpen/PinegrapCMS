@@ -130,7 +130,7 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 		}
 	}
 
-	pg_assert_same(31, $entries, 'Cron Jobs, the two Connect forms (E-mail sending\'s among them), Mailboxes\' Allow reading mail forms, E-mail sending\'s two ways sheets, the firewall\'s bans drawer and Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, Pinegrap AI\'s latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers, the mailboxes\' set-up drawers, the Assistants and agents guides, the three Show all drawers and the two service drawers of Bookings');
+	pg_assert_same(35, $entries, 'Cron Jobs, the two Connect forms (E-mail sending\'s among them), Mailboxes\' Allow reading mail forms, E-mail sending\'s two ways sheets, the firewall\'s bans drawer and Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, Pinegrap AI\'s latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers, the mailboxes\' set-up drawers, the Assistants and agents guides, the three Show all drawers, the two service drawers and the two staff drawers of Bookings and the two footer link drawers of Appearance');
 }
 
 function test_settings_modal_drawer_second_dialog_path_is_gone()

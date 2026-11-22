@@ -153,3 +153,70 @@ function test_private_label_config_form_value_drops_control_characters()
 	pg_assert_same('', pg_config_form_value(array('x')), 'list');
 	pg_assert_same('', pg_config_form_value(null), 'missing');
 }
+
+// The footer links as the Appearance pane posts them: footer_link_<n>_label
+// and _url in row order, five pairs.
+function private_label_links_test_values($links)
+{
+	$values = array();
+
+	for ($n = 1; $n <= 5; $n++) {
+		$link = isset($links[$n - 1]) ? $links[$n - 1] : array('', '');
+		$values['footer_link_' . $n . '_label'] = $link[0];
+		$values['footer_link_' . $n . '_url'] = $link[1];
+	}
+
+	return $values;
+}
+
+// The links that hold a label or an address keep their order and close up
+// to the top; a link removed or emptied in its drawer moves the ones under
+// it up, and every one of the ten fields is named.
+function test_private_label_links_order_closes_gaps()
+{
+	$posted = private_label_links_test_values(array(array('Help', '/help'), array('', ''), array('', '/terms'), array(' ', ' '), array('Blog', '')));
+	$posted['logo_url'] = '/logo.png';
+
+	pg_assert_same(private_label_links_test_values(array(array('Help', '/help'), array('', '/terms'), array('Blog', ''))), pg_private_label_links_order($posted), 'packed, other fields left out');
+	pg_assert_same(private_label_links_test_values(array()), pg_private_label_links_order(array()), 'nothing posted is five empty links');
+	pg_assert_same(private_label_links_test_values(array()), pg_private_label_links_order(array('footer_link_1_label' => array('x'))), 'a list is no value');
+}
+
+// Move up, Move down and Remove name a row as posted (1 to 5): the row
+// changes place with its neighbour or leaves, and the rest close up.
+function test_private_label_links_order_moves_and_removes()
+{
+	$posted = private_label_links_test_values(array(array('A', '/a'), array('B', '/b'), array('C', '/c')));
+
+	pg_assert_same(private_label_links_test_values(array(array('B', '/b'), array('A', '/a'), array('C', '/c'))), pg_private_label_links_order($posted, 'up:2'), 'B up');
+	pg_assert_same(private_label_links_test_values(array(array('A', '/a'), array('C', '/c'), array('B', '/b'))), pg_private_label_links_order($posted, 'down:2'), 'B down');
+	pg_assert_same(private_label_links_test_values(array(array('A', '/a'), array('C', '/c'))), pg_private_label_links_order($posted, 'remove:2'), 'B removed, C moves up');
+	pg_assert_same(private_label_links_test_values(array(array('B', '/b'), array('C', '/c'))), pg_private_label_links_order($posted, 'remove:1'), 'the first removed');
+
+	foreach (array('up:1', 'down:3', 'down:5', 'remove:4', 'remove:0', 'up:9', 'drop:2', 'up', '') as $action) {
+		pg_assert_same($posted, pg_private_label_links_order($posted, $action), $action . ': nothing to do');
+	}
+
+	pg_assert_same($posted, pg_private_label_links_order($posted, array('up:2')), 'an action posted as a list is none');
+
+	// A row emptied in its drawer and moved in the same save: the rows are
+	// the posted ones, so the move names the row it was pressed on.
+	$gap = private_label_links_test_values(array(array('A', '/a'), array('', ''), array('C', '/c')));
+	pg_assert_same(private_label_links_test_values(array(array('C', '/c'), array('A', '/a'))), pg_private_label_links_order($gap, 'up:3'), 'C passes the emptied row and A');
+	pg_assert_same(private_label_links_test_values(array(array('A', '/a'), array('C', '/c'))), pg_private_label_links_order($gap, 'down:2'), 'an emptied row does not move');
+}
+
+// A save keeps what it wrote for the pane drawn after it in the same
+// request, whose constants still hold the file as the request found it.
+function test_private_label_saved_values_kept_for_the_pane()
+{
+	pg_private_label_saved_values(array('footer_link_1_label' => 'Help'));
+	pg_assert_same(array('footer_link_1_label' => 'Help'), pg_private_label_saved_values(), 'read back');
+	pg_assert_same(array('footer_link_1_label' => 'Help'), pg_private_label_saved_values(null), 'a read changes nothing');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/appearance.php');
+	pg_assert_contains('$private_label_saved = pg_private_label_saved_values();', $source, 'the pane prefers them to the constants');
+
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/appearance.save.php');
+	pg_assert_contains('pg_private_label_saved_values($private_label_written);', $save, 'the save hands them over once written');
+}

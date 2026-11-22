@@ -86,6 +86,9 @@ function pg_contact_holders()
         'waiting_tickets'              => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         // The nightly pass writes the contact again from the orders.
         'customer_rhythm'              => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
+        // A volunteer profile follows its contact; two profiles in one
+        // programme after a merge are both kept for the coordinator.
+        'volunteers'                   => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
     );
 }
 

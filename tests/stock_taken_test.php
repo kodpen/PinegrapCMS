@@ -32,9 +32,11 @@ function stock_taken_test_function($file, $name)
 		return '';
 	}
 
-	$next = strpos($source, "\nfunction ", $start + 10);
+	// Up to the function's closing brace, so a comment above the next
+	// function is not read as part of this one.
+	$end = strpos($source, "\n}\n", $start);
 
-	return ($next === false) ? substr($source, $start) : substr($source, $start, $next - $start);
+	return ($end === false) ? substr($source, $start) : substr($source, $start, $end + 3 - $start);
 }
 
 function test_stock_taken_put_back_is_the_smaller_of_taken_and_asked()

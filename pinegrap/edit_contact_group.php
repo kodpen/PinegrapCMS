@@ -168,6 +168,10 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
+
+    // The form draws no list: a field posted as one is refused before it
+    // reaches the session.
+    pg_request_refuse_lists($liveform, 'edit_contact_group.php?id=' . $id);
     
     // if contact group was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {

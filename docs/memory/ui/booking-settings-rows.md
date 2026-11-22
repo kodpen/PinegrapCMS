@@ -18,6 +18,7 @@ module: booking_settings
 - No Display order box any more. Each row posts a hidden `booking_service[<id>][order]` in the pane; Move up / Move down swap the row, rewrite every row's order from 0 and submit the form (a save at once: hidden inputs do not make the dialog's Save active). The add drawer's order is one past the highest.
 
 ## Which drawer opens on a refused save?
-- `bookings.save.php` names the drawer of the first refused service box with `pg_settings_drawer_refused(pg_booking_settings_error_drawer('booking_service', $key, $error))`; `settings_pane.php` answers it as `drawer`, and the dialog's `refused(fields, drawer)` opens it (`reopen()`) and focuses its marked box. The page path opens the shut drawer of the first marked field itself (`pgSettingsRestore()`). Staff boxes are drawn in the pane, so no drawer (`test_booking_settings_error_drawer`).
+- `bookings.save.php` names the drawer of the first refused box with `pg_settings_drawer_refused(pg_booking_settings_error_drawer($list, $key, $error))`; `settings_pane.php` answers it as `drawer`, and the dialog's `refused(fields, drawer)` opens it (`reopen()`) and focuses its marked box.
+- The page path opens the shut drawer of the first marked field itself (`pgSettingsRestore()`). Staff boxes open their drawers too (`ui/booking-settings-staff-rows.md`, `test_booking_settings_error_drawer`).
 
-Related: docs/memory/ui/booking-settings.md, docs/memory/ui/settings-drawer-card-form.md
+Related: docs/memory/ui/booking-settings.md, docs/memory/ui/booking-settings-staff-rows.md, docs/memory/ui/settings-drawer-card-form.md

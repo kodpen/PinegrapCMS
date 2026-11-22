@@ -53,6 +53,10 @@ if (!$_POST) {
 // Otherwise the form has been submitted so process it.
 } else {
     validate_token_field();
+
+    // The form draws no list: a field posted as one is refused before it
+    // reaches the session.
+    pg_request_refuse_lists($liveform, 'add_auto_dialog.php');
     
     $liveform->add_fields_to_session();
     
