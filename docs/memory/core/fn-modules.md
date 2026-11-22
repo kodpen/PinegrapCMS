@@ -163,6 +163,7 @@ description: Generated from the module field of the memory files: each includes/
 - `features_modules`: [[settings-features]]
 - `feedback`: [[feedback-rules]]
 - `feedback_answer`: [[feedback-answer]]
+- `feedback_followup`: [[feedback-followup]]
 - `feedback_report`: [[feedback-report]]
 - `feedback_sends`: [[feedback-send-pass]], [[feedback-sends]]
 - `feedback_surveys`: [[messages-area-survey-edit]], [[messages-area-surveys-tab]]
