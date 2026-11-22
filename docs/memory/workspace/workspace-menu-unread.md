@@ -14,7 +14,8 @@ description: The Workspace list's All / Unread filter (board L2): which rows Unr
 - Nothing unread: one line "Everything is read" (`.ws-side-all-read`, `role="status"`) under the Channels heading.
 
 ## What does Mark all as read do?
-- A ghost `pg-button-sm` at the Channels heading's right, only while Unread is chosen and something is new. `pgConfirm()` asks "Mark N channels as read?" (Mark as read / Cancel); then the panel action `ws_read_all`, then the list is asked again: on the channel screen through `hooks.reload` (`reloadChannels()`, which now also takes `threads`), elsewhere `ws_side` again with the old rows kept until the answer. The focus goes to the Unread segment.
+- A ghost `pg-button-sm` at the Channels heading's right, only while Unread is chosen and something is new. `pgConfirm()` asks "Mark N channels as read?" (Mark as read / Cancel); then the panel action `ws_read_all`, then the list is asked again: on the channel screen through `hooks.reload` (`reloadChannels()`, which now also takes `threads`), elsewhere `ws_side` again with the old rows kept until the answer.
+- After it the focus goes to the Unread segment. The dialog closes a widened rail or the phone's drawer; once it is answered the list is opened again (`menu().openPanel()`) when it is hidden.
 - `ws_read_all($viewer)` in `includes/workspace/channels.php`: every `ws_channel_members` row of the reader whose channel is not archived and not a mailbox room, with a message past its mark; each through `ws_can_read_channel()` and `ws_channel_mark_read()` up to the channel's newest message, so inbox and bell rows are read as when the channel is opened. Muted channels too.
 - It gives no read receipt, answers nothing and writes nothing else. The pure part is `ws_read_all_marks()` (`tests/workspace_read_all_test.php`). No API route.
 

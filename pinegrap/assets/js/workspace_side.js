@@ -1518,6 +1518,12 @@
             : Promise.resolve(window.confirm(t('side_read_ask', count)));
 
         ask.then(function (agreed) {
+            // The dialog took the pointer off the widened rail or the phone's
+            // drawer, which closed: the list comes back to show the answer.
+            if (panel && menu() && !root.offsetParent) {
+                menu().openPanel(panel.id, {});
+            }
+
             if (!agreed) {
                 return;
             }
