@@ -11,7 +11,7 @@ description: One-value GET and POST parameters sent as a list (x[]=1) are droppe
 - `shopping_cart.php` reads the posted `page_id` with `?? ''` everywhere: a post without one goes to the home page without an "Undefined array key" warning. A list was already emptied there.
 
 ## Why?
-- A sandbox probe (PR #PRNUM) sent each parameter as a list: the GET parameters of every root screen that reads one (365 files), then the POST fields of the 190 screens other than add_/edit_, all at once and one at a time. Each place above wrote "Array to string conversion" to the PHP log; no screen answered 500.
+- A sandbox probe (PR #11124) sent each parameter as a list: the GET parameters of every root screen that reads one (365 files), then the POST fields of the 190 screens other than add_/edit_, all at once and one at a time. Each place above wrote "Array to string conversion" to the PHP log; no screen answered 500.
 - `(int)` of a list is 1: the channel export opened channel 1 for `channel[]=x`, the MCP screen server 1 for `server[]=x`; the connections and Search Console writes would take connection 1, the address book recipient 1.
 - ShipWorks: `password[]=x` with a known user name reached `pg_password_verify()` and logged the same warning.
 
