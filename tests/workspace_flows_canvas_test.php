@@ -2261,7 +2261,7 @@ function test_workspace_flows_canvas_every_kind_has_one_group()
 
 	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
 	pg_assert_true((bool) preg_match('/\n    var PALETTE = \[\n.*?\n    \];\n/s', $source, $palette), 'PALETTE is in the script');
-	pg_assert_contains('className: kindClasses(node.kind)', $source, 'a box takes its group class (canvas.box())');
+	pg_assert_contains("className: 'wsf-card ' + kindClasses(node.kind)", $source, 'a box takes its group class (canvas.box())');
 	pg_assert_contains("el('li', 'wsf-outline-item ' + kindClasses(node.kind))", $source, 'an outline entry takes its group class');
 
 	$result = ws_flows_canvas_test_node(
@@ -2350,10 +2350,11 @@ JS
 }
 
 // Each group's colour is set once per theme: dark the spec's, light a
-// deeper tone readable on white (4.5:1); a box has a 1.5 px border all
-// round, not the 4 px left stripe, a value box a dashed one; control
-// arrows 2 px #7d8696 with a filled head; the scheduled-action drawing
-// uses the groups too.
+// deeper tone readable on white (4.5:1); a box is a 196 x 72 card with the
+// hairline, its group's colour on its tile, kind and port, never on its
+// border or as a left stripe, a value box dashed; flow arrows 1.75 px
+// #7d8696 with a filled head; the scheduled-action drawing uses the groups
+// and the card too.
 function test_workspace_flows_canvas_group_colours()
 {
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
@@ -2362,17 +2363,24 @@ function test_workspace_flows_canvas_group_colours()
 		pg_assert_true((bool) preg_match('/\n\.wsf-group-' . $group . ' \{ --wsf-kind: (#[0-9a-f]{6}); \}/', $css, $light), $group . ' has a light colour');
 		pg_assert_same(1, preg_match_all('/\n\.wsf-group-' . $group . ' \{/', $css), $group . "'s light colour is set once");
 		pg_assert_true(ws_flows_canvas_test_contrast($light[1], '#ffffff') >= 4.5, $group . ' light ' . $light[1] . ' keeps 4.5:1 on white');
-		pg_assert_contains('html[data-bs-theme="dark"] .wsf-group-' . $group . ' { --wsf-kind: ' . $entry[0] . '; }', $css, $group . "'s dark colour is the spec's");
+		pg_assert_contains("\n" . '[data-bs-theme="dark"] .wsf-group-' . $group . ' { --wsf-kind: ' . $entry[0] . '; }', $css, $group . "'s dark colour is the spec's, in any dark subtree");
 	}
 
 	pg_assert_false((bool) preg_match('/\.wsf-node-(manual|task|end|constants|value) \{ --wsf-kind/', $css), 'no colour per kind');
-	pg_assert_true((bool) preg_match('/\n\.pgc-node \{[^}]*border: 1\.5px solid var\(--pgc-node-accent/', $css, $box), 'a box has a 1.5 px border in its colour');
+	pg_assert_true((bool) preg_match('/\n\.pgc-node\.wsf-card \{[^}]*\}/', $css, $box), 'a flow box is a card');
+	pg_assert_contains("  width: 196px;\n  height: 72px;\n", $box[0], 'of 196 x 72 px');
+	pg_assert_contains('  border: 1px solid var(--pg-border-color-translucent);', $box[0], 'with the hairline');
+	pg_assert_contains('  border-radius: 13px;', $box[0], 'rounded 13 px');
+	pg_assert_contains('  box-shadow: var(--pg-shadow-card);', $box[0], 'and the card shadow');
 	pg_assert_false(strpos($box[0], 'border-left') !== false, 'no left stripe');
-	pg_assert_contains('.pgc-node[class*="wsf-group-"] { --pgc-node-accent: var(--wsf-kind); }', $css, "a box's border and ports take its group's colour");
+	pg_assert_contains(".pg-icon-tile.wsf-node-tile {\n  --pg-tone: var(--wsf-kind, var(--pg-tone-gray));\n  width: 30px;\n  height: 30px;\n}", $css, "the tile takes its group's colour");
+	pg_assert_contains('.pgc-node[class*="wsf-group-"] { --pgc-node-accent: var(--wsf-kind); }', $css, "a box's port takes its group's colour");
+	pg_assert_false((bool) preg_match('/\n\.wsf-outline-item \{[^}]*border-left/', $css), 'no left stripe on a List view entry either');
 	pg_assert_contains(".pgc-node.wsf-group-values {\n  border-style: dashed;\n}", $css, 'a value box is dashed');
 	pg_assert_contains('  --pgc-ring: #7c3aed;', $css, 'the selection ring');
 	pg_assert_contains('  --pgc-ring: #a78bfa;', $css, 'the dark selection ring');
 	pg_assert_contains(".pgc-edge-line {\n  fill: none;\n  stroke: var(--pgc-line, #7d8696);\n  stroke-width: 2;\n  marker-end: var(--pgc-marker, none);\n}", $css, 'control arrows');
+	pg_assert_contains(":is(.wsf-app, .wsf-embed) .pgc-edge:not(.pgc-selected) .pgc-edge-line {\n  stroke-width: 1.75;\n}", $css, 'flow arrows 1.75 px');
 	pg_assert_contains("  --pgc-marker: url(#wsf-arrow);\n", $css, "the Flows canvas's arrowhead");
 	pg_assert_contains('.pgc-arrowhead { fill: var(--pgc-line, #7d8696); }', $css, 'a filled head');
 	pg_assert_contains('.pgc-edge.wsf-edge-taken .pgc-edge-line', $css, 'the run view keeps its taken arrows');
@@ -2382,16 +2390,18 @@ function test_workspace_flows_canvas_group_colours()
 	preg_match_all("/'wsf-group-([a-z]+)'/", $actions[1], $used);
 	pg_assert_same(4, count($used[1]), 'every scheduled-action box has a group');
 	pg_assert_same(array(), array_values(array_diff($used[1], array_keys(ws_flows_canvas_test_groups()))), 'only groups the CSS colours');
+	pg_assert_contains("el('div', 'pgc-node wsf-card ' + (ACTION_KINDS[node.kind] || ''))", $source, 'the scheduled-action drawing draws the card');
+	pg_assert_contains("className: 'wsf-card ' + kindClasses(node.kind),", $source, 'a flow box is the card');
+	pg_assert_true((bool) preg_match("/size: function \\(\\) \\{\\n\\s+return \\{ w: BOX_W, h: BOX_H \\};/", $source), 'the core places, fits and routes the card at its size');
 }
 
-// The canvas's own sizes as the scripts have them: BOX_W and BOX_H of the
-// canvas core (pg_graph_canvas.js), DATA_ROW of the flow canvas.
+// The flow canvas's own sizes as its script has them: the card's BOX_W and
+// BOX_H, and DATA_ROW.
 function ws_flows_canvas_test_sizes()
 {
-	$core = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_graph_canvas.js'));
 	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
 
-	preg_match_all('/^    var (BOX_W|BOX_H) = [0-9]+;$/m', $core, $boxes);
+	preg_match_all('/^    var (BOX_W|BOX_H) = [0-9]+;$/m', $source, $boxes);
 	preg_match_all('/^    var DATA_ROW = [^\n]+;$/m', $source, $rows);
 	pg_assert_same(3, count($boxes[0]) + count($rows[0]), 'the box and row sizes are in the scripts');
 
@@ -2539,7 +2549,7 @@ function test_workspace_flows_canvas_next_row_fits_the_panel()
 function test_workspace_flows_canvas_thread_bends_around_a_box()
 {
 	$result = ws_flows_canvas_test_node(array('threadPath'), ws_flows_canvas_test_sizes() . <<<'JS'
-var y = 89;
+var y = 81;
 console.log(JSON.stringify({
     clear: threadPath(104, y, 704, y, 46, []),
     below: threadPath(104, y, 704, y, 46, [{ x: 300, y: 400 }]),
@@ -2554,12 +2564,12 @@ JS
 	}
 
 	pg_assert_same(46, $result['clear']['sag'], 'nothing in the way: its own sag');
-	pg_assert_same('M104 89 Q404 135 704 89', $result['clear']['d'], 'the quadratic curve below the chord');
+	pg_assert_same('M104 81 Q404 127 704 81', $result['clear']['d'], 'the quadratic curve below the chord');
 	pg_assert_same(46, $result['below']['sag'], 'a box far below is not in the way');
 	pg_assert_true($result['under']['sag'] > 46, 'a box in the way: it hangs deeper');
 	// The curve's lowest point is halfway between the ends' level and the
-	// control point; it passes below the box and its data row (40 + 80 + 18).
-	pg_assert_true(89 + $result['under']['sag'] / 2 > 138, 'and passes below the box');
+	// control point; it passes below the box and its data row (40 + 72 + 18).
+	pg_assert_true(81 + $result['under']['sag'] / 2 > 130, 'and passes below the box');
 	pg_assert_same(46, $result['deep']['sag'], 'a box too far down to pass below: its own sag');
 }
 
@@ -2621,7 +2631,7 @@ JS
 
 	foreach (array('plain', 'reader', 'selected') as $part) {
 		foreach ($result[$part] as $item) {
-			pg_assert_true($item['left'] >= 0 && $item['left'] + $item['width'] <= 208, $part . ': ' . $item['name'] . ' within the box');
+			pg_assert_true($item['left'] >= 0 && $item['left'] + $item['width'] <= 196, $part . ': ' . $item['name'] . ' within the box');
 		}
 	}
 
@@ -2648,7 +2658,7 @@ function test_workspace_flows_canvas_kinds_have_line_icons()
 	pg_assert_true((bool) preg_match('/\n    var FLOW_ICONS = \{\n.*?\n    \};\n/s', $host, $icons), 'FLOW_ICONS is in workspace.js');
 	pg_assert_false(strpos($kinds[0] . $palette[0], "'bi-") !== false, 'no Bootstrap icon left on a kind');
 
-	foreach (array("K.flowIcon(node.kind)", "K.flowIcon(node.kind, 'me-1')", "K.flowIcon(item[0], 'me-1')") as $use) {
+	foreach (array("cardFace(box, K.flowIcon(node.kind), t(kind.name))", "tile.appendChild(K.flowIcon(node.kind))", "K.flowIcon(item[0], 'me-1')") as $use) {
 		pg_assert_contains($use, $flow, 'the canvas draws ' . $use);
 	}
 

@@ -60,8 +60,11 @@ function test_panel_live_status_edoc_result_is_live()
 {
 	$commerce = panel_live_status_source('includes/settings/accounting.php');
 
-	pg_assert_same(2, substr_count($commerce, '<div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>'));
+	pg_assert_same(1, substr_count($commerce, '<div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>'));
 	pg_assert_same(0, substr_count($commerce, '<div class="pg-edoc-test-result mt-3"></div>'));
+
+	// Paraşüt's Connect answer is drawn on its page of Connections.
+	pg_assert_same(1, substr_count(panel_live_status_source('includes/fn/parasut.php'), '<div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>'));
 
 	$source = panel_live_status_source('assets/js/backend.src.js');
 

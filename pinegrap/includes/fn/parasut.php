@@ -976,8 +976,8 @@ function parasut_get_token()
             'success' => false,
             'token' => null,
             'error' => ($credentials['client_secret'] === '')
-                ? lang('Parasut credentials are not set. Enter them on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration).')
-                : lang('Pinegrap is not connected to Paraşüt. On the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), authorize it with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password.'),
+                ? lang('Parasut credentials are not set. Enter them on Paraşüt\'s page of Connections.')
+                : lang('Pinegrap is not connected to Paraşüt. On Paraşüt\'s page of Connections, authorize it with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password.'),
         ];
     }
 
@@ -1034,7 +1034,7 @@ function parasut_get_token()
         // is, because authorizing again would not cure it.
         if ((string) ($data['error'] ?? '') === 'invalid_grant') {
             $data['error_description'] = lang(array(
-                'string' => 'The Paraşüt connection has expired ({var:1}). Authorize Pinegrap once more on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration).',
+                'string' => 'The Paraşüt connection has expired ({var:1}). Authorize Pinegrap once more on Paraşüt\'s page of Connections.',
                 'vars' => (string) ($data['error_description'] ?? 'invalid_grant'),
             ));
         }
@@ -1473,6 +1473,139 @@ function parasut_company_id_for_save($posted, $stored)
     $posted = is_string($posted) ? trim($posted) : '';
 
     return ($posted !== '') ? $posted : trim((string) $stored);
+}
+
+/**
+ * The boxes of Paraşüt's page of Connections ("Connection details"): the
+ * three connect steps (client id and secret, the authorization page, the
+ * code and Connect), then Advanced (company number, the user name and
+ * password grant), then Save. The secret and the password are never drawn
+ * back: an empty box keeps what is stored. Connect is the backend.src.js
+ * handler of button.pg-edoc-test, posting the parasut_* boxes of its form to
+ * parasut_connect.php.
+ *
+ * @return string HTML
+ */
+function parasut_page_fields_html()
+{
+    $config = (array) db_item("SELECT parasut_client_id, parasut_username, parasut_company_id, parasut_credentials_enc FROM config LIMIT 1");
+    $client_id = (string) ($config['parasut_client_id'] ?? '');
+    $boxes = parasut_credential_boxes(parasut_credentials_decode((string) ($config['parasut_credentials_enc'] ?? '')));
+    $connected = !empty(parasut_connection_status()['connected']);
+    $authorize = parasut_authorize_url($client_id);
+
+    $box = function ($name, $label, $value, $type, $help, $placeholder = '') {
+        return '
+				<div>
+					<label class="pg-field-label" for="' . $name . '">' . h($label) . '</label>
+					<input type="' . $type . '" class="pg-input" id="' . $name . '" name="' . $name . '" value="' . h($value) . '" autocomplete="' . (($type === 'password') ? 'new-password' : 'off') . '" spellcheck="false"' . (($placeholder !== '') ? ' placeholder="' . h($placeholder) . '"' : '') . '>
+					' . (($help !== '') ? '<div class="pg-field-help">' . h($help) . '</div>' : '') . '
+				</div>';
+    };
+
+    return '
+				<details class="pg-parasut-steps"' . ($connected ? '' : ' open') . '>
+					<summary class="pg-field-label mb-3">' . h($connected ? lang('Authorize again or connect another account') : lang('Connect in three steps')) . '</summary>
+					<div class="d-flex flex-column gap-5">
+						<p class="pg-text-meta mb-0">' . h(lang('1. Enter the client id and secret of the API application; Paraşüt support issues them for your account.')) . '</p>'
+        . $box('parasut_client_id', lang('Client ID'), $client_id, 'text', '')
+        . $box('parasut_client_secret', lang('Client Secret'), '', 'password', $boxes['secret']['help'], $boxes['secret']['placeholder']) . '
+						<div>
+							<p class="pg-text-meta mb-3">' . h(lang('2. Open the authorization page, sign in to Paraşüt and allow Pinegrap; Paraşüt then shows a code.')) . '</p>
+							<a class="pg-button pg-button-quiet pg-button-sm pg-parasut-authorize' . (($authorize === '') ? ' disabled' : '') . '" href="' . h($authorize) . '" target="_blank" rel="noopener" data-pg-base="' . h(PARASUT_API_BASE . '/oauth/authorize') . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('Open the Paraşüt authorization page')) . '</a>
+						</div>
+						<div>
+							<label class="pg-field-label" for="parasut_auth_code">' . h(lang('3. Paste the code and press Connect')) . '</label>
+							<div class="d-flex flex-wrap align-items-center gap-3">
+								<input type="text" class="pg-input pg-f-lg" id="parasut_auth_code" name="parasut_auth_code" value="" autocomplete="off" spellcheck="false" placeholder="' . h(lang('Authorization code')) . '">
+								<button type="button" class="pg-button pg-button-quiet pg-button-sm text-nowrap pg-edoc-test" data-pg-fields="parasut_" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/parasut_connect.php"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Connect')) . '</button>
+							</div>
+							<div class="pg-field-help">' . h(lang('A code works once and for a few minutes. Saving the page with a code in the box connects too. No Paraşüt password is stored this way.')) . '</div>
+							<div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>
+						</div>
+					</div>
+				</details>
+				<details>
+					<summary class="pg-field-label mb-3">' . h(lang('Advanced: company number, user name and password')) . '</summary>
+					<div class="d-flex flex-column gap-5">'
+        . $box('parasut_company_id', lang('Company ID') . ' (' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Firma No'))) . ')', (string) ($config['parasut_company_id'] ?? ''), 'text',
+            lang('Filled in by Connect. Write it only when the Paraşüt user works in more than one company; an empty box keeps the saved number.')) . '
+						<p class="pg-text-meta mb-0">' . h(lang('The older way: the Paraşüt account\'s e-mail and password are stored encrypted and used whenever the token has to be renewed. Not needed once Pinegrap is authorized with a code.')) . '</p>'
+        . $box('parasut_username', lang('Username') . ' (' . lang('Email') . ')', (string) ($config['parasut_username'] ?? ''), 'text', '')
+        . $box('parasut_password', lang('Password'), '', 'password', $boxes['password']['help'], $boxes['password']['placeholder']) . '
+					</div>
+				</details>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>';
+}
+
+/**
+ * Saves what Paraşüt's page of Connections posts: the client id, the user
+ * name and the company number as typed (an empty company box keeps the
+ * saved number, parasut_company_id_for_save()), the secret and the
+ * password only when typed. A code typed in the box is then exchanged, as
+ * Connect does; a refused code is a warning, the boxes are saved.
+ *
+ * @param array $post
+ * @return array ['notices' => list, 'warnings' => list, 'log' => string]
+ */
+function parasut_page_save($post)
+{
+    $text = function ($name) use ($post) {
+        return (isset($post[$name]) && is_string($post[$name])) ? trim($post[$name]) : '';
+    };
+
+    $answer = array('notices' => array(), 'warnings' => array(), 'log' => '');
+    $secrets = array();
+
+    foreach (array('client_secret' => 'parasut_client_secret', 'password' => 'parasut_password') as $key => $name) {
+        if ($text($name) !== '') {
+            $secrets[$key] = $text($name);
+        }
+    }
+
+    if ($secrets && !_parasut_credentials_store($secrets)) {
+        $answer['warnings'][] = lang('The Paraşüt secrets could not be stored.');
+    }
+
+    db("UPDATE config
+        SET
+            parasut_client_id = '" . escape($text('parasut_client_id')) . "',
+            parasut_username = '" . escape($text('parasut_username')) . "',
+            parasut_company_id = '" . escape(parasut_company_id_for_save($text('parasut_company_id'), (string) db_value("SELECT parasut_company_id FROM config LIMIT 1"))) . "',
+            last_modified_user_id = '" . (defined('USER_ID') ? (int) USER_ID : 0) . "',
+            last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    if ($text('parasut_auth_code') !== '') {
+        $connected = parasut_connect_with_code($text('parasut_auth_code'), $text('parasut_client_id'), $text('parasut_client_secret'), $text('parasut_company_id'));
+
+        if (!empty($connected['success'])) {
+            // A switch to the authorized user's one company is a warning.
+            $report = parasut_connect_report($connected);
+            $answer['notices'] = $report['notices'];
+            $answer['warnings'] = array_merge($answer['warnings'], $report['warnings']);
+            $answer['log'] = $report['log'];
+        } else {
+            $answer['warnings'][] = (string) $connected['error'];
+        }
+    }
+
+    return $answer;
+}
+
+/**
+ * Disconnect on Paraşüt's page: the token, the client secret and the
+ * password are dropped, so nothing renews the connection. The client id,
+ * the company number and the user name stay for the next Connect.
+ *
+ * @return bool
+ */
+function parasut_disconnect()
+{
+    _parasut_token_cache_write(array());
+
+    return _parasut_credentials_store(array('client_secret' => '', 'password' => ''));
 }
 
 /**

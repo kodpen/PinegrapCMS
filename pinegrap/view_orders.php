@@ -559,6 +559,67 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
 // rows are unique already and no temporary table is paid for.
 $export_distinct = (($join_order_items !== '') || ($join_ship_tos !== '')) ? 'DISTINCT ' : '';
 
+// The orders the list shows (same joins and conditions as its count), one row
+// each: the joins for the advanced filters can repeat an order, so every
+// figure of the strip and of Summary is taken over this distinct set.
+$orders_filtered_sql =
+    "SELECT DISTINCT orders.id, orders.total, orders.order_date, orders.payment_method, " . (pg_schema_has('orders', 'type') ? 'orders.type' : "'' AS type") . "
+    FROM orders
+    LEFT JOIN user ON orders.user_id = user.user_id
+    LEFT JOIN contacts on orders.contact_id = contacts.id
+    $join_order_items
+    $join_ship_tos
+    $join_billing_states
+    $join_billing_countries
+    $join_shipping_states
+    $join_shipping_countries
+    $where
+    $sql_status
+    $sql_type";
+
+// Summary under the figure strip, read only when it is opened: the best
+// sellers by quantity, named as the catalog names them (order_items.product_name
+// is the SKU), and the orders by payment method. A counter sale keeps its
+// payment in the ERP's receipts, not on the order: it counts as a counter
+// sale, not as "None". Answered as markup for the strip's script.
+if (($_GET['summary'] ?? '') === '1') {
+    $top_products = array();
+
+    foreach ((array) db_items(
+        "SELECT
+            order_items.product_id,
+            MAX(COALESCE(NULLIF(products.short_description, ''), order_items.product_name)) AS name,
+            SUM(order_items.quantity) AS quantity
+        FROM order_items
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE order_items.order_id IN (SELECT f.id FROM ($orders_filtered_sql) AS f)
+        GROUP BY order_items.product_id
+        ORDER BY quantity DESC
+        LIMIT 5") as $top_row) {
+
+        $top_products[] = array('label' => trim(strip_tags((string) $top_row['name'])), 'value' => (float) $top_row['quantity']);
+    }
+
+    $payment_split = array();
+
+    foreach ((array) db_items(
+        "SELECT IF(f.payment_method = '' AND f.type = 'local', '#local', f.payment_method) AS payment_method, COUNT(*) AS n
+        FROM ($orders_filtered_sql) AS f
+        GROUP BY 1
+        ORDER BY n DESC") as $payment_row) {
+
+        $payment_split[] = array(
+            'label' => ((string) $payment_row['payment_method'] === '#local') ? lang('Counter sale') : (((string) $payment_row['payment_method'] === '') ? lang('None') : lang((string) $payment_row['payment_method'])),
+            'value' => (int) $payment_row['n'],
+        );
+    }
+
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    print pg_order_list_summary_html($top_products, $payment_split);
+    exit;
+}
+
 // if user requested to export orders, export orders
 if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // The export marks every complete order as exported, so the button's form
@@ -3108,27 +3169,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         'week'  => array($decrease_week, $current_week, $increase_week),
         'month' => array($decrease_month, $current_month, $increase_month),
         'year'  => array($decrease_year, $current_year, $increase_year),
-    ), $output_date_range_time);
+    ), $output_date_range_time, ' pg-orders-period');
 
     // ── Statistics strip ──
-    // The orders the list shows (same joins and conditions as the count
-    // above), one row each: the joins for the advanced filters can repeat an
-    // order, so every figure below is taken over this distinct set.
-    $orders_filtered_sql =
-        "SELECT DISTINCT orders.id, orders.total, orders.order_date, orders.payment_method, " . (pg_schema_has('orders', 'type') ? 'orders.type' : "'' AS type") . "
-        FROM orders
-        LEFT JOIN user ON orders.user_id = user.user_id
-        LEFT JOIN contacts on orders.contact_id = contacts.id
-        $join_order_items
-        $join_ship_tos
-        $join_billing_states
-        $join_billing_countries
-        $join_shipping_states
-        $join_shipping_countries
-        $where
-        $sql_status
-        $sql_type";
-
     // Daily buckets over the range on screen; a range longer than a year is
     // drawn by month. The connection runs in the site's time zone (init.php),
     // so FROM_UNIXTIME() and date() agree on where a day starts.
@@ -3160,125 +3203,42 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         }
     }
 
-    // The best sellers by quantity, named as the catalog names them
-    // (order_items.product_name is the SKU).
-    $top_products = array();
-
-    foreach ((array) db_items(
-        "SELECT
-            order_items.product_id,
-            MAX(COALESCE(NULLIF(products.short_description, ''), order_items.product_name)) AS name,
-            SUM(order_items.quantity) AS quantity
-        FROM order_items
-        LEFT JOIN products ON products.id = order_items.product_id
-        WHERE order_items.order_id IN (SELECT f.id FROM ($orders_filtered_sql) AS f)
-        GROUP BY order_items.product_id
-        ORDER BY quantity DESC
-        LIMIT 5") as $top_row) {
-
-        $top_name = trim(strip_tags((string) $top_row['name']));
-        $top_products[] = array(
-            'label'    => (mb_strlen($top_name) > 40) ? rtrim(mb_substr($top_name, 0, 39)) . '…' : $top_name,
-            'quantity' => (float) $top_row['quantity'],
-        );
-    }
-
-    // How the orders were paid, by number of orders. A counter sale keeps
-    // its payment in the ERP's receipts, not on the order: it counts as a
-    // counter sale, not as "None".
-    $payment_split = array();
-
-    foreach ((array) db_items(
-        "SELECT IF(f.payment_method = '' AND f.type = 'local', '#local', f.payment_method) AS payment_method, COUNT(*) AS n
-        FROM ($orders_filtered_sql) AS f
-        GROUP BY 1
-        ORDER BY n DESC") as $payment_row) {
-
-        $payment_split[] = array(
-            'label' => ((string) $payment_row['payment_method'] === '#local') ? lang('Counter sale') : (((string) $payment_row['payment_method'] === '') ? lang('None') : lang((string) $payment_row['payment_method'])),
-            'count' => (int) $payment_row['n'],
-        );
-    }
-
-    // The doughnut's colours are its only key, so the canvas name lists
-    // every method with its count.
-    $payment_summary = lang('Payment methods');
-
-    if ($payment_split) {
-
-        $payment_parts = array();
-
-        foreach ($payment_split as $payment_row) {
-            $payment_parts[] = $payment_row['label'] . ': ' . pg_format_number($payment_row['count'], 0);
-        }
-
-        $payment_summary .= ' — ' . implode(', ', $payment_parts);
-    }
-
-    // The bars are drawn only on the canvas, so its name lists every
-    // product with its quantity.
-    $top_summary = lang('Top 5 products');
-
-    if ($top_products) {
-
-        $top_parts = array();
-
-        foreach ($top_products as $top_row) {
-            $top_parts[] = $top_row['label'] . ': ' . pg_format_number($top_row['quantity'], 0);
-        }
-
-        $top_summary .= ' — ' . implode(', ', $top_parts);
-    }
-
     $orders_chart_data = array(
         'labels'   => array_values($spark_keys),
         'counts'   => array_values($spark_counts),
         'totals'   => array_values($spark_totals),
         // The tooltip draws on the canvas, which shows an entity as it is.
         'currency' => html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-        'top'      => $top_products,
-        'payments' => $payment_split,
-        'quantity' => lang('Quantity'),
     );
 
-    $stat_card = function ($icon, $value, $label, $canvas, $value_class = '') {
+    // One figure of the strip: its label, the value and, at its right, the
+    // sparkline of the period when it has one.
+    $strip_cell = function ($value, $label, $canvas, $value_class = '') {
         return '
-                    <div class="pg-card pg-figure">
-                        <div class="pg-figure-label"><i class="bi ' . $icon . '" aria-hidden="true"></i><span>' . $label . '</span></div>
-                        <div class="pg-figure-value' . $value_class . '">' . $value . '</div>
-                        ' . (($canvas !== '') ? '<div class="pg-orders-spark"><canvas id="' . $canvas . '" aria-hidden="true"></canvas></div>' : '') . '
+                    <div class="pg-figure-strip-cell">
+                        <div class="pg-figure-label">' . $label . '</div>
+                        <div class="pg-figure-strip-line">
+                            <div class="pg-figure-value' . $value_class . '">' . $value . '</div>
+                            ' . (($canvas !== '') ? '<div class="pg-orders-spark"><canvas id="' . $canvas . '" aria-hidden="true"></canvas></div>' : '') . '
+                        </div>
                     </div>';
     };
 
+    // Today's four figures as cells of one card; Summary at its end opens the
+    // best sellers and the payment methods under it, read when it opens
+    // (view_orders.php?summary=1). Open or closed is the person's, kept in
+    // the browser as the list's columns are.
     $output_order_stats = '
-                <div class="pg-figures">'
-                    . $stat_card('bi-bank', $online_orders_total_all, h(lang('Total Sales Amount')) . ' (' . h(lang('Online')) . ')', '')
-                    . $stat_card('bi-funnel', $filter_totals, h(lang('Total Sales Amount')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_total')
-                    . $stat_card('bi-receipt', h(pg_format_number((int) $number_of_results, 0)), h(lang('Orders')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_count')
-                    . $stat_card('bi-arrow-counterclockwise', $refund_pending_total_all, h(lang('Refund Pending')), '', ($refund_pending_total > 0) ? ' fg-danger' : '') . '
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-12 lg:col-6">
-                        <div class="card pg-card h-100">
-                            <div class="card-body p-5">
-                                <div class="small fg-secondary mb-3"><i class="bi bi-trophy me-1" aria-hidden="true"></i>' . h(lang('Top 5 products')) . '</div>
-                                ' . (!empty($top_products)
-                                    ? '<div class="pg-orders-chart"><canvas id="pg_orders_top" role="img" aria-label="' . h($top_summary) . '"></canvas></div>'
-                                    : '<div class="fg-secondary small">' . h(lang('No orders in this range.')) . '</div>') . '
-                            </div>
-                        </div>
+                <section class="pg-card pg-figure-strip" aria-label="' . h(lang('Figures')) . '">'
+                    . $strip_cell($online_orders_total_all, h(lang('Total Sales Amount')) . ' (' . h(lang('Online')) . ')', '')
+                    . $strip_cell($filter_totals, h(lang('Total Sales Amount')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_total')
+                    . $strip_cell(h(pg_format_number((int) $number_of_results, 0)), h(lang('Orders')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_count')
+                    . $strip_cell($refund_pending_total_all, h(lang('Refund Pending')), '', ($refund_pending_total > 0) ? ' is-bad' : '') . '
+                    <div class="pg-figure-strip-end">
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" id="pg_orders_summary_toggle" aria-expanded="false" aria-controls="pg_orders_summary" data-pg-user="' . (defined('USER_ID') ? (int) USER_ID : 0) . '"><i class="bi bi-bar-chart" aria-hidden="true"></i>' . h(lang('Summary')) . '<i class="bi bi-chevron-down" aria-hidden="true"></i></button>
                     </div>
-                    <div class="col-12 lg:col-6">
-                        <div class="card pg-card h-100">
-                            <div class="card-body p-5">
-                                <div class="small fg-secondary mb-3"><i class="bi bi-credit-card me-1" aria-hidden="true"></i>' . h(lang('Payment methods')) . '</div>
-                                ' . (!empty($payment_split)
-                                    ? '<div class="pg-orders-chart"><canvas id="pg_orders_payments" role="img" aria-label="' . h($payment_summary) . '"></canvas></div>'
-                                    : '<div class="fg-secondary small">' . h(lang('No orders in this range.')) . '</div>') . '
-                            </div>
-                        </div>
-                    </div>
-                </div>';
+                    <div class="pg-figure-strip-more" id="pg_orders_summary" data-src="view_orders.php?summary=1" data-failed="' . h(lang('The summary could not be loaded.')) . '" hidden></div>
+                </section>';
 
     $output .=
     pg_page_shell(
@@ -3312,13 +3272,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         ' . $output_gateway_buttons . '
                     </form>
                     <a class="btn btn-sm btn-text theme-secondary" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>
-                    <div class="pg-toolbar-grow"></div>
+                    <span class="pg-orders-bar-rule" aria-hidden="true"></span>
+                    ' . $output_period_navigator . '
+                    <div class="pg-orders-bar-end">
                     ' . pg_list_sort_menu('view_orders.php', $sort_columns, $sort_levels, $sort_default) . '
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
                     ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
                     ' . ($order_profit_on ? pg_filter_select('profit', array('' => lang('Any profit'), 'loss' => lang('Sold at a loss')), (string) ($_SESSION['software']['ecommerce']['view_orders']['profit'] ?? ''), array('label' => lang('Profit'), 'action' => 'view_orders.php', 'id' => 'profit')) : '') . '
                     <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
-                    ' . $output_period_navigator . '
+                    </div>
                 </nav>
                 ' . $output_advanced_filters . '
                 ' . $output_order_stats . '
@@ -3421,12 +3383,75 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             });
         })();
         </script>
+        <script>
+        // Summary under the figure strip: closed until opened, its markup read
+        // the first time it opens. Open or closed is kept per person in the
+        // browser, as the list columns are (pg.list.<user id>.<list>).
+        (function () {
+            var button = document.getElementById("pg_orders_summary_toggle");
+            var box = document.getElementById("pg_orders_summary");
+
+            if (!button || !box) { return; }
+
+            var key = "pg.orders." + (button.getAttribute("data-pg-user") || "0") + ".summary";
+            var chevron = button.querySelector(".bi-chevron-down, .bi-chevron-up");
+            var state = "";
+
+            var fill = function (html) {
+                if (window.jQuery) { window.jQuery(box).html(html); } else { box.innerHTML = html; }
+            };
+
+            var load = function () {
+                if (state === "loading" || state === "loaded") { return; }
+                state = "loading";
+                box.setAttribute("aria-busy", "true");
+                fetch(box.getAttribute("data-src"), { credentials: "same-origin", headers: { "X-Requested-With": "XMLHttpRequest" } })
+                    .then(function (response) {
+                        if (!response.ok) { throw new Error(String(response.status)); }
+                        return response.text();
+                    })
+                    .then(function (html) {
+                        state = "loaded";
+                        fill(html);
+                    }, function () {
+                        state = "";
+                        fill("");
+                        var note = document.createElement("p");
+                        note.className = "pg-figure-note is-bad";
+                        note.setAttribute("role", "alert");
+                        note.textContent = box.getAttribute("data-failed");
+                        box.appendChild(note);
+                    })
+                    .then(function () { box.removeAttribute("aria-busy"); });
+            };
+
+            var show = function (open) {
+                box.hidden = !open;
+                button.setAttribute("aria-expanded", open ? "true" : "false");
+                button.classList.toggle("is-open", open);
+                if (chevron) { chevron.className = "bi " + (open ? "bi-chevron-up" : "bi-chevron-down"); }
+                if (open) { load(); }
+            };
+
+            button.addEventListener("click", function () {
+                var open = box.hidden;
+                show(open);
+                try {
+                    if (open) { localStorage.setItem(key, "1"); } else { localStorage.removeItem(key); }
+                } catch (e) { /* storage refused: the choice holds for the page */ }
+            });
+
+            var saved = "";
+            try { saved = localStorage.getItem(key) || ""; } catch (e) { saved = ""; }
+            if (saved === "1") { show(true); }
+        })();
+        </script>
         <script src="assets/lib/chartjs/chart.umd.min.js"></script>
         <script>
-        // The statistics strip: sparklines under two of the figures, the best
-        // sellers and the payment split. Colours come from the theme
-        // variables, so the dark theme draws them too. Nothing here replaces
-        // the canvases later, so nothing has to be destroyed.
+        // The figure strip: the sparklines at the right of two of the figures.
+        // Colours come from the theme variables, so the dark theme draws them
+        // too. Nothing here replaces the canvases later, so nothing has to be
+        // destroyed.
         (function () {
             if (typeof Chart === "undefined") { return; }
             var data = ' . json_encode($orders_chart_data, JSON_HEX_TAG | JSON_HEX_AMP) . ';
@@ -3461,47 +3486,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             };
             spark("pg_orders_spark_total", "line", data.totals, money);
             spark("pg_orders_spark_count", "bar", data.counts, count);
-
-            var palette = [primary, color("--pg-success", "#198754"), color("--pg-warning", "#ffc107"), color("--pg-info", "#0dcaf0"), color("--pg-danger", "#dc3545"), color("--pg-secondary", "#6c757d")];
-            var ink = color("--pg-fg-2", "#6c757d");
-            var surface = color("--pg-bg-body", "#fff");
             probe.remove();
-            var top = document.getElementById("pg_orders_top");
-            if (top && data.top.length) {
-                new Chart(top, {
-                    type: "bar",
-                    data: { labels: data.top.map(function (row) { return row.label; }),
-                            datasets: [{ label: data.quantity, data: data.top.map(function (row) { return row.quantity; }), backgroundColor: primary, borderRadius: 4, barThickness: 14 }] },
-                    options: {
-                        indexAxis: "y",
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return data.quantity + ": " + count(ctx.parsed.x); } } } },
-                        scales: { x: { beginAtZero: true, ticks: { color: ink, precision: 0 }, grid: { display: false } }, y: { ticks: { color: ink }, grid: { display: false } } }
-                    }
-                });
-            }
-            var payments = document.getElementById("pg_orders_payments");
-            if (payments && data.payments.length) {
-                new Chart(payments, {
-                    type: "doughnut",
-                    data: { labels: data.payments.map(function (row) { return row.label; }),
-                            datasets: [{ data: data.payments.map(function (row) { return row.count; }), backgroundColor: palette, borderColor: surface, borderWidth: 2 }] },
-                    options: {
-                        maintainAspectRatio: false,
-                        cutout: "62%",
-                        // The legend names each slice with its count, so a
-                        // slice is found by its words, not only its colour.
-                        plugins: { legend: { position: "right", labels: { color: ink, boxWidth: 10, boxHeight: 10,
-                                       generateLabels: function (chart) {
-                                           return Chart.overrides.doughnut.plugins.legend.labels.generateLabels(chart).map(function (item) {
-                                               item.text = item.text + ": " + count(data.payments[item.index].count);
-                                               return item;
-                                           });
-                                       } } },
-                                   tooltip: { callbacks: { label: function (ctx) { return ctx.label + ": " + count(ctx.parsed); } } } }
-                    }
-                });
-            }
         })();
         </script>
     

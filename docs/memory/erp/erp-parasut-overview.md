@@ -16,7 +16,7 @@ module: parasut
 - Live rounds and open items run only in the owner's local session. Never guess an endpoint (`erp-edoc-driver-layer.md`).
 
 ## What does a person see, and which file holds it?
-- Settings › Accounting › E-Invoice, Paraşüt part: status line, "Connect in three steps", Advanced, Default Product/Service ID: `erp-parasut-connect-card.md`; grants, token, owner stamp, refresh: `erp-parasut-connection.md`; a 401 on a cached token: `erp-parasut-legacy-token-401.md`.
+- Paraşüt's page of Connections ("Connect in three steps", Advanced, Disconnect), Default Product/Service ID: `erp-parasut-connect-card.md`; grants, token, owner stamp, refresh: `erp-parasut-connection.md`; a 401 on a cached token: `erp-parasut-legacy-token-401.md`.
 - ERP invoice: Send, Hand to GİB, Ask After the Status, PDF, Cancel: `erp-parasut-driver.md` (the path), `-driver-2.md` (e-Fatura or e-Arşiv, requests), `-invoice-lines.md` (totals check, kurus shift), `-send-failures.md` (no answer, failed job, deleted record), `-sent-cancel.md`.
 - Buyer card: `erp-parasut-final-consumer-card.md` (11111111111); the linked card and ERP › Account sync: `erp-parasut-accounts.md`.
 - An order shipped by E-Shipment: `erp-parasut-shipped-order.md`; invoiced by Create Invoice: `-legacy-invoiced-order.md`; kept ids deleted there: `-stale-kept-ids.md`.

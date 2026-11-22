@@ -2,14 +2,14 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Firewall and HTTPS cards: the request filter, the
- * limits on one address, the bot policy, the address lists, the country
- * restriction, the trusted proxies and the HTTPS headers.
+ * Site Settings - the Firewall and HTTPS cards: Secure Mode and the HTTPS
+ * headers, the request filter, the limits on one address, the bot policy,
+ * the address lists, the country restriction, the trusted proxies and the
+ * logs.
  *
- * Each firewall part is one folded row (includes/settings/fold.php) holding
- * its card; the rows' order, names and lines are
- * includes/fn/firewall_settings_fold.php. A switch's fields sit under it,
- * drawn whatever its state. The HTTPS card follows the rows. Which cards
+ * Each part is one folded row (includes/settings/fold.php) holding its card;
+ * the rows' order, names and lines are includes/fn/firewall_settings_fold.php.
+ * A switch's fields sit under it, drawn whatever its state. Which cards
  * belong here is said once, in includes/settings/registry.php; this file
  * holds them, and firewall.save.php writes what they edit. The variables they
  * read are prepared by includes/settings/prep.php.
@@ -83,9 +83,8 @@ if ($waf_ai_ready) {
 $firewall_parts['waf'] = array('html' => '
     <div id="pgset-waf" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="pg-title-section">' . lang('Firewall') . '</span>
-                <a href="view_waf_log.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-list-columns-reverse"></i>' . lang('Firewall Log') . '</a>
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Firewall') . '
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -113,21 +112,6 @@ $firewall_parts['waf'] = array('html' => '
                         <label for="waf_sensitivity" class="form-label">' . lang('Sensitivity') . '</label>
                         <select name="waf_sensitivity" id="waf_sensitivity" class="form-control">' . $output_waf_sensitivity_options . '</select>
                         <div class="form-text">' . lang('Each rule contributes a score. Sensitivity sets how much evidence is needed before a request counts as an attack.') . ' ' . lang('It moves only this threshold of the signature scan: the rate limits and automatic bans keep their own settings.') . '</div>
-                    </div>
-                    <div class="pg-f-xs">
-                        <label for="waf_log_retention_days" class="form-label">' . lang('Log Retention') . '</label>
-                        <label class="form-control form-adorn form-adorn-end">
-                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
-                            <input type="text" name="waf_log_retention_days" id="waf_log_retention_days" class="form-ghost text-end" value="' . (int) $waf_log_retention_days . '" size="4" maxlength="4" inputmode="numeric"/>
-                        </label>
-                    </div>
-                    <div class="pg-f-xs">
-                        <label for="waf_log_max_rows" class="form-label">' . lang('Log Size Limit') . '</label>
-                        <label class="form-control form-adorn form-adorn-end">
-                            <span class="form-adorn-text" aria-hidden="true">' . lang('row(s)') . '</span>
-                            <input type="text" name="waf_log_max_rows" id="waf_log_max_rows" class="form-ghost text-end" value="' . (int) $waf_log_max_rows . '" size="7" maxlength="7" inputmode="numeric"/>
-                        </label>
-                        <div class="form-text">' . lang('Identical events within five minutes already share one row. This is the hard ceiling: the oldest rows are dropped beyond it, so an attack cannot fill the database.') . '</div>
                     </div>
                     <div class="col-12">
                         <div class="d-flex align-items-center gap-3">
@@ -489,31 +473,48 @@ $firewall_parts['proxies'] = array('html' => '
         </div>
     </div>') + pg_firewall_fold_proxies(count(waf_parse_list($waf_trusted_proxies)), $output_waf_unlisted_proxy !== '');
 
-// ── The rows ──
-$firewall_rows = array();
-
-foreach (pg_firewall_fold_order() as $firewall_key) {
-    $firewall_rows[] = array('key' => $firewall_key) + pg_firewall_fold_face($firewall_key) + $firewall_parts[$firewall_key];
-}
-
-$pg_settings_cards[] = pg_settings_fold($firewall_rows);
-
-// ── HTTPS and Security Headers ──
-// Secure Mode (url_scheme) is always shown; the header, policy and text log
-// switches only once their columns exist - a switch that saves nowhere is
-// worse than no switch.
-$security_headers_checked = '';
+// ── HTTPS ──
+// Secure Mode first, with its warning and the trusted-proxy offer; then the
+// header switches and the policy, drawn whatever their state but only once
+// their columns exist - a switch that saves nowhere is worse than no switch.
+$security_headers_checked = ($security_ready && ($security_headers == 1)) ? ' checked="checked"' : '';
+$security_csp_now = 'off';
 $output_security_headers_block = '';
+
+// The Secure Mode one-step offer. When this request came over plain HTTP
+// through a proxy that reports HTTPS and is not trusted yet, the box lets the
+// save list the peer's own address under Trusted Proxies and turn Secure Mode
+// on together (firewall.save.php checks the peer against the list it writes).
+// A public peer gets no box: a CDN or load balancer is listed with all of its
+// published ranges by hand. Only while the mode is off; on, nothing is asked.
+$output_secure_mode_offer = '';
+
+if (($url_scheme !== 'https://') && !check_if_request_is_secure() && pg_forwarded_https($_SERVER)) {
+
+    $secure_mode_peer = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+    $secure_mode_offer = pg_https_peer_offer($secure_mode_peer);
+
+    if ($secure_mode_offer['entries'] && function_exists('waf_table_has_column') && waf_table_has_column('config', 'waf_trusted_proxies')) {
+        $output_secure_mode_offer = '
+                        <div class="form-field mt-3">
+                            <input value="1" class="check" type="checkbox" id="secure_mode_trust_proxy" name="secure_mode_trust_proxy"/>
+                            <label class="" for="secure_mode_trust_proxy">' . lang('Add this proxy to Trusted Proxies') . '</label>
+                            <div class="form-text">' . lang(array('string' => 'This request reached the server over plain HTTP through a proxy at {var:1} that reports HTTPS. The proxy is not listed under Trusted Proxies, so Secure Mode cannot be turned on yet. With this box ticked, saving lists {var:2} there and turns Secure Mode on in one step.', 'vars' => array(h($secure_mode_peer), h(implode(', ', $secure_mode_offer['entries']))))) . '</div>
+                        </div>';
+    } elseif ($secure_mode_offer['kind'] === 'public') {
+        $output_secure_mode_offer = '
+                        <div class="form-text fg-warning mt-3">' . lang(array('string' => 'This request reached the server over plain HTTP through a CDN or load balancer at {var:1} that reports HTTPS. It is not listed under Trusted Proxies, so Secure Mode cannot be turned on yet: list all of its published address ranges there first (Cloudflare is recognised on its own), or switch it to Full (end-to-end) mode.', 'vars' => h($secure_mode_peer))) . '</div>';
+    } else {
+        $output_secure_mode_offer = '
+                        <div class="form-text fg-warning mt-3">' . lang(array('string' => 'This request reached the server over plain HTTP through a proxy at {var:1} that reports HTTPS. It is not listed under Trusted Proxies, so Secure Mode cannot be turned on yet: list its address there first.', 'vars' => h($secure_mode_peer))) . '</div>';
+    }
+}
 
 if ($security_ready) {
 
-    $security_headers_checked          = ($security_headers == 1) ? ' checked="checked"' : '';
     $security_frame_protection_checked = ($security_frame_protection == 1) ? ' checked="checked"' : '';
     $security_hsts_checked             = ($security_hsts == 1) ? ' checked="checked"' : '';
-    $security_csp_off_checked          = ($security_csp_mode === 'off') ? ' checked="checked"' : '';
-    $security_csp_enforce_checked      = ($security_csp_mode === 'enforce') ? ' checked="checked"' : '';
-    $security_csp_report_checked       = ($security_csp_off_checked === '' && $security_csp_enforce_checked === '') ? ' checked="checked"' : '';
-    $waf_text_log_checked              = ($waf_text_log == 1) ? ' checked="checked"' : '';
+    $security_csp_now                  = in_array($security_csp_mode, array('off', 'enforce'), true) ? $security_csp_mode : 'report';
 
     // The built-in policy, shown as the placeholder so the operator edits a
     // copy of what is actually sent rather than starting from nothing.
@@ -530,8 +531,101 @@ if ($security_ready) {
 
     if ($security_csp_map_note !== '') {
         $security_csp_map_note = '
-                                                            <div class="alert theme-warning mt-3 mb-0">' . $security_csp_map_note . '</div>';
+                        <div class="alert theme-warning mt-3 mb-0 py-3 small">' . $security_csp_map_note . '</div>';
     }
+
+    $output_security_csp_modes = '';
+    $output_security_csp_texts = '';
+
+    foreach (array(
+        'off'     => array(lang('Off'), lang('No policy is sent.')),
+        'report'  => array(lang('Report only'), lang('record what the policy would refuse, refuse nothing') . '. ' . lang('Start here. Browsers report every script, style, frame or connection the policy would have refused, and the Firewall Log screen lists them by source. When that list shows nothing the site needs, the policy is ready to enforce.')),
+        'enforce' => array(lang('Enforce'), lang('refuse what the policy does not allow') . '. ' . lang('A source missing from the policy stops loading for every visitor. Enforce only after Report Only has run for a while on real traffic.')),
+    ) as $security_csp_key => $security_csp_text) {
+        $output_security_csp_modes .= '
+                            <label class="pg-seg-item" for="security_csp_mode_' . $security_csp_key . '"><input class="visually-hidden" type="radio" name="security_csp_mode" id="security_csp_mode_' . $security_csp_key . '" value="' . $security_csp_key . '"' . (($security_csp_now === $security_csp_key) ? ' checked="checked"' : '') . '/>' . h($security_csp_text[0]) . '</label>';
+        $output_security_csp_texts .= '
+                        <div class="form-text"><strong>' . h($security_csp_text[0]) . '</strong> &mdash; ' . h($security_csp_text[1]) . '</div>';
+    }
+
+    $output_security_headers_block = '
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="checkbox" class="pg-switch" value="1"' . $security_headers_checked . ' id="security_headers" name="security_headers" aria-describedby="security_headers_help"/>
+                            <label class="pg-text-2" for="security_headers">' . lang('Send security headers') . '</label>
+                        </div>
+                        <div class="form-text" id="security_headers_help">' . lang('Adds X-Content-Type-Options, Referrer-Policy and Permissions-Policy to every response, plus the options below. These tell the browser what your pages are not allowed to do, and cost nothing.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="checkbox" class="pg-switch" value="1"' . $security_frame_protection_checked . ' id="security_frame_protection" name="security_frame_protection" aria-describedby="security_frame_protection_help"/>
+                            <label class="pg-text-2" for="security_frame_protection">' . lang('Refuse framing by other sites') . '</label>
+                        </div>
+                        <div class="form-text" id="security_frame_protection_help">' . lang('Stops another site from showing your pages inside a frame, which is how a click on their page is turned into a click on yours. Turn off only if you embed this site in a frame on another domain on purpose.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="checkbox" class="pg-switch" value="1"' . $security_hsts_checked . ($secure_mode_checked === '' ? ' disabled="disabled"' : '') . ' id="security_hsts" name="security_hsts" aria-describedby="security_hsts_help"/>
+                            <label class="pg-text-2" for="security_hsts">' . lang('Always HTTPS (HSTS)') . '</label>
+                        </div>
+                        <div class="form-text" id="security_hsts_help">' . lang('Tells browsers to use HTTPS for this site for a year, even when a link says http. Turn on only when the certificate has been in place and renewing reliably; a browser that has seen this header will refuse the site over plain HTTP until the year is up, and turning the setting off does not take that back.') . ' ' . lang('Available once Secure Mode is on and saved.') . '</div>
+                        <script>
+                            (function () {
+                                var secure = document.getElementById("secure_mode");
+                                var hsts = document.getElementById("security_hsts");
+                                if (!secure || !hsts) { return; }
+                                secure.addEventListener("change", function () {
+                                    hsts.disabled = !secure.checked;
+                                    if (!secure.checked) { hsts.checked = false; }
+                                });
+                            })();
+                        </script>
+                    </div>
+                    <div class="col-12">
+                        <fieldset><legend class="form-label pg-field-label">' . lang('Content security policy') . '</legend>
+                        <div class="pg-seg flex-wrap">' . $output_security_csp_modes . '
+                        </div>
+                        </fieldset>' . $output_security_csp_texts . '
+                    </div>
+                    <div class="col-12">
+                        <label for="security_csp_policy" class="form-label">' . lang('Policy') . '</label>
+                        <textarea name="security_csp_policy" id="security_csp_policy" class="form-control font-monospace" rows="4" spellcheck="false" placeholder="' . h($security_csp_placeholder) . '">' . h($security_csp_policy) . '</textarea>
+                        <div class="form-text">' . lang('Leave empty for the built-in policy shown above: the site\'s own files, inline code and the libraries the software itself uses are allowed, images, fonts and media may come from anywhere over https, and every other third-party source is reported. To allow one, copy the policy here and add the origin to the directive that reported it, for example https://www.googletagmanager.com to script-src. The report address is added for you.') . '</div>' . $security_csp_map_note . '
+                        <a href="view_waf_log.php" class="pg-button pg-button-quiet pg-button-sm mt-3"><i class="bi bi-list-columns-reverse" aria-hidden="true"></i>' . lang('Policy reports') . '</a>
+                    </div>';
+}
+
+$firewall_parts['headers'] = array('html' => '
+    <div id="pgset-headers" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('HTTPS') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="checkbox" class="pg-switch" value="1"' . $secure_mode_checked . ' id="secure_mode" name="secure_mode" aria-describedby="secure_mode_help"/>
+                            <label class="pg-text-2" for="secure_mode">' . lang('Secure Mode') . '</label>
+                        </div>
+                        <div class="form-text" id="secure_mode_help">' . lang('Every address the site writes starts with https:// and a plain http request is redirected. This is the switch the HSTS option below depends on.') . '</div>' . $output_secure_mode_offer . '
+                        <div class="alert theme-warning mt-3 mb-0 py-3 small">
+                            <p>' . lang(array('string' => 'Warning: Do not enable Secure Mode until you have {var:1} that your site has a working SSL Certificate.', 'vars' => array('<a class="alert-link" href="https://' . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('verified') . '</a>'))) . '</p>
+                            <p class="mb-0">' . lang('A padlock in your browser is not enough on its own. If SSL is terminated by a proxy or CDN before the request reaches this server (for example Cloudflare "Flexible" SSL), this server sees plain HTTP, and a proxy it does not trust would make Secure Mode redirect every request in an endless loop, making the site unreachable. The test page above reports what this server actually sees. When the request comes through a proxy that is not listed under Trusted Proxies yet, this card offers to list it as Secure Mode is turned on.') . '</p>
+                        </div>
+                    </div>' . $output_security_headers_block . '
+                </div>
+            </div>
+        </div>
+    </div>') + pg_firewall_fold_https($secure_mode_checked !== '', (bool) $security_ready, $security_headers_checked !== '', $security_ready && ($security_hsts == 1), $security_csp_now);
+
+// ── Logs ──
+// The firewall log's retention and ceiling, and the plain-text block log a
+// server's fail2ban can follow; the switch and its files only once its column
+// exists.
+$output_waf_text_log = '';
+
+if ($security_ready) {
 
     $waf_text_log_path = function_exists('waf_text_log_file') ? waf_text_log_file() : '';
 
@@ -552,147 +646,63 @@ if ($security_ready) {
         . "findtime = 600\n"
         . "bantime  = 3600";
 
-    $output_security_headers_block = '
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $security_headers_checked . ' class="collapse-switcher" type="checkbox" id="security_headers" name="security_headers" data-bs-target="#security_headers_row"/></div>
-                                                <label class="" for="security_headers">' . lang('Send Security Headers') . '</label>
-                                                <div class="form-text">' . lang('Adds X-Content-Type-Options, Referrer-Policy and Permissions-Policy to every response, plus the options below. These tell the browser what your pages are not allowed to do, and cost nothing.') . '</div>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="security_headers_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <input value="1"' . $security_frame_protection_checked . ' class="check" type="checkbox" id="security_frame_protection" name="security_frame_protection"/>
-                                                                <label class="" for="security_frame_protection">' . lang('Refuse Framing by Other Sites') . '</label>
-                                                                <div class="form-text">' . lang('Stops another site from showing your pages inside a frame, which is how a click on their page is turned into a click on yours. Turn off only if you embed this site in a frame on another domain on purpose.') . '</div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <input value="1"' . $security_hsts_checked . ($secure_mode_checked === '' ? ' disabled="disabled"' : '') . ' class="check" type="checkbox" id="security_hsts" name="security_hsts"/>
-                                                                <label class="" for="security_hsts">' . lang('Always HTTPS (HSTS)') . '</label>
-                                                                <div class="form-text">' . lang('Tells browsers to use HTTPS for this site for a year, even when a link says http. Turn on only when the certificate has been in place and renewing reliably; a browser that has seen this header will refuse the site over plain HTTP until the year is up, and turning the setting off does not take that back.') . ' ' . lang('Available once Secure Mode is on and saved.') . '</div>
-                                                                <script>
-                                                                    (function () {
-                                                                        var secure = document.getElementById("secure_mode");
-                                                                        var hsts = document.getElementById("security_hsts");
-                                                                        if (!secure || !hsts) { return; }
-                                                                        secure.addEventListener("change", function () {
-                                                                            hsts.disabled = !secure.checked;
-                                                                            if (!secure.checked) { hsts.checked = false; }
-                                                                        });
-                                                                    })();
-                                                                </script>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-12 ">
-                                                            <fieldset><legend class="form-label pg-field-label">' . lang('Content Security Policy') . '</legend>
-                                                            <div class="form-field">
-                                                                <input class="radio" type="radio" name="security_csp_mode" id="security_csp_mode_off" value="off"' . $security_csp_off_checked . '/>
-                                                                <label class="" for="security_csp_mode_off"><strong>' . lang('Off') . '</strong></label>
-                                                            </div>
-                                                            <div class="form-field">
-                                                                <input class="radio" type="radio" name="security_csp_mode" id="security_csp_mode_report" value="report"' . $security_csp_report_checked . '/>
-                                                                <label class="" for="security_csp_mode_report"><strong>' . lang('Report Only') . '</strong> &mdash; ' . lang('record what the policy would refuse, refuse nothing') . '</label>
-                                                            </div>
-                                                            <div class="form-text mb-3">' . lang('Start here. Browsers report every script, style, frame or connection the policy would have refused, and the Firewall Log screen lists them by source. When that list shows nothing the site needs, the policy is ready to enforce.') . '</div>
-                                                            <div class="form-field">
-                                                                <input class="radio" type="radio" name="security_csp_mode" id="security_csp_mode_enforce" value="enforce"' . $security_csp_enforce_checked . '/>
-                                                                <label class="" for="security_csp_mode_enforce"><strong>' . lang('Enforce') . '</strong> &mdash; ' . lang('refuse what the policy does not allow') . '</label>
-                                                            </div>
-                                                            <div class="form-text mb-3">' . lang('A source missing from the policy stops loading for every visitor. Enforce only after Report Only has run for a while on real traffic.') . '</div>
-                                                            </fieldset>
-                                                        </div>
-                                                        <div class="col-12 ">
-                                                            <label for="security_csp_policy" class="form-label">' . lang('Policy') . '</label>
-                                                            <textarea name="security_csp_policy" id="security_csp_policy" class="form-control font-monospace" rows="4" spellcheck="false" placeholder="' . h($security_csp_placeholder) . '">' . h($security_csp_policy) . '</textarea>
-                                                            <div class="form-text">' . lang('Leave empty for the built-in policy shown above: the site\'s own files, inline code and the libraries the software itself uses are allowed, images, fonts and media may come from anywhere over https, and every other third-party source is reported. To allow one, copy the policy here and add the origin to the directive that reported it, for example https://www.googletagmanager.com to script-src. The report address is added for you.') . '</div>' . $security_csp_map_note . '
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $waf_text_log_checked . ' class="collapse-switcher" type="checkbox" id="waf_text_log" name="waf_text_log" data-bs-target="#waf_text_log_row"/></div>
-                                                <label class="" for="waf_text_log">' . lang('Plain-text Block Log') . '</label>
-                                                <div class="form-text">' . lang('Writes one line per refused request and per automatic ban to a file that fail2ban can follow, so a server you manage yourself can drop a banned address at the network level instead of answering it. Kept under five megabytes; one older copy is retained.') . '</div>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="waf_text_log_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">
-                                                        <div class="col-12 ">
-                                                            <label class="form-label">' . lang('Log File') . '</label>
-                                                            <div class="font-monospace pg-text-meta text-break">' . h($waf_text_log_path) . '</div>
-                                                            <div class="form-text">' . lang('Each line reads: date, time, pinegrap-firewall, DENY or BAN, then ip=, status=, rule=, the reference and path=. Not reachable from the web.') . '</div>
-                                                        </div>
-                                                        <div class="col-12 ">
-                                                            <label class="form-label">' . lang('fail2ban Filter and Jail') . '</label>
-                                                            <pre class="pg-text-meta bg-1 border rounded-4 p-3 mb-0" style="white-space: pre-wrap;">' . h($waf_fail2ban_snippet) . '</pre>
-                                                            <div class="form-text">' . lang('Two files, then restart fail2ban. On shared hosting there is nothing to install; the file is simply written and can be ignored, or switched off here.') . '</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-';
+    $output_waf_text_log = '
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="checkbox" class="pg-switch" value="1"' . (($waf_text_log == 1) ? ' checked="checked"' : '') . ' id="waf_text_log" name="waf_text_log" aria-describedby="waf_text_log_help"/>
+                            <label class="pg-text-2" for="waf_text_log">' . lang('Plain-text block log') . '</label>
+                        </div>
+                        <div class="form-text" id="waf_text_log_help">' . lang('Writes one line per refused request and per automatic ban to a file that fail2ban can follow, so a server you manage yourself can drop a banned address at the network level instead of answering it. Kept under five megabytes; one older copy is retained.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <details>
+                            <summary class="form-text">' . lang('Log file and fail2ban') . '</summary>
+                            <div class="pg-field-label mt-3">' . lang('Log File') . '</div>
+                            <div class="font-monospace pg-text-meta text-break">' . h($waf_text_log_path) . '</div>
+                            <div class="form-text">' . lang('Each line reads: date, time, pinegrap-firewall, DENY or BAN, then ip=, status=, rule=, the reference and path=. Not reachable from the web.') . '</div>
+                            <div class="pg-field-label mt-5">' . lang('fail2ban Filter and Jail') . '</div>
+                            <pre class="pg-text-meta bg-1 rounded-4 p-3 mb-0" style="white-space: pre-wrap;">' . h($waf_fail2ban_snippet) . '</pre>
+                            <div class="form-text">' . lang('Two files, then restart fail2ban. On shared hosting there is nothing to install; the file is simply written and can be ignored, or switched off here.') . '</div>
+                        </details>
+                    </div>';
 }
 
-// The Secure Mode one-step offer. When this request came over plain HTTP
-// through a proxy that reports HTTPS and is not trusted yet, the box lets the
-// save list the peer's own address under Trusted Proxies and turn Secure Mode
-// on together (firewall.save.php checks the peer against the list it writes).
-// A public peer gets no box: a CDN or load balancer is listed with all of its
-// published ranges by hand. Only while the mode is off; on, nothing is asked.
-$output_secure_mode_offer = '';
-
-if (($url_scheme !== 'https://') && !check_if_request_is_secure() && pg_forwarded_https($_SERVER)) {
-
-    $secure_mode_peer = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
-    $secure_mode_offer = pg_https_peer_offer($secure_mode_peer);
-
-    if ($secure_mode_offer['entries'] && function_exists('waf_table_has_column') && waf_table_has_column('config', 'waf_trusted_proxies')) {
-        $output_secure_mode_offer = '
-                                            <div class="form-field mt-3">
-                                                <input value="1" class="check" type="checkbox" id="secure_mode_trust_proxy" name="secure_mode_trust_proxy"/>
-                                                <label class="" for="secure_mode_trust_proxy">' . lang('Add this proxy to Trusted Proxies') . '</label>
-                                                <div class="form-text">' . lang(array('string' => 'This request reached the server over plain HTTP through a proxy at {var:1} that reports HTTPS. The proxy is not listed under Trusted Proxies, so Secure Mode cannot be turned on yet. With this box ticked, saving lists {var:2} there and turns Secure Mode on in one step.', 'vars' => array(h($secure_mode_peer), h(implode(', ', $secure_mode_offer['entries']))))) . '</div>
-                                            </div>';
-    } elseif ($secure_mode_offer['kind'] === 'public') {
-        $output_secure_mode_offer = '
-                                            <div class="form-text fg-warning mt-3">' . lang(array('string' => 'This request reached the server over plain HTTP through a CDN or load balancer at {var:1} that reports HTTPS. It is not listed under Trusted Proxies, so Secure Mode cannot be turned on yet: list all of its published address ranges there first (Cloudflare is recognised on its own), or switch it to Full (end-to-end) mode.', 'vars' => h($secure_mode_peer))) . '</div>';
-    } else {
-        $output_secure_mode_offer = '
-                                            <div class="form-text fg-warning mt-3">' . lang(array('string' => 'This request reached the server over plain HTTP through a proxy at {var:1} that reports HTTPS. It is not listed under Trusted Proxies, so Secure Mode cannot be turned on yet: list its address there first.', 'vars' => h($secure_mode_peer))) . '</div>';
-    }
-}
-
-$pg_settings_cards[] = '
-    <div id="pgset-headers" class="pg-set-card">
+$firewall_parts['waf-logs'] = array('html' => '
+    <div id="pgset-waf-logs" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="pg-title-section">' . lang('HTTPS and Security Headers') . '</span>
-                <a href="view_waf_log.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-list-columns-reverse"></i>' . lang('Policy Reports') . '</a>
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Logs') . '
             </div>
             <div class="card-body">
                 <div class="row gy-5">
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $secure_mode_checked . ' class="" type="checkbox" id="secure_mode" name="secure_mode"/></div>
-                                                <label class="" for="secure_mode">' . lang('Secure Mode') . '</label>
-                                                <div class="form-text">' . lang('Every address the site writes starts with https:// and a plain http request is redirected. This is the switch the HSTS option below depends on.') . '</div>
-                                            </div>' . $output_secure_mode_offer . '
-                                            <div class="alert theme-warning mt-3 mb-0 py-3 small">
-                                                <p>' . lang(array('string'=>'Warning: Do not enable Secure Mode until you have {var:1} that your site has a working SSL Certificate.','vars'=>array('<a class="alert-link" href="https://' . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('verified') . '</a>') )) . '</p>
-                                                <p class="mb-0">' . lang('A padlock in your browser is not enough on its own. If SSL is terminated by a proxy or CDN before the request reaches this server (for example Cloudflare "Flexible" SSL), this server sees plain HTTP, and a proxy it does not trust would make Secure Mode redirect every request in an endless loop, making the site unreachable. The test page above reports what this server actually sees. When the request comes through a proxy that is not listed under Trusted Proxies yet, this card offers to list it as Secure Mode is turned on.') . '</p>
-                                            </div>
-                                        </div>
-                    ' . $output_security_headers_block . '
+                    <div class="pg-f-xs">
+                        <label for="waf_log_retention_days" class="form-label">' . lang('Log Retention') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                            <input type="text" name="waf_log_retention_days" id="waf_log_retention_days" class="form-ghost text-end" value="' . (int) $waf_log_retention_days . '" size="4" maxlength="4" inputmode="numeric"/>
+                        </label>
+                    </div>
+                    <div class="pg-f-xs">
+                        <label for="waf_log_max_rows" class="form-label">' . lang('Log Size Limit') . '</label>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('row(s)') . '</span>
+                            <input type="text" name="waf_log_max_rows" id="waf_log_max_rows" class="form-ghost text-end" value="' . (int) $waf_log_max_rows . '" size="7" maxlength="7" inputmode="numeric"/>
+                        </label>
+                        <div class="form-text">' . lang('Identical events within five minutes already share one row. This is the hard ceiling: the oldest rows are dropped beyond it, so an attack cannot fill the database.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <a href="view_waf_log.php" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-list-columns-reverse" aria-hidden="true"></i>' . lang('Open the firewall log') . '</a>
+                    </div>' . $output_waf_text_log . '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_firewall_fold_logs($waf_log_retention_days, $waf_log_max_rows, (bool) $security_ready, $security_ready && ($waf_text_log == 1));
+
+// ── The rows ──
+$firewall_rows = array();
+
+foreach (pg_firewall_fold_order() as $firewall_key) {
+    $firewall_rows[] = array('key' => $firewall_key) + pg_firewall_fold_face($firewall_key) + $firewall_parts[$firewall_key];
+}
+
+$pg_settings_cards[] = pg_settings_fold($firewall_rows);

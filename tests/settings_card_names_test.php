@@ -34,7 +34,7 @@ function test_settings_card_radio_groups_have_a_legend()
 		'appearance.php' => array('Editor version'),
 		'commerce.php' => array('Recipient Mode', 'Enforcement', 'Transaction Type', 'Mode', 'Price before the discount'),
 		'features.php' => array('Site Search Type', 'Setup'),
-		'firewall.php' => array('Mode', 'Restriction', 'Content Security Policy'),
+		'firewall.php' => array('Mode', 'Restriction', 'Content security policy'),
 		'general.php' => array('Date Format', 'Time Format'),
 		'languages.php' => array('What decides the language', 'Pages that are redirected'),
 	);
@@ -104,11 +104,12 @@ function test_settings_card_edoc_check_time_follows_site_format()
 
 function test_settings_card_required_markers_are_not_read()
 {
-	$prep = settings_card_names_source('prep.php');
-	pg_assert_false(strpos($prep, '<span class="fg-danger">*</span>') !== false, 'the e-document star is not a bare span');
-	pg_assert_contains('<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span>', $prep, 'the e-document star is hidden from screen readers');
-	pg_assert_contains('aria-required="true"', $prep, 'a required e-document field says so to screen readers');
-	pg_assert_false(strpos($prep, "\$erp_edoc_required ? ' required") !== false, 'the e-document fields carry no required attribute that would refuse the whole save');
+	// The e-document boxes are drawn on the provider's page of Connections.
+	$edoc = (string) file_get_contents(PG_FUNCTIONS_DIR . '/connections.php');
+	pg_assert_false(strpos($edoc, '<span class="fg-danger">*</span>') !== false, 'the e-document star is not a bare span');
+	pg_assert_contains('<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span>', $edoc, 'the e-document star is hidden from screen readers');
+	pg_assert_contains('aria-required="true"', $edoc, 'a required e-document field says so to screen readers');
+	pg_assert_false(strpos($edoc, "' required") !== false, 'the e-document fields carry no required attribute that would refuse the whole save');
 
 	$privacy = settings_card_names_source('privacy.php');
 	pg_assert_false(strpos($privacy, '>*\' . lang(\'Remember a tracking code for\')') !== false, 'Remember a tracking code for has no leading star');

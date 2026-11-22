@@ -77,60 +77,13 @@ if ($liveform->check_form_errors()) {
     return;
 }
 
-/**
- * Build the encrypted Parasut credentials blob for the settings save.
- *
- * The screen never renders a stored secret back into the form, so an empty box
- * means "leave it alone" and not "clear it" - otherwise every unrelated save on
- * the e-commerce settings page would wipe the connection. Clearing is done by
- * turning the integration off, not by blanking a field nobody filled in.
- *
- * @return string  "<ciphertext>:<iv>", or '' when nothing has ever been stored
- */
-function pg_parasut_credentials_for_save()
-{
-    $current = ['client_secret' => '', 'password' => ''];
-
-    $stored = (string) db_value("SELECT parasut_credentials_enc FROM config LIMIT 1");
-    if (($stored !== '') && (strpos($stored, ':') !== false)) {
-        list($cipher, $iv) = explode(':', $stored, 2);
-        $json = decode_ssl_keys($cipher, $iv);
-        $values = ($json === '') ? null : json_decode($json, true);
-        if (is_array($values)) {
-            $current['client_secret'] = (string) ($values['client_secret'] ?? '');
-            $current['password'] = (string) ($values['password'] ?? '');
-        }
-    }
-
-    $posted_secret = trim(post_value('parasut_client_secret'));
-    $posted_password = trim(post_value('parasut_password'));
-
-    if ($posted_secret !== '') {
-        $current['client_secret'] = $posted_secret;
-    }
-    if ($posted_password !== '') {
-        $current['password'] = $posted_password;
-    }
-
-    if (($current['client_secret'] === '') && ($current['password'] === '')) {
-        return '';
-    }
-
-    list($cipher, $iv) = encrypt_string_with_iv(json_encode($current));
-
-    return $cipher . ':' . $iv;
-}
-
     // The e-document provider (4.61): the picked provider becomes the
-    // active one and only its credentials are written - a password box left empty
-    // keeps the stored secret, like the Paraşüt fields above.
+    // active one while it is connected; its credentials are kept on its page
+    // of Connections. One not connected is refused with a warning and the
+    // provider in use stays; the rest of the card is saved.
     //
-    // Every value here is one string. The card always posts the provider
-    // radio and each provider's boxes, so one that is missing or posted as
-    // an array (edoc_provider[]=x) is not given: the provider stays as it is
-    // and the stored credential is kept. (string) read an array as "Array",
-    // which switched the provider off or stored "Array" as the key. A select
-    // keeps to its own options; another value leaves the stored one.
+    // The provider is one string: one missing or posted as an array
+    // (edoc_provider[]=x) is not given, and the provider stays as it is.
     if (waf_table_has_column('erp_edoc_providers', 'provider') && is_string(post_value('edoc_provider'))) {
         require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
@@ -140,40 +93,30 @@ function pg_parasut_credentials_for_save()
             $erp_edoc_picked = '';
         }
 
-        if ($erp_edoc_picked !== '') {
-            $erp_edoc_posted = array();
-            $erp_edoc_cleared = array();
+        $erp_edoc_info = ($erp_edoc_picked !== '') ? erp_edoc_info($erp_edoc_picked) : null;
+        $erp_edoc_pick = erp_edoc_pick_decide($erp_edoc_picked, erp_edoc_active(), ($erp_edoc_picked !== '') && erp_edoc_connected($erp_edoc_picked),
+            is_array($erp_edoc_info) ? $erp_edoc_info['label'] : $erp_edoc_picked);
 
-            foreach (erp_edoc_fields($erp_edoc_picked) as $erp_edoc_field) {
-                // A password box comes empty with a "remove" tick beside it:
-                // the tick is the only way to clear a stored secret.
-                if (($erp_edoc_field['type'] === 'password') && (post_value('edoc_' . $erp_edoc_picked . '_' . $erp_edoc_field['name'] . '_clear') === '1')) {
-                    $erp_edoc_cleared[] = $erp_edoc_field['name'];
-                }
-
-                $erp_edoc_value = post_value('edoc_' . $erp_edoc_picked . '_' . $erp_edoc_field['name']);
-
-                if (!is_string($erp_edoc_value)) {
-                    continue;
-                }
-
-                if (($erp_edoc_field['type'] === 'select') && !empty($erp_edoc_field['options'])
-                    && !array_key_exists($erp_edoc_value, (array) $erp_edoc_field['options'])) {
-                    continue;
-                }
-
-                $erp_edoc_posted[$erp_edoc_field['name']] = $erp_edoc_value;
-            }
-
-            if (!empty($erp_edoc_posted) || !empty($erp_edoc_cleared)) {
-                erp_edoc_credentials_save($erp_edoc_picked, $erp_edoc_posted, $erp_edoc_cleared);
-            }
-        }
-
-        if (erp_edoc_active() !== $erp_edoc_picked) {
+        if ($erp_edoc_pick['refusal'] !== '') {
+            $liveform->add_warning(h($erp_edoc_pick['refusal']));
+        } elseif ($erp_edoc_pick['activate']) {
             erp_edoc_activate($erp_edoc_picked);
             log_activity(lang(array('string' => 'erp e-document provider set to {var:1}', 'vars' => (($erp_edoc_picked === '') ? 'none' : $erp_edoc_picked))), $_SESSION['sessionusername']);
         }
+    }
+
+    // The order screen's Paraşüt buttons are switched on only while Paraşüt
+    // is connected; switching them off is always taken.
+    $parasut_enable = (post_value('enable_parasut') == 1) ? 1 : 0;
+    $parasut_status = parasut_connection_status();
+
+    if ($parasut_enable && !(defined('ENABLE_PARASUT') && ((int) ENABLE_PARASUT === 1))
+        && empty($parasut_status['connected']) && empty($parasut_status['renewable'])) {
+        $parasut_enable = 0;
+        $liveform->add_warning(h(lang(array(
+            'string' => '{var:1} is not connected, so it was not switched on. Connect it on its page of Connections, then switch it on here.',
+            'vars' => array('Paraşüt'),
+        ))));
     }
 
     // Foreign currency in the ERP (2026.4.4). The currency list is whatever
@@ -380,12 +323,8 @@ function pg_parasut_credentials_for_save()
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
-            enable_parasut = '" . escape(post_value('enable_parasut')) . "',
+            enable_parasut = '" . $parasut_enable . "',
             parasut_tc_in_field = '" . escape(post_value('parasut_tc_in_field')) . "',
-            parasut_client_id = '" . escape(trim(post_value('parasut_client_id'))) . "',
-            parasut_credentials_enc = '" . escape(pg_parasut_credentials_for_save()) . "',
-            parasut_username = '" . escape(trim(post_value('parasut_username'))) . "',
-            parasut_company_id = '" . escape(function_exists('parasut_company_id_for_save') ? parasut_company_id_for_save(post_value('parasut_company_id'), defined('PARASUT_COMPANY_ID') ? PARASUT_COMPANY_ID : '') : trim((string) post_value('parasut_company_id'))) . "',
             parasut_default_product_id = '" . escape(trim(post_value('parasut_default_product_id'))) . "',
             parasut_default_warehouse_id = '" . escape(trim(post_value('parasut_default_warehouse_id'))) . "',
             erp_enabled = '" . escape(post_value('erp_enabled')) . "',
@@ -408,37 +347,5 @@ function pg_parasut_credentials_for_save()
     if ((post_value('erp_enabled') == 1) && defined('PG_ERP_ENTRY')) {
         require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_plan.php');
         erp_stock_plan_job_switch_on();
-    }
-
-    // A Paraşüt authorization code is exchanged by the card's Connect button;
-    // one pasted and saved with the page is exchanged here as well, after the
-    // boxes above are written, instead of being dropped without a word. A
-    // refused code is a warning: the rest of the page has been saved. Notices
-    // are printed as HTML, and the names and errors come from Paraşüt.
-    $parasut_code = is_string(post_value('parasut_auth_code')) ? trim(post_value('parasut_auth_code')) : '';
-
-    if (($parasut_code !== '') && function_exists('parasut_connect_with_code')) {
-        $parasut_text = function ($key) {
-            return is_string(post_value($key)) ? trim(post_value($key)) : '';
-        };
-
-        $parasut_connected = parasut_connect_with_code($parasut_code, $parasut_text('parasut_client_id'), $parasut_text('parasut_client_secret'), $parasut_text('parasut_company_id'));
-
-        if (!empty($parasut_connected['success'])) {
-            // A switch to the authorized user's one company is a warning.
-            $parasut_report = parasut_connect_report($parasut_connected);
-
-            foreach ($parasut_report['notices'] as $parasut_line) {
-                $liveform->add_notice(h($parasut_line));
-            }
-
-            foreach ($parasut_report['warnings'] as $parasut_line) {
-                $liveform->add_warning(h($parasut_line));
-            }
-
-            log_activity($parasut_report['log'], (string) ($_SESSION['sessionusername'] ?? ''));
-        } else {
-            $liveform->add_warning(h((string) $parasut_connected['error']));
-        }
     }
 

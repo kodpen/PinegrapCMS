@@ -64,13 +64,9 @@ function test_settings_place_names_parasut_messages()
 	$keys = array(
 		'includes/fn/parasut.php' => array(
 			'The buyer\'s VKN/TCKN is read from the order\'s "{var:1}" field, chosen on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), and that field is empty on this order.',
-			'Parasut credentials are not set. Enter them on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration).',
-			'Pinegrap is not connected to Paraşüt. On the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), authorize it with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password.',
-			'The Paraşüt connection has expired ({var:1}). Authorize Pinegrap once more on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration).',
 			'Paraşüt no longer holds the default product/service {var:1} entered on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), which invoice lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.',
 		),
 		'includes/erp/edoc/parasut.php' => array(
-			'The Paraşüt company id is empty. Connect on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), or enter it there.',
 			'Line "{var:1}" has no Paraşüt product to go on. Enter the id of a generic service opened in Paraşüt as the default product/service on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration).',
 		),
 	);
@@ -88,6 +84,31 @@ function test_settings_place_names_parasut_messages()
 
 			pg_assert_true(strpos($tr, 'E-Ticaret ayarlarının E-Fatura kart') !== false, 'Turkish names the E-Invoice card: ' . $tr);
 			pg_assert_contains('(Paraşüt Yapılandırmasını Etkinleştir)', $tr);
+		}
+	}
+}
+
+// The Paraşüt connection is set on its page of Connections, and the messages
+// about it lead there.
+function test_settings_place_names_parasut_connection_messages()
+{
+	$keys = array(
+		'includes/fn/parasut.php' => array(
+			'Parasut credentials are not set. Enter them on Paraşüt\'s page of Connections.',
+			'Pinegrap is not connected to Paraşüt. On Paraşüt\'s page of Connections, authorize it with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password.',
+			'The Paraşüt connection has expired ({var:1}). Authorize Pinegrap once more on Paraşüt\'s page of Connections.',
+		),
+		'includes/erp/edoc/parasut.php' => array(
+			'The Paraşüt company id is empty. Connect on Paraşüt\'s page of Connections, or enter it there.',
+		),
+	);
+
+	foreach ($keys as $path => $list) {
+		$source = settings_place_names_test_source($path);
+
+		foreach ($list as $key) {
+			pg_assert_contains(str_replace('\'', '\\\'', $key), $source, $path);
+			pg_assert_contains('Bağlantılar\'daki Paraşüt sayfasında', settings_place_names_test_tr($key), 'Turkish names the page: ' . $key);
 		}
 	}
 }

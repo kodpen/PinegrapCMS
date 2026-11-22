@@ -164,8 +164,12 @@ function test_page_form_number_errors()
 	pg_assert_same(array('custom_form_private_days', 'custom_form_offer_days'), $cf(array('custom_form_private' => '1', 'custom_form_private_days' => '1.5', 'custom_form_offer' => '1', 'custom_form_offer_days' => 'x')));
 	pg_assert_same(array(), $cf(array('custom_form_membership' => '1', 'custom_form_membership_days' => '0')), 'zero days are allowed');
 
-	pg_assert_same(array('photo_gallery_thumbnail_max_size'), array_keys(pg_page_form_number_errors('photo gallery', array('photo_gallery_thumbnail_max_size' => '0'))));
-	pg_assert_same(array('photo_gallery_thumbnail_max_size'), array_keys(pg_page_form_number_errors('photo gallery', array('photo_gallery_thumbnail_max_size' => '-50'))));
+	// A zero thumbnail size is a full-size image: the gallery prints no
+	// width for it. A minus sign, a decimal and text are refused.
+	pg_assert_same(array(), pg_page_form_number_errors('photo gallery', array('photo_gallery_thumbnail_max_size' => '0')), 'a zero thumbnail size is accepted');
+	foreach (array('-1', '-50', '12.5', '1,5', 'abc') as $typed) {
+		pg_assert_same(array('photo_gallery_thumbnail_max_size'), array_keys(pg_page_form_number_errors('photo gallery', array('photo_gallery_thumbnail_max_size' => $typed))), $typed . ' is refused');
+	}
 	pg_assert_same(array(), pg_page_form_number_errors('photo gallery', array('photo_gallery_thumbnail_max_size' => '100')));
 	pg_assert_same(array(), pg_page_form_number_errors('standard', array('photo_gallery_thumbnail_max_size' => '0')), 'other types are not read');
 }

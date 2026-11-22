@@ -278,6 +278,7 @@
 - order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window with parcel arrivals, estimate rules, none for a dateless delivery, order view token, fallback card, panel row
 - orders-list-amount-column.md: Orders list amount cell: an incomplete order shows its cart total (muted, titled "Cart total"), never added to the filter totals; one GROUP BY query per page
 - orders-list-bulk-actions.md: Orders list bulk actions and exports: Paraşüt export (scope, end, refusals), Cancel Selected (open carts, refunds), CSV empty cells, Country and Product Name filters, phone bar
+- orders-list-figure-strip.md: All Orders (view_orders.php) one bar with the period navigator, the figure strip and Summary: closed until opened, read when it opens, open or closed kept per person in the browser
 - orders-list-state-filter.md: The orders list's Billing and Shipping State filters join states by code inside the address's own country (pg_order_list_state_join()), since a state code is unique only per country
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date, no SKU column), optional columns, status enum, and the shape the external API returns for an order.
 - payment-callback.md: payment_callback.php?driver=<key> (PR #2143): what reaches notify(), how the order is found, what each answer does (alerts; records a pending payment), status codes, firewall entry

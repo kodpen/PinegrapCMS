@@ -139,7 +139,7 @@ function test_api_price_history_route_params()
 		$params[$param['name']] = $param;
 	}
 
-	pg_assert_same(array('id', 'since', 'channel', 'limit', 'cursor'), array_keys($params));
+	pg_assert_same(array('id', 'since', 'channel', 'limit', 'cursor', 'sort'), array_keys($params));
 
 	pg_assert_same('path', $params['id']['in']);
 	pg_assert_same('int', $params['id']['type']);
