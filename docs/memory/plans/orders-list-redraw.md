@@ -45,4 +45,4 @@ priority: 6
 - OL1 (M): the bar, the strip, Summary; done (#11093). OL2 (M): the four new columns and the default set; done (#11142, `commerce/orders-list-columns.md`). OL3 (M) after OL2: the quick filters, the change figures, close-out (`commerce/orders-list-*.md`, `ui/look-figure-cards.md` rewritten; this file deleted).
 - Checked as `order-screen-redraw-steps.md` says, with at least thirty orders of every state in the period.
 
-Related: docs/memory/plans/order-screen-redraw.md, docs/memory/plans/order-screen-redraw-states.md, docs/memory/plans/product-insights.md
+Related: docs/memory/plans/order-screen-redraw.md, docs/memory/plans/order-screen-redraw-states.md, docs/memory/commerce/product-insights.md
