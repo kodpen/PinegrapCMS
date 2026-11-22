@@ -35,11 +35,13 @@
 - bell-head.md: The bell drawer's head (BR1): the N new pill, Search, More actions and Close as icon buttons, the menu's two items, Mark all as read at the first day heading, the search in the head's place
 - bell-read-rule.md: When a bell row is read: not on opening the bell; its button, title or Mark as read reads it, a fold head its runs; Mark all as read reads only rows the caller sees [decision: decisions-made-panel-4.md]
 - bell-refusals.md: What the bell panel shows when loading, marking read or unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
+- bell-row-time-and-tint.md: A bell row's short time (pg_notification_short_time(), BR2 #11134), the full time as its title, the unread tint, the phone's head order with the 32 px menu button, sticky day headings
 - bell-row.md: A bell row in look A (#8897): tone tile, one-line title and time, two lines of text, a button only when asked, the unread dot, quick actions on hover; a fold as gathered lines [decision: decisions-made-panel-4.md]
 - bell-titles.md: A bell row's short title says what happened and with what ("New order #SP-1044"), the brief text under it; the push banner keeps the sentence (#8897) [decision: decisions-made-panel-4.md]
 - booking-agenda.md: Booking agenda (view_bookings.php, edit_booking.php, #6231): views, who sees what, staff-made bookings, status moves, cancel reason, audit, search
 - booking-edit-form-fields.md: The booking screen (edit_booking.php, new and existing) draws every field as a labelled form-field box; the help texts are form-text the fields name (step B11)
 - booking-edit-unknown-id.md: The booking screen (edit_booking.php) opens an existing booking for any id but 0; a negative or unknown id ends on Record not found (404), 0 or no id is a new booking
+- booking-settings-messages.md: Settings › Bookings, the Messages row: value rows Mails and Text messages saying which booking events send, Change to campaign profiles or SMS Messages, the Reminders warning; writes nothing
 - booking-settings-rows.md: Settings › Bookings as folded rows with lines of state; services as list rows edited in drawers, Move up and Move down, the drawer a refused save opens
 - booking-settings-staff-rows.md: Settings › Bookings, the Staff row: members as list rows each edited in a drawer, Add a staff member's drawer and the hours a new member starts with, the drawer a refused staff box opens
 - booking-settings.md: Settings › Bookings (category bookings): services, staff hours grid and exceptions, booking rules and widget texts in config_text; what the save writes and refuses
