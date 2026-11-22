@@ -108,3 +108,61 @@ function test_panel_contrast_dashboard_inks()
 	pg_assert_true(strpos($css, ".pg-lanes .pg-filter-count.is-clear {\n  background: none;\n  color: var(--pg-success-fg-emphasis);") !== false, 'a clear lane count reads the success ink');
 	pg_assert_true(strpos($css, 'background: #0a1413; --pg-accent: #14b8a6; --pg-accent-ink: #18181b; }') !== false, 'dark teal tiles carry dark ink');
 }
+
+// The two values of a light-dark() colour token of backend.src.css.
+function panel_contrast_light_dark($css, $token)
+{
+	preg_match('/' . preg_quote($token, '/') . ': light-dark\((#[0-9a-f]{6}), (#[0-9a-f]{6})\);/', $css, $found);
+
+	return array($found[1] ?? '', $found[2] ?? '');
+}
+
+// A over B at a share of A, both #rrggbb.
+function panel_contrast_mix($a, $share, $b)
+{
+	$out = '#';
+
+	foreach (array(1, 3, 5) as $offset) {
+		$out .= sprintf('%02x', (int) round(hexdec(substr($a, $offset, 2)) * $share + hexdec(substr($b, $offset, 2)) * (1 - $share)));
+	}
+
+	return $out;
+}
+
+// The Workspace list's rows: a mention's pill in the accent reads 4.5:1 in
+// both themes; a channel's tile keeps its icon at 3:1 on its tinted ground
+// over the menu, for every colour a channel can take.
+function test_panel_contrast_workspace_list_pills_and_tiles()
+{
+	$css = panel_contrast_source('assets/css/backend.src.css');
+
+	pg_assert_true(strpos($css, ".ws-menu-side .ws-count.ws-count-mention {\n  background: var(--pg-accent);\n  color: var(--pg-on-accent-fill);") !== false, 'the mention pill reads the look\'s accent and its ink');
+
+	$accent = panel_contrast_light_dark($css, '--pg-accent');
+	$ink = panel_contrast_light_dark($css, '--pg-on-accent-fill');
+
+	foreach (array(0 => 'light', 1 => 'dark') as $index => $theme) {
+		pg_assert_true(panel_contrast_ratio($ink[$index], $accent[$index]) >= 4.5, 'the ' . $theme . ' mention pill reads 4.5:1');
+	}
+
+	pg_assert_true(strpos($css, '.ws-channel-link[data-ws-colored] .ws-ch-icon {' . "\n" . '  color: color-mix(in srgb, var(--ws-ch) 75%, var(--pg-fg-emphasis));') !== false, 'the tile\'s icon is the colour pulled toward the text');
+	pg_assert_true(strpos($css, '.ws-menu-side .ws-channel-link[data-ws-colored] .ws-side-ch-tile {' . "\n" . '  --pg-tone: var(--ws-ch);') !== false, 'the tile\'s ground is the channel\'s colour');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/groups.php');
+
+	// The menu's ground, the strongest text colour and the tile's strongest
+	// tint (--pg-tint-from) of each theme.
+	$themes = array(
+		'light' => array('#f8f8f8', '#000000', 0.17),
+		'dark'  => array('#0e0e0e', '#ffffff', 0.26),
+	);
+
+	foreach (ws_palette_hexes() as $hex) {
+		foreach ($themes as $theme => $values) {
+			$ground = panel_contrast_mix($hex, $values[2], $values[0]);
+			$icon = panel_contrast_mix($hex, 0.75, $values[1]);
+
+			pg_assert_true(panel_contrast_ratio($icon, $ground) >= 3, $hex . ' tile reads 3:1 in the ' . $theme . ' theme');
+		}
+	}
+}

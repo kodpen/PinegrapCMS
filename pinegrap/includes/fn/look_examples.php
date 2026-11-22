@@ -460,6 +460,7 @@ function pg_look_examples_patterns($prefix = 'light')
     );
 
     $patterns[] = pg_look_examples_timeline_pattern();
+    $patterns[] = pg_look_examples_ws_list_row_pattern($p);
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
     // the parts the one E-mail category is built from.
@@ -762,6 +763,53 @@ function pg_look_examples_timeline_pattern()
 }
 
 /**
+ * The rows of the Workspace list in the main menu (workspace_side.js, board
+ * L3 of plans/workspace-interface), live: pointing at a pinnable row shows
+ * its pin and menu in the place of its marks.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array{id: string, title: string, classes: string[], html: string}
+ */
+function pg_look_examples_ws_list_row_pattern($p)
+{
+    $tile = function ($icon) {
+        return '<span class="pg-icon-tile ws-side-ch-tile ws-ch-icon" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>';
+    };
+    $row = function ($name, $hex, $icon, $classes, $marks, $tools) use ($tile) {
+        return '<a href="#" class="ws-channel-link' . $classes . ($tools ? ' ws-side-has-tools' : '') . '"'
+            . (($hex !== '') ? ' style="--ws-ch:' . $hex . '" data-ws-colored="1"' : '') . '>'
+            . $tile($icon) . '<span class="ws-channel-name">' . h($name) . '</span>'
+            . (($marks !== '') ? '<span class="ws-side-marks">' . $marks . '</span>' : '')
+            . ($tools ? '<span class="ws-side-row-tools"><span class="ws-pin no-popover" aria-hidden="true" title="' . h(lang('Pin')) . '"><i class="bi bi-pin-angle"></i></span>'
+                . '<span class="no-popover" aria-hidden="true" title="' . h(lang('More')) . '"><i class="bi bi-three-dots"></i></span></span>' : '')
+            . '</a>';
+    };
+    $pill = function ($count, $mention) {
+        return '<span class="ws-count' . ($mention ? ' ws-count-mention' : '') . '">' . (int) $count . '</span>';
+    };
+
+    return array(
+        'id'      => 'pattern-ws-list-row',
+        'title'   => lang('Workspace list row'),
+        'classes' => array('.ws-menu-side', '.ws-side-title', '.ws-side-pinned', '.ws-channel-link', '.pg-icon-tile', '.ws-side-ch-tile', '.ws-channel-name', '.ws-side-marks', '.ws-count', '.ws-count-mention', '.ws-unread', '.ws-side-muted', '.ws-side-muted-bell', '.ws-side-dot', '.ws-side-draft', '.ws-side-has-tools', '.ws-side-row-tools', '.ws-pin', '.ws-side-join', '.ws-notjoined', '.ws-side-join-now'),
+        'html'    => '<div id="ws-look-list-' . $p . '" class="ws-menu-side pg-look-ws-list">'
+            . '<div class="ws-side-title">' . h(lang('Channels')) . '</div>'
+            . '<div class="ws-side-pinned">'
+            . $row('support', '#c9774a', 'bi-hash', ' active', '', true)
+            . $row('general', '#b85c73', 'bi-hash', ' ws-unread', $pill(3, false), true)
+            . '</div>'
+            . $row('website-redesign', '#6b5ca5', 'bi-hash', ' ws-unread', $pill(2, true), true)
+            . $row('announcements', '', 'bi-hash', ' ws-side-muted', '<i class="bi bi-bell-slash ws-side-muted-bell" aria-hidden="true"></i><span class="ws-side-dot"></span><span class="visually-hidden">' . h(lang('Unread messages')) . '</span>', true)
+            . $row('accounting', '#b5534b', 'bi-hash', '', '<i class="bi bi-pencil ws-side-draft" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Unsent draft')) . '</span>', true)
+            . $row('management', '#6b5ca5', 'bi-lock', '', '', true)
+            . '<button type="button" class="ws-side-join" aria-expanded="true"><i class="bi bi-plus-circle-dotted ws-side-join-icon" aria-hidden="true"></i><span class="ws-channel-name">' . h(lang(array('string' => '{var:1} channels you could join', 'vars' => 2))) . '</span><i class="bi bi-chevron-down ws-side-join-chevron" aria-hidden="true"></i></button>'
+            . $row('ideas', '', 'bi-hash', ' ws-notjoined', '<span class="ws-side-join-now no-popover" aria-hidden="true">' . h(lang('Join')) . '</span>', false)
+            . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Workspace list in the main menu: a 30 px row, the channel\'s tile in its colour, the marks at its end; pointing at a row shows its pin and menu in their place.')) . '</p>',
+    );
+}
+
+/**
  * What the look does not cover yet, for a step that meets it: parts the
  * sheet draws that are no recipe yet, and parts the sheet has not drawn.
  *
@@ -784,7 +832,7 @@ function pg_look_examples_not_done()
                 lang('Dialogs and the settings modal'),
                 lang('Dashboard cards'),
                 lang('Report screens'),
-                lang('Workspace: channel and lists'),
+                lang('Workspace: channel screen, tools dock and screen bars'),
                 lang('Phone widths'),
             ),
         ),

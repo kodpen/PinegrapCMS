@@ -32,6 +32,53 @@
 (function () {
     'use strict';
 
+    // ── The composer's unsent text, kept on this browser ──
+    // One slot per site, viewer, channel and discussion, so two people on one
+    // browser or two sites on one host never read each other's text. The
+    // composer (workspace.js) writes it; the list marks a row that holds one.
+    // Set before the list looks for its box: the composer needs it on a page
+    // whatever the list does.
+    var DRAFT_PREFIX = 'ws-draft:';
+    var DRAFT_DAYS = 14;
+
+    function draftKey(site, viewer, channelId, threadId) {
+        var thread = parseInt(threadId, 10) || 0;
+
+        return DRAFT_PREFIX + String(site || '') + '|' + (parseInt(viewer, 10) || 0)
+            + ':c' + (parseInt(channelId, 10) || 0) + (thread ? ':t' + thread : '');
+    }
+
+    // A kept value as { raw, labels, at } while it is younger than DRAFT_DAYS
+    // and holds words; null otherwise.
+    function draftFresh(stored, now) {
+        var value = null;
+
+        try {
+            value = JSON.parse(String(stored || ''));
+        } catch (error) {
+            return null;
+        }
+
+        if (!value || (typeof value.raw !== 'string') || (value.raw.trim() === '') || (typeof value.at !== 'number')) {
+            return null;
+        }
+
+        if (!(value.at > now - DRAFT_DAYS * 86400000)) {
+            return null;
+        }
+
+        var labels = (value.labels && (typeof value.labels === 'object') && !Array.isArray(value.labels)) ? value.labels : {};
+
+        return { raw: value.raw, labels: labels, at: value.at };
+    }
+
+    window.PGWsDraft = {
+        prefix: DRAFT_PREFIX,
+        days: DRAFT_DAYS,
+        key: draftKey,
+        fresh: draftFresh
+    };
+
     var root = document.getElementById('ws-menu-side');
 
     if (!root) {
@@ -103,12 +150,34 @@
         return node;
     }
 
-    // A channel's icon: the one it was given, with the mark of its kind in
-    // the corner (a lock, a door, a person), or the one its kind gives.
+    // A channel's icon on its 18 px tile: the one it was given, with the mark
+    // of its kind in the corner (a lock, a door, a person), or the one its
+    // kind gives. The tile takes the row's --ws-ch (the channel's colour)
+    // as its tone; without one it is grey.
     function channelIcon(channel, extra) {
         var name = channel.icon || (channel.kind === 'private' ? 'bi-lock' : (channel.contact_id ? 'bi-person-vcard' : 'bi-hash'));
+        var tile = el('span', 'pg-icon-tile ws-side-ch-tile' + (extra ? ' ' + extra : ''));
 
-        return badgedIcon(name, channel.icon_badge || '', extra);
+        tile.setAttribute('aria-hidden', 'true');
+        tile.appendChild(badgedIcon(name, channel.icon_badge || '', ''));
+
+        return tile;
+    }
+
+    // Whether the reader keeps an unsent text for a channel or a discussion
+    // on this browser (the composer's slot, draftKey()).
+    function hasDraft(channelId, threadId) {
+        var data = state.data || {};
+
+        if (!data.draft) {
+            return false;
+        }
+
+        try {
+            return !!draftFresh(window.localStorage.getItem(draftKey(data.draft.site, data.draft.me, channelId, threadId)), Date.now());
+        } catch (error) {
+            return false;
+        }
     }
 
     function button(className, label, iconName, title) {
@@ -427,10 +496,12 @@
             find.setAttribute('data-pg-menu-skip', '');
         }
 
-        find.setAttribute('aria-label', t('pal_open'));
+        // The field's words say both ways it serves: a search, and going to
+        // a channel or a screen by its name.
+        find.setAttribute('aria-label', t('side_find'));
         find.setAttribute('data-ws-side-key', 'palette');
         find.appendChild(icon('bi-search'));
-        find.appendChild(el('span', 'ws-side-find-text', t('pal_open')));
+        find.appendChild(el('span', 'ws-side-find-text', t('side_find')));
 
         // Its key where Ctrl+K opens it; a touch screen has none to show.
         if (typeof hooks.palette === 'function') {
@@ -510,8 +581,10 @@
 
         fragment.appendChild(scroll);
 
-        // A heading that opens and closes its section; closed, it still
-        // says how much is new inside.
+        // A heading that opens and closes its section: its name as written
+        // (no capitals), the chevron at its end, shown on pointing, on focus
+        // and while the section is closed; closed, it still says how much is
+        // new inside.
         function sectionToggle(box, key, title, iconName, shut, badge) {
             var toggle = el('button', 'ws-side-toggle no-popover');
 
@@ -519,13 +592,13 @@
             toggle.setAttribute('aria-expanded', shut ? 'false' : 'true');
             toggle.setAttribute('data-ws-side-key', 'section:' + key);
             toggle.title = shut ? t('side_expand') : t('side_collapse');
-            toggle.appendChild(icon(shut ? 'bi-chevron-right' : 'bi-chevron-down', 'ws-group-chevron'));
 
             if (iconName) {
                 toggle.appendChild(icon(iconName));
             }
 
             toggle.appendChild(el('span', 'ws-side-toggle-name', title));
+            toggle.appendChild(icon(shut ? 'bi-chevron-right' : 'bi-chevron-down', 'ws-side-toggle-chevron'));
             toggle.addEventListener('click', function () {
                 writeKept('ws-side-closed', key, !shut);
                 draw();
@@ -640,16 +713,51 @@
             }
         });
 
+        // A mouse shortcut at the end of a row (the pin, "⋯", Join). It sits
+        // inside the link, so it is hidden from the link's name and out of
+        // the Tab order; the keyboard reaches the same action from the
+        // channel's context menu (Shift+F10 or the menu key on the link) or
+        // on the channel's own screen (workspace/workspace-nested-controls.md).
+        function rowShortcut(className, iconName, title, handler) {
+            var node = el('span', className + ' no-popover');
+
+            node.setAttribute('aria-hidden', 'true');
+            node.title = title;
+
+            if (iconName) {
+                node.appendChild(icon(iconName));
+            } else {
+                node.textContent = title;
+            }
+
+            node.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                handler(node);
+            });
+
+            return node;
+        }
+
+        // A row of 30 px: the channel's tile, its name, then its marks at the
+        // end. Unread: the name in weight and the count in a quiet pill, the
+        // mentions in the accent. Muted (notify none): the name quiet, a
+        // struck bell and, for something unread, a dot in the count's place;
+        // a mention still shows its pill. A kept draft: a pencil. Pointing at
+        // a row where the screen can pin shows the pin and "⋯" in the
+        // count's place, a pinned channel's pin included.
         function channelLink(channel, box, sortable) {
+            var muted = channel.notify === 'none';
             var node = link('ws-channel-link'
                 + ((now.channel === channel.id) ? ' active' : '')
-                + (channel.unread ? ' ws-unread' : '')
+                + ((channel.unread && (!muted || channel.mentions)) ? ' ws-unread' : '')
+                + (muted ? ' ws-side-muted' : '')
                 + (channel.joined ? '' : ' ws-notjoined'), workspaceUrl('channel=' + channel.id));
 
             node.setAttribute('data-ws-channel', channel.id);
             node.setAttribute('data-pg-menu-label', channel.name);
 
-            // The channel's own colour on its sign.
+            // The channel's own colour on its tile.
             if (channel.hex) {
                 node.style.setProperty('--ws-ch', channel.hex);
                 node.setAttribute('data-ws-colored', '1');
@@ -658,33 +766,57 @@
             node.appendChild(channelIcon(channel, 'ws-ch-icon'));
             node.appendChild(el('span', 'ws-channel-name', channel.name));
 
-            if (channel.notify === 'none') {
-                node.appendChild(icon('bi-bell-slash', 'fg-secondary'));
+            var marks = el('span', 'ws-side-marks');
+
+            if (hasDraft(channel.id, 0)) {
+                marks.appendChild(icon('bi-pencil', 'ws-side-draft'));
+                marks.appendChild(el('span', 'visually-hidden', t('side_draft')));
+            }
+
+            if (muted) {
+                marks.appendChild(icon('bi-bell-slash', 'ws-side-muted-bell'));
             }
 
             if (channel.mentions) {
-                node.appendChild(countBadge(channel.mentions, true));
-            } else if (channel.unread && channel.notify !== 'none') {
-                node.appendChild(countBadge(channel.unread, false));
+                marks.appendChild(countBadge(channel.mentions, true));
+            } else if (channel.unread && !muted) {
+                marks.appendChild(countBadge(channel.unread, false));
+            } else if (channel.unread && channel.joined) {
+                marks.appendChild(el('span', 'ws-side-dot'));
+                marks.appendChild(el('span', 'visually-hidden', t('side_unread')));
             }
 
-            // A pin at the end of the line, shown on hover (and always on a
-            // pinned channel), where the screen can pin. It sits inside the
-            // link, so it is a mouse shortcut only, hidden from the link's
-            // name; the keyboard pins from the channel's context menu
-            // (Shift+F10 or the menu key on the link).
-            if (channel.joined && (typeof hooks.pin === 'function')) {
-                var pin = el('span', 'ws-pin no-popover' + (channel.pinned ? ' ws-pinned' : ''));
+            // Join, on a channel not joined, where the screen can join it;
+            // elsewhere the row opens the channel, which offers it.
+            if (!channel.joined && (channel.kind === 'public') && (typeof hooks.joinChannel === 'function')) {
+                marks.appendChild(rowShortcut('ws-side-join-now', '', t('join'), function () {
+                    hooks.joinChannel(channel);
+                }));
+            }
 
-                pin.setAttribute('aria-hidden', 'true');
-                pin.title = channel.pinned ? t('unpin') : t('pin');
-                pin.appendChild(icon(channel.pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle'));
-                pin.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
+            if (marks.firstChild) {
+                node.appendChild(marks);
+            }
+
+            var tools = el('span', 'ws-side-row-tools');
+
+            if (channel.joined && (typeof hooks.pin === 'function')) {
+                tools.appendChild(rowShortcut('ws-pin' + (channel.pinned ? ' ws-pinned' : ''), channel.pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle', channel.pinned ? t('unpin') : t('pin'), function () {
                     hooks.pin(channel, !channel.pinned);
-                });
-                node.appendChild(pin);
+                }));
+            }
+
+            if (typeof hooks.channelMenu === 'function') {
+                tools.appendChild(rowShortcut('ws-side-row-menu', 'bi-three-dots', t('more'), function (anchor) {
+                    var rect = anchor.getBoundingClientRect();
+
+                    hooks.channelMenu(channel, rect.left, rect.bottom);
+                }));
+            }
+
+            if (tools.firstChild) {
+                node.classList.add('ws-side-has-tools');
+                node.appendChild(tools);
             }
 
             if (typeof hooks.openChannel === 'function') {
@@ -834,7 +966,41 @@
             }
 
             part(channelsBox, mine, true, 'ws-side-mine');
-            part(channelsBox, others, false, 'ws-side-others');
+
+            // The channels not joined that stand in no group, behind one row
+            // that opens them in place; open or shut is the person's
+            // (ws-side-open). Shut, the one on the screen still shows.
+            if (others.length) {
+                var joinOpen = !!readKept('ws-side-open').join;
+                var joinRow = el('button', 'ws-side-join no-popover');
+
+                joinRow.type = 'button';
+                joinRow.setAttribute('aria-expanded', joinOpen ? 'true' : 'false');
+
+                if (joinOpen) {
+                    joinRow.setAttribute('aria-controls', 'ws-side-others');
+                }
+
+                joinRow.setAttribute('data-ws-side-key', 'join');
+                joinRow.appendChild(icon('bi-plus-circle-dotted', 'ws-side-join-icon'));
+                joinRow.appendChild(el('span', 'ws-channel-name', t('side_join', others.length)));
+                joinRow.appendChild(icon(joinOpen ? 'bi-chevron-down' : 'bi-chevron-right', 'ws-side-join-chevron'));
+                joinRow.addEventListener('click', function () {
+                    writeKept('ws-side-open', 'join', !joinOpen);
+                    draw();
+                });
+                channelsBox.appendChild(joinRow);
+
+                var shown = joinOpen ? others : others.filter(function (channel) { return now.channel === channel.id; });
+
+                part(channelsBox, shown, false, 'ws-side-others');
+
+                var othersBox = channelsBox.querySelector('.ws-side-others');
+
+                if (othersBox) {
+                    othersBox.id = 'ws-side-others';
+                }
+            }
 
             if (!data.channels.length) {
                 channelsBox.appendChild(emptyLine('channels', t('no_channels'), 'ws-empty-side'));
@@ -896,6 +1062,11 @@
                 names.appendChild(el('span', 'ws-thread-link-title', thread.title));
                 names.appendChild(el('small', 'ws-thread-link-channel', '#' + thread.channel));
                 item.appendChild(names);
+
+                if (hasDraft(thread.channel_id, thread.id)) {
+                    item.appendChild(icon('bi-pencil', 'ws-side-draft'));
+                    item.appendChild(el('span', 'visually-hidden', t('side_draft')));
+                }
 
                 if (thread.unread) {
                     item.appendChild(countBadge(thread.unread, false));
@@ -1103,6 +1274,13 @@
             return null;
         }
     }
+
+    // A draft kept or dropped in another tab marks or clears its row here.
+    window.addEventListener('storage', function (event) {
+        if (state.data && ((event.key === null) || (String(event.key).indexOf(DRAFT_PREFIX) === 0))) {
+            draw();
+        }
+    });
 
     var inline = inlineData();
 
