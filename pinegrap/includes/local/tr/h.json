@@ -445,6 +445,7 @@
     "Held by me": "Üstlendiklerim",
     "Held by nobody": "Kimsenin üstlenmedikleri",
     "Held by the bundle {var:1}": "{var:1} paketinde bekliyor",
+    "Held in checkouts: {var:1}": "Ödeme adımında ayrılmış: {var:1}",
     "Held on your card at pick-up and released when the car is back.": "Teslim alırken kartınızda bloke edilir, araç dönünce serbest bırakılır.",
     "Held prices": "Bekletilen fiyatlar",
     "Held time": "Ayrılan saat",

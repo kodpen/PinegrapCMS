@@ -3555,12 +3555,15 @@ function pg_pb_render_stock_quantity($mode, $product_id, $total)
     $with_bins = ($mode === 'edit') && !$is_bundle && pg_bins_ready();
     $bins = $with_bins ? pg_bins_of_product($product_id) : array();
     $bin_help = $with_bins ? '<div class="form-text">' . lang('Shelf: where it sits in the store room, such as A-03-2.') . '</div>' : '';
+    // A bundle holds its components, never itself, so it has no line.
+    $held_line = (($mode === 'edit') && !$is_bundle) ? pg_pb_stock_held_line($product_id, $total) : '';
 
     if (!$locations || ($mode !== 'edit') || $is_bundle) {
         return '<div class="col-12 pg-field-span-3">
                 <label for="inventory_quantity" class="form-label">' . lang('Inventory Quantity') . '</label>
                 <input type="number" min="0" name="inventory_quantity" id="inventory_quantity" class="form-control" value="' . h($total) . '" />
                 ' . (($mode === 'edit') ? '<input type="hidden" name="inventory_quantity_was" value="' . h($total) . '" />' : '') . '
+                ' . $held_line . '
                 <div class="form-text pg-pb-group-only d-none">' . lang('Starting stock for every variant; each row can differ.') . '</div>
                 ' . ($locations ? '<div class="form-text">' . lang('The starting stock goes to the default location.') . '</div>' : '') . '
             </div>'
@@ -3576,7 +3579,33 @@ function pg_pb_render_stock_quantity($mode, $product_id, $total)
         <div class="col-12 md:col-3">
             <label for="inventory_quantity_total" class="form-label">' . lang('Total') . '</label>
             <input type="number" id="inventory_quantity_total" class="form-control" value="' . h((int) $total) . '" readonly />
+            ' . $held_line . '
         </div>';
+}
+
+/**
+ * The "Held in checkouts: n" line under a product's stock: units orders hold
+ * while their payment runs (includes/fn/stock_holds.php). They are still in
+ * stock; only the checkout counts them as taken. '' while nothing is held.
+ *
+ * @param int        $product_id
+ * @param string|int $total      products.inventory_quantity
+ * @return string
+ */
+function pg_pb_stock_held_line($product_id, $total)
+{
+    $held = pg_stock_hold_units_held((int) $product_id);
+    $line = pg_stock_hold_screen_line($held, $total);
+
+    if (!$line['show']) {
+        return '';
+    }
+
+    return '<div class="form-text" id="pg_pb_stock_held">'
+        . h(lang(array('string' => 'Held in checkouts: {var:1}', 'vars' => (string) $held)))
+        . ' ' . lang('Still in stock until the order completes or the hold runs out in a few minutes.')
+        . ($line['none_free'] ? ' <strong>' . lang('None free for new checkouts.') . '</strong>' : '')
+        . '</div>';
 }
 
 

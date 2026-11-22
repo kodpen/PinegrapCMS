@@ -934,9 +934,20 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
 
     // Units other checkouts hold for their payment are not free for this
     // cart (includes/fn/stock_holds.php); with no holds the pool is as read.
-    $stock = pg_bundle_stock_less_held($stock, pg_stock_hold_held_for(array_keys($stock), $location_id, $order_id));
+    // The pool before the holds is kept: a line cut while it had units that
+    // other checkouts hold says they may free up.
+    $held = pg_stock_hold_held_for(array_keys($stock), $location_id, $order_id);
+    $stock_before_holds = array_map(function ($entry) {
+        return $entry['tracked'] ? (int) $entry['quantity'] : 0;
+    }, $stock);
+    $stock = pg_bundle_stock_less_held($stock, $held);
 
     $allowance = pg_bundle_cart_allowance($lines, $stock);
+    $line_products = array();
+
+    foreach ($lines as $line) {
+        $line_products[$line['id']] = isset($line['components']) ? array_column($line['components'], 'product_id') : array($line['product_id']);
+    }
 
     foreach ($rows as $row) {
         $answer = $allowance[(int) $row['id']];
@@ -951,13 +962,15 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
             $description = lang('an item');
         }
 
+        $held_words = pg_stock_hold_notice_words(pg_stock_hold_line_held($line_products[(int) $row['id']], $stock_before_holds, $held));
+
         if ($answer['allowed'] === 0) {
             remove_order_item($row['id']);
 
             if ($answer['unavailable']) {
-                $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because it is not currently available.', 'vars' => h($description))) . $row['out_of_stock_message']);
+                $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because it is not currently available.', 'vars' => h($description))) . $row['out_of_stock_message'] . $held_words);
             } else {
-                $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because the availabilty of the item is currently limited.', 'vars' => h($description))));
+                $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because the availabilty of the item is currently limited.', 'vars' => h($description))) . $held_words);
             }
 
             continue;
@@ -972,7 +985,7 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
             update_shipping_cost_for_ship_to($row['ship_to_id']);
         }
 
-        $liveform->add_notice(lang(array('string' => 'We\'re sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.', 'vars' => h($description))));
+        $liveform->add_notice(lang(array('string' => 'We\'re sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.', 'vars' => h($description))) . $held_words);
     }
 }
 

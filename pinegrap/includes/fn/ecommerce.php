@@ -9377,6 +9377,10 @@ function check_inventory($liveform)
         if ($at_location !== null) {
             $product['inventory_quantity'] = $at_location;
         }
+        // The stock before the holds came off: a line cut while it had units
+        // that other checkouts hold says they may free up.
+        $product['stock_before_holds'] = $product['inventory_quantity'];
+        $held_words = pg_stock_hold_notice_words(pg_stock_hold_line_held(array($product['id']), array($product['id'] => $product['stock_before_holds']), $held));
         $product['inventory_quantity'] = pg_stock_hold_less_held($product['inventory_quantity'], isset($held[$product['id']]) ? $held[$product['id']] : 0);
         // set the starting inventory quantity
         // so later we know if the product was completely out of stock to begin with before we started looking at order items
@@ -9433,9 +9437,9 @@ function check_inventory($liveform)
             if ($stock['remove']) {
                 remove_order_item($order_item['id']);
                 if ($stock['unavailable']) {
-                    $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because it is not currently available.', 'vars' => h($product_description))) . $product['out_of_stock_message']);
+                    $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because it is not currently available.', 'vars' => h($product_description))) . $product['out_of_stock_message'] . $held_words);
                 } else {
-                    $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because the availabilty of the item is currently limited.', 'vars' => h($product_description))));
+                    $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because the availabilty of the item is currently limited.', 'vars' => h($product_description))) . $held_words);
                 }
                 continue;
             }
@@ -9452,7 +9456,7 @@ function check_inventory($liveform)
                     require_once(PG_FUNCTIONS_DIR . '/shipping.php');
                     update_shipping_cost_for_ship_to($order_item['ship_to_id']);
                 }
-                $liveform->add_notice(lang(array('string' => 'We\'re sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.', 'vars' => h($product_description))));
+                $liveform->add_notice(lang(array('string' => 'We\'re sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.', 'vars' => h($product_description))) . $held_words);
             }
             // decrement the inventory quantity for the product,
             // so as we loop through these order items we can dynamically know how much inventory quantity is left

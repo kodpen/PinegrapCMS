@@ -238,7 +238,8 @@ function test_stock_holds_checks_read_units_free()
 	$check = substr($bundles, $start, strpos($bundles, 'function pg_bundle_return_stock(') - $start);
 
 	pg_assert_contains('$stock = pg_bundle_stock_at_location($stock, $at_location);', $check, 'the location read stays');
-	pg_assert_contains('$stock = pg_bundle_stock_less_held($stock, pg_stock_hold_held_for(array_keys($stock), $location_id, $order_id));', $check, 'other orders\' holds come off the pool');
+	pg_assert_contains('$held = pg_stock_hold_held_for(array_keys($stock), $location_id, $order_id);', $check, 'other orders\' holds read once');
+	pg_assert_contains('$stock = pg_bundle_stock_less_held($stock, $held);', $check, 'other orders\' holds come off the pool');
 	pg_assert_contains('$allowance = pg_bundle_cart_allowance($lines, $stock);', $check, 'one pool for the lines');
 	pg_assert_true(strpos($check, 'pg_bundle_stock_at_location(') < strpos($check, 'pg_bundle_stock_less_held(') && strpos($check, 'pg_bundle_stock_less_held(') < strpos($check, 'pg_bundle_cart_allowance('), 'location, then holds, then the allowance');
 }
@@ -319,4 +320,50 @@ function test_stock_holds_cart_return_releases()
 	foreach (array('get_shopping_cart.php', 'get_express_order.php') as $path) {
 		pg_assert_contains('pg_stock_hold_release((int) ($_SESSION[\'ecommerce\'][\'order_id\'] ?? 0));', stock_holds_test_source($path), $path . ' releases');
 	}
+}
+
+// A line's notice names the holds only when other checkouts hold units of a
+// product the line needs and there was stock for them to take.
+function test_stock_holds_line_held()
+{
+	$stock = array(4 => 3, 5 => 0, 6 => 2);
+	$held = array(4 => 3, 5 => 2);
+
+	pg_assert_true(pg_stock_hold_line_held(array(4), $stock, $held), 'the last units held');
+	pg_assert_true(pg_stock_hold_line_held(array('6', '4'), $stock, $held), 'a bundle: one component held is enough');
+	pg_assert_true(!pg_stock_hold_line_held(array(5), $stock, $held), 'no stock: the holds took nothing');
+	pg_assert_true(!pg_stock_hold_line_held(array(6), $stock, $held), 'nothing held');
+	pg_assert_true(!pg_stock_hold_line_held(array(7), $stock, $held), 'an unknown product');
+	pg_assert_true(!pg_stock_hold_line_held(array(4), $stock, array()), 'no holds: the notice as before');
+}
+
+// Edit Product's line: shown while units are held, and says so when they
+// reach the stock.
+function test_stock_holds_screen_line()
+{
+	pg_assert_same(array('show' => false, 'none_free' => false), pg_stock_hold_screen_line(0, 5), 'nothing held: no line');
+	pg_assert_same(array('show' => true, 'none_free' => false), pg_stock_hold_screen_line(2, 5), 'some held');
+	pg_assert_same(array('show' => true, 'none_free' => true), pg_stock_hold_screen_line(5, 5), 'every unit held');
+	pg_assert_same(array('show' => true, 'none_free' => true), pg_stock_hold_screen_line('3', '0'), 'stock gone meanwhile');
+	pg_assert_same(array('show' => false, 'none_free' => false), pg_stock_hold_screen_line(-1, 5), 'below 0 counts as nothing');
+}
+
+// Both checks add the holds' words to their notices, and Edit Product's
+// stock box draws the line.
+function test_stock_holds_notice_callers()
+{
+	$ecommerce = stock_holds_test_source('includes/fn/ecommerce.php');
+	$check = stock_holds_test_between($ecommerce, 'function check_inventory(', 'function check_reservations(');
+	pg_assert_contains('$product[\'stock_before_holds\'] = $product[\'inventory_quantity\'];', $check, 'the stock before the holds is kept');
+	pg_assert_same(3, substr_count($check, '. $held_words);'), 'every notice of a line gets the words');
+
+	$bundles = stock_holds_test_source('includes/fn/bundles.php');
+	$check = stock_holds_test_between($bundles, 'function pg_bundle_check_inventory(', 'function pg_bundle_return_stock(');
+	pg_assert_contains('$held = pg_stock_hold_held_for(array_keys($stock), $location_id, $order_id);', $check, 'the holds read once');
+	pg_assert_same(3, substr_count($check, '. $held_words);'), 'every notice of a line gets the words');
+
+	$builder = stock_holds_test_source('product_builder.php');
+	$render = stock_holds_test_between($builder, 'function pg_pb_render_stock_quantity(', 'function pg_pb_bin_location_ids(');
+	pg_assert_same(2, substr_count($render, "' . \$held_line . '"), 'both layouts draw the line');
+	pg_assert_contains('pg_stock_hold_units_held((int) $product_id)', $builder, 'the live holds of every order and location');
 }
