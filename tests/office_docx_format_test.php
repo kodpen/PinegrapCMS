@@ -158,7 +158,7 @@ function test_office_docx_format_save_and_read_back()
 	$read = pg_office_read($path, 'mektup.docx', true);
 
 	pg_assert_true($read['ok'], 'read for editing: ' . $read['error']);
-	pg_assert_same(array('0' => array(array(16, 0)), '1' => array(array(12, 2)), '2' => array(array(10, 0))), (array) $read['edit']['marks'], 'the looks the editor starts from');
+	pg_assert_same(array('0' => array(array(16, 0)), '1' => array(array(12, 2)), '2' => array(array(10, 0))), json_decode(json_encode($read['edit']['marks']), true), 'the looks the editor starts from');
 
 	$refused = pg_office_docx_save($path, array(array('p' => 0, 'format' => array(array('start' => 6, 'end' => 99, 'set' => array('bold' => true))))), $read['version'], $directory);
 	pg_assert_same('format_range', $refused['code'], 'a stretch past the text is refused');
@@ -177,7 +177,7 @@ function test_office_docx_format_save_and_read_back()
 	$back = pg_office_read($path, 'mektup.docx', true);
 	pg_assert_contains('<p data-p="0">Sayın <strong>Ayşe</strong> Hanım</p>', $back['html'], 'the text left as it was, the word bold');
 	pg_assert_contains('<p data-p="2"><u>Yeni</u> metin</p>', $back['html'], 'the new text, its stretch counted in it');
-	pg_assert_same(array(array(6, 0), array(4, 1), array(6, 0)), $back['edit']['marks']->{'0'}, 'read back as three stretches');
+	pg_assert_same(array(array(6, 0), array(4, 1), array(6, 0)), json_decode(json_encode($back['edit']['marks']), true)['0'], 'read back as three stretches');
 
 	$zip = new ZipArchive();
 	$zip->open($path);
