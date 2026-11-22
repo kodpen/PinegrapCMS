@@ -36,6 +36,8 @@ const VIEWPORT = '#ws-root [role="application"]';
 const SIDE = '#wsf-side';
 const BAR = '#ws-root .wsf-bar';
 const PALETTE = '#ws-root .wsf-palette';
+const STRIP = '#ws-root .wsf-strip';
+const RAIL_OPEN = '#ws-root .wsf-palette-rail-open';
 const OUTLINE = '#ws-root .wsf-outline';
 
 const snap = (value) => Math.round(value / GRID) * GRID;
@@ -139,7 +141,7 @@ module.exports = [
             const lone = boxes.filter((box) => box.id === 'task_2')[0];
 
             h.ok('the box no arrow reaches is outlined', lone && lone.bad);
-            h.same('its tooltip says why, in the server\'s words', lone && lone.tip, h.store.flows.get(7).problems.map((problem) => problem.text).join('\n'));
+            h.ok('its tooltip ends saying why, in the server\'s words', !!lone && lone.tip.endsWith('\n' + h.store.flows.get(7).problems.map((problem) => problem.text).join('\n')), lone && lone.tip);
             h.same('the side panel shows the flow', state.side, h.t('fl_side_flow'));
             h.same('the list', await listNames(h), ['Customer onboarding', 'Weekly report', 'Stock check']);
             h.ok('the palette is shown to whoever may edit', state.palette);
@@ -629,11 +631,13 @@ module.exports = [
     },
 
     {
-        name: 'Ctrl+Z undoes a change and Ctrl+Y does it again, each saved; the toolbar\'s buttons follow',
+        name: 'Ctrl+Z undoes a change and Ctrl+Y does it again, each saved; the strip\'s buttons follow',
         run: async (h) => {
             await h.open();
 
-            const undoDisabled = () => h.page((harness, label) => harness.find({ label: label }).disabled, h.t('fl_undo'));
+            const undoDisabled = () => h.page((harness, label) => harness.find({ label: label, within: '#ws-root .wsf-strip' }).disabled, h.t('fl_undo'));
+
+            h.ok('Undo and Redo are on the bottom strip, not the bar', !(await h.probe('find', { label: h.t('fl_undo'), within: BAR })));
 
             h.ok('nothing to undo yet', await undoDisabled());
             await pick(h, 'task_1');
@@ -708,11 +712,12 @@ module.exports = [
             h.same('the value put at the end of the field', nodeIn(save.data.graph, 'task_2').config.title, 'Send the welcome pack {{node.task_1.task_id}}');
             h.same('the server finds nothing wrong with it', (await h.state()).problems.text, h.t('fl_no_problems'));
 
-            await h.click({ label: h.t('fl_threads'), within: BAR });
+            await h.click({ label: h.t('fl_threads'), within: STRIP });
             h.ok('the toggle hides them', await h.page(() => document.querySelector('#ws-root .pgc-stage').classList.contains('wsf-threads-off')));
             await h.open();
             h.ok('still hidden when the screen is opened again', await h.page(() => document.querySelector('#ws-root .pgc-stage').classList.contains('wsf-threads-off')));
-            h.same('the toggle says so', await h.page((harness, label) => harness.find({ label: label, within: '#ws-root .wsf-bar' }).getAttribute('aria-pressed'), h.t('fl_threads')), 'false');
+            h.same('the toggle says so', await h.page((harness, label) => harness.find({ label: label, within: '#ws-root .wsf-strip' }).getAttribute('aria-pressed'), h.t('fl_threads')), 'false');
+            h.ok('and the bar has no such toggle', !(await h.probe('find', { label: h.t('fl_threads'), within: BAR })));
         }
     },
 
@@ -729,7 +734,7 @@ module.exports = [
             h.ok('the outline in place of the canvas', state.outline && !state.canvas, state);
             h.same('List pressed, Canvas not', await h.page((harness, texts) => texts.map((text) => harness.find({ text: text, within: '#ws-root .wsf-bar .wsf-view' }).getAttribute('aria-pressed')), [h.t('fl_view_list'), h.t('fl_canvas')]), ['true', 'false']);
             await h.eventually('List keeps the focus', (harness) => harness.focused() && (harness.focused().refocus === 'view-list'), 2000);
-            h.ok('no data threads toggle with the list', !(await h.probe('find', { label: h.t('fl_threads'), within: BAR })));
+            h.ok('no data threads toggle with the list: the strip is the canvas\'s', await h.page(() => document.querySelector('#ws-root .wsf-strip').offsetParent === null));
             h.same('the boxes in the order of their arrows', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-outline-item'), (item) => item.getAttribute('data-node'))), ['manual_1', 'task_1', 'end_1', 'task_2']);
             h.ok('each heading opens its settings, none open yet', await h.page(() => Array.prototype.every.call(document.querySelectorAll('#ws-root .wsf-outline-item'), (item) => !!item.querySelector('.wsf-outline-toggle[aria-expanded="false"]') && !item.querySelector('input, select'))));
             await h.click(OUTLINE + ' .wsf-outline-item[data-node="task_1"] .wsf-outline-toggle');
@@ -750,7 +755,7 @@ module.exports = [
             const added = nodeIn(save.data.graph, 'task_3');
 
             h.same('saved: the arrow and the task', [arrows(save.data.graph).indexOf('task_1>task_2:done') !== -1, added && added.config.title], [true, 'Book the training']);
-            h.same('placed right of the last box', added && [added.x, added.y], [640 + BOX_W + GRID * 5, 0]);
+            h.same('placed right of the last box', added && [added.x, added.y], [snap(640 + BOX_W + GRID * 5), 0]);
 
             await h.click({ text: h.t('fl_canvas'), within: BAR });
             state = await h.state();
@@ -989,6 +994,7 @@ module.exports = [
         name: 'the palette adds a box, selected, where there is room; dragged from the palette it lands where it is dropped',
         run: async (h) => {
             await h.open();
+            await h.click({ css: RAIL_OPEN });
             h.same('one start: one row naming it, no start kind to add', await h.page(() => {
                 const panel = document.querySelector('#ws-root .wsf-palette');
                 const current = panel.querySelector('.wsf-palette-current');
@@ -1013,6 +1019,9 @@ module.exports = [
             await h.click({ labelled: h.t('fl_title'), within: SIDE });
             await h.type('Book the training');
             h.same('the box takes the title as it is typed', (await h.probe('box', 'task_3')).title, 'Book the training');
+
+            // The card open first: the spot is found beside it.
+            await h.click({ css: RAIL_OPEN });
 
             const spot = await h.probe('empty');
             const at = await h.probe('canvasPoint', spot.x, spot.y);
@@ -1088,6 +1097,7 @@ module.exports = [
         name: 'Change on the start row makes the start another kind in place, its arrows kept, one undo step',
         run: async (h) => {
             await h.open();
+            await h.click({ css: RAIL_OPEN });
             await h.click({ text: h.t('fl_start_change'), within: PALETTE });
             h.ok('Change unfolds the other start kinds, the focus kept on it', await h.page(() => (document.activeElement.getAttribute('data-refocus') === 'palette-change') && (document.activeElement.getAttribute('aria-expanded') === 'true') && !!document.querySelector('#ws-root [data-refocus="palette-swap-schedule"]') && !document.querySelector('#ws-root [data-refocus="palette-swap-manual"]')));
             await h.click({ css: '#ws-root [data-refocus="palette-swap-schedule"]' });
@@ -1105,38 +1115,47 @@ module.exports = [
     },
 
     {
-        name: 'on a narrow window the left panel is a rail: + opens it over the canvas, Esc folds it and gives the focus back',
+        name: 'the add rail floats over the canvas: + opens the list as a card beside it, a group\'s icon opens it at that group, Esc or a click on the canvas closes it',
         width: 1024,
         run: async (h) => {
             await h.open();
 
             const rail = await h.page(() => {
                 const palette = document.querySelector('#ws-root .wsf-palette');
-                const panel = palette.querySelector('.wsf-palette-panel');
+                const stage = document.querySelector('#ws-root .pgc-stage').getBoundingClientRect();
+                const box = palette.querySelector('.wsf-palette-rail').getBoundingClientRect();
 
-                return [Math.round(palette.getBoundingClientRect().width), getComputedStyle(panel).display, palette.querySelectorAll('.wsf-palette-rail-num').length];
+                return [Math.round(box.width), Math.round(box.left - stage.left), Math.round(box.top - stage.top), getComputedStyle(palette.querySelector('.wsf-palette-panel')).display, palette.querySelectorAll('.wsf-palette-rail-group').length, window.localStorage.getItem('pg_wsf_palette')];
             });
 
-            h.same('a 48 px rail, the panel hidden, the three section numbers', rail, [48, 'none', 3]);
-            await h.click({ css: '#ws-root .wsf-palette-rail-open' });
+            h.same('a 48 px rail 14 px in from the canvas\'s top left, the list closed, six groups, nothing kept', rail, [48, 14, 14, 'none', 6, null]);
+            h.ok('the canvas starts at the window\'s left edge of the editor', await h.page(() => Math.round(document.querySelector('#ws-root .pgc-stage').getBoundingClientRect().left) === Math.round(document.querySelector('#ws-root .wsf-app').getBoundingClientRect().left)));
+            await h.click({ css: RAIL_OPEN });
 
             const over = await h.page(() => {
                 const panel = document.querySelector('#ws-root .wsf-palette-panel');
 
-                return [Math.round(panel.getBoundingClientRect().width), getComputedStyle(panel).position, document.activeElement.classList.contains('wsf-palette-search')];
+                return [Math.round(panel.getBoundingClientRect().width), document.activeElement.classList.contains('wsf-palette-search'), document.querySelector('#ws-root .wsf-palette-rail-open').getAttribute('aria-expanded')];
             });
 
-            h.same('+ opens the 264 px panel over the canvas, the search focused', over, [264, 'absolute', true]);
+            h.same('+ opens the 264 px card, the search focused', over, [264, true, 'true']);
             await h.key('Escape');
-            h.ok('Esc folds it, the focus back on +', await h.page(() => (getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none') && document.activeElement.classList.contains('wsf-palette-rail-open')));
-            await h.click({ css: '#ws-root .wsf-palette-rail-open' });
+            h.ok('Esc closes it, the focus back on +', await h.page(() => (getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none') && document.activeElement.classList.contains('wsf-palette-rail-open')));
+            await h.click({ css: '#ws-root [data-refocus="palette-rail-logic"]' });
+            h.ok('a group\'s icon opens the card at that group, unfolded and focused', await h.page(() => (getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'flex') && (document.activeElement.getAttribute('data-refocus') === 'palette-group-logic') && (document.activeElement.getAttribute('aria-expanded') === 'true')));
+
+            const empty = await h.probe('empty');
+
+            await h.drag(empty, { x: empty.x + 1, y: empty.y });
+            h.ok('a click on the canvas closes it', await h.page(() => getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none'));
+            await h.click({ css: RAIL_OPEN });
             await h.click({ css: '#ws-root [data-refocus="palette-add-task"]' });
             await h.waitFor('the box added', (harness) => harness.state().selected && (harness.state().selected.id === 'task_3'), 3000);
-            h.ok('a box added folds the panel', await h.page(() => getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none'));
+            h.ok('a box added closes it', await h.page(() => getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none'));
             h.same('the right panel is 300 px wide', await h.page(() => Math.round(document.querySelector('#wsf-side').getBoundingClientRect().width)), 300);
             await h.page(() => document.querySelector('#ws-root [data-node="task_3"]').focus());
             await h.key('F6', 'Shift');
-            h.ok('Shift+F6 from the canvas passes over the folded rail to the bar', await h.page(() => document.querySelector('#ws-root .wsf-bar').contains(document.activeElement)));
+            h.ok('Shift+F6 from the canvas passes over the closed card to the bar', await h.page(() => document.querySelector('#ws-root .wsf-bar').contains(document.activeElement)));
             h.ok('nothing scrolls sideways', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth));
         }
     },

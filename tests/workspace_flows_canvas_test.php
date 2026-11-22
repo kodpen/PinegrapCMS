@@ -422,6 +422,62 @@ JS
 	pg_assert_same(array(true, true, false, false), $result['taken'], 'with a start: every other start box is refused, the steps are not');
 }
 
+// The add rail and the bottom strip (FE2): a group button for each group
+// the person can add a box of, in the palette's order, each with a box's
+// line icon of that group; a group opened from the rail unfolds and leaves
+// the others as they were. The list is a card beside the rail, no column
+// and no fold kept in the browser; Undo, Redo, the zoom, Fit and the data
+// threads sit on the strip, not the bar.
+function test_workspace_flows_canvas_add_rail_and_strip()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	preg_match('/^    var PALETTE_GROUPS = \[.*?\];$/ms', $source, $groups);
+	preg_match('/^    var PALETTE_RECORDS = \[.*?\];$/m', $source, $records);
+	preg_match('/^    var PALETTE_FOLDED = \{.*?\};$/m', $source, $folded);
+	preg_match('/^    var RAIL_GROUPS = \[.*?\];$/ms', $source, $rail);
+	preg_match('/^    var KINDS = \{.*?\n    \};$/ms', $source, $kinds);
+	pg_assert_true(!empty($rail), 'the rail\'s groups are declared');
+	pg_assert_false(strpos($source, 'pg_wsf_palette') !== false, 'the palette\'s fold is no longer kept in the browser');
+	pg_assert_false(strpos($source, 'ui.bar.appendChild(threadsButton())') !== false, 'the data threads leave the bar');
+	pg_assert_false(strpos($source, 'ui.bar.appendChild(ui.undo)') !== false, 'Undo leaves the bar');
+	pg_assert_true(strpos($source, 'ui.strip.appendChild(ui.undo)') !== false, 'Undo is on the strip');
+	pg_assert_true(strpos($source, 'ui.main.appendChild(ui.palette)') !== false, 'the rail floats over the canvas, not in a column');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_false(strpos($css, 'wsf-palette-folded') !== false, 'no folded column left in the stylesheet');
+	pg_assert_true((bool) preg_match('/\n\.wsf-app \{\n  display: grid;\n  grid-template-columns: minmax\(0, 1fr\) 19rem;/', $css), 'the canvas runs from the left edge');
+
+	$result = ws_flows_canvas_test_node(
+		array('railGroups', 'paletteUnfold', 'paletteGroupOf', 'paletteGroupOpen'),
+		($groups[0] ?? '') . "\n" . ($records[0] ?? '') . "\n" . ($folded[0] ?? '') . "\n" . ($rail[0] ?? '') . "\n" . ($kinds[0] ?? '') . "\n" . <<<'JS'
+var out = {};
+var all = Object.keys(KINDS).map(function (kind) { return [kind, '']; });
+out.all = railGroups(all).map(function (group) { return group[0]; });
+out.icons = railGroups(all).map(function (group) { return paletteGroupOf(group[1]) === group[0]; });
+out.member = railGroups([['post', ''], ['task', ''], ['value', '']]).map(function (group) { return group[0]; });
+state = { paletteFolded: null };
+state.paletteFolded = paletteUnfold(state.paletteFolded, 'system');
+out.unfolded = ['message', 'logic', 'records', 'system', 'values'].map(function (group) { return paletteGroupOpen(group, ''); });
+state.paletteFolded.message = true;
+state.paletteFolded = paletteUnfold(state.paletteFolded, 'values');
+out.kept = ['message', 'system', 'values'].map(function (group) { return paletteGroupOpen(group, ''); });
+out.same = paletteUnfold(PALETTE_FOLDED, 'logic') !== PALETTE_FOLDED && PALETTE_FOLDED.logic === true;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array('message', 'people', 'logic', 'records', 'system', 'values'), $result['all'], 'six groups on the rail, in the palette\'s order, no start and no end');
+	pg_assert_same(array(true, true, true, true, true, true), $result['icons'], 'each group\'s icon is a box of that group');
+	pg_assert_same(array('message', 'people', 'values'), $result['member'], 'a group with no box offered has no button');
+	pg_assert_same(array(true, false, false, true, false), $result['unfolded'], 'the group opened from the rail unfolds, the others as at first');
+	pg_assert_same(array(false, true, true), $result['kept'], 'a group the person folded stays folded');
+	pg_assert_same(true, $result['same'], 'the first folds are not changed');
+}
+
 // The right panel of a chosen box: Settings and Connections, Try for the
 // owner editing the flow; the tab list's keys step round and go to the
 // ends; the arrows in and out in the graph's order (the Connections count
@@ -2534,7 +2590,7 @@ function test_workspace_flows_canvas_next_row_fits_the_panel()
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 
-	pg_assert_true((bool) preg_match('/\n\.wsf-palette,\n\.wsf-side \{[^}]*overflow-x: hidden;/', $css), 'the side panel does not scroll sideways');
+	pg_assert_true((bool) preg_match('/\n\.wsf-side \{[^}]*overflow-x: hidden;/', $css), 'the side panel does not scroll sideways');
 	pg_assert_true((bool) preg_match('/\n\.wsf-link \{[^}]*flex-wrap: wrap;[^}]*min-width: 0;/', $css), 'a Next row wraps');
 	pg_assert_true((bool) preg_match('/\n\.wsf-link-name \{[^}]*min-width: 0;/', $css), 'the name may shrink');
 	pg_assert_true((bool) preg_match('/\n\.wsf-link-on \{[^}]*flex: 1 1 100%;[^}]*min-width: 0;/', $css), 'the outcome goes on its own line and may shrink');

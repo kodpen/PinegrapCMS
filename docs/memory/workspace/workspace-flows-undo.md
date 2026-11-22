@@ -1,10 +1,10 @@
 ---
 name: workspace-flows-undo
-description: Undo and redo on the flow canvas (workspace_flow.js): the toolbar buttons, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, the history of graph snapshots, which changes fold into one step, when it resets
+description: Undo and redo on the flow canvas (workspace_flow.js): the bottom strip's buttons, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, the history of graph snapshots, which changes fold into one step, when it resets
 ---
 
 ## Where are undo and redo?
-- Undo and Redo icon buttons at the right of the bar, before the data threads toggle, drawn only while the draft is edited (`drawBar()`); `drawState()` disables and dims them (`dimmed()`) with no step to go to. The result ("Change undone" / "Change redone") is announced for screen readers; a button that goes grey hands the focus to the other one.
+- Undo and Redo icon buttons at the start of the canvas's bottom strip (FE2, `drawStrip()`), drawn only while the draft is edited; `drawState()` disables and dims them (`dimmed()`) with no step to go to. The result ("Change undone" / "Change redone") is announced for screen readers; a button that goes grey hands the focus to the other one.
 - Keys on the document (`bindWindow()`): Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes (Cmd on a Mac). Skipped while `typing()` (an input, textarea, select or contenteditable keeps the browser's own undo), outside the screen's root (a dialog), with the template gallery or the scheduled section shown. The keyboard help lists them (`fl_key_undo`).
 
 ## What is a step?
@@ -15,6 +15,6 @@ description: Undo and redo on the flow canvas (workspace_flow.js): the toolbar b
 
 ## How is an undo saved and when does history reset?
 - Undo puts the snapshot back with `graphOf()`, keeps a selected box that is still there (an arrow, selected by its index, is unselected) and calls `changed(true)`: redrawn and saved by the normal autosave; it records nothing, the graph equals `history.now`.
-- The focus: a toolbar button keeps it (a grey one hands it to the other). A key pressed on the canvas (a box focused) gets it back on the redrawn box still selected, else on the viewport, so arrows, Delete and C keep working (PR #4275, #3981: `drawCanvas()` replaced the box and the focus fell to the body).
+- The focus: a strip button keeps it (a grey one hands it to the other). A key pressed on the canvas (a box focused) gets it back on the redrawn box still selected, else on the viewport, so arrows, Delete and C keep working (PR #4275, #3981: `drawCanvas()` replaced the box and the focus fell to the body).
 - Off in the run view: `showRun()` sets `state.edit` false and the buttons are not drawn.
 - `show(flow)` starts a new history for another flow and keeps it for the same flow (Publish and Pause call `show()` again, which only refreshes `history.now`). "Load it again" after a 409 clears it, so undo never brings back what the other screen wrote over.

@@ -468,6 +468,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_figure_grid_pattern();
     $patterns[] = pg_look_examples_tools_dock_pattern($p);
     $patterns[] = pg_look_examples_flow_box_pattern($p);
+    $patterns[] = pg_look_examples_canvas_tools_pattern();
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
     // the parts the one E-mail category is built from.
@@ -1089,6 +1090,63 @@ function pg_look_examples_flow_box_pattern($p)
             . $box('wsf-group-values', 16, 178, 'bi-braces', lang('Constants'), lang('Shop links'), lang('Three values'), false, false, false)
             . '</div></div></div>'
             . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: a box is a card with its kind on a tile in its group\'s colour, then the kind, the title and what it does, each cut to the width with the whole text in its tooltip. The out port is a dot on the right edge; the in port shows on pointing. Chosen: the ring. A problem keeps its red line, a value box its dashed border; an arrow of a box with several outcomes carries the outcome on a pill. The List view, the run view and the read-only card draw the same box.')) . '</p>',
+    );
+}
+
+/**
+ * The Flows canvas's tools (workspace_flow.js, drawPalette() and
+ * drawStrip()), still: the add rail at the top left with the list open as
+ * a card beside it, one group unfolded and one folded, and the bottom strip
+ * with Undo, Redo, the zoom, Fit and the data threads.
+ *
+ * @return array array('id', 'title', 'classes', 'html')
+ */
+function pg_look_examples_canvas_tools_pattern()
+{
+    $icon = function ($icon, $label, $classes = 'pg-icon-button pg-icon-button-sm') {
+        return '<button type="button" class="' . $classes . '" title="' . h($label) . '" aria-label="' . h($label) . '"><i class="bi ' . $icon . '" aria-hidden="true"></i></button>';
+    };
+    $group = function ($group, $name, $label) use ($icon) {
+        return $icon($name, $label, 'pg-icon-button wsf-palette-rail-group wsf-group-' . $group);
+    };
+    $row = function ($group, $icon, $name) {
+        return '<button type="button" class="wsf-palette-item wsf-group-' . $group . '" title="' . h($name) . '">'
+            . '<span class="pg-icon-tile wsf-palette-tile"><i class="bi ' . $icon . '" aria-hidden="true"></i></span>'
+            . '<span class="wsf-palette-name">' . h($name) . '</span></button>';
+    };
+    $divider = '<span class="wsf-strip-divider" aria-hidden="true"></span>';
+
+    return array(
+        'id'      => 'pattern-canvas-tools',
+        'title'   => lang('Canvas tools'),
+        'classes' => array('.wsf-palette', '.wsf-palette-rail', '.wsf-palette-rail-open', '.wsf-palette-rail-group', '.wsf-palette-panel', '.wsf-palette-top', '.wsf-palette-search', '.wsf-palette-groups', '.wsf-palette-head', '.wsf-palette-item', '.wsf-palette-tip', '.wsf-strip', '.wsf-strip-divider', '.wsf-zoom-label', '.pg-button-fill', '.pg-icon-button'),
+        'html'    => '<div class="pgc-stage pg-look-tools">'
+            . '<div class="wsf-palette"><div class="wsf-palette-rail" role="group" aria-label="' . h(lang('Add a box')) . '">'
+            . $icon('bi-plus-lg', lang('Add a box'), 'pg-button pg-button-fill wsf-palette-rail-open')
+            . $group('message', 'bi-chat-left-text', lang('Message'))
+            . $group('people', 'bi-person-check', lang('People and tasks'))
+            . $group('logic', 'bi-signpost-split', lang('Logic'))
+            . $group('system', 'bi-table', lang('Records and tables'))
+            . $group('system', 'bi-plug', lang('System'))
+            . $group('values', 'bi-braces', lang('Values'))
+            . '</div>'
+            . '<div class="wsf-palette-panel" role="region" aria-label="' . h(lang('Add a box')) . '">'
+            . '<div class="wsf-palette-top"><h4 class="wsf-palette-title">' . h(lang('Add a box')) . '</h4>' . $icon('bi-x-lg', lang('Close the list of boxes'), 'pg-icon-button pg-icon-button-sm wsf-palette-close') . '</div>'
+            . '<input type="search" class="pg-input pg-input-sm wsf-palette-search" placeholder="' . h(lang('Search boxes')) . '" aria-label="' . h(lang('Search boxes')) . '">'
+            . '<div class="wsf-palette-groups"><div class="wsf-palette-stage">'
+            . '<div class="wsf-palette-stage-head"><span class="wsf-palette-stage-num" aria-hidden="true">2</span><span>' . h(lang('Steps')) . '</span></div>'
+            . '<div class="wsf-palette-group"><button type="button" class="wsf-palette-head" aria-expanded="true"><i class="bi bi-chevron-down wsf-palette-chevron" aria-hidden="true"></i><span>' . h(lang('Message')) . '</span></button>'
+            . '<div class="wsf-palette-rows">' . $row('message', 'bi-chat-square', lang('Post a message')) . $row('message', 'bi-envelope', lang('Send an e-mail')) . '</div></div>'
+            . '<div class="wsf-palette-group"><button type="button" class="wsf-palette-head" aria-expanded="false"><i class="bi bi-chevron-right wsf-palette-chevron" aria-hidden="true"></i><span>' . h(lang('Logic')) . '</span><span class="wsf-palette-count">6</span></button></div>'
+            . '</div></div>'
+            . '<p class="wsf-palette-tip pg-text-meta"><i class="bi bi-hand-index me-1" aria-hidden="true"></i>' . h(lang('Click or drag onto the canvas')) . '</p>'
+            . '</div></div>'
+            . '<div class="wsf-strip" role="group" aria-label="' . h(lang('Canvas tools')) . '">'
+            . $icon('bi-arrow-counterclockwise', lang('Undo')) . $icon('bi-arrow-clockwise', lang('Redo change')) . $divider
+            . $icon('bi-dash-lg', lang('Zoom out')) . '<span class="wsf-zoom-label">100%</span>' . $icon('bi-plus-lg', lang('Zoom in')) . $icon('bi-arrows-fullscreen', lang('Fit to the screen')) . $divider
+            . str_replace('<button type="button"', '<button type="button" aria-pressed="true"', $icon('bi-bezier2', lang('Data threads')))
+            . '</div></div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: the add rail floats at the canvas\'s top left, a filled "+" and an icon for each group with its name as tooltip; "+" opens the list as a card beside the rail, a group\'s icon opens it at that group. Esc, a box added or a click on the canvas closes it. The bottom strip, centred over the canvas, holds Undo, Redo, the zoom, Fit and the data threads; a pressed tool shows the quiet fill.')) . '</p>',
     );
 }
 

@@ -295,6 +295,18 @@
     // the values.
     var PALETTE_FOLDED = { logic: true, records: true, system: true, values: true };
 
+    // The add rail's group buttons (drawPaletteRail()) in the palette's
+    // order, each with the line icon of a box of its group: each opens the
+    // list at its group. Start and End are found under "+".
+    var RAIL_GROUPS = [
+        ['message', 'post'],
+        ['people', 'checkin'],
+        ['logic', 'condition'],
+        ['records', 'row_get'],
+        ['system', 'webhook'],
+        ['values', 'constants']
+    ];
+
     // The box whose line icon stands for a way to start in the flow list.
     var START_BOXES = { time: 'schedule', manual: 'manual', event: 'event', join: 'join' };
 
@@ -1212,9 +1224,15 @@
         // While a run is shown: which, and the way back to the flow.
         ui.runBox = el('div', 'wsf-run-bar d-none');
         ui.app = el('div', 'wsf-app');
-        // The palette: the left column of the editor.
-        ui.palette = el('aside', 'wsf-palette');
-        ui.palette.setAttribute('aria-label', t('fl_palette'));
+        // "Add a box": the rail and the list's card, floating over the
+        // canvas's top left (drawPalette()); on a phone a sheet.
+        ui.palette = el('div', 'wsf-palette');
+        ui.palette.addEventListener('keydown', function (event) {
+            if ((event.key === 'Escape') && state.paletteOver) {
+                event.stopPropagation();
+                foldPalette(false, true);
+            }
+        });
         ui.main = el('div', 'wsf-main');
         // On a phone, in both views: the one button that opens the left panel
         // as a sheet of the full height (foldPalette()).
@@ -1226,9 +1244,9 @@
         // panel, this one and the right panel.
         ui.main.setAttribute('role', 'region');
         ui.main.setAttribute('aria-label', t('fl_view'));
-        // The panel opened over a narrow canvas folds on a click there.
-        ui.main.addEventListener('pointerdown', function () {
-            if (state.paletteOver) {
+        // The list's card closes on a click on the canvas beside it.
+        ui.main.addEventListener('pointerdown', function (event) {
+            if (state.paletteOver && !ui.palette.contains(event.target)) {
                 foldPalette(false, false);
             }
         });
@@ -1256,6 +1274,7 @@
         ui.setup.setAttribute('aria-labelledby', 'wsf-setup-title');
         ui.stage.appendChild(ui.setup);
         ui.main.appendChild(ui.stage);
+        ui.main.appendChild(ui.palette);
         ui.main.appendChild(ui.outlineBox);
         ui.main.appendChild(ui.scheduled);
         // The ways to start a flow and the template gallery, in place of
@@ -1265,7 +1284,6 @@
         ui.gallery.setAttribute('aria-label', t('fl_tpl_title'));
         ui.main.appendChild(ui.gallery);
 
-        ui.app.appendChild(ui.palette);
         ui.app.appendChild(ui.main);
         ui.app.appendChild(ui.side);
         // On a phone the chosen box's panel is a sheet over a scrim; a tap
@@ -1290,7 +1308,7 @@
 
     // The stage the canvas is drawn on: a viewport, the layer it moves and
     // scales, on the layer the arrows under the boxes, the empty-canvas
-    // line and the zoom buttons; the screen (layout()) and an embedded
+    // line and the bottom strip; the screen (layout()) and an embedded
     // drawing (embed()) both build it here.
     function layoutStage() {
         ui.viewport = el('div', 'pgc-viewport');
@@ -1317,26 +1335,68 @@
         ui.viewport.appendChild(ui.layer);
 
         ui.empty = el('div', 'wsf-empty d-none', t('fl_empty_canvas'));
-        ui.zoom = el('div', 'wsf-zoom');
-        ui.zoom.setAttribute('role', 'toolbar');
-        ui.zoom.setAttribute('aria-label', t('fl_zoom'));
+        // The bottom strip (drawStrip()), redrawn with the bar.
+        ui.strip = el('div', 'wsf-strip');
+        ui.strip.setAttribute('role', 'group');
+        ui.strip.setAttribute('aria-label', t('fl_strip'));
         ui.zoomLabel = el('span', 'wsf-zoom-label', '100%');
-
-        [['bi-dash-lg', 'fl_zoom_out', function () { zoomBy(1 / 1.2); }], null, ['bi-plus-lg', 'fl_zoom_in', function () { zoomBy(1.2); }], ['bi-arrows-fullscreen', 'fl_fit', fit]].forEach(function (item) {
-            if (!item) {
-                ui.zoom.appendChild(ui.zoomLabel);
-                return;
-            }
-
-            var control = K.button('btn btn-sm btn-text theme-secondary', '', item[0], t(item[1]));
-            control.addEventListener('click', item[2]);
-            ui.zoom.appendChild(control);
-        });
 
         ui.stage = el('div', 'pgc-stage');
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.empty);
-        ui.stage.appendChild(ui.zoom);
+        ui.stage.appendChild(ui.strip);
+        drawStrip();
+    }
+
+    // The strip centred over the canvas's bottom: Undo and Redo while the
+    // draft is edited; zoom out, the percent, zoom in and Fit; the data
+    // threads on the screen. An embedded drawing has the zoom and Fit
+    // alone. Icon buttons with their names as tooltips, a pressed one by
+    // its quiet fill.
+    function drawStrip() {
+        K.clear(ui.strip);
+        ui.undo = null;
+        ui.redo = null;
+
+        if (state.edit && !state.embed) {
+            ui.undo = stripButton('fl_undo', 'bi-arrow-counterclockwise', function () { undo(true); });
+            ui.undo.setAttribute('data-refocus', 'undo redo');
+            ui.strip.appendChild(ui.undo);
+            ui.redo = stripButton('fl_redo', 'bi-arrow-clockwise', function () { undo(false); });
+            ui.redo.setAttribute('data-refocus', 'redo undo');
+            ui.strip.appendChild(ui.redo);
+            ui.strip.appendChild(stripDivider());
+        }
+
+        ui.strip.appendChild(stripButton('fl_zoom_out', 'bi-dash-lg', function () { zoomBy(1 / 1.2); }));
+        ui.strip.appendChild(ui.zoomLabel);
+        ui.strip.appendChild(stripButton('fl_zoom_in', 'bi-plus-lg', function () { zoomBy(1.2); }));
+        ui.strip.appendChild(stripButton('fl_fit', 'bi-arrows-fullscreen', function () { fit(); }));
+
+        // The threads are drawn on the canvas only; the list says in words
+        // what each box reads.
+        if (!state.embed && state.flow) {
+            ui.strip.appendChild(stripDivider());
+            ui.strip.appendChild(threadsButton());
+        }
+    }
+
+    function stripButton(key, iconName, action) {
+        var button = K.button('pg-icon-button pg-icon-button-sm', '', iconName, t(key));
+
+        if (action) {
+            button.addEventListener('click', action);
+        }
+
+        return button;
+    }
+
+    function stripDivider() {
+        var divider = el('span', 'wsf-strip-divider');
+
+        divider.setAttribute('aria-hidden', 'true');
+
+        return divider;
     }
 
     // ── The list ───────────────────────────────────────────────────────
@@ -3036,9 +3096,10 @@
 
     // The bar of an open flow, in three parts: at the left the flow itself
     // (its name, status pill and save state), in the middle the view
-    // (Canvas or List), at the right what is done with it (undo, redo, the
-    // data threads; the problems, its runs, Run, Publish and "⋯"). "New
-    // flow" is the flow list's, not the window's.
+    // (Canvas or List), at the right what is done with it (the problems,
+    // its runs, Run, Publish and "⋯"). Undo, Redo and the data threads are
+    // on the canvas's bottom strip, redrawn with the bar (drawStrip()).
+    // "New flow" is the flow list's, not the window's.
     function drawBar() {
         var flow = state.flow;
         var publishing = state.edit && flow.manage;
@@ -3092,34 +3153,7 @@
 
         ui.bar.appendChild(viewSwitch());
 
-        var tools = 0;
-
-        if (state.edit) {
-            ui.undo = barButton(BAR_ICON, t('fl_undo'), 'bi-arrow-counterclockwise', true);
-            ui.undo.setAttribute('data-refocus', 'undo redo');
-            ui.undo.addEventListener('click', function () { undo(true); });
-            ui.bar.appendChild(ui.undo);
-            ui.redo = barButton(BAR_ICON, t('fl_redo'), 'bi-arrow-clockwise', true);
-            ui.redo.setAttribute('data-refocus', 'redo undo');
-            ui.redo.addEventListener('click', function () { undo(false); });
-            ui.bar.appendChild(ui.redo);
-            tools += 2;
-        }
-
-        // The threads are drawn on the canvas only; the list says in words
-        // what each box reads.
-        if (!state.outline) {
-            ui.bar.appendChild(threadsButton());
-            tools++;
-        }
-
-        if (tools) {
-            // Under 768 px the bar wraps, and a divider would end a row.
-            var divider = el('span', 'vr my-2 mx-1 d-none md:d-inline-block');
-
-            divider.setAttribute('aria-hidden', 'true');
-            ui.bar.appendChild(divider);
-        }
+        drawStrip();
 
         if (state.edit) {
             ui.problemButton = barButton(BAR_QUIET, '', '');
@@ -4495,7 +4529,7 @@
     }
 
     function threadsButton() {
-        var button = barButton(BAR_ICON, t('fl_threads'), 'bi-bezier2', true);
+        var button = stripButton('fl_threads', 'bi-bezier2');
 
         button.setAttribute('aria-pressed', state.threads ? 'true' : 'false');
         button.setAttribute('data-refocus', 'threads');
@@ -4722,6 +4756,27 @@
         return !(state.paletteFolded || PALETTE_FOLDED)[group];
     }
 
+    // The rail's groups the person can add a box of (a member's kinds, the
+    // Workspace off): a group with none offered has no button.
+    function railGroups(items) {
+        return RAIL_GROUPS.filter(function (group) {
+            return items.some(function (item) { return paletteGroupOf(item[0]) === group[0]; });
+        });
+    }
+
+    // The folded groups once a group is opened from the rail or its heading:
+    // that group unfolded, the others as the person left them (as at first
+    // while untouched). A new map; PALETTE_FOLDED is never changed.
+    function paletteUnfold(folded, group) {
+        var from = folded || PALETTE_FOLDED;
+        var next = {};
+
+        Object.keys(from).forEach(function (key) { next[key] = from[key]; });
+        next[group] = false;
+
+        return next;
+    }
+
     // What the Start section lists: without a start box, every start kind
     // offered; with one, that box as one row (current) and the other kinds
     // only while "Change" is open or a search found them.
@@ -4738,42 +4793,24 @@
         };
     }
 
-    // Is the left panel folded to its rail? On a window 1280 px and wider
-    // as the person left it (kept in this browser); narrower it is a rail
-    // at rest, opened over the canvas's edge (state.paletteOver).
-    function paletteFoldedKept() {
-        try {
-            return window.localStorage.getItem('pg_wsf_palette') === 'folded';
-        } catch (error) {
-            return false;
-        }
-    }
-
-    function paletteWide() {
-        return !window.matchMedia || window.matchMedia('(min-width: 1280px)').matches;
-    }
-
+    // The list's card beside the rail open or not (state.paletteOver).
     function setPaletteClasses() {
-        ui.app.classList.toggle('wsf-palette-folded', !!(state.edit && state.flow) && paletteFoldedKept());
         ui.app.classList.toggle('wsf-palette-over', !!state.paletteOver);
+
+        var plus = ui.palette.querySelector('.wsf-palette-rail-open');
+
+        if (plus) {
+            plus.setAttribute('aria-expanded', state.paletteOver ? 'true' : 'false');
+        }
     }
 
-    // The fold button and the rail: on a wide window the choice is kept; on
-    // a narrow one the panel opens over the canvas and folds again on Esc,
-    // a box added or a click on the canvas.
+    // The list of boxes as a card beside the rail: "+" or a group's icon
+    // opens it; Esc (the focus back on "+"), Close, "+" again, a box added
+    // or a click on the canvas closes it. On a phone the same card is the
+    // full-height sheet the "Add a box" button opens. Nothing is kept in
+    // the browser: the canvas opens with the card closed.
     function foldPalette(open, focus) {
-        if (paletteWide()) {
-            state.paletteOver = false;
-
-            try {
-                window.localStorage.setItem('pg_wsf_palette', open ? 'open' : 'folded');
-            } catch (error) {
-                // Kept for this page only.
-            }
-        } else {
-            state.paletteOver = !!open;
-        }
-
+        state.paletteOver = !!open;
         setPaletteClasses();
 
         if (focus) {
@@ -4790,10 +4827,34 @@
         }
     }
 
-    // The editor's left column, "Add a box": its head with the fold button,
-    // Start from a template (while the flow is empty), a search field, the
-    // numbered sections, the hint at the foot; folded, a rail of a "+" and
-    // the section numbers. Only whoever edits the flow has it.
+    // A group's icon on the rail: the card opens with the search cleared,
+    // that group unfolded at the top of the list and its heading focused.
+    function openPaletteAt(group) {
+        var search = ui.palette.querySelector('.wsf-palette-search');
+
+        state.paletteQuery = '';
+        state.paletteFolded = paletteUnfold(state.paletteFolded, group);
+
+        if (search) {
+            search.value = '';
+        }
+
+        drawPaletteGroups();
+        foldPalette(true, false);
+
+        var head = ui.palette.querySelector('[data-refocus="palette-group-' + group + '"]');
+
+        if (head) {
+            ui.paletteGroups.scrollTop += head.getBoundingClientRect().top - ui.paletteGroups.getBoundingClientRect().top;
+            head.focus({ preventScroll: true });
+        }
+    }
+
+    // "Add a box" on the canvas: the rail floating at its top left (a
+    // filled "+" and an icon for each group) and, beside it, the list as a
+    // card: its head with Close, Start from a template (while the flow is
+    // empty), a search field, the numbered sections, the hint at the foot.
+    // Only whoever edits the flow has it.
     function drawPalette() {
         if (state.embed) {
             return;
@@ -4805,9 +4866,10 @@
         ui.paletteStart = null;
         ui.app.classList.toggle('wsf-no-palette', !shown);
         ui.addBox.classList.toggle('d-none', !shown);
-        setPaletteClasses();
 
         if (!shown) {
+            state.paletteOver = false;
+            setPaletteClasses();
             return;
         }
 
@@ -4816,15 +4878,15 @@
         var panel = el('div', 'wsf-palette-panel');
         var head = el('div', 'wsf-palette-top');
         var title = el('h2', 'wsf-palette-title', t('fl_palette'));
-        var fold = K.button('pg-icon-button pg-icon-button-sm wsf-palette-fold', '', 'bi-layout-sidebar', t('fl_palette_fold'));
+        var close = K.button('pg-icon-button pg-icon-button-sm wsf-palette-close', '', 'bi-x-lg', t('fl_palette_close'));
 
         panel.id = 'wsf-palette-panel';
+        panel.setAttribute('role', 'region');
+        panel.setAttribute('aria-labelledby', 'wsf-palette-title');
         title.id = 'wsf-palette-title';
-        fold.setAttribute('aria-expanded', 'true');
-        fold.setAttribute('aria-controls', panel.id);
-        fold.addEventListener('click', function () { foldPalette(false, true); });
+        close.addEventListener('click', function () { foldPalette(false, true); });
         head.appendChild(title);
-        head.appendChild(fold);
+        head.appendChild(close);
         panel.appendChild(head);
         templateButton(panel);
 
@@ -4849,46 +4911,35 @@
         tip.appendChild(K.icon('bi-hand-index', 'me-1'));
         tip.appendChild(document.createTextNode(t('fl_palette_tip')));
         panel.appendChild(tip);
-        panel.addEventListener('keydown', function (event) {
-            if ((event.key === 'Escape') && state.paletteOver) {
-                event.stopPropagation();
-                foldPalette(false, true);
-            }
-        });
         ui.palette.appendChild(panel);
+        setPaletteClasses();
         drawPaletteGroups();
     }
 
-    // The folded panel: "+" opens it, each section number opens it at that
-    // section.
+    // The rail: "+" opens and closes the card; each group's icon, its name
+    // as tooltip, opens it at that group. A group the person can add no box
+    // of has no icon.
     function drawPaletteRail() {
         var rail = el('div', 'wsf-palette-rail');
-        var open = K.button('pg-icon-button wsf-palette-rail-open', '', 'bi-plus-lg', t('fl_palette'));
+        var open = K.button('pg-button pg-button-fill wsf-palette-rail-open', '', 'bi-plus-lg', t('fl_palette'));
 
-        open.setAttribute('aria-expanded', 'false');
+        rail.setAttribute('role', 'group');
+        rail.setAttribute('aria-label', t('fl_palette'));
         open.setAttribute('aria-controls', 'wsf-palette-panel');
-        open.addEventListener('click', function () { foldPalette(true, true); });
+        open.setAttribute('data-refocus', 'palette-open');
+        open.addEventListener('click', function () { foldPalette(!state.paletteOver, true); });
         rail.appendChild(open);
-        PALETTE_STAGES.forEach(function (stage) {
-            if (!stage[1]) {
-                return;
-            }
+        railGroups(paletteItems()).forEach(function (group) {
+            var name = t(PALETTE_GROUPS.filter(function (item) { return item[0] === group[0]; })[0][1]);
+            var go = el('button', 'pg-icon-button wsf-palette-rail-group wsf-group-' + ((group[0] === 'records') ? 'system' : group[0]));
 
-            var go = K.button('pg-icon-button pg-icon-button-sm wsf-palette-rail-num', stage[1], '', t(stage[2]));
-
-            go.addEventListener('click', function () {
-                foldPalette(true, false);
-
-                var head = document.getElementById('wsf-palette-stage-' + stage[0]);
-
-                if (head) {
-                    head.scrollIntoView({ block: 'start' });
-                }
-
-                var first = ui.palette.querySelector('.wsf-stage-' + stage[0] + ' button');
-
-                (first || ui.palette.querySelector('.wsf-palette-search')).focus();
-            });
+            go.type = 'button';
+            go.title = name;
+            go.setAttribute('aria-label', name);
+            go.setAttribute('aria-controls', 'wsf-palette-panel');
+            go.setAttribute('data-refocus', 'palette-rail-' + group[0]);
+            go.appendChild(K.flowIcon(group[1]));
+            go.addEventListener('click', function () { openPaletteAt(group[0]); });
             rail.appendChild(go);
         });
         ui.palette.appendChild(rail);
@@ -5024,11 +5075,7 @@
         }
 
         toggle.addEventListener('click', function () {
-            if (!state.paletteFolded) {
-                state.paletteFolded = {};
-                Object.keys(PALETTE_FOLDED).forEach(function (key) { state.paletteFolded[key] = PALETTE_FOLDED[key]; });
-            }
-
+            state.paletteFolded = paletteUnfold(state.paletteFolded, group.group);
             state.paletteFolded[group.group] = open;
             drawPaletteGroups();
 
@@ -6680,7 +6727,8 @@
             return;
         }
 
-        // A folded left panel (its rail) is passed over.
+        // The list's card while it is open; the rail is reached with Tab
+        // from the canvas's area.
         var panel = ui.palette.querySelector('.wsf-palette-panel');
         var areas = [ui.bar, (panel && (panel.offsetParent !== null)) ? panel : null, state.outline ? ui.outlineBox : ui.main, ui.side].filter(Boolean);
         var at = areas.map(function (area) { return area.contains(document.activeElement); }).indexOf(true);
@@ -6764,7 +6812,7 @@
         var list = el('ul', 'mb-0 ps-5 fg-secondary');
 
         keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'areas', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+        ['tab', 'areas', 'rail', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
@@ -11542,8 +11590,9 @@
             });
         };
 
+        // Down by whole grid steps: a box's height is no multiple of it.
         for (var tries = 0; taken() && (tries < 60); tries++) {
-            y += BOX_H + GRID * 2;
+            y += Math.ceil(BOX_H / GRID) * GRID + GRID * 2;
         }
 
         return { x: x, y: y };
@@ -11705,7 +11754,7 @@
         focusSelected();
         announce(t('fl_added', t(KINDS[kind].name)));
 
-        // A box added from the panel opened over a narrow canvas folds it.
+        // A box added from the list's card closes it.
         if (state.paletteOver) {
             foldPalette(false, false);
         }

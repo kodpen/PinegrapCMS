@@ -6,7 +6,7 @@ description: The flow window's top bar (drawBar(), flow-window FW1): the flow at
 ## What is on the bar, in order?
 - Left, the flow: the name (a field while the draft is edited, else text), the status pill (`statusPill()`: draft gray, live teal, paused amber), "Changes not published yet", the save state with a tick when saved; a reader sees "You can see this flow; only its owner changes it." in the save state's place.
 - Middle: the Canvas / List switch (`viewSwitch()`, `pg-seg`, `aria-pressed`, `data-refocus` `view-canvas` / `view-list`); List is the outline, its tooltip `fl_outline_help`; default List under 768 px.
-- Right: Undo, Redo (editors), data threads (Canvas only), a divider, Problems (editors), Flow runs, Run, Publish (the owner) or "Only the owner publishes…", ⋯.
+- Right: Problems (editors), Flow runs, Run, Publish (the owner) or "Only the owner publishes…", ⋯. Undo, Redo and the data threads are on the canvas's bottom strip (FE2, `workspace-flows-canvas-tools.md`).
 - ⋯ (`moreMenu()`): Pause (live) or Resume (paused, the owner), while the draft is edited; Share; Save as template; Delete.
 
 ## Which recipes and why?
@@ -17,11 +17,11 @@ description: The flow window's top bar (drawBar(), flow-window FW1): the flow at
 
 ## What moved, and where did it go?
 - "New flow" is on the flow list's bar only (`clearScreen()`); the window's way back is the page's arrow in the breadcrumb strip (`backToList()`), as every screen (`ui/back-arrow-no-copies.md`). A single editor (the layer) keeps its own.
-- Outline view became the List choice; Pause and Resume went into ⋯; Data threads became an icon toggle.
+- Outline view became the List choice; Pause and Resume went into ⋯; Undo, Redo and Data threads went to the bottom strip (FE2), with the divider that ended the tools.
 
 ## How does it fit a narrow window?
 - 1280 px and up: Flow runs with its words. Narrower: its icon, the words as its name and tooltip (`xl:d-inline`).
-- Under 768 px the bar wraps in three rows, in reading order (no `order`): the flow; the view, the tools and Problems; Flow runs, Run, Publish, ⋯. The switch starts its row (`md:mx-auto`) and the divider is hidden (`md:d-inline-block`).
+- Under 768 px the bar wraps in three rows, in reading order (no `order`): the flow; the view and Problems; Flow runs, Run, Publish, ⋯. The switch starts its row (`md:mx-auto`).
 
 ## Where is it tested?
-- `tests/js/flows_canvas.js` (by hand): List and Canvas pressed and focused, no threads toggle with List, New flow only on the list, Pause and Resume through ⋯ (`workspace-flows-canvas-harness.md`).
+- `tests/js/flows_canvas.js` (by hand): List and Canvas pressed and focused, no strip with List, New flow only on the list, Pause and Resume through ⋯ (`workspace-flows-canvas-harness.md`).

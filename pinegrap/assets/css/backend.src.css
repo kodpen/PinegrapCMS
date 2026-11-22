@@ -26363,7 +26363,7 @@ html.ws-flow-layer-on body {
 }
 .wsf-app {
   display: grid;
-  grid-template-columns: 264px minmax(0, 1fr) 19rem;
+  grid-template-columns: minmax(0, 1fr) 19rem;
   gap: var(--ws-space-3);
   height: calc(100vh - 14rem);
   min-height: 26rem;
@@ -26371,7 +26371,6 @@ html.ws-flow-layer-on body {
 @supports (height: 100dvh) {
   .wsf-app { height: calc(100dvh - 14rem); }
 }
-.wsf-palette,
 .wsf-side {
   min-height: 0;
   overflow-x: hidden;
@@ -27488,6 +27487,14 @@ html.ws-flow-layer-on body {
   height: 266px;
   overflow-x: auto;
 }
+/* The canvas's tools on the Design examples screen: the rail with its card
+   open and the strip, on a still stage of their own size. */
+.pgc-stage.pg-look-tools {
+  height: 380px;
+}
+.pg-look-tools .wsf-palette-panel {
+  display: flex;
+}
 /* A value box: no arrows, a dashed border. */
 .pgc-node.wsf-group-values {
   border-style: dashed;
@@ -27615,55 +27622,67 @@ html.ws-flow-layer-on body {
   text-align: center;
   pointer-events: none;
 }
-.wsf-zoom {
-  position: absolute;
-  display: flex;
-  gap: 2px;
-  padding: var(--ws-space-1);
-  border: 1px solid var(--pg-border-color-translucent);
-  border-radius: var(--ws-radius-sm);
-  background: var(--pg-bg-body);
-  box-shadow: var(--ws-shadow);
-}
-/* The left panel, "Add a box" (drawPalette()): a head with the fold
-   button, the search, the numbered sections in a scroll of their own, the
-   hint at the foot. Folded, a 48 px rail (drawPaletteRail()): a "+" and the
-   section numbers. Without it (a flow read-only, no flow open) the canvas
-   takes its width. */
+/* "Add a box" (drawPalette()): floating 14 px in at the canvas's top left,
+   a 48 px rail (a filled "+" and an icon for each group) and, beside it
+   while open, the list as a 264 px card. The space between them lets the
+   canvas take the pointer. Without it (a flow read-only, no flow open) and
+   in the List view nothing floats. */
 .wsf-palette {
-  position: relative;
+  position: absolute;
+  z-index: 5;
+  top: 14px;
+  bottom: 14px;
+  left: 14px;
   display: flex;
-  flex-direction: column;
-  padding: 0;
-  overflow: visible;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
 }
-.wsf-app.wsf-no-palette {
-  grid-template-columns: minmax(0, 1fr) 19rem;
-}
-.wsf-app.wsf-no-palette .wsf-palette {
+.wsf-app.wsf-no-palette .wsf-palette,
+.wsf-app.wsf-outlined .wsf-palette {
   display: none;
 }
-.wsf-palette-panel {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
+.wsf-palette-rail,
+.wsf-palette-panel,
+.wsf-strip {
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: 13px;
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  pointer-events: auto;
 }
 .wsf-palette-rail {
-  display: none;
+  display: flex;
+  flex: none;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 8px 0;
+  width: 48px;
+  padding: 7px 0;
 }
-.wsf-app.wsf-palette-folded {
-  grid-template-columns: 48px minmax(0, 1fr) 19rem;
+.wsf-palette-rail .wsf-palette-rail-open {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-bottom: 4px;
+  border-radius: 9px;
 }
-.wsf-app.wsf-palette-folded .wsf-palette-rail {
-  display: flex;
+/* Two classes: the icon button's own colour comes later in the file. */
+.wsf-palette-rail .wsf-palette-rail-group {
+  color: var(--wsf-kind, var(--pg-fg-2));
 }
-.wsf-app.wsf-palette-folded .wsf-palette-panel {
+.wsf-palette-panel {
   display: none;
+  flex-direction: column;
+  width: 264px;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.wsf-app.wsf-palette-over .wsf-palette-panel {
+  display: flex;
 }
 .wsf-palette-top {
   display: flex;
@@ -27822,10 +27841,26 @@ html.ws-flow-layer-on body {
   border-top: 1px solid var(--pg-border-color-translucent);
   color: var(--pg-fg-3);
 }
-.wsf-zoom {
-  right: var(--ws-space-3);
-  bottom: var(--ws-space-3);
+/* The bottom strip (drawStrip()): centred 16 px over the canvas's bottom,
+   44 px high; Undo and Redo, the zoom and Fit, the data threads. */
+.wsf-strip {
+  position: absolute;
+  z-index: 4;
+  bottom: 16px;
+  left: 50%;
+  display: flex;
   align-items: center;
+  gap: 2px;
+  height: 44px;
+  padding: 0 8px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.wsf-strip-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: var(--pg-border-color-translucent);
 }
 .wsf-zoom-label {
   min-width: 3rem;
@@ -28618,28 +28653,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   background: linear-gradient(var(--wsf-run-bg, transparent), var(--wsf-run-bg, transparent)), var(--pg-bg-body);
 }
 @media (max-width: 1279.98px) {
-  .wsf-app,
-  .wsf-app.wsf-palette-folded { grid-template-columns: 48px minmax(0, 1fr) 300px; }
-  .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr) 300px; }
-}
-/* A narrow window: the left panel is its rail at rest; opened, it lies over
-   the canvas's left edge (foldPalette()). */
-@media (min-width: 768px) and (max-width: 1279.98px) {
-  .wsf-app .wsf-palette-rail { display: flex; }
-  .wsf-app:not(.wsf-palette-over) .wsf-palette-panel { display: none; }
-  .wsf-app.wsf-palette-over .wsf-palette-panel {
-    display: flex;
-    position: absolute;
-    z-index: 5;
-    top: -1px;
-    bottom: -1px;
-    left: -1px;
-    width: 264px;
-    border: 1px solid var(--pg-border-color-translucent);
-    border-radius: var(--ws-radius);
-    background: var(--pg-bg-body);
-    box-shadow: var(--pg-shadow-float);
-  }
+  .wsf-app { grid-template-columns: minmax(0, 1fr) 300px; }
 }
 @media (max-width: 767.98px) {
   .wsf-app {
@@ -28647,8 +28661,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     height: auto;
     min-height: 0;
   }
-  .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr); }
-  .wsf-palette { display: none; }
+  .wsf-app .wsf-palette { display: none; }
   /* A box chosen on the canvas: its panel is a sheet from the bottom over a
      scrim (closeSide() on a tap there, Close or Esc). */
   .wsf-app.wsf-side-chosen .wsf-side {
@@ -28662,8 +28675,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     border-radius: var(--pg-radius-sheet) var(--pg-radius-sheet) 0 0;
     box-shadow: var(--pg-shadow-float);
   }
-  /* "Add a box" opens the left panel as a sheet of the full height; the
-     fold button, Esc or a box added closes it (foldPalette()). */
+  /* "Add a box" opens the list as a sheet of the full height, in both
+     views; Close, Esc or a box added closes it (foldPalette()). */
   .wsf-app.wsf-palette-over .wsf-palette {
     display: flex;
     position: fixed;
@@ -28671,9 +28684,17 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     inset: 0;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    border-radius: 0;
+    background: var(--pg-bg-body);
+    pointer-events: auto;
   }
   .wsf-app.wsf-palette-over .wsf-palette-rail { display: none; }
+  .wsf-app.wsf-palette-over .wsf-palette-panel {
+    flex: 1 1 auto;
+    width: auto;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
   .wsf-add-box { margin-bottom: var(--ws-space-2); }
   .wsf-app.wsf-side-chosen .wsf-scrim {
     display: block;
