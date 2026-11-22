@@ -2,10 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The starter layouts of the Menu, Menu Sequence, Ad Region and Tag Cloud
- * widgets on the server: the widget the bulk move to the visual designer
- * makes from a classic region node starts with the layout the editor's
- * "Make designable" gives it (_buildStarterTree()). Site output: Bootstrap 5.
+ * The starter layouts of the Menu, Menu Sequence, Ad Region, Tag Cloud,
+ * Login Region, Cart Link and Comments widgets on the server: the widget the
+ * bulk move to the visual designer makes from a classic region node starts
+ * with the layout the editor's "Make designable" gives it
+ * (_buildStarterTree()). Site output: Bootstrap 5.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -21,9 +22,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/designer_import.php');
 
 /**
  * The starter layout of a widget made from a region node, twin of the
- * menu_region, menu_sequence_region, ad_region and tag_cloud_region cases
- * of _buildStarterTree(). The texts are in the language of the user making
- * it, as the editor writes them.
+ * menu_region, menu_sequence_region, ad_region, tag_cloud_region,
+ * login_region, cart_link and comments cases of _buildStarterTree(). The
+ * texts are in the language of the user making it, as the editor writes
+ * them.
  *
  * @param string $kind
  * @return array|null  null for any other kind
@@ -148,6 +150,84 @@ function pg_ltd_widget_tree($kind)
                     )),
                 )),
             ));
+            break;
+
+        case 'login_region':
+            // One part for a visitor who is not signed in, one for a member;
+            // the server keeps the part that applies.
+            $content = function ($props) {
+                return pg_di_mk('content', $props);
+            };
+            $item = function ($text, $token, $flag = '') use ($el, $content) {
+                $props = array('tag' => 'li', 'cssClass' => '', 'customName' => lang('Menu Item'));
+                if ($flag !== '') $props['_bindings'] = array('eo_visible_if' => $flag);
+                return $el($props, array(
+                    $content(array('contentType' => 'link', 'text' => $text, 'href' => '#', 'cssClass' => 'dropdown-item', '_bindings' => array('href' => $token))),
+                ));
+            };
+            $divider = function () use ($el) {
+                return $el(array('tag' => 'li', 'cssClass' => '', 'customName' => lang('Divider')), array(
+                    $el(array('tag' => 'hr', 'cssClass' => 'dropdown-divider', 'customName' => lang('Divider Line'))),
+                ));
+            };
+            $tree = pg_di_root(array(
+                $el(array('tag' => 'div', 'cssClass' => 'd-flex align-items-center gap-2', 'customName' => lang('Signed Out'),
+                    '_bindings' => array('eo_visible_if' => 'is_signed_out')), array(
+                    $content(array('contentType' => 'link', 'text' => lang('Log In'), 'href' => '#', 'cssClass' => 'btn btn-sm btn-outline-primary',
+                        '_bindings' => array('href' => '__login_url'))),
+                    $content(array('contentType' => 'link', 'text' => lang('Sign Up'), 'href' => '#', 'cssClass' => 'btn btn-sm btn-primary',
+                        '_bindings' => array('href' => '__register_url'))),
+                )),
+                $el(array('tag' => 'div', 'cssClass' => 'dropdown', 'customName' => lang('Signed In'),
+                    '_bindings' => array('eo_visible_if' => 'is_signed_in')), array(
+                    $el(array('tag' => 'button', 'cssClass' => 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle',
+                        'customName' => lang('Account Button'),
+                        '_attrs' => array($attr('type', 'button'), $attr('data-bs-toggle', 'dropdown'), $attr('aria-expanded', 'false'))), array(
+                        $content(array('contentType' => 'image', 'src' => 'https://placehold.co/64x64/4f6bed/ffffff?text=JC', 'alt' => lang('Jane Cooper'),
+                            'cssClass' => 'rounded-circle object-fit-cover', 'width' => '32', 'height' => '32',
+                            '_bindings' => array('src' => '__user_avatar_url'))),
+                        $el(array('tag' => 'span', 'cssClass' => 'fw-semibold small', 'text' => lang('Jane'), 'customName' => lang('First Name'),
+                            '_bindings' => array('text' => '__user_first_name'))),
+                    )),
+                    $el(array('tag' => 'ul', 'cssClass' => 'dropdown-menu dropdown-menu-end shadow-sm', 'customName' => lang('Account Menu')), array(
+                        $el(array('tag' => 'li', 'cssClass' => 'px-3 py-2', 'customName' => lang('Account Summary')), array(
+                            $el(array('tag' => 'span', 'cssClass' => 'd-block fw-semibold', 'text' => lang('Jane Cooper'), 'customName' => lang('Full Name'),
+                                '_bindings' => array('text' => '__user_name'))),
+                            $el(array('tag' => 'span', 'cssClass' => 'd-block small text-body-secondary', 'text' => lang('jane.cooper@example.com'), 'customName' => lang('Email'),
+                                '_bindings' => array('text' => '__user_email'))),
+                        )),
+                        $divider(),
+                        $item(lang('My Account'), '__my_account_url'),
+                        $item(lang('Edit my profile'), '__profile_url'),
+                        $item(lang('Staff area'), '__staff_url', 'is_staff'),
+                        $item(lang('Control panel'), '__panel_url', 'has_panel_access'),
+                        $divider(),
+                        $item(lang('Log out'), '__logout_url'),
+                    )),
+                )),
+                pg_di_mk('loop_area', array(), array()),
+            ));
+            break;
+
+        case 'cart_link':
+            // A bag button whose badge carries the count while the cart has
+            // something in it.
+            $tree = pg_di_root(array(
+                $el(array('tag' => 'a', 'href' => '#', 'customName' => lang('Cart Button'),
+                    'cssClass' => 'btn btn-sm btn-outline-secondary position-relative d-inline-flex align-items-center gap-2',
+                    '_bindings' => array('href' => '__cart_url')), array(
+                    $el(array('tag' => 'i', 'cssClass' => 'bi bi-bag', 'customName' => lang('Icon'), '_attrs' => array($attr('aria-hidden', 'true')))),
+                    $el(array('tag' => 'span', 'cssClass' => 'visually-hidden', 'text' => lang('Shopping Cart'), 'customName' => lang('Label'))),
+                    $el(array('tag' => 'span', 'text' => '3', 'customName' => lang('Count'), 'cssClass' => 'badge rounded-pill text-bg-danger',
+                        '_bindings' => array('text' => '__cart_count', 'eo_visible_if' => 'cart_has_items'))),
+                )),
+                pg_di_mk('loop_area', array(), array()),
+            ));
+            break;
+
+        case 'comments':
+            // The widget's own default layout, node for node the editor's.
+            $tree = pg_comments_default_tree();
             break;
 
         default:

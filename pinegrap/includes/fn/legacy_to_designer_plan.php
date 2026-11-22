@@ -9,12 +9,13 @@
  *   - Page regions into a page tree: pg_ltd_page_regions() and
  *     pg_ltd_page_region_splice(), the twin of _sdPageRegionsConvert() on
  *     the blocks of pg_page_region_blocks().
- *   - Region nodes of the style's frame component to widgets:
- *     pg_ltd_frame_targets(), pg_ltd_widget_config(), pg_ltd_widget_name(),
- *     pg_ltd_widget_tree() (widgets_region_starters.php) and
- *     pg_ltd_frame_splice(), the twin of
- *     _sdRegionMakeWidget() (SD_REGION_WIDGETS, _swTypeDefaults(),
- *     _swAutoName(), _buildStarterTree()).
+ *   - Region nodes of the style's frame component, and of its pages' trees
+ *     and the components the run made, to components and widgets:
+ *     pg_ltd_part_targets(), pg_ltd_frame_targets(), pg_ltd_widget_config(),
+ *     pg_ltd_widget_name(), pg_ltd_widget_tree()
+ *     (widgets_region_starters.php) and pg_ltd_frame_splice(), the twin of
+ *     _sdRegionMakeWidget() (SD_REGION_WIDGETS, SD_REGION_WIDGETS_PLAIN,
+ *     _swTypeDefaults(), _swAutoName(), _buildStarterTree()).
  *
  * The planner reads and never writes. The run itself uses the existing
  * converters (pg_common_region_component(), pg_designer_region_component(),
@@ -53,45 +54,124 @@ function pg_ltd_region_widgets()
 }
 
 /**
- * What a run changes inside a style's frame component: the named designer
- * region nodes (each becomes its shared component) and the named menu,
- * menu sequence, ad and tag cloud region nodes (each becomes a widget, one
- * per region and type, placed wherever the frame names it), and the page
- * region nodes it holds. Nested shared components are not entered: they
- * are not the frame.
+ * The session-aware regions and the comments block: the widget doing the
+ * same job. They name no item the widget would read, so the widget starts
+ * with its defaults (pg_ltd_widget_config()). Twin of
+ * SD_REGION_WIDGETS_PLAIN (style_designer.src.js).
+ *
+ * @return array  region type => widget kind
+ */
+function pg_ltd_region_widgets_plain()
+{
+    return array('login' => 'login_region', 'cart' => 'cart_link', 'comments_block' => 'comments');
+}
+
+/**
+ * What a run changes inside a tree: the named common region nodes (each
+ * placed as its shared component), the named designer region nodes (each
+ * becomes its shared component), the named menu, menu sequence, ad and tag
+ * cloud region nodes and every login, cart and comments block node (each
+ * becomes a widget, one per region and type, placed wherever the tree
+ * names it), and the page region nodes it holds. Nested shared components
+ * are not entered. A region whose "<regionType>\n<regionName>" is in $skip
+ * (the component the tree belongs to and the ones above it) is left: it
+ * would place a component inside itself.
  *
  * Pure: no query.
  *
- * @param array $frame  the frame component's tree
- * @return array  'designer' (names, each once), 'widgets' (list of
- *                array('type', 'name', 'kind', 'key'), each region once),
- *                'page_regions' (int)
+ * @param array $tree
+ * @param array $skip  "<regionType>\n<regionName>" keys left as they are
+ * @return array  'common', 'designer' (names, each once), 'widgets' (list
+ *                of array('type', 'name', 'kind', 'key'), each region once;
+ *                'key' '' for a widget naming no item), 'page_regions' (int)
  */
-function pg_ltd_frame_targets($frame)
+function pg_ltd_part_targets($tree, $skip = array())
 {
     $map = pg_ltd_region_widgets();
-    $out = array('designer' => array(), 'widgets' => array(), 'page_regions' => 0);
-    $seen = array();
-    $walk = function ($node) use (&$walk, &$out, &$seen, $map) {
+    $plain = pg_ltd_region_widgets_plain();
+    $out = array('common' => array(), 'designer' => array(), 'widgets' => array(), 'page_regions' => 0);
+    $seen = array_fill_keys(array_map('strval', (array)$skip), true);
+    $walk = function ($node) use (&$walk, &$out, &$seen, $map, $plain) {
         if (!is_array($node)) return;
         $type = isset($node['type']) ? (string)$node['type'] : '';
         if ($type === 'shared_ref') return;
         if ($type === 'region') {
             $rtype = (string)($node['props']['regionType'] ?? '');
             $name = (string)($node['props']['regionName'] ?? '');
+            $key = $rtype . "\n" . $name;
             if ($rtype === 'page') {
                 ++$out['page_regions'];
-            } elseif ($name !== '' && $rtype === 'designer') {
-                if (!in_array($name, $out['designer'], true)) $out['designer'][] = $name;
-            } elseif ($name !== '' && isset($map[$rtype]) && !isset($seen[$rtype . "\n" . $name])) {
-                $seen[$rtype . "\n" . $name] = true;
+            } elseif (isset($seen[$key])) {
+                // Taken once, or the tree's own ancestor.
+            } elseif ($name !== '' && ($rtype === 'common' || $rtype === 'designer')) {
+                $seen[$key] = true;
+                $out[$rtype][] = $name;
+            } elseif ($name !== '' && isset($map[$rtype])) {
+                $seen[$key] = true;
                 $out['widgets'][] = array('type' => $rtype, 'name' => $name, 'kind' => $map[$rtype]['kind'], 'key' => $map[$rtype]['key']);
+            } elseif (isset($plain[$rtype])) {
+                $seen[$key] = true;
+                $out['widgets'][] = array('type' => $rtype, 'name' => $name, 'kind' => $plain[$rtype], 'key' => '');
             }
         }
         foreach ((array)($node['children'] ?? array()) as $child) $walk($child);
     };
-    $walk($frame);
+    $walk($tree);
     return $out;
+}
+
+/**
+ * The "<regionType>\n<regionName>" keys of pg_ltd_part_targets()'s common
+ * regions, designer regions and widgets, as pg_ltd_frame_splice() reads
+ * them.
+ *
+ * Pure: no query.
+ *
+ * @param array $targets
+ * @return array
+ */
+function pg_ltd_part_keys($targets)
+{
+    $keys = array();
+    foreach (array('common', 'designer') as $kind) {
+        foreach ((array)($targets[$kind] ?? array()) as $name) $keys[] = $kind . "\n" . $name;
+    }
+    foreach ((array)($targets['widgets'] ?? array()) as $w) $keys[] = $w['type'] . "\n" . $w['name'];
+    return $keys;
+}
+
+/**
+ * What a run changes inside a style's frame component: pg_ltd_part_targets()
+ * without the common regions, which the run made components before the
+ * frame was read and which the frame therefore places already. Nested
+ * shared components are not entered: they are not the frame.
+ *
+ * Pure: no query.
+ *
+ * @param array $frame  the frame component's tree
+ * @return array  'designer', 'widgets', 'page_regions' as pg_ltd_part_targets()
+ */
+function pg_ltd_frame_targets($frame)
+{
+    $out = pg_ltd_part_targets($frame);
+    unset($out['common']);
+    return $out;
+}
+
+/**
+ * How a region the run turns into a widget is named in the dry run: its
+ * name, or the widget's label for a login, cart or comments block region,
+ * which has none.
+ *
+ * @param array $target  a pg_ltd_part_targets() widget entry
+ * @return string
+ */
+function pg_ltd_widget_target_label($target)
+{
+    if ((string)($target['name'] ?? '') !== '') return (string)$target['name'];
+    static $labels = array('login_region' => 'Login Region', 'cart_link' => 'Cart Link', 'comments' => 'Comments');
+    $kind = (string)($target['kind'] ?? '');
+    return isset($labels[$kind]) ? lang($labels[$kind]) : $kind;
 }
 
 /**
@@ -221,12 +301,13 @@ function pg_ltd_slug($s)
  * shared component. The server adds " [n]" when it is taken.
  *
  * @param string $style_name
- * @param string $kind  a pg_ltd_region_widgets() kind
+ * @param string $kind  a pg_ltd_region_widgets() or pg_ltd_region_widgets_plain() kind
  */
 function pg_ltd_widget_name($style_name, $kind)
 {
     static $slugs = array('menu_region' => 'menu', 'menu_sequence_region' => 'menu-sequence',
-                          'ad_region' => 'ad-region', 'tag_cloud_region' => 'tag-cloud');
+                          'ad_region' => 'ad-region', 'tag_cloud_region' => 'tag-cloud',
+                          'login_region' => 'login-region', 'cart_link' => 'cart-link', 'comments' => 'comments');
     $owner = pg_ltd_slug($style_name);
     if ($owner === '') $owner = pg_ltd_slug(lang('design'));
     if ($owner === '') $owner = 'design';
@@ -236,16 +317,26 @@ function pg_ltd_widget_name($style_name, $kind)
 
 /**
  * The settings a widget made from a region node starts with: its kind and
- * the region's name, the keys _swTypeDefaults() gives these kinds.
+ * the region's name, or for a login, cart or comments block region the
+ * widget's defaults, the keys _swTypeDefaults() gives these kinds (the
+ * comments ones those of pg_comments_widget_options()).
  *
  * Pure: no query.
  *
- * @param array $target  a pg_ltd_frame_targets() widget entry
+ * @param array $target  a pg_ltd_part_targets() widget entry
  * @return array
  */
 function pg_ltd_widget_config($target)
 {
-    return array('regionType' => (string)$target['kind'], (string)$target['key'] => (string)$target['name']);
+    $kind = (string)$target['kind'];
+    $cfg = array('regionType' => $kind);
+    if ((string)($target['key'] ?? '') !== '') $cfg[(string)$target['key']] = (string)$target['name'];
+    if ($kind === 'login_region') {
+        $cfg['show_register_link'] = true;
+    } elseif ($kind === 'comments') {
+        $cfg += array('order' => 'oldest', 'featured' => 'first', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 0);
+    }
+    return $cfg;
 }
 
 /**
@@ -283,13 +374,16 @@ function pg_ltd_plan_style($facts)
     $f = (array)$facts;
     $frame = isset($f['frame']) && is_array($f['frame']) ? $f['frame'] : array('designer' => array(), 'widgets' => array(), 'page_regions' => 0);
     $split = !empty($f['frame_split']);
+    $none = array('common' => array(), 'designer' => array(), 'widgets' => array(), 'page_regions' => 0);
     $out = array('skip' => '', 'components' => array(), 'frame' => empty($f['frame_exists']) ? 'make' : 'update',
                  'frame_split' => $split, 'frame_parts' => $split ? (int)($f['frame_parts'] ?? 0) : 0,
                  'pages' => array(), 'widgets' => $frame['widgets'],
+                 'parts' => (isset($f['parts']) && is_array($f['parts'])) ? array_merge($none, $f['parts']) : $none,
                  'warnings' => array_values((array)($f['warnings'] ?? array())), 'writes' => 0);
     if ((string)($f['refusal'] ?? '') !== '') {
         $out['skip'] = 'refusal';
         $out['widgets'] = array();
+        $out['parts'] = $none;
         return $out;
     }
     // The design prints its theme after all of its stylesheets; CSS the
@@ -329,6 +423,8 @@ function pg_ltd_plan_style($facts)
     // A split frame's folder page is written twice: its tree, then its page
     // regions taken in.
     $out['writes'] += ($split ? $out['frame_parts'] : 1) + 1 + $free + ($split ? $folder_trees : 0) + count($out['widgets']);
+    // The page_parts step: a component or widget a region inside the pages.
+    $out['writes'] += count($out['parts']['common']) + count($out['parts']['designer']) + count($out['parts']['widgets']);
     return $out;
 }
 
@@ -522,6 +618,11 @@ function pg_ltd_plan_facts($s, $converted)
 {
     $facts = array('refusal' => $s['refusal'], 'common' => array(), 'pages' => array(), 'warnings' => array(),
                    'designer_made' => array(), 'frame_exists' => false, '_css' => array(), '_js' => array());
+    // What the pages' trees will hold for the page_parts step: the frame's
+    // page content, copied into each page, the trees kept and the page
+    // regions taken in.
+    $part_nodes = array();
+    $split = null;
     if ($s['refusal'] === '') {
         $code = (string)db_value("SELECT style_code FROM style WHERE style_id = '" . (int)$s['id'] . "' LIMIT 1");
         $common = array();
@@ -545,6 +646,7 @@ function pg_ltd_plan_facts($s, $converted)
             }, $split['parts']));
         }
         $facts['frame'] = pg_ltd_frame_targets($shared);
+        if ($split !== null) $part_nodes[] = pg_di_root($split['children']);
         $facts['frame_split'] = $split !== null;
         $facts['frame_parts'] = $split !== null ? count($split['parts']) : 0;
         $facts['warnings'] = $frame['warnings'];
@@ -586,6 +688,10 @@ function pg_ltd_plan_facts($s, $converted)
             if ($p['has_tree']) {
                 $tree = json_decode((string)db_value("SELECT page_tree_json FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1"), true);
                 $own_regions = is_array($tree) ? pg_ltd_page_regions($tree, array())['own'] : 0;
+                if (is_array($tree)) $part_nodes[] = $tree;
+            }
+            if ($s['refusal'] === '' && (($split !== null && !$p['has_tree']) || $own_regions > 0)) {
+                $part_nodes[] = pg_ltd_content_region_nodes((int)$p['page_id']);
             }
             $facts['pages'][] = array(
                 'page_id'     => (int)$p['page_id'],
@@ -597,7 +703,32 @@ function pg_ltd_plan_facts($s, $converted)
             );
         }
     }
+    // A region the frame turns into a widget shares that widget.
+    $facts['parts'] = pg_ltd_part_targets(pg_di_root($part_nodes), isset($facts['frame']) ? pg_ltd_part_keys($facts['frame']) : array());
     return $facts;
+}
+
+/**
+ * The region placeholders of a page's own page regions as region nodes, a
+ * <cregion> naming a designer region a designer one, as pg_page_region_blocks()
+ * converts them; read in the collection of the page's style.
+ *
+ * @param int $page_id
+ * @return array  a root node
+ */
+function pg_ltd_content_region_nodes($page_id)
+{
+    static $designer = null;
+    if ($designer === null) $designer = array_flip(array_map('strval', db_values("SELECT cregion_name FROM cregion WHERE cregion_designer_type = 'yes'")));
+    $pid = (int)$page_id;
+    $collection = (string)db_value("SELECT style.collection FROM page LEFT JOIN style ON style.style_id = page.page_style WHERE page.page_id = '$pid' LIMIT 1");
+    $code = implode("\n", db_values("SELECT pregion_content FROM pregion WHERE pregion_page = '$pid' AND collection = '" . e($collection) . "' ORDER BY pregion_order ASC"));
+    $nodes = array();
+    foreach (pg_ltd_style_tags($code)['regions'] as $r) {
+        $type = ($r['type'] === 'common' && isset($designer[$r['name']])) ? 'designer' : $r['type'];
+        $nodes[] = pg_di_mk('region', array('regionType' => $type, 'regionName' => $r['name']));
+    }
+    return pg_di_root($nodes);
 }
 
 /**
@@ -716,7 +847,17 @@ function pg_ltd_plan_items($p, $in_set = false)
         $items .= $line(lang(array('string' => 'Skipped: "{var:1}" is being edited by {var:2}.', 'vars' => array($page['page_name'], $page['holder']))), 'fg-warning');
     }
     foreach ($p['widgets'] as $w) {
-        $items .= $line(lang(array('string' => 'The region "{var:1}" becomes a widget you design: {var:2}', 'vars' => array($w['name'], pg_ltd_widget_name($p['name'], $w['kind'])))));
+        $items .= $line(lang(array('string' => 'The region "{var:1}" becomes a widget you design: {var:2}', 'vars' => array(pg_ltd_widget_target_label($w), pg_ltd_widget_name($p['name'], $w['kind'])))));
+    }
+    $parts = isset($p['parts']) && is_array($p['parts']) ? $p['parts'] : array();
+    if (!empty($parts['common'])) {
+        $items .= $line(lang(array('string' => 'Common regions inside the pages are placed as their shared components ({var:1}): {var:2}', 'vars' => array(count($parts['common']), implode(', ', $parts['common'])))));
+    }
+    if (!empty($parts['designer'])) {
+        $items .= $line(lang(array('string' => 'Designer regions inside the pages become shared components ({var:1}): {var:2}', 'vars' => array(count($parts['designer']), implode(', ', $parts['designer'])))));
+    }
+    if (!empty($parts['widgets'])) {
+        $items .= $line(lang(array('string' => 'Regions inside the pages become widgets you design ({var:1}): {var:2}', 'vars' => array(count($parts['widgets']), implode(', ', array_map('pg_ltd_widget_target_label', $parts['widgets']))))));
     }
     if (!$in_set) {
         $items .= $line(lang('The style becomes a design.'));

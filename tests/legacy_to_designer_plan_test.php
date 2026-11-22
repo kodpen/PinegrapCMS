@@ -51,8 +51,101 @@ function test_ltdp_frame_targets_named_regions_once()
 	$got = array();
 	foreach ($t['widgets'] as $w) $got[] = $w['type'] . ':' . $w['name'] . ':' . $w['kind'] . ':' . $w['key'];
 	pg_assert_same(array('menu:Main:menu_region:menu_name', 'ad:Top:ad_region:ad_region_name',
-		'tag_cloud:Tags:tag_cloud_region:search_page_name', 'menu_sequence:Main:menu_sequence_region:menu_name'), $got,
+		'login:x:login_region:', 'tag_cloud:Tags:tag_cloud_region:search_page_name', 'menu_sequence:Main:menu_sequence_region:menu_name'), $got,
 		'one per region and type, nameless and nested components left out');
+	pg_assert_same(false, isset($t['common']), 'the frame places its common regions already');
+}
+
+function test_ltdp_part_targets_common_plain_and_skip()
+{
+	$tree = pg_di_root(array(
+		_ltdp_region('common', 'Footer'),
+		_ltdp_el(array(_ltdp_region('common', 'Footer'), _ltdp_region('designer', 'Side'), _ltdp_region('designer', 'Header'))),
+		_ltdp_region('login', ''),
+		_ltdp_region('login', ''),
+		_ltdp_region('cart', ''),
+		_ltdp_region('comments_block', ''),
+		_ltdp_region('menu', 'Main'),
+		_ltdp_region('dynamic', 'Clock'),
+		_ltdp_region('system', ''),
+		_ltdp_region('mobile_switch', ''),
+		_ltdp_region('pdf', ''),
+		_ltdp_region('common', ''),
+	));
+	$t = pg_ltd_part_targets($tree, array("designer\nHeader"));
+	pg_assert_same(array('Footer'), $t['common']);
+	pg_assert_same(array('Side'), $t['designer'], 'an ancestor is left');
+	$got = array();
+	foreach ($t['widgets'] as $w) $got[] = $w['type'] . ':' . $w['kind'] . ':' . $w['key'];
+	pg_assert_same(array('login:login_region:', 'cart:cart_link:', 'comments_block:comments:', 'menu:menu_region:menu_name'), $got,
+		'login, cart and comments once each; dynamic, system, mobile switch and PDF stay');
+	pg_assert_same(array("common\nFooter", "designer\nSide", "login\n", "cart\n", "comments_block\n", "menu\nMain"), pg_ltd_part_keys($t));
+	$count = 0;
+	$out = pg_ltd_frame_splice($tree, array("login\n" => array('id' => 5, 'name' => 'x-login-region-widget'), "common\nFooter" => array('id' => 6, 'name' => 'Footer')), $count);
+	pg_assert_same(4, $count, 'both login nodes and both footers');
+	pg_assert_same(5, $out['children'][2]['props']['sharedId']);
+	pg_assert_same(6, $out['children'][1]['children'][0]['props']['sharedId']);
+}
+
+function test_ltdp_widget_config_and_label_of_plain_regions()
+{
+	$t = pg_ltd_part_targets(pg_di_root(array(_ltdp_region('login', ''), _ltdp_region('cart', 'Ignored'), _ltdp_region('comments_block', ''))));
+	pg_assert_same(array('regionType' => 'login_region', 'show_register_link' => true), pg_ltd_widget_config($t['widgets'][0]));
+	pg_assert_same(array('regionType' => 'cart_link'), pg_ltd_widget_config($t['widgets'][1]), 'a cart region carries no setting');
+	pg_assert_same(array('regionType' => 'comments', 'order' => 'oldest', 'featured' => 'first', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 0),
+		pg_ltd_widget_config($t['widgets'][2]));
+	$opts = pg_comments_widget_options(pg_ltd_widget_config($t['widgets'][2]));
+	foreach ($opts as $k => $v) pg_assert_same($v, pg_ltd_widget_config($t['widgets'][2])[$k], 'the widget\'s own default ' . $k);
+	pg_assert_same('Ignored', pg_ltd_widget_target_label($t['widgets'][1]));
+	pg_assert_same(lang('Login Region'), pg_ltd_widget_target_label($t['widgets'][0]));
+	pg_assert_same(1, preg_match('/^shop-[a-z0-9-]+-widget$/', pg_ltd_widget_name('Shop', 'comments')));
+	pg_assert_same(pg_ltd_widget_name('Shop', 'cart_link') !== pg_ltd_widget_name('Shop', 'login_region'), true);
+}
+
+function test_ltdp_plain_widget_trees_match_their_renderers()
+{
+	$login = pg_ltd_widget_tree('login_region');
+	$json = json_encode($login);
+	foreach (array('is_signed_out', 'is_signed_in', '__login_url', '__register_url', '__logout_url', '__user_avatar_url', 'has_panel_access', 'is_staff') as $b) {
+		pg_assert_same(true, strpos($json, '"' . $b . '"') !== false, 'login region ' . $b);
+	}
+	$cart = json_encode(pg_ltd_widget_tree('cart_link'));
+	foreach (array('__cart_url', '__cart_count', 'cart_has_items') as $b) {
+		pg_assert_same(true, strpos($cart, '"' . $b . '"') !== false, 'cart link ' . $b);
+	}
+	$comments = pg_ltd_widget_tree('comments');
+	$plain = pg_comments_default_tree();
+	pg_assert_same(substr_count(json_encode($plain), '"_bindings"'), substr_count(json_encode($comments), '"_bindings"'), 'the comments widget\'s own layout');
+	foreach (array('login_region', 'cart_link', 'comments') as $kind) {
+		$tree = pg_ltd_widget_tree($kind);
+		pg_assert_same('root', $tree['type'], $kind);
+		pg_assert_same(true, strpos(json_encode($tree), '"type":"loop_area"') !== false, $kind . ' has a loop area');
+		$ids = array();
+		$walk = function ($n) use (&$walk, &$ids) {
+			$ids[] = $n['_id'];
+			foreach ($n['children'] as $c) $walk($c);
+		};
+		$walk($tree);
+		pg_assert_same(count($ids), count(array_unique($ids)), $kind . ' ids are unique');
+	}
+}
+
+function test_ltdp_plan_style_counts_page_parts()
+{
+	$parts = array('common' => array('Footer'), 'designer' => array('Side', 'Promo'), 'widgets' => array(
+		array('type' => 'login', 'name' => '', 'kind' => 'login_region', 'key' => ''),
+	));
+	$base = array('refusal' => '', 'frame' => array('designer' => array(), 'widgets' => array(), 'page_regions' => 0), 'frame_exists' => true, 'pages' => array());
+	$without = pg_ltd_plan_style($base);
+	pg_assert_same(array(), $without['parts']['widgets'], 'no parts read');
+	$p = pg_ltd_plan_style($base + array('parts' => $parts));
+	pg_assert_same($without['writes'] + 4, $p['writes']);
+	$p['name'] = 'Shop';
+	$html = pg_ltd_plan_items($p);
+	pg_assert_same(true, strpos($html, 'Side, Promo') !== false, $html);
+	pg_assert_same(true, strpos($html, h(lang('Login Region'))) !== false, $html);
+	$refused = pg_ltd_plan_style(array('refusal' => 'x', 'parts' => $parts));
+	pg_assert_same(array(), $refused['parts']['designer'], 'a refused style writes nothing');
 }
 
 function test_ltdp_frame_splice_places_components()
@@ -161,11 +254,11 @@ function test_ltdp_plan_style_actions_and_writes()
 	foreach ($p['pages'] as $page) $actions[] = $page['action'];
 	pg_assert_same(array('tree', 'held', 'keep', 'regions'), $actions);
 	pg_assert_same(array(array('kind' => 'common', 'name' => 'Footer', 'exists' => false), array('kind' => 'designer', 'name' => 'Header', 'exists' => true)), $p['components']);
-	pg_assert_same(4, count($p['widgets']));
+	pg_assert_same(5, count($p['widgets']), 'the login region too');
 	pg_assert_false($p['frame_split'], 'a frame with no split fact stays whole');
 	pg_assert_same(0, $p['frame_parts']);
-	// One component, frame and style, two pages, four widgets.
-	pg_assert_same(1 + 2 + 2 + 4, $p['writes']);
+	// One component, frame and style, two pages, five widgets.
+	pg_assert_same(1 + 2 + 2 + 5, $p['writes']);
 	pg_assert_same(array('w'), $p['warnings']);
 }
 
