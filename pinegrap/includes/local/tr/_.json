@@ -1969,6 +1969,7 @@
     "{var:1} sends parcel status changes to this site as they happen.": "{var:1}, kargo durum değişikliklerini gerçekleştikçe bu siteye gönderir.",
     "{var:1} sent, {var:2} failed": "{var:1} gönderildi, {var:2} başarısız",
     "{var:1} servers": "{var:1} sunucu",
+    "{var:1} services": "{var:1} hizmet",
     "{var:1} services whose state cannot be read are listed only under All.": "Durumu okunamayan {var:1} hizmet yalnızca Tümü'nde listelenir.",
     "{var:1} service{suffix:1}, {var:2} can be booked": "{var:1} hizmet, {var:2} tanesinde randevu alınabilir",
     "{var:1} set": "{var:1} seti",

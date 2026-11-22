@@ -33992,6 +33992,47 @@ textarea.pg-campaign-text {
   }
 }
 
+/* The Bookings staff drawer's weekly hours and days off: under 576 px each
+   row is a block, its day across and its four boxes two by two, each under
+   its own label (the cell's data-label), so nothing scrolls sideways. */
+@media (max-width: 575.98px) {
+  .pg-embedded-table.pg-booking-hours,
+  .pg-embedded-table.pg-booking-hours > tbody {
+    display: block;
+  }
+  .pg-embedded-table.pg-booking-hours > thead {
+    display: none;
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .5rem .75rem;
+    padding: .75rem 0;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr:last-child {
+    border-bottom: 0;
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr > th {
+    grid-column: 1 / -1;
+    padding: 0;
+    border: 0;
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr > td {
+    display: block;
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr > td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: .25rem;
+    font-size: var(--pg-text-meta);
+    color: var(--pg-fg-3);
+  }
+}
+
 }
 
 /* ==========================================================================
