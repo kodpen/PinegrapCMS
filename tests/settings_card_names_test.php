@@ -59,6 +59,15 @@ function test_settings_card_radio_groups_have_a_legend()
 	foreach (array('pgset-organization', 'pgset-server', 'pgset-software', 'pgset-datetime') as $id) {
 		pg_assert_contains('<div id="' . $id . '" class="pg-set-card">', $general, 'general.php: ' . $id . ' keeps its card id inside its row');
 	}
+
+	$contact = settings_card_names_source('contact.php');
+
+	foreach (array('pgset-chat', 'pgset-chat-site') as $id) {
+		pg_assert_contains('<div id="' . $id . '" class="pg-set-card">', $contact, 'contact.php: ' . $id . ' keeps its card id inside its row');
+	}
+
+	pg_assert_contains('<label for="chat_operator_user_id" class="form-label">\' . lang(\'Who answers visitors\')', $contact, 'the operator\'s label points at its select');
+	pg_assert_contains('<label for="chat_upload_folder_id" class="form-label">\' . lang(\'Folder for chat attachments\')', $contact, 'the folder\'s label points at its select');
 }
 
 function test_settings_card_social_setup_legend_heads_only_its_radios()

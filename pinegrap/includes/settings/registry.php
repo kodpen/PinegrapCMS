@@ -232,17 +232,19 @@ function pg_settings_categories()
             'label' => lang('Communication'),
             'group' => 'site',
             'icon'  => 'bi-chat-dots',
-            'description' => lang('Live chat, SMS, WhatsApp and İYS.'),
+            'description' => lang('How people reach the site, and how the site reaches them.'),
             'sections' => array(
                 'pgset-chat'      => lang('Chat'),
+                'pgset-chat-site' => lang('Chat on the site'),
                 'pgset-sms'       => lang('SMS'),
-                'pgset-sms-messages' => lang('SMS Messages'),
+                'pgset-sms-messages' => lang('SMS messages'),
                 'pgset-whatsapp'  => lang('WhatsApp'),
-                'pgset-whatsapp-messages' => lang('WhatsApp Messages'),
+                'pgset-whatsapp-messages' => lang('WhatsApp messages'),
                 'pgset-iys'       => lang('İYS'),
             ),
             'keywords' => array(
-                'pgset-chat'      => pg_settings_keywords(lang('chat, live support, operator, bubble, message')),
+                'pgset-chat'      => pg_settings_keywords(lang('chat, team chat, live chat, message, attachments, folder')),
+                'pgset-chat-site' => pg_settings_keywords(lang('live support, bubble, widget, operator, visitor, welcome message, captcha, puzzle, attachments, voice message, offline')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
                 'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
                 'pgset-whatsapp'  => pg_settings_keywords(lang('whatsapp, meta, cloud api, business account, phone number id, access token, system user, webhook, verify token, template, test message')),
@@ -1211,6 +1213,11 @@ function pg_settings_legacy_anchors()
         'pgset-mailchimp'  => array('email', 'pgset-mailchimp'),
         'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),
+        // The bubble's fields left Chat for Chat on the site; an old link to
+        // one of them lands there.
+        'chat_site_enabled' => array('contact',   'pgset-chat-site'),
+        'chat_operator_user_id' => array('contact', 'pgset-chat-site'),
+        'chat_captcha'     => array('contact',    'pgset-chat-site'),
         // The WhatsApp and İYS accounts moved onto their pages of
         // Connections; an old link to their fields lands on the card that
         // shows the connection.
