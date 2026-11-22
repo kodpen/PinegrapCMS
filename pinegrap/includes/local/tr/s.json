@@ -6305,6 +6305,7 @@
     "send-a-tip": "ipucu-gonder",
     "send-an-assignment": "odev-gonder",
     "sender: {var:1}": "gönderen: {var:1}",
+    "sends the site's e-mail": "sitenin e-postasını gönderiyor",
     "sent": "gönderildi",
     "sent a test notification to one device of user ({var:1})": "({var:1}) kullanıcısının bir cihazına deneme bildirimi gönderdi",
     "seo, meta, robots, sitemap, title, description, canonical, indexnow": "seo, meta, robots, site haritası, başlık, açıklama, kanonik, indexnow, sitemap, title, description, canonical",
@@ -6608,5 +6609,6 @@
     "sync": "eşitleme",
     "sync, phone app": "eşitleme, telefon uygulaması",
     "sync, troubleshooting": "eşitleme, sorun giderme",
+    "system e-mail": "sistem e-postası",
     "system widget": "sistem widget"
 }
