@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-23): pinegrap.com documentation from 2026.4.10 
 One step is one page (or one new page), one session on the owner's machine, one docs-only PR for the mark. Order: the screens every user meets first, then the big modules, then the new pages.
 - UD1 `/introduction`, done 2026-11-23 (four new sections). Left: smaller changes since #500, the new logo; Content review moved to UD14 `/pages`.
 - UD2 `/site-settings`, `/system`, done 2026-11-23 (six sections). Left: Docker and the importers (to UD14 `/installation`), smaller changes since #500.
-- UD3 `/visual-page-editor` (split into `-cont`): code editor, revisions, responsive images, interactions, A/B experiments, prototypes, forms, parts anywhere, address filters, Video, Comments and Google Reviews widgets.
+- UD3 `/visual-page-editor`, part 1 done 2026-11-23 (eight sections; the page is ~21,000 words, its split into `-cont` is still open). Left: the `-cont` subjects in the modules file.
 - UD4 `/templates` (new).
 - UD5 `/commerce` and `/commerce-cont`: returns, bundles, subscriptions, wishlist, back-in-stock, product questions, verified reviews, cart quotes, stock per location, carrier labels, live rates, payment drivers, checkout legal documents.
 - UD6 `/marketplaces` (new) and the commerce part of `/api`.
