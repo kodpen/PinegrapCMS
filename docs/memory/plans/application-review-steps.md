@@ -18,7 +18,7 @@ description: Plan application-review, steps AR1a to AR8: pure rules, store, prog
 
 - AR5 (M) after AR3b. Done (#11115, `core/application-review-ranking.md`): combining, the consensus flag, ranking and the shortlist, the next round. Features: V11 to V13.
 
-- AR6 (M) after AR5: decisions, the decision e-mails with their preview, the result on the submitter's view, the waitlist call. Features: V14.
+- AR6 (M) after AR5. Done (#11149, `core/application-review-decisions.md`): decisions, the decision e-mails with their preview, the result on the submitter's view, the waitlist call. Features: V14.
 
 - AR7 (S) after AR6: the report and Excel, the API routes with their types, `php tools/check_api_schema.php`, the two events through `pg_announce()` and their catalogues, the MCP tools. Features: V15, V16.
 

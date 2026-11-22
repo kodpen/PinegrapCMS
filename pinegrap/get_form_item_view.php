@@ -1358,6 +1358,11 @@ function get_form_item_view($properties) {
                 }
             }
 
+            // An application programme's decision, to the submitter only and
+            // once its e-mail went (includes/fn/application_decisions.php).
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_decisions.php');
+            $output_application_result = pg_application_result_html($submitted_form);
+
             // If the layout type is system, then prepare system content.
             if ($layout_type == 'system') {
 
@@ -1397,6 +1402,7 @@ function get_form_item_view($properties) {
                 $output = 
                     $liveform->output_errors() . '
                     ' . $liveform->output_notices() . '
+                    ' . $output_application_result . '
                     ' . $output . '
                     ' . $output_auto_registration . '
                     ' . $output_buttons;
@@ -1438,7 +1444,7 @@ function get_form_item_view($properties) {
                 $auto_registration_set_password_url = $auto_registration ? pg_cf_new_account_link($submitted_form['id']) : '';
                 $auto_registration_password = $auto_registration ? pg_cf_new_account_password_note($auto_registration_set_password_url, $auto_registration_for_submitter) : '';
 
-                $output = render_layout(array(
+                $output = $output_application_result . render_layout(array(
                     'page_id' => $page_id,
                     'messages' => $liveform->get_messages(),
                     'content' => $output,

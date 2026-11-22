@@ -10,7 +10,10 @@
  * conflicts they declared; and the Entries tab: the current round's entries
  * ranked per category with their combined scores, the shortlist cut,
  * settling an entry that needs consensus, letting a not eligible entry in,
- * and moving the shortlist into the next round. Gated by validate_forms_access() and the folder
+ * and moving the shortlist into the next round; and the Decisions tab:
+ * accepted, rejected or waitlisted one by one or for the ticked rows, a
+ * declined place given to the next on the waitlist, and the decision e-mails
+ * previewed with their counts and sent on a press. Gated by validate_forms_access() and the folder
  * rule on the programme's form. It also takes the list drawer's add (a name
  * and a form: a new draft) and the row menu's Delete.
  *
@@ -23,6 +26,7 @@
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_reviewers.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_ranking.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_decisions.php');
 
 $user = validate_user();
 validate_forms_access($user);
@@ -38,9 +42,11 @@ $ap_id = (int) ($_POST['id'] ?? $_POST['submit_delete'] ?? $_GET['id'] ?? 0);
 $ap_program = ($ap_id > 0) ? pg_application_program_get($ap_id) : null;
 $ap_self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_application_program.php';
 $ap_view = $_POST['view'] ?? $_GET['view'] ?? '';
-$ap_view = (in_array($ap_view, array('reviewers', 'entries'), true) && ($ap_program !== null)) ? $ap_view : 'setup';
+$ap_view = (in_array($ap_view, array('reviewers', 'entries', 'decisions'), true) && ($ap_program !== null)) ? $ap_view : 'setup';
 $ap_category = is_string($_POST['category'] ?? $_GET['category'] ?? null) ? mb_substr($_POST['category'] ?? $_GET['category'], 0, 100) : null;
 $ap_list = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_application_programs.php';
+$ap_filter = $_POST['filter'] ?? $_GET['filter'] ?? '';
+$ap_filter = in_array($ap_filter, array('round', 'all'), true) ? $ap_filter : 'shortlist';
 
 if (($ap_id > 0) && ($ap_program === null)) {
     output_error(lang('The programme was not found.'), 404);
@@ -77,7 +83,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         go($ap_self . '?id=' . $ap_new_id);
     }
 
-    $ap_back = $ap_self . '?id=' . $ap_id . (($ap_view !== 'setup') ? '&view=' . $ap_view : '') . (($ap_category !== null) ? '&category=' . rawurlencode($ap_category) : '');
+    $ap_back = $ap_self . '?id=' . $ap_id . (($ap_view !== 'setup') ? '&view=' . $ap_view : '') . (($ap_category !== null) ? '&category=' . rawurlencode($ap_category) : '') . (($ap_view === 'decisions') ? '&filter=' . $ap_filter : '');
+
+    // Decisions: a button for the ticked rows, or each row's own choice.
+    if (isset($_POST['submit_bulk']) || isset($_POST['submit_decisions'])) {
+        $ap_listed = pg_application_decision_rows($ap_program, 'all');
+        $ap_changes = array();
+
+        if (isset($_POST['submit_bulk'])) {
+            $ap_code = pg_application_decision_code($_POST['submit_bulk']);
+
+            foreach (pg_application_posted_ids($_POST['entries'] ?? null, $ap_listed) as $ap_eid) {
+                $ap_changes[$ap_code][] = $ap_eid;
+            }
+        } else {
+            foreach (is_array($_POST['decision'] ?? null) ? $_POST['decision'] : array() as $ap_eid => $ap_word) {
+                $ap_code = ($ap_word === 'none') ? 0 : pg_application_decision_code($ap_word);
+
+                if (isset($ap_listed[(int) $ap_eid]) && (($ap_code > 0) || ($ap_word === 'none')) && ($ap_code !== $ap_listed[(int) $ap_eid]['decision'])) {
+                    $ap_changes[$ap_code][] = (int) $ap_eid;
+                }
+            }
+        }
+
+        $ap_changed = 0;
+        $ap_called = array();
+
+        foreach ($ap_changes as $ap_code => $ap_eids) {
+            $ap_result = pg_application_decide($ap_program, $ap_eids, $ap_code, (int) $user['id']);
+            $ap_changed += $ap_result['changed'];
+            $ap_called = array_merge($ap_called, $ap_result['called']);
+        }
+
+        if ($ap_changed > 0) {
+            $liveform->add_notice(h(lang(array('string' => '{var:1} decisions were recorded. Their e-mails go when you send them.', 'vars' => array($ap_changed)))));
+        } else {
+            $liveform->add_error(h(lang('No decision changed. Tick entries first; a declined place cannot be given back.')));
+        }
+
+        if ($ap_called) {
+            $liveform->add_notice(h(lang(array('string' => '{var:1} entries were called from the waitlist and are accepted.', 'vars' => array(count($ap_called))))));
+        }
+
+        go($ap_back);
+    }
+
+    if (isset($_POST['submit_call'])) {
+        if (pg_application_waitlist_call($ap_program, (int) $_POST['submit_call'], (int) $user['id']) > 0) {
+            $liveform->add_notice(h(lang('The next on the waitlist is accepted. Their e-mail goes when you send the decision e-mails.')));
+        } else {
+            $liveform->add_error(h(lang('Nobody is waiting in this category, or the place was already given.')));
+        }
+
+        go($ap_back);
+    }
+
+    if (isset($_POST['submit_send'])) {
+        $liveform->add_notice(h(lang(array('string' => '{var:1} decision e-mails were sent.', 'vars' => array(pg_application_mail_send($ap_program))))));
+        go($ap_back);
+    }
 
     if (isset($_POST['submit_cut'])) {
         $ap_cut = pg_application_cut_input($_POST['cut_mode'] ?? '', $_POST['cut_value'] ?? '');
@@ -408,7 +472,10 @@ foreach ($ap_decisions as $key => $label) {
 $ap_mails = $ap_card('mails', lang('Decision e-mails'), ($ap_written === 3)
     ? lang('All three are written. They go only when you send them, after a preview.')
     : lang(array('string' => '{var:1} of 3 written. They go only when you send them, after a preview.', 'vars' => array($ap_written))), ($ap_written === 3) ? '' : $ap_not_set,
-    '<span class="pg-seg mb-4" role="group" aria-label="' . h(lang('Decision')) . '">' . $ap_decision_tabs . '</span>' . $ap_decision_panes);
+    '<span class="pg-seg mb-4" role="group" aria-label="' . h(lang('Decision')) . '">' . $ap_decision_tabs . '</span>' . $ap_decision_panes
+    . '<div class="pg-field-help mt-3">' . h(lang('Write ^^field^^ to put in an answer of the entry, for example its name.')) . '</div>'
+    . '<div class="d-flex align-items-center gap-3 mt-5"><input type="checkbox" class="pg-switch" id="aprog_waitlist_auto" name="waitlist_auto" value="1"' . (!empty($ap_values['waitlist_auto']) ? ' checked' : '') . '><label class="pg-text-2" for="aprog_waitlist_auto">' . h(lang('When an accepted applicant declines, accept the next on the waitlist by itself')) . '</label></div>'
+    . '<div class="pg-field-help">' . h(lang('Off: the Decisions tab offers "Call the next" on the declined entry.')) . '</div>');
 
 // The head: the status and the one button that follows it.
 $ap_status_pill = array(
@@ -532,7 +599,7 @@ $ap_toolbar = array(
     'primary' => ($ap_view === 'reviewers')
         ? array('<button type="button" class="pg-button pg-button-fill" data-pg-ap-drawer="aprog_reviewer_add"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add reviewer')) . '</button>', $ap_state_button)
         : $ap_state_button,
-    'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $ap_tab('setup', lang('Set-up')) . $ap_tab('reviewers', lang('Reviewers'), count($ap_reviewers)) . $ap_tab('entries', lang('Entries'), $ap_round_entries) . '</span>',
+    'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $ap_tab('setup', lang('Set-up')) . $ap_tab('reviewers', lang('Reviewers'), count($ap_reviewers)) . $ap_tab('entries', lang('Entries'), $ap_round_entries) . $ap_tab('decisions', lang('Decisions')) . '</span>',
 );
 
 if ($ap_view === 'reviewers') {
@@ -673,6 +740,158 @@ if ($ap_view === 'entries') {
         . $ap_note_drawer('aprog_let_in', lang('Let it in'), lang('The entry failed an eligibility rule. Say why it may be reviewed anyway.'), lang('Let it in'), 'submit_let_in');
 }
 
+// The Decisions tab: the list with a decision a row and the buttons for the
+// ticked rows, then the drawer that previews and sends the decision e-mails.
+$ap_decisions_html = '';
+
+if ($ap_view === 'decisions') {
+    $ap_drows = pg_application_decision_rows($ap_program, $ap_filter);
+    $ap_queue = pg_application_mail_queue($ap_program);
+    $ap_counts = pg_application_mail_counts($ap_queue, $ap_program['texts']);
+    $ap_sendable = pg_application_mail_sendable($ap_counts);
+    $ap_totals = array_fill(1, 4, 0);
+
+    foreach (pg_application_decision_rows($ap_program, 'all') as $ap_drow) {
+        if ($ap_drow['decision'] > 0) {
+            $ap_totals[$ap_drow['decision']]++;
+        }
+    }
+
+    $ap_words = array(1 => lang('Accepted'), 2 => lang('Rejected'), 3 => lang('Waitlisted'), 4 => lang('Declined'));
+    $ap_tones = array(1 => 'pg-tone-teal', 2 => 'pg-tone-gray', 3 => 'pg-tone-amber', 4 => 'pg-tone-gray');
+    $ap_waiting = array();
+
+    foreach ($ap_drows as $ap_drow) {
+        if ($ap_drow['decision'] === 3) {
+            $ap_waiting[(string) $ap_drow['category']] = true;
+        }
+    }
+
+    if (($ap_filter !== 'all') && in_array(4, array_column($ap_drows, 'decision'), true)) {
+        // The waitlist may hold entries of other rounds than the ones listed.
+        foreach (pg_application_decision_rows($ap_program, 'all') as $ap_drow) {
+            if ($ap_drow['decision'] === 3) {
+                $ap_waiting[(string) $ap_drow['category']] = true;
+            }
+        }
+    }
+
+    $ap_rows = '';
+
+    foreach ($ap_drows as $ap_eid => $ap_drow) {
+        $ap_ref = ((string) $ap_drow['reference_code'] !== '') ? (string) $ap_drow['reference_code'] : '#' . $ap_drow['form_id'];
+        $ap_category_name = (string) ($ap_choices[(string) $ap_drow['category']] ?? $ap_drow['category']);
+        $ap_options = '<option value="none">' . h(lang('No decision')) . '</option>';
+
+        foreach (array(1, 2, 3) as $ap_code) {
+            $ap_options .= '<option value="' . pg_application_decision_key($ap_code) . '"' . (($ap_drow['decision'] === $ap_code) ? ' selected' : '') . '>' . h($ap_words[$ap_code]) . '</option>';
+        }
+
+        if (in_array($ap_drow['decision'], array(1, 4), true)) {
+            $ap_options .= '<option value="declined"' . (($ap_drow['decision'] === 4) ? ' selected' : '') . '>' . h(lang('Declined the place')) . '</option>';
+        }
+
+        $ap_state = '';
+
+        if ($ap_drow['decision'] === 4) {
+            $ap_state = '<span class="pg-pill pg-tone-gray">' . h(lang('Declined')) . '</span>';
+        } elseif ($ap_drow['decision'] > 0) {
+            $ap_state = ($ap_drow['mailed_at'] > 0)
+                ? '<span class="pg-pill pg-tone-teal">' . h(lang('E-mail sent')) . '</span>'
+                : '<span class="pg-pill pg-tone-amber">' . h(lang('E-mail waits')) . '</span>';
+        }
+
+        $ap_call = (($ap_drow['decision'] === 4) && !pg_application_waitlist_called($ap_eid))
+            ? '<button type="submit" form="aprog_decisions_form" name="submit_call" value="' . $ap_eid . '" class="pg-button pg-button-quiet pg-button-sm"' . (isset($ap_waiting[(string) $ap_drow['category']]) ? '' : ' disabled')
+                . ' data-confirm-content="' . h(lang('The best scored waitlisted entry of this category is accepted. Its e-mail goes when you send the decision e-mails.')) . '">' . h(lang('Call the next')) . '</button>'
+            : '';
+        $ap_rows .= '<tr><td><input type="checkbox" class="pg-checkbox" form="aprog_decisions_form" name="entries[]" value="' . $ap_eid . '" aria-label="' . h($ap_ref) . '" data-pg-ap-tick></td>'
+            . '<td><a href="edit_submitted_form.php?id=' . $ap_drow['form_id'] . '">' . h($ap_ref) . '</a>'
+            . (($ap_drow['shortlisted'] === 1) ? ' <span class="pg-pill pg-tone-teal">' . h(lang('Shortlisted')) . '</span>' : '') . '</td>'
+            . '<td>' . h(($ap_category_name !== '') ? $ap_category_name : '—') . '</td>'
+            . '<td class="pg-tabular text-end">' . (($ap_drow['score'] > 0) ? h(number_format($ap_drow['score'] / 100, 2)) : '<span class="pg-text-meta">—</span>')
+            . (($ap_filter === 'all') ? ' <span class="pg-text-meta">' . h(lang(array('string' => 'Round {var:1}', 'vars' => array($ap_drow['round'])))) . '</span>' : '') . '</td>'
+            . '<td><select class="pg-input w-auto" form="aprog_decisions_form" name="decision[' . $ap_eid . ']" aria-label="' . h(lang('Decision')) . ' ' . h($ap_ref) . '"' . (($ap_drow['decision'] === 4) ? ' disabled' : '') . '>' . $ap_options . '</select></td>'
+            . '<td>' . $ap_state . '</td>'
+            . '<td class="text-end text-nowrap">' . $ap_call . '</td></tr>';
+    }
+
+    if ($ap_rows === '') {
+        $ap_rows = '<tr><td colspan="7" class="text-center pg-text-meta py-7">' . h(($ap_filter === 'shortlist') ? lang('No shortlist yet: apply the cut on the Entries tab, or show the whole round.') : lang('No entries yet.')) . '</td></tr>';
+    }
+
+    $ap_filter_link = function ($filter, $label) use ($ap_id, $ap_filter) {
+        return '<a class="pg-seg-item' . (($ap_filter === $filter) ? ' is-active" aria-current="page' : '') . '" href="edit_application_program.php?id=' . $ap_id . '&amp;view=decisions&amp;filter=' . $filter . '">' . h($label) . '</a>';
+    };
+
+    // The send drawer: 1. who gets which e-mail, 2. a preview per text with
+    // the first person's answers, 3. Send.
+    $ap_count_lines = '';
+    $ap_previews = '';
+
+    foreach (array('accepted' => 1, 'rejected' => 2, 'waitlisted' => 3) as $ap_key => $ap_code) {
+        $ap_count = $ap_counts[$ap_key];
+        $ap_count_lines .= '<div class="pg-gather-line"><b>' . h($ap_words[$ap_code]) . '</b><span>'
+            . h(lang(array('string' => '{var:1} e-mails', 'vars' => array($ap_count['send']))))
+            . (($ap_count['no_address'] > 0) ? ' · ' . h(lang(array('string' => '{var:1} with no e-mail address', 'vars' => array($ap_count['no_address'])))) : '') . '</span>'
+            . ((($ap_count['send'] > 0) && !$ap_count['written']) ? '<span class="pg-gather-line-end"><span class="pg-pill pg-tone-amber">' . h(lang('No text written')) . '</span></span>' : '') . '</div>';
+
+        if (($ap_count['send'] > 0) && $ap_count['written']) {
+            foreach ($ap_queue as $ap_item) {
+                if (((int) $ap_item['decision'] === $ap_code) && ($ap_item['email'] !== '')) {
+                    $ap_mail = pg_application_mail_render($ap_program, $ap_key, (int) $ap_item['form_id']);
+                    $ap_previews .= '<div class="pg-card-inner p-4 mb-4"><div class="pg-text-meta mb-2">' . h($ap_words[$ap_code]) . ' · ' . h($ap_item['email']) . '</div>'
+                        . '<strong class="d-block mb-2">' . h($ap_mail['subject']) . '</strong><div class="pg-text-2" style="white-space:pre-wrap">' . h($ap_mail['body']) . '</div></div>';
+                    break;
+                }
+            }
+        }
+    }
+
+    $ap_decisions_html = '<form id="aprog_decisions_form" action="edit_application_program.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="decisions"><input type="hidden" name="filter" value="' . $ap_filter . '"></form>'
+        . '<section class="pg-card p-5 mb-5" aria-labelledby="aprog_decisions_title"><h2 class="pg-title-section mb-0" id="aprog_decisions_title">' . h(lang('Decisions')) . '</h2>'
+        . '<p class="pg-card-sub mb-5">' . h(lang(array('string' => '{var:1} accepted, {var:2} rejected, {var:3} waitlisted, {var:4} declined. {var:5} e-mails wait to be sent.', 'vars' => array($ap_totals[1], $ap_totals[2], $ap_totals[3], $ap_totals[4], count($ap_queue))))) . '</p>'
+        . '<div class="d-flex flex-wrap align-items-center gap-2">'
+        . '<span class="pg-text-2">' . h(lang('The ticked entries:')) . '</span>'
+        . '<button type="submit" form="aprog_decisions_form" name="submit_bulk" value="accepted" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Accept')) . '</button>'
+        . '<button type="submit" form="aprog_decisions_form" name="submit_bulk" value="rejected" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Reject')) . '</button>'
+        . '<button type="submit" form="aprog_decisions_form" name="submit_bulk" value="waitlisted" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Waitlist')) . '</button>'
+        . '<span class="flex-grow-1"></span><button type="submit" form="aprog_decisions_form" name="submit_decisions" value="1" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Save the chosen decisions')) . '</button></div>'
+        . '<p class="pg-field-help mt-3 mb-0">' . h(!empty($ap_program['waitlist_auto'])
+            ? lang('When an accepted applicant declines, the next on the waitlist of the category is accepted by itself.')
+            : lang('When an accepted applicant declines, "Call the next" accepts the next on the waitlist of the category.')) . '</p>'
+        . '</section>'
+        . '<span class="pg-seg mb-5" role="group" aria-label="' . h(lang('Show')) . '">' . $ap_filter_link('shortlist', lang('Shortlist')) . $ap_filter_link('round', lang(array('string' => 'Round {var:1}', 'vars' => array($ap_round)))) . $ap_filter_link('all', lang('All rounds')) . '</span>'
+        . '<section class="pg-card p-0 mb-5 table-responsive" aria-label="' . h(lang('Decisions')) . '"><table class="table table-hover align-middle mb-0">'
+        . '<thead><tr><th scope="col"><input type="checkbox" class="pg-checkbox" aria-label="' . h(lang('Tick all')) . '" data-pg-ap-tick-all></th><th scope="col">' . h(lang('Entry')) . '</th><th scope="col">' . h(lang('Category')) . '</th><th scope="col" class="text-end">' . h(lang('Score')) . '</th><th scope="col">' . h(lang('Decision')) . '</th><th scope="col">' . h(lang('Status')) . '</th><th scope="col"><span class="visually-hidden">' . h(lang('Actions')) . '</span></th></tr></thead>'
+        . '<tbody>' . $ap_rows . '</tbody></table></section>'
+        . '<dialog class="drawer drawer-end" id="aprog_send" aria-labelledby="aprog_send_title" style="width:min(560px,100%)">
+        <form method="post" action="edit_application_program.php" class="d-flex flex-column h-100">
+            ' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="decisions"><input type="hidden" name="filter" value="' . $ap_filter . '">
+            <div class="drawer-header">
+                <div class="flex-grow-1 min-width-0">
+                    <h5 class="drawer-title mb-0" id="aprog_send_title">' . h(lang('Send the decision e-mails')) . '</h5>
+                    <p class="small fg-2 mb-0 mt-1">' . h(lang('Each person gets the text of their decision once; the result then shows on their entry.')) . '</p>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="drawer-body flex-grow-1 overflow-auto">
+                <h6 class="pg-title-section mb-3">1. ' . h(lang('Who gets which e-mail')) . '</h6>
+                <div class="pg-gather mb-6">' . $ap_count_lines . '</div>
+                <h6 class="pg-title-section mb-3">2. ' . h(lang('Preview')) . '</h6>
+                ' . (($ap_previews !== '') ? $ap_previews : '<p class="pg-text-meta mb-6">' . h(lang('Nothing to preview: no e-mail waits, or its text is not written.')) . '</p>') . '
+                <h6 class="pg-title-section mb-3">3. ' . h(lang('Send')) . '</h6>
+                <p class="pg-text-2 mb-0">' . h(lang(array('string' => '{var:1} e-mails go now.', 'vars' => array($ap_sendable)))) . '</p>
+            </div>
+            <div class="drawer-footer border-top p-5 d-flex align-items-center gap-3"><span class="flex-grow-1"></span>
+                <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>
+                <button type="submit" name="submit_send" value="1" class="pg-button pg-button-fill"' . (($ap_sendable > 0) ? '' : ' disabled') . '>' . h(lang('Send')) . '</button>
+            </div>
+        </form>
+    </dialog>';
+    $ap_toolbar['primary'] = array('<button type="button" class="pg-button pg-button-fill" data-pg-ap-open="aprog_send"><i class="bi bi-envelope" aria-hidden="true"></i>' . h(lang('Send the decision e-mails')) . '</button>', $ap_state_button);
+}
+
 echo pg_page_shell(array(
     'title' => $ap_program['name'],
     'extra classes' => 'form pg-measure-edit',
@@ -690,7 +909,7 @@ echo pg_page_shell(array(
     ' . $liveform->get_messages() . '
     ' . pg_screen_toolbar($ap_toolbar) . '
     <form id="aprog_state_form" action="edit_application_program.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="' . $ap_view . '"></form>
-    ' . (($ap_view === 'reviewers') ? $ap_reviewers_html : (($ap_view === 'entries') ? $ap_entries_html : $ap_setup_html)) . '
+    ' . (($ap_view === 'reviewers') ? $ap_reviewers_html : (($ap_view === 'entries') ? $ap_entries_html : (($ap_view === 'decisions') ? $ap_decisions_html : $ap_setup_html))) . '
 </main>
 ' . get_date_time_picker_format() . pg_fields_script() . '
 <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/application_program.js?v=' . filemtime(PG_FUNCTIONS_DIR . '/assets/js/application_program.js') . '"></script>

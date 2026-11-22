@@ -11,6 +11,7 @@ module: application_programs
 ## What does the programme row keep?
 - `rounds` JSON: list of `{criteria: [{id, name, weight}], reviewers, ends_at, spread, rank_by, cut}` (the last three: `application-review-ranking.md`); criterion ids `c1`, `c2`… stay across saves. `reviewers_per_entry` mirrors round 1.
 - `eligibility` JSON: rules of `pg_application_eligibility()` keyed by the form field's name. Typed as "18-30" (either end may be left out) or "A, B" (`pg_application_rule_from_input()`).
+- `waitlist_auto`: the Decision e-mails card's switch (`application-review-decisions.md`).
 - `blind_fields` JSON: field names; `texts` JSON: `outside`, and `accepted`/`rejected`/`waitlisted` each `{subject, body}`; `category_field_id`: a pick list, radio button or check box field.
 - Criteria templates: `config_text` row `application_criteria_templates`, list of `{name, criteria}`; "Save as a template" names it after the programme and round, same name replaced, 50 kept.
 
