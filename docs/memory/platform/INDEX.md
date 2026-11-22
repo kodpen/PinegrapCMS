@@ -67,6 +67,7 @@
 - feedback-send-pass.md: Survey pass of the general job (FD3): hours 09:00-20:00, checks before a send, one reminder, no answer after 30 days, consent of service and commercial surveys, periodic NPS
 - feedback-sends.md: Satisfaction surveys queued (FD3): the events that queue one, the row and its token hash, the cancels, booking.completed, workspace.mail.closed, ticket.checked_in in flows
 - feedback-store.md: Satisfaction survey tables feedback_surveys and feedback_responses (11.0.263, FD1b): defaults, NULL token_hash, person_hash of a number, personal data erasure, export and inventory of the answers [decision: here]
+- feedback-whatsapp.md: A satisfaction survey's WhatsApp message (FD4b, #11111): the template chosen on the Sent by card, kept in the texts JSON, its values, rows waiting while it cannot be sent, kind feedback
 - file-copy-chat-attachments.md: File Manager paste, folder copy, zip archives and the Workspace file picker refuse a team chat attachment to anyone get_file.php refuses it to; an archive holding a form upload stays an attachment
 - file-manager-page-where-used.md: The File Manager's "Where used" for a page (explorer_page_usage): menu items, short links, links in content, page settings, products/offers/events and site settings that point at it
 - file-manager-where-used-by-id.md: "Where used" counts form, comment and contact attachments by file id, only those the viewer may open; Edit Submitted Form marks a binned or deleted attachment

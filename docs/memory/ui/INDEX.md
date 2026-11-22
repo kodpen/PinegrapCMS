@@ -31,12 +31,15 @@
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
 - barcode-scanner-detection.md: Barcode stock screens and Create Order: the scanner listener ignores fields, dialogs and blank codes; Last Scans rows built as text; the stock screens' wide layout
 - bell-actions.md: A bell row's in-place action (BP4): Approve, Try again, Mark as done, offered only when the reader may run it (ws_bell_act()); after success the row is read and the list redrawn [decision: decisions-made-panel-4.md]
+- bell-filters.md: The bell's filters (BR1): the selector All / Unread / Asked of me, module chips as toggles on one line, the search and its marks, the kept choice and the old one read once, Delete All's rule [decision: here]
+- bell-head.md: The bell drawer's head (BR1): the N new pill, Search, More actions and Close as icon buttons, the menu's two items, Mark all as read at the first day heading, the search in the head's place
 - bell-read-rule.md: When a bell row is read: not on opening the bell; its button, title or Mark as read reads it, a fold head its runs; Mark all as read reads only rows the caller sees [decision: decisions-made-panel-4.md]
 - bell-refusals.md: What the bell panel shows when loading, marking read or unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
 - bell-row.md: A bell row in look A (#8897): tone tile, one-line title and time, two lines of text, a button only when asked, the unread dot, quick actions on hover; a fold as gathered lines [decision: decisions-made-panel-4.md]
 - bell-titles.md: A bell row's short title says what happened and with what ("New order #SP-1044"), the brief text under it; the push banner keeps the sentence (#8897) [decision: decisions-made-panel-4.md]
 - booking-agenda.md: Booking agenda (view_bookings.php, edit_booking.php, #6231): views, who sees what, staff-made bookings, status moves, cancel reason, audit, search
 - booking-edit-form-fields.md: The booking screen (edit_booking.php, new and existing) draws every field as a labelled form-field box; the help texts are form-text the fields name (step B11)
+- booking-edit-unknown-id.md: The booking screen (edit_booking.php) opens an existing booking for any id but 0; a negative or unknown id ends on Record not found (404), 0 or no id is a new booking
 - booking-settings-rows.md: Settings › Bookings as folded rows with lines of state; services as list rows edited in drawers, Move up and Move down, the drawer a refused save opens
 - booking-settings-staff-rows.md: Settings › Bookings, the Staff row: members as list rows each edited in a drawer, Add a staff member's drawer and the hours a new member starts with, the drawer a refused staff box opens
 - booking-settings.md: Settings › Bookings (category bookings): services, staff hours grid and exceptions, booking rules and widget texts in config_text; what the save writes and refuses
@@ -516,7 +519,7 @@
 - notice-button-names.md: A notice, hint or dialog names the control it means by its label, never "OK", "the button", a colour or a direction
 - notification-links.md: Bell, banner and System Status link only to screens the reader may use: Repair Software for role 0 off hosting; form submissions for the folder's editors
 - notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise [decision: decisions-made-panel-4.md]
-- notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count [decision: decisions-made-panel-4.md, decisions-made-workspace-5.md, decisions-made-workspace-6.md]
+- notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count [decision: decisions-made-panel-4.md, decisions-made-workspace-5.md, decisions-made-workspace-6.md]
 - offer-code-key-codes.md: A saved offer's code change moves its key codes to the new code (unless another offer keeps the old one); the editor warns while the code changes; All Key Codes names an orphan
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - offers-list-chips.md: Offers list (view_offers.php) Flow chips and status filter chips: gift only when free, both usage limits, optional chips drawn hidden and shown by recount(), the offer-only 'Shipping {var:1}' key

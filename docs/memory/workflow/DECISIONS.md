@@ -1249,6 +1249,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab (owner 2026-11-19, poll 153): the shared class .pg-area-tabs, the screens that have it, the strips that are not area strips
 - ui/back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
 - ui/bell-actions.md: A bell row's in-place action (BP4): Approve, Try again, Mark as done, offered only when the reader may run it (ws_bell_act()); after success the row is read and the list redrawn
+- ui/bell-filters.md: The bell's filters (BR1): the selector All / Unread / Asked of me, module chips as toggles on one line, the search and its marks, the kept choice and the old one read once, Delete All's rule
 - ui/bell-read-rule.md: When a bell row is read: not on opening the bell; its button, title or Mark as read reads it, a fold head its runs; Mark all as read reads only rows the caller sees
 - ui/bell-titles.md: A bell row's short title says what happened and with what ("New order #SP-1044"), the brief text under it; the push banner keeps the sentence (#8897)
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
@@ -1330,7 +1331,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/messages-area-surveys-tab.md: Communication › Surveys (FD2): the satisfaction survey list, its gate, Add survey's starting points drawer, the row's Send me a test, Delete or Archive
 - ui/messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d)
 - ui/notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
-- ui/notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
+- ui/notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
 - ui/page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - ui/panel-top-bar-phone.md: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark or page heading), below 390px no logo, why, the test that keeps it
@@ -1594,7 +1595,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-highlights-not-saved-replies.md: Why message highlights (ws_highlights) and saved replies (ws_saved_replies) stay two features with two tables: what each keeps, where they differ, the owner's question of 2026-11-16
 - workspace/workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
 - workspace/workspace-memory-tab.md: The Memory tab as rows under folding project headings (GM3a): the general memory and the channel's own as two parts, a row's columns, Move to the general memory, the form, ws_memory_list's parts
-- workspace/workspace-menu-tools.md: Tools tiles and More in the Workspace list (#3817, #6281): places (My Tasks first), short names, colours, a lone More taking its row, the More rows, ws-side-open, the tour opening hidden places
+- workspace/workspace-menu-tools.md: The tools dock of the Workspace list (#3817, #6281, dock #11101): places (My Tasks first), short names, tones, the count on My Tasks, More as a card, the tour opening hidden places
 - workspace/workspace-message-box-width.md: Channel message boxes: 90rem wide at most, .5rem apart (grouped lines joined), a faint sender tint over 1700px (data-ws-tone; light 5 %, dark 2.2 %)
 - workspace/workspace-message-highlights-mine.md: My highlights in My Notes (HL4 #9935): the button beside Import, the list in the note's pane, the chips, the jump that flashes the highlight, bulk removal, the empty state
 - workspace/workspace-message-highlights.md: A reader's highlights on part of a message (ws_highlights, 11.0.222): anchor, scopes, who makes or removes one, note, limits, cleanup, drawing
