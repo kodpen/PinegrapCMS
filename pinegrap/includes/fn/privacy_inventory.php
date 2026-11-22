@@ -100,8 +100,8 @@ function pg_privacy_inventory_retentions()
         'form_submissions' => 'Rule: form submissions',
         'incomplete_carts' => 'Rule: incomplete carts',
         'orders'           => 'Rule: orders',
-        'closed_requests'  => 'Rule: closed requests',
         'site_chats'       => 'Rule: site chats',
+        'closed_requests'  => 'Rule: closed requests',
         'queue_keep'       => 'The queue place\'s keep period',
         'lead_journey'     => 'The journey\'s keep period (13 months)',
     );

@@ -248,10 +248,11 @@ function pg_privacy_retention_run($seconds = 5)
 
 /* ---------------------------------------------------------------------------
    Retention rules for personal records: passive contacts, form submissions,
-   incomplete carts, orders, closed requests and site chats. Each is off until switched on; its first run
-   is a dry run that waits for a person's yes. The pass removes or
-   anonymises through pg_privacy_erase()'s entries and actions, never a list
-   of its own, and skips a person something still holds (P8).
+   incomplete carts, orders, closed requests and site chats. Each is off
+   until switched on; its first run is a dry run that waits for a person's
+   yes. The pass removes or anonymises through pg_privacy_erase()'s entries
+   and actions, never a list of its own, and skips a person something still
+   holds (P8).
    --------------------------------------------------------------------------- */
 
 /**
@@ -269,10 +270,10 @@ function pg_privacy_rules_catalogue()
         // The cart row stays: cart recovery counts open carts from orders.
         'carts'    => array('unit' => 'days', 'default' => 90, 'min' => 31, 'max' => 3650, 'table' => 'orders', 'entries' => array('ship_tos', 'orders')),
         'orders'   => array('unit' => 'years', 'default' => null, 'min' => 1, 'max' => 30, 'table' => 'orders', 'entries' => array('ship_tos', 'order_returns', 'shipment_labels', 'orders')),
-        // Answered and refused requests of the request box, from their closing.
-        'requests' => array('unit' => 'years', 'default' => 3, 'min' => 1, 'max' => 20, 'table' => 'privacy_requests', 'entries' => array('privacy_requests')),
         // Site chats quiet for the period, with their messages and attachments.
         'chats'    => array('unit' => 'days', 'default' => 60, 'min' => 7, 'max' => 3650, 'table' => 'chat_conversations', 'entries' => array('files', 'chat_messages', 'chat_conversations')),
+        // Answered and refused requests of the request box, from their closing.
+        'requests' => array('unit' => 'years', 'default' => 3, 'min' => 1, 'max' => 20, 'table' => 'privacy_requests', 'entries' => array('privacy_requests')),
     );
 }
 
@@ -348,8 +349,8 @@ function pg_privacy_rules_labels()
             'forms'    => lang('Form submissions'),
             'carts'    => lang('Incomplete carts: personal fields, contact and account links'),
             'orders'   => lang('Orders: personal fields anonymised'),
-            'requests' => lang('Closed privacy requests: the person and the texts anonymised'),
             'chats'    => lang('Site chats: the conversation, its messages and attachments deleted'),
+            'requests' => lang('Closed privacy requests: the person and the texts anonymised'),
         ),
         'skips' => array(
             'staff'       => lang('Staff account'),
@@ -1136,18 +1137,18 @@ function pg_privacy_rule_one($key, $id, $cutoff, $now, $apply)
     $input = array();
     $lists = array();
 
-    // A closed request is the record of an answer, not a person's: nothing
-    // holds it back, and only the request itself is anonymised.
-    if ($key === 'requests') {
-        return array('skip' => '', 'tables' => pg_privacy_erase_run(_pg_privacy_rule_scope(array('request_ids' => array($id))), $apply, pg_privacy_rule_entries($key)));
-    }
-
     // An old site chat goes with its messages and their attachments; the
     // person it was with, and their other chats, stay.
     if ($key === 'chats') {
         $files = pg_schema_has('chat_messages', 'attachment_file_id') ? db_values("SELECT attachment_file_id FROM chat_messages WHERE (attachment_file_id > 0) AND (conversation_id = '" . $id . "')") : array();
 
         return array('skip' => '', 'tables' => pg_privacy_erase_run(_pg_privacy_rule_scope(array('conversation_ids' => array($id), 'file_ids' => _pg_privacy_export_ids($files))), $apply, pg_privacy_rule_entries($key)));
+    }
+
+    // A closed request is the record of an answer, not a person's: nothing
+    // holds it back, and only the request itself is anonymised.
+    if ($key === 'requests') {
+        return array('skip' => '', 'tables' => pg_privacy_erase_run(_pg_privacy_rule_scope(array('request_ids' => array($id))), $apply, pg_privacy_rule_entries($key)));
     }
 
     if ($key === 'contacts') {
