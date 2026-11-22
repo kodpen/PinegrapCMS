@@ -22,7 +22,7 @@ description: Plan (owner 2026-11-23): pinegrap.com documentation from 2026.4.10 
 
 ## Which steps are there?
 One step is one page (or one new page), one session on the owner's machine, one docs-only PR for the mark. Order: the screens every user meets first, then the big modules, then the new pages.
-- UD1 `/introduction`: new dashboard, redrawn main menu, bell and notification drawer, one picker, date picker, Export to Excel, the new logo.
+- UD1 `/introduction`, done 2026-11-23 (four new sections). Left: smaller changes since #500, the new logo; Content review moved to UD14 `/pages`.
 - UD2 `/site-settings` and `/system`: regrouped settings, System tools, operations alerts, backups before updates, maintenance mode, page cache, signed updates, object storage, Docker.
 - UD3 `/visual-page-editor` (split into `-cont`): code editor, revisions, responsive images, interactions, A/B experiments, prototypes, forms, parts anywhere, address filters, Video, Comments and Google Reviews widgets.
 - UD4 `/templates` (new).

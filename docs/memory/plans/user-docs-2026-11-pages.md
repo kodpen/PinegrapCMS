@@ -14,7 +14,7 @@ description: Plan user-docs-2026-11: which 2026.11.0 feature goes on which exist
 
 ## Which subjects go on the content pages?
 - `/files`, `/folders`: Word and Excel previews and edits, Google Drive, OneDrive and Dropbox on Upload File, Pinegrap's own image editor with animated layers, layer groups, Follow in Animate. `ui/image-editor-overview.md`.
-- `/pages`: Write with AI, Content review, the classic custom form converter.
+- `/pages`: Write with AI, Content review (`platform/content-review.md`), the classic custom form converter.
 - `/pages-cont`: short link redirects, `*` names, CSV import and export, the 404 log.
 - `/calendars`: appointment booking (services, staff hours, slots, reminders), course progress and certificates.
 - `/forms`: double opt-in (link to `/communication`), conditional fields, multi-step forms, payment step.
