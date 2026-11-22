@@ -14,7 +14,7 @@ description: Page form System Options number boxes refused out of range by pg_pa
 - The boxes stay `type="text"` with inputmask; the whole-number ones use `data-inputmask-alias="integer"` with `data-inputmask-allowminus="false"` (the `decimal` alias let `-50` and `12.5` through: page 3335 on dev stored 0 and 12 without a word). The server check is what holds.
 
 ## Why is a Thumbnail Max Size of 0 accepted?
-- Architect (2026-11-22): Thumbnail Max Size 0 is valid and means a full-size image; only a minus sign, a decimal or text is refused. Reason: running sites keep their look. The starter's gallery pages and older saves store 0, and a check of 1 or more refused the next save of such a page with the value its box showed (PR #PRNUM).
+- Architect (2026-11-22): Thumbnail Max Size 0 is valid and means a full-size image; only a minus sign, a decimal or text is refused. Reason: running sites keep their look. The starter's gallery pages and older saves store 0, and a check of 1 or more refused the next save of such a page with the value its box showed (PR #11088).
 - `get_thumbnail_dimensions()` gives 0 x 0 for a size of 0, so the classic gallery (`get_photo_gallery.php`) prints no width and the picture shows at full size; on a mobile device its cells are not sized for a 0-pixel thumbnail either.
 - The box's help line says "0: full-size image". It is tied to the input by hand with `aria-describedby`, since `pgBindFieldHelp()` skips a `.form-ghost` input.
 
