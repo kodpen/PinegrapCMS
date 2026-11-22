@@ -6,7 +6,8 @@
  * name, the state and the button that opens or pauses it; the Applications
  * tab with Approve per row and for the ticked rows; the Volunteers tab; the
  * profile drawer (details, documents with their dates, shifts, hours, Pause
- * and Mark as left); and, for roles 0-2, the Set-up tab as six folded rows
+ * and Mark as left); the Shifts tab, the week's board with its Add shift
+ * and shift drawers; and, for roles 0-2, the Set-up tab as six folded rows
  * (application form, roles, sign-up rules, calls and reminders, messages,
  * coordinators) with one Save. It also takes the list's add drawer. Roles
  * 0-2 see every programme, a coordinator their own.
@@ -28,6 +29,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_programme_setup.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_board.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_board_view.php');
 
 $user = validate_user();
 
@@ -41,9 +44,12 @@ $vp_id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
 $vp = ($vp_id > 0) ? pg_volunteer_programme_get($vp_id) : null;
 $vp_self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_volunteer_programme.php';
 $vp_list = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_volunteer_programmes.php';
-$vp_views = $vp_staff ? array('applications', 'volunteers', 'setup') : array('applications', 'volunteers');
-$vp_view = (string) ($_POST['view'] ?? $_GET['view'] ?? 'applications');
-$vp_view = in_array($vp_view, $vp_views, true) ? $vp_view : 'applications';
+$vp_views = $vp_staff ? array('shifts', 'applications', 'volunteers', 'setup') : array('shifts', 'applications', 'volunteers');
+$vp_view = (string) ($_POST['view'] ?? $_GET['view'] ?? 'shifts');
+$vp_view = in_array($vp_view, $vp_views, true) ? $vp_view : 'shifts';
+// The board's week (its Monday, this week by default) and place filter.
+$vp_monday = pg_volunteer_week_monday((string) ($_POST['week'] ?? $_GET['week'] ?? '')) ?? pg_volunteer_week_monday(date('Y-m-d'));
+$vp_place = pg_waiting_text($_GET['place'] ?? '', 100);
 $vp_forms = $vp_staff ? pg_application_program_forms($user) : array();
 
 if ((($vp_id > 0) && ($vp === null)) || (($vp !== null) && !pg_volunteer_user_sees($vp, $user)) || (($vp === null) && !$vp_staff)) {
@@ -51,6 +57,7 @@ if ((($vp_id > 0) && ($vp === null)) || (($vp !== null) && !pg_volunteer_user_se
 }
 
 $vp_input = null;
+$vp_shift_post = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validate_token_field();
@@ -70,7 +77,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         go($vp_self . '?id=' . $vp_new_id . '&view=setup');
     }
 
-    $vp_back = $vp_self . '?id=' . $vp_id . '&view=' . $vp_view;
+    $vp_back = $vp_self . '?id=' . $vp_id . '&view=' . $vp_view . (($vp_view === 'shifts') ? '&week=' . $vp_monday . (($vp_place !== '') ? '&place=' . rawurlencode($vp_place) : '') : '');
+
+    // The board: anyone who sees the programme runs its shifts.
+    if (isset($_POST['submit_shift_add'])) {
+        $vp_shift_input = pg_volunteer_shift_input($_POST, $vp['roles']);
+
+        if (!$vp_shift_input['errors']) {
+            $vp_added = pg_volunteer_shift_add($vp_id, $vp_shift_input['shift'], $vp_shift_input['weeks'], (int) $user['id']);
+            log_activity($vp_added . ' shifts of volunteer programme "' . $vp['name'] . '" were added');
+            $liveform->add_notice(h(lang(array('string' => 'Shifts added: {var:1}.', 'vars' => array($vp_added)))));
+            go($vp_self . '?id=' . $vp_id . '&view=shifts&week=' . pg_volunteer_week_monday(substr($vp_shift_input['shift']['start'], 0, 10)));
+        }
+
+        foreach ($vp_shift_input['errors'] as $vp_error) {
+            $liveform->add_error(h($vp_error));
+        }
+
+        $vp_shift_post = $_POST;
+    }
+
+    if (isset($_POST['submit_copy_week'])) {
+        $vp_added = pg_volunteer_week_copy_store($vp_id, $vp_monday, (int) $user['id']);
+
+        if ($vp_added > 0) {
+            log_activity($vp_added . ' shifts of volunteer programme "' . $vp['name'] . '" were copied from last week');
+            $liveform->add_notice(h(lang(array('string' => 'Shifts added: {var:1}.', 'vars' => array($vp_added)))));
+        } else {
+            $liveform->add_error(h(lang('Nothing to copy: last week had no shifts, or this week has them already.')));
+        }
+
+        go($vp_back);
+    }
+
+    $vp_shift = (isset($_POST['submit_shift_call']) || isset($_POST['submit_shift_remove'])) ? pg_volunteer_shift_get($vp_id, (int) ($_POST['shift'] ?? 0)) : null;
+
+    if ($vp_shift !== null && isset($_POST['submit_shift_call'])) {
+        $vp_asked = pg_volunteer_shift_call($vp, $vp_shift);
+        log_activity($vp_asked . ' volunteers were called for a shift of volunteer programme "' . $vp['name'] . '"');
+        $liveform->add_notice(h(lang(array('string' => 'Volunteers asked: {var:1}.', 'vars' => array($vp_asked)))));
+        go($vp_back . '&shift=' . $vp_shift['id']);
+    }
+
+    if ($vp_shift !== null && isset($_POST['submit_shift_remove'])) {
+        $vp_told = pg_volunteer_shift_remove($vp, $vp_shift);
+
+        if ($vp_told === false) {
+            $liveform->add_error(h(lang('Hours were recorded on this shift: it stays.')));
+            go($vp_back . '&shift=' . $vp_shift['id']);
+        }
+
+        log_activity('a shift of volunteer programme "' . $vp['name'] . '" was removed');
+        $liveform->add_notice(h(lang(array('string' => 'The shift was removed. Volunteers told: {var:1}.', 'vars' => array($vp_told)))));
+        go($vp_back);
+    }
 
     if ($vp_staff && (isset($_POST['submit_open']) || isset($_POST['submit_pause']))) {
         $vp_state = isset($_POST['submit_pause']) ? 'paused' : 'open';
@@ -313,6 +373,34 @@ if ($vp_person !== null) {
     </dialog>';
 }
 
+// The Shifts tab: the week's board, the Add shift drawer (opened with the
+// screen after a refused add) and, by ?shift=, a shift's drawer.
+$vp_board_html = '';
+$vp_board_bar = array();
+
+if ($vp_view === 'shifts') {
+    $vp_now = date('Y-m-d H:i:s');
+    $vp_week_shifts = pg_volunteer_board_shifts($vp_id, $vp_monday, pg_volunteer_add_days($vp_monday, 7));
+    $vp_board_query = 'id=' . $vp_id . '&amp;view=shifts&amp;week=' . $vp_monday . (($vp_place !== '') ? '&amp;place=' . rawurlencode($vp_place) : '');
+    $vp_board_html = pg_volunteer_board_html($vp, $vp_week_shifts, $vp_monday, $vp_place, $vp_now)
+        . ($vp['roles'] ? pg_volunteer_shift_add_html($vp, $vp_monday, (array) $vp_shift_post, $vp_shift_post !== null) : '');
+    $vp_open_shift = isset($_GET['shift']) ? pg_volunteer_shift_get($vp_id, (int) $_GET['shift']) : null;
+
+    if ($vp_open_shift !== null) {
+        $vp_to_call = count(pg_volunteer_shift_call_ids($vp, $vp_open_shift, pg_volunteer_call_people($vp, $vp_open_shift), $vp_now));
+        $vp_board_html .= pg_volunteer_shift_drawer_html($vp, $vp_open_shift, $vp_to_call, $vp_board_query, $vp_now);
+    }
+
+    $vp_board_bar = array(
+        'primary' => array(
+            '<button type="button" class="pg-button pg-button-fill" data-pg-vp-drawer="vs_add"' . ($vp['roles'] ? '' : ' disabled') . '><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add shift')) . '</button>',
+            '<button type="submit" form="vp_state_form" name="submit_copy_week" value="1" class="pg-button pg-button-quiet"><i class="bi bi-copy" aria-hidden="true"></i>' . h(lang('Copy last week')) . '</button>',
+        ),
+        'grow' => pg_volunteer_board_week_html($vp, $vp_monday, $vp_place),
+        'search' => pg_volunteer_board_places_html($vp, pg_volunteer_board_places(array_values($vp_week_shifts)), $vp_monday, $vp_place),
+    );
+}
+
 $vp_setup_html = ($vp_staff && ($vp_view === 'setup')) ? pg_volunteer_setup_html($vp_values, $vp_forms, $vp_list) : '';
 
 $vp_tab = function ($view, $label, $count = null) use ($vp_id, $vp_view) {
@@ -329,7 +417,7 @@ echo pg_page_shell(array(
     'help' => 'contacts',
     // output_header() prints the heading as markup; the name is staff text.
     'heading' => h($vp['name']) . ' ' . pg_volunteer_programme_pill($vp['state']),
-    'heading_description' => lang('Applications, volunteers and the programme\'s set-up.'),
+    'heading_description' => lang('Shifts, applications, volunteers and the programme\'s set-up.'),
     'breadcrumb' => array(
         array('label' => lang('Volunteers'), 'url' => $vp_list),
         array('label' => $vp['name']),
@@ -340,11 +428,13 @@ echo pg_page_shell(array(
     ' . pg_screen_toolbar(array(
         'primary' => ($vp_view === 'applications')
             ? array('<button type="submit" form="vp_people_form" name="submit_approve_selected" value="1" class="pg-button pg-button-fill"' . ($vp_applied ? '' : ' disabled') . '><i class="bi bi-check2-circle" aria-hidden="true"></i>' . h(lang('Approve selected')) . '</button>', $vp_state_button)
-            : $vp_state_button,
-        'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $vp_tab('applications', lang('Applicants'), count($vp_applied)) . $vp_tab('volunteers', lang('Volunteers'), count($vp_volunteers)) . ($vp_staff ? $vp_tab('setup', lang('Set-up')) : '') . '</span>',
+            : (($vp_view === 'shifts') ? array_merge($vp_board_bar['primary'], array($vp_state_button)) : $vp_state_button),
+        'grow' => $vp_board_bar['grow'] ?? '',
+        'search' => $vp_board_bar['search'] ?? '',
+        'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $vp_tab('shifts', lang('Shifts')) . $vp_tab('applications', lang('Applicants'), count($vp_applied)) . $vp_tab('volunteers', lang('Volunteers'), count($vp_volunteers)) . ($vp_staff ? $vp_tab('setup', lang('Set-up')) : '') . '</span>',
     )) . '
-    <form id="vp_state_form" action="edit_volunteer_programme.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $vp_id . '"><input type="hidden" name="view" value="' . $vp_view . '"></form>
-    ' . (($vp_view === 'setup') ? $vp_setup_html : $vp_lists_html) . '
+    <form id="vp_state_form" action="edit_volunteer_programme.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $vp_id . '"><input type="hidden" name="view" value="' . $vp_view . '"><input type="hidden" name="week" value="' . $vp_monday . '"></form>
+    ' . (($vp_view === 'setup') ? $vp_setup_html : (($vp_view === 'shifts') ? $vp_board_html : $vp_lists_html)) . '
     ' . $vp_profile . '
 </main>
 ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . pg_fields_script() . '
