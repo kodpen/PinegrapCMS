@@ -5,8 +5,8 @@
  * A walk-in queue place's screen (Calendars › Queue): the head with the
  * name, the state and the button that opens or closes the queue; the Set-up
  * tab as six folded rows (services, hours, taking a number, notices, order,
- * keep personal data) with one Save; and the Desks tab, a desk a row with
- * Add desk and Remove. It also takes the list's add drawer (a name and the
+ * keep personal data) with one Save; the Desks tab, a desk a row with Add
+ * desk and Remove; and "Add a number" for a person at the counter. It also takes the list's add drawer (a name and the
  * first service: a new closed place) and its row menu's Delete. Roles 0-2.
  *
  * @author      Erdal Güral (Kodpen)
@@ -115,6 +115,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         pg_waiting_desk_add($qp_id, $qp_desk['name'], $qp_desk['services']);
         $liveform->add_notice(h(lang(array('string' => 'The desk "{var:1}" was added.', 'vars' => array($qp_desk['name'])))));
+        go($qp_back);
+    }
+
+    // A number added by staff: the same rules as the public page, any way.
+    if (isset($_POST['submit_number_add'])) {
+        $qp_join = pg_waiting_join_input($_POST, $qp_place);
+        $qp_taken = ($qp_join['error'] === '') ? pg_waiting_take($qp_place, $qp_join['values'], 'staff') : null;
+
+        if ($qp_taken && $qp_taken['ok']) {
+            $liveform->add_notice(h(lang(array('string' => 'Number {var:1} was given.', 'vars' => array($qp_taken['number'])))));
+        } elseif ($qp_taken === null) {
+            $liveform->add_error(h($qp_join['error']));
+        } else {
+            $liveform->add_error(h(($qp_taken['error'] === 'way') ? lang('Open the queue to add a number.') : pg_waiting_refusal_text($qp_taken['error'], $qp_place)));
+        }
+
         go($qp_back);
     }
 
@@ -364,6 +380,40 @@ $qp_desks_html = '<form id="qp_desks_form" action="edit_queue_place.php" method=
         </form>
     </dialog>';
 
+// Add a number: the service, then the person's details, all optional.
+$qp_number_boxes = '';
+
+foreach ($qp_place['services'] as $service) {
+    $qp_number_boxes .= '<option value="' . h($service['key']) . '">' . h($service['letter'] . ' ' . $service['name']) . '</option>';
+}
+
+$qp_number_field = function ($name, $type, $label, $extra = '') {
+    return '<div class="form-field mb-5"><label class="form-label pg-field-label" for="qp_number_' . $name . '">' . h($label) . '</label><input type="' . $type . '" class="pg-input" id="qp_number_' . $name . '" name="' . $name . '"' . $extra . '></div>';
+};
+$qp_number_html = '<dialog class="drawer drawer-end" id="qp_number_add" aria-labelledby="qp_number_add_title" style="width:min(480px,100%);--pg-drawer-height:80vh">
+        <form method="post" action="edit_queue_place.php" class="d-flex flex-column h-100">
+            ' . get_token_field() . '<input type="hidden" name="id" value="' . $qp_id . '"><input type="hidden" name="view" value="' . $qp_view . '">
+            <div class="drawer-header">
+                <div class="flex-grow-1 min-width-0">
+                    <h5 class="drawer-title mb-0" id="qp_number_add_title">' . h(lang('Add a number')) . '</h5>
+                    <p class="small fg-2 mb-0 mt-1">' . h(lang('For a person at the counter. With a phone they get the messages.')) . '</p>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="drawer-body flex-grow-1 overflow-auto">
+                <div class="form-field mb-5"><label class="form-label pg-field-label" for="qp_number_service">' . h(lang('Service')) . '</label><select class="pg-input" id="qp_number_service" name="service">' . $qp_number_boxes . '</select></div>'
+                . ($qp_place['settings']['party_size'] ? $qp_number_field('party_size', 'number', lang('How many people come'), ' min="1" max="' . PG_WAITING_PARTY_MAX . '" step="1" value="1"') : '')
+                . $qp_number_field('name', 'text', lang('Name (optional)'), ' maxlength="100"')
+                . $qp_number_field('phone', 'tel', lang('Phone (optional)'), ' maxlength="40"')
+                . $qp_number_field('email', 'email', lang('E-mail (optional)'), ' maxlength="190"') . '
+            </div>
+            <div class="drawer-footer border-top p-5 d-flex align-items-center gap-3"><span class="flex-grow-1"></span>
+                <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>
+                <button type="submit" name="submit_number_add" value="1" class="pg-button pg-button-fill">' . h(lang('Add')) . '</button>
+            </div>
+        </form>
+    </dialog>';
+
 // The head: the state and the button that follows it, quiet beside the
 // tab's own fill (Save, Add desk).
 $qp_state_button = ($qp_place['status'] === 'closed')
@@ -398,10 +448,11 @@ echo pg_page_shell(array(
             ? array('<button type="button" class="pg-button pg-button-fill" data-pg-queue-drawer="qp_desk_add"' . ($qp_place['services'] ? '' : ' disabled') . '><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add desk')) . '</button>', $qp_state_button)
             : $qp_state_button,
         'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Place')) . '">' . $qp_tab('setup', lang('Set-up')) . $qp_tab('desks', lang('Desks'), count($qp_desks)) . '</span>',
-        'secondary' => '<a class="pg-button pg-button-ghost" href="queue_poster.php?id=' . $qp_id . '" target="_blank" rel="noopener"><i class="bi bi-qr-code" aria-hidden="true"></i>' . h(lang('Print the QR poster')) . '</a>',
+        'secondary' => '<button type="button" class="pg-button pg-button-ghost" data-pg-queue-drawer="qp_number_add"' . (($qp_place['status'] === 'open') ? '' : ' disabled title="' . h(lang('Open the queue to add a number.')) . '"') . '><i class="bi bi-person-plus" aria-hidden="true"></i>' . h(lang('Add a number')) . '</button>'
+            . '<a class="pg-button pg-button-ghost" href="queue_poster.php?id=' . $qp_id . '" target="_blank" rel="noopener"><i class="bi bi-qr-code" aria-hidden="true"></i>' . h(lang('Print the QR poster')) . '</a>',
     )) . '
     <form id="qp_state_form" action="edit_queue_place.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $qp_id . '"><input type="hidden" name="view" value="' . $qp_view . '"></form>
-    ' . (($qp_view === 'desks') ? $qp_desks_html : $qp_setup_html) . '
+    ' . (($qp_view === 'desks') ? $qp_desks_html : $qp_setup_html) . $qp_number_html . '
 </main>
 ' . get_date_picker_format() . pg_fields_script() . '
 <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/queue_place.js?v=' . filemtime(PG_FUNCTIONS_DIR . '/assets/js/queue_place.js') . '"></script>

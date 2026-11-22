@@ -253,6 +253,7 @@ function pg_messages_sends_sources()
         'booking' => lang('Booking'),
         'reply' => lang('Answer to a customer'),
         'feedback' => lang('Survey'),
+        'queue' => lang('Queue'),
         'marketing' => lang('Marketing'),
         'test' => lang('Test'),
         'system' => lang('System'),

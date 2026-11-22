@@ -11,7 +11,7 @@ description: Plan walk-in-queue, steps WQ1a to WQ9: the pure rules, the store, p
 
 - WQ2 (M) after WQ1b, done in #11038: the places list and a place's screen (services, hours, desks, notices, order, keep period), the printable QR poster (`commerce/walk-in-queue-places.md`; rows read "Messages" and "Calling order"). Features: W1, W2.
 
-- WQ3 (M) after WQ2: the public `queue.php` (take a number, the person's page with its 15-second read, Leave the queue) and its `waf_sensitive_scripts()` entry; staff adding a number; kind `queue` in `pg_sms_kinds()` and the WhatsApp template, a service message (poll 207), never asking marketing consent; the notices. Features: W3, W5, W6.
+- WQ3 (M) after WQ2, done in #11108: the public `queue.php` (take a number, the person's page with its 15-second read, Leave the queue) and its `waf_sensitive_scripts()` entry; staff adding a number; kind `queue` in `pg_sms_kinds()` and the WhatsApp template, a service message (poll 207), never asking marketing consent; the notices. Features: W3, W5, W6.
 
 - WQ4 (M) after WQ3: the desk screen: open and close a desk, Call next, Call again, Not here, Send to another service, Finish, Pause. Features: W2, W7.
 
