@@ -69,7 +69,7 @@
 - catalog-new-group-address.md: Catalog Manager New Product Group takes its address from its first name; delete badges carry the count in the sentence, the bin progress says so, New image hidden in the catalog
 - catalog-rename-live-row.md: Catalog Manager rename (grid, tree, Bulk Rename) refuses a product or group that is deleted or in the Recycle Bin
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
-- chart-text-equivalents.md: Text copies of canvas-only and tooltip-only figures: orders Top 5, Search Console by day, Daily Traffic, Sales Map table, seven-day bars; Sales Map role=img on the map layer
+- chart-text-equivalents.md: Text copies of canvas-only and tooltip-only figures: orders Summary bars, Search Console by day, Daily Traffic, Sales Map table, seven-day bars; Sales Map role=img on the map layer
 - chat-push-recipient.md: Who a chat message wakes on their devices; a member who started a site conversation is woken when staff answer
 - chat-window-close-delete-ai.md: Panel chat window: close/delete leave only on success, the closer's read cursor, image attachments as links, the AI Chat snippet's texts and theme
 - chat-window-contrast.md: Panel chat window colours readable in both themes (own-message gradient, read ticks, active tab, emoji tool, send button) and text and box sizes in rem
@@ -87,6 +87,7 @@
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
+- connections-accounting-page.md: Paraşüt and Logo İşbaşı on Connections (CX11h): Connect, Save, Save and try, Disconnect on their pages; the E-Invoice card picks only a connected provider
 - connections-accounts-signin-page.md: Accounts and sign-in on Connections (CX11f): Apple's sign-in application and the Turnstile and hCaptcha keys on their pages; the cards keep the switches and the choice
 - connections-address-merchant-page.md: Address autocomplete providers and Merchant Center on Connections (CX11g4): keys, server, account, country on their pages; the card keeps switch and provider
 - connections-communication-page.md: WhatsApp's and İYS's pages on Connections (CX11d): the accounts typed there under the Communication gate; the cards show the connection
@@ -438,7 +439,7 @@
 - look-embedded-table.md: Look A's list table inside an edit screen (SH8): .pg-embedded-table and its parts; the products table of Add and Edit Product Group on it, one row helper
 - look-erp-lists.md: SH3: ERP lists in the look's list recipe: the plain list tables' heading and rows (erp-list-table), status badges as .pg-pill through pg_pill(), the Expenses filter card's labels
 - look-field-widths.md: Field widths of the add and edit screens in look A (DL5c, #9658): the 16 px field grid, the span per field kind from md up, pg-field-span-N for a field alone in its row, who sets which screen's spans [decision: here]
-- look-figure-cards.md: Look A's figure cards (SH4, #9725): .pg-figures, .pg-figure, -label, -value, -note as the report's figure; Orders, Commissions, Edit Invoice Settlement, Receipt amount, Marketplace Products hero
+- look-figure-cards.md: Look A's figure cards (SH4, #9725): .pg-figures, .pg-figure, -label, -value, -note, the strip .pg-figure-strip; Orders, Commissions, Edit Invoice Settlement, Receipt, Marketplace Products hero
 - look-forms-files-screens.md: Form fields, the form list view, file, calendar event and booking screens in look A (S3, #10314): titles, group labels, field spans per field, what stayed and what waited for other PRs
 - look-group-heading-rank.md: Look A: a group heading inside a card is .pg-group-label and never outranks the card's title (architect, 2026-11-17, looks of S3 #10314 and S4 #10316) [decision: here]
 - look-icon-buttons.md: SH5: icon-only toolbar buttons and menu toggles of the old panel screens as look A's .pg-icon-button with a lang() name; what was left and why [decision: here]
@@ -460,7 +461,7 @@
 - look-report-screens.md: Report screens in look A (DL5e, #8981): order, visitor, shipping and ERP tax reports; head, strip, tools row, table frame, drawer, the choices made and what is not done
 - look-screen-widths.md: Root panel screens outside the look's widths (no pg-measure-edit, -list or -report, or a container of their own) on 2026-11-13, and the PR that took each (#9230, #9330, #9249) [decision: decisions-made-panel-7.md, decisions-made-panel-8.md]
 - look-settings-categories.md: Site Settings categories in look A (S5 of panel-old-screens): which note holds each category's move, the shared files that needed none, the inline styles kept on purpose
-- look-settings-mail-sending.md: Site Settings › E-mail sending in look A (S5e, EM2): settings rows with pg-field-label, the ways sheet's drawer fields, tiles, the DKIM field, the Sending domain card's list rows and pills
+- look-settings-mail-sending.md: Site Settings › E-mail sending in look A (S5e, EM2, EM3): settings rows, the ways sheets' fields, tiles, the Sending domain card's list rows and pills, its DKIM field
 - look-settings-mailboxes.md: Site Settings › E-mail › Mailboxes in look A: the folded rows, a box row with its state pill and menu, Accounts for mailboxes, button ranks, the drawer's parts [decision: here]
 - look-settings-maintenance-security.md: Site Settings Maintenance, Firewall, Security and Features in look A (S5b of panel-old-screens): quiet small buttons, group labels, the auto-bans table, what stayed
 - look-settings-other-categories.md: Site Settings Privacy to General and the settings page toolbar in look A (S5c of panel-old-screens): buttons, pills, tables, the date format segments, what stayed
@@ -531,7 +532,7 @@
 - page-edit-layout.md: Create Page and Edit Page: wide layout (form, sticky status and save bar columns, Summary card), rows hidden with d-none via pg_page_row(), bindPageTypePicker(), no fake popovers
 - page-form-count-defaults.md: Create/Edit Page and the designer's Page Type pane save an emptied or zero Photo Gallery column count or Form View Directory summary box as the form's default (4 / 30 / 5), not 0
 - page-form-group-names.md: Create/Edit Page type properties and the ERP accounts import: radio questions are legends, the custom form's two e-mail blocks are named by their switch
-- page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask
+- page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask [decision: here]
 - page-form-page-fields.md: Create Page / Edit Page and the designer's page type pane: page settings are typed page picker fields (pg_page_form_page_field()); Settings and the user start page too (#8782)
 - page-form-refused-save.md: Create Page and Edit Page come back with what was typed when a save is refused: the stored post, the redraw helpers in includes/forms/page_form.php, what is not redrawn
 - page-list-paging.md: The pages list (view_pages.php) on the list table driver (paged since #6114, issues #6076 #6088): views, source, bulk actions by selection, folder access in SQL, inherited styles
@@ -573,6 +574,7 @@
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page [decision: here]
 - panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()
+- panel-shell-foot.md: Panel foot at the window's bottom, none on the Workspace channel view; top bar description ends 16px before the search field; no Ctrl+K there on Workspace screens
 - panel-small-select-arrow.md: A small select (select.form-control.form-control-sm) keeps its longest option clear of the arrow: 1.75rem end padding, the arrow 0.5rem in
 - panel-spacing-tokens.md: B10 spacing (#5356): cards on Bootstrap 6's card padding with the header in line, menu rows inset with rounded corners, on Bootstrap 6's --bs-spacer-N scale
 - panel-stepper-and-product-names.md: Accessible names of number steppers, catalog landmarks, the Modify Selected (Products) value boxes and the product screen fields, and the tests that pin them
@@ -670,7 +672,8 @@
 - settings-features-rows.md: Site Settings › Features below the Modules board: the folded rows Site search, Sharing buttons, Speed, Badge and the rest, their card ids, state lines and what moved into them
 - settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed [decision: here]
 - settings-filter-autofill.md: Settings category screens: a password manager wrote the saved username ("admin") into the toolbar filter and every section card vanished; the token and the focus guard that stop it (PR #1700)
-- settings-firewall.md: Site Settings › Firewall and HTTPS as folded rows: the six firewall rows and their state lines, the Limits row, the bans drawer, the two segmented controls, what stayed (ids, field names, the save)
+- settings-firewall-https-logs.md: Site Settings › Firewall and HTTPS, the HTTPS row (Secure Mode first, the headers, the policy) and the Logs row (both logs, fail2ban files under a details): lines, fields, anchors
+- settings-firewall.md: Site Settings › Firewall and HTTPS as folded rows: the eight rows in order and their state lines, the Limits row, the bans drawer, the segmented controls, what stayed (ids, names, the save)
 - settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows [decision: decisions-made-panel-11.md, decisions-made-panel-12.md]
 - settings-folder-pickers.md: Site Settings and page folder pickers leave out the Workspace (settings also the Recycle Bin); settings saves refuse them; a stored one is shown marked
 - settings-general.md: Site Settings › General as folded rows: the four rows and their state lines, what each row holds, the IP as a line, Outgoing proxy, what stayed (ids, field names, the save, the search words)
@@ -680,7 +683,7 @@
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
 - settings-list-headings.md: Site Settings dialog list: the five group headings (four decided #3879, built #4118; Workspace #8675), the group key per category, how a new category joins one. [decision: decisions-made-product-13.md]
 - settings-mail-sending-rows.md: E-mail sending's folded rows (EM2): How e-mail leaves with a sentence a kind of mail, the ways sheet of system e-mail and what its choice saves, each row's line and pill, Send a test's result [decision: here]
-- settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors [decision: here]
+- settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2, EM3): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors [decision: here]
 - settings-modal-architecture.md: Site Settings dialog: file map, the 20 categories under 5 headings, where moved cards went, moving a card, adding a category. [decision: decisions-made-product-14.md]
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.
@@ -724,7 +727,7 @@
 - smtp-settings-keyboards.md: Phone keyboards of the E-mail sending boxes (formerly SMTP Settings): URL keyboard on hosts and the DKIM domain, no auto-capitalisation on user names and the DKIM selector
 - sortable-init-pitfall.md: Drag-to-reorder in the panel: SortableJS set up per screen (welcome, product builder, menu tree), the arrow-key grips, no shared or jQuery UI sortable, the global-sortable trap
 - state-shared-form.md: add_state.php and edit_state.php draw the state/province wide layout (Options card, Summary, save bar) and read its posted values through includes/forms/state_form.php; what each screen keeps
-- status-chart-colour-words.md: Status chips, Payment methods doughnut and Search Console chart tell states apart by words, dashes and shapes; ERP Profit and Search Console series lines and bar edges use the -ink tones
+- status-chart-colour-words.md: Status chips, the orders' Payment methods bars and Search Console chart tell states apart by words, dashes and shapes; ERP Profit and Search Console series lines and bar edges use the -ink tones
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards [decision: decisions-made-panel-3.md]
 - stored-choice-kept.md: Selects that drop the stored choice add it back selected and marked (product private folder, Workspace template, select_page(), calendar Next Page, disabled offers) [decision: decisions-made-product-42.md]
 - stored-times-site-order.md: Subscriptions, Firewall log rows, short link state lines and the Paraşüt connection line print stored times through get_absolute_time(), not date()

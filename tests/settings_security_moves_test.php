@@ -94,11 +94,25 @@ function test_settings_security_moves_card_order()
 		array('pgset-session', 'pgset-captcha', 'pgset-device', 'pgset-mfa', 'pgset-audit', 'pgset-signin', 'pgset-membership', 'pgset-encryption'),
 		settings_security_moves_test_sections('security'));
 	pg_assert_same(
-		array('pgset-waf', 'pgset-limits', 'pgset-bots', 'pgset-iplists', 'pgset-countries', 'pgset-proxies', 'pgset-headers'),
+		array('pgset-headers', 'pgset-waf', 'pgset-limits', 'pgset-bots', 'pgset-iplists', 'pgset-countries', 'pgset-proxies', 'pgset-waf-logs'),
 		settings_security_moves_test_sections('firewall'));
 
-	// The pane draws the cards in the order the registry lists them.
-	foreach (array('security' => 'includes/settings/security.php', 'firewall' => 'includes/settings/firewall.php') as $key => $file) {
+	// The firewall pane draws its cards as rows in pg_firewall_fold_order().
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/firewall_settings_fold.php');
+	$rows = array();
+
+	foreach (pg_firewall_fold_order() as $key) {
+		$rows[] = 'pgset-' . $key;
+	}
+
+	pg_assert_same(settings_security_moves_test_sections('firewall'), $rows, 'the firewall rows in the registry\'s order');
+
+	foreach (settings_security_moves_test_sections('firewall') as $id) {
+		pg_assert_contains('<div id="' . $id . '" class="pg-set-card">', settings_security_moves_test_source('includes/settings/firewall.php'), $id . ' is drawn');
+	}
+
+	// The Accounts and sign-in pane draws the cards in the order the registry lists them.
+	foreach (array('security' => 'includes/settings/security.php') as $key => $file) {
 		$source = settings_security_moves_test_source($file);
 		$last = -1;
 

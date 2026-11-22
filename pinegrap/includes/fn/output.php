@@ -2808,7 +2808,7 @@ function output_header($properties = false)
                 <h2 class="drawer-title pg-bell-heading" id="pg_bell_heading">' . h(lang('Notifications')) . '</h2>
                 <button type="button" class="pg-bell-head-btn pg-bell-mark-all no-popover d-none"><span class="bi bi-check2-all" aria-hidden="true"></span><span>' . h(lang('Mark all as read')) . '</span></button>
                 <div class="pg-bell-menu-wrap pg-bell-head-menu d-none">
-                    <button type="button" class="pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="pg_bell_head_menu" aria-label="' . h(lang('More actions')) . '" title="' . h(lang('More actions')) . '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>
+                    <button type="button" class="pg-icon-button pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="pg_bell_head_menu" aria-label="' . h(lang('More actions')) . '" title="' . h(lang('More actions')) . '"><span class="bi bi-three-dots" aria-hidden="true"></span></button>
                     <div class="pg-bell-menu" id="pg_bell_head_menu" hidden>
                         <button type="button" class="pg-bell-menu-item pg-bell-delete-all"><span class="bi bi-trash" aria-hidden="true"></span>' . h(lang('Delete All Notifications')) . '</button>
                     </div>

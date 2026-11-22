@@ -2302,19 +2302,10 @@ function api_products_price_history($params) {
 
 	}
 
-	$cursor = null;
+	// sort=newest walks the same change time and id the other way (list_order.php).
+	$descending = api_list_descending($params);
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
-
-		$cursor = api_cursor_decode($params['cursor']);
-
-		if ($cursor === null) {
-
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-	}
+	$cursor = api_list_cursor($params, $descending);
 
 	$since = isset($params['since']) ? (int)$params['since'] : 0;
 
@@ -2326,7 +2317,7 @@ function api_products_price_history($params) {
 
 		// One row more than asked for; whether it exists says whether there
 		// is another page, without a second query.
-		$rows = api_rows(pg_price_history_list_sql($id, $channel, $since, $cursor, $limit + 1));
+		$rows = api_rows(pg_price_history_list_sql($id, $channel, $since, $cursor, $limit + 1, $descending));
 
 	}
 
@@ -2344,7 +2335,7 @@ function api_products_price_history($params) {
 
 		$last = $rows[count($rows) - 1];
 
-		$next_cursor = api_cursor_encode($last['changed_at'], $last['id']);
+		$next_cursor = api_list_cursor_encode((int)$last['changed_at'], (int)$last['id'], $descending);
 
 	}
 

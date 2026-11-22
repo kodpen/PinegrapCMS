@@ -1380,7 +1380,7 @@ function pg_privacy_retention_overview(array $facts)
     $rows[] = $row('consent', lang('Consent history'), lang(array('string' => 'Kept {var:1} year{suffix:1}; the answer in force always', 'vars' => $consent, 'suffix' => array(($consent === 1) ? '' : 's'))), 'bi-check2-square', 'pg-tone-teal');
 
     $waf = (int) ($facts['waf_days'] ?? 0);
-    $rows[] = $row('waf', lang('Firewall log'), lang(array('string' => 'Kept {var:1} day{suffix:1}, at most {var:2} rows', 'vars' => array($waf, pg_format_number((int) ($facts['waf_rows'] ?? 0), 0)), 'suffix' => array(($waf === 1) ? '' : 's'))), 'bi-shield-check', 'pg-tone-rose', 'firewall', 'pgset-waf');
+    $rows[] = $row('waf', lang('Firewall log'), lang(array('string' => 'Kept {var:1} day{suffix:1}, at most {var:2} rows', 'vars' => array($waf, pg_format_number((int) ($facts['waf_rows'] ?? 0), 0)), 'suffix' => array(($waf === 1) ? '' : 's'))), 'bi-shield-check', 'pg-tone-rose', 'firewall', 'pgset-waf-logs');
     $rows[] = $row('api', lang('API log'), $kept($facts['api_days'] ?? 0, 'days'), 'bi-plug', 'pg-tone-violet', 'api', 'pgset-api-storage');
 
     if (isset($facts['booking_days'])) {

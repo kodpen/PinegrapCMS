@@ -120,3 +120,39 @@ function test_ws_frame_small_select_keeps_its_arrow_clear()
 	pg_assert_contains('--bs-control-select-bg-position: right .5rem center;', $rule);
 	pg_assert_contains('padding-inline-end: 1.75rem;', $rule);
 }
+
+// The panel's foot stands at the window's bottom on a short screen: the
+// content column is at least the window under the top bar and the foot takes
+// the space left over. No fixed foot over the content.
+function test_ws_frame_foot_at_the_window_bottom()
+{
+	$source = ws_frame_css_source();
+
+	pg_assert_true(preg_match('/body:not\(\.toolbar\) \.software-content \{\s*display: flex;\s*flex-direction: column;\s*min-height: calc\(100vh - var\(--pg-navbar-h\)\);/', $source) === 1, 'the content column is at least the window under the top bar');
+	pg_assert_contains('margin-top: auto;', ws_frame_css_rule($source, 'body:not(.toolbar) .software-content > #footer'));
+	pg_assert_true(preg_match('/#footer\s*\{[^}]*position:\s*(fixed|sticky)/', $source) !== 1, 'the foot is never fixed over the content');
+}
+
+// The channel view of workspace.php prints no foot and fills the window;
+// Today (.ws-home) keeps the foot. output_footer() itself prints the same on
+// every screen, as the script switches the two views in place.
+function test_ws_frame_channel_view_has_no_foot()
+{
+	$source = ws_frame_css_source();
+
+	pg_assert_contains('display: none !important;', ws_frame_css_rule($source, 'body.workspace_channels .software-content:not(:has(.ws-home)) > #footer'));
+	pg_assert_contains('height: calc(100vh - var(--pg-navbar-h));', ws_frame_css_rule($source, "\n.ws-app:not(:has(.ws-home))"));
+
+	$footer = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/output.php');
+	pg_assert_true(preg_match('/function output_footer\(\$properties = false\)\s*\{\s*\$output_software_labeling = \'\';\s*if \(PRIVATE_LABEL != true\)/', $footer) === 1, 'output_footer() decides its lines by private label alone');
+}
+
+// The top bar's search field shows no Ctrl+K on a Workspace screen, and the
+// heading's description ends 16px before the centred field.
+function test_ws_frame_top_bar_on_workspace_screens()
+{
+	$source = ws_frame_css_source();
+
+	pg_assert_contains('display: none;', ws_frame_css_rule($source, 'body.workspace #header .pg-searchbar-kbd'));
+	pg_assert_contains('max-width: min(26rem, calc(50% - (var(--pg-searchbar-w) / 2) - 15.375rem));', ws_frame_css_rule($source, '#header:has(.pg-searchbar) .pg-navhead'));
+}

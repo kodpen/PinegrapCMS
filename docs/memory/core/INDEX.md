@@ -126,6 +126,7 @@
 - mail-bounce-screens.md: Where the bounce record is shown: campaign delivery counts, the Suppressed contact view and export column, the contact card badge with Allow again, personal data export and erasure
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them
 - mail-bounces.md: The bounce record (mail_bounces, one row per address) and the send gate the mail queue and campaigns ask before a send; complaint withdraws e-mail consent; resubscribe or address change clears [decision: decisions-made-product-19.md]
+- mail-campaign-way.md: How campaign e-mail leaves: the layers email() reads, the campaigns' ways sheet and its stored way (config_text campaign_mail_way), why a site that never chose keeps today's order [decision: here]
 - mail-failure-reason.md: Screens that send an e-mail at once show the mail server's reason on failure through pg_mail_failure_sentence(), not a pointer at the log
 - mail-merge-values-once.md: replace_variables() fills every ^^field^^ in one pass; a filled-in value is never read again as a field.
 - mail-queue-outcome.md: The mail queue's outcome hook (PR #8607): a queued row names a handler (on_outcome) and a reference (outcome_ref); after sent, given up or blocked the queue calls it; where it does not

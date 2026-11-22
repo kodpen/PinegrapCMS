@@ -116,7 +116,7 @@ if ($code === '') {
         $lines[] = $info['label'] . ': ' . (string) $result['message'];
 
         if (($code === 'parasut') && !$ok) {
-            $lines[] = lang('The Paraşüt boxes on this card are read from what is saved; save the settings first when you have just changed them.');
+            $lines[] = lang('The Paraşüt connection is set on its page of Connections.');
         }
     }
 }
@@ -138,7 +138,7 @@ if ((string) ($_POST['format'] ?? '') === 'json') {
         'tone' => $tone,
         'icon' => $icon,
         'lines' => array_values($lines),
-        'note' => lang('Nothing was saved; use Save on the settings card to keep the credentials.'),
+        'note' => lang('The connection is kept on the provider\'s page of Connections.'),
     ), JSON_UNESCAPED_UNICODE);
 
     exit();

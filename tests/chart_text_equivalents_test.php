@@ -3,8 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Source pins for charts whose figures were drawn only on a canvas: the
- * orders list's Top 5 products bar chart names every product with its
- * quantity, the Search Console day chart carries a table of its days, the
+ * orders list's Top 5 products prints every product with its quantity, the Search Console day chart carries a table of its days, the
  * dashboard Daily Traffic chart keeps a table of the series on show, and
  * the Sales Map's Filter button sits outside the element named as a picture.
  *
@@ -25,11 +24,14 @@ function chart_text_equivalents_source($path)
 
 function test_chart_text_equivalents_top_products()
 {
-	$source = chart_text_equivalents_source('view_orders.php');
+	// Summary draws its bars in markup with every quantity printed beside
+	// its product, so no figure lives only on a canvas.
+	$html = pg_order_list_summary_html(array(array('label' => 'Chair', 'value' => 92)), array());
 
-	pg_assert_contains("\$top_summary = lang('Top 5 products');", $source, 'summary starts with the chart title');
-	pg_assert_contains("\$top_row['label'] . ': ' . pg_format_number(\$top_row['quantity'], 0)", $source, 'each product with its quantity');
-	pg_assert_contains('<canvas id="pg_orders_top" role="img" aria-label="\' . h($top_summary) . \'">', $source, 'canvas named with the figures');
+	pg_assert_contains("Top 5 products", $html, 'the part starts with its title');
+	pg_assert_contains('<span class="pg-orders-summary-name" title="Chair">Chair</span>', $html, 'each product by name');
+	pg_assert_contains('<b class="pg-orders-summary-value">92</b>', $html, 'with its quantity as text');
+	pg_assert_false(strpos($html, '<canvas') !== false, 'no canvas');
 }
 
 function test_chart_text_equivalents_search_console_days()

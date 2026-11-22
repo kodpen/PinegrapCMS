@@ -191,6 +191,12 @@ function test_price_history_list_sql()
 	pg_assert_contains("(changed_at = '1760003600' AND id > '42')", $sql, 'the same second, by id');
 	pg_assert_contains('LIMIT 50', $sql);
 
+	$sql = pg_price_history_list_sql(7, null, 0, array('v' => '1760003600', 'i' => '42'), 50, true);
+
+	pg_assert_contains('ORDER BY changed_at DESC, id DESC', $sql, 'the latest change first');
+	pg_assert_contains("(changed_at < '1760003600'", $sql, 'newest first: the rows before the last one read');
+	pg_assert_contains("(changed_at = '1760003600' AND id < '42')", $sql, 'newest first: the same second, by the lower id');
+
 	pg_assert_contains("LIMIT 1", pg_price_history_list_sql(7, '', 0, null, 0), 'at least one row');
 	pg_assert_same('', pg_price_history_list_sql(0, null, 0, null, 50), 'not a product id');
 	pg_assert_same('', pg_price_history_list_sql(array(7, 9), null, 0, null, 50), 'one product, not a list');

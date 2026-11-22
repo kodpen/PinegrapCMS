@@ -1655,14 +1655,16 @@ function pg_page_cache_referer($raw)
  * the favourites, whose hearts a page's script fills in for each visitor,
  * a back-in-stock request, which no page shows, and the workspace, whose
  * page and product changes are announced (pg_page_cache_announce_dirties()).
+ * An API client's POST /batch only reads (pg_page_cache_api_path_reads()).
  *
  * @param string $method
  * @param string $script SCRIPT_NAME
  * @param bool   $signed_in
  * @param bool   $api_client integration.php
+ * @param string $api_path   the API path as the server gave it (PATH_INFO)
  * @return bool
  */
-function pg_page_cache_request_dirties($method, $script, $signed_in, $api_client)
+function pg_page_cache_request_dirties($method, $script, $signed_in, $api_client, $api_path = '')
 {
     $method = strtoupper((string) $method);
 
@@ -1677,7 +1679,53 @@ function pg_page_cache_request_dirties($method, $script, $signed_in, $api_client
         return false;
     }
 
+    if ($api_client && !$signed_in && pg_page_cache_api_path_reads($api_path)) {
+        return false;
+    }
+
     return (bool) $signed_in || (bool) $api_client;
+}
+
+/**
+ * The API path of this request as the server gave it, for
+ * pg_page_cache_request_dirties(): PATH_INFO, or IIS's ORIG_PATH_INFO, or the
+ * ?path= fallback (api_request_path() reads the same three).
+ *
+ * @return string
+ */
+function pg_page_cache_request_api_path()
+{
+    foreach (array('PATH_INFO', 'ORIG_PATH_INFO') as $key) {
+        if (isset($_SERVER[$key]) && is_string($_SERVER[$key]) && ($_SERVER[$key] !== '')) {
+            return $_SERVER[$key];
+        }
+    }
+
+    return (isset($_GET['path']) && is_string($_GET['path'])) ? $_GET['path'] : '';
+}
+
+/**
+ * Whether an API path is a route that answers reads with POST: /batch, which
+ * runs several GETs in one request (includes/api/resources/batch.php) and is
+ * what a team device polls. The path may still carry the entry script, as
+ * IIS's ORIG_PATH_INFO does.
+ *
+ * @param string $path
+ * @return bool
+ */
+function pg_page_cache_api_path_reads($path)
+{
+    $path = str_replace('\\', '/', (string) $path);
+
+    $script = stripos($path, 'integration.php');
+
+    if ($script !== false) {
+        $path = substr($path, $script + strlen('integration.php'));
+    }
+
+    $path = '/' . trim((string) preg_replace('#/+#', '/', $path), '/');
+
+    return strtolower($path) === '/batch';
 }
 
 /**
