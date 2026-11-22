@@ -293,6 +293,7 @@ description: Generated from the module field of the memory files: each includes/
 - `payments`: [[card-brand-switches]], [[connections-payment-gateways-page]], [[connections-payment-services-page]], [[gateway-masked-keys]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
 - `pick_pack`: [[pick-pack-rules]]
+- `pick_waves`: [[pick-pack-waves]]
 - `picker`: [[picker-all-list-dialog]], [[picker-designer-bridge]], [[picker-dialog]], [[picker-editor-bridge]], [[picker-field]], [[picker-overview]], [[picker-page-fields-screens]], [[picker-pages]], [[picker-registry]], [[picker-remaining-screens]], [[picker-site-lists]], [[picker-upload]], [[settings-picker-field]]
 - `picker_all`: [[picker-all-list-server]]
 - `picture_server_draw`: [[picture-text-auto-draw]], [[picture-text-auto-server]]
