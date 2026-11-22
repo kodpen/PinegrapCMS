@@ -17,7 +17,7 @@ description: Application Access's New application sheet: a drawer in three steps
   - Read-only reporting: kind `server`, the read of every row that has one, no write.
   - Mobile app and team devices: kind `device`, nothing ticked, no secret.
 - No card ticks a row whose scope, or the read its write holds, has a `moves_money` route: `api_app_money_scopes(api_schema())` and `api_app_template_safe_choices()` drop it (tests/api_app_templates_test.php).
-- The "Agent in a channel" card comes with step AA5 of the redraw plan.
+- Agent in a channel (after the sign-in card, only while the Workspace is on, for an administrator): kind `server`, the Workspace row with write (`application-access-agent-tab.md`).
 
 ## What does the sign-in card do once OAuth is set up?
 - The site serves one OAuth application (`pg_oauth_app()`). When it exists the card shows "Set up already" and Next reads "Open it": the sheet closes and that application's drawer opens. No second OAuth application is made.

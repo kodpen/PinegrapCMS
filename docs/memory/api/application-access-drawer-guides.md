@@ -6,7 +6,7 @@ description: Application Access's edit drawer (head, tabs, Overview, Connect) an
 ## What does the edit drawer show?
 - `#api_drawer`, `min(760px, 100%)`, from the end; under 576 px the script swaps in `drawer-bottom` (88vh). Drawn by `api_app_drawer_view()` (`includes/api/app_drawer_view.php`) to `plans/app-access-redraw/app-edit.html`, since AA3. `openApp()` in `api_settings.php` fills it.
 - Head: the kind's tile, the name, "Integration · key and secret · Acts as: the application itself" (OAuth and team devices: "sign-in", "the person who signs in"), the list's state as a pill, Close.
-- Tabs (`pg-seg`, role=tab): Overview, Connect, Permissions (its count beside it), Events, Devices (Connections on OAuth), Logs. The Agent tab comes with AA5. The old Security tab is gone: its fields are Overview's Advanced row.
+- Tabs (`pg-seg`): Overview, Connect, Permissions (its count beside it), Events, Devices (Connections on OAuth), Logs, AI agent (`application-access-agent-tab.md`). The old Security tab's fields are in Overview's Advanced row.
 
 ## What is on Overview?
 - Four facts, the figure cards' compact form (`.pg-figures.pg-figures-sm`, Active `.is-good`, errors above 0 `.is-bad`): Status, Last used, Errors in 24 hours, Owner. Then Details, a card with the Active switch and the key, Summary (Permissions with Go to permissions; Advanced folded: IP list, end date, rate limit) and Danger at the foot: New secret (the old works a day) and Delete with its confirm.

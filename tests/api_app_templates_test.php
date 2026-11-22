@@ -237,3 +237,19 @@ function test_api_app_new_view_draws_the_cards()
 	pg_assert_false(strpos($html, 'btn btn-') !== false, 'no old button');
 	pg_assert_contains('<details class="api-new-advanced"', $html, 'Advanced starts closed');
 }
+
+function test_api_app_templates_agent_card()
+{
+	$groups = api_app_templates_test_groups();
+	$money = api_app_money_scopes(api_app_templates_test_routes());
+
+	pg_assert_false(isset(api_app_templates_test_cards()['agent']), 'not offered unless the Workspace is on for an administrator');
+
+	$cards = api_app_templates($groups, pg_automation_contract_scopes(), $money, null, true);
+
+	pg_assert_same(array('signin', 'agent', 'automation', 'own', 'reporting', 'devices'), array_keys($cards), 'after the sign-in card');
+	pg_assert_same('server', $cards['agent']['kind'], 'an integration');
+	pg_assert_true($cards['agent']['secret'], 'with a key and a secret');
+	pg_assert_same('agent', $cards['agent']['guide'], 'the agent guide in step 3');
+	pg_assert_same(api_app_template_safe_choices(array('workspace' => 'write'), $groups, $money), $cards['agent']['choices'], 'the Workspace row, unless it moves money');
+}
