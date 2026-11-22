@@ -13256,6 +13256,34 @@ function pg_carrier_number_field($value)
 }
 
 /**
+ * An e-document provider's connection on the E-Invoice card: Connected teal
+ * or Not connected gray, a line, and the way to the provider's page of
+ * Connections, where its credentials are typed. The card picks only a
+ * connected provider (erp_edoc_pick_decide()).
+ *
+ * @param string $code       the driver code, its registry key
+ * @param string $label      the provider's name
+ * @param bool   $connected
+ * @return string HTML
+ */
+function pg_edoc_card_connection_html($code, $label, $connected)
+{
+    $url = (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
+        . '/connections.php?service=' . rawurlencode((string) $code);
+
+    return '
+                                                                <div class="d-flex flex-column align-items-start gap-2" id="pgsub-edoc-' . h($code) . '-connection">
+                                                                    <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => $label))) . '</span>' . ($connected
+                                                                        ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                                        : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                                                    <div class="form-text mt-0">' . h($connected
+                                                                        ? lang('The connection is kept on the provider\'s page of Connections.')
+                                                                        : lang('This provider is not connected, so it cannot be used. Connect it on its page of Connections.')) . '</div>
+                                                                    <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '">' . h($connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                                                </div>';
+}
+
+/**
  * Whether the settings show the e-invoice card. The providers behind it are
  * Turkish (GİB integrators and Paraşüt), so a store elsewhere sees it only
  * when one of them is already switched on or documents were sent through

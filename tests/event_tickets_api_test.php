@@ -96,7 +96,7 @@ function test_event_tickets_api_route_row()
 	pg_assert_true(function_exists($route['handler']), 'the handler exists');
 
 	$names = array_map(function ($param) { return $param['name']; }, $route['params']);
-	pg_assert_same(array('id', 'recurrence_number', 'state', 'limit', 'cursor', 'include_count'), $names, 'its parameters');
+	pg_assert_same(array('id', 'recurrence_number', 'state', 'limit', 'cursor', 'sort', 'include_count'), $names, 'its parameters');
 }
 
 // A key without orders:read is refused before the handler, whatever

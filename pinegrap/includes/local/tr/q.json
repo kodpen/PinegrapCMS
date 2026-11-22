@@ -223,6 +223,7 @@
     "quantity must be a whole number.": "quantity tam sayı olmalıdır.",
     "quantity must be between {var:1} and {var:2}.": "quantity {var:1} ile {var:2} arasında olmalıdır.",
     "quantity must be numeric.": "quantity sayısal olmalıdır.",
+    "query must be an object of single values, or a query string.": "query tek değerlerden oluşan bir nesne ya da bir sorgu metni olmalıdır.",
     "question": "soru",
     "question-to-the-pharmacist": "eczaciya-soru",
     "questions": "sorular",

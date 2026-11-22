@@ -618,11 +618,12 @@ function pg_connections_registry()
         'openai_feed' => array('name' => 'OpenAI product feed', 'group' => 'marketplaces', 'place' => '#settings/commerce/pgset-feeds', 'uses' => 'A product feed for ChatGPT shopping',
             'state' => null, 'no_state' => 'A file the service fetches; a format offered is no account.'),
 
-        // E-documents and tax.
-        'parasut' => array('name' => 'Paraşüt', 'group' => 'edocuments', 'place' => '#settings/accounting/pgset-invoice', 'uses' => 'e-Fatura, e-Arşiv and e-İrsaliye',
+        // E-documents and tax. A provider's connection is set on its page;
+        // the E-Invoice card picks the one that carries the documents.
+        'parasut' => array('name' => 'Paraşüt', 'group' => 'edocuments', 'place' => 'connections.php', 'found_at' => '#settings/accounting/pgset-invoice', 'uses' => 'e-Fatura, e-Arşiv and e-İrsaliye',
             'state' => array('kind' => 'edoc', 'key' => 'parasut'),
             'covers' => array('edoc' => array('parasut'))),
-        'isbasi' => array('name' => 'Logo İşbaşı', 'group' => 'edocuments', 'place' => '#settings/accounting/pgset-invoice', 'uses' => 'e-Fatura and e-Arşiv',
+        'isbasi' => array('name' => 'Logo İşbaşı', 'group' => 'edocuments', 'place' => 'connections.php', 'found_at' => '#settings/accounting/pgset-invoice', 'uses' => 'e-Fatura and e-Arşiv',
             'state' => array('kind' => 'edoc', 'key' => 'isbasi'),
             'covers' => array('edoc' => array('isbasi'))),
         'vies' => array('name' => 'VIES', 'group' => 'edocuments', 'place' => '#settings/commerce/pgset-store', 'uses' => 'Checks EU VAT numbers at checkout',

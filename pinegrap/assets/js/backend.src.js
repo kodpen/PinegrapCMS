@@ -2313,10 +2313,10 @@ $(document).ready(function () {
        tab: a popup is the one part of this a browser is free to refuse, and
        an answer nobody sees is the fault all over again.
        Nothing is saved by it; that is still the pane's Save.
-       The Paraşüt card's Connect button is the same handler with another
+       Paraşüt's Connect button, on its page of Connections, is the same handler with another
        endpoint and another box prefix (data-pg-fields): it posts the
        parasut_* boxes and prints the answer in the result box nearest to
-       it, the one in its own block. */
+       it, the one in its own block; there the boxes are its form's. */
     $(document).on("click", "button.pg-edoc-test", function (event) {
 
         event.preventDefault();
@@ -2329,7 +2329,7 @@ $(document).ready(function () {
             return;
         }
 
-        var $card = $button.closest(".pg-set-card");
+        var $card = $button.closest(".pg-set-card, .connections-app-form");
         var $result = $button.closest(".col-12, .pg-f-md").find(".pg-edoc-test-result").first();
         var token = $("#pg_settings_modal_token").val();
         var data = new FormData();
@@ -2429,7 +2429,7 @@ $(document).ready(function () {
        redirect is the out-of-band one the API documentation names. */
     $(document).on("input change", "#parasut_client_id", function () {
 
-        var $link = $(this).closest(".pg-set-card").find("a.pg-parasut-authorize").first();
+        var $link = $(this).closest(".pg-set-card, .connections-app-form").find("a.pg-parasut-authorize").first();
         var base = $link.attr("data-pg-base");
         var clientId = $.trim($(this).val());
 

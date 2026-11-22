@@ -222,3 +222,43 @@ function test_api_list_contract_lists_say_newest()
 		pg_assert_true(strpos($source, "list_order.php'") !== false, $where[0] . ' loads list_order.php');
 	}
 }
+
+// The lists a team device reads (api_device_switch_ceiling()) that walk oldest
+// first by default also walk newest first: each declares the sort row with
+// oldest as the default and its handler reads it through list_order.php.
+function test_api_list_device_lists_take_newest()
+{
+	$handlers = array(
+		'bookings.list'                        => array('includes/api/resources/bookings.php', 'api_bookings_list'),
+		'calendars.event_tickets'              => array('includes/api/resources/event_tickets.php', 'api_calendar_event_tickets'),
+		'commissions.list'                     => array('includes/api/resources/commissions.php', 'api_commissions_list'),
+		'commissions.recurring_profiles.list'  => array('includes/api/resources/commissions.php', 'api_commission_recurring_profiles_list'),
+		'files.list'                           => array('includes/api/resources/files.php', 'api_files_list'),
+		'inventory.list'                       => array('includes/api/resources/inventory.php', 'api_inventory_list'),
+		'marketplaces.repricing'               => array('includes/api/resources/marketplace_repricing.php', 'api_marketplace_repricing_list'),
+		'product_attributes.list'              => array('includes/api/resources/product_attributes.php', 'api_product_attributes_list'),
+		'product_groups.list'                  => array('includes/api/resources/product_groups.php', 'api_product_groups_list'),
+		'products.price_history'               => array('includes/api/resources/products.php', 'api_products_price_history'),
+	);
+
+	$schema = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
+
+	foreach ($handlers as $route => $where) {
+		$start = strpos($schema, "'id'      => '" . $route . "'");
+		pg_assert_true($start !== false, $route . ' is declared');
+		$next = strpos($schema, "'id'      => '", (int) $start + 10);
+		$row = substr($schema, (int) $start, ($next === false) ? 6000 : $next - (int) $start);
+
+		pg_assert_true(preg_match("/'name' => 'sort',\s*'in' => 'query', 'type' => 'enum', 'values' => array\('oldest', 'newest'\), 'default' => 'oldest'/", $row) === 1,
+			$route . ' declares sort with oldest the default');
+
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $where[0]);
+		$at = strpos($source, 'function ' . $where[1] . '(');
+		pg_assert_true($at !== false, $where[1] . ' is found');
+		$body = substr($source, (int) $at, 5000);
+
+		pg_assert_true(strpos($body, 'api_list_descending($params)') !== false, $route . ' reads the sort');
+		pg_assert_true(strpos($body, 'api_list_cursor($params') !== false, $route . ' reads its cursor under the sort');
+		pg_assert_true(strpos($source, "list_order.php'") !== false, $where[0] . ' loads list_order.php');
+	}
+}
