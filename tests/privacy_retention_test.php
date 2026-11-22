@@ -16,6 +16,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(__DIR__ . '/helpers/source_reader.php');
+
 // 0 or a whole number within the bounds; anything else is refused.
 function test_audit_retention_years_from_input()
 {
@@ -327,4 +329,37 @@ function test_privacy_rule_open_order_where()
 	pg_assert_contains("(order_date >= '" . ($now - 60 * 86400) . "')", $where, 'recent');
 	pg_assert_contains("(refund_status IN ('pending', 'failed', 'manual_required'))", $where, 'money owed back');
 	pg_assert_true(strpos(pg_privacy_rule_open_order_where($now, false), 'refund_status') === false, 'no refund column yet');
+}
+
+// Site chats: a rule of their own, off by default with 60 days suggested,
+// reaching only site chats quiet for the period, through the chats' erase
+// entries and the attachments' files. The old Chat Retention Period field
+// is gone, so the update deletes nothing.
+function test_privacy_rule_site_chats()
+{
+	$catalogue = pg_privacy_rules_catalogue();
+	pg_assert_same(array('unit' => 'days', 'default' => 60, 'min' => 7, 'max' => 3650, 'table' => 'chat_conversations', 'entries' => array('files', 'chat_messages', 'chat_conversations')), $catalogue['chats'], 'the rule');
+
+	$rules = pg_privacy_rules_normalise(array());
+	pg_assert_same(false, $rules['chats']['on'], 'off by default');
+	pg_assert_same(60, $rules['chats']['period'], '60 days suggested');
+	pg_assert_same(array('files', 'chat_messages', 'chat_conversations'), pg_privacy_rule_entries('chats'), 'the chats\' erase entries');
+	pg_assert_true(isset(pg_privacy_rules_labels()['rules']['chats']), 'a name in the Privacy centre');
+
+	$now = mktime(12, 0, 0, 11, 20, 2026);
+	pg_assert_same("(channel = 'site') AND (GREATEST(last_message_at, created_at) < '" . ($now - 60 * 86400) . "')", pg_privacy_rule_candidate_where('chats', $rules['chats'], $now, array()), 'site chats quiet for 60 days');
+
+	$out = pg_privacy_rules_from_input(array('chats' => array('on' => '1', 'period' => '6')), $rules);
+	pg_assert_same(array('chats' => 'period'), $out['errors'], 'under a week refused');
+	$out = pg_privacy_rules_from_input(array('chats' => array('on' => '1', 'period' => '60')), $rules);
+	pg_assert_same(array(), $out['errors'], '60 days taken');
+	pg_assert_same(0, $out['rules']['chats']['approved_at'], 'a dry run and a yes come first');
+
+	$one = pg_test_function_source('pg_privacy_rule_one');
+	pg_assert_contains("SELECT attachment_file_id FROM chat_messages WHERE (attachment_file_id > 0) AND (conversation_id = '\" . \$id . \"')", $one, 'the attachments go with the chat');
+
+	foreach (array('init.php', 'includes/settings/contact.php', 'includes/settings/contact.save.php', 'includes/settings/prep.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_false(stripos($source, 'chat_retention') !== false, $file . ': no Chat Retention Period');
+	}
 }

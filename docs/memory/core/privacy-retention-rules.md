@@ -5,14 +5,15 @@ module: privacy_retention
 ---
 
 ## Which rules are there?
-- `pg_privacy_rules_catalogue()` (`includes/fn/privacy_retention.php`): `contacts` (passive, 3 years, 1-20), `forms` (2 years, 1-20; per form by page id, 0 keeps that form), `carts` (incomplete orders, 90 days, at least 31), `orders` (years the shop types, 1-30; empty is never), `requests` (closed privacy requests, 3 years from `closed_at`, 1-20, own entry only, no person skip; `privacy-requests.md`). Every rule is off by default. Defaults are suggestions, not legal advice.
+- `pg_privacy_rules_catalogue()` (`includes/fn/privacy_retention.php`): `contacts` (passive, 3 years, 1-20), `forms` (2 years, 1-20; per form by page id, 0 keeps that form), `carts` (incomplete orders, 90 days, at least 31), `orders` (years the shop types, 1-30; empty is never), `requests` (closed privacy requests, 3 years from `closed_at`, 1-20, own entry, no person skip; `privacy-requests.md`), `chats` (`privacy-rule-site-chats.md`).
+- Every rule is off by default. Defaults are suggestions, not legal advice.
 - The pass interval: 1 to 183 days (never longer than six months), default 1 (`pg_privacy_rules_interval_limits()`).
 
 ## Where are they kept?
 - `config_text` `privacy_rules` (rules, periods, `approved_at`/`approved_by`, interval) and `privacy_rules_state` (per rule `last_run_at`, a pass under way: `started_at`, `cursor`, counts). Read directly, not through `pg_config_text()`'s cache. No schema.
 
 ## Who may change them?
-- `pg_privacy_rules_may_change()`: role <= 2, the role that saves Site Settings (`pg_settings_reader()`); everybody who opens the Privacy centre reads them. `pg_privacy_rules_save()` and `pg_privacy_rule_approve()` refuse others.
+- `pg_privacy_rules_may_change()`: role <= 2, who saves Site Settings (`pg_settings_reader()`); all who open the Privacy centre read them. `pg_privacy_rules_save()` and `pg_privacy_rule_approve()` refuse others.
 - A rule switched on, off, or given another period (forms: other per-form periods) loses its yes (`pg_privacy_rules_from_input()`), so its next run is a dry run again.
 
 ## How does a rule run?

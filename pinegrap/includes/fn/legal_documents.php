@@ -861,7 +861,51 @@ function pg_legal_kvkk_copy_html($notice_url, $consent)
 }
 
 /**
- * The store's KVKK settings while the checkout documents are on: the notice
+ * The config_text row of the KVKK notice's own switch: '1' on, '0' off.
+ *
+ * @return string
+ */
+function pg_legal_kvkk_switch_name()
+{
+    return 'ecommerce_kvkk_enabled';
+}
+
+/**
+ * Whether the KVKK notice is shown, from its stored switch. A site that has
+ * not stored it yet (the update step writes it from the checkout documents'
+ * switch) follows the checkout documents' switch, as it did before the
+ * switch existed. Pure.
+ *
+ * @param string $stored        the config_text value ('' when no row)
+ * @param bool   $documents_on  pg_legal_documents_enabled()
+ * @return bool
+ */
+function pg_legal_kvkk_switch_on($stored, $documents_on)
+{
+    $stored = (string) $stored;
+
+    if (($stored === '1') || ($stored === '0')) {
+        return $stored === '1';
+    }
+
+    return (bool) $documents_on;
+}
+
+/**
+ * Whether the KVKK notice page and the consent sentence are shown at
+ * checkout and on the sign-up forms; on and off apart from the checkout
+ * documents.
+ *
+ * @return bool
+ */
+function pg_legal_kvkk_enabled()
+{
+    return pg_schema_has('order_documents')
+        && pg_legal_kvkk_switch_on(pg_config_text(pg_legal_kvkk_switch_name()), pg_legal_documents_enabled());
+}
+
+/**
+ * The store's KVKK settings while the KVKK notice is switched on: the notice
  * page's address (relative and full) and the consent sentence. A page that
  * no longer exists gives no link.
  *
@@ -871,7 +915,7 @@ function pg_legal_kvkk_settings()
 {
     $settings = array('url' => '', 'full_url' => '', 'consent' => '');
 
-    if (!pg_legal_documents_enabled()) {
+    if (!pg_legal_kvkk_enabled()) {
         return $settings;
     }
 
@@ -1215,9 +1259,10 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
  * not, so the order shows what was in front of the customer; accepted_at is
  * set only for the types the customer ticked. A second call for the same
  * order stores nothing (the copy is the one from the moment of the order).
- * The KVKK copy (pg_legal_kvkk_copy_html()) is kept beside them when the
- * store links a notice page or asks for explicit consent; it counts as
- * accepted only when the consent box was there and ticked.
+ * The KVKK copy (pg_legal_kvkk_copy_html()) is kept beside them, or alone
+ * while the documents are off, when the KVKK notice is on and the store
+ * links a notice page or asks for explicit consent; it counts as accepted
+ * only when the consent box was there and ticked.
  * Each stored and accepted type also writes a granted contract row to the
  * consent log (pg_legal_documents_consent_events()).
  *
@@ -1238,11 +1283,13 @@ function pg_legal_documents_store($order_id, array $accepted_types, $ip = null, 
 {
     $order_id = (int) $order_id;
 
-    if (($order_id <= 0) || !pg_legal_documents_enabled()) {
+    $documents_on = pg_legal_documents_enabled();
+
+    if (($order_id <= 0) || (!$documents_on && !pg_legal_kvkk_enabled())) {
         return 0;
     }
 
-    if (db_value("SELECT COUNT(*) FROM order_documents WHERE order_id = '" . $order_id . "' AND type IN ('preinfo', 'contract')")) {
+    if (db_value("SELECT COUNT(*) FROM order_documents WHERE order_id = '" . $order_id . "' AND type IN ('preinfo', 'contract', 'kvkk')")) {
         return 0;
     }
 
@@ -1263,7 +1310,8 @@ function pg_legal_documents_store($order_id, array $accepted_types, $ip = null, 
     $agent = mb_substr((string) $agent, 0, 255);
     $stored = array();
 
-    $documents = pg_legal_documents_for_order($order_id);
+    // With the checkout documents off, the KVKK copy is kept alone.
+    $documents = $documents_on ? pg_legal_documents_for_order($order_id) : array();
     $kvkk = pg_legal_kvkk_settings();
 
     // Explicit consent is accepted only where the checkout asked for it.
@@ -1271,7 +1319,7 @@ function pg_legal_documents_store($order_id, array $accepted_types, $ip = null, 
         $accepted_types = array_values(array_diff($accepted_types, array('kvkk')));
     }
 
-    if ($documents) {
+    if ($documents || (!$documents_on && db_value("SELECT 1 FROM orders WHERE id = '" . $order_id . "'"))) {
         $documents['kvkk'] = pg_legal_kvkk_copy_html($kvkk['full_url'], $kvkk['consent']);
     }
 
@@ -1424,7 +1472,8 @@ function pg_legal_document_cart_url($type = '', $language = null, $page_url = nu
  * link to, so the documents show what the visitor is looking at. A page that
  * already carries the fields (a designer tree that binds them) gets none
  * added; a page without a purchase button needs none. The KVKK lines
- * (pg_legal_kvkk_html()) follow the same rule on their own. Either way a page with
+ * (pg_legal_kvkk_html()) follow the same rule on their own, under their own
+ * switch (pg_legal_kvkk_enabled()). Either way a page with
  * the documents gets the script that makes their links post what the visitor
  * has typed since the page was drawn.
  *
@@ -1436,22 +1485,28 @@ function pg_legal_documents_inject($html, array $values = array())
 {
     $html = (string) $html;
 
-    if ((strpos($html, 'name="submit_purchase_now"') === false) || !pg_legal_documents_enabled()) {
+    $documents_on = pg_legal_documents_enabled();
+
+    if ((strpos($html, 'name="submit_purchase_now"') === false) || (!$documents_on && !pg_legal_kvkk_enabled())) {
         return $html;
     }
 
-    $_SESSION['ecommerce']['legal_documents_seen'] = array('order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0)) + pg_legal_document_form_snapshot($html);
+    $block = '';
 
-    $block = (strpos($html, 'name="legal_preinfo"') === false)
-        ? pg_legal_documents_checkboxes_html($values, pg_legal_document_cart_url())
-        : '';
+    if ($documents_on) {
+        $_SESSION['ecommerce']['legal_documents_seen'] = array('order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0)) + pg_legal_document_form_snapshot($html);
+
+        if (strpos($html, 'name="legal_preinfo"') === false) {
+            $block = pg_legal_documents_checkboxes_html($values, pg_legal_document_cart_url());
+        }
+    }
 
     if (strpos($html, 'pg-legal-kvkk') === false) {
         $kvkk = pg_legal_kvkk_settings();
         $block .= pg_legal_kvkk_html($values, $kvkk['url'], $kvkk['consent']);
     }
 
-    return (($block !== '') ? pg_legal_documents_insert_before_purchase($html, $block) : $html) . pg_legal_documents_script();
+    return (($block !== '') ? pg_legal_documents_insert_before_purchase($html, $block) : $html) . ($documents_on ? pg_legal_documents_script() : '');
 }
 
 /**

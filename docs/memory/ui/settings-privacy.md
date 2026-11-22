@@ -13,9 +13,10 @@ module: privacy_settings_fold
 - Visitor tracking (`pgset-analytics`): "Visits are recorded" / "Visits are not recorded", "· Google Analytics connected" when the tag is on; pill On/Off. Holds "Record visits" (`visitor_tracking`), "Remember a tracking code for" (`tracking_code_duration`), "Paid tracking code mark" (`pay_per_click_flag`), the visitor periods and the daily summary, and Google Analytics as a connect row (`#pgsub-google-analytics`).
 - Cookie consent (`pgset-cookies`): the switch, Cookie Policy Address, the `#cookie-settings` line; the held scripts and Google tags help under a `details` "Your own scripts".
 - Legal documents (`pgset-legal`): the switch and its help, the two templates, "Fields you can use in a template" under a `details`; drawn while off.
-- KVKK notice (`pgset-kvkk`, its own card since this row): KVKK Notice Page and Explicit Consent Sentence. The line names what is filled and ends "used while Legal documents is on"; pill "In use" only while Legal documents is on and something is filled (`pg_legal_kvkk_settings()`).
+- KVKK notice (`pgset-kvkk`, its own card since this row): "Show the KVKK notice" (`ecommerce_kvkk_enabled`, its own switch, `commerce/checkout-kvkk-notice.md`), KVKK Notice Page and Explicit Consent Sentence. The line names what is filled; pill Off while the switch is off, "In use" when on and something is filled, else "Not used".
 - Accessibility statement (`pgset-a11y-statement`): the fields as before, "Print the statement" a quiet button; the line "Dated …" or "Not filled".
-- Privacy centre (`pgset-privacy-centre`): the line is the centre's sentence; the row holds only "Open the Privacy centre".
+- Privacy centre (`pgset-privacy-centre`): the line names its parts short ("Personal data inventory, retention rules and requests"); the opened row says what the centre holds in one help sentence, then "Open the Privacy centre".
+- How long we keep data: Site chats is a rule of the Privacy centre (Change opens `privacy_centre.php`); the two rows without Change say why in their line: Consent history "a fixed period, as proof of consent", Cancelled bookings "a fixed period, the agenda keeps the rest".
 
 ## What stayed?
 - Card ids, field names and `privacy.save.php`; old anchors (`pg_settings_legacy_anchors()`) land on the cards, and the client opens the row a card or field sits in (`pgSettingsFoldReveal()`).

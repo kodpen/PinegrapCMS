@@ -146,27 +146,29 @@ function pg_privacy_fold_legal($on)
 }
 
 /**
- * The KVKK notice's line: the page, the consent box, and that both are used
- * only while Legal documents is on (pg_legal_kvkk_settings()).
+ * The KVKK notice's line: the page and the consent box; its own switch
+ * decides whether they are shown (pg_legal_kvkk_settings()).
  *
+ * @param bool   $on          the Show the KVKK notice switch
  * @param bool   $page_chosen a notice page is chosen
  * @param string $consent     the explicit consent sentence
- * @param bool   $legal_on    the Legal documents switch
  * @return array line, pill, attention
  */
-function pg_privacy_fold_kvkk($page_chosen, $consent, $legal_on)
+function pg_privacy_fold_kvkk($on, $page_chosen, $consent)
 {
     $has_consent = (trim((string) $consent) !== '');
     $line = ($page_chosen ? lang('Notice page chosen') : lang('No notice page'))
-        . ' · ' . ($has_consent ? lang('a consent box') : lang('no consent box'))
-        . ' · ' . lang('used while Legal documents is on');
-    $used = $legal_on && ($page_chosen || $has_consent);
+        . ' · ' . ($has_consent ? lang('a consent box') : lang('no consent box'));
 
-    return array(
-        'line'      => $line,
-        'pill'      => $used ? array(lang('In use'), 'pg-tone-teal') : array(lang('Not used'), 'pg-tone-gray'),
-        'attention' => false,
-    );
+    if (!$on) {
+        $pill = pg_privacy_fold_switch_pill(false);
+    } elseif ($page_chosen || $has_consent) {
+        $pill = array(lang('In use'), 'pg-tone-teal');
+    } else {
+        $pill = array(lang('Not used'), 'pg-tone-gray');
+    }
+
+    return array('line' => $line, 'pill' => $pill, 'attention' => false);
 }
 
 /**
@@ -187,14 +189,15 @@ function pg_privacy_fold_a11y($date)
 }
 
 /**
- * The Privacy centre's line: what the centre holds.
+ * The Privacy centre's line: the parts the centre holds, named short; the
+ * opened row says each in a sentence.
  *
  * @return array line, pill, attention
  */
 function pg_privacy_fold_centre()
 {
     return array(
-        'line'      => lang('The personal data the site keeps, why and for how long, and the outside services it goes to, with an Excel and a PDF download for your KVKK or GDPR records.'),
+        'line'      => lang('Personal data inventory, retention rules and requests'),
         'pill'      => null,
         'attention' => false,
     );
