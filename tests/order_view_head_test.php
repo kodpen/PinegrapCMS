@@ -181,16 +181,16 @@ function test_order_view_counts_text()
 	pg_assert_same('', pg_order_view_counts_text(0, 0), 'no lines, nothing');
 }
 
-function test_order_view_head_meta_line()
+function test_record_head_meta_line()
 {
-	$html = pg_order_view_head_meta(array('16 Apr 2020 17:41', 'Online', '<a href="edit_contact.php?id=4">Ada</a>', '', '2 items, 3 units'));
+	$html = pg_record_head_meta(array('16 Apr 2020 17:41', 'Online', '<a href="edit_contact.php?id=4">Ada</a>', '', '2 items, 3 units'));
 	pg_assert_same('<p class="pg-record-head-meta">16 Apr 2020 17:41 · Online · <a href="edit_contact.php?id=4">Ada</a> · 2 items, 3 units</p>', $html, 'parts joined, empty ones left out');
-	pg_assert_same('', pg_order_view_head_meta(array('', ' ')), 'no part, no line');
+	pg_assert_same('', pg_record_head_meta(array('', ' ')), 'no part, no line');
 }
 
-function test_order_view_head_markup()
+function test_record_head_markup()
 {
-	$html = pg_order_view_head(array(
+	$html = pg_record_head(array(
 		'title' => 'Order #1171',
 		'copy' => '1171',
 		'copy_label' => 'Copy the order number',

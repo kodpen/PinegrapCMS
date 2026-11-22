@@ -35037,3 +35037,80 @@ button.pg-var-chip:focus-visible {
 }
 
 }
+/* ==========================================================================
+   Look A: record head.
+   The head of a record screen under the breadcrumb (View Order; Design
+   examples "Record head"): the record's name in the Display cut at 22 px
+   with a copy button and its state pills, one grey line under it, the
+   screen's toolbar at the right. The top bar keeps the screen's title.
+   ========================================================================== */
+@layer custom {
+
+.pg-record-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin: 6px 0 20px;
+}
+.pg-record-head-main {
+  flex: 1 1 22rem;
+  min-width: 0;
+}
+.pg-record-head-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+/* The name wraps, never cut: it is the record's only name on the screen. */
+.pg-record-head-title {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: break-word;
+  font-size: 1.375rem;
+  font-weight: var(--pg-weight-title);
+  line-height: var(--pg-leading-title);
+  letter-spacing: var(--pg-tracking-screen-title);
+  font-variation-settings: var(--pg-opsz-display);
+  font-variant-numeric: tabular-nums;
+}
+.pg-record-head-line .pg-copy {
+  display: inline-flex;
+  margin-left: -4px;
+}
+.pg-record-head-line .pg-pill {
+  flex: none;
+}
+.pg-record-head-meta {
+  margin: 4px 0 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+  overflow-wrap: anywhere;
+}
+.pg-record-head-actions {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.pg-record-head-actions #button_bar {
+  justify-content: flex-end;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+/* The bar's spacer has nothing to push inside the head. */
+.pg-record-head-actions .pg-toolbar-grow:empty {
+  display: none;
+}
+/* A phone: the bar goes under the line, from the left. */
+@media (max-width: 575.98px) {
+  .pg-record-head-actions {
+    flex-basis: 100%;
+  }
+  .pg-record-head-actions #button_bar {
+    justify-content: flex-start;
+  }
+}
+
+}

@@ -461,6 +461,7 @@ function pg_look_examples_patterns($prefix = 'light')
 
     $patterns[] = pg_look_examples_timeline_pattern();
     $patterns[] = pg_look_examples_ws_list_row_pattern($p);
+    $patterns = array_merge($patterns, pg_look_examples_record_patterns($p));
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
     // the parts the one E-mail category is built from.
@@ -806,6 +807,49 @@ function pg_look_examples_ws_list_row_pattern($p)
             . $row('ideas', '', 'bi-hash', ' ws-notjoined', '<span class="ws-side-join-now no-popover" aria-hidden="true">' . h(lang('Join')) . '</span>', false)
             . '</div>'
             . '<p class="pg-text-meta">' . h(lang('From the Workspace list in the main menu: a 30 px row, the channel\'s tile in its colour, the marks at its end; pointing at a row shows its pin and menu in their place.')) . '</p>',
+    );
+}
+
+/**
+ * The record head and the copy button (View Order's head): the record's
+ * name with its copy button and state pills, the grey line, the screen's
+ * toolbar at the right; and the copy button alone beside a value.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array list of array('id', 'title', 'classes', 'html')
+ */
+function pg_look_examples_record_patterns($p)
+{
+    $toolbar = '<nav id="pg-look-record-bar-' . $p . '" class="pg-toolbar" aria-label="' . h(lang('Button Bar')) . '">'
+        . '<button type="button" class="pg-button pg-button-ghost"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . h(lang('Refund')) . '</button>'
+        . '<button type="button" class="pg-button pg-button-ghost"><i class="bi bi-printer" aria-hidden="true"></i>' . h(lang('Print')) . '</button>'
+        . '<button type="button" class="pg-icon-button" aria-label="' . h(lang('More')) . '" title="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>'
+        . '</nav>';
+
+    return array(
+        array(
+            'id'      => 'pattern-record-head',
+            'title'   => lang('Record head'),
+            'classes' => array('.pg-record-head', '.pg-record-head-main', '.pg-record-head-line', '.pg-record-head-title', '.pg-copy', '.pg-pill', '.pg-record-head-meta', '.pg-record-head-actions'),
+            'html'    => pg_record_head(array(
+                    'id' => 'pg-look-record-title-' . $p,
+                    'title' => lang(array('string' => 'Order #{var:1}', 'vars' => array('1171'))),
+                    'copy' => '1171',
+                    'copy_label' => lang('Copy the order number'),
+                    'pills' => array(array(lang('Complete'), 'teal'), array(lang('Paid'), 'teal'), array(lang('Not shipped'), 'gray')),
+                    'meta' => array(h(get_absolute_time(array('timestamp' => 1587048060, 'format' => 'plain_text'))), h(lang('Online')), '<a class="pg-link-secondary" href="#">Ada Yılmaz</a>', h(pg_order_view_counts_text(2, 3))),
+                    'actions' => $toolbar,
+                ))
+                . '<p class="pg-text-meta">' . h(lang('From View Order: under the breadcrumb, the record\'s name with its copy button and pills (done teal, on its way blue, waiting amber, cancelled rose, not begun grey), one grey line, the toolbar at the right. The top bar keeps the screen\'s title.')) . '</p>',
+        ),
+        array(
+            'id'      => 'pattern-copy-button',
+            'title'   => lang('Copy button'),
+            'classes' => array('.pg-copy', '.pg-icon-button', '.pg-icon-button-sm'),
+            'html'    => '<p class="d-flex align-items-center gap-2 mb-2"><span id="pg-look-copy-text-' . $p . '" class="pg-tabular">7340012288</span>'
+                . '<span class="pg-copy">' . pg_copy_button('7340012288', lang('Copy the tracking number'), 'pg-look-copy-text-' . $p) . '</span></p>'
+                . '<p class="pg-text-meta">' . h(lang('An icon button that copies the text as shown, named for a screen reader. For a moment its icon turns to a check and its tooltip reads Copied, and a polite status beside it says so; when the browser refuses, the text is selected.')) . '</p>',
+        ),
     );
 }
 
