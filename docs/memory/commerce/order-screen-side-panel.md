@@ -1,6 +1,6 @@
 ---
 name: order-screen-side-panel
-description: View Order's side panel (Customer, Billing, Order Information) and Payment card with the totals (OS2): address block, "Same as the shipping address", the contact's order count, no sticking
+description: View Order's side panel (Customer, Billing, Order Information) and Payment card with the totals (OS2, #11139): address block, "Same as the shipping address", the contact's order count, no sticking
 module: order_view
 ---
 
@@ -27,7 +27,7 @@ module: order_view
 ## How is the count of orders worked out?
 - `pg_order_view_contact_orders_count($contact_id)`: one `COUNT(*)` of the contact's orders whose status is not incomplete, this one counted. `pg_order_view_orders_count_text()`: "First order" at one, "N orders" above, a link to `view_orders_for_contact.php?id=` only above one and for a user who may open the contact.
 
-## What is the Payment card?
+## What is the Payment card? (#11139)
 - First card of the form column's left half until OS4 places the later cards. Title "Payment" with the head's payment pill. Left (when the order has a payment method): the method with its tile, the card's type, masked number and expiration as a grey line; rows Paid on, Cardholder, Verification Number, Transaction ID, Authorization Code, Number of Installments.
 - Right: Subtotal, Discount with the offer code beside it, Tax, Shipping, gift cards, Surcharge, Installment Charge; under a hairline Total, and Total Refunded and Net Total when a refund exists. The two halves sit side by side when the card is wide (`.pg-order-pay`, an auto-fit grid), stacked otherwise.
 
