@@ -275,7 +275,7 @@ description: Generated from the module field of the memory files: each includes/
 - `order_list`: [[erp-parasut-legacy-export-discount]], [[orders-list-amount-column]], [[orders-list-bulk-actions]], [[orders-list-columns]], [[orders-list-figure-strip]], [[orders-list-state-filter]]
 - `order_report`: [[order-report-filters]], [[order-report-screen]], [[order-report-totals]]
 - `order_status`: [[shipworks-order-feed]]
-- `order_view`: [[order-screen-head]], [[order-screen-shipping-input]], [[order-screen-side-panel]], [[order-screen-wide-layout]], [[order-view-screen-rows]], [[print-order-shipping-card]]
+- `order_view`: [[order-screen-head]], [[order-screen-shipment-card]], [[order-screen-shipping-input]], [[order-screen-side-panel]], [[order-screen-wide-layout]], [[order-view-screen-rows]], [[print-order-shipping-card]]
 - `output`: [[agent-guide-panel-door]], [[designer-left-panel-hide]], [[list-status-words]], [[look-erp-lists]], [[look-shared-buttons]], [[main-menu-communication-icon]], [[main-menu-drawer-only]], [[panel-old-browser-notice]], [[picture-text-auto-panel]], [[settings-pane-stale-page]]
 - `page_audience`: [[audience-conditions]]
 - `page_bulk`: [[page-bulk-edit]], [[page-bulk-edit-dialog]]

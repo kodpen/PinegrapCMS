@@ -30,7 +30,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - `gift-card-*`: 9 files.
 - `order-completion-*`: 10 files; start at `order-completion.md`.
 - `order-returns-*`: 14 files; start at `order-returns.md`.
-- `order-screen-*`: 6 files.
+- `order-screen-*`: 7 files.
 - `payment-driver-*`: 9 files; start at `payment-drivers.md`.
 - `product-price-*`: 6 files.
 - `product-review-*`: 6 files.
