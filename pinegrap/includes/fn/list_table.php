@@ -1257,6 +1257,7 @@ function pg_list_table_printed_lists()
         'messages_automatic',
         'view_application_programs',
         'view_queue_places',
+        'view_volunteer_programmes', 'volunteer_applications', 'volunteer_people',
         'privacy_requests',
         'delivery_problems',
     );

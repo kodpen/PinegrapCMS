@@ -393,11 +393,12 @@ function pg_volunteer_state_move_allowed($from, $to)
  */
 function pg_volunteer_message($texts, $kind, array $vars)
 {
+    $hello = lang('Hello {name},') . "\n\n";
     $standard = array(
-        'welcome'  => array(lang('Welcome to {programme}'), lang("Hello {name},\n\nYour application to {programme} was approved. Thank you for volunteering with us.")),
-        'call'     => array(lang('{programme}: a shift needs you'), lang("Hello {name},\n\nA shift of {programme} still needs volunteers. Sign up if you can come.")),
-        'reminder' => array(lang('{programme}: your shift is tomorrow'), lang("Hello {name},\n\nThis is a reminder of your shift tomorrow with {programme}.")),
-        'thanks'   => array(lang('{programme}: thank you'), lang("Hello {name},\n\nThank you for the hours you gave to {programme}.")),
+        'welcome'  => array(lang('Welcome to {programme}'), $hello . lang('Your application to {programme} was approved. Thank you for volunteering with us.')),
+        'call'     => array(lang('{programme}: a shift needs you'), $hello . lang('A shift of {programme} still needs volunteers. Sign up if you can come.')),
+        'reminder' => array(lang('{programme}: your shift is tomorrow'), $hello . lang('This is a reminder of your shift tomorrow with {programme}.')),
+        'thanks'   => array(lang('{programme}: thank you'), $hello . lang('Thank you for the hours you gave to {programme}.')),
     );
     $text = pg_volunteer_texts_clean($texts)[$kind] ?? array('subject' => '', 'body' => '');
     $fill = function ($value) use ($vars) {
@@ -408,6 +409,38 @@ function pg_volunteer_message($texts, $kind, array $vars)
         'subject' => $fill(($text['subject'] !== '') ? $text['subject'] : $standard[$kind][0]),
         'body'    => $fill(($text['body'] !== '') ? $text['body'] : $standard[$kind][1]),
     );
+}
+
+/**
+ * A programme's state as a pill: Open or Paused.
+ *
+ * @param string $state
+ * @return string HTML
+ */
+function pg_volunteer_programme_pill($state)
+{
+    return ($state === 'paused') ? '<span class="pg-pill pg-tone-amber">' . h(lang('Paused')) . '</span>' : '<span class="pg-pill pg-tone-teal">' . h(lang('Open')) . '</span>';
+}
+
+/**
+ * A volunteer's state, or an application's documents, as a pill.
+ *
+ * @param string $value applied, active, paused, left; valid, missing, running_out
+ * @return string HTML, '' for an unknown value
+ */
+function pg_volunteer_pill($value)
+{
+    $pills = array(
+        'applied'     => array(lang('Applied'), 'pg-tone-blue'),
+        'active'      => array(lang('Active'), 'pg-tone-teal'),
+        'paused'      => array(lang('Paused'), 'pg-tone-amber'),
+        'left'        => array(lang('Left'), 'pg-tone-gray'),
+        'valid'       => array(lang('Valid'), 'pg-tone-teal'),
+        'missing'     => array(lang('Missing'), 'pg-tone-rose'),
+        'running_out' => array(lang('Running out'), 'pg-tone-amber'),
+    );
+
+    return isset($pills[$value]) ? '<span class="pg-pill ' . $pills[$value][1] . '">' . h($pills[$value][0]) . '</span>' : '';
 }
 
 /**

@@ -4350,21 +4350,29 @@ function output_menu($properties = false)
     // refused.
     if (validate_contacts_access($user, true)) {
         // CONTACTS
+        $contacts_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
         $menu_items[7]['id'] = 7;
         $menu_items[7]['href'] = 'view_contacts.php';
         $menu_items[7]['menu_icon'] = 'contacts';
         $menu_items[7]['color_class'] = 'contacts-color';
         $menu_items[7]['title'] = 'Contacts';
         $menu_items[7]['context'] = true;
-        $menu_items[7]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-vcard bi-me-2\'>' . lang('Contacts') . '</a>';
-        $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact'))) . '</a>';
+        $menu_items[7]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php\'' . $output_parent_target . ' class=\'' . $contacts_link_class . 'bi-person-vcard bi-me-2\'>' . lang('Contacts') . '</a>';
+        $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact.php\'' . $output_parent_target . ' class=\'' . $contacts_link_class . 'bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact'))) . '</a>';
         // CONTACTS > Contact Groups
         $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contact_groups.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-person-rolodex bi-me-2\'>' . lang('All Contact Groups') . '</a>';
+        $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contact_groups.php\'' . $output_parent_target . ' class=\'' . $contacts_link_class . 'bi-person-rolodex bi-me-2\'>' . lang('All Contact Groups') . '</a>';
         // add_contact_group.php refuses role 3 (view_contact_groups.php shows
         // its Create button to role < 3 only).
         if ($user['role'] < 3) {
-            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact_group.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact Group'))) . '</a>';
+            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_contact_group.php\'' . $output_parent_target . ' class=\'' . $contacts_link_class . 'bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Contact Group'))) . '</a>';
+        }
+
+        // CONTACTS > Volunteers: roles 0-2 and the programmes' coordinators
+        // (view_volunteer_programmes.php).
+        if (($user['role'] < 3) ? pg_volunteer_ready() : pg_volunteer_coordinator((int) $user['id'])) {
+            $menu_items[7]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+            $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_volunteer_programmes.php\'' . $output_parent_target . ' class=\'' . $contacts_link_class . 'bi-person-heart bi-me-2\'>' . lang('Volunteers') . '</a>';
         }
 
         // CONTACTS > Personal data export and erasure (staff only: they read
@@ -4376,7 +4384,7 @@ function output_menu($properties = false)
                 'privacy_erase.php'  => array('bi-person-x', lang('Personal data erasure')),
                 'privacy_centre.php' => array('bi-shield-lock', lang('Privacy centre')),
             ) as $privacy_screen => $privacy_link) {
-                $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $privacy_screen . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ' . $privacy_link[0] . ' bi-me-2\'>' . $privacy_link[1] . '</a>';
+                $menu_items[7]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $privacy_screen . '\'' . $output_parent_target . ' class=\'' . $contacts_link_class . $privacy_link[0] . ' bi-me-2\'>' . $privacy_link[1] . '</a>';
             }
         }
     }
@@ -5089,6 +5097,8 @@ function output_menu($properties = false)
         case 'privacy_export.php':
         case 'privacy_erase.php':
         case 'privacy_centre.php':
+        case 'view_volunteer_programmes.php':
+        case 'edit_volunteer_programme.php':
             $active_menu = 7;
             break;
         case 'view_users.php':

@@ -1379,6 +1379,12 @@ if ($liveform->check_form_errors() == false) {
         pg_announce_contact_created($new_contact_id);
     }
     
+    // A completed entry on a volunteer programme's form becomes an
+    // application of that contact (includes/fn/volunteer_programmes.php).
+    if ($contact_id && ($complete == 1)) {
+        pg_volunteer_application_record((int) ($_POST['page_id'] ?? 0), (int) $form_id, (int) $contact_id);
+    }
+
     // if there is a contact, then add contact to contact groups and connect contact to submitted form
     if ($contact_id) {
         // The form's own group. With double opt-in the contact joins it only
