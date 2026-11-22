@@ -27,6 +27,7 @@ if (!defined('PG_SETTINGS_MENU')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/drawer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/appearance_settings_fold.php');
 
@@ -61,7 +62,11 @@ function settings_appearance_fold_test_pane($role)
 	$pg_settings_cards = array();
 	$pg_settings_scripts = array();
 
+	$pg_settings_modals = array();
+
 	include(PG_FUNCTIONS_DIR . '/includes/settings/appearance.php');
+
+	$GLOBALS['settings_appearance_fold_test_modals'] = implode('', $pg_settings_modals);
 
 	return $pg_settings_cards;
 }
@@ -120,7 +125,7 @@ function test_settings_appearance_fold_pane_is_rows()
 // The administrator's pane reads the install's paths (the default logo and
 // stylesheet), constants other tests decide for themselves: it is drawn in a
 // process of its own. '' when it cannot be.
-function settings_appearance_fold_test_administrator_pane()
+function settings_appearance_fold_test_administrator_pane($defines = array())
 {
 	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
 		return '';
@@ -138,18 +143,21 @@ function settings_appearance_fold_test_administrator_pane()
 		. "define('SOFTWARE_DIRECTORY', 'pinegrap');\n"
 		. "define('OUTPUT_PATH', '/');\n"
 		. "define('OUTPUT_SOFTWARE_DIRECTORY', 'pinegrap');\n"
+		. implode('', array_map(function ($name, $value) { return 'define(' . var_export($name, true) . ', ' . var_export($value, true) . ");\n"; }, array_keys($defines), $defines))
 		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
 		. 'require ' . var_export(__FILE__, true) . ";\n"
-		. "echo json_encode(settings_appearance_fold_test_pane(0));\n");
+		. "echo json_encode(array('cards' => settings_appearance_fold_test_pane(0), 'modals' => \$GLOBALS['settings_appearance_fold_test_modals']));\n");
 
 	$out = array();
 	$code = 1;
 	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
 	@unlink($file);
-	$cards = json_decode(implode("\n", $out), true);
+	$drawn = json_decode(implode("\n", $out), true);
+	$cards = is_array($drawn) ? $drawn['cards'] : null;
 
 	pg_assert_same(0, $code, 'drawn: ' . implode("\n", array_slice($out, 0, 8)));
 	pg_assert_true(is_array($cards) && (count($cards) === 1), 'one list of rows');
+	$GLOBALS['settings_appearance_fold_test_modals'] = is_array($drawn) ? (string) $drawn['modals'] : '';
 
 	return is_array($cards) ? (string) reset($cards) : '';
 }
@@ -202,9 +210,19 @@ function test_settings_appearance_fold_administrator_pane()
 	pg_assert_false(strpos($html, 'id="private_label" name="private_label" aria-describedby="private_label_help" checked') !== false, 'off here');
 	pg_assert_contains('<div class="col-12" id="private_label_fields">', $html, 'the fields drawn while off');
 
-	foreach (array('private_label_card', 'logo_url', 'control_panel_stylesheet_url', 'footer_link_1_label', 'footer_link_5_url') as $name) {
+	foreach (array('private_label_card', 'logo_url', 'control_panel_stylesheet_url') as $name) {
 		pg_assert_contains('name="' . $name . '"', $html, $name . ' posts under its name');
 	}
+
+	// No footer link set: a line, "Add a link" and its drawer for the first.
+	$modals = $GLOBALS['settings_appearance_fold_test_modals'];
+	pg_assert_contains('<h3 class="pg-group-label mb-0">' . lang('Footer links') . '</h3>', $html, 'Footer links');
+	pg_assert_false(strpos($html, 'data-pg-footer-link') !== false, 'no row');
+	pg_assert_contains('data-bs-target="#pg-footer-link-1" aria-controls="pg-footer-link-1"><i class="bi bi-plus-lg" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Add a link')) . '</span>', $html, 'Add a link opens the first drawer');
+	pg_assert_contains('id="pg-footer-link-1"', $modals, 'its drawer');
+	pg_assert_contains('name="footer_link_1_label" id="footer_link_1_label" form="pg_settings_page_form"', $modals, 'its label joins the form');
+	pg_assert_contains('name="footer_link_1_url" id="footer_link_1_url" form="pg_settings_page_form"', $modals, 'its address joins the form');
+	pg_assert_false(strpos($modals, 'footer_link_2_') !== false, 'one empty drawer only');
 }
 
 function test_settings_appearance_fold_manager_pane()
@@ -240,4 +258,44 @@ function test_settings_appearance_fold_save_and_search_stay()
 
 	$anchors = pg_settings_legacy_anchors();
 	pg_assert_same(array('appearance', 'pgset-theme'), $anchors['pgset-theme'], 'an old Theme link lands on Panel look');
+}
+
+// Three footer links, the second without a label, as config.php holds them
+// with a gap: three rows in order, each with its drawer, the first not
+// moving up and the last not moving down; Add a link opens the fourth.
+function test_settings_appearance_fold_footer_link_rows()
+{
+	$html = settings_appearance_fold_test_administrator_pane(array(
+		'FOOTER_LINK_1_LABEL' => 'Help', 'FOOTER_LINK_1_URL' => '/help',
+		'FOOTER_LINK_3_URL' => '/terms',
+		'FOOTER_LINK_5_LABEL' => "Bob's blog", 'FOOTER_LINK_5_URL' => '/blog'));
+
+	if ($html === '') {
+		return;
+	}
+
+	$modals = $GLOBALS['settings_appearance_fold_test_modals'];
+
+	pg_assert_same(3, substr_count($html, 'data-pg-footer-link>'), 'three rows');
+	pg_assert_true(strpos($html, '>Help</span>') < strpos($html, '>' . h(lang('No label')) . '</span>') && strpos($html, '>' . h(lang('No label')) . '</span>') < strpos($html, '>' . h("Bob's blog") . '</span>'), 'in order, the unlabelled one named so');
+	pg_assert_contains('<div class="pg-list-row-text">/terms</div>', $html, 'its address as the row\'s line');
+
+	foreach (array(1, 2, 3) as $n) {
+		pg_assert_contains('data-bs-target="#pg-footer-link-' . $n . '"', $html, $n . ': Edit opens its drawer');
+		pg_assert_contains('id="pg-footer-link-' . $n . '"', $modals, $n . ': the drawer');
+		pg_assert_contains('name="footer_link_action" value="remove:' . $n . '" class="menu-item fg-emphasis-danger" onclick="return confirm(', $html, $n . ': Remove asks first');
+	}
+
+	pg_assert_contains('value="up:1" class="menu-item" disabled="disabled"', $html, 'the first does not move up');
+	pg_assert_contains('value="down:3" class="menu-item" disabled="disabled"', $html, 'the last does not move down');
+	pg_assert_contains('value="down:1" class="menu-item"><i', $html, 'the first moves down');
+	pg_assert_contains('name="footer_link_3_label" id="footer_link_3_label" form="pg_settings_page_form" class="form-control" value="' . h("Bob's blog") . '"', $modals, 'the fifth stored link posts as the third row');
+	pg_assert_contains('data-bs-target="#pg-footer-link-4" aria-controls="pg-footer-link-4"><i class="bi bi-plus-lg"', $html, 'Add a link opens the fourth');
+	pg_assert_false(strpos($modals, 'footer_link_5_') !== false, 'no fifth drawer');
+
+	$full = settings_appearance_fold_test_administrator_pane(array(
+		'FOOTER_LINK_1_URL' => '/1', 'FOOTER_LINK_2_URL' => '/2', 'FOOTER_LINK_3_URL' => '/3', 'FOOTER_LINK_4_URL' => '/4', 'FOOTER_LINK_5_URL' => '/5'));
+
+	pg_assert_same(5, substr_count($full, 'data-pg-footer-link>'), 'five rows');
+	pg_assert_false(strpos($full, h(lang('Add a link'))) !== false, 'no Add a link at five');
 }

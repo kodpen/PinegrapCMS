@@ -260,18 +260,86 @@ if ((int) $user['role'] === 0) {
 
     $private_label_on = (defined('PRIVATE_LABEL') && PRIVATE_LABEL);
 
-    $output_private_label_links = '';
+    // The footer links as list rows, each edited in its drawer, whose boxes
+    // join the settings form by its id (the drawer sits outside it) and post
+    // footer_link_<n>_label / _url in row order. "Add a link" opens the next
+    // row's drawer while there are fewer than five. Move up, Move down and
+    // Remove are named submit buttons: the pane's save runs and
+    // pg_private_label_links_order() applies them (appearance.save.php).
+    $private_label_in_dialog = !empty($pg_settings_in_dialog);
+    $private_label_joins = ' form="' . ($private_label_in_dialog ? 'pg_settings_modal_form' : 'pg_settings_page_form') . '"';
+    $private_label_foot = '<button type="submit"' . $private_label_joins . ' class="pg-button pg-button-fill">' . h(lang('Save')) . '</button>';
+    $private_label_links = pg_private_label_links_order($private_label_values);
+    $private_label_link_count = 0;
 
     for ($private_label_link = 1; $private_label_link <= 5; $private_label_link++) {
+        if (($private_label_links['footer_link_' . $private_label_link . '_label'] !== '') || ($private_label_links['footer_link_' . $private_label_link . '_url'] !== '')) {
+            $private_label_link_count = $private_label_link;
+        }
+    }
+
+    $private_label_link_fields = function ($n) use ($private_label_links, $private_label_joins) {
+        return '
+                            <div class="row gy-5">
+                                <div class="col-12">
+                                    <label for="footer_link_' . $n . '_label" class="form-label">' . lang('Label') . '</label>
+                                    <input type="text" name="footer_link_' . $n . '_label" id="footer_link_' . $n . '_label"' . $private_label_joins . ' class="form-control" value="' . h($private_label_links['footer_link_' . $n . '_label']) . '" />
+                                </div>
+                                <div class="col-12">
+                                    <label for="footer_link_' . $n . '_url" class="form-label">' . lang('Address') . '</label>
+                                    <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="footer_link_' . $n . '_url" id="footer_link_' . $n . '_url"' . $private_label_joins . ' class="form-control" value="' . h($private_label_links['footer_link_' . $n . '_url']) . '" />
+                                </div>
+                            </div>';
+    };
+
+    $output_private_label_links = '';
+
+    for ($private_label_link = 1; $private_label_link <= $private_label_link_count; $private_label_link++) {
+        $private_label_link_label = $private_label_links['footer_link_' . $private_label_link . '_label'];
+        $private_label_link_title = (trim($private_label_link_label) !== '') ? $private_label_link_label : lang('No label');
+        $private_label_drawer = 'pg-footer-link-' . $private_label_link;
+
         $output_private_label_links .= '
-                                            <div class="col-12 md:col-6">
-                                                <label for="footer_link_' . $private_label_link . '_label" class="form-label">' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array((string) $private_label_link))) . '</label>
-                                                <input type="text" name="footer_link_' . $private_label_link . '_label" id="footer_link_' . $private_label_link . '_label" class="form-control" value="' . h($private_label_values['footer_link_' . $private_label_link . '_label']) . '" />
-                                            </div>
-                                            <div class="col-12 md:col-6">
-                                                <label for="footer_link_' . $private_label_link . '_url" class="form-label">' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array((string) $private_label_link))) . '</label>
-                                                <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="footer_link_' . $private_label_link . '_url" id="footer_link_' . $private_label_link . '_url" class="form-control" value="' . h($private_label_values['footer_link_' . $private_label_link . '_url']) . '" />
-                                            </div>';
+                                                    <div class="pg-list-row" data-pg-footer-link>
+                                                        <span class="pg-icon-tile pg-tone-gray" aria-hidden="true"><span class="bi bi-link-45deg"></span></span>
+                                                        <div class="pg-list-row-main">
+                                                            <div class="pg-list-row-head"><span class="pg-list-row-title">' . h($private_label_link_title) . '</span></div>
+                                                            <div class="pg-list-row-text">' . h($private_label_links['footer_link_' . $private_label_link . '_url']) . '</div>
+                                                        </div>
+                                                        <div class="d-flex align-items-center gap-1 align-self-center">
+                                                            <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . $private_label_drawer . '" aria-controls="' . $private_label_drawer . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Edit'), $private_label_link_title)))) . '"><span class="pg-btn-label">' . h(lang('Edit')) . '</span></button>
+                                                            <span class="pg-menu-wrap">
+                                                                <button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" aria-expanded="false" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('More actions'), $private_label_link_title)))) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
+                                                                <ul class="menu pg-menu-end">
+                                                                    <li><button type="submit" name="footer_link_action" value="up:' . $private_label_link . '" class="menu-item"' . (($private_label_link === 1) ? ' disabled="disabled"' : '') . '><i class="bi bi-arrow-up me-3" aria-hidden="true"></i>' . h(lang('Move up')) . '</button></li>
+                                                                    <li><button type="submit" name="footer_link_action" value="down:' . $private_label_link . '" class="menu-item"' . (($private_label_link === $private_label_link_count) ? ' disabled="disabled"' : '') . '><i class="bi bi-arrow-down me-3" aria-hidden="true"></i>' . h(lang('Move down')) . '</button></li>
+                                                                    <li><hr class="menu-divider"></li>
+                                                                    <li><button type="submit" name="footer_link_action" value="remove:' . $private_label_link . '" class="menu-item fg-emphasis-danger" onclick="return confirm(' . h(json_encode(lang('Remove this link from the panel\'s footer?'))) . ');"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Remove')) . '</button></li>
+                                                                </ul>
+                                                            </span>
+                                                        </div>
+                                                    </div>';
+
+        $pg_settings_modals[] = pg_settings_drawer($private_label_drawer, h($private_label_link_title), $private_label_link_fields($private_label_link), $private_label_in_dialog, $private_label_foot);
+    }
+
+    $output_private_label_links = ($output_private_label_links !== '')
+        ? '
+                                                <div class="col-12">' . $output_private_label_links . '
+                                                </div>'
+        : '
+                                                <div class="col-12">
+                                                    <div class="pg-text-meta">' . h(lang('No link yet. Links added here stand in the panel\'s footer.')) . '</div>
+                                                </div>';
+
+    if ($private_label_link_count < 5) {
+        $private_label_drawer = 'pg-footer-link-' . ($private_label_link_count + 1);
+        $pg_settings_modals[] = pg_settings_drawer($private_label_drawer, h(lang('Add a link')), $private_label_link_fields($private_label_link_count + 1), $private_label_in_dialog, $private_label_foot);
+
+        $output_private_label_links .= '
+                                                <div class="col-12">
+                                                    <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . $private_label_drawer . '" aria-controls="' . $private_label_drawer . '"><i class="bi bi-plus-lg" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Add a link')) . '</span></button>
+                                                </div>';
     }
 
     $appearance_parts['private-label'] = array('html' => '
@@ -302,7 +370,7 @@ if ((int) $user['role'] === 0) {
                                                     <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="control_panel_stylesheet_url" id="control_panel_stylesheet_url" class="form-control" value="' . h($private_label_values['control_panel_stylesheet_url']) . '" />
                                                 </div>
                                                 <div class="col-12">
-                                                    <h3 class="pg-group-label mb-0">' . lang('Footer Links') . '</h3>
+                                                    <h3 class="pg-group-label mb-0">' . lang('Footer links') . '</h3>
                                                 </div>' . $output_private_label_links . '
                                             </div>
                                         </div>
