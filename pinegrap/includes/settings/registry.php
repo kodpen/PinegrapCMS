@@ -624,7 +624,6 @@ function pg_settings_email_category()
         'sections' => array(
             'pgset-mail-system'    => lang('How e-mail leaves'),
             'pgset-mail-domain'    => lang('Sending domain'),
-            'pgset-mail-dkim'      => lang('DKIM TXT Record'),
             'pgset-mail-campaign'  => lang('Campaign mail'),
             'pgset-mailchimp'      => lang('MailChimp'),
             'pgset-mail-test'      => lang('Send a test'),
@@ -632,8 +631,7 @@ function pg_settings_email_category()
         ),
         'keywords' => array(
             'pgset-mail-system'    => array_values(array_unique(array_merge(pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')), pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail'))))),
-            'pgset-mail-domain'    => pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')),
-            'pgset-mail-dkim'      => pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature')),
+            'pgset-mail-domain'    => array_values(array_unique(array_merge(pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')), pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature'))))),
             'pgset-mail-campaign'  => array_values(array_unique(array_merge(pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')), pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer'))))),
             'pgset-mailchimp'      => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
             'pgset-mail-test'      => pg_settings_keywords(lang('test e-mail, send a test, test')),
@@ -645,7 +643,7 @@ function pg_settings_email_category()
                 'gate'     => '',
                 'module'   => 'mail_sending',
                 'prep'     => true,
-                'sections' => array('pgset-mail-system', 'pgset-mail-domain', 'pgset-mail-dkim', 'pgset-mail-campaign', 'pgset-mailchimp', 'pgset-mail-test'),
+                'sections' => array('pgset-mail-system', 'pgset-mail-domain', 'pgset-mail-campaign', 'pgset-mailchimp', 'pgset-mail-test'),
             ),
             'mailboxes' => array(
                 'label'    => lang('Mailboxes'),
@@ -1297,6 +1295,8 @@ function pg_settings_legacy_anchors()
         'mail_transport_card' => array('email', 'pgset-mail-system'),
         'pgset-mail-transport' => array('email', 'pgset-mail-system'),
         'mail_domain_card' => array('email', 'pgset-mail-domain'),
+        // The DKIM TXT Record card went into Sending domain's DKIM row.
+        'pgset-mail-dkim'  => array('email', 'pgset-mail-domain'),
         // The GitHub repository links are managed on GitHub's page of
         // Connections; the card that held them keeps its place and leads there.
         'ws-github'        => array('workspace_channels', 'pgset-ws-github'),
