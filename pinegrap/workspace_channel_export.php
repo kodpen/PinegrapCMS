@@ -30,6 +30,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_export.php');
 $viewer = ws_screen_gate($user);
 $back = ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.';
 
+// Each of these carries one value; one sent as a list counts as not given,
+// where a cast would open channel 1 or log "Array to string conversion".
+pg_request_single_values(array('channel', 'from', 'to'));
+
 $channel = ws_channel((int) ($_GET['channel'] ?? 0));
 
 if (!$channel || !ws_can_read_channel($viewer, $channel)) {

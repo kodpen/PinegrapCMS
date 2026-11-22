@@ -43,7 +43,10 @@ function panel_single_value_params_screens()
 		'print_packing_slip'         => array('ship_to_id'),
 		'registration_entrance'      => array('send_to', 'allow_guest'),
 		'remove_item_from_cart'      => array('order_item_id', 'screen', 'send_to'),
+		'shipworks'                  => array('username', 'password', 'action', 'start', 'order', 'tracking', 'shippingdate', 'carrier'),
 		'view_fields'                => array('page_id', 'product_id', 'product_group_id'),
+		'workspace_channel_export'   => array('channel', 'from', 'to'),
+		'workspace_mcp'              => array('mcp_action', 'mcp_id', 'mcp_tool', 'mcp_channel', 'mcp_connected', 'server', 'tool', 'channel'),
 	);
 }
 
