@@ -1141,6 +1141,7 @@
     "{var:1} files will be updated. Fields left on \"Do not change\" are not touched.": "{var:1} dosya güncellenecek. \"Değiştirme\" bırakılan alanlara dokunulmaz.",
     "{var:1} file{suffix:1} uploaded": "{var:1} dosya yüklendi",
     "{var:1} filter(s) on": "{var:1} süzgeç açık",
+    "{var:1} filters in use": "{var:1} filtre kullanımda",
     "{var:1} finished a task you created": "{var:1}, oluşturduğunuz bir görevi bitirdi",
     "{var:1} finished earlier": "Daha önce biten {var:1} görev",
     "{var:1} finished order(s) of this period are not worked out yet; the general job adds them within the hour.": "Bu dönemin {var:1} tamamlanmış siparişi henüz hesaplanmadı; genel görev bunları bir saat içinde ekler.",

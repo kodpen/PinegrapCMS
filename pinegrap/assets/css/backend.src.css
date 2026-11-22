@@ -5950,31 +5950,110 @@ body.pg-code-field-open {
   height: 100%;
 }
 
-.advanced-filter-body {
-  height: calc(100% - 47px);
-  overflow-x: hidden;
-  overflow-y: auto;
-  margin-top: 0;
+/* Advanced Filters panel (view_orders.php and the other list screens,
+   includes/fn/advanced_filters.php): a column of a 48 px head, a body that
+   alone scrolls with a thin bar, and a foot that keeps Clear and Update in
+   sight, so no button floats over the fields. */
+.advanced-filter-bar {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+  border: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
   background-color: var(--pg-bg-body);
-  border-left: var(--pg-border-width) var(--pg-border-style)
-    var(--pg-border-color);
-  border-right: var(--pg-border-width) var(--pg-border-style)
-    var(--pg-border-color);
+}
+.advanced-filter-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 48px;
+  padding: 0 8px 0 16px;
   border-bottom: var(--pg-border-width) var(--pg-border-style)
     var(--pg-border-color);
 }
+.advanced-filter-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font-weight: var(--pg-weight-strong);
+}
+.advanced-filter-title .pg-count {
+  margin-left: 0;
+}
+.advanced-filter-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0;
+}
+.advanced-filter-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 16px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.advanced-filter-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background-color: transparent;
+}
+.advanced-filter-scroll::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background-color: var(--pg-scrollbar-thumb);
+}
+/* Firefox has no ::-webkit-scrollbar; scrollbar-color would switch Chrome
+   off the 6 px bar above, so the pair is fenced to Firefox. */
+@supports not selector(::-webkit-scrollbar) {
+  .advanced-filter-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--pg-scrollbar-thumb) transparent;
+  }
+}
+/* Narrower than 1280 px the panel is a block over the list and grows with
+   its fields; the foot sticks to the window's bottom while the panel is on
+   screen. */
+.advanced-filter-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: var(--pg-border-width) var(--pg-border-style)
+    var(--pg-border-color);
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+  background-color: var(--pg-bg-body);
+}
+.advanced-filter-foot > .pg-button-quiet {
+  margin-right: auto;
+}
 
+/* From 1280 px: the right column, 300 px, from under the top bar to the
+   window's bottom. The height is the window's, not 100vh minus a fixed
+   56 px: the top bar is --pg-navbar-h high, and dvh follows a phone's or a
+   tablet's browser bar. */
 @media only screen and (min-width: 1280px) {
   .advanced-filter-bar {
-    top: var(--pg-navbar-h);
-    height: calc(100vh - 56px);
-    width: 300px;
-    overflow: auto;
     position: sticky;
+    top: var(--pg-navbar-h);
     z-index: 999;
     float: right;
-    display: block;
-    right:6px;
+    width: 300px;
+    height: calc(100vh - var(--pg-navbar-h));
+    height: calc(100dvh - var(--pg-navbar-h));
+    margin: 0 0 16px 16px;
+  }
+  .advanced-filter-foot {
+    position: static;
   }
 }
 
@@ -6205,9 +6284,6 @@ table.monthly_calendar .calendar-event .calendar_event_exception a {
   margin-bottom: 0;
 }
 
-.advanced_filters .header {
-  height: 47px;
-}
 
 
 html[data-bs-theme="dark"] table.monthly_calendar td:not(.inactive) {

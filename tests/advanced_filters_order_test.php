@@ -75,13 +75,13 @@ function test_advanced_filters_order_panel_icons_silent()
 			pg_assert_same(0, preg_match('/<(span|i) class="material-icons[^"]*">' . $word . '</', $source), $file . ': no ' . $word . ' icon is read aloud');
 		}
 
-		// The icons stay on screen, hidden only from screen readers.
-		if ($file === 'view_orders.php') {
-			pg_assert_contains('<i class="bi bi-funnel me-1" aria-hidden="true"></i>', $source, $file . ': the header icon is hidden');
-			pg_assert_contains('<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>', $source, $file . ': the Update icon is hidden');
-		} else {
-			pg_assert_contains('aria-hidden="true">filter_list</span>', $source, $file . ': the header icon is hidden');
-			pg_assert_contains('aria-hidden="true">sync</i>', $source, $file . ': the Update icon is hidden');
-		}
+		// The icons stay on screen, hidden only from screen readers: the
+		// head and the foot are drawn by includes/fn/advanced_filters.php.
+		pg_assert_contains('pg_advanced_filters_head(', $source, $file . ': the head is the shared one');
+		pg_assert_contains('pg_advanced_filters_foot(', $source, $file . ': the foot is the shared one');
 	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/advanced_filters.php');
+	pg_assert_contains('<i class="bi bi-funnel" aria-hidden="true"></i>', pg_advanced_filters_head('view_orders.php', 'Close', 0), 'the header icon is hidden');
+	pg_assert_contains('<i class="bi bi-arrow-repeat" aria-hidden="true"></i>', pg_advanced_filters_foot(), 'the Update icon is hidden');
 }

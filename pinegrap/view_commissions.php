@@ -24,6 +24,7 @@ validate_ecommerce_access($user);
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/advanced_filters.php');
 $liveform = new liveform('view_commissions');
 
 // if advanced filters are not set yet, then default them to off
@@ -122,16 +123,13 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
     $output_advanced_filters_class = ' active';
 
     $output_advanced_filters ='
-    <div class="advanced_filters advanced-filter-bar position-fixed-md"  id="advanced_filters" >
-        <div class="p-3 m-1 rounded-4 border justify-content-between d-flex flex-wrap header">
-            <p class="m-0"><span class="material-icons pe-1" aria-hidden="true">filter_list</span>' . lang('Filters') . '</p>
-            <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_commissions.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
-        </div>
-        <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_commissions.php" method="get" name="form">
-            <div class="row">
+    <div class="advanced_filters advanced-filter-bar" id="advanced_filters">
+        ' . pg_advanced_filters_head('view_commissions.php?advanced_filters=' . $output_advanced_filters_value, $output_advanced_filters_label, 0) . '
+        <form class="advanced-filter-body disable_shortcut" id="search_advanced" action="view_commissions.php" method="get" name="form">
+            <div class="advanced-filter-scroll"><div class="row">
                 <div class="col-12"><h5 class="pg-group-label mt-7 mb-3">' . lang('Date Range') . '</h5></div>
                 <fieldset class="col-12" data-pg-date-selects>
-                    <legend class="form-label">' . lang('Start') . '</legend>
+                    <legend class="pg-field-label">' . lang('Start') . '</legend>
                     <select class="form-control my-1" name="start_month" aria-label="' . h(lang('Month')) . '">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['start_month'] ?? '')) . '</select>
                     <div class="input-group input-group-sm">
                         <select class="form-control my-1" name="start_day" aria-label="' . h(lang('Day')) . '">' . select_day(($_SESSION['software']['ecommerce']['view_commissions']['start_day'] ?? '')) . '</select>
@@ -139,7 +137,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
                     </div>
                 </fieldset>
                 <fieldset class="col-12" data-pg-date-selects>
-                    <legend class="form-label">' . lang('End') . '</legend>
+                    <legend class="pg-field-label">' . lang('End') . '</legend>
                     <select class="form-control my-1" name="stop_month" aria-label="' . h(lang('Month')) . '">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['stop_month'] ?? '')) . '</select>
                     <div class="input-group input-group-sm">
                         <select class="form-control my-1" name="stop_day" aria-label="' . h(lang('Day')) . '">' . select_day(($_SESSION['software']['ecommerce']['view_commissions']['stop_day'] ?? '')) . '</select>
@@ -147,10 +145,8 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
                     </div>
                 </fieldset>
                 ' . get_date_picker_format() . pg_fields_script() . '
-                <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
-                    <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3" aria-hidden="true">sync</i>' . lang('Update') . '</button>
-                </div>
-            </div>
+            </div></div>
+            ' . pg_advanced_filters_foot() . '
            
         </form>
     </div>';

@@ -109,13 +109,88 @@ function pg_advanced_filters_head($close_url, $close_label, $count)
  * "Update" (fill, last). Update keeps today's name and value, so the screens
  * read the submit as before.
  *
- * @param string $clear_url  The address from pg_advanced_filters_clear_url().
+ * @param string $clear_url  The address from pg_advanced_filters_clear_url();
+ *                           '' draws no Clear.
  * @return string
  */
-function pg_advanced_filters_foot($clear_url)
+function pg_advanced_filters_foot($clear_url = '')
 {
+    $clear = '';
+
+    // A screen with no list of its filter fields yet draws Update alone.
+    if ($clear_url !== '') {
+        $clear = '<a class="pg-button pg-button-quiet" href="' . h($clear_url) . '">' . h(lang('Clear')) . '</a>';
+    }
+
     return '<div class="advanced-filter-foot">'
-        . '<a class="pg-button pg-button-quiet" href="' . h($clear_url) . '">' . h(lang('Clear')) . '</a>'
+        . $clear
         . '<button type="submit" name="submit_data" value="Update" class="pg-button pg-button-fill"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h(lang('Update')) . '</button>'
         . '</div>';
+}
+
+/**
+ * All Orders' advanced filter fields and the value of each that means "no
+ * filter": '' for a text box, 'any' for a picklist whose '' is a filter of
+ * its own (payment method None), Order Date for the date type. The period
+ * (start_* / stop_*) is the bar's period navigator's and is not listed.
+ *
+ * @param bool $affiliate      The affiliate program is on (Affiliate Code).
+ * @param bool $multicurrency  Multi-currency is on (Currency).
+ * @param bool $shipping       Shipping is on (Order Date / Ship Date).
+ * @return array  Field name => empty value, in the panel's order.
+ */
+function pg_order_advanced_filters_empty($affiliate, $multicurrency, $shipping)
+{
+    $empty = array(
+        'shipping_status' => 'any',
+        'order_number' => '',
+        'transaction_id' => '',
+        'authorization_code' => '',
+        'special_offer_code' => '',
+        'referral_source_code' => '',
+        'reference_code' => '',
+        'tracking_code' => '',
+        'http_referer' => '',
+    );
+
+    if ($multicurrency) {
+        $empty['currency_code'] = '';
+    }
+
+    $empty += array(
+        'ip_address' => '',
+        'product_name' => '',
+        'payment_method' => 'any',
+        'card_type' => '',
+        'cardholder' => '',
+        'card_number' => '',
+    );
+
+    if ($affiliate) {
+        $empty['affiliate_code'] = '';
+    }
+
+    foreach (array('custom_field_1', 'custom_field_2', 'billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address') as $name) {
+        $empty[$name] = '';
+    }
+
+    $empty['opt_in_status'] = 'any';
+    $empty['po_number'] = '';
+    $empty['tax_status'] = 'any';
+
+    foreach (array('shipping_salutation', 'shipping_first_name', 'shipping_last_name', 'shipping_company', 'shipping_address_1', 'shipping_address_2', 'shipping_city', 'shipping_state', 'shipping_zip_code', 'shipping_country') as $name) {
+        $empty[$name] = '';
+    }
+
+    $empty['address_type'] = 'any';
+    $empty['shipping_phone_number'] = '';
+    $empty['ship_to_name'] = '';
+    $empty['arrival_date_code'] = '';
+    $empty['shipping_method_code'] = '';
+
+    if ($shipping) {
+        $empty['date_type'] = 'order_date';
+    }
+
+    return $empty;
 }
