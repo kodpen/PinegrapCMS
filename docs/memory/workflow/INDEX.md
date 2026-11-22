@@ -78,6 +78,7 @@
 - decisions-made-panel-13.md: Decisions list, panel part 13 (2026-11-21 on): the dashboard's Assistant card keeps the agent chat while Claude is off, with a notice at its top and a short note when no agent is connected
 - decisions-made-panel-14.md: Decisions list, panel part 14 (2026-11-21 on): yes to the E-mail settings drawing (poll 211), its parts into Design examples, no one-click Gmail broker now (poll 212)
 - decisions-made-panel-15.md: Decisions list, panel part 15 (2026-11-22 on): View Order, All Orders and Edit Product redrawn as their sheets show; Edit Product gets a Performance card with figures about the product
+- decisions-made-panel-16.md: Decisions list, panel part 16 (2026-11-22 on): the bell's drawer redrawn as drawn in ui/bell-redraw-drawing (poll 218): icon-button head, one selector, chips on one line, search in the head
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
