@@ -880,6 +880,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-46.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-46.md: How big is the conversation timeline, and how is it zoomed and moved? (owner, 2026-11-21, in the architect's window)
 - decisions-made-workspace-46.md: What does the timeline's card offer beside the message's words? (owner, 2026-11-21, in the architect's window, on the drawing)
+- decisions-made-workspace-47.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-47.md: Is the Flows editor redrawn and widened? (owner, 2026-11-22, in the architect's window)
+- decisions-made-workspace-47.md: What does this change of the flow window of 2026-11-12?
+- decisions-made-workspace-47.md: What did the architect add, not the owner?
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?
