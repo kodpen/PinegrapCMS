@@ -8,7 +8,8 @@
  * e-mail to oneself, or from its "more" menu deletes it while nothing was
  * sent, else archives it (posted to the edit screen). "Add survey" opens the
  * starting points in a drawer; a card opens the edit screen filled from it,
- * the survey off. Role <= 2. Helpers: includes/fn/feedback_surveys.php.
+ * the survey off. Role <= 2; a user with the contacts right is sent to the
+ * results. Helpers: includes/fn/feedback_surveys.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,9 +20,15 @@
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback_surveys.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/feedback_report.php');
 
 $user = validate_user();
+
+// A user with the contacts right sees the results only.
+if (((int) $user['role'] > 2) && pg_feedback_results_may($user)) {
+    go('messages_survey_results.php');
+}
+
 validate_area_access($user, 'manager');
 
 $description = lang('Ask your customers how it went after a booking, an event, a course, a form, a delivery or a mail conversation.');
@@ -126,7 +133,7 @@ if ($surveys === array()) {
         </form>';
 }
 
-$body = $liveform->get_messages() . $body . $start_drawer . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+$body = pg_feedback_segments_html('surveys', $user) . $liveform->get_messages() . $body . $start_drawer . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 <script>
 (function () {
     var phone = window.matchMedia("(max-width: 575.98px)");

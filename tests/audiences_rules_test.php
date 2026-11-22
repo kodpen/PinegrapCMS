@@ -57,6 +57,8 @@ function audiences_rules_test_samples()
 		'landing_page' => array('key' => 'landing_page', 'op' => 'eq', 'value' => 'spring-sale', 'days' => 30),
 		'utm_source' => array('key' => 'utm_source', 'op' => 'eq', 'value' => 'newsletter', 'days' => 14),
 		'utm_campaign' => array('key' => 'utm_campaign', 'op' => 'eq', 'value' => 'black-friday', 'days' => 14),
+		'feedback_band' => array('key' => 'feedback_band', 'op' => 'eq', 'value' => 'low'),
+		'feedback_answered' => array('key' => 'feedback_answered', 'op' => 'within', 'value' => 30),
 		'group' => array('key' => 'group', 'op' => 'not_in', 'value' => 5),
 	);
 }
@@ -337,4 +339,22 @@ function test_audiences_upgrade_step()
 
 	pg_assert_false(pg_audience_ready(), 'no database in the test run');
 	pg_assert_same(null, pg_audience_count(array('conditions' => array(array('key' => 'customer', 'op' => 'yes')))), 'nothing counted before the upgrade');
+}
+
+function test_audiences_survey_conditions()
+{
+	$last = pg_audience_sql(array('conditions' => array(array('key' => 'feedback_band', 'op' => 'eq', 'value' => 'high'))), 1800000000);
+	pg_assert_same(array(PG_FEEDBACK_BAND_HIGH), $last['params'], 'the band goes as its number');
+	pg_assert_contains('MAX(later.answered_at)', $last['sql'], 'only the latest answer counts');
+	pg_assert_contains('contacts.id IN (', $last['sql'], 'is selects the contacts with it');
+
+	$not = pg_audience_sql(array('conditions' => array(array('key' => 'feedback_band', 'op' => 'neq', 'value' => 'low'))), 1800000000);
+	pg_assert_contains('contacts.id NOT IN (', $not['sql'], 'is not takes the rest');
+
+	pg_assert_same(null, pg_audience_condition_clean(array('key' => 'feedback_band', 'op' => 'eq', 'value' => 'worst')), 'an unknown band is dropped');
+	pg_assert_same(null, pg_audience_condition_clean(array('key' => 'feedback_band', 'op' => 'eq', 'value' => 1)), 'a band number is dropped');
+
+	$answered = pg_audience_sql(array('conditions' => array(array('key' => 'feedback_answered', 'op' => 'within', 'value' => 30))), 1800000000);
+	pg_assert_same(array(1800000000 - 30 * 86400), $answered['params'], 'answered since 30 days ago');
+	pg_assert_contains('feedback_responses.answered_at >= ?', $answered['sql'], 'by the answer time');
 }

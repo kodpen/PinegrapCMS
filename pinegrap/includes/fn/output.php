@@ -5112,6 +5112,7 @@ function output_menu($properties = false)
         case 'messages_sends.php':
         case 'messages_surveys.php':
         case 'edit_feedback_survey.php':
+        case 'messages_survey_results.php':
         case 'messages_channels.php':
         case 'messages_notifications.php':
             $active_menu = 9;
