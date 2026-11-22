@@ -31,13 +31,14 @@ function test_smtp_settings_wide_layout()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
 	$at = -1;
 
-	foreach (array('pgset-mail-system', 'pgset-mail-campaign', 'pgset-mail-dkim', 'pgset-mail-domain', 'pgset-mailchimp', 'pgset-mail-test') as $section) {
+	foreach (array('pgset-mail-system', 'pgset-mail-campaign', 'pgset-mail-domain', 'pgset-mailchimp', 'pgset-mail-test') as $section) {
 		$here = strpos($source, '<div id="' . $section . '" class="pg-set-card">');
 		pg_assert_true(($here !== false) && ($here > $at), $section . ' in its place');
 		$at = $here;
 	}
 
-	pg_assert_contains('pg_mail_domain_health_card($mail_domain_health, false)', $source, 'the Sending domain card comes unwrapped');
+	pg_assert_contains('pg_mail_domain_health_card($mail_domain_health, false, array(', $source, 'the Sending domain card comes unwrapped');
+	pg_assert_false(strpos($source, 'pgset-mail-dkim') !== false, 'no DKIM card of its own');
 	pg_assert_contains('$mail_domain_health = pg_mail_domain_health();', $source, 'one lookup, which the tab\'s pill reads too');
 	pg_assert_contains('id="mail_transport_card"', $source, 'the old anchor of the Sending service card lands on How e-mail leaves');
 	pg_assert_false(strpos($source, 'class="buttons navigation') !== false, 'no save bar of its own: the dialog and the page have theirs');
@@ -70,7 +71,7 @@ function test_mail_sending_holds_the_campaign_texts_and_mailchimp()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
 	$campaign = strpos($source, 'id="pgset-mail-campaign"');
-	$dkim = strpos($source, 'id="pgset-mail-dkim"');
+	$dkim = strpos($source, 'id="pgset-mail-domain"');
 
 	foreach (array('name="opt_in_label"', 'name="plain_text_email_campaign_footer"') as $field) {
 		$at = strpos($source, $field);
@@ -145,4 +146,34 @@ function test_mail_domain_health_rows_and_pills()
 	pg_assert_contains('class="card-header bg-reset border-0 pg-title-section"', $card, 'the settings card title');
 	pg_assert_contains('class="pg-input pg-input-sm font-monospace" value="v=spf1 -all" readonly', $card, 'the record to publish');
 	pg_assert_contains('data-pg-copy-record="mail_domain_spf"', $card, 'its Copy button');
+}
+
+// DKIM has one place: Sending domain's DKIM row holds the selector and
+// domain, the button that makes a key and the site's record to publish while
+// DNS does not carry it, never while a sending service signs.
+function test_mail_domain_health_card_dkim_row_holds_the_key()
+{
+	$health = array(
+		'domain' => 'example.com',
+		'selector' => 'pg',
+		'rates' => array('judged' => false, 'sent' => 0, 'state' => 'ok'),
+	);
+
+	foreach (array('spf', 'dkim', 'dmarc') as $record) {
+		$health[$record] = array('state' => 'ok', 'found' => '', 'copy' => '', 'reason' => 'match');
+	}
+
+	$health['dkim'] = array('state' => 'unknown', 'found' => '', 'copy' => '', 'reason' => 'lookup');
+	$dkim = array('record' => 'pg._domainkey.example.com IN TXT "v=DKIM1; k=rsa; p=KEY"', 'fields' => '<input name="dkim_selector">');
+	$card = pg_mail_domain_health_card($health, false, $dkim);
+
+	pg_assert_contains('id="mail_domain_dkim" class="pg-input pg-input-sm font-monospace" value="pg._domainkey.example.com IN TXT &quot;v=DKIM1; k=rsa; p=KEY&quot;"', $card, 'a failed lookup still offers the record');
+	pg_assert_same(1, substr_count($card, 'name="dkim_selector"'), 'the fields once');
+	pg_assert_true(strpos($card, 'name="dkim_selector"') < strpos($card, '>DMARC<'), 'in the DKIM row');
+
+	$health['dkim']['state'] = 'ok';
+	pg_assert_false(strpos(pg_mail_domain_health_card($health, false, $dkim), 'mail_domain_dkim') !== false, 'a published key needs no copy');
+
+	$health['dkim'] = array('state' => 'unknown', 'found' => '', 'copy' => '', 'reason' => 'service');
+	pg_assert_false(strpos(pg_mail_domain_health_card($health, false, $dkim), 'mail_domain_dkim') !== false, 'a sending service signs with its own key');
 }

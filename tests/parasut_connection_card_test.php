@@ -158,15 +158,12 @@ function test_parasut_connection_card_credential_boxes_follow_what_is_stored()
 // The card draws each box with its own placeholder and help.
 function test_parasut_connection_card_draws_each_box_from_its_own_value()
 {
-	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/accounting.php');
-	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
+	// The boxes are drawn on Paraşüt's page of Connections.
+	$page = parasut_connection_card_test_body('parasut_page_fields_html');
 
-	parasut_connection_card_test_has('placeholder="\' . h($parasut_secret_placeholder) . \'"', $card);
-	parasut_connection_card_test_has('placeholder="\' . h($parasut_password_placeholder) . \'"', $card);
-	parasut_connection_card_test_has('h($parasut_secret_help)', $card);
-	parasut_connection_card_test_has('h($parasut_password_help)', $card);
-	pg_assert_same(false, strpos($card, '$parasut_credential_placeholder'));
-	parasut_connection_card_test_has("parasut_credential_boxes(parasut_credentials_decode((string) (\$row['parasut_credentials_enc'] ?? '')))", $prep);
+	parasut_connection_card_test_has("\$box('parasut_client_secret', lang('Client Secret'), '', 'password', \$boxes['secret']['help'], \$boxes['secret']['placeholder'])", $page);
+	parasut_connection_card_test_has("\$box('parasut_password', lang('Password'), '', 'password', \$boxes['password']['help'], \$boxes['password']['placeholder'])", $page);
+	parasut_connection_card_test_has("parasut_credential_boxes(parasut_credentials_decode((string) (\$config['parasut_credentials_enc'] ?? '')))", $page);
 }
 
 // The company box holds the saved number when the card is drawn, and Connect
@@ -261,9 +258,8 @@ function test_parasut_connection_card_connect_report_warns_of_a_company_change()
 	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/parasut_connect.php');
 	parasut_connection_card_test_has('parasut_connect_report($result)', $endpoint);
 	parasut_connection_card_test_has("\$tone = \$ok ? (\$warned ? 'warning' : 'success') : 'danger';", $endpoint);
-	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/accounting.save.php');
-	parasut_connection_card_test_has('parasut_connect_report($parasut_connected)', $save);
-	parasut_connection_card_test_has('$liveform->add_warning(h($parasut_line));', $save);
+	parasut_connection_card_test_has('parasut_connect_report($connected)', parasut_connection_card_test_body('parasut_page_save'));
+	parasut_connection_card_test_has('$liveform->add_warning(h($edoc_line));', (string) file_get_contents(PG_FUNCTIONS_DIR . '/connections.php'));
 
 	// Connect hands the saved number to the company choice.
 	$body = parasut_connection_card_test_body('parasut_connect_with_code');

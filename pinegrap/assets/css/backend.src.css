@@ -2386,6 +2386,25 @@ body:not(.toolbar) .software-content {
   padding: 0rem;
 }
 
+/* The foot (output_footer()) stands at the window's bottom when a screen is
+   short and after the content when it scrolls: the content column is at least
+   the window under the top bar, and the foot takes the space left over above
+   it. No fixed foot laid over the content. The visual editor (.toolbar) prints
+   no foot and keeps its own frame. */
+body:not(.toolbar) .software-content {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--pg-navbar-h));
+}
+@supports (height: 100dvh) {
+  body:not(.toolbar) .software-content {
+    min-height: calc(100dvh - var(--pg-navbar-h));
+  }
+}
+body:not(.toolbar) .software-content > #footer {
+  margin-top: auto;
+}
+
 .software-sidebar {
   top: calc(var(--pg-navbar-h) - 1px);
   height: calc(100vh - var(--pg-navbar-h) + 1px);
@@ -3713,16 +3732,25 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
     width: var(--pg-searchbar-w);
     transform: translateX(-50%);
   }
-  /* The heading gives way instead of the field sliding off centre: half the
-     viewport, less half the field, less the logo group and a gap. Where the
-     screen is wide enough the plain 26rem wins and nothing is given up. */
+  /* The heading gives way instead of the field sliding off centre, and its
+     description ends 16px before the field with an ellipsis: half the bar
+     (the field's centre), less half the field, less where the heading starts
+     (the menu button, the logo group and the separator: 234px) and 12px
+     (the 16px gap less the 4px of padding at the heading's end). Where the screen is wide
+     enough the plain 26rem wins and nothing is given up. A private-label
+     logo is narrower, so the gap there is only wider. */
   #header:has(.pg-searchbar) .pg-navhead {
-    max-width: min(26rem, calc(50vw - (var(--pg-searchbar-w) / 2) - 12rem));
+    max-width: min(26rem, calc(50% - (var(--pg-searchbar-w) / 2) - 15.375rem));
   }
   /* One search per screen. */
   #header:has(.pg-searchbar) #EnableSearch {
     display: none;
   }
+}
+/* On a Workspace screen Ctrl+K opens the Workspace's own search, which the
+   list's field in the main menu names; the top bar's field shows no key. */
+body.workspace #header .pg-searchbar-kbd {
+  display: none;
 }
 #header .pg-navhead-title,
 #header .pg-navhead-desc {
@@ -9489,11 +9517,109 @@ button.no-popover:focus-visible {
   .pg-toolbar-grow:empty { display: none; }
 }
 
-/* The orders list's statistics strip (view_orders.php): a sparkline under a
-   figure, and the two small charts beside it. Chart.js draws with
-   maintainAspectRatio off, so the box sets the height. */
-.pg-orders-spark { position: relative; height: 56px; }
-.pg-orders-chart { position: relative; height: 160px; }
+/* All Orders (view_orders.php). The bar: a rule before the period navigator;
+   under 1280 px the rule becomes a line break, so the navigator starts the
+   bar's second row with the controls after it, in markup order. A sparkline
+   at the right of its figure: Chart.js draws with maintainAspectRatio off, so
+   the box sets the size. */
+.pg-orders-bar-rule {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 0;
+  height: 20px;
+  margin: 0 4px;
+  border-left: 1px solid var(--pg-border-color-translucent);
+}
+.pg-orders-period {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.pg-orders-period > .text-nowrap {
+  margin: 0 4px;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-body);
+}
+@media (max-width: 1279.98px) {
+  .pg-orders-bar-rule {
+    flex-basis: 100%;
+    height: 0;
+    margin: 0;
+    border: 0;
+  }
+}
+.pg-orders-spark { position: relative; flex: 1 1 0; min-width: 48px; max-width: 96px; height: 28px; }
+/* Sort, the selects and the filters button wrap as one group pushed to the
+   right (no grow slot: its minimum width would wrap the group a row lower). */
+.pg-orders-bar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
+  margin-left: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.pg-orders-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.pg-orders-summary-part {
+  min-width: 0;
+  padding: 14px 18px 16px;
+}
+.pg-orders-summary-part + .pg-orders-summary-part {
+  border-left: 1px solid var(--pg-border-color-translucent);
+}
+.pg-orders-summary-part > .pg-group-label {
+  margin: 0 0 6px;
+}
+.pg-orders-summary-bars {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pg-orders-summary-bars > li {
+  display: grid;
+  grid-template-columns: minmax(0, 170px) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 7px;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+.pg-orders-summary-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-orders-summary-track > i {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--pg-primary) 70%, transparent);
+}
+.pg-orders-summary-value {
+  min-width: 28px;
+  text-align: right;
+  font-weight: var(--pg-weight-strong);
+  font-variant-numeric: tabular-nums;
+  color: var(--pg-fg-body);
+}
+@media (max-width: 767.98px) {
+  .pg-orders-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pg-orders-summary-part + .pg-orders-summary-part {
+    border-left: 0;
+    border-top: 1px solid var(--pg-border-color-translucent);
+  }
+  .pg-orders-summary-bars > li {
+    grid-template-columns: minmax(0, 40%) minmax(0, 1fr) auto;
+  }
+}
 
 /* The design list's shared components panel carries a six column table;
    Bootstrap's 400px offcanvas would wrap every cell. */
@@ -12693,6 +12819,21 @@ body.workspace .ws-shell-main > #button_bar {
 }
 @supports (height: 100dvh) {
   .ws-app { height: calc(100dvh - 8.5rem); }
+}
+/* The channel view prints no foot, so the conversation and its writing box
+   reach the window's bottom. Today (.ws-home, drawn in the same root by
+   showHome()) keeps the foot and the height above. The foot is hidden here
+   rather than left out by output_footer() because the script switches
+   between the two views without loading the page again. */
+body.workspace_channels .software-content:not(:has(.ws-home)) > #footer {
+  /* The foot carries d-flex, and @layer utilities beats @layer custom. */
+  display: none !important;
+}
+.ws-app:not(:has(.ws-home)) {
+  height: calc(100vh - var(--pg-navbar-h));
+}
+@supports (height: 100dvh) {
+  .ws-app:not(:has(.ws-home)) { height: calc(100dvh - var(--pg-navbar-h)); }
 }
 /* A discussion beside the channel (threads.php): a third column on a wide
    screen; on a phone it covers the channel until it is closed (below). */
@@ -27137,13 +27278,91 @@ html.ws-flow-layer-on body {
 .wsf-group-message { --wsf-kind: #2f62c4; }
 .wsf-group-people { --wsf-kind: #6d4bd0; }
 .wsf-group-values { --wsf-kind: #a8468f; }
-html[data-bs-theme="dark"] .wsf-group-start { --wsf-kind: #6fdca6; }
-html[data-bs-theme="dark"] .wsf-group-system { --wsf-kind: #45c4d6; }
-html[data-bs-theme="dark"] .wsf-group-logic { --wsf-kind: #e9b44c; }
-html[data-bs-theme="dark"] .wsf-group-message { --wsf-kind: #6ea8ff; }
-html[data-bs-theme="dark"] .wsf-group-people { --wsf-kind: #b49cff; }
-html[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
+[data-bs-theme="dark"] .wsf-group-start { --wsf-kind: #6fdca6; }
+[data-bs-theme="dark"] .wsf-group-system { --wsf-kind: #45c4d6; }
+[data-bs-theme="dark"] .wsf-group-logic { --wsf-kind: #e9b44c; }
+[data-bs-theme="dark"] .wsf-group-message { --wsf-kind: #6ea8ff; }
+[data-bs-theme="dark"] .wsf-group-people { --wsf-kind: #b49cff; }
+[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
 .pgc-node[class*="wsf-group-"] { --pgc-node-accent: var(--wsf-kind); }
+/* A flow box as a card (wsf-card, cardFace() in workspace_flow.js): the
+   card surface, the hairline and the card shadow; the group's colour only on
+   the tile, the kind and the out port. Three lines beside the tile: the kind
+   in small capitals, the title, what the box does; each cut to the width. */
+.pgc-node.wsf-card {
+  display: flex;
+  gap: 10px;
+  width: 196px;
+  height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: 13px;
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  box-shadow: var(--pg-shadow-card);
+}
+.pgc-node.wsf-card.pgc-selected {
+  box-shadow: 0 0 0 1.5px var(--pg-bg-1), 0 0 0 3.5px var(--pgc-ring, var(--pgc-accent, var(--pg-primary))), var(--pg-shadow-card);
+}
+.pg-icon-tile.wsf-node-tile {
+  --pg-tone: var(--wsf-kind, var(--pg-tone-gray));
+  width: 30px;
+  height: 30px;
+}
+.wsf-node-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pgc-node.wsf-card .wsf-node-head {
+  gap: 4px;
+  height: 14px;
+  font-weight: 650;
+  letter-spacing: .06em;
+}
+.pgc-node.wsf-card :is(.wsf-run-badge, .wsf-ai-badge) {
+  padding-block: 0;
+  line-height: 12px;
+}
+.pgc-node.wsf-card .wsf-node-title {
+  margin-top: 0;
+  line-height: 1.35;
+}
+.pgc-node.wsf-card .wsf-node-meta {
+  line-height: 1.35;
+}
+/* The out port an 8 px dot on the right edge, ringed in the canvas's
+   ground; the in port shows while the box is pointed at, in focus, chosen
+   or the end of an arrow being drawn. The 24 px target stays. */
+.pgc-node.wsf-card .pgc-port {
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border: 0;
+  box-shadow: 0 0 0 2px var(--pg-bg-1);
+}
+.pgc-node.wsf-card .pgc-port::before {
+  inset: -8px;
+}
+.pgc-node.wsf-card .pgc-port-out {
+  right: -4.5px;
+}
+.pgc-node.wsf-card .pgc-port-in {
+  left: -4.5px;
+  opacity: 0;
+}
+.pgc-node.wsf-card:is(:hover, :focus-visible, .pgc-selected, .pgc-target) .pgc-port-in {
+  opacity: 1;
+}
+/* Flow arrows are 1.75 px; the chosen and the run view's arrows keep their own. */
+:is(.wsf-app, .wsf-embed) .pgc-edge:not(.pgc-selected) .pgc-edge-line {
+  stroke-width: 1.75;
+}
+/* The Design examples screen draws flow boxes on a still stage of their
+   own size, scrolled across in a narrow pane; the ring is the Workspace's. */
+.pgc-stage.pg-look-flow {
+  --pgc-ring: light-dark(#7c3aed, #a78bfa);
+  height: 266px;
+  overflow-x: auto;
+}
 /* A value box: no arrows, a dashed border. */
 .pgc-node.wsf-group-values {
   border-style: dashed;
@@ -27619,14 +27838,14 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   stroke: var(--pg-danger);
   stroke-dasharray: 4 3;
 }
-/* Placed from the box's outer edge (drawData()), so the box's 1.5 px border
+/* Placed from the box's outer edge (drawData()), so the box's 1 px border
    is taken back; as wide as dataRowSlots() lets it be (--wsf-w), so the row
    stays within its box. On hover an item shows its whole name over its
    neighbours. */
 .wsf-data {
   position: absolute;
   top: calc(100% - 6px);
-  margin-left: -1.5px;
+  margin-left: -1px;
   display: flex;
   align-items: center;
   height: 14px;
@@ -27995,13 +28214,15 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   margin: 0 0 var(--ws-space-3);
   padding-left: 1.5rem;
 }
+/* A List view entry is drawn as the canvas's card: the hairline, the card
+   surface, the kind's tile and the kind over the title in its heading. */
 .wsf-outline-item {
   margin-bottom: var(--ws-space-3);
   padding: var(--ws-space-3);
   border: 1px solid var(--pg-border-color-translucent);
-  border-left: 4px solid var(--wsf-kind, var(--pg-fg-2));
-  border-radius: var(--ws-radius);
-  background: var(--pg-bg-body);
+  border-radius: 13px;
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  box-shadow: var(--pg-shadow-card);
 }
 .wsf-outline-item.wsf-bad {
   border-color: var(--pg-danger);
@@ -28025,10 +28246,29 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   font: inherit;
   text-align: start;
 }
+.wsf-outline-head .wsf-node-tile {
+  margin-right: 10px;
+}
+.wsf-outline-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
 .wsf-outline-kind {
-  margin-right: .25rem;
-  color: var(--pg-fg-2);
-  font-weight: 400;
+  color: var(--wsf-kind, var(--pg-fg-2));
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+.wsf-outline-title {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* The run view: every box wears its state in the run shown as a tone, a
    mark and a word (the word is never left out); the Bootstrap tones used
@@ -28127,7 +28367,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .wsf-flag-canvas {
   position: absolute;
   z-index: 2;
-  width: 208px;
+  width: 196px;
   transform: translateY(calc(-100% - 8px));
 }
 @media (prefers-reduced-motion: reduce) {
@@ -28246,9 +28486,10 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .wsf-outline-item.wsf-run-none {
   border-style: dashed;
-  border-left-style: solid;
+  box-shadow: none;
 }
 .wsf-run-view .wsf-outline-item:not(.wsf-run-none) {
+  border-color: var(--wsf-run-line, var(--pg-border-color));
   background: linear-gradient(var(--wsf-run-bg, transparent), var(--wsf-run-bg, transparent)), var(--pg-bg-body);
 }
 @media (max-width: 1279.98px) {
@@ -33520,6 +33761,81 @@ textarea.pg-campaign-text {
     grid-column: 1 / -1;
   }
 }
+/* The strip form (.pg-figure-strip): a list's figures as cells of one card,
+   divided by rules, each value at the size of a phone figure with its
+   sparkline at its right; the card's last cell holds a button (Summary) and
+   the row under it what the button opens. Two cells a row on a phone, the
+   button's cell the whole row. */
+.pg-figure-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: stretch;
+  margin: 0 0 12px;
+  padding: 0;
+  overflow: hidden;
+}
+.pg-figure-strip-cell {
+  min-width: 0;
+  padding: 11px 18px;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.pg-figure-strip-cell > .pg-figure-label {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-figure-strip-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.pg-figure-strip-line > .pg-figure-value {
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 0;
+  margin: 2px 0 0;
+  font-size: var(--pg-text-figure-sm);
+}
+.pg-figure-strip-end {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+}
+.pg-figure-strip-end > .pg-button.is-open {
+  box-shadow: inset 0 0 0 1px var(--pg-primary);
+}
+.pg-figure-strip-more {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-figure-strip-more > .pg-figure-note {
+  padding: 12px 18px;
+}
+@media (max-width: 991.98px) {
+  .pg-figure-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pg-figure-strip-cell {
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+  }
+  .pg-figure-strip-cell:nth-child(2n) {
+    border-right: 0;
+  }
+  .pg-figure-strip-end {
+    grid-column: 1 / -1;
+    padding: 8px 14px;
+  }
+}
+@media (max-width: 575.98px) {
+  .pg-figure-strip-cell {
+    padding: 10px 12px;
+  }
+  .pg-figure-strip-line {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+}
+
 /* The compact form (.pg-figures-sm): a few facts at the top of a drawer.
    The value in the strong weight, not the Display cut; four a row from
    576 px up whatever the viewport, two a row on a phone. */
@@ -34171,6 +34487,47 @@ textarea.pg-campaign-text {
   }
   .pg-embedded-table.ws-people-table > tbody > tr > td.ws-people-cell-out::before {
     margin-bottom: 0;
+  }
+}
+
+/* The Bookings staff drawer's weekly hours and days off: under 576 px each
+   row is a block, its day across and its four boxes two by two, each under
+   its own label (the cell's data-label), so nothing scrolls sideways. */
+@media (max-width: 575.98px) {
+  .pg-embedded-table.pg-booking-hours,
+  .pg-embedded-table.pg-booking-hours > tbody {
+    display: block;
+  }
+  .pg-embedded-table.pg-booking-hours > thead {
+    display: none;
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .5rem .75rem;
+    padding: .75rem 0;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr:last-child {
+    border-bottom: 0;
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr > th {
+    grid-column: 1 / -1;
+    padding: 0;
+    border: 0;
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr > td {
+    display: block;
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .pg-embedded-table.pg-booking-hours > tbody > tr > td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: .25rem;
+    font-size: var(--pg-text-meta);
+    color: var(--pg-fg-3);
   }
 }
 

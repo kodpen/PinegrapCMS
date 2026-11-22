@@ -63,6 +63,10 @@ if (!$_POST) {
 // else the form has been submitted
 } else {
     validate_token_field();
+
+    // The form draws no list: a field posted as one is refused before it
+    // reaches the session.
+    pg_request_refuse_lists($liveform, 'add_ad_region.php');
     
     $liveform->add_fields_to_session();
     

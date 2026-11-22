@@ -11,7 +11,7 @@ module: mail_transport
 - No outside library (decided with the drivers): plain JSON over HTTPS, SES with the site's own SigV4. Every call goes through `pg_mail_transport_call()` → `pg_curl_run()` (60 s), refuses a body over the driver's `max_bytes` and one `json_encode()` could not build (not UTF-8).
 
 ## When does email() use one?
-- Order: the message's own `smtp`, its own `connection`, the connected account E-mail sending chose for its kind, then the transport switched on (`pg_mail_transport()`), then the SMTP server or `mail()` as before. Nothing switched on: legacy behaviour unchanged.
+- Order: the message's own `smtp`, its own `connection`, the connected account E-mail sending chose for its kind, then the transport switched on (`pg_mail_transport()`), then the SMTP server or `mail()` as before. Nothing switched on: legacy behaviour unchanged. Campaigns: `mail-campaign-way.md`.
 - The message is still built by PHPMailer (as SMTP), read back by `pg_mail_transport_message()` (addresses, text/html, custom headers including `List-Unsubscribe` and threading, attachments with their bytes, inline ones with their cid) and handed to the driver. The site's DKIM key is not used: the provider signs for the domain verified with it. `keep_mime` still gets the SMTP form of the message.
 - A refusal is permanent (the queue gives up) for a 4xx except 401, 403, 408 and 429 (`pg_mail_transport_status_permanent()`): a wrong key can be fixed, a rate limit passes. A connection failure is not permanent.
 

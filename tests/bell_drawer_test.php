@@ -100,6 +100,9 @@ function test_bell_drawer_markup()
 	pg_assert_contains('<h2 class="drawer-title pg-bell-heading" id="pg_bell_heading">\' . h(lang(\'Notifications\')) . \'</h2>', $drawer);
 	pg_assert_contains('class="btn-close pg-bell-close" data-bs-dismiss="drawer"', $drawer, 'the close button');
 	pg_assert_contains("h(lang('Delete All Notifications'))", $drawer, 'Delete All in the head menu');
+	// The head's More actions button wears the icon button look like the
+	// rows' toggles; without the class the browser draws its own grey box.
+	pg_assert_contains('<button type="button" class="pg-icon-button pg-bell-menu-toggle no-popover" aria-expanded="false" aria-controls="pg_bell_head_menu"', $drawer, 'the head menu button is an icon button');
 
 	$last = -1;
 	foreach (array('pg-bell-head', 'pg-bell-mark-all', 'pg-bell-head-menu', 'pg-bell-delete-all', 'pg-bell-close', '$output_bell_filters', 'pg-bell-no-match', 'pg-bell-scroll', 'notifications_empty', 'id="push_row"', 'id="push_hint"') as $part) {

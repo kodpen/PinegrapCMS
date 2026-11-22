@@ -16,7 +16,7 @@ module: appearance_settings_fold
 - Panel look (`pgset-theme`): line "Acrylic on, panel CSS set" (off / no panel CSS). "Transparent acrylic effect" (`advanced_visual_effects`) with "For everyone who uses the panel…"; "Panel CSS" (`custom_css`, once "Custom CSS"), its line "Styles the control panel only, never the site" and, for an administrator, that a whole stylesheet is set under Private label branding.
 - Dashboard (`pgset-dashboard`): line "Glass cards · refresh every 60 seconds". Group "For everyone": Card style, Panel backdrop, "Reset widgets" (still the submit `dashboard_reset_widgets`). Group "Only for you, until you sign out": "Refresh every" (`dashboard_refresh`, kept in the session).
 - Rich-text editor (`pgset-editor`): line "Latest editor" / "Previous editor". Editor version a `pg-seg` of two radios (`page_editor_version`), the five tool switches "Font", "Font size", "Font style", "Text colour button", "Background colour button" (`page_editor_font…` names unchanged), "Spell checker: <engine>" a meta line.
-- Private label branding (`pgset-private-label`): line On / Off. "Use your own branding" (`private_label`), then always drawn "Logo address", "Panel stylesheet address" and the five footer link pairs.
+- Private label branding (`pgset-private-label`): line On / Off. "Use your own branding" (`private_label`), then always drawn "Logo address", "Panel stylesheet address" and "Footer links" as list rows, each edited in its drawer (`ui/settings-appearance-footer-links.md`).
 
 ## What stayed?
 - Card ids, field names and `appearance.save.php`; the search words gained "panel css" and keep "custom css".
