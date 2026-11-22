@@ -19,7 +19,7 @@ description: Step DX2b of the Design examples plan: the parts of the approved e-
 - "Provider sign-in" (board D2): the centred inner card with Google's and Microsoft's own buttons, exactly the values of the box note, and the one line under them; the same in the light and the dark pane.
 - "Result line" (board D3): the green line after a sign-in or a test, two lines of text at most.
 - "Confirm with its effects" (board E): the dialog with the rose tile, title and sub line, the list of effects (a green check stays, a rose cross goes, a blue info line), Cancel quiet and the danger button.
-- "Switch rows" (the Features board, `plans/features-switchboard-design.md`): a card of rows with a tile, name, one line and a switch at the end; the off row with "Settings", the state pill with "Open", the row not allowed.
+- "Switch rows" (the Features board, `ui/settings-features.md`): a card of rows with a tile, name, one line and a switch at the end; the off row with "Settings", the state pill with "Open", the row not allowed.
 
 ## What binds it?
 - The recipes go into `backend.src.css` under `pg-` names of the part, never of a screen; no new pill tone, button rank or colour, but for the two provider buttons' brand values.

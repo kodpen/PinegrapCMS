@@ -43,7 +43,7 @@ $query =
     FROM order_form_pages
     LEFT JOIN page ON order_form_pages.page_id = page.page_id
     WHERE order_form_pages.page_id = ?";
-$result = db_q($query, array((string) $liveform->get_field_value('page_id'))) or output_error('Query failed.');
+$result = db_q($query, array((int) $liveform->get_field_value('page_id'))) or output_error('Query failed.');
 
 if (mysqli_num_rows($result) == 0) {
     output_error(lang('The page, for the order form you submitted, can no longer be found.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
@@ -60,7 +60,7 @@ $folder_id = $row['folder_id'];
 
 // If visitor does not have view access to the order that he/she claimed they submitted, log and output error.
 if (check_view_access($folder_id) == false) {
-    log_activity(pg_log_lang(array('string' => 'access denied to submit order form ({var:1}) because visitor does not have access to view order form', 'vars' => array($page_name))), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to submit order form ({var:1}) because visitor does not have access to view order form', 'vars' => array($page_name))), $_SESSION['sessionusername'] ?? '');
     output_error(lang('You do not have access to submit this order form.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 

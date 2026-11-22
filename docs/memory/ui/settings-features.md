@@ -1,7 +1,7 @@
 ---
 name: settings-features
-description: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, the folded rows below it
-module: features_modules, features_fold
+description: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed
+module: features_modules
 ---
 
 ## How is the Modules board drawn?
@@ -19,10 +19,16 @@ module: features_modules, features_fold
 - `pgset-courses` and `pgset-event-tickets` are no cards any more: `pg_settings_legacy_anchors()` sends them to `features` / `pgset-features`. A `#settings/features/pgset-courses` address finds its card through the same map (the dialog's `jump()` looks an id up in the map when the pane has no such element).
 
 ## What is below the board?
-- Folded rows (`pg_settings_fold()`, `settings-fold-rows.md`), one open, Site search first: Site search, Sharing buttons, Visitor notifications, Maps, Clicks and scrolling, Content approval, Speed, Images, Page revisions, Signature time stamp, Badge. Order, faces, state lines: `includes/fn/features_fold.php`. No "Other settings" card is left.
-- Each row holds its card under its old id; the registry's section is named as the row: `pgset-search-tuning` (Site Search Type as `pg-seg`, Synonyms, Promoted Results), `pgset-sharing` (new: Setup as `pg-seg`, Simple shows the eight services as checkboxes in two columns, Advanced the code; no popover).
-- Also `pgset-page-cache` (Speed: Page Cache and Page Lifetime, Prefetch Menu Links, Performance Monitoring), `pgset-images`, `pgset-revisions`, `pgset-signature`, `pgset-badge` (new: Default Badge Label).
-- Speed's line says the page cache is off while Mobile view is on; off, Maps keeps its fields and its line says so. A row's own switches are `pg-switch` left of their label; units (%, pixels, days, seconds) are suffixes after the number in every language.
-- Tests: `tests/settings_features_modules_test.php`, `tests/settings_features_fold_test.php`.
+- Eleven folded rows, Site search first: `settings-features-rows.md`.
 
-Related: docs/memory/ui/settings-fold-rows.md, docs/memory/plans/features-switchboard-steps.md
+## Why was it redrawn, and when?
+- Owner (2026-11-21): the settings screens' contradictions are fixed one category at a time, Features first. Its module switches had three shapes (the Feature Options card, cards of their own, category heads), with settings that switch nothing among them and sharing three popovers deep.
+- The board came in #11003, the folded rows in #11043. No "Feature Options" card is left: Site Search Type went to Site search, Prefetch Menu Links and Performance Monitoring to Speed, Default Badge Label to Badge.
+
+## What stayed?
+- Field names, columns, saves and old anchors unchanged; one Save; a switched-off module's settings never hidden (`settings-card-save-rules.md`).
+- Architect (2026-11-21): Commerce and Accounting keep their switch at their category's head, because the ERP save checks the invoice series with it and runs its setup after it; the board only shows their state and opens them (one place per setting, `workflow/decisions-made-product-14.md`).
+- Architect (2026-11-21): Default Badge Label stays in Features as its own folded row, as no other category holds members' badges.
+- `features.php` takes one PR at a time.
+
+Related: docs/memory/ui/settings-features-rows.md, docs/memory/ui/settings-fold-rows.md, docs/memory/ui/dashboard-module-switches.md

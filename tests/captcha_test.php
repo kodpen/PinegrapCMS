@@ -5,7 +5,7 @@
  * Tests for the CAPTCHA providers (includes/fn/captcha.php): the provider
  * list, what a siteverify answer means, the widget markup, the posted token,
  * the security policy sources and what a post of the Spam Protection card
- * decides.
+ * decides; and the answer check of the built-in question.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -393,4 +393,27 @@ function test_captcha_check_without_asking()
 	pg_assert_same(array('email'), array_keys($form->errors), 'nothing added');
 
 	$_POST = $post;
+}
+
+// The built-in question (pg_form_captcha_check()): a key or an answer posted
+// as a list is no key or answer. It is refused, as a wrong answer is, without
+// the "Array to string conversion" warning, and the question is spent.
+function test_form_captcha_check_list_values_refused()
+{
+	$saved = isset($_SESSION['software']['form_captcha']) ? $_SESSION['software']['form_captcha'] : null;
+	$_SESSION['software']['form_captcha'] = array(
+		'k1' => array('answer' => 7, 'issued' => time()),
+		'k2' => array('answer' => 7, 'issued' => time()),
+	);
+
+	pg_assert_false(pg_form_captcha_check('k1', array('7')), 'answer posted as a list');
+	pg_assert_false(isset($_SESSION['software']['form_captcha']['k1']), 'the question is spent');
+	pg_assert_false(pg_form_captcha_check(array('k2'), '7'), 'key posted as a list');
+	pg_assert_true(pg_form_captcha_check('k2', ' 7 '), 'the right answer still passes');
+
+	if ($saved === null) {
+		unset($_SESSION['software']['form_captcha']);
+	} else {
+		$_SESSION['software']['form_captcha'] = $saved;
+	}
 }

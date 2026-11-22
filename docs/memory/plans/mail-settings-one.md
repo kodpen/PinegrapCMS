@@ -7,7 +7,7 @@ priority: 8
 ## What is asked?
 - Owner (2026-11-21, in the R&D agent's window): "eposta gönderme ve eposta kutuları ekrankları karışık durumda. google oauth ile hızlı gmail gelen kutumu ekleyecek bir seçenek göremedim."
 - "eposta ayar menüsü tek olabilir. içinde 2 ye tablar ile ayrılır"; "eposta kutularını kaldırma ekleme ekranları çok modern olmalı".
-- The Mailboxes tab's own content is `plans/mailboxes-tidy.md` (MT1 to MT4); this plan does not redraw it.
+- The Mailboxes tab's own content was tidied by mailboxes-tidy (MT1 to MT4, `ui/look-settings-mailboxes.md`); this plan does not redraw it.
 
 ## What contradicts today? (development, 2026-11-21)
 - (C1) Two categories, E-mail sending (`mail_sending`) and Mailboxes (`mailboxes`), each sending the reader to the other.
@@ -33,6 +33,6 @@ priority: 8
 
 ## What binds it?
 - Field names, ids and what a save stores do not change; old addresses and anchors open the right tab (`pg_settings_legacy_anchors()`).
-- `mail_settings.php` and `includes/settings/mailboxes*.php` take one PR at a time; mailboxes-tidy's steps go first there.
+- `mail_settings.php` and `includes/settings/mailboxes*.php` take one PR at a time.
 
-Related: docs/memory/plans/mail-settings-one-steps.md, docs/memory/plans/mail-settings-one-screens.md, docs/memory/plans/mailboxes-tidy.md
+Related: docs/memory/plans/mail-settings-one-steps.md, docs/memory/plans/mail-settings-one-screens.md

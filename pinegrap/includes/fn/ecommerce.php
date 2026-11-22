@@ -7984,17 +7984,11 @@ function initialize_order()
 
                 WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
             // If the order's user/contact info is different from this user, then update
-            // user/contact info for order.
-            if ($order['user_id'] != USER_ID or $order['contact_id'] != USER_CONTACT_ID) {
-                db("UPDATE orders
-
-                    SET
-
-                        user_id = '" . e(USER_ID) . "',
-
-                        contact_id = '" . e(USER_CONTACT_ID) . "'
-
-                    WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
+            // user/contact info for order. Both sides are numbers: a user with no
+            // contact has USER_CONTACT_ID null where the row holds 0, and compared
+            // as text the order was rewritten (with '', warning 1366) on every change.
+            if ($order && (((int) $order['user_id'] !== (int) USER_ID) || ((int) $order['contact_id'] !== (int) USER_CONTACT_ID))) {
+                db_q("UPDATE orders SET user_id = ?, contact_id = ? WHERE id = ?", array((int) USER_ID, (int) USER_CONTACT_ID, (int) $_SESSION['ecommerce']['order_id']));
             }
         }
         // Otherwise the visitor does not have an active order in session, so create order.
@@ -8072,7 +8066,7 @@ function initialize_order()
                     IFNULL(INET_ATON(?), 0),
 
                     ?)";
-        $result = db_q($query, array((string) USER_ID, (string) USER_CONTACT_ID, (string) $reference_code, (string) get_tracking_code(), (string) ($_SESSION['software']['utm_source'] ?? ''), (string) ($_SESSION['software']['utm_medium'] ?? ''), (string) ($_SESSION['software']['utm_campaign'] ?? ''), (string) ($_SESSION['software']['utm_term'] ?? ''), (string) ($_SESSION['software']['utm_content'] ?? ''), (string) VISITOR_CURRENCY_CODE, (string) get_affiliate_code(), (string) ($_SESSION['software']['http_referer'] ?? ''), (string) $_SERVER['REMOTE_ADDR'], (string) $offline_payment_allowed)) or output_error(lang('Query failed.'));
+        $result = db_q($query, array((int) USER_ID, (int) USER_CONTACT_ID, (string) $reference_code, (string) get_tracking_code(), (string) ($_SESSION['software']['utm_source'] ?? ''), (string) ($_SESSION['software']['utm_medium'] ?? ''), (string) ($_SESSION['software']['utm_campaign'] ?? ''), (string) ($_SESSION['software']['utm_term'] ?? ''), (string) ($_SESSION['software']['utm_content'] ?? ''), (string) VISITOR_CURRENCY_CODE, (string) get_affiliate_code(), (string) ($_SESSION['software']['http_referer'] ?? ''), (string) $_SERVER['REMOTE_ADDR'], (string) $offline_payment_allowed)) or output_error(lang('Query failed.'));
         // store order id in session
         $_SESSION['ecommerce']['order_id'] = mysqli_insert_id(db::$con);
         // if visitor tracking is on, update visitor record with order information, if visitor has not already created a previous order
