@@ -154,7 +154,7 @@ description: Generated from the module field of the memory files: each includes/
 - `experiments_results`: [[experiments-screen]]
 - `experiments_sheet`: [[designer-publish-sheet-held-row]], [[page-experiments-sheet]]
 - `explorer_side`: [[explorer-menu-tree]]
-- `features_fold`: [[settings-features]]
+- `features_fold`: [[settings-features-rows]]
 - `features_modules`: [[settings-features]]
 - `feedback`: [[feedback-rules]]
 - `feedback_answer`: [[feedback-answer]]
