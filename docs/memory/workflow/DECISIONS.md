@@ -1010,6 +1010,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/event-tickets.md: Event tickets, start here: QR ticket per place, door check-in, places back on cancel, waiting list; which file holds what, T1 to T15 with PRs, decisions, left out
 - commerce/gift-card-line-credit-cap.md: Store credit and plain gift cards together pay at most the part of a checkout total that is not gift card lines (pg_gift_card_applied_discount), #10258, #10267
 - commerce/gift-card-part-owed.md: How an order's gift card part is counted (architect 2026-11-17, #10259, #10260): the cards gave SUM(applied_gift_cards.amount); a return gave back order_refunds rows of type return_gift_card
+- commerce/kvkk-notice-switch.md: The KVKK notice's own switch (Show the KVKK notice, config_text ecommerce_kvkk_enabled, step 11.0.271): checkout and sign-up follow it, apart from Legal documents
 - commerce/marketplace-buybox-read.md: The hourly buybox read (2026.11.0): the Trendyol connector ability buybox, its body, header and limit, the job pass, and what marketplace_price_state keeps
 - commerce/marketplace-pricing-tab.md: Marketplaces › Settings drawer › Pricing tab and the Products in this shop row's own price and strategy (repricer RP2): what is stored, when nothing is written, the one-time requeue by the general job
 - commerce/marketplace-repricer.md: The marketplace repricer as a whole (2026.11.0, RP1 to RP5): what binds it, the architect's choices, which PR carries each feature R1 to R13, what is not built, where each part is written up
@@ -1074,6 +1075,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/privacy-centre-decisions.md: What binds the Privacy centre (KVKK): opt-in rules off by default, one removal engine, what no rule removes, staff never removed, public request form off, answer by link, who changes rules
 - core/privacy-request-export-link.md: The signed download link of an information answer (KV4c, #10944): the file in data/privacy_exports, HMAC, 7 days, privacy_download.php 410, Send a new link, Withdraw the link
 - core/privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer
+- core/privacy-rule-site-chats.md: The Privacy centre's "Site chats" rule (off, 60 days) that replaced Chat's unread Chat Retention Period; what it picks and deletes, why the update deletes nothing
 - core/sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
 - core/software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
 - core/volunteer-document-file.md: A volunteer document's file: a files row (attachment 1, folder 0, volunteer-doc- name), get_file.php's door, and the search and picker exclusion due with uploading
