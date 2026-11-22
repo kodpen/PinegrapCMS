@@ -1046,16 +1046,16 @@ function pg_look_examples_line_row_pattern($p)
     $rows = pg_order_view_line(array(
             'name_html' => '<a href="#" class="pg-link-secondary">' . h(lang('Office chair')) . '</a>',
             'meta' => array('20M', h(lang('Taken from stock')) . ': 1'),
-            'amount_html' => '2 × ' . h(pg_format_money(299.95, '$')),
+            'amount_html' => '2 × ' . pg_format_money(299.95, '$'),
             'shipped_html' => pg_order_view_line_shipped($stepper, 2),
-            'total_html' => h(pg_format_money(599.90, '$')),
+            'total_html' => pg_format_money(599.90, '$'),
         ))
         . pg_order_view_line(array(
             'name_html' => h(lang('Gift Card')),
             'meta' => array('GC-250'),
-            'amount_html' => '1 × ' . h(pg_format_money(250, '$')),
+            'amount_html' => '1 × ' . pg_format_money(250, '$'),
             'shipped_html' => pg_order_view_line_shipped('<span class="pg-tabular">0</span>', 1),
-            'total_html' => h(pg_format_money(250, '$')),
+            'total_html' => pg_format_money(250, '$'),
             'parts_html' => pg_order_view_line_part(h(lang('Gift Card')), '<div class="order-line-facts">' . pg_order_view_line_fact(h(lang('Recipient Email')), 'ayse@example.com') . pg_order_view_line_fact(h(lang('Delivery Date')), h(lang('Immediate'))) . '</div>'),
         ));
 
