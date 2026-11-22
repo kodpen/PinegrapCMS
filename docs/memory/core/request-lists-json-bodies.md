@@ -13,7 +13,7 @@ description: JSON body keys read as one value (token, action, mode, ids, text) t
 - A sandbox probe posted each key as `[]`, `["x"]` and `{"a":1}` beside a valid token. `(string)` logged "Array to string conversion" for the image editor's token, action, mode, family, object_type, column and kind; the translations' action, language, scope, engine and text; the canvas save's token; the notes import's token, step, query, section and stage.
 - `(int)` of a list is 1. The image editor opened, saved over or copied file 1 for a list in file_id, to or target, and version 1 for one in version_id; the translations saved string 1 or read job 1.
 - The chat attachment check in `image_editor_api.php` (`pg_image_editor_request_files()`, `includes/authentication.php`) reads a list as no file, so it checked nothing while the action went on with file 1.
-- PR #PRNUM.
+- PR #11102.
 
 ## Which test guards them?
 - `tests/json_request_values_test.php`:
