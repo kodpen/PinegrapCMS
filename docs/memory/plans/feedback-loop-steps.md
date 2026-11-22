@@ -14,7 +14,7 @@ description: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, s
 
 - FD4a (M) after FD3, done (PR #11016): `pg_feedback_message_send($row, $survey, $reminder)`, which the job's pass calls once defined (FD3 left it out; the token is issued at `due_at`), the e-mail with its buttons and "Don't ask me again", the SMS link (`pg_sms_enqueue()`, kind `feedback`, poll 198's rule), the public answer page (new root `feedback.php`, its rate limit in `waf.php`), the page-side write, the review invitation, "Don't ask me again". Features: Q7, Q8 (SMS), Q9.
 
-- FD4b (S) after FD4a: the WhatsApp message: the survey's approved template chosen on the "Sent by" card, its link filled, queued with `pg_whatsapp_enqueue()`, kind `feedback`; until then a WhatsApp survey's rows wait queued. Features: Q8 (WhatsApp).
+- FD4b (S) after FD4a, in progress: the WhatsApp message: the survey's approved template chosen on the "Sent by" card, its link filled, queued with `pg_whatsapp_enqueue()`, kind `feedback`; until then a WhatsApp survey's rows wait queued. Features: Q8 (WhatsApp).
 
 - FD5 (M) after FD4a: the follow-up task, the channel line, `feedback.received` and `feedback.detractor` through `pg_announce()`, the catalogues and payload fixtures, the 48-hour escalation, the outcome. Features: Q10, Q11, Q15 (events).
 
