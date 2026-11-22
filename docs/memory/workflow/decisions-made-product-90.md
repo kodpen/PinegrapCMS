@@ -14,7 +14,7 @@ description: Decisions list, product part 90 (2026-11-20 on): plans from the own
 ## Should the store measure each carrier's real delivery time per province and find stuck, not handed over and problem parcels before the customer asks? (owner, 2026-11-20, agent channel poll 178, channel message 10566)
 - "Evet, plana girsin": measured times per carrier and province, problem finding, a problem desk, `shipment.problem` events, a carrier scorecard with arrival and carrier suggestions, API.
 - Not chosen: "Evet, önce yalnız sorun bulma ve sorun masası" (problem finding and the desk first), "Hayır, gerek yok".
-- The plan: `plans/delivery-tower.md`.
+- Built and closed out: `commerce/delivery-tower.md`.
 
 ## Should the shop pick, pack and verify orders by shelf and barcode? (owner, 2026-11-20, agent channel poll 181, channel message 10582)
 - "Evet, plana girsin": shelf addresses, pick waves in shelf order, barcode pack verification, label and marketplace status on a verified pack, short picks, measures, `order.packed` / `order.pack_short` events, API.
@@ -26,4 +26,4 @@ description: Decisions list, product part 90 (2026-11-20 on): plans from the own
 - Not chosen: "Evet, önce yalnız yolculuk ve kaynak ölçümü" (journey and source measuring first), "Hayır, gerek yok".
 - The plan: `plans/lead-journey.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/customer-rhythm.md, docs/memory/plans/delivery-tower.md, docs/memory/plans/pick-pack.md, docs/memory/plans/lead-journey.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/customer-rhythm.md, docs/memory/commerce/delivery-tower.md, docs/memory/plans/pick-pack.md, docs/memory/plans/lead-journey.md

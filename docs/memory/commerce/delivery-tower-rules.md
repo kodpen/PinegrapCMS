@@ -5,7 +5,7 @@ module: delivery_tower
 ---
 
 ## What does the module hold?
-- Only pure functions (plan `plans/delivery-tower.md`, step DT1a, #10801): no query. The nightly summary and the hourly problem pass (`delivery-tower-passes.md`) read the parcel rows and hand them in.
+- Only pure functions (DT1a, #10801; overview `delivery-tower.md`): no query. The nightly summary and the hourly problem pass (`delivery-tower-passes.md`) read the parcel rows and hand them in.
 - Province key `pg_delivery_tower_province_key($state, $city)`: the state, else the city; trimmed, spaces collapsed, lower case, every Turkish i (İ, I, ı) folded to `i`, so "İstanbul" and "ISTANBUL" are one key. Neither: `''` (only the country figure applies).
 
 ## How are days counted?

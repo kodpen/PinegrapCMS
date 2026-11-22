@@ -5,13 +5,13 @@ module: delivery_tower_tell
 ---
 
 ## Which alerts are sent? (T9, DT2 #10889)
-- Codes in `pg_ops_alert_codes()`, `group => 'shipping'`: `parcel_stuck`, `parcel_not_handed_over`, `parcel_problem` (delivery problem and returned together, `pg_delivery_tower_alert_codes()`). Bell link `view_orders.php` until the problem desk (DT3).
+- Codes in `pg_ops_alert_codes()`, `group => 'shipping'`: `parcel_stuck`, `parcel_not_handed_over`, `parcel_problem` (delivery problem and returned together, `pg_delivery_tower_alert_codes()`). Bell link `view_orders.php` (the orders list, not Delivery problems).
 - The hourly pass counts each row it opens into the pass record's `told` (count, first 5 order numbers), kept across ticks; at the walk's end `pg_delivery_tower_alerts_send()` sends one `pg_ops_alert()` per code with something in it, so the once-a-day rule per code holds. Sentence: `pg_delivery_tower_alert_detail()`.
 - Settings › Alerts: a Slack, Teams or Telegram target lists them under "Deliveries".
 
 ## Which events are announced? (T10)
 - `shipment.problem`: each row the pass opens. `shipment.problem_resolved`: each row a later status closes (`reason` delivered, scanned or status_changed). Through `pg_announce()` (`pg_delivery_tower_announce()`), so webhooks and the Workspace both hear them.
-- Not announced: a row closed because its order was cancelled or deleted or its parcel removed; a row closed on the desk (DT3 decides that); rows opened by a site's first walk.
+- Not announced: a row closed because its order was cancelled or deleted or its parcel removed; a row closed on Orders › Delivery problems; rows opened by a site's first walk.
 - No built-in customer e-mail: a flow on the event tells the customer.
 
 ## What does the payload carry?
