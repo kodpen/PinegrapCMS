@@ -5,7 +5,11 @@ module: mail_domain_health
 ---
 
 ## Where is it?
-- Site Settings › E-mail sending (`includes/settings/mail_sending.php`), row and card `pgset-mail-domain`, the card itself still `#mail_domain_card`; since EM3 the one place of DKIM: its DKIM row holds the selector and domain and "Save and generate a DKIM key" (`$dkim['fields']` of `pg_mail_domain_health_card()`), and offers the site's record under the names mail is signed with now (`$dkim['record']`) whenever the check is not Good, a failed lookup included, never while a service signs; the alert links `settings_mail_sending.php#pgset-mail-domain` (#10404). Logic in `includes/fn/mail_domain_health.php`, loaded by the category and by `pg_ops_alerts_check_mail_reputation()` (not by `functions.php`). 2026.11.0, #5445.
+- Site Settings › E-mail sending (`includes/settings/mail_sending.php`), row and card `pgset-mail-domain`, the card itself still `#mail_domain_card`; the alert links `settings_mail_sending.php#pgset-mail-domain` (#10404). Logic in `includes/fn/mail_domain_health.php`, loaded by the category and by `pg_ops_alerts_check_mail_reputation()` (not by `functions.php`). 2026.11.0, #5445.
+
+## Where is the site's DKIM key? (EM3)
+- In the card's DKIM row, the one place of DKIM: the selector and domain and "Save and generate a DKIM key" (`$dkim['fields']` of `pg_mail_domain_health_card()`).
+- The row offers the site's record under the names mail is signed with now (`$dkim['record']`) whenever the check is not Good, a failed lookup included; never while a service signs.
 
 ## Which domain and records are checked?
 - Domain: `DKIM_DOMAIN` unless empty or the default config's `example.com`, else the domain of `EMAIL_ADDRESS` (`pg_mail_sending_domain()`). Selector `DKIM_SELECTOR`, else `pinegrap` (as `email()` signs).

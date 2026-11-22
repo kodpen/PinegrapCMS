@@ -1,6 +1,6 @@
 ---
 name: look-settings-mail-sending
-description: Site Settings › E-mail sending in look A (S5e, EM2, EM3): settings rows with pg-field-label, the ways sheets' drawer fields, tiles, the DKIM field in Sending domain's DKIM row, the Sending domain card's list rows and pills
+description: Site Settings › E-mail sending in look A (S5e, EM2, EM3): settings rows, the ways sheets' fields, tiles, the Sending domain card's list rows and pills, its DKIM field
 ---
 
 ## What does the category look like?

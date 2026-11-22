@@ -1,6 +1,6 @@
 ---
 name: mail-campaign-way
-description: How campaign e-mail leaves: the layers email() reads for type campaign, the stored way (config_text campaign_mail_way) of the campaigns' ways sheet, "The same way as system e-mail", and why a site that never chose keeps today's order
+description: How campaign e-mail leaves: the layers email() reads, the campaigns' ways sheet and its stored way (config_text campaign_mail_way), why a site that never chose keeps today's order
 ---
 
 ## Which layers carry a campaign today?
