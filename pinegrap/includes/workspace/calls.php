@@ -658,6 +658,7 @@ function ws_call_start($party, $channel, $kind)
     }
 
     ws_calls_stamp_set();
+    ws_call_line_post_started(array('channel_id' => (int) $channel['id'], 'kind' => (string) $kind, 'started_by' => (int) $party['id']));
 
     return array('ok' => true, 'error' => '', 'call_id' => $call_id, 'member_id' => $member_id);
 }
@@ -772,20 +773,27 @@ function ws_call_end($party, $call, $manages)
 
 /**
  * The call is over: everyone out, its signals deleted, the stamp taken away
- * when it was the last live call.
+ * when it was the last live call, and its line written in the channel
+ * (call_lines.php) by the one request that ended it.
  *
  * @param array $call
+ * @param int   $declined_by the user who declined it, 0 for none
  */
-function ws_call_end_row($call)
+function ws_call_end_row($call, $declined_by = 0)
 {
     $now = time();
     $id = (int) $call['id'];
 
     db("UPDATE ws_calls SET state = 'ended', ended_at = '" . $now . "' WHERE id = '" . $id . "' AND state = 'live'");
+    $ended_here = (mysqli_affected_rows(db::$con) > 0);
     db("UPDATE ws_call_members SET left_at = '" . $now . "' WHERE call_id = '" . $id . "' AND left_at = 0");
     db("DELETE FROM ws_call_signals WHERE call_id = '" . $id . "'");
 
     ws_calls_stamp_clear_if_idle();
+
+    if ($ended_here) {
+        ws_call_line_post_ended($call, $now, $declined_by);
+    }
 }
 
 /**
@@ -1140,7 +1148,7 @@ function ws_call_decline($party, $call)
         return array('ok' => false, 'error' => lang('This call is not open to you.'));
     }
 
-    ws_call_end_row($call);
+    ws_call_end_row($call, (int) $party['id']);
 
     return array('ok' => true, 'error' => '');
 }
