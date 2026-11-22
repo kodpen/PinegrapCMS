@@ -2726,6 +2726,28 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Deleted records ------------------------------------------- */
+
+		// No scope of its own: any valid caller, and each type is answered
+		// only to a caller whose scopes read it (api_changes_deleted_readable()).
+		array(
+			'id'      => 'changes.deleted',
+			'method'  => 'GET',
+			'path'    => '/changes/deleted',
+			'scope'   => '',
+			'mcp'     => true,
+			'handler' => 'api_changes_deleted_list',
+			'returns' => array('list' => 'DeletedRecord', 'types' => 'string[]'),
+			'summary' => 'Records deleted since a moment',
+			'description' => 'Oldest first, cursor paged: {type, id, deleted_at} for each record deleted at or after since, from the audit trail. A client keeping its own copy drops these ids. types in the answer lists the types answered: one the caller cannot read is left out. Only GET /meta deleted_records.covered types are listed; not_covered lists are read whole. A since older than the trail keeps is 410 since_too_old: read the lists whole, then ask from that read. A record in the Recycle Bin is not deleted.',
+			'params'  => array(
+				array('name' => 'since',  'in' => 'query', 'type' => 'datetime', 'required' => true, 'description' => 'Only deletes at or after this moment.'),
+				array('name' => 'types',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'A comma list of type names from GET /meta deleted_records.covered, such as products,offers. Left out, every covered type.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
 		/* ----- Gift cards -------------------------------------------------- */
 
 		array(
@@ -6662,6 +6684,8 @@ function api_error_catalogue() {
 		'unknown_endpoint'         => array(404, 'No endpoint answers that address.'),
 
 		'method_not_allowed'       => array(405, 'The address exists but not with that verb.'),
+
+		'since_too_old'            => array(410, 'since is older than the audit trail keeps, so deletes before it are not known. Read the lists whole again, then ask from the time of that read.'),
 
 		'idempotency_key_reused'   => array(409, 'The same Idempotency-Key was used for a different request.'),
 		'unknown_domain'           => array(409, 'An e-mail address names a domain that does not exist, so the mail would not arrive. Correct the address, or send the same call again with send_anyway true.'),
