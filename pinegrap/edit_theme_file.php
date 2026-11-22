@@ -229,7 +229,18 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
-    
+
+    // The theme file form draws no list: a field posted as one (name[]=x)
+    // stopped the save in mb_strrpos() with an error page. The save is
+    // refused before the fields reach the session or anything is written.
+    $theme_file_lists = pg_request_unexpected_lists($_POST);
+
+    if ($theme_file_lists) {
+        $liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $theme_file_lists)))));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . $id);
+        exit();
+    }
+
     $liveform->add_fields_to_session();
     
     // Create new liveform

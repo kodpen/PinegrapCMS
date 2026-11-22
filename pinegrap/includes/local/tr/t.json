@@ -183,6 +183,7 @@
     "Taken from each product's own option.": "Her ürünün kendi seçeneğinden alınır.",
     "Taken from each product's own option. This value is used only for a product whose options do not match this attribute; two products that would end up the same refuse the article.": "Her ürünün kendi seçeneğinden alınır. Bu değer yalnız seçenekleri bu özniteliğe uymayan ürün için kullanılır; aynı değerlerle kalan iki ürün ürün grubunu durdurur.",
     "Taken from incoming e-invoice {var:1} (ETTN {var:2}).": "{var:1} numaralı gelen e-faturadan alındı (ETTN {var:2}).",
+    "Taken from stock": "Stoktan düşülen",
     "Taken in": "ERP'ye alındı",
     "Taken in from {var:1} (card {var:2}).": "{var:1} tarafından alındı (kart {var:2}).",
     "Taken in on": "Alınma zamanı",

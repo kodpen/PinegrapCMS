@@ -756,6 +756,15 @@ $liveform->remove_form('edit_file');
 } else {
     validate_token_field();
 
+    // The file form draws no list: a field posted as one (name[]=x) stopped
+    // the save in trim() or escape() with an error page. The save is refused
+    // before anything is written.
+    $file_lists = pg_request_unexpected_lists($_POST);
+
+    if ($file_lists) {
+        output_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $file_lists)))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     $file_id = escape($_POST['id'] ?? '');
     $result = db_q("SELECT name, folder FROM files WHERE id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
     $row = mysqli_fetch_array($result);

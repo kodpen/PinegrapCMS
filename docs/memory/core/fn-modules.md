@@ -370,7 +370,7 @@ description: Generated from the module field of the memory files: each includes/
 - `stock_moves`: [[stock-locations-moves]]
 - `stock_notify`: [[back-in-stock-notices]], [[back-in-stock-send-retry-shared-dates]], [[back-in-stock-withdraw]], [[bug-hunt-back-in-stock-notices]], [[event-tickets-waiting-list]], [[visitor-push-stock]]
 - `stock_pickup`: [[stock-locations-pickup]]
-- `stock_sales`: [[order-stock-taken]], [[stock-locations-completion]], [[stock-locations-total-writers]]
+- `stock_sales`: [[order-oversold-warning]], [[order-stock-taken]], [[stock-locations-completion]], [[stock-locations-total-writers]]
 - `store_credit`: [[store-credit-checkout]], [[store-credit-model]], [[user-delete-store-credit]]
 - `store_credit_account`: [[account-subscription-credit-open-blocks]], [[store-credit-screens]]
 - `store_credit_events`: [[api-customer-credit]]

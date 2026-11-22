@@ -1277,6 +1277,11 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
         pg_order_complete_line_campaigns($product, $contact_id);
     }
 
+    // A line that took fewer units than it asked while its product takes no
+    // back orders (another order took the last ones while this one was
+    // paid): one bell line for the order.
+    pg_stock_oversold_warn($order_id, $actor, (string) ($order['order_number'] ?? ''));
+
     return array('reward_points' => $reward_points, 'contact_groups' => $contact_groups, 'tickets' => $tickets);
 }
 

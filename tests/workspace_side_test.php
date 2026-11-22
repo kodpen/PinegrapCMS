@@ -308,10 +308,64 @@ function test_workspace_side_tiles_and_new_group_keep_their_places()
 
 	pg_assert_true((bool) preg_match('/#ws-menu-side \.ws-side-more-tile:nth-child\(odd\) \{[^}]*grid-column: 1 \/ -1;[^}]*\}/', $css), 'More alone in its row takes the row');
 
-	$others = strpos($script, "part(channelsBox, others, false, 'ws-side-others');");
+	$others = strpos($script, "part(channelsBox, shown, false, 'ws-side-others');");
 	$new = strpos($script, "'ws-group-new");
 
 	pg_assert_true(($others !== false) && ($new !== false) && ($new > $others), 'New group is drawn after the other channels');
+}
+
+// A row of the list (board L3 of plans/workspace-interface): the channel's
+// tile, the marks at its end, the pin and "⋯" on pointing only, a muted
+// channel's dot in the place of its count.
+function test_workspace_side_rows_carry_their_marks()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_side.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_contains("el('span', 'pg-icon-tile ws-side-ch-tile'", $script, 'channelIcon() draws the look\'s icon tile');
+	pg_assert_true((bool) preg_match('/\.ws-menu-side \.ws-side-ch-tile \{[^}]*width: 18px;[^}]*height: 18px;/', $css), 'an 18 px tile');
+	pg_assert_true((bool) preg_match('/\.ws-menu-side \.ws-channel-link \{[^}]*min-height: calc\(30px - \.3rem \+ var\(--ws-row-y, \.3rem\)\);/', $css), '30 px rows, through the density token');
+	pg_assert_contains('--pg-tone: var(--ws-ch);', $css, 'the tile takes the channel\'s colour');
+
+	// The pin no longer stands on a pinned row: it shows with "⋯" on pointing.
+	pg_assert_true((bool) preg_match('/\.ws-menu-side \.ws-side-row-tools \{[^}]*display: none;/', $css), 'the row\'s tools hide until pointed at');
+	pg_assert_contains('.ws-menu-side .ws-channel-link.ws-side-has-tools:hover .ws-side-row-tools {', $css);
+	pg_assert_contains('.ws-menu-side .ws-channel-link.ws-side-has-tools:hover .ws-side-marks {', $css, 'and take the marks\' place');
+	pg_assert_contains("hooks.channelMenu(channel, rect.left, rect.bottom)", $script, '"⋯" opens the channel\'s menu');
+	pg_assert_contains("node.setAttribute('aria-hidden', 'true');", $script, 'the shortcuts inside a link stay out of its name');
+
+	// Muted: a struck bell, a dot for unread, a mention still counted.
+	pg_assert_contains("var muted = channel.notify === 'none';", $script);
+	pg_assert_contains("icon('bi-bell-slash', 'ws-side-muted-bell')", $script);
+	pg_assert_contains("el('span', 'ws-side-dot')", $script);
+	pg_assert_true(strpos($script, 'if (channel.mentions) {') < strpos($script, "el('span', 'ws-side-dot')"), 'a mention wins over the dot');
+
+	// The draft's pencil, from the composer's own slot.
+	pg_assert_contains("draftFresh(window.localStorage.getItem(draftKey(data.draft.site, data.draft.me, channelId, threadId))", $script, 'the row reads the composer\'s slot');
+	pg_assert_contains("window.addEventListener('storage'", $script, 'another tab\'s draft redraws the row');
+	pg_assert_contains("'draft'    => array('site' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php', 'me' => (int) \$viewer['id'])", pg_test_function_source('ws_side_payload'), 'the payload names the site and the reader as the key needs them');
+	pg_assert_contains("'api_url'      => \$base . 'api.php'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php'), 'the same site the composer\'s config gives');
+
+	// The pinned part's hairline; section names without capitals.
+	pg_assert_true((bool) preg_match('/\.ws-menu-side \.ws-side-pinned:not\(:last-child\) \{[^}]*border-bottom: 1px solid/', $css), 'a hairline under the pinned channels');
+	pg_assert_true((bool) preg_match('/\.ws-menu-side \.ws-side-title \{[^}]*text-transform: none;/', $css), 'section names as written');
+}
+
+// The channels not joined that stand in no group wait behind one row that
+// opens them in place, its state the person's; Join only where the screen
+// can join.
+function test_workspace_side_join_row_is_a_fold()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_side.js');
+
+	pg_assert_contains("var joinOpen = !!readKept('ws-side-open').join;", $script, 'the fold is kept in ws-side-open');
+	pg_assert_contains("writeKept('ws-side-open', 'join', !joinOpen);", $script);
+	pg_assert_contains("t('side_join', others.length)", $script, 'it counts the channels behind it');
+	pg_assert_contains("others.filter(function (channel) { return now.channel === channel.id; })", $script, 'closed, the open channel still shows');
+	pg_assert_contains("typeof hooks.joinChannel === 'function'", $script, 'Join only on the channel screen');
+	pg_assert_contains("api('ws_channel_join', { channel_id: channel.id })", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+	pg_assert_same(lang('Search or go to'), ws_side_js_strings()['side_find'] ?? '', 'the search field\'s words');
+	pg_assert_same(lang(array('string' => '{var:1} channels you could join', 'vars' => '{1}')), ws_side_js_strings()['side_join'] ?? '');
 }
 
 // The tour is played from the channel's header and, where the header is too
