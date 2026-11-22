@@ -38,6 +38,10 @@ function get_shipping_address_and_arrival($properties) {
     // store page id for shipping address and arrival page in case we need to come back to this page later in the order process
     $_SESSION['ecommerce']['shipping_address_and_arrival_page_id'] = $page_id;
 
+    // A recipient id sent as a list (?ship_to_id[]=x) counts as not given:
+    // escape() and h() stop the page on an array.
+    pg_request_single_values(array('ship_to_id'));
+
     // if the user came from the control panel, clear ship_to_id, to prevent edit user from accessing ship to that user should not have access to
     if ((isset($_GET['from']) == true) && (($_GET['from'] ?? '') == 'control_panel')) {
         unset($_GET['ship_to_id']);
