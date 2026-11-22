@@ -69,7 +69,7 @@ function test_bell_filters_markup()
 	pg_assert_false(strpos($output, 'pg_bell_unread_only') !== false, 'no Unread only switch');
 	pg_assert_false(strpos($part, 'pg-bell-search') !== false, 'the search is no line of its own');
 	pg_assert_false(strpos($part, "lang('Site')") !== false, 'no Site chip');
-	pg_assert_contains("h(lang('No notification matches these filters.'))", $output, 'one line for an empty result');
+	pg_assert_contains("pg_bell_state_note('no-match', 'gray', 'bi-funnel', '', lang('No notification matches these filters.'), lang('Clear filters'))", $output, 'the no-match state offers Clear filters');
 }
 
 // The kept choice reads under the new names; the switch and an "Asked of
@@ -112,7 +112,9 @@ function test_bell_filters_kept_choice()
 	pg_assert_contains('pg_bell_row_matches(row, filter, view, search)', $apply);
 	pg_assert_contains("chip.hidden = (key !== filter) && !present[key];", $apply);
 	pg_assert_contains("chips.hidden = (modules < 2) && (filter === 'all');", $apply, 'the chips only with two modules or more');
-	pg_assert_contains("\$(box).find('.pg-bell-no-match').toggleClass('d-none', (live === 0) || (shown > 0));", $apply);
+	pg_assert_contains("var note = pg_bell_state(pgBellState, live, shown, view, counts.unread || 0);", $apply);
+	pg_assert_contains("item.hidden = (item.getAttribute('data-pg-bell-note') !== note);", $apply, 'one state at most');
+	pg_assert_contains("bar.hidden = (note === 'failed') || (note === 'empty');", $apply, 'no filters over nothing');
 	pg_assert_contains("pill.hidden = !counts.unread;", $apply, 'the N new pill while a row is unread');
 	pg_assert_contains("button.hidden = !counts.unread || (search !== '') || (button.parentNode !== first_heading);", $apply, 'Mark all as read at the first shown heading');
 

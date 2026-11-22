@@ -360,3 +360,61 @@ function test_bell_row_words_reach_the_script()
 		pg_assert_contains("'" . $word . "' => lang('" . $word . "')", $output, $word . ' is in the run-time dictionary');
 	}
 }
+
+// A Workspace row's title: the name in the title's weight, the rest of the
+// sentence quieter, in the language's own word order; every part escaped.
+function test_bell_row_title_name_split()
+{
+	pg_assert_same('Ada <span class="pg-list-row-title-verb">mentioned you</span>', pg_notification_title_name('Ada mentioned you', 'Ada'));
+	pg_assert_same('<span class="pg-list-row-title-verb">Asked by</span> Stock bot', pg_notification_title_name('Asked by Stock bot', 'Stock bot'));
+	pg_assert_same('<span class="pg-list-row-title-verb">Here</span> Ada <span class="pg-list-row-title-verb">wrote</span>', pg_notification_title_name('Here Ada wrote', 'Ada'));
+	pg_assert_same('A&amp;B <span class="pg-list-row-title-verb">&lt;b&gt;wrote&lt;/b&gt;</span>', pg_notification_title_name('A&B <b>wrote</b>', 'A&B'));
+	pg_assert_same('@github <span class="pg-list-row-title-verb">answered you</span>', pg_notification_title_name('@github answered you', '@github'));
+
+	// No name, or a name the sentence does not hold: the sentence escaped.
+	pg_assert_same('Ada &amp; Bo wrote', pg_notification_title_name('Ada & Bo wrote', ''));
+	pg_assert_same('Someone wrote', pg_notification_title_name('Someone wrote', 'Ada'));
+	pg_assert_same('Ada', pg_notification_title_name('Ada', 'Ada'));
+	pg_assert_same('', pg_notification_title_name('', 'Ada'));
+}
+
+// The Workspace row's short title reaches the bell split; site rows keep
+// theirs.
+function test_bell_row_title_name_split_reaches_the_row()
+{
+	$display = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/notifications.php');
+	$notify = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/notify.php');
+
+	pg_assert_contains("\$display['short']       = pg_notification_title_name((string) (\$described['short'] ?? ''), (string) (\$described['who'] ?? ''));", $display);
+	pg_assert_contains("'who'   => (string) (\$described['who'] ?? ''),", $notify);
+}
+
+// A state of the bell's list: the tile in its tone, the title, the
+// sentence and the one button, every part escaped; the failed state's
+// sentence is filled by the script.
+function test_bell_state_note()
+{
+	$note = pg_bell_state_note('all-read', 'teal', 'bi-check2-all', 'All read', 'No unread notifications.', 'Show all');
+
+	pg_assert_contains('<div class="ws-empty-screen pg-bell-note pg-bell-all-read" data-pg-bell-note="all-read" role="status" hidden>', $note);
+	pg_assert_contains('<span class="pg-icon-tile ws-empty-screen-tile pg-tone-teal" aria-hidden="true"><span class="bi bi-check2-all"></span></span>', $note);
+	pg_assert_contains('<div class="pg-title-section ws-empty-screen-title">All read</div>', $note);
+	pg_assert_contains('<p class="pg-text-2 ws-empty-screen-text pg-bell-note-text">No unread notifications.</p>', $note);
+	pg_assert_contains('<button type="button" class="pg-button pg-button-quiet pg-button-sm pg-bell-note-act no-popover" data-pg-bell-note-act="all-read">Show all</button>', $note);
+
+	$failed = pg_bell_state_note('failed', 'rose', 'bi-exclamation-triangle', 'Could <not>', '', 'Try again');
+	pg_assert_contains('role="alert"', $failed);
+	pg_assert_contains('Could &lt;not&gt;', $failed);
+	pg_assert_contains('<p class="pg-text-2 ws-empty-screen-text pg-bell-note-text"></p>', $failed, 'the script fills the reason');
+	pg_assert_contains('<span class="bi bi-arrow-clockwise" aria-hidden="true"></span>Try again', $failed);
+
+	$empty = pg_bell_state_note('empty', 'gray', 'bi-bell', 'No notifications', 'Text', '');
+	pg_assert_false(strpos($empty, '<button') !== false, 'no button without a label');
+	pg_assert_contains('role="status"', $empty);
+
+	$none = pg_bell_state_note('no-match', 'gray', 'bi-funnel', '', 'No match', 'Clear filters');
+	pg_assert_false(strpos($none, 'ws-empty-screen-title') !== false, 'no title without one');
+	pg_assert_contains('<span class="bi bi-x-lg" aria-hidden="true"></span>Clear filters', $none);
+
+	pg_assert_same('', pg_bell_state_note('bad key', 'gray', 'bi-bell', 'X', 'Y', ''), 'an unknown key draws nothing');
+}
