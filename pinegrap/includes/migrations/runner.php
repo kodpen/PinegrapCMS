@@ -1702,7 +1702,7 @@ function install_run_upgrades($versions, $from_key, $options = array()) {
 		// starts from a clean slate so the messages for the new version arrive
 		db("UPDATE config SET software_update_available = '0'");
 
-		db("UPDATE config SET last_software_update_check_timestamp = ''");
+		db("UPDATE config SET last_software_update_check_timestamp = 0");
 
 	} elseif (isset($versions[$current_key + 1])) {
 
