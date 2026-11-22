@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Workspace Flows: the editor taken further, proposal (2026-11-22)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<style>
+.stage { width: 1512px; }
+.board { margin-bottom: 40px; }
+.cap small { display: block; margin-top: 2px; color: var(--fg3); font-size: 12.5px; }
+.cols { display: flex; gap: 28px; align-items: flex-start; }
+.col { flex: none; }
+.part { margin: 0 4px 16px; padding: 0 0 10px; border-bottom: 1px solid var(--line); font: 650 20px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.02em; }
+.part em { font-style: normal; font-weight: 400; font-size: 13px; letter-spacing: 0; color: var(--fg2); margin-left: 10px; }
+.notes { margin: 14px 4px 0; padding: 0; list-style: none; font-size: 13px; color: var(--fg2); display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 28px; }
+.notes.one { grid-template-columns: 1fr; }
+.notes b { color: var(--fg); font-weight: 600; }
+.sp { flex: 1; }
+
+/* the editor: a bar, and under it the canvas from edge to edge */
+.ed { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-card); background: var(--page); }
+.bar { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); background: var(--surf2); font-size: 13px; }
+.bar b { font-weight: 600; font-size: 14px; }
+.bar .st { height: 20px; font-size: 11.5px; }
+.bar .q { color: var(--fg3); font-size: 12.5px; display: inline-flex; align-items: center; gap: 5px; }
+.bar .mid { position: absolute; left: 50%; transform: translateX(-50%); }
+.bar .test { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 8px; font-size: 12.5px; font-weight: 550; color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 26%, transparent); }
+.cv { position: relative; overflow: hidden; background-color: var(--page); background-image: radial-gradient(var(--line) 1px, transparent 1.3px); background-size: 18px 18px; }
+.cv.lone { border-radius: 14px; border: 1px solid var(--line); }
+.cv svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.arrow { fill: none; stroke: #7d8696; stroke-width: 1.75; }
+.arrow.took { stroke: var(--teal); } .arrow.not { opacity: .3; }
+
+/* a box as a card: the kind's colour on its tile and its port, not on the whole border */
+.nb { --c: var(--gray); position: absolute; width: 196px; height: 72px; display: flex; gap: 10px; padding: 11px 12px; border-radius: 13px; background: linear-gradient(180deg, var(--surf1), var(--surf2)); border: 1px solid var(--line); box-shadow: var(--shadow-card); }
+.nb .tile { width: 30px; height: 30px; border-radius: 9px; font-size: 14px; }
+.nb div { min-width: 0; flex: 1; }
+.nb small { display: block; font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--c); line-height: 1.3; white-space: nowrap; }
+.nb b { display: block; font-size: 13.5px; font-weight: 600; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb span.m { display: block; font-size: 12px; color: var(--fg2); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb::after { content: ""; position: absolute; right: -5px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--page); }
+.nb.end::after { display: none; }
+.nb.sel { box-shadow: 0 0 0 2px var(--page), 0 0 0 4px var(--violet), var(--shadow-card); }
+.nb.dim { opacity: .4; }
+.nb.now { box-shadow: 0 0 0 2px var(--page), 0 0 0 4px var(--accent), var(--shadow-card); }
+.g-start { --c: var(--teal); } .g-logic { --c: var(--amber); } .g-msg { --c: var(--blue); } .g-ppl { --c: var(--violet); }
+.out { position: absolute; display: inline-flex; align-items: center; height: 18px; padding: 0 8px; border-radius: 9px; font-size: 11px; font-weight: 550; color: var(--fg2); background: var(--page); box-shadow: inset 0 0 0 1px var(--line); }
+.out.took { color: var(--teal); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 40%, transparent); }
+.plus { position: absolute; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: var(--fg2); background: var(--surf1); box-shadow: inset 0 0 0 1px var(--line), var(--thumb-shadow); }
+.plus.on { color: var(--on-accent); background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent); }
+.plus.ghost { background: none; box-shadow: none; border: 1px dashed var(--fg3); color: var(--fg3); }
+.flag { position: absolute; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; color: var(--c); background: var(--page); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent); }
+.flag.ok { --c: var(--teal); } .flag.skip { --c: var(--amber); } .flag.cur { --c: var(--accent); }
+
+/* what floats over the canvas: the add rail, the tools, the map, a box's panel */
+.glass { position: absolute; border-radius: 14px; background: var(--float); border: 1px solid var(--line); box-shadow: var(--shadow-float); backdrop-filter: blur(14px); }
+.rail { left: 14px; top: 14px; width: 48px; padding: 8px; display: grid; gap: 4px; justify-items: center; }
+.rail .add { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; font-size: 17px; color: var(--on-accent); background: linear-gradient(180deg, var(--a1), var(--a2)); margin-bottom: 4px; }
+.rail hr { width: 20px; margin: 2px 0 4px; border: 0; border-top: 1px solid var(--line); }
+.dock { bottom: 16px; left: 50%; transform: translateX(-50%); height: 44px; padding: 0 8px; display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+.dock hr { height: 20px; margin: 0 6px; border: 0; border-left: 1px solid var(--line); }
+.dock .z { font-size: 12.5px; color: var(--fg2); padding: 0 4px; font-variant-numeric: tabular-nums; }
+.dock .w { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 9px; font-size: 12.5px; font-weight: 550; color: var(--fg2); }
+.map { left: 14px; bottom: 16px; width: 172px; height: 104px; }
+.map i { position: absolute; height: 9px; width: 24px; border-radius: 3px; background: var(--sk); }
+.map u { position: absolute; left: 6px; top: 22px; width: 150px; height: 62px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+
+/* the add list, a frame, a note, the tools of several boxes */
+.pop { padding: 8px; font-size: 12.5px; }
+.pop .in { height: 32px; font-size: 13px; padding: 0 10px; border-radius: 9px; }
+.pop h6 { margin: 10px 6px 3px; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--fg3); }
+.pop a { display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 6px; border-radius: 9px; }
+.pop a.hov { background: var(--hover); }
+.pop a .tile { width: 24px; height: 24px; border-radius: 7px; font-size: 12px; }
+.pop a span { font-weight: 550; }
+.pop a small { margin-left: auto; color: var(--fg3); font-size: 11.5px; }
+.pop .grp { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 6px 4px; }
+.pop .grp span { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 8px; background: var(--quiet); color: var(--fg2); font-size: 12px; }
+.pop .grp em { font-style: normal; color: var(--fg3); }
+.pop p { margin: 8px 6px 2px; color: var(--fg3); font-size: 11.5px; }
+.frame { position: absolute; border-radius: 16px; background: color-mix(in srgb, var(--blue) 5%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 26%, transparent); }
+.frame b { position: absolute; left: 14px; top: 10px; font-size: 12px; font-weight: 600; color: var(--blue); }
+.sticky { position: absolute; width: 188px; padding: 10px 12px; border-radius: 4px 14px 14px 14px; font-size: 12.5px; line-height: 1.45; color: var(--fg); background: color-mix(in srgb, var(--amber) 16%, var(--surf1)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 30%, transparent), var(--shadow-card); }
+.sticky small { display: block; margin-top: 6px; color: var(--fg3); font-size: 11.5px; }
+.tools { height: 38px; padding: 0 6px 0 12px; display: flex; align-items: center; gap: 2px; font-size: 12.5px; white-space: nowrap; }
+.tools b { font-weight: 600; margin-right: 6px; }
+.tools span { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 9px; border-radius: 8px; color: var(--fg2); font-weight: 500; }
+.tools span.bad { color: var(--rose); }
+
+/* panels */
+.side { position: relative; flex: none; width: 320px; padding: 14px 14px 12px; }
+.side .hd { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.side .hd div { flex: 1; min-width: 0; }
+.side .hd small { display: block; font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--fg3); }
+.side .hd b { display: block; font-weight: 600; font-size: 14px; line-height: 1.3; }
+.side .lab { margin-top: 13px; }
+.side .in { height: 34px; font-size: 13px; padding: 0 10px; }
+.side .help { margin-top: 6px; }
+.steps { margin: 14px 0 0; padding: 0; list-style: none; }
+.steps li { position: relative; padding: 0 0 14px 28px; font-size: 13px; }
+.steps li::before { content: ""; position: absolute; left: 8px; top: 20px; bottom: 0; border-left: 1px solid var(--line); }
+.steps li:last-child::before { display: none; }
+.steps li > i { position: absolute; left: 0; top: 1px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent); }
+.steps li b { display: block; font-weight: 600; }
+.steps li span { display: block; color: var(--fg2); font-size: 12.5px; line-height: 1.45; }
+.steps li a { color: var(--accent); font-weight: 550; }
+.steps .ok { --c: var(--teal); } .steps .skip { --c: var(--amber); } .steps .cur { --c: var(--accent); }
+.btns { display: flex; gap: 8px; margin-top: 4px; }
+.days { display: flex; gap: 5px; }
+.days span { flex: 1; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 550; color: var(--fg3); background: var(--quiet); }
+.days span.on { color: var(--on-accent); background: var(--accent); }
+.two { display: flex; gap: 8px; align-items: center; color: var(--fg3); } .two .in { flex: 1; }
+.rule { display: flex; align-items: center; gap: 9px; height: 40px; padding: 0 8px 0 6px; margin-top: 6px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; }
+.rule .tile { width: 24px; height: 24px; border-radius: 7px; font-size: 12px; }
+.rule i.x { margin-left: auto; color: var(--fg3); font-size: 12px; }
+.link { color: var(--accent); font-size: 12.5px; font-weight: 550; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <p class="part">A · The editor <em>the canvas takes the whole screen; what you need comes to where you are</em></p>
+
+  <div class="board">
+    <p class="cap"><b>A1 · A flow open, nothing chosen</b><small>No column on either side. Adding is a rail at the left and a "+" on every arrow; the tools are one strip at the bottom; a box is a card with its kind on a coloured tile.</small></p>
+    <div class="ed">
+      <div class="bar" style="position:relative"><span class="ib sm"><i class="bi bi-arrow-left"></i></span><b>Gruba hoş geldin</b><i class="bi bi-chevron-down" style="font-size:10px;color:var(--fg3)"></i><span class="st t-teal">Yayında · v3</span><span class="q"><i class="bi bi-check2"></i>Kaydedildi</span>
+        <span class="seg mid"><span class="on"><i class="bi bi-diagram-3"></i>Tuval</span><span><i class="bi bi-list-ul"></i>Liste</span></span><span class="sp"></span>
+        <span class="q"><i class="bi bi-check-circle"></i>Sorun yok</span><span class="btn quiet sm"><i class="bi bi-bar-chart"></i>Sayılar</span><span class="btn quiet sm"><i class="bi bi-clock-history"></i>Çalıştırmalar</span><span class="btn quiet sm"><i class="bi bi-play"></i>Dene</span><span class="btn fill sm"><i class="bi bi-send"></i>Yayınla</span><span class="ib sm"><i class="bi bi-three-dots"></i></span></div>
+      <div class="cv" style="height:520px">
+        <svg viewBox="0 0 1438 520"><defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7d8696"/></marker><marker id="aht" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#3fd0a8"/></marker></defs>
+          <path class="arrow" marker-end="url(#ah)" d="M292 260 L352 260"/><path class="arrow" marker-end="url(#ah)" d="M562 260 L622 260"/><path class="arrow" marker-end="url(#ah)" d="M832 260 L892 260"/>
+          <path class="arrow" marker-end="url(#ah)" d="M1102 260 C1140 260 1128 156 1162 156"/><path class="arrow" marker-end="url(#ah)" d="M1102 260 C1140 260 1128 364 1162 364"/></svg>
+        <div class="nb g-start" style="left:90px;top:224px"><span class="tile t-teal"><i class="bi bi-lightning-charge"></i></span><div><small>Bir şey olduğunda</small><b>Kişi gruba katıldı</b><span class="m">VIP müşteriler</span></div></div>
+        <div class="nb g-msg" style="left:360px;top:224px"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>Hoş geldin</b><span class="m">Kaydın kişisine</span></div></div>
+        <div class="nb g-logic" style="left:630px;top:224px"><span class="tile t-amber"><i class="bi bi-hourglass-split"></i></span><div><small>Bekle</small><b>3 gün</b><span class="m">Hafta içi 09:00'da sürer</span></div></div>
+        <div class="nb g-logic" style="left:900px;top:224px"><span class="tile t-amber"><i class="bi bi-signpost-split"></i></span><div><small>Koşul</small><b>Sipariş verdi mi?</b><span class="m">Son 3 günde sipariş</span></div></div>
+        <div class="nb g-logic end" style="left:1170px;top:120px"><span class="tile t-amber"><i class="bi bi-flag"></i></span><div><small>Bitiş</small><b>Sipariş verdi</b><span class="m">Çalıştırma biter</span></div></div>
+        <div class="nb g-msg" style="left:1170px;top:328px"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>İndirim kodu</b><span class="m">Kaydın kişisine · Pazarlama</span></div></div>
+        <span class="out" style="left:1115px;top:199px">Evet</span><span class="out" style="left:1113px;top:303px">Hayır</span>
+        <span class="plus" style="left:852px;top:250px"><i class="bi bi-plus"></i></span>
+        <span class="plus ghost" style="left:1382px;top:354px"><i class="bi bi-plus"></i></span>
+        <div class="glass rail"><span class="add"><i class="bi bi-plus"></i></span><hr><span class="ib sm"><i class="bi bi-chat"></i></span><span class="ib sm"><i class="bi bi-people"></i></span><span class="ib sm"><i class="bi bi-signpost-split"></i></span><span class="ib sm"><i class="bi bi-table"></i></span><span class="ib sm"><i class="bi bi-gear"></i></span><span class="ib sm"><i class="bi bi-braces"></i></span></div>
+        <div class="glass map"><u></u><i style="left:16px;top:50px"></i><i style="left:46px;top:50px"></i><i style="left:76px;top:50px"></i><i style="left:106px;top:50px"></i><i style="left:136px;top:36px"></i><i style="left:136px;top:64px"></i></div>
+        <div class="glass dock"><span class="ib sm"><i class="bi bi-arrow-counterclockwise"></i></span><span class="ib sm dim"><i class="bi bi-arrow-clockwise"></i></span><hr><span class="ib sm"><i class="bi bi-dash"></i></span><span class="z">100%</span><span class="ib sm"><i class="bi bi-plus"></i></span><span class="ib sm"><i class="bi bi-fullscreen"></i></span><hr><span class="w"><i class="bi bi-magic"></i>Düzenle</span><span class="ib sm"><i class="bi bi-bezier2"></i></span><span class="ib sm"><i class="bi bi-sticky"></i></span><span class="ib sm on"><i class="bi bi-map"></i></span></div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><b>The left column</b> becomes a 48 px rail over the canvas: "+" opens the whole list of boxes, the six icons open one group each. The list is today's, with its search and its sections.</li>
+      <li><b>The right column</b> is there only while a box, an arrow or a run is chosen, as a card over the canvas's right edge (B1). With nothing chosen the flow's facts, its home channel and its problems open from the name and from "Sorun yok" in the bar.</li>
+      <li><b>A box</b> a card on the panel's surface: the kind's colour on a 30 px tile, on its name and on the port; the border is the hairline. Three lines: kind, title, what it does in a few words.</li>
+      <li><b>The bottom strip</b> undo, redo, zoom, fit; "Düzenle" puts the boxes in columns by the arrows' order (one undo step); data threads; a note; the map.</li>
+      <li><b>The map</b> the whole flow small at the bottom left, the part on the screen framed; a drag moves the canvas. Shown from 12 boxes on, or when pressed.</li>
+      <li><b>An arrow with more than one outcome</b> carries the outcome's name on it ("Evet", "Hayır"), as today.</li>
+    </ul>
+  </div>
+
+  <p class="part">B · Easier to build <em>add where it goes, choose several, tidy, leave a note</em></p>
+
+  <div class="board">
+    <div class="cols">
+      <div class="col" style="width:706px">
+        <p class="cap"><b>B1 · A step added where it goes</b><small>"+" on an arrow, or at the end of the last box, opens the list there; the box lands between the two and the rest moves over.</small></p>
+        <div class="cv lone" style="height:456px">
+          <svg viewBox="0 0 704 456"><path class="arrow" marker-end="url(#ah)" d="M246 96 L466 96"/></svg>
+          <div class="nb g-msg" style="left:44px;top:60px"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>Hoş geldin</b><span class="m">Kaydın kişisine</span></div></div>
+          <div class="nb g-logic" style="left:474px;top:60px"><span class="tile t-amber"><i class="bi bi-signpost-split"></i></span><div><small>Koşul</small><b>Sipariş verdi mi?</b><span class="m">Son 3 günde sipariş</span></div></div>
+          <span class="plus on" style="left:346px;top:86px"><i class="bi bi-plus"></i></span>
+          <div class="glass pop" style="left:216px;top:120px;width:280px">
+            <div class="in"><i class="bi bi-search"></i><span class="ph">Kutu ara</span><kbd class="end">/</kbd></div>
+            <h6>Çoğu zaman sıradaki</h6>
+            <a class="hov"><span class="tile t-amber"><i class="bi bi-hourglass-split"></i></span><span>Bekle</span><small>↵</small></a>
+            <a><span class="tile t-amber"><i class="bi bi-signpost-split"></i></span><span>Koşul</span></a>
+            <a><span class="tile t-violet"><i class="bi bi-check2-square"></i></span><span>Görev</span></a>
+            <h6>Hepsi</h6>
+            <div class="grp"><span>Mesaj <em>6</em></span><span>Kişiler <em>6</em></span><span>Mantık <em>5</em></span><span>Kayıtlar <em>6</em></span><span>Sistem <em>7</em></span><span>Değerler <em>2</em></span></div>
+            <p>Bir okun ucunu boşluğa bırakmak da bu listeyi açar.</p>
+          </div>
+        </div>
+      </div>
+      <div class="col" style="width:706px">
+        <p class="cap"><b>B2 · Several boxes, a frame, a note</b><small>Shift+click or a dragged rectangle chooses several; their tools come up beside them. A frame names a part of the flow, a note says what a box cannot.</small></p>
+        <div class="cv lone" style="height:456px">
+          <div class="frame" style="left:20px;top:54px;width:458px;height:150px"><b>Hoş geldin serisi</b></div>
+          <svg viewBox="0 0 704 456"><path class="arrow" marker-end="url(#ah)" d="M240 132 L254 132"/><path class="arrow" marker-end="url(#ah)" d="M464 132 C498 132 452 300 484 300"/></svg>
+          <div class="nb g-msg sel" style="left:38px;top:96px"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>Hoş geldin</b><span class="m">Kaydın kişisine</span></div></div>
+          <div class="nb g-logic sel" style="left:262px;top:96px"><span class="tile t-amber"><i class="bi bi-hourglass-split"></i></span><div><small>Bekle</small><b>3 gün</b><span class="m">Hafta içi 09:00'da sürer</span></div></div>
+          <div class="nb g-msg end" style="left:492px;top:264px"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>İndirim kodu</b><span class="m">Kaydın kişisine · Pazarlama</span></div></div>
+          <div class="glass tools" style="left:60px;top:222px"><b>2 kutu</b><span><i class="bi bi-files"></i>Çoğalt</span><span><i class="bi bi-clipboard"></i>Kopyala</span><span><i class="bi bi-bounding-box"></i>Çerçevele</span><span class="bad"><i class="bi bi-trash3"></i>Sil</span></div>
+          <div class="sticky" style="left:500px;top:110px">İndirim kodu 1 Aralık'ta değişiyor; metni o gün güncelle.<small>Erdal · 20 Kas</small></div>
+        </div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><b>The list at the arrow</b> first the three boxes most often put after the box before it, then every group; typing searches, Enter adds. The rail and dragging a box from it stay.</li>
+      <li><b>Several boxes</b> move together; Çoğalt and Kopyala keep the arrows between them; Ctrl+C / Ctrl+V also between two flows. Delete removes them in one undo step.</li>
+      <li><b>A frame and a note</b> are drawn on the canvas only: no run reads them, the check ignores them. A frame moves with the boxes inside it and can be folded to one row with its name.</li>
+    </ul>
+  </div>
+
+  <p class="part">C · Sure before it is live <em>the whole flow tried with a real record</em></p>
+
+  <div class="board">
+    <p class="cap"><b>C1 · "Dene" in the bar</b><small>One record is chosen and the flow is walked box by box. Every box says what it would do; nothing is sent or written, and a wait is passed over.</small></p>
+    <div class="cols" style="gap:0">
+      <div class="ed" style="width:1440px">
+        <div class="bar"><span class="ib sm"><i class="bi bi-arrow-left"></i></span><b>Gruba hoş geldin</b><span class="test"><i class="bi bi-play"></i>Deneme · hiçbir şey gönderilmez</span><span class="sp"></span><span class="btn quiet sm">Denemeyi bitir</span></div>
+        <div class="cv" style="height:492px">
+          <svg viewBox="0 0 1438 492"><path class="arrow took" marker-end="url(#aht)" d="M218 236 L232 236"/><path class="arrow took" marker-end="url(#aht)" d="M440 236 L454 236"/><path class="arrow took" marker-end="url(#aht)" d="M662 236 L676 236"/>
+            <path class="arrow not" marker-end="url(#ah)" d="M884 236 C906 236 884 132 906 132"/><path class="arrow took" marker-end="url(#aht)" d="M884 236 C906 236 884 340 906 340"/></svg>
+          <div class="nb g-start" style="left:18px;top:200px"><span class="tile t-teal"><i class="bi bi-lightning-charge"></i></span><div><small>Bir şey olduğunda</small><b>Kişi gruba katıldı</b><span class="m">VIP müşteriler</span></div></div>
+          <div class="nb g-msg" style="left:240px;top:200px"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>Hoş geldin</b><span class="m">Kaydın kişisine</span></div></div>
+          <div class="nb g-logic" style="left:462px;top:200px"><span class="tile t-amber"><i class="bi bi-hourglass-split"></i></span><div><small>Bekle</small><b>3 gün</b><span class="m">Hafta içi 09:00'da sürer</span></div></div>
+          <div class="nb g-logic" style="left:684px;top:200px"><span class="tile t-amber"><i class="bi bi-signpost-split"></i></span><div><small>Koşul</small><b>Sipariş verdi mi?</b><span class="m">Son 3 günde sipariş</span></div></div>
+          <div class="nb g-logic end dim" style="left:914px;top:96px"><span class="tile t-amber"><i class="bi bi-flag"></i></span><div><small>Bitiş</small><b>Sipariş verdi</b><span class="m">Çalıştırma biter</span></div></div>
+          <div class="nb g-msg now" style="left:914px;top:304px"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>İndirim kodu</b><span class="m">Kaydın kişisine · Pazarlama</span></div></div>
+          <span class="flag ok" style="left:176px;top:190px"><i class="bi bi-check2"></i></span><span class="flag ok" style="left:398px;top:190px"><i class="bi bi-check2"></i></span>
+          <span class="flag skip" style="left:592px;top:190px">geçildi</span><span class="flag ok" style="left:826px;top:190px">Hayır</span><span class="flag cur" style="left:1050px;top:294px">Sırada</span>
+          <div class="glass side" style="position:absolute;right:14px;top:14px;bottom:14px;width:300px">
+            <div class="hd"><span class="tile lg t-amber"><i class="bi bi-play"></i></span><div><small>Deneme</small><b>Ayşe Demir ile</b></div><span class="ib sm"><i class="bi bi-x-lg"></i></span></div>
+            <div class="in"><span class="av">AD</span>Ayşe Demir<i class="bi bi-chevron-down end"></i></div>
+            <ul class="steps">
+              <li class="ok"><i class="bi bi-check2"></i><b>Kişi gruba katıldı</b><span>Ayşe Demir · VIP müşteriler</span></li>
+              <li class="ok"><i class="bi bi-check2"></i><b>E-posta · Hoş geldin</b><span>ayse@ornek.com adresine giderdi: “Aramıza hoş geldiniz, Ayşe” · <a>Önizle</a></span></li>
+              <li class="skip"><i class="bi bi-skip-forward"></i><b>Bekle</b><span>3 gün beklerdi; denemede geçildi</span></li>
+              <li class="ok"><i class="bi bi-check2"></i><b>Sipariş verdi mi?</b><span>Hayır: son 3 günde siparişi yok</span></li>
+              <li class="cur"><i class="bi bi-arrow-right"></i><b>E-posta · İndirim kodu</b><span>Sırada</span></li>
+            </ul>
+            <div class="btns"><span class="btn fill sm">Sonraki adım</span><span class="btn quiet sm">Sonuna kadar</span></div>
+            <p class="help">Deneme kaydı okur; göndermez, yazmaz, çağırmaz.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><b>Today</b> one box is tried at a time from its "Dene" tab, with the values of a run that already happened. Nothing walks the draft from start to end before it is published.</li>
+      <li><b>The record</b> a person, an order, a form entry, as the flow's start needs; the last five the start saw are offered first. A start without a record (a time, by hand) is walked without one.</li>
+      <li><b>Each step</b> says what the box would do in the words its "Dene" tab uses; a condition shows the arrow it would take; "Önizle" shows the message as that person would get it.</li>
+    </ul>
+  </div>
+
+  <p class="part">D · More it can do <em>three new parts, and the counts of a live flow</em></p>
+
+  <div class="board">
+    <div class="cols">
+      <div class="col" style="width:470px">
+        <p class="cap"><b>D1 · A box that splits</b><small>"Böl": runs go down its arrows by the shares given. With "Sayılar" on, each arm shows its own.</small></p>
+        <div class="cv lone" style="height:330px">
+          <svg viewBox="0 0 470 330"><path class="arrow" marker-end="url(#ah)" d="M222 166 C252 166 232 84 256 84"/><path class="arrow" marker-end="url(#ah)" d="M222 166 C252 166 232 248 256 248"/></svg>
+          <div class="nb g-logic" style="left:24px;top:130px"><span class="tile t-amber"><i class="bi bi-shuffle"></i></span><div><small>Böl</small><b>Konu denemesi</b><span class="m">A %50 · B %50</span></div></div>
+          <div class="nb g-msg end" style="left:264px;top:48px"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>Konu A</b><span class="m">Aramıza hoş geldiniz</span></div></div>
+          <div class="nb g-msg end" style="left:264px;top:212px"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder</small><b>Konu B</b><span class="m">Size özel bir hediye</span></div></div>
+          <span class="out" style="left:222px;top:104px">A</span><span class="out" style="left:222px;top:210px">B</span>
+          <span class="flag" style="left:272px;top:28px;--c:var(--gray)">64 gönderildi</span><span class="flag" style="left:272px;top:192px;--c:var(--gray)">62 gönderildi</span>
+        </div>
+      </div>
+      <div class="pcard side col" style="width:300px">
+        <div class="hd"><span class="tile lg t-blue"><i class="bi bi-envelope"></i></span><div><small>E-posta gönder · D2</small><b>Gönderim saatleri</b></div></div>
+        <span class="lab" style="margin-top:0">Hangi günler</span>
+        <div class="days"><span class="on">Pzt</span><span class="on">Sal</span><span class="on">Çar</span><span class="on">Per</span><span class="on">Cum</span><span>Cmt</span><span>Paz</span></div>
+        <span class="lab">Hangi saatler</span>
+        <div class="two"><div class="in">09:00</div>–<div class="in">20:00</div></div>
+        <span class="lab">Saat dışındaysa</span>
+        <div class="in">İlk uygun saatte gönder<i class="bi bi-chevron-down end"></i></div>
+        <p class="help">Mesaj, SMS, WhatsApp ve e-posta kutularında aynı satır. Kapalıyken kutu bugünkü gibi hemen gönderir.</p>
+      </div>
+      <div class="pcard side col" style="width:300px">
+        <div class="hd"><span class="tile lg t-teal"><i class="bi bi-box-arrow-right"></i></span><div><small>Akış · D3</small><b>Akıştan çıkış</b></div></div>
+        <p class="help" style="margin:0 0 6px">Bunlardan biri olursa o kişinin çalıştırması, hangi kutuda olursa olsun biter.</p>
+        <div class="rule"><span class="tile t-teal"><i class="bi bi-bag-check"></i></span>Sipariş verirse<i class="bi bi-x-lg x"></i></div>
+        <div class="rule"><span class="tile t-rose"><i class="bi bi-person-dash"></i></span>Gruptan çıkarsa<i class="bi bi-x-lg x"></i></div>
+        <div class="btns" style="margin-top:10px"><span class="btn quiet sm"><i class="bi bi-plus"></i>Koşul ekle</span></div>
+        <p class="help" style="margin-top:12px">Son 30 günde 14 çalıştırma böyle bitti.</p>
+      </div>
+      <ul class="notes one" style="margin-top:0;width:258px">
+        <li><b>D1</b> two to five arms, the shares add up to 100; which arm a run took is kept with the run, so a retry takes the same one.</li>
+        <li><b>D2</b> a folded row in a sending box's settings; a send outside the hours waits as a Wait box waits, or is left out, as chosen.</li>
+        <li><b>D3</b> set on the flow, not on a box: the start's events are offered. Today the same needs a Condition after every Wait.</li>
+        <li><b>Counts</b> the "Sayılar" button of the first sheet (proposal 3) belongs here unchanged.</li>
+        <li><b>Each of the three is new behaviour</b> and is asked of the owner on its own before a plan names it.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+<script>
+if (location.search.indexOf('light') > -1) { document.documentElement.setAttribute('data-theme', 'light'); }
+</script>
+</body>
+</html>
