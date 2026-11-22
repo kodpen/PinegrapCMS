@@ -5,17 +5,17 @@ module: image_editor
 ---
 
 ## What is it?
-- One editor for the whole software, written here with no outside engine: photo work, marking, redaction, vectors and SVG, a blank canvas sized as an artboard, animation, optimisation on save.
+- One editor for the whole software: photo work, marking, redaction, vectors and SVG, a blank canvas sized as an artboard, animation, optimisation on save.
 - On screen it is the Artifact Canvas ("Yapıt Tuvali", owner 2026-11-20, `workflow/decisions-made-panel-10.md`), with its own icon (`design-canvas-icon.md`); code names keep `image_editor`.
 - A core `<dialog>` with a full-screen button, opened from any screen by one call (`pgImageEditor.open()`, alias `window.openImageEditor()`); a caller may limit tools to a floating mini bar (`ui/image-editor-modal.md`, `image-editor-callers.md`).
-- Texts and shapes stay editable: a save keeps its document in `file_versions`, so a later open edits layers, not pixels (a canvas too: "New image", Workspace).
+- Texts and shapes stay editable: a save keeps its document in `file_versions`, so a later open edits layers, not pixels (a canvas too).
 - It replaced a bundled third-party editor (#4609).
 
 ## Which decisions bind it?
 - Owner, 2026-10-31 (`workflow/decisions-made-product-14.md`, `-15.md`, `decisions-made-schema-7.md`): own code, no engine; core modal with full screen; callable with a tool subset; labels through `lang()`; work on the server where it is efficient, else in JS; a versions table (the original plus the last 10 saves); optimisation inside; ready-made shapes and corner rounding; artboard sizing; "New image" opens the canvas; a redacted save keeps no metadata; the live site's edit button for signed-in editors only.
 - Owner, 2026-11-01 (`decisions-made-product-16.md`): layers animate and save as GIF, APNG, WebP, MP4 or WebM (`image-editor-animation.md`).
 - Owner, 2026-11-03 and -04 (`decisions-made-product-24.md`, `-27.md`): the new tools (sticker change, outlines, scissors, shape builder, warp, free deformation, area selection, select subject with an own algorithm and no model); the Fotoğraf and Vektör rail groups (`image-editor-rail.md`); the picture as the bottom layer; Import; a context menu; video editing inside the editor (`image-editor-animation.md`, `image-editor-clip.md`).
-- Owner, 2026-11-16 (`decisions-made-product-69.md`): Follow (`image-editor-follow.md`).
+- Owner, 2026-11-16 and -20 (`decisions-made-product-69.md`, `-80.md`): Follow, groups, Attach to (`image-editor-follow.md`, `-groups.md`, `-attach.md`).
 
 ## Who does what, the browser or the server?
 - The browser does all interaction and preview and draws the overlay (shapes, text, stickers, frames, inserted pictures) at output size into a transparent PNG, and the colour step on a host without Imagick.
