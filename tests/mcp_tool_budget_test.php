@@ -3,11 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the size budget of the MCP tool list: a tool's description at
- * most 600 characters, a whole tool at most 4,096 bytes as JSON. The tools
- * over a budget today are listed here; the lists may only shrink, so a
- * listed tool that fits fails until it is taken off, and a new tool over a
- * budget fails at once. Reference detail goes into a route's 'details' key,
- * which only the OpenAPI document reads.
+ * most 600 characters, a whole tool at most 4,096 bytes as JSON. Every tool
+ * of the core and of the modules fits both, so a tool over a budget fails at
+ * once. Reference detail goes into a route's 'details' key, which only the
+ * OpenAPI document reads.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -31,20 +30,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/protocol.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
-
-// Tools whose description passes 600 characters today. Take a tool off when
-// its description fits; never add one.
-function mcp_tool_budget_test_long_descriptions()
-{
-	return array();
-}
-
-// Tools larger than 4,096 bytes as JSON today. Take a tool off when it fits;
-// never add one.
-function mcp_tool_budget_test_large_tools()
-{
-	return array();
-}
 
 // Every route of the core and of the modules, as tools for a caller holding
 // every scope they use, on a site with every module on; an application
@@ -101,19 +86,9 @@ function mcp_tool_budget_test_over($budget)
 	return $over;
 }
 
-function mcp_tool_budget_test_check($budget, $listed, $what)
+function mcp_tool_budget_test_check($budget, $what)
 {
-	$over = mcp_tool_budget_test_over($budget);
-
-	pg_assert_same(count($listed), count(array_unique($listed)), 'the ' . $what . ' list names each tool once');
-
-	$new = array_values(array_diff($over, $listed));
-
-	pg_assert_same(array(), $new, 'tools over the ' . $what . ' budget that are not on its list: fit them, do not list them');
-
-	$fits = array_values(array_diff($listed, $over));
-
-	pg_assert_same(array(), $fits, 'listed tools that fit the ' . $what . ' budget now: take them off the list');
+	pg_assert_same(array(), mcp_tool_budget_test_over($budget), 'tools over the ' . $what . ' budget: shorten them, move reference detail to details');
 }
 
 function test_mcp_tool_budget_values()
@@ -133,14 +108,14 @@ function test_mcp_tool_budget_values()
 	pg_assert_same(array('tool'), pg_mcp_tool_over_budget($large));
 }
 
-function test_mcp_tool_budget_descriptions_only_shrink()
+function test_mcp_tool_budget_descriptions_fit()
 {
-	mcp_tool_budget_test_check('description', mcp_tool_budget_test_long_descriptions(), 'description');
+	mcp_tool_budget_test_check('description', 'description');
 }
 
-function test_mcp_tool_budget_tools_only_shrink()
+function test_mcp_tool_budget_tools_fit()
 {
-	mcp_tool_budget_test_check('tool', mcp_tool_budget_test_large_tools(), 'tool size');
+	mcp_tool_budget_test_check('tool', 'tool size');
 }
 
 // A route's details reach the OpenAPI operation, after its description and
