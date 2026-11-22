@@ -472,6 +472,10 @@ function pg_mail_way_cards($chosen, $form, $kind = 'system')
         'service'   => array('violet', 'bi-lightning-charge', lang('A sending service'), lang('With the key of a service such as Brevo, Mailgun or Amazon SES.')),
         'server'    => array('gray', 'bi-hdd-rack', lang('Your own mail server'), lang('With the server name, a user and a password.')),
     );
+
+    if ($kind === 'campaign') {
+        $ways['service'][3] = lang('Through the sending service system e-mail uses.');
+    }
     $name = ($kind === 'campaign') ? 'campaign_mail_way' : 'system_mail_way';
     $html = '';
 

@@ -10342,6 +10342,7 @@
     "Through MCP a file may be at most {var:1} KB; post a larger one over the REST API.": "MCP üzerinden bir dosya en fazla {var:1} KB olabilir; daha büyüğünü REST API ile gönderin.",
     "Through the Telescope": "Teleskoptan",
     "Through the payment service": "Ödeme hizmeti üzerinden",
+    "Through the sending service system e-mail uses.": "Sistem e-postasının kullandığı gönderim hizmeti üzerinden.",
     "Through the summer, in opening hours": "Yaz boyunca, çalışma saatlerinde",
     "Through the telescope": "Teleskoptan",
     "Through the winter holidays": "Kış tatili boyunca",

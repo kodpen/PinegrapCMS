@@ -288,7 +288,7 @@ $mail_txt_record = pg_mail_settings_dkim_shown_record(
 );
 
 $mail_dkim_fields = '
-                    <div class="mt-3" role="group" aria-labelledby="dkim_names_label">
+                    <div class="mt-3 pg-field-span-6" role="group" aria-labelledby="dkim_names_label">
                         <div class="pg-field-label" id="dkim_names_label">' . h(lang('Selector and domain')) . '</div>
                         <label class="visually-hidden" for="dkim_selector">' . h(lang('Selector')) . '</label>
                         <label class="visually-hidden" for="dkim_domain">' . h(lang('Domain')) . '</label>
