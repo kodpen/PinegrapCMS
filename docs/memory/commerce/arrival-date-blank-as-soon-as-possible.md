@@ -17,7 +17,7 @@ description: A blank arrival date (stored 0000-00-00, the starter AT-ONCE row) m
 - `pg_arrival_date_form_values()` writes every blank date (arrival date, latest allowed date) as `0000-00-00` itself, not `''` left to the connection's non-strict SQL mode.
 
 ## What was the fault?
-- The box was `required` while the custom switch was off (#6728) and the check wanted a real date (#5554), so the stock AT-ONCE row could not be saved: the browser stopped Save, the server answered "Please enter a valid date for Arrival Date", the list's quick edit refused any change of the row and an API update answered 422.
+- The box was `required` while the custom switch was off (#6728) and the check wanted a real date (#5554), so the stock AT-ONCE row could not be saved: the browser stopped Save, the server answered "Please enter a valid date for Arrival Date", the list's quick edit refused any change of the row and an API update answered 422 (fixed in #11053).
 
 ## Tested?
 - `tests/arrival_date_form_test.php`, `tests/arrival_date_list_edit_test.php`, `tests/api_store_lookups_test.php`. In a sandbox, row 1 saved unchanged from the screen, landed on the list and kept `0000-00-00`.
