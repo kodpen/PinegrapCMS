@@ -1405,6 +1405,7 @@
     "Onyx": "Oniks",
     "Opacity": "Saydamlık",
     "Open": "Açık",
+    "Open #{var:1}": "#{var:1} kanalını aç",
     "Open #{var:1} for inspection? A line saying you opened it is written into the channel and the log.": "#{var:1} denetim için açılsın mı? Kanala ve kayıtlara açtığınızı belirten bir satır yazılır.",
     "Open ({var:1})": "Açık ({var:1})",
     "Open API": "Açık API",

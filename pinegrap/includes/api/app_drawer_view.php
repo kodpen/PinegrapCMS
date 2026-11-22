@@ -151,6 +151,8 @@ function api_app_guides_fold_html($guides, $prefix, $open, $skip = array()) {
 //   hook_secret     the Events tab's one-time signing secret ('' for none)
 //   hook_bounds     api_webhook_store()'s limits (url, events)
 //   fields_script   the date and chips fields' script
+//   agent_tab       the AI agent tab's button and agent_pane its pane
+//                   (app_agent_view.php), '' or missing when not offered
 function api_app_drawer_view($parts) {
 
 	$guide_meta = array();
@@ -194,6 +196,7 @@ function api_app_drawer_view($parts) {
 			<button class="pg-seg-item active" role="tab" data-bs-toggle="tab" data-bs-target="#d_general" type="button" id="d_general_label" aria-controls="d_general" aria-selected="true">' . lang('Overview') . '</button>
 			<button class="pg-seg-item" role="tab" data-bs-toggle="tab" data-bs-target="#d_connect" type="button" id="d_connect_label" aria-controls="d_connect" aria-selected="false">' . lang('Connect') . '</button>
 			<button class="pg-seg-item" role="tab" data-bs-toggle="tab" data-bs-target="#d_perms" type="button" id="d_perms_label" aria-controls="d_perms" aria-selected="false">' . lang('Permissions') . ' <span class="pg-seg-count" id="d_perms_count"></span></button>
+			' . (isset($parts['agent_tab']) ? $parts['agent_tab'] : '') . '
 			<button class="pg-seg-item" role="tab" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button" id="d_hooks_label" aria-controls="d_hooks" aria-selected="false">' . lang('Events') . '</button>
 			<button class="pg-seg-item" role="tab" data-bs-toggle="tab" data-bs-target="#d_devices" type="button" id="d_devices_label" aria-controls="d_devices" aria-selected="false"
 				data-device="' . h(lang('Devices')) . '" data-oauth="' . h(lang('Connections')) . '">' . lang('Devices') . '</button>
@@ -239,6 +242,8 @@ function api_app_drawer_view($parts) {
 			</div>
 
 			' . api_app_drawer_hooks_html($parts['hook_secret'], $hook_bounds) . '
+
+			' . (isset($parts['agent_pane']) ? $parts['agent_pane'] : '') . '
 
 			<div class="tab-pane fade" id="d_log" role="tabpanel" aria-labelledby="d_log_label">
 				<div class="d-flex align-items-center mb-3">
