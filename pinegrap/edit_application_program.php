@@ -7,7 +7,10 @@
  * and the Set-up tab: period, categories, eligibility, rounds and criteria,
  * blind review and decision e-mails; and the Reviewers tab: the people who
  * score the entries, the run that gives the entries out to them and the
- * conflicts they declared. Gated by validate_forms_access() and the folder
+ * conflicts they declared; and the Entries tab: the current round's entries
+ * ranked per category with their combined scores, the shortlist cut,
+ * settling an entry that needs consensus, letting a not eligible entry in,
+ * and moving the shortlist into the next round. Gated by validate_forms_access() and the folder
  * rule on the programme's form. It also takes the list drawer's add (a name
  * and a form: a new draft) and the row menu's Delete.
  *
@@ -19,6 +22,7 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_reviewers.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_ranking.php');
 
 $user = validate_user();
 validate_forms_access($user);
@@ -33,7 +37,9 @@ $ap_forms = pg_application_program_forms($user);
 $ap_id = (int) ($_POST['id'] ?? $_POST['submit_delete'] ?? $_GET['id'] ?? 0);
 $ap_program = ($ap_id > 0) ? pg_application_program_get($ap_id) : null;
 $ap_self = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_application_program.php';
-$ap_view = ((($_POST['view'] ?? $_GET['view'] ?? '') === 'reviewers') && ($ap_program !== null)) ? 'reviewers' : 'setup';
+$ap_view = $_POST['view'] ?? $_GET['view'] ?? '';
+$ap_view = (in_array($ap_view, array('reviewers', 'entries'), true) && ($ap_program !== null)) ? $ap_view : 'setup';
+$ap_category = is_string($_POST['category'] ?? $_GET['category'] ?? null) ? mb_substr($_POST['category'] ?? $_GET['category'], 0, 100) : null;
 $ap_list = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_application_programs.php';
 
 if (($ap_id > 0) && ($ap_program === null)) {
@@ -71,7 +77,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         go($ap_self . '?id=' . $ap_new_id);
     }
 
-    $ap_back = $ap_self . '?id=' . $ap_id . (($ap_view === 'reviewers') ? '&view=reviewers' : '');
+    $ap_back = $ap_self . '?id=' . $ap_id . (($ap_view !== 'setup') ? '&view=' . $ap_view : '') . (($ap_category !== null) ? '&category=' . rawurlencode($ap_category) : '');
+
+    if (isset($_POST['submit_cut'])) {
+        $ap_cut = pg_application_cut_input($_POST['cut_mode'] ?? '', $_POST['cut_value'] ?? '');
+
+        if ($ap_cut === false) {
+            $liveform->add_error(h(lang('Write a cut-off score from 1 to 10, or a top number from 1.')));
+        } else {
+            $liveform->add_notice(h(lang(array('string' => 'The cut was applied: {var:1} entries are shortlisted.', 'vars' => array(pg_application_cut_apply($ap_program, $ap_cut))))));
+        }
+
+        go($ap_back);
+    }
+
+    if (isset($_POST['submit_settle'])) {
+        if (pg_application_consensus_settle($ap_program, (int) ($_POST['entry_id'] ?? 0), is_string($_POST['note'] ?? null) ? $_POST['note'] : '')) {
+            $liveform->add_notice(h(lang('The entry was settled. Your note is kept in its history.')));
+        } else {
+            $liveform->add_error(h(lang('Write a note to settle the entry.')));
+        }
+
+        go($ap_back);
+    }
+
+    if (isset($_POST['submit_let_in'])) {
+        $ap_entry = _pg_application_rows("SELECT * FROM application_entries WHERE id = ? AND program_id = ?", array((int) ($_POST['entry_id'] ?? 0), $ap_id));
+        $ap_entry_note = $ap_entry ? json_decode((string) $ap_entry[0]['eligibility_note'], true) : null;
+
+        if ($ap_entry && pg_application_entry_override(array('note' => is_array($ap_entry_note) ? $ap_entry_note : array()) + $ap_entry[0], is_string($_POST['note'] ?? null) ? $_POST['note'] : '', (int) $user['id'])) {
+            $liveform->add_notice(h(lang('The entry was let in. Give out entries to share it with the reviewers.')));
+        } else {
+            $liveform->add_error(h(lang('Write a note to let the entry in.')));
+        }
+
+        go($ap_back);
+    }
+
+    if (isset($_POST['submit_next_round'])) {
+        $ap_moved = pg_application_next_round($ap_program);
+
+        if ($ap_moved > 0) {
+            $liveform->add_notice(h(lang(array('string' => '{var:1} shortlisted entries moved to round {var:2}. Give out entries to share them with the round\'s reviewers.', 'vars' => array($ap_moved, $ap_program['round'] + 1)))));
+            go($ap_self . '?id=' . $ap_id . '&view=reviewers');
+        }
+
+        $liveform->add_error(h(lang('The shortlist cannot move on: close the programme, set up the next round and shortlist entries first.')));
+        go($ap_back);
+    }
 
     if (isset($_POST['submit_reviewer_add'])) {
         $ap_reviewer = pg_application_reviewer_input($_POST, pg_application_category_choices($ap_program));
@@ -301,6 +354,11 @@ $ap_round_card = function ($r, array $round) use ($ap_criterion_row, $ap_date) {
         . '</div><div class="row gy-5">'
         . '<div class="col-12 md:col-6"><label class="pg-field-label" for="aprog_reviewers_' . $r . '">' . h(lang('Reviewers per entry')) . '</label><input type="number" class="pg-input" min="1" max="10" id="aprog_reviewers_' . $r . '" name="rounds[' . $r . '][reviewers]" value="' . (int) $round['reviewers'] . '"></div>'
         . '<div class="col-12 md:col-6"><label class="pg-field-label" for="aprog_ends_' . $r . '">' . h(lang('Round ends')) . '</label><input type="text" maxlength="22" data-pg-datetime class="pg-input" id="aprog_ends_' . $r . '" name="rounds[' . $r . '][ends]" value="' . $ap_date((int) $round['ends_at']) . '"></div>'
+        . '<div class="col-12 md:col-6"><label class="pg-field-label" for="aprog_spread_' . $r . '">' . h(lang('Needs consensus above')) . '</label><input type="text" inputmode="decimal" maxlength="4" class="pg-input" id="aprog_spread_' . $r . '" name="rounds[' . $r . '][spread]" value="' . h(isset($round['spread']) ? (string) $round['spread'] : '') . '" aria-describedby="aprog_spread_help_' . $r . '">'
+        . '<div class="pg-field-help" id="aprog_spread_help_' . $r . '">' . h(lang('Points between the highest and lowest score of an entry; empty: never.')) . '</div></div>'
+        . '<div class="col-12 md:col-6"><label class="pg-field-label" for="aprog_rank_' . $r . '">' . h(lang('Rank by')) . '</label><select class="pg-input" id="aprog_rank_' . $r . '" name="rounds[' . $r . '][rank_by]" aria-describedby="aprog_rank_help_' . $r . '">'
+        . '<option value="raw">' . h(lang('Mean')) . '</option><option value="corrected"' . ((($round['rank_by'] ?? '') === 'corrected') ? ' selected' : '') . '>' . h(lang('Corrected mean')) . '</option></select>'
+        . '<div class="pg-field-help" id="aprog_rank_help_' . $r . '">' . h(lang('The corrected mean evens out strict and generous reviewers, from their fifth review.')) . '</div></div>'
         . '</div></div>';
 };
 $ap_round_cards = '';
@@ -364,6 +422,11 @@ if ($ap_program['status'] === 0) {
     $ap_state_button = '<button type="submit" form="aprog_state_form" name="submit_open" value="1" class="pg-button pg-button-quiet">' . h(lang('Open for entries')) . '</button>';
 } elseif ($ap_program['status'] === 1) {
     $ap_state_button = '<button type="submit" form="aprog_state_form" name="submit_close" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h(lang('The form stops taking entries. Drafts saved for later can no longer be finished.')) . '">' . h(lang('Close')) . '</button>';
+} elseif (isset($ap_program['rounds'][$ap_program['round']])) {
+    // Closed with a next round set up: the round's own button.
+    $ap_next_shortlist = (int) db_value("SELECT COUNT(*) FROM application_entries WHERE program_id = '" . $ap_id . "' AND round = '" . max(1, $ap_program['round']) . "' AND shortlisted = 1");
+    $ap_state_button = '<button type="submit" form="aprog_state_form" name="submit_next_round" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h(lang(array('string' => 'The {var:1} shortlisted entries move to round {var:2}, to be scored on its criteria by its reviewers. The others stay where they are.', 'vars' => array($ap_next_shortlist, max(1, $ap_program['round']) + 1)))) . '"'
+        . (pg_application_next_round_ready($ap_program, $ap_next_shortlist) ? '' : ' disabled') . '>' . h(lang(array('string' => 'Start round {var:1}', 'vars' => array(max(1, $ap_program['round']) + 1)))) . '</button>';
 }
 
 // The Reviewers tab: the people as rows, "Add reviewer" in a drawer, the
@@ -458,6 +521,131 @@ $ap_reviewers_html = '<form id="aprog_reviewers_form" action="edit_application_p
         </form>
     </dialog>';
 
+// The Entries tab: the current round's entries ranked per category, the cut
+// line across the list, and the drawers that settle or let an entry in.
+$ap_round = max(1, $ap_program['round']);
+$ap_round_entries = (int) db_value("SELECT COUNT(*) FROM application_entries WHERE program_id = '" . $ap_id . "' AND round = '" . $ap_round . "'");
+$ap_entries_html = '';
+
+if ($ap_view === 'entries') {
+    $ap_settings = pg_application_round_settings($ap_program['rounds'][$ap_round - 1] ?? array());
+    $ap_ranked_entries = pg_application_scores_refresh($ap_program);
+    $ap_ranking = pg_application_ranking($ap_ranked_entries, $ap_settings['rank_by'], $ap_settings['cut_mode'], $ap_settings['cut_value']);
+
+    foreach (array_keys($ap_choices) as $ap_value) {
+        $ap_ranking += array((string) $ap_value => array('ranked' => array(), 'shortlist' => array()));
+    }
+
+    ksort($ap_ranking, SORT_STRING);
+    $ap_category = (($ap_category !== null) && isset($ap_ranking[$ap_category])) ? $ap_category : (string) key($ap_ranking);
+    $ap_shortlisted = count(array_filter($ap_ranked_entries, function ($entry) {
+        return $entry['shortlisted'] === 1;
+    }));
+    $ap_score = function ($value) {
+        return ($value === null) ? '<span class="pg-text-meta">—</span>' : h(number_format((float) $value, 2));
+    };
+    $ap_group = $ap_ranking[$ap_category] ?? array('ranked' => array(), 'shortlist' => array());
+    $ap_rest = array();
+
+    foreach ($ap_ranked_entries as $ap_eid => $ap_entry) {
+        if ((string) $ap_entry['category'] === $ap_category && !in_array($ap_eid, $ap_group['ranked'], true)) {
+            $ap_rest[] = $ap_eid;
+        }
+    }
+
+    $ap_per_entry = (int) ($ap_program['rounds'][$ap_round - 1]['reviewers'] ?? $ap_program['reviewers_per_entry']);
+    $ap_cut_line = ($ap_settings['cut_mode'] !== '') ? count($ap_group['shortlist']) : -1;
+    $ap_stale = false;
+    $ap_rows = '';
+
+    foreach (array_merge($ap_group['ranked'], $ap_rest) as $ap_i => $ap_eid) {
+        $ap_entry = $ap_ranked_entries[$ap_eid];
+        $ap_ranked = $ap_i < count($ap_group['ranked']);
+        $ap_stale = $ap_stale || ($ap_settings['cut_mode'] !== '' && ($ap_entry['shortlisted'] === 1) !== in_array($ap_eid, $ap_group['shortlist'], true));
+        $ap_ref = ((string) $ap_entry['reference_code'] !== '') ? (string) $ap_entry['reference_code'] : '#' . (int) $ap_entry['form_id'];
+        $ap_pills = (($ap_entry['eligible'] === 2) ? '<span class="pg-pill pg-tone-amber">' . h(lang('Not eligible')) . '</span>' : '')
+            . (($ap_entry['consensus'] === 1) ? '<span class="pg-pill pg-tone-amber">' . h(lang('Needs consensus')) . '</span>' : '')
+            . (($ap_entry['consensus'] === 2) ? '<span class="pg-pill pg-tone-gray">' . h(lang('Settled')) . '</span>' : '')
+            . (($ap_entry['shortlisted'] === 1) ? '<span class="pg-pill pg-tone-teal">' . h(lang('Shortlisted')) . '</span>' : '');
+        $ap_actions = '<a class="pg-button pg-button-quiet pg-button-sm" href="edit_submitted_form.php?id=' . (int) $ap_entry['form_id'] . '">' . h(lang('Open')) . '</a>'
+            . (($ap_entry['eligible'] === 2) ? '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-ap-note="aprog_let_in" data-pg-ap-entry="' . (int) $ap_eid . '" data-pg-ap-entry-name="' . h($ap_ref) . '">' . h(lang('Let it in')) . '</button>' : '')
+            . (($ap_entry['consensus'] === 1) ? '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-ap-note="aprog_settle" data-pg-ap-entry="' . (int) $ap_eid . '" data-pg-ap-entry-name="' . h($ap_ref) . '">' . h(lang('Settle')) . '</button>' : '');
+
+        if ($ap_i === $ap_cut_line) {
+            $ap_rows .= '<tr><td colspan="8" class="py-2"><span class="pg-pill pg-tone-teal">' . h(lang('Cut-off')) . '</span></td></tr>';
+        }
+
+        $ap_rows .= '<tr><td class="pg-tabular">' . ($ap_ranked ? ($ap_i + 1) : '<span class="pg-text-meta">—</span>') . '</td>'
+            . '<td><a href="edit_submitted_form.php?id=' . (int) $ap_entry['form_id'] . '">' . h($ap_ref) . '</a></td>'
+            . '<td class="pg-tabular text-nowrap">' . h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array($ap_entry['done'], $ap_per_entry)))) . '</td>'
+            . '<td class="pg-tabular text-end">' . $ap_score($ap_entry['raw']) . '</td>'
+            . '<td class="pg-tabular text-end">' . $ap_score($ap_entry['corrected']) . '</td>'
+            . '<td class="pg-tabular text-end">' . (($ap_entry['done'] > 1) ? $ap_score($ap_entry['spread']) : $ap_score(null)) . '</td>'
+            . '<td><span class="d-inline-flex flex-wrap gap-1">' . $ap_pills . '</span></td>'
+            . '<td class="text-end text-nowrap">' . $ap_actions . '</td></tr>';
+    }
+
+    if (($ap_cut_line > 0) && ($ap_cut_line === count($ap_group['ranked'])) && !$ap_rest) {
+        $ap_rows .= '<tr><td colspan="8" class="py-2"><span class="pg-pill pg-tone-teal">' . h(lang('Cut-off')) . '</span></td></tr>';
+    }
+
+    if ($ap_rows === '') {
+        $ap_rows = '<tr><td colspan="8" class="text-center pg-text-meta py-7">' . h(lang('No entries in this round yet.')) . '</td></tr>';
+    }
+
+    $ap_category_tabs = '';
+
+    if (count($ap_ranking) > 1 || ($ap_category !== '')) {
+        foreach (array_keys($ap_ranking) as $ap_value) {
+            $ap_value = (string) $ap_value;
+            $ap_category_tabs .= '<a class="pg-seg-item' . (($ap_value === $ap_category) ? ' is-active" aria-current="page' : '') . '" href="edit_application_program.php?id=' . $ap_id . '&amp;view=entries&amp;category=' . h(rawurlencode($ap_value)) . '">' . h($ap_choices[$ap_value] ?? (($ap_value !== '') ? $ap_value : lang('No category'))) . '</a>';
+        }
+
+        $ap_category_tabs = '<span class="pg-seg mb-5" role="group" aria-label="' . h(lang('Categories')) . '">' . $ap_category_tabs . '</span>';
+    }
+
+    $ap_note_drawer = function ($id, $title, $line, $button, $submit) use ($ap_id, $ap_category) {
+        return '<dialog class="drawer drawer-end" id="' . $id . '" aria-labelledby="' . $id . '_title" style="width:min(480px,100%)">
+        <form method="post" action="edit_application_program.php" class="d-flex flex-column h-100">
+            ' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="entries"><input type="hidden" name="category" value="' . h($ap_category) . '"><input type="hidden" name="entry_id" value="" data-pg-ap-note-entry>
+            <div class="drawer-header">
+                <div class="flex-grow-1 min-width-0">
+                    <h5 class="drawer-title mb-0" id="' . $id . '_title">' . h($title) . ' <span data-pg-ap-note-name></span></h5>
+                    <p class="small fg-2 mb-0 mt-1">' . h($line) . '</p>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="drawer-body flex-grow-1 overflow-auto">
+                <div class="form-field mb-5"><label class="form-label pg-field-label" for="' . $id . '_note">' . h(lang('Note')) . '</label><textarea class="pg-input" id="' . $id . '_note" name="note" rows="4" maxlength="1000" required></textarea></div>
+            </div>
+            <div class="drawer-footer border-top p-5 d-flex align-items-center gap-3"><span class="flex-grow-1"></span>
+                <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>
+                <button type="submit" name="' . $submit . '" value="1" class="pg-button pg-button-fill">' . h($button) . '</button>
+            </div>
+        </form>
+    </dialog>';
+    };
+
+    $ap_cut_mode = ($ap_settings['cut_mode'] !== '') ? $ap_settings['cut_mode'] : 'cutoff';
+    $ap_entries_html = '<section class="pg-card p-5 mb-5" aria-labelledby="aprog_cut_title"><h2 class="pg-title-section mb-0" id="aprog_cut_title">' . h(lang(array('string' => 'Round {var:1}', 'vars' => array($ap_round)))) . '</h2>'
+        . '<p class="pg-card-sub mb-5">' . h(($ap_settings['rank_by'] === 'corrected')
+            ? lang(array('string' => 'Ranked by the corrected mean in each category. {var:1} entries are shortlisted.', 'vars' => array($ap_shortlisted)))
+            : lang(array('string' => 'Ranked by the mean in each category. {var:1} entries are shortlisted.', 'vars' => array($ap_shortlisted)))) . '</p>'
+        . '<form method="post" action="edit_application_program.php" class="d-flex flex-wrap align-items-end gap-3">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="entries"><input type="hidden" name="category" value="' . h($ap_category) . '">'
+        . '<div><label class="pg-field-label" for="aprog_cut_mode">' . h(lang('Shortlist by')) . '</label><select class="pg-input" id="aprog_cut_mode" name="cut_mode"><option value="cutoff">' . h(lang('A cut-off score')) . '</option><option value="top"' . (($ap_cut_mode === 'top') ? ' selected' : '') . '>' . h(lang('The top number of each category')) . '</option></select></div>'
+        . '<div><label class="pg-field-label" for="aprog_cut_value">' . h(lang('Value')) . '</label><input type="text" inputmode="decimal" maxlength="6" class="pg-input" id="aprog_cut_value" name="cut_value" required value="' . h(($ap_settings['cut_mode'] !== '') ? (string) $ap_settings['cut_value'] : '') . '"></div>'
+        . '<button type="submit" name="submit_cut" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h(lang('Entries at or above the cut in each category are shortlisted; the others are taken off the shortlist. A tie at the cut is never split.')) . '">' . h(lang('Apply the cut')) . '</button>'
+        . '</form>'
+        . ($ap_stale ? '<p class="pg-field-help mt-3 mb-0">' . h(lang('Scores changed since the cut was applied: apply it again to update the shortlist.')) . '</p>' : '')
+        . '</section>'
+        . $ap_category_tabs
+        . '<section class="pg-card p-0 mb-5 table-responsive" aria-label="' . h(lang('Entries')) . '"><table class="table table-hover align-middle mb-0">'
+        . '<thead><tr><th scope="col">' . h(lang('Rank')) . '</th><th scope="col">' . h(lang('Entry')) . '</th><th scope="col">' . h(lang('Reviews sent')) . '</th><th scope="col" class="text-end">' . h(lang('Mean')) . '</th><th scope="col" class="text-end">' . h(lang('Corrected mean')) . '</th><th scope="col" class="text-end">' . h(lang('Spread')) . '</th><th scope="col">' . h(lang('Status')) . '</th><th scope="col"><span class="visually-hidden">' . h(lang('Actions')) . '</span></th></tr></thead>'
+        . '<tbody>' . $ap_rows . '</tbody></table></section>'
+        . $ap_note_drawer('aprog_settle', lang('Settle'), lang('The reviewers\' scores lie far apart. Say how it was agreed; the scores stay as sent.'), lang('Settle'), 'submit_settle')
+        . $ap_note_drawer('aprog_let_in', lang('Let it in'), lang('The entry failed an eligibility rule. Say why it may be reviewed anyway.'), lang('Let it in'), 'submit_let_in');
+}
+
 $ap_tab = function ($view, $label, $count = null) use ($ap_id, $ap_view) {
     return '<a class="pg-seg-item' . (($ap_view === $view) ? ' is-active" aria-current="page' : '') . '" href="edit_application_program.php?id=' . $ap_id . (($view === 'setup') ? '' : '&amp;view=' . $view) . '">' . h($label) . (($count !== null) ? ' <span class="pg-seg-count">' . (int) $count . '</span>' : '') . '</a>';
 };
@@ -465,7 +653,7 @@ $ap_toolbar = array(
     'primary' => ($ap_view === 'reviewers')
         ? array('<button type="button" class="pg-button pg-button-fill" data-pg-ap-drawer="aprog_reviewer_add"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add reviewer')) . '</button>', $ap_state_button)
         : $ap_state_button,
-    'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $ap_tab('setup', lang('Set-up')) . $ap_tab('reviewers', lang('Reviewers'), count($ap_reviewers)) . '</span>',
+    'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $ap_tab('setup', lang('Set-up')) . $ap_tab('reviewers', lang('Reviewers'), count($ap_reviewers)) . $ap_tab('entries', lang('Entries'), $ap_round_entries) . '</span>',
 );
 
 if ($ap_view === 'reviewers') {
@@ -500,7 +688,7 @@ echo pg_page_shell(array(
     ' . $liveform->get_messages() . '
     ' . pg_screen_toolbar($ap_toolbar) . '
     <form id="aprog_state_form" action="edit_application_program.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $ap_id . '"><input type="hidden" name="view" value="' . $ap_view . '"></form>
-    ' . (($ap_view === 'reviewers') ? $ap_reviewers_html : $ap_setup_html) . '
+    ' . (($ap_view === 'reviewers') ? $ap_reviewers_html : (($ap_view === 'entries') ? $ap_entries_html : $ap_setup_html)) . '
 </main>
 ' . get_date_time_picker_format() . pg_fields_script() . '
 <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/application_program.js?v=' . filemtime(PG_FUNCTIONS_DIR . '/assets/js/application_program.js') . '"></script>

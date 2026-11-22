@@ -1139,6 +1139,7 @@
     "Entries are grouped by the answer to \"{var:1}\".": "Başvurular \"{var:1}\" sorusunun cevabına göre gruplanır.",
     "Entries are listed under their project. Left empty, under No project.": "Kayıtlar projelerinin altında listelenir. Boş bırakılırsa Projesiz başlığı altında.",
     "Entries are the form's submissions.": "Başvurular formun gönderimleridir.",
+    "Entries at or above the cut in each category are shortlisted; the others are taken off the shortlist. A tie at the cut is never split.": "Her kategoride eşikte ya da üstünde kalan başvurular kısa listeye girer; diğerleri kısa listeden çıkar. Eşikteki bir eşitlik hiçbir zaman bölünmez.",
     "Entries closed": "Katılım kapandı",
     "Entries given out: {var:1} new reviews.": "Başvurular dağıtıldı: {var:1} yeni değerlendirme.",
     "Entries of a folder": "Bir klasörün içerikleri",

@@ -42,31 +42,6 @@ function pg_application_round_settings(array $round)
 }
 
 /**
- * The Set-up tab's two ranking fields of a round read: the consensus bound
- * ('' for none, else 0 to 9 with up to two decimals) and the score that
- * ranks.
- *
- * @param array $round the posted round
- * @return array|false array('spread' => float|null, 'rank_by' => string);
- *                     false for a bound that is not such a number
- */
-function pg_application_round_ranking_input(array $round)
-{
-    $spread = is_string($round['spread'] ?? null) ? str_replace(',', '.', trim($round['spread'])) : '';
-    $rank_by = (($round['rank_by'] ?? '') === 'corrected') ? 'corrected' : 'raw';
-
-    if ($spread === '') {
-        return array('spread' => null, 'rank_by' => $rank_by);
-    }
-
-    if (!preg_match('/^[0-9](\.[0-9]{1,2})?$/', $spread)) {
-        return false;
-    }
-
-    return array('spread' => (float) $spread, 'rank_by' => $rank_by);
-}
-
-/**
  * The shortlist cut as typed on the Entries tab: a cut-off score (1 to 10,
  * up to two decimals) or a top N (a whole number from 1).
  *
@@ -87,25 +62,6 @@ function pg_application_cut_input($mode, $value)
     }
 
     return false;
-}
-
-/**
- * Keeps each round's shortlist cut across a Set-up save: the cut is set on
- * the Entries tab, so the Set-up form does not post it.
- *
- * @param array $stored the stored rounds
- * @param array $posted the rounds read from the Set-up form
- * @return array $posted with each round's stored 'cut'
- */
-function pg_application_rounds_keep_cut(array $stored, array $posted)
-{
-    foreach ($posted as $i => $round) {
-        if (is_array($stored[$i]['cut'] ?? null)) {
-            $posted[$i]['cut'] = $stored[$i]['cut'];
-        }
-    }
-
-    return $posted;
 }
 
 /**
@@ -337,8 +293,8 @@ function pg_application_consensus_settle(array $program, $entry_id, $note)
 
 /**
  * Whether the programme can move its shortlist into the next round: it is
- * open or closed, a next round is set up and the current round has a
- * shortlist.
+ * closed (entries no longer come in), a next round is set up and the
+ * current round has a shortlist.
  *
  * @param array $program     decoded
  * @param int   $shortlisted the current round's shortlisted entries
@@ -346,7 +302,7 @@ function pg_application_consensus_settle(array $program, $entry_id, $note)
  */
 function pg_application_next_round_ready(array $program, $shortlisted)
 {
-    return ((int) $program['status'] > 0) && isset($program['rounds'][max(1, (int) $program['round'])]) && ((int) $shortlisted > 0);
+    return ((int) $program['status'] === 2) && isset($program['rounds'][max(1, (int) $program['round'])]) && ((int) $shortlisted > 0);
 }
 
 /**

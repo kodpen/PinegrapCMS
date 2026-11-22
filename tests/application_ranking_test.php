@@ -159,10 +159,28 @@ function test_application_ranking_per_category_with_the_cut()
 
 function test_application_ranking_next_round_needs_a_next_round_and_a_shortlist()
 {
-	$program = array('status' => 1, 'round' => 1, 'rounds' => array(array('criteria' => array()), array('criteria' => array())));
+	$program = array('status' => 2, 'round' => 1, 'rounds' => array(array('criteria' => array()), array('criteria' => array())));
 
 	pg_assert_true(pg_application_next_round_ready($program, 3));
 	pg_assert_false(pg_application_next_round_ready($program, 0));
 	pg_assert_false(pg_application_next_round_ready(array('round' => 2) + $program, 3), 'the last round has no next');
+	pg_assert_false(pg_application_next_round_ready(array('status' => 1) + $program, 3), 'not while entries still come in');
 	pg_assert_false(pg_application_next_round_ready(array('status' => 0) + $program, 3), 'not while a draft');
+}
+
+function test_application_ranking_set_up_reads_a_rounds_bound_and_score()
+{
+	$round = array('cid' => array(''), 'cname' => array('Idea'), 'cweight' => array('100'), 'reviewers' => '2', 'ends' => '');
+
+	$input = pg_application_program_input(array('name' => 'A', 'rounds' => array($round + array('spread' => '2.5', 'rank_by' => 'corrected'), $round)), array());
+
+	pg_assert_same(array(), $input['errors']);
+	pg_assert_same(2.5, $input['program']['rounds'][0]['spread']);
+	pg_assert_same('corrected', $input['program']['rounds'][0]['rank_by']);
+	pg_assert_same(null, $input['program']['rounds'][1]['spread']);
+	pg_assert_same('raw', $input['program']['rounds'][1]['rank_by']);
+
+	$input = pg_application_program_input(array('name' => 'A', 'rounds' => array($round + array('spread' => '12'))), array());
+	pg_assert_same(1, count($input['errors']));
+	pg_assert_contains('0 to 9', $input['errors'][0]);
 }

@@ -16,7 +16,7 @@ description: Plan application-review, steps AR1a to AR8: pure rules, store, prog
 
 - AR4 (M) after AR3b: the external juror's link and page, its `waf.php` entry; the reminders of AR3b to outside jurors with their link (`pg_application_reminders_run()` sends to panel users only); the correction link. Features: V4, V10.
 
-- AR5 (M) after AR3b: combining, the consensus flag, ranking and the shortlist, the next round. Features: V11 to V13.
+- AR5 (M) after AR3b. Done (#11115, `core/application-review-ranking.md`): combining, the consensus flag, ranking and the shortlist, the next round. Features: V11 to V13.
 
 - AR6 (M) after AR5: decisions, the decision e-mails with their preview, the result on the submitter's view, the waitlist call. Features: V14.
 
