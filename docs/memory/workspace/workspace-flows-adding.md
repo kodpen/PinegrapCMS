@@ -12,7 +12,7 @@ description: Recipe for a new flow box or start event, never one example: is it 
 
 ## Where is a new step box named? (a `ws_scheduled_do()` action or its own run)
 - `ws_step_kinds()` (`includes/workspace/steps.php`): label, type, `texts` (filled with values, which also gives `ws_flow_node_texts()` and the reference check), `lines`, `urls`, `outputs`, outcomes if not done/failed. `ws_flow_kinds()` takes it from there.
-- In `steps.php`: `ws_step_config_normalize()` (the case), `ws_step_config_problems()`, `ws_step_check()` (a kind with its own check), the branch in `ws_step_run()` (a kind not run by `ws_scheduled_do()`), `ws_step_fill_target()` when its texts land somewhere new, and its answer in `ws_flow_box_try()` (`workspace-flows-box-try.md`).
+- In `steps.php`: `ws_step_config_normalize()` (the case), `ws_step_config_problems()`, `ws_step_check()` (a kind with its own check), the branch in `ws_step_run()` (a kind not run by `ws_scheduled_do()`), `ws_step_fill_target()` when its texts land somewhere new, and its answer in `ws_flow_box_try()` (`workspace-flows-box-try.md`); a box that reads joins `ws_flow_trial_data()`, one whose outcome a person or an answer decides `ws_flow_trial_person_kinds()` (`workspace-flows-trial.md`).
 
 ## Where is a new box of another kind named?
 - `ws_flow_kinds()` (`includes/workspace/flows.php`): label, trigger, outcomes, outputs, `pure` for a value box.

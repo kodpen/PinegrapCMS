@@ -1127,6 +1127,124 @@ function ws_api_flows_box_try($params)
     api_ok(ws_api_flow_box_try_present($result));
 }
 
+/**
+ * One step of a flow's trial, as the API hands it out.
+ *
+ * @param array $step ws_flow_trial() step
+ * @return array
+ */
+function ws_api_flow_trial_step_present($step)
+{
+    return array(
+        'node_id' => (string) $step['node_id'],
+        'kind'    => (string) $step['kind'],
+        'label'   => (string) $step['label'],
+        'name'    => (string) $step['name'],
+        'status'  => (string) $step['status'],
+        'outcome' => ((string) $step['outcome'] !== '') ? (string) $step['outcome'] : null,
+        'choices' => array_values(array_map('strval', $step['choices'])),
+        'refusal' => ((string) $step['refusal'] !== '') ? (string) $step['refusal'] : null,
+        'said'    => (string) $step['said'],
+        'texts'   => array_map(function ($text) {
+            return array('key' => (string) $text['key'], 'text' => (string) $text['text']);
+        }, $step['texts']),
+        'empty'   => array_values(array_map('strval', $step['empty'])),
+        'next'    => array_values(array_map('strval', $step['next'])),
+        'values'  => (object) array_map('strval', $step['values']),
+    );
+}
+
+// What ws_api_flow_trial_step_present() returns.
+function ws_api_flow_trial_step_schema()
+{
+    return array(
+        'node_id' => 'string',
+        'kind'    => 'string',
+        'label'   => 'string',
+        'name'    => 'string',
+        'status'  => 'string',
+        'outcome' => 'string?',
+        'choices' => 'string[]',
+        'refusal' => 'string?',
+        'said'    => 'string',
+        'texts'   => array(array('key' => 'string', 'text' => 'string')),
+        'empty'   => 'string[]',
+        'next'    => 'string[]',
+        'values'  => 'object',
+    );
+}
+
+/**
+ * A flow's trial, as the API hands it out.
+ *
+ * @param array $trial ws_flow_trial(), ok
+ * @return array
+ */
+function ws_api_flow_trial_present($trial)
+{
+    return array(
+        'record_type' => is_array($trial['record']) ? (string) $trial['record']['type'] : null,
+        'record_id'   => is_array($trial['record']) ? (int) $trial['record']['id'] : null,
+        'state'       => (string) $trial['state'],
+        'steps'       => array_map('ws_api_flow_trial_step_present', $trial['steps']),
+        'skipped'     => array_values(array_map('strval', $trial['skipped'])),
+    );
+}
+
+// What ws_api_flow_trial_present() returns.
+function ws_api_flow_trial_schema()
+{
+    return array(
+        'record_type' => 'string?',
+        'record_id'   => 'integer?',
+        'state'       => 'string',
+        'steps'       => 'WorkspaceFlowTrialStep[]',
+        'skipped'     => 'string[]',
+    );
+}
+
+// A trial reads records, rows and counts with the owner's rights, as
+// trying a box does: no MCP tool, and the application an assistant works
+// through is refused here too.
+function ws_api_flows_trial($params)
+{
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not try a flow; the person does.'));
+    }
+
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $run_id = (int) ($params['run_id'] ?? 0);
+
+    // A run the application does not reach starts no trial.
+    if ($run_id > 0) {
+        $run = ws_flow_run_for($viewer, $run_id);
+
+        if (!$run || ((int) $run['flow_id'] !== (int) $flow['id']) || !ws_api_flow_run_reachable($viewer, $flow, $run)) {
+            api_fail_not_found(lang('Flow run'));
+        }
+    }
+
+    $result = ws_flow_trial($viewer, $flow, array(
+        'run_id'     => $run_id,
+        'contact_id' => (int) ($params['contact_id'] ?? 0),
+        'outcomes'   => (string) ($params['outcomes'] ?? ''),
+    ));
+
+    if (!$result['ok']) {
+        if ((int) $result['status'] === 404) {
+            api_fail_not_found(lang('Flow run'));
+        }
+
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_trial_present($result));
+}
+
 /* ---------------------------------------------------------------------------
    Runs (includes/workspace/flow_runs.php)
    --------------------------------------------------------------------------- */
