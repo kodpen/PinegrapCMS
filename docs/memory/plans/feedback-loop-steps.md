@@ -18,7 +18,7 @@ description: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, s
 
 - FD5 (M) after FD4a: the follow-up task, the channel line, `feedback.received` and `feedback.detractor` through `pg_announce()`, the catalogues and payload fixtures, the 48-hour escalation, the outcome. Features: Q10, Q11, Q15 (events).
 
-- FD6 (M) after FD4a: the report with its filters and Excel, the frequent words, the contact card's history, the two group conditions. Features: Q12, Q13, Q14.
+- FD6 (M) after FD4a, done (#11113, `platform/feedback-report.md`): the report with its filters and Excel, the frequent words, the contact card's history, the two group conditions. Features: Q12, Q13, Q14.
 
 - FD7 (S) after FD5 and FD6: `GET /feedback/responses` and `GET /feedback/summary` with their types, `php tools/check_api_schema.php`, the MCP tools. Features: Q15.
 
