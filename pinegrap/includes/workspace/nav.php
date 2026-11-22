@@ -236,7 +236,8 @@ function ws_side_js_keys()
         'pal_open', 'pal_shortcut', 'new_channel', 'pin', 'unpin', 'channels',
         'th_mine', 'th_show_all', 'th_show_fewer', 'no_channels',
         'side_expand', 'side_collapse', 'grp_expand', 'grp_collapse', 'grp_access', 'grp_empty', 'grp_new',
-        'more', 'loading', 'error_generic',
+        'more', 'loading', 'error_generic', 'join',
+        'side_find', 'side_join', 'side_draft', 'side_unread',
     );
 }
 
@@ -248,7 +249,13 @@ function ws_side_js_keys()
 function ws_side_js_strings()
 {
     $all = array_merge(
-        array('th_mine' => lang('My discussions')),
+        array(
+            'th_mine'     => lang('My discussions'),
+            'side_find'   => lang('Search or go to'),
+            'side_join'   => ws_js_template('{var:1} channels you could join', 1),
+            'side_draft'  => lang('Unsent draft'),
+            'side_unread' => lang('Unread messages'),
+        ),
         ws_js_strings(),
         ws_threads_js_strings(),
         ws_groups_js_strings(),
@@ -292,6 +299,10 @@ function ws_side_payload($viewer, $screen)
         'v'        => 1,
         'screen'   => (string) $screen,
         'urls'     => array('workspace' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php'),
+        // What names the composer's draft slot (draftKey() in
+        // workspace_side.js), as the channel screen's config gives it: the
+        // site's api.php and the reader.
+        'draft'    => array('site' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php', 'me' => (int) $viewer['id']),
         'inbox'    => ws_inbox_unread_count((int) $viewer['id']),
         'nav'      => ws_side_nav(ws_nav_groups($viewer)),
         'titles'   => ws_nav_group_titles(),
