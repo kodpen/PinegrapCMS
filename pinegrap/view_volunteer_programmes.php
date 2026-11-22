@@ -35,7 +35,7 @@ $vp_staff = ((int) $user['role'] < 3);
 $vp_sort_columns = array(
     'name'    => lang('Programme'),
     'active'  => lang('Active volunteers'),
-    'applied' => lang('Applications'),
+    'applied' => lang('Applicants'),
     'week'    => lang('Shifts this week'),
     'state'   => lang('Status'),
 );
@@ -65,7 +65,7 @@ $vp_list = pg_list_table_printed(array(
     'columns' => array(
         'name' => array('heading' => lang('Programme')),
         'active' => array('heading' => lang('Active volunteers'), 'kind' => 'number'),
-        'applied' => array('heading' => lang('Applications'), 'kind' => 'number'),
+        'applied' => array('heading' => lang('Applicants'), 'kind' => 'number'),
         'week' => array('heading' => lang('Shifts this week'), 'kind' => 'number'),
         'state' => array('heading' => lang('Status')),
         'actions' => array('heading' => lang('Actions'), 'kind' => 'actions'),

@@ -9,8 +9,9 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 - VS1b (M) after VS1a (done, #10949): the five `volunteer_*` tables (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns brought to the architect before ready; the five privacy registrations and `pg_contact_holders()`; a document's file (poll 208) behind `get_file.php` as `volunteer-shifts.md` says, that door brought to the architect before ready; no health report kind; their tests. Features: G2, G4 (the store).
   - Built (#10949), `core/volunteer-store.md`; columns approved (decision schema-47), migration label 11.0.270.
 
-- VS2 (M) after VS1b: Contacts › Volunteers: the programmes list and a programme's Set-up (form and its fields, roles, rules, messages, coordinators); applications with Approve; the volunteer's profile. Features: G1, G2, G3.
+- VS2 (M) after VS1b (done, #11136): Contacts › Volunteers: the programmes list and a programme's Set-up (form and its fields, roles, rules, messages, coordinators); applications with Approve; the volunteer's profile. Features: G1, G2, G3.
   - If it opens document uploading: the same PR leaves `volunteer-doc-` `files` rows out of the panel search and the file pickers (decision schema-47, `core/volunteer-document-file.md`); uploading is never opened without it.
+  - Built (#11136), `core/volunteer-programmes.md`; uploading not opened, so the exclusion stays with VS4.
 
 - VS3 (M) after VS2: shifts with roles and counts, the weekly series, "Copy last week", the board. Features: G5, G6.
 

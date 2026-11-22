@@ -431,7 +431,7 @@ function pg_volunteer_programme_pill($state)
 function pg_volunteer_pill($value)
 {
     $pills = array(
-        'applied'     => array(lang('Applied'), 'pg-tone-blue'),
+        'applied'     => array(lang('Applicant'), 'pg-tone-blue'),
         'active'      => array(lang('Active'), 'pg-tone-teal'),
         'paused'      => array(lang('Paused'), 'pg-tone-amber'),
         'left'        => array(lang('Left'), 'pg-tone-gray'),

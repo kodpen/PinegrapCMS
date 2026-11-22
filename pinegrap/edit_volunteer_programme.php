@@ -194,12 +194,12 @@ $vp_applications_list = pg_list_table_printed(array(
     'columns' => array(
         'pick' => array('heading' => lang('Choose'), 'kind' => 'actions'),
         'name' => array('heading' => lang('Name')),
-        'applied' => array('heading' => lang('Applied')),
+        'applied' => array('heading' => lang('Date applied')),
         'skills' => array('heading' => lang('Skills')),
         'documents' => array('heading' => lang('Documents')),
         'actions' => array('heading' => lang('Actions'), 'kind' => 'actions'),
     ),
-    'levels' => pg_list_state('volunteer_applications', array('applied' => lang('Applied')), array('sort' => 'applied', 'order' => 'desc'))['sorts'],
+    'levels' => pg_list_state('volunteer_applications', array('applied' => lang('Date applied')), array('sort' => 'applied', 'order' => 'desc'))['sorts'],
     'rows' => $vp_rows,
 ));
 
@@ -242,7 +242,7 @@ $vp_lists_html = '<form id="vp_people_form" action="edit_volunteer_programme.php
     . '<input type="hidden" name="id" value="' . $vp_id . '"><input type="hidden" name="view" value="' . $vp_view . '">'
     . (($vp_view === 'volunteers')
         ? pg_list_table_html($vp_volunteers_list['source'], $vp_volunteers_list['page'], lang('Volunteers'))
-        : pg_list_table_html($vp_applications_list['source'], $vp_applications_list['page'], lang('Applications')))
+        : pg_list_table_html($vp_applications_list['source'], $vp_applications_list['page'], lang('Applicants')))
     . '</form>';
 
 // The profile drawer, opened with the screen by ?volunteer=.
@@ -341,7 +341,7 @@ echo pg_page_shell(array(
         'primary' => ($vp_view === 'applications')
             ? array('<button type="submit" form="vp_people_form" name="submit_approve_selected" value="1" class="pg-button pg-button-fill"' . ($vp_applied ? '' : ' disabled') . '><i class="bi bi-check2-circle" aria-hidden="true"></i>' . h(lang('Approve selected')) . '</button>', $vp_state_button)
             : $vp_state_button,
-        'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $vp_tab('applications', lang('Applications'), count($vp_applied)) . $vp_tab('volunteers', lang('Volunteers'), count($vp_volunteers)) . ($vp_staff ? $vp_tab('setup', lang('Set-up')) : '') . '</span>',
+        'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $vp_tab('applications', lang('Applicants'), count($vp_applied)) . $vp_tab('volunteers', lang('Volunteers'), count($vp_volunteers)) . ($vp_staff ? $vp_tab('setup', lang('Set-up')) : '') . '</span>',
     )) . '
     <form id="vp_state_form" action="edit_volunteer_programme.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $vp_id . '"><input type="hidden" name="view" value="' . $vp_view . '"></form>
     ' . (($vp_view === 'setup') ? $vp_setup_html : $vp_lists_html) . '
