@@ -259,7 +259,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_event_ticket_checkins();   // 11.0.267
 	upgrade_2026_11_0_stock_taken();             // 11.0.268
 	upgrade_2026_11_0_starter_twitter();         // 11.0.269
-	upgrade_2026_11_0_kvkk_switch();             // 11.0.270
+	upgrade_2026_11_0_kvkk_switch();             // 11.0.271
 
 }
 
@@ -9090,7 +9090,7 @@ function upgrade_2026_11_0_stock_taken() {
 
 }
 
-// 11.0.270 - The KVKK notice's own switch: the notice page
+// 11.0.271 - The KVKK notice's own switch: the notice page
 // and the consent sentence were shown only while the checkout documents were
 // on; from now on the config_text row ecommerce_kvkk_enabled ('1' or '0')
 // decides (pg_legal_kvkk_enabled()). The row starts as the documents' switch
