@@ -272,10 +272,10 @@ function pg_layout_open_page_id($flag, $page_id, array $layout_page_ids)
     return in_array($page_id, array_map('intval', $layout_page_ids), true) ? $page_id : 0;
 }
 
-// While on, get_page_content() puts a marker before and after the output of
-// the page's own system region, so the visual designer's canvas can cut the
-// region out of a whole page render (pg_layout_region_preview()). Off in
-// every ordinary request.
+// While on, get_page_content() wraps every region tag of the page in markers
+// (pg_layout_region_mark_tags()), so the visual designer's canvas can cut
+// each region out of a whole page render (pg_layout_regions_preview()). Off
+// in every ordinary request.
 function pg_layout_region_marking($set = null)
 {
     static $on = false;
@@ -287,39 +287,101 @@ function pg_layout_region_marking($set = null)
     return $on;
 }
 
-// The system region's output between the markers pg_layout_region_marking()
-// puts around it; '' when the page drew no system region of its own (its
-// saved tree has none yet).
-function pg_layout_region_cut($html)
+// The region tags the page render fills, as the markers name them: a common
+// and a designer region share <cregion>, a tag cloud is <tcloud>. The
+// editor's twin is _sdRegionMarkType() in style_designer.js.
+function pg_layout_region_tags()
 {
-    $html = (string) $html;
-
-    if (!preg_match('/<!--pg-layout-region-start-->(.*?)<!--pg-layout-region-end-->/s', $html, $m)) {
-        return '';
-    }
-
-    return trim($m[1]);
+    return array('system', 'cregion', 'dregion', 'menu_sequence', 'menu', 'login', 'ad', 'cart', 'tcloud', 'mobile_switch', 'pdf');
 }
 
-// The system region of a page that draws a custom layout, as the server draws
-// it for the signed-in user, for the visual designer's canvas to show read
-// only in place of the region's placeholder. The page's saved state is drawn
-// (its stored tree, type settings and layout file; a hosted site's generated
+// Wraps each region tag of $content in a start and an end marker. The start
+// marker carries a number unique in the request, the tag, the region's name
+// (URL-encoded, so a comment never holds "--" or ">") and its order among
+// the tags of the same type and name; the end marker repeats the number, so
+// a region inside another (a common region in a designer region) is cut on
+// its own. Markers sit outside the tag, so every region pass of
+// get_page_content.php replaces the tag as before and its output lands
+// between them. The tag is matched as the passes match it: case-insensitive,
+// on one line.
+function pg_layout_region_mark_tags($content)
+{
+    static $seq = 0;
+    $seen = array();
+    $tags = implode('|', pg_layout_region_tags());
+
+    $marked = preg_replace_callback(
+        '/<(' . $tags . ')((?:\s[^>]*)?)>(.*?)<\/\1>/i',
+        function ($m) use (&$seen, &$seq) {
+            $type = strtolower($m[1]);
+            $name = trim(html_entity_decode(strip_tags($m[3]), ENT_QUOTES, 'UTF-8'));
+            $key = $type . ':' . $name;
+            $order = isset($seen[$key]) ? $seen[$key] : 0;
+            $seen[$key] = $order + 1;
+            $id = ++$seq;
+
+            return '<!--pg-region-start:' . $id . ':' . $type . ':' . rawurlencode($name) . ':' . $order . '-->'
+                . $m[0] . '<!--pg-region-end:' . $id . '-->';
+        },
+        (string) $content
+    );
+
+    return is_string($marked) ? $marked : (string) $content;
+}
+
+// Every marked region of a page render, in the page's order: type (the tag),
+// name, order and the output between its markers, trimmed, with the markers
+// of the regions inside it taken out. A start marker with no end is passed
+// over.
+function pg_layout_regions_cut($html)
+{
+    $html = (string) $html;
+    $regions = array();
+
+    if (!preg_match_all('/<!--pg-region-start:(\d+):([a-z_]+):([^:>]*):(\d+)-->/', $html, $starts, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        return $regions;
+    }
+
+    foreach ($starts as $start) {
+        $from = $start[0][1] + strlen($start[0][0]);
+        $end = strpos($html, '<!--pg-region-end:' . $start[1][0] . '-->', $from);
+
+        if ($end === false) {
+            continue;
+        }
+
+        $inner = preg_replace('/<!--pg-region-(?:start:\d+:[a-z_]+:[^:>]*:\d+|end:\d+)-->/', '', substr($html, $from, $end - $from));
+
+        $regions[] = array(
+            'type'  => $start[2][0],
+            'name'  => rawurldecode($start[3][0]),
+            'order' => (int) $start[4][0],
+            'html'  => trim((string) $inner),
+        );
+    }
+
+    return $regions;
+}
+
+// Every region of a page as the server draws it for the signed-in user, for
+// the visual designer's canvas to show read only under each region node's
+// band (pg_layout_regions_cut()). The page's saved state is drawn (its
+// stored tree, type settings and layout file; a hosted site's generated
 // layout). A background render, as the editor's Preview: no status code, no
-// redirect, no view counted, and an error comes back as '' instead of a
-// screen.
-function pg_layout_region_preview($page_id)
+// redirect, no view counted, and an error comes back as no region instead of
+// a screen.
+function pg_layout_regions_preview($page_id)
 {
     $page_id = (int) $page_id;
 
-    if (($page_id <= 0) || !pg_layout_custom_page_ids(array($page_id))) {
-        return '';
+    if ($page_id <= 0) {
+        return array();
     }
 
     $page_name = (string) db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1");
 
     if ($page_name === '') {
-        return '';
+        return array();
     }
 
     require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
@@ -351,7 +413,7 @@ function pg_layout_region_preview($page_id)
         $_GET = $saved_get;
     }
 
-    return pg_layout_region_cut($html);
+    return pg_layout_regions_cut($html);
 }
 
 // The system widget kind that can stand in for a classic page type's custom

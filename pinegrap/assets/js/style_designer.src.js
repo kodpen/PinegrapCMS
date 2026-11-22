@@ -6408,10 +6408,12 @@ const StyleDesigner = (function () {
         // Region placeholder
         '.sd-region-ph { padding:10px; text-align:center; color:#6c757d; font-size:11px; border:1px dashed #ccc; border-radius:4px; background:rgba(0,0,0,.015); }',
         '.sd-region-ph .bi { margin-right:4px; }',
-        // A classic system region drawn by the server under its label (_sdLegacyRegionAppend())
+        // A region drawn by the server under its band (_sdRegionTrueAppend())
         '.sd-region-ph.sd-legacy-live { padding:0; text-align:start; color:inherit; font-size:inherit; background:none; }',
         '.sd-legacy-band { padding:4px 8px; text-align:center; color:#6c757d; font-size:11px; border-bottom:1px dashed #ccc; }',
-        '.sd-legacy-note { opacity:.85; }',
+        '.sd-legacy-pill { display:inline-block; margin-inline-start:4px; padding:0 6px; border-radius:8px; background:#e9ecef; color:#495057; font-size:10px; }',
+        '.sd-legacy-pill-code { background:#fff3cd; color:#7a5b00; }',
+        '.sd-legacy-empty { padding:6px 8px; text-align:center; color:#8a8f94; font-size:11px; }',
         '.sd-legacy-region { padding:8px; pointer-events:none; user-select:none; overflow:hidden; }',
         // What a comment e-mail page's System region prints (_sdAppendSystemRegionEmailNote())
         '.sd-region-email-note { display:block; padding:4px 8px 0; color:#6366f1; font-size:11px; line-height:1.4; text-align:center; }',
@@ -15767,7 +15769,7 @@ const StyleDesigner = (function () {
                 var rn = node.props.regionName ? ': ' + node.props.regionName : '';
                 rg.innerHTML = '<span class="bi ' + ico + '"></span>' + esc(rl) + esc(rn) +
                     (SD_LEGACY_REGIONS[node.props.regionType] ? ' ' + _sdLegacyBadge() : '');
-                if (_sdLegacyRegionOwn(node)) _sdLegacyRegionAppend(doc, rg);
+                if (_sdRegionTrueKey(node)) _sdRegionTrueAppend(doc, rg, node);
                 if (_sdLegacyRegionOwn(node)) _sdAppendSystemRegionEmailNote(doc, rg);
                 return rg;
             case 'component':
@@ -16563,24 +16565,54 @@ const StyleDesigner = (function () {
     }
 
     // Decide preview value for a bound prop based on the prop name + node context.
-    // ── Legacy region preview ────────────────────────────────────────────
-    // The page's own system region of a classic page that draws a custom
-    // layout prints <system></system>, which the server fills from the
-    // layout. Under the region's label the canvas shows it as the server
-    // draws it for the signed-in user (api.php designer/legacy_region_preview):
-    // the page's saved state, read only. A named system region draws another
-    // page's region and keeps the plain placeholder. Canvas-only DOM like the
-    // ghost records: inert, never in the tree JSON, and nothing that would run
-    // in the editor, which shares the site's origin and holds the designer's
-    // session: no scripts, frames, plugins, event attributes or javascript:
-    // addresses, and no ids. Asked for once per page and again after a Save or
-    // a save of the page's layout tab.
-    var _sdLegacyRegionCache = {};   // page id → { html, loading, stale }
+    // ── Regions as the site draws them ───────────────────────────────────
+    // A region node prints its tag (<system>, <cregion>, <dregion>, <menu>
+    // …), which the server fills. On the canvas it is a band (the kind's
+    // icon, its name, a pill "Code" or "Classic") and under it the region as
+    // the server draws it for the signed-in user (api.php designer/
+    // legacy_region_preview, every region of the page's saved state, matched
+    // by tag, name and order). Canvas-only DOM like the ghost records: inert,
+    // never in the tree JSON, and nothing that would run in the editor, which
+    // shares the site's origin and holds the designer's session: no scripts,
+    // frames, plugins, event attributes or javascript: addresses, and no ids.
+    // Asked for once per page and again after a Save or a save of the page's
+    // layout tab. The page region is the page's own content and the comments
+    // block keeps its placeholder.
+    var _sdLegacyRegionCache = {};   // page id → { regions, loading, stale, asked }
 
-    // The page's own system region: the unnamed one, the only one the server
-    // marks for the cut (get_page_content.php).
+    // The page's own system region: the unnamed one, whose page type the
+    // Region panel offers to convert.
     function _sdLegacyRegionOwn(node) {
         return !!(node && node.props && node.props.regionType === 'system' && !node.props.regionName);
+    }
+
+    // The tag the server marks for a region type ('' for one not drawn).
+    // Twin: pg_layout_region_tags() in includes/fn/layouts.php.
+    function _sdRegionMarkType(regionType) {
+        var map = { system: 'system', common: 'cregion', designer: 'cregion', dynamic: 'dregion',
+                    menu: 'menu', menu_sequence: 'menu_sequence', login: 'login', ad: 'ad',
+                    cart: 'cart', tag_cloud: 'tcloud', mobile_switch: 'mobile_switch', pdf: 'pdf' };
+        return Object.prototype.hasOwnProperty.call(map, regionType) ? map[regionType] : '';
+    }
+
+    // "tag:name" a region node is matched by, as the tag prints the name
+    // (_render_region_tag()); '' for a node the canvas does not draw.
+    function _sdRegionTrueKey(node) {
+        var t = (node && node.props) ? _sdRegionMarkType(node.props.regionType) : '';
+        if (!t) return '';
+        var named = !(t === 'cart' || t === 'mobile_switch' || t === 'pdf');
+        return t + ':' + (named ? String(node.props.regionName || '').trim() : '');
+    }
+
+    // The server's region for `key` at `order` (its place among the same
+    // key in the page), null when the page drew none there.
+    function _sdRegionTrueMatch(regions, key, order) {
+        if (!Array.isArray(regions)) return null;
+        for (var i = 0; i < regions.length; i++) {
+            var r = regions[i];
+            if (r && (r.type + ':' + r.name) === key && r.order === order) return r;
+        }
+        return null;
     }
 
     // Whether an attribute value is a javascript: address. Read as the browser
@@ -16597,27 +16629,11 @@ const StyleDesigner = (function () {
         });
     }
 
-    function _sdLegacyRegionAppend(doc, rg) {
-        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
-        if (!_design || !p || !(p.page_id > 0)) return;
-        if ((_design.layoutPages || []).indexOf(p.page_id) === -1) return;
-        var id = p.page_id;
-        var entry = _sdLegacyRegionCache[id] || (_sdLegacyRegionCache[id] = { html: '', loading: false, stale: true });
-        if (entry.stale && !entry.loading) {
-            entry.stale = false;
-            entry.loading = true;
-            _pgApiPost('legacy_region_preview', { page_id: id }).then(function (res) {
-                entry.loading = false;
-                var html = (res && res.status === 'success' && typeof res.html === 'string') ? res.html : '';
-                if (html === entry.html) return;
-                entry.html = html;
-                if (typeof renderCanvas === 'function') renderCanvas();
-            }).catch(function () { entry.loading = false; });
-        }
-        if (!entry.html) return;
-
+    // The region's markup made safe to show in the editor, in an inert box.
+    /* @pg-site-output */
+    function _sdRegionTrueClean(doc, html) {
         var tpl = doc.createElement('template');
-        tpl.innerHTML = entry.html;
+        tpl.innerHTML = html;
         // A frame or plugin runs even inside an inert box (a srcdoc or
         // javascript: frame would run in the editor's origin), so they go
         // with the scripts.
@@ -16632,14 +16648,88 @@ const StyleDesigner = (function () {
         box.setAttribute('aria-hidden', 'true');
         box.setAttribute('inert', '');
         box.appendChild(tpl.content);
+        return box;
+    }
 
+    // The band over the region and an empty slot under it, filled once the
+    // canvas is drawn (_sdRegionTrueFill()), when each region's place among
+    // the same key is known.
+    /* @pg-site-output */
+    function _sdRegionTrueAppend(doc, rg, node) {
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        var id = (p && p.page_id > 0) ? p.page_id : 0;
+        if (id) {
+            var entry = _sdLegacyRegionCache[id] || (_sdLegacyRegionCache[id] = { regions: [], loading: false, stale: true, asked: false, version: 0 });
+            if (entry.stale && !entry.loading) {
+                entry.stale = false;
+                entry.loading = true;
+                _pgApiPost('legacy_region_preview', { page_id: id }).then(function (res) {
+                    entry.loading = false;
+                    entry.asked = true;
+                    entry.regions = (res && res.status === 'success' && Array.isArray(res.regions)) ? res.regions : [];
+                    entry.version++;
+                    if (typeof renderCanvas === 'function') renderCanvas();
+                }).catch(function () { entry.loading = false; entry.asked = true; });
+            }
+        }
+        var t = node.props.regionType;
+        var code = t === 'dynamic' || (_sdLegacyRegionOwn(node) && p && (_design.layoutPages || []).indexOf(p.page_id) !== -1);
         var band = doc.createElement('div');
         band.className = 'sd-legacy-band';
-        band.innerHTML = rg.innerHTML + ' <span class="sd-legacy-note">· ' + esc(_sdT('as the site draws it, read only')) + '</span>';
+        band.innerHTML = '<span class="bi ' + (regionIcons[t] || 'bi-box') + '"></span> ' +
+            esc(regionLabels[t] || _sdT('Region')) + (node.props.regionName ? ' · ' + esc(node.props.regionName) : '') +
+            ' <span class="sd-legacy-pill' + (code ? ' sd-legacy-pill-code' : '') + '">' + esc(code ? _sdT('Code') : _sdT('Classic')) + '</span>';
+        var slot = doc.createElement('div');
+        slot.className = 'sd-legacy-slot';
         rg.innerHTML = '';
         rg.classList.add('sd-legacy-live');
+        rg.setAttribute('data-sd-rkey', _sdRegionTrueKey(node));
         rg.appendChild(band);
-        rg.appendChild(box);
+        rg.appendChild(slot);
+        _sdRegionTrueFillSoon(doc);
+    }
+
+    var _sdRegionTrueFillTimer = 0, _sdRegionTrueFillDoc = null;
+    function _sdRegionTrueFillSoon(doc) {
+        _sdRegionTrueFillDoc = doc;
+        if (_sdRegionTrueFillTimer) return;
+        _sdRegionTrueFillTimer = setTimeout(function () {
+            _sdRegionTrueFillTimer = 0;
+            _sdRegionTrueFill(_sdRegionTrueFillDoc);
+        }, 0);
+    }
+
+    // Each region on the canvas, in the page's order, gets the server's
+    // region of its key at its place, or one muted line: nothing drawn, or
+    // a node the saved page does not have yet.
+    /* @pg-site-output */
+    function _sdRegionTrueFill(doc) {
+        if (!doc || !doc.querySelectorAll) return;
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        var entry = (p && p.page_id > 0) ? _sdLegacyRegionCache[p.page_id] : null;
+        var seen = {};
+        doc.querySelectorAll('.sd-region-ph[data-sd-rkey]').forEach(function (rg) {
+            var key = rg.getAttribute('data-sd-rkey');
+            var order = seen[key] || 0;
+            seen[key] = order + 1;
+            var slot = rg.querySelector(':scope > .sd-legacy-slot');
+            if (!slot) return;
+            var drawn = (rg.getAttribute('data-sd-rdrawn') || '');
+            var found = entry ? _sdRegionTrueMatch(entry.regions, key, order) : null;
+            var html = found ? String(found.html || '') : '';
+            var state = html ? 'html:' + entry.version : ((!p || !(p.page_id > 0) || (entry && entry.asked && !found && _pgPageDirty(p))) ? 'save' : (entry && entry.asked ? 'none' : 'wait'));
+            if (drawn === state) return;
+            rg.setAttribute('data-sd-rdrawn', state);
+            slot.innerHTML = '';
+            if (html) {
+                slot.appendChild(_sdRegionTrueClean(doc, html));
+            } else if (state !== 'wait') {
+                var line = doc.createElement('div');
+                line.className = 'sd-legacy-empty';
+                line.textContent = state === 'save' ? _sdT('Save the page to see it') : _sdT('Drawn on the site; nothing to show here');
+                slot.appendChild(line);
+            }
+        });
     }
 
     // Whether `page` is a comment e-mail page: an open page names it in its
@@ -37407,6 +37497,7 @@ const StyleDesigner = (function () {
             (n.props.regionType === 'system' ? _sdClassicConvertPropsHtml(n) + _sdLayoutPropsHtml() + _sdLayoutWidgetPropsHtml(n) : '') +
             (n.props.regionType === 'designer' || n.props.regionType === 'common' ? _sdDesignerRegionPropsHtml(n) : '') +
             (n.props.regionType === 'page' ? _sdPageRegionPropsHtml(n) : '') +
+            (n.props.regionType === 'mobile_switch' || n.props.regionType === 'pdf' ? _sdRegionWhyHtml(_sdT('It has no design element; the site draws it as before')) : '') +
             _sdRegionWidgetPropsHtml(n) +
             designableHtml
         ) + commentsInfo;
@@ -54959,8 +55050,13 @@ const StyleDesigner = (function () {
     // A dynamic region's own rows: the attribute its tag hands to the code
     // ($dregion_attribute) and, for administrators (the right of the
     // classic Dynamic Region screen), its PHP code in a code-view tab.
+    // The Region panel's one line of why a region stays as the site draws it.
+    function _sdRegionWhyHtml(text) {
+        return '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' + esc(text) + '</div></div>';
+    }
+
     function _sdDregionPropsHtml(n) {
-        var h = row(_sdT('Attribute'), '<input type="text" class="form-control form-control-sm" data-prop="regionAttr" maxlength="255" value="' + esc(n.props.regionAttr || '') + '">') +
+        var h = _sdRegionWhyHtml(_sdT('PHP code: it stays code and runs on the site as written')) + row(_sdT('Attribute'), '<input type="text" class="form-control form-control-sm" data-prop="regionAttr" maxlength="255" value="' + esc(n.props.regionAttr || '') + '">') +
             '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
                 esc(_sdT('Handed to the region\'s code as $dregion_attribute. Quotes and angle brackets are left out.')) +
             '</div></div>';

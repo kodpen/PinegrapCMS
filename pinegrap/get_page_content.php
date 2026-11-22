@@ -855,6 +855,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = preg_replace('/<!--pg-messages-placeholder(?::[a-z]*:[01])?-->/', '', $content);
     }
 
+    // While the visual designer asks for the page's regions
+    // (pg_layout_regions_preview()), each region tag is wrapped in markers
+    // naming its type, name and order; every pass below replaces the tag as
+    // before and its output lands between them. Off in every other request.
+    if (function_exists('pg_layout_region_marking') && pg_layout_region_marking()) {
+        $content = pg_layout_region_mark_tags($content);
+    }
+
     // Find all designer regions and replace them with their content.
     // We do the designer regions first, so that they can contain common regions,
     // page regions or etc. Those embedded regions will get replaced properly if we
@@ -5444,12 +5452,6 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             }
         }
         
-        // The visual designer's canvas cuts the page's own system region out
-        // of a whole page render (pg_layout_region_preview()).
-        if ($primary_system_region && function_exists('pg_layout_region_marking') && pg_layout_region_marking()) {
-            $system_output = '<!--pg-layout-region-start-->' . $system_output . '<!--pg-layout-region-end-->';
-        }
-
         // This render fills its own tag: a widget placed twice is rendered
         // once for each place, with its own inline editing ids.
         $content = pg_system_region_fill($content, $system_page_name, $system_output);

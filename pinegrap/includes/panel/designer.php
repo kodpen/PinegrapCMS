@@ -224,7 +224,7 @@ function pg_panel_designer($request, $action)
     if (!pg_designer_is_full($user)) {
         $content_ok = array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch',
                             'page_load', 'seo_check', 'import_fragment',
-                            'form_fields', 'preview_widgets', 'widget_ghosts',
+                            'form_fields', 'preview_widgets', 'widget_ghosts', 'legacy_region_preview',
                             'revisions_list', 'revision_get', 'prototype_map');
         // The "Clicks" layer's figures: the sub action asks the Visitors
         // right itself.
@@ -889,19 +889,19 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
-        // The canvas's read-only picture of a classic page's system region
-        // drawn by its custom layout, as the server draws it for the
-        // signed-in user (pg_layout_region_preview()). The layout editor's
-        // right (role 1 or better), as layout_code asks; '' for a page that
-        // draws no custom layout.
+        // The canvas's read-only picture of every region of a page, as the
+        // server draws it for the signed-in user (pg_layout_regions_preview()):
+        // everyone who may open the page in the editor, drawn as the caller;
+        // a content-level operator not for a page hidden from them.
         case 'legacy_region_preview':
-            if ((int)$user['role'] > 1) {
+            $lrp_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            if (pg_designer_page_access($lrp_page, $user) === 'hidden') {
                 respond(array('status' => 'error', 'message' => lang('Permission denied.')));
             }
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
             respond(array(
-                'status' => 'success',
-                'html'   => pg_layout_region_preview(isset($request['page_id']) ? (int)$request['page_id'] : 0),
+                'status'  => 'success',
+                'regions' => pg_layout_regions_preview($lrp_page),
             ));
             break;
 
