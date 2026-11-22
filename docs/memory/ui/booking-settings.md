@@ -5,7 +5,7 @@ module: booking_settings
 ---
 
 ## Where does it live?
-- Category `bookings` under Selling (`registry.php`, after Accounting): cards `pgset-booking-services`, `-staff`, `-policy`, `-texts` in `includes/settings/bookings.php`, each inside a folded row (`ui/booking-settings-rows.md`).
+- Category `bookings` under Selling (`registry.php`, after Accounting): cards `pgset-booking-services`, `-staff`, `-policy`, `-messages`, `-texts` in `includes/settings/bookings.php`, each inside a folded row (`ui/booking-settings-rows.md`).
 - Writes in `bookings.save.php`, page path `settings_bookings.php`, help row `settings_bookings`. Functions in `includes/fn/booking_settings.php` (pure ones tested in `tests/booking_settings_test.php`). Before the 11.0.157 tables (`pg_booking_ready()`) every card shows a note and the save writes nothing.
 
 ## Where are the rules and texts stored?
