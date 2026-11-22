@@ -10,7 +10,7 @@ description: Plan user-docs-2026-11: which 2026.11.0 feature goes on which exist
 - `/introduction`: new dashboard (cards, edit mode, Google Analytics card), redrawn main menu and Workspace list, the bell as one inbox and the notification drawer, one picker for files, pictures and pages, one date-and-time picker, Export to Excel, Content review. `ui/dashboard-v2-overview.md`, `ui/main-menu-overview.md`, `ui/picker-overview.md`, `ui/list-table-overview.md`.
 - `/site-settings`: regrouped Site Settings (search, headings, Accounting, System tools), Speculation Rules switch, S3-compatible storage, bounce handling and mail transports (link to `/communication`). `ui/settings-modal-overview.md`.
 - `/system`: operations alerts and their Slack, Teams and Telegram targets, backup before update and the roll-back in Repair Software, maintenance mode and the health address, page cache, signed updates and the license check, Docker setup, importers for WordPress, WooCommerce and Shopify.
-- `/installation`: Docker, live template previews in the installer.
+- `/installation`: Docker, importers for WordPress, WooCommerce and Shopify, live template previews in the installer.
 
 ## Which subjects go on the content pages?
 - `/files`, `/folders`: Word and Excel previews and edits, Google Drive, OneDrive and Dropbox on Upload File, Pinegrap's own image editor with animated layers, layer groups, Follow in Animate. `ui/image-editor-overview.md`.
