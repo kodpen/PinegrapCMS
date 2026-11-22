@@ -4,7 +4,7 @@ description: The walk-in queue's status read (queue.php?n=&t=&read=1) skips the 
 ---
 
 ## What went wrong?
-- The person's page of a walk-in queue number reads its state every 15 seconds (4 a minute). `queue.php` is in `waf_sensitive_scripts()`, so on a shared address (venue Wi-Fi, carrier NAT) about eight open pages spent the 30 a minute sensitive allowance and the rest were refused, the refusals counted as offences (WQ3b, #11144).
+- The person's page of a walk-in queue number reads its state every 15 seconds (4 a minute). `queue.php` is in `waf_sensitive_scripts()`, so on a shared address (venue Wi-Fi, carrier NAT) about eight open pages spent the 30 a minute sensitive allowance and the rest were refused, the refusals counted as offences (WQ3b, #11147).
 
 ## Which request is the read?
 - `waf_queue_status_read($method, $script, $query)` (waf.php, pure): a GET or HEAD of `queue.php` with a scalar `n` and a `read` that is neither empty nor `0`. Opening the page (no `read`), the take page (`place=`), taking a number, "Leave the queue", "I'm on my way" and every staff action are POSTs or other GETs and stay sensitive.
