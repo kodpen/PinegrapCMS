@@ -11,7 +11,7 @@ description: Plan mail-settings-one, the architect's design of adding and removi
 - Choose: the four starting points as radio cards (Gmail, Microsoft, Another server, No server), two a row; Continue fill, Cancel quiet.
 - Sign in: an inner card, its content centred: the provider's own button and one line, "Pinegrap reads and answers this mailbox. Your password is not written to the site."
   - Another server: this step is the server's fields and "Test connection" instead.
-  - While the provider's application is not set up: two radio cards, "Set up Google sign-in" (once, about 10 minutes; opens the numbered steps drawer of mailboxes-tidy MT3) and "Use an app password" (2 minutes; the password is written to the site).
+  - While the provider's application is not set up: two radio cards, "Set up Google sign-in" (once, about 10 minutes; opens the numbered steps drawer, `workspace/mail-box-start-setup.md`) and "Use an app password" (2 minutes; the password is written to the site).
 - Details, after the return from the sign-in: a green result line ("info@… connected", "Connection tested: the inbox is read"), then "Which channel?" with the focus, Name and E-mail address filled, and "Other settings" folded (signature, automatic answer, routing).
 - Foot: Back ghost at the left from the second step on, Cancel quiet, the step's fill last. Under 576 px the sheet comes from the bottom and the step line keeps the numbers, the names of the other steps hidden.
 
@@ -33,4 +33,4 @@ description: Plan mail-settings-one, the architect's design of adding and removi
 - With the provider's application set up, Add a mailbox › Gmail shows one sign-in button and no link to Connections.
 - Remove never deletes a conversation, and its dialog lists every effect the removal has (a test compares the list with what the removal writes).
 
-Related: docs/memory/plans/mail-settings-one-design.md, docs/memory/plans/mailboxes-tidy.md
+Related: docs/memory/plans/mail-settings-one-design.md, docs/memory/workspace/mail-box-start-setup.md

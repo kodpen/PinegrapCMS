@@ -504,6 +504,12 @@ function pg_member_register($form, $opts = array())
     if (!is_array($opts)) $opts = array();
     $out = array('ok' => false, 'user_id' => 0, 'contact_id' => 0);
 
+    // Each of these fields holds one value. One posted as a list (email[]=)
+    // counts as not given: the string casts below turned it into "Array",
+    // with a warning, and stored that as the member's name or password.
+    pg_liveform_single_values($form, array('first_name', 'last_name', 'username', 'email', 'email_verify',
+        'password', 'password_verify', 'password_hint', 'opt_in', 'opt_in_sms', 'register_remember_me', 'remember_me'));
+
     $has_username = $form->field_in_session('username');
 
     $form->validate_required_field('first_name', lang('First Name is required.'));
@@ -747,6 +753,13 @@ function pg_member_activate($form, $opts = array())
 {
     if (!is_array($opts)) $opts = array();
     $out = array('ok' => false, 'user_id' => 0, 'contact_id' => 0);
+
+    // Each of these fields holds one value. One posted as a list counts as
+    // not given: the string casts below turned it into "Array" with a
+    // warning, and escape() of the first name stopped the request.
+    pg_liveform_single_values($form, array('first_name', 'last_name', 'member_id', 'username',
+        'email_address', 'email_address_verify', 'email', 'email_verify', 'password', 'password_verify',
+        'password_hint', 'opt_in', 'opt_in_sms', 'register_remember_me', 'remember_me'));
 
     $email_field  = $form->field_in_session('email_address') ? 'email_address' : 'email';
     $verify_field = ($email_field === 'email_address') ? 'email_address_verify' : 'email_verify';
@@ -3913,7 +3926,9 @@ function pg_form_captcha_issue($answer)
  */
 function pg_form_captcha_check($key, $answer)
 {
-    $key = (string) $key;
+    // A key or an answer posted as a list (captcha_submitted_answer[]=) is no
+    // key or answer: the string casts logged "Array to string conversion".
+    $key = is_scalar($key) ? (string) $key : '';
 
     if (($key == '') || !isset($_SESSION['software']['form_captcha'][$key]) || !is_array($_SESSION['software']['form_captcha'][$key])) {
         return false;
@@ -3927,7 +3942,7 @@ function pg_form_captcha_check($key, $answer)
         return false;
     }
 
-    $answer = trim((string) $answer);
+    $answer = is_scalar($answer) ? trim((string) $answer) : '';
 
     return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $entry['answer']));
 }
