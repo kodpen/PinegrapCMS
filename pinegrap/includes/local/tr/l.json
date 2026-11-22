@@ -661,6 +661,7 @@
     "Leaves from your Microsoft 365 or Outlook address.": "Microsoft 365 ya da Outlook adresinizden gider.",
     "Leaves on: {var:1}": "Çıktığı yol: {var:1}",
     "Leaves out of the water": "Yapraklar suyun dışında",
+    "Leaves the same way as system e-mail, through {var:1}.": "Sistem e-postasıyla aynı yoldan, {var:1} üzerinden çıkar.",
     "Leaves the same way as system e-mail.": "Sistem e-postasıyla aynı yoldan gider.",
     "Leaves this channel once you confirm on the card shown to you.": "Size gösterilen kartta onayladığınızda bu kanaldan ayrılır.",
     "Leaves through PHP mail() on this server.": "Bu sunucudaki PHP mail() ile gider.",

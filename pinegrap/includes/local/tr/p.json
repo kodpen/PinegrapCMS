@@ -3160,6 +3160,7 @@
     "Publish or edit": "Yayınla ya da düzenle",
     "Publish selected": "Seçilenleri yayınla",
     "Publish the API description without credentials": "API tanımını kimlik bilgisi istemeden yayınla",
+    "Publish the TXT record shown in the DKIM row of Sending domain.": "Gönderen alan adı bölümünün DKIM satırında gösterilen TXT kaydını yayımlayın.",
     "Publish the approved text": "Onaylanan metni yayınla",
     "Publish the rest": "Kalanını yayınla",
     "Publish the winner": "Kazananı yayımla",

@@ -667,14 +667,21 @@ function pg_mail_health_badge($state, $error_label = '')
 }
 
 /**
- * The "Sending domain" card of Site Settings › E-mail sending.
+ * The "Sending domain" card of Site Settings › E-mail sending, the one place
+ * of SPF, DKIM and DMARC: the DKIM row also holds the site's key, its
+ * selector and domain.
  *
  * @param array $health pg_mail_domain_health()
  * @param bool $wrap_column true: wrapped in a .col-12 for a .row; false: the card alone
+ * @param array $dkim record (the generated key's record under the names mail
+ *                    is signed with now, '' for no key), fields (HTML drawn
+ *                    at the end of the DKIM row)
  * @return string HTML
  */
-function pg_mail_domain_health_card(array $health, $wrap_column = true)
+function pg_mail_domain_health_card(array $health, $wrap_column = true, array $dkim = array())
 {
+    $dkim += array('record' => '', 'fields' => '');
+
     $names = array(
         'spf'   => array('SPF', $health['domain'], 'shield-check'),
         'dkim'  => array('DKIM', $health['selector'] . '._domainkey.' . $health['domain'], 'key'),
@@ -689,6 +696,13 @@ function pg_mail_domain_health_card(array $health, $wrap_column = true)
         $line = $health[$record];
         $id = 'mail_domain_' . $record;
 
+        // The site's key is offered whenever DNS does not carry it yet, a
+        // failed lookup included, under the names mail is signed with now;
+        // never while a sending service signs with its own.
+        if (($record === 'dkim') && ($dkim['record'] !== '') && ($line['state'] !== 'ok') && (($line['reason'] ?? '') !== 'service')) {
+            $line['copy'] = $dkim['record'];
+        }
+
         $rows .= '
             <div class="pg-list-row"><span class="pg-icon-tile pg-tone-team" aria-hidden="true"><span class="bi bi-' . $name[2] . '"></span></span>
                 <div class="pg-list-row-main">
@@ -702,7 +716,7 @@ function pg_mail_domain_health_card(array $health, $wrap_column = true)
                     <div class="d-flex align-items-center gap-2">
                         <input type="text" id="' . $id . '" class="pg-input pg-input-sm font-monospace" value="' . h($line['copy']) . '" readonly>
                         <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-copy-record="' . $id . '" data-pg-copied="' . h(lang('Copied')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Copy')) . '</span></button>
-                    </div>' : '') . '
+                    </div>' : '') . (($record === 'dkim') ? $dkim['fields'] : '') . '
                 </div>
             </div>';
     }
