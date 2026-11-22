@@ -14,9 +14,10 @@
  * and the two config_text entries are read through
  * includes/fn/booking_settings.php.
  *
- * Every staff member's block posts booking_staff[<user id>][seen], so the save
- * tells a block that was drawn with every switch off from one that was not
- * drawn at all.
+ * The staff are list rows too, each edited in its drawer; "Add a staff
+ * member" opens a drawer with the picker and the weekly hours. Every staff
+ * member's row posts booking_staff[<user id>][seen], so the save tells a
+ * member who was drawn with every switch off from one who was not drawn.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -294,46 +295,21 @@ $output_booking_services = '
 $booking_add_service = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . pg_booking_settings_service_drawer('new') . '" aria-controls="' . pg_booking_settings_service_drawer('new') . '"><i class="bi bi-plus-lg" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Add a service')) . '</span></button>';
 
 // ── Staff ──
-// Each staff member: the switch, their services, the weekly hours as two
-// ranges a day, and the dated exceptions as ranges of days. The week starts
-// on the day the panel language starts it.
+// One list row per staff member (their letters, name and one line), each
+// edited in its drawer: the switch, their services, the weekly hours as two
+// ranges a day and the dated exceptions as ranges of days. "Add a staff
+// member" opens a drawer with the picker and the weekly hours, prefilled
+// from the picked user's working days. The week starts on the day the panel
+// language starts it.
 $booking_day_names = array(1 => lang('Monday'), 2 => lang('Tuesday'), 3 => lang('Wednesday'), 4 => lang('Thursday'), 5 => lang('Friday'), 6 => lang('Saturday'), 7 => lang('Sunday'));
 $booking_week = pg_booking_settings_week_days(pg_list_period_week_first_day());
+$booking_service_ids = array_map('intval', array_keys($booking_services));
 
-// One exception row; $index is '' for the template the add button copies.
-$booking_exception_row = function ($user_id, $row) {
+// The weekly hours grid of $name (booking_staff[<user id>] or
+// booking_staff[new]); $fields as pg_booking_settings_hours_fields().
+$booking_hours_grid = function ($name, $fields, $caption) use ($booking_week, $booking_day_names, $booking_joins) {
 
-    $name = 'booking_staff[' . (int) $user_id . ']';
-
-    return '
-                                        <tr>
-                                            <td><input type="date" data-pg-date name="' . $name . '[x_from][]" class="form-control form-control-sm" value="' . h($row['from']) . '" aria-label="' . h(lang('First day')) . '"/></td>
-                                            <td><input type="date" data-pg-date name="' . $name . '[x_to][]" class="form-control form-control-sm" value="' . h($row['to']) . '" aria-label="' . h(lang('Last day')) . '"/></td>
-                                            <td><input type="time" data-pg-time="hh:mm" name="' . $name . '[x_open][]" class="form-control form-control-sm" value="' . h($row['open']) . '" aria-label="' . h(lang('Opens')) . '"/></td>
-                                            <td><input type="time" data-pg-time="hh:mm" name="' . $name . '[x_close][]" class="form-control form-control-sm" value="' . h($row['close']) . '" aria-label="' . h(lang('Closes')) . '"/></td>
-                                        </tr>';
-};
-
-$output_booking_staff = '
-                    <div class="col-12">
-                        <div class="form-text">' . lang(array(
-                            'string' => 'Hours are in the site\'s time zone, {var:1}. A day left empty is a day off. Busy times on the staff member\'s Workspace calendar are not offered.',
-                            'vars'   => h(date_default_timezone_get()))) . '</div>
-                    </div>';
-
-foreach ($booking_staff as $user_id => $member) {
-
-    $name = 'booking_staff[' . (int) $user_id . ']';
-    $id = 'booking_staff_' . (int) $user_id;
-    $chosen = pg_booking_settings_service_ids(pg_booking_json($member['service_ids']), array_map('intval', array_keys($booking_services)));
-    $fields = pg_booking_settings_hours_fields($member['hours']);
-
-    $options = '';
-
-    foreach ($booking_services as $service_id => $service) {
-        $options .= '<option value="' . (int) $service_id . '"' . (in_array((int) $service_id, $chosen, true) ? ' selected="selected"' : '') . '>' . h($service['name']) . '</option>';
-    }
-
+    $labels = array(lang('Opens'), lang('Closes'), lang('Opens again'), lang('Closes again'));
     $grid = '';
 
     foreach ($booking_week as $day) {
@@ -341,15 +317,73 @@ foreach ($booking_staff as $user_id => $member) {
         $cells = '';
 
         foreach (array('a', 'b', 'c', 'd') as $position => $box) {
-            $labels = array(lang('Opens'), lang('Closes'), lang('Opens again'), lang('Closes again'));
             $cells .= '
-                                            <td><input type="time" data-pg-time="hh:mm" name="' . $name . '[h' . $day . $box . ']" class="form-control form-control-sm" value="' . h($fields[$day][$position]) . '" aria-label="' . h($booking_day_names[$day] . ', ' . $labels[$position]) . '"/></td>';
+                                            <td data-label="' . h($labels[$position]) . '"><input type="time" data-pg-time="hh:mm" name="' . $name . '[h' . $day . $box . ']"' . $booking_joins . ' class="form-control form-control-sm" value="' . h($fields[$day][$position]) . '" aria-label="' . h($booking_day_names[$day] . ', ' . $labels[$position]) . '"/></td>';
         }
 
         $grid .= '
                                         <tr data-pg-booking-day="' . $day . '">
                                             <th scope="row" class="fw-normal">' . $booking_day_names[$day] . '</th>' . $cells . '
                                         </tr>';
+    }
+
+    return '
+                                <div class="col-12">
+                                    <h3 class="pg-group-label">' . lang('Weekly hours') . '</h3>
+                                    <table class="table table-hover mb-0 pg-embedded-table pg-booking-hours">
+                                        <caption class="visually-hidden">' . h($caption) . '</caption>
+                                        <thead><tr><th scope="col">' . lang('Day') . '</th><th scope="col">' . $labels[0] . '</th><th scope="col">' . $labels[1] . '</th><th scope="col">' . $labels[2] . '</th><th scope="col">' . $labels[3] . '</th></tr></thead>
+                                        <tbody>' . $grid . '
+                                        </tbody>
+                                    </table>
+                                    <div class="pg-embedded-table-foot">
+                                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-booking-copy><i class="bi bi-copy" aria-hidden="true"></i>' . lang('Copy the first day to every day') . '</button>
+                                    </div>
+                                </div>';
+};
+
+// One exception row.
+$booking_exception_row = function ($user_id, $row) use ($booking_joins) {
+
+    $name = 'booking_staff[' . (int) $user_id . ']';
+
+    return '
+                                        <tr>
+                                            <td data-label="' . h(lang('First day')) . '"><input type="date" data-pg-date name="' . $name . '[x_from][]"' . $booking_joins . ' class="form-control form-control-sm" value="' . h($row['from']) . '" aria-label="' . h(lang('First day')) . '"/></td>
+                                            <td data-label="' . h(lang('Last day')) . '"><input type="date" data-pg-date name="' . $name . '[x_to][]"' . $booking_joins . ' class="form-control form-control-sm" value="' . h($row['to']) . '" aria-label="' . h(lang('Last day')) . '"/></td>
+                                            <td data-label="' . h(lang('Opens')) . '"><input type="time" data-pg-time="hh:mm" name="' . $name . '[x_open][]"' . $booking_joins . ' class="form-control form-control-sm" value="' . h($row['open']) . '" aria-label="' . h(lang('Opens')) . '"/></td>
+                                            <td data-label="' . h(lang('Closes')) . '"><input type="time" data-pg-time="hh:mm" name="' . $name . '[x_close][]"' . $booking_joins . ' class="form-control form-control-sm" value="' . h($row['close']) . '" aria-label="' . h(lang('Closes')) . '"/></td>
+                                        </tr>';
+};
+
+// The time zone the hours are read in, and where public holidays are kept.
+$booking_zone_line = '
+                                <div class="col-12">
+                                    <div class="form-text mt-0">' . lang(array(
+                                        'string' => 'Hours are in the site\'s time zone, {var:1}. A day left empty is a day off. Busy times on the staff member\'s Workspace calendar are not offered.',
+                                        'vars'   => h(date_default_timezone_get()))) . '</div>
+                                </div>';
+
+$booking_holidays_link = '
+                                <div class="col-12">
+                                    <a href="#settings/workspace_team/pgset-ws-calendar" class="small">' . h(lang('Holidays are kept in Team and working hours')) . '</a>
+                                </div>';
+
+$output_booking_staff = '';
+$booking_letter_tones = array('', ' pg-initials-2', ' pg-initials-3');
+
+foreach ($booking_staff as $user_id => $member) {
+
+    $user_id = (int) $user_id;
+    $name = 'booking_staff[' . $user_id . ']';
+    $id = 'booking_staff_' . $user_id;
+    $drawer = pg_booking_settings_member_drawer($user_id);
+    $chosen = pg_booking_settings_service_ids(pg_booking_json($member['service_ids']), $booking_service_ids);
+
+    $options = '';
+
+    foreach ($booking_services as $service_id => $service) {
+        $options .= '<option value="' . (int) $service_id . '"' . (in_array((int) $service_id, $chosen, true) ? ' selected="selected"' : '') . '>' . h($service['name']) . '</option>';
     }
 
     $exceptions = '';
@@ -360,77 +394,90 @@ foreach ($booking_staff as $user_id => $member) {
 
     $exceptions .= $booking_exception_row($user_id, array('from' => '', 'to' => '', 'open' => '', 'close' => ''));
 
+    // The seen marker stays in the pane, so a save tells a member drawn
+    // with every switch off from one that was not drawn.
     $output_booking_staff .= '
-                    <div class="col-12">
-                        <fieldset class="border rounded p-5" data-pg-booking-staff>
-                            <legend class="pg-group-label float-none w-auto px-3 mb-0">' . h($member['person']) . '</legend>
+                        <div class="pg-list-row" data-pg-booking-member>
+                            <span class="pg-initials' . $booking_letter_tones[$user_id % 3] . '" aria-hidden="true">' . h(pg_initials($member['first_name'], $member['last_name'], (string) $member['user_username'])) . '</span>
+                            <div class="pg-list-row-main">
+                                <div class="pg-list-row-head"><span class="pg-list-row-title">' . h($member['person']) . '</span></div>
+                                <div class="pg-list-row-text">' . h(pg_booking_settings_staff_line($member, $booking_service_ids)) . '</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-1 align-self-center">
+                                <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . $drawer . '" aria-controls="' . $drawer . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Edit'), $member['person'])))) . '"><span class="pg-btn-label">' . h(lang('Edit')) . '</span></button>
+                            </div>
                             <input type="hidden" name="' . $name . '[seen]" value="1"/>
-                            <div class="row gy-5">' . $booking_switch($name . '[enabled]', $id . '_enabled', lang('Takes bookings'), !empty($member['enabled'])) . '
+                        </div>';
+
+    $pg_settings_modals[] = pg_settings_drawer($drawer, h($member['person']), '
+                            <div class="row gy-5" data-pg-booking-staff>' . $booking_switch($name . '[enabled]', $id . '_enabled', lang('Takes bookings'), !empty($member['enabled']), '', $booking_form) . '
                                 <div class="col-12">
                                     <label for="' . $id . '_services" class="form-label">' . lang('Bookable services') . '</label>
-                                    <select multiple data-pg-combobox name="' . $name . '[services][]" id="' . $id . '_services" class="form-control" data-placeholder="' . h(lang('Choose the services')) . '">' . $options . '</select>
-                                </div>
-                                <div class="col-12">
-                                    <div class="table-responsive">
-                                    <table class="table table-hover mb-0 pg-embedded-table">
-                                        <caption class="visually-hidden">' . h(lang(array('string' => 'Weekly hours of {var:1}', 'vars' => $member['person']))) . '</caption>
-                                        <thead><tr><th scope="col">' . lang('Day') . '</th><th scope="col">' . lang('Opens') . '</th><th scope="col">' . lang('Closes') . '</th><th scope="col">' . lang('Opens again') . '</th><th scope="col">' . lang('Closes again') . '</th></tr></thead>
-                                        <tbody>' . $grid . '
-                                        </tbody>
-                                    </table>
-                                    </div>
-                                    <div class="pg-embedded-table-foot">
-                                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-booking-copy><i class="bi bi-copy" aria-hidden="true"></i>' . lang('Copy the first day to every day') . '</button>
-                                    </div>
-                                </div>
+                                    <select multiple data-pg-combobox name="' . $name . '[services][]"' . $booking_joins . ' id="' . $id . '_services" class="form-control" data-placeholder="' . h(lang('Choose the services')) . '">' . $options . '</select>
+                                </div>' . $booking_hours_grid($name, pg_booking_settings_hours_fields($member['hours']), lang(array('string' => 'Weekly hours of {var:1}', 'vars' => $member['person']))) . '
                                 <div class="col-12">
                                     <h3 class="pg-group-label">' . lang('Days off and special hours') . '</h3>
-                                    <div class="table-responsive">
-                                    <table class="table table-hover mb-0 pg-embedded-table">
+                                    <table class="table table-hover mb-0 pg-embedded-table pg-booking-hours">
                                         <caption class="visually-hidden">' . h(lang(array('string' => 'Days off and special hours of {var:1}', 'vars' => $member['person']))) . '</caption>
                                         <thead><tr><th scope="col">' . lang('First day') . '</th><th scope="col">' . lang('Last day') . '</th><th scope="col">' . lang('Opens') . '</th><th scope="col">' . lang('Closes') . '</th></tr></thead>
                                         <tbody data-pg-booking-exceptions>' . $exceptions . '
                                         </tbody>
                                     </table>
-                                    </div>
                                     <template data-pg-booking-exception>' . $booking_exception_row($user_id, array('from' => '', 'to' => '', 'open' => '', 'close' => '')) . '</template>
                                     <div class="pg-embedded-table-foot">
                                         <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-booking-add-exception><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Add a row') . '</button>
                                     </div>
                                     <div class="form-text">' . lang('Without hours the days are off; with hours they replace the weekly hours on those days. A public holiday is closed unless a row gives it hours. Past days drop off the list.') . '</div>
-                                </div>
-                            </div>
-                        </fieldset>
-                    </div>';
+                                </div>' . $booking_zone_line . $booking_holidays_link . '
+                            </div>', $booking_in_dialog, $booking_drawer_foot);
 }
 
 $booking_candidates = pg_booking_settings_candidates($booking_staff);
+$booking_add_staff = '';
 
 if ($booking_candidates) {
 
+    // Each user carries the hours the grid takes when they are picked: their
+    // own working days, else the company's week, else Monday to Friday.
+    $booking_workweek = pg_booking_settings_workweek();
+    $booking_own_days = pg_booking_settings_own_workdays(array_keys($booking_candidates));
+    $booking_add_fields = pg_booking_settings_hours_fields(pg_booking_settings_new_member_hours(0, $booking_workweek));
     $options = '<option value="0">' . lang('-Not selected-') . '</option>';
 
     foreach ($booking_candidates as $user_id => $person) {
-        $options .= '<option value="' . (int) $user_id . '">' . h($person) . '</option>';
+        $prefill = pg_booking_settings_hours_fields(pg_booking_settings_new_member_hours($booking_own_days[(int) $user_id] ?? 0, $booking_workweek));
+        $options .= '<option value="' . (int) $user_id . '" data-pg-booking-hours="' . h(json_encode($prefill)) . '">' . h($person) . '</option>';
     }
 
-    $output_booking_staff .= '
-                    <div class="pg-f-md">
-                        <label for="booking_staff_add" class="form-label">' . lang('Add a staff member') . '</label>
-                        <select name="booking_staff_add" id="booking_staff_add" class="form-control" data-pg-combobox>' . $options . '</select>
-                        <div class="form-text">' . lang('Saving adds the panel user with every service that can be booked and Monday to Friday, 09:00 to 17:00; change them after.') . '</div>
-                    </div>';
+    $booking_add_drawer = pg_booking_settings_member_drawer('new');
 
-} elseif (!$booking_staff) {
-    $output_booking_staff .= '
-                    <div class="col-12"><div class="form-text">' . lang('There is no panel user to add.') . '</div></div>';
+    $pg_settings_modals[] = pg_settings_drawer($booking_add_drawer, h(lang('Add a staff member')), '
+                            <div class="row gy-5" data-pg-booking-staff>
+                                <div class="col-12">
+                                    <label for="booking_staff_add" class="form-label">' . lang('Panel user') . '</label>
+                                    <select name="booking_staff_add"' . $booking_joins . ' id="booking_staff_add" class="form-control" data-pg-combobox data-pg-booking-pick>' . $options . '</select>
+                                    <div class="form-text">' . lang('The hours below follow the user\'s working days in Team and working hours. Saving adds them with every service that can be booked and these hours.') . '</div>
+                                </div>' . $booking_hours_grid('booking_staff[new]', $booking_add_fields, lang('Weekly hours')) . $booking_zone_line . $booking_holidays_link . '
+                            </div>', $booking_in_dialog, $booking_drawer_foot);
+
+    $booking_add_staff = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#' . $booking_add_drawer . '" aria-controls="' . $booking_add_drawer . '"><i class="bi bi-plus-lg" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Add a staff member')) . '</span></button>';
 }
 
-$output_booking_staff .= '
-                    <div class="d-none">' . get_date_picker_format() . pg_fields_script() . '</div>';
+$output_booking_staff = '
+                    <div class="col-12">' . (($output_booking_staff !== '')
+                        ? '
+                        <div data-pg-booking-members>' . $output_booking_staff . '
+                        </div>'
+                        : '
+                        <div class="pg-text-meta">' . h($booking_candidates
+                            ? lang('Nobody takes bookings yet. Add a staff member, then choose their services and hours.')
+                            : lang('There is no panel user to add.')) . '</div>') . '
+                        <div class="d-none">' . get_date_picker_format() . pg_fields_script() . '</div>
+                    </div>';
 
-// Copy the first day of the grid to every day, add an exception row, and
-// move a service up or down. Bound once on the document: the pane's markup is replaced on every visit.
+// Copy the first day of the grid to every day, add an exception row, fill
+// the add drawer's grid for the picked user, and move a service up or down.
+// Bound once on the document: the pane's markup is replaced on every visit.
 $pg_settings_scripts[] = '
     <script>
         (function () {
@@ -448,6 +495,27 @@ $pg_settings_scripts[] = '
                     input.dispatchEvent(new Event("change", {bubbles: true}));
                 }
             }
+
+            // A user picked in the add drawer fills its grid with the hours
+            // their option carries. Listened to through jQuery: a combobox
+            // may announce a pick only there.
+            jQuery(document).on("change", "[data-pg-booking-pick]", function () {
+                var option = this.options[this.selectedIndex];
+                var block = this.closest("[data-pg-booking-staff]");
+                var hours = (option && option.getAttribute("data-pg-booking-hours")) ? JSON.parse(option.getAttribute("data-pg-booking-hours")) : null;
+
+                if (!block || !hours) {
+                    return;
+                }
+
+                block.querySelectorAll("[data-pg-booking-day]").forEach(function (row) {
+                    var day = hours[row.getAttribute("data-pg-booking-day")] || ["", "", "", ""];
+
+                    row.querySelectorAll("input[data-pg-time]").forEach(function (input, position) {
+                        setValue(input, day[position] || "");
+                    });
+                });
+            });
 
             document.addEventListener("click", function (event) {
 
@@ -573,7 +641,7 @@ foreach (pg_booking_settings_text_fields() as $key => $field) {
 // ── The rows ──
 $pg_settings_cards[] = $booking_fold(array(
     'services' => array($booking_lines['services'], $output_booking_services, $booking_add_service),
-    'staff'    => array($booking_lines['staff'], $output_booking_staff),
+    'staff'    => array($booking_lines['staff'], $output_booking_staff, $booking_add_staff),
     'policy'   => array($booking_lines['policy'], $output_booking_policy),
     'texts'    => array($booking_lines['texts'], $output_booking_texts),
 ));
