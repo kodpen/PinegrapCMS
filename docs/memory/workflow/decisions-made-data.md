@@ -4,9 +4,14 @@ description: Decisions list, data part: starter dumps, orders.notes, tracking_co
 ---
 
 ## Which columns and dumps stay as they are?
-- `data/backups/` (the starter site dumps): content and layout are not touched. Exception (2026-09-21, #62): the credential fields (`usps_user_id`, `ups_user_id`, `ups_password`, `ecommerce_authorizenet_*`) stay empty: the repository is public. Exception (owner, 2026-10-28, #2657): the two dumps' `countries` rows corrected; running sites' rows never migrated (a wrong country is edited in Settings). Exception (#3567, 2026-10-30): the AddThis code, the Turkish title and the `AT-ONCE` name (`-product-8.md`). Exception (owner, 2026-11-01, #4462): the Turkish dump's four e-gift card e-mail texts and set 48's duplicate attribute row; running sites untouched.
+- `data/backups/` (the starter site dumps): content and layout are not touched. Exceptions:
+  - 2026-09-21, #62: the credential fields (`usps_user_id`, `ups_user_id`, `ups_password`, `ecommerce_authorizenet_*`) stay empty: the repository is public.
+  - owner, 2026-10-28, #2657: the two dumps' `countries` rows corrected; running sites' rows never migrated.
+  - #3567, 2026-10-30: the AddThis code, the Turkish title and the `AT-ONCE` name (`-product-8.md`).
+  - owner, 2026-11-01, #4462: the Turkish dump's four e-gift card e-mail texts and set 48's duplicate attribute row; running sites untouched.
+  - owner, 2026-11-22, #11055: the three Twitter regions (`-product-99.md`).
 - `orders.notes`, `orders.tracking_company`: reserved for the ERP module, which will add them with its own migration. Do not drop, reuse or fill them from another feature; a carrier goes on the shipment row. No migration or dump creates them; they exist only where added by hand: `tracking_company` is read by nothing, and every reader or writer of `notes` probes for it first (the express order note in `submit_order.php`, the order view widget, `PATCH /orders`, Workspace record changes).
-- `user.secret_key`, `secret_key_iv`, `secret_key_hash`: kept when the old app API went in 2026.4.4 (dropping account-table columns was not worth the risk); no code reads them (`api/removed-rest-api-apps.md`).
+- `user.secret_key`, `secret_key_iv`, `secret_key_hash`: kept when the old app API went in 2026.4.4 (dropping them was not worth the risk); no code reads them (`api/removed-rest-api-apps.md`).
 - `order_items.tax`, the old per-unit tax: the shop has not written it since 2026.4.4 (step 4.44), new rows hold 0. The line tax is `order_items.tax_total`: `SUM(tax_total)`, never times the quantity (`commerce/product-tax-rate.md`). 0 tax usually means the code reads `tax`. Kept for older rows; no migration drops it, and dropping it is a schema step to approve. Still on it (2026-10-21): the order items CSV export (`view_orders.php`) and the marketplace import (the connector's line `tax`, 0 from n11).
 - `orders.tracking_code`: a campaign code (`?t=` visitor tracking, `get_tracking_code()`), nothing to do with shipping. Parcel numbers live in `shipping_tracking_numbers`.
 
