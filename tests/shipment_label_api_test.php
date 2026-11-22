@@ -202,7 +202,7 @@ function test_shipment_label_api_pickup_fields()
 	pg_assert_same(null, $older['pickup_at']);
 	pg_assert_same(array_keys(api_order_label_schema()), array_keys($older));
 
-	$description = shipment_label_api_test_route('orders.get')['description'];
+	$description = shipment_label_api_test_route('orders.get')['details'];
 	pg_assert_true(strpos($description, 'pickup_ref') !== false, 'GET /orders/{id} names pickup_ref');
 	pg_assert_true(strpos($description, 'pickup_at') !== false, 'GET /orders/{id} names pickup_at');
 }

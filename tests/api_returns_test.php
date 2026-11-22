@@ -298,7 +298,9 @@ function test_api_returns_write_refusals_map_to_codes()
 		pg_assert_contains($code, $body);
 	}
 
-	$description = api_returns_test_route('returns.update')['description'];
+	// The refusals are explained in details, which the API document publishes with the description.
+	$route = api_returns_test_route('returns.update');
+	$description = $route['description'] . ' ' . (isset($route['details']) ? $route['details'] : '');
 
 	foreach (array('return_not_movable', 'return_changed', 'return_in_progress', 'refund_driver_unavailable', 'refund_refused') as $code) {
 		pg_assert_contains('409 ' . $code, $description, 'every 409 is described on its route');
@@ -332,6 +334,6 @@ function test_api_returns_refund_refused_on_a_cancelled_order()
 	pg_assert_true(($refused !== false) && ($refused > strpos($refund, 'pg_return_refund_plan(')) && ($refused < strpos($refund, 'pg_return_move(')), 'refused under the lock, before the return moves');
 
 	pg_assert_contains("'refund_order_cancelled'", api_returns_test_body('includes/api/resources/returns.php', 'api_return_write_refuse'));
-	pg_assert_contains('409 refund_order_cancelled', api_returns_test_route('returns.update')['description']);
+	pg_assert_contains('409 refund_order_cancelled', api_returns_test_route('returns.update')['details']);
 	pg_assert_contains('pg_return_refund_order_open(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_return.php'));
 }
