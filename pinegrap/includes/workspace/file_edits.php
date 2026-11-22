@@ -568,6 +568,9 @@ function ws_file_edit_js_strings()
         'file_text_unchanged'  => lang('Nothing was changed.'),
         'file_replaced'        => lang('The file was replaced. The earlier version stays in the history.'),
         'file_copy_sent'       => lang('Your edited copy was sent.'),
+        // The attach menu's empty workbook and document (ws_file_office_new).
+        'file_new_sheet'       => lang('New spreadsheet'),
+        'file_new_doc'         => lang('New document'),
         'file_versions'        => ws_js_template('{var:1} earlier version(s)', 1),
         'file_versions_title'  => lang('Earlier versions'),
         'file_versions_by'     => ws_js_template('replaced by {var:1}', 1),

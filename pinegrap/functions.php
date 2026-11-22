@@ -150,6 +150,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_edit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_shift.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_sheets.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_format.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_new.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/xlsx_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sheet_read.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sheet_import.php');

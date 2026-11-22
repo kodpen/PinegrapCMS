@@ -2780,6 +2780,7 @@
     "Sheet {var:2} has pictures, charts, shapes or comments, so its rows and columns are not inserted or deleted here.": "{var:2} sayfasında resim, grafik, şekil ya da açıklama var; bu yüzden satırları ve sütunları burada eklenip silinmez.",
     "Sheet {var:2} holds parts that are not moved here, so its rows and columns are not inserted or deleted here.": "{var:2} sayfasında burada taşınmayan bölümler var; bu yüzden satırları ve sütunları burada eklenip silinmez.",
     "Sheet {var:2} is protected, so its rows and columns are not inserted or deleted here.": "{var:2} sayfası korumalı; bu yüzden satırları ve sütunları burada eklenip silinmez.",
+    "Sheet1": "Sayfa1",
     "Sheet: {1}.": "Sayfa: {1}.",
     "Sheets": "Sayfalar",
     "Sheet{1}": "Sayfa{1}",

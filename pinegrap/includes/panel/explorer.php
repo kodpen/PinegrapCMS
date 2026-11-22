@@ -112,6 +112,7 @@ function pg_panel_file_explorer($request, $action)
         case 'explorer_tree':
         case 'explorer_create_folder':
         case 'explorer_create_file':
+        case 'explorer_create_office':
         case 'explorer_rename':
         case 'explorer_move':
         case 'explorer_paste':

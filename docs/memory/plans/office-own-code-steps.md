@@ -21,7 +21,7 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
   - Cut: OE3a (PR #10827), the server's style writer (`platform/office-sheet-format.md`); OE3b (PR #10871), the editor's controls and the preview reading the cells' formats (`platform/office-sheet-format-controls.md`).
   - Done: PR #10827, #10871.
 - OE4, tools of the view, nothing written: sort by a column, filter by value, find in the workbook, and "Download as CSV" of the open sheet. Done: PR #11033 (`platform/office-sheet-tools.md`).
-- OE5, "New spreadsheet" and "New document" in the File Manager's new menu and a channel's attach menu: an empty .xlsx or .docx written by the product's writer, opened for editing. Claimed.
+- OE5, "New spreadsheet" and "New document" in the File Manager's new menu and a channel's attach menu: an empty .xlsx or .docx written by the product's writer, opened for editing. Done: PR #11119 (`platform/office-new-files.md`).
 
 ## Document editing (.docx)
 - OD1, bold, italic and underline on the selected text of a paragraph (runs split and joined; a run's other properties kept).
