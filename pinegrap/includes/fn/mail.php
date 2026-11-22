@@ -22,6 +22,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once PG_FUNCTIONS_DIR . '/includes/phpmailer/src/Exception.php';
 require_once PG_FUNCTIONS_DIR . '/includes/phpmailer/src/PHPMailer.php';
 require_once PG_FUNCTIONS_DIR . '/includes/phpmailer/src/SMTP.php';
+// Which connected accounts may send the site's e-mail.
+require_once PG_FUNCTIONS_DIR . '/includes/fn/mail_accounts.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -1740,7 +1742,8 @@ function pg_mail_envelope_sender($mail, $from_email_address)
  *
  * SMTP Settings stores the choice per kind (SYSTEM_MAIL_CONNECTION,
  * CAMPAIGN_MAIL_CONNECTION in data/config.php). An account that has since
- * been disconnected, or no longer serves sending e-mail, is no choice.
+ * been disconnected, or serves neither sending e-mail nor a mailbox (whose
+ * permission carries sending), is no choice.
  *
  * @param string $type 'system' or 'campaign'
  * @return array|null the account (pg_connect_account())
@@ -1756,7 +1759,7 @@ function pg_mail_connection($type)
 
     $account = pg_connect_account($connection_id);
 
-    if (!is_array($account) || !in_array('mail', $account['purposes'], true)) {
+    if (!is_array($account) || !pg_mail_account_sends($account['purposes'])) {
         return null;
     }
 

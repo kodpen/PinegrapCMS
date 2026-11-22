@@ -295,13 +295,94 @@ function ws_mail_box_login(&$session, $box, $credentials)
 
 /**
  * The connected accounts a box may sign in with: those serving Reading
- * mailboxes.
+ * mailboxes, then the site's Google and Microsoft accounts that send its
+ * e-mail, which ask their provider for reading once chosen
+ * (pg_mail_box_account_asks()).
  *
  * @return array[] pg_connect_account() rows
  */
 function ws_mail_box_accounts()
 {
-    return function_exists('pg_connect_accounts') ? pg_connect_accounts(array('purpose' => 'mail_read')) : array();
+    if (!function_exists('pg_connect_accounts')) {
+        return array();
+    }
+
+    $accounts = pg_connect_accounts(array('purpose' => 'mail_read'));
+
+    foreach (pg_connect_accounts(array('user_id' => 0, 'purpose' => 'mail')) as $account) {
+        if (pg_mail_box_account_asks($account)) {
+            $accounts[] = $account;
+        }
+    }
+
+    return $accounts;
+}
+
+/**
+ * One account of a box's "Connected account" select. A sending account that
+ * does not read yet says so and carries data-ws-mail-ask, which shows its
+ * Allow reading mail (ws_mail_box_account_ask_html()). Pure.
+ *
+ * @param array $account       pg_connect_account()
+ * @param int   $connection_id the box's account
+ * @return string HTML
+ */
+function ws_mail_box_account_option($account, $connection_id)
+{
+    $id = (int) $account['id'];
+    $asks = pg_mail_box_account_asks($account);
+
+    return '<option value="' . $id . '"' . (($id === (int) $connection_id) ? ' selected' : '') . ($asks ? ' data-ws-mail-ask="' . $id . '"' : '') . '>'
+        . h((string) $account['label']
+            . ($asks ? ' (' . lang('sends the site\'s e-mail') . ')' : '')
+            . (((string) $account['status'] !== 'active') ? ' (' . lang('connect again') . ')' : '')) . '</option>';
+}
+
+/**
+ * Under the select, for a sending account that does not read yet: what
+ * reading asks, and Allow reading mail, which asks the provider again for
+ * the same account (pg_mail_connect_form(), printed by the Mailboxes tab).
+ * Shown while the account is chosen. Pure.
+ *
+ * @param array $account     pg_connect_account()
+ * @param bool  $may_connect the person may connect the site's accounts
+ * @param bool  $shown       the account is the one chosen
+ * @return string HTML
+ */
+function ws_mail_box_account_ask_html($account, $may_connect, $shown)
+{
+    $id = (int) $account['id'];
+    $provider = ((string) $account['provider'] === 'google') ? 'Google' : 'Microsoft';
+
+    return '
+                    <div class="mt-3" data-ws-mail-ask-for="' . $id . '"' . ($shown ? '' : ' hidden') . '>
+                        <div class="pg-field-help mt-0">' . h(lang(array(
+                            'string' => '{var:1} sends the site\'s e-mail. To read this mailbox, {var:2} asks once more for the same account; it is not connected twice.',
+                            'vars'   => array((string) $account['label'], $provider)))) . '</div>
+                        ' . ($may_connect
+                            ? '<div class="mt-3">' . pg_mail_connect_button('pgset_mail_read_' . $id, lang('Allow reading mail'), 'bi-envelope-open') . '</div>'
+                            : '<div class="pg-text-meta">' . h(lang('A manager or an administrator allows it here.')) . '</div>') . '
+                    </div>';
+}
+
+/**
+ * The forms Allow reading mail submits, one a sending account that does
+ * not read yet, printed outside the settings form by the Mailboxes tab.
+ *
+ * @param string $return the screen connect.php returns to
+ * @return string HTML
+ */
+function ws_mail_box_account_ask_forms($return)
+{
+    $html = '';
+
+    foreach (ws_mail_box_accounts() as $account) {
+        if (pg_mail_box_account_asks($account)) {
+            $html .= pg_mail_connect_form('pgset_mail_read_' . (int) $account['id'], (string) $account['provider'], 'mail_read', $return, (int) $account['id']);
+        }
+    }
+
+    return $html;
 }
 
 /**
@@ -951,6 +1032,12 @@ function ws_mail_box_save_check($viewer, $box, $post)
     if ($values['connection_id'] > 0) {
         $account = function_exists('pg_connect_account') ? pg_connect_account($values['connection_id']) : null;
 
+        // A sending account reads once its provider allowed it on the same
+        // account: Allow reading mail under the select asks.
+        if (is_array($account) && pg_mail_box_account_asks($account)) {
+            return $fail(lang(array('string' => '{var:1} does not read mail yet: press Allow reading mail under it, then save.', 'vars' => (string) $account['label'])), 'connection_id');
+        }
+
         if (!is_array($account) || !in_array('mail_read', (array) $account['purposes'], true)) {
             return $fail(lang('Choose a connected account that serves Reading mailboxes.'), 'connection_id');
         }
@@ -1099,17 +1186,32 @@ function ws_mail_box_remove_write($box, $username)
 }
 
 /**
- * What Remove's confirm says will happen, in the person's words.
+ * What Remove's confirm says will happen, in the person's words. Removing a
+ * box never disconnects its account; one the site's e-mail is sent through
+ * is named as staying.
  *
- * @param array $box
+ * @param array       $box
+ * @param string|null $kept pg_mail_box_remove_kept(), null to read it for
+ *                          the box's account
  * @return string
  */
-function ws_mail_box_remove_confirm($box)
+function ws_mail_box_remove_confirm($box, $kept = null)
 {
+    if ($kept === null) {
+        $kept = '';
+        $settings = json_decode((string) ($box['settings'] ?? ''), true);
+        $connection_id = is_array($settings) ? (int) ($settings['connection_id'] ?? 0) : 0;
+        $account = (($connection_id > 0) && function_exists('pg_connect_account')) ? pg_connect_account($connection_id) : null;
+
+        if (is_array($account)) {
+            $kept = pg_mail_box_remove_kept((string) $account['label'], array('sending' => pg_mail_account_sending_kinds($connection_id)));
+        }
+    }
+
     return lang(array(
         'string' => 'Remove the mailbox {var:1}? Reading stops, the stored password is deleted and its incoming mail rules go. The conversations stay where they are.',
         'vars'   => (string) $box['name'],
-    ));
+    )) . (($kept !== '') ? ' ' . $kept : '');
 }
 
 /**
@@ -1466,11 +1568,16 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
     $own = ws_mail_box_server_own($provider, $host);
     $accounts = '<option value="">' . h(lang('None: sign in with the password')) . '</option>';
     $listed = false;
+    $asks = '';
+    $may_connect = defined('USER_ROLE') && ((int) USER_ROLE <= 2);
 
     foreach (ws_mail_box_accounts() as $account) {
         $listed = $listed || ((int) $account['id'] === $connection_id);
-        $accounts .= '<option value="' . (int) $account['id'] . '"' . (((int) $account['id'] === $connection_id) ? ' selected' : '') . '>'
-            . h((string) $account['label'] . (((string) $account['status'] !== 'active') ? ' (' . lang('connect again') . ')' : '')) . '</option>';
+        $accounts .= ws_mail_box_account_option($account, $connection_id);
+
+        if (pg_mail_box_account_asks($account)) {
+            $asks .= ws_mail_box_account_ask_html($account, $may_connect, (int) $account['id'] === $connection_id);
+        }
     }
 
     // A chosen account since disconnected stays named until another is picked.
@@ -1515,7 +1622,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 <div class="md:col-12' . $shown('account') . '" data-ws-mail-when="signin=account">
                     <label class="pg-field-label" for="' . $prefix . 'connection">' . h(lang('Connected account')) . '</label>
                     <select class="pg-input" name="connection_id" id="' . $prefix . 'connection"' . (($via === 'connection') ? ' required' : '') . '>' . $accounts . '</select>
-                    <div class="pg-field-help">' . h(lang('It signs in instead of a password; the user name is the mailbox\'s address.')) . '</div>
+                    <div class="pg-field-help">' . h(lang('It signs in instead of a password; the user name is the mailbox\'s address.')) . '</div>' . $asks . '
                 </div>
                 <div class="md:col-6' . $shown('!none') . '" data-ws-mail-when="signin!=none">
                     <label class="pg-field-label" for="' . $prefix . 'folder">' . h(lang('Folder to read')) . '</label>
@@ -2557,6 +2664,12 @@ function ws_mail_settings_script()
 
                 var via = field(form, \'reply_via\');
                 var account = field(form, \'connection_id\');
+
+                // A sending account that does not read yet shows its Allow
+                // reading mail while it is the one chosen.
+                form.querySelectorAll(\'[data-ws-mail-ask-for]\').forEach(function (ask) {
+                    ask.hidden = !account || (ask.getAttribute(\'data-ws-mail-ask-for\') !== account.value);
+                });
 
                 if (via && account && !form.hasAttribute(\'data-ws-mail-dialog\')) {
                     var marker = form.querySelector(\'label[for="\' + account.id + \'"] .pg-required-marker\');

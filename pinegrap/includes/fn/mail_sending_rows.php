@@ -412,7 +412,8 @@ function pg_mail_way_cards($chosen, $form)
  * posts one system_mail_connection.
  *
  * @param string $provider google or microsoft
- * @param array  $accounts pg_connect_accounts() of purpose mail
+ * @param array  $accounts pg_mail_sending_accounts(), one connected for a
+ *                         mailbox only marked as such
  * @param int    $current  the stored account
  * @param bool   $enabled  this way is the chosen one
  * @param string $form     the settings form's id
@@ -428,7 +429,8 @@ function pg_mail_way_account_select($provider, $accounts, $current, $enabled, $f
         }
 
         $options .= '<option value="' . (int) $account['id'] . '"' . (((int) $current === (int) $account['id']) ? ' selected' : '') . '>'
-            . h($account['label'] . (($account['status'] !== 'active') ? ' - ' . lang('Connect again') : '')) . '</option>';
+            . h($account['label'] . ((pg_mail_account_mark($account) !== '') ? ' · ' . pg_mail_account_mark($account) : '')
+                . (($account['status'] !== 'active') ? ' - ' . lang('Connect again') : '')) . '</option>';
     }
 
     if ($options === '') {

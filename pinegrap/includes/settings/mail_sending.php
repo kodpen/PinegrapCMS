@@ -47,7 +47,7 @@ if (empty($_GET['search'])) {
 }
 
 $mail_ready = pg_mail_settings_ready();
-$mail_accounts = pg_connect_accounts(array('user_id' => 0, 'purpose' => 'mail'));
+$mail_accounts = pg_mail_sending_accounts();
 $mail_providers = pg_mail_settings_providers();
 
 // A define's value as the box shows it. The passwords are never drawn back:
@@ -377,12 +377,7 @@ $pg_settings_cards[] = pg_settings_fold($mail_rows);
 // form attribute; forms cannot be nested. The service sends the browser back
 // to this category's page.
 foreach ($mail_providers as $mail_provider_key => $mail_provider) {
-    $mail_connect_key = h($mail_provider_key);
-
-    $pg_settings_modals[] = '
-            <form method="post" action="connect.php" id="pgset_mail_connect_' . $mail_connect_key . '" class="disable_shortcut d-none">
-                ' . pg_connect_start_fields($mail_provider_key, 'mail', pg_settings_url('mail_sending') . '#pgset-mail-system') . '
-            </form>';
+    $pg_settings_modals[] = pg_mail_connect_form('pgset_mail_connect_' . $mail_provider_key, $mail_provider_key, 'mail', pg_settings_url('mail_sending') . '#pgset-mail-system');
 }
 
 // The ways sheet shows the chosen way's fields and enables only its

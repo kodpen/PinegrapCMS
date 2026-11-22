@@ -3195,7 +3195,7 @@ function connections_account_items($provider_key, $accounts, $connect_purpose, $
 							<i class="bi bi-activity me-1" aria-hidden="true"></i>' . h(lang('Check')) . '</button>') . '
 					<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action"
 						data-action="disconnect" data-id="' . $account['id'] . '"
-						data-confirm="' . h(lang(array('string' => 'The site will no longer use {var:1}, and every feature that does stops until an account is connected again.', 'vars' => $account['label']))) . '">
+						data-confirm="' . h(pg_mail_account_disconnect_confirm($account['label'], pg_mail_account_uses($account['id']))) . '">
 						<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
 				</div>
 			</li>';
@@ -3310,7 +3310,7 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 							: '') . '
 						<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action"
 							data-action="disconnect" data-id="' . $account['id'] . '"
-							data-confirm="' . h(lang(array('string' => 'The site will no longer use {var:1}, and every feature that does stops until an account is connected again.', 'vars' => $account['label']))) . '">
+							data-confirm="' . h(pg_mail_account_disconnect_confirm($account['label'], pg_mail_account_uses($account['id']))) . '">
 							<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
 					</div>';
 			} else {

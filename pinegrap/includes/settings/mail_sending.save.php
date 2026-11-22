@@ -29,7 +29,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_sending_rows.php');
 if (isset($_POST['system_mail_way'])) {
     $mail_way_accounts = array();
 
-    foreach (pg_connect_accounts(array('user_id' => 0, 'purpose' => 'mail')) as $mail_way_account) {
+    foreach (pg_mail_sending_accounts() as $mail_way_account) {
         $mail_way_accounts[(int) $mail_way_account['id']] = (string) $mail_way_account['provider'];
     }
 
