@@ -4,7 +4,7 @@ description: The dashboard and the Users list follow the Site Settings module sw
 ---
 
 ## What is the rule?
-- A module switched off in Site Settings › Features is left out of the dashboard and the Users list as the main menu (`includes/fn/output.php`) and the bell (`includes/notifications.php`) leave it out. A greeting line links only to a screen whose own gate admits the reader. The permission rules and the target screens' gates did not change.
+- A module switched off in Site Settings › Features (the Modules board, `settings-features.md`; Commerce at the head of its own category) is left out of the dashboard and the Users list as the main menu (`includes/fn/output.php`) and the bell (`includes/notifications.php`) leave it out. A greeting line links only to a screen whose own gate admits the reader. The permission rules and the target screens' gates did not change.
 - Symptom fixed: with Calendars off a manager still saw the Calendars card and its link to `calendars.php`; with Forms off the Activity card had a Forms tile and the greeting counted submissions; a role 3 user with only, say, `manage_contacts` was offered `add_product.php`, `view_folders.php` or `settings_security.php` and landed on "Access denied".
 
 ## Which places follow which gate?

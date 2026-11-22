@@ -92,3 +92,31 @@ function test_ship_date_adjustment_form_wide_layout()
 		pg_assert_contains('pg_ship_date_adjustment_form_layout(', $screen, $file . ' prints the shared layout');
 	}
 }
+
+// A field posted as a list counts as not given and is refused as required:
+// mb_strlen() of a listed zip code prefix stopped the create and the edit
+// screen with a TypeError (HTTP 500).
+function test_ship_date_adjustment_form_list_fields_count_as_not_given()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array();
+
+	$form = new liveform('ship_date_adjustment_form_test');
+	$form->assign_field_value('zip_code_prefix', array('123'));
+	$form->assign_field_value('shipping_method_id', array('1'));
+	$form->assign_field_value('adjustment_days', array('3'));
+	$form->assign_field_value('adjustment_type', array('later'));
+
+	pg_ship_date_adjustment_form_check($form, null);
+
+	foreach (array('zip_code_prefix', 'shipping_method_id', 'adjustment_days', 'adjustment_type') as $field) {
+		pg_assert_true($form->check_field_error($field), $field . ' is refused as required');
+		pg_assert_same('', $form->get_field_value($field), $field . ' keeps no list');
+	}
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}

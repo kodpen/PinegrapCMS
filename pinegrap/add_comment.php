@@ -225,7 +225,7 @@ if ($liveform->check_form_errors() == true) {
 
 // if comments are disabled for the page, log and output error
 if ($comments == 0) {
-    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because comments are disabled','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because comments are disabled','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang('You do not have access to submit a comment to that page because comments are disabled.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -236,13 +236,13 @@ $allow_new_comments = pg_comments_allow_new($page_id, $item_type, $item_id, ($co
 
 // if new comments are not allowed, log and output error
 if ($allow_new_comments == FALSE) {
-    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because new comments are not allowed','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because new comments are not allowed','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(h($comments_disallow_new_comment_message) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // if the user is not logged in, and if the user is required to login to comment, then output an error
 if ((isset($_SESSION['sessionusername']) == FALSE) && ($comments_require_login_to_comment == 1)) {
-    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because visitor was not logged in','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because visitor was not logged in','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang(array('string'=>'You must login before you can submit a {var:1}.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -262,7 +262,7 @@ $user_role = $row['user_role'] ?? null;
 
 // if user does not have access to view page, log and output error
 if (check_view_access($folder_id) == false) {
-    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because visitor does not have view access to page','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because visitor does not have view access to page','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang(array('string'=>'You do not have access to submit a {var:1} to that page.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -363,7 +363,7 @@ if ($item_type == 'submitted_form') {
 
     // If the submitted form was not found, then log and output error.
     if (!$submitted_form['id']) {
-        log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the submitted form could not be found','vars'=>$page_name)), $_SESSION['sessionusername']);
+        log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the submitted form could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
         output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the submitted form could not be found.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
@@ -452,7 +452,7 @@ if ($item_type == 'submitted_form') {
         // If this visitor does not have view access to the submitted form.
         // then log and output error.
         if ($view_access == false) {
-            log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$submitted_form['reference_code'] ))), $_SESSION['sessionusername']);
+            log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$submitted_form['reference_code'] ))), $_SESSION['sessionusername'] ?? '');
             output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }

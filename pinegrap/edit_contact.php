@@ -404,7 +404,7 @@ if (!$_POST) {
         $query = "DELETE FROM opt_in WHERE contact_id = ?";
         $result = db_q($query, array((string) $id)) or output_error('Query failed.');
 
-        log_activity(lang(array('string' => 'contact ({var:1} {var:2}) was deleted', 'vars' => array($_POST['first_name'], $_POST['last_name']))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'contact ({var:1} {var:2}) was deleted', 'vars' => array(pg_contact_form_posted($_POST, 'first_name'), pg_contact_form_posted($_POST, 'last_name')))), $_SESSION['sessionusername']);
         
         $liveform_view_contacts = new liveform('view_contacts');
         $liveform_view_contacts->add_notice(lang('The contact has been deleted.'));
@@ -461,7 +461,7 @@ if (!$_POST) {
             pg_announce('affiliate.approved', pg_affiliate_approved_event($contact_id, $affiliate_code, (string) ($columns['affiliate_name'] ?? '')));
         }
 
-        log_activity( lang(array('string'=>'contact ({var:1} {var:2}) was modified','vars'=>array($_POST['first_name'],$_POST['last_name']) )), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'contact ({var:1} {var:2}) was modified', 'vars' => array($columns['first_name'], $columns['last_name']))), $_SESSION['sessionusername']);
           
         // The save ends on the contacts list when there is no send to (the
         // form always posts the hidden field, empty when the screen was

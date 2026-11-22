@@ -83,12 +83,28 @@ function test_contact_form_columns()
 		pg_assert_true(is_string($value), $name . ' is bound as a string');
 	}
 
-	pg_assert_same(count(pg_contact_form_text_columns()) + 6, count($columns), 'text columns and the six others');
+	pg_assert_same(count(pg_contact_form_text_columns()) + 7, count($columns), 'text columns and the seven others');
+	pg_assert_false(in_array('opt_in', pg_contact_form_text_columns(), true), 'opt-in is a number column');
 
 	$empty = pg_contact_form_columns(array(), 1);
 	pg_assert_same('0000-00-00', $empty['expiration_date'], 'no expiration date is a lifetime membership');
 	pg_assert_same('2027-12-31', pg_contact_form_columns(array('expiration_date' => '31.12.2027'), 1)['expiration_date'], 'a dotted date');
-	pg_assert_same('', $empty['file_id'], 'no file');
+
+	// The number columns get a number: '' reached them only with warning
+	// 1366, as the 0 the columns stored anyway.
+	pg_assert_same('0', $empty['file_id'], 'no file');
+	pg_assert_same('0', $empty['opt_in'], 'unticked opt-in');
+	pg_assert_same('0', pg_contact_form_columns(array('file_id' => array('42'), 'opt_in' => array('1')), 1)['file_id'], 'a file id posted as a list');
+}
+
+function test_contact_form_number_posted()
+{
+	pg_assert_same('42', pg_contact_form_number_posted(array('file_id' => '42'), 'file_id'), 'posted number');
+	pg_assert_same('1', pg_contact_form_number_posted(array('opt_in' => 1), 'opt_in'), 'number kept');
+	pg_assert_same('0', pg_contact_form_number_posted(array('file_id' => ''), 'file_id'), 'empty box');
+	pg_assert_same('0', pg_contact_form_number_posted(array(), 'file_id'), 'missing field');
+	pg_assert_same('0', pg_contact_form_number_posted(array('file_id' => array('42')), 'file_id'), 'array field');
+	pg_assert_same('0', pg_contact_form_number_posted(array('opt_in' => 'on'), 'opt_in'), 'text the column also stored as 0');
 }
 
 function test_contact_form_affiliate_columns()
@@ -101,10 +117,10 @@ function test_contact_form_affiliate_columns()
 	pg_assert_same('8.25', pg_contact_form_affiliate_columns(array('affiliate_commission_rate' => '8,25'), '')['affiliate_commission_rate'], 'decimal comma read as the decimal point');
 	pg_assert_same('8.25', pg_contact_form_affiliate_columns(array('affiliate_commission_rate' => ' 8.25 '), '')['affiliate_commission_rate'], 'decimal point kept');
 	pg_assert_same('999.99', pg_contact_form_affiliate_columns(array('affiliate_commission_rate' => '1000'), '')['affiliate_commission_rate'], 'held to the column');
-	pg_assert_same('', pg_contact_form_affiliate_columns(array('affiliate_commission_rate' => '  '), '')['affiliate_commission_rate'], 'blank stays blank for the default');
+	pg_assert_same('0', pg_contact_form_affiliate_columns(array('affiliate_commission_rate' => '  '), '')['affiliate_commission_rate'], 'blank is 0, the default rate');
 
 	pg_assert_same(
-		array('affiliate_approved' => '', 'affiliate_name' => '', 'affiliate_code' => '', 'affiliate_commission_rate' => ''),
+		array('affiliate_approved' => '0', 'affiliate_name' => '', 'affiliate_code' => '', 'affiliate_commission_rate' => '0'),
 		pg_contact_form_affiliate_columns(array(), null),
 		'unticked box and no code');
 }
@@ -152,6 +168,16 @@ function test_contact_form_screens_use_the_shared_form()
 		pg_assert_contains('validate_contacts_access($user);', $source, $file . ': contacts gate');
 		pg_assert_contains('pg_contact_form_detail_cards(', $source, $file . ': shared cards');
 		pg_assert_contains('pg_contact_form_save_groups(', $source, $file . ': shared group save');
+	}
+
+	// The activity log names the contact from the checked values: a name
+	// posted as a list logged "Array to string conversion", a missing one
+	// "Undefined array key".
+	foreach (array('add_contact.php', 'edit_contact.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_false(strpos($source, "\$_POST['first_name']") !== false, $file . ': no raw first name');
+		pg_assert_false(strpos($source, "\$_POST['last_name']") !== false, $file . ': no raw last name');
 	}
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_contact.php');

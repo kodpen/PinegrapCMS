@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Edit Product: a head and a Performance card, the rest as it is, proposal (2026-11-22)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<link rel="stylesheet" href="parts.css">
+<style>
+.pcols { display: grid; grid-template-columns: 208px 716px 376px; gap: 24px; align-items: start; }
+.nav { display: grid; gap: 2px; font-size: 13.5px; }
+.nav span { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 9px; color: var(--fg2); }
+.nav span.on { color: var(--fg); font-weight: 600; background: var(--quiet); box-shadow: inset 2px 0 0 var(--accent); }
+.nav i { font-size: 14px; }
+.nw { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--accent); }
+.figs { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); }
+.fg { padding: 12px 18px 12px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.fg:nth-child(4n) { border-right: 0; }
+.fg small { display: block; font-size: 12px; color: var(--fg3); }
+.fg b { font: 650 20px/1.35 "Inter Display", Inter, sans-serif; letter-spacing: -.02em; }
+.fg em { display: block; font-style: normal; font-size: 12px; color: var(--teal); font-weight: 550; }
+.fg em.dn { color: var(--rose); } .fg em.nt { color: var(--fg3); font-weight: 400; }
+.now { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 28px; padding: 12px 18px 14px; font-size: 13px; }
+.now div { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+.now div.w { grid-column: 1 / 3; }
+.now div > i:first-child { width: 16px; text-align: center; color: var(--fg3); }
+.now b { font-weight: 600; }
+.now .t3 { color: var(--fg3); }
+.now a { margin-left: auto; font-size: 12.5px; }
+.skc { display: block; border-radius: 10px; background: var(--sk); }
+.phd img, .thumb { width: 48px; height: 48px; border-radius: 12px; }
+.st3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.st3 .pcard { min-height: 150px; }
+</style>
+<script>if (location.search === "?light") { document.documentElement.dataset.theme = "light"; }</script>
+</head>
+<body>
+<div class="stage">
+
+<div class="board">
+<div class="cap"><b>P1 · Ürünü Düzenle: baş ve Performans kartı</b><small>1440 px pencere. Ekranın geri kalanı (bölümler, önizleme, kaydet çubuğu) bugünkü gibi; yeni olan baş ile en üstteki Performans kartı</small></div>
+<div class="scr">
+  <div class="tb"><span class="logo"></span><span class="ttl">Yeşil Ofis Sandalyesi</span><span class="in"><i class="bi bi-search"></i><span class="ph">Ara…</span><span class="end"><kbd>Ctrl K</kbd></span></span><span class="sp"></span><span class="c"></span><span class="c"></span><span class="c"></span><span class="u"></span></div>
+  <div class="rail"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+  <div class="pg">
+    <div class="crumb"><i class="bi bi-arrow-left"></i> Tüm Ürünler <i class="bi bi-chevron-right"></i> <span>Ürünü Düzenle</span></div>
+    <span class="mark" style="left:44px;top:100px">1</span>
+    <div class="oh" style="align-items:center">
+      <span class="im thumb t-teal" style="display:grid;place-items:center;font-size:20px;color:var(--teal);background:color-mix(in srgb,var(--teal) 22%,transparent);box-shadow:inset 0 0 0 1px var(--line)"><i class="bi bi-box-seam"></i></span>
+      <div>
+        <h1>Yeşil Ofis Sandalyesi<span class="st t-teal">Etkin</span><span class="st t-teal">Stokta · 14</span></h1>
+        <div class="sub"><span class="num" style="color:var(--fg2)">20G</span> <i class="bi bi-copy"></i> · <span class="num">₺299,95</span> · Ofis Koltukları · son değişiklik 3 gün önce</div>
+      </div>
+      <div class="acts"><span class="btn ghost"><i class="bi bi-copy"></i> Çoğalt</span><span class="btn ghost"><i class="bi bi-ui-checks"></i> Ürün Formu</span><span class="btn ghost"><i class="bi bi-box-arrow-up-right"></i> Sitede Gör</span></div>
+    </div>
+    <div class="pcols">
+      <div class="nav">
+        <span class="on"><i class="bi bi-graph-up-arrow"></i> Performans</span>
+        <span><i class="bi bi-image"></i> Görseller</span><span><i class="bi bi-info-circle"></i> Temel Bilgiler</span><span><i class="bi bi-diagram-3"></i> Ürün Özellikleri</span><span><i class="bi bi-folder"></i> Üst Ürün Grupları</span><span><i class="bi bi-credit-card"></i> Ödeme Seçenekleri</span><span><i class="bi bi-search"></i> Site Araması ve SEO</span><span><i class="bi bi-rss"></i> RSS Beslemesi</span><span><i class="bi bi-sliders"></i> Gelişmiş Ayarlar</span>
+      </div>
+      <div style="display:grid;gap:16px">
+        <span class="mark" style="left:281px;top:182px">2</span>
+        <div class="pcard">
+          <div class="ct" style="padding-bottom:12px">Performans <span class="r"><span class="seg"><span>30 gün</span><span class="on">12 ay</span><span>Tümü</span></span></span></div>
+          <div class="figs">
+            <div class="fg"><small>Satılan adet</small><b class="num">128</b><em class="">↑ %12</em></div><div class="fg"><small>Ciro</small><b class="num">₺34.540,24</b><em class="">↑ %8</em></div><div class="fg"><small>Sipariş</small><b class="num">97</b><em class="dn">↓ %3</em></div><div class="fg"><small>Görüntülenme</small><b class="num">4.210</b><em class="">↑ %21</em></div><div class="fg"><small>Dönüşüm</small><b class="num">%2,3</b><em class="nt">100 görüntülemede 2,3 sipariş</em></div><div class="fg"><small>İade</small><b class="num">4 adet</b><em class="nt">satılanın %3,1’i</em></div><div class="fg"><small>Kâr marjı</small><b class="num">%38</b><em class="nt">Muhasebe açıkken</em></div><div class="fg"><small>Son satış</small><b class="num">3 gün önce</b><em class="nt">19 Kas 2026</em></div>
+          </div>
+          <div style="padding:14px 18px 6px"><div class="gl">Aylara göre satılan adet</div><div class="bars"><i style="height:30%"></i><i style="height:42%"></i><i style="height:38%"></i><i style="height:55%"></i><i style="height:48%"></i><i style="height:60%"></i><i style="height:72%"></i><i style="height:58%"></i><i style="height:66%"></i><i style="height:80%"></i><i style="height:74%"></i><i style="height:100%" class="hi"></i></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fg3);margin-top:5px"><span>Ara 2025</span><span>Kas 2026</span></div></div>
+          <span class="mark" style="left:-22px;top:392px">3</span>
+          <hr class="h" style="margin-top:10px">
+          <div class="gl" style="padding:12px 18px 0;margin:0">Sepetler ve ilgi</div>
+          <div class="now" style="padding-top:8px">
+            <div class="w"><i class="bi bi-cart-x"></i> Bırakılan sepetlerde <b class="num">23 sepet</b> <span class="t3">· 31 adet</span> <a class="lk">Sepetleri gör</a></div>
+            <div><i class="bi bi-cart"></i> Açık sepetlerde <b class="num">5 sepet</b> <span class="t3">· son 6 saat</span></div>
+            <div><i class="bi bi-heart"></i> Favorilerde <b class="num">41 kişi</b></div>
+            <div><i class="bi bi-bell"></i> Stok bekleyen <b class="num">12 kişi</b></div>
+            <div><i class="bi bi-bookmark"></i> Sonraya kaydeden <b class="num">7 sepet</b></div>
+            <div><i class="bi bi-star"></i> Değerlendirme <b class="num">4,6</b> <span class="t3">· 18 yorum</span></div>
+          </div>
+          <hr class="h">
+          <div style="padding:10px 18px 12px;font-size:13px;display:flex;gap:18px"><a class="lk">Bu ürünün siparişleri</a><span class="sp"></span><span style="color:var(--fg3);font-size:12px">10 dakikada bir yenilenir</span></div>
+        </div>
+        <div class="pcard"><div style="padding:16px 18px"><div style="display:flex;gap:12px"><span class="skc" style="width:76px;height:76px"></span><span class="skc" style="width:76px;height:76px"></span><span class="skc" style="width:76px;height:76px"></span><span class="skc" style="width:76px;height:76px"></span></div><div class="mini" style="margin-top:12px;color:var(--fg3)">Görseller, Temel Bilgiler ve diğer bölümler bugünkü gibi devam eder</div></div></div>
+      </div>
+      <div style="display:grid;gap:16px">
+        <span class="btn quiet" style="justify-content:center"><i class="bi bi-clipboard-check"></i> Çalışma Alanı</span>
+        <div class="pcard"><div class="ct"><i class="bi bi-eye" style="color:var(--accent)"></i> Önizleme</div><div class="cb"><span class="skc" style="height:150px;width:170px"></span><span class="skc" style="height:64px;margin-top:12px"></span><span class="skc" style="height:48px;margin-top:12px"></span><div class="mini" style="margin-top:12px;color:var(--fg3)">Bugünkü gibi</div></div></div>
+      </div>
+    </div>
+    <div class="save" style="margin-left:232px"><span class="sp"></span><span class="btn fill"><i class="bi bi-check2-circle"></i> Kaydet</span><span class="btn quiet"><i class="bi bi-arrow-repeat"></i> Kaydet ve Düzenlemeye Devam Et</span><span class="btn ghost" style="color:var(--rose)"><i class="bi bi-trash3"></i> Sil</span></div>
+  </div>
+</div>
+<ul class="notes">
+  <li><i class="mk">1</i><b>Ürünün başı</b> (yeni): kapak görseli, ad, etkin mi, stok durumu, SKU, fiyat, grubu. Bugünkü düğmeler (Çoğalt, Ürün Formu) sağında; "Sitede Gör" ürünün sayfasını açar.</li>
+  <li><i class="mk">2</i><b>Performans kartı</b> (yeni): seçilen dönemde satılan adet, ciro, sipariş, görüntülenme, dönüşüm, iade, kâr marjı ve son satış; altında aylara göre satış. Yüzdeler bir önceki aynı uzunluktaki döneme göre.</li>
+  <li><i class="mk">3</i><b>Sepetler ve ilgi.</b> Bırakılan sepet: seçilen dönemde ürünün içinde kaldığı, 6 saattir dokunulmamış, tamamlanmamış sepet (sepet hatırlatma e-postasının kuralı). Diğer satırlar bugünkü durumdur.</li>
+  <li><b>Yalnız okunur.</b> Kart hiçbir şeyi değiştirmez, Kaydet'e girmez. Sayfa açıldıktan sonra yüklenir; form beklemez.</li>
+  <li><b>Yeni ürün eklerken</b> kart ve bölümü yoktur. Hiç satılmamış üründe rakamlar sıfır değil "Henüz satış yok" der; görüntülenme ve sepet satırları yine görünür.</li>
+  <li><b>Kimler görür:</b> ürünü düzenleyebilen herkes; kâr marjı yalnız Muhasebe açıkken ve muhasebe yetkisi olana.</li>
+</ul>
+</div>
+
+<div class="board">
+<div class="cap"><b>P2 · Kartın hâlleri</b><small>Yüklenirken, hiç satış yokken, telefonda</small></div>
+<div class="st3" style="width:1348px">
+  <div class="pcard"><div class="ct" style="padding-bottom:12px">Performans <span class="r"><span class="seg"><span class="on">30 gün</span><span>12 ay</span><span>Tümü</span></span></span></div><div class="figs" style="grid-template-columns:1fr 1fr"><div class="fg" style="border-right:1px solid var(--line)"><span class="skc" style="height:10px;width:70px"></span><span class="skc" style="height:20px;width:96px;margin-top:8px"></span></div><div class="fg" style="border-right:0"><span class="skc" style="height:10px;width:70px"></span><span class="skc" style="height:20px;width:96px;margin-top:8px"></span></div><div class="fg" style="border-right:1px solid var(--line)"><span class="skc" style="height:10px;width:70px"></span><span class="skc" style="height:20px;width:96px;margin-top:8px"></span></div><div class="fg" style="border-right:0"><span class="skc" style="height:10px;width:70px"></span><span class="skc" style="height:20px;width:96px;margin-top:8px"></span></div></div><div class="mini" style="padding:12px 18px;color:var(--fg3)">Yüklenirken: iskelet, sayfa beklemez</div></div>
+  <div class="pcard"><div class="ct" style="padding-bottom:12px">Performans <span class="r"><span class="seg"><span class="on">30 gün</span><span>12 ay</span><span>Tümü</span></span></span></div><hr class="h"><div style="padding:18px;text-align:center"><span class="tile lg" style="margin:0 auto 10px"><i class="bi bi-graph-up-arrow"></i></span><b style="font-weight:600">Bu dönemde satış yok</b><div class="mini" style="margin-top:4px">Görüntülenme <b class="num" style="color:var(--fg)">312</b> · Favorilerde <b class="num" style="color:var(--fg)">4 kişi</b></div></div></div>
+  <div class="pcard"><div class="ct" style="padding-bottom:12px">Performans</div><div style="padding:0 18px 10px"><span class="seg" style="display:flex"><span style="flex:1">30 gün</span><span class="on" style="flex:1">12 ay</span><span style="flex:1">Tümü</span></span></div><div class="figs" style="grid-template-columns:1fr 1fr"><div class="fg" style="border-right:1px solid var(--line)"><small>Satılan adet</small><b class="num">128</b><em class="">↑ %12</em></div><div class="fg" style="border-right:0"><small>Ciro</small><b class="num">₺34.540</b><em class="">↑ %8</em></div></div><div class="mini" style="padding:12px 18px;color:var(--fg3)">Telefonda rakamlar iki sütun</div></div>
+</div>
+</div>
+
+</div>
+</body>
+</html>
