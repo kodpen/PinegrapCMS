@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-trial
-description: A flow's draft tried from start to end without running it (ws_flow_trial()): record, walk, each box as its try, reads, Wait, chosen outcomes, rights, panel action, API route
+description: A flow's draft tried from start to end without running it (ws_flow_trial(), #11100): record, walk, each box as its try, reads, Wait, chosen outcomes, rights, panel action, API route
 ---
 
 ## What does it do?
@@ -23,7 +23,7 @@ description: A flow's draft tried from start to end without running it (ws_flow_
 - Each step gives `text`, `outcome`, `status` (as `ws_step_node_values()`) and its values as text.
 - Read with the owner's rights: Read a record, Read a row, Read rows (their `ws_step_*_do()`, which write nothing) and Read the records of a list (`ws_flow_records_window_try()`, no window moves). A condition on a value reads the carried values (`ws_flow_condition_value_holds()`, now also in a box's try with a run).
 - A Wait gives `waited_until` (the moment it would end), never waits. A For each gives `count` and its first item (`index` 1, `item`, fields): the loop's boxes are walked once.
-- A box that sends, writes or calls gives nothing more (a message id only a real send knows).
+- A box that sends, writes or calls gives nothing more (a message id).
 
 ## Who may, and where is it offered?
 - The owner alone, as a box's try (`ws_flow_share_manager()`, 403 before anything is read); an owner off the staff: 422.
