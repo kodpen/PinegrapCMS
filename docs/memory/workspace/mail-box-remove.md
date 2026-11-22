@@ -17,7 +17,7 @@ description: Removing a mailbox (Site Settings › Mailboxes, MT1 #10900): the r
 - A submit button of the pane's settings form named `ws_mail_remove`, value the box's id; `mailboxes.save.php` runs it after the drawer's save, like Test connection.
 
 ## What does the confirm say?
-- `ws_mail_box_remove_confirm()`: "Remove the mailbox …? Reading stops, the stored password is deleted and its incoming mail rules go. The conversations stay where they are." After it: "The mailbox was removed. Its conversations stay where they are."
+- `ws_mail_box_remove_confirm()`: "Remove the mailbox …? Reading stops, the stored password is deleted and its incoming mail rules go. The conversations stay where they are." A box whose connected account sends the site's e-mail adds that the account stays connected (EM4, `api/mail-one-account.md`); no connected account is ever removed. After it: "The mailbox was removed. Its conversations stay where they are."
 
 ## Where is the button?
 - In the box row's "more" menu (`ws_mail_box_menu()`), the Design examples' Menus part (#10852): Turn off or Turn on, a divider, then Remove in danger. Its confirm is asked by a captured click listener in `ws_mail_settings_script()` (`data-ws-mail-confirm`), so it works in the settings dialog too. The drawer's foot has Remove mailbox too (`mail-box-drawer.md`).
