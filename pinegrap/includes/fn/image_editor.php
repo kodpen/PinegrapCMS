@@ -5288,6 +5288,9 @@ function pg_image_editor_strings_data()
         'dataMore'    => lang('%d more rows'),
         'dataCount'   => lang('Count'),
         'dataOther'   => lang('Other'),
+        // A file the Workspace keeps draws no rows; an export is a still.
+        'dataBare'    => lang('The rows show where the canvas is opened.'),
+        'dataStill'   => lang('A saved picture keeps the rows as they are now and does not follow the table. The canvas opened again reads them anew.'),
         // The Data menu, its picker and the layer's panel.
         'dataPickTable'     => lang('Pick a table'),
         'dataPickView'      => lang('Pick a view'),

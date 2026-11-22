@@ -12638,7 +12638,40 @@
         return dataCheck(out).ok ? dataCheck(out).data : null;
     }
 
+    // The tables a document's data layers name, in the open scene and every
+    // other one, once each in the order they first come, as strings.
+    function dataTablesOf(doc) {
+        var out = [], lists = [(doc && Array.isArray(doc.layers)) ? doc.layers : []];
+
+        ((doc && Array.isArray(doc.scenes)) ? doc.scenes : []).forEach(function (sc) {
+            lists.push((sc && Array.isArray(sc.layers)) ? sc.layers : []);
+        });
+        lists.forEach(function (layers) {
+            layers.forEach(function (l) {
+                var id = (l && (l.type === 'data') && l.data) ? (parseInt(l.data.table, 10) || 0) : 0;
+
+                if ((id > 0) && (out.indexOf(String(id)) < 0)) {
+                    out.push(String(id));
+                }
+            });
+        });
+
+        return out;
+    }
+
+    // Is the picture a save draws kept by the Workspace (the caller's
+    // save.url: a channel's or a note's canvas, edited in place or sent), or
+    // a copy sent to a channel (to.url)? That file is shown to every reader
+    // of the channel and to a guest, whatever table they may read, so its
+    // data layers are drawn with no rows; the card draws them again for each
+    // reader. A copy into Files (to.folder), a File Manager save and a
+    // download keep the rows of now: a still.
+    function dataSendBare(mode, to) {
+        return to ? !!to.url : (mode === 'url');
+    }
+
     var DATA = {
+        dataTablesOf: dataTablesOf, dataSendBare: dataSendBare,
         DATA_SIZES: DATA_SIZES, DATA_SAMPLE_ROWS: DATA_SAMPLE_ROWS, dataColumns: dataColumns, dataStart: dataStart, dataFits: dataFits, dataShowKinds: dataShowKinds, dataWithKind: dataWithKind,
         DATA_KINDS: DATA_KINDS, DATA_GROUPS: DATA_GROUPS, DATA_SORTS: DATA_SORTS, DATA_MAX: DATA_MAX, DATA_GUIDE: DATA_GUIDE,
         dataCheck: dataCheck, dataNumber: dataNumber, dataText: dataText, dataFormat: dataFormat, dataStep: dataStep,

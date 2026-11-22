@@ -10,7 +10,10 @@
  * and drawArtboard() of a painter that opens no dialog) and posts the PNG
  * once to workspace_file_save.php, action canvas_picture. The server takes
  * the first one (ws_canvas_picture_take()) and answers the others 409;
- * nothing is shown to the person either way.
+ * nothing is shown to the person either way. Its data layers are drawn
+ * with no rows (bare): that file is seen by every reader of the channel and
+ * a guest, whatever table they may read, as the editor's own Workspace
+ * save draws it (M.dataSendBare()).
  *
  * A canvas whose newest version holds a data layer (file.canvas_data)
  * follows its tables: follow() draws the document again in this browser,
@@ -87,8 +90,8 @@
     // The document drawn as the editor's Save draws an artboard, without
     // opening the editor: a painter on the editor's prototype with only the
     // state its layer types read while loading and painting; its data
-    // layers drawn from reads.
-    function render(doc, reads) {
+    // layers drawn from reads, or with no rows when bare.
+    function render(doc, reads, bare) {
         var parts = window.PgImageEditor && window.PgImageEditor.parts;
         var opened = parts ? parts.M.canvasOpenDoc(doc) : null;
 
@@ -103,6 +106,7 @@
         painter.textFonts = {};
         painter.dataReads = readsFor(opened, reads);
         painter.dataAsked = {};
+        painter.dataBareDraw = !!bare;
         painter.layersDirty = true;
         painter.renderView = function () { /* no stage to draw */ };
 
@@ -130,8 +134,8 @@
         var url = h.cfg.urls.file_save + '?message=' + encodeURIComponent(message.id)
             + ((file.canvas_part === 'drawing') ? '&part=drawing' : '');
 
-        return Promise.all([window.pgImageEditor.load(), fetchDoc(url, h.cfg.token), file.canvas_data ? fetchReads(url, h.cfg.token) : null]).then(function (loaded) {
-            return loaded[1] ? render(loaded[1], loaded[2]) : null;
+        return Promise.all([window.pgImageEditor.load(), fetchDoc(url, h.cfg.token)]).then(function (loaded) {
+            return loaded[1] ? render(loaded[1], null, true) : null;
         }).then(function (picture) {
             if (!picture) {
                 return null;

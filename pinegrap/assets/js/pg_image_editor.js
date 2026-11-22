@@ -1943,6 +1943,7 @@
                 el('label', { class: 'pgie-files-label', for: 'pgie-files-folder', text: t('filesFolder') }),
                 select,
                 note,
+                this.dataStillLine ? this.dataStillLine() : null,
                 el('div', { class: 'pgie-confirm-actions' }, [cancel, go])
             ])
         ]);
@@ -2045,6 +2046,10 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+
+            if (self.dataStillSay) {
+                self.dataStillSay();
+            }
         }, function () {
             self.showMessage(t('saveError'), true);
         });
@@ -2226,7 +2231,8 @@
             }
 
             body.name = (this.opts.save && this.opts.save.name) || this.opts.fileName || '';
-            body.picture = this.drawArtboard();
+            // The Workspace's file keeps its data layers' frames, no rows.
+            body.picture = (this.drawArtboardBare && M.dataSendBare(mode, to)) ? this.drawArtboardBare() : this.drawArtboard();
         } else {
             if (mode !== 'url') {
                 body.file_id = this.opts.fileId;

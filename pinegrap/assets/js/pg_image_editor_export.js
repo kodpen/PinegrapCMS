@@ -237,6 +237,11 @@
             body.appendChild(el('p', { class: 'pgie-note', text: t('exCopyNote') }));
         }
 
+        // The saved picture of a document with data layers is a still.
+        if (this.dataStillLine && this.dataStillLine()) {
+            body.appendChild(this.dataStillLine());
+        }
+
         body.appendChild(el('button', { type: 'button', class: 'pgie-btn pgie-primary pgie-wide', text: t('exSaveWith'), onclick: function () { self.save(); } }));
     };
 
