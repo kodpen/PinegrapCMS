@@ -1804,7 +1804,10 @@ define('WS_FLOW_LIST_SCAN', 500);
  *
  * @param array         $viewer
  * @param array         $flow
- * @param array         $filters status (open, or a run status), before_id, limit
+ * @param array         $filters status (open, or a run status), before_id, limit;
+ *                               node and state (ws_flow_counts_states()) for
+ *                               the runs of one count of a box, days for
+ *                               its passed and failed (ws_flow_counts_days())
  * @param callable|null $keep    a further test a run must pass to be listed
  * @return array rows (each with access), next (the id to read on from, null on the last page)
  */
@@ -1817,6 +1820,16 @@ function ws_flow_runs_list($viewer, $flow, $filters = array(), $keep = null)
         $where[] = "status IN ('running', 'waiting')";
     } elseif (isset(ws_flow_run_statuses()[$status])) {
         $where[] = "status = '" . e($status) . "'";
+    }
+
+    // The runs behind one count of a box (flow_counts.php).
+    if (isset($filters['node'], $filters['state'])) {
+        $since = in_array((string) $filters['state'], array('passed', 'failed'), true) ? time() - (ws_flow_counts_days($filters['days'] ?? null) * 86400) : 0;
+        $node_where = ws_flow_runs_node_where((string) $filters['node'], (string) $filters['state'], $since);
+
+        if ($node_where !== '') {
+            $where[] = $node_where;
+        }
     }
 
     $limit = max(1, min(100, (int) ($filters['limit'] ?? 50)));

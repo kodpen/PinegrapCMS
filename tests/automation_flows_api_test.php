@@ -39,7 +39,7 @@ function test_automation_flows_api_module_switch()
 	pg_assert_true(file_exists($modules['flows']['file']), 'its file is there');
 }
 
-// The 27 flow routes, unchanged, and nothing else of the Workspace.
+// The 28 flow routes, unchanged, and nothing else of the Workspace.
 function test_automation_flows_api_routes()
 {
 	$all = ws_api_routes();
@@ -54,8 +54,8 @@ function test_automation_flows_api_routes()
 		pg_assert_true(function_exists($route['handler']), $route['id'] . ' has its handler');
 	}
 
-	pg_assert_same(27, count($picked), 'the 27 flow routes');
-	pg_assert_same(array('workspace:read' => 12, 'workspace:write' => 15), array('workspace:read' => $scopes['workspace:read'], 'workspace:write' => $scopes['workspace:write']), 'their scopes');
+	pg_assert_same(28, count($picked), 'the 28 flow routes');
+	pg_assert_same(array('workspace:read' => 13, 'workspace:write' => 15), array('workspace:read' => $scopes['workspace:read'], 'workspace:write' => $scopes['workspace:write']), 'their scopes');
 	pg_assert_same(2, count($scopes), 'no other scope');
 
 	foreach ($all as $route) {

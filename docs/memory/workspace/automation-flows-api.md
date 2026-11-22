@@ -10,7 +10,7 @@ module: automation_flows
 - The mail routes have a module of their own built the same way (`mail`, `api_mail_alone.php`, `mail-workspace-off.md`); with both on, this module's permission row, read first, says "Automation flows and e-mail".
 
 ## What does it merge?
-- The 27 routes whose id starts with `workspace.flows.` or `workspace.flow_` (flows, versions, templates, kinds, shares, runs, the trial): 12 under `workspace:read`, 15 under `workspace:write`. Ids, paths, scopes and handlers are the Workspace's, so a key keeps working when the switch changes.
+- The 28 routes whose id starts with `workspace.flows.` or `workspace.flow_` (flows, versions, templates, kinds, shares, runs, the trial, the counts): 13 under `workspace:read`, 15 under `workspace:write`. Ids, paths, scopes and handlers are the Workspace's, so a key keeps working when the switch changes.
 - The objects named `WorkspaceFlow*` and the four events `workspace.flow.run.finished/failed/cancelled/waiting`.
 - The MCP server reads `api_schema()`, so it offers the same tools as with the Workspace on.
 - A new flow route keeps an id starting `workspace.flows.` or `workspace.flow_`, and a new flow object a name starting `WorkspaceFlow`, or it stays dark with the Workspace off (`tests/automation_flows_api_test.php` fails for a `/workspace/flow…` path left out).
@@ -19,4 +19,4 @@ module: automation_flows
 - The Application Access screen shows one row, Automation flows, holding `workspace:read` and `workspace:write`. The ceiling is `ws_owner_scopes()` kept to those two: a member of the team (`ws_rights()`, which never asks the switch). Channel commands and Tasks are not offered.
 
 ## How is it tested?
-- `tests/automation_flows_api_test.php`: the switch, the 27 routes and their scopes, every `/workspace/flow…` route picked, the events, every object a route or object names is merged, the scope row and the ceiling.
+- `tests/automation_flows_api_test.php`: the switch, the 28 routes and their scopes, every `/workspace/flow…` route picked, the events, every object a route or object names is merged, the scope row and the ceiling.

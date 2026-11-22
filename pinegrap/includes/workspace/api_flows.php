@@ -1538,7 +1538,8 @@ function ws_api_flow_runs_list($params)
 
     // Each run with its own access: its flow's owner reads them all, anybody
     // else those started in a channel they read.
-    $page = ws_flow_runs_list($viewer, $flow, array('status' => (string) ($params['status'] ?? ''), 'before_id' => $before, 'limit' => $limit), function ($run) use ($viewer, $flow) {
+    $page = ws_flow_runs_list($viewer, $flow, array('status' => (string) ($params['status'] ?? ''), 'before_id' => $before, 'limit' => $limit,
+        'node' => (string) ($params['node'] ?? ''), 'state' => (string) ($params['state'] ?? ''), 'days' => $params['days'] ?? null), function ($run) use ($viewer, $flow) {
         return ws_api_flow_run_reachable($viewer, $flow, $run);
     });
     $version_ids = array();
@@ -1563,6 +1564,55 @@ function ws_api_flow_runs_list($params)
     }
 
     api_ok_list($out, $limit, ($page['next'] !== null) ? api_cursor_encode($page['next'], $page['next']) : null);
+}
+
+// What ws_api_flow_counts() returns.
+function ws_api_flow_counts_schema()
+{
+    return array(
+        'days'    => 'integer',
+        'since'   => 'integer',
+        'boxes'   => 'WorkspaceFlowBoxCount[]',
+        'partial' => 'boolean',
+    );
+}
+
+// One box's line of the counts.
+function ws_api_flow_box_count_schema()
+{
+    return array(
+        'node'    => 'string',
+        'waiting' => 'integer',
+        'passed'  => 'integer',
+        'failed'  => 'integer',
+    );
+}
+
+// The counts of a flow's boxes over the runs the runs list reaches: the
+// application Claude works through counts only the runs of channels where
+// it may be asked, besides its owner's own flows.
+function ws_api_flow_counts($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_or_404($viewer, $params['id']);
+    $keep = null;
+
+    if (ws_api_is_claude() && ((int) $flow['owner_id'] !== (int) $viewer['id'])) {
+        $keep = function ($run) use ($viewer, $flow) {
+            return ws_api_flow_run_reachable($viewer, $flow, $run);
+        };
+    }
+
+    $counts = ws_flow_counts($viewer, $flow, $params['days'] ?? null, $keep);
+
+    if (!$counts['ok']) {
+        api_fail_not_found(lang('Flow'));
+    }
+
+    api_ok(array('days' => $counts['days'], 'since' => $counts['since'], 'boxes' => $counts['boxes'], 'partial' => $counts['partial']));
 }
 
 function ws_api_flow_runs_get($params)

@@ -383,7 +383,7 @@ function ws_flow_actions_without_workspace()
         'ws_flow_template_setup', 'ws_flow_quick_setup', 'ws_flow_ai_sketch',
         'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
         'ws_flow_run_start', 'ws_flow_run_now', 'ws_flow_runs_list', 'ws_flow_run_get',
-        'ws_flow_run_cancel', 'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_web_address',
+        'ws_flow_run_cancel', 'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_trial', 'ws_flow_counts', 'ws_flow_web_address',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
     );
 }
@@ -1089,7 +1089,9 @@ function ws_handle_action($action, $request)
             }
 
             // A small page, newest first: the side panel of the canvas.
-            $page = ws_flow_runs_list($viewer, $flow, array('before_id' => (int) ($request['before_id'] ?? 0), 'limit' => 20));
+            // node and state narrow it to the runs behind a box's count.
+            $page = ws_flow_runs_list($viewer, $flow, array('before_id' => (int) ($request['before_id'] ?? 0), 'limit' => 20,
+                'node' => (string) ($request['node'] ?? ''), 'state' => (string) ($request['state'] ?? ''), 'days' => $request['days'] ?? null));
             $numbers = ws_flow_version_numbers($page['rows']);
             $results = ws_flow_runs_results($page['rows']);
 
@@ -1192,6 +1194,24 @@ function ws_handle_action($action, $request)
             unset($result['ok'], $result['error'], $result['status'], $result['field']);
 
             return ws_action_ok(array('trial' => $result));
+
+        // The counts of the flow's boxes (flow_counts.php): the runs waiting
+        // at each now and its passes done and failed in the days, over the
+        // runs the person reads, as the runs list reads them.
+        case 'ws_flow_counts':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
+
+            if (!$flow) {
+                return ws_action_error(lang('That flow could not be found.'));
+            }
+
+            $counts = ws_flow_counts($viewer, $flow, $request['days'] ?? null);
+
+            if (!$counts['ok']) {
+                return ws_action_error($counts['error']);
+            }
+
+            return ws_action_ok(array('counts' => array('days' => $counts['days'], 'since' => $counts['since'], 'boxes' => $counts['boxes'], 'partial' => $counts['partial'])));
 
         // The web address of a flow started by one (flow_web_start.php):
         // shown to and renewed by those who may edit the flow; a renewed
