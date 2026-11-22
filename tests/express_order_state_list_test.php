@@ -146,9 +146,9 @@ function test_express_order_state_list_wiring()
 function test_express_order_state_list_order_screen_labels()
 {
 	$php = express_order_state_list_test_source('view_order.php');
-	pg_assert_contains('$billing_place_labels = pg_address_labels($billing_country);', $php);
-	pg_assert_contains("lang(\$billing_place_labels['city'])", $php);
-	pg_assert_contains("lang(\$billing_place_labels['state'])", $php);
+	// The billing card prints the address as a postal address, with no
+	// City or State label to name the Turkish way.
+	pg_assert_contains("pg_order_view_address_block(\$billing_address, 'pg_billing_address')", $php);
 	pg_assert_false(strpos($php, "lang('City') . ':</span>") !== false, 'no fixed City label left on the billing card');
 	pg_assert_same(array('city' => 'District', 'state' => 'Province'), pg_address_labels('TR'));
 }

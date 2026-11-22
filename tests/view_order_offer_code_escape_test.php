@@ -23,8 +23,9 @@ function test_view_order_offer_code_escape()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
 
 	foreach (array('special_offer_code', 'reference_code') as $name) {
-		pg_assert_same(false, strpos($source, "'<span class=\"text-end text-break\">' . \$" . $name . " . '</span>"), $name . ' printed raw');
-		pg_assert_same(false, strpos($source, "<span class=\"text-end text-break\">' . \$" . $name . " . '</span>"), $name . ' printed raw');
-		pg_assert_contains("<span class=\"text-end text-break\">' . h(\$" . $name . ") . '</span>", $source, $name . ' escaped');
+		pg_assert_same(false, strpos($source, "' . \$" . $name . " . '"), $name . ' printed raw');
+		pg_assert_contains("h(\$" . $name . ")", $source, $name . ' escaped');
 	}
+	pg_assert_contains("pg_order_view_kv(lang('Special Offer Code'), h(\$special_offer_code))", $source, 'the Order Information row');
+	pg_assert_contains("'<span id=\"pg_order_reference_code\" class=\"pg-tabular\">' . h(\$reference_code) . '</span>", $source, 'the reference code beside its copy button');
 }

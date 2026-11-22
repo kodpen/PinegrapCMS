@@ -132,3 +132,11 @@ function test_order_view_contact_orders_count_is_one_query()
 	pg_assert_same(1, substr_count($source, 'pg_order_view_contact_orders_count('), 'the screen asks once');
 	pg_assert_contains("status <> 'incomplete'", file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/order_view.php'), 'an incomplete order is not counted');
 }
+
+function test_order_view_kv_row()
+{
+	pg_assert_same('<div><dt>PO &amp; Ref</dt><dd><b>7</b></dd></div>', pg_order_view_kv('PO & Ref', '<b>7</b>'), 'the label escaped, the value as built');
+	pg_assert_same('', pg_order_view_kv('PO Number', ''), 'no value: no row');
+	pg_assert_same('', pg_order_view_kv('PO Number', '  '), 'blanks: no row');
+	pg_assert_same('<div><dt>Tax</dt><dd>0</dd></div>', pg_order_view_kv('Tax', '0'), 'a zero is a value');
+}

@@ -13,7 +13,7 @@ description: Look A's label and value list of a status column (.pg-kv, SH2, #975
 - A record's amount stays a figure (`.pg-figure-label` / `-value` / `-note`) above the list, as on the Receipt (SH4).
 
 ## Which screens use it?
-- Edit Invoice's status card, Receipt (`erp_receipt.php`), Marketplace Settings' account card counts. `tests/look_kv_list_test.php` pins the recipe's tokens and these screens.
-- Not yet: Edit Invoice's e-document card in the form column, older Summary cards (`pg_design_file_form_summary_card()`, `pg_order_view_row()`).
+- Edit Invoice's status card, Receipt (`erp_receipt.php`), Marketplace Settings' account card counts, View Order's side panel and Payment card (`pg_order_view_kv()`, `commerce/order-screen-side-panel.md`). `tests/look_kv_list_test.php` pins the recipe's tokens and these screens.
+- Not yet: Edit Invoice's e-document card in the form column, older Summary cards (`pg_design_file_form_summary_card()`, `pg_order_view_row()` on the order screen's shipping cards until OS3).
 
 Related: docs/memory/ui/look-type-and-recipes.md
