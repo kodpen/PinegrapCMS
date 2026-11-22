@@ -101,6 +101,7 @@ function pg_privacy_inventory_retentions()
         'form_submissions' => 'Rule: form submissions',
         'incomplete_carts' => 'Rule: incomplete carts',
         'orders'           => 'Rule: orders',
+        'site_chats'       => 'Rule: site chats',
         'closed_requests'  => 'Rule: closed requests',
         'left_volunteers'  => 'Rule: volunteers who left',
         'queue_keep'       => 'The queue place\'s keep period',
@@ -259,9 +260,9 @@ function pg_privacy_inventory()
         'whatsapp_inbox' => array('categories' => array('contact', 'messages'), 'subjects' => array('customer'),
             'purpose' => 'WhatsApp messages received', 'ground' => 'legitimate_interest', 'retention' => 'until_erased', 'person' => array('from_number', 'text')),
         'chat_conversations' => array('categories' => array('identity', 'contact', 'ip_cookie'), 'subjects' => array('customer', 'visitor'),
-            'purpose' => 'Site chats', 'ground' => 'legitimate_interest', 'retention' => 'until_erased'),
+            'purpose' => 'Site chats', 'ground' => 'legitimate_interest', 'retention' => 'site_chats'),
         'chat_messages' => array('categories' => array('messages', 'uploads'), 'subjects' => array('customer', 'visitor', 'staff'),
-            'purpose' => 'Messages of site chats', 'ground' => 'legitimate_interest', 'retention' => 'until_erased'),
+            'purpose' => 'Messages of site chats', 'ground' => 'legitimate_interest', 'retention' => 'site_chats'),
 
         // Workspace.
         'ws_approval_guests' => array('categories' => array('identity', 'contact', 'ip_cookie'), 'subjects' => array('customer'),

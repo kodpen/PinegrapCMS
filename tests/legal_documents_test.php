@@ -620,7 +620,7 @@ function test_legal_documents_script()
 
 	// Past the switch there is one way out, with or without boxes added.
 	pg_assert_same(2, preg_match_all('/^\s+return /m', $section), 'the off return and one more');
-	pg_assert_contains('$html) . pg_legal_documents_script();', $section, 'the way out with the documents carries it');
+	pg_assert_contains("\$html) . (\$documents_on ? pg_legal_documents_script() : '');", $section, 'the way out with the documents carries it');
 }
 
 // The script posts exactly the billing fields the documents read.
@@ -851,6 +851,53 @@ function test_legal_documents_kvkk_reaches_the_store()
 	pg_assert_contains("array_diff(\$accepted_types, array('kvkk'))", $store, 'no consent without the box');
 	pg_assert_contains("pg_legal_kvkk_copy_html(\$kvkk['full_url'], \$kvkk['consent'])", $store, 'the copy kept');
 	pg_assert_contains("strpos(\$html, 'pg-legal-kvkk') === false", $inject, 'one set of KVKK lines');
+}
+
+// The KVKK notice has a switch of its own: '1' or '0' stored decides; no
+// row yet follows the checkout documents' switch, as before the switch.
+function test_legal_documents_kvkk_switch_on()
+{
+	pg_assert_same('ecommerce_kvkk_enabled', pg_legal_kvkk_switch_name());
+	pg_assert_true(pg_legal_kvkk_switch_on('1', false), 'on while the documents are off');
+	pg_assert_false(pg_legal_kvkk_switch_on('0', true), 'off while the documents are on');
+	pg_assert_true(pg_legal_kvkk_switch_on('', true), 'no row: follows the documents, on');
+	pg_assert_false(pg_legal_kvkk_switch_on('', false), 'no row: follows the documents, off');
+	pg_assert_false(pg_legal_kvkk_switch_on('yes', false), 'another value: follows the documents');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
+	$settings = legal_documents_test_function_source($source, 'pg_legal_kvkk_settings');
+	pg_assert_contains('if (!pg_legal_kvkk_enabled()) {', $settings, 'the settings follow the KVKK switch');
+	pg_assert_false(strpos($settings, 'pg_legal_documents_enabled()') !== false, 'not the documents\' switch');
+
+	// The checkout shows and keeps the KVKK lines while the documents are off.
+	$inject = legal_documents_test_function_source($source, 'pg_legal_documents_inject');
+	pg_assert_contains('(!$documents_on && !pg_legal_kvkk_enabled())', $inject, 'either switch draws the lines');
+	pg_assert_contains("(\$documents_on ? pg_legal_documents_script() : '')", $inject, 'the documents\' script only with them');
+	$store = legal_documents_test_function_source($source, 'pg_legal_documents_store');
+	pg_assert_contains('(!$documents_on && !pg_legal_kvkk_enabled())', $store, 'the KVKK copy kept alone');
+	pg_assert_contains("type IN ('preinfo', 'contract', 'kvkk')", $store, 'kept once');
+	pg_assert_contains("'legal_acceptance' => (pg_legal_documents_enabled() || pg_legal_kvkk_enabled())", (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php'), 'a payment service\'s completion keeps the answer');
+}
+
+// The update starts the switch as the documents' switch is, and never
+// overwrites a row already there.
+function test_legal_documents_kvkk_switch_update_step()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
+	pg_assert_contains('upgrade_2026_11_0_kvkk_switch();', $source, 'the step is called');
+
+	$start = strpos($source, 'function upgrade_2026_11_0_kvkk_switch() {');
+	pg_assert_true($start !== false, 'the step');
+	$step = substr($source, (int) $start, (int) strpos($source, "\n}\n", (int) $start) - (int) $start);
+
+	pg_assert_contains('SELECT ecommerce_legal_documents FROM config LIMIT 1', $step, 'from the documents\' switch');
+	pg_assert_contains("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', ?)", $step, 'a row already there stays');
+	pg_assert_contains("install_table_exists('config_text')", $step, 'only where the table is');
+	pg_assert_contains("install_note('", $step, 'a note');
+
+	foreach (array('ALTER', 'CREATE', 'DROP') as $word) {
+		pg_assert_false(strpos($step, $word) !== false, 'no ' . $word);
+	}
 }
 
 // A sign-up page gets the KVKK lines in front of its register button: the

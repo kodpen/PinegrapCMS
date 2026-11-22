@@ -82,15 +82,16 @@ function test_settings_privacy_fold_lines()
 	pg_assert_same(lang('Customers accept both documents at checkout'), pg_privacy_fold_legal(true)['line'], 'legal documents on');
 	pg_assert_same(lang('The checkout asks for no document'), pg_privacy_fold_legal(false)['line'], 'legal documents off');
 
-	$kvkk = pg_privacy_fold_kvkk(true, 'I agree.', true);
-	pg_assert_same(lang('Notice page chosen') . ' · ' . lang('a consent box') . ' · ' . lang('used while Legal documents is on'), $kvkk['line'], 'page and box');
-	pg_assert_same(array(lang('In use'), 'pg-tone-teal'), $kvkk['pill'], 'in use while Legal documents is on');
+	$kvkk = pg_privacy_fold_kvkk(true, true, 'I agree.');
+	pg_assert_same(lang('Notice page chosen') . ' · ' . lang('a consent box'), $kvkk['line'], 'page and box');
+	pg_assert_same(array(lang('In use'), 'pg-tone-teal'), $kvkk['pill'], 'in use while its own switch is on');
 
-	$kvkk = pg_privacy_fold_kvkk(true, '  ', false);
-	pg_assert_same(lang('Notice page chosen') . ' · ' . lang('no consent box') . ' · ' . lang('used while Legal documents is on'), $kvkk['line'], 'a blank sentence is no box');
-	pg_assert_same(array(lang('Not used'), 'pg-tone-gray'), $kvkk['pill'], 'not used while Legal documents is off');
+	$kvkk = pg_privacy_fold_kvkk(false, true, '  ');
+	pg_assert_same(lang('Notice page chosen') . ' · ' . lang('no consent box'), $kvkk['line'], 'a blank sentence is no box');
+	pg_assert_same(array(lang('Off'), 'pg-tone-gray'), $kvkk['pill'], 'off while its switch is off');
 
-	pg_assert_same(array(lang('Not used'), 'pg-tone-gray'), pg_privacy_fold_kvkk(false, '', true)['pill'], 'nothing filled: not used');
+	pg_assert_same(array(lang('Not used'), 'pg-tone-gray'), pg_privacy_fold_kvkk(true, false, '')['pill'], 'nothing filled: not used');
+	pg_assert_false(strpos(pg_privacy_fold_kvkk(true, true, '')['line'], lang('used while Legal documents is on')) !== false, 'no longer tied to Legal documents');
 
 	pg_assert_same(lang(array('string' => 'Dated {var:1}', 'vars' => '20.11.2026')), pg_privacy_fold_a11y('20.11.2026')['line'], 'the statement\'s date');
 	pg_assert_same(lang('Not filled'), pg_privacy_fold_a11y('')['line'], 'no date');
@@ -102,7 +103,7 @@ function test_settings_privacy_fold_lines()
 	pg_assert_same(lang('Every period the site applies, and where each is set'), pg_privacy_fold_retention(null, null)['line'], 'no visitor fields before their columns');
 	pg_assert_same(null, pg_privacy_fold_retention(90, 30)['pill'], 'no pill');
 
-	pg_assert_contains('KVKK or GDPR', pg_privacy_fold_centre()['line'], 'the Privacy centre\'s sentence is its line');
+	pg_assert_same(lang('Personal data inventory, retention rules and requests'), pg_privacy_fold_centre()['line'], 'the Privacy centre\'s parts, named short');
 }
 
 function test_settings_privacy_fold_pane_is_rows()
@@ -114,7 +115,7 @@ function test_settings_privacy_fold_pane_is_rows()
 	pg_assert_same(0, substr_count($pane, 'popover'), 'no popover is left');
 	pg_assert_same(0, substr_count($pane, 'collapse-switcher'), 'no switch hides fields');
 	pg_assert_same(0, substr_count($pane, 'class="switch"'), 'no old switch drawing');
-	pg_assert_same(4, substr_count($pane, 'class="pg-switch"'), 'Record visits, the daily summary, cookie consent and legal documents are pg-switch');
+	pg_assert_same(5, substr_count($pane, 'class="pg-switch"'), 'Record visits, the daily summary, cookie consent, legal documents and the KVKK notice are pg-switch');
 	pg_assert_same(0, substr_count($pane, '<details><details'), 'nothing more than one fold deep');
 
 	foreach (array('Pay Per Click', 'Tracking Code Duration', 'Enable Visitor Tracking') as $old) {
@@ -160,20 +161,23 @@ function test_settings_privacy_fold_cards_and_fields()
 	$kvkk = settings_privacy_fold_test_card('pgset-kvkk');
 	pg_assert_contains("pg_picker_field('page', 'ecommerce_kvkk_page_id'", $kvkk, 'KVKK Notice Page in its own row');
 	pg_assert_contains('name="ecommerce_kvkk_consent_text"', $kvkk, 'Explicit Consent Sentence in its own row');
+	pg_assert_contains("lang('Show the KVKK notice')", $kvkk, 'the KVKK notice\'s own switch');
+	pg_assert_true(strpos($kvkk, 'name="ecommerce_kvkk_enabled"') < strpos($kvkk, 'ecommerce_kvkk_page_id'), 'the switch first, its fields under it');
 
 	$a11y = settings_privacy_fold_test_card('pgset-a11y-statement');
 	pg_assert_contains('<a class="pg-button pg-button-quiet pg-button-sm mt-2" href="\' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . \'/view_accessibility.php?statement=1\')', $a11y, 'Print the statement is quiet');
 
 	$centre = settings_privacy_fold_test_card('pgset-privacy-centre');
 	pg_assert_contains("lang('Open the Privacy centre')", $centre, 'Open the Privacy centre');
-	pg_assert_false(strpos($centre, 'KVKK or GDPR') !== false, 'its sentence stands once, as the row\'s line');
+	pg_assert_contains('KVKK or GDPR records.', $centre, 'the opened row says what the centre holds');
+	pg_assert_true(strpos($centre, 'KVKK or GDPR records.') < strpos($centre, "lang('Open the Privacy centre')"), 'before the way there');
 }
 
 function test_settings_privacy_fold_names_stay()
 {
 	$pane = settings_privacy_fold_test_source('includes/settings/privacy.php');
 
-	foreach (array('visitor_tracking', 'tracking_code_duration', 'pay_per_click_flag', 'visitor_retention_days', 'visitor_ip_days', 'visitor_summary', 'cookie_consent', 'cookie_consent_policy_url', 'ecommerce_legal_documents', 'ecommerce_kvkk_consent_text', 'a11y_statement_card') as $name) {
+	foreach (array('visitor_tracking', 'tracking_code_duration', 'pay_per_click_flag', 'visitor_retention_days', 'visitor_ip_days', 'visitor_summary', 'cookie_consent', 'cookie_consent_policy_url', 'ecommerce_legal_documents', 'ecommerce_kvkk_enabled', 'ecommerce_kvkk_consent_text', 'a11y_statement_card') as $name) {
 		pg_assert_contains('name="' . $name . '"', $pane, $name . ' posts under its name');
 	}
 

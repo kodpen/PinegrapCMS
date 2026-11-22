@@ -10,7 +10,7 @@ description: Plan communication-settings-tidy, steps CM1 to CM3: the pane as fol
 
 - CM2 (S) after CM1: every `div.switch` of the message rows becomes `pg-switch` (`includes/fn/sms.php`, `sms_messages.php`, `whatsapp_messages.php`), labels in sentence case; what each function posts does not change. Fixes: H7.
 
-- CM3 (S) close-out: `ui/settings-communication.md` written (rows, what moved, what stayed); memory naming the Chat card's popovers corrected; item 6 of `plans/settings-tidy-census-order.md` removed; this plan's files deleted. Chat Retention Period's removal stays VP3's (`plans/privacy-settings-tidy-steps.md`): whichever lands second keeps the other's change.
+- CM3 (S) close-out: `ui/settings-communication.md` written (rows, what moved, what stayed); memory naming the Chat card's popovers corrected; item 6 of `plans/settings-tidy-census-order.md` removed; this plan's files deleted.
 
 ## Which steps run side by side?
 - None: CM2 draws inside the rows CM1 makes. CM1 and VP3 both edit `contact.php`: one at a time.

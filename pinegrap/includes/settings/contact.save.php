@@ -33,20 +33,13 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
     if (function_exists('waf_table_has_column')
         && waf_table_has_column('config', 'chat_enabled')
     ) {
-        $chat_post_retention = (int) post_value('chat_retention_days');
-
-        if (!in_array($chat_post_retention, array(7, 15, 30, 60, 90, 180), true)) {
-            $chat_post_retention = 60;
-        }
-
         $sql_chat_settings =
             "chat_enabled = '" . escape(post_value('chat_enabled') ? 1 : 0) . "',
              chat_site_enabled = '" . escape(post_value('chat_site_enabled') ? 1 : 0) . "',
              chat_operator_user_id = '" . escape((int) post_value('chat_operator_user_id')) . "',
              chat_welcome_message = '" . escape(mb_substr((string) post_value('chat_welcome_message'), 0, 500)) . "',
              chat_offline_email = '" . escape(post_value('chat_offline_email') ? 1 : 0) . "',
-             chat_captcha = '" . escape(post_value('chat_captcha') ? 1 : 0) . "',
-             chat_retention_days = " . $chat_post_retention . ",";
+             chat_captcha = '" . escape(post_value('chat_captcha') ? 1 : 0) . "',";
 
         if (waf_table_has_column('config', 'chat_widget_theme')) {
             $chat_post_theme = post_value('chat_widget_theme');

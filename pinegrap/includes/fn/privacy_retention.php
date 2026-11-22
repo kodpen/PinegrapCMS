@@ -248,10 +248,11 @@ function pg_privacy_retention_run($seconds = 5)
 
 /* ---------------------------------------------------------------------------
    Retention rules for personal records: passive contacts, form submissions,
-   incomplete carts and orders. Each is off until switched on; its first run
-   is a dry run that waits for a person's yes. The pass removes or
-   anonymises through pg_privacy_erase()'s entries and actions, never a list
-   of its own, and skips a person something still holds (P8).
+   incomplete carts, orders, closed requests and site chats. Each is off
+   until switched on; its first run is a dry run that waits for a person's
+   yes. The pass removes or anonymises through pg_privacy_erase()'s entries
+   and actions, never a list of its own, and skips a person something still
+   holds (P8).
    --------------------------------------------------------------------------- */
 
 /**
@@ -269,6 +270,8 @@ function pg_privacy_rules_catalogue()
         // The cart row stays: cart recovery counts open carts from orders.
         'carts'    => array('unit' => 'days', 'default' => 90, 'min' => 31, 'max' => 3650, 'table' => 'orders', 'entries' => array('ship_tos', 'orders')),
         'orders'   => array('unit' => 'years', 'default' => null, 'min' => 1, 'max' => 30, 'table' => 'orders', 'entries' => array('ship_tos', 'order_returns', 'shipment_labels', 'orders')),
+        // Site chats quiet for the period, with their messages and attachments.
+        'chats'    => array('unit' => 'days', 'default' => 60, 'min' => 7, 'max' => 3650, 'table' => 'chat_conversations', 'entries' => array('files', 'chat_messages', 'chat_conversations')),
         // Answered and refused requests of the request box, from their closing.
         'requests' => array('unit' => 'years', 'default' => 3, 'min' => 1, 'max' => 20, 'table' => 'privacy_requests', 'entries' => array('privacy_requests')),
         // Volunteers who left, from their leaving: the profile with its
@@ -349,6 +352,7 @@ function pg_privacy_rules_labels()
             'forms'    => lang('Form submissions'),
             'carts'    => lang('Incomplete carts: personal fields, contact and account links'),
             'orders'   => lang('Orders: personal fields anonymised'),
+            'chats'    => lang('Site chats: the conversation, its messages and attachments deleted'),
             'requests' => lang('Closed privacy requests: the person and the texts anonymised'),
             'volunteers' => lang('Volunteers who left: the profile, documents, shifts and hours deleted'),
         ),
@@ -711,6 +715,8 @@ function pg_privacy_rule_pending_where(array $fields)
  * forms: submitted before the period, or before the period of a form that
  *   says otherwise (0: that form is kept).
  * carts: incomplete orders untouched for the period, still personal.
+ * chats: site chats with no message since the period (team chats of the
+ *   panel are never reached).
  * orders: placed before the period, still personal.
  * volunteers: profiles left before the period.
  *
@@ -735,6 +741,11 @@ function pg_privacy_rule_candidate_where($key, array $rule, $now, array $has)
             . " AND NOT EXISTS (SELECT 1 FROM orders o WHERE (o.contact_id = contacts.id) AND (o.order_date >= " . $at . "))"
             . " AND NOT EXISTS (SELECT 1 FROM forms f WHERE (f.contact_id = contacts.id) AND (f.submitted_timestamp >= " . $at . "))"
             . " AND NOT EXISTS (SELECT 1 FROM user u WHERE (u.user_contact = contacts.id) AND (u.user_online_timestamp >= " . $at . "))";
+    }
+
+    // A deleted chat is gone, so nothing is picked twice.
+    if ($key === 'chats') {
+        return "(channel = 'site') AND (GREATEST(last_message_at, created_at) < " . $at . ")";
     }
 
     if ($key === 'forms') {
@@ -1145,6 +1156,14 @@ function pg_privacy_rule_one($key, $id, $cutoff, $now, $apply)
     $input = array();
     $lists = array();
 
+    // An old site chat goes with its messages and their attachments; the
+    // person it was with, and their other chats, stay.
+    if ($key === 'chats') {
+        $files = pg_schema_has('chat_messages', 'attachment_file_id') ? db_values("SELECT attachment_file_id FROM chat_messages WHERE (attachment_file_id > 0) AND (conversation_id = '" . $id . "')") : array();
+
+        return array('skip' => '', 'tables' => pg_privacy_erase_run(_pg_privacy_rule_scope(array('conversation_ids' => array($id), 'file_ids' => _pg_privacy_export_ids($files))), $apply, pg_privacy_rule_entries($key)));
+    }
+
     // A closed request is the record of an answer, not a person's: nothing
     // holds it back, and only the request itself is anonymised.
     if ($key === 'requests') {
@@ -1403,8 +1422,9 @@ function pg_privacy_retention_overview(array $facts)
         $rows[] = $row('audit', lang('Audit trail lines'), ($years > 0) ? $kept($years, 'years') : lang('Kept until deleted'), 'bi-journal-text', 'pg-tone-blue', 'security', 'pgset-audit');
     }
 
+    // A fixed period has no Change: its line says why.
     $consent = (int) ($facts['consent_years'] ?? 0);
-    $rows[] = $row('consent', lang('Consent history'), lang(array('string' => 'Kept {var:1} year{suffix:1}; the answer in force always', 'vars' => $consent, 'suffix' => array(($consent === 1) ? '' : 's'))), 'bi-check2-square', 'pg-tone-teal');
+    $rows[] = $row('consent', lang('Consent history'), lang(array('string' => 'Kept {var:1} year{suffix:1}, the answer in force always: a fixed period, as proof of consent', 'vars' => $consent, 'suffix' => array(($consent === 1) ? '' : 's'))), 'bi-check2-square', 'pg-tone-teal');
 
     $waf = (int) ($facts['waf_days'] ?? 0);
     $rows[] = $row('waf', lang('Firewall log'), lang(array('string' => 'Kept {var:1} day{suffix:1}, at most {var:2} rows', 'vars' => array($waf, pg_format_number((int) ($facts['waf_rows'] ?? 0), 0)), 'suffix' => array(($waf === 1) ? '' : 's'))), 'bi-shield-check', 'pg-tone-rose', 'firewall', 'pgset-waf-logs');
@@ -1412,17 +1432,15 @@ function pg_privacy_retention_overview(array $facts)
 
     if (isset($facts['booking_days'])) {
         $days = (int) $facts['booking_days'];
-        $rows[] = $row('bookings', lang('Cancelled bookings'), lang(array('string' => 'Kept {var:1} day{suffix:1} after their last change', 'vars' => $days, 'suffix' => array(($days === 1) ? '' : 's'))), 'bi-calendar-x', 'pg-tone-amber');
+        $rows[] = $row('bookings', lang('Cancelled bookings'), lang(array('string' => 'Kept {var:1} day{suffix:1} after their last change: a fixed period, the agenda keeps the rest', 'vars' => $days, 'suffix' => array(($days === 1) ? '' : 's'))), 'bi-calendar-x', 'pg-tone-amber');
     }
-
-    // Nothing removes a site chat yet: its period is set nowhere.
-    $rows[] = $row('chats', lang('Site chats'), lang('Kept until deleted'), 'bi-chat-dots', 'pg-tone-blue');
 
     // The Privacy centre's rules: a rule runs only while on, with a period
     // and the yes after its dry run.
     $catalogue = pg_privacy_rules_catalogue();
     $rules = (isset($facts['rules']) && is_array($facts['rules'])) ? $facts['rules'] : pg_privacy_rules_normalise(array());
     $names = array(
+        'chats'    => array(lang('Site chats'), 'bi-chat-dots'),
         'contacts' => array(lang('Passive contacts'), 'bi-person-dash'),
         'forms'    => array(lang('Form submissions'), 'bi-ui-checks'),
         'carts'    => array(lang('Incomplete carts'), 'bi-cart-x'),

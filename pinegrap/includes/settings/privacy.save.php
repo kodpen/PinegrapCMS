@@ -69,8 +69,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // template past the column's size would be cut; either refuses the whole
     // save before anything below writes.
     $sql_legal_documents = '';
-    // The KVKK consent sentence: a config_text row, written after the config update.
+    // The KVKK consent sentence and the KVKK notice's switch: config_text
+    // rows, written after the config update.
     $legal_kvkk_text = null;
+    $legal_kvkk_on = null;
 
     if (pg_schema_has('config', 'ecommerce_legal_documents')) {
         $legal_values = array();
@@ -102,6 +104,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         if (pg_schema_has('config', 'ecommerce_kvkk_page_id') && pg_schema_has('config_text')) {
             $legal_kvkk_text = trim(str_replace("\r\n", "\n", (string) post_value('ecommerce_kvkk_consent_text')));
+            $legal_kvkk_on = (post_value('ecommerce_kvkk_enabled') == 1) ? '1' : '0';
 
             if (strlen($legal_kvkk_text) > 65535) {
                 $liveform->mark_error('ecommerce_kvkk_consent_text', lang(array('string' => '{var:1} is too long.', 'vars' => array(lang('Explicit Consent Sentence')))));
@@ -170,6 +173,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if ($legal_kvkk_text !== null) {
         pg_config_text_save('ecommerce_kvkk_consent_text', $legal_kvkk_text);
+        pg_config_text_save(pg_legal_kvkk_switch_name(), $legal_kvkk_on);
     }
 
     // The accessibility statement's texts (includes/fn/widgets_accessibility.php):

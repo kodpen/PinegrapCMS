@@ -1963,7 +1963,7 @@ function submit_order($type) {
                         // The boxes the visitor ticked, with their address
                         // and browser, for the documents a later completion
                         // keeps.
-                        'legal_acceptance' => pg_legal_documents_enabled()
+                        'legal_acceptance' => (pg_legal_documents_enabled() || pg_legal_kvkk_enabled())
                             ? pg_order_legal_acceptance_json(
                                 array_keys(array_filter(array(
                                     'preinfo'  => pg_legal_document_ticked($liveform->get_field_value('legal_preinfo')),

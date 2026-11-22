@@ -411,6 +411,7 @@ function pg_privacy_centre_rule_faces()
         'carts'    => array('bi-cart-x', 'pg-tone-amber'),
         'orders'   => array('bi-bag', 'pg-tone-violet'),
         'requests' => array('bi-envelope-check', 'pg-tone-rose'),
+        'chats'    => array('bi-chat-dots', 'pg-tone-blue'),
     );
 }
 

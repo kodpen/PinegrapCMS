@@ -255,8 +255,9 @@ if ($legal_documents_ready) {
         </div>
     </div>') + pg_privacy_fold_legal($legal_on);
 
-    // The KVKK lines of the checkout: a link to the store's own notice page
-    // and an optional explicit consent box, used while Legal documents is on
+    // The KVKK lines of the checkout and the sign-up forms: a link to the
+    // store's own notice page and an optional explicit consent box, shown
+    // while their own switch is on, whatever Legal documents says
     // (pg_legal_kvkk_settings()).
     if ($legal_kvkk_ready) {
         $privacy_parts['kvkk'] = array('html' => '
@@ -267,6 +268,13 @@ if ($legal_documents_ready) {
             </div>
             <div class="card-body">
                 <div class="row gy-5">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3">
+                            <input type="checkbox" class="pg-switch" value="1"' . ($ecommerce_kvkk_enabled ? ' checked="checked"' : '') . ' id="ecommerce_kvkk_enabled" name="ecommerce_kvkk_enabled" aria-describedby="ecommerce_kvkk_enabled_help"/>
+                            <label class="pg-text-2" for="ecommerce_kvkk_enabled">' . h(lang('Show the KVKK notice')) . '</label>
+                        </div>
+                        <div class="form-text" id="ecommerce_kvkk_enabled_help">' . h(lang('The checkout and the sign-up forms link the notice page and show the consent box, whether or not Legal documents is on.')) . '</div>
+                    </div>
                     <div class="col-12 md:col-6">
                         <label class="form-label" for="ecommerce_kvkk_page_id">' . lang('KVKK Notice Page') . '</label>
                         ' . pg_picker_field('page', 'ecommerce_kvkk_page_id', $ecommerce_kvkk_page_id ?: '', array('placeholder' => lang('Choose a page'))) . pg_picker_script() . '
@@ -280,7 +288,7 @@ if ($legal_documents_ready) {
                 </div>
             </div>
         </div>
-    </div>') + pg_privacy_fold_kvkk($ecommerce_kvkk_page_id > 0, $ecommerce_kvkk_consent_text, $legal_on);
+    </div>') + pg_privacy_fold_kvkk($ecommerce_kvkk_enabled, $ecommerce_kvkk_page_id > 0, $ecommerce_kvkk_consent_text);
     }
 }
 
@@ -336,9 +344,9 @@ if (pg_schema_has('config_text')) {
 }
 
 // ── Privacy centre ──
-// The personal data inventory, its transfers and downloads live on their own
-// screen under Contacts (privacy_centre.php); this row only leads there, its
-// line saying what the centre holds.
+// The personal data inventory, its retention rules, transfers, requests and
+// downloads live on their own screen under Contacts (privacy_centre.php);
+// this row says what the centre holds and leads there.
 $privacy_parts['privacy-centre'] = array('html' => '
                         <div id="pgset-privacy-centre" class="pg-set-card">
                             <div class="card">
@@ -346,6 +354,7 @@ $privacy_parts['privacy-centre'] = array('html' => '
                                     ' . lang('Privacy centre') . '
                                 </div>
                                 <div class="card-body">
+                                    <p class="pg-field-help mt-0">' . h(lang('The personal data the site keeps, why and for how long, and the outside services it goes to; the retention rules that delete what is no longer needed, such as old site chats; the privacy requests people send; an Excel and a PDF download for your KVKK or GDPR records.')) . '</p>
                                     <a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/privacy_centre.php">' . h(lang('Open the Privacy centre')) . '</a>
                                 </div>
                             </div>

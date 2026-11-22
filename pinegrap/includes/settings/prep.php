@@ -130,7 +130,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $chat_welcome_message = isset($row['chat_welcome_message']) ? $row['chat_welcome_message'] : '';
     $chat_offline_email = isset($row['chat_offline_email']) ? (int) $row['chat_offline_email'] : 1;
     $chat_captcha = isset($row['chat_captcha']) ? (int) $row['chat_captcha'] : 1;
-    $chat_retention_days = isset($row['chat_retention_days']) ? (int) $row['chat_retention_days'] : 60;
     $chat_widget_theme = isset($row['chat_widget_theme']) ? $row['chat_widget_theme'] : 'auto';
     $chat_widget_color = isset($row['chat_widget_color']) ? $row['chat_widget_color'] : '#0d6efd';
     $chat_widget_icon = isset($row['chat_widget_icon']) ? $row['chat_widget_icon'] : 'chat';
@@ -560,6 +559,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $legal_kvkk_ready = array_key_exists('ecommerce_kvkk_page_id', $row);
     $ecommerce_kvkk_page_id = (int) ($row['ecommerce_kvkk_page_id'] ?? 0);
     $ecommerce_kvkk_consent_text = pg_config_text('ecommerce_kvkk_consent_text');
+    // The KVKK notice's own switch; before it is stored it follows the
+    // checkout documents' switch (pg_legal_kvkk_switch_on()).
+    $ecommerce_kvkk_enabled = pg_legal_kvkk_switch_on(pg_config_text(pg_legal_kvkk_switch_name()), (int) ($row['ecommerce_legal_documents'] ?? 0) === 1);
     // Reference price rule (11.0.49): NULL or an unknown value reads as the
     // default, so the card always has one option checked.
     $reference_price_rule_ready = array_key_exists('ecommerce_reference_price_rule', $row);
@@ -1809,14 +1811,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if (($chat_operator_user_id > 0) && !$chat_operator_listed) {
         $output_chat_operator_options .= '<option value="' . $chat_operator_user_id . '" selected="selected">' . h(pg_user_picker_label($chat_operator_user_id)) . '</option>';
-    }
-
-    $output_chat_retention_options = '';
-
-    foreach (array(7, 15, 30, 60, 90, 180) as $chat_retention_option) {
-        $output_chat_retention_options .= '<option value="' . $chat_retention_option . '"'
-            . (($chat_retention_days == $chat_retention_option) ? ' selected="selected"' : '')
-            . '>' . $chat_retention_option . ' ' . lang('day(s)') . '</option>';
     }
 
     $chat_theme_options = array('auto' => lang('Auto'), 'light' => lang('Light'), 'dark' => lang('Dark'));

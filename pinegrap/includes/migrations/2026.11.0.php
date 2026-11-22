@@ -260,6 +260,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_stock_taken();             // 11.0.268
 	upgrade_2026_11_0_starter_twitter();         // 11.0.269
 	upgrade_2026_11_0_volunteer_shifts();        // 11.0.270
+	upgrade_2026_11_0_kvkk_switch();             // 11.0.271
 	upgrade_2026_11_0_order_cost_supplier();     // 11.0.272
 
 }
@@ -9264,5 +9265,26 @@ function upgrade_2026_11_0_volunteer_shifts() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Contacts: the tables of volunteer programmes, volunteers, their documents, shifts and sign-ups were added; nothing changes until a programme is made.');
+
+}
+
+// 11.0.271 - The KVKK notice's own switch: the notice page
+// and the consent sentence were shown only while the checkout documents were
+// on; from now on the config_text row ecommerce_kvkk_enabled ('1' or '0')
+// decides (pg_legal_kvkk_enabled()). The row starts as the documents' switch
+// is at this moment, so no running site shows more or less than before. A
+// row already there is left alone, so a rerun never undoes a later choice.
+// No schema: config_text is 11.0.48's.
+function upgrade_2026_11_0_kvkk_switch() {
+
+	if (!install_table_exists('config_text') || !install_column_exists('config', 'ecommerce_legal_documents')) {
+		return;
+	}
+
+	$on = ((int) db_value("SELECT ecommerce_legal_documents FROM config LIMIT 1") === 1) ? '1' : '0';
+
+	db_q("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', ?)", array($on));
+
+	install_note('KVKK notice: the notice page and the consent sentence now have a switch of their own under Site Settings, Visitors and privacy, KVKK notice. It starts as the legal documents switch is now, so nothing changes until you change it.');
 
 }

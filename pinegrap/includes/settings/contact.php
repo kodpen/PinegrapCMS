@@ -47,10 +47,6 @@ $pg_settings_cards[] = '
                                                             <label for="chat_operator_user_id" class="form-label">' . lang('Site Chat Operator') . '</label>
                                                             <select name="chat_operator_user_id" id="chat_operator_user_id" class="form-control" data-pg-combobox>' . $output_chat_operator_options . '</select>' . pg_fields_script() . '
                                                         </div>
-                                                        <div class="pg-f-md">
-                                                            <label for="chat_retention_days" class="form-label">' . lang('Chat Retention Period') . '</label>
-                                                            <select name="chat_retention_days" id="chat_retention_days" class="form-control">' . $output_chat_retention_options . '</select>
-                                                        </div>
                                                         <div class="col-12 ">
                                                             <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $chat_site_enabled_checked . ' class="collapse-switcher" type="checkbox" id="chat_site_enabled" name="chat_site_enabled" data-bs-target="#live_chat_site_row"/></div>
