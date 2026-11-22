@@ -847,8 +847,8 @@ function pg_look_examples_tools_dock_pattern($p)
             . $row('archived', lang('Archived channels'), 'bi-archive')
             . '</div>'
             . '<div class="ws-side-cells">'
-            . $cell('tasks', lang('My Tasks'), lang('My Tasks'), 'bi-check2-square', true, 3)
-            . $cell('notes', lang('My Notes'), lang('My Notes'), 'bi-journal-text', false, 0)
+            . $cell('tasks', lang('Tasks'), lang('My Tasks'), 'bi-check2-square', true, 3)
+            . $cell('notes', lang('Notes'), lang('My Notes'), 'bi-journal-text', false, 0)
             . $cell('wtables', lang('Data'), lang('Data'), 'bi-table', false, 0)
             . $cell('flows', lang('Flows'), lang('Automation flows'), 'bi-diagram-3', false, 0)
             . $cell('calendar', lang('Calendar'), lang('Work Calendar'), 'bi-calendar3', false, 0)

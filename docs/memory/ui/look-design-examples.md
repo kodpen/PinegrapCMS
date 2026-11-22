@@ -15,13 +15,13 @@ module: look_examples
 
 ## What does the top card say is not done?
 - Drawn in the sheet, not a recipe yet: figure cards with a trend line, the 12-column field grid (DL5c), the bell row's avatar and verb.
-- Not drawn yet: dialogs and the settings modal, dashboard cards, report screens, Workspace (channel screen, tools dock, screen bars), phone widths.
+- Not drawn yet: dialogs and the settings modal, dashboard cards, report screens, Workspace (channel screen, screen bars), phone widths.
 - The list table is drawn by the driver itself (`list-table-layout.md`, #8921), so it left the list.
 - A new recipe adds its section here in the same PR; a part that is done leaves the list.
 - Drawer (#10851, architect channel message 11006): drawn in place without the dialog, as `#privacy_request` and Application Access' `#api_new` build it; the Bootstrap classes are named without a dot (they are not rules of `backend.src.css`). DX3 adds to this section; the numbered steps come with KV4b.
 - Menus (SF2, #10852): a row's "more" menu, `pg-icon-button-sm` opening a Bootstrap `.menu.pg-menu-end` in `.pg-menu-wrap`; a danger item `fg-emphasis-danger` last under `.menu-divider`. No new CSS (architect, 2026-11-20, channel message 11049).
 - Patterns (`pg_look_examples_patterns()`, under the parts): the settings pane, the connect row, a list's empty state (DX1 #10859); the starting-point sheet in its three steps and the numbered steps drawer (DX2 #10885), each in the Drawer section's standing frame.
-- The Workspace's conversation timeline (#11047, `pg_look_examples_timeline_pattern()`), then "Workspace list row" (#11079, `pg_look_examples_ws_list_row_pattern()`, live rows in a `.ws-menu-side` box), before the e-mail parts.
+- The Workspace's conversation timeline (#11047, `pg_look_examples_timeline_pattern()`), "Workspace list row" (#11079, live rows in a `.ws-menu-side` box) and "Tools dock" (#11101, `pg_look_examples_tools_dock_pattern()`, More's card open), before the e-mail parts.
 - The e-mail settings drawing's seven parts close the group (DX2b #10930, `pg_look_examples_mail_patterns()`): `look-mail-patterns.md`.
 - The patterns' frame is no `.drawer`, which sets `--bs-drawer-padding-*`: its head and body take `p-5` (16 px, measured on the real `#api_new`; the sheet's head `p-5 pb-1`), as the Drawer section does since DX2. The sheet's cards use the recipe "Look A: starting-point cards" (`.pg-start*`); the steps drawer draws Claude's own guide (`ws_claude_setup_guide()`) with its tile, line and Close, as the real drawer.
 

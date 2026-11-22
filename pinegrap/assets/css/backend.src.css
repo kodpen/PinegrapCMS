@@ -23888,7 +23888,9 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   padding: 6px;
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--pg-radius-card);
-  background: var(--pg-surface-menu);
+  /* The menu's own solid ground, as the head and the dock: the glass of
+     --pg-surface-menu let the rows under it show through. */
+  background: var(--pg-navbar-bg);
   box-shadow: var(--pg-shadow-float);
 }
 .ws-menu-side .ws-side-more-card .ws-channel-link {

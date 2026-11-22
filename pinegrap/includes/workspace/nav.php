@@ -72,7 +72,7 @@ function ws_nav_groups($viewer, $flags = null)
             array('key' => 'home', 'label' => lang('Today'), 'icon' => 'bi-house', 'url' => $base . 'workspace.php?view=home'),
         ),
         'tools' => array(
-            array('key' => 'tasks', 'label' => lang('My Tasks'), 'icon' => 'bi-check2-square', 'url' => $base . 'workspace_tasks.php'),
+            array('key' => 'tasks', 'label' => lang('My Tasks'), 'short' => lang('Tasks'), 'icon' => 'bi-check2-square', 'url' => $base . 'workspace_tasks.php'),
         ),
         'more' => array(),
     );
@@ -80,7 +80,7 @@ function ws_nav_groups($viewer, $flags = null)
     // The tiles: the screens of a working day, in the order they are drawn.
     // A tile shows a short name; the full one is its title.
     if (!empty($flags['notes'])) {
-        $groups['tools'][] = array('key' => 'notes', 'label' => lang('My Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php');
+        $groups['tools'][] = array('key' => 'notes', 'label' => lang('My Notes'), 'short' => lang('Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php');
     }
 
     if (!empty($flags['wtables'])) {

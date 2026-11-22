@@ -109,7 +109,7 @@ function test_workspace_nav_tools_long_names_have_short_ones()
 
 	// Flows is named Automation flows, as its main menu row; the tile keeps
 	// the short name.
-	pg_assert_same(array('flows' => 'Flows', 'calendar' => 'Calendar', 'board' => 'Board', 'timeline' => 'Decisions'), $short, 'Flows, Calendar, Board and Decisions');
+	pg_assert_same(array('tasks' => 'Tasks', 'notes' => 'Notes', 'flows' => 'Flows', 'calendar' => 'Calendar', 'board' => 'Board', 'timeline' => 'Decisions'), $short, 'Tasks, Notes, Flows, Calendar, Board and Decisions: whole in a cell four across');
 }
 
 // Workflow tables are the workspace's Data: the tile says so, while its key,

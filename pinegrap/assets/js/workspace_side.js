@@ -1311,10 +1311,12 @@
     }
 
     // More's card closes with Esc, the focus going back to "⋯", and with a
-    // click outside it. Esc is taken before the menu's own (which would
-    // close the widened rail) and only while the focus is in the list or
-    // nowhere, so a dialog of the page keeps its own Esc.
-    document.addEventListener('keydown', function (event) {
+    // click outside it. Esc is taken on the window's capture phase and
+    // stopped there, before the menu's own (which would close the widened
+    // rail or step the phone drawer back), as the bell's row menu does; only
+    // while the focus is in the list or nowhere, so a dialog of the page
+    // keeps its own Esc.
+    window.addEventListener('keydown', function (event) {
         if (!state.moreOpen || (event.key !== 'Escape') || event.defaultPrevented) {
             return;
         }
@@ -1326,6 +1328,7 @@
         }
 
         event.preventDefault();
+        event.stopPropagation();
         state.moreOpen = false;
         draw();
 

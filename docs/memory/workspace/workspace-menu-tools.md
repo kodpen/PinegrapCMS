@@ -1,23 +1,31 @@
 ---
 name: workspace-menu-tools
-description: Tools tiles and More in the Workspace list (#3817, #6281): places (My Tasks first), short names, colours, a lone More taking its row, the More rows, ws-side-open, the tour opening hidden places
+description: The tools dock of the Workspace list (#3817, #6281, dock #11101): places (My Tasks first), short names, tones, the count on My Tasks, More as a card, the tour opening hidden places
 ---
 
-## Which places are tiles, which wait behind More?
-- `ws_nav_groups()`: `tools` = My Tasks (a place over the channels until #6281), My Notes, Tables, Flows, Work Calendar, Planning Board, Decision Timeline, E-mails, each under its gate, in that order; `more` = Scheduled actions or messages, My MCP connections, Calendar subscription, General memory (`ws_memory_general_can()`, #10440), Archived channels, Private channels (staff). `work` and `records` are gone; `ws_nav_group_titles()` names Tools and More (`tests/workspace_nav_tools_test.php`).
-- A tile shows `short` (Flows for Automation flows, Calendar, Board, Decisions) or else the label; the full label is its title and `data-pg-menu-label`. `ws_side_nav()` passes `short` on. Short names keep a tile's name whole in the 250px menu with a scrollbar.
+## Which places are cells, which wait behind More?
+- `ws_nav_groups()`: `tools` = My Tasks, My Notes, Data (Tables), Flows, Work Calendar, My calendar, Planning Board, Decision Timeline, E-mails, each under its gate, in that order; `more` = Scheduled actions or messages, My MCP connections, Calendar subscription, My meeting link, General memory (`ws_memory_general_can()`, #10440), Archived channels, Private channels (staff). `ws_nav_group_titles()` names Tools and More (`tests/workspace_nav_tools_test.php`).
+- A cell shows `short` (Tasks, Notes, Flows, Calendar, Board, Decisions; the first two since #11101) or else the label; the full label is its title and `data-pg-menu-label`.
 
-## How is it drawn?
-- `.ws-side-tiles`: a two-column grid of `.ws-side-tile` links (`data-ws-nav`), the icon in the colour its row had (the `:is(.ws-channel-link, .ws-side-tile)[data-ws-nav]` rules, a lighter tone in the dark theme; Tables and E-mails got theirs; `tests/panel_contrast_test.php` reads them), else `--pg-fg-2`.
-- The last tile is the More button (`aria-expanded`, `aria-controls="ws-side-more"`), drawn pressed while open, no chevron; alone in the last row (an odd count with it, as with E-mails) it takes the whole row (`.ws-side-more-tile:nth-child(odd)`). Open, `.ws-side-more` lists `more` as ordinary rows under the tiles. Its state is the person's (`ws-side-open` in localStorage) and it opens by itself on one of its screens. A closed Tools section still shows the open screen's tile or row.
-- In the dark theme a mention count's ink is `--pg-on-accent`: white on the light lavender accent read at 2.2:1.
+## How is the dock drawn? (boards L1, L2 of plans/workspace-interface, #11101)
+- `.ws-side-dock` after the list in `workspace_side.js`, `position: sticky; bottom: 0` in the menu body (the one scroller, as the head sticks to its top); `#menu .menu-body` drops its 100 px bottom padding while the list is open, so the dock reaches the edge.
+- A head line "Tools" with "⋯" (`pg-icon-button-sm .ws-side-dock-more`, `aria-expanded`, `aria-controls="ws-side-more"`); under it `.ws-side-cells`, four across: `navCell()` draws a 26 px `.pg-icon-tile` in the place's tone (the `.ws-side-cell[data-ws-nav]` rules: tasks teal, notes and data amber, flows and decisions blue, calendar and e-mails rose, board violet, my calendar grey) over the short name at the count size. The open screen's cell has the quiet fill.
+- Owner (2026-11-22): one state, never folded, never icons without names. The `tools` key of `ws-side-closed` is no longer read or written.
+
+## What does More do?
+- A card (`.ws-side-more-card`, `#ws-side-more`) over the list above the dock, listing `more` as rows. It carries `data-pg-menu-hold`, so the widened rail stays open while it is used. In the page order it follows "⋯", so Tab goes into it; opening by "⋯" focuses its first row. Its ground is the menu's solid `--pg-navbar-bg`: the glass `--pg-surface-menu` let the rows under it show through.
+- Esc (taken in the capture phase before the menu's own, only while the focus is in the list or nowhere) closes it and gives the focus back to "⋯"; a click outside it closes it; choosing a row closes it.
+- Its state lives on the page only (`state.moreOpen`): it opens by itself on one of its screens at the first draw, never from localStorage (the old `more` key of `ws-side-open` is not read).
+
+## What is the count on My Tasks?
+- The reader's open tasks (todo, doing, waiting) assigned to them, due today or before: `ws_tasks_due_counts()` in `includes/workspace/tasks.php` (SQL in `ws_tasks_due_counts_sql()`), shared with `ws_home()`'s "Today and overdue" card. `ws_side_payload()['tasks_due']`; the accent badge at the tile's corner, "99+" above 99, none at zero; the cell's name says "N due today or before" (`side_due`).
+- On the channel screen `ws_sync` answers `tasks_due` when asked with `due` (sent with the tab counts: after anything done there, and every 30 s); `BOOT.tasks_due` is handed to the list by `sideHooks().data`.
+- E-mails' unread count (`item.count`) stands in the same corner, quiet.
 
 ## How does the tour reach a place the list hides?
-- `PGWsSide.has(key)` says the list holds a place, drawn or not; `PGWsSide.openFor(key)` opens Tools, and More for one of its places, then draws again. `workspace_tour.js` counts such a place as present and calls `openFor()` before ringing it (`present()`, `showInList()`).
+- `PGWsSide.has(key)` says the list holds a place, drawn or behind More; `PGWsSide.openFor(key)` opens More's card for one of its places, then draws again. `workspace_tour.js` counts such a place as present and calls `openFor()` before ringing it.
 
 ## Why?
-- Owner (2026-10-30, "Menü çok karışık"; `workflow/decisions-made-workspace-5.md`): seven sections became four; the screens of a working day at a glance, the rest one click away. Owner (2026-11-03, `workflow/decisions-made-workspace-6.md`): My Tasks with the other tools, Today alone at the top.
+- Owner (2026-10-30, `workflow/decisions-made-workspace-5.md`): the screens of a working day at a glance, the rest one click away. Owner (2026-11-22, `workflow/decisions-made-workspace-48.md`): the dock at the list's foot, as drawn, never folded; the count on My Tasks.
 
-## What was planned for the list and never built?
-- A count of overdue and today's tasks on the My Tasks tile (one more query in `ws_side_payload()`).
-- Owner (2026-11-11): the menu's plan is closed as built ("o plan kapanabilir"). The count is a new request, not a step left over.
+Related: docs/memory/workspace/workspace-menu-list.md, docs/memory/plans/workspace-interface-list.md
