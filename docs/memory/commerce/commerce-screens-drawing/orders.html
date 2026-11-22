@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>All Orders redrawn: the list first, figures as a strip, three state pills a row, proposal (2026-11-22)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<link rel="stylesheet" href="parts.css">
+<style>
+.hd { display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 14px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--fg2); }
+.sum2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--line); }
+.sum2 > div { padding: 14px 18px 16px; }
+.sum2 > div + div { border-left: 1px solid var(--line); }
+.hb { display: grid; grid-template-columns: 170px 1fr 28px; gap: 10px; align-items: center; font-size: 12.5px; color: var(--fg2); margin-top: 7px; }
+.hb i { height: 10px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 70%, transparent); }
+.hb b { color: var(--fg); font-weight: 600; text-align: right; }
+</style>
+<script>if (location.search === "?light") { document.documentElement.dataset.theme = "light"; }</script>
+</head>
+<body>
+<div class="stage">
+
+<div class="board">
+<div class="cap"><b>A1 · Tüm Siparişler, yeni düzen</b><small>1440 px pencere. Liste ilk ekranda başlar; rakamlar tek şerit, grafikler "Özet" düğmesinin arkasında; her satırda siparişin üç durumu</small></div>
+<div class="scr">
+  <div class="tb"><span class="logo"></span><span class="ttl">Siparişleri Görüntüle <span style="font-weight:400;color:var(--fg3);font-size:12px;margin-left:6px">248 kayıt</span></span><span class="in"><i class="bi bi-search"></i><span class="ph">Ara…</span><span class="end"><kbd>Ctrl K</kbd></span></span><span class="sp"></span><span class="c"></span><span class="c"></span><span class="c"></span><span class="u"></span></div>
+  <div class="rail"><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+  <div class="pg">
+    <span class="mark" style="left:44px;top:66px">1</span>
+    <div class="bar1"><span class="btn fill"><i class="bi bi-cart-plus"></i> Sipariş ekle</span><span class="btn ghost"><i class="bi bi-file-earmark-arrow-down"></i> Dışa Aktar <i class="bi bi-chevron-down" style="font-size:10px"></i></span><span class="btn ghost"><i class="bi bi-truck"></i> Takip Numaralarını İçe Aktar</span><hr><span class="ib sm"><i class="bi bi-chevron-left"></i></span><span class="btn sm quiet"><i class="bi bi-calendar3"></i> Ay <i class="bi bi-chevron-down" style="font-size:10px"></i></span><span class="ib sm"><i class="bi bi-chevron-right"></i></span><span class="rng">22 Eki – 22 Kas 2026</span><span class="sp"></span><span class="btn sm ghost"><i class="bi bi-sort-down"></i> Sıralama</span><span class="in" style="width:250px">Tamamlanmış veya Dışa Aktarılmış<i class="bi bi-chevron-down" style="margin-left:auto"></i></span><span class="in" style="width:120px">Çevrimiçi<i class="bi bi-chevron-down" style="margin-left:auto"></i></span><span class="ib"><i class="bi bi-funnel"></i></span></div>
+
+    <span class="mark" style="left:44px;top:116px">2</span>
+    <div style="display:flex;align-items:center;margin-bottom:12px"><span class="seg"><span class="on">Tümü <em class="num">248</em></span><span>Ödeme bekleyen <em class="num">3</em></span><span>Kargolanacak <em class="num">12</em></span><span>Kargolandı <em class="num">180</em></span><span>Teslim edildi <em class="num">53</em></span></span></div>
+
+    <span class="mark" style="left:44px;top:176px">3</span>
+    <div class="pcard strip" style="margin-bottom:12px">
+      <div class="f"><small>Toplam Satış Tutarı (Çevrimiçi)</small><b class="num">₺1.215.106,72</b></div>
+      <div class="f"><small>Satış Tutarı (Mevcut filtre)</small><b class="num">₺96.549,54</b><em>↑ %12</em></div>
+      <div class="f"><small>Siparişler (Mevcut filtre)</small><b class="num">248</b><em>↑ %8</em></div>
+      <div class="f"><small>Bekleyen İade</small><b class="num">₺349,04</b></div>
+      <div class="tg"><span class="btn sm quiet"><i class="bi bi-bar-chart"></i> Özet <i class="bi bi-chevron-down" style="font-size:10px"></i></span></div>
+    </div>
+
+    <span class="mark" style="left:44px;top:262px">4</span>
+    <div class="pcard" style="margin-bottom:16px">
+      <div class="hd"><span class="ck"></span> Tümünü seç<span class="sp"></span><span class="ib sm"><i class="bi bi-pencil-square"></i></span><span class="ib sm"><i class="bi bi-layout-three-columns"></i></span><span class="btn sm ghost"><i class="bi bi-layout-sidebar-reverse"></i> Detaylar</span></div>
+      <table class="tbl">
+        <tr><th style="width:30px"></th><th>Sipariş Numarası</th><th>Sipariş Tarihi <i class="bi bi-arrow-down"></i></th><th>Müşteri</th><th>Durum</th><th>Ödeme</th><th>Kargo</th><th>Ürünler</th><th class="r">Toplam</th><th class="r">Eylem</th></tr>
+        <tr><td><span class="ck"></span></td><td><a class="lk num">1184</a></td><td>22 Kas 2026 10:14</td><td>Elif Kara</td><td><span class="st t-teal">Tamamlanmış</span></td><td><span class="st t-amber">Havale bekleniyor</span></td><td><span class="st">Kargolanmadı</span></td><td>Mocha Ofis Sandalyesi</td><td class="r num"><b style="font-weight:600">₺353,94</b></td><td class="r"><span class="ib sm"><i class="bi bi-x-circle"></i></span></td></tr><tr class="sel"><td><span class="ck"></span></td><td><a class="lk num">1183</a></td><td>22 Kas 2026 09:02</td><td>Mert Demir</td><td><span class="st t-teal">Tamamlanmış</span></td><td><span class="st t-teal">Ödendi</span></td><td><span class="st">Kargolanmadı</span></td><td>Yeşil Ofis Sandalyesi <small style="display:inline">+2 ürün</small></td><td class="r num"><b style="font-weight:600">₺1.128,40</b></td><td class="r"><span class="ib sm"><i class="bi bi-x-circle"></i></span></td></tr><tr><td><span class="ck"></span></td><td><a class="lk num">1182</a></td><td>21 Kas 2026 18:47</td><td>Can Aydın</td><td><span class="st t-teal">Tamamlanmış</span></td><td><span class="st t-teal">Ödendi</span></td><td><span class="st t-amber">Kısmen kargolandı</span></td><td>Turuncu Ofis Sandalyesi <small style="display:inline">+1 ürün</small></td><td class="r num"><b style="font-weight:600">₺764,00</b></td><td class="r"><span class="ib sm"><i class="bi bi-truck"></i></span><span class="ib sm"><i class="bi bi-x-circle"></i></span></td></tr><tr><td><span class="ck"></span></td><td><a class="lk num">1181</a></td><td>21 Kas 2026 16:20</td><td>Hilal Atakan</td><td><span class="st t-teal">Tamamlanmış</span></td><td><span class="st t-teal">Ödendi</span></td><td><span class="st t-blue">Kargolandı</span></td><td>Platin Hediye Sepeti</td><td class="r num"><b style="font-weight:600">₺365,98</b></td><td class="r"><span class="ib sm"><i class="bi bi-truck"></i></span><span class="ib sm"><i class="bi bi-x-circle"></i></span></td></tr><tr><td><span class="ck"></span></td><td><a class="lk num">1180</a></td><td>21 Kas 2026 11:05</td><td>Erdal Güral</td><td><span class="st t-teal">Tamamlanmış</span></td><td><span class="st t-amber">Kısmen iade</span></td><td><span class="st t-teal">Teslim edildi</span></td><td>Yeşil Ofis Sandalyesi <small style="display:inline">+1 ürün</small></td><td class="r num"><b style="font-weight:600">₺913,34</b></td><td class="r"><span class="ib sm"><i class="bi bi-truck"></i></span><span class="ib sm"><i class="bi bi-x-circle"></i></span></td></tr><tr><td><span class="ck"></span></td><td><a class="lk num">1179</a></td><td>20 Kas 2026 22:31</td><td>Sennur Yıldız</td><td><span class="st t-rose">İptal edildi</span></td><td><span class="st t-teal">İade edildi</span></td><td></td><td>Mocha Ofis Sandalyesi</td><td class="r num"><b style="font-weight:600">₺349,04</b></td><td class="r"></td></tr><tr><td><span class="ck"></span></td><td><a class="lk num">1178</a></td><td>20 Kas 2026 15:12</td><td>Ayşe Demir</td><td><span class="st t-teal">Tamamlanmış</span></td><td><span class="st t-teal">Ödendi</span></td><td><span class="st t-teal">Teslim edildi</span></td><td>e-Kitap</td><td class="r num"><b style="font-weight:600">₺49,00</b></td><td class="r"></td></tr><tr><td><span class="ck"></span></td><td><a class="lk num">1177</a></td><td>20 Kas 2026 09:40</td><td>Kodpen Ltd.</td><td><span class="st t-teal">Tamamlanmış</span></td><td><span class="st t-blue">Cari hesaba</span></td><td><span class="st t-blue">Kargolandı</span></td><td>Turuncu Ofis Sandalyesi <small style="display:inline">+4 ürün</small></td><td class="r num"><b style="font-weight:600">₺4.040,40</b></td><td class="r"><span class="ib sm"><i class="bi bi-truck"></i></span><span class="ib sm"><i class="bi bi-x-circle"></i></span></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+<ul class="notes">
+  <li><i class="mk">1</i><b>Tek satır çubuk.</b> Bugünkü her düğme ve süzgeç yerinde; dönem gezgini ikinci satırdan çubuğa çıkar.</li>
+  <li><i class="mk">2</i><b>Hızlı süzgeçler</b> (yeni): günlük iş kuyrukları, yanlarında sayıları. Dönem ve diğer süzgeçlerle birlikte çalışır.</li>
+  <li><i class="mk">3</i><b>Rakam şeridi.</b> Bugünkü dört rakam, dört kart (150 px) yerine tek şerit (64 px). "En çok satan 5 ürün" ve "Ödeme yöntemleri" grafikleri "Özet" düğmesiyle açılır; açık ya da kapalı hâli kişide hatırlanır.</li>
+  <li><i class="mk">4</i><b>Satırlar.</b> Ad ve Soyad tek "Müşteri" sütunu; sipariş, ödeme ve kargo durumu ayrı etiketler (sipariş ekranının başındakilerle aynı); "Ürünler" sütunu (yeni) ilk ürünü ve kaç ürün daha olduğunu söyler.</li>
+  <li><b>Diğer sütunlar</b> (Türü, Kullanıcı, İzleme Kodu, Üye Kimliği, Ortaklık Kodu, Kart Verisi, Kâr) sütun seçicide durur, varsayılanda kapalıdır. Sütun seçimini daha önce kaydetmiş kişinin seçimi değişmez.</li>
+  <li><b>Değişmeyenler:</b> toplu işlemler, hızlı düzenleme, Detaylar paneli, dışa aktarımlar, gelişmiş süzgeçler, telefon görünümü.</li>
+</ul>
+</div>
+
+<div class="board">
+<div class="cap"><b>A2 · Özet açıkken, ve neden</b><small>Grafikler isteyene bir tık uzakta; liste her zaman üstte başlar</small></div>
+<div style="display:grid;grid-template-columns:860px 1fr;gap:40px;align-items:start">
+  <div class="pcard">
+    <div class="strip">
+      <div class="f"><small>Toplam Satış Tutarı (Çevrimiçi)</small><b class="num">₺1.215.106,72</b></div>
+      <div class="f"><small>Satış Tutarı (Mevcut filtre)</small><b class="num">₺96.549,54</b></div>
+      <div class="f"><small>Siparişler (Mevcut filtre)</small><b class="num">248</b></div>
+      <div class="f"><small>Bekleyen İade</small><b class="num">₺349,04</b></div>
+      <div class="tg"><span class="btn sm quiet" style="box-shadow:inset 0 0 0 1px var(--accent)"><i class="bi bi-bar-chart"></i> Özet <i class="bi bi-chevron-up" style="font-size:10px"></i></span></div>
+    </div>
+    <div class="sum2">
+      <div><div class="gl">En çok satan 5 ürün</div>
+        <div class="hb"><span>Yeşil Ofis Sandalyesi</span><i style="width:100%"></i><b class="num">92</b></div>
+        <div class="hb"><span>Mocha Ofis Sandalyesi</span><i style="width:66%"></i><b class="num">61</b></div>
+        <div class="hb"><span>Turuncu Ofis Sandalyesi</span><i style="width:34%"></i><b class="num">31</b></div>
+        <div class="hb"><span>Platin Hediye Sepeti</span><i style="width:12%"></i><b class="num">11</b></div>
+      </div>
+      <div><div class="gl">Ödeme yöntemleri</div>
+        <div class="hb"><span>Kredi / Banka Kartı</span><i style="width:100%"></i><b class="num">201</b></div>
+        <div class="hb"><span>Havale / EFT</span><i style="width:18%"></i><b class="num">36</b></div>
+        <div class="hb"><span>Cari hesaba</span><i style="width:6%"></i><b class="num">11</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="maps" style="gap:24px">
+    <div><div class="cap"><b style="font-size:13px">Bugün</b></div>
+      <div class="map" style="width:250px;height:240px">
+        <div class="x" style="left:10px;top:10px;width:230px;height:28px">Çubuk (2 satır)</div>
+        <div class="x" style="left:10px;top:44px;width:230px;height:36px">4 rakam kartı</div>
+        <div class="x" style="left:10px;top:86px;width:230px;height:52px">2 grafik kartı</div>
+        <div class="x hot" style="left:10px;top:146px;width:230px;height:84px">Liste<br><span style="font-weight:400">610. pikselde başlıyor</span></div>
+        <div class="foldl" style="top:225px"></div>
+      </div></div>
+    <div><div class="cap"><b style="font-size:13px">Öneri</b></div>
+      <div class="map" style="width:250px;height:240px">
+        <div class="x" style="left:10px;top:10px;width:230px;height:18px;padding:1px 6px">Çubuk</div>
+        <div class="x" style="left:10px;top:32px;width:230px;height:18px;padding:1px 6px">Hızlı süzgeçler</div>
+        <div class="x" style="left:10px;top:54px;width:230px;height:18px;padding:1px 6px">Rakam şeridi</div>
+        <div class="x hot" style="left:10px;top:78px;width:230px;height:152px">Liste<br><span style="font-weight:400">290. pikselde başlıyor; ilk ekranda 12 sipariş</span></div>
+        <div class="foldl" style="top:225px"></div>
+      </div></div>
+  </div>
+</div>
+<ul class="notes">
+  <li><b>Ödeme bekleyen:</b> bugünkü "ödeme bekliyor" kuralı (havale, kapıda ödeme, PayPal beklemesi).</li>
+  <li><b>Kargolanacak:</b> ödemesi alınmış, tamamlanmış, adresi olan ve henüz hiçbir gönderisi kargolanmamış siparişler.</li>
+  <li><b>Kargolandı / Teslim edildi:</b> bütün gönderileri kargolanmış / teslim edilmiş siparişler. Kurallar sipariş ekranının başındaki etiketle aynı.</li>
+  <li><b>Yüzdeler</b> (yeni): bir önceki aynı uzunluktaki döneme göre değişim; yalnız süzgeçli iki rakamda.</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>
