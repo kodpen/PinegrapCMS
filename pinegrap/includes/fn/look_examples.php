@@ -460,6 +460,8 @@ function pg_look_examples_patterns($prefix = 'light')
     );
 
     $patterns[] = pg_look_examples_form_drawer_pattern($p);
+    // The Workspace's screens: the bar with "Filter" and the empty screen.
+    $patterns = array_merge($patterns, pg_look_examples_ws_screen_patterns($p));
     $patterns[] = pg_look_examples_timeline_pattern();
     $patterns[] = pg_look_examples_ws_list_row_pattern($p);
     $patterns = array_merge($patterns, pg_look_examples_record_patterns($p));
@@ -1070,7 +1072,7 @@ function pg_look_examples_not_done()
                 lang('Dialogs and the settings modal'),
                 lang('Dashboard cards'),
                 lang('Report screens'),
-                lang('Workspace: channel screen and screen bars'),
+                lang('Workspace: channel screen'),
                 lang('Phone widths'),
             ),
         ),
@@ -1111,4 +1113,88 @@ function pg_look_examples_pane($theme)
     }
 
     return $out . '</div>';
+}
+
+/**
+ * A Workspace screen's bar and its empty screen (boards S1 and S3 of
+ * plans/workspace-interface; barViews(), barFilter(), barSearch() and
+ * emptyScreen() in workspace.js): My Tasks' one line with "Filter" open,
+ * the tags of what is set under it; the empty screen with and without its
+ * main action.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array list of array('id', 'title', 'classes', 'html')
+ */
+function pg_look_examples_ws_screen_patterns($p)
+{
+    $views = array(lang('Mine'), lang('Given by me'), lang('My departments'), lang('Everyone'), lang('My time'));
+    $seg = '';
+    $options = '';
+
+    foreach ($views as $index => $view) {
+        $seg .= '<button type="button" class="pg-seg-item" aria-pressed="' . ($index ? 'false' : 'true') . '">' . h($view)
+            . ($index ? '' : '<em class="pg-seg-count">6</em>') . '</button>';
+        $options .= '<option' . ($index ? '' : ' selected') . '>' . h($view) . '</option>';
+    }
+
+    $select = function ($id, $label, $choices) {
+        $out = '<div class="ws-plan-field"><label class="pg-field-label" for="' . $id . '">' . h($label) . '</label><select class="pg-input pg-input-sm" id="' . $id . '">';
+
+        foreach ($choices as $choice) {
+            $out .= '<option>' . h($choice) . '</option>';
+        }
+
+        return $out . '</select></div>';
+    };
+    $tag = function ($text) {
+        return '<span class="ws-bar-tag">' . h($text) . '<button type="button" class="ws-bar-tag-remove" title="' . h(lang(array('string' => 'Remove the filter: {var:1}', 'vars' => array($text)))) . '" aria-label="' . h(lang(array('string' => 'Remove the filter: {var:1}', 'vars' => array($text)))) . '"><i class="bi bi-x" aria-hidden="true"></i></button></span>';
+    };
+
+    $bar = '<div class="ws-bar-frame"><nav class="pg-toolbar ws-bar">'
+        . '<button type="button" class="pg-button pg-button-fill"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New task')) . '</button>'
+        . '<div class="ws-bar-views"><div class="pg-seg ws-bar-views-seg" role="group" aria-label="' . h(lang('Which tasks')) . '">' . $seg . '</div>'
+        . '<select class="pg-input pg-input-sm ws-bar-views-select" aria-label="' . h(lang('Which tasks')) . '">' . $options . '</select></div>'
+        . '<div class="pg-toolbar-grow"></div>'
+        . '<span class="ws-bar-filter"><button type="button" class="pg-button pg-button-quiet ws-bar-filter-button" aria-haspopup="dialog" aria-expanded="true" aria-label="' . h(lang(array('string' => 'Filter, {var:1} set', 'vars' => array(2)))) . '">'
+        . '<i class="bi bi-funnel" aria-hidden="true"></i><span class="ws-bar-filter-label">' . h(lang('Filter')) . '</span><span class="ws-bar-count" aria-hidden="true">2</span></button></span>'
+        . '<label class="pg-input pg-input-sm ws-bar-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" placeholder="' . h(lang('Search tasks')) . '" aria-label="' . h(lang('Search tasks')) . '"></label>'
+        . '</nav></div>'
+        . '<div class="ws-bar-tags">' . $tag(lang('Finished tasks')) . $tag(lang('Pressing, coming up'))
+        . '<button type="button" class="pg-button pg-button-ghost pg-button-sm">' . h(lang('Clear')) . '</button></div>';
+
+    $box = '<div class="pg-card ws-bar-box" role="dialog" aria-label="' . h(lang('Filter')) . '"><div class="ws-bar-box-body">'
+        . $select($p . '-ws-bar-status', lang('Task status'), array(lang('Finished tasks'), lang('Open tasks'), lang('All tasks')))
+        . $select($p . '-ws-bar-dept', lang('Department'), array(lang('All departments')))
+        . $select($p . '-ws-bar-priority', lang('Task priority'), array(lang('All priorities')))
+        . $select($p . '-ws-bar-made', lang('Made by agents'), array(lang('Made by anyone')))
+        . '<label class="ws-plan-switch"><input type="checkbox" class="pg-switch" checked><i class="bi bi-fire fg-danger" aria-hidden="true"></i>' . h(lang('Pressing, coming up')) . '</label>'
+        . '</div><div class="ws-bar-box-foot"><button type="button" class="pg-button pg-button-ghost pg-button-sm">' . h(lang('Clear')) . '</button>'
+        . '<button type="button" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Close')) . '</button></div></div>';
+
+    $empty = function ($tone, $icon, $title, $text, $action) {
+        return '<div class="pg-card"><div class="ws-empty-screen"><span class="pg-icon-tile ws-empty-screen-tile pg-tone-' . $tone . '" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
+            . '<div class="pg-title-section ws-empty-screen-title">' . h($title) . '</div><p class="pg-text-2 ws-empty-screen-text">' . h($text) . '</p>'
+            . (($action !== '') ? '<button type="button" class="pg-button pg-button-quiet pg-button-sm">' . $action . '</button>' : '')
+            . '</div></div>';
+    };
+
+    return array(
+        array(
+            'id'      => 'pattern-ws-screen-bar',
+            'title'   => lang('Screen bar with filters'),
+            'classes' => array('.ws-bar-frame', '.pg-toolbar', '.ws-bar', '.pg-button-fill', '.ws-bar-views', '.pg-seg', '.ws-bar-views-seg', '.pg-seg-count', '.ws-bar-views-select', '.pg-toolbar-grow', '.ws-bar-filter', '.ws-bar-filter-label', '.ws-bar-count', '.ws-bar-search', '.ws-bar-tags', '.ws-bar-tag', '.ws-bar-tag-remove', '.ws-bar-box', '.ws-bar-box-body', '.ws-bar-box-foot', '.pg-switch'),
+            'html'    => '<div class="pg-look-stack">' . $bar . $box
+                . '<p class="pg-text-meta">' . h(lang('From the Workspace\'s screens: one line, never a second row. The main action and the views, then the switches, "Filter" and the search; more than three filters go behind "Filter", what is set is a tag under the bar. Below 1100 px the views are one select; on a phone the bar keeps the main action and the search.')) . '</p></div>',
+        ),
+        array(
+            'id'      => 'pattern-ws-empty-screen',
+            'title'   => lang('Empty screen'),
+            'classes' => array('.ws-empty-screen', '.pg-icon-tile', '.ws-empty-screen-tile', '.pg-title-section', '.ws-empty-screen-text'),
+            'html'    => '<div class="pg-look-stack">'
+                . $empty('blue', 'bi-clock-history', lang('No decisions yet'), lang('A message marked as a decision in a channel shows here.'), '')
+                . $empty('teal', 'bi-check2-square', lang('No tasks'), lang('All clear - no tasks here.'), '<i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New task')))
+                . $empty('gray', 'bi-funnel', lang('Nothing found'), lang('No task matches the filters or the search.'), '<i class="bi bi-x-lg" aria-hidden="true"></i>' . h(lang('Clear')))
+                . '<p class="pg-text-meta">' . h(lang('In the content\'s card: a tile in the screen\'s tone, a title that says what is missing, the sentence, the main action; a list its filters narrowed to nothing offers Clear.')) . '</p></div>',
+        ),
+    );
 }

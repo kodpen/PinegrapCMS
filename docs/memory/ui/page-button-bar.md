@@ -4,7 +4,7 @@ description: The #button_bar strip under a screen's heading is the .pg-toolbar c
 ---
 
 ## What is #button_bar?
-- The action strip under the heading of about a hundred screens (the stylesheet's comment still says seventy-odd). It is the toolbar component: `backend.src.css` gives `#button_bar` the `.pg-toolbar` rules by its id, so a legacy `<nav id="button_bar" class="navigation">` gets them too; new markup writes `nav#button_bar.pg-toolbar`, full width. Never put it inside a `.row` / `.col-*`, never open a second tool column beside it.
+- The action strip under the heading of about a hundred screens. It is the toolbar component: `backend.src.css` gives `#button_bar` the `.pg-toolbar` rules by its id, so a legacy `<nav id="button_bar" class="navigation">` gets them too; new markup writes `nav#button_bar.pg-toolbar`, full width. Never put it inside a `.row` / `.col-*`, never open a second tool column beside it.
 - Its legacy markup (`.btn-group`, `.btn-link`) is mapped by `assets/css/backend.src.css` ("Page action bar" and "Admin screen toolbar"): `.btn-group` gets `display: contents` (not one with `role="group"`: a view switch stays one box, #5340), every button `flex: 0 0 auto` and the pill shape. A bar with no button in it is hidden.
 
 ## What may sit in it?
@@ -14,11 +14,14 @@ description: The #button_bar strip under a screen's heading is the .pg-toolbar c
 - A list filter is a select, not a button group: `pg_filter_select($name, $options, $current, $opts)` (`includes/fn/output.php`) draws a GET form (`pg-toolbar-filter disable_shortcut`) that submits on change, carries along only the `$_GET` values named in `keep`, takes an optional icon label and has a `<noscript>` Apply button.
 - On a screen with a server search or another narrowing the screen combines with it, `keep` names those too: changing the filter must not silently drop them (`erp_cheques.php` Status/Direction keep `search`; `erp_invoices.php` Due date keeps all but `bucket`; pinned by `tests/list_filter_keep_test.php`, PR #3322).
 
+## How is a Workspace screen's bar built? (WI5, #11104)
+- One line; more than three filters behind "Filter", tags under it: `workspace-screen-bar.md`.
+
 ## Which screens draw it straight under the title? (#4050, #4089)
-- The content screens (pages, ads, regions, menus, styles, themes, comments, fields, calendars and event locations, short links, containers, design and site files, auto dialogs, key codes, contact groups, e-mail and SMS campaigns, the site log, the CKEditor link picker; commerce lists, orders, gift cards, Paraşüt inbox, commissions, visitor reports, the page, contact, comment, campaign and theme file editors, `product_builder`) draw it with `pg_screen_toolbar()` straight in `<main>`; the `.row > .col-12 … md:text-start` wrapper is gone. `tests/button_bar_placement_test.php` pins it.
+- The content screens (pages, ads, regions, menus, styles, themes, comments, fields, calendars, short links, containers, design and site files, auto dialogs, key codes, contact groups, campaigns, site log, link picker; commerce lists, orders, gift cards, Paraşüt inbox, commissions, visitor reports, the file editors, `product_builder`) draw it with `pg_screen_toolbar()` straight in `<main>`; the `.row > .col-12 … md:text-start` wrapper is gone. `tests/button_bar_placement_test.php` pins it.
 - Their second tool column joined the bar's right end (search slot): the sort menu plus the filter form (`view_ads` region select keeps its own form because its options carry counts; the link picker's Folder + Access stay one form so a change keeps the other; `view_log`'s Advanced Filters toggle is a plain link there). The link picker's Pages / Files / Short Links are the view slot; `product_builder`'s status + parent selects stay one form.
 - `edit_contact`: Export / Erase personal data are rows of the overflow menu.
 - `view_pages`: Add Page (or the designer's visual Add Page) is slot 1; Add Page (Legacy), Update Search Index, Refresh SEO Scores, Analyze HTML Structure and the Accessibility report are rows of one "Tools" menu with the same role checks; the content filter is `pg_filter_select('filter', …)` with id `filter_select`.
-- A fact block or `[name]` heading above a bar stays above it, outside the bar, in a plain div.
+- A fact block or `[name]` heading above a bar stays above it, in a plain div.
 
 Related: docs/memory/ui/admin-screen-toolbar.md, docs/memory/ui/admin-screen-toolbar-rules.md

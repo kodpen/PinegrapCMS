@@ -1155,6 +1155,7 @@
     "Remove the element, keep the words": "Öğeyi kaldır, sözcükler kalsın",
     "Remove the expiry": "Son kullanma tarihini kaldır",
     "Remove the filter of column {1}": "{1} sütununun süzgecini kaldır",
+    "Remove the filter: {var:1}": "Filtreyi kaldır: {var:1}",
     "Remove the link": "Bağlantıyı kaldır",
     "Remove the link, keep the words": "Bağlantıyı kaldır, sözcükler kalsın",
     "Remove the mailbox {var:1}? Reading stops, the stored password is deleted and its incoming mail rules go. The conversations stay where they are.": "{var:1} posta kutusu kaldırılsın mı? Okuma durur, kayıtlı parola silinir ve gelen posta kuralları gider. Konuşmalar oldukları yerde kalır.",

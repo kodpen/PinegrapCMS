@@ -5,7 +5,7 @@ module: look_examples
 ---
 
 ## What is the Design examples screen?
-- `design_examples.php`, for the Designer role and above (`validate_area_access($user, 'designer')`), linked from System tools › Jobs only for role ≤ 1 (`pg_settings_tool_groups()`, search words in `pg_settings_tool_keys()`). Help goes to `site-settings#system-tools`.
+- `design_examples.php`, for the Designer role and above (`validate_area_access($user, 'designer')`), linked from System tools › Jobs for role ≤ 1 (`pg_settings_tool_groups()`, search words in `pg_settings_tool_keys()`). Help goes to `site-settings#system-tools`.
 - It draws every recipe of `look-type-and-recipes.md` twice, in a pane with `data-bs-theme="light"` and one with `data-bs-theme="dark"`, so both themes show at once whatever the reader's own theme. The panel's tokens and the recipes' tint strengths flip on `[data-bs-theme]`, so a subtree theme works.
 
 ## Where does the markup live?
@@ -15,7 +15,7 @@ module: look_examples
 
 ## What does the top card say is not done?
 - Drawn in the sheet, not a recipe yet: figure cards with a trend line, the 12-column field grid (DL5c), the bell row's avatar and verb.
-- Not drawn yet: dialogs and the settings modal, dashboard cards, report screens, Workspace (channel screen, screen bars), phone widths.
+- Not drawn yet: dialogs and the settings modal, dashboard cards, report screens, Workspace (channel screen), phone widths.
 - The list table is drawn by the driver itself (`list-table-layout.md`, #8921), so it left the list.
 - A new recipe adds its section here in the same PR; a part that is done leaves the list.
 - Drawer (#10851): drawn in place without the dialog, as `#privacy_request` and Application Access' `#api_new` build it; the Bootstrap classes are named without a dot (they are not rules of `backend.src.css`). The numbered steps come with KV4b.

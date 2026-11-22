@@ -35064,6 +35064,226 @@ textarea.pg-campaign-text {
 }
 
 /* ==========================================================================
+   Look A: screen bar with filters, empty screen.
+   A Workspace screen's one-line bar (screenBar helpers in workspace.js:
+   barViews(), barFilter()): the main action, the views, the grow slot, the
+   switches, "Filter" with the count of what is set, the search. "Filter"
+   opens a floating box with the fields one under the other, "Clear" and
+   "Close"; what is set is a line of tags under the bar. Below 1100 px the
+   views are one select. The empty screen (emptyScreen()): a 44 px tile in
+   the screen's tone, a title, one sentence, the main action.
+   ========================================================================== */
+@layer custom {
+
+.pg-toolbar.ws-bar {
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 0;
+  border-bottom: 0;
+}
+/* The bar stands in a frame the views measure: inside the Workspace
+   shell's padding, unlike the full-width toolbar of the older screens
+   (.ws-shell-main #ws-root > .pg-toolbar), so its first button lines up
+   with the card under it. */
+.ws-bar-frame {
+  container: ws-bar / inline-size;
+  padding-top: 12px;
+}
+.ws-bar > .pg-button,
+.ws-bar-filter > .pg-button {
+  flex: none;
+}
+/* The grow slot only pushes the right-hand part to the end: with the
+   toolbar's 220 px basis the search fell to a second row at 1440 px. */
+.ws-bar > .pg-toolbar-grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ws-bar-views,
+.ws-bar-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ws-bar-views-select {
+  display: none;
+  width: auto;
+  max-width: 14rem;
+}
+.ws-bar-filter > .pg-input,
+.ws-bar-filter > .ws-plan-switch {
+  width: auto;
+}
+.ws-bar .ws-plan-switch,
+.ws-bar-box .ws-plan-switch,
+.ws-bar-box .ws-plan-field {
+  margin: 0;
+}
+.ws-bar-search {
+  width: 230px;
+  height: 34px;
+  font-size: var(--pg-text-2);
+}
+.ws-bar-search > .bi {
+  color: var(--pg-fg-3);
+}
+.ws-bar-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: var(--pg-text-count);
+  font-weight: var(--pg-weight-strong);
+  line-height: 1;
+  color: var(--pg-on-accent-fill);
+  background: var(--pg-accent);
+}
+.ws-bar-count[hidden] {
+  display: none;
+}
+
+/* The filters that are set, under the bar: a tag each with its "x", then
+   "Clear". */
+.ws-bar-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  margin: -8px 0 8px;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.ws-bar-tags[hidden] {
+  display: none;
+}
+.ws-bar-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 3px 0 8px;
+  border-radius: 7px;
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-medium);
+  white-space: nowrap;
+}
+.ws-bar-tag-remove {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--pg-fg-3);
+}
+.ws-bar-tag-remove:hover {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+.ws-bar-tag-remove:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 1px;
+}
+
+/* The box "Filter" opens: the fields one under the other, then Clear at
+   the left and Close at the right over a hairline. */
+.ws-bar-box {
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  padding: 14px;
+}
+.ws-bar-box-body {
+  display: grid;
+  gap: 10px;
+}
+.ws-bar-box-body .pg-input {
+  width: 100%;
+}
+.ws-bar-box-foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+
+/* An empty screen, in the content's card. */
+.ws-empty-screen {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  min-height: 232px;
+  padding: 24px 40px;
+  text-align: center;
+}
+.ws-empty-screen-tile {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 6px;
+  border-radius: 13px;
+  font-size: var(--pg-text-section-title);
+}
+.ws-empty-screen-text {
+  max-width: 28rem;
+  margin: 0;
+}
+.ws-empty-screen > .pg-button {
+  margin-top: 8px;
+}
+
+/* The views are one select once the bar is too narrow for the segments
+   beside the rest of its line: My Tasks' five views, "Filter" and the
+   search need about 1000 px (a 1440 px window gives the bar 1166 px, a
+   1100 px one about 830 px with the menu open). */
+@container ws-bar (max-width: 1000px) {
+  .ws-bar-views-seg {
+    display: none;
+  }
+  .ws-bar-views-select {
+    display: flex;
+  }
+  /* Never a second row: the search gives way first. */
+  .pg-toolbar.ws-bar {
+    flex-wrap: nowrap;
+  }
+  .ws-bar-search {
+    flex: 0 1 230px;
+    width: auto;
+    min-width: 0;
+  }
+  .ws-bar-search > input {
+    width: 100%;
+  }
+}
+/* A phone keeps the main action, "Filter" (its icon and count) and the
+   search on the line; the views are in the box "Filter" opens. */
+@media (max-width: 575.98px) {
+  .ws-bar-filter-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ws-bar-box .ws-bar-views-select {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+}
+
+/* ==========================================================================
    Look A: variable chips.
    A message's variable as a chip naming what it stands for, in the accent's
    tint (pg_var_chips.js, includes/fn/var_chips.php): in a palette to drag or
