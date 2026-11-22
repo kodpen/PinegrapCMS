@@ -85,6 +85,7 @@ require_once($pg_api_directory . '/resources/visitors.php');
 require_once($pg_api_directory . '/resources/site_log.php');
 require_once($pg_api_directory . '/resources/fediverse.php');
 require_once($pg_api_directory . '/resources/audit_log.php');
+require_once($pg_api_directory . '/resources/changes.php');
 require_once($pg_api_directory . '/resources/campaigns.php');
 require_once($pg_api_directory . '/resources/campaign_profiles.php');
 require_once($pg_api_directory . '/resources/contact_groups.php');
@@ -101,6 +102,7 @@ require_once($pg_api_directory . '/resources/design_ads.php');
 require_once($pg_api_directory . '/resources/design_dialogs_regions.php');
 require_once($pg_api_directory . '/resources/design_bundles.php');
 require_once($pg_api_directory . '/resources/account.php');
+require_once($pg_api_directory . '/resources/batch.php');
 
 // API settings, read straight from the config row.
 //

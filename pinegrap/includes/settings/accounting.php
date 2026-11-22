@@ -298,7 +298,7 @@ $pg_settings_cards[] = '
                         <div class="form-text mb-3">' . lang('Where the ERP\'s invoices and delivery notes go to become e-Invoice, e-Archive or e-Delivery note documents. One provider at a time; the choice can be changed later and every document remembers which provider carried it.') . '</div>
                         ' . $output_erp_edoc_options . '
                         <button type="button" class="pg-button pg-button-quiet pg-button-sm pg-edoc-test" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/get_erp_edoc_test.php"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Test the connection') . '</button>
-                        <div class="form-text">' . lang('Tries the provider picked above with what is typed here (or, for a box left empty, what is stored). Save the settings to keep the credentials.') . '</div>
+                        <div class="form-text">' . lang('Tries the provider picked above with the connection kept on its page of Connections.') . '</div>
                         <div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>
                     </div>
                     <div class="col-12">
@@ -317,61 +317,7 @@ $pg_settings_cards[] = '
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                             <div class="popover-body">
                                                                <div class="row gy-5">
-                                                                    <div class="col-12 "><h3 class="pg-group-label mb-0">' . lang('API Connection') . '</h3></div>
-                                                                    <div class="col-12">
-                                                                        <div class="alert theme-' . h($parasut_connection_tone) . ' py-3 small mb-0 pg-parasut-status d-flex align-items-center gap-3"><i class="bi ' . (($parasut_connection_tone === 'success') ? 'bi-check-circle' : 'bi-plug') . '" aria-hidden="true"></i><span>' . h($parasut_connection_text) . '</span></div>
-                                                                    </div>
-                                                                    <div class="col-12">
-                                                                        <details class="pg-parasut-steps"' . ($parasut_connection_connected ? '' : ' open') . '>
-                                                                            <summary class="form-label">' . h($parasut_connection_connected ? lang('Authorize again or connect another account') : lang('Connect in three steps')) . '</summary>
-                                                                            <div class="row gy-5 mt-0">
-                                                                                <div class="col-12"><div class="form-text">' . lang('1. Enter the client id and secret of the API application; Paraşüt support issues them for your account.') . '</div></div>
-                                                                                <div class="pg-f-md">
-                                                                                    <label class="form-label" for="parasut_client_id">' . lang('Client ID') . '</label>
-                                                                                    <input type="text" class="form-control" id="parasut_client_id" name="parasut_client_id" value="' . h($parasut_client_id) . '" autocomplete="off" />
-                                                                                </div>
-                                                                                <div class="pg-f-md">
-                                                                                    <label class="form-label" for="parasut_client_secret">' . lang('Client Secret') . '</label>
-                                                                                    <input type="password" class="form-control" id="parasut_client_secret" name="parasut_client_secret" value="" autocomplete="new-password" placeholder="' . h($parasut_secret_placeholder) . '" />
-                                                                                    <div class="form-text">' . h($parasut_secret_help) . '</div>
-                                                                                </div>
-                                                                                <div class="col-12">
-                                                                                    <div class="form-text mb-3">' . lang('2. Open the authorization page, sign in to Paraşüt and allow Pinegrap; Paraşüt then shows a code.') . '</div>
-                                                                                    <a class="pg-button pg-button-quiet pg-button-sm pg-parasut-authorize' . (($parasut_authorize_url === '') ? ' disabled' : '') . '" href="' . h($parasut_authorize_url) . '" target="_blank" rel="noopener" data-pg-base="' . h(PARASUT_API_BASE . '/oauth/authorize') . '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' . lang('Open the Paraşüt authorization page') . '</a>
-                                                                                </div>
-                                                                                <div class="col-12">
-                                                                                    <label class="form-label" for="parasut_auth_code">' . lang('3. Paste the code and press Connect') . '</label>
-                                                                                    <div class="d-flex align-items-center gap-2 pg-f-lg">
-                                                                                        <input type="text" class="form-control" id="parasut_auth_code" name="parasut_auth_code" value="" autocomplete="off" spellcheck="false" placeholder="' . h(lang('Authorization code')) . '" />
-                                                                                        <button type="button" class="pg-button pg-button-quiet pg-button-sm text-nowrap pg-edoc-test" data-pg-fields="parasut_" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/parasut_connect.php"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Connect') . '</button>
-                                                                                    </div>
-                                                                                    <div class="form-text">' . lang('A code works once and for a few minutes. Saving the page with a code in the box connects too. No Paraşüt password is stored this way.') . '</div>
-                                                                                    <div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </details>
-                                                                    </div>
-                                                                    <div class="col-12">
-                                                                        <details>
-                                                                            <summary class="form-text">' . lang('Advanced: company number, user name and password') . '</summary>
-                                                                            <div class="row gy-5 mt-0">
-                                                                                <div class="pg-f-md">
-                                                                                    <label class="form-label" for="parasut_company_id">' . lang('Company ID') . ' <span class="pg-field-label-note">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Firma No'))) . ')</span></label>
-                                                                                    <input type="text" class="form-control" id="parasut_company_id" name="parasut_company_id" value="' . h($parasut_company_id) . '" autocomplete="off" />
-                                                                                    <div class="form-text">' . lang('Filled in by Connect. Write it only when the Paraşüt user works in more than one company; an empty box keeps the saved number.') . '</div>
-                                                                                </div>
-                                                                                <div class="col-12"><div class="form-text">' . lang('The older way: the Paraşüt account\'s e-mail and password are stored encrypted and used whenever the token has to be renewed. Not needed once Pinegrap is authorized with a code.') . '</div></div>
-                                                                                <div class="pg-f-md">
-                                                                                    <label class="form-label" for="parasut_username">' . lang('Username') . ' (' . lang('Email') . ')</label>
-                                                                                    <input type="text" class="form-control" id="parasut_username" name="parasut_username" value="' . h($parasut_username) . '" autocomplete="off" />
-                                                                                </div>
-                                                                                <div class="pg-f-md">
-                                                                                    <label class="form-label" for="parasut_password">' . lang('Password') . '</label>
-                                                                                    <input type="password" class="form-control" id="parasut_password" name="parasut_password" value="" autocomplete="new-password" placeholder="' . h($parasut_password_placeholder) . '" />
-                                                                                    <div class="form-text">' . h($parasut_password_help) . '</div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </details>
+                                                                    <div class="col-12">' . $parasut_card_connection . '
                                                                     </div>
                                                                     <div class="col-12 "><h3 class="pg-group-label mb-0">' . lang('Invoice Settings') . '</h3></div>
                                                                     <div class="pg-f-md">

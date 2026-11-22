@@ -9,9 +9,9 @@ description: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside
 - A need the app's issue words differently wins over this file's shape where the two differ in detail; a difference in kind goes to the architect.
 
 ## Which steps? (side by side: each has its own files)
-- M8a (S) `sort=newest` on the lists a device scope reads that lack it, by the walk of `api/api-list-newest-first.md` (`list_order.php`); the PR lists which lists got it and which cannot (no stable key).
-- M8b (M) several reads in one request.
-- M8c (M) the deleted records list.
+- M8a (S) `sort=newest` on the lists a device scope reads that lack it, by the walk of `api/api-list-newest-first.md` (`list_order.php`); the PR lists which lists got it and which cannot (no stable key). Done: PR #11087 (`api/api-list-newest-device-lists.md`).
+- M8b (M) several reads in one request: done, PR #11085 (`api/api-batch-reads.md`).
+- M8c (M) the deleted records list. Done: #11084 (products and offers covered; `api/api-deleted-records.md`).
 - M8d (S) the CORS allow-list.
 
 ## How does one request carry several reads? (M8b)

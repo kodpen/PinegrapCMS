@@ -1051,6 +1051,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/campaign-profile-screens-left.md: Profile screens after the switch to flows (MA9f): only profiles left, converted ones lead to their flow, screens leave with none, the report and who reads what of it, reasons as specs
 - core/campaign-profile-switch-writer.md: The code that switches e-mail campaign profiles to their flows (MA9e2): update step marks due, general job converts, the file in data/, the window on events, the report notice and bell, a second run
 - core/content-translation-record-save-jobs.md: Translate on save for form records: who opens a translation job by saving a record (never a visitor), the records scope, and the save paths that are not hooked
+- core/mail-campaign-way.md: How campaign e-mail leaves: the layers email() reads, the campaigns' ways sheet and its stored way (config_text campaign_mail_way), why a site that never chose keeps today's order
 - core/mail-settings-module.md: includes/fn/mail_settings.php: what E-mail sending saves and runs (config.php defines, kept password, DKIM, test e-mail), moved out of the screen (CX3a)
 - core/output-escaping.md: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags
 - core/passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384, #2226): who may add one, the proofs incl. the e-mailed code, recovery codes of passkey-only accounts, rename and remove
@@ -1327,6 +1328,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d)
 - ui/notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
 - ui/notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
+- ui/page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - ui/panel-top-bar-phone.md: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark or page heading), below 390px no logo, why, the test that keeps it
 - ui/picker-field.md: The picker field pg_picker_field() (PK5): combobox with the chosen value and its picture, search list, Browse, clear, phone sheet, marks; which screens use it and who prints the script
@@ -1344,7 +1346,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed
 - ui/settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows
 - ui/settings-mail-sending-rows.md: E-mail sending's folded rows (EM2): How e-mail leaves with a sentence a kind of mail, the ways sheet of system e-mail and what its choice saves, each row's line and pill, Send a test's result
-- ui/settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors
+- ui/settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2, EM3): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors
 - ui/settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility.
 - ui/settings-modal-save-place.md: After a save the Site Settings dialog keeps the form's scroll, opens the drawer the save came from again and says "saved" in one toast; when the drawer stays shut (#9751)
 - ui/settings-picker-field.md: The picker field inside Site Settings cards: one 32px line, a 20px thumb, a quiet Browse icon at the end, and placeholders that say what to choose

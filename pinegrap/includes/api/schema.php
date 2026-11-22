@@ -90,6 +90,24 @@ function api_schema() {
 			)
 		),
 
+		// No scope of its own: the call needs a valid caller, and each entry
+		// is checked against its own route's scope (includes/api/resources/
+		// batch.php). Not a tool: an MCP client calls each tool itself.
+		array(
+			'id'      => 'batch',
+			'method'  => 'POST',
+			'path'    => '/batch',
+			'scope'   => '',
+			'mcp'     => false,
+			'handler' => 'api_batch_run',
+			'returns' => array('responses' => array(array('id' => 'string?', 'status' => 'integer', 'etag' => 'string?', 'body' => 'object?'))),
+			'summary' => 'Several reads in one request',
+			'description' => 'Up to 20 GET calls of this API in one request, for a team device or any client that opens a screen built from several lists. Each entry is checked as its own call: its permission, its parameters, the rows the caller may see, its 404. The answer lists {id, status, etag, body} in the order asked, and an entry\'s error is in its own body (the usual error envelope) without failing the others. An entry whose if_none_match matches is answered 304 with a null body. Not an entry: writes, files, the sign-in and token calls, the API\'s own descriptions and /batch itself (400 not_batchable). Every entry counts against the rate limit. The batch is a POST but writes nothing, so it takes no X-Dry-Run.',
+			'params'  => array(
+				array('name' => 'requests', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'string', 'path' => 'string', 'query' => 'object', 'if_none_match' => 'string'), 'max_items' => 20, 'required' => true, 'description' => 'Up to 20 objects: path is the address of a read as after the API\'s base, such as /products/12 or /orders?status=new; query its parameters as an object (or a query string), fields= included; if_none_match the ETag of the answer held, as the header; id any text of yours, echoed on the answer.')
+			)
+		),
+
 		/* ----- Products ---------------------------------------------------- */
 
 		array(
@@ -325,7 +343,8 @@ function api_schema() {
 				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product.'),
 				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool', 'description' => 'With location: only the products that hold units there (true) or none (false). Without it: by the total.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
-				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by product id, oldest first; newest lists the newest product first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -397,7 +416,8 @@ function api_schema() {
 				array('name' => 'since',   'in' => 'query', 'type' => 'datetime', 'description' => 'Only changes recorded at or after this moment.'),
 				array('name' => 'channel', 'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'One sales channel: web (the shop\'s own price), pos, or marketplace:<code>, where the code is the marketplace account\'s id. Every channel when left out.'),
 				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
-				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',    'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists the earliest change first; newest lists the latest change first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -429,7 +449,8 @@ function api_schema() {
 				array('name' => 'account', 'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'filter',  'in' => 'query', 'type' => 'enum', 'values' => array('winning', 'losing', 'floor', 'no_cost'), 'description' => 'Only the listings winning the buybox, losing it, at or under the floor, or with no floor.'),
 				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Listings per page.'),
-				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',    'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by product id, oldest first; newest lists the newest product first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -489,6 +510,7 @@ function api_schema() {
 				array('name' => 'search',        'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the short description.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int',    'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool',   'description' => 'Also count every matching row. Costs an extra query, so it is off by default.')
 			)
 		),
@@ -648,7 +670,8 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the label.'),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',   'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest attribute first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -2726,6 +2749,28 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Deleted records ------------------------------------------- */
+
+		// No scope of its own: any valid caller, and each type is answered
+		// only to a caller whose scopes read it (api_changes_deleted_readable()).
+		array(
+			'id'      => 'changes.deleted',
+			'method'  => 'GET',
+			'path'    => '/changes/deleted',
+			'scope'   => '',
+			'mcp'     => true,
+			'handler' => 'api_changes_deleted_list',
+			'returns' => array('list' => 'DeletedRecord', 'types' => 'string[]'),
+			'summary' => 'Records deleted since a moment',
+			'description' => 'Oldest first, cursor paged: {type, id, deleted_at} for each record deleted at or after since, from the audit trail. A client keeping its own copy drops these ids. types in the answer lists the types answered: one the caller cannot read is left out. Only GET /meta deleted_records.covered types are listed; not_covered lists are read whole. A since older than the trail keeps is 410 since_too_old: read the lists whole, then ask from that read. A record in the Recycle Bin is not deleted.',
+			'params'  => array(
+				array('name' => 'since',  'in' => 'query', 'type' => 'datetime', 'required' => true, 'description' => 'Only deletes at or after this moment.'),
+				array('name' => 'types',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'A comma list of type names from GET /meta deleted_records.covered, such as products,offers. Left out, every covered type.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
 		/* ----- Gift cards -------------------------------------------------- */
 
 		array(
@@ -2851,7 +2896,8 @@ function api_schema() {
 				array('name' => 'created_before', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written before this moment.'),
 				array('name' => 'updated_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written or changed at or after this moment.'),
 				array('name' => 'limit',          'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',           'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -2870,7 +2916,8 @@ function api_schema() {
 				array('name' => 'order_id',       'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the profiles made for this order.'),
 				array('name' => 'updated_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only profiles written or changed at or after this moment.'),
 				array('name' => 'limit',          'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',           'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -3258,6 +3305,7 @@ function api_schema() {
 				array('name' => 'state',             'in' => 'query', 'type' => 'enum', 'values' => array('valid', 'used', 'void'), 'description' => 'Only the tickets in this state.'),
 				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',              'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest ticket first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')
 			)
 		),
@@ -5093,6 +5141,7 @@ function api_schema() {
 				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the description.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists the earliest upload first; newest lists the latest upload first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
 			)
 		),
@@ -6504,7 +6553,8 @@ function api_schema() {
 				array('name' => 'from',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or after this moment.'),
 				array('name' => 'to',         'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or before this moment; a bare day counts whole.'),
 				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',       'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists the earliest start first; newest lists the latest start first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -6639,6 +6689,7 @@ function api_error_catalogue() {
 		'invalid_dry_run'          => array(400, 'X-Dry-Run must be true or false.'),
 		'dry_run_unsupported'      => array(400, 'This endpoint cannot rehearse a call. Send it without X-Dry-Run or dry_run.'),
 		'not_a_command'            => array(400, 'The text is not a / command. Write it as a message instead.'),
+		'not_batchable'            => array(400, 'An entry of POST /batch named a write, a file, a sign-in call or another address that is not a JSON read. Send it as a call of its own.'),
 
 		'credentials_missing'      => array(401, 'No key and secret were sent. Authentication is HTTP Basic.'),
 		'unauthorized'             => array(401, 'The key is unknown or the secret is wrong. The two are not told apart on purpose.'),
@@ -6662,6 +6713,8 @@ function api_error_catalogue() {
 		'unknown_endpoint'         => array(404, 'No endpoint answers that address.'),
 
 		'method_not_allowed'       => array(405, 'The address exists but not with that verb.'),
+
+		'since_too_old'            => array(410, 'since is older than the audit trail keeps, so deletes before it are not known. Read the lists whole again, then ask from the time of that read.'),
 
 		'idempotency_key_reused'   => array(409, 'The same Idempotency-Key was used for a different request.'),
 		'unknown_domain'           => array(409, 'An e-mail address names a domain that does not exist, so the mail would not arrive. Correct the address, or send the same call again with send_anyway true.'),

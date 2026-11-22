@@ -335,6 +335,7 @@
     "Give it as store credit": "Mağaza kredisi olarak ver",
     "Give it as store credit, with a {var:1}% bonus": "Mağaza kredisi olarak ver, %{var:1} bonusla",
     "Give it as store credit: the customer's account gets {var:1}": "Mağaza kredisi olarak ver: müşterinin hesabına {var:1} eklenir",
+    "Give it to the AI session with PINEGRAP_KEY and PINEGRAP_SECRET; it reads its instructions from the site.": "Bunu PINEGRAP_KEY ve PINEGRAP_SECRET ile birlikte yapay zekâ oturumuna verin; talimatlarını siteden okur.",
     "Give it to {var:1}": "Ata: {var:1}",
     "Give it to: {var:1}": "Verilecek kişi: {var:1}",
     "Give medicines and keep the records": "İlaçları verin ve kayıtları tutun",

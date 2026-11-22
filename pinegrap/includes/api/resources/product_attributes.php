@@ -26,6 +26,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
+
 function api_product_attribute_option_present($row) {
 
 	return array(
@@ -171,17 +173,14 @@ function api_product_attributes_list($params) {
 
 	}
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// sort=newest walks the id the other way (list_order.php).
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$where[] = "product_attributes.id > '" . (int)$cursor['i'] . "'";
+		$where[] = api_list_keyset_sql('', 'product_attributes.id', $cursor, $descending);
 
 	}
 
@@ -189,7 +188,7 @@ function api_product_attributes_list($params) {
 
 	$rows = api_rows(api_product_attribute_select()
 		. (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)) . "
-		ORDER BY product_attributes.id ASC
+		ORDER BY " . api_list_order_sql('', 'product_attributes.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$next = null;
@@ -200,7 +199,7 @@ function api_product_attributes_list($params) {
 
 		$last = end($rows);
 
-		$next = api_cursor_encode((int)$last['id'], (int)$last['id']);
+		$next = api_list_cursor_encode((int)$last['id'], (int)$last['id'], $descending);
 
 	}
 

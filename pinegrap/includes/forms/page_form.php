@@ -534,12 +534,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         $folder_view_files_checked = ' checked="checked"';
     }
 
-    // Setup the photo galleries default number_of_columns value
-    if (($photo_gallery_properties['number_of_columns'] ?? '') == '') {
-        $photo_gallery_number_of_columns = '4';
-    } else {
-        $photo_gallery_number_of_columns = ($photo_gallery_properties['number_of_columns'] ?? '');
-    }
+    $photo_gallery_number_of_columns = pg_page_form_photo_gallery_columns_shown($photo_gallery_properties['number_of_columns'] ?? null);
     
     // Setup the photo galleries default thumbnail max size value
     if (($photo_gallery_properties['thumbnail_max_size'] ?? '') == '') {
@@ -2793,8 +2788,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         <label for="photo_gallery_thumbnail_max_size" class="form-label">' . lang('Thumbnail Max Size') . '</label>
                         <label class="form-control form-adorn form-adorn-end">
                             <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
-                            <input value="' . $photo_gallery_thumbnail_max_size . '" type="text" name="photo_gallery_thumbnail_max_size" id="photo_gallery_thumbnail_max_size" class="form-ghost" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false" data-inputmask-placeholder="100"  style="text-align: right;" />
+                            <input value="' . $photo_gallery_thumbnail_max_size . '" type="text" name="photo_gallery_thumbnail_max_size" id="photo_gallery_thumbnail_max_size" class="form-ghost" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false" data-inputmask-placeholder="100" aria-describedby="photo_gallery_thumbnail_max_size_help" style="text-align: right;" />
                         </label>
+                        <div class="form-text" id="photo_gallery_thumbnail_max_size_help">' . h(lang('0: full-size image')) . '</div>
                     </div>
                     ' . $output_search_results_page_type_properties . '
                     <div class="col-12 my-3' . $update_address_book_address_type_row_style . '" id="update_address_book_address_type_row">
@@ -4155,10 +4151,10 @@ function pg_page_rename_notice($said, $location, $edit_url)
  * The number boxes of the System Options a save refuses, as field id =>
  * message: a quiz pass percentage outside 0-100, a day count that is not a
  * whole number of 0 or more (trial, private access and offer length, read
- * only while their switch is on), a photo gallery thumbnail size below 1,
- * and a minus sign, a decimal or a value out of range in the catalog, form
- * view directory, calendar view and gallery column boxes. An empty box is
- * left to the stored default. The session is not strict,
+ * only while their switch is on), and a minus sign, a decimal or a value
+ * out of range in the catalog, form view directory, calendar view and
+ * gallery boxes. A gallery thumbnail size of 0 is a full-size image, so it
+ * is accepted. An empty box is left to the stored default. The session is not strict,
  * so these values would otherwise be cut by their columns without a word
  * (TINYINT keeps 127 of a percentage of 150, UNSIGNED keeps 0 of -5). Pure.
  *
@@ -4194,14 +4190,6 @@ function pg_page_form_number_errors($page_type, $source)
         }
     }
 
-    if ($page_type == 'photo gallery') {
-        $size = $value('photo_gallery_thumbnail_max_size');
-
-        if (($size !== '') && (!$whole($size) || ((int) $size < 1))) {
-            $errors['photo_gallery_thumbnail_max_size'] = lang('The thumbnail size must be a whole number of 1 or more.');
-        }
-    }
-
     // The other whole-number boxes: field => array(minimum, maximum), the
     // maximum null where the column is a 32-bit UNSIGNED one (nine digits
     // always fit) and 99 where the box and its TINYINT column are smaller.
@@ -4222,6 +4210,7 @@ function pg_page_form_number_errors($page_type, $source)
         ),
         'photo gallery' => array(
             'photo_gallery_number_of_columns' => array(1, 99),
+            'photo_gallery_thumbnail_max_size' => array(0, null),
         ),
     );
 
@@ -4242,6 +4231,21 @@ function pg_page_form_number_errors($page_type, $source)
     }
 
     return $errors;
+}
+
+/**
+ * A photo gallery's column count as its box shows it: the stored count, or
+ * the default of 4 when none is stored or it is below 1, the value a save
+ * stores for a box below 1. Older saves and the starter's gallery pages
+ * (custom layouts, which do not read the count) store 0; showing it as 0
+ * made the next save of the page fail the 1 to 99 check. Pure.
+ *
+ * @param mixed $stored The stored number_of_columns, null with no gallery row
+ * @return string
+ */
+function pg_page_form_photo_gallery_columns_shown($stored)
+{
+    return (is_scalar($stored) && ((int) $stored >= 1)) ? (string) (int) $stored : '4';
 }
 
 /**

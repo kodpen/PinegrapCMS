@@ -339,10 +339,11 @@ function get_photo_gallery($properties) {
                 $all_images[] = $row;
             }
             
-            // prepare cell dimensions for mobile albums (an approxmation) to line up any wrapping cells
+            // prepare cell dimensions for mobile albums (an approximation) to line up any wrapping cells;
+            // a thumbnail size of 0 shows each picture at full size, so no cell size is known
             $output_max_cell = '';
 
-            if ($device_type == 'mobile') {
+            if (($device_type == 'mobile') && (intval($thumbnail_max_size) > 0)) {
                 $height_intval = 10 + intval($thumbnail_max_size);
                 $output_max_cell = '; width: ' . strval($height_intval) . 'px; height: ' . strval($height_intval + 50) . 'px';
             }
@@ -546,10 +547,11 @@ function get_photo_gallery($properties) {
                             $output_ending_container_tag = '</div>';
                         }
 
-                        // prepare cell dimensions for mobile photos (an approximation) to line up any wrapping cells
+                        // prepare cell dimensions for mobile photos (an approximation) to line up any wrapping cells;
+                        // a thumbnail size of 0 shows each picture at full size, so no cell size is known
                         $output_max_cell = '';
 
-                        if ($device_type == 'mobile') {
+                        if (($device_type == 'mobile') && (intval($thumbnail_max_size) > 0)) {
                             $height_intval = 25 + intval($thumbnail_max_size);
                             $output_max_cell = '; width: ' . strval($height_intval) . 'px; height: ' . strval($height_intval) . 'px';
                         }
