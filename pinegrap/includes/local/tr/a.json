@@ -7020,6 +7020,7 @@
     "Any seat in the stalls or circle, from Monday to Thursday": "Pazartesiden perşembeye salon veya balkonda herhangi bir koltuk",
     "Any server that accepts IMAP over TLS, usually on port 993.": "TLS üzerinden IMAP kabul eden herhangi bir sunucu, genellikle 993 numaralı bağlantı noktasında.",
     "Any server that accepts IMAP over TLS, with a user name and a password.": "TLS üzerinden IMAP kabul eden her sunucu; kullanıcı adı ve parolayla.",
+    "Any server that accepts IMAP over TLS.": "TLS üzerinden IMAP kabul eden her sunucu.",
     "Any service": "Tüm hizmetler",
     "Any service that answers like OpenAI's /audio/speech. Left empty, the transcripts' address is used.": "OpenAI'ın /audio/speech ucu gibi yanıt veren herhangi bir hizmet. Boş bırakılırsa dökümlerin adresi kullanılır.",
     "Any service that answers like OpenAI's /audio/transcriptions.": "OpenAI'nin /audio/transcriptions adresi gibi yanıt veren her servis.",

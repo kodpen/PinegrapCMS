@@ -1891,20 +1891,22 @@ function pg_connect_finish($query, $user)
 }
 
 /**
- * A message for the screen a connection returns to.
+ * A message for the screen a connection returns to, with the account it
+ * connected (Add a mailbox goes on with it).
  *
- * @param string $kind 'notice' or 'error'
+ * @param string $kind          'notice' or 'error'
  * @param string $text
+ * @param int    $connection_id the account connected, 0 for none
  */
-function pg_connect_flash($kind, $text)
+function pg_connect_flash($kind, $text, $connection_id = 0)
 {
-    $_SESSION['software']['connect_flash'] = array('kind' => ($kind === 'error') ? 'error' : 'notice', 'text' => (string) $text);
+    $_SESSION['software']['connect_flash'] = array('kind' => ($kind === 'error') ? 'error' : 'notice', 'text' => (string) $text, 'connection_id' => (int) $connection_id);
 }
 
 /**
  * The message pg_connect_flash() left, once.
  *
- * @return array|null kind, text
+ * @return array|null kind, text, connection_id
  */
 function pg_connect_flash_take()
 {

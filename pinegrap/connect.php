@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $result = pg_connect_finish($_GET, $user);
 
 if ($result['ok']) {
-	pg_connect_flash('notice', lang(array('string' => '{var:1} is connected.', 'vars' => $result['label'])));
+	pg_connect_flash('notice', lang(array('string' => '{var:1} is connected.', 'vars' => $result['label'])), $result['connection_id']);
 } else {
 	pg_connect_flash('error', $result['error']);
 }

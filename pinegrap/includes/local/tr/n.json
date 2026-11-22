@@ -2365,6 +2365,7 @@
     "No selector to rename: loaded as it is.": "Yeniden adlandırılacak seçici yok: olduğu gibi yüklenir.",
     "No sender address": "Gönderici adresi yok",
     "No sender is blocked.": "Engellenen gönderen yok.",
+    "No server": "Sunucu yok",
     "No server (.eml files)": "Sunucu yok (.eml dosyaları)",
     "No server chosen": "Sunucu seçilmedi",
     "No server is turned on with a tool that reads and an account you may call it with.": "Okuyan bir aracı ve onu çağırabileceğiniz bir hesabı olan açık bir sunucu yok.",
