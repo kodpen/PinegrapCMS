@@ -825,6 +825,7 @@
     "Refresh rate": "Yenileme hızı",
     "Refresh score": "Skoru yenile",
     "Refresh time: {var:1} seconds": "Yenileme süresi: {var:1} saniye",
+    "Refreshed every {var:1} minutes": "{var:1} dakikada bir yenilenir",
     "Refreshed: {added} added, {removed} removed, {members} members.": "Yenilendi: {added} eklendi, {removed} çıkarıldı, {members} üye.",
     "Refresher Lessons": "Tazeleme Dersleri",
     "Refreshing: {added} added, {removed} removed so far.": "Yenileniyor: şimdiye kadar {added} eklendi, {removed} çıkarıldı.",

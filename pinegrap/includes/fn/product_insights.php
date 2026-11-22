@@ -752,3 +752,257 @@ function pg_product_insights_read($product_id, $period, $margin, $now)
         $now
     );
 }
+
+/**
+ * The stock pill of Edit Product's head, or null when the product does not
+ * track its inventory. Pure.
+ *
+ * @param array $product products row: inventory, inventory_quantity, backorder
+ * @return array|null array(text, tone)
+ */
+function pg_product_insights_stock_pill($product)
+{
+    if (empty($product['inventory'])) {
+        return null;
+    }
+
+    $quantity = (int) ($product['inventory_quantity'] ?? 0);
+
+    if ($quantity > 0) {
+        return array(lang(array('string' => 'In stock · {var:1}', 'vars' => array(pg_format_number($quantity, 0)))), 'teal');
+    }
+
+    return !empty($product['backorder'])
+        ? array(lang('Backorder'), 'amber')
+        : array(lang('Out of stock'), 'rose');
+}
+
+/**
+ * The pills of Edit Product's head: Enabled or Disabled, then the stock
+ * pill. Pure.
+ *
+ * @param array $product products row
+ * @return array list of array(text, tone)
+ */
+function pg_product_insights_head_pills($product)
+{
+    $pills = array(!empty($product['enabled']) ? array(lang('Enabled'), 'teal') : array(lang('Disabled'), 'gray'));
+    $stock = pg_product_insights_stock_pill($product);
+
+    if ($stock !== null) {
+        $pills[] = $stock;
+    }
+
+    return $pills;
+}
+
+/**
+ * A change against the earlier period as the card's note: the arrow, the
+ * percent and its tone class. Pure.
+ *
+ * @param float|null $change pg_product_insights_change()
+ * @return array array(text, class); text '' when there is no change line
+ */
+function pg_product_insights_change_note($change)
+{
+    if ($change === null) {
+        return array('', '');
+    }
+
+    $change = (float) $change;
+    $percent = lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(abs($change), (floor(abs($change)) == abs($change)) ? 0 : 1))));
+
+    if ($change > 0) {
+        return array('↑ ' . $percent, 'is-good');
+    }
+
+    return ($change < 0) ? array('↓ ' . $percent, 'is-bad') : array($percent, '');
+}
+
+/**
+ * A chart bucket's name: a day, a month or a year. Pure.
+ *
+ * @param int    $start the bucket's first second
+ * @param string $unit  day, month or year
+ * @return string
+ */
+function pg_product_insights_bucket_name($start, $unit)
+{
+    $start = (int) $start;
+
+    if ($unit === 'year') {
+        return date('Y', $start);
+    }
+
+    if ($unit === 'month') {
+        return lang(date('M', $start)) . ' ' . date('Y', $start);
+    }
+
+    return date('j', $start) . ' ' . lang(date('M', $start));
+}
+
+/**
+ * The figure cells of the Performance card, in the board's order; a figure
+ * the read left out has no cell. Pure.
+ *
+ * @param array  $data   pg_product_insights_figures()
+ * @param string $symbol the store's currency symbol as stored (HTML)
+ * @param int    $now
+ * @return string
+ */
+function pg_product_insights_figure_cells($data, $symbol, $now)
+{
+    $figures = (array) $data['figures'];
+    $change = (array) ($figures['change'] ?? array());
+    $number = function ($value) {
+        return h(pg_format_number((int) $value, 0));
+    };
+    $cell = function ($label, $value, $key) use ($change) {
+        $note = pg_product_insights_change_note($change[$key] ?? null);
+
+        return pg_figure_grid_cell($label, $value, $note[0], $note[1]);
+    };
+
+    $cells = $cell(lang('Units sold'), $number($figures['units']), 'units')
+        . $cell(lang('Revenue'), pg_format_money(((int) $figures['revenue']) / 100, $symbol), 'revenue')
+        . $cell(lang('Orders'), $number($figures['orders']), 'orders');
+
+    if ($figures['views'] !== null) {
+        $cells .= $cell(lang('Views'), $number($figures['views']), 'views');
+
+        $cells .= ($figures['conversion'] !== null)
+            ? pg_figure_grid_cell(lang('Conversion'), h(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($figures['conversion'], 1))))), lang(array('string' => '{var:1} orders per 100 views', 'vars' => array(pg_format_number($figures['conversion'], 1)))))
+            : pg_figure_grid_cell(lang('Conversion'), '—', lang(array('string' => 'Shown from {var:1} views', 'vars' => array(PG_PRODUCT_INSIGHTS_MIN_VIEWS))));
+    }
+
+    if ($figures['returns'] !== null) {
+        $cells .= pg_figure_grid_cell(lang('Returns'), h(lang(array('string' => '{var:1} units', 'vars' => array(pg_format_number((int) $figures['returns'], 0))))),
+            ($figures['returns_share'] !== null) ? lang(array('string' => '{var:1}% of units sold', 'vars' => array(pg_format_number($figures['returns_share'], 1)))) : '');
+    }
+
+    if (array_key_exists('margin', $figures) && ($figures['margin'] !== null)) {
+        $states = array('estimate' => lang('Estimate: some costs are estimated'), 'incomplete' => lang('Some costs are missing'));
+        $cells .= pg_figure_grid_cell(lang('Margin'), h(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($figures['margin'], 1))))),
+            $states[(string) ($figures['margin_state'] ?? '')] ?? '');
+    }
+
+    $last = (int) $figures['last_sale'];
+    $cells .= ($last > 0)
+        ? pg_figure_grid_cell(lang('Last sale'), h(get_relative_time(array('timestamp' => $last, 'format' => 'plain_text'))), date('j', $last) . ' ' . lang(date('M', $last)) . ' ' . date('Y', $last))
+        : pg_figure_grid_cell(lang('Last sale'), '—', lang('Never sold'));
+
+    return $cells;
+}
+
+/**
+ * The bar chart of units sold, one bar a bucket, the first and last
+ * bucket's names under it. Pure.
+ *
+ * @param array $data pg_product_insights_figures()
+ * @return string
+ */
+function pg_product_insights_chart_html($data)
+{
+    $chart = array_values((array) $data['chart']);
+
+    if ($chart === array()) {
+        return '';
+    }
+
+    $unit = (string) $data['unit'];
+    $titles = array('day' => lang('Units sold by day'), 'month' => lang('Units sold by month'), 'year' => lang('Units sold by year'));
+    $top = max(1, max(array_map(function ($bucket) {
+        return (int) $bucket['units'];
+    }, $chart)));
+    $bars = '';
+
+    foreach ($chart as $bucket) {
+        $units = (int) $bucket['units'];
+        $name = pg_product_insights_bucket_name($bucket['start'], $unit) . ': ' . lang(array('string' => '{var:1} units', 'vars' => array(pg_format_number($units, 0))));
+        $bars .= '<i' . (($units === 0) ? ' class="is-zero"' : '') . ' style="height:' . max(4, (int) round($units * 100 / $top)) . '%" title="' . h($name) . '"></i>';
+    }
+
+    return '<div class="pg-figure-grid-chart" role="img" aria-label="' . h($titles[$unit] ?? $titles['day']) . '">'
+        . '<span class="pg-figure-label">' . h($titles[$unit] ?? $titles['day']) . '</span>'
+        . '<div class="pg-figure-grid-bars">' . $bars . '</div>'
+        . '<div class="pg-figure-grid-axis"><span>' . h(pg_product_insights_bucket_name($chart[0]['start'], $unit)) . '</span><span>' . h(pg_product_insights_bucket_name($chart[count($chart) - 1]['start'], $unit)) . '</span></div>'
+        . '</div>';
+}
+
+/**
+ * The "Carts and interest" rows: today's state and the period's left carts;
+ * a row whose feature is off is left out. Pure.
+ *
+ * @param array  $data      pg_product_insights_figures()
+ * @param string $carts_url All Orders on incomplete orders of the product
+ * @return string
+ */
+function pg_product_insights_interest_html($data, $carts_url)
+{
+    $carts = (array) $data['carts'];
+    $interest = (array) $data['interest'];
+    $row = function ($icon, $text, $value, $extra = '', $wide = false) {
+        return '<div class="pg-figure-grid-row' . ($wide ? ' is-wide' : '') . '"><i class="bi ' . $icon . '" aria-hidden="true"></i>'
+            . '<span>' . h($text) . '</span> <b class="pg-tabular">' . h($value) . '</b>' . $extra . '</div>';
+    };
+    $count = function ($string, $value) {
+        return lang(array('string' => $string, 'vars' => array(pg_format_number((int) $value, 0))));
+    };
+
+    $rows = $row('bi-cart-x', lang('Left in carts'), $count('{var:1} carts', $carts['left_carts']),
+            ' <span class="pg-text-meta">· ' . h($count('{var:1} units', $carts['left_units'])) . '</span>'
+            . (((int) $carts['left_carts'] > 0) ? '<a class="pg-figure-grid-row-link" href="' . h($carts_url) . '">' . h(lang('View carts')) . '</a>' : ''), true)
+        . $row('bi-cart', lang('In open carts'), $count('{var:1} carts', $carts['open_carts']), ' <span class="pg-text-meta">· ' . h(lang('last 6 hours')) . '</span>');
+
+    if ($interest['favourites'] !== null) {
+        $rows .= $row('bi-heart', lang('Favourites'), $count('{var:1} people', $interest['favourites']));
+    }
+
+    if ($interest['waiting'] !== null) {
+        $rows .= $row('bi-bell', lang('Waiting for stock'), $count('{var:1} people', $interest['waiting']));
+    }
+
+    if ($carts['saved_carts'] !== null) {
+        $rows .= $row('bi-bookmark', lang('Saved for later'), $count('{var:1} carts', $carts['saved_carts']));
+    }
+
+    if ($interest['rating_count'] !== null) {
+        $rows .= ($interest['rating_avg'] !== null)
+            ? $row('bi-star', lang('Rating'), pg_format_number($interest['rating_avg'], 1), ' <span class="pg-text-meta">· ' . h($count('{var:1} reviews', $interest['rating_count'])) . '</span>')
+            : $row('bi-star', lang('Rating'), '—', ' <span class="pg-text-meta">· ' . h(lang('No reviews yet')) . '</span>');
+    }
+
+    return '<p class="pg-figure-grid-sub">' . h(lang('Carts and interest')) . '</p><div class="pg-figure-grid-rows">' . $rows . '</div>';
+}
+
+/**
+ * The Performance card's body under its title: the figure grid and the
+ * chart (or "No sales in this period" with the views), "Carts and
+ * interest", and the foot. Pure.
+ *
+ * @param array  $data   pg_product_insights_figures()
+ * @param string $sku    products.name, for the links to All Orders
+ * @param string $symbol the store's currency symbol as stored (HTML)
+ * @param int    $now
+ * @return string
+ */
+function pg_product_insights_card_html($data, $sku, $symbol, $now)
+{
+    $orders = 'view_orders.php?reset=true&product_name=' . rawurlencode((string) $sku);
+
+    if (!empty($data['no_sales'])) {
+        $views = $data['figures']['views'];
+        $top = '<div class="pg-figure-grid-empty"><span class="pg-icon-tile" aria-hidden="true"><i class="bi bi-graph-up-arrow"></i></span>'
+            . '<b>' . h(lang('No sales in this period')) . '</b>'
+            . (($views !== null) ? '<span class="pg-text-meta">' . h(lang(array('string' => 'Views: {var:1}', 'vars' => array(pg_format_number((int) $views, 0))))) . '</span>' : '')
+            . '</div>';
+    } else {
+        $top = '<div class="pg-figure-grid">' . pg_product_insights_figure_cells($data, $symbol, $now) . '</div>'
+            . pg_product_insights_chart_html($data);
+    }
+
+    return $top
+        . pg_product_insights_interest_html($data, $orders . '&status=incomplete')
+        . '<div class="pg-figure-grid-foot"><a href="' . h($orders) . '">' . h(lang('Orders of this product')) . '</a>'
+        . '<span class="pg-text-meta">' . h(lang(array('string' => 'Refreshed every {var:1} minutes', 'vars' => array((int) round(((int) ($data['keep'] ?? PG_PRODUCT_INSIGHTS_KEEP)) / 60))))) . '</span></div>';
+}

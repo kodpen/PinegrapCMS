@@ -1120,7 +1120,9 @@ function pg_panel_product_insights($request, $action)
 
     $product_id = (int) ($request['product_id'] ?? 0);
 
-    if (($product_id <= 0) || !db_value("SELECT id FROM products WHERE id = '" . $product_id . "'")) {
+    $sku = ($product_id > 0) ? db_value("SELECT name FROM products WHERE id = '" . $product_id . "'") : null;
+
+    if (($sku === null) || ($sku === false)) {
         respond(array('status' => 'error', 'message' => lang('Product not found.')));
     }
 
@@ -1132,8 +1134,14 @@ function pg_panel_product_insights($request, $action)
     $now = time();
     $kept = pg_product_insights_kept($_SESSION['software']['product_insights'] ?? array(), $key, $now);
 
+    // The card's body is drawn here from the figures, kept or read, so the
+    // screen's script only places it.
+    $card = function ($data) use ($sku, $now) {
+        return $data + array('html' => pg_product_insights_card_html($data, (string) $sku, defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : '', $now));
+    };
+
     if ($kept !== null) {
-        respond(array('status' => 'success', 'data' => $kept));
+        respond(array('status' => 'success', 'data' => $card($kept)));
     }
 
     $session_open = (session_status() === PHP_SESSION_ACTIVE);
@@ -1154,7 +1162,7 @@ function pg_panel_product_insights($request, $action)
         session_write_close();
     }
 
-    respond(array('status' => 'success', 'data' => $data));
+    respond(array('status' => 'success', 'data' => $card($data)));
 }
 
 function pg_panel_get_product_barcodes($request, $action)

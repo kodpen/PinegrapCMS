@@ -35740,6 +35740,162 @@ button.pg-var-chip:focus-visible {
 
 }
 /* ==========================================================================
+   Look A: figure grid.
+   Figures as cells of the card they sit in (Edit Product's Performance;
+   Design examples "Figure grid"): four across under the card's title,
+   divided by rules, each a label, the value at the phone figure size and a
+   note (a change line: up teal, down rose). Under the grid a bar chart of
+   one figure with its first and last bucket named, a sub-heading with rows
+   of icon, text and count, and a foot with a link and a grey note. Two
+   cells a row on a phone.
+   ========================================================================== */
+@layer custom {
+
+.pg-figure-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-figure-grid-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px 18px;
+  border-right: 1px solid var(--pg-border-color-translucent);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.pg-figure-grid-cell:nth-child(4n) {
+  border-right: 0;
+}
+.pg-figure-grid-cell > .pg-figure-label {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-figure-grid-cell > .pg-figure-value {
+  margin: 2px 0 0;
+  font-size: var(--pg-text-figure-sm);
+}
+.pg-figure-grid-cell > .pg-figure-note.is-good {
+  color: var(--pg-success-fg-emphasis);
+  font-weight: var(--pg-weight-medium);
+}
+.pg-figure-grid-cell > .pg-figure-note.is-bad {
+  font-weight: var(--pg-weight-medium);
+}
+.pg-figure-grid-chart {
+  display: block;
+  padding: 14px 18px 6px;
+}
+.pg-figure-grid-chart > .pg-figure-label {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-figure-grid-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 84px;
+  margin-top: 8px;
+}
+.pg-figure-grid-bars > i {
+  flex: 1 1 0;
+  min-width: 2px;
+  border-radius: 3px 3px 1px 1px;
+  background: var(--pg-accent);
+  opacity: 0.8;
+}
+.pg-figure-grid-bars > i.is-zero {
+  opacity: 0.25;
+}
+.pg-figure-grid-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-figure-grid-sub {
+  margin: 0;
+  padding: 12px 18px 0;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-3);
+}
+.pg-figure-grid-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px 28px;
+  padding: 8px 18px 14px;
+  font-size: var(--pg-text-2);
+}
+.pg-figure-grid-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.pg-figure-grid-row.is-wide {
+  grid-column: 1 / -1;
+}
+.pg-figure-grid-row > .bi {
+  width: 16px;
+  text-align: center;
+  color: var(--pg-fg-3);
+}
+.pg-figure-grid-row > b {
+  font-weight: var(--pg-weight-strong);
+}
+.pg-figure-grid-row-link {
+  margin-left: auto;
+}
+.pg-figure-grid-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 18px;
+  padding: 10px 18px 12px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  font-size: var(--pg-text-2);
+}
+/* Nothing to count: the grid's place holds one line and what still counts. */
+.pg-figure-grid-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  text-align: center;
+}
+.pg-figure-grid-empty > .pg-icon-tile {
+  margin-bottom: 6px;
+}
+.pg-figure-grid-empty > b {
+  font-weight: var(--pg-weight-strong);
+}
+@media (max-width: 575.98px) {
+  .pg-figure-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pg-figure-grid-cell {
+    padding: 10px 12px;
+  }
+  .pg-figure-grid-cell:nth-child(4n) {
+    border-right: 1px solid var(--pg-border-color-translucent);
+  }
+  .pg-figure-grid-cell:nth-child(2n) {
+    border-right: 0;
+  }
+  .pg-figure-grid-rows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+}
+/* ==========================================================================
    Look A: record head.
    The head of a record screen under the breadcrumb (View Order; Design
    examples "Record head"): the record's name in the Display cut at 22 px
@@ -35755,6 +35911,18 @@ button.pg-var-chip:focus-visible {
   justify-content: space-between;
   gap: 12px 24px;
   margin: 6px 0 20px;
+}
+/* A picture before the title (a product's cover), 48 px square. */
+.pg-record-head-media {
+  flex: none;
+}
+.pg-record-head-media > img,
+.pg-record-head-media > .pg-icon-tile {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--pg-radius-lg);
+  object-fit: cover;
+  font-size: var(--pg-text-figure-sm);
 }
 .pg-record-head-main {
   flex: 1 1 22rem;

@@ -308,3 +308,107 @@ function test_product_insights_sales_from_reads_the_product_lines()
 	pg_assert_true(strpos($sql, "orders.order_date >= '1700000000'") !== false);
 	pg_assert_true(strpos(pg_product_insights_sales_from(42, 0), 'order_date') === false, 'no floor for All');
 }
+
+function test_product_insights_head_pills()
+{
+	$pills = pg_product_insights_head_pills(array('enabled' => '1', 'inventory' => '1', 'inventory_quantity' => '14', 'backorder' => '0'));
+	pg_assert_same(array(lang('Enabled'), 'teal'), $pills[0]);
+	pg_assert_same('teal', $pills[1][1]);
+	pg_assert_contains('14', $pills[1][0]);
+
+	pg_assert_same(array(array(lang('Disabled'), 'gray')), pg_product_insights_head_pills(array('enabled' => '0', 'inventory' => '0', 'inventory_quantity' => '0')), 'no stock pill without inventory');
+	pg_assert_same(array(lang('Out of stock'), 'rose'), pg_product_insights_stock_pill(array('inventory' => '1', 'inventory_quantity' => '0', 'backorder' => '0')));
+	pg_assert_same(array(lang('Backorder'), 'amber'), pg_product_insights_stock_pill(array('inventory' => '1', 'inventory_quantity' => '-2', 'backorder' => '1')));
+}
+
+function test_product_insights_change_note()
+{
+	pg_assert_same(array('', ''), pg_product_insights_change_note(null));
+	pg_assert_same('is-good', pg_product_insights_change_note(12.0)[1]);
+	pg_assert_contains('↑', pg_product_insights_change_note(12.0)[0]);
+	pg_assert_contains('12', pg_product_insights_change_note(12.0)[0]);
+	pg_assert_same('is-bad', pg_product_insights_change_note(-3.5)[1]);
+	pg_assert_contains('↓', pg_product_insights_change_note(-3.5)[0]);
+	pg_assert_same('', pg_product_insights_change_note(0.0)[1]);
+}
+
+function test_product_insights_bucket_name()
+{
+	$start = mktime(0, 0, 0, 11, 5, 2026);
+	pg_assert_same('2026', pg_product_insights_bucket_name($start, 'year'));
+	pg_assert_same(lang('Nov') . ' 2026', pg_product_insights_bucket_name($start, 'month'));
+	pg_assert_same('5 ' . lang('Nov'), pg_product_insights_bucket_name($start, 'day'));
+}
+
+// A month of figures as pg_product_insights_figures() answers them.
+function product_insights_test_card_data($overrides = array())
+{
+	return array_replace_recursive(array(
+		'period' => '12m',
+		'unit' => 'month',
+		'keep' => 600,
+		'no_sales' => false,
+		'figures' => array(
+			'units' => 128, 'revenue' => 3454024, 'orders' => 97, 'views' => 4210, 'views_since' => '', 'conversion' => 2.3,
+			'returns' => 4, 'returns_share' => 3.1, 'last_sale' => mktime(12, 0, 0, 11, 19, 2026),
+			'change' => array('units' => 12.0, 'revenue' => 8.0, 'orders' => -3.0, 'views' => null),
+		),
+		'chart' => array(array('start' => mktime(0, 0, 0, 10, 1, 2026), 'units' => 0), array('start' => mktime(0, 0, 0, 11, 1, 2026), 'units' => 17)),
+		'carts' => array('left_carts' => 23, 'left_units' => 31, 'open_carts' => 5, 'open_units' => 6, 'saved_carts' => null),
+		'interest' => array('favourites' => 41, 'waiting' => null, 'rating_avg' => null, 'rating_count' => null),
+	), $overrides);
+}
+
+function test_product_insights_card_html()
+{
+	$now = mktime(12, 0, 0, 11, 22, 2026);
+	$html = pg_product_insights_card_html(product_insights_test_card_data(), 'A&B 1', '&#8378;', $now);
+
+	pg_assert_same(7, substr_count($html, 'class="pg-figure-grid-cell"'), 'no margin key: seven cells');
+	pg_assert_contains('&#8378;' . pg_format_number(34540.24, 2), $html, 'revenue in major units with the symbol as stored');
+	pg_assert_same(2, substr_count($html, ' style="height:'), 'one bar a month');
+	pg_assert_contains('class="is-zero"', $html, 'an empty month is a faint bar');
+	pg_assert_contains('style="height:100%"', $html, 'the highest bar fills the chart');
+	pg_assert_contains('href="view_orders.php?reset=true&amp;product_name=A%26B%201&amp;status=incomplete"', $html, 'View carts');
+	pg_assert_contains('href="view_orders.php?reset=true&amp;product_name=A%26B%201"', $html, 'Orders of this product');
+	pg_assert_contains(lang('Favourites'), $html);
+	pg_assert_true(strpos($html, lang('Waiting for stock')) === false, 'a feature that is off has no row');
+	pg_assert_true(strpos($html, lang('Saved for later')) === false, 'saved lines off: no row');
+}
+
+function test_product_insights_card_html_left_out_figures()
+{
+	$now = mktime(12, 0, 0, 11, 22, 2026);
+	$data = product_insights_test_card_data();
+	$data['figures']['views'] = null;
+	$data['figures']['conversion'] = null;
+	$data['figures']['returns'] = null;
+	$data['figures']['margin'] = null;
+	$data['figures']['last_sale'] = 0;
+	$html = pg_product_insights_card_html($data, 'X', '$', $now);
+
+	pg_assert_same(4, substr_count($html, 'class="pg-figure-grid-cell"'), 'units, revenue, orders, last sale');
+	pg_assert_contains(lang('Never sold'), $html);
+
+	$data = product_insights_test_card_data();
+	$data['figures']['conversion'] = null;
+	$data['figures']['margin'] = 38.0;
+	$data['figures']['margin_state'] = 'estimate';
+	$html = pg_product_insights_card_html($data, 'X', '$', $now);
+	pg_assert_same(8, substr_count($html, 'class="pg-figure-grid-cell"'), 'views known: conversion keeps its cell; margin shown');
+	pg_assert_contains(lang(array('string' => 'Shown from {var:1} views', 'vars' => array(20))), $html);
+	pg_assert_contains(lang('Estimate: some costs are estimated'), $html);
+}
+
+function test_product_insights_card_html_no_sales()
+{
+	$data = product_insights_test_card_data(array('no_sales' => true));
+	$data['figures']['views'] = 312;
+	$html = pg_product_insights_card_html($data, 'X', '$', mktime(12, 0, 0, 11, 22, 2026));
+
+	pg_assert_contains(lang('No sales in this period'), $html);
+	pg_assert_same(0, substr_count($html, 'pg-figure-grid-cell'), 'no figure grid');
+	pg_assert_true(strpos($html, 'pg-figure-grid-bars') === false, 'no chart');
+	pg_assert_contains('312', $html, 'views still shown');
+	pg_assert_contains(lang('Carts and interest'), $html, 'interest still shown');
+}
