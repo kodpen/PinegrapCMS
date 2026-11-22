@@ -108,9 +108,11 @@ function test_my_reviews_opens_by_membership_and_reads_only_own_reviews()
 	pg_assert_contains('application_reviewers.user_id = ? AND application_reviewers.revoked_at = 0', $read, 'by user and not removed');
 	pg_assert_contains('application_reviews.status IN (0, 1, 2)', $read, 'a conflict is not opened');
 
-	// One fill: Send the review.
-	pg_assert_same(1, substr_count($source, 'pg-button-fill'), 'one fill');
-	pg_assert_contains("h(lang('Send the review'))", $source);
+	// One fill: Send the review, drawn by the scoring screen both pages share.
+	$screen = pg_test_function_source('pg_application_review_screen_html');
+	pg_assert_same(1, substr_count($screen, 'pg-button-fill'), 'one fill');
+	pg_assert_contains("h(lang('Send the review'))", $screen);
+	pg_assert_same(0, substr_count($source, 'pg-button-fill'), 'the page draws no other');
 }
 
 function test_my_reviews_menu_row_follows_membership()

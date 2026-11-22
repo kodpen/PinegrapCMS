@@ -547,6 +547,21 @@ if (!$_POST) {
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $id);
     }
 
+    // A correction link mailed to a not eligible entry's submitter.
+    if (!empty($_POST['application_fix_send'])) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_jurors.php');
+        $application = $submitted_forms_manager ? pg_application_entry_for_form($id) : null;
+        $application_fix = ($application !== null) ? pg_application_fix_send($application) : lang('The correction link could not be made.');
+
+        if ($application_fix === '') {
+            $liveform->add_notice(h(lang('The correction link was sent.')));
+        } else {
+            $liveform->add_error(h($application_fix));
+        }
+
+        go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $id);
+    }
+
     // if form was selected for deletion
     if (isset($_POST['delete_button'])) {
         // assume that the user does not have delete access until we find out otherwise

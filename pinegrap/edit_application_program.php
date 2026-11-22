@@ -27,6 +27,7 @@ include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_reviewers.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_ranking.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_decisions.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_jurors.php');
 
 $user = validate_user();
 validate_forms_access($user);
@@ -198,10 +199,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             go($ap_back . '&add=1');
         }
 
-        if (pg_application_reviewer_add($ap_program, $ap_reviewer['user_id'], $ap_reviewer['name'], $ap_reviewer['email'], $ap_reviewer['categories'])) {
+        $ap_reviewer_id = pg_application_reviewer_add($ap_program, $ap_reviewer['user_id'], $ap_reviewer['name'], $ap_reviewer['email'], $ap_reviewer['categories']);
+
+        if ($ap_reviewer_id) {
             $liveform->add_notice(h(lang('The reviewer was added. Give out entries to share the entries with them.')));
+
+            // An outside juror gets their link at once; it opens their
+            // entries as soon as they are given out.
+            $ap_juror = ((int) $ap_reviewer['user_id'] === 0) ? pg_application_reviewer_get($ap_program, $ap_reviewer_id) : null;
+
+            if ($ap_juror !== null) {
+                $liveform->add_notice(h(pg_application_juror_send($ap_program, $ap_juror)
+                    ? lang(array('string' => 'Their link was sent to {var:1}.', 'vars' => array($ap_juror['email'])))
+                    : lang('Their link could not be sent: check the address, or copy the link from the row\'s menu.')));
+            }
         } else {
             $liveform->add_error(h(lang('The reviewer could not be added.')));
+        }
+
+        go($ap_back);
+    }
+
+    if (isset($_POST['submit_juror_send'])) {
+        $ap_juror = pg_application_reviewer_get($ap_program, (int) $_POST['submit_juror_send']);
+
+        if (($ap_juror !== null) && pg_application_juror_send($ap_program, $ap_juror)) {
+            $liveform->add_notice(h(lang(array('string' => 'The link was sent again to {var:1}.', 'vars' => array($ap_juror['email'])))));
+        } else {
+            $liveform->add_error(h(lang('The link could not be sent.')));
         }
 
         go($ap_back);
@@ -510,6 +535,18 @@ $ap_initials = function ($name) {
     return ($letters !== '') ? $letters : '?';
 };
 $ap_reviewer_rows = '';
+// An outside juror's row menu: their link copied, or mailed again.
+$ap_juror_items = function (array $reviewer) {
+    $url = ((int) $reviewer['user_id'] === 0) ? pg_application_juror_url($reviewer) : '';
+
+    if ($url === '') {
+        return '';
+    }
+
+    return '<li><button type="button" class="menu-item" data-pg-copy="' . h($url) . '"><i class="bi bi-copy me-3" aria-hidden="true"></i>' . h(lang('Copy the link')) . '</button>'
+        . '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span></li>'
+        . '<li><button type="submit" form="aprog_reviewers_form" name="submit_juror_send" value="' . (int) $reviewer['id'] . '" class="menu-item"><i class="bi bi-envelope me-3" aria-hidden="true"></i>' . h(lang('Send the link again')) . '</button></li>';
+};
 
 foreach ($ap_reviewers as $i => $reviewer) {
     $pool = ($reviewer['categories'] === null) ? lang('Every category') : implode(', ', array_map(function ($value) use ($ap_choices) {
@@ -521,7 +558,7 @@ foreach ($ap_reviewers as $i => $reviewer) {
         . '<div class="pg-text-meta">' . h(((int) $reviewer['user_id'] > 0) ? lang('Panel user') : lang('Outside juror') . ' · ' . $reviewer['email']) . ($ap_choices ? ' · ' . h($pool) : '') . '</div></div>'
         . '<span class="pg-text-2 pg-tabular text-nowrap">' . h(lang(array('string' => '{var:1} of {var:2} sent', 'vars' => array((int) $reviewer['done'], (int) $reviewer['assigned'])))) . '</span>'
         . '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button pg-icon-button-sm" data-bs-toggle="menu" data-bs-container="body" aria-expanded="false" aria-label="' . h(lang('More actions')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>'
-        . '<ul class="menu pg-menu-end"><li><button type="submit" form="aprog_reviewers_form" name="submit_reviewer_remove" value="' . (int) $reviewer['id'] . '" class="menu-item fg-emphasis-danger" data-confirm-content="' . h(lang('Entries they have not sent go back to be given out again. Reviews they sent stay.')) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Remove')) . '</button></li></ul></span>'
+        . '<ul class="menu pg-menu-end">' . $ap_juror_items($reviewer) . '<li><button type="submit" form="aprog_reviewers_form" name="submit_reviewer_remove" value="' . (int) $reviewer['id'] . '" class="menu-item fg-emphasis-danger" data-confirm-content="' . h(lang('Entries they have not sent go back to be given out again. Reviews they sent stay.')) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Remove')) . '</button></li></ul></span>'
         . '</div>';
 }
 

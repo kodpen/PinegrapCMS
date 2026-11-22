@@ -291,7 +291,9 @@ function pg_application_reviewer_remove(array $program, $reviewer_id)
     db_q("DELETE FROM application_reviews WHERE reviewer_id = ? AND status IN (0, 1)", array($reviewer_id));
 
     if ((int) db_value("SELECT COUNT(*) FROM application_reviews WHERE reviewer_id = '" . $reviewer_id . "'")) {
-        db_q("UPDATE application_reviewers SET revoked_at = UNIX_TIMESTAMP(), token_hash = NULL WHERE id = ?", array($reviewer_id));
+        // An outside juror's link hash stays, so their page says the link
+        // was withdrawn rather than that it never existed.
+        db_q("UPDATE application_reviewers SET revoked_at = UNIX_TIMESTAMP() WHERE id = ?", array($reviewer_id));
     } else {
         db_q("DELETE FROM application_reviewers WHERE id = ?", array($reviewer_id));
     }

@@ -1364,6 +1364,7 @@
     "Only the words of a text file (Markdown, plain text, CSV and the like) are changed from here.": "Buradan yalnız metin dosyalarının (Markdown, düz metin, CSV vb.) içeriği değiştirilir.",
     "Only the writer of the message, or staff, can ask for read receipts.": "Okundu onayını yalnız mesajı yazan ya da yöneticiler isteyebilir.",
     "Only the writer of the message, or staff, can see who read it.": "Kimin okuduğunu yalnız mesajı yazan ya da yöneticiler görebilir.",
+    "Only these answers can be changed; the rest of your entry stays as you sent it.": "Yalnızca bu cevaplar değiştirilebilir; başvurunuzun geri kalanı gönderdiğiniz gibi kalır.",
     "Only these file types are accepted: {var:1}": "Yalnız şu dosya türleri kabul ediliyor: {var:1}",
     "Only these pages:": "Yalnızca şu sayfalar:",
     "Only these, until Show all": "Tümünü göster denene kadar yalnızca bunlar",

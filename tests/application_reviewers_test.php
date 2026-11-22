@@ -158,9 +158,12 @@ function test_application_reviewers_tab_markup_follows_the_description()
 	pg_assert_contains('name="reviewer_categories[]"', $tab, 'categories');
 
 	// A row: initials, name, kind and pool, sent of given, the menu with
-	// Remove (danger, confirmed) as its one item.
+	// Remove (danger, confirmed) last; an outside juror's row adds "Copy
+	// the link" and "Send the link again" before it.
 	pg_assert_contains('<span class="pg-initials', $tab, 'people as rows');
-	pg_assert_same(1, substr_count($tab, 'class="menu-item'), 'one menu item');
+	pg_assert_same(3, substr_count($tab, 'class="menu-item'), 'Copy the link, Send the link again, Remove');
+	pg_assert_contains("if (\$url === '') {\n        return '';", $tab, 'a panel user\'s row has Remove alone');
+	pg_assert_true(strpos($tab, "h(lang('Send the link again'))") < strpos($tab, "h(lang('Remove'))"), 'Remove last');
 	pg_assert_contains('class="menu-item fg-emphasis-danger" data-confirm-content=', $tab, 'Remove is danger with a confirm');
 
 	// Conflicts: gathered lines under the list.

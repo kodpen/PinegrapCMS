@@ -15,6 +15,7 @@ module: application_my_reviews
 - A programme a card: name, days left in the round ("The round has ended" at 0), "Round N · X of Y sent", a progress bar, then the queue as rows with a pill: To do (0), Started (1), Sent (2). Conflicts are not listed.
 
 ## What does the scoring screen show?
+- Shared with the outside juror's page (`application-review-jurors.md`).
 - Two columns (`lg:col-7` / `lg:col-5`, one column on a phone): Answers, Scores. Each criterion a 1 to 10 radio segmented control, its weight, a folded Note; the Weighted total under them.
 - Foot: "Send the review" (the one fill, confirmed), Previous and Next (they save what is typed, then move), "I know this applicant" opening a reason card.
 - A sent review, or one of a round no longer current, is read-only.
@@ -31,7 +32,7 @@ module: application_my_reviews
 - A reason is required (500 chars): status 3, `conflict_reason`, scores cleared, `audit_log` line `conflict`. Then only that entry is given out again from the round's plan (`pg_application_assignment_read()`), so the fewest-loaded pool member without it gets it; nobody free leaves it short for the managers' Reviewers tab.
 
 ## How do reminders work?
-- The general job (`pg_application_reminders_run()`): for open and closed programmes, from 3 days before the current round's `ends_at` and again from 1 day before, each panel-user reviewer with open reviews (0, 1) gets one plain e-mail with the count and the link. Stage rule: `pg_application_reminder_stage()` on the latest `reminded_at` of their open rows; the last day's comes even when the 3 days' was missed.
-- Claimed by one conditional `UPDATE … SET reminded_at` per reviewer before the mail, so two runs never both send. Outside jurors get theirs with their link in AR4.
+- The general job (`pg_application_reminders_run()`): for open and closed programmes, from 3 days before the current round's `ends_at` and again from 1 day before, each reviewer with open reviews (0, 1) gets one plain e-mail with the count and the link. Stage rule: `pg_application_reminder_stage()` on the latest `reminded_at` of their open rows; the last day's comes even when the 3 days' was missed.
+- Claimed by one conditional `UPDATE … SET reminded_at` per reviewer before the mail, so two runs never both send. Jurors get their own link.
 
 Related: docs/memory/core/application-review-reviewers.md, docs/memory/core/application-review-programme.md, docs/memory/plans/application-review-screens-review.md

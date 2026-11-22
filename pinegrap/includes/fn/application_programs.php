@@ -898,6 +898,15 @@ function pg_application_entry_card($form_id)
             . '<textarea class="pg-input" id="application_note" name="application_note" form="pg_application_override" rows="2" maxlength="1000" aria-describedby="application_note_help"></textarea>'
             . '<div class="pg-field-help" id="application_note_help">' . h(lang('The entry then gets reviewers as an eligible one; the reasons stay beside your note.')) . '</div>'
             . '<button type="submit" form="pg_application_override" name="application_override" value="1" class="pg-button pg-button-quiet pg-button-sm mt-3">' . h(lang('Let it in')) . '</button></div>';
+
+        // The correction link (application_fix.php) while the programme
+        // takes entries: the submitter changes the answers the reasons name.
+        if ((int) $application['program']['status'] === 1) {
+            $body .= '<div class="mt-4 pt-4 border-top"><div class="pg-field-help mb-3">' . h(((string) $entry['fix_token_hash'] !== '')
+                    ? lang('A correction link was sent. Sending it again replaces it.')
+                    : lang('The submitter gets a link to correct the answers named above until the programme closes; the entry is then checked again.')) . '</div>'
+                . '<button type="submit" form="pg_application_override" name="application_fix_send" value="1" class="pg-button pg-button-quiet pg-button-sm">' . h(((string) $entry['fix_token_hash'] !== '') ? lang('Send the correction link again') : lang('Send a correction link')) . '</button></div>';
+        }
         $form = '<form id="pg_application_override" action="edit_submitted_form.php?id=' . (int) $form_id . '" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . (int) $form_id . '"></form>';
     }
 

@@ -1989,6 +1989,7 @@
     "Reviewers per entry": "Başvuru başına değerlendirici",
     "Reviewers who know an applicant; the entry goes to another reviewer.": "Bir başvuranı tanıyan değerlendiriciler; başvuru başka bir değerlendiriciye gider.",
     "Reviewers' scores and notes on applications": "Değerlendiricilerin başvurulara verdiği puanlar ve notlar",
+    "Reviewing as {var:1}. Others' scores stay hidden.": "{var:1} olarak değerlendiriyorsunuz. Diğerlerinin puanları gizli kalır.",
     "Reviews": "İncelemeler",
     "Reviews Pane": "İncelemeler Paneli",
     "Reviews Row": "Yorumlar Satırı",

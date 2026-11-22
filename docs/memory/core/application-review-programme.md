@@ -26,6 +26,7 @@ module: application_programs
 
 ## How is a not eligible entry let in?
 - The submitted form's screen shows an "Application" card to forms managers: pill Eligible, Not eligible (amber), Let in, with the reasons in words (`pg_application_reason_text()`).
+- A not eligible entry can be sent a correction link from the same card (`application-review-correction-link.md`).
 - "Let it in" needs a note: `eligible` 3, the note beside the reasons as `override {note, by, at}`, an `audit_log` line on `application_entry`.
 
 ## How does a programme open and close?
