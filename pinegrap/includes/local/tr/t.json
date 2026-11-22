@@ -1313,6 +1313,7 @@
     "That account is not active.": "Bu cari aktif değil.",
     "That account is passive. Make it active before invoicing it.": "Bu cari hesap pasif. Fatura kesmeden önce aktife alın.",
     "That account uses another account's prices itself. Choose the account whose prices it uses.": "O cari de başka bir carinin fiyatlarını kullanıyor. Fiyatlarını kullandığı cariyi seçin.",
+    "That address cannot be an entry of a batch: an entry is a read that answers JSON. Send writes, files and sign-in calls on their own.": "Bu adres bir toplu isteğin girişi olamaz: giriş, JSON yanıt veren bir okumadır. Yazmaları, dosyaları ve oturum açma çağrılarını ayrı gönderin.",
     "That address did not answer with a calendar.": "Bu adres bir takvim döndürmedi.",
     "That address is inside the network of this server, so it is not read. The import reads public websites only.": "Bu adres sunucunun kendi ağının içinde, bu yüzden okunmaz. İçe aktarma yalnız herkese açık web sitelerini okur.",
     "That address is inside this network and is not called.": "Bu adres bu ağın içinde, çağrılmaz.",
