@@ -13,7 +13,8 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
   - If it opens document uploading: the same PR leaves `volunteer-doc-` `files` rows out of the panel search and the file pickers (decision schema-47, `core/volunteer-document-file.md`); uploading is never opened without it.
   - Built (#11136), `core/volunteer-programmes.md`; uploading not opened, so the exclusion stays with VS4.
 
-- VS3 (M) after VS2: shifts with roles and counts, the weekly series, "Copy last week", the board. Features: G5, G6.
+- VS3 (M) after VS2 (done, #11163): shifts with roles and counts, the weekly series, "Copy last week", the board. Features: G5, G6.
+  - Built (#11163), `core/volunteer-board.md`; its Call volunteers goes by e-mail.
 
 - VS4 (M) after VS3: "My volunteering" in My Account (`_pg_my_account_extras()`, its list and designer twin) and the signed-link page (new root `volunteer.php`, in `waf_sensitive_scripts()`): sign up, cancel, the waitlist pass, "Offer my place". Features: G7, G8, G9.
   - If it opens document uploading first: the same PR leaves `volunteer-doc-` `files` rows out of the panel search and the file pickers (decision schema-47, `core/volunteer-document-file.md`); uploading is never opened without it.

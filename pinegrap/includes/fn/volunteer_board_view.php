@@ -82,8 +82,7 @@ function pg_volunteer_board_html(array $programme, array $shifts, $monday, $plac
 
             $waiting = array_sum($shift['waiting']);
             $rows .= '<div class="pg-card-inner-row flex-wrap">'
-                . '<a class="pg-list-row-title pg-tabular text-nowrap" href="' . $base . '&amp;shift=' . $shift['id'] . '">' . h(date('H:i', strtotime($shift['start'])) . '–' . date('H:i', strtotime($shift['end']))) . '</a>'
-                . '<div class="flex-grow-1 min-width-0"><span class="pg-text-2">' . h($shift['place']) . '</span>'
+                . '<div class="flex-grow-1 min-width-0"><a class="pg-list-row-title d-block" href="' . $base . '&amp;shift=' . $shift['id'] . '"><span class="pg-tabular">' . h(date('H:i', strtotime($shift['start'])) . '–' . date('H:i', strtotime($shift['end']))) . '</span> · ' . h($shift['place']) . '</a>'
                 . (($shift['note'] !== '' || $waiting > 0 || $shift['series_id'] > 0) ? '<div class="pg-text-meta">' . h(implode(' · ', array_filter(array(($shift['series_id'] > 0) ? lang('Weekly') : '', ($waiting > 0) ? lang(array('string' => '{var:1} waiting', 'vars' => array($waiting))) : '', $shift['note'])))) . '</div>' : '')
                 . '</div><span class="d-flex flex-wrap gap-2">' . $pills . '</span></div>';
         }
