@@ -58,7 +58,7 @@ function test_panel_chart_colours_search_console()
 
 function test_panel_chart_colours_view_orders()
 {
-	// The Orders statistics strip read --bs-secondary-color, which nothing
+	// The Orders figure strip read --bs-secondary-color, which nothing
 	// in the panel defines, so its text was always the #6c757d fallback.
 	$source = panel_chart_colours_source('view_orders.php');
 
@@ -67,10 +67,10 @@ function test_panel_chart_colours_view_orders()
 	// one probe span: a token can hold light-dark() text.
 	pg_assert_contains('probe.style.color = "var(" + name + ", " + fallback + ")";', $source, 'view_orders.php probes each colour');
 	pg_assert_contains('return getComputedStyle(probe).color || fallback;', $source, 'view_orders.php reads the computed colour');
-	pg_assert_contains('var ink = color("--pg-fg-2", ', $source, 'view_orders.php resolves the panel ink');
+	pg_assert_contains('var primary = color("--pg-primary", ', $source, 'view_orders.php resolves the sparkline colour');
 	pg_assert_false(strpos($source, 'color("--bs-') !== false, 'view_orders.php reads no Bootstrap 5 colour name for the charts');
-	pg_assert_same(2, substr_count($source, 'ticks: { color: ink'), 'view_orders.php: both bar scales have ink');
-	pg_assert_contains('legend: { position: "right", labels: { color: ink', $source, 'view_orders.php legend ink');
+	// Summary's bars are markup in the panel's tokens, not a canvas.
+	pg_assert_contains("background: color-mix(in srgb, var(--pg-primary) 70%, transparent);", panel_chart_colours_source('assets/css/backend.src.css'), 'Summary bars in the primary token');
 	pg_assert_false(
 		(bool) preg_match('/getPropertyValue\(\s*["\']--pg-/', $source),
 		'view_orders.php hands no --pg-* custom property text to Chart.js');

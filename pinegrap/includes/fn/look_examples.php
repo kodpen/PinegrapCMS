@@ -462,6 +462,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_form_drawer_pattern($p);
     $patterns[] = pg_look_examples_timeline_pattern();
     $patterns[] = pg_look_examples_ws_list_row_pattern($p);
+    $patterns[] = pg_look_examples_flow_box_pattern($p);
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
     // the parts the one E-mail category is built from.
@@ -899,6 +900,55 @@ function pg_look_examples_ws_list_row_pattern($p)
             . $row('ideas', '', 'bi-hash', ' ws-notjoined', '<span class="ws-side-join-now no-popover" aria-hidden="true">' . h(lang('Join')) . '</span>', false)
             . '</div>'
             . '<p class="pg-text-meta">' . h(lang('From the Workspace list in the main menu: a 30 px row, the channel\'s tile in its colour, the marks at its end; pointing at a row shows its pin and menu in their place.')) . '</p>',
+    );
+}
+
+/**
+ * The Flows canvas's box as a card (workspace_flow.js, cardFace()), still: a
+ * chosen Condition whose two arrows carry their outcome on a pill, an End,
+ * an e-mail box with a problem and a value box, at the canvas's own sizes.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array array('id', 'title', 'classes', 'html')
+ */
+function pg_look_examples_flow_box_pattern($p)
+{
+    $box = function ($classes, $x, $y, $icon, $kind, $title, $meta, $in, $out, $warn) {
+        return '<div class="pgc-node wsf-card ' . $classes . '" role="group" aria-label="' . h($kind . ': ' . $title . '. ' . $meta) . '" title="' . h($kind . "\n" . $title . "\n" . $meta) . '" style="left:' . $x . 'px;top:' . $y . 'px">'
+            . ($in ? '<span class="pgc-port pgc-port-in" aria-hidden="true"></span>' : '')
+            . '<span class="pg-icon-tile wsf-node-tile" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
+            . '<div class="wsf-node-text"><div class="wsf-node-head"><span class="wsf-node-kind">' . h($kind) . '</span>'
+            . ($warn ? '<i class="bi bi-exclamation-triangle-fill wsf-node-warn" aria-hidden="true"></i>' : '') . '</div>'
+            . '<div class="wsf-node-title">' . h($title) . '</div><div class="wsf-node-meta">' . h($meta) . '</div></div>'
+            . ($out ? '<span class="pgc-port pgc-port-out" aria-hidden="true"></span>' : '')
+            . '</div>';
+    };
+    // An arrow from the Condition's out port (212, 100) to a box's left
+    // edge, its outcome on a pill at its middle, as edgePill() measures it.
+    $arrow = function ($y, $outcome) {
+        $width = (int) ceil(mb_strlen($outcome) * 6.2) + 14;
+        $middle = (100 + $y) / 2;
+
+        return '<g class="pgc-edge"><path class="pgc-edge-line" d="M212 100 C260 100 240 ' . $y . ' 288 ' . $y . '"/>'
+            . '<rect class="pgc-edge-pill" x="' . (250 - $width / 2) . '" y="' . ($middle - 9) . '" width="' . $width . '" height="18" rx="9"/>'
+            . '<text class="pgc-edge-label" x="250" y="' . ($middle + 4) . '" text-anchor="middle">' . h($outcome) . '</text></g>';
+    };
+    $marker = $p . '-flow-arrow';
+
+    return array(
+        'id'      => 'pattern-flow-box',
+        'title'   => lang('Flow box'),
+        'classes' => array('.pgc-stage', '.pg-look-flow', '.pgc-node', '.wsf-card', '.pg-icon-tile', '.wsf-node-tile', '.wsf-node-text', '.wsf-node-head', '.wsf-node-kind', '.wsf-node-title', '.wsf-node-meta', '.wsf-node-warn', '.wsf-bad', '.pgc-selected', '.wsf-group-logic', '.wsf-group-message', '.wsf-group-values', '.pgc-port-in', '.pgc-port-out', '.pgc-edge-line', '.pgc-edge-pill', '.pgc-edge-label'),
+        'html'    => '<div class="pgc-stage wsf-embed pg-look-flow" style="--pgc-marker:url(#' . $marker . ')"><div class="pgc-layer" style="width:500px;height:266px">'
+            . '<svg class="pgc-edges" width="500" height="266" aria-hidden="true"><defs><marker id="' . $marker . '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead" d="M0 0L10 5L0 10z"/></marker></defs>'
+            . $arrow(52, lang('Yes')) . $arrow(172, lang('No')) . '</svg>'
+            . '<div class="pgc-boxes">'
+            . $box('wsf-group-logic pgc-selected', 16, 64, 'bi-signpost-split', lang('Condition'), lang('Placed an order?'), lang('An order in the last 3 days'), true, true, false)
+            . $box('wsf-group-logic', 288, 16, 'bi-flag', lang('End'), lang('Placed an order'), lang('The run ends'), true, false, false)
+            . $box('wsf-group-message wsf-bad', 288, 136, 'bi-envelope', lang('Send an e-mail'), lang('Discount code'), lang('To the record\'s contact'), true, true, true)
+            . $box('wsf-group-values', 16, 178, 'bi-braces', lang('Constants'), lang('Shop links'), lang('Three values'), false, false, false)
+            . '</div></div></div>'
+            . '<p class="pg-text-meta">' . h(lang('From the Flows canvas: a box is a card with its kind on a tile in its group\'s colour, then the kind, the title and what it does, each cut to the width with the whole text in its tooltip. The out port is a dot on the right edge; the in port shows on pointing. Chosen: the ring. A problem keeps its red line, a value box its dashed border; an arrow of a box with several outcomes carries the outcome on a pill. The List view, the run view and the read-only card draw the same box.')) . '</p>',
     );
 }
 

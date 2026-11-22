@@ -5,8 +5,8 @@
  * Tests for Settings > Bookings (includes/fn/booking_settings.php): the
  * policies and the widget's texts kept in config_text, a service's posted
  * row, the weekly hours grid, the dated exceptions entered as ranges of days,
- * the price box, the order of the week, the folded rows' lines and the
- * drawer a refused box sits in.
+ * the price box, the order of the week, the folded rows' lines, a staff
+ * member's line, a new member's hours and the drawer a refused box sits in.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -272,8 +272,9 @@ function test_booking_settings_pane_labels_and_reminder_keyboard()
 }
 
 // A refused box opens the drawer that holds it: a service's boxes sit in its
-// drawer, a new service's in the add drawer. The order is no box of a drawer;
-// staff have no drawer yet.
+// drawer, a new service's in the add drawer, a staff member's boxes in the
+// member's drawer, the user to add and the new member's hours in the add
+// drawer. The order is no box of a drawer.
 function test_booking_settings_error_drawer()
 {
 	foreach (array('name', 'length', 'before', 'after', 'price', 'deposit', 'deposit_product', 'description', 'enabled') as $box) {
@@ -287,8 +288,45 @@ function test_booking_settings_error_drawer()
 	pg_assert_same('', pg_booking_settings_error_drawer('booking_service', '0', 'name'));
 	pg_assert_same('', pg_booking_settings_error_drawer('booking_service', '1x', 'name'));
 	pg_assert_same('', pg_booking_settings_error_drawer('booking_service', array(), 'name'));
-	pg_assert_same('', pg_booking_settings_error_drawer('booking_staff', '4', 'h1a'));
-	pg_assert_same('', pg_booking_settings_error_drawer('booking_staff_add', '', ''));
+
+	foreach (array('h1a', 'h7d', 'x_from', 'enabled', 'services') as $box) {
+		pg_assert_same('pgset-booking-member-4', pg_booking_settings_error_drawer('booking_staff', '4', $box), $box);
+	}
+
+	pg_assert_same('pgset-booking-member-new', pg_booking_settings_error_drawer('booking_staff', 'new', 'h3b'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_staff', '4', 'h8a'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_staff', '4', 'seen'));
+	pg_assert_same('', pg_booking_settings_error_drawer('booking_staff', '0', 'h1a'));
+	pg_assert_same('pgset-booking-member-new', pg_booking_settings_error_drawer('booking_staff_add', '', ''));
+}
+
+// A member added to the staff starts with their own working days in Team and
+// working hours, else the company's working week, else Monday to Friday;
+// each day from 09:00 to 17:00.
+function test_booking_settings_new_member_hours()
+{
+	$day = array(array('09:00', '17:00'));
+
+	pg_assert_same(array(1 => $day, 3 => $day, 6 => $day), pg_booking_settings_new_member_hours(1 + 4 + 32, 31), 'own days: Mon, Wed, Sat');
+	pg_assert_same(array(1 => $day, 2 => $day, 3 => $day, 4 => $day, 5 => $day, 6 => $day), pg_booking_settings_new_member_hours(0, 63), 'company week Mon-Sat');
+	pg_assert_same(array(1 => $day, 2 => $day, 3 => $day, 4 => $day, 5 => $day), pg_booking_settings_new_member_hours(0, 0), 'Monday to Friday');
+	pg_assert_same(array(1 => $day, 2 => $day, 3 => $day, 4 => $day, 5 => $day), pg_booking_settings_new_member_hours(null, null), 'nothing known');
+	pg_assert_same(array(7 => $day), pg_booking_settings_new_member_hours(64 + 128, 31), 'bits past Sunday ignored');
+	pg_assert_same(array(2 => $day), pg_booking_settings_new_member_hours(128, 2), 'no day of the week in the own mask: the company week');
+	pg_assert_same(pg_booking_hours_clean(pg_booking_settings_new_member_hours(1, 31)), pg_booking_settings_new_member_hours(1, 31), 'stored shape');
+}
+
+// A staff member's row says whether they take bookings, how many services
+// and which days they work.
+function test_booking_settings_staff_line()
+{
+	$member = array('enabled' => 1, 'service_ids' => '[3,5,9]', 'hours' => '{"1":[["09:00","17:00"]],"2":[["09:00","17:00"]],"3":[["09:00","12:00"],["13:00","17:00"]],"4":[["09:00","17:00"]],"5":[["09:00","17:00"]]}');
+
+	pg_assert_same('Takes bookings · 3 services · Mon–Fri', pg_booking_settings_staff_line($member, array(3, 5, 9)));
+	pg_assert_same('Takes bookings · 2 services · Mon–Fri', pg_booking_settings_staff_line($member, array(3, 9, 11)), 'only known services');
+	pg_assert_same('Takes no bookings · 1 service · Mon, Wed', pg_booking_settings_staff_line(array('enabled' => 0, 'service_ids' => '[3]', 'hours' => '{"1":[["09:00","17:00"]],"3":[["09:00","17:00"]]}'), array(3)));
+	pg_assert_same('Takes bookings · No service · Mon–Wed, Sat, Sun', pg_booking_settings_staff_line(array('enabled' => 1, 'service_ids' => '[]', 'hours' => '{"1":[["09:00","17:00"]],"2":[["09:00","17:00"]],"3":[["09:00","17:00"]],"6":[["10:00","14:00"]],"7":[["10:00","14:00"]]}'), array(3)));
+	pg_assert_same('Takes bookings · 1 service · No weekly hours', pg_booking_settings_staff_line(array('enabled' => 1, 'service_ids' => '[3]', 'hours' => '{}'), array(3)));
 }
 
 // A service's row says its length, its price and whether it can be booked.
@@ -366,4 +404,31 @@ function test_booking_settings_pane_rows_and_drawers()
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/bookings.save.php');
 
 	pg_assert_contains('pg_settings_drawer_refused(pg_booking_settings_error_drawer(', $save);
+}
+
+// The staff: list rows, each member in a drawer posting under the names it
+// always had; the add drawer's picker and grid, whose hours the save checks
+// as a member's and stores as posted.
+function test_booking_settings_staff_rows_and_drawers()
+{
+	$pane = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/bookings.php');
+
+	pg_assert_contains("lang('Add a staff member')", $pane);
+	pg_assert_contains('pg_settings_drawer($drawer, h($member[\'person\'])', $pane);
+	pg_assert_contains('pg_booking_settings_member_drawer(\'new\')', $pane);
+	pg_assert_contains('pg_booking_settings_staff_line($member, $booking_service_ids)', $pane);
+	pg_assert_contains('href="#settings/workspace_team/pgset-ws-calendar"', $pane);
+	pg_assert_contains("\$booking_hours_grid('booking_staff[new]'", $pane);
+	pg_assert_contains('data-pg-booking-hours="', $pane);
+	pg_assert_same(false, strpos($pane, '<fieldset'), 'no open block per member');
+
+	foreach (array("[seen]", "[enabled]", "[services][]", "[h' . \$day . \$box . ']", "[x_from][]", "[x_to][]", "[x_open][]", "[x_close][]") as $box) {
+		pg_assert_contains("\$name . '" . $box, $pane, 'posts as booking_staff[..]' . $box);
+	}
+
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/bookings.save.php');
+
+	pg_assert_contains("pg_booking_settings_hours_from_fields(\$booking_add_grid)", $save);
+	pg_assert_contains("\$liveform->mark_error('booking_staff[new][' . \$box . ']'", $save);
+	pg_assert_contains('pg_booking_settings_save_staff($booking_staff_rows, $booking_add, $booking_enabled_services, $booking_now, $booking_add_hours);', $save);
 }

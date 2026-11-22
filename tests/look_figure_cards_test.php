@@ -88,14 +88,14 @@ function test_figure_classes_draw_the_report_figure()
 function test_figure_screens_use_the_shared_classes()
 {
 	$orders = look_figure_cards_test_source('view_orders.php');
-	$start = strpos($orders, '$stat_card = function');
+	$start = strpos($orders, '$strip_cell = function');
 	$card = substr($orders, (int) $start, (int) strpos($orders, '};', (int) $start) - (int) $start);
 
-	pg_assert_contains('<div class="pg-card pg-figure">', $card, 'orders: a figure card');
+	pg_assert_contains('<div class="pg-figure-strip-cell">', $card, 'orders: a cell of the strip');
 	pg_assert_contains('<div class="pg-figure-label">', $card, 'orders: the label');
 	pg_assert_contains('<div class="pg-figure-value\' . $value_class', $card, 'orders: the value');
 	pg_assert_true(strpos($card, 'h5 mb-1') === false, 'orders: no heading size on a figure');
-	pg_assert_contains("<div class=\"pg-figures\">'\n                    . \$stat_card(", $orders, 'orders: the figure grid');
+	pg_assert_contains('<section class="pg-card pg-figure-strip"', $orders, 'orders: the figure strip');
 
 	$commissions = look_figure_cards_test_source('view_commissions.php');
 

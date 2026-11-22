@@ -18,7 +18,7 @@ module: look_examples
 - Not drawn yet: dialogs and the settings modal, dashboard cards, report screens, Workspace (channel screen, tools dock, screen bars), phone widths.
 - The list table is drawn by the driver itself (`list-table-layout.md`, #8921), so it left the list.
 - A new recipe adds its section here in the same PR; a part that is done leaves the list.
-- Drawer (#10851, architect channel message 11006): drawn in place without the dialog, as `#privacy_request` and Application Access' `#api_new` build it; the Bootstrap classes are named without a dot (they are not rules of `backend.src.css`). The numbered steps come with KV4b.
+- Drawer (#10851): drawn in place without the dialog, as `#privacy_request` and Application Access' `#api_new` build it; the Bootstrap classes are named without a dot (they are not rules of `backend.src.css`). The numbered steps come with KV4b.
 - Menus (SF2, #10852): a row's "more" menu, `pg-icon-button-sm` opening a Bootstrap `.menu.pg-menu-end` in `.pg-menu-wrap`; a danger item `fg-emphasis-danger` last under `.menu-divider`. No new CSS (architect, 2026-11-20, channel message 11049).
 - Patterns (`pg_look_examples_patterns()`, under the parts): which there are, in which order, and their frame: `look-design-examples-patterns.md`.
 

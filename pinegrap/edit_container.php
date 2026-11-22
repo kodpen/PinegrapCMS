@@ -111,6 +111,10 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // The form draws no list: a field posted as one is refused before it
+    // reaches the session.
+    pg_request_refuse_lists($liveform, 'edit_container.php?id=' . $id);
+
     $liveform->add_fields_to_session();
 
     // If the user selected to delete this container, then delete it.

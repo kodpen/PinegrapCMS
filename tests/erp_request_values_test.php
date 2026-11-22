@@ -404,6 +404,13 @@ function test_erp_request_values_edoc_settings_save()
 
 	pg_assert_same(0, preg_match('/\(string\)\s*post_value\(\'edoc_/', $source), 'e-document settings cast with (string)');
 	pg_assert_true(strpos($source, "is_string(post_value('edoc_provider'))") !== false, 'provider read as one string');
-	pg_assert_true(strpos($source, 'if (!is_string($erp_edoc_value))') !== false, 'each box read as one string');
-	pg_assert_true(strpos($source, "array_key_exists(\$erp_edoc_value, (array) \$erp_edoc_field['options'])") !== false, 'a select keeps to its options');
+	pg_assert_false(strpos($source, 'erp_edoc_credentials_save(') !== false, 'the card stores no credential: they are typed on Connections');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/registry.php');
+	$fields = array(
+		array('name' => 'user', 'type' => 'text'),
+		array('name' => 'env', 'type' => 'select', 'options' => array('test' => 'Test', 'live' => 'Live')),
+	);
+	$page = erp_edoc_page_post('isbasi', $fields, array('edoc_isbasi_user' => array('x'), 'edoc_isbasi_env' => 'other'));
+	pg_assert_same(array(), $page['posted'], 'each box read as one string, a select keeps to its options');
 }

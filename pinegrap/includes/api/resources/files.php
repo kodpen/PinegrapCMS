@@ -36,6 +36,7 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 require_once(dirname(dirname(__FILE__)) . '/outbound/http.php');
 require_once(dirname(dirname(__FILE__)) . '/outbound/webhooks.php');
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
 
 // What may be uploaded. SVG is not here on purpose: it is markup, it can carry
 // script, and the site serves it inline.
@@ -157,18 +158,14 @@ function api_files_list($params) {
 
 	$cursor_clause = '';
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// sort=newest walks the upload time and id the other way (list_order.php).
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$cursor_clause = "(files.timestamp > '" . $cursor['v'] . "'
-			OR (files.timestamp = '" . $cursor['v'] . "' AND files.id > '" . $cursor['i'] . "'))";
+		$cursor_clause = api_list_keyset_sql('files.timestamp', 'files.id', $cursor, $descending);
 
 	}
 
@@ -183,7 +180,7 @@ function api_files_list($params) {
 	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
 
 	$rows = api_rows(api_file_select() . " WHERE " . implode(' AND ', $paged_where) . "
-		ORDER BY files.timestamp ASC, files.id ASC
+		ORDER BY " . api_list_order_sql('files.timestamp', 'files.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$has_more = (count($rows) > $limit);
@@ -200,7 +197,7 @@ function api_files_list($params) {
 
 		$last = $rows[count($rows) - 1];
 
-		$next_cursor = api_cursor_encode($last['timestamp'], $last['id']);
+		$next_cursor = api_list_cursor_encode((int)$last['timestamp'], (int)$last['id'], $descending);
 
 	}
 

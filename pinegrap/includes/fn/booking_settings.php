@@ -341,26 +341,134 @@ function pg_booking_settings_service_drawer($key)
 }
 
 /**
- * The drawer holding a box a save refused, so the pane opens it again: a
- * service's boxes sit in its drawer. '' for a box drawn in the pane itself
- * (the order, every staff box) or a row that is no service. Pure.
+ * The id of a staff member's drawer in the Bookings pane: the user's id, or
+ * 'new' for the add drawer.
  *
- * @param string     $list  the posted list (booking_service, booking_staff)
- * @param int|string $row   the row's key: a service id or 'new'
- * @param string     $error the box's key, as pg_booking_settings_service_clean() names it
+ * @param int|string $key
+ * @return string
+ */
+function pg_booking_settings_member_drawer($key)
+{
+    return 'pgset-booking-member-' . $key;
+}
+
+/**
+ * The drawer holding a box a save refused, so the pane opens it again: a
+ * service's boxes sit in its drawer, a staff member's in theirs, the user to
+ * add (booking_staff_add) and a new member's hours in the add drawer. '' for
+ * a box drawn in the pane itself (a service's order) or a row that is no
+ * service or member. Pure.
+ *
+ * @param string     $list  the posted list (booking_service, booking_staff, booking_staff_add)
+ * @param int|string $row   the row's key: a service or user id, or 'new'
+ * @param string     $error the box's key, as the save names it
  * @return string drawer id or ''
  */
 function pg_booking_settings_error_drawer($list, $row, $error)
 {
-    $boxes = array('name', 'length', 'before', 'after', 'price', 'deposit', 'deposit_product', 'description', 'enabled');
+    if ($list === 'booking_staff_add') {
+        return pg_booking_settings_member_drawer('new');
+    }
 
-    if (($list !== 'booking_service') || !is_scalar($row) || !in_array((string) $error, $boxes, true)) {
+    if (!is_scalar($row) || !is_scalar($error)) {
         return '';
     }
 
     $row = (string) $row;
+    $error = (string) $error;
+    $known = ($row === 'new') || (preg_match('/^[1-9]\d*$/', $row) === 1);
 
-    return (($row === 'new') || (preg_match('/^[1-9]\d*$/', $row) === 1)) ? pg_booking_settings_service_drawer($row) : '';
+    if ($list === 'booking_service') {
+        $boxes = array('name', 'length', 'before', 'after', 'price', 'deposit', 'deposit_product', 'description', 'enabled');
+
+        return ($known && in_array($error, $boxes, true)) ? pg_booking_settings_service_drawer($row) : '';
+    }
+
+    if ($list === 'booking_staff') {
+        $box = in_array($error, array('enabled', 'services', 'x_from'), true) || (preg_match('/^h[1-7][a-d]$/', $error) === 1);
+
+        return ($known && $box) ? pg_booking_settings_member_drawer($row) : '';
+    }
+
+    return '';
+}
+
+/**
+ * The weekly hours a member added to the staff starts with: their own
+ * working days (ws_profiles.workdays, Team and working hours), else the
+ * company's working week (ws_workweek()), else Monday to Friday; each day
+ * from 09:00 to 17:00. The masks count Monday as bit 0; 0 or null is not
+ * set. Pure.
+ *
+ * @param int|null $own      the member's own working days
+ * @param int|null $workweek the company's working week
+ * @return array ISO weekday => ranges, as pg_booking_hours_clean()
+ */
+function pg_booking_settings_new_member_hours($own, $workweek)
+{
+    $mask = ((int) $own & 127) ?: (((int) $workweek & 127) ?: 31);
+    $hours = array();
+
+    for ($day = 1; $day <= 7; $day++) {
+        if (($mask & (1 << ($day - 1))) !== 0) {
+            $hours[$day] = array(array('09:00', '17:00'));
+        }
+    }
+
+    return $hours;
+}
+
+/**
+ * A staff member's line in their row: whether they take bookings, how many
+ * of the known services they take, and the days of their weekly hours, a run
+ * of three days or more as "Mon–Fri". Pure.
+ *
+ * @param array $member a booking_staff row
+ * @param int[] $known  the ids of the services
+ * @return string
+ */
+function pg_booking_settings_staff_line($member, $known)
+{
+    $short = array(1 => lang('Mon'), 2 => lang('Tue'), 3 => lang('Wed'), 4 => lang('Thu'), 5 => lang('Fri'), 6 => lang('Sat'), 7 => lang('Sun'));
+    $count = count(pg_booking_settings_service_ids(pg_booking_json($member['service_ids'] ?? array()), array_map('intval', (array) $known)));
+    $days = array_keys(pg_booking_hours_clean($member['hours'] ?? array()));
+    $runs = array();
+
+    foreach ($days as $day) {
+        $last = count($runs) - 1;
+
+        if (($last >= 0) && (end($runs[$last]) === $day - 1)) {
+            $runs[$last][] = $day;
+        } else {
+            $runs[] = array($day);
+        }
+    }
+
+    $parts = array();
+
+    foreach ($runs as $run) {
+        if (count($run) >= 3) {
+            $parts[] = $short[reset($run)] . '–' . $short[end($run)];
+        } else {
+            foreach ($run as $day) {
+                $parts[] = $short[$day];
+            }
+        }
+    }
+
+    if ($count === 0) {
+        $services = lang('No service');
+    } elseif ($count === 1) {
+        $services = lang('1 service');
+    } else {
+        $services = lang(array('string' => '{var:1} services', 'vars' => $count));
+    }
+
+    return implode(' · ', array(
+        !empty($member['enabled']) ? lang('Takes bookings') : lang('Takes no bookings'),
+        $services,
+        $parts ? implode(', ', $parts) : lang('No weekly hours'),
+    ));
 }
 
 /**
@@ -786,16 +894,17 @@ function pg_booking_settings_save_services($rows, $new, $now)
 
 /**
  * Write the staff posted by the Staff card, by user id, and add the user
- * picked to be added with the weekly hours of a working week (Monday to
- * Friday, 09:00-17:00) and every enabled service.
+ * picked to be added with the weekly hours the add drawer showed and every
+ * enabled service.
  *
- * @param array $rows   user id => array(service_ids, hours, exceptions, enabled)
- * @param int   $add    user id to add, 0 for none
+ * @param array $rows     user id => array(service_ids, hours, exceptions, enabled)
+ * @param int   $add      user id to add, 0 for none
  * @param int[] $services enabled service ids, for the new staff member
  * @param int   $now
+ * @param array $hours    the new staff member's weekly hours, as pg_booking_hours_clean()
  * @return void
  */
-function pg_booking_settings_save_staff($rows, $add, $services, $now)
+function pg_booking_settings_save_staff($rows, $add, $services, $now, $hours = array())
 {
     foreach ($rows as $user_id => $values) {
         db_q("UPDATE booking_staff SET service_ids = ?, hours = ?, exceptions = ?, enabled = ?, updated_at = ? WHERE user_id = ?",
@@ -803,14 +912,47 @@ function pg_booking_settings_save_staff($rows, $add, $services, $now)
     }
 
     if ((int) $add > 0) {
-
-        $week = array();
-
-        for ($day = 1; $day <= 5; $day++) {
-            $week[$day] = array(array('09:00', '17:00'));
-        }
-
         db_q("INSERT IGNORE INTO booking_staff (user_id, service_ids, hours, exceptions, enabled, created_at, updated_at) VALUES (?, ?, ?, '{}', 1, ?, ?)",
-            array((int) $add, json_encode(array_values(array_map('intval', $services))), json_encode((object) $week), (int) $now, (int) $now));
+            array((int) $add, json_encode(array_values(array_map('intval', $services))), json_encode((object) $hours), (int) $now, (int) $now));
     }
+}
+
+/**
+ * Each panel user's own working days from Team and working hours
+ * (ws_profiles.workdays, Monday as bit 0); a user without a row, or with 0
+ * (the company's week), is left out. Empty before the Workspace tables.
+ *
+ * @param int[] $user_ids
+ * @return array user id => mask
+ */
+function pg_booking_settings_own_workdays($user_ids)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $user_ids)));
+
+    if (!$ids || !pg_schema_has('ws_profiles', 'workdays')) {
+        return array();
+    }
+
+    $days = array();
+
+    foreach ((array) db_items("SELECT user_id, workdays FROM ws_profiles WHERE workdays > 0 AND user_id IN (" . implode(',', $ids) . ")") as $row) {
+        $days[(int) $row['user_id']] = (int) $row['workdays'];
+    }
+
+    return $days;
+}
+
+/**
+ * The company's working week (Workspace Settings > Defaults), 0 when the
+ * Workspace's calendar is not loaded.
+ *
+ * @return int
+ */
+function pg_booking_settings_workweek()
+{
+    if (!function_exists('ws_workweek') && is_file(PG_FUNCTIONS_DIR . '/includes/workspace/workdays.php') && defined('WS_WORKDAYS')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/workdays.php');
+    }
+
+    return function_exists('ws_workweek') ? (int) ws_workweek() : 0;
 }

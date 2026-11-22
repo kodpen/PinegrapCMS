@@ -69,12 +69,13 @@
 (function () {
     'use strict';
 
-    // The canvas core (assets/js/pg_graph_canvas.js): the grid, the box
-    // size, the geometry helpers, the undo history and the viewport.
+    // The canvas core (assets/js/pg_graph_canvas.js): the grid, the
+    // geometry helpers, the undo history and the viewport. A flow box is a
+    // card of its own size, handed to the core by the adapter's size().
     var G = window.PGGraphCanvas;
     var GRID = G.GRID;
-    var BOX_W = G.BOX_W;
-    var BOX_H = G.BOX_H;
+    var BOX_W = 196;
+    var BOX_H = 72;
     // The label of each kind of template setting (ws_flow_template_setting_types()).
     var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table', text: 'fl_tpl_set_text',
         page: 'fl_records_page', group: 'fl_tpl_set_group', subject: 'fl_email_subject', day: 'fl_tpl_set_day' };
@@ -2686,8 +2687,7 @@
         boxes.setAttribute('aria-label', t('sa_canvas_label'));
 
         nodes.forEach(function (node) {
-            var box = el('div', 'pgc-node ' + (ACTION_KINDS[node.kind] || ''));
-            var head = el('div', 'wsf-node-head');
+            var box = el('div', 'pgc-node wsf-card ' + (ACTION_KINDS[node.kind] || ''));
             var text = node.kind_label + ': ' + node.label + (node.meta ? '. ' + node.meta : '');
 
             byId[node.id] = node;
@@ -2700,11 +2700,9 @@
                 box.appendChild(port('in'));
             }
 
-            head.appendChild(K.icon(node.icon));
-            head.appendChild(el('span', 'wsf-node-kind', node.kind_label));
-            box.appendChild(head);
-            box.appendChild(el('div', 'wsf-node-title', node.label));
-            box.appendChild(el('div', 'wsf-node-meta', node.meta));
+            cardFace(box, K.icon(node.icon), node.kind_label);
+            box.querySelector('.wsf-node-title').textContent = node.label;
+            box.querySelector('.wsf-node-meta').textContent = node.meta;
 
             if (node.kind !== 'follow') {
                 box.appendChild(port('out'));
@@ -3406,24 +3404,36 @@
     function boxNode(node) {
         var kind = kindOf(node);
         var box = canvas.box(node, {
-            className: kindClasses(node.kind),
+            className: 'wsf-card ' + kindClasses(node.kind),
             into: kind.into,
             out: kind.out.length > 0,
             fill: function (box) {
-                var head = el('div', 'wsf-node-head');
-
-                head.appendChild(K.flowIcon(node.kind));
-                head.appendChild(el('span', 'wsf-node-kind', t(kind.name)));
-                head.appendChild(K.icon('bi-exclamation-triangle-fill', 'wsf-node-warn'));
-                box.appendChild(head);
-                box.appendChild(el('div', 'wsf-node-title'));
-                box.appendChild(el('div', 'wsf-node-meta'));
+                cardFace(box, K.flowIcon(node.kind), t(kind.name));
+                box.querySelector('.wsf-node-head').appendChild(K.icon('bi-exclamation-triangle-fill', 'wsf-node-warn'));
             }
         });
 
         fillBox(box, node);
 
         return box;
+    }
+
+    // A box's face as a card: the kind's icon on a tile in its group's
+    // colour, beside it three lines, the kind (with the marks a box carries),
+    // the title and what it does.
+    function cardFace(box, icon, kindName) {
+        var tile = el('span', 'pg-icon-tile wsf-node-tile');
+        var text = el('div', 'wsf-node-text');
+        var head = el('div', 'wsf-node-head');
+
+        tile.setAttribute('aria-hidden', 'true');
+        tile.appendChild(icon);
+        head.appendChild(el('span', 'wsf-node-kind', kindName));
+        text.appendChild(head);
+        text.appendChild(el('div', 'wsf-node-title'));
+        text.appendChild(el('div', 'wsf-node-meta'));
+        box.appendChild(tile);
+        box.appendChild(text);
     }
 
     // A task needs a title, so an empty one shows as missing; a start or an
@@ -3437,6 +3447,10 @@
         titleNode.textContent = title || (missing ? t('fl_untitled_box') : meta);
         titleNode.classList.toggle('wsf-placeholder', missing);
         box.querySelector('.wsf-node-meta').textContent = (title || missing) ? meta : '';
+        // Each line is cut to the card's width: the tooltip holds them whole,
+        // then the box's problems and warnings (markProblems()).
+        box.setAttribute('data-face', [t(kindOf(node).name), titleNode.textContent, (title || missing) ? meta : ''].filter(Boolean).join('\n'));
+        boxTip(box);
         box.setAttribute('aria-label', t(kindOf(node).name) + ': ' + (title || (missing ? t('fl_untitled_box') : '')) + '. ' + meta);
         paintMark(box, box.querySelector('.wsf-node-head'), node);
         paintTry(box, node);
@@ -3479,7 +3493,7 @@
             meta.textContent = result;
         }
 
-        box.title = result;
+        box.title = [box.getAttribute('data-face'), result].filter(Boolean).join('\n');
         box.setAttribute('aria-label', box.getAttribute('aria-label') + ' ' + stepWord(status) + '.' + (result ? ' ' + result : ''));
     }
 
@@ -5350,13 +5364,20 @@
             box.classList.toggle('wsf-bad', !!texts);
 
             if (!state.run) {
-                box.title = told.join('\n');
+                box.setAttribute('data-told', told.join('\n'));
+                boxTip(box);
             }
         });
 
         Array.prototype.forEach.call(ui.svg.querySelectorAll('.pgc-edge'), function (group) {
             group.classList.toggle('wsf-bad', !!byEdge[group.getAttribute('data-edge')]);
         });
+    }
+
+    // A box's tooltip: its card's lines whole (data-face), then what the
+    // check told of it (data-told).
+    function boxTip(box) {
+        box.title = [box.getAttribute('data-face'), state.run ? '' : box.getAttribute('data-told')].filter(Boolean).join('\n');
     }
 
     // ── Settings ───────────────────────────────────────────────────────
@@ -11271,11 +11292,15 @@
             // Outside a run the heading opens the box's settings: only the
             // open box's form is drawn, a big flow has hundreds of controls.
             var label = state.run ? head : head.appendChild(el('button', 'wsf-outline-toggle'));
+            // The box's card face: its tile, then the kind over the title.
+            var tile = label.appendChild(el('span', 'pg-icon-tile wsf-node-tile'));
+            var words = label.appendChild(el('span', 'wsf-outline-text'));
 
             item.setAttribute('data-node', node.id);
-            label.appendChild(K.flowIcon(node.kind, 'me-1'));
-            label.appendChild(el('span', 'wsf-outline-kind', t(kindOf(node).name)));
-            label.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(K.flowIcon(node.kind));
+            words.appendChild(el('span', 'wsf-outline-kind', t(kindOf(node).name)));
+            words.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
 
             if (!state.run) {
                 label.type = 'button';
@@ -14065,6 +14090,9 @@
             return t('fl_box');
         },
         item: nodeById,
+        size: function () {
+            return { w: BOX_W, h: BOX_H };
+        },
         editable: function () {
             return !!state.edit;
         },

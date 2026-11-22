@@ -102,14 +102,14 @@ function test_mail_settings_save_buttons_run_after_the_save()
 
 	pg_assert_true(($save !== false) && ($stop > $save), 'the boxes are saved first, and a failed save stops');
 
-	foreach (array('generate_dkim_key' => 'pg_mail_settings_dkim_generate($mail_saved', 'test_dkim' => 'pg_mail_settings_dkim_test($mail_saved') as $button => $job) {
+	foreach (array('generate_dkim_key' => 'pg_mail_settings_dkim_generate($mail_saved') as $button => $job) {
 		$branch = mail_settings_save_branch($button);
 
 		pg_assert_contains($job, $branch, $button . ' runs its job with the saved values');
 		pg_assert_true(strpos($source, "post_value('" . $button . "')") > $stop, $button . ': only after a successful save');
 	}
 
-	foreach (array('pg_mail_settings_dkim_generate', 'pg_mail_settings_dkim_test') as $name) {
+	foreach (array('pg_mail_settings_dkim_generate') as $name) {
 		$body = mail_settings_save_function($name);
 		pg_assert_contains("\$selector = \$saved['dkim_selector'];", $body, $name . ': the saved selector');
 		pg_assert_contains("\$domain = \$saved['dkim_domain'];", $body, $name . ': the saved domain');
@@ -143,26 +143,13 @@ function test_mail_settings_save_labels_say_they_save()
 	$source = mail_settings_save_cards();
 
 	pg_assert_contains("lang('Save and send a test')", $source);
-	pg_assert_contains("lang('Save and test')", $source);
 	pg_assert_contains("lang('Save and generate a DKIM key')", $source);
 }
 
-// The System card's account select: this server first, then each account
-// connected for sending, the stored one chosen, one to reconnect marked.
-function test_mail_settings_connection_field_lists_the_accounts()
+// The DKIM row's job is to make a key; Sending domain judges the published
+// record on every view, so no separate test of it is left.
+function test_mail_settings_save_no_dkim_test_button()
 {
-	$accounts = array(
-		array('id' => 7, 'provider' => 'google', 'label' => 'news@example.com', 'status' => 'active'),
-		array('id' => 9, 'provider' => 'microsoft', 'label' => 'shop@example.com', 'status' => 'reauth'),
-	);
-
-	$field = pg_mail_settings_connection_field('system_mail_connection', 9, $accounts);
-
-	pg_assert_contains('<select name="system_mail_connection" id="setting_system_mail_connection" class="form-control">', $field, 'named as the save reads it');
-	pg_assert_true(strpos($field, '<option value="">') < strpos($field, '<option value="7"'), 'this server comes first');
-	pg_assert_contains('<option value="9" selected>', $field, 'the stored account is chosen');
-	pg_assert_false(strpos($field, '<option value="7" selected>') !== false, 'only the stored account is chosen');
-	pg_assert_contains('shop@example.com', $field, 'each account by its address');
-	pg_assert_same(1, substr_count($field, ' - '), 'only the account to reconnect is marked');
-	pg_assert_contains('<option value="">', pg_mail_settings_connection_field('campaign_mail_connection', 0, array()), 'no account: this server alone');
+	pg_assert_false(strpos(mail_settings_save_cards(), 'name="test_dkim"') !== false, 'no Save and test button');
+	pg_assert_false(strpos(mail_settings_save_screen(), 'test_dkim') !== false, 'no branch for it');
 }

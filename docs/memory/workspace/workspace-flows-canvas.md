@@ -19,7 +19,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 ## How is the editor built?
 - Bar: name, status, save state; Canvas / List; the tools, Run, Publish, ⋯ (`workspace-flows-window-bar.md`). Below: palette | stage | side.
 - Palette (`drawPalette()`, left column, edit access only; else `wsf-no-palette`): Start from a template while empty, a search, the boxes in folding groups: `workspace-flows-palette.md`. Click or drag; phones: the outline's buttons.
-- Stage: a layer moved by translate+scale; SVG arrows under 208×80 boxes, grid 16. Pan: drag the empty canvas, Space, middle button, wheel. Zoom: Ctrl+wheel, pinch, − % + fit (0.25-2).
+- Stage: a layer moved by translate+scale; SVG arrows under 196×72 cards, grid 16. Pan: drag the empty canvas, Space, middle button, wheel. Zoom: Ctrl+wheel, pinch, − % + fit (0.25-2).
 - Run/view access: the live graph read-only, no palette, drag, Publish. Share dialog (⋯): `workspace-flows-shares.md`.
 - Side: `workspace-flows-side-panel.md`. Box look: `-box-look.md`; arrow names: `-arrow-names.md`; titles with values, live hint: `-run-notice.md`.
 

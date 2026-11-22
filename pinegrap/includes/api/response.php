@@ -614,6 +614,16 @@ function api_extra_headers($name = null, $value = null) {
 
 	}
 
+	// A whole set in place of the current one: POST /batch puts back the
+	// headers an entry added (includes/api/resources/batch.php).
+	if (is_array($name)) {
+
+		$headers = $name;
+
+		return $headers;
+
+	}
+
 	$headers[$name] = $value;
 
 	return $headers;

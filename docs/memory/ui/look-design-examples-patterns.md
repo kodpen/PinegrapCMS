@@ -7,7 +7,7 @@ module: look_examples
 ## Which patterns are drawn, in which order?
 - Patterns (`pg_look_examples_patterns()`, under the parts): the settings pane, the connect row, a list's empty state (DX1 #10859); the starting-point sheet in its three steps and the numbered steps drawer (DX2 #10885), each in the Drawer section's standing frame.
 - "Form drawer" (DX3 #11105, `pg_look_examples_form_drawer_pattern()`), after the numbered steps drawer: Application Access' `#api_drawer` at 760 px, head with tile, kind line and state pill, the tabs as `.pg-seg.pg-list-seg`, the Overview tab's groups Details, Summary (Advanced as a closed fold row) and Danger last, the foot with Cancel quiet and Save; under it the danger row in its confirm state (Cancel, Yes, delete).
-- The Workspace's conversation timeline (#11047, `pg_look_examples_timeline_pattern()`), then "Workspace list row" (#11079, `pg_look_examples_ws_list_row_pattern()`, live rows in a `.ws-menu-side` box), before the e-mail parts.
+- Before the e-mail parts: the conversation timeline (#11047, `pg_look_examples_timeline_pattern()`), "Workspace list row" (#11079, `pg_look_examples_ws_list_row_pattern()`, live rows in a `.ws-menu-side` box) and "Flow box" (#11083, `pg_look_examples_flow_box_pattern()`, `workspace/workspace-flows-box-look.md`).
 - The e-mail settings drawing's seven parts close the group (DX2b #10930, `pg_look_examples_mail_patterns()`): `look-mail-patterns.md`.
 
 ## How is a drawer pattern framed?

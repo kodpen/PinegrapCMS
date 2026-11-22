@@ -549,6 +549,7 @@ function api_openapi_tag_sentences()
     return array(
         'Meta'               => 'What this site is: the API version, the software, its time zone, the store\'s currency and order statuses.',
         'Guide'              => 'How to work on this site, written for AI agents: the topic list, a topic, or one section of it.',
+        'Batch'              => 'Several reads of this API in one request, each checked and answered as its own call.',
         'Products'           => 'Products of the store: read, create, change, delete, and set prices in bulk.',
         'Inventory'          => 'Stock of the products: levels by location, moves between locations, and the history of every change.',
         'Marketplaces'       => 'Marketplace accounts\' repricing: each listing\'s price, floor and buybox rank, and its strategy and own price.',

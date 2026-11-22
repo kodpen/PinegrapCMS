@@ -169,6 +169,8 @@ function pg_panel_actions()
         'update_product_group_status' => array('file' => 'commerce.php', 'handler' => 'pg_panel_update_product_group_status', 'exempt' => true, 'token' => true, 'write' => true),
         'getproductlist' => array('file' => 'commerce.php', 'handler' => 'pg_panel_getproductlist', 'exempt' => false, 'token' => false, 'write' => false),
         'get_unselected_products' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_unselected_products', 'exempt' => true, 'token' => false, 'write' => false),
+        // Edit Product's Performance card, read only (includes/fn/product_insights.php).
+        'product_insights' => array('file' => 'commerce.php', 'handler' => 'pg_panel_product_insights', 'exempt' => true, 'token' => false, 'write' => false),
         'get_product_barcodes' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_product_barcodes', 'exempt' => true, 'token' => true, 'write' => false),
         'generate_product_barcode' => array('file' => 'commerce.php', 'handler' => 'pg_panel_generate_product_barcode', 'exempt' => true, 'token' => true, 'write' => false),
         'save_product_barcode' => array('file' => 'commerce.php', 'handler' => 'pg_panel_save_product_barcode', 'exempt' => true, 'token' => true, 'write' => true),

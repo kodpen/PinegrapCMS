@@ -28,6 +28,7 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
 
 // A booking row as the API shows it. $services and $staff are
 // pg_booking_agenda_services() and pg_booking_agenda_staff(). The manage
@@ -331,17 +332,15 @@ function api_bookings_list($params) {
 
 	}
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// sort=newest walks the same start time and id the other way, the latest
+	// start first (list_order.php).
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$where[] = "(bookings.start_at > '" . (int)$cursor['v'] . "' OR (bookings.start_at = '" . (int)$cursor['v'] . "' AND bookings.id > '" . (int)$cursor['i'] . "'))";
+		$where[] = api_list_keyset_sql('bookings.start_at', 'bookings.id', $cursor, $descending);
 
 	}
 
@@ -349,7 +348,7 @@ function api_bookings_list($params) {
 
 	$rows = api_rows("SELECT * FROM bookings
 		WHERE " . implode(' AND ', $where) . pg_booking_agenda_scope_sql($scope) . "
-		ORDER BY bookings.start_at, bookings.id
+		ORDER BY " . api_list_order_sql('bookings.start_at', 'bookings.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$next = null;
@@ -360,7 +359,7 @@ function api_bookings_list($params) {
 
 		$last = end($rows);
 
-		$next = api_cursor_encode((int)$last['start_at'], (int)$last['id']);
+		$next = api_list_cursor_encode((int)$last['start_at'], (int)$last['id'], $descending);
 
 	}
 
