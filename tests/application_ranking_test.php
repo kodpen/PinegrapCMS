@@ -184,3 +184,24 @@ function test_application_ranking_set_up_reads_a_rounds_bound_and_score()
 	pg_assert_same(1, count($input['errors']));
 	pg_assert_contains('0 to 9', $input['errors'][0]);
 }
+
+function test_application_ranking_entries_tab_markup_follows_the_description()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_application_program.php');
+	$start = strpos($source, '// The Entries tab');
+	$tab = substr($source, $start, strpos($source, 'echo pg_page_shell(') - $start);
+
+	// The rank order is the list's meaning and the cut is a row across it:
+	// a plain table, never the list table driver, and no form in a row.
+	pg_assert_contains('<table class="table table-hover align-middle mb-0">', $tab);
+	pg_assert_false(strpos($tab, 'pg_list_table') !== false, 'not on the list table driver');
+	pg_assert_false(strpos($tab, 'data-pg-sort') !== false, 'the rank order cannot be re-sorted');
+	pg_assert_same(1, substr_count($tab, "<form method=\"post\" action=\"edit_application_program.php\" class=\"d-flex flex-wrap"), 'the cut form sits above the table');
+
+	// Row actions are buttons opening note drawers; each drawer has one fill.
+	pg_assert_contains('data-pg-ap-note="aprog_settle"', $tab);
+	pg_assert_contains('data-pg-ap-note="aprog_let_in"', $tab);
+	pg_assert_same(1, substr_count($tab, 'pg-button-fill'), 'the drawer function holds the one fill');
+	pg_assert_false(strpos($tab, 'btn btn-') !== false, 'look A buttons only');
+	pg_assert_contains("\$ap_tab('entries', lang('Entries'), \$ap_round_entries)", $source, 'the Entries tab');
+}

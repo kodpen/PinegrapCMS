@@ -521,10 +521,37 @@ $ap_reviewers_html = '<form id="aprog_reviewers_form" action="edit_application_p
         </form>
     </dialog>';
 
-// The Entries tab: the current round's entries ranked per category, the cut
-// line across the list, and the drawers that settle or let an entry in.
+// The current round's entries, counted on the Entries tab.
 $ap_round = max(1, $ap_program['round']);
 $ap_round_entries = (int) db_value("SELECT COUNT(*) FROM application_entries WHERE program_id = '" . $ap_id . "' AND round = '" . $ap_round . "'");
+
+$ap_tab = function ($view, $label, $count = null) use ($ap_id, $ap_view) {
+    return '<a class="pg-seg-item' . (($ap_view === $view) ? ' is-active" aria-current="page' : '') . '" href="edit_application_program.php?id=' . $ap_id . (($view === 'setup') ? '' : '&amp;view=' . $view) . '">' . h($label) . (($count !== null) ? ' <span class="pg-seg-count">' . (int) $count . '</span>' : '') . '</a>';
+};
+$ap_toolbar = array(
+    'primary' => ($ap_view === 'reviewers')
+        ? array('<button type="button" class="pg-button pg-button-fill" data-pg-ap-drawer="aprog_reviewer_add"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add reviewer')) . '</button>', $ap_state_button)
+        : $ap_state_button,
+    'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $ap_tab('setup', lang('Set-up')) . $ap_tab('reviewers', lang('Reviewers'), count($ap_reviewers)) . $ap_tab('entries', lang('Entries'), $ap_round_entries) . '</span>',
+);
+
+if ($ap_view === 'reviewers') {
+    $ap_toolbar['secondary'] = '<button type="submit" form="aprog_reviewers_form" name="submit_assign" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h($ap_assign_text) . '"' . (($ap_reviewers && $ap_entries) ? '' : ' disabled') . '><i class="bi bi-shuffle" aria-hidden="true"></i>' . h(lang('Give out entries')) . '</button>';
+}
+
+$ap_setup_html = '<form id="aprog_form" action="edit_application_program.php" method="post">
+        ' . get_token_field() . '
+        <input type="hidden" name="id" value="' . $ap_id . '">
+        <section class="pg-card p-5 mb-5" aria-labelledby="aprog_name_title"><h2 class="pg-title-section mb-0" id="aprog_name_title">' . h(lang('Programme')) . '</h2><p class="pg-card-sub mb-5">' . h(lang('The name staff and reviewers see.')) . '</p>
+        <label class="pg-field-label" for="aprog_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="aprog_name" name="name" maxlength="150" required value="' . h($ap_values['name']) . '"></section>
+        ' . $ap_period . $ap_categories . $ap_eligibility . $ap_rounds_html . $ap_blind . $ap_mails . '
+        <div class="pg-floatbar d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 mb-5">
+            <span class="d-flex flex-wrap gap-2"><button type="submit" name="submit_save" value="1" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button><a class="pg-button pg-button-quiet" href="' . h($ap_list) . '">' . h(lang('Cancel')) . '</a></span>
+        </div>
+    </form>';
+
+// The Entries tab: the current round's entries ranked per category, the cut
+// line across the list, and the drawers that settle or let an entry in.
 $ap_entries_html = '';
 
 if ($ap_view === 'entries') {
@@ -645,31 +672,6 @@ if ($ap_view === 'entries') {
         . $ap_note_drawer('aprog_settle', lang('Settle'), lang('The reviewers\' scores lie far apart. Say how it was agreed; the scores stay as sent.'), lang('Settle'), 'submit_settle')
         . $ap_note_drawer('aprog_let_in', lang('Let it in'), lang('The entry failed an eligibility rule. Say why it may be reviewed anyway.'), lang('Let it in'), 'submit_let_in');
 }
-
-$ap_tab = function ($view, $label, $count = null) use ($ap_id, $ap_view) {
-    return '<a class="pg-seg-item' . (($ap_view === $view) ? ' is-active" aria-current="page' : '') . '" href="edit_application_program.php?id=' . $ap_id . (($view === 'setup') ? '' : '&amp;view=' . $view) . '">' . h($label) . (($count !== null) ? ' <span class="pg-seg-count">' . (int) $count . '</span>' : '') . '</a>';
-};
-$ap_toolbar = array(
-    'primary' => ($ap_view === 'reviewers')
-        ? array('<button type="button" class="pg-button pg-button-fill" data-pg-ap-drawer="aprog_reviewer_add"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add reviewer')) . '</button>', $ap_state_button)
-        : $ap_state_button,
-    'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Programme')) . '">' . $ap_tab('setup', lang('Set-up')) . $ap_tab('reviewers', lang('Reviewers'), count($ap_reviewers)) . $ap_tab('entries', lang('Entries'), $ap_round_entries) . '</span>',
-);
-
-if ($ap_view === 'reviewers') {
-    $ap_toolbar['secondary'] = '<button type="submit" form="aprog_reviewers_form" name="submit_assign" value="1" class="pg-button pg-button-quiet" data-confirm-content="' . h($ap_assign_text) . '"' . (($ap_reviewers && $ap_entries) ? '' : ' disabled') . '><i class="bi bi-shuffle" aria-hidden="true"></i>' . h(lang('Give out entries')) . '</button>';
-}
-
-$ap_setup_html = '<form id="aprog_form" action="edit_application_program.php" method="post">
-        ' . get_token_field() . '
-        <input type="hidden" name="id" value="' . $ap_id . '">
-        <section class="pg-card p-5 mb-5" aria-labelledby="aprog_name_title"><h2 class="pg-title-section mb-0" id="aprog_name_title">' . h(lang('Programme')) . '</h2><p class="pg-card-sub mb-5">' . h(lang('The name staff and reviewers see.')) . '</p>
-        <label class="pg-field-label" for="aprog_name">' . h(lang('Name')) . '</label><input type="text" class="pg-input" id="aprog_name" name="name" maxlength="150" required value="' . h($ap_values['name']) . '"></section>
-        ' . $ap_period . $ap_categories . $ap_eligibility . $ap_rounds_html . $ap_blind . $ap_mails . '
-        <div class="pg-floatbar d-flex flex-wrap align-items-center justify-content-between gap-2 p-3 mb-5">
-            <span class="d-flex flex-wrap gap-2"><button type="submit" name="submit_save" value="1" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button><a class="pg-button pg-button-quiet" href="' . h($ap_list) . '">' . h(lang('Cancel')) . '</a></span>
-        </div>
-    </form>';
 
 echo pg_page_shell(array(
     'title' => $ap_program['name'],
