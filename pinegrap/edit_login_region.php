@@ -110,6 +110,10 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
+
+    // The form draws no list: a field posted as one is refused before it
+    // reaches the session.
+    pg_request_refuse_lists($liveform, 'edit_login_region.php?id=' . $id);
     
     // if login region was selected for deletion
     if (($_POST['submit_delete'] ?? '') == 'Delete') {

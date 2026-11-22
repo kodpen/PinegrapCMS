@@ -1597,6 +1597,36 @@ function pg_request_list_fits($value, $levels)
     return true;
 }
 
+/**
+ * Refuses a record screen's save when a posted field carries a list its form
+ * does not draw (pg_request_unexpected_lists()): the form error "Sorry, the
+ * value you entered for {names} is not valid." and a redirect back to the
+ * screen, before the fields reach the session or anything is written.
+ * Returns when every field fits.
+ *
+ * The record saves write the fields they read, so a field read as not given
+ * would be saved blank; (string) of a list logged "Array to string
+ * conversion" and saved "Array".
+ *
+ * @param  liveform $liveform the screen's form
+ * @param  string   $screen   the screen to go back to, below the software
+ *                            directory, with its query string
+ * @param  array    $lists    name => levels of keys of the fields the form
+ *                            draws as lists
+ * @return void
+ */
+function pg_request_refuse_lists($liveform, $screen, $lists = array())
+{
+    $names = pg_request_unexpected_lists($_POST, $lists);
+
+    if (!$names) {
+        return;
+    }
+
+    $liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $names)))));
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $screen);
+}
+
 function escape_url($url)
 {
     if (!is_scalar($url) || $url === '') {
@@ -5286,6 +5316,71 @@ function pg_private_label_config_keys() {
     }
 
     return $keys;
+}
+
+// What a save of the private label fields wrote to data/config.php, field =>
+// value, for the pane drawn after it in the same request: the constants
+// still hold what config.php said when the request began, and a pane drawn
+// from them shows the old values, which its next save writes back. A call
+// with $values keeps them; one without reads them, null before any save.
+function pg_private_label_saved_values($values = null) {
+    static $saved = null;
+
+    if ($values !== null) {
+        $saved = $values;
+    }
+
+    return $saved;
+}
+
+// The five footer links of private label branding in the order they are
+// saved. $values holds footer_link_<n>_label / _url (n 1 to 5) in row order,
+// as Site Settings › Appearance posts them; $action is a row's menu button,
+// "up:<n>", "down:<n>" or "remove:<n>", naming the row as posted. A link that
+// holds neither a label nor an address is no link: the ones under it move up,
+// so a link removed or emptied in its drawer leaves no gap. Returns all ten
+// fields, the links first and '' after them. Pure.
+function pg_private_label_links_order($values, $action = '') {
+    $links = array();
+
+    for ($n = 1; $n <= 5; $n++) {
+        $label = isset($values['footer_link_' . $n . '_label']) && is_string($values['footer_link_' . $n . '_label']) ? $values['footer_link_' . $n . '_label'] : '';
+        $url = isset($values['footer_link_' . $n . '_url']) && is_string($values['footer_link_' . $n . '_url']) ? $values['footer_link_' . $n . '_url'] : '';
+
+        if ((trim($label) !== '') || (trim($url) !== '')) {
+            $links[$n] = array($label, $url);
+        }
+    }
+
+    $rows = array_keys($links);
+    $links = array_values($links);
+
+    if (is_string($action) && preg_match('/^(up|down|remove):([1-5])$/', $action, $match)) {
+        $at = array_search((int) $match[2], $rows, true);
+
+        if ($at !== false) {
+            if ($match[1] === 'remove') {
+                array_splice($links, $at, 1);
+            } else {
+                $to = ($match[1] === 'up') ? $at - 1 : $at + 1;
+
+                if (isset($links[$to])) {
+                    $moved = $links[$to];
+                    $links[$to] = $links[$at];
+                    $links[$at] = $moved;
+                }
+            }
+        }
+    }
+
+    $order = array();
+
+    for ($n = 1; $n <= 5; $n++) {
+        $order['footer_link_' . $n . '_label'] = isset($links[$n - 1]) ? $links[$n - 1][0] : '';
+        $order['footer_link_' . $n . '_url'] = isset($links[$n - 1]) ? $links[$n - 1][1] : '';
+    }
+
+    return $order;
 }
 
 // The text of data/config.php after the private label screen is saved.

@@ -126,6 +126,7 @@
 - mail-bounce-screens.md: Where the bounce record is shown: campaign delivery counts, the Suppressed contact view and export column, the contact card badge with Allow again, personal data export and erasure
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them
 - mail-bounces.md: The bounce record (mail_bounces, one row per address) and the send gate the mail queue and campaigns ask before a send; complaint withdraws e-mail consent; resubscribe or address change clears [decision: decisions-made-product-19.md]
+- mail-campaign-way.md: How campaign e-mail leaves: the layers email() reads, the campaigns' ways sheet and its stored way (config_text campaign_mail_way), why a site that never chose keeps today's order [decision: here]
 - mail-failure-reason.md: Screens that send an e-mail at once show the mail server's reason on failure through pg_mail_failure_sentence(), not a pointer at the log
 - mail-merge-values-once.md: replace_variables() fills every ^^field^^ in one pass; a filled-in value is never read again as a field.
 - mail-queue-outcome.md: The mail queue's outcome hook (PR #8607): a queued row names a handler (on_outcome) and a reference (outcome_ref); after sent, given up or blocked the queue calls it; where it does not
@@ -174,11 +175,13 @@
 - picture-text-translation-queue.md: The picture drawing queue (#10266): "Draw the waiting pictures" on the Pictures group, the draw=1 view, which rows it draws, Stop and Continue
 - picture-text-translation-store.md: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do [decision: decisions-made-schema-25.md]
 - preg-replace-replacement-escaping.md: Text put into a page through preg_replace() goes through pg_regex_replacement(): $NN and \N in it are back references, "$400'dan" printed as "0'dan"; where it applies and the guard test
+- privacy-centre-decisions.md: What binds the Privacy centre (KVKK): opt-in rules off by default, one removal engine, what no rule removes, staff never removed, public request form off, answer by link, who changes rules [decision: decisions-made-schema-36.md]
 - privacy-centre-screen.md: Contacts › Privacy centre (privacy_centre.php, KV2): the inventory and transfers on screen, the Excel with the VERBİS columns, the PDF with the destruction records, the Site Settings link card
+- privacy-centre.md: Start file of Contacts › Privacy centre (KVKK): inventory and transfers, Excel/PDF, Retention rules, request box with 30 days, public request form, download link, privacy API; which file holds what [decision: decisions-made-product-87.md]
 - privacy-inventory.md: Personal data inventory (privacy_inventory.php): the catalogue beside the erase table list, live counts, transfers from the registry rows' country and data, the tests
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
 - privacy-request-answer.md: "Prepare the answer", the Answer tab of a privacy request's drawer (KV4b, #10894): four numbered steps, the gather (export counts or erase dry run), the kind's text, Send / Erase and send
-- privacy-request-export-link.md: The signed download link of an information answer (KV4c, #10944): the file in data/privacy_exports, HMAC, 7 days, privacy_download.php 410, Send a new link, Withdraw the link [decision: here]
+- privacy-request-export-link.md: The signed download link of an information answer (KV4c, #10944): the file in data/privacy_exports, HMAC, 7 days, privacy_download.php 410, Send a new link, Withdraw the link [decision: decisions-made-product-95.md]
 - privacy-request-form.md: A person's own privacy request (P10, P10b, #10921): privacy_request.php, off for visitors by default, always from My Account; 48-hour proof link; 5 an address an hour; the switch
 - privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer [decision: here]
 - privacy-retention-rules.md: Privacy centre retention rules (P6-P9): rules and bounds, config_text settings, dry run and yes, the nightly pass through the erase entries, the skips, privacy_rule audit lines and their 3-year keep
@@ -189,6 +192,8 @@
 - recycle-bin-offline.md: Everything inside the Recycle Bin folder is offline for visitors, whatever the access type a binned folder carries itself
 - recycle-bin-purge-rights.md: The daily recycle bin purge deletes as the software (administrator role), whoever's explorer visit claims it; a hidden short link is refused, never its record dropped
 - registration-gate-form-submitter.md: The registration folder gate in get_page.php lets a visitor without a session reach a custom form's confirmation page with the code of a form this session submitted (PR #4959, bug #4804)
+- request-lists-json-bodies.md: JSON body keys read as one value (token, action, mode, ids, text) that hold a list or an object count as not given: image editor API, translations calls, Workspace canvas save, notes import
+- request-lists-record-forms.md: pg_request_refuse_lists(): nine record forms (ad, ad region, auto dialog, contact group, container, key code, login region, menu, product attribute) refuse a field posted as a list
 - request-lists-record-screens.md: Edit Page, Edit File, Edit Theme File and the Product Builder (add and edit) refuse a field posted as a list (name[]=x) before any write; pg_pb_list_fields() names the product form's own lists
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers
 - reset-link-revoked-on-change.md: A pending password reset or set password link (user.token) is cleared when the owner changes the password or the e-mail address on the site.
@@ -225,6 +230,8 @@
 - user-write.md: Creating, saving and deleting a panel account goes through includes/fn/user_write.php, shared by add_user.php, edit_user.php, delete_users.php and the /users API writes
 - vanilla-calendar-library.md: The vendored vanilla-calendar-pro (assets/lib/vanilla-calendar-pro/, 3.4.0, unmodified) behind the one date-and-time control: why, how it loads once, how to update it [decision: decisions-made-panel-2.md, decisions-made-panel.md]
 - visitor-form-list-fields.md: Visitor form handlers with a field posted as a list: member registration and activation, the reservation and watcher forms' session index, the built-in CAPTCHA answer (PR #11061)
+- volunteer-document-file.md: A volunteer document's file: a files row (attachment 1, folder 0, volunteer-doc- name), get_file.php's door, and the search and picker exclusion due with uploading [decision: here]
 - volunteer-shift-rules.md: Pure rules of volunteer shifts: who fits a role on a shift, the waitlist pass, the cancel cut-off, the unfilled call's pick, show-up rate, hours sums, document notices, the signed link's token
+- volunteer-store.md: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, NULL shift_id for outside hours, erasure, export, inventory, the left-volunteers rule [decision: here]
 - web-address-rule.md: Short link destination and auto dialog URL share pg_web_address_problem() on save; pg_address_opens_as_web() and its JS twin guard a stored address where it is printed
 - webauthn-verifier.md: WebAuthn (passkey) verifier in includes/webauthn/ (PR #594): API, what it accepts and refuses, error codes, record fields, W3C test vectors, what a caller must do

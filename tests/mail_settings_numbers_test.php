@@ -57,12 +57,14 @@ function test_mail_settings_numbers_checked_before_the_save_writes()
 	pg_assert_true($check < strpos($body, 'pg_mail_transport_settings_save('), 'before the sending service is saved');
 }
 
-// The campaign boxes are folded away while the job is off.
-function test_mail_settings_numbers_campaign_boxes_only_while_the_job_is_on()
+// Max. is folded away while the job is off; the campaign server's boxes are
+// checked while campaigns leave through it.
+function test_mail_settings_numbers_campaign_boxes_only_while_shown()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail_settings.php');
 	$body = substr($source, strpos($source, 'function pg_mail_settings_save('));
 
 	pg_assert_contains("\$job_on = (isset(\$post['email_campaign_job']) && (\$post['email_campaign_job'] === 'true'));", $body, 'the job switch is read');
-	pg_assert_contains("if (!\$job_on && (\$key !== 'SYSTEM_SMTP_PORT')) {", $body, 'only the system port is checked while the job is off');
+	pg_assert_contains("'CAMPAIGN_SMTP_PORT'                  => (\$campaign_way === 'server') || ((\$campaign_way === '') && \$job_on),", $body, 'the campaign port while campaigns leave through their server');
+	pg_assert_contains("'EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS' => \$job_on,", $body, 'Max. while the job is on');
 }

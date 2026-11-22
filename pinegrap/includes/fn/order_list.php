@@ -10,8 +10,9 @@
  * apart from a charged total: it is what the cart holds, not money taken.
  * The filter totals and the chart keep adding orders.total only.
  *
- * Also the tax of one order line for the orders CSV exports, and the
- * discount of each line of the Paraşüt export.
+ * Also the tax of one order line for the orders CSV exports, the
+ * discount of each line of the Paraşüt export, and the list's Summary (the
+ * best sellers and the payment methods opened under the figure strip).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -397,4 +398,82 @@ function pg_order_list_state_join($alias, $state_column, $country_column)
     return " LEFT JOIN states AS " . $alias
         . " ON " . $alias . ".code = " . $state_column
         . " AND " . $alias . ".country_id IN (SELECT " . $alias . "_country.id FROM countries AS " . $alias . "_country WHERE " . $alias . "_country.code = " . $country_column . ")";
+}
+
+/**
+ * The rows of one Summary part of the orders list, each with the length of
+ * its bar: the largest value draws the whole track, the others in proportion,
+ * and a value above zero keeps at least a sliver so it is never drawn empty.
+ *
+ * @param array $rows each array('label' => string, 'value' => number)
+ * @return array the same rows with 'share' (0..100, integer) added
+ */
+function pg_order_list_summary_bars(array $rows)
+{
+    $max = 0.0;
+
+    foreach ($rows as $row) {
+        $max = max($max, (float) ($row['value'] ?? 0));
+    }
+
+    $bars = array();
+
+    foreach ($rows as $row) {
+        $value = (float) ($row['value'] ?? 0);
+        $share = ($max > 0 && $value > 0) ? max(2, (int) round($value / $max * 100)) : 0;
+        $bars[] = array('label' => (string) ($row['label'] ?? ''), 'value' => $value, 'share' => $share);
+    }
+
+    return $bars;
+}
+
+/**
+ * One part of the orders list's Summary: its title and a row per entry with
+ * the name, the bar and the figure. The figure is printed as text, so the
+ * bar adds nothing a screen reader misses and is hidden from it.
+ *
+ * @param string $title the part's title, plain text
+ * @param array  $rows  pg_order_list_summary_bars() rows
+ * @param string $empty the sentence shown when there is no row, plain text
+ * @return string HTML
+ */
+function pg_order_list_summary_part_html($title, array $rows, $empty)
+{
+    $id = 'pg_orders_summary_' . substr(md5($title), 0, 8);
+    $html = '<div class="pg-orders-summary-part"><h3 class="pg-group-label" id="' . $id . '">' . h($title) . '</h3>';
+
+    if (!$rows) {
+        return $html . '<p class="pg-figure-note">' . h($empty) . '</p></div>';
+    }
+
+    $html .= '<ul class="pg-orders-summary-bars" aria-labelledby="' . $id . '">';
+
+    foreach ($rows as $row) {
+        $html .= '<li>'
+            . '<span class="pg-orders-summary-name" title="' . h($row['label']) . '">' . h($row['label']) . '</span>'
+            . '<span class="pg-orders-summary-track" aria-hidden="true"><i style="width: ' . (int) $row['share'] . '%"></i></span>'
+            . '<b class="pg-orders-summary-value">' . h(pg_format_number($row['value'], 0)) . '</b>'
+            . '</li>';
+    }
+
+    return $html . '</ul></div>';
+}
+
+/**
+ * The orders list's Summary, opened under the figure strip: the five best
+ * sellers by quantity and the orders by payment method, over the orders the
+ * list shows. view_orders.php?summary=1 answers with it when Summary opens.
+ *
+ * @param array $top      array('label', 'value') rows, best first
+ * @param array $payments array('label', 'value') rows, most first
+ * @return string HTML
+ */
+function pg_order_list_summary_html(array $top, array $payments)
+{
+    $empty = lang('No orders in this range.');
+
+    return '<div class="pg-orders-summary-grid">'
+        . pg_order_list_summary_part_html(lang('Top 5 products'), pg_order_list_summary_bars($top), $empty)
+        . pg_order_list_summary_part_html(lang('Payment methods'), pg_order_list_summary_bars($payments), $empty)
+        . '</div>';
 }

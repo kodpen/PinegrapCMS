@@ -16,6 +16,7 @@ description: Fourth whole-backend sweep (2026-11-22): SQL error log while crawli
 - System Informations (`si.php`, public: `decisions-made-access.md`) read `LOCAL_ADDR` unchecked when `SERVER_ADDR` was missing: a warning on each load under PHP's built-in server. It reads whichever is set (#11059).
 
 ## What read clean, or is no fault?
+- As a Manager (role 2), the 334 screens answered as for the administrator but on the designer screens, which show the Access denied page (with 200, as `validate_area_access()` does) and Edit System Style (403). No PHP message, no new failed statement.
 - No other failed statement on the 334 screens. `database_engine.php` probes `information_schema_stats_expiry` and `@@transaction_isolation`, which MariaDB 10.x lacks: `@`-silenced, with a fallback to `@@tx_isolation`.
 - Schema scans: only `custom_apps` (an old table a migration renames) and `sqlite_master` (the SQLite branch of `mysqldump.php`); `orders.notes` is written only after `pg_schema_has()`.
 - No request value reaches SQL unescaped; every root POST handler checks the form token or a signed token of its own.

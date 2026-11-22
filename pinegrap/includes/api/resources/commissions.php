@@ -25,6 +25,7 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
 
 function api_commission_statuses() {
 
@@ -250,18 +251,14 @@ function api_commissions_list($params) {
 
 	$where = api_commissions_where($params);
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// sort=newest walks the last change and id the other way (list_order.php).
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$where[] = "(commissions.last_modified_timestamp > '" . (int)$cursor['v'] . "'
-			OR (commissions.last_modified_timestamp = '" . (int)$cursor['v'] . "' AND commissions.id > '" . (int)$cursor['i'] . "'))";
+		$where[] = api_list_keyset_sql('commissions.last_modified_timestamp', 'commissions.id', $cursor, $descending);
 
 	}
 
@@ -269,7 +266,7 @@ function api_commissions_list($params) {
 
 	$rows = api_rows(api_commission_select()
 		. (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)) . "
-		ORDER BY commissions.last_modified_timestamp ASC, commissions.id ASC
+		ORDER BY " . api_list_order_sql('commissions.last_modified_timestamp', 'commissions.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$next = null;
@@ -280,7 +277,7 @@ function api_commissions_list($params) {
 
 		$last = end($rows);
 
-		$next = api_cursor_encode((int)$last['last_modified_timestamp'], (int)$last['id']);
+		$next = api_list_cursor_encode((int)$last['last_modified_timestamp'], (int)$last['id'], $descending);
 
 	}
 
@@ -495,18 +492,14 @@ function api_commission_recurring_profiles_list($params) {
 
 	$where = api_commission_recurring_profiles_where($params);
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// sort=newest walks the last change and id the other way (list_order.php).
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$where[] = "(recurring_commission_profiles.last_modified_timestamp > '" . (int)$cursor['v'] . "'
-			OR (recurring_commission_profiles.last_modified_timestamp = '" . (int)$cursor['v'] . "' AND recurring_commission_profiles.id > '" . (int)$cursor['i'] . "'))";
+		$where[] = api_list_keyset_sql('recurring_commission_profiles.last_modified_timestamp', 'recurring_commission_profiles.id', $cursor, $descending);
 
 	}
 
@@ -514,7 +507,7 @@ function api_commission_recurring_profiles_list($params) {
 
 	$rows = api_rows(api_commission_recurring_profile_select()
 		. (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)) . "
-		ORDER BY recurring_commission_profiles.last_modified_timestamp ASC, recurring_commission_profiles.id ASC
+		ORDER BY " . api_list_order_sql('recurring_commission_profiles.last_modified_timestamp', 'recurring_commission_profiles.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$next = null;
@@ -525,7 +518,7 @@ function api_commission_recurring_profiles_list($params) {
 
 		$last = end($rows);
 
-		$next = api_cursor_encode((int)$last['last_modified_timestamp'], (int)$last['id']);
+		$next = api_list_cursor_encode((int)$last['last_modified_timestamp'], (int)$last['id'], $descending);
 
 	}
 

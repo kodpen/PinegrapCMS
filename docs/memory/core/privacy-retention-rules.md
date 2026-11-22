@@ -5,7 +5,7 @@ module: privacy_retention
 ---
 
 ## Which rules are there?
-- `pg_privacy_rules_catalogue()` (`includes/fn/privacy_retention.php`): `contacts` (passive, 3 years, 1-20), `forms` (2 years, 1-20; per form by page id, 0 keeps that form), `carts` (incomplete orders, 90 days, at least 31), `orders` (years the shop types, 1-30; empty is never), `requests` (closed privacy requests, 3 years from `closed_at`, 1-20, own entry only, no person skip; `privacy-requests.md`). Every rule is off by default. Defaults are suggestions, not legal advice.
+- `pg_privacy_rules_catalogue()` (`includes/fn/privacy_retention.php`): `contacts` (passive, 3 years, 1-20), `forms` (2 years, 1-20; per form by page id, 0 keeps that form), `carts` (incomplete orders, 90 days, at least 31), `orders` (years the shop types, 1-30; empty is never), `requests` (closed privacy requests, 3 years from `closed_at`, 1-20, own entry only, no person skip; `privacy-requests.md`). Also `volunteers`. Every rule is off by default. Defaults are suggestions, not legal advice.
 - The pass interval: 1 to 183 days (never longer than six months), default 1 (`pg_privacy_rules_interval_limits()`).
 - `chats` (site chats): `privacy-rule-site-chats.md`.
 
@@ -25,7 +25,7 @@ module: privacy_retention
 
 ## Who is skipped (P8)?
 - In order: staff (role < 3, a `user_manage_*` = yes or a `manage_*` right; unknown role too), an open order (complete or exported within 60 days, or refund pending, failed or manual), an open return (`pg_return_open_statuses()`).
-- Then a gift card or store credit balance, a booking ahead (`pg_booking_erase_cancel_where()`), and for passive contacts any activity since the cutoff (order, form, sign-in `user_online_timestamp`, contact change, consent answer). No per-contact campaign click is recorded, so none is read.
+- Then a gift card or store credit balance, a booking ahead (`pg_booking_erase_cancel_where()`), and for passive contacts any activity since the cutoff (order, form, sign-in `user_online_timestamp`, contact change, consent answer, a volunteer profile). No per-contact campaign click is recorded, so none is read.
 
 ## What does the audit trail keep (P9)?
 - One `pg_audit('run', 'privacy_rule', 0, [], …, <rule>)` per finished pass: rule, period, unit, checked, changed, skipped, deleted, anonymised; no person. Saves are `update`, the yes `approve`, same type.

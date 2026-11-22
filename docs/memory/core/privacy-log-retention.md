@@ -10,7 +10,7 @@ module: privacy_retention
 - "Same person" is the exact triple `person_token`, `user_id`, `contact_id`: a line written later with only the token does not supersede one with token and user, so in doubt a line is kept, never removed.
 
 ## What about contacts, form submissions and orders?
-- The Privacy centre's rules, opt-in and off by default: `core/privacy-retention-rules.md`.
+- Built: the Privacy centre's retention rules (`core/privacy-centre.md`), opt-in and off by default: `core/privacy-retention-rules.md`.
 - Erasure lines (`erase` on `person`) and rule runs (`privacy_rule`) stay at least 3 years whatever the years say (`pg_audit_retention_delete_query()`).
 
 ## Who removes them?

@@ -98,6 +98,15 @@ if (!is_array($request)) {
     ws_file_save_refuse(lang('Invalid request.'));
 }
 
+// The keys read as text or a number. One sent as a list or an object counts
+// as not given, where (string) logged "Array to string conversion" and (int)
+// read the version as 1.
+foreach (array('token', 'action', 'name', 'photo', 'version', 'picture') as $file_save_key) {
+    if (isset($request[$file_save_key]) && !is_scalar($request[$file_save_key])) {
+        unset($request[$file_save_key]);
+    }
+}
+
 // The JSON body never fills $_POST, so the token is compared here.
 $token = (string) ($request['token'] ?? '');
 

@@ -26,6 +26,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 }
 
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
+
 // The strategies by their stored number, as the API names them.
 function api_marketplace_repricing_strategies() {
 
@@ -173,19 +175,10 @@ function api_marketplace_repricing_list($params) {
 
 	$account = api_marketplace_repricing_account($params['account']);
 
-	$cursor = null;
+	// sort=newest walks the same product id the other way (list_order.php).
+	$descending = api_list_descending($params);
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
-
-		$cursor = api_cursor_decode($params['cursor']);
-
-		if ($cursor === null) {
-
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-	}
+	$cursor = api_list_cursor($params, $descending);
 
 	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
 
@@ -200,9 +193,9 @@ function api_marketplace_repricing_list($params) {
 		LEFT JOIN marketplace_price_state AS state
 			ON (state.account_id = map.account_id) AND (state.product_id = map.product_id)
 		WHERE (map.account_id = '" . (int)$account['id'] . "')
-			AND (map.product_id > '" . (($cursor !== null) ? (int)$cursor['i'] : 0) . "')
+			AND " . (($cursor !== null) ? api_list_keyset_sql('', 'map.product_id', $cursor, $descending) : "(map.product_id > '0')") . "
 			AND " . mp_repricing_view_condition(($filter !== '') ? $filter : 'all', $ids) . pg_catalog_bin_live_sql('products') . "
-		ORDER BY map.product_id ASC
+		ORDER BY " . api_list_order_sql('', 'map.product_id', $descending) . "
 		LIMIT " . ($limit + 1)), 'product_id'));
 
 	$next_cursor = null;
@@ -211,7 +204,7 @@ function api_marketplace_repricing_list($params) {
 
 		array_pop($page);
 
-		$next_cursor = api_cursor_encode(end($page), end($page));
+		$next_cursor = api_list_cursor_encode(end($page), end($page), $descending);
 
 	}
 

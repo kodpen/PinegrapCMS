@@ -71,6 +71,10 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
+
+    // The form draws no list: a field posted as one is refused before it
+    // reaches the session.
+    pg_request_refuse_lists($liveform, 'add_contact_group.php');
     
     $liveform->add_fields_to_session();
     

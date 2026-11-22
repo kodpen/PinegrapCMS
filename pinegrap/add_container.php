@@ -65,6 +65,10 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // The form draws no list: a field posted as one is refused before it
+    // reaches the session.
+    pg_request_refuse_lists($liveform, 'add_container.php');
+
     $liveform->add_fields_to_session();
 
     pg_container_form_validate($liveform);

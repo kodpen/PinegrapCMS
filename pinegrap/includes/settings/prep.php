@@ -398,37 +398,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $advanced_visual_effects = $row['advanced_visual_effects'];
     $enable_parasut = $row['enable_parasut'] ?? 0;
     $parasut_tc_in_field = $row['parasut_tc_in_field'] ?? 'do not use';
-    $parasut_client_id = $row['parasut_client_id'] ?? '';
-    $parasut_username = $row['parasut_username'] ?? '';
-    // The secret and the password are never handed back to the screen - the form
-    // used to render them into value attributes, which put them in the page
-    // source. All the screen gets is whether each one is stored; an empty box
-    // means "keep what is there" (see pg_parasut_credentials_for_save()). The
-    // blob holds both, and a connection by code stores the secret alone.
-    $parasut_credential_boxes = parasut_credential_boxes(parasut_credentials_decode((string) ($row['parasut_credentials_enc'] ?? '')));
-    $parasut_secret_placeholder = $parasut_credential_boxes['secret']['placeholder'];
-    $parasut_secret_help = $parasut_credential_boxes['secret']['help'];
-    $parasut_password_placeholder = $parasut_credential_boxes['password']['placeholder'];
-    $parasut_password_help = $parasut_credential_boxes['password']['help'];
-    $parasut_company_id = $row['parasut_company_id'] ?? '';
-
-    // The connection as the sealed token tells it (nothing is asked of
-    // Paraşüt while the card is drawn) and the page the operator opens to
-    // authorize Pinegrap; the link follows the Client ID box as it is typed.
-    $parasut_connection = function_exists('parasut_connection_status')
-        ? parasut_connection_status()
-        : array('connected' => false, 'grant' => '', 'email' => '', 'company_name' => '', 'expires_at' => 0, 'connected_at' => 0, 'renewable' => false);
-    $parasut_authorize_url = function_exists('parasut_authorize_url') ? parasut_authorize_url($parasut_client_id) : '';
-
-    $parasut_connection_connected = !empty($parasut_connection['connected']);
-    $parasut_connection_line = function_exists('parasut_connection_line')
-        ? parasut_connection_line($parasut_connection)
-        : array('text' => lang('Not connected to Paraşüt yet.'), 'tone' => 'secondary');
-    $parasut_connection_text = $parasut_connection_line['text'];
-    $parasut_connection_tone = $parasut_connection_line['tone'];
+    // The connection itself (application, grant, token) is set on Paraşüt's
+    // page of Connections; the card shows whether one is kept, read from
+    // the sealed token alone (nothing is asked of Paraşüt while it is drawn).
+    $parasut_connection = parasut_connection_status();
+    $parasut_card_connection = pg_edoc_card_connection_html('parasut', 'Paraşüt', !empty($parasut_connection['connected']) || !empty($parasut_connection['renewable']));
 
     // The e-document provider (4.61): which one carries the ERP's invoices,
-    // and each provider's own fields. Drawn only once the provider table is
+    // and each provider's connection, kept on its page of Connections (the
+    // card picks only a connected one). Drawn only once the provider table is
     // there; the radio group uses the pane's collapse switcher, so picking a
     // provider shows its block and hides the others without a script.
     $output_erp_edoc_options = '';
@@ -456,7 +434,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             }
 
             $erp_edoc_row = erp_edoc_provider_row($erp_edoc_code);
-            $erp_edoc_stored = erp_edoc_credentials($erp_edoc_code);
             $erp_edoc_badges = '';
 
             foreach ($erp_edoc_info['capabilities'] as $erp_edoc_capability) {
@@ -472,50 +449,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                     . h(lang(array('string' => 'Last checked {var:1}: {var:2}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $erp_edoc_row['checked_at'], 'format' => 'plain_text')), (string) $erp_edoc_row['check_message'])))) . '</div>';
             }
 
-            $erp_edoc_fields = '';
-
-            foreach (erp_edoc_fields($erp_edoc_code) as $erp_edoc_field) {
-                $erp_edoc_name = 'edoc_' . $erp_edoc_code . '_' . $erp_edoc_field['name'];
-                $erp_edoc_value = (string) ($erp_edoc_stored[$erp_edoc_field['name']] ?? '');
-                $erp_edoc_secret = ($erp_edoc_field['type'] === 'password');
-                // Required is only announced: a required attribute in this
-                // collapsed block would make the browser refuse the whole save.
-                $erp_edoc_required = !empty($erp_edoc_field['required']) ? ' aria-required="true"' : '';
-
-                // A choice (test or live, say) is a select; everything else
-                // is a box, and a password box is drawn empty with a hint.
-                if (($erp_edoc_field['type'] === 'select') && !empty($erp_edoc_field['options'])) {
-                    $erp_edoc_control = '<select class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '"' . $erp_edoc_required . '>';
-
-                    foreach ((array) $erp_edoc_field['options'] as $erp_edoc_option => $erp_edoc_option_label) {
-                        $erp_edoc_control .= '<option value="' . h((string) $erp_edoc_option) . '"' . (((string) $erp_edoc_option === $erp_edoc_value) ? ' selected="selected"' : '') . '>' . h((string) $erp_edoc_option_label) . '</option>';
-                    }
-
-                    $erp_edoc_control .= '</select>';
-                } elseif ($erp_edoc_secret) {
-                    // A secret is never sent back to the browser: the box is
-                    // drawn empty ("Saved" when one is stored), a blank box
-                    // keeps it and the tick below removes it.
-                    $erp_edoc_control = '<input type="password" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="" autocomplete="new-password" placeholder="' . (($erp_edoc_value !== '') ? h(lang('Saved')) : '') . '"' . $erp_edoc_required . ' />';
-
-                    if ($erp_edoc_value !== '') {
-                        $erp_edoc_control .= '
-                                                                    <div class="form-field mb-0 mt-1">
-                                                                        <input value="1" class="check" type="checkbox" id="' . h($erp_edoc_name) . '_clear" name="' . h($erp_edoc_name) . '_clear" />
-                                                                        <label class="fg-danger" for="' . h($erp_edoc_name) . '_clear">' . lang('Remove the saved value') . '</label>
-                                                                    </div>';
-                    }
-                } else {
-                    $erp_edoc_control = '<input type="text" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="' . h($erp_edoc_value) . '" autocomplete="off"' . $erp_edoc_required . ' />';
-                }
-
-                $erp_edoc_fields .= '
-                                                                <div class="pg-f-md">
-                                                                    <label class="form-label" for="' . h($erp_edoc_name) . '">' . h($erp_edoc_field['label']) . ($erp_edoc_required !== '' ? '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span>' : '') . '</label>
-                                                                    ' . $erp_edoc_control
-                    . (($erp_edoc_field['help'] !== '') ? '<div class="form-text">' . h($erp_edoc_field['help']) . '</div>' : '') . '
-                                                                </div>';
-            }
+            // The connection is set on the provider's page of Connections;
+            // the block says whether one is kept and leads there.
+            $erp_edoc_connection = pg_edoc_card_connection_html($erp_edoc_code, $erp_edoc_info['label'], erp_edoc_connected($erp_edoc_code));
 
             // A provider set to its test environment is marked here too: the
             // radio is what the operator looks at, and a test setup issues
@@ -534,10 +470,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                                     . (($erp_edoc_info['docs_url'] !== '') ? ' <a href="' . h($erp_edoc_info['docs_url']) . '" target="_blank" rel="noopener">' . lang('API documentation') . '</a>' : '')
                                                                     . $erp_edoc_status . '</div>
                                                             </div>
-                                                            <div id="edoc_fields_' . h($erp_edoc_code) . '" class="ms-7 mb-5" style="display:none">
-                                                                ' . (($erp_edoc_info['settings_note'] !== '') ? '<div class="form-text mb-3">' . h($erp_edoc_info['settings_note']) . '</div>' : '') . '
-                                                                <div class="row gy-5">' . $erp_edoc_fields . '
-                                                                </div>
+                                                            <div id="edoc_fields_' . h($erp_edoc_code) . '" class="ms-7 mb-5" style="display:none">' . $erp_edoc_connection . '
                                                             </div>';
         }
     }

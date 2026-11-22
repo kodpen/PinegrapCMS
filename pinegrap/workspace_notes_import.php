@@ -171,6 +171,14 @@ if (!is_array($request)) {
     ws_notes_import_refuse(lang('Invalid request.'));
 }
 
+// The keys read as text. One sent as a list or an object counts as not given,
+// where (string) logged "Array to string conversion".
+foreach (array('token', 'step', 'query', 'section', 'stage', 'mode') as $import_key) {
+    if (isset($request[$import_key]) && !is_scalar($request[$import_key])) {
+        unset($request[$import_key]);
+    }
+}
+
 // Neither body fills validate_token_field()'s field the same way, so the
 // token is compared here.
 $token = (string) ($request['token'] ?? '');

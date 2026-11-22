@@ -44,6 +44,15 @@ $request = array();
 if (!$translations_is_import && !$translations_is_export) {
     $request = json_decode((string) @file_get_contents('php://input'), true);
     $request = is_array($request) ? $request : array();
+
+    // The keys read as text or a number. One sent as a list or an object
+    // counts as not given, where (string) logged "Array to string
+    // conversion" and (int) read the string or the job it names as 1.
+    foreach (array('action', 'language', 'scope', 'engine', 'from', 'job_id', 'string_id', 'text', 'page_id') as $translations_key) {
+        if (isset($request[$translations_key]) && !is_scalar($request[$translations_key])) {
+            unset($request[$translations_key]);
+        }
+    }
 }
 
 /**

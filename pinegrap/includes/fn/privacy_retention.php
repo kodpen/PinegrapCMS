@@ -274,6 +274,9 @@ function pg_privacy_rules_catalogue()
         'chats'    => array('unit' => 'days', 'default' => 60, 'min' => 7, 'max' => 3650, 'table' => 'chat_conversations', 'entries' => array('files', 'chat_messages', 'chat_conversations')),
         // Answered and refused requests of the request box, from their closing.
         'requests' => array('unit' => 'years', 'default' => 3, 'min' => 1, 'max' => 20, 'table' => 'privacy_requests', 'entries' => array('privacy_requests')),
+        // Volunteers who left, from their leaving: the profile with its
+        // documents (and their files), shifts and hours.
+        'volunteers' => array('unit' => 'years', 'default' => 3, 'min' => 1, 'max' => 20, 'table' => 'volunteers', 'entries' => array('files', 'volunteer_signups', 'volunteer_documents', 'volunteers')),
     );
 }
 
@@ -351,6 +354,7 @@ function pg_privacy_rules_labels()
             'orders'   => lang('Orders: personal fields anonymised'),
             'chats'    => lang('Site chats: the conversation, its messages and attachments deleted'),
             'requests' => lang('Closed privacy requests: the person and the texts anonymised'),
+            'volunteers' => lang('Volunteers who left: the profile, documents, shifts and hours deleted'),
         ),
         'skips' => array(
             'staff'       => lang('Staff account'),
@@ -714,6 +718,7 @@ function pg_privacy_rule_pending_where(array $fields)
  * chats: site chats with no message since the period (team chats of the
  *   panel are never reached).
  * orders: placed before the period, still personal.
+ * volunteers: profiles left before the period.
  *
  * @param string $key
  * @param array  $rule  one rule of pg_privacy_rules_normalise()
@@ -762,6 +767,11 @@ function pg_privacy_rule_candidate_where($key, array $rule, $now, array $has)
         }
 
         return "(" . implode(' OR ', $parts) . ")";
+    }
+
+    // A deleted profile is gone, so nothing is picked twice.
+    if ($key === 'volunteers') {
+        return "(state = 'left') AND (left_at > 0) AND (left_at < " . $at . ")";
     }
 
     $pending = isset($has['pending']) ? (string) $has['pending'] : '';
@@ -1058,7 +1068,8 @@ function pg_privacy_rule_facts(array $found, array $scope, $now, $active = null)
 
 /**
  * Whether a person did anything since the cutoff: an order, a form
- * submission, a sign-in, a change to their contact, a consent answer.
+ * submission, a sign-in, a change to their contact, a consent answer; or
+ * holds a volunteer profile they have not left, or left since.
  *
  * @param array $found
  * @param array $scope
@@ -1100,6 +1111,14 @@ function _pg_privacy_rule_active(array $found, array $scope, $cutoff)
         }
     }
 
+    // A volunteer who has not left, or left within the period, is active:
+    // signing up for shifts changes neither the contact nor an order.
+    $volunteers = _pg_privacy_export_in('id', isset($scope['volunteer_ids']) ? $scope['volunteer_ids'] : array());
+
+    if (($volunteers !== '') && db_value("SELECT 1 FROM volunteers WHERE (" . $volunteers . ") AND ((state <> 'left') OR (left_at >= " . $at . ")) LIMIT 1")) {
+        return true;
+    }
+
     return false;
 }
 
@@ -1113,7 +1132,7 @@ function _pg_privacy_rule_scope(array $lists)
 {
     $scope = array();
 
-    foreach (array('user_ids', 'contact_ids', 'emails', 'actors', 'tokens', 'phones', 'order_ids', 'form_ids', 'account_ids', 'conversation_ids', 'file_ids', 'return_ids', 'audit_ids', 'cell_ids', 'revision_form_ids', 'wtable_row_ids', 'wtable_bin_ids', 'request_ids') as $key) {
+    foreach (array('user_ids', 'contact_ids', 'emails', 'actors', 'tokens', 'phones', 'order_ids', 'form_ids', 'account_ids', 'conversation_ids', 'file_ids', 'return_ids', 'audit_ids', 'cell_ids', 'revision_form_ids', 'wtable_row_ids', 'wtable_bin_ids', 'request_ids', 'volunteer_ids') as $key) {
         $scope[$key] = isset($lists[$key]) ? array_values($lists[$key]) : array();
     }
 
@@ -1149,6 +1168,14 @@ function pg_privacy_rule_one($key, $id, $cutoff, $now, $apply)
     // holds it back, and only the request itself is anonymised.
     if ($key === 'requests') {
         return array('skip' => '', 'tables' => pg_privacy_erase_run(_pg_privacy_rule_scope(array('request_ids' => array($id))), $apply, pg_privacy_rule_entries($key)));
+    }
+
+    // A volunteer who left long ago goes with their own rows only; the
+    // contact, and a profile in another programme, stay.
+    if ($key === 'volunteers') {
+        $files = pg_schema_has('volunteer_documents', 'file_id') ? db_values("SELECT file_id FROM volunteer_documents WHERE (file_id > 0) AND (volunteer_id = '" . $id . "')") : array();
+
+        return array('skip' => '', 'tables' => pg_privacy_erase_run(_pg_privacy_rule_scope(array('volunteer_ids' => array($id), 'file_ids' => _pg_privacy_export_ids($files))), $apply, pg_privacy_rule_entries($key)));
     }
 
     if ($key === 'contacts') {

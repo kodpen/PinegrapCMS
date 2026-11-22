@@ -18,8 +18,8 @@ description: The read-only privacy API (KV6, #10897): GET /privacy/inventory, /p
 - Off in the five OAuth presets, on in All; in `api_assistant_scopes_left_out()`, so neither an assistant's key nor the plugin reads hold it. Permission screen category Site.
 - MCP tools by the route rule: `privacy_inventory`, `privacy_requests`, `privacy_request`, each saying read only. Long text sits in the routes' `details` key (the 600-character tool budget).
 
-## Why do the steps not use pg_privacy_request_history()?
-- It selects `actor_name`, which `audit_log` lacks (its columns are `user_id`, `username`), so it reads nothing; the API reads its own `api_privacy_request_steps_sql()`.
+## Why do the steps have their own query?
+- When KV6 was written it selected `actor_name`, which `audit_log` lacks; #10894 fixed it (`user_id, username`). The API keeps its own `api_privacy_request_steps_sql()`, which also adds each line's kind, status and result.
 
 ## Tested?
 - `tests/api_privacy_test.php`: labels, null counts, the views' SQL and cursor, the list without text, the steps without address, the 503s, the role-3 403, the assistant lists. Not run on a database or through MCP when written.
