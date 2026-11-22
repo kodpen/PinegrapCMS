@@ -6,7 +6,7 @@
  * general job's pass (pg_feedback_job_run()) finds pg_feedback_message_send()
  * through pg_feedback_sender(), which loads this file: the e-mail with a
  * signed link per score and "Don't ask me again", or one short signed link
- * by SMS. The links open the public answer page (feedback.php): opening one
+ * by SMS or in the survey's WhatsApp template (feedback_whatsapp.php). The links open the public answer page (feedback.php): opening one
  * writes nothing, so a mail scanner's visit never counts; the page's own
  * request writes the score, the comment and the extra answers. After the
  * answer the page shows the same review invitation to everyone, and the
@@ -32,14 +32,14 @@ define('PG_FEEDBACK_COMMENT_MAX', 2000);
 define('PG_FEEDBACK_SHORT_MAX', 300);
 
 /**
- * The channels a message is built for. A row of another channel waits
- * queued until its message comes.
+ * The channels a message is built for. A WhatsApp row still waits queued
+ * while its survey's template cannot be sent (pg_feedback_due_channel_sql()).
  *
  * @return string[]
  */
 function pg_feedback_message_channels()
 {
-    return array('email', 'sms');
+    return array('email', 'sms', 'whatsapp');
 }
 
 /**
@@ -125,8 +125,8 @@ function pg_feedback_sms_text($store, $question, $url, $reminder)
 }
 
 /**
- * Sends one survey's message: the e-mail or the SMS, in the site's first
- * language. Called by the general job's pass for a due row (already marked
+ * Sends one survey's message: the e-mail, the SMS or the WhatsApp template,
+ * in the site's first language. Called by the general job's pass for a due row (already marked
  * sent) and for its one reminder. A commercial survey's SMS goes as the
  * commercial kind, with its identity line and its consent asked again at
  * the send; a service survey's as kind feedback.
@@ -147,6 +147,12 @@ function pg_feedback_message_send($row, $survey, $reminder)
     $first = array_keys(pg_feedback_survey_languages())[0];
     $texts = pg_feedback_texts_in($survey, $first, $first);
     $store = defined('ORGANIZATION_NAME') ? (string) ORGANIZATION_NAME : '';
+
+    if ((string) $row['channel'] === 'whatsapp') {
+        $question = $reminder ? lang(array('string' => 'Reminder: {var:1}', 'vars' => array($texts['question']))) : $texts['question'];
+
+        return pg_feedback_whatsapp_send($row, $survey, $store, $question, $links['page'], (bool) $reminder);
+    }
 
     if ((string) $row['channel'] === 'sms') {
         if (!function_exists('pg_sms_enqueue')) {

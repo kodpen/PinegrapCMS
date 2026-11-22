@@ -10,7 +10,7 @@ module: feedback_answer
 - Links: `pg_feedback_links()` signs `answer` and `stop` tokens at the row's `due_at`, so the answer link's hash is the one the queue stored. `feedback.php?t=<answer>&s=<score>` per score, `feedback.php?x=<stop>`; host `HOSTNAME_SETTING`.
 - E-mail: `pg_feedback_mail_html()` with links (a link per score, the words at both ends of the scale, the comment's label, a quiet "Don't ask me again"), subject the question ("Reminder: …" for the reminder), queued through `email()`. No promotion, no review invitation (poll 198).
 - SMS: `pg_feedback_sms_text()`: store name, question, the page link. A service survey goes as SMS kind `feedback` (transactional); a commercial one as `marketing`, the only commercial kind (`sms-marketing-kind.md`, pinned by `tests/sms_test.php`), so it gets the identity line and the İYS check at queue and send, as the flow box does. Reference `feedback:<id>` (`:r` for the reminder), expires in a day.
-- WhatsApp is FD4b: `pg_feedback_message_channels()` is e-mail and SMS, and the pass leaves a WhatsApp row queued until its message comes.
+- WhatsApp: the survey's approved template, kind `feedback` (`feedback-whatsapp.md`); `pg_feedback_message_channels()` is e-mail, SMS and WhatsApp.
 
 ## What does the answer page do?
 - `feedback.php` (root): `no-store`, `noindex`, `no-referrer`, `DENY`; in `waf_sensitive_scripts()` (30 a minute, link guessing). Drawn with `output_header_secure()` and `pg_secure_card()` like `booking_manage.php` and `tickets.php`: a root script has no site theme to draw in, so the look A parts (`pg-seg` radios for the scale, wrapping on a phone; `pg-input`; `pg-button`).
