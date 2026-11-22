@@ -80,6 +80,7 @@
 - automation-flows-workspace-boxes.md: Which flow boxes and starts need the Workspace (ws_flow_kinds_workspace()): the list, offered only with it, the problem on the canvas, the refusal at run time and in Try [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - calls-group.md: A group's Workspace call (CL3): no ring in a group, the head's Join button (n/4, full), the mesh grid of four, the speaking mark, five minutes alone
 - calls-guest.md: A guest in a Workspace call (CL5): the guest page's bar with Join (no start), the call window on the guest page, call_sync, a guest room's call on the staff's side (no ring, no decline)
+- calls-lines.md: A Workspace call's channel lines (CL7, #11125): started, ended with length and who took part, missed or declined in a conversation of two; system lines, never to an agent
 - calls-screen.md: Workspace calls of two people on the channel screen (CL2, #10522): head buttons, the ring and Decline, the call window kept across channels, ws_call_sync each second, STUN default
 - calls-server.md: Workspace calls on the server (CL1, #10499, step 11.0.243): tables, start/join/leave/end, signals read by their member only, the 2-minute end, who may, limits, read-only API
 - calls-settings.md: The Calls card of Workspace settings (CL6, #10608): off until turned on, STUN addresses, the TURN relay with its sealed secret, member-only time-limited credentials, the browser's connection test
@@ -90,6 +91,7 @@
 - canvas-bridge.md: A live page's data bridge (#8947): page to shell to panel to site and back, the message shape, the canvas named by the card and never the page, the bounds and the stop, the who call, the proofs
 - canvas-card.md: The joined card of a canvas with a drawing and a page (CO7c, #9274): file.joined, part chips, the Drawing / Page switch, one Versions drawer with Show and Put back, which file each panel action reads [decision: decisions-made-workspace-20.md]
 - canvas-consents.md: A live page's writes with consent (11.0.193, #9180): add and change through the bridge, the first-write question per page version, "Last written through <canvas>" on a row
+- canvas-data-follow.md: A channel's canvas card with data layers follows its tables (DV4, #11120): drawn again in the reader's browser from the rows they may read, nothing kept; the canvas_data action, the marks, the viewer
 - canvas-measures.md: What a live page's read of a bound table costs at the 5000-row limit (CO5, #9207): time, memory and answer size of the bridge's rows call, and the bounds kept from it
 - canvas-overview.md: The Workspace canvas as one thing (canvas-one, #8850 to #9361): a drawing, a live page and data on one card; the decisions that bind it, how a page reaches tables, which file holds each part [decision: decisions-made-schema-17.md, decisions-made-workspace-18.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md, decisions-made-workspace-41.md]
 - canvas-parts.md: A canvas's second part (ws_canvas_parts, 11.0.194, #9258): the message's own file is the first part, a row names the other; who reads it as the part, adding one over the API, what the card shows yet
@@ -624,7 +626,7 @@
 - workspace-status-ai-draft.md: The Pinegrap AI draft of a channel's status update (ws_status_ai, status.php): what the model reads, why it asks through pg_ai_chat() and not ws_ai_http()
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
-- workspace-task-filters.md: My Tasks, planning board and Work Calendar filters (workspace.js): named department selects, scope buttons that follow a department pick, pressed week buttons, the announced task count
+- workspace-task-filters.md: My Tasks, planning board and Work Calendar filters (workspace.js): named department selects, My Tasks' views that follow a department pick, pressed week buttons, the announced task count
 - workspace-task-reminders.md: Task reminders, overdue and meeting notices (reminders.php): who is told, the per-recipient mail and its channel line, claims against double sending, time zone and DST
 - workspace-task-zero-dates.md: A task's start or due date of 0000-00-00 is no date when the board or /postpone moves it and when the start-after-due check runs (ws_task_move_dates(), ws_task_starts_after_due())
 - workspace-team-settings.md: Departments and Team members in Site Settings (Team and working hours) and on Workspace Settings: shared checks and writes, field names, old anchors, Who is in the team

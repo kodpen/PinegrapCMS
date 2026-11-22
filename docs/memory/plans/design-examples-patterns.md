@@ -24,7 +24,7 @@ priority: 8
 - DX1 (M) first, after AT1 (#10807, its fold helper and row style, `ui/settings-fold-rows.md`) has landed: X1, X2, X3.
 - DX2 (S) done #10885: X4. The sheet's rules became the recipe "Look A: starting-point cards" in `backend.src.css` (`.pg-start`, `.pg-start-head`, `.pg-start-acts`, `.pg-start-advanced`, `.pg-start-copy`); the examples stand in the Drawer section's frame.
 - DX2b (M) done #10930: the e-mail settings drawing's parts and the Features board's switch rows as patterns (`plans/design-examples-patterns-mail.md`), before EM1; recipes and classes in `ui/look-mail-patterns.md`.
-- DX3 (M) after DX2 and after AA3 has landed (its drawer): X5. It also moves New application's markup (`includes/api/app_new_view.php`, the one-time sheet in `api_settings.php`) to the recipe names and deletes the inline `.api-start*`, `.api-new-advanced` and `.api-secret-box` rules of `api_settings.php` (architect, 2026-11-20).
+- DX3 (M) done #11105: X5 as "Form drawer" (`pg_look_examples_form_drawer_pattern()`), copied from `#api_drawer`. New application, the one-time values and the Events tab's signing secret draw with `.pg-start*`; the inline `.api-start*`, `.api-new-advanced` and `.api-secret-box` rules of `api_settings.php` are gone.
 - DX4 (S) after DX3: X6, X7.
 - DX5 (S) close-out: `ui/look-design-examples.md` corrected, each line of `ui/screen-composition-rules.md` names its pattern, this plan deleted.
 

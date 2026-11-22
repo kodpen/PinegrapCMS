@@ -20,7 +20,7 @@ description: Workspace calls on the server (CL1, #10499, step 11.0.243): tables,
 - They ride the live reads (`calls-signalling.md`): `ws_sync` answers `call` (call, member_id, signals); the guest page's `state` the same.
 
 ## When does a call end and what is cleaned?
-- Left by everyone, ended by its starter or a manager, or silent: no start, join or signal for 120 s (`WS_CALL_SILENCE`). Then every member is out and its signals are deleted.
+- Left by everyone, ended by its starter or a manager, or silent: no start, join or signal for 120 s (`WS_CALL_SILENCE`). Then every member is out and its signals are deleted. The channel gets its ended, missed or declined line (`calls-lines.md`).
 - Any signal older than 120 s is deleted. The clean-up (`ws_calls_sweep()`) runs from the live reads while the stamp exists, at most every 10 s, and on every start.
 
 ## What are the limits?

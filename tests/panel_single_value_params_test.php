@@ -31,6 +31,8 @@ function panel_single_value_params_screens()
 		'add_verified_shipping_address' => array('company', 'address_1', 'address_2', 'city', 'state_id', 'zip_code'),
 		'browse_catalog_menu'        => array('current_page_id', 'product_group_id', 'previous_url_id'),
 		'check_if_file_exists'       => array('file_name'),
+		'connections'                => array('connections_action', 'connection_id', 'provider'),
+		'content_review_action'      => array('list_params', 'selection'),
 		'edit_form_item_view'        => array('page_id'),
 		'edit_form_list_view'        => array('page_id'),
 		'edit_user'                  => array('username', 'email'),
@@ -43,7 +45,12 @@ function panel_single_value_params_screens()
 		'print_packing_slip'         => array('ship_to_id'),
 		'registration_entrance'      => array('send_to', 'allow_guest'),
 		'remove_item_from_cart'      => array('order_item_id', 'screen', 'send_to'),
+		'search_console'             => array('search_console_action', 'connection_id'),
+		'shipworks'                  => array('username', 'password', 'action', 'start', 'order', 'tracking', 'shippingdate', 'carrier'),
+		'update_address_book'        => array('page_id', 'pg_widget_id', 'id', 'send_to'),
 		'view_fields'                => array('page_id', 'product_id', 'product_group_id'),
+		'workspace_channel_export'   => array('channel', 'from', 'to'),
+		'workspace_mcp'              => array('mcp_action', 'mcp_id', 'mcp_tool', 'mcp_channel', 'mcp_connected', 'server', 'tool', 'channel'),
 	);
 }
 

@@ -57,6 +57,7 @@ require_once($pg_api_directory . '/resources/reports.php');
 require_once($pg_api_directory . '/resources/page_clicks.php');
 require_once($pg_api_directory . '/resources/products.php');
 require_once($pg_api_directory . '/resources/marketplace_repricing.php');
+require_once($pg_api_directory . '/resources/supplier_feeds.php');
 require_once($pg_api_directory . '/resources/inventory.php');
 require_once($pg_api_directory . '/resources/product_groups.php');
 require_once($pg_api_directory . '/resources/orders.php');

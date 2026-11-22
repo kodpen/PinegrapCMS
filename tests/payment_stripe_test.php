@@ -162,6 +162,8 @@ function test_payment_stripe_return_modes()
 		pg_assert_false(pg_payment_is_return_mode($mode), $mode);
 	}
 
+	pg_assert_false(pg_payment_is_return_mode(array('stripe_return')), 'a mode sent as a list (?mode[]=x) is no return mode');
+
 	pg_assert_same('Credit/Debit Card', pg_payment_return_method('iyzipay_threedsecure_return'));
 	pg_assert_same('Pay With Iyzico', pg_payment_return_method('pay_with_iyzico_return'));
 	pg_assert_same('Credit/Debit Card', pg_payment_return_method('stripe_return'));

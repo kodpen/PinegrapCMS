@@ -148,6 +148,12 @@ function test_erp_stock_plan_supplier_from_invoice_then_order()
 	), erp_stock_plan_suppliers($invoices, $orders), 'the latest invoice, else the latest order');
 
 	pg_assert_same(array(), erp_stock_plan_suppliers(array(), array()), 'No supplier yet');
+
+	pg_assert_same(array(
+		1 => array('account_id' => 11, 'source' => 'invoice'),
+		2 => array('account_id' => 20, 'source' => 'order'),
+		3 => array('account_id' => 30, 'source' => 'feed'),
+	), erp_stock_plan_suppliers($invoices, $orders, array(1 => 30, 2 => 30, 3 => 30, 4 => 0)), 'the feed\'s account only when no invoice or order names one');
 }
 
 function test_erp_stock_plan_open_orders_taken_off()

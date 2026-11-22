@@ -4417,10 +4417,16 @@ function output_menu($properties = false)
             }
         }
 
-        // VISITORS > Saved reports
+        // VISITORS > Saved reports, and Lead sources once the visitor
+        // journey's tables are there. The menu's link look, one string for
+        // the group's links followed by each one's icon.
+        $visitor_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-me-2 ';
         $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-data bi-me-2\'>' . lang('Saved reports') . '</a>';
-        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Visitor Report'))) . '</a>';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php\'' . $output_parent_target . ' class=\'' . $visitor_link_class . 'bi-clipboard2-data\'>' . lang('Saved reports') . '</a>';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php\'' . $output_parent_target . ' class=\'' . $visitor_link_class . 'bi-plus-lg\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Visitor Report'))) . '</a>';
+        if (function_exists('pg_lead_ready') && pg_lead_ready()) {
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/lead_sources.php\'' . $output_parent_target . ' class=\'' . $visitor_link_class . 'bi-signpost-split\'>' . lang('Lead sources') . '</a>';
+        }
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS) {
             // ECOMMERCE > Order Reports. The menu's link look, one string for
             // the group's links followed by each one's icon.
@@ -5178,6 +5184,7 @@ function output_menu($properties = false)
         case 'visitors.php':
         case 'view_visitor_reports.php':
         case 'view_visitor_report.php':
+        case 'lead_sources.php':
         case 'view_visitor.php':
         case 'search_console.php':
         case 'visitor_search.php':
@@ -5219,6 +5226,7 @@ function output_menu($properties = false)
         case 'messages_sends.php':
         case 'messages_surveys.php':
         case 'edit_feedback_survey.php':
+        case 'messages_survey_results.php':
         case 'messages_channels.php':
         case 'messages_notifications.php':
             $active_menu = 9;

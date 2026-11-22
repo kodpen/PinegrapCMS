@@ -2,9 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The file manager's tree sidebar, new folder, new file, rename and move
- * sub-actions. Each handler answers through respond(), which ends the
- * request.
+ * The file manager's tree sidebar, new folder, new file, new spreadsheet or
+ * document, rename and move sub-actions. Each handler answers through
+ * respond(), which ends the request.
  * Called by pg_explorer_handle() and loaded by view_folder_and_files_f.php.
  *
  * @author      Erdal Güral (Kodpen)
@@ -198,6 +198,68 @@ function pg_explorer_handle_create_file($type, $request, $user)
         'status' => 'success',
         'request' => $type,
         'file' => array('id' => (int) $file_id, 'name' => $name),
+        'message' => lang('The file was created successfully.')));
+}
+
+// "New spreadsheet" or "New document": an empty workbook or document
+// written by the product's own writer (pg_office_new_write()) into a folder
+// the person may add a file to, which the screen then opens for editing.
+function pg_explorer_handle_create_office($type, $request, $user)
+{
+    $parent_id = (int) (isset($request['folder_id']) ? $request['folder_id'] : 0);
+    $kind = (string) (isset($request['kind']) ? $request['kind'] : '');
+
+    if (($parent_id <= 0) || (check_edit_access($parent_id) == false) || pg_recycle_is_inside($parent_id)) {
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    if (pg_office_new_name($kind) === '') {
+        respond(array('status' => 'error', 'message' => lang('Only a spreadsheet or a document is made here.')));
+    }
+
+    $name = get_unique_name(array('name' => prepare_file_name(pg_office_new_name($kind)), 'type' => 'file'));
+    $file_path = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (!pg_office_new_write($kind, $file_path)) {
+        @unlink($file_path);
+        respond(array('status' => 'error', 'message' => lang('The file could not be saved. Check write permission for the file directory.')));
+    }
+
+    db(
+        "INSERT INTO files (
+            name,
+            folder,
+            type,
+            size,
+            design,
+            optimized,
+            user,
+            timestamp)
+        VALUES (
+            '" . e($name) . "',
+            '" . e($parent_id) . "',
+            '" . e($kind) . "',
+            '" . e((int) filesize($file_path)) . "',
+            '0',
+            '0',
+            '" . e($user['id']) . "',
+            UNIX_TIMESTAMP())");
+
+    $file_id = (int) mysqli_insert_id(db::$con);
+
+    if ($file_id <= 0) {
+        @unlink($file_path);
+        respond(array('status' => 'error', 'message' => lang('The file could not be saved. Check write permission for the file directory.')));
+    }
+
+    pg_audit_record('create', 'files', $file_id);
+
+    log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $name)), $_SESSION['sessionusername']);
+
+    respond(array(
+        'status' => 'success',
+        'request' => $type,
+        'file' => array('id' => $file_id, 'name' => $name),
         'message' => lang('The file was created successfully.')));
 }
 

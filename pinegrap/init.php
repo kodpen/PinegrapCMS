@@ -523,7 +523,6 @@ define('CHAT_OPERATOR_USER_ID', isset($row['chat_operator_user_id']) ? (int) $ro
 define('CHAT_WELCOME_MESSAGE', isset($row['chat_welcome_message']) ? $row['chat_welcome_message'] : '');
 define('CHAT_OFFLINE_EMAIL', isset($row['chat_offline_email']) ? (int) $row['chat_offline_email'] : 1);
 define('CHAT_CAPTCHA', isset($row['chat_captcha']) ? (int) $row['chat_captcha'] : 1);
-define('CHAT_RETENTION_DAYS', isset($row['chat_retention_days']) ? (int) $row['chat_retention_days'] : 60);
 // Site widget appearance settings (2026.4.3): theme, accent color, icon.
 define('CHAT_WIDGET_THEME', isset($row['chat_widget_theme']) ? $row['chat_widget_theme'] : 'auto');
 define('CHAT_WIDGET_COLOR', isset($row['chat_widget_color']) ? $row['chat_widget_color'] : '#0d6efd');

@@ -265,6 +265,9 @@ function pg_sms_kinds()
         // A service satisfaction survey's link (feedback_answer.php); a
         // commercial survey goes as marketing.
         'feedback'  => false,
+        // A walk-in queue number's notices (walk_in_queue_tickets.php): a
+        // service message to the phone given for the number.
+        'queue'     => false,
         'marketing' => true,
     );
 }

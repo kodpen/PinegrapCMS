@@ -158,6 +158,8 @@
             parts.push(labelled(text.value, select(catalogue.statuses, condition.value)));
         } else if (entry.value === 'stage') {
             parts.push(labelled(text.value, select(catalogue.stages, condition.value)));
+        } else if (entry.value === 'band') {
+            parts.push(labelled(text.value, select(catalogue.bands, condition.value)));
         }
 
         parts.forEach(function (part) {

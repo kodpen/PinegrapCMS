@@ -207,9 +207,6 @@ $region_labels = array(
     'comments_block'   => lang('Comments blocks'),
 );
 
-$totals = array('ready' => 0, 'attention' => 0, 'blocked' => 0);
-$total_pages = 0;
-
 // The names of a page list, folded under a summary.
 $page_list = function ($pages, $summary) {
     if (!$pages) return '';
@@ -220,11 +217,6 @@ $page_list = function ($pages, $summary) {
     }
     return '<details><summary>' . h($summary) . '</summary><ul class="mb-0 mt-1 ps-12">' . $items . '</ul></details>';
 };
-
-foreach ($report as $s) {
-    ++$totals[$s['state']];
-    $total_pages += count($s['own']) + count($s['folder']);
-}
 
 // One row per style, under its set's head row or under the styles that
 // move alone.
@@ -351,19 +343,27 @@ if ($sets['alone']) {
         </tbody>';
 }
 
+// The measure: every page a Legacy design serves, counted by the region
+// nodes left in its tree and in the components it places
+// (pg_classic_closed_census()); the kinds most often left are named.
+$measure = pg_ltd_closed_measure();
+$figures = pg_ltd_closed_figures($measure['censuses'], count($report), $measure['designs']);
+$left_kinds = array();
+foreach (array_slice($figures['kinds'], 0, 3, true) as $kind => $n) {
+    $left_kinds[] = (isset($region_labels[$kind]) ? $region_labels[$kind] : lang('Unknown')) . ' ' . pg_format_number($n, 0);
+}
 $output_summary = '';
 foreach (array(
-    array(lang('Ready'), $totals['ready']),
-    array(lang('Needs attention'), $totals['attention']),
-    array(lang('Cannot be opened'), $totals['blocked']),
-    array(lang('Pages'), $total_pages),
+    array(lang('Pages fully editable'), pg_format_number($figures['editable'], 0) . ' <small>/ ' . pg_format_number($figures['pages'], 0) . '</small>', lang('pages of the moved designs')),
+    array(lang('Pages with a classic part'), pg_format_number($figures['classic'], 0), $left_kinds ? implode(' · ', $left_kinds) : lang('no classic part left')),
+    array(lang('Styles still classic'), pg_format_number($figures['styles'], 0), lang('not moved yet')),
+    array(lang('Designs moved'), pg_format_number($figures['designs'], 0), lang('Legacy designs')),
 ) as $tile) {
     $output_summary .= '
-        <div class="col-6 md:col-3">
-            <div class="card h-100"><div class="card-body">
-                <div class="small fg-secondary">' . h($tile[0]) . '</div>
-                <div class="fs-2xl fw-semibold">' . pg_format_number($tile[1], 0) . '</div>
-            </div></div>
+        <div class="pg-card pg-figure">
+            <span class="pg-figure-label">' . h($tile[0]) . '</span>
+            <span class="pg-figure-value">' . $tile[1] . '</span>
+            <span class="pg-figure-note">' . h($tile[2]) . '</span>
         </div>';
 }
 
@@ -628,7 +628,7 @@ pg_page_shell([
         'grow' => $toolbar_grow,
         'secondary' => array('label' => lang('All Page Styles'), 'url' => 'view_styles.php', 'icon' => 'bi-arrow-left'),
     )) . '
-    <div class="row g-7 my-7">' . $output_summary . '</div>
+    <div class="pg-figures my-7" role="group" aria-label="' . h(lang('The move')) . '">' . $output_summary . '</div>
     ' . $output_form . $output_run . $output_plan . '
     <div class="card my-7" id="ltd-styles">
         <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Styles')) . '</h2>

@@ -172,6 +172,7 @@
 - iyzipay-sdk-php85-patch.md: includes/iyzipay-php 2.0.59 kept quiet on PHP 8.4/8.5: nullable parameters marked, curl_close() guarded; why no update, what an update re-applies (#9485)
 - key-code-form-checks.md: Key code create/edit form checks (includes/forms/key_code_form.php): 50-character codes, an offer's own code, expiration date read whole through pg_date_input_iso()
 - key-code-import.md: Key code CSV import and export (import_key_codes.php, view_key_codes.php): a code already there is updated, not re-added; BOM, separator, dates, yes/no cells, formula guard, offer's own code
+- kvkk-notice-switch.md: The KVKK notice's own switch (Show the KVKK notice, config_text ecommerce_kvkk_enabled, step 11.0.271): checkout and sign-up follow it, apart from Legal documents [decision: here]
 - marketplace-api-and-events.md: GET /products/{id}/marketplaces (manager role only, never credentials) and the marketplace.order.imported, .cancelled and .shipped webhook events: where each is announced and what it carries (#1667)
 - marketplace-bulk-matching.md: Bulk matching of marketplace products to the shop's (marketplace_products.php, #1880): remote catalogue table, paged read, suggestion scores, sure rule, what a match writes
 - marketplace-buybox-read.md: The hourly buybox read (2026.11.0): the Trendyol connector ability buybox, its body, header and limit, the job pass, and what marketplace_price_state keeps [decision: here]
@@ -437,6 +438,7 @@
 - subscriptions-renewal.md: Renewals of store-run subscriptions (PR #3290, decided in #3183): job branch, per-row lock, renewal order, next date, 1/3/7 ladder, held rows and Stripe's paid report [decision: decisions-made-product-5.md]
 - subscriptions-stripe.md: Stripe store-run subscriptions (PR #3270, decided in #3183): Customer and setup_future_usage on the first payment, card_ref, off-session charge_renewal, Checkout setup page, detach on cancel [decision: decisions-made-product-5.md]
 - subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref [decision: decisions-made-product-5.md]
+- supplier-feed-cost-api.md: Supplier feeds (SF6, #11121, F11 and F14): the feed's buy price as an order line's cost, the stock plan's supplier from the feed's ERP account, and the three API routes [decision: decisions-made-schema-48.md]
 - supplier-feed-drafts.md: Supplier feed drafts (SF4, F8): records no product matched become switched-off products with pictures, description, brand and group; one model code is one variant set; the spool files; Drafts go into
 - supplier-feed-price-card.md: Supplier feed screens (SF3b): price rule and rules by category or brand, test pull prices and Floor pill, Held prices, Pull now, Pull history, the product's "Price from the feed"
 - supplier-feed-price-rule.md: Supplier feed amounts (Turkish and English separators, stock text, net of VAT) and the F4 price rule: margin, fixed, rate, ,90 or ,99 endings, floor, category and brand rules
@@ -468,6 +470,8 @@
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
 - verified-shipping-address-screens.md: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, state filter fit to the bar (#9080), Turkish name
 - visitor-currency-zero-rate.md: init.php uses a visitor's chosen currency only while its exchange rate is above zero (pg_visitor_currency_row()); a 0 rate falls back to the base currency
+- walk-in-queue-notices.md: A walk-in queue number's three notices (WQ3): taken, ahead, called; each once by its bit; WhatsApp, SMS or e-mail; kind queue as a service message; the texts and their places
+- walk-in-queue-number-page.md: The walk-in queue's public queue.php (WQ3): taking a number, the person's page and its 15-second read, Leave the queue, staff's Add a number, the limit, the firewall entry
 - walk-in-queue-places.md: Calendars › Queue (WQ2): the places list, a place's Set-up (six folded rows) and Desks tabs, the place's JSON keys and bounds, Open the queue's checks, Delete and Remove, the QR poster [decision: here]
 - walk-in-queue-rules.md: The walk-in queue's pure rules in includes/fn/walk_in_queue.php: the order, the number A-012, cap and closing, the estimate, Not here, the signed link token
 - walk-in-queue-store.md: Walk-in queue tables waiting_places, waiting_desks, waiting_tickets (11.0.266, WQ1b): what each holds, states, the keep-period clear, erase, export, inventory, contact merge [decision: here]

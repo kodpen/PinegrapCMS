@@ -727,6 +727,369 @@
         return box;
     }
 
+    // ── A screen's bar ─────────────────────────────────────────────────
+    // One .pg-toolbar.ws-bar line under a Workspace screen's title, never a
+    // second row: the main action (the one filled button), a second action,
+    // date stepping, the views (barViews()); the grow slot; switches,
+    // "Filter" (barFilter()), the search (barSearch()), "⋯". Below 1100 px
+    // the views are one select and every filter is behind "Filter"; on a
+    // phone the bar keeps the main action and the search, the rest goes
+    // behind "Filter".
+    var BAR_NARROW = window.matchMedia ? window.matchMedia('(max-width: 1099.98px)') : null;
+    var BAR_PHONE = window.matchMedia ? window.matchMedia('(max-width: 575.98px)') : null;
+
+    function barMatches(query) {
+        return !!(query && query.matches);
+    }
+
+    function barOnMedia(query, onChange) {
+        if (!query) {
+            return;
+        }
+
+        if (query.addEventListener) {
+            query.addEventListener('change', onChange);
+        } else if (query.addListener) {
+            query.addListener(onChange);
+        }
+    }
+
+    // The views as a segmented control, and as one select below 1100 px
+    // (the stylesheet shows one of the two). items: [value, label] pairs;
+    // onPick(value) on a choice; set(value) presses one without calling it;
+    // count(n) writes the shown list's count on the pressed segment.
+    function barViews(label, items, value, onPick) {
+        var node = el('div', 'ws-bar-views');
+        var seg = formParts.seg(label, items, pick, 'ws-bar-views-seg');
+        var choose = formParts.select(items, value, true);
+        var current = String(value);
+
+        choose.classList.add('ws-bar-views-select');
+        choose.setAttribute('aria-label', label);
+        choose.addEventListener('change', function () { pick(choose.value); });
+
+        function set(next) {
+            current = String(next);
+            Object.keys(seg.items).forEach(function (key) {
+                var item = seg.items[key];
+                var old = item.querySelector('.pg-seg-count');
+
+                if (old) {
+                    old.remove();
+                }
+
+                item.setAttribute('aria-pressed', (key === current) ? 'true' : 'false');
+            });
+            choose.value = current;
+        }
+
+        function pick(next) {
+            set(next);
+            onPick(next);
+        }
+
+        function count(number) {
+            var item = seg.items[current];
+            var old = item ? item.querySelector('.pg-seg-count') : null;
+
+            if (old) {
+                old.remove();
+            }
+
+            if (item && number !== null && number !== undefined) {
+                item.appendChild(el('em', 'pg-seg-count', String(number)));
+            }
+        }
+
+        node.appendChild(seg.node);
+        node.appendChild(choose);
+        set(value);
+
+        return { node: node, set: set, count: count };
+    }
+
+    // The search field of a bar: the input is given back on .input.
+    function barSearch(placeholder, onSearch) {
+        var node = el('label', 'pg-input pg-input-sm ws-bar-search');
+        var input = el('input', '');
+
+        node.appendChild(icon('bi-search', ''));
+        input.type = 'search';
+        input.placeholder = placeholder;
+        input.setAttribute('aria-label', placeholder);
+        input.addEventListener('input', debounce(function () { onSearch(input.value); }, 300));
+        node.appendChild(input);
+        node.input = input;
+
+        return node;
+    }
+
+    // "Filter" of a bar, a quiet button with the count of what is set; its
+    // floating box holds the fields one under the other, "Clear" and
+    // "Close"; what is set is a tag under the bar (.tags, placed by the
+    // caller under the bar), each with its "x", then "Clear".
+    // options.fields: [{ label, control, row?, off?, tag(), clear() }]: a
+    //   field's control changes the screen's state itself and calls
+    //   onChange; row is a switch row drawn as it is; off leaves it out;
+    //   tag() is the tag's text while the field is set, else ''; clear()
+    //   puts the field and its state back to the default.
+    // options.inline: up to three fields stand in the bar at 1100 px and
+    //   up, "Filter" then only below.
+    // options.phone: [{ label?, node }] parts standing in the bar that go
+    //   into the box on a phone (the views, a rare toggle).
+    // options.onChange(): the screen loads again.
+    function barFilter(options) {
+        var fields = options.fields || [];
+        var phone = (options.phone || []).map(function (part) {
+            var mark = document.createComment('');
+
+            part.node.parentNode.insertBefore(mark, part.node);
+
+            return { label: part.label || '', node: part.node, mark: mark };
+        });
+        var slot = el('span', 'ws-bar-filter');
+        var opener = lookButton('pg-button pg-button-quiet ws-bar-filter-button', '', 'bi-funnel');
+        var count = el('span', 'ws-bar-count');
+        var tags = el('div', 'ws-bar-tags');
+        var hidden = false;
+        var box = null;
+
+        opener.setAttribute('aria-haspopup', 'dialog');
+        opener.setAttribute('aria-expanded', 'false');
+        count.setAttribute('aria-hidden', 'true');
+        count.hidden = true;
+        // The word leaves the line on a phone; the count stays.
+        opener.appendChild(el('span', 'ws-bar-filter-label', t('bar_filter')));
+        opener.appendChild(count);
+        slot.appendChild(opener);
+        tags.hidden = true;
+
+        function inline() {
+            return !!options.inline && (fields.length <= 3) && !barMatches(BAR_NARROW);
+        }
+
+        function rowOf(field) {
+            return field.row || formParts.field(field.label, field.control);
+        }
+
+        // Where each part stands for the window's width now.
+        function place() {
+            if (box && box.isConnected) {
+                closeCtx();
+            }
+
+            fields.forEach(function (field) {
+                var part = field.row || field.control;
+
+                if (inline()) {
+                    if (!field.row) {
+                        field.control.setAttribute('aria-label', field.label);
+                    }
+
+                    slot.insertBefore(part, opener);
+                } else if (part.parentNode === slot) {
+                    part.remove();
+                }
+            });
+
+            opener.hidden = inline();
+
+            phone.forEach(function (part) {
+                if (barMatches(BAR_PHONE)) {
+                    part.node.remove();
+                } else if (part.mark.parentNode && (part.node.previousSibling !== part.mark)) {
+                    part.mark.parentNode.insertBefore(part.node, part.mark.nextSibling);
+                }
+            });
+
+            refresh();
+        }
+
+        function change() {
+            options.onChange();
+            refresh();
+        }
+
+        function reset() {
+            fields.forEach(function (field) {
+                if (!field.off) {
+                    field.clear();
+                }
+            });
+        }
+
+        function clearAll() {
+            reset();
+            change();
+        }
+
+        function isSet() {
+            return fields.some(function (field) {
+                return !field.off && !!field.tag();
+            });
+        }
+
+        // The count on the button and the tags under the bar, from the
+        // fields' state.
+        function refresh() {
+            var set = [];
+
+            fields.forEach(function (field) {
+                var text = field.off ? '' : field.tag();
+
+                if (text) {
+                    set.push({ text: text, field: field });
+                }
+            });
+
+            count.textContent = String(set.length);
+            count.hidden = !set.length;
+            opener.setAttribute('aria-label', set.length ? t('bar_filter_count', set.length) : t('bar_filter'));
+            clear(tags);
+
+            set.forEach(function (item) {
+                var tag = el('span', 'ws-bar-tag');
+                var remove = el('button', 'ws-bar-tag-remove');
+
+                tag.appendChild(document.createTextNode(item.text));
+                remove.type = 'button';
+                remove.title = t('bar_remove_filter', item.text);
+                remove.setAttribute('aria-label', remove.title);
+                remove.appendChild(icon('bi-x', ''));
+                remove.addEventListener('click', function () {
+                    item.field.clear();
+                    change();
+
+                    var next = tags.querySelector('.ws-bar-tag-remove');
+
+                    (next || opener).focus();
+                });
+                tag.appendChild(remove);
+                tags.appendChild(tag);
+            });
+
+            if (set.length) {
+                var all = lookButton('pg-button pg-button-ghost pg-button-sm', t('bar_clear'), '');
+
+                all.addEventListener('click', function () {
+                    clearAll();
+                    opener.focus();
+                });
+                tags.appendChild(all);
+            }
+
+            tags.hidden = hidden || !set.length || inline();
+        }
+
+        opener.addEventListener('click', function (event) {
+            event.stopPropagation();
+
+            if (box && box.isConnected) {
+                closeCtx();
+                return;
+            }
+
+            var content = el('div', 'ws-bar-box-in');
+            var body = el('div', 'ws-bar-box-body');
+            var foot = el('div', 'ws-bar-box-foot');
+            var clearButton = lookButton('pg-button pg-button-ghost pg-button-sm', t('bar_clear'), '');
+            var close = lookButton('pg-button pg-button-quiet pg-button-sm', t('close'), '');
+
+            content.setAttribute('role', 'dialog');
+            content.setAttribute('aria-label', t('bar_filter'));
+
+            if (barMatches(BAR_PHONE)) {
+                phone.forEach(function (part) {
+                    body.appendChild(part.label ? formParts.group(part.label, part.node) : part.node);
+                });
+            }
+
+            if (!inline()) {
+                fields.forEach(function (field) {
+                    if (!field.off) {
+                        body.appendChild(rowOf(field));
+                    }
+                });
+            }
+
+            clearButton.addEventListener('click', clearAll);
+            close.addEventListener('click', function () { closeCtx(); });
+            foot.appendChild(clearButton);
+            foot.appendChild(close);
+            content.appendChild(body);
+            content.appendChild(foot);
+
+            opener.focus();
+
+            var rect = opener.getBoundingClientRect();
+
+            box = floatBox(rect.left, rect.bottom + 6, content, 'ws-bar-box');
+            box.style.left = Math.max(8, Math.min(rect.right - box.offsetWidth, window.innerWidth - box.offsetWidth - 8)) + 'px';
+
+            var first = body.querySelector('select, input, button');
+
+            if (first) {
+                first.focus();
+            }
+        });
+
+        barOnMedia(BAR_NARROW, place);
+        barOnMedia(BAR_PHONE, place);
+        place();
+
+        return {
+            slot: slot,
+            tags: tags,
+            refresh: refresh,
+            place: place,
+            isSet: isSet,
+            // Every field back to its default, without loading again.
+            reset: function () {
+                reset();
+                refresh();
+            },
+            // A view whose list reads no filter (My Tasks' My time) hides
+            // "Filter" and the tags.
+            hide: function (on) {
+                hidden = !!on;
+                slot.hidden = hidden;
+                place();
+            }
+        };
+    }
+
+    // An empty screen in the content's card: a 44 px tile in the screen's
+    // tone, a title, one sentence and the screen's main action when it has
+    // one ({ label, icon, onClick }). A filtered list that finds nothing
+    // offers "Clear" there instead (barEmptyFound()).
+    function emptyScreen(spec) {
+        var box = el('div', 'ws-empty-screen');
+        var tile = el('span', 'pg-icon-tile ws-empty-screen-tile pg-tone-' + (spec.tone || 'gray'));
+
+        tile.setAttribute('aria-hidden', 'true');
+        tile.appendChild(icon(spec.icon || 'bi-inbox', ''));
+        box.appendChild(tile);
+        box.appendChild(el('div', 'pg-title-section ws-empty-screen-title', spec.title));
+
+        if (spec.text) {
+            box.appendChild(el('p', 'pg-text-2 ws-empty-screen-text', spec.text));
+        }
+
+        if (spec.action) {
+            var go = lookButton('pg-button pg-button-quiet pg-button-sm', spec.action.label, spec.action.icon || '');
+
+            go.addEventListener('click', spec.action.onClick);
+            box.appendChild(go);
+        }
+
+        return box;
+    }
+
+    // The empty screen of a list its filters or search narrowed to nothing.
+    function barEmptyFound(text, onClear) {
+        return emptyScreen({ tone: 'gray', icon: 'bi-funnel', title: t('bar_found_none'), text: text, action: { label: t('bar_clear'), icon: 'bi-x-lg', onClick: onClear } });
+    }
+
     // options.keepalive: the request is finished even when the page is left
     // meanwhile (a save as the page closes); browsers refuse such a body over
     // 64 KiB.
@@ -14287,13 +14650,19 @@
                     }
 
                     event.preventDefault();
-                    self.showImage(file.url);
+                    self.showImage(file.drawn || file.url);
                 });
 
                 // An agent's canvas still blank: this browser draws its
                 // picture (assets/js/workspace_canvas_picture.js).
                 if (file.canvas_pending && window.PGWsCanvasPicture) {
                     window.PGWsCanvasPicture.mount(message, img, link, featureHelpers());
+                }
+
+                // A canvas with data layers: drawn again from the rows this
+                // reader may read.
+                if (file.canvas_data && window.PGWsCanvasPicture) {
+                    window.PGWsCanvasPicture.follow(message, img, featureHelpers());
                 }
 
                 // A person's canvas an agent edited: who did, and Undo for
@@ -14837,11 +15206,15 @@
 
             this.messages.forEach(function (message) {
                 if (message.file && message.file.image && !message.deleted) {
-                    if (message.file.url === url) {
+                    // A canvas following its tables shows the card's drawing
+                    // of the reader's rows (PGWsCanvasPicture.follow()).
+                    var shown = message.file.drawn || message.file.url;
+
+                    if (shown === url) {
                         start = images.length;
                     }
 
-                    images.push({ src: message.file.url, alt: message.file.name, caption: (message.sender ? message.sender.name + ' · ' : '') + message.time + ' · ' + message.file.name });
+                    images.push({ src: shown, alt: message.file.name, caption: (message.sender ? message.sender.name + ' · ' : '') + message.time + ' · ' + message.file.name });
                 }
             });
 
@@ -18763,15 +19136,18 @@
             // written here (workspace_channel_notes.js) for who may post.
             var attach = button('btn btn-sm btn-text theme-secondary', '', 'bi-paperclip', t('attach'));
             var noteHere = !!CFG.notes && !!window.PGWsChannelNotes && !self.isThread && !self.era && !!self.channel && !!self.channel.can_post;
+            // An empty workbook or document posted here and opened for
+            // editing (ws_file_office_new), where the preview can edit it.
+            var officeHere = !!CFG.office && !self.isThread && !self.era && !!self.channel && !!self.channel.can_post;
 
-            if (CFG.library || noteHere) {
+            if (CFG.library || noteHere || officeHere) {
                 menuButton(attach);
             }
 
             attach.addEventListener('click', function (event) {
                 var box = attach.getBoundingClientRect();
 
-                if (!CFG.library && !noteHere) {
+                if (!CFG.library && !noteHere && !officeHere) {
                     self.attach();
                     return;
                 }
@@ -18783,7 +19159,9 @@
                     CFG.library ? { icon: 'bi-folder2-open', label: t('lib_from_manager'), action: function () { self.attachFromLibrary(); } } : null,
                     noteHere ? { icon: 'bi-journal-plus', label: t('cn_write'), action: function () {
                         window.PGWsChannelNotes.write(window.PGWsKit, self.noteHooks());
-                    } } : null
+                    } } : null,
+                    officeHere ? { icon: 'bi-file-earmark-excel', label: t('file_new_sheet'), action: function () { self.newOfficeFile('xlsx'); } } : null,
+                    officeHere ? { icon: 'bi-file-earmark-word', label: t('file_new_doc'), action: function () { self.newOfficeFile('docx'); } } : null
                 ], true);
             });
             parts.push(attach);
@@ -20721,6 +21099,30 @@
             });
 
             input.click();
+        },
+
+        // "New spreadsheet" or "New document": an empty .xlsx or .docx is
+        // posted as the person's message at once and opened in the preview
+        // window for editing, where Save puts the edited file in its place.
+        newOfficeFile: function (kind) {
+            var self = this;
+            var channel = self.channel;
+
+            if (!channel || !channel.can_post) {
+                return;
+            }
+
+            api('ws_file_office_new', { channel_id: channel.id, kind: kind }).then(function (result) {
+                if (self.channel === channel) {
+                    self.sync(true);
+                }
+
+                if (result.message && result.message.file) {
+                    previewFile(result.message.file, function (saved) { self.fileEdited(saved); });
+                }
+            }).catch(function (error) {
+                toast((error && error.message) ? error.message : t('error_generic'), 'danger');
+            });
         },
 
         // A copy of a file of the file manager, waiting in the box for Send
@@ -24999,7 +25401,7 @@
 
     // How pressing a task is, as the screens filter by it: every one, urgent
     // and high together, or one priority.
-    function priorityFilter(value, onChange) {
+    function priorityOptions() {
         var labels = BOOT.priorities || {};
         var options = [['', t('all_priorities')], ['hot', t('priority_hot')]];
 
@@ -25007,7 +25409,11 @@
             options.push([key, labels[key] || key]);
         });
 
-        var node = select(options, value || '');
+        return options;
+    }
+
+    function priorityFilter(value, onChange) {
+        var node = select(priorityOptions(), value || '');
         node.classList.add('w-auto');
         node.setAttribute('aria-label', t('priority'));
         node.addEventListener('change', function () { onChange(node.value); });
@@ -25029,7 +25435,11 @@
         clear(root);
 
         var state = { scope: 'mine', status: 'open', search: '', department_id: 0, priority: '', soon: 0, agent_channels: (params().agents === '1') ? 'only' : '', made_by: '' };
-        var bar = el('nav', 'pg-toolbar navigation mb-5');
+        // One line (board S1 of plans/workspace-interface): New task, the
+        // views; then the agents toggle, "Filter" (status, department,
+        // priority, creator, "Pressing, coming up") and the search.
+        var bar = el('nav', 'pg-toolbar ws-bar');
+        var frame = el('div', 'ws-bar-frame');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
         // Says how many tasks the list holds after a filter or a search.
@@ -25037,15 +25447,13 @@
 
         countLine.setAttribute('role', 'status');
         list.appendChild(listBody);
-        root.appendChild(bar);
-        root.appendChild(countLine);
-        root.appendChild(list);
+        frame.appendChild(bar);
+        root.appendChild(frame);
 
-        var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('new_task'), 'bi-plus-circle');
+        var add = lookButton('pg-button pg-button-fill', t('new_task'), 'bi-plus-lg');
         add.addEventListener('click', function () { taskDrawer.open(0, {}, load); });
         bar.appendChild(add);
 
-        var scopes = el('div', 'btn-group btn-group-sm');
         var scopeList = [['mine', t('scope_mine')], ['created', t('scope_created')], ['department', t('scope_department')]];
 
         if (BOOT.me.rights.board) {
@@ -25057,57 +25465,38 @@
             scopeList.push(['time', t('tt_my_time')]);
         }
 
-        // Fill and aria-pressed move together onto the chosen scope.
+        var views = barViews(t('tasks_views'), scopeList, state.scope, function (name) {
+            // ws_tasks reads department_id only in the department scope,
+            // so the field must not keep showing one the list ignores.
+            if (name !== 'department') {
+                state.department_id = 0;
+                dept.value = '0';
+            }
+
+            setScope(name);
+            load();
+        });
+
+        bar.appendChild(views.node);
+
+        // The time view (PGWsTaskTime.myTime()) reads none of the task
+        // filters, so they leave the bar while it is shown.
         function setScope(name) {
             state.scope = name;
-            Array.prototype.forEach.call(scopes.children, function (child) {
-                var on = child.getAttribute('data-scope') === name;
-
-                child.classList.toggle('active', on);
-                child.setAttribute('aria-pressed', on ? 'true' : 'false');
-            });
-
-            // The time view (PGWsTaskTime.myTime()) reads none of the task
-            // filters, so they leave the toolbar while it is shown.
-            [status, dept, priority, soon, agents, searchGroup].forEach(function (control) {
-                if (control) {
-                    control.hidden = (name === 'time');
-                }
+            views.set(name);
+            filter.hide(name === 'time');
+            [agents, searchGroup].forEach(function (control) {
+                control.hidden = (name === 'time');
             });
         }
 
-        scopeList.forEach(function (scope) {
-            var item = button('btn btn-text theme-secondary' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
-            item.setAttribute('data-scope', scope[0]);
-            item.setAttribute('aria-pressed', state.scope === scope[0] ? 'true' : 'false');
-            item.addEventListener('click', function () {
-                // ws_tasks reads department_id only in the department scope,
-                // so the select must not keep showing one the list ignores.
-                if (scope[0] !== 'department') {
-                    state.department_id = 0;
-                    dept.value = '0';
-                }
-
-                setScope(scope[0]);
-                load();
-            });
-            scopes.appendChild(item);
-        });
-
-        bar.appendChild(scopes);
-
-        var status = select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], state.status);
-        status.classList.add('w-auto');
-        status.setAttribute('aria-label', t('task_status_filter'));
+        var status = formParts.select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], state.status, true);
         status.addEventListener('change', function () {
             state.status = status.value;
             load();
         });
-        bar.appendChild(status);
 
-        var dept = select(departmentOptions(t('all_departments')), 0);
-        dept.classList.add('w-auto');
-        dept.setAttribute('aria-label', t('department'));
+        var dept = formParts.select(departmentOptions(t('all_departments')), '0', true);
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
 
@@ -25117,35 +25506,49 @@
 
             load();
         });
-        bar.appendChild(dept);
 
-        var priority = priorityFilter('', function (value) {
-            state.priority = value;
+        var priority = formParts.select(priorityOptions(), '', true);
+        priority.addEventListener('change', function () {
+            state.priority = priority.value;
             load();
         });
-        bar.appendChild(priority);
+
+        // Made by agents: all, without them, or them alone; left out until
+        // tasks carry the mark (made_by_ready).
+        var madeBy = formParts.select([['', t('task_made_by_all')], ['people', t('task_made_by_people')], ['apps', t('task_made_by_apps')]], '', true);
+        madeBy.addEventListener('change', function () {
+            state.made_by = madeBy.value;
+            load();
+        });
 
         // At a glance: the urgent and high ones due within a week, overdue
         // included.
-        var soon = button('btn btn-sm btn-outline theme-danger rounded-pill', t('urgent_soon'), 'bi-fire');
-        soon.setAttribute('aria-pressed', 'false');
-        soon.title = t('urgent_soon_help');
-        soon.addEventListener('click', function () {
-            var on = !state.soon;
+        var soon = formParts.switchRow(t('urgent_soon'), false);
 
+        soon.row.title = t('urgent_soon_help');
+        soon.row.insertBefore(icon('bi-fire', 'fg-danger'), soon.input.nextSibling);
+
+        function setSoon(on) {
             state.soon = on ? 7 : 0;
             state.priority = on ? 'hot' : '';
             state.status = on ? 'open' : state.status;
             priority.value = state.priority;
             status.value = state.status;
-            soon.classList.toggle('active', on);
-            soon.setAttribute('aria-pressed', on ? 'true' : 'false');
+            soon.input.checked = on;
+        }
+
+        soon.input.addEventListener('change', function () {
+            setSoon(soon.input.checked);
             load();
         });
-        bar.appendChild(soon);
 
-        var grow = el('div', 'pg-toolbar-grow');
-        bar.appendChild(grow);
+        function chosen(control) {
+            return control.options[control.selectedIndex] ? control.options[control.selectedIndex].text : '';
+        }
+
+        var madeByField = { label: t('task_made_by'), control: madeBy, off: true, tag: function () { return state.made_by ? chosen(madeBy) : ''; }, clear: function () { state.made_by = ''; madeBy.value = ''; } };
+
+        bar.appendChild(el('div', 'pg-toolbar-grow'));
 
         var agents = taskAgentsToggle(state.agent_channels === 'only', function (on) {
             state.agent_channels = on ? 'only' : '';
@@ -25153,32 +25556,28 @@
         });
         bar.appendChild(agents);
 
-        // Made by agents: all, without them, or them alone; hidden until
-        // tasks carry the mark (made_by_ready).
-        var madeBy = select([['', t('task_made_by_all')], ['people', t('task_made_by_people')], ['apps', t('task_made_by_apps')]], '');
-        madeBy.classList.add('w-auto', 'd-none');
-        madeBy.setAttribute('aria-label', t('task_made_by'));
-        madeBy.addEventListener('change', function () {
-            state.made_by = madeBy.value;
+        var filter = barFilter({
+            fields: [
+                { label: t('task_status_filter'), control: status, tag: function () { return (state.status !== 'open') ? chosen(status) : ''; }, clear: function () { state.status = 'open'; status.value = 'open'; } },
+                { label: t('department'), control: dept, tag: function () { return state.department_id ? t('department') + ': ' + chosen(dept) : ''; }, clear: function () { state.department_id = 0; dept.value = '0'; } },
+                { label: t('priority'), control: priority, tag: function () { return (state.priority && !(state.soon && state.priority === 'hot')) ? t('priority') + ': ' + chosen(priority) : ''; }, clear: function () { state.priority = ''; priority.value = ''; } },
+                madeByField,
+                { label: t('urgent_soon'), row: soon.row, tag: function () { return state.soon ? t('urgent_soon') : ''; }, clear: function () { setSoon(false); } }
+            ],
+            phone: [{ label: t('tasks_views'), node: views.node }, { node: agents }],
+            onChange: load
+        });
+        bar.appendChild(filter.slot);
+
+        var searchGroup = barSearch(t('search_tasks'), function (value) {
+            state.search = value;
             load();
         });
-        bar.appendChild(madeBy);
-
-        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
-        var searchIcon = el('span', 'form-adorn-text');
-        searchIcon.setAttribute('aria-hidden', 'true');
-        searchIcon.appendChild(icon('bi-search'));
-        searchGroup.appendChild(searchIcon);
-        var search = el('input', 'form-ghost');
-        search.type = 'search';
-        search.placeholder = t('search_tasks');
-        search.setAttribute('aria-label', search.placeholder);
-        search.addEventListener('input', debounce(function () {
-            state.search = search.value;
-            load();
-        }, 300));
-        searchGroup.appendChild(search);
         bar.appendChild(searchGroup);
+
+        root.appendChild(filter.tags);
+        root.appendChild(countLine);
+        root.appendChild(list);
 
         // Only the answer to the latest question is drawn: a filter changed
         // quickly would otherwise let an earlier, slower answer win.
@@ -25187,8 +25586,11 @@
         function load() {
             var mine = ++serial;
 
+            filter.refresh();
+
             if (state.scope === 'time') {
                 countLine.textContent = '';
+                views.count(null);
                 window.PGWsTaskTime.myTime(listBody, partHelpers());
                 return;
             }
@@ -25201,16 +25603,44 @@
                         task.agent_channel_name = names[task.channel_id] || '';
                     });
                     agents.shown(data.agent_channels || 0);
-                    madeBy.classList.toggle('d-none', !data.made_by_ready);
-                    taskRows(listBody, data.tasks, load);
+                    madeByField.off = !data.made_by_ready;
+                    filter.refresh();
+                    views.count(data.tasks.length);
                     countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
+
+                    if (data.tasks.length) {
+                        taskRows(listBody, data.tasks, load);
+                    } else {
+                        clear(listBody).appendChild(tasksEmpty());
+                    }
                 }
             }).catch(fail);
         }
 
-        load();
+        // Nothing in the list: narrowed by a filter or the search, it says
+        // so and offers Clear; else New task.
+        function tasksEmpty() {
+            if (filter.isSet() || state.search) {
+                return barEmptyFound(t('tasks_found_none'), function () {
+                    filter.reset();
+                    searchGroup.input.value = '';
+                    state.search = '';
+                    load();
+                    searchGroup.input.focus();
+                });
+            }
+
+            return emptyScreen({ tone: 'teal', icon: 'bi-check2-square', title: t('tasks_none_title'), text: t('no_tasks'), action: { label: t('new_task'), icon: 'bi-plus-lg', onClick: function () { taskDrawer.open(0, {}, load); } } });
+        }
 
         var query = params();
+
+        // Linked from the overview: the pressing ones straight away.
+        if (query.urgent) {
+            setSoon(true);
+        }
+
+        load();
 
         if (query.task) {
             taskDrawer.open(parseInt(query.task, 10), null, load);
@@ -25222,11 +25652,6 @@
         // drawer (includes/workspace/actions.php, ws_mcp_connect).
         if (CFG.mcp && CFG.mcp.flash) {
             toast(CFG.mcp.flash.text, (CFG.mcp.flash.kind === 'error') ? 'danger' : 'success');
-        }
-
-        // Linked from the overview: the pressing ones straight away.
-        if (query.urgent) {
-            soon.click();
         }
     }
 

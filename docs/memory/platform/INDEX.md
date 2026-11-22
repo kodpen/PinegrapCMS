@@ -63,6 +63,7 @@
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers [decision: decisions-made-product-25.md]
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the Artifact Canvas's save that used to write over it
 - feedback-answer.md: Satisfaction survey's message and answer page (FD4a): pg_feedback_message_send(), e-mail buttons, SMS kind, feedback.php, the page-side score write, 7-day change, review invitation, Don't ask me again
+- feedback-report.md: Survey Results (FD6): Communication › Surveys › Results, filters, Excel, Frequent words, the contact card's Scores, group rules Last survey score and Answered a survey
 - feedback-rules.md: Satisfaction surveys' pure rules (includes/fn/feedback.php): score bands per kind, NPS/CSAT/effort sums, 30-day fatigue, low score, owner chooser, signed answer token
 - feedback-send-pass.md: Survey pass of the general job (FD3): hours 09:00-20:00, checks before a send, one reminder, no answer after 30 days, consent of service and commercial surveys, periodic NPS
 - feedback-sends.md: Satisfaction surveys queued (FD3): the events that queue one, the row and its token hash, the cancels, booking.completed, workspace.mail.closed, ticket.checked_in in flows
@@ -164,6 +165,7 @@
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-files-scope.md: What the Word and Excel support does not do and why: edits stop at cells, rows, columns and paragraphs, .pptx and .xls only shown, no .doc/.ppt, no library; where the xlsx reader may go next [decision: decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: decisions-made-workspace-45.md]
+- office-new-files.md: New spreadsheet and New document (OE5, PR #11119): the File Manager's New menu and a channel's attach menu make an empty .xlsx or .docx with the product's writer and open it for editing
 - office-ods-preview.md: .ods as a workbook in Quick Look, the file window and a channel's Preview (PR #10519): read through the sheet reader, the preview's limits, the cell ceiling, the shared walk, view only
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only

@@ -18,6 +18,10 @@
 
 include('init.php');
 
+// ShipWorks sends each of these once: one sent as a list (?action[]=x)
+// counts as not given instead of reaching the casts and the password check.
+pg_request_single_values(array('username', 'password', 'action', 'start', 'order', 'tracking', 'shippingdate', 'carrier'));
+
 header("Content-Type: text/xml;charset=utf-8");
 header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
 
@@ -111,7 +115,7 @@ if ($user['id'] == '') {
 
 pg_login_throttle_pass($shipworks_username);
 
-switch ($_REQUEST['action']) {
+switch ($_REQUEST['action'] ?? '') {
     case 'getmodule':
         print
             '<?xml version="1.0" standalone="yes" ?>
@@ -150,7 +154,7 @@ switch ($_REQUEST['action']) {
         break;
 
     case 'getcount':
-        $start_timestamp = strtotime($_REQUEST['start'] . 'Z');
+        $start_timestamp = strtotime(($_REQUEST['start'] ?? '') . 'Z');
 
         $order_count = db_value(
             "SELECT COUNT(*)
@@ -171,7 +175,7 @@ switch ($_REQUEST['action']) {
         break;
 
     case 'getorders':
-        $start_timestamp = strtotime($_REQUEST['start'] . 'Z');
+        $start_timestamp = strtotime(($_REQUEST['start'] ?? '') . 'Z');
 
         // Get all orders after last modified start timestamp in order to output them.
         $orders = db_items(
@@ -590,7 +594,7 @@ switch ($_REQUEST['action']) {
             <ShipWorks moduleVersion="3.0.0" schemaVersion="1.0.0">
                 <Error>
                     <Code>3</Code>
-                    <Description>Action (' . h($_REQUEST['action']) . ') not supported.</Description>
+                    <Description>Action (' . h($_REQUEST['action'] ?? '') . ') not supported.</Description>
                 </Error>
             </ShipWorks>';
 

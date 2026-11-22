@@ -1572,6 +1572,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <li id="new_folder_item"><button type="button" class="menu-item" id="new_folder_button"><span class="bi bi-folder-plus me-3"></span><?php echo lang('New Folder'); ?></button></li>
                 <li id="upload_file_item"><button type="button" class="menu-item" id="upload_file_button"><span class="bi bi-upload me-3"></span><?php echo lang('Upload Files or Folders'); ?></button></li>
                 <li id="create_file_item"><button type="button" class="menu-item" id="create_file_button"><span class="bi bi-file-earmark-plus me-3"></span><?php echo lang('Create File'); ?></button></li>
+                <li id="new_spreadsheet_item"><button type="button" class="menu-item" id="new_spreadsheet_button" data-office-new="xlsx"><span class="bi bi-file-earmark-excel me-3"></span><?php echo lang('New spreadsheet'); ?></button></li>
+                <li id="new_document_item"><button type="button" class="menu-item" id="new_document_button" data-office-new="docx"><span class="bi bi-file-earmark-word me-3"></span><?php echo lang('New document'); ?></button></li>
                 <li id="new_image_item"><button type="button" class="menu-item" id="new_image_button"><?php echo pg_design_canvas_icon_one_colour('me-3') . lang('New image'); ?></button></li>
                 <li id="new_visual_page_item" class="d-none"><button type="button" class="menu-item" id="new_visual_page_button"><span class="bi bi-magic me-3"></span><?php echo lang('Add Page'); ?></button></li>
                 <li id="new_page_item" class="d-none"><a class="menu-item" id="new_page_button" href="add_page.php"><span class="bi bi-window-plus me-3"></span><?php echo lang('New Page'); ?></a></li>
@@ -4382,6 +4384,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('upload_file_item').classList.toggle('d-none', catalogArea);
         document.getElementById('create_file_item').classList.toggle('d-none', catalogArea || backupArea);
+        // A new workbook or document is a file made where a file is made.
+        officeNewItems().forEach(function (item) { item.classList.toggle('d-none', catalogArea || backupArea); });
         // A new image is a file in a folder: neither the backups nor the short
         // links have one to put it in.
         document.getElementById('new_image_item').classList.toggle('d-none', catalogArea || backupArea || insideShortLinks());
@@ -4404,6 +4408,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             document.getElementById('new_page_item').classList.add('d-none');
             document.getElementById('upload_file_item').classList.add('d-none');
             document.getElementById('create_file_item').classList.add('d-none');
+            officeNewItems().forEach(function (item) { item.classList.add('d-none'); });
         }
 
         if (catalogArea) { document.getElementById('new_page_item').classList.remove('d-none'); }
@@ -4430,6 +4435,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('new_folder_button').classList.toggle('disabled', !actions.folder);
         document.getElementById('create_file_button').classList.toggle('disabled', !actions.file);
+        officeNewItems().forEach(function (item) { item.firstChild.classList.toggle('disabled', !actions.file); });
         document.getElementById('new_image_button').classList.toggle('disabled', !actions.image);
 
         // Upload opens a window on this screen, so it is a real button and takes a real
@@ -11563,6 +11569,41 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         });
     }
 
+    // ── A workbook or document made from nothing ────────────────────────
+    //
+    // "New spreadsheet" and "New document" write an empty .xlsx or .docx
+    // (pg_office_new_write()) where a new file goes, and open it in the file
+    // window for editing at once; the name is changed there, beside the
+    // cells or the paragraph.
+    function officeNewItems() {
+        return [document.getElementById('new_spreadsheet_item'), document.getElementById('new_document_item')];
+    }
+
+    function createOfficeFile(kind) {
+
+        var folderId = createFileFolderId();
+
+        if ((!newActions().file) || (folderId <= 0)) { return; }
+
+        api({ type: 'explorer_create_office', folder_id: folderId, kind: kind }, function (response) {
+            if (response.status !== 'success') { toast(response.message || L.request_failed, false); return; }
+
+            if (state.recycle.available) {
+                pushUndo({ undo: { type: 'bin', items: [{ kind: 'file', id: response.file.id }] }, redo: null });
+            }
+
+            var made = { kind: 'file', id: response.file.id, name: response.file.name, can_edit: true };
+
+            reload(function () {
+                var item = findItem('file', made.id);
+
+                if (item) { setSelection([item], item); }
+
+                openFileEditor(item || made);
+            });
+        });
+    }
+
     // ── A picture drawn from nothing ────────────────────────────────────
     //
     // "New image" opens the picture editor on a blank canvas instead of on a
@@ -16269,6 +16310,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     });
     document.getElementById('new_folder_button').addEventListener('click', createFolder);
     document.getElementById('create_file_button').addEventListener('click', createFile);
+    officeNewItems().forEach(function (item) {
+        item.firstChild.addEventListener('click', function () { createOfficeFile(item.firstChild.getAttribute('data-office-new')); });
+    });
     document.getElementById('new_image_button').addEventListener('click', createBlankImage);
 
     // Add Page (visual): the design chooser, with the folder on screen as the

@@ -23,6 +23,11 @@ $user = validate_user();
 validate_area_access($user, 'user');
 validate_token_field();
 
+// The list's state and its selection are each one JSON text; one sent as a
+// list counts as not given, where the cast would log "Array to string
+// conversion".
+pg_request_single_values(array('list_params', 'selection'));
+
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_review_list.php');
 
 $review_params = json_decode((string) ($_POST['list_params'] ?? ''), true);

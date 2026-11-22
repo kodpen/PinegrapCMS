@@ -39,10 +39,10 @@ function api_app_value_box($id, $value, $label_id, $masked = false) {
 	$copy = api_settings_copy_button($id, $label_id, 'pg-button pg-button-quiet pg-button-sm');
 
 	if (!$masked) {
-		return '<div class="api-secret-box"><code id="' . $id . '">' . h($value) . '</code>' . $copy . '</div>';
+		return '<div class="pg-start-copy"><code id="' . $id . '">' . h($value) . '</code>' . $copy . '</div>';
 	}
 
-	return '<div class="api-secret-box"><code id="' . $id . '" hidden>' . h($value) . '</code><code aria-hidden="true" data-mask-of="' . $id . '">'
+	return '<div class="pg-start-copy"><code id="' . $id . '" hidden>' . h($value) . '</code><code aria-hidden="true" data-mask-of="' . $id . '">'
 		. str_repeat('&bull;', 24) . '</code>'
 		. '<button type="button" class="pg-icon-button pg-icon-button-sm api-reveal" data-reveal="' . $id . '" aria-pressed="false" aria-label="' . h(lang('Show')) . '"><i class="bi bi-eye" aria-hidden="true"></i></button>'
 		. $copy . '</div>';
@@ -543,7 +543,7 @@ function api_app_new_connect_html($made, $site_address, $guide, $others) {
 				</div>' : '') . '
 				' . $body
 				. (($other_rows !== '') ? '
-				<details class="api-new-advanced mt-5" id="n_other_guides">
+				<details class="pg-start-advanced mt-5" id="n_other_guides">
 					<summary class="small"><i class="bi bi-signpost-2 me-1" aria-hidden="true"></i><b>' . lang('Connecting another way?') . '</b> <span class="small fg-2">' . h(implode(', ', $other_names)) . '</span></summary>
 					<div class="pg-set-fold mt-3" data-pg-folds>' . $other_rows . '
 					</div>

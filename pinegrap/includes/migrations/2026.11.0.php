@@ -260,6 +260,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_stock_taken();             // 11.0.268
 	upgrade_2026_11_0_starter_twitter();         // 11.0.269
 	upgrade_2026_11_0_volunteer_shifts();        // 11.0.270
+	upgrade_2026_11_0_kvkk_switch();             // 11.0.271
+	upgrade_2026_11_0_order_cost_supplier();     // 11.0.272
 
 }
 
@@ -4138,6 +4140,44 @@ function upgrade_2026_11_0_starter_twitter() {
 		install_note('Starter content: the Twitter feeds the starter sites came with are replaced where they were never changed (the footer column shows social links, the two page sections are emptied), since Twitter no longer serves them. A region edited on the site stays.');
 
 	}
+
+}
+
+// An order line's cost may come from a supplier feed's buy price (2026.11.0,
+// 11.0.272; includes/erp/order_profit.php): erp_order_costs.source gains
+// 'supplier' for a line with no average cost, kept like an average. The
+// ENUM is widened only when the value is missing, so a second run rebuilds
+// nothing; a value added by another step is kept.
+function upgrade_2026_11_0_order_cost_supplier() {
+
+	$info = install_column_info('erp_order_costs', 'source');
+
+	if (!is_array($info)) {
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'erp_order_costs.source')));
+
+		return;
+	}
+
+	if (strpos((string) $info['Type'], "'supplier'") !== false) {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'erp_order_costs.source supplier')));
+
+		return;
+	}
+
+	preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $info['Type'], $matches);
+	$values = array();
+
+	foreach ($matches[1] as $value) {
+		$values[] = "'" . $value . "'";
+	}
+
+	$values[] = "'supplier'";
+
+	$default = ((string) $info['Default'] !== '') ? (string) $info['Default'] : 'rate';
+
+	install_modify_column('erp_order_costs', 'source', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	install_note('Order profit: a product with no average cost can take its supplier feed\'s buy price as an estimate.');
 
 }
 
@@ -8146,7 +8186,7 @@ function upgrade_2026_11_0_erp_order_profit() {
 		id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 		order_id    INT UNSIGNED NOT NULL DEFAULT 0,
 		kind        ENUM('product','payment','marketplace','shipping','other') NOT NULL DEFAULT 'other',
-		source      ENUM('invoice','average','bundle','gateway','marketplace','label','rate','estimate') NOT NULL DEFAULT 'rate',
+		source      ENUM('invoice','average','bundle','gateway','marketplace','label','rate','estimate','supplier') NOT NULL DEFAULT 'rate',
 		source_ref  VARCHAR(100) NOT NULL DEFAULT '',
 		amount      BIGINT NOT NULL DEFAULT 0,
 		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
@@ -9225,5 +9265,26 @@ function upgrade_2026_11_0_volunteer_shifts() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Contacts: the tables of volunteer programmes, volunteers, their documents, shifts and sign-ups were added; nothing changes until a programme is made.');
+
+}
+
+// 11.0.271 - The KVKK notice's own switch: the notice page
+// and the consent sentence were shown only while the checkout documents were
+// on; from now on the config_text row ecommerce_kvkk_enabled ('1' or '0')
+// decides (pg_legal_kvkk_enabled()). The row starts as the documents' switch
+// is at this moment, so no running site shows more or less than before. A
+// row already there is left alone, so a rerun never undoes a later choice.
+// No schema: config_text is 11.0.48's.
+function upgrade_2026_11_0_kvkk_switch() {
+
+	if (!install_table_exists('config_text') || !install_column_exists('config', 'ecommerce_legal_documents')) {
+		return;
+	}
+
+	$on = ((int) db_value("SELECT ecommerce_legal_documents FROM config LIMIT 1") === 1) ? '1' : '0';
+
+	db_q("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', ?)", array($on));
+
+	install_note('KVKK notice: the notice page and the consent sentence now have a switch of their own under Site Settings, Visitors and privacy, KVKK notice. It starts as the legal documents switch is now, so nothing changes until you change it.');
 
 }

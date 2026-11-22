@@ -1963,7 +1963,7 @@ function submit_order($type) {
                         // The boxes the visitor ticked, with their address
                         // and browser, for the documents a later completion
                         // keeps.
-                        'legal_acceptance' => pg_legal_documents_enabled()
+                        'legal_acceptance' => (pg_legal_documents_enabled() || pg_legal_kvkk_enabled())
                             ? pg_order_legal_acceptance_json(
                                 array_keys(array_filter(array(
                                     'preinfo'  => pg_legal_document_ticked($liveform->get_field_value('legal_preinfo')),
@@ -3547,6 +3547,7 @@ function submit_order($type) {
     // marketing cookies is tied to the order's contact (visitor journey).
     if ($order_number && ((int) $contact_id > 0)) {
         pg_lead_tie('order', (int) $contact_id, (int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+        pg_lead_became('order', (int) $contact_id, (int) ($_SESSION['ecommerce']['order_id'] ?? 0));
     }
 
     // Another request completed this order first (a second submit of the

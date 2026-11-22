@@ -12,6 +12,7 @@
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
 - application-review-my-reviews.md: "My reviews" (AR3b): opened by programme membership with no Forms right, the queue, the scoring screen, blind review, "I know this applicant", reminders 3 and 1 days before a round's end [decision: here]
 - application-review-programme.md: Application programme settings (AR2): the Forms screens, the period check in the submit path, the entry row with eligibility, the override, criteria templates
+- application-review-ranking.md: A programme's Entries tab (AR5): combined scores of the current round, the consensus flag and Settle, ranking per category, the shortlist cut, "Start round N"
 - application-review-reviewers.md: A programme's Reviewers tab (AR3a): panel users and outside jurors, category pools, Remove, "Give out entries" per category, conflicts listed
 - application-review-rules.md: Pure rules of application review: eligibility codes, weighted sums, leniency correction, spread flag, balanced assignment, shortlist tie rule
 - application-review-store.md: Application review desk tables (11.0.258, #10832): defaults, personal data erase and export of them, audit_log types application_program and application_entry
@@ -185,6 +186,7 @@
 - privacy-request-form.md: A person's own privacy request (P10, P10b, #10921): privacy_request.php, off for visitors by default, always from My Account; 48-hour proof link; 5 an address an hour; the switch
 - privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer [decision: here]
 - privacy-retention-rules.md: Privacy centre retention rules (P6-P9): rules and bounds, config_text settings, dry run and yes, the nightly pass through the erase entries, the skips, privacy_rule audit lines and their 3-year keep
+- privacy-rule-site-chats.md: The Privacy centre's "Site chats" rule (off, 60 days) that replaced Chat's unread Chat Retention Period; what it picks and deletes, why the update deletes nothing [decision: here]
 - privacy-rules-card.md: Privacy centre › Inventory's Retention rules card (KV3b): switch rows with periods, each form's own period, the interval, Dry run with its effect lines and sample, the yes; anchor privacy-rules
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())
 - qr-code-generator.md: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg), its limits, forbidden library paths, and why secret QRs are inline SVG only.
@@ -195,6 +197,7 @@
 - request-lists-json-bodies.md: JSON body keys read as one value (token, action, mode, ids, text) that hold a list or an object count as not given: image editor API, translations calls, Workspace canvas save, notes import
 - request-lists-record-forms.md: pg_request_refuse_lists(): nine record forms (ad, ad region, auto dialog, contact group, container, key code, login region, menu, product attribute) refuse a field posted as a list
 - request-lists-record-screens.md: Edit Page, Edit File, Edit Theme File and the Product Builder (add and edit) refuse a field posted as a list (name[]=x) before any write; pg_pb_list_fields() names the product form's own lists
+- request-lists-screen-parameters.md: One-value GET and POST parameters sent as a list (x[]=1) are dropped or read only as text on the screens a sandbox probe found; the tests that list them
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers
 - reset-link-revoked-on-change.md: A pending password reset or set password link (user.token) is cleared when the owner changes the password or the e-mail address on the site.
 - sdt-designer-js-text-rules.md: How visible text in style_designer.src.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.

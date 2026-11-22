@@ -226,7 +226,7 @@ if (!empty($_POST['quick_add'])) {
         $liveform->mark_error('quick_add_product_id', lang('Please select an item to add.'));
     }
     
-    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_POST['page_id']));
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . get_page_name($_POST['page_id'] ?? ''));
     exit();
 }
 
@@ -988,7 +988,7 @@ if ((ECOMMERCE_OFFLINE_PAYMENT == TRUE) && (isset($_SESSION['sessionusername']) 
 
 // If the visitor clicked the update button or hit enter.
 if ((isset($_POST['submit_update']) == true) || (isset($_POST['submit_checkout']) == false)) {
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_POST['page_id']));
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_POST['page_id'] ?? ''));
     exit;
 }
     
@@ -1099,7 +1099,7 @@ if (
     ($liveform->check_form_errors() == true)
     || ($liveform->check_form_notices() == true)
 ) {
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_POST['page_id']));
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($_POST['page_id'] ?? ''));
     exit;
 }
 

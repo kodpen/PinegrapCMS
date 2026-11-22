@@ -58,13 +58,12 @@ function test_privacy_retention_overview_values_today()
 	$rows = privacy_retention_overview_test_rows(privacy_retention_overview_test_facts());
 
 	pg_assert_same(lang(array('string' => 'Kept {var:1} year{suffix:1}', 'vars' => 2, 'suffix' => array('s'))), $rows['audit']['line'], 'the audit trail\'s years');
-	pg_assert_same(lang(array('string' => 'Kept {var:1} year{suffix:1}; the answer in force always', 'vars' => 3, 'suffix' => array('s'))), $rows['consent']['line'], 'the consent history');
+	pg_assert_same(lang(array('string' => 'Kept {var:1} year{suffix:1}, the answer in force always: a fixed period, as proof of consent', 'vars' => 3, 'suffix' => array('s'))), $rows['consent']['line'], 'the consent history');
 	pg_assert_same(lang(array('string' => 'Kept {var:1} day{suffix:1}, at most {var:2} rows', 'vars' => array(14, pg_format_number(20000, 0)), 'suffix' => array('s'))), $rows['waf']['line'], 'the firewall log, with its size limit');
 	pg_assert_same(lang(array('string' => 'Kept {var:1} day{suffix:1}', 'vars' => 30, 'suffix' => array('s'))), $rows['api']['line'], 'the API log');
-	pg_assert_same(lang(array('string' => 'Kept {var:1} day{suffix:1} after their last change', 'vars' => 400, 'suffix' => array('s'))), $rows['bookings']['line'], 'cancelled bookings');
-	pg_assert_same(lang('Kept until deleted'), $rows['chats']['line'], 'site chats');
+	pg_assert_same(lang(array('string' => 'Kept {var:1} day{suffix:1} after their last change: a fixed period, the agenda keeps the rest', 'vars' => 400, 'suffix' => array('s'))), $rows['bookings']['line'], 'cancelled bookings');
 
-	foreach (array('contacts', 'forms', 'carts', 'orders', 'requests') as $key) {
+	foreach (array('chats', 'contacts', 'forms', 'carts', 'orders', 'requests') as $key) {
 		pg_assert_same(lang('Off: kept until deleted'), $rows[$key]['line'], $key . ': every rule is off by default');
 	}
 
@@ -93,11 +92,11 @@ function test_privacy_retention_overview_change_opens_its_card()
 	pg_assert_same(array('firewall', 'pgset-waf-logs'), array($rows['waf']['category'], $rows['waf']['card']), 'the firewall\'s Logs row');
 	pg_assert_same(array('api', 'pgset-api-storage'), array($rows['api']['category'], $rows['api']['card']), 'Uploads & Logs');
 
-	foreach (array('contacts', 'forms', 'carts', 'orders', 'requests') as $key) {
+	foreach (array('chats', 'contacts', 'forms', 'carts', 'orders', 'requests') as $key) {
 		pg_assert_same('privacy_centre.php', $rows[$key]['url'], $key . ': the Privacy centre\'s rules');
 	}
 
-	foreach (array('consent', 'bookings', 'chats') as $key) {
+	foreach (array('consent', 'bookings') as $key) {
 		pg_assert_same(array('', '', ''), array($rows[$key]['category'], $rows[$key]['card'], $rows[$key]['url']), $key . ': fixed, no Change');
 	}
 }
@@ -113,4 +112,16 @@ function test_privacy_retention_overview_leaves_out_what_the_site_lacks()
 	pg_assert_false(isset($rows['audit']), 'no audit row before its column exists');
 	pg_assert_false(isset($rows['bookings']), 'no bookings row without bookings');
 	pg_assert_true(isset($rows['consent']), 'the rest stays');
+}
+
+// Site chats are a rule of the Privacy centre: off until switched on, then
+// their days.
+function test_privacy_retention_overview_site_chats_and_fixed_rows()
+{
+	$facts = privacy_retention_overview_test_facts();
+	$facts['rules']['chats'] = array('on' => true, 'period' => 60, 'approved_at' => 1700000000, 'approved_by' => 1);
+	$rows = privacy_retention_overview_test_rows($facts);
+
+	pg_assert_same(lang(array('string' => 'Kept {var:1} day{suffix:1}', 'vars' => 60, 'suffix' => array('s'))), $rows['chats']['line'], 'site chats kept their days');
+	pg_assert_same(lang('Site chats'), $rows['chats']['name'], 'named as before');
 }

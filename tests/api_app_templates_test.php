@@ -235,7 +235,7 @@ function test_api_app_new_view_draws_the_cards()
 	pg_assert_contains('id="n_start_signin" data-kind="oauth" data-existing="7"', $html, 'the sign-in card opens the application there is');
 	pg_assert_contains('Set up already', $html);
 	pg_assert_false(strpos($html, 'btn btn-') !== false, 'no old button');
-	pg_assert_contains('<details class="api-new-advanced"', $html, 'Advanced starts closed');
+	pg_assert_contains('<details class="pg-start-advanced"', $html, 'Advanced starts closed');
 }
 
 function test_api_app_templates_agent_card()

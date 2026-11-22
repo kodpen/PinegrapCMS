@@ -194,6 +194,7 @@ function get_help_url($properties = array())
         'view_visitor_reports' => 'visitors#visitor-reports',
         'view_visitor_report'  => 'visitors#create-edit-visitor-report',
         'view_visitor'         => 'visitors#visit-details',
+        'lead_sources'         => 'visitors#lead-sources',
         'search_console'       => 'visitors#google-search-console',
         'visitor_search'       => 'visitors#site-search',
         'visitor_vitals'       => 'visitors#page-speed',
@@ -268,6 +269,7 @@ function get_help_url($properties = array())
         'messages_sends'                 => 'site-settings#mail-queue',
         'messages_surveys'               => 'campaigns',
         'edit_feedback_survey'           => 'campaigns',
+        'messages_survey_results'        => 'campaigns',
         'messages_channels'              => 'site-settings',
 
         // Commerce

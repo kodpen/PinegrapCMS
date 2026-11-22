@@ -459,6 +459,9 @@ function pg_look_examples_patterns($prefix = 'light')
             . '</div><p class="pg-text-meta">' . h(lang('From Site Settings › Assistants and agents › Claude: steps done on another site are numbered steps in their own drawer, opened by one button, never paragraphs in the form.')) . '</p>',
     );
 
+    $patterns[] = pg_look_examples_form_drawer_pattern($p);
+    // The Workspace's screens: the bar with "Filter" and the empty screen.
+    $patterns = array_merge($patterns, pg_look_examples_ws_screen_patterns($p));
     $patterns[] = pg_look_examples_timeline_pattern();
     $patterns[] = pg_look_examples_ws_list_row_pattern($p);
     $patterns = array_merge($patterns, pg_look_examples_record_patterns($p));
@@ -471,6 +474,98 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns = array_merge($patterns, pg_look_examples_mail_patterns($p));
 
     return $patterns;
+}
+
+/**
+ * The form drawer as Application Access' application drawer
+ * (includes/api/app_drawer_view.php, #api_drawer) puts it together: the head
+ * with the thing's tile, kind and state pill; the tabs as the segmented
+ * control; the first tab's groups under their labels, what few people change
+ * folded as "Advanced" (pg_settings_fold_row(), closed); the danger group
+ * last; the foot with Cancel and the one filled Save. Under it the in-place
+ * confirm the danger button opens. Drawn in the standing frame at the
+ * drawer's width, without the dialog.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array array('id', 'title', 'classes', 'html')
+ */
+function pg_look_examples_form_drawer_pattern($p)
+{
+    $tab = function ($label, $selected, $count = '') use ($p) {
+        return '<button type="button" class="pg-seg-item' . ($selected ? ' active' : '') . '" role="tab" aria-selected="' . ($selected ? 'true' : 'false') . '"'
+            . ($selected ? ' id="' . $p . '_look_form_tab" aria-controls="' . $p . '_look_form_pane"' : ' tabindex="-1"') . '>'
+            . h($label) . (($count !== '') ? ' <span class="pg-seg-count">' . h($count) . '</span>' : '') . '</button>';
+    };
+
+    $delete_text = '<div class="flex-grow-1 min-width-0"><div class="pg-list-row-title">' . h(lang('Delete the application')) . '</div>'
+        . '<div class="pg-text-meta">' . h(lang('Any integration using this key stops working immediately. This cannot be undone.')) . '</div></div>';
+
+    $advanced = '<div class="form-field"><label class="form-label pg-field-label" for="' . $p . '_look_form_rate">' . h(lang('Requests per minute')) . '</label>'
+        . '<input type="number" class="form-control form-control-sm" id="' . $p . '_look_form_rate" min="1" max="6000">'
+        . '<div class="form-text">' . h(lang('When an application asks for more than this in one minute, the rest of that minute is refused and it is told how long to wait.')) . '</div></div>';
+
+    $drawer = '<div class="pg-card overflow-hidden d-flex flex-column" style="max-width:760px">'
+        . '<div class="drawer-header p-5 pb-1 d-block"><div class="d-flex align-items-start gap-3">'
+        . '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><i class="bi bi-key"></i></span>'
+        . '<div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0">Trendyol sync</h5>'
+        . '<p class="small fg-2 mb-0 mt-1">' . h(lang('Integration')) . ' &middot; ' . h(lang('key and secret')) . ' &middot; ' . h(lang('Acts as:')) . ' <b>' . h(lang('the application itself')) . '</b></p></div>'
+        . '<span class="pg-pill pg-tone-teal">' . h(lang('Active')) . '</span>'
+        . '<button type="button" class="btn-close" aria-label="' . h(lang('Close')) . '"></button></div></div>'
+        . '<div class="px-5 pt-3"><div class="pg-seg pg-list-seg" role="tablist">'
+        . $tab(lang('Overview'), true) . $tab(lang('Connect'), false) . $tab(lang('Permissions'), false, '12') . $tab(lang('Events'), false) . $tab(lang('Logs'), false)
+        . '</div></div>'
+        . '<div class="drawer-body p-5" role="tabpanel" id="' . $p . '_look_form_pane" aria-labelledby="' . $p . '_look_form_tab">'
+        . '<div class="pg-text-meta mb-2">' . h(lang('Details')) . '</div>'
+        . '<div class="row g-5 mb-5">'
+        . '<div class="col-12 sm:col-6 form-field"><label class="form-label pg-field-label" for="' . $p . '_look_form_name">' . h(lang('Application name')) . '</label>'
+        . '<input type="text" class="form-control form-control-sm" id="' . $p . '_look_form_name" value="Trendyol sync"></div>'
+        . '<div class="col-12 sm:col-6 form-field"><label class="form-label pg-field-label" for="' . $p . '_look_form_description">' . h(lang('Description')) . ' <span class="fg-2 fw-normal">' . h(lang('optional')) . '</span></label>'
+        . '<input type="text" class="form-control form-control-sm" id="' . $p . '_look_form_description"></div>'
+        . '</div>'
+        . '<div class="pg-card-inner mb-5"><div class="pg-card-inner-row"><div class="flex-grow-1 min-width-0">'
+        . '<label class="pg-list-row-title d-block" for="' . $p . '_look_form_status">' . h(lang('Active')) . '</label>'
+        . '<div class="pg-text-meta">' . h(lang('Turning it off refuses the key at once; the settings stay.')) . '</div></div>'
+        . '<input type="checkbox" class="pg-switch" id="' . $p . '_look_form_status" checked></div></div>'
+        . '<div class="pg-text-meta mb-2">' . h(lang('Summary')) . '</div>'
+        . '<div class="pg-card-inner mb-5"><div class="pg-card-inner-row">'
+        . '<span class="pg-icon-tile pg-tone-blue" aria-hidden="true"><i class="bi bi-shield-check"></i></span>'
+        . '<div class="flex-grow-1 min-width-0"><div class="pg-list-row-title">' . h(lang('Permissions')) . '</div>'
+        . '<div class="pg-text-meta">' . h(lang(array('string' => '{var:1} of {var:2} chosen', 'vars' => array(12, 31)))) . '</div></div>'
+        . '<button type="button" class="pg-button pg-button-ghost pg-button-sm">' . h(lang('Go to permissions')) . '<i class="bi bi-chevron-right" aria-hidden="true"></i></button></div>'
+        . pg_settings_fold_row(array(
+            'key'  => $p . '-look-form-advanced',
+            'name' => lang('Advanced'),
+            'icon' => 'bi-sliders',
+            'tone' => 'pg-tone-gray',
+            'line' => lang('IP list, end date and rate limit'),
+            'pill' => null,
+            'html' => $advanced,
+        ), false)
+        . '</div>'
+        . '<div class="pg-text-meta fg-danger mb-2">' . h(lang('Danger')) . '</div>'
+        . '<div class="pg-card-inner"><div class="pg-card-inner-row">' . $delete_text
+        . '<button type="button" class="pg-button pg-button-danger pg-button-sm"><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete')) . '</button></div></div>'
+        . '</div>'
+        . '<div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">'
+        . '<a class="pg-text-meta fg-2 text-decoration-none" href="connections.php"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('For the services the site reaches: Connections')) . '</a>'
+        . '<span class="flex-grow-1"></span>'
+        . '<button type="button" class="pg-button pg-button-quiet">' . h(lang('Cancel')) . '</button>'
+        . '<button type="button" class="pg-button pg-button-fill">' . h(lang('Save')) . '</button></div>'
+        . '</div>';
+
+    // The danger row once Delete is pressed: the button gives way to Cancel
+    // and the danger button that does it, in the same row.
+    $confirm = '<div class="pg-card-inner" style="max-width:760px"><div class="pg-card-inner-row">' . $delete_text
+        . '<span class="text-nowrap"><button type="button" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Cancel')) . '</button>'
+        . '<button type="button" class="pg-button pg-button-danger pg-button-sm ms-2">' . h(lang('Yes, delete')) . '</button></span></div></div>';
+
+    return array(
+        'id'      => 'pattern-form',
+        'title'   => lang('Form drawer'),
+        'classes' => array('drawer-header', '.pg-seg', '.pg-list-seg', '.pg-seg-item', '.pg-seg-count', 'role="tablist"', 'role="tab"', 'aria-selected="true"', 'role="tabpanel"', '.pg-pill', '.pg-text-meta', '.pg-field-label', '.pg-card-inner', '.pg-card-inner-row', '.pg-switch', '.pg-set-fold-item', '.pg-set-fold-head', '.pg-set-fold-body', '.pg-button-danger', 'drawer-footer', '.pg-button-quiet', '.pg-button-fill'),
+        'html'    => '<div class="pg-look-stack">' . $drawer . $confirm . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From Application Access\' application drawer: tabs as the segmented control, the first tab\'s groups under their labels, Advanced folded, the danger group last; Cancel and the one filled Save in the foot. Delete asks in its own row. A confirm that names what goes with it is "Confirm with its effects".')) . '</p>',
+    );
 }
 
 /**
@@ -1010,7 +1105,7 @@ function pg_look_examples_not_done()
                 lang('Dialogs and the settings modal'),
                 lang('Dashboard cards'),
                 lang('Report screens'),
-                lang('Workspace: channel screen and screen bars'),
+                lang('Workspace: channel screen'),
                 lang('Phone widths'),
             ),
         ),
@@ -1051,4 +1146,88 @@ function pg_look_examples_pane($theme)
     }
 
     return $out . '</div>';
+}
+
+/**
+ * A Workspace screen's bar and its empty screen (boards S1 and S3 of
+ * plans/workspace-interface; barViews(), barFilter(), barSearch() and
+ * emptyScreen() in workspace.js): My Tasks' one line with "Filter" open,
+ * the tags of what is set under it; the empty screen with and without its
+ * main action.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array list of array('id', 'title', 'classes', 'html')
+ */
+function pg_look_examples_ws_screen_patterns($p)
+{
+    $views = array(lang('Mine'), lang('Given by me'), lang('My departments'), lang('Everyone'), lang('My time'));
+    $seg = '';
+    $options = '';
+
+    foreach ($views as $index => $view) {
+        $seg .= '<button type="button" class="pg-seg-item" aria-pressed="' . ($index ? 'false' : 'true') . '">' . h($view)
+            . ($index ? '' : '<em class="pg-seg-count">6</em>') . '</button>';
+        $options .= '<option' . ($index ? '' : ' selected') . '>' . h($view) . '</option>';
+    }
+
+    $select = function ($id, $label, $choices) {
+        $out = '<div class="ws-plan-field"><label class="pg-field-label" for="' . $id . '">' . h($label) . '</label><select class="pg-input pg-input-sm" id="' . $id . '">';
+
+        foreach ($choices as $choice) {
+            $out .= '<option>' . h($choice) . '</option>';
+        }
+
+        return $out . '</select></div>';
+    };
+    $tag = function ($text) {
+        return '<span class="ws-bar-tag">' . h($text) . '<button type="button" class="ws-bar-tag-remove" title="' . h(lang(array('string' => 'Remove the filter: {var:1}', 'vars' => array($text)))) . '" aria-label="' . h(lang(array('string' => 'Remove the filter: {var:1}', 'vars' => array($text)))) . '"><i class="bi bi-x" aria-hidden="true"></i></button></span>';
+    };
+
+    $bar = '<div class="ws-bar-frame"><nav class="pg-toolbar ws-bar">'
+        . '<button type="button" class="pg-button pg-button-fill"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New task')) . '</button>'
+        . '<div class="ws-bar-views"><div class="pg-seg ws-bar-views-seg" role="group" aria-label="' . h(lang('Which tasks')) . '">' . $seg . '</div>'
+        . '<select class="pg-input pg-input-sm ws-bar-views-select" aria-label="' . h(lang('Which tasks')) . '">' . $options . '</select></div>'
+        . '<div class="pg-toolbar-grow"></div>'
+        . '<span class="ws-bar-filter"><button type="button" class="pg-button pg-button-quiet ws-bar-filter-button" aria-haspopup="dialog" aria-expanded="true" aria-label="' . h(lang(array('string' => 'Filter, {var:1} set', 'vars' => array(2)))) . '">'
+        . '<i class="bi bi-funnel" aria-hidden="true"></i><span class="ws-bar-filter-label">' . h(lang('Filter')) . '</span><span class="ws-bar-count" aria-hidden="true">2</span></button></span>'
+        . '<label class="pg-input pg-input-sm ws-bar-search"><i class="bi bi-search" aria-hidden="true"></i><input type="search" placeholder="' . h(lang('Search tasks')) . '" aria-label="' . h(lang('Search tasks')) . '"></label>'
+        . '</nav></div>'
+        . '<div class="ws-bar-tags">' . $tag(lang('Finished tasks')) . $tag(lang('Pressing, coming up'))
+        . '<button type="button" class="pg-button pg-button-ghost pg-button-sm">' . h(lang('Clear')) . '</button></div>';
+
+    $box = '<div class="pg-card ws-bar-box" role="dialog" aria-label="' . h(lang('Filter')) . '"><div class="ws-bar-box-body">'
+        . $select($p . '-ws-bar-status', lang('Task status'), array(lang('Finished tasks'), lang('Open tasks'), lang('All tasks')))
+        . $select($p . '-ws-bar-dept', lang('Department'), array(lang('All departments')))
+        . $select($p . '-ws-bar-priority', lang('Task priority'), array(lang('All priorities')))
+        . $select($p . '-ws-bar-made', lang('Made by agents'), array(lang('Made by anyone')))
+        . '<label class="ws-plan-switch"><input type="checkbox" class="pg-switch" checked><i class="bi bi-fire fg-danger" aria-hidden="true"></i>' . h(lang('Pressing, coming up')) . '</label>'
+        . '</div><div class="ws-bar-box-foot"><button type="button" class="pg-button pg-button-ghost pg-button-sm">' . h(lang('Clear')) . '</button>'
+        . '<button type="button" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Close')) . '</button></div></div>';
+
+    $empty = function ($tone, $icon, $title, $text, $action) {
+        return '<div class="pg-card"><div class="ws-empty-screen"><span class="pg-icon-tile ws-empty-screen-tile pg-tone-' . $tone . '" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
+            . '<div class="pg-title-section ws-empty-screen-title">' . h($title) . '</div><p class="pg-text-2 ws-empty-screen-text">' . h($text) . '</p>'
+            . (($action !== '') ? '<button type="button" class="pg-button pg-button-quiet pg-button-sm">' . $action . '</button>' : '')
+            . '</div></div>';
+    };
+
+    return array(
+        array(
+            'id'      => 'pattern-ws-screen-bar',
+            'title'   => lang('Screen bar with filters'),
+            'classes' => array('.ws-bar-frame', '.pg-toolbar', '.ws-bar', '.pg-button-fill', '.ws-bar-views', '.pg-seg', '.ws-bar-views-seg', '.pg-seg-count', '.ws-bar-views-select', '.pg-toolbar-grow', '.ws-bar-filter', '.ws-bar-filter-label', '.ws-bar-count', '.ws-bar-search', '.ws-bar-tags', '.ws-bar-tag', '.ws-bar-tag-remove', '.ws-bar-box', '.ws-bar-box-body', '.ws-bar-box-foot', '.pg-switch'),
+            'html'    => '<div class="pg-look-stack">' . $bar . $box
+                . '<p class="pg-text-meta">' . h(lang('From the Workspace\'s screens: one line, never a second row. The main action and the views, then the switches, "Filter" and the search; more than three filters go behind "Filter", what is set is a tag under the bar. Below 1100 px the views are one select; on a phone the bar keeps the main action and the search.')) . '</p></div>',
+        ),
+        array(
+            'id'      => 'pattern-ws-empty-screen',
+            'title'   => lang('Empty screen'),
+            'classes' => array('.ws-empty-screen', '.pg-icon-tile', '.ws-empty-screen-tile', '.pg-title-section', '.ws-empty-screen-text'),
+            'html'    => '<div class="pg-look-stack">'
+                . $empty('blue', 'bi-clock-history', lang('No decisions yet'), lang('A message marked as a decision in a channel shows here.'), '')
+                . $empty('teal', 'bi-check2-square', lang('No tasks'), lang('All clear - no tasks here.'), '<i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New task')))
+                . $empty('gray', 'bi-funnel', lang('Nothing found'), lang('No task matches the filters or the search.'), '<i class="bi bi-x-lg" aria-hidden="true"></i>' . h(lang('Clear')))
+                . '<p class="pg-text-meta">' . h(lang('In the content\'s card: a tile in the screen\'s tone, a title that says what is missing, the sentence, the main action; a list its filters narrowed to nothing offers Clear.')) . '</p></div>',
+        ),
+    );
 }
