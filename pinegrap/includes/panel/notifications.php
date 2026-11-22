@@ -152,6 +152,7 @@ function pg_panel_get_notifications($request, $action)
     // (edit_notifications, mark_read / mark_all_read).
     $notifications = db_items("SELECT * FROM notifications ORDER BY timestamp DESC");
     $now = time();
+    $date_format = defined('DATE_FORMAT') ? (string) DATE_FORMAT : 'month_day';
 
     foreach ($notifications as $notification) {
 
@@ -175,7 +176,12 @@ function pg_panel_get_notifications($request, $action)
             'readed' => (pg_notification_is_read($notification, $user['id']) ? 1 : 0),
             'url' => $display['url'],
             'action' => $display['action'],
-            'time' => get_relative_time(array('timestamp' => $notification['timestamp'])),
+            // The short time the row's head shows ("5 min", "Yesterday",
+            // "9 Nov"), the full date and time for its title attribute and
+            // the moment for its datetime attribute.
+            'time' => pg_notification_short_time((int) $notification['timestamp'], $now, '', $date_format),
+            'time_title' => get_absolute_time(array('timestamp' => (int) $notification['timestamp'], 'format' => 'plain_text', 'size' => 'short', 'year' => true)),
+            'datetime' => gmdate('Y-m-d\TH:i:s\Z', (int) $notification['timestamp']),
             // What the workspace told this person, or the rest of the site.
             'group' => ((($notification['action'] ?? '') === 'workspace') ? 'workspace' : 'site'),
             'glyph' => $display['glyph'],

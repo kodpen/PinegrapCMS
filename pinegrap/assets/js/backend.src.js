@@ -4438,7 +4438,8 @@ function pg_bell_row(row, draw) {
         + '<div class="pg-list-row-head">'
         + title
         + pg_bell_quick(id, unread, title_id)
-        + '<span class="pg-list-row-time pg-bell-time">' + String(row.time || '') + '</span>'
+        + pg_bell_time(row, 'pg-list-row-time pg-bell-time')
+        + '<span class="pg-unread-dot pg-bell-dot pg-bell-dot-head"></span>'
         + '</div>'
         + ((text !== '') ? '<p class="pg-list-row-text pg-bell-excerpt">' + text + '</p>' : '')
         + ((fold_count > 1) ? pg_bell_fold_button(id, fold_count) : '')
@@ -4449,6 +4450,19 @@ function pg_bell_row(row, draw) {
         + '<div class="pg-list-row-side"><span class="pg-unread-dot pg-bell-dot"></span></div>'
         + '</div>'
         + '</li>';
+}
+
+// A row's time in its short form ("5 min", "3 h", "Yesterday", "9 Nov",
+// pg_notification_short_time()); the full date and time is its title, the
+// moment its datetime. All three are escaped here.
+function pg_bell_time(row, classes) {
+    var datetime = String(row.datetime || '');
+    var full = String(row.time_title || '');
+
+    return '<time' + ((classes !== '') ? ' class="' + classes + '"' : '')
+        + ((datetime !== '') ? ' datetime="' + h(datetime) + '"' : '')
+        + ((full !== '') ? ' title="' + h(full) + '"' : '')
+        + '>' + h(String(row.time || '')) + '</time>';
 }
 
 // A row's quick actions, shown in the time's place on hover or focus: the
@@ -4489,7 +4503,7 @@ function pg_bell_run(row, attributes, type, job, url, text, unread) {
         + ' class="software_notification pg-bell-row pg-bell-run list-group-item ' + (unread ? 'new' : 'viewed') + ' ' + type
         + (!pgBellOpenFolds[head] ? ' pg-bell-shut' : '') + '">'
         + '<div class="notification-card pg-bell-card pg-gather-line">'
-        + '<b class="pg-bell-time">' + String(row.time || '') + '</b>'
+        + '<b class="pg-bell-time">' + pg_bell_time(row, '') + '</b>'
         + says
         + '<span class="pg-gather-line-end">'
         + pg_bell_quick(id, unread, title_id)

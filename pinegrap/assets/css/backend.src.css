@@ -4848,11 +4848,17 @@ a.link-top-row {
 #notifications .pg-bell-list {
   padding-bottom: 0.25rem;
 }
+/* A day heading stays at the top of the list while its rows scroll under
+   it; the open row menus (z-index 5) still cover it. */
 #notifications .pg-bell-day {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 20px 6px;
+  background: var(--pg-bg-body);
   color: var(--pg-fg-3);
   font-size: var(--pg-text-meta);
   font-weight: var(--pg-weight-strong);
@@ -4888,7 +4894,20 @@ a.link-top-row {
   color: var(--pg-fg-body);
 }
 #notifications .pg-bell-card.pg-list-row {
-  margin: 0 8px;
+  margin: 0 8px 2px;
+}
+/* An unread row carries a light tint of the accent; a read row has none and
+   the recipe dims its title and tile (.is-read). */
+#notifications .pg-bell-row.new > .pg-bell-card.pg-list-row {
+  background: color-mix(in srgb, var(--pg-accent) 6.5%, transparent);
+}
+#notifications .pg-bell-row.new > .pg-bell-card.pg-list-row:is(:hover, :focus-within) {
+  background: color-mix(in srgb, var(--pg-accent) 11%, transparent);
+}
+/* The head's own dot is the phone's (after the time); the desktop keeps the
+   dot in the side column. */
+#notifications .pg-bell-dot-head {
+  display: none;
 }
 /* The title is a button that opens the row; it keeps the recipe's type
    (the weight comes from .pg-list-row-title). */
@@ -4934,9 +4953,9 @@ a.link-top-row {
 #notifications .pg-bell-row.viewed .pg-bell-dot {
   visibility: hidden;
 }
-/* Without hover (a phone) the menu button stays in sight beside the time,
-   or the row's menu could not be reached; "Mark as read" is in that menu,
-   so the title keeps its room. */
+/* Without hover (a phone) the head reads title, time, dot, then the menu
+   button, which stays in sight at 32 px, or the row's menu could not be
+   reached; "Mark as read" is in that menu, so the title keeps its room. */
 @media (hover: none) {
   #notifications .pg-bell-quick {
     display: flex;
@@ -4946,6 +4965,31 @@ a.link-top-row {
   }
   #notifications .pg-list-row .pg-bell-quick ~ .pg-bell-time {
     display: inline;
+  }
+  #notifications .pg-bell-card.pg-list-row .pg-list-row-head {
+    align-items: center;
+  }
+  #notifications .pg-bell-card.pg-list-row .pg-bell-time {
+    order: 1;
+  }
+  #notifications .pg-bell-card.pg-list-row .pg-bell-dot-head {
+    display: inline-block;
+    flex: none;
+    order: 2;
+  }
+  #notifications .pg-bell-row.viewed .pg-bell-dot-head {
+    display: none;
+  }
+  #notifications .pg-bell-card.pg-list-row .pg-bell-quick {
+    order: 3;
+    margin: -8px -8px -8px -4px;
+  }
+  #notifications .pg-bell-card.pg-list-row .pg-bell-menu-toggle {
+    width: 32px;
+    height: 32px;
+  }
+  #notifications .pg-bell-card.pg-list-row > .pg-list-row-side {
+    display: none;
   }
 }
 
