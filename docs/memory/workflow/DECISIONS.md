@@ -1257,13 +1257,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test
 - release/released-vs-open-version.md: Released versions are closed, the unreleased one open: where the status is, how the upgrade loop compares, no new number while one is open, schema the open version gave up is taken out
 - ui/admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
+- ui/advanced-filters-panel.md: The Advanced Filters panel's parts (OL2b): 48 px head with the count pill and Close, a body that alone scrolls with a 6 px bar, a foot with Clear and Update, 300 px right column from 1280 px
 - ui/ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
 - ui/area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab (owner 2026-11-19, poll 153): the shared class .pg-area-tabs, the screens that have it, the strips that are not area strips
 - ui/back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
 - ui/bell-actions.md: A bell row's in-place action (BP4): Approve, Try again, Mark as done, offered only when the reader may run it (ws_bell_act()); after success the row is read and the list redrawn
 - ui/bell-filters.md: The bell's filters (BR1): the selector All / Unread / Asked of me, module chips as toggles on one line, the search and its marks, the kept choice and the old one read once, Delete All's rule
 - ui/bell-read-rule.md: When a bell row is read: not on opening the bell; its button, title or Mark as read reads it, a fold head its runs; Mark all as read reads only rows the caller sees
-- ui/bell-titles.md: A bell row's short title says what happened and with what ("New order #SP-1044"), the brief text under it; the push banner keeps the sentence (#8897)
+- ui/bell-titles.md: A bell row's short title says what happened and with what ("New order #SP-1044"), the brief text under it; a Workspace title's name and verb; the push banner keeps the sentence (#8897)
 - ui/brand-logo.md: The Pinegrap logo (the squirrel's space window, the single-line wordmark): its files, which shape goes where, the panel's moving loop, the still frames, private label
 - ui/connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection
 - ui/connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button
@@ -1344,7 +1345,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/messages-area-surveys-tab.md: Communication › Surveys (FD2): the satisfaction survey list, its gate, Add survey's starting points drawer, the row's Send me a test, Delete or Archive
 - ui/messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d)
 - ui/notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
-- ui/notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
+- ui/notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded and drawn as gathered lines, pgBellOpen() for the old inbox address, the Workspace count
 - ui/page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - ui/panel-top-bar-phone.md: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark or page heading), below 390px no logo, why, the test that keeps it

@@ -37,9 +37,6 @@
 - automation-platforms-steps-3.md: Plan automation-platforms, AX1 to AX4, the apps that wait for the release of 2026.11.0: the n8n node, the Zapier, Make and Pabbly Connect apps, what each needs of the owner, how each is built
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
-- bell-redraw-fixes.md: Plan bell-redraw: what the architect's look found in BR1 as landed and in BR2 (head with nothing unread, More actions hidden, 16 px titles, one bold sentence, thick scrollbar); BR3 takes them first
-- bell-redraw-steps.md: Plan bell-redraw, steps BR1 to BR3 with size, order and checks: the head, selector, chips and search; the rows and short times; the states, the foot and the close-out
-- bell-redraw.md: Plan (owner 2026-11-22): the bell's drawer redrawn: a head of icon buttons, one selector, chips on one line, search in the head, rows that fit a phone, drawn states; BR1 to BR3
 - bookings-settings-tidy-screens.md: Plan bookings-settings-tidy, its screen: the Bookings pane as folded rows, services and staff as list rows with their drawers, the Messages row, the words and what must be true
 - bookings-settings-tidy-steps.md: Plan bookings-settings-tidy, steps BT1 to BT4: folded rows and services in drawers, staff in drawers, the rules and the Messages row, close-out
 - bookings-settings-tidy.md: Plan (owner 2026-11-21): Site Settings › Bookings as folded rows, services and staff as list rows each edited in a drawer, one "Messages" row saying which booking mails and texts go

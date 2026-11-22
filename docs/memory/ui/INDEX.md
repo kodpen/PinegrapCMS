@@ -8,6 +8,7 @@
 - add-edit-forms-kept-apart.md: Create and edit screen pairs left without a shared includes/forms/ file on purpose (offer, product, system style, ERP documents, low-overlap pairs) and why each was left
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
 - admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper. [decision: decisions-made-product-12.md, decisions-made-product-14.md]
+- advanced-filters-panel.md: The Advanced Filters panel's parts (OL2b): 48 px head with the count pill and Close, a body that alone scrolls with a 6 px bar, a foot with Clear and Update, 300 px right column from 1280 px [decision: here]
 - ai-write-alt-text.md: "Write with AI" for an image's alt text in the visual designer: the image_alt target, the browser's model only, the image read in the browser, where the button sits and when it shows
 - ai-write-browser.md: "Write with AI" on the browser's built-in AI (Prompt API) for a site without Pinegrap AI: when, the two server steps, languages and the translation bridge, gesture, long data
 - ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model [decision: here]
@@ -31,13 +32,14 @@
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
 - barcode-scanner-detection.md: Barcode stock screens and Create Order: the scanner listener ignores fields, dialogs and blank codes; Last Scans rows built as text; the stock screens' wide layout
 - bell-actions.md: A bell row's in-place action (BP4): Approve, Try again, Mark as done, offered only when the reader may run it (ws_bell_act()); after success the row is read and the list redrawn [decision: decisions-made-panel-4.md]
-- bell-filters.md: The bell's filters (BR1): the selector All / Unread / Asked of me, module chips as toggles on one line, the search and its marks, the kept choice and the old one read once, Delete All's rule [decision: here]
-- bell-head.md: The bell drawer's head (BR1): the N new pill, Search, More actions and Close as icon buttons, the menu's two items, Mark all as read at the first day heading, the search in the head's place
+- bell-filters.md: The bell's filters (BR1): the selector All / Unread / Asked of me, module chips as toggles on one line, the search and its marks, the kept choice and the old one read once, Delete All's rule [decision: decisions-made-panel-16.md]
+- bell-head.md: The bell drawer's head (BR1, BR3): N new pill, Search, More actions and Close at the right edge, the menu always standing with disabled items, the search in the head's place [decision: decisions-made-panel-16.md]
 - bell-read-rule.md: When a bell row is read: not on opening the bell; its button, title or Mark as read reads it, a fold head its runs; Mark all as read reads only rows the caller sees [decision: decisions-made-panel-4.md]
-- bell-refusals.md: What the bell panel shows when loading, marking read or unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
+- bell-refusals.md: What the bell panel shows when loading, marking read or unread or Delete All Notifications is refused or fails (the failed state with Try again, refused rows put back)
 - bell-row-time-and-tint.md: A bell row's short time (pg_notification_short_time(), BR2 #11134), the full time as its title, the unread tint, the phone's head order with the 32 px menu button, sticky day headings
-- bell-row.md: A bell row in look A (#8897): tone tile, one-line title and time, two lines of text, a button only when asked, the unread dot, quick actions on hover; a fold as gathered lines [decision: decisions-made-panel-4.md]
-- bell-titles.md: A bell row's short title says what happened and with what ("New order #SP-1044"), the brief text under it; the push banner keeps the sentence (#8897) [decision: decisions-made-panel-4.md]
+- bell-row.md: A bell row in look A (#8897): tone tile, one-line title and time, two lines of text, a button only when asked, the unread dot, quick actions on hover; a fold in notifications-one-inbox.md [decision: decisions-made-panel-16.md, decisions-made-panel-4.md]
+- bell-states-and-foot.md: The bell drawer's list states (BR3 #11154): skeleton rows, failed, empty, all read, no match, each with its button; the foot as a switch row and its refused line [decision: decisions-made-panel-16.md]
+- bell-titles.md: A bell row's short title says what happened and with what ("New order #SP-1044"), the brief text under it; a Workspace title's name and verb; the push banner keeps the sentence (#8897) [decision: decisions-made-panel-4.md]
 - booking-agenda.md: Booking agenda (view_bookings.php, edit_booking.php, #6231): views, who sees what, staff-made bookings, status moves, cancel reason, audit, search
 - booking-edit-form-fields.md: The booking screen (edit_booking.php, new and existing) draws every field as a labelled form-field box; the help texts are form-text the fields name (step B11)
 - booking-edit-unknown-id.md: The booking screen (edit_booking.php) opens an existing booking for any id but 0; a negative or unknown id ends on Record not found (404), 0 or no id is a new booking
@@ -368,6 +370,7 @@
 - installer-wizard-a11y.md: Installer wizard (install/index.php) from the keyboard and a screen reader: focus on step change, step status, rail current/Completed, step problems, the announced run, choice cards
 - invoice-order-shared-form.md: add_erp_invoice.php (Invoice an Order) draws its Order card, Summary and save bar through includes/forms/invoice_order_form.php (wide layout, step B11); what the screen keeps
 - key-code-shared-form.md: The key code create and edit screens share includes/forms/key_code_form.php: the checks, the offer-code clash, the values, the generator, what stays in the screens
+- launch-journey-catalogue.md: The launch journey's pure catalogue (SJ1a, PR #11160): purposes, steps per purpose, each step's rule over a facts array, blocker or warning, payment live per driver, the first week
 - lazy-picture-failure.md: Panel lazy pictures (img.lazy, jQuery Lazy) that fail to load show a still picture mark instead of the endlessly spinning loading.gif; reduced motion gets a still square while loading
 - link-rights.md: Names, orders and products link to their edit screen only when it admits the viewer (pg_can_open_user(), pg_can_open_contact(), USER_MANAGE_ECOMMERCE); Sessions rows drop refused actions
 - list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs. [decision: here]
@@ -524,7 +527,7 @@
 - notice-button-names.md: A notice, hint or dialog names the control it means by its label, never "OK", "the button", a colour or a direction
 - notification-links.md: Bell, banner and System Status link only to screens the reader may use: Repair Software for role 0 off hosting; form submissions for the folder's editors
 - notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise [decision: decisions-made-panel-4.md]
-- notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count [decision: decisions-made-panel-4.md, decisions-made-workspace-5.md, decisions-made-workspace-6.md]
+- notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded and drawn as gathered lines, pgBellOpen() for the old inbox address, the Workspace count [decision: decisions-made-panel-4.md, decisions-made-workspace-5.md, decisions-made-workspace-6.md]
 - offer-code-key-codes.md: A saved offer's code change moves its key codes to the new code (unless another offer keeps the old one); the editor warns while the code changes; All Key Codes names an orphan
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - offers-list-chips.md: Offers list (view_offers.php) Flow chips and status filter chips: gift only when free, both usage limits, optional chips drawn hidden and shown by recount(), the offer-only 'Shipping {var:1}' key
