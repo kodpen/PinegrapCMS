@@ -44,6 +44,14 @@ if (empty($_GET['search']) && function_exists('pg_connect_flash_take')) {
 }
 $ws_viewer = ws_viewer($user);
 
+// Add a mailbox's Sign in with Google or Microsoft came back: the account
+// it connected is tried and the sheet opens on Details (mail_add.php).
+$ws_added = (string) ($_GET['ws_mail_add'] ?? '');
+
+if (empty($_GET['search']) && in_array($ws_added, array('gmail', 'microsoft'), true) && ws_mail_ready()) {
+    ws_mail_add_returned($ws_added, pg_connect_last_take());
+}
+
 // ── Mailboxes ──
 // The pane is folded rows (ws_mail_settings_rows()); each box's form and Add
 // a mailbox open in drawers; Bring in an .eml file, the last row, posts a
@@ -58,7 +66,11 @@ if ($ws_card !== '') {
         $pg_settings_modals[] = ws_settings_mail_drawer($ws_box, $ws_viewer, $ws_form, !empty($pg_settings_in_dialog));
     }
 
-    $pg_settings_modals[] = ws_settings_mail_drawer(null, $ws_viewer, $ws_form, !empty($pg_settings_in_dialog));
+    // Add a mailbox: what a sign-in or a test left opens it once, where it
+    // left (mail_add.php).
+    $ws_pending = empty($_GET['search']) ? ws_mail_add_pending() : null;
+    $ws_pending = ($ws_pending && empty($ws_pending['shown'])) ? ws_mail_add_pending(array('shown' => true) + $ws_pending) : null;
+    $pg_settings_modals[] = ws_settings_mail_drawer(null, $ws_viewer, $ws_form, !empty($pg_settings_in_dialog), $ws_pending);
 
     // Allow reading mail under a box's account select: a sending account
     // asks its provider again for reading, on the same account. Only who

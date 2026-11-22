@@ -32,6 +32,23 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
 $ws_viewer = ws_viewer($user);
+$ws_warn = function ($sentence) use ($liveform) {
+    $liveform->add_warning($sentence);
+};
+
+// Test connection on Add a mailbox's Sign in step: the typed server is tried
+// before anything is stored; passed, Details opens (ws_mail_add_pending()).
+if ((post_value('ws_mail_add_test') !== null) && ws_mail_ready()) {
+    $ws_tested = ws_mail_add_test_run(ws_mail_settings_dialog_input($_POST, 0));
+
+    if (!$ws_tested['ok']) {
+        $liveform->mark_error('ws_mail[0][' . $ws_tested['field'] . ']', h($ws_tested['error']));
+        return;
+    }
+
+    $liveform->add_notice(lang('Connection tested: the inbox is read.'));
+    return;
+}
 
 // A mailbox's drawer asked for this save: its own fields, by its id,
 // checked before anything is written; a refusal is marked on its field.
@@ -50,7 +67,9 @@ if (($ws_box_id !== null) && is_scalar($ws_box_id) && ws_mail_ready()) {
         return;
     }
 
-    $ws_box_checked = ws_mail_box_save_check($ws_viewer, $ws_box, ws_mail_settings_dialog_input($_POST, $ws_box_id));
+    // Finish of Add a mailbox takes the password its Test connection kept.
+    $ws_input = ws_mail_settings_dialog_input($_POST, $ws_box_id);
+    $ws_box_checked = ws_mail_box_save_check($ws_viewer, $ws_box, $ws_box ? $ws_input : ws_mail_add_finish_input($ws_input));
 
     if (!$ws_box_checked['ok']) {
         // A field posted as a list (the routes, the readers of a box kept in
@@ -60,13 +79,20 @@ if (($ws_box_id !== null) && is_scalar($ws_box_id) && ws_mail_ready()) {
     }
 }
 
-$ws_warn = function ($sentence) use ($liveform) {
-    $liveform->add_warning($sentence);
-};
-
 if ($ws_box_checked !== null) {
     ws_mail_box_save_write($ws_viewer, $ws_box, $ws_box_checked, (string) ($_SESSION['sessionusername'] ?? ''));
     $liveform->add_notice(lang('The mailbox was saved.'));
+
+    // A new box read from a server is tested once stored, so the list shows
+    // its state; what the sheet kept goes.
+    if (!$ws_box) {
+        ws_mail_add_pending(false);
+        $ws_new = (int) db_value("SELECT MAX(id) FROM ws_mail_boxes WHERE address = '" . e($ws_box_checked['values']['address']) . "'");
+
+        if (($ws_new > 0) && ($ws_box_checked['values']['host'] !== '')) {
+            ws_mail_settings_post($ws_viewer, 'mail_test', $liveform, array('box_id' => $ws_new), null, $ws_warn);
+        }
+    }
 }
 
 // A mailbox's Test connection, and Bring in an .eml file (a form of its own

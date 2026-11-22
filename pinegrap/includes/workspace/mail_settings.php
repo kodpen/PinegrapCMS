@@ -19,6 +19,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_add.php');
+
 /**
  * Are the mailbox tables there (the 2026.11.0 upgrade has run)?
  *
@@ -1271,6 +1273,78 @@ function ws_mail_box_menu($box, $form)
 }
 
 /**
+ * The parts of a mailbox's form, each a run of grid columns: name, address,
+ * room (Kept in and the channel), enabled, support, signature, reading (the
+ * Reading tab), answers, routing. ws_mail_box_form() puts them in its tabs,
+ * Add a mailbox's sheet in its steps (ws_mail_add_sheet()).
+ *
+ * @param array|null $box
+ * @param array      $channels   ws_mail_box_channels()
+ * @param bool       $ai_ready
+ * @param bool       $rooms_only ws_mail_box_rooms_only()
+ * @param string     $prefix     the form's id prefix
+ * @param bool       $sheet      the sheet's Reading part: no Mail service
+ *                               or "Sign in with" to choose (its steps do)
+ * @return string[]
+ */
+function ws_mail_box_form_parts($box, $channels, $ai_ready, $rooms_only, $prefix, $sheet = false)
+{
+    $settings = ws_mail_box_settings($box);
+    // A box kept in no channel names its room as its channel: none is chosen.
+    $channel_id = ($box && (ws_mail_box_kept_in($box) === 'channel')) ? (int) $box['channel_id'] : 0;
+    $options = '<option value="">' . h(lang('Choose')) . '</option>';
+
+    if ($box && ($channel_id > 0) && !isset($channels[$channel_id])) {
+        $options .= '<option value="' . $channel_id . '" selected>' . h(lang('A channel you do not see')) . '</option>';
+    }
+
+    foreach ($channels as $channel) {
+        $options .= '<option value="' . (int) $channel['id'] . '"' . (((int) $channel['id'] === $channel_id) ? ' selected' : '') . '>'
+            . h('#' . $channel['name']) . '</option>';
+    }
+
+    return array(
+        'name'      => '
+                <div class="md:col-6">
+                    <label class="pg-field-label" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
+                    <input class="pg-input" type="text" name="name" id="' . $prefix . 'name" maxlength="100" required value="' . h($box ? (string) $box['name'] : '') . '" placeholder="' . h(lang('Support')) . '">
+                </div>',
+        'address'   => '
+                <div class="md:col-6">
+                    <label class="pg-field-label" for="' . $prefix . 'address">' . h(lang('E-mail address')) . '</label>
+                    <input class="pg-input" type="email" name="address" id="' . $prefix . 'address" maxlength="255" required value="' . h($box ? (string) $box['address'] : '') . '" placeholder="support@example.com">
+                </div>',
+        'room'      => '
+                ' . ws_mail_room_fields($prefix, $box, $options, $rooms_only),
+        'enabled'   => '
+                <div class="md:col-12">
+                    <div class="d-flex align-items-center gap-3">
+                        <input class="pg-switch" type="checkbox" name="enabled" value="1" id="' . $prefix . 'enabled"' . ((!$box || (int) $box['enabled'] === 1) ? ' checked' : '') . '>
+                        <label for="' . $prefix . 'enabled">' . h(lang('On')) . '</label>
+                    </div>
+                </div>',
+        'support'   => '
+                ' . ws_mail_support_field($prefix, $box),
+        'signature' => '
+                <div class="md:col-12">
+                    <label class="pg-field-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
+                    <textarea class="pg-input" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
+                    <div class="pg-field-help">' . h(lang('Put under each new e-mail from this mailbox; left empty, its name is put there.')) . '</div>
+                </div>',
+        'reading'   => ws_mail_box_server_fields($prefix, $box, $settings, $sheet),
+        'answers'   => ws_mail_box_send_fields($prefix, $box, $settings) . '
+                <div class="md:col-12' . (ws_mail_box_is_support($box) ? '' : ' d-none') . '" data-ws-mail-when="support=1">
+                    <div class="row g-5">
+                    ' . ws_mail_first_reply_field($prefix, $box) . '
+                    ' . ws_mail_auto_reply_fields($prefix, $box) . '
+                    </div>
+                </div>
+                ' . ws_mail_triage_field($prefix, $box, $ai_ready && !$rooms_only),
+        'routing'   => $rooms_only ? '' : ws_mail_route_fields($prefix, $box, $channels),
+    );
+}
+
+/**
  * One mailbox's form, empty for a new one, in four tabs (the segmented
  * control with role tab, as the Design examples' Drawer draws it): General,
  * Reading, Answers and Routing. Every field is drawn in every tab, a hidden
@@ -1296,54 +1370,12 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
     $id = $box ? (int) $box['id'] : 0;
     $prefix = 'ws_mail_' . $id . '_';
     $settings = ws_mail_box_settings($box);
-    // A box kept in no channel names its room as its channel: none is chosen.
-    $channel_id = ($box && (ws_mail_box_kept_in($box) === 'channel')) ? (int) $box['channel_id'] : 0;
-    $options = '<option value="">' . h(lang('Choose')) . '</option>';
-
-    if ($box && ($channel_id > 0) && !isset($channels[$channel_id])) {
-        $options .= '<option value="' . $channel_id . '" selected>' . h(lang('A channel you do not see')) . '</option>';
-    }
-
-    foreach ($channels as $channel) {
-        $options .= '<option value="' . (int) $channel['id'] . '"' . (((int) $channel['id'] === $channel_id) ? ' selected' : '') . '>'
-            . h('#' . $channel['name']) . '</option>';
-    }
-
-    $general = '
-                <div class="md:col-6">
-                    <label class="pg-field-label" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
-                    <input class="pg-input" type="text" name="name" id="' . $prefix . 'name" maxlength="100" required value="' . h($box ? (string) $box['name'] : '') . '" placeholder="' . h(lang('Support')) . '">
-                </div>
-                <div class="md:col-6">
-                    <label class="pg-field-label" for="' . $prefix . 'address">' . h(lang('E-mail address')) . '</label>
-                    <input class="pg-input" type="email" name="address" id="' . $prefix . 'address" maxlength="255" required value="' . h($box ? (string) $box['address'] : '') . '" placeholder="support@example.com">
-                </div>
-                ' . ws_mail_room_fields($prefix, $box, $options, $rooms_only) . '
-                <div class="md:col-12">
-                    <div class="d-flex align-items-center gap-3">
-                        <input class="pg-switch" type="checkbox" name="enabled" value="1" id="' . $prefix . 'enabled"' . ((!$box || (int) $box['enabled'] === 1) ? ' checked' : '') . '>
-                        <label for="' . $prefix . 'enabled">' . h(lang('On')) . '</label>
-                    </div>
-                </div>
-                ' . ws_mail_support_field($prefix, $box) . '
-                <div class="md:col-12">
-                    <label class="pg-field-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
-                    <textarea class="pg-input" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
-                    <div class="pg-field-help">' . h(lang('Put under each new e-mail from this mailbox; left empty, its name is put there.')) . '</div>
-                </div>';
-    $answers = ws_mail_box_send_fields($prefix, $box, $settings) . '
-                <div class="md:col-12' . (ws_mail_box_is_support($box) ? '' : ' d-none') . '" data-ws-mail-when="support=1">
-                    <div class="row g-5">
-                    ' . ws_mail_first_reply_field($prefix, $box) . '
-                    ' . ws_mail_auto_reply_fields($prefix, $box) . '
-                    </div>
-                </div>
-                ' . ws_mail_triage_field($prefix, $box, $ai_ready && !$rooms_only);
+    $part = ws_mail_box_form_parts($box, $channels, $ai_ready, $rooms_only, $prefix);
     $fields = array(
-        'general' => $general,
-        'reading' => ws_mail_box_server_fields($prefix, $box, $settings),
-        'answers' => $answers,
-        'routing' => $rooms_only ? '' : ws_mail_route_fields($prefix, $box, $channels),
+        'general' => $part['name'] . $part['address'] . $part['room'] . $part['enabled'] . $part['support'] . $part['signature'],
+        'reading' => $part['reading'],
+        'answers' => $part['answers'],
+        'routing' => $part['routing'],
     );
     $panes = array();
 
@@ -1545,9 +1577,12 @@ function ws_mail_box_server_own($provider, $host)
  * @param string     $prefix
  * @param array|null $box
  * @param array      $settings ws_mail_box_settings()
+ * @param bool       $sheet    Add a mailbox's sheet: Mail service and
+ *                             "Sign in with" post unseen, no Microsoft
+ *                             set-up button (its Sign in step has them)
  * @return string
  */
-function ws_mail_box_server_fields($prefix, $box, $settings)
+function ws_mail_box_server_fields($prefix, $box, $settings, $sheet = false)
 {
     $provider = (string) ($settings['provider'] ?? '');
     $host = (string) ($settings['host'] ?? '');
@@ -1602,15 +1637,19 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                             </div>
                         </div>';
 
+    // In Add a mailbox's sheet the starting point sets the service and the
+    // Sign in step the way: their fields post, unseen.
+    $hidden = $sheet ? ' hidden' : '';
+
     return '
-                <div class="md:col-12">
+                <div class="md:col-12"' . $hidden . '>
                     <label class="pg-field-label" for="' . $prefix . 'provider">' . h(lang('Mail service')) . '</label>
                     <select class="pg-input" name="provider" id="' . $prefix . 'provider">' . $options . '</select>
                     <div class="pg-field-help' . (($provider === '') ? '' : ' d-none') . '" data-ws-mail-when="provider=">' . h(lang('Mail is brought in only as .eml files.')) . '</div>' . $hints . '
                 </div>
                 <div class="md:col-12" data-ws-mail-slot="own">' . ($own ? $server : '') . '</div>
-                ' . ws_mail_google_signin($provider, $prefix, $google_way) . '
-                <div class="md:col-12' . (($provider === 'microsoft') ? '' : ' d-none') . '" data-ws-mail-when="provider=microsoft">' . ws_mail_setup_button('microsoft') . '</div>
+                ' . ($sheet ? '<div hidden>' . ws_mail_google_signin($provider, $prefix, $google_way) . '</div>' : ws_mail_google_signin($provider, $prefix, $google_way)) . ($sheet ? '' : '
+                <div class="md:col-12' . (($provider === 'microsoft') ? '' : ' d-none') . '" data-ws-mail-when="provider=microsoft">' . ws_mail_setup_button('microsoft') . '</div>') . '
                 <div class="md:col-6' . $shown('password') . '" data-ws-mail-when="signin=password">
                     <label class="pg-field-label" for="' . $prefix . 'user">' . h(lang('User name')) . '</label>
                     <input class="pg-input" type="text" spellcheck="false" autocapitalize="off" name="user" id="' . $prefix . 'user" maxlength="255" value="' . h((string) ($settings['user'] ?? '')) . '" autocomplete="off">
@@ -1916,55 +1955,20 @@ function ws_settings_mail_setup_drawer($provider, $viewer, $in_dialog)
 }
 
 /**
- * The starting points of Add a mailbox, in reading order: each sets the
- * mail service (provider, '' for none) and opens the Reading tab. Pure but
- * for the words.
+ * Add a mailbox's starting points, the Choose step's cards in reading
+ * order: each sets the mail service (provider, '' for none). Pure but for
+ * the words.
  *
  * @return array[] key => provider, icon, tone, title, line
  */
 function ws_mail_start_points()
 {
     return array(
-        'gmail'     => array('provider' => 'gmail', 'icon' => 'bi-google', 'tone' => 'blue', 'title' => lang('Gmail or Google Workspace'),
-            'line' => lang('Read with a connected Google account or an app password.')),
-        'microsoft' => array('provider' => 'microsoft', 'icon' => 'bi-microsoft', 'tone' => 'teal', 'title' => lang('Microsoft 365 or Outlook'),
-            'line' => lang('Read with a connected Microsoft account; no password is typed.')),
-        'other'     => array('provider' => 'other', 'icon' => 'bi-hdd-rack', 'tone' => 'violet', 'title' => lang('Another mail server'),
-            'line' => lang('Any server that accepts IMAP over TLS, with a user name and a password.')),
-        'none'      => array('provider' => '', 'icon' => 'bi-file-earmark-arrow-up', 'tone' => 'gray', 'title' => lang('No server (.eml files)'),
-            'line' => lang('E-mails saved from a mail program are brought in by hand.')),
+        'gmail'     => array('provider' => 'gmail', 'icon' => 'bi-google', 'tone' => 'blue', 'title' => 'Gmail', 'line' => lang('Gmail or Google Workspace.')),
+        'microsoft' => array('provider' => 'microsoft', 'icon' => 'bi-microsoft', 'tone' => 'teal', 'title' => 'Microsoft', 'line' => lang('Microsoft 365 or Outlook.')),
+        'other'     => array('provider' => 'other', 'icon' => 'bi-hdd-rack', 'tone' => 'gray', 'title' => lang('Another server'), 'line' => lang('Any server that accepts IMAP over TLS.')),
+        'none'      => array('provider' => '', 'icon' => 'bi-file-earmark-arrow-up', 'tone' => 'amber', 'title' => lang('No server'), 'line' => lang('You bring in .eml files by hand.')),
     );
-}
-
-/**
- * Add a mailbox's starting points: choice cards with an icon and a line
- * (the Design examples' starting-point sheet, .pg-start). The radios post
- * nothing the save reads; the card's script sets the service from the one
- * chosen and opens the form on its Reading tab. Pure but for the words.
- *
- * @param string $prefix the form's id prefix
- * @return string HTML
- */
-function ws_mail_start_html($prefix)
-{
-    $cards = '';
-
-    foreach (ws_mail_start_points() as $key => $point) {
-        $id = $prefix . 'start_' . $key;
-        $cards .= '
-                <div class="form-field form-field-card">
-                    <input class="radio" type="radio" name="ws_mail_start" value="' . h($point['provider']) . '" id="' . h($id) . '" aria-describedby="' . h($id) . '_help" data-ws-mail-start>
-                    <label class="pg-start-head" for="' . h($id) . '"><span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . h($point['tone']) . '" aria-hidden="true"><i class="bi ' . h($point['icon']) . '"></i></span><span class="fw-bold">' . h($point['title']) . '</span></label>
-                    <div class="form-text mt-1" id="' . h($id) . '_help">' . h($point['line']) . '</div>
-                </div>';
-    }
-
-    return '
-            <div data-ws-mail-start-cards>
-                <fieldset><legend class="visually-hidden">' . h(lang('How is the mailbox read?')) . '</legend><div class="pg-start">' . $cards . '
-                </div></fieldset>
-                <p class="pg-text-meta mt-3 mb-0">' . h(lang('The choice sets the mail service; everything can be changed after it.')) . '</p>
-            </div>';
 }
 
 /**
@@ -2520,8 +2524,8 @@ function ws_mail_eml_form($action, $id, $dialog)
 
 /**
  * A Site Settings drawer of the mailboxes card: a box's form or, with $box
- * null, Add a mailbox's, which opens on its starting points
- * (ws_mail_start_html()). The head names the box, its address and state
+ * null, Add a mailbox's three-step sheet (ws_mail_add_sheet(), with no
+ * sign-in come back). The head names the box, its address and state
  * pill; the tabs stand in the band under it; the foot holds Remove
  * mailbox, Cancel and Save (ws_mail_box_drawer_foot()). Bring in an .eml
  * file is the pane's last row (ws_mail_eml_pane()).
@@ -2530,10 +2534,20 @@ function ws_mail_eml_form($action, $id, $dialog)
  * @param array      $viewer
  * @param string     $form      the settings form's id
  * @param bool       $in_dialog pg_settings_drawer()'s
+ * @param array|null $pending   ws_mail_add_pending() for the sheet, opened
+ *                              once where a sign-in or a test left it
  * @return string HTML
  */
-function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
+function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog, $pending = null)
 {
+    // A new box is Add a mailbox's three-step sheet (mail_add.php), then
+    // the forms its provider buttons submit, outside the settings form.
+    if (!$box) {
+        $ready = ws_mail_add_ready();
+
+        return ws_mail_add_sheet($viewer, $form, $in_dialog, $ready, $pending) . (($ready['gmail'] || $ready['microsoft']) ? ws_mail_add_connect_forms() : '');
+    }
+
     $channels = ws_mail_box_channels($viewer);
     $ai_ready = ws_mail_triage_ai_ready();
     $rooms_only = ws_mail_box_rooms_only($box, ws_enabled());
@@ -2548,15 +2562,6 @@ function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
     // this one (pg_settings_own_dialog_triggers() only renames the pane's).
     if ($in_dialog) {
         $body = str_replace('data-bs-toggle="drawer"', 'data-pgdrawer="open"', $body);
-    }
-
-    // A new box starts from its starting points: the band asks the question
-    // and the tabs and the form wait until a card is chosen.
-    if (!$box) {
-        $bar = '<div class="pg-text-2" data-ws-mail-start-line>' . h(lang('How is the mailbox read?')) . '</div><div data-ws-mail-start-tabs hidden>' . $bar . '</div>';
-        $body = ws_mail_start_html('ws_mail_0_') . '<div data-ws-mail-start-form hidden>' . $body . '</div>';
-
-        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), $body, $in_dialog, $foot, '', $bar);
     }
 
     // The head: its name, then its address and state pill (ws_mail_box_state()).
@@ -2709,10 +2714,9 @@ function ws_mail_settings_script()
             // The tab of the pane a field sits in, opened: a field the save
             // refused or the browser found invalid is seen where it was typed.
             function showField(control) {
-                var start = (control && control.closest) ? control.closest(\'[data-ws-mail-start-form]\') : null;
-
-                if (start && start.hidden) {
-                    leaveStart(start.closest(\'.pg-sm-drawer, .drawer\'), null);
+                // Add a mailbox\'s sheet shows the step holding it.
+                if (window.pgWsMailAdd) {
+                    window.pgWsMailAdd.reveal(control);
                 }
 
                 var pane = (control && control.closest) ? control.closest(\'.ws-mail-box-pane\') : null;
@@ -2722,78 +2726,6 @@ function ws_mail_settings_script()
                     showTab(tab);
                 }
             }
-
-            // Add a mailbox\'s starting points: the chosen card sets the mail
-            // service, the cards give way to the tabs and the form, and the
-            // Reading tab opens on that way\'s fields. null (a refused save
-            // marking a field) only shows the form.
-            function leaveStart(root, provider) {
-                var cards = root ? root.querySelector(\'[data-ws-mail-start-cards]\') : null;
-                var body = root ? root.querySelector(\'[data-ws-mail-start-form]\') : null;
-
-                if (!cards || !body) {
-                    return;
-                }
-
-                var form = body.querySelector(\'.ws-mail-box-form\');
-                var select = form ? field(form, \'provider\') : null;
-                var line = root.querySelector(\'[data-ws-mail-start-line]\');
-                var tabs = root.querySelector(\'[data-ws-mail-start-tabs]\');
-
-                cards.hidden = true;
-                body.hidden = false;
-
-                if (line) {
-                    line.hidden = true;
-                }
-
-                if (tabs) {
-                    tabs.hidden = false;
-                }
-
-                if ((provider === null) || !select) {
-                    return;
-                }
-
-                select.value = provider;
-                select.dispatchEvent(new Event(\'change\', {bubbles: true}));
-
-                var reading = root.querySelector(\'[data-ws-mail-tab][id$="_tab_reading"]\');
-
-                if (reading) {
-                    showTab(reading);
-                }
-
-                select.focus();
-            }
-
-            // A card chosen with the pointer or the space bar moves on; the
-            // arrow keys only move the choice, and Enter or the space bar on
-            // the chosen card moves on.
-            var startKey = \'\';
-
-            document.addEventListener(\'pointerdown\', function () {
-                startKey = \'\';
-            }, true);
-
-            document.addEventListener(\'keydown\', function (event) {
-                var card = (event.target.matches && event.target.matches(\'[data-ws-mail-start]\')) ? event.target : null;
-
-                startKey = event.key || \'\';
-
-                if (card && card.checked && ((event.key === \'Enter\') || (event.key === \' \'))) {
-                    event.preventDefault();
-                    leaveStart(card.closest(\'.pg-sm-drawer, .drawer\'), card.value);
-                }
-            }, true);
-
-            document.addEventListener(\'change\', function (event) {
-                var card = (event.target.matches && event.target.matches(\'[data-ws-mail-start]\')) ? event.target : null;
-
-                if (card && card.checked && (startKey.indexOf(\'Arrow\') !== 0)) {
-                    leaveStart(card.closest(\'.pg-sm-drawer, .drawer\'), card.value);
-                }
-            });
 
             document.addEventListener(\'click\', function (event) {
                 var tab = event.target.closest ? event.target.closest(\'[data-ws-mail-tab]\') : null;
