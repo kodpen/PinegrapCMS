@@ -69,15 +69,10 @@ if ($ws_card !== '') {
     }
 
     // Add a mailbox: what a sign-in or a test left opens it once, where it
-    // left; the provider buttons submit forms of their own.
+    // left (mail_add.php).
     $ws_pending = empty($_GET['search']) ? ws_mail_add_pending() : null;
     $ws_pending = ($ws_pending && empty($ws_pending['shown'])) ? ws_mail_add_pending(array('shown' => true) + $ws_pending) : null;
-    $ws_ready = ws_mail_add_ready();
-    $pg_settings_modals[] = ws_mail_add_sheet($ws_viewer, $ws_form, !empty($pg_settings_in_dialog), $ws_ready, $ws_pending);
-
-    if ($ws_ready['gmail'] || $ws_ready['microsoft']) {
-        $pg_settings_modals[] = ws_mail_add_connect_forms();
-    }
+    $pg_settings_modals[] = ws_settings_mail_drawer(null, $ws_viewer, $ws_form, !empty($pg_settings_in_dialog), $ws_pending);
 
     // Allow reading mail under a box's account select: a sending account
     // asks its provider again for reading, on the same account. Only who

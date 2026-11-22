@@ -2534,13 +2534,18 @@ function ws_mail_eml_form($action, $id, $dialog)
  * @param array      $viewer
  * @param string     $form      the settings form's id
  * @param bool       $in_dialog pg_settings_drawer()'s
+ * @param array|null $pending   ws_mail_add_pending() for the sheet, opened
+ *                              once where a sign-in or a test left it
  * @return string HTML
  */
-function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
+function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog, $pending = null)
 {
-    // A new box is Add a mailbox's three-step sheet (mail_add.php).
+    // A new box is Add a mailbox's three-step sheet (mail_add.php), then
+    // the forms its provider buttons submit, outside the settings form.
     if (!$box) {
-        return ws_mail_add_sheet($viewer, $form, $in_dialog, ws_mail_add_ready());
+        $ready = ws_mail_add_ready();
+
+        return ws_mail_add_sheet($viewer, $form, $in_dialog, $ready, $pending) . (($ready['gmail'] || $ready['microsoft']) ? ws_mail_add_connect_forms() : '');
     }
 
     $channels = ws_mail_box_channels($viewer);
