@@ -343,7 +343,8 @@ function api_schema() {
 				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product.'),
 				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool', 'description' => 'With location: only the products that hold units there (true) or none (false). Without it: by the total.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
-				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by product id, oldest first; newest lists the newest product first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -415,7 +416,8 @@ function api_schema() {
 				array('name' => 'since',   'in' => 'query', 'type' => 'datetime', 'description' => 'Only changes recorded at or after this moment.'),
 				array('name' => 'channel', 'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'One sales channel: web (the shop\'s own price), pos, or marketplace:<code>, where the code is the marketplace account\'s id. Every channel when left out.'),
 				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
-				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',    'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists the earliest change first; newest lists the latest change first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -447,7 +449,8 @@ function api_schema() {
 				array('name' => 'account', 'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'filter',  'in' => 'query', 'type' => 'enum', 'values' => array('winning', 'losing', 'floor', 'no_cost'), 'description' => 'Only the listings winning the buybox, losing it, at or under the floor, or with no floor.'),
 				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Listings per page.'),
-				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',    'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by product id, oldest first; newest lists the newest product first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -507,6 +510,7 @@ function api_schema() {
 				array('name' => 'search',        'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the short description.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int',    'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool',   'description' => 'Also count every matching row. Costs an extra query, so it is off by default.')
 			)
 		),
@@ -666,7 +670,8 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the label.'),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',   'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest attribute first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -2891,7 +2896,8 @@ function api_schema() {
 				array('name' => 'created_before', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written before this moment.'),
 				array('name' => 'updated_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only commissions written or changed at or after this moment.'),
 				array('name' => 'limit',          'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',           'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -2910,7 +2916,8 @@ function api_schema() {
 				array('name' => 'order_id',       'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the profiles made for this order.'),
 				array('name' => 'updated_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only profiles written or changed at or after this moment.'),
 				array('name' => 'limit',          'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',           'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) walks the last change oldest first; newest walks it newest first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 
@@ -3298,6 +3305,7 @@ function api_schema() {
 				array('name' => 'state',             'in' => 'query', 'type' => 'enum', 'values' => array('valid', 'used', 'void'), 'description' => 'Only the tickets in this state.'),
 				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',              'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists by id, oldest first; newest lists the newest ticket first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')
 			)
 		),
@@ -5133,6 +5141,7 @@ function api_schema() {
 				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the description.'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists the earliest upload first; newest lists the latest upload first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.'),
 				array('name' => 'include_count', 'in' => 'query', 'type' => 'bool')
 			)
 		),
@@ -6544,7 +6553,8 @@ function api_schema() {
 				array('name' => 'from',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or after this moment.'),
 				array('name' => 'to',         'in' => 'query', 'type' => 'datetime', 'description' => 'Only bookings that start at or before this moment; a bare day counts whole.'),
 				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
-				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'sort',       'in' => 'query', 'type' => 'enum', 'values' => array('oldest', 'newest'), 'default' => 'oldest', 'description' => 'oldest (the default) lists the earliest start first; newest lists the latest start first. The next page keeps the sort its cursor was made under; a cursor of the other sort is 400 invalid_cursor.')
 			)
 		),
 

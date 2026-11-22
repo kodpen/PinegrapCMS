@@ -21,6 +21,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
+require_once(dirname(dirname(__FILE__)) . '/list_order.php');
+
 // The tickets table is there, or 503: an integration can tell "no tickets
 // sold" from "this site has not been updated yet".
 function api_event_tickets_require() {
@@ -196,17 +198,14 @@ function api_calendar_event_tickets($params) {
 
 	$paged = $where;
 
-	if (isset($params['cursor']) && $params['cursor'] !== '') {
+	// sort=newest walks the id the other way (list_order.php).
+	$descending = api_list_descending($params);
 
-		$cursor = api_cursor_decode($params['cursor']);
+	$cursor = api_list_cursor($params, $descending);
 
-		if ($cursor === null) {
+	if ($cursor !== null) {
 
-			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
-
-		}
-
-		$paged[] = "event_tickets.id > '" . (int)$cursor['i'] . "'";
+		$paged[] = api_list_keyset_sql('', 'event_tickets.id', $cursor, $descending);
 
 	}
 
@@ -220,7 +219,7 @@ function api_calendar_event_tickets($params) {
 		FROM event_tickets
 		LEFT JOIN orders ON orders.id = event_tickets.order_id
 		WHERE " . implode(' AND ', $paged) . "
-		ORDER BY event_tickets.id ASC
+		ORDER BY " . api_list_order_sql('', 'event_tickets.id', $descending) . "
 		LIMIT " . ($limit + 1));
 
 	$has_more = (count($rows) > $limit);
@@ -237,7 +236,7 @@ function api_calendar_event_tickets($params) {
 
 		$last = $rows[count($rows) - 1];
 
-		$next_cursor = api_cursor_encode((int)$last['id'], $last['id']);
+		$next_cursor = api_list_cursor_encode((int)$last['id'], (int)$last['id'], $descending);
 
 	}
 
