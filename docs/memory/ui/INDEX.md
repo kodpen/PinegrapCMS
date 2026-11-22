@@ -305,7 +305,7 @@
 - image-editor-follow.md: The Artifact Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks [decision: decisions-made-product-63.md, decisions-made-product-69.md, decisions-made-product-80.md]
 - image-editor-fonts.md: The Artifact Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The Artifact Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
-- image-editor-groups-look.md: Artifact Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw
+- image-editor-groups-look.md: Artifact Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw [decision: here]
 - image-editor-groups.md: Artifact Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw [decision: decisions-made-product-80.md]
 - image-editor-import.md: Import in the Artifact Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage

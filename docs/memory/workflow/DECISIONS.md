@@ -1272,6 +1272,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-detach-sound.md: Artifact Canvas Detach sound where the hand is: the bar over a clip, a clip row's menu on the tracks, Detach from a video under Add sound; the reasons it is refused
 - ui/image-editor-eraser.md: The Artifact Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place
 - ui/image-editor-follow.md: The Artifact Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks
+- ui/image-editor-groups-look.md: Artifact Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw
 - ui/image-editor-groups.md: Artifact Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw
 - ui/image-editor-import.md: Import in the Artifact Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
 - ui/image-editor-layers.md: The Artifact Canvas's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
