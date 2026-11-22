@@ -10,6 +10,7 @@ description: /store/arrival-dates over the external API: shape, partial update, 
 ## How is a body checked?
 - Dates must be `YYYY-MM-DD` (`api_store_lookup_check_dates()`): the form helpers also read the site's own order, which a client never sends.
 - `api_store_arrival_date_post()` (pure) lays the sent fields over the stored row in the screen's post shape; `pg_arrival_date_form_errors()` then decides, as on the screen (blank name, missing or impossible dates, end before start, sort order outside a smallint: 422).
+- `arrival_date` empty or null is as soon as possible, stored `0000-00-00` (`commerce/arrival-date-blank-as-soon-as-possible.md`); an update of the starter `AT-ONCE` row answered 422 before.
 - `description` refuses `<` and `>` (422, `api_store_arrival_date_plain_text()`): checkout and the layouts print it raw as HTML, which the screen allows only to e-commerce users.
 - Saving one as `default` takes the switch off every other one (`pg_store_arrival_date_save()`).
 

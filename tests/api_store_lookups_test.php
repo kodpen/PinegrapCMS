@@ -150,6 +150,12 @@ function test_api_store_arrival_date_post()
 	pg_assert_same(array(), pg_arrival_date_form_errors($new), 'a minimal new arrival date passes');
 	pg_assert_true(isset(pg_arrival_date_form_errors(api_store_arrival_date_post(null, array('name' => 'X')))['start_date']), 'a new arrival date needs its dates');
 
+	// The starter sites' AT-ONCE row stores no arrival date (as soon as
+	// possible): an update of another field passes, and so does null.
+	$soon = array('code' => 'AT-ONCE', 'arrival_date' => '0000-00-00') + $row;
+	pg_assert_same(array(), pg_arrival_date_form_errors(api_store_arrival_date_post($soon, array('name' => 'En kısa sürede'))), 'the AT-ONCE row takes an update');
+	pg_assert_same(array(), pg_arrival_date_form_errors(api_store_arrival_date_post($row, array('arrival_date' => null))), 'a null arrival date is as soon as possible');
+
 	$out = api_store_arrival_date_present($row + array('id' => '9'), array(array('shipping_method_id' => '2', 'date_and_time' => '2027-02-10 17:30:00')));
 	pg_assert_same(null, $out['custom_maximum_arrival_date'], 'the zero date answers null');
 	pg_assert_same(array(array('shipping_method_id' => 2, 'date_and_time' => '2027-02-10T17:30')), $out['shipping_cutoffs'], 'a cut-off answers in the form it is sent');
