@@ -160,9 +160,9 @@ function pg_pick_waiting_addresses($ship_to_ids = null)
                 WHERE order_items.ship_to_id = ship_tos.id" . pg_order_item_active_sql() . ") AS shipped_units,
             EXISTS (SELECT 1 FROM shipping_tracking_numbers AS tracking WHERE tracking.ship_to_id = ship_tos.id) AS tracked,
             EXISTS (SELECT 1 FROM order_packs WHERE order_packs.ship_to_id = ship_tos.id AND order_packs.status = '" . PG_PACK_PACKED . "') AS packed,
-            EXISTS (SELECT 1 FROM pick_wave_orders AS member
-                INNER JOIN pick_waves ON pick_waves.id = member.wave_id
-                WHERE member.ship_to_id = ship_tos.id AND member.removed_at = 0 AND pick_waves.status <> '" . PG_WAVE_CLOSED . "') AS in_wave
+            EXISTS (SELECT 1 FROM pick_wave_orders AS wave_row
+                INNER JOIN pick_waves ON pick_waves.id = wave_row.wave_id
+                WHERE wave_row.ship_to_id = ship_tos.id AND wave_row.removed_at = 0 AND pick_waves.status <> '" . PG_WAVE_CLOSED . "') AS in_wave
         FROM ship_tos
         INNER JOIN orders ON orders.id = ship_tos.order_id
         LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
@@ -282,12 +282,12 @@ function pg_pick_wave_make(array $rule, $user_id, $ship_to_ids = null)
 function pg_pick_waves_sync_leavers($wave_id = 0)
 {
     $rows = db_items(
-        "SELECT member.wave_id, member.ship_to_id, member.removed_at, COALESCE(orders.status, '') AS status
-        FROM pick_wave_orders AS member
-        INNER JOIN pick_waves ON pick_waves.id = member.wave_id
-        LEFT JOIN orders ON orders.id = member.order_id
-        WHERE member.removed_at = 0 AND pick_waves.status <> '" . PG_WAVE_CLOSED . "'"
-        . (((int) $wave_id > 0) ? " AND member.wave_id = '" . (int) $wave_id . "'" : ""));
+        "SELECT wave_row.wave_id, wave_row.ship_to_id, wave_row.removed_at, COALESCE(orders.status, '') AS status
+        FROM pick_wave_orders AS wave_row
+        INNER JOIN pick_waves ON pick_waves.id = wave_row.wave_id
+        LEFT JOIN orders ON orders.id = wave_row.order_id
+        WHERE wave_row.removed_at = 0 AND pick_waves.status <> '" . PG_WAVE_CLOSED . "'"
+        . (((int) $wave_id > 0) ? " AND wave_row.wave_id = '" . (int) $wave_id . "'" : ""));
     $by_wave = array();
 
     foreach ($rows as $row) {
@@ -321,16 +321,16 @@ function pg_pick_wave_list()
             pick_waves.id, pick_waves.name, pick_waves.location_id, pick_waves.status, pick_waves.single_item,
             pick_waves.created_by, pick_waves.created_at,
             COALESCE(user.user_username, '') AS created_by_name,
-            (SELECT COUNT(*) FROM pick_wave_orders AS member WHERE member.wave_id = pick_waves.id AND member.removed_at = 0) AS addresses,
-            (SELECT COALESCE(SUM(order_items.quantity), 0) FROM pick_wave_orders AS member
-                INNER JOIN order_items ON order_items.ship_to_id = member.ship_to_id" . pg_order_item_active_sql() . "
-                WHERE member.wave_id = pick_waves.id AND member.removed_at = 0) AS units,
-            (SELECT COUNT(*) FROM pick_wave_orders AS member
-                INNER JOIN order_packs ON order_packs.ship_to_id = member.ship_to_id AND order_packs.status = '" . PG_PACK_PACKED . "'
-                WHERE member.wave_id = pick_waves.id AND member.removed_at = 0) AS packed,
-            EXISTS (SELECT 1 FROM pick_wave_orders AS member
-                INNER JOIN order_packs ON order_packs.ship_to_id = member.ship_to_id AND order_packs.status <> '" . PG_PACK_OPEN . "'
-                WHERE member.wave_id = pick_waves.id) AS has_closed_pack
+            (SELECT COUNT(*) FROM pick_wave_orders AS wave_row WHERE wave_row.wave_id = pick_waves.id AND wave_row.removed_at = 0) AS addresses,
+            (SELECT COALESCE(SUM(order_items.quantity), 0) FROM pick_wave_orders AS wave_row
+                INNER JOIN order_items ON order_items.ship_to_id = wave_row.ship_to_id" . pg_order_item_active_sql() . "
+                WHERE wave_row.wave_id = pick_waves.id AND wave_row.removed_at = 0) AS units,
+            (SELECT COUNT(*) FROM pick_wave_orders AS wave_row
+                INNER JOIN order_packs ON order_packs.ship_to_id = wave_row.ship_to_id AND order_packs.status = '" . PG_PACK_PACKED . "'
+                WHERE wave_row.wave_id = pick_waves.id AND wave_row.removed_at = 0) AS packed,
+            EXISTS (SELECT 1 FROM pick_wave_orders AS wave_row
+                INNER JOIN order_packs ON order_packs.ship_to_id = wave_row.ship_to_id AND order_packs.status <> '" . PG_PACK_OPEN . "'
+                WHERE wave_row.wave_id = pick_waves.id) AS has_closed_pack
         FROM pick_waves
         LEFT JOIN user ON user.user_id = pick_waves.created_by
         ORDER BY pick_waves.created_at DESC, pick_waves.id DESC
@@ -421,16 +421,16 @@ function pg_pick_wave_addresses($wave_id)
 
     return db_items(
         "SELECT
-            member.ship_to_id, member.order_id, member.ship_by, member.removed_at,
+            wave_row.ship_to_id, wave_row.order_id, wave_row.ship_by, wave_row.removed_at,
             COALESCE(orders.order_number, '') AS order_number,
             (SELECT COALESCE(SUM(order_items.quantity), 0) FROM order_items
-                WHERE order_items.ship_to_id = member.ship_to_id" . pg_order_item_active_sql() . ") AS units,
+                WHERE order_items.ship_to_id = wave_row.ship_to_id" . pg_order_item_active_sql() . ") AS units,
             COALESCE(order_packs.status, -1) AS pack_status
-        FROM pick_wave_orders AS member
-        LEFT JOIN orders ON orders.id = member.order_id
-        LEFT JOIN order_packs ON order_packs.ship_to_id = member.ship_to_id
-        WHERE member.wave_id = '" . (int) $wave_id . "'
-        ORDER BY (member.removed_at > 0), (member.ship_by = 0), member.ship_by, member.order_id, member.ship_to_id");
+        FROM pick_wave_orders AS wave_row
+        LEFT JOIN orders ON orders.id = wave_row.order_id
+        LEFT JOIN order_packs ON order_packs.ship_to_id = wave_row.ship_to_id
+        WHERE wave_row.wave_id = '" . (int) $wave_id . "'
+        ORDER BY (wave_row.removed_at > 0), (wave_row.ship_by = 0), wave_row.ship_by, wave_row.order_id, wave_row.ship_to_id");
 }
 
 /**
@@ -448,11 +448,11 @@ function pg_pick_wave_lines($wave_id)
             order_items.product_id, order_items.ship_to_id, order_items.quantity,
             order_items.product_name, orders.stock_location_id,
             products.id AS catalog_id, products.name AS code, products.short_description, products.image_name
-        FROM pick_wave_orders AS member
-        INNER JOIN order_items ON order_items.ship_to_id = member.ship_to_id" . pg_order_item_active_sql() . "
+        FROM pick_wave_orders AS wave_row
+        INNER JOIN order_items ON order_items.ship_to_id = wave_row.ship_to_id" . pg_order_item_active_sql() . "
         INNER JOIN orders ON orders.id = order_items.order_id
         LEFT JOIN products ON products.id = order_items.product_id
-        WHERE member.wave_id = '" . (int) $wave_id . "' AND member.removed_at = 0");
+        WHERE wave_row.wave_id = '" . (int) $wave_id . "' AND wave_row.removed_at = 0");
 
     $product_ids = array();
 
@@ -574,9 +574,9 @@ function pg_pick_wave_close($wave_id)
 function pg_pick_wave_deletable($wave_id)
 {
     return !db_value(
-        "SELECT 1 FROM pick_wave_orders AS member
-        INNER JOIN order_packs ON order_packs.ship_to_id = member.ship_to_id AND order_packs.status <> '" . PG_PACK_OPEN . "'
-        WHERE member.wave_id = '" . (int) $wave_id . "' LIMIT 1");
+        "SELECT 1 FROM pick_wave_orders AS wave_row
+        INNER JOIN order_packs ON order_packs.ship_to_id = wave_row.ship_to_id AND order_packs.status <> '" . PG_PACK_OPEN . "'
+        WHERE wave_row.wave_id = '" . (int) $wave_id . "' LIMIT 1");
 }
 
 /**

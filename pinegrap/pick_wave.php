@@ -25,7 +25,9 @@ $user = validate_user();
 pg_pick_validate_access($user);
 
 $liveform = new liveform('pick_wave');
-$pw_id = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
+// One id; one sent as an array finds no wave.
+$pw_id = $_POST['id'] ?? $_GET['id'] ?? 0;
+$pw_id = is_scalar($pw_id) ? (int) $pw_id : 0;
 $pw_wave = pg_pick_wave($pw_id);
 $pw_view = (($_GET['view'] ?? '') === 'addresses') ? 'addresses' : 'list';
 
@@ -130,7 +132,7 @@ foreach ($pw_addresses as $row) {
     $order = ($pw_sees_orders && !$gone) ? '<a href="view_order.php?id=' . (int) $row['order_id'] . '" data-pg-open>' . $number . '</a>' : $number;
     $tone = pg_pick_ship_by_tone($row['ship_by'], $pw_today);
     $day = ((int) $row['ship_by'] > 0)
-        ? h(get_absolute_time(array('timestamp' => (int) $row['ship_by'], 'type' => 'date', 'size' => 'short')))
+        ? h(get_absolute_time(array('timestamp' => (int) $row['ship_by'], 'type' => 'date', 'size' => 'short', 'format' => 'plain_text')))
         : '<span class="pg-text-meta">' . h(lang('Not known')) . '</span>';
 
     if ($tone !== '' && !$gone) {
@@ -173,7 +175,7 @@ echo pg_page_shell(array(
     'icon' => 'orders',
     // output_header() prints the heading as markup; the name is staff text.
     'heading' => h($pw_label) . ' <span data-pg-pick-pill>' . pg_pick_wave_pill($pw_wave['status']) . '</span>',
-    'heading_description' => lang(array('string' => 'Made {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $pw_wave['created_at'], 'size' => 'short'))))),
+    'heading_description' => lang(array('string' => 'Made {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $pw_wave['created_at'], 'size' => 'short', 'format' => 'plain_text'))))),
     'breadcrumb' => array(
         array('label' => lang('Pick waves'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pick_waves.php'),
         array('label' => $pw_label),

@@ -20,9 +20,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/pick_waves.php');
 
 $user = validate_user();
 pg_pick_validate_access($user);
-pg_request_single_values(array('id'));
 
-$wave = pg_pick_wave((int) ($_GET['id'] ?? 0));
+// One id; one sent as an array (?id[]=1) finds no wave.
+$wave = pg_pick_wave(is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0);
 
 if (!$wave) {
     output_error(lang('The wave could not be found.'), 404);
@@ -82,7 +82,7 @@ echo
     }</style>
     <div id="content">
         <h1>' . h(lang('Picking list')) . ' · ' . h(pg_pick_wave_label($wave)) . '</h1>
-        <div>' . h(lang(array('string' => 'Made {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $wave['created_at'], 'size' => 'short')))))) . '</div>
+        <div>' . h(lang(array('string' => 'Made {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $wave['created_at'], 'size' => 'short', 'format' => 'plain_text')))))) . '</div>
         <h2>' . h(lang('Shelves')) . '</h2>
         <table>
             <tr>

@@ -5638,7 +5638,9 @@ function pg_menu_categories()
         ''           => array('label' => '', 'slots' => array(0, 26, 23, 24, 27, 28)),
         'content'    => array('label' => 'Content', 'slots' => array(2, 1, 4, 5)),
         'design'     => array('label' => 'Design', 'slots' => array(21)),
-        'ecommerce'  => array('label' => 'Ecommerce', 'slots' => array(10, 11, 12, 14, 15)),
+        // Pick waves (29) is the row of a user with the "Packing only" right
+        // alone, who has none of the others.
+        'ecommerce'  => array('label' => 'Ecommerce', 'slots' => array(10, 11, 12, 14, 15, 29)),
         // The ERP has its own switch and rights, and runs without the store.
         'accounting' => array('label' => 'Accounting', 'slots' => array(22)),
         'marketing'  => array('label' => 'Marketing', 'slots' => array(6, 7, 9)),
