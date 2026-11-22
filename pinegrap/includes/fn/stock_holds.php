@@ -514,3 +514,88 @@ function pg_stock_hold_sweep_daily()
 
     return $removed;
 }
+
+/**
+ * Whether other checkouts' holds took units a cart line needed: a product of
+ * the line (itself, or a bundle's components) has units held by other orders
+ * and had stock for them to take. The line's notice then says the units may
+ * free up. Pure.
+ *
+ * @param array $product_ids the line's product, or a bundle's components
+ * @param array $stock       product_id => units before the holds came off
+ * @param array $held        product_id => units other orders hold
+ * @return bool
+ */
+function pg_stock_hold_line_held(array $product_ids, array $stock, array $held)
+{
+    foreach ($product_ids as $product_id) {
+        $product_id = (int) $product_id;
+
+        if (isset($held[$product_id], $stock[$product_id]) && ((int) $held[$product_id] > 0) && ((int) $stock[$product_id] > 0)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The words a cart notice ends with when other checkouts hold the units:
+ * '' when they took nothing, so the notice reads as before.
+ *
+ * @param bool $line_held pg_stock_hold_line_held()
+ * @return string
+ */
+function pg_stock_hold_notice_words($line_held)
+{
+    if (!$line_held) {
+        return '';
+    }
+
+    return ' ' . lang('Other shoppers are checking out with some of its units; they may free up in a few minutes.');
+}
+
+/**
+ * Edit Product's "Held in checkouts" line: shown while any unit is held,
+ * with "none free" once the holds reach the stock. Pure.
+ *
+ * @param int $held  units every order holds now
+ * @param int $stock the product's stock
+ * @return array array(show => bool, none_free => bool)
+ */
+function pg_stock_hold_screen_line($held, $stock)
+{
+    $held = (int) $held;
+
+    if ($held <= 0) {
+        return array('show' => false, 'none_free' => false);
+    }
+
+    return array('show' => true, 'none_free' => ($held >= (int) $stock));
+}
+
+/**
+ * Units of a product every order holds now, at every location. A product
+ * that stopped tracking stock or takes back orders counts none: the checkout
+ * reads no hold for it, and its rows only wait to run out. 0 before the
+ * upgrade.
+ *
+ * @param int $product_id
+ * @return int
+ */
+function pg_stock_hold_units_held($product_id)
+{
+    if (((int) $product_id <= 0) || !pg_stock_holds_ready()) {
+        return 0;
+    }
+
+    return (int) db_value(
+        "SELECT COALESCE(SUM(stock_holds.quantity), 0)
+        FROM stock_holds
+        INNER JOIN products ON products.id = stock_holds.product_id
+        WHERE
+            (stock_holds.product_id = '" . (int) $product_id . "')
+            AND (stock_holds.expires_at > '" . time() . "')
+            AND (products.inventory = '1')
+            AND (products.backorder = '0')");
+}

@@ -18,7 +18,7 @@ module: stock_holds
 ## Which checks read the holds? (SH2)
 - `check_inventory()` (`ecommerce.php`) and `pg_bundle_check_inventory()` (`bundles.php`): the stock at the order's location less other orders' live holds there. Nothing else reads a hold; a held unit is still in stock elsewhere.
 - `pg_stock_hold_held_for($ids, $location_id, $order_id)`: one query per check, product id => units, empty before the upgrade. Pure parts: `pg_stock_hold_held_by_others()`, `pg_stock_hold_less_held()` (nothing held: the stock exactly as read, so a site with no holds checks as before), `pg_bundle_stock_less_held()` after `pg_bundle_stock_at_location()`.
-- A line short of free units is cut or removed with the notices the checks already give; the held-by-a-checkout notice is SH4.
+- A line short of free units is cut or removed with the checks' notices; what people see: `stock-holds-shown.md`.
 
 ## How is a hold placed?
 - `pg_stock_hold_place($order_id)` → `array(placed, product_id)`. Location: `pg_stock_order_location()`. Rows of products the order no longer needs go first. Each product in id order under `GET_LOCK(pg_stock_hold_lock_name(), 5)` for the read and the upsert only (`ON DUPLICATE KEY UPDATE`), then `RELEASE_LOCK`.

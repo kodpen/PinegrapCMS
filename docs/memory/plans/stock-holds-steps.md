@@ -11,8 +11,7 @@ description: Plan stock-holds, steps SH1 to SH5: the table and its functions, th
 - SH2 (S) after SH1: the check reads the units free. `includes/fn/ecommerce.php` (`check_inventory()`), `includes/fn/bundles.php` (`pg_bundle_check_inventory()`). With no holds written yet nothing changes; a source pin test keeps the no-holds path's statements. Feature: H6. Done: #10759.
 - SH3 (M) after SH2: placing and releasing. `submit_order.php` (place before the payment, H4's way back, release on a failed payment), `includes/fn/order_completion.php` and `includes/fn/bundles.php` (release with the take), the return to the cart. Done: #11148.
   - Tried on dev with two browsers on the last unit, once with a card paid in the request and once through 3-D Secure; the PR says what was seen. Features: H3, H4, H7, H8.
-- SH4 (S) after SH3: the notice and "Held in checkouts: n" on Edit Product (`edit_product.php`'s stock box). Feature: H9.
-  - Being built: the notice in both cart checks, the line drawn by `pg_pb_render_stock_quantity()` (`product_builder.php`).
+- SH4 (S) after SH3: the notice and "Held in checkouts: n" on Edit Product (`edit_product.php`'s stock box). Feature: H9. Done: #11166 (`commerce/stock-holds-shown.md`); the line is drawn in `product_builder.php`, which Edit Product includes.
 - SH5 (S) close-out: every H number checked against the code with its PR; `commerce/stock-holds.md` written; `commerce/order-completion-stock-and-spots.md` and `commerce/stock-locations-completion.md` updated; the plan's files deleted; the changelog `[NEW]` line named in its PR.
 
 ## Which steps run side by side?
