@@ -26,7 +26,7 @@ One step is one page (or one new page), one session on the owner's machine, one 
 - UD2 `/site-settings`, `/system`, done 2026-11-23 (six sections). Left: Docker and the importers (to UD14 `/installation`), smaller changes since #500.
 - UD3 `/visual-page-editor`, part 1 done 2026-11-23 (eight sections; the page is ~21,000 words, its split into `-cont` is still open). Left: the `-cont` subjects in the modules file.
 - UD4 `/templates` (new).
-- UD5 `/commerce` and `/commerce-cont`: returns, bundles, subscriptions, wishlist, back-in-stock, product questions, verified reviews, cart quotes, stock per location, carrier labels, live rates, payment drivers, checkout legal documents.
+- UD5 `/commerce`, `/commerce-cont`, done 2026-11-23: sections `returns`, `cart-quotes`, `subscriptions`, `checkout` (help anchors), six h3s. Left: order report dashboard, POST /orders (UD6).
 - UD6 `/marketplaces` (new) and the commerce part of `/api`.
 - UD7 `/erp` and `/erp-cont`: automatic invoices and the ERP changes since #500 (git log recipe).
 - UD8 `/workspace`: channel changes, calls, e-mail, live pages, the canvas, notes groups and export.

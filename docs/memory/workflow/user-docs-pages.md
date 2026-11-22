@@ -12,7 +12,7 @@ description: User documentation on pinegrap.com: the 28 documentation pages by a
 - A page's mark is the highest merged PR whose user-visible changes the page holds, with nothing older left out.
 - #500 (release 2026.4.10, merged 2026-10-17 02:37 +03), all 28: `/introduction`, `/installation`, `/system`, `/site-settings`, `/folders`, `/files`, `/pages`, `/pages-cont`, `/calendars`, `/forms`, `/contacts`, `/users`, `/campaigns`, `/ads`, `/chat`, `/visitors`, `/seo`, `/design`, `/visual-page-editor`, `/multilingual`, `/commerce`, `/commerce-cont`, `/erp`, `/erp-cont`, `/workspace`, `/workspace-cont`, `/api`, `/security`.
 - How it is known: the rounds of 2026-10-13 to 2026-10-17 went through the merged PRs in order, and the pages hold #484, #486, #487, #489, #495, #499 and #500.
-- Everything merged after #500 belongs to the open version 2026.11.0 (`release/release-status.md`); its round is plan `plans/user-docs-2026-11.md`. Done (2026-11-23, sections noted "Available from 2026.11.0"): `/introduction`, `/site-settings`, `/system`, `/visual-page-editor` (part); their marks stay #500 until the smaller changes are checked.
+- Everything merged after #500 belongs to the open version 2026.11.0 (`release/release-status.md`); its round is plan `plans/user-docs-2026-11.md`. Pages done are marked in the plan's steps (sections noted "Available from 2026.11.0"); a page's mark stays #500 until its smaller changes are checked.
 - Last change by the sitemap (UTC): 2026-10-12 to 2026-10-16 for every page.
 - What each page covers and the memory it is written from: `user-docs-coverage-content.md`, `user-docs-coverage-modules.md`. A page's sections that a screen links to are its rows in `pinegrap/get_help_url.php`; the ones a page lacks: `user-docs-help-anchors.md`.
 
