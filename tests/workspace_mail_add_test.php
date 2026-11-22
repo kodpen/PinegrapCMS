@@ -180,7 +180,7 @@ function test_workspace_mail_add_wiring()
 	$save = workspace_mail_add_test_source('includes/settings/mailboxes.save.php');
 	$connect = workspace_mail_add_test_source('connect.php');
 
-	pg_assert_contains('ws_mail_add_returned($ws_added, $ws_flash);', $category, 'the return tests the account');
+	pg_assert_contains('ws_mail_add_returned($ws_added, pg_connect_last_take());', $category, 'the return tests the account');
 	pg_assert_contains('ws_settings_mail_drawer(null, $ws_viewer, $ws_form, !empty($pg_settings_in_dialog), $ws_pending);', $category, 'the sheet with what came back');
 	pg_assert_contains('ws_mail_add_pending(array(\'shown\' => true) + $ws_pending)', $category, 'a come-back opens the sheet once');
 	pg_assert_contains('$ws_tested = ws_mail_add_test_run(ws_mail_settings_dialog_input($_POST, 0));', $save, 'Test connection before anything is stored');
@@ -192,6 +192,8 @@ function test_workspace_mail_add_wiring()
 	$_SESSION['software']['connect_flash'] = null;
 	pg_connect_flash('notice', 'Done.', 12);
 	pg_assert_same(array('kind' => 'notice', 'text' => 'Done.', 'connection_id' => 12), pg_connect_flash_take());
+	pg_assert_same(12, pg_connect_last_take()['connection_id'], 'the account waits for Mailboxes after the Sending tab showed the message');
+	pg_assert_same(null, pg_connect_last_take(), 'once');
 
 	$script = ws_mail_add_script();
 

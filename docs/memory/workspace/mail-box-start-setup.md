@@ -1,12 +1,10 @@
 ---
 name: mail-box-start-setup
-description: Site Settings › Mailboxes since MT3: Add a mailbox's four starting points, and the Google and Microsoft set-up drawers opened from a box's Reading tab
+description: Site Settings › Mailboxes: the Google and Microsoft set-up drawers opened from a box's Reading tab or Add a mailbox's Sign in step
 ---
 
 ## How does Add a mailbox start?
-- The drawer `pgset-ws-mail-0` opens on four starting points, the Design examples' starting-point cards (`.pg-start`, `form-field-card` radios): Gmail or Google Workspace, Microsoft 365 or Outlook, Another mail server, No server (.eml files). `ws_mail_start_points()` lists them with the mail service each sets (`gmail`, `microsoft`, `other`, ''); `ws_mail_start_html()` draws them.
-- While no card is chosen the band under the head says "How is the mailbox read?" and the tabs and the form wait hidden (`data-ws-mail-start-*`). A card chosen with the pointer, the space bar or Enter (`leaveStart()` in `ws_mail_settings_script()`) sets Mail service, shows the tabs and the form and opens Reading on the service's fields, the service focused. The arrow keys only move the choice.
-- The radios are named `ws_mail_start`; the save never reads it. A refused save of a new box shows the form at once (the marked field's `showField()`).
+- Since EM5 (#11175) as the three-step sheet: `mail-add-sheet.md`. The starting points are its Choose step (`ws_mail_start_points()`); the old cards that opened the box form's Reading tab are gone.
 
 ## Where are the steps done at Google or Microsoft?
 - In their own drawers, printed once by the category (`ws_settings_mail_setup_drawer()`, ids `pgset-ws-mail-google-setup` / `pgset-ws-mail-microsoft-setup`), opened by one quiet button in a box's Reading tab (`ws_mail_setup_button()`): under "Sign in with" for Gmail, alone for Microsoft.

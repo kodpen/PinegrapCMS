@@ -31,8 +31,6 @@ $ws_form = !empty($pg_settings_in_dialog) ? 'pg_settings_modal_form' : 'pg_setti
 // account for mailboxes on Google's or Microsoft's page of Connections, when
 // the card or a box's form led there (a refusal, or the account connected);
 // the search index draws every category and leaves the message alone.
-$ws_flash = null;
-
 if (empty($_GET['search']) && function_exists('pg_connect_flash_take')) {
     $ws_flash = pg_connect_flash_take();
 
@@ -51,7 +49,7 @@ $ws_viewer = ws_viewer($user);
 $ws_added = (string) ($_GET['ws_mail_add'] ?? '');
 
 if (empty($_GET['search']) && in_array($ws_added, array('gmail', 'microsoft'), true) && ws_mail_ready()) {
-    ws_mail_add_returned($ws_added, $ws_flash);
+    ws_mail_add_returned($ws_added, pg_connect_last_take());
 }
 
 // ── Mailboxes ──

@@ -145,7 +145,8 @@ function ws_mail_add_probe_box($values, $secret)
 /**
  * The result line of a sign-in or a test. Pure but for the words.
  *
- * @param array  $test    ws_mail_box_test(), or ok false with error text
+ * @param array  $test    ws_mail_box_test(), or ok false with text (and
+ *                        title) to say instead
  * @param string $address
  * @param string $host
  * @return array ok, title, line
@@ -158,7 +159,7 @@ function ws_mail_add_result($test, $address, $host)
 
     $line = isset($test['text']) ? (string) $test['text'] : ws_mail_error_text((string) ($test['error'] ?? ''), (string) ($test['detail'] ?? ''), (string) $host);
 
-    return array('ok' => false, 'title' => lang('The connection test failed'), 'line' => $line);
+    return array('ok' => false, 'title' => isset($test['title']) ? (string) $test['title'] : lang('The connection test failed'), 'line' => $line);
 }
 
 /**
@@ -369,7 +370,8 @@ function ws_mail_add_sheet($viewer, $form, $in_dialog, $ready, $pending = null)
                     <div data-ws-mail-add-server hidden><div class="row g-5">' . $names(str_replace('<!--ws-mail-test-->', '', $parts['reading'])) . '</div></div>
                 </div>
                 <div data-ws-mail-add-step="details" hidden>' . $result['details'] . '
-                    <div class="row g-5">' . $names($room . $parts['name'] . $parts['address']) . '</div>
+                    <div class="row g-5">' . $names($room) . '</div>
+                    <div class="row g-5 mt-1">' . $names($parts['name'] . $parts['address']) . '</div>
                     <details class="pg-start-advanced mt-5">
                         <summary class="small"><b>' . h(lang('Other settings')) . '</b> <span class="small fg-2">' . h(lang('Signature, automatic answer, routing')) . '</span></summary>
                         <div class="row g-5 mt-1">' . $names($parts['enabled'] . $parts['support'] . $parts['signature'] . $parts['answers'] . $parts['routing']) . '</div>
@@ -383,7 +385,8 @@ function ws_mail_add_sheet($viewer, $form, $in_dialog, $ready, $pending = null)
     }
 
     // A sign-in or a test came back: the sheet opens again where it left.
-    $body .= ($open !== '') ? '<script>(function again(n) { if (window.pgWsMailAdd) { window.pgWsMailAdd.resume(); } else if (n < 40) { window.setTimeout(function () { again(n + 1); }, 50); } })(0);</script>' : '';
+    // On the page it waits for the panel's scripts, which open drawers.
+    $body .= ($open !== '') ? '<script>(function again(n) { if (window.pgWsMailAdd && (document.readyState === \'complete\')) { window.setTimeout(window.pgWsMailAdd.resume, 0); } else if (n < 200) { window.setTimeout(function () { again(n + 1); }, 50); } })(0);</script>' : '';
 
     return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), $body . ws_mail_add_script(), $in_dialog, ws_mail_add_foot($form, $in_dialog), '', ws_mail_add_steps_html(1));
 }
@@ -444,8 +447,10 @@ function ws_mail_add_test_run($input)
 
     $test = ws_mail_box_test(ws_mail_add_probe_box($values, $secret));
 
+    // A service's server is filled for it and folded away: its refusal is
+    // said under the password, the field in view.
     if (!$test['ok']) {
-        return $fail(ws_mail_error_text($test['error'], $test['detail'], $values['host']), in_array($test['error'], array('auth', 'auth_disabled', 'no_password'), true) ? 'password' : 'host');
+        return $fail(ws_mail_error_text($test['error'], $test['detail'], $values['host']), (($values['provider'] !== 'other') || in_array($test['error'], array('auth', 'auth_disabled', 'no_password'), true)) ? 'password' : 'host');
     }
 
     $shown = ($address !== '') ? $address : $values['user'];
@@ -479,7 +484,7 @@ function ws_mail_add_returned($provider, $flash)
     if (($flash['kind'] !== 'notice') || !is_array($account) || ((int) $account['user_id'] !== 0) || ($account['provider'] !== $owner)
         || !in_array('mail_read', (array) $account['purposes'], true)) {
         ws_mail_add_pending(array('step' => 'signin', 'fields' => array('provider' => $provider), 'secret' => '',
-            'result' => ws_mail_add_result(array('ok' => false, 'text' => (string) $flash['text']), '', '')));
+            'result' => ws_mail_add_result(array('ok' => false, 'title' => lang('The sign-in did not finish'), 'text' => (string) $flash['text']), '', '')));
         return;
     }
 
@@ -698,6 +703,12 @@ function ws_mail_add_script()
                 // A field the save refused, or the browser found invalid,
                 // shows its step; Gmail\'s refused password its card.
                 reveal: function (control) {
+                    window.setTimeout(function () {
+                        window.pgWsMailAdd.show(control);
+                    }, 0);
+                },
+
+                show: function (control) {
                     var root = (control && control.closest) ? control.closest(\'[data-ws-mail-add]\') : null;
                     var pane = root ? control.closest(\'[data-ws-mail-add-step]\') : null;
 
@@ -717,6 +728,19 @@ function ws_mail_add_script()
                     }
 
                     show(root, pane.getAttribute(\'data-ws-mail-add-step\'));
+
+                    // The restored values draw their fields (the box form\'s
+                    // sync), and a field folded under Advanced is opened.
+                    var service = field(root, \'provider\');
+                    var fold = control.closest(\'details\');
+
+                    if (service) {
+                        service.dispatchEvent(new Event(\'change\', {bubbles: true}));
+                    }
+
+                    if (fold) {
+                        fold.open = true;
+                    }
                 },
 
                 // A sign-in or a test came back: its fields filled, the
