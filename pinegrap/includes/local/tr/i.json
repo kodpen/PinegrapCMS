@@ -879,6 +879,7 @@
     "Incoming mail rules": "Gelen e-posta kuralları",
     "Incoming · {var:1}": "Gelen · {var:1}",
     "Incomplete": "Tamamlanmamış",
+    "Incomplete #{var:1}": "Tamamlanmamış #{var:1}",
     "Incomplete Orders": "Tamamlanmamış Siparişler",
     "Incomplete carts": "Tamamlanmamış sepetler",
     "Incomplete carts: personal fields, contact and account links": "Tamamlanmamış sepetler: kişisel alanlar, kişi ve hesap bağlantıları",

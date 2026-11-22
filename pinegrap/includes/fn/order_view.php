@@ -667,3 +667,249 @@ function pg_order_print_totals(array $order)
 
     return $rows;
 }
+
+/**
+ * How far one address of an order has gone: 'delivered' when its delivery
+ * date is today or before or every parcel is delivered; 'shipped' when its
+ * ship date is today or before, it has a parcel, or every line that keeps a
+ * shipped quantity has it full; 'partial' when some shipped quantity is
+ * above zero; else 'none'.
+ *
+ * @param array  $address ship_date, delivery_date (Y-m-d, '0000-00-00' when
+ *                        empty), lines (quantity, shipped_quantity,
+ *                        show_shipped_quantity), parcels (status strings)
+ * @param string $today   Y-m-d
+ * @return string
+ */
+function pg_order_view_address_shipping(array $address, $today)
+{
+    $today = (string) $today;
+    $on_or_before = function ($date) use ($today) {
+        $date = (string) $date;
+
+        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && ($date !== '0000-00-00') && (strcmp($date, $today) <= 0);
+    };
+
+    $parcels = isset($address['parcels']) && is_array($address['parcels']) ? array_values($address['parcels']) : array();
+    $all_delivered = ($parcels !== array());
+    foreach ($parcels as $parcel) {
+        if ((string) $parcel !== 'delivered') {
+            $all_delivered = false;
+        }
+    }
+
+    if ($on_or_before($address['delivery_date'] ?? '') || $all_delivered) {
+        return 'delivered';
+    }
+
+    // Only lines that keep a shipped quantity (a shippable product) count.
+    $counted = 0;
+    $full = 0;
+    $begun = false;
+    $lines = isset($address['lines']) && is_array($address['lines']) ? $address['lines'] : array();
+    foreach ($lines as $line) {
+        if (empty($line['show_shipped_quantity'])) {
+            continue;
+        }
+        $counted++;
+        $shipped = (int) ($line['shipped_quantity'] ?? 0);
+        if ($shipped >= (int) ($line['quantity'] ?? 0)) {
+            $full++;
+        }
+        if ($shipped > 0) {
+            $begun = true;
+        }
+    }
+
+    if ($on_or_before($address['ship_date'] ?? '') || ($parcels !== array()) || (($counted > 0) && ($full === $counted))) {
+        return 'shipped';
+    }
+
+    return $begun ? 'partial' : 'none';
+}
+
+/**
+ * The three pills of the order screen's head, worked out from what the
+ * screen already read: the order (its status), the payment and the
+ * shipping, and the shipping pill of each address for its shipment card.
+ * A pill is array(translated text, tone) or null when it is not shown.
+ *
+ * @param array  $order     the orders row: status, total and refunded_amount
+ *                          in minor units, payment_method, paid_at,
+ *                          erp_on_account
+ * @param array  $addresses ship_to_id => see pg_order_view_address_shipping()
+ * @param string $today     Y-m-d
+ * @return array order, payment, shipping, addresses (ship_to_id => pill)
+ */
+function pg_order_view_states(array $order, array $addresses, $today)
+{
+    $status = (string) ($order['status'] ?? '');
+    $order_pills = array(
+        'incomplete' => array(lang('Incomplete'), 'gray'),
+        'complete' => array(lang('Complete'), 'teal'),
+        'exported' => array(lang('Exported'), 'teal'),
+        'cancelled' => array(lang('Cancelled'), 'rose'),
+    );
+    $order_pill = isset($order_pills[$status]) ? $order_pills[$status] : array(lang(ucwords($status)), 'gray');
+
+    // Payment: the awaiting state first, as the Order Information card's
+    // badge words it; then the refund; then how it was paid.
+    $payment = null;
+    $total = (int) ($order['total'] ?? 0);
+    $refunded = (int) ($order['refunded_amount'] ?? 0);
+    if (($status !== 'incomplete') && ($total > 0)) {
+        if (isset($order['paid_at']) && pg_order_awaiting_payment($order)) {
+            if (!empty($order['erp_on_account'])) {
+                $payment = array(lang('On account'), 'amber');
+            } elseif (pg_order_payment_pending($order)) {
+                $payment = array(lang('Payment pending on PayPal'), 'amber');
+            } else {
+                $payment = array(lang('Awaiting bank transfer'), 'amber');
+            }
+        } elseif ($refunded >= $total) {
+            $payment = array(lang('Refunded'), 'teal');
+        } elseif ($refunded > 0) {
+            $payment = array(lang('Partially refunded'), 'amber');
+        } elseif (!empty($order['erp_on_account'])) {
+            $payment = array(lang('Put on account'), 'blue');
+        } else {
+            $payment = array(lang('Paid'), 'teal');
+        }
+    }
+
+    $words = array(
+        'delivered' => array(lang('Delivered'), 'teal'),
+        'shipped' => array(lang('Shipped'), 'blue'),
+        'partial' => array(lang('Partially shipped'), 'amber'),
+        'none' => array(lang('Not shipped'), 'gray'),
+    );
+
+    $address_pills = array();
+    $count = array('delivered' => 0, 'shipped' => 0, 'partial' => 0, 'none' => 0);
+    foreach ($addresses as $ship_to_id => $address) {
+        $state = pg_order_view_address_shipping(is_array($address) ? $address : array(), $today);
+        $count[$state]++;
+        $address_pills[$ship_to_id] = $words[$state];
+    }
+
+    $shipping = null;
+    $all = count($address_pills);
+    if ($all > 0) {
+        if ($count['delivered'] === $all) {
+            $shipping = $words['delivered'];
+        } elseif ($count['delivered'] + $count['shipped'] === $all) {
+            $shipping = $words['shipped'];
+        } elseif ($count['none'] < $all) {
+            $shipping = $words['partial'];
+        } else {
+            $shipping = $words['none'];
+        }
+
+        // A cancelled order names its shipping only when some of it left.
+        if (($status === 'cancelled') && ($count['none'] === $all)) {
+            $shipping = null;
+        }
+    }
+
+    return array(
+        'order' => $order_pill,
+        'payment' => $payment,
+        'shipping' => $shipping,
+        'addresses' => $address_pills,
+    );
+}
+
+/**
+ * The head's title: "Order #1171", or "Incomplete #428" for an order that
+ * has no number yet (its id). Plain text, not escaped.
+ *
+ * @param mixed $order_number orders.order_number
+ * @param mixed $order_id     orders.id
+ * @return string
+ */
+function pg_order_view_head_title($order_number, $order_id)
+{
+    $order_number = trim((string) $order_number);
+
+    if ($order_number !== '') {
+        return lang(array('string' => 'Order #{var:1}', 'vars' => array($order_number)));
+    }
+
+    return lang(array('string' => 'Incomplete #{var:1}', 'vars' => array((int) $order_id)));
+}
+
+/**
+ * "2 items, 3 units": the order's lines and the sum of their quantities.
+ * Plain text; '' when the order has no line.
+ *
+ * @param int $items
+ * @param int $units
+ * @return string
+ */
+function pg_order_view_counts_text($items, $units)
+{
+    $items = (int) $items;
+    $units = (int) $units;
+
+    if ($items <= 0) {
+        return '';
+    }
+
+    return lang(array('string' => ($items === 1) ? '{var:1} item' : '{var:1} items', 'vars' => array($items)))
+        . ', ' . lang(array('string' => ($units === 1) ? '{var:1} unit' : '{var:1} units', 'vars' => array($units)));
+}
+
+/**
+ * The head's grey line: its parts joined by a middle dot, an empty part
+ * left out.
+ *
+ * @param array $parts markup the caller escaped
+ * @return string
+ */
+function pg_order_view_head_meta(array $parts)
+{
+    $parts = array_values(array_filter(array_map('trim', array_map('strval', $parts)), 'strlen'));
+
+    if ($parts === array()) {
+        return '';
+    }
+
+    return '<p class="pg-record-head-meta">' . implode(' · ', $parts) . '</p>';
+}
+
+/**
+ * The head of a record screen (Design examples, "Record head"): the title
+ * with a copy button and the state pills, the grey line under it, the
+ * screen's toolbar at the right.
+ *
+ * @param array $head title (plain text), copy (text the button copies, ''
+ *                    for none), copy_label, pills (array(text, tone) or
+ *                    null each), meta (see pg_order_view_head_meta()),
+ *                    actions (the toolbar's markup)
+ * @return string
+ */
+function pg_order_view_head(array $head)
+{
+    $pills = '';
+    foreach ((array) ($head['pills'] ?? array()) as $pill) {
+        if (is_array($pill) && isset($pill[0], $pill[1])) {
+            $pills .= pg_pill((string) $pill[0], (string) $pill[1]);
+        }
+    }
+
+    $copy = ((string) ($head['copy'] ?? '') !== '')
+        ? '<span class="pg-copy">' . pg_copy_button((string) $head['copy'], (string) ($head['copy_label'] ?? lang('Copy')), 'pg_record_head_title') . '</span>'
+        : '';
+
+    $actions = (string) ($head['actions'] ?? '');
+
+    return '<div class="pg-record-head">
+                <div class="pg-record-head-main">
+                    <div class="pg-record-head-line">
+                        <h2 class="pg-record-head-title" id="pg_record_head_title">' . h((string) ($head['title'] ?? '')) . '</h2>' . $copy . $pills . '
+                    </div>
+                    ' . pg_order_view_head_meta((array) ($head['meta'] ?? array())) . '
+                </div>' . (($actions !== '') ? '
+                <div class="pg-record-head-actions">' . $actions . '</div>' : '') . '
+            </div>';
+}

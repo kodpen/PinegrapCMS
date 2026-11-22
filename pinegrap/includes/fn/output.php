@@ -2140,6 +2140,34 @@ function pg_pill($text, $theme = 'secondary', $attributes = '')
 
 
 /**
+ * A copy button of the panel (Design examples, "Copy button"): an icon
+ * button that copies the text it carries, named for a screen reader, with
+ * the polite status the panel's one listener (backend.src.js, data-pg-copy)
+ * fills with "Copied" or the refusal. The text is what the screen shows,
+ * with no label.
+ *
+ * @param string $text      the text copied; '' prints nothing
+ * @param string $label     the button's name, translated ("Copy the order number")
+ * @param string $source_id the id of the element showing the text, selected
+ *                          when the browser refuses the copy
+ * @return string
+ */
+function pg_copy_button($text, $label, $source_id = '')
+{
+    $text = (string) $text;
+
+    if ($text === '') {
+        return '';
+    }
+
+    return '<button type="button" class="pg-icon-button pg-icon-button-sm" data-pg-copy="' . h($text) . '"'
+        . (((string) $source_id !== '') ? ' data-pg-copy-source="' . h((string) $source_id) . '"' : '')
+        . ' title="' . h($label) . '" aria-label="' . h($label) . '"><i class="bi bi-copy" aria-hidden="true"></i></button>'
+        . '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>';
+}
+
+
+/**
  * Where to send a browser that has finished with a tool and wants the settings.
  *
  * There is no settings screen to redirect TO any more, so the address names a
