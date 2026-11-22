@@ -9,18 +9,18 @@ priority: 6
 - The screen is the panel's View Order (`view_order.php`). The customer's order view, the printed order and View Return are not part of it.
 
 ## Where is the drawing?
-- `commerce/order-screen-drawing/order.html` with `order-dark.jpg` and `order-light.jpg`: board O1 the screen at 1440 px, O2 today beside the proposal, O3 the head's states and an order to two addresses, O4 a phone.
+- `commerce/commerce-screens-drawing/order.html` with `order-dark.jpg` and `order-light.jpg`: board O1 the screen at 1440 px, O2 today beside the proposal, O3 the head's states and an order to two addresses, O4 a phone.
 - Where the drawing and these words differ, the drawing wins, but for the Turkish on the boards, which is a sample: the texts are the English ones of `order-screen-redraw-screens.md`. What neither says is asked of the architect.
 
 ## What is wrong today? (development 62b98310, seen on a sandbox)
 - The lines (Order Details) start about 1,170 px down at a 1440 × 900 window: Billing Information (thirteen rows), Customer Information, Payment Information, Shipping Information, Source and Returns stand over them.
-- An address is a column of ten label and value rows; the lines that go to it are in another list at the page's end, the fields of its parcel in a third place.
+- An address is ten label and value rows; its lines are in another list at the page's end, its parcel's fields in a third place.
 - The totals are in the status column, how it was paid in a card of the form column.
-- The order's state is one row of text in Order Information; nothing says at a glance whether it is paid or shipped.
+- Nothing says at a glance whether the order is paid or shipped.
 - Rows with no value are printed (Special Offer Code).
 
 ## Is it accepted?
-- Not yet. The drawing was shown to the owner on 2026-11-22; no step is given out before his word is recorded here and in the decisions list.
+- Yes. Owner (2026-11-22), shown the drawing with its four new things listed: "bunu ve ürün sayfasını ve tüm siparişler ekranıyla birlikte güncelleyelim." (`workflow/decisions-made-panel-15.md`). All Orders and Edit Product follow in `orders-list-redraw.md` and `product-insights.md`.
 
 ## What does the plan settle itself?
 - Nothing is taken away: every value, field, button and card of today stays, in a new place; a row with no value is not printed.
@@ -28,7 +28,7 @@ priority: 6
 - The wide layout stays (`ui/edit-screen-wide-layout.md`): form column, status column, sticky save bar. The status column no longer sticks: it holds three cards and is taller than a laptop's window (a comment says so).
 - No schema, no new right, no API change.
 
-## What is new, for the owner's word?
+## What is new?
 - The head's three state pills (order, payment, shipping), worked out from what is stored (`order-screen-redraw-states.md`).
 - Copy buttons (order number, an address, a tracking number, the e-mail, the reference code).
 - The customer's count of orders, a link to their orders list.

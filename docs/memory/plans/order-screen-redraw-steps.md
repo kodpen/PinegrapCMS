@@ -13,7 +13,7 @@ description: Plan order-screen-redraw, steps OS1 to OS4: the head and its pills,
 
 ## What does the close-out do?
 - Rewrites `commerce/order-view-screen-rows.md`, `order-screen-toolbar.md`, `order-screen-shipments.md` and `ui/look-order-screens.md` to what was built, with the PR numbers; corrects the order screen's lines of `plans/addon-hook-system-census-slots.md` and `ui/edit-screen-wide-layout.md` (the status column that does not stick).
-- Keeps `commerce/order-screen-drawing/` as the reference picture and deletes the plan's files.
+- Keeps `commerce/commerce-screens-drawing/` as the reference picture and deletes the plan's files.
 
 ## What holds for every step?
 - About 1,000 product lines at most; no schema; every value, field and button of today stays reachable, for every kind of order.
