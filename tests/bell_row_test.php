@@ -121,6 +121,28 @@ function test_bell_row_day_in_the_site_time_zone()
 	pg_assert_same('today', pg_notification_day($now - 60, $now, 'No/Such_Zone'), 'an unknown zone falls back, still a day');
 }
 
+function test_bell_row_short_time()
+{
+	// 2026-11-22 10:00 in Istanbul (UTC+3) is 07:00 UTC.
+	$now = gmmktime(7, 0, 0, 11, 22, 2026);
+	$zone = 'Europe/Istanbul';
+
+	pg_assert_same('1 min', pg_notification_short_time($now - 20, $now, $zone), 'under a minute reads as one');
+	pg_assert_same('1 min', pg_notification_short_time($now + 600, $now, $zone), 'a time after now reads as one minute');
+	pg_assert_same('5 min', pg_notification_short_time($now - 5 * 60 - 59, $now, $zone), 'whole minutes, not rounded up');
+	pg_assert_same('59 min', pg_notification_short_time($now - 3599, $now, $zone), 'the last minute of the hour');
+	pg_assert_same('1 h', pg_notification_short_time($now - 3600, $now, $zone), 'one hour');
+	pg_assert_same('3 h', pg_notification_short_time($now - 3 * 3600 - 1800, $now, $zone), 'whole hours');
+	pg_assert_same('10 h', pg_notification_short_time(gmmktime(21, 0, 0, 11, 21, 2026), $now, $zone), 'local midnight is still today');
+	pg_assert_same('Yesterday', pg_notification_short_time(gmmktime(20, 59, 0, 11, 21, 2026), $now, $zone), 'a minute before local midnight');
+	pg_assert_same('Yesterday', pg_notification_short_time(gmmktime(21, 0, 0, 11, 20, 2026), $now, $zone), 'the first minute of yesterday');
+	pg_assert_same('20 Nov', pg_notification_short_time(gmmktime(20, 59, 0, 11, 20, 2026), $now, $zone), 'the day before yesterday: day and month');
+	pg_assert_same('Nov 20', pg_notification_short_time(gmmktime(20, 59, 0, 11, 20, 2026), $now, $zone, 'month_day'), 'month first where the site writes it so');
+	pg_assert_same('9 Jan', pg_notification_short_time(gmmktime(9, 0, 0, 1, 9, 2026), $now, $zone), 'this year has no year');
+	pg_assert_same('30 Dec 2025', pg_notification_short_time(gmmktime(9, 0, 0, 12, 30, 2025), $now, $zone), 'another year shows it');
+	pg_assert_same('Yesterday', pg_notification_short_time(gmmktime(21, 0, 0, 11, 21, 2026), $now, 'No/Such_Zone'), 'an unknown zone falls back to UTC');
+}
+
 function test_bell_row_button_names_the_job()
 {
 	pg_assert_same('reply', pg_notification_button('new_comment'), 'a comment is answered');
