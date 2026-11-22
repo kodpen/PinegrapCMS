@@ -10,7 +10,7 @@ description: "Make designable" on a classic menu, menu sequence, ad or tag cloud
 
 ## Where does it reach?
 - Found with `_sdAnyParent()`: a node in the page tree changes this page only; a node inside a shared component (a header) marks that component edited, so every page placing it gets the widget on save.
-- Never automatic, never across pages: other pages keep their region nodes. A new widget each time (no reuse of a widget made from the same region before).
+- Never automatic, never across pages: other pages keep their region nodes. The bulk move does the same on the server for every moved page (`legacy-page-parts.md`). A new widget each time (no reuse of a widget made from the same region before).
 
 ## What stays the same?
 - The items: menus, ads and keywords are still edited in their own screens with the same rights; the widget reads them on every request.

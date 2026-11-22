@@ -39,7 +39,7 @@ function test_ltdr_state_advance_through_the_steps()
 		$seen[] = $p['style'] . ':' . $p['step'];
 		$s = pg_ltd_state_advance($s);
 	}
-	pg_assert_same(array('1:regions', '1:design', '1:page_regions', '1:frame', '2:regions', '2:design', '2:page_regions', '2:frame'), $seen);
+	pg_assert_same(array('1:regions', '1:design', '1:page_regions', '1:frame', '1:page_parts', '2:regions', '2:design', '2:page_regions', '2:frame', '2:page_parts'), $seen);
 	pg_assert_same(array('done' => 2, 'total' => 2, 'step' => 'regions', 'style' => 0), pg_ltd_state_progress($s));
 }
 
@@ -103,8 +103,8 @@ function test_ltdr_wiring()
 
 function test_ltdr_set_steps()
 {
-	pg_assert_same(array('regions', 'design', 'page_regions', 'frame'), pg_ltd_steps());
-	pg_assert_same(array('set_design', 'regions', 'set_pages', 'frame'), pg_ltd_steps(true));
+	pg_assert_same(array('regions', 'design', 'page_regions', 'frame', 'page_parts'), pg_ltd_steps());
+	pg_assert_same(array('set_design', 'regions', 'set_pages', 'frame', 'page_parts'), pg_ltd_steps(true));
 }
 
 function test_ltdr_state_new_with_sets()
@@ -134,8 +134,45 @@ function test_ltdr_state_advance_through_a_set()
 		$seen[] = $p['style'] . ':' . $p['step'];
 		$s = pg_ltd_state_next($s);
 	}
-	pg_assert_same(array('5:set_design', '5:regions', '5:set_pages', '5:frame', '6:set_design', '6:regions', '6:set_pages', '6:frame',
-	                     '9:regions', '9:design', '9:page_regions', '9:frame'), $seen);
+	pg_assert_same(array('5:set_design', '5:regions', '5:set_pages', '5:frame', '5:page_parts', '6:set_design', '6:regions', '6:set_pages', '6:frame', '6:page_parts',
+	                     '9:regions', '9:design', '9:page_regions', '9:frame', '9:page_parts'), $seen);
+}
+
+function test_ltdr_old_cursor_at_frame_goes_on_to_page_parts()
+{
+	$s = pg_ltd_state_new(array(3, 4), array(), 1);
+	$s['step'] = 'frame';
+	$s = pg_ltd_state_next($s);
+	pg_assert_same(array(0, 'page_parts'), array($s['index'], $s['step']));
+	$s = pg_ltd_state_next($s);
+	pg_assert_same(array(1, 'regions'), array($s['index'], $s['step']));
+}
+
+function test_ltdr_component_region_by_category()
+{
+	pg_assert_same(array('type' => 'common', 'id' => 12), pg_ltd_component_region('common_region:12'));
+	pg_assert_same(array('type' => 'designer', 'id' => 3), pg_ltd_component_region('cregion:3'));
+	pg_assert_same(null, pg_ltd_component_region('classic_style:4:top:1'), 'a frame part is not entered');
+	pg_assert_same(null, pg_ltd_component_region(''));
+	pg_assert_same(null, pg_ltd_component_region('cregion:0'));
+	pg_assert_same(null, pg_ltd_component_region('cregion:3x'));
+}
+
+function test_ltdr_page_parts_wiring()
+{
+	$run = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
+	$step = substr($run, strpos($run, 'function pg_ltd_run_page_parts('));
+	$step = substr($step, 0, strpos($step, "\n}\n"));
+	pg_assert_same(true, strpos($step, "pg_collab_may_edit_page('', (int)\$page['page_id'])") !== false, 'a held page keeps its nodes');
+	pg_assert_same(true, strpos($step, 'pg_ltd_save_page(') !== false, 'saved as the editor saves');
+	pg_assert_same(true, strpos($step, "\$state['origins']") !== false, 'in a set, the style\'s own pages');
+	$walk = substr($run, strpos($run, 'function pg_ltd_run_component_parts('));
+	$walk = substr($walk, 0, strpos($walk, "\n}\n"));
+	pg_assert_same(true, strpos($walk, "created_at >= '\$since'") !== false, 'only components the run made');
+	pg_assert_same(true, strpos($walk, 'pg_ltd_component_reaches(') !== false, 'no loop is stored');
+	pg_assert_same(true, strpos($walk, 'PG_LTD_PART_LEVELS') !== false);
+	$row = substr($run, strpos($run, 'function pg_ltd_widget_row('));
+	pg_assert_same(true, strpos(substr($row, 0, 900), 'created_at >=') !== false, 'a resumed step takes the widget made before');
 }
 
 function test_ltdr_state_next_skips()

@@ -3187,6 +3187,7 @@
     "Common regions": "Ortak bölgeler",
     "Common regions already components": "Zaten bileşen olan ortak bölgeler",
     "Common regions and menu items": "Ortak bölgeler ve menü öğeleri",
+    "Common regions inside the pages are placed as their shared components ({var:1}): {var:2}": "Sayfaların içindeki ortak bölgeler paylaşılan bileşenleri olarak yerleştirilir ({var:1}): {var:2}",
     "Common regions not found": "Bulunamayan ortak bölgeler",
     "Common regions with no record: {var:1}": "Kaydı olmayan ortak bölgeler: {var:1}",
     "Common regions, shared components and menu items": "Ortak bölgeler, ortak bileşenler ve menü öğeleri",

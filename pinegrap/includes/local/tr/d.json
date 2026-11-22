@@ -778,6 +778,7 @@
     "Designer Regions could not be retrieved from the source site, so the migration was aborted.": "Tasarımcı Bölgeleri kaynak siteden alınamadı, bu nedenle taşıma iptal edildi.",
     "Designer note...": "Tasarımcı notu...",
     "Designer regions": "Tasarımcı bölgeleri",
+    "Designer regions inside the pages become shared components ({var:1}): {var:2}": "Sayfaların içindeki tasarımcı bölgeleri paylaşılan bileşen olur ({var:1}): {var:2}",
     "Designer sketching a product on paper": "Kâğıda ürün eskizi çizen tasarımcı",
     "Designer → Express Order Settings → Terms Text (HTML)": "Tasarımcı → Hızlı Sipariş Ayarları → Koşullar Metni (HTML)",
     "Designs": "Tasarımlar",

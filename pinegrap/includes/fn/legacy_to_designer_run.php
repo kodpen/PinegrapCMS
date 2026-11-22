@@ -14,7 +14,11 @@
  *   3. page_regions  the page regions of pages that already had a tree of
  *                    their own moved into it
  *   4. frame         the frame's designer regions made components and its
- *                    menu, menu sequence, ad and tag cloud regions widgets
+ *                    menu, menu sequence, ad, tag cloud, login, cart and
+ *                    comments block regions widgets
+ *   5. page_parts    the same in each moved page's own tree (its common
+ *                    regions placed as their components too), then in the
+ *                    trees of the components the run made, one level a pass
  *
  * A set of styles (pg_ltd_sets()) moves into one new Legacy design instead,
  * each of its styles in turn:
@@ -26,6 +30,7 @@
  *                    design (page_style), each placing its own style's frame;
  *                    the classic style row stays as it is
  *   4. frame         as above
+ *   5. page_parts    as above, on the pages the style moved to the design
  *
  * The cursor is data/temp/legacy_to_designer.json, written after every
  * step; a lost one ends the run (every step skips what an earlier run
@@ -48,6 +53,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_plan.php');
 
 // Report lines kept per run; the rest are counted.
 define('PG_LTD_REPORT_LINES', 2000);
+// Levels of components the page_parts step enters below the pages.
+define('PG_LTD_PART_LEVELS', 6);
 
 /**
  * The steps of one style, in order: a style moving alone, or one of a set.
@@ -57,7 +64,7 @@ define('PG_LTD_REPORT_LINES', 2000);
  */
 function pg_ltd_steps($set = false)
 {
-    return $set ? array('set_design', 'regions', 'set_pages', 'frame') : array('regions', 'design', 'page_regions', 'frame');
+    return $set ? array('set_design', 'regions', 'set_pages', 'frame', 'page_parts') : array('regions', 'design', 'page_regions', 'frame', 'page_parts');
 }
 
 /**
@@ -492,6 +499,10 @@ function pg_ltd_run_step($state, $user)
         case 'frame':
             $state = pg_ltd_run_frame($state, $row, $user);
             break;
+
+        case 'page_parts':
+            $state = pg_ltd_run_page_parts($state, $row, $user, $set_at);
+            break;
     }
     return pg_ltd_state_next($state);
 }
@@ -651,8 +662,9 @@ function pg_ltd_shared_ids($tree)
 
 /**
  * The frame components' designer regions made shared components and their
- * named menu, menu sequence, ad and tag cloud regions made widgets (one per
- * region), each put in the region node's place; each frame row written once.
+ * named menu, menu sequence, ad and tag cloud regions and their login, cart
+ * and comments block regions made widgets (one per region), each put in the
+ * region node's place; each frame row written once.
  * The frame components are the parts of a split frame (pg_ltd_frame_rows()),
  * else the whole frame. A frame already done has no such nodes left, so
  * nothing is made twice.
@@ -679,22 +691,7 @@ function pg_ltd_run_frame($state, $row, $user)
         }
         foreach ($warnings as $w) $state = pg_ltd_state_line($state, 'skipped', $w);
     }
-    foreach ($targets['widgets'] as $t) {
-        $tree = pg_ltd_widget_tree($t['kind']);
-        $tree_json = pg_designer_tree_encode($tree);
-        if ($tree_json === '') continue;
-        $name = _sc_unique_name(pg_ltd_widget_name((string)$row['style_name'], $t['kind']));
-        $now = time();
-        db("INSERT INTO shared_components (name, description, tree_json, system_region_config, category, created_by, created_at, updated_at)
-            VALUES ('" . e($name) . "', '', '" . e($tree_json) . "', '" . e(json_encode(pg_ltd_widget_config($t))) . "', '', '" . (int)$user['id'] . "', '$now', '$now')");
-        $sid = (int)mysqli_insert_id(db::$con);
-        if ($sid <= 0) {
-            $state = pg_ltd_state_line($state, 'failed', lang(array('string' => 'The widget for "{var:1}" could not be saved.', 'vars' => array($t['name']))));
-            continue;
-        }
-        $made[$t['type'] . "\n" . $t['name']] = array('id' => $sid, 'name' => $name);
-        $state = pg_ltd_state_line($state, 'made', lang(array('string' => 'The region "{var:1}" is now the widget {var:2}.', 'vars' => array($t['name'], $name))), 'widgets');
-    }
+    $state = pg_ltd_run_widgets($state, $targets['widgets'], $row, $user, $made);
     if (!$made) return $state;
 
     foreach ($frames as $id => $frame) {
@@ -706,6 +703,235 @@ function pg_ltd_run_frame($state, $row, $user)
         }
     }
     return $state;
+}
+
+/**
+ * A widget row for each region target, as _sdRegionMakeWidget() makes one:
+ * the starter layout of its kind (pg_ltd_widget_tree()), its settings
+ * (pg_ltd_widget_config()) and a name after the style
+ * (pg_ltd_widget_name()). The row this run made before for the same region
+ * of the same style is taken again (pg_ltd_widget_row()), so a resumed step,
+ * the frame and the pages share one widget a region.
+ *
+ * @param array $targets  pg_ltd_part_targets() widget entries
+ * @param array &$made    "<regionType>\n<regionName>" => array('id', 'name'), added to
+ */
+function pg_ltd_run_widgets($state, $targets, $row, $user, &$made)
+{
+    foreach ((array)$targets as $t) {
+        $key = $t['type'] . "\n" . $t['name'];
+        if (isset($made[$key])) continue;
+        $w = pg_ltd_widget_row($t, (string)$row['style_name'], $user, (int)($state['started'] ?? 0));
+        if (!is_array($w)) {
+            $state = pg_ltd_state_line($state, 'failed', lang(array('string' => 'The widget for "{var:1}" could not be saved.', 'vars' => array(pg_ltd_widget_target_label($t)))));
+            continue;
+        }
+        $made[$key] = array('id' => $w['id'], 'name' => $w['name']);
+        if ($w['created']) {
+            $state = pg_ltd_state_line($state, 'made', lang(array('string' => 'The region "{var:1}" is now the widget {var:2}.', 'vars' => array(pg_ltd_widget_target_label($t), $w['name']))), 'widgets');
+        }
+    }
+    return $state;
+}
+
+/**
+ * The widget row of a region target: the one made since $since with the
+ * same settings under the style's widget name (or that name with the
+ * server's " [n]"), else a new one.
+ *
+ * @param array  $target      a pg_ltd_part_targets() widget entry
+ * @param string $style_name
+ * @param array  $user
+ * @param int    $since       the run's start
+ * @return array|null  'id', 'name', 'created'; null when it cannot be written
+ */
+function pg_ltd_widget_row($target, $style_name, $user, $since)
+{
+    $cfg = json_encode(pg_ltd_widget_config($target));
+    $base = pg_ltd_widget_name($style_name, $target['kind']);
+    $have = db_item("SELECT id, name FROM shared_components
+                     WHERE system_region_config = '" . e($cfg) . "' AND created_at >= '" . (int)$since . "'
+                       AND (name = '" . e($base) . "' OR name LIKE '" . e(addcslashes($base, '\\%_')) . " [%')
+                     ORDER BY id ASC LIMIT 1");
+    if (is_array($have)) return array('id' => (int)$have['id'], 'name' => (string)$have['name'], 'created' => false);
+    $tree_json = pg_designer_tree_encode(pg_ltd_widget_tree($target['kind']));
+    if ($tree_json === '') return null;
+    $name = _sc_unique_name($base);
+    $now = time();
+    db("INSERT INTO shared_components (name, description, tree_json, system_region_config, category, created_by, created_at, updated_at)
+        VALUES ('" . e($name) . "', '', '" . e($tree_json) . "', '" . e($cfg) . "', '', '" . (int)$user['id'] . "', '$now', '$now')");
+    $sid = (int)mysqli_insert_id(db::$con);
+    return $sid > 0 ? array('id' => $sid, 'name' => $name, 'created' => true) : null;
+}
+
+/**
+ * The region nodes of the pages a style moved, the server twin of pressing
+ * "Make designable" and Convert on each: a common region placed as its
+ * component (pg_common_region_component()), a designer region as its
+ * component (pg_designer_region_component()), a menu, menu sequence, ad,
+ * tag cloud, login, cart or comments block region as a widget
+ * (pg_ltd_run_widgets()). Then the trees of the common and designer
+ * components this run made and placed, one level a pass
+ * (pg_ltd_run_component_parts()). A page somebody holds keeps its nodes;
+ * Dynamic, System, Mobile Switch and PDF regions stay as they are.
+ *
+ * @param int $set_at  the set the style moves with, -1 alone
+ */
+function pg_ltd_run_page_parts($state, $row, $user, $set_at)
+{
+    $style_id = (int)$row['style_id'];
+    $design_id = ($set_at >= 0) ? (int)$state['sets'][$set_at]['design'] : $style_id;
+    if ($design_id <= 0) return $state;
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+    $made = array();
+    $placed = array();
+    foreach (pg_ltd_frame_rows($style_id) as $frame) $placed = array_merge($placed, pg_ltd_shared_ids(json_decode((string)$frame['tree_json'], true)));
+    foreach (pg_designer_load_pages($design_id, '', true) as $page) {
+        // In a set the design holds every style's pages: this style's only.
+        if ($set_at >= 0 && (int)($state['origins'][(string)(int)$page['page_id']][0] ?? 0) !== $style_id) continue;
+        $tree = json_decode((string)$page['tree_json'], true);
+        if (!is_array($tree)) continue;
+        $targets = pg_ltd_part_targets($tree);
+        $placed = array_merge($placed, pg_ltd_shared_ids($tree));
+        if (!$targets['common'] && !$targets['designer'] && !$targets['widgets']) continue;
+        if (!pg_collab_may_edit_page('', (int)$page['page_id'])) {
+            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the Page Design Studio.', 'vars' => array($page['page_name']))));
+            continue;
+        }
+        $state = pg_ltd_run_part_rows($state, $targets, $row, $user, $made);
+        $count = 0;
+        $tree = pg_ltd_frame_splice($tree, $made, $count);
+        if ($count === 0) continue;
+        $page['tree_json'] = pg_designer_tree_encode($tree);
+        $saved = pg_ltd_save_page($design_id, $page, $user);
+        if (!$saved['ok']) {
+            $state = pg_ltd_state_line($state, 'failed', $page['page_name'] . ': ' . implode(' ', (array)$saved['errors']));
+            continue;
+        }
+        $state = pg_ltd_state_line($state, 'made', lang(array('string' => 'The regions inside "{var:1}" are now shared components and widgets.', 'vars' => array($page['page_name']))));
+        $placed = array_merge($placed, pg_ltd_shared_ids($tree));
+    }
+    $start = array();
+    foreach (array_unique(array_map('intval', $placed)) as $sid) $start[$sid] = array();
+    return pg_ltd_run_component_parts($state, $row, $user, $made, $start);
+}
+
+/**
+ * The rows a tree's targets become, added to $made: common and designer
+ * components (marked 'component') and widgets.
+ *
+ * @param array $targets  pg_ltd_part_targets()
+ * @param array &$made    "<regionType>\n<regionName>" => array('id', 'name'[, 'component'])
+ */
+function pg_ltd_run_part_rows($state, $targets, $row, $user, &$made)
+{
+    foreach (array('common', 'designer') as $kind) {
+        foreach ($targets[$kind] as $name) {
+            $key = $kind . "\n" . $name;
+            if (isset($made[$key])) continue;
+            $warnings = array();
+            if ($kind === 'common') {
+                $rid = (int)db_value("SELECT cregion_id FROM cregion WHERE cregion_name = '" . e($name) . "' AND cregion_designer_type = 'no' LIMIT 1");
+                $c = $rid > 0 ? pg_common_region_component($rid, $user, $warnings) : null;
+            } else {
+                $c = pg_designer_region_component($name, $user, $warnings);
+            }
+            foreach ($warnings as $w) $state = pg_ltd_state_line($state, 'skipped', $w);
+            if (!is_array($c)) continue;
+            $made[$key] = array('id' => (int)$c['id'], 'name' => (string)$c['name'], 'component' => true);
+            if ($c['created']) {
+                $state = pg_ltd_state_line($state, 'made', lang(array('string' => $kind === 'common'
+                    ? 'The common region "{var:1}" is now a shared component.' : 'The designer region "{var:1}" is now a shared component.', 'vars' => array($name))), 'components');
+            }
+        }
+    }
+    return pg_ltd_run_widgets($state, $targets['widgets'], $row, $user, $made);
+}
+
+/**
+ * The region nodes inside the components the run made (a common or designer
+ * region's placeholders stay region nodes there), one level a pass: the
+ * common and designer components the frame and the pages place, then the
+ * ones those place, at most PG_LTD_PART_LEVELS levels. A component made
+ * before the run, a widget and the frame itself are not entered. A node
+ * naming the component or one above it on the way is left
+ * (pg_ltd_part_targets()'s $skip), and so is one whose component would come
+ * back to the component being written: no loop is ever stored.
+ *
+ * @param array $placed  component id => the region keys above it
+ */
+function pg_ltd_run_component_parts($state, $row, $user, &$made, $placed)
+{
+    $since = (int)($state['started'] ?? 0);
+    $done = array();
+    for ($level = 0; $placed && $level < PG_LTD_PART_LEVELS; $level++) {
+        $next = array();
+        foreach ($placed as $sid => $path) {
+            if (isset($done[$sid])) continue;
+            $done[$sid] = true;
+            $c = db_item("SELECT id, name, tree_json, category FROM shared_components WHERE id = '" . (int)$sid . "' AND created_at >= '$since'
+                          AND (system_region_config IS NULL OR system_region_config = '') LIMIT 1");
+            $from = is_array($c) ? pg_ltd_component_region((string)$c['category']) : null;
+            $tree = $from ? json_decode((string)$c['tree_json'], true) : null;
+            if (!is_array($tree)) continue;
+            $path[] = $from['type'] . "\n" . (string)db_value("SELECT cregion_name FROM cregion WHERE cregion_id = '" . (int)$from['id'] . "' LIMIT 1");
+            $targets = pg_ltd_part_targets($tree, $path);
+            $state = pg_ltd_run_part_rows($state, $targets, $row, $user, $made);
+            $here = array();
+            foreach (pg_ltd_part_keys($targets) as $key) {
+                if (!isset($made[$key])) continue;
+                if (empty($made[$key]['component']) || !pg_ltd_component_reaches((int)$made[$key]['id'], (int)$sid)) $here[$key] = $made[$key];
+            }
+            $count = 0;
+            $tree = pg_ltd_frame_splice($tree, $here, $count);
+            $json = pg_designer_tree_encode($tree);
+            if ($count > 0 && $json !== '') {
+                db("UPDATE shared_components SET tree_json = '" . e($json) . "', updated_at = '" . time() . "' WHERE id = '" . (int)$sid . "' LIMIT 1");
+                $state = pg_ltd_state_line($state, 'made', lang(array('string' => 'The regions inside the shared component "{var:1}" are now shared components and widgets.', 'vars' => array($c['name']))));
+            }
+            foreach (pg_ltd_shared_ids($tree) as $inner) {
+                if (!isset($done[$inner])) $next[$inner] = $path;
+            }
+        }
+        $placed = $next;
+    }
+    return $state;
+}
+
+/**
+ * The region a shared component was made from, by its category: a common
+ * region ("common_region:<id>", pg_common_region_component()) or a designer
+ * region ("cregion:<id>", pg_designer_region_component()).
+ *
+ * Pure: no query.
+ *
+ * @param string $category
+ * @return array|null  'type' ('common' or 'designer'), 'id' (cregion id); null for any other component
+ */
+function pg_ltd_component_region($category)
+{
+    if (!preg_match('/^(common_region|cregion):([1-9][0-9]*)$/', (string)$category, $m)) return null;
+    return array('type' => $m[1] === 'common_region' ? 'common' : 'designer', 'id' => (int)$m[2]);
+}
+
+/**
+ * Whether component $from is $to or places it at any depth, read from the
+ * stored rows.
+ */
+function pg_ltd_component_reaches($from, $to)
+{
+    $seen = array();
+    $stack = array((int)$from);
+    while ($stack) {
+        $id = array_pop($stack);
+        if ($id === (int)$to) return true;
+        if ($id <= 0 || isset($seen[$id])) continue;
+        $seen[$id] = true;
+        $tree = json_decode((string)db_value("SELECT tree_json FROM shared_components WHERE id = '$id' LIMIT 1"), true);
+        foreach (pg_ltd_shared_ids($tree) as $inner) $stack[] = (int)$inner;
+    }
+    return false;
 }
 
 /**

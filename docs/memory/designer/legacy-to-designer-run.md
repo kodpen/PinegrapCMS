@@ -14,7 +14,8 @@ module: legacy_to_designer_run
   - `design`: `pg_classic_style_design_open()` (the frame split, `legacy-frame-split.md`), each converted page, its page regions taken in, through `pg_designer_save_page()` (a dry run first; a page somebody holds skipped, `pg_collab_may_edit_page('', id)`).
   - Then in `design`: the folder pages through `pg_classic_style_convert_folder_pages()`; the design-wide body classes folded onto the pages and cleared as the editor's Save does; then `pg_classic_style_mark_design($id, 'legacy', ...)` (the `legacy` key since LG3: `legacy-design-framework.md`).
   - `page_regions`: page regions still in a page's tree (a page that had its own, a folder page) get the blocks spliced in; skipped when some page region sits in a shared component.
-  - `frame`: the frame's parts (`pg_ltd_frame_rows()`): their designer regions through `pg_designer_region_component()`, one widget row per region with `pg_ltd_widget_tree()`, `pg_ltd_widget_config()`, a unique `pg_ltd_widget_name()`, spliced into each part row at once.
+  - `frame`: the frame's parts (`pg_ltd_frame_rows()`): their designer regions through `pg_designer_region_component()`, one widget row per region (login, cart and comments block too) through `pg_ltd_widget_row()`, spliced into each part row at once.
+  - `page_parts`: the same in each moved page's tree and in the components the run made (`legacy-page-parts.md`).
 - A refused or missing style is skipped with its reason; a style already a visual design skips `regions` and `design`. A step that skips its style marks `skip` and `pg_ltd_state_next()` moves on; before LG5 a failed `design` also skipped the next style's `regions`.
 
 ## Where is its state, who works it?
@@ -23,7 +24,7 @@ module: legacy_to_designer_run
 - Ended: the cursor is kept as `data/legacy_to_designer/<run id>.json` (outside `temp`, which the clean up tool empties), one log line; the screen lists the last five runs.
 
 ## What if a request dies inside a step?
-- The step runs again: every converter returns the row it made before, a page with a tree keeps it, a frame with no region nodes left makes no widget. A lost cursor ends the run; starting again is safe for the same reason.
+- The step runs again: every converter returns the row it made before, a page with a tree keeps it, a frame with no region nodes left makes no widget, and a widget made since the run started is taken again. A lost cursor ends the run; starting again is safe for the same reason.
 
 ## Tests?
 - `tests/legacy_to_designer_run_test.php`: the cursor, its steps and progress, report lines, body classes, placed ids, the wiring of the screen and the job. The sandbox runs of sets: `legacy-set-run.md`.
