@@ -101,7 +101,10 @@ function pg_advanced_filters_head($close_url, $close_label, $count)
     return '<div class="advanced-filter-head">'
         . '<p class="advanced-filter-title"><i class="bi bi-funnel" aria-hidden="true"></i>' . h(lang('Filters')) . $pill . '</p>'
         . '<a class="pg-icon-button pg-icon-button-sm" href="' . h($close_url) . '" title="' . h($close_label) . '" aria-label="' . h($close_label) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>'
-        . '</div>';
+        . '</div>'
+        // From 1280 px the panel fills the window from where it starts, as
+        // the list table does (--pg-list-table-top): the CSS reads its top.
+        . '<script>(function (bar) { function fit() { bar.style.setProperty("--pg-filter-top", Math.max(0, Math.round(bar.getBoundingClientRect().top + window.pageYOffset)) + "px"); } fit(); window.addEventListener("resize", fit); window.addEventListener("load", fit); })(document.currentScript.parentElement);</script>';
 }
 
 /**

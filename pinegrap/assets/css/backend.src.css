@@ -5991,6 +5991,11 @@ body.pg-code-field-open {
   margin: 0;
 }
 .advanced-filter-scroll {
+  /* The containing block of absolutely positioned field parts
+     (.visually-hidden, a picker's helpers): without it they are placed
+     against an ancestor, escape this box's clip and stretch the page to the
+     fields' whole height. */
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   padding: 0 16px 16px;
@@ -6037,10 +6042,12 @@ body.pg-code-field-open {
   margin-right: auto;
 }
 
-/* From 1280 px: the right column, 300 px, from under the top bar to the
-   window's bottom. The height is the window's, not 100vh minus a fixed
-   56 px: the top bar is --pg-navbar-h high, and dvh follows a phone's or a
-   tablet's browser bar. */
+/* From 1280 px: the right column, 300 px, beside the figures and the list,
+   down to the window's bottom. Its height is the window's from where the
+   panel starts (--pg-filter-top, measured by the head's script as the list
+   table measures --pg-list-table-top), not 100vh minus a fixed 56 px, which
+   left the foot under the window's edge; dvh follows a tablet's browser
+   bar. */
 @media only screen and (min-width: 1280px) {
   .advanced-filter-bar {
     position: sticky;
@@ -6048,8 +6055,9 @@ body.pg-code-field-open {
     z-index: 999;
     float: right;
     width: 300px;
-    height: calc(100vh - var(--pg-navbar-h));
-    height: calc(100dvh - var(--pg-navbar-h));
+    height: calc(100vh - var(--pg-filter-top, var(--pg-navbar-h)) - 16px);
+    height: calc(100dvh - var(--pg-filter-top, var(--pg-navbar-h)) - 16px);
+    min-height: 320px;
     margin: 0 0 16px 16px;
   }
   .advanced-filter-foot {

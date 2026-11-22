@@ -3089,7 +3089,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <select class="pg-input" id="filter_shipping_status" name="shipping_status"><option value="any"' . $shipping_status_any_selected . '>' . lang('Any') . '</option><option value="unshipped"' . $shipping_status_unshipped_selected . '>' . lang('Unshipped') . '</option><option value="shipped"' . $shipping_status_shipped_selected . '>' . lang('Shipped') . '</option></select>
                         </div>
                         <div class="col-12"><h3 class="pg-group-label mt-7 mb-3">' . lang('Date Range') . '</h3></div>
-                        <div class="col-12">' . $output_date_type_field . '</div>
+                        <div class="col-12 my-1">' . $output_date_type_field . '</div>
                         <fieldset class="col-12" data-pg-date-selects>
                             <legend class="pg-field-label">' . lang('Start') . '</legend>
                             <select class="form-control my-1" name="start_month" aria-label="' . h(lang('Month')) . '">' . select_month(($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? '')) . '</select>
