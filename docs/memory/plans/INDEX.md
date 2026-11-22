@@ -37,6 +37,7 @@
 - automation-platforms-steps-3.md: Plan automation-platforms, AX1 to AX4, the apps that wait for the release of 2026.11.0: the n8n node, the Zapier, Make and Pabbly Connect apps, what each needs of the owner, how each is built
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
+- bell-redraw-fixes.md: Plan bell-redraw: what the architect's look found in BR1 as landed and in BR2 (head with nothing unread, More actions hidden, 16 px titles, one bold sentence, thick scrollbar); BR3 takes them first
 - bell-redraw-steps.md: Plan bell-redraw, steps BR1 to BR3 with size, order and checks: the head, selector, chips and search; the rows and short times; the states, the foot and the close-out
 - bell-redraw.md: Plan (owner 2026-11-22): the bell's drawer redrawn: a head of icon buttons, one selector, chips on one line, search in the head, rows that fit a phone, drawn states; BR1 to BR3
 - bookings-settings-tidy-screens.md: Plan bookings-settings-tidy, its screen: the Bookings pane as folded rows, services and staff as list rows with their drawers, the Messages row, the words and what must be true
@@ -125,6 +126,7 @@
 - order-screen-redraw-states.md: Plan order-screen-redraw, the rules a drawing cannot show: the head's order, payment and shipping pills, the equal-address line, the count of the customer's orders, what copy copies
 - order-screen-redraw-steps.md: Plan order-screen-redraw, steps OS1 to OS4: the head and its pills, the side panel and Payment, the shipment card with its lines, the later cards and close-out; how a step is checked
 - order-screen-redraw.md: Plan (owner 2026-11-22): View Order redrawn: a head with the order's states, a card per shipment holding its lines, payment with the totals, who and billing in the side panel
+- orders-list-redraw-filters-panel.md: Plan orders-list-redraw, step OL2b: the Advanced Filters panel's faults on All Orders (Update floating over the fields, thick scrollbars, large labels) and how the panel is put together
 - orders-list-redraw.md: Plan (owner 2026-11-22): All Orders redrawn: one bar, quick filters with counts, the figures as one strip with the charts behind Summary, rows with customer, three state pills and items
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
