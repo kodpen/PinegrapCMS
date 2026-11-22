@@ -6,6 +6,7 @@ description: Site Settings Maintenance, Firewall, Security and Features in look 
 ## Which files moved?
 - `includes/settings/maintenance.php`, `firewall.php`, `security.php`, `features.php` (step S5b of the plan panel-old-screens). Their `*.save.php` handlers are unchanged: no field, name or save changed.
 - `tools/check_look.php` counts 0 old buttons in all four; their baseline entries are gone.
+- The Features pane was redrawn after S5b as the Modules board and folded rows (#11003, #11043): its Feature Options card is gone; the pane today is `settings-features.md`.
 
 ## What changed on them?
 - Every `btn btn-sm btn-outline theme-*` (card header links such as Setup Instructions, Backup Manager, Firewall Log, Policy Reports, Sessions, Open it; the test, connect and rebuild buttons in rows) is `pg-button pg-button-quiet pg-button-sm`; icons inside lost `me-1`, the button's gap spaces them. Names, values, `form` attributes and confirmations stay.

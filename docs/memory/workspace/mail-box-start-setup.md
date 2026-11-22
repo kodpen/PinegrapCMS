@@ -24,4 +24,4 @@ description: Site Settings › Mailboxes since MT3: Add a mailbox's four startin
 
 Tests: `tests/workspace_mail_google_steps_test.php`, `tests/workspace_mail_drawer_test.php`.
 
-Related: docs/memory/workspace/mail-box-drawer.md, docs/memory/workspace/mail-google.md, docs/memory/plans/mailboxes-tidy.md
+Related: docs/memory/workspace/mail-box-drawer.md, docs/memory/workspace/mail-google.md, docs/memory/ui/look-settings-mailboxes.md

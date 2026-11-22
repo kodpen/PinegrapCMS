@@ -6,7 +6,7 @@ description: A mailbox's drawer in Site Settings › Mailboxes since #10934: hea
 ## How is a box's drawer laid out?
 - Head: name, then address and the state pill (`ws_mail_box_state()`). Tabs General, Reading, Answers, Routing in the band under it: `ws_mail_box_tabs()`, drawn through `pg_settings_drawer()`'s `$line` and `$bar`. A box kept in the mailbox itself has no Routing (`ws_mail_box_tab_labels()`).
 - General: name, address, Kept in (segments), channel or readers, On, Support box, signature. Answers: Send through, the SMTP server only for the mailbox's own server, sent copy and folder, Read the Sent folder, first answer time and automatic answer (support box), Pinegrap AI suggests.
-- Foot (`ws_mail_box_drawer_foot()`): Remove mailbox (danger, MT1's confirm), Cancel quiet, Save filled. On Workspace Settings the form keeps its own Save under the tabs.
+- Foot (`ws_mail_box_drawer_foot()`): Remove mailbox (danger, the confirm of `mail-box-remove.md`), Cancel quiet, Save filled. On Workspace Settings the form keeps its own Save under the tabs.
 
 ## What does Reading show?
 - Mail service with the chosen service's one line, then only its sign-in fields (`ws_mail_box_signin_way()`: none, account or password; the card's script works it out again on each change).
@@ -23,4 +23,4 @@ description: A mailbox's drawer in Site Settings › Mailboxes since #10934: hea
 ## What reads oddly?
 - In Turkish the tab "Reading" reads "Okuyorum", the state pill's word: one English key, one translation.
 
-Related: docs/memory/workspace/workspace-mail-settings-dialog.md, docs/memory/plans/mailboxes-tidy.md
+Related: docs/memory/workspace/workspace-mail-settings-dialog.md, docs/memory/ui/look-settings-mailboxes.md

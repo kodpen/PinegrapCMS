@@ -245,12 +245,18 @@ function pg_ship_date_adjustment_form_layout($cards, $buttons)
  * and shipping method no other adjustment uses, earlier or later, and a
  * whole number of days from 1.
  *
+ * A field posted as a list counts as not given, so it is refused as
+ * required: mb_strlen() of a listed prefix stopped both screens with a
+ * TypeError.
+ *
  * @param liveform $liveform
  * @param string|null $id  the adjustment being edited, null on create
  * @return void
  */
 function pg_ship_date_adjustment_form_check($liveform, $id)
 {
+    pg_liveform_single_values($liveform, array('zip_code_prefix', 'shipping_method_id', 'adjustment_days', 'adjustment_type'));
+
     $liveform->validate_required_field('zip_code_prefix', lang('Zip Code Prefix is required.'));
     $liveform->validate_required_field('shipping_method_id', lang('Shipping Method is required.'));
     $liveform->validate_required_field('adjustment_days', lang('The number of days is required.'));

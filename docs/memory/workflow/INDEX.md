@@ -28,7 +28,7 @@
 - bug-hunt-areas-api-shared-layer.md: The bug hunt of the external API's shared layer (fault, manners, response, router, preconditions, idempotency; channel message 10241, area c, PR #10615): three faults fixed, what was read clean
 - bug-hunt-areas-backend-layout-probe.md: Layout pass of the 2026-11-22 backend sweep: each panel screen at 390, 768 and 1440 px for covered or clipped controls and cut text; the fix, what the probe misreads
 - bug-hunt-areas-backend-sweep-2.md: Second pass of the owner's whole-backend sweep of 2026-11-22: a role without manage rights, every edit screen saved unchanged, phone dialogs, PHPStan level 2; what it fixed, what read clean
-- bug-hunt-areas-backend-sweep-3.md: Third pass of the owner's whole-backend sweep of 2026-11-22: scheduled jobs, site pages, dark theme, API answers, untranslated texts; what it fixed or reported, what read clean
+- bug-hunt-areas-backend-sweep-3.md: Third pass of the owner's whole-backend sweep of 2026-11-22: scheduled jobs, site pages, dark theme, API answers, untranslated texts; what it fixed or reported, what read clean [decision: decisions-made-product-99.md]
 - bug-hunt-areas-backend-sweep-4.md: Fourth whole-backend sweep (2026-11-22): SQL error log while crawling, static scans, array and unknown-id probes, root files; fixed checkout recipient id, Visitors grouping, System Informations
 - bug-hunt-areas-backend-sweep.md: The owner's whole-backend sweep of 2026-11-22: how every panel screen was loaded and read, what it found and fixed (#11051), what read clean [decision: here]
 - bug-hunt-areas-booking-visitor.md: The bug hunt of bookings on the visitor's side (2026-11-20): the widget's endpoint, the slot engine, hold and confirm, the manage page, the deposit payment; what it fixed and what read clean
@@ -77,6 +77,7 @@
 - decisions-made-panel-12.md: Decisions list, panel part 12 (2026-11-20 on): the owner's yes to three drawings: Application Access New application (poll 188), Edit application (poll 189), Assistants and agents (poll 190)
 - decisions-made-panel-13.md: Decisions list, panel part 13 (2026-11-21 on): the dashboard's Assistant card keeps the agent chat while Claude is off, with a notice at its top and a short note when no agent is connected
 - decisions-made-panel-14.md: Decisions list, panel part 14 (2026-11-21 on): yes to the E-mail settings drawing (poll 211), its parts into Design examples, no one-click Gmail broker now (poll 212)
+- decisions-made-panel-15.md: Decisions list, panel part 15 (2026-11-22 on): View Order, All Orders and Edit Product redrawn as their sheets show; Edit Product gets a Performance card with figures about the product
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
@@ -182,6 +183,8 @@
 - decisions-made-product-95.md: Decisions list, product part 95 (2026-11-21 on): an information request's exported data reaches the person by a signed download link valid 7 days in the answer e-mail
 - decisions-made-product-96.md: Decisions list, product part 96 (2026-11-21 on): the KVKK notice gets a switch of its own; the unused Chat Retention Period field leaves Chat for an opt-in "Site chats" rule in the Privacy centre
 - decisions-made-product-97.md: Decisions list, product part 97 (2026-11-21 on): with "Allow AI training" on, the firewall lets the training crawlers through instead of refusing them as bad bots; rate limits still apply
+- decisions-made-product-98.md: Decisions made, product part 98 (2026-11-22 on): what is left of the mobile API runs beside the other plans at priority 5, no longer after them
+- decisions-made-product-99.md: Decisions list, product part 99 (2026-11-22 on): the starter sites' three dead Twitter feeds leave both dumps (social links in the footer, two regions emptied); running sites only where untouched
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
 - decisions-made-schema-11.md: Decisions list, schema part 11 (2026-11-05 on): the access_scopes column of api_devices for a narrower scope asked on an OAuth refresh

@@ -20,7 +20,7 @@ description: Removing a mailbox (Site Settings › Mailboxes, MT1 #10900): the r
 - `ws_mail_box_remove_confirm()`: "Remove the mailbox …? Reading stops, the stored password is deleted and its incoming mail rules go. The conversations stay where they are." After it: "The mailbox was removed. Its conversations stay where they are."
 
 ## Where is the button?
-- In the box row's "more" menu (`ws_mail_box_menu()`), the Design examples' Menus part (#10852): Turn off or Turn on, a divider, then Remove in danger. Its confirm is asked by a captured click listener in `ws_mail_settings_script()` (`data-ws-mail-confirm`), so it works in the settings dialog too. The drawer's foot gets Remove in MT2.
+- In the box row's "more" menu (`ws_mail_box_menu()`), the Design examples' Menus part (#10852): Turn off or Turn on, a divider, then Remove in danger. Its confirm is asked by a captured click listener in `ws_mail_settings_script()` (`data-ws-mail-confirm`), so it works in the settings dialog too. The drawer's foot has Remove mailbox too (`mail-box-drawer.md`).
 - Turn off / Turn on posts `ws_mail_switch` = `<id>:off` or `<id>:on` (`ws_mail_box_switch_value()`), checked like Remove, with a Site Log line.
 
-Related: docs/memory/plans/mailboxes-tidy.md, docs/memory/workspace/mail-blocks.md, docs/memory/workspace/mail-rules.md
+Related: docs/memory/ui/look-settings-mailboxes.md, docs/memory/workspace/mail-blocks.md, docs/memory/workspace/mail-rules.md
