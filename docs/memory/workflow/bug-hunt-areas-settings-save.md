@@ -9,7 +9,7 @@ description: The owner's backend sweep of 2026-11-22: every Site Settings pane s
 
 ## What did it find?
 - Every pane answered `success`, with no PHP message and no script error.
-- One fault: the first Languages and Translation save on a site that never chose a source language counted as a change of it and dropped every page's kept index answer (`visitors/translation-source-save.md`).
+- One fault: the first Languages and Translation save on a site that never chose a source language counted as a change of it and dropped every page's kept index answer (`visitors/translation-source-save.md`, #11058).
 
 ## What does an unchanged save rewrite, and why is it no fault?
 - Empty text columns go from NULL to ''.

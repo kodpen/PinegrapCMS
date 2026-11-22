@@ -11,7 +11,7 @@ module: translate
 
 ## Why are both sides resolved?
 - The Source language list has no empty choice: it shows and posts the resolved language. A site that never chose one keeps `translation_source_language` empty, so the posted language against the raw column counted its first save as a change, with nothing edited.
-- Symptom: one save of Site Settings > Languages and Translation took every language address out of sitemap.xml and the hreflang alternates until each page was drawn again in each language.
+- Symptom: one save of Site Settings > Languages and Translation took every language address out of sitemap.xml and the hreflang alternates until each page was drawn again in each language. Fixed in #11058.
 - The first save still writes the shown language into the setting: from then on the source language no longer follows the panel language.
 
 ## Where is it tested?
