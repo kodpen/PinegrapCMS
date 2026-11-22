@@ -122,6 +122,7 @@
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
+- order-screen-redraw-fixes.md: View Order as landed after OS2 (#11139) against the drawing: two differences and the place of Payment, all for OS4 (card titles in two sizes, an empty Billing Information card)
 - order-screen-redraw-screens.md: Plan order-screen-redraw, the screen in words (boards O1, O3, O4): the head, the shipment card, the line row, Payment, the later cards, the side panel, the phone
 - order-screen-redraw-states.md: Plan order-screen-redraw, the rules a drawing cannot show: the head's order, payment and shipping pills, the equal-address line, the count of the customer's orders, what copy copies
 - order-screen-redraw-steps.md: Plan order-screen-redraw, steps OS1 to OS4: the head and its pills, the side panel and Payment, the shipment card with its lines, the later cards and close-out; how a step is checked
