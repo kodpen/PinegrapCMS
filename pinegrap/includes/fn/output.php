@@ -2140,6 +2140,93 @@ function pg_pill($text, $theme = 'secondary', $attributes = '')
 
 
 /**
+ * The head's grey line: its parts joined by a middle dot, an empty part
+ * left out.
+ *
+ * @param array $parts markup the caller escaped
+ * @return string
+ */
+function pg_record_head_meta(array $parts)
+{
+    $parts = array_values(array_filter(array_map('trim', array_map('strval', $parts)), 'strlen'));
+
+    if ($parts === array()) {
+        return '';
+    }
+
+    return '<p class="pg-record-head-meta">' . implode(' · ', $parts) . '</p>';
+}
+
+/**
+ * The head of a record screen (Design examples, "Record head"; View Order):
+ * the title with a copy button and the state pills, the grey line under it,
+ * the screen's toolbar at the right.
+ *
+ * @param array $head title (plain text), copy (text the button copies, ''
+ *                    for none), copy_label, pills (array(text, tone) or
+ *                    null each), meta (see pg_record_head_meta()),
+ *                    actions (the toolbar's markup), id (the title's id,
+ *                    default pg_record_head_title)
+ * @return string
+ */
+function pg_record_head(array $head)
+{
+    $pills = '';
+    foreach ((array) ($head['pills'] ?? array()) as $pill) {
+        if (is_array($pill) && isset($pill[0], $pill[1])) {
+            $pills .= pg_pill((string) $pill[0], (string) $pill[1]);
+        }
+    }
+
+    $id = ((string) ($head['id'] ?? '') !== '') ? (string) $head['id'] : 'pg_record_head_title';
+
+    $copy = ((string) ($head['copy'] ?? '') !== '')
+        ? '<span class="pg-copy">' . pg_copy_button((string) $head['copy'], (string) ($head['copy_label'] ?? lang('Copy')), $id) . '</span>'
+        : '';
+
+    $actions = (string) ($head['actions'] ?? '');
+
+    return '<div class="pg-record-head">
+                <div class="pg-record-head-main">
+                    <div class="pg-record-head-line">
+                        <h2 class="pg-record-head-title" id="' . h($id) . '">' . h((string) ($head['title'] ?? '')) . '</h2>' . $copy . (($pills !== '') ? '<span class="pg-record-head-pills">' . $pills . '</span>' : '') . '
+                    </div>
+                    ' . pg_record_head_meta((array) ($head['meta'] ?? array())) . '
+                </div>' . (($actions !== '') ? '
+                <div class="pg-record-head-actions">' . $actions . '</div>' : '') . '
+            </div>';
+}
+
+
+/**
+ * A copy button of the panel (Design examples, "Copy button"): an icon
+ * button that copies the text it carries, named for a screen reader, with
+ * the polite status the panel's one listener (backend.src.js, data-pg-copy)
+ * fills with "Copied" or the refusal. The text is what the screen shows,
+ * with no label.
+ *
+ * @param string $text      the text copied; '' prints nothing
+ * @param string $label     the button's name, translated ("Copy the order number")
+ * @param string $source_id the id of the element showing the text, selected
+ *                          when the browser refuses the copy
+ * @return string
+ */
+function pg_copy_button($text, $label, $source_id = '')
+{
+    $text = (string) $text;
+
+    if ($text === '') {
+        return '';
+    }
+
+    return '<button type="button" class="pg-icon-button pg-icon-button-sm" data-pg-copy="' . h($text) . '"'
+        . (((string) $source_id !== '') ? ' data-pg-copy-source="' . h((string) $source_id) . '"' : '')
+        . ' title="' . h($label) . '" aria-label="' . h($label) . '"><i class="bi bi-copy" aria-hidden="true"></i></button>'
+        . '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>';
+}
+
+
+/**
  * Where to send a browser that has finished with a tool and wants the settings.
  *
  * There is no settings screen to redirect TO any more, so the address names a

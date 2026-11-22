@@ -2108,6 +2108,8 @@
     "{var:1} turned the agent channel off: its decisions are listed with the other channels' decisions again.": "{var:1} ajan kanalını kapattı: kararları yeniden diğer kanalların kararlarıyla birlikte listelenir.",
     "{var:1} undated": "{var:1} tarihsiz",
     "{var:1} undelivered": "{var:1} iletilemedi",
+    "{var:1} unit": "{var:1} adet",
+    "{var:1} units": "{var:1} adet",
     "{var:1} units of {var:2} were moved.": "{var:2} ürününden {var:1} adet taşındı.",
     "{var:1} unit{suffix:1}": "{var:1} adet",
     "{var:1} unread": "{var:1} okunmamış",

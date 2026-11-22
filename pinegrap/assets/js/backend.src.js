@@ -15487,3 +15487,114 @@ $(document).on('submit', 'form', function (event) {
         pgLogoVideos();
     }
 })();
+
+// The panel's copy buttons (pg_copy_button(), Design examples "Copy
+// button"): one delegated listener copies a button's data-pg-copy. The
+// button keeps its name; for about 1.5 s its icon turns to a check and its
+// tooltip reads "Copied", and the polite status beside it says so. The
+// clipboard API only exists in a secure context; elsewhere, or when it
+// refuses, a hidden field and execCommand("copy") decide. A refused copy is
+// said in the status and the text the screen shows is selected, if the
+// button names it (data-pg-copy-source).
+(function () {
+    function say(button, key) {
+        var status = button.nextElementSibling;
+
+        if (status && status.getAttribute('role') === 'status') {
+            status.textContent = '';
+            // A fresh text is read again on a second press.
+            window.setTimeout(function () {
+                status.textContent = status.getAttribute(key) || '';
+            }, 50);
+        }
+
+        return status;
+    }
+
+    function done(button) {
+        var status = say(button, 'data-copied');
+        var icon = button.querySelector('.bi');
+        var title = button.getAttribute('title');
+
+        if (icon) {
+            icon.classList.remove('bi-copy');
+            icon.classList.add('bi-check2');
+        }
+
+        if (status && status.getAttribute('data-copied')) {
+            button.setAttribute('title', status.getAttribute('data-copied'));
+        }
+
+        window.clearTimeout(button.pgCopyTimer);
+        button.pgCopyTimer = window.setTimeout(function () {
+            if (icon) {
+                icon.classList.remove('bi-check2');
+                icon.classList.add('bi-copy');
+            }
+
+            if (title !== null) {
+                button.setAttribute('title', title);
+            }
+        }, 1500);
+    }
+
+    function refused(button) {
+        var source = document.getElementById(button.getAttribute('data-pg-copy-source') || '');
+
+        say(button, 'data-refused');
+
+        if (source && window.getSelection) {
+            window.getSelection().selectAllChildren(source);
+        }
+    }
+
+    function fallback(button, text) {
+        var field = document.createElement('textarea');
+        var copied = false;
+
+        field.value = text;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        button.parentNode.appendChild(field);
+        field.focus();
+        field.select();
+
+        try {
+            copied = document.execCommand("copy");
+        } catch (e) {
+            copied = false;
+        }
+
+        field.remove();
+        button.focus();
+
+        if (copied) {
+            done(button);
+        } else {
+            refused(button);
+        }
+    }
+
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest ? event.target.closest('[data-pg-copy]') : null;
+
+        if (!button) {
+            return;
+        }
+
+        var text = button.getAttribute('data-pg-copy') || '';
+
+        event.preventDefault();
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(function () {
+                done(button);
+            }, function () {
+                fallback(button, text);
+            });
+        } else {
+            fallback(button, text);
+        }
+    });
+})();

@@ -6459,6 +6459,7 @@
     "An https address outside this network.": "Bu ağın dışında bir https adresi.",
     "An https address outside this network. A number from an earlier box may go into its path or query.": "Bu ağın dışında bir https adresi. Önceki bir kutunun verdiği sayı adresin yol veya sorgu kısmına girebilir.",
     "An https address: an incoming webhook of Slack, Microsoft Teams, Google Chat or Discord, or a flow of n8n, Zapier or Make. The address is kept with the action; only staff see it.": "https ile başlayan bir adres: Slack, Microsoft Teams, Google Chat ya da Discord'un gelen webhook'u veya n8n, Zapier ya da Make akışı. Adres işlemle birlikte saklanır; yalnız yöneticiler görür.",
+    "An icon button that copies the text as shown, named for a screen reader. For a moment its icon turns to a check and its tooltip reads Copied, and a polite status beside it says so; when the browser refuses, the text is selected.": "Gösterilen metni kopyalayan, ekran okuyucu için adı olan bir simge düğmesi. Bir an simgesi onay işaretine döner ve ipucu Kopyalandı der, yanındaki sessiz durum alanı da bunu söyler; tarayıcı izin vermezse metin seçilir.",
     "An icon from the Bootstrap Icons set.": "Bootstrap Icons setinden bir simge.",
     "An icy white that hides fingerprints.": "Parmak izini belli etmeyen buz beyazı.",
     "An idea for the app": "Uygulama için bir fikir",

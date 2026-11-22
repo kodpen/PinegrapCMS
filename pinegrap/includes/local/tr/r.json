@@ -612,6 +612,7 @@
     "Record filters apply only while the list reads a single page with a Form Item View: with the pages chosen now, it shows no comment. Choose one such page, or delete the filters.": "Kayıt filtreleri yalnızca liste Form Öğesi Görünümü olan tek bir sayfayı okurken uygulanır: şu an seçili sayfalarla hiçbir yorum göstermez. Böyle tek bir sayfa seçin ya da filtreleri silin.",
     "Record for {var:1}": "{var:1} için kaydet",
     "Record found (1 or 0)": "Kayıt bulundu (1 ya da 0)",
+    "Record head": "Kayıt başlığı",
     "Record intact": "Kayıt bütün",
     "Record kinds": "Kayıt türleri",
     "Record link": "Kayıt bağlantısı",
