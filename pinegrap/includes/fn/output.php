@@ -2167,7 +2167,8 @@ function pg_record_head_meta(array $parts)
  *                    for none), copy_label, pills (array(text, tone) or
  *                    null each), meta (see pg_record_head_meta()),
  *                    actions (the toolbar's markup), id (the title's id,
- *                    default pg_record_head_title)
+ *                    default pg_record_head_title), media (markup before
+ *                    the title, e.g. a product's cover picture; '' for none)
  * @return string
  */
 function pg_record_head(array $head)
@@ -2186,8 +2187,10 @@ function pg_record_head(array $head)
         : '';
 
     $actions = (string) ($head['actions'] ?? '');
+    $media = (string) ($head['media'] ?? '');
 
-    return '<div class="pg-record-head">
+    return '<div class="pg-record-head">' . (($media !== '') ? '
+                <div class="pg-record-head-media">' . $media . '</div>' : '') . '
                 <div class="pg-record-head-main">
                     <div class="pg-record-head-line">
                         <h2 class="pg-record-head-title" id="' . h($id) . '">' . h((string) ($head['title'] ?? '')) . '</h2>' . $copy . (($pills !== '') ? '<span class="pg-record-head-pills">' . $pills . '</span>' : '') . '
