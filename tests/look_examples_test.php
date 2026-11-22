@@ -125,6 +125,32 @@ function test_look_examples_starting_point_sheet()
 	pg_assert_same(3, substr_count($html, 'class="drawer-body p-5"'), 'the body\'s 16 px');
 }
 
+function test_look_examples_form_drawer()
+{
+	$patterns = array_column(pg_look_examples_patterns('dark'), 'html', 'id');
+
+	pg_assert_true(isset($patterns['pattern-form']), 'the form drawer');
+	$html = $patterns['pattern-form'];
+
+	pg_assert_same(1, substr_count($html, 'class="pg-card overflow-hidden d-flex flex-column" style="max-width:760px"'), 'one drawer in the standing frame at #api_drawer\'s width');
+	pg_assert_same(1, substr_count($html, 'class="drawer-header p-5 pb-1 d-block"'), 'the head as the sheet measures it');
+	pg_assert_same(1, substr_count($html, '<div class="pg-seg pg-list-seg" role="tablist">'), 'the tabs as the segmented control');
+	pg_assert_same(5, substr_count($html, 'role="tab"'), 'Overview, Connect, Permissions, Events, Logs');
+	pg_assert_same(1, substr_count($html, 'aria-selected="true"'), 'one tab chosen');
+	pg_assert_contains('aria-labelledby="dark_look_form_tab"', $html, 'its pane named by the chosen tab');
+	foreach (array('Details', 'Summary', 'Danger') as $label) {
+		pg_assert_contains('>' . h(lang($label)) . '</div>', $html, 'the group ' . $label . ' under its label');
+	}
+	pg_assert_true(strpos($html, '>' . h(lang('Danger')) . '<') > strpos($html, '>' . h(lang('Summary')) . '<'), 'the danger group last');
+	pg_assert_same(1, substr_count($html, 'class="pg-set-fold-item"'), 'Advanced folded, and closed');
+	pg_assert_same(0, substr_count($html, 'pg-set-fold-item is-open'), 'nothing open');
+	pg_assert_contains('id="pg-fold-dark-look-form-advanced"', $html, 'the pane\'s theme keeps the fold ids apart');
+	pg_assert_same(1, substr_count($html, 'pg-button pg-button-fill'), 'Save is the one filled button');
+	pg_assert_true(strpos($html, h(lang('Cancel')) . '</button><button type="button" class="pg-button pg-button-fill">' . h(lang('Save'))) !== false, 'Cancel quiet before Save in the foot');
+	pg_assert_same(2, substr_count($html, 'pg-button pg-button-danger pg-button-sm'), 'Delete, and the confirm\'s Yes, delete');
+	pg_assert_contains('>' . h(lang('Yes, delete')) . '</button>', $html, 'the confirm it opens');
+}
+
 function test_look_examples_numbered_steps_drawer()
 {
 	$patterns = array_column(pg_look_examples_patterns('light'), 'html', 'id');
