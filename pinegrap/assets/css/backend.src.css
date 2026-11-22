@@ -3732,11 +3732,15 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
     width: var(--pg-searchbar-w);
     transform: translateX(-50%);
   }
-  /* The heading gives way instead of the field sliding off centre: half the
-     viewport, less half the field, less the logo group and a gap. Where the
-     screen is wide enough the plain 26rem wins and nothing is given up. */
+  /* The heading gives way instead of the field sliding off centre, and its
+     description ends 16px before the field with an ellipsis: half the bar
+     (the field's centre), less half the field, less where the heading starts
+     (the menu button, the logo group and the separator: 234px) and 12px
+     (the 16px gap less the 4px of padding at the heading's end). Where the screen is wide
+     enough the plain 26rem wins and nothing is given up. A private-label
+     logo is narrower, so the gap there is only wider. */
   #header:has(.pg-searchbar) .pg-navhead {
-    max-width: min(26rem, calc(50vw - (var(--pg-searchbar-w) / 2) - 12rem));
+    max-width: min(26rem, calc(50% - (var(--pg-searchbar-w) / 2) - 15.375rem));
   }
   /* One search per screen. */
   #header:has(.pg-searchbar) #EnableSearch {
@@ -12724,7 +12728,8 @@ body.workspace .ws-shell-main > #button_bar {
    rather than left out by output_footer() because the script switches
    between the two views without loading the page again. */
 body.workspace_channels .software-content:not(:has(.ws-home)) > #footer {
-  display: none;
+  /* The foot carries d-flex, and @layer utilities beats @layer custom. */
+  display: none !important;
 }
 .ws-app:not(:has(.ws-home)) {
   height: calc(100vh - var(--pg-navbar-h));

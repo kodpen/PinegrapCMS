@@ -140,7 +140,7 @@ function test_ws_frame_channel_view_has_no_foot()
 {
 	$source = ws_frame_css_source();
 
-	pg_assert_contains('display: none;', ws_frame_css_rule($source, 'body.workspace_channels .software-content:not(:has(.ws-home)) > #footer'));
+	pg_assert_contains('display: none !important;', ws_frame_css_rule($source, 'body.workspace_channels .software-content:not(:has(.ws-home)) > #footer'));
 	pg_assert_contains('height: calc(100vh - var(--pg-navbar-h));', ws_frame_css_rule($source, "\n.ws-app:not(:has(.ws-home))"));
 
 	$footer = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/output.php');
@@ -154,4 +154,5 @@ function test_ws_frame_top_bar_on_workspace_screens()
 	$source = ws_frame_css_source();
 
 	pg_assert_contains('display: none;', ws_frame_css_rule($source, 'body.workspace #header .pg-searchbar-kbd'));
+	pg_assert_contains('max-width: min(26rem, calc(50% - (var(--pg-searchbar-w) / 2) - 15.375rem));', ws_frame_css_rule($source, '#header:has(.pg-searchbar) .pg-navhead'));
 }
