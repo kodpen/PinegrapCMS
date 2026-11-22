@@ -112,6 +112,12 @@ foreach (array(
         $seo_card[1] .= pg_picker_script();
     }
 
+    // The site-wide JSON-LD field (built in prep.php) gets its editor from
+    // the card that prints it; see the note there.
+    if (($seo_card_id === 'pgset-structured') && ($output_structured_data_dependent !== '')) {
+        $seo_card[1] .= pg_code_editor_attach(array('id' => 'custom_jsonld', 'code_type' => 'application/json'));
+    }
+
     $pg_settings_cards[] = '
                         <div id="' . $seo_card_id . '" class="pg-set-card">
                             <div class="card">
