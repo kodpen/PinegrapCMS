@@ -102,6 +102,24 @@ function pg_order_view_line_fact($label, $value_html, $for = '', $strong = false
 }
 
 /**
+ * The "Taken from stock: a of b" fact of an order line whose sale took fewer
+ * units than its quantity (stock_taken recorded and below it; a back order
+ * line too); '' otherwise.
+ *
+ * @param mixed $taken    order_items.stock_taken, null for not recorded
+ * @param int   $quantity the line's quantity
+ * @return string
+ */
+function pg_order_view_stock_taken_fact($taken, $quantity)
+{
+    if (!pg_stock_taken_short($taken, $quantity)) {
+        return '';
+    }
+
+    return pg_order_view_line_fact(lang('Taken from stock'), h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array((int) $taken, (int) $quantity)))));
+}
+
+/**
  * A box under an order line for one of its gift cards or product forms: a
  * caption and what it holds.
  *

@@ -4134,6 +4134,7 @@
     "Sold Out": "Tükendi",
     "Sold as one item made of other products. Its stock follows the products in it.": "Başka ürünlerden oluşan tek bir ürün olarak satılır. Stoğu içindeki ürünlere göre belirlenir.",
     "Sold at a loss": "Zararına satılan",
+    "Sold beyond stock #{var:1}": "Stoktan fazla satıldı #{var:1}",
     "Sold in Seafront": "Sahil'de sattı",
     "Sold out": "Tükendi",
     "Sold out eleven days before the conference.": "Konferanstan on bir gün önce biletler tükendi.",

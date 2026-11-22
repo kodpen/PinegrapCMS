@@ -18,6 +18,6 @@ module: stock_sales
 
 ## Who reads it?
 - `mp_order_return_stock()` and `pg_bundle_return_stock()`: put back `pg_stock_taken_put_back()` = the smaller of taken and asked (all asked when NULL); 0 → nothing written and nothing announced. After a write, `pg_stock_taken_returned()` lowers the row's figure, so a cancel applied twice gives the stock back once.
-- Not changed: a customer return's restock (it counts goods in hand). The oversold warning that reads these columns is #10682.
+- Not changed: a customer return's restock (it counts goods in hand). The oversold warning reads these columns (`order-oversold-warning.md`, #10682).
 
 Tests: `tests/stock_taken_test.php`.
