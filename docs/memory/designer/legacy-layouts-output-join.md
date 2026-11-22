@@ -5,7 +5,7 @@ description: Where a page type's layout output joins the page, the names built o
 
 ## Where does the layout's output join the page?
 - In one place: `get_page_content.php` replaces each `<system>` tag (the page's own and a named one of another page) with `$system_output`, the `get_<type>()` result, right before `preg_replace('/<system>…')` (about line 5384). `render_layout()` (`includes/fn/content.php`) draws the template or `data/layouts/<id>.php` inside it.
-- The canvas preview of the region (`pg_layout_region_preview()`, [[legacy-region-preview]]) runs the same `get_page_content()`, so a map there reaches the canvas too.
+- The canvas preview of the regions (`pg_layout_regions_preview()`, [[legacy-region-preview]]) runs the same `get_page_content()`, so a map there reaches the canvas too.
 - Elsewhere: `includes/fn/forms.php` draws the view order screen in the classic secure frame (not a design page); `widgets_order_preview.php` reads `get_order_preview()` values only.
 
 ## What does the join know about the design?

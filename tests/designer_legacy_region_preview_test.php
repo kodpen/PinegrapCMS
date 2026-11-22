@@ -2,11 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the canvas preview of a classic page's system region drawn by
- * its custom layout: the markers the page render puts around the page's own
- * system region while the flag is on, the cut that takes the region out of
- * a whole page, and the designer/legacy_region_preview endpoint, which asks
- * for the layout editor's right and draws in the background.
+ * Tests for the canvas's true picture of a page's regions: the markers the
+ * page render puts around every region tag while the flag is on, the cut
+ * that takes each region out of a whole page, the designer/
+ * legacy_region_preview endpoint, which draws in the background for
+ * everyone who may open the page, and the canvas's band and match.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -77,17 +77,49 @@ function _legacy_region_node($names, $script)
 	return is_array($res) ? $res : null;
 }
 
+// Each region tag between two markers: its type, its name (entities read,
+// tags dropped) and its order among the same type and name.
+function test_legacy_region_mark_tags()
+{
+	$page = '<nav><menu>Main</menu><div style="clear: both"></div></nav>'
+		. '<MENU_SEQUENCE>Side</MENU_SEQUENCE><cregion>head &amp; foot</cregion>'
+		. '<system></system><dregion "x=1">news</dregion><cart></cart><ad>top</ad>'
+		. '<cregion>head &amp; foot</cregion><address>a</address><tcloud></tcloud>';
+
+	$marked = pg_layout_region_mark_tags($page);
+	$regions = pg_layout_regions_cut($marked);
+
+	$keys = array();
+	foreach ($regions as $r) {
+		$keys[] = $r['type'] . ':' . $r['name'] . ':' . $r['order'];
+	}
+	pg_assert_same(array('menu:Main:0', 'menu_sequence:Side:0', 'cregion:head & foot:0', 'system::0',
+		'dregion:news:0', 'cart::0', 'ad:top:0', 'cregion:head & foot:1', 'tcloud::0'), $keys, 'every tag, in order');
+	pg_assert_same('<dregion "x=1">news</dregion>', $regions[4]['html'], 'the tag stays for its pass');
+	pg_assert_contains('<address>a</address>', $marked, 'another element is not a region');
+	pg_assert_same('plain', pg_layout_region_mark_tags('plain'));
+
+	// Numbers are unique in the request: a second render never reuses one.
+	preg_match('/pg-region-start:(\d+):/', pg_layout_region_mark_tags('<pdf></pdf>'), $m1);
+	preg_match('/pg-region-start:(\d+):/', pg_layout_region_mark_tags('<pdf></pdf>'), $m2);
+	pg_assert_true((int) $m2[1] > (int) $m1[1], 'a new number each time');
+}
+
 function test_legacy_region_cut()
 {
-	$page = '<html><body><nav>menu</nav><div class="c">'
-		. '<!--pg-layout-region-start--> <div class="software_catalog">items</div> <!--pg-layout-region-end-->'
-		. '</div><!--pg-layout-region-start-->second<!--pg-layout-region-end--></body></html>';
+	$page = '<html><body><!--pg-region-start:7:cregion:outer:0--><div>'
+		. '<!--pg-region-start:8:cregion:inner:0--> <p>in</p> <!--pg-region-end:8-->'
+		. '</div><!--pg-region-end:7--><!--pg-region-start:9:menu:a%3Ab:0-->x<!--pg-region-end:9-->'
+		. '<!--pg-region-start:10:pdf::0-->cut short</body></html>';
 
-	pg_assert_same('<div class="software_catalog">items</div>', pg_layout_region_cut($page), 'the first region, trimmed');
-	pg_assert_same("a\nb", pg_layout_region_cut("<!--pg-layout-region-start-->a\nb<!--pg-layout-region-end-->"), 'across lines');
-	pg_assert_same('', pg_layout_region_cut('<html><body>no region</body></html>'), 'a tree without the region');
-	pg_assert_same('', pg_layout_region_cut('<!--pg-layout-region-start-->cut short'), 'no end marker');
-	pg_assert_same('', pg_layout_region_cut(''));
+	$regions = pg_layout_regions_cut($page);
+	pg_assert_same(3, count($regions), 'a start with no end is passed over');
+	pg_assert_same(array('type' => 'cregion', 'name' => 'outer', 'order' => 0, 'html' => '<div> <p>in</p> </div>'), $regions[0],
+		'the region inside is drawn, its markers gone');
+	pg_assert_same('<p>in</p>', $regions[1]['html'], 'the inner region on its own, trimmed');
+	pg_assert_same('a:b', $regions[2]['name'], 'the name decoded');
+	pg_assert_same(array(), pg_layout_regions_cut('<html><body>no region</body></html>'));
+	pg_assert_same(array(), pg_layout_regions_cut(''));
 }
 
 // Off unless a preview turns it on, so no visitor's page carries a marker.
@@ -100,31 +132,28 @@ function test_legacy_region_marking_flag()
 	pg_assert_false(pg_layout_region_marking());
 }
 
-// Only the page's own system region is marked, and only under the flag.
-function test_legacy_region_render_marks_primary_region()
+// Every region tag is marked, only under the flag, before the first region
+// pass; the page's own system region has no marker of its own any more.
+function test_legacy_region_render_marks_every_region()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
-	pg_assert_contains(
-		"if (\$primary_system_region && function_exists('pg_layout_region_marking') && pg_layout_region_marking()) {",
-		$source
-	);
-	$mark = strpos($source, "'<!--pg-layout-region-start-->' . \$system_output . '<!--pg-layout-region-end-->'");
-	$replace = strpos($source, "pg_system_region_fill(\$content, \$system_page_name, \$system_output);");
-	pg_assert_true(($mark !== false) && ($replace !== false) && ($mark < $replace), 'marked before it is put in place');
+	$mark = strpos($source, "if (function_exists('pg_layout_region_marking') && pg_layout_region_marking()) {\n        \$content = pg_layout_region_mark_tags(\$content);");
+	$first_pass = strpos($source, "preg_match_all('/<cregion>.*?<\\/cregion>/i', \$content, \$regions);");
+	pg_assert_true(($mark !== false) && ($first_pass !== false) && ($mark < $first_pass), 'marked before the first pass');
+	pg_assert_false(strpos($source, 'pg-layout-region-start') !== false, 'no second marker');
 }
 
 // A background render whose borrowed request state always comes back.
 function test_legacy_region_preview_background_render()
 {
-	$source = _legacy_region_source('pg_layout_region_preview');
+	$source = _legacy_region_source('pg_layout_regions_preview');
 
-	$gate = strpos($source, 'pg_layout_custom_page_ids(array($page_id))');
-	$render = strpos($source, 'get_page_content(');
-	pg_assert_true(($gate !== false) && ($gate < $render), 'only a page drawing a custom layout');
+	pg_assert_false(strpos($source, 'pg_layout_custom_page_ids(') !== false, 'every page, not only a custom layout');
 	pg_assert_contains('pg_seo_rendering(true);', $source);
 	pg_assert_contains('pg_error_throws(true);', $source);
 	pg_assert_contains("'preview'", $source, 'never edit mode');
+	pg_assert_contains('return pg_layout_regions_cut($html);', $source);
 
 	$finally = strpos($source, '} finally {');
 	pg_assert_true($finally !== false);
@@ -134,12 +163,12 @@ function test_legacy_region_preview_background_render()
 		pg_assert_contains($restore, $tail, $restore);
 	}
 
-	pg_assert_same('', pg_layout_region_preview(0));
-	pg_assert_same('', pg_layout_region_preview(-4));
+	pg_assert_same(array(), pg_layout_regions_preview(0));
+	pg_assert_same(array(), pg_layout_regions_preview(-4));
 }
 
-// Designers and administrators, as the layout tab; a content-level operator
-// never reaches it.
+// Everyone who may open the page in the editor: a content-level operator
+// too, but not for a page hidden from them.
 function test_legacy_region_preview_endpoint()
 {
 	require_once(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
@@ -148,46 +177,103 @@ function test_legacy_region_preview_endpoint()
 
 	$content_ok = substr($source, strpos($source, '$content_ok = array('));
 	$content_ok = substr($content_ok, 0, strpos($content_ok, ');'));
-	pg_assert_false(strpos($content_ok, 'legacy_region_preview') !== false, 'not opened to content editors');
+	pg_assert_contains("'legacy_region_preview'", $content_ok, 'opened to content editors');
 
 	$case = strpos($source, "case 'legacy_region_preview':");
 	pg_assert_true($case !== false);
 	$branch = substr($source, $case, strpos($source, 'break;', $case) - $case);
-	$role = strpos($branch, "if ((int)\$user['role'] > 1)");
-	$render = strpos($branch, 'pg_layout_region_preview(');
-	pg_assert_true(($role !== false) && ($role < $render), 'the role before the render');
+	$access = strpos($branch, "pg_designer_page_access(\$lrp_page, \$user) === 'hidden'");
+	$render = strpos($branch, 'pg_layout_regions_preview(');
+	pg_assert_true(($access !== false) && ($access < $render), 'the page access before the render');
 	pg_assert_true(strpos($source, 'validate_token();') < $case, 'the token is checked');
 
 	$sub_actions = pg_page_cache_panel_sub_actions();
 	pg_assert_true(in_array('legacy_region_preview', $sub_actions['designer']['clean'], true), 'a read keeps the page cache');
 }
 
-// The canvas draws it only under the page's own system region of a page in
-// the layout list, keeps it out of the tree, and drops what would run in the
-// editor: scripts, frames and plugins, event attributes, javascript:
-// addresses.
+// The canvas draws every region but the page region and the comments block,
+// keeps the picture out of the tree, and drops what would run in the editor:
+// scripts, frames and plugins, event attributes, javascript: addresses.
 function test_legacy_region_preview_canvas()
 {
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
-	pg_assert_contains('if (_sdLegacyRegionOwn(node)) _sdLegacyRegionAppend(doc, rg);', $js);
-	pg_assert_false(strpos($js, "if (node.props.regionType === 'system') _sdLegacyRegionAppend(doc, rg);") !== false,
-		'a named system region is not drawn with the page\'s own region');
+	pg_assert_contains('if (_sdRegionTrueKey(node)) _sdRegionTrueAppend(doc, rg, node);', $js);
+	pg_assert_false(strpos($js, 'function _sdLegacyRegionAppend(') !== false, 'one way of drawing a region');
 
-	$start = strpos($js, 'function _sdLegacyRegionAppend(');
+	$start = strpos($js, 'function _sdRegionTrueClean(');
 	$body = substr($js, $start, strpos($js, "\n    }\n", $start) - $start);
-	pg_assert_contains("(_design.layoutPages || []).indexOf(p.page_id) === -1", $body);
-	pg_assert_contains("_pgApiPost('legacy_region_preview'", $body);
 	pg_assert_contains("querySelectorAll('script, iframe, object, embed')", $body, 'no script, frame or plugin');
 	pg_assert_contains("a.name.slice(0, 2) === 'on'", $body);
 	pg_assert_contains('_sdLegacyRegionJsUrl(a.value)', $body, 'no javascript: address in any attribute');
 	pg_assert_contains("box.setAttribute('inert', '');", $body);
 	pg_assert_false(strpos($body, 'data-sd-id') !== false, 'never selectable');
+
+	$start = strpos($js, 'function _sdRegionTrueAppend(');
+	$body = substr($js, $start, strpos($js, "\n    }\n", $start) - $start);
+	pg_assert_contains("_pgApiPost('legacy_region_preview'", $body);
+	pg_assert_false(strpos($body, "(_design.layoutPages || []).indexOf(p.page_id) === -1) return") !== false, 'every page, not only a custom layout');
+	pg_assert_contains("_sdT('Code')", $body, 'the pill');
+	pg_assert_contains("_sdT('Classic')", $body);
 }
 
-// Only the unnamed system region is the page's own (the one the server marks,
-// get_page_content.php); a named one draws another page's region and keeps
-// the plain placeholder.
+// Each region type to the tag the server marks, the key a node is matched
+// by, and the match by type, name and order.
+function test_legacy_region_true_key_and_match()
+{
+	$script = <<<'JS'
+var reg = function (t, n) { return { type: 'region', props: { regionType: t, regionName: n } }; };
+var regions = [
+    { type: 'cregion', name: 'head', order: 0, html: 'h0' },
+    { type: 'cregion', name: 'head', order: 1, html: 'h1' },
+    { type: 'system', name: '', order: 0, html: 's' }
+];
+var out = {
+    page: _sdRegionTrueKey(reg('page', '')),
+    comments: _sdRegionTrueKey(reg('comments_block', '')),
+    unknown: _sdRegionTrueKey(reg('nothing', 'x')),
+    none: _sdRegionTrueKey(null),
+    common: _sdRegionTrueKey(reg('common', 'head')),
+    designer: _sdRegionTrueKey(reg('designer', 'head')),
+    tag_cloud: _sdRegionTrueKey(reg('tag_cloud', 'search')),
+    cart: _sdRegionTrueKey(reg('cart', 'ignored')),
+    system: _sdRegionTrueKey(reg('system')),
+    dynamic: _sdRegionTrueKey(reg('dynamic', 'news')),
+    m0: (_sdRegionTrueMatch(regions, 'cregion:head', 0) || {}).html,
+    m1: (_sdRegionTrueMatch(regions, 'cregion:head', 1) || {}).html,
+    m2: _sdRegionTrueMatch(regions, 'cregion:head', 2),
+    ms: (_sdRegionTrueMatch(regions, 'system:', 0) || {}).html,
+    bad: _sdRegionTrueMatch(null, 'system:', 0)
+};
+console.log(JSON.stringify(out));
+JS;
+
+	$res = _legacy_region_node(array('_sdRegionMarkType', '_sdRegionTrueKey', '_sdRegionTrueMatch'), $script);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('', $res['page'], 'the page region is the page\'s own content');
+	pg_assert_same('', $res['comments'], 'the comments block keeps its placeholder');
+	pg_assert_same('', $res['unknown']);
+	pg_assert_same('', $res['none']);
+	pg_assert_same('cregion:head', $res['common']);
+	pg_assert_same('cregion:head', $res['designer'], 'a designer region is a <cregion> too');
+	pg_assert_same('tcloud:search', $res['tag_cloud']);
+	pg_assert_same('cart:', $res['cart'], 'a tag with no name');
+	pg_assert_same('system:', $res['system']);
+	pg_assert_same('dregion:news', $res['dynamic']);
+	pg_assert_same('h0', $res['m0']);
+	pg_assert_same('h1', $res['m1'], 'the second of the same name');
+	pg_assert_same(null, $res['m2']);
+	pg_assert_same('s', $res['ms']);
+	pg_assert_same(null, $res['bad']);
+}
+
+// Only the unnamed system region is the page's own, the one whose page type
+// the Region panel offers to convert; a named one draws another page's
+// region.
 function test_legacy_region_preview_own_region()
 {
 	$script = <<<'JS'

@@ -633,17 +633,16 @@ function test_lbs_layout_get_page_content_runs_the_pass_once_on_the_page_type_s_
 	pg_assert_true($at("\$pg_design_fw = pg_design_framework(") < $load && $load < $gate, 'the gate reads the framework of the page\'s style');
 
 	// Each region starts where its header ends and is mapped before its
-	// footer, the edit mode frame, the canvas marks and the join.
+	// footer, the edit mode frame and the join.
 	$reset = $at("\$system_output = '';\n        // Where the page type's own markup starts in \$system_output: after\n        // a secondary region's header.\n        \$pg_lbs_from = 0;");
 	$header = $at("\$system_output .= \$output_system_region_header;\n                \$pg_lbs_from = strlen(\$system_output);");
 	$extra = $at("\$system_output .= \$extra_system_content;");
 	$pass = $at("if (\$pg_lbs_layout_map) {\n                \$system_output = pg_lbs_layout_region(\$system_output, \$pg_lbs_from);");
 	$footer = $at("\$system_output .= \$output_system_region_footer;");
 	$frame = $at("<div style=\"padding: 2em 0 0 0\">' . \$system_output . '</div>");
-	$marks = $at("'<!--pg-layout-region-start-->' . \$system_output");
 	$join = $at("pg_system_region_fill(\$content, \$system_page_name, \$system_output)");
 	pg_assert_true($gate < $reset && $reset < $header && $header < $extra && $extra < $pass, 'the pass follows the page type\'s markup');
-	pg_assert_true($pass < $footer && $footer < $frame && $frame < $marks && $marks < $join, 'the pass comes before the footer, the frame, the marks and the join');
+	pg_assert_true($pass < $footer && $footer < $frame && $frame < $join, 'the pass comes before the footer, the frame and the join');
 	$code = '';
 	foreach (token_get_all($src) as $t) {
 		if (is_array($t) && ($t[0] === T_COMMENT || $t[0] === T_DOC_COMMENT)) continue;

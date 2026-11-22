@@ -5,7 +5,7 @@ description: Region nodes and classic page types on the canvas today: the System
 
 ## What does a classic page's System region draw?
 - A `region` node of type `system`: the page type's classic renderer (`get_*_screen_content.php`), with its custom layout when it has one (`layout-widget-offer.md`).
-- Canvas: the label band; on a page with a custom layout, a read-only preview under it as the server draws it (`legacy-region-preview.md`). A named System region (another page's) keeps the plain placeholder.
+- Canvas: a band with a pill and under it the region as the server draws it, read only, custom layout or not, named or not (LE4, `legacy-region-preview.md`).
 - Kept as a region, it changes only as the layout code (Layout tab, role 1, `layout-code-tab.md`) and the page type's settings, never on the canvas; converting it (below) gives a widget tree.
 - Use: no template places one on a site page (only on comment e-mail pages, `canvas-closed-blocks-emails.md`); met on sites moved from classic styles.
 
@@ -22,7 +22,7 @@ description: Region nodes and classic page types on the canvas today: the System
 
 ## Which legacy regions does a classic style bring?
 - Opened with "Open in the designer" (`classic-style-to-design.md`), they keep their region nodes, marked Legacy (`SD_LEGACY_REGIONS`): Menu, Menu Sequence, Ad Region, Tag Cloud, Mobile Switch, PDF, Common, Designer and Dynamic regions; Login and Cart regions and the Comments Block are not marked.
-- Canvas: a label box; the site prints the classic region.
+- Canvas: a band ("Code" for a Dynamic region, "Classic" for the rest) over the region as the site prints it (LE4, `legacy-region-preview.md`).
 - Open today: Menu, Menu Sequence, Ad and Tag Cloud by "Make designable" (`region-node-to-widget.md`); Login, Cart and Comments Block by the same button (CB10, #10060); a Common region by its shared component (`common-region-to-shared-component.md`); a Designer region (`designer-region-to-shared-component.md`).
 - Stay closed: Dynamic region (PHP, stays code, as Custom PHP does); Mobile Switch and PDF, which no step opened (whether to keep or retire them was not asked).
 - Page Region (`pregion`): the page's own content area, edited as the page; not closed.
