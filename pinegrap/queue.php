@@ -12,13 +12,23 @@
  * and "Leave the queue". The page reads where the number stands every 15
  * seconds (&read=1, JSON) while it is shown. It shows numbers, never a
  * name. Every POST carries the form token. Counted on the firewall's
- * sensitive allowance (waf_sensitive_scripts()).
+ * sensitive allowance (waf_sensitive_scripts()), but for the 15-second
+ * read, which has a bucket of its own (waf_queue_status_read()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
+
+// The 15-second read starts no session: the token is the credential, and a
+// read every 15 seconds per open page must not open a session file each
+// time. $_SESSION stays an array so the shared code that looks into it
+// finds nothing.
+if ((strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') && isset($_GET['n']) && !empty($_GET['read'])) {
+    define('PG_NO_SESSION', true);
+    $_SESSION = array();
+}
 
 include('init.php');
 

@@ -60,6 +60,12 @@ if (!defined('WAF_BEACON_RATE_LIMIT')) {
     define('WAF_BEACON_RATE_LIMIT', 240);
 }
 
+// Status reads of walk-in queue numbers a single address may send in a
+// minute; see waf_handle_rate_queue_status().
+if (!defined('WAF_QUEUE_STATUS_RATE_LIMIT')) {
+    define('WAF_QUEUE_STATUS_RATE_LIMIT', 240);
+}
+
 // Firewall log aggregation bucket, in seconds. Identical events inside one
 // bucket become a single row with a hit counter rather than N rows. Five
 // minutes keeps enough resolution to read an attack's shape while collapsing
@@ -2850,13 +2856,15 @@ function waf_fetch_is_subresource($method, $dest, $accept)
  * @param string $script the running script's file name (waf_script_name())
  * @param string $dest   the Sec-Fetch-Dest header, '' when absent
  * @param string $accept the Accept header, '' when absent
+ * @param array  $query  the query string's values ($_GET)
  * @return bool
  */
-function waf_sensitive_request_counts($method, $script, $dest, $accept)
+function waf_sensitive_request_counts($method, $script, $dest, $accept, array $query = array())
 {
     // The site's own beacons are counted on a bucket of their own
-    // (waf_handle_rate_beacon()).
-    if (in_array($script, waf_beacon_scripts(), true)) {
+    // (waf_handle_rate_beacon()), and so is a queue number's status read
+    // (waf_handle_rate_queue_status()).
+    if (in_array($script, waf_beacon_scripts(), true) || waf_queue_status_read($method, $script, $query)) {
         return false;
     }
 
@@ -2921,13 +2929,41 @@ function waf_beacon_bucket_answer($hits, $limit)
     return ($hits === $limit + 1) ? 'log' : 'drop';
 }
 
+/**
+ * Is this the walk-in queue's status read: the GET that only reads where a
+ * number stands, queue.php?n=<id>&t=<token>&read=1?
+ *
+ * The person's page sends it every 15 seconds while it is shown, so people
+ * waiting on one shared address (venue Wi-Fi, carrier NAT) spent the 30 a
+ * minute sensitive allowance together: about eight open pages and the rest
+ * were refused. The read finds one row by its primary key and compares the
+ * token's hash, writes nothing and starts no session (queue.php), so it is
+ * held to waf_handle_rate_queue_status() instead. Opening the page, taking
+ * a number and every POST ("Leave the queue") stay sensitive.
+ *
+ * @param string $method the request method
+ * @param string $script the running script's file name (waf_script_name())
+ * @param array  $query  the query string's values ($_GET)
+ * @return bool
+ */
+function waf_queue_status_read($method, $script, array $query)
+{
+    if ($script !== 'queue.php' || !in_array(strtoupper((string) $method), array('GET', 'HEAD'), true)) {
+        return false;
+    }
+
+    return isset($query['n'], $query['read']) && is_scalar($query['n']) && is_scalar($query['read'])
+        && ((string) $query['read'] !== '') && ((string) $query['read'] !== '0');
+}
+
 function waf_is_sensitive_request()
 {
     return waf_sensitive_request_counts(
         isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : '',
         waf_script_name(),
         isset($_SERVER['HTTP_SEC_FETCH_DEST']) ? $_SERVER['HTTP_SEC_FETCH_DEST'] : '',
-        isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : ''
+        isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : '',
+        $_GET
     );
 }
 
@@ -5844,6 +5880,11 @@ function waf_run($stage = 'init')
                 waf_handle_rate_beacon($ip, $blocking);
             }
 
+            if ($stage === 'init' && empty($done['rate_queue_status'])) {
+                $done['rate_queue_status'] = true;
+                waf_handle_rate_queue_status($ip, $blocking);
+            }
+
             if ($stage === 'init' && empty($done['rate_ap_inbox'])) {
                 $done['rate_ap_inbox'] = true;
                 waf_handle_rate_ap_inbox($ip, $blocking);
@@ -6805,6 +6846,59 @@ function waf_handle_rate_beacon($ip, $blocking)
 
     if (!headers_sent()) {
         http_response_code(204);
+        header('Cache-Control: no-store');
+    }
+
+    exit();
+}
+
+/**
+ * The allowance for the walk-in queue's status read (waf_queue_status_read()).
+ *
+ * It left the sensitive allowance because every open number page sends it
+ * every 15 seconds; this keeps a loop reading it bounded: 240 a minute per
+ * address, about 60 people on one address. Over the limit the read gets a
+ * 429 without running the script; the page keeps what it shows and reads
+ * again at its next tick. As with the beacons (waf_handle_rate_beacon()): no
+ * offence, no line in data/firewall.log, one waf_log row a minute
+ * (waf_beacon_bucket_answer()), and Monitor mode logs would-rate and runs
+ * the script.
+ */
+function waf_handle_rate_queue_status($ip, $blocking)
+{
+    if (!waf_queue_status_read(isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : '', waf_script_name(), $_GET)) {
+        return;
+    }
+
+    if (waf_bot_rate_exempt(waf_bot_verified())) {
+        return;
+    }
+
+    // Counting requests against an unresolved or a shared address would
+    // count the whole internet as one visitor. See waf_ip_is_counted().
+    if (!waf_ip_is_counted($ip)) {
+        return;
+    }
+
+    $limit = WAF_QUEUE_STATUS_RATE_LIMIT;
+    $answer = waf_beacon_bucket_answer(waf_rate_record(waf_ip_subject($ip), 'queue_status', 60), $limit);
+
+    if ($answer === 'pass') {
+        return;
+    }
+
+    if ($answer === 'log') {
+        waf_log_event($blocking ? 'rate' : 'would-rate', 'rate-queue-status', 'rate', 3, waf_script_name(), $limit . '/min');
+    }
+
+    // The same promise waf_deny() keeps: Monitor mode stops nothing.
+    if (!$blocking || waf_mode() !== 'block') {
+        return;
+    }
+
+    if (!headers_sent()) {
+        http_response_code(429);
+        header('Retry-After: 15');
         header('Cache-Control: no-store');
     }
 

@@ -15,4 +15,4 @@ description: Beacons (page_view.php, consent_answer.php) skip the sensitive allo
 - `waf_handle_rate_beacon()` (init stage, same switch as the other limits; verified crawlers and uncounted addresses skip it) counts them per `waf_ip_subject()` in scope `beacon`, `WAF_BEACON_RATE_LIMIT` = 240 a minute.
 - Over it (`waf_beacon_bucket_answer()`, pure): the script is not run and the answer is an empty 204, what the script answers anyway; the page's script never reads it. No offence, no `data/firewall.log` line (a fail2ban filter on DENY would ban the readers this spares), one `waf_log` row a minute: rule `rate-beacon`, the first request over the limit only. Monitor mode writes `would-rate` and runs the script.
 
-Related: docs/memory/waf/waf-subresource-sign-in-fetches.md, docs/memory/waf/waf-inflight-request-cap.md
+Related: docs/memory/waf/waf-subresource-sign-in-fetches.md, docs/memory/waf/waf-inflight-request-cap.md, docs/memory/waf/waf-queue-status-bucket.md
