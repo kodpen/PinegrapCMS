@@ -709,6 +709,7 @@
     "Pause, skip or end it with a message under your request.": "Talebinizin altına bir mesaj yazarak duraklatın, bir teslimatı atlayın ya da sonlandırın.",
     "Paused": "Duraklatılmış",
     "Paused · v{var:1}": "Duraklatıldı · v{var:1}",
+    "Paused · {var:1}": "Duraklatıldı · {var:1}",
     "Paused. Files already moved stay where they are.": "Duraklatıldı. Taşınmış dosyalar oldukları yerde kalır.",
     "Pay": "Öde",
     "Pay Online": "Çevrim İçi Öde",

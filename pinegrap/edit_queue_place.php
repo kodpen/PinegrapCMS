@@ -6,7 +6,8 @@
  * name, the state and the button that opens or closes the queue; the Set-up
  * tab as six folded rows (services, hours, taking a number, notices, order,
  * keep personal data) with one Save; the Desks tab, a desk a row with Add
- * desk and Remove; and "Add a number" for a person at the counter. It also takes the list's add drawer (a name and the
+ * desk and Remove, and the staff who may open a desk; the Today tab is the
+ * desk screen (queue_desk.php); and "Add a number" for a person at the counter. It also takes the list's add drawer (a name and the
  * first service: a new closed place) and its row menu's Delete. Roles 0-2.
  *
  * @author      Erdal Güral (Kodpen)
@@ -25,6 +26,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_picker.php');
 
 $user = validate_user();
 validate_area_access($user, 'manager');
@@ -131,6 +133,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->add_error(h(($qp_taken['error'] === 'way') ? lang('Open the queue to add a number.') : pg_waiting_refusal_text($qp_taken['error'], $qp_place)));
         }
 
+        go($qp_back);
+    }
+
+    // Staff: role-3 users who may open a desk here (queue_desk.php).
+    if (isset($_POST['submit_staff_add']) || isset($_POST['submit_staff_remove'])) {
+        $qp_staff = pg_waiting_place_staff($qp_place['settings']);
+        $qp_staff = isset($_POST['submit_staff_add'])
+            ? array_merge($qp_staff, array((int) ($_POST['staff_user_id'] ?? 0)))
+            : array_diff($qp_staff, array((int) $_POST['submit_staff_remove']));
+        pg_waiting_place_staff_save($qp_place, $qp_staff);
         go($qp_back);
     }
 
@@ -355,10 +367,29 @@ foreach ($qp_place['services'] as $service) {
     $qp_desk_boxes .= '<div class="d-flex align-items-center gap-2 mb-2"><input type="checkbox" class="pg-checkbox" id="qp_desk_' . h($service['key']) . '" name="desk_services[]" value="' . h($service['key']) . '" checked><label class="pg-text-2" for="qp_desk_' . h($service['key']) . '">' . h($service['letter'] . ' ' . $service['name']) . '</label></div>';
 }
 
+// Staff: users with the User role who may open a desk here and call
+// people; managers and above always may.
+$qp_staff_rows = '';
+
+foreach (pg_waiting_place_staff($qp_place['settings']) as $staff_id) {
+    $qp_staff_rows .= '<div class="pg-card-inner-row">'
+        . '<span class="pg-icon-tile" aria-hidden="true"><span class="bi bi-person"></span></span>'
+        . '<span class="pg-text-2 flex-grow-1 min-width-0">' . h(pg_user_picker_label($staff_id)) . '</span>'
+        . '<button type="submit" form="qp_desks_form" name="submit_staff_remove" value="' . $staff_id . '" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Remove')) . '</button></div>';
+}
+
+$qp_staff_html = '<section class="pg-card p-5 mb-5" aria-labelledby="qp_staff_title"><h2 class="pg-title-section mb-0" id="qp_staff_title">' . h(lang('Staff')) . '</h2>'
+    . '<p class="pg-card-sub mb-5">' . h(lang('Users with the User role who may open a desk here and call people; they find it as My desk in the menu. Managers and above always may.')) . '</p>'
+    . (($qp_staff_rows !== '') ? '<div class="pg-card-inner mb-5">' . $qp_staff_rows . '</div>' : '')
+    . '<div class="d-flex flex-wrap align-items-end gap-3"><div class="flex-grow-1" style="min-width:14rem;max-width:24rem"><label class="pg-field-label" for="qp_staff_user">' . h(lang('User')) . '</label>'
+    . '<select class="pg-input" id="qp_staff_user" name="staff_user_id" form="qp_desks_form" data-pg-combobox data-pg-source="user_search_action.php" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a user')) . '"><option value=""></option></select></div>'
+    . '<button type="submit" form="qp_desks_form" name="submit_staff_add" value="1" class="pg-button pg-button-quiet"><i class="bi bi-person-plus" aria-hidden="true"></i>' . h(lang('Add staff')) . '</button></div></section>';
+
 $qp_desks_html = '<form id="qp_desks_form" action="edit_queue_place.php" method="post">' . get_token_field() . '<input type="hidden" name="id" value="' . $qp_id . '"><input type="hidden" name="view" value="desks"></form>'
     . '<section class="pg-card p-5 mb-5" aria-labelledby="qp_desks_title"><h2 class="pg-title-section mb-0" id="qp_desks_title">' . h(lang('Desks')) . '</h2>'
     . '<p class="pg-card-sub mb-5">' . h($qp_desks ? lang('Staff open a desk for their shift; only an open desk is called to.') : lang('No desks yet. Add the desks people are called to.')) . '</p>'
     . ($qp_desks ? '<div class="pg-card-inner">' . $qp_desk_rows . '</div>' : '') . '</section>'
+    . $qp_staff_html
     . '<dialog class="drawer drawer-end" id="qp_desk_add" aria-labelledby="qp_desk_add_title" style="width:min(480px,100%);--pg-drawer-height:70vh"' . (isset($_GET['add']) ? ' data-open="1"' : '') . '>
         <form method="post" action="edit_queue_place.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="id" value="' . $qp_id . '"><input type="hidden" name="view" value="desks">
@@ -447,7 +478,7 @@ echo pg_page_shell(array(
         'primary' => ($qp_view === 'desks')
             ? array('<button type="button" class="pg-button pg-button-fill" data-pg-queue-drawer="qp_desk_add"' . ($qp_place['services'] ? '' : ' disabled') . '><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add desk')) . '</button>', $qp_state_button)
             : $qp_state_button,
-        'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Place')) . '">' . $qp_tab('setup', lang('Set-up')) . $qp_tab('desks', lang('Desks'), count($qp_desks)) . '</span>',
+        'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Place')) . '">' . $qp_tab('setup', lang('Set-up')) . $qp_tab('desks', lang('Desks'), count($qp_desks)) . '<a class="pg-seg-item" href="queue_desk.php?place=' . $qp_id . '">' . h(lang('Today')) . '</a></span>',
         'secondary' => '<button type="button" class="pg-button pg-button-ghost" data-pg-queue-drawer="qp_number_add"' . (($qp_place['status'] === 'open') ? '' : ' disabled title="' . h(lang('Open the queue to add a number.')) . '"') . '><i class="bi bi-person-plus" aria-hidden="true"></i>' . h(lang('Add a number')) . '</button>'
             . '<a class="pg-button pg-button-ghost" href="queue_poster.php?id=' . $qp_id . '" target="_blank" rel="noopener"><i class="bi bi-qr-code" aria-hidden="true"></i>' . h(lang('Print the QR poster')) . '</a>',
     )) . '
