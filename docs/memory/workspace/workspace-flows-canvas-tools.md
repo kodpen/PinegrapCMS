@@ -5,7 +5,7 @@ description: The flow canvas's tools (FE2): the add rail with group icons and th
 
 ## What changed, and why?
 - The flows editor's redraw (`plans/flows-editor-next-screens.md`, board A1) gives the canvas the editor's whole width: the left column "Add a box" and the bar's tools left for floating tools over the canvas. Built in FE2 (`plans/flows-editor-next-steps.md`).
-- The grid of `.wsf-app` is the canvas and the right panel only (`minmax(0, 1fr) 19rem`, 300 px under 1280 px, one column under 768 px).
+- `.wsf-app` is one column, the canvas from edge to edge; the chosen box's panel is a card over it (FE3, `workspace-flows-side-panel.md`).
 
 ## What is the add rail? (drawPaletteRail() in workspace_flow.js)
 - 48 px, floating 14 px in from the canvas's top left (`ui.palette` inside `.wsf-main`, not the stage): a filled "+" and one icon button per group of `RAIL_GROUPS` (Message, People and tasks, Logic, Records and tables, System, Values), each the line icon of a box of its group, in the group's colour, its name as tooltip.

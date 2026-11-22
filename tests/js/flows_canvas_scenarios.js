@@ -142,7 +142,7 @@ module.exports = [
 
             h.ok('the box no arrow reaches is outlined', lone && lone.bad);
             h.ok('its tooltip ends saying why, in the server\'s words', !!lone && lone.tip.endsWith('\n' + h.store.flows.get(7).problems.map((problem) => problem.text).join('\n')), lone && lone.tip);
-            h.same('the side panel shows the flow', state.side, h.t('fl_side_flow'));
+            h.same('nothing chosen: no panel', state.side, '');
             h.same('the list', await listNames(h), ['Customer onboarding', 'Weekly report', 'Stock check']);
             h.ok('the palette is shown to whoever may edit', state.palette);
         }
@@ -256,6 +256,8 @@ module.exports = [
             h.same('Space+drag on a box pans', [Math.round(v5.x - v4.x), Math.round(v5.y - v4.y)], [-80, -40]);
             h.same('the box stays', [(await h.probe('box', 'task_2')).x, (await h.probe('box', 'task_2')).y], [320, 176]);
 
+            // Esc lets the box go: the card closes and end_1 is in reach.
+            await h.key('Escape');
             await h.drag(BOX('end_1'), { x: (await h.probe('point', BOX('end_1'))).x + 40, y: (await h.probe('point', BOX('end_1'))).y + 24 }, { button: 'middle' });
 
             const v6 = await h.probe('view');
@@ -517,7 +519,9 @@ module.exports = [
             await h.key('Home');
             h.same('the foot line names the box before and the one after', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-side-foot [data-name-of]'), (node) => node.getAttribute('data-name-of'))), ['manual_1', 'end_1']);
             await h.click({ css: '#wsf-side-tab-links' });
-            await pick(h, 'end_1');
+            await h.click({ css: '#wsf-side .wsf-side-foot-after' });
+            await h.waitFor('end_1 is selected', (harness) => harness.state().selected && (harness.state().selected.id === 'end_1'), 3000);
+            h.ok('the box chosen is brought out from under the card', await h.page(() => document.querySelector('#ws-root [data-node="end_1"]').getBoundingClientRect().right <= document.querySelector('#wsf-side').getBoundingClientRect().left));
             h.ok('the next box opens on the tab last chosen', await h.page(() => document.querySelector('#wsf-side-tab-links').getAttribute('aria-selected') === 'true'));
             await pick(h, 'task_1');
             await h.click({ css: '#wsf-side [data-refocus="side-more"]' });
@@ -538,7 +542,7 @@ module.exports = [
             await h.key('F6', 'Shift');
             h.ok('Shift+F6: back to the right panel', await h.page(() => document.querySelector('#wsf-side').contains(document.activeElement)));
             await h.click({ css: '#wsf-side .wsf-side-close' });
-            h.ok('Close: the flow in the panel, the focus on the box', await h.page((harness, flow) => (document.activeElement.getAttribute('data-node') === 'task_3') && (document.querySelector('#wsf-side .wsf-side-kind').textContent === flow), h.t('fl_side_flow')));
+            h.ok('Close: the card closed, the focus on the box', await h.page(() => (document.activeElement.getAttribute('data-node') === 'task_3') && (getComputedStyle(document.querySelector('#wsf-side')).display === 'none')));
             h.same('nothing chosen', (await h.state()).selected, null);
         }
     },
@@ -975,8 +979,9 @@ module.exports = [
             await h.click({ css: BAR + ' .wsf-name' });
             await h.key('a', 'Control');
             await h.type('Weekly summary');
+            await h.click({ css: BAR + ' .wsf-name-more' });
             await h.page((harness, text) => {
-                const home = harness.find({ labelled: text, within: '#wsf-side' });
+                const home = harness.find({ labelled: text, within: '#wsf-pop-flow' });
 
                 home.value = '11';
                 home.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1152,7 +1157,13 @@ module.exports = [
             await h.click({ css: '#ws-root [data-refocus="palette-add-task"]' });
             await h.waitFor('the box added', (harness) => harness.state().selected && (harness.state().selected.id === 'task_3'), 3000);
             h.ok('a box added closes it', await h.page(() => getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none'));
-            h.same('the right panel is 300 px wide', await h.page(() => Math.round(document.querySelector('#wsf-side').getBoundingClientRect().width)), 300);
+            h.same('the chosen box\'s card is 320 px wide, 14 px in from the canvas\'s right edge', await h.page(() => {
+                const side = document.querySelector('#wsf-side').getBoundingClientRect();
+                const main = document.querySelector('#ws-root .wsf-main').getBoundingClientRect();
+
+                return [Math.round(side.width), Math.round(main.right - side.right)];
+            }), [320, 14]);
+            h.ok('the box chosen is clear of the card', await h.page(() => document.querySelector('#ws-root [data-node="task_3"]').getBoundingClientRect().right <= document.querySelector('#wsf-side').getBoundingClientRect().left));
             await h.page(() => document.querySelector('#ws-root [data-node="task_3"]').focus());
             await h.key('F6', 'Shift');
             h.ok('Shift+F6 from the canvas passes over the closed card to the bar', await h.page(() => document.querySelector('#ws-root .wsf-bar').contains(document.activeElement)));
@@ -1174,16 +1185,20 @@ module.exports = [
             const edges = await h.probe('edges');
 
             h.same('the arrow the server names is outlined, no other', edges.map((edge) => edge.bad), [false, false, true]);
+            h.ok('nothing chosen: no card', await h.page(() => getComputedStyle(document.querySelector('#wsf-side')).display === 'none'));
+            await h.click({ css: '#ws-root .wsf-name-more' });
+            h.same('the name\'s window holds the flow\'s facts', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-pop-flow .wsf-side-facts dt'), (dt) => dt.textContent)), [h.t('fl_side_start'), h.t('fl_side_size'), h.t('fl_flag_last'), h.t('fl_side_published')]);
+            await h.key('Escape');
+            h.ok('Esc closes it, the focus back on the chevron', await h.page(() => document.querySelector('#wsf-pop-flow').classList.contains('d-none') && document.activeElement.classList.contains('wsf-name-more')));
             await pick(h, 'task_1');
             await h.click({ css: '#ws-root .wsf-problems-button' });
             state = await h.state();
-            h.same('Problems shows the flow in the right panel, nothing chosen', [state.side, state.selected], [h.t('fl_side_flow'), null]);
+            h.same('Problems opens its list under the button, the box stays chosen', [await h.page(() => !document.querySelector('#wsf-pop-problems').classList.contains('d-none')), state.selected && state.selected.id], [true, 'task_1']);
             h.same('the server\'s words', state.problemList, h.store.flows.get(7).problems.map((problem) => problem.text));
-            h.same('the flow\'s facts', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-side-facts dt'), (dt) => dt.textContent)), [h.t('fl_side_start'), h.t('fl_side_size'), h.t('fl_flag_last'), h.t('fl_side_published')]);
             await h.waitFor('the first problem\'s Go to the box has the focus', (harness) => harness.focused() && /wsf-problem-go/.test(document.activeElement.className), 3000);
             await h.key('Enter');
             await h.waitFor('its box selected and focused', (harness) => harness.state().selected && (harness.state().selected.id === 'task_2') && (harness.focused().node === 'task_2'), 3000);
-            h.ok('in sight', (await h.probe('box', 'task_2')).inside);
+            h.ok('in sight, the list closed', (await h.probe('box', 'task_2')).inside && await h.page(() => document.querySelector('#wsf-pop-problems').classList.contains('d-none')));
             await h.click({ labelled: h.t('fl_title'), within: SIDE });
             await h.type('Send the welcome pack');
             await saveNumber(h, 1);

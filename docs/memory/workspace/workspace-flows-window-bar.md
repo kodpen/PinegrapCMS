@@ -12,7 +12,7 @@ description: The flow window's top bar (drawBar(), flow-window FW1): the flow at
 ## Which recipes and why?
 - Look A from `backend.src.css`, no rule of the flow's own: Publish `pg-button-fill`, Run and Flow runs `pg-button-quiet`, tools `pg-icon-button`, all `pg-button-sm` (`BAR_FILL`, `BAR_QUIET`, `BAR_ICON`).
 - One filled button: Publish; Run is filled where the bar has no Publish (somebody who runs the flow, a colleague who edits it, a run shown).
-- Problems (`.wsf-problems-button`): `pg-button-danger` with problems, quiet with an amber mark for warnings, ghost and disabled with none; it opens the right panel with nothing chosen, which lists them (FW4, `workspace-flows-side-panel.md`).
+- Problems (`.wsf-problems-button`): `pg-button-danger` with problems, quiet with an amber mark for warnings, ghost with none; it opens the problems as a list under it (FE3, `workspace-flows-name-window.md`). The chevron beside the name opens the flow's facts under it.
 - Pressed: an icon button by its quiet fill (`aria-pressed`); Flow runs, quiet at rest, by the accent ink (`pressedLook()`, `fg-primary`). An icon button that cannot be pressed is dimmed (`dimmed()`, `opacity-50`): `pg-icon-button` has no disabled look.
 
 ## What moved, and where did it go?

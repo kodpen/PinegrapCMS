@@ -14,7 +14,7 @@ description: Flow canvas: an arrow's outcome name on a pill at its middle (edgeN
 - The scheduled-action window's small drawing (`.pgc-edge-label` beside the box it leads to) is not a pill and stays as it was.
 
 ## And the warning mark?
-- A box with a problem (`markProblems()` gives it `wsf-bad`) shows `.wsf-node-warn`, a `bi-exclamation-triangle-fill` in the danger (rose) colour at the right of its head; the box's tooltip lists its problems, then its warnings. A box with warnings only has no mark: the right panel lists them (`workspace-flows-empty-panel.md`). A run's boxes are never marked.
+- A box with a problem (`markProblems()` gives it `wsf-bad`) shows `.wsf-node-warn`, a `bi-exclamation-triangle-fill` in the danger (rose) colour at the right of its head; the box's tooltip lists its problems, then its warnings. A box with warnings only has no mark: the list under Problems names them (`workspace-flows-name-window.md`). A run's boxes are never marked.
 
 ## Tests
 - Harness (`workspace-flows-canvas-harness.md`): the outcome scenario and the problems scenario draw the pill and the mark (picture 12 with `--shots`).
