@@ -8,7 +8,7 @@ description: Plan pick-pack, steps PP1a to PP7: the pure rules, shelf addresses,
   - `tests/pick_pack_test.php` red first: "A-3" before "A-10", no address last, a cancelled order out of its wave, a variant named, a unit past the line, a short pack. Features: K2, K4, K9, K10.
 - PP1b (S) (done, #10873) after PP1a, only after the owner's yes to poll 193 (message 10746): the four tables as a migration step in the open version (`release/` rules), the columns of the schema decisions list; the "packing only" column too if poll 193 says yes (`core/` role rules).
 - PP2 (S) (done, #10966) after PP1b: shelf address on the product's stock card, Change Selected, product import and the inventory API. Feature: K1.
-- PP3 (M) after PP1b: Orders › "Pick waves": make by hand or rule, the pick list on paper and phone, the order code on the packing slip. Features: K3, K5, K6, K7.
+- PP3 (M) (done, #11131, `commerce/pick-pack-waves.md`) after PP1b: Orders › "Pick waves": make by hand or rule, the pick list on paper and phone, the order code on the packing slip. Features: K3, K5, K6, K7. Not built: a wave made by hand from the orders list ("Add to a wave"); `pg_pick_wave_make()` already takes the chosen addresses.
 - PP4 (M) after PP1b: the pack screen (scanner, typed code, camera), the checked pack with its label and the marketplace accept, `order.packed`. Features: K8, K11, K12, K15 (packed).
 - PP5 (S) after PP4: short picks with the count fix, the `pack_short` alert in `includes/fn/ops_alerts.php` (shared with sales-watch SW1: check the open PRs) and event, the Packing card. Features: K13, K14, K15 (short).
 - PP6 (S) after PP3 and PP4: the API routes and types (`php tools/check_api_schema.php`), the MCP read tool. Feature: K16.
