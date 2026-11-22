@@ -157,7 +157,7 @@ function test_workspace_calls_settings_credentials_for_members_only()
 
 	$actions = workspace_calls_settings_test_source('includes/workspace/actions.php');
 	pg_assert_same(1, substr_count($actions, 'ws_call_member_ice()'), 'one place in the panel actions hands the credentials');
-	pg_assert_true((bool) preg_match("/if \\(!\\\$result\\['ok'\\]\\) \\{\n\s+return ws_action_error\\(\\\$result\\['error'\\]\\);\n\s+\\}\n\n(\s+\\/\\/[^\n]*\n)*\s+return ws_action_ok\\(array\\('call_id' => \\\$result\\['call_id'\\], 'member_id' => \\\$result\\['member_id'\\], 'ice' => ws_call_member_ice\\(\\)\\)\\);/", $actions), 'only after a granted start or join');
+	pg_assert_true((bool) preg_match("/if \\(!\\\$result\\['ok'\\]\\) \\{\n\s+return ws_action_error\\(\\\$result\\['error'\\]\\)[^\n]*;\n\s+\\}\n\n(\s+\\/\\/[^\n]*\n)*\s+return ws_action_ok\\(array\\('call_id' => \\\$result\\['call_id'\\], 'member_id' => \\\$result\\['member_id'\\], 'ice' => ws_call_member_ice\\(\\)\\)\\);/", $actions), 'only after a granted start or join');
 
 	$guests = workspace_calls_settings_test_source('includes/workspace/guests.php');
 	pg_assert_true(strpos($guests, "\$joined['ok'] ? array('status' => 'ok', 'call_id' => \$joined['call_id'], 'member_id' => \$joined['member_id'], 'ice' => ws_call_member_ice())") !== false, 'a guest gets them only with a granted join');

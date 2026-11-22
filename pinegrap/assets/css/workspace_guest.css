@@ -1379,4 +1379,26 @@ div.pg-guest-poll-option {
   }
 }
 
+/* It never runs off a short screen; on a phone on its side it keeps to the
+   right half, the conversation beside it (backend.src.css alike). */
+.ws-call:not(.is-stage) {
+  max-height: calc(100dvh - 4.5rem - 1rem - env(safe-area-inset-top));
+  overflow-y: auto;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .ws-call:not(.is-stage) {
+    top: .5rem;
+    right: max(.5rem, env(safe-area-inset-right));
+    left: auto;
+    width: min(24rem, 48vw);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .ws-call:not(.is-stage) .ws-call-stage[data-count="3"],
+  .ws-call:not(.is-stage) .ws-call-stage[data-count="4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 }

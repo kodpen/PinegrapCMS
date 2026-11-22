@@ -11,7 +11,7 @@ description: A group's Workspace call (CL3): no ring in a group, the head's Join
 
 ## How do four browsers connect?
 - A mesh: every two members hold one connection; of each pair the later joiner (higher member id) offers. Three connections a browser at four.
-- One connection of a group broken for 15 s greys its tile (`is-lost`); only when every connection is broken does the call end here ("The connection was lost.").
+- One connection of a group broken for 30 s (its ICE restarts tried, `calls-endurance.md`) greys its tile (`is-lost`); only when every connection is broken does the call end here ("The connection was lost.").
 
 ## What does the window show?
 - A grid of tiles, one a member, one's own first and named "You"; the names come from the call part's members. Two columns from two tiles; a video call of two keeps the other one large and one's own small in the corner.

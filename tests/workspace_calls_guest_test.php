@@ -51,6 +51,7 @@ var document = {};
 function node(tag, className) {
 	return { tag: tag, className: className || '', children: [], hidden: false, disabled: false, isConnected: true, title: '', text: '', clicks: [], attrs: {},
 		lastChild: null,
+		classList: { toggle: function (name, on) { this.on = this.on || {}; this.on[name] = !!on; } },
 		appendChild: function (child) { this.children.push(child); this.lastChild = child; return child; },
 		setAttribute: function (k, v) { this.attrs[k] = v; },
 		addEventListener: function (kind, fn) { this.clicks.push(fn); } };
@@ -90,7 +91,7 @@ seen.two = { hidden: join.hidden, disabled: join.disabled, label: join.lastChild
 C.channelCall(0, part(4), hooks);
 seen.full = { hidden: join.hidden, disabled: join.disabled, label: join.lastChild.nodeValue };
 C.channelCall(0, part(3, 22), hooks);
-seen.in_it = { hidden: join.hidden };
+seen.in_it = { hidden: join.hidden, label: join.lastChild.nodeValue };
 var room = { joined: true, kind: 'guest', members: [{ id: 3 }] };
 var view = { calls: true, era: false, thread: false };
 console.log(JSON.stringify({
@@ -117,7 +118,8 @@ JS
 	pg_assert_same('call_join_count:2/4', $got['seen']['two']['label'], 'with how many are in it');
 	pg_assert_true($got['seen']['full']['disabled'], 'disabled at four');
 	pg_assert_same('call_full', $got['seen']['full']['label'], 'reading that the call is full');
-	pg_assert_true($got['seen']['in_it']['hidden'], 'hidden once the guest is in it');
+	pg_assert_false($got['seen']['in_it']['hidden'], 'once the guest is in it in another window, the button offers to take that place over');
+	pg_assert_same('call_join_here', $got['seen']['in_it']['label'], 'as Join here');
 	pg_assert_true($got['room_one'], 'a guest room with one of the team carries the call buttons on the staff\'s side');
 	pg_assert_false($got['room_none'], 'an empty one does not');
 	pg_assert_true($got['room_group'], 'a guest room\'s call is a group\'s: nobody is rung, one waits alone');

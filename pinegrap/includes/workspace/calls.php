@@ -68,6 +68,15 @@ define('WS_CALL_RING', 45);
 define('WS_CALL_SHARE_LIFE', 75);
 
 /**
+ * Seconds a member may go unheard (no signal of its own, not even the
+ * keep-alive every 30 seconds) before the clean-up takes it out of the
+ * call: a tab closed without its leave arriving, a phone that lost the
+ * page. Its place and its share free up long before the whole call would
+ * fall silent.
+ */
+define('WS_CALL_MEMBER_SILENCE', 90);
+
+/**
  * Does the database carry calls (2026.11.0, 11.0.243)?
  *
  * @return bool
@@ -373,6 +382,60 @@ function ws_call_is_silent($call, $last_signal_at, $last_join_at, $now)
 }
 
 /**
+ * Has a member gone unheard too long: nothing of its own since it joined,
+ * or since its last signal, for WS_CALL_MEMBER_SILENCE seconds? Pure.
+ *
+ * @param array $member         its live ws_call_members row
+ * @param int   $last_signal_at its own newest signal, 0 for none
+ * @param int   $now
+ * @return bool
+ */
+function ws_call_member_is_gone($member, $last_signal_at, $now)
+{
+    $heard = max((int) $member['joined_at'], (int) $last_signal_at);
+
+    return $heard < ((int) $now - WS_CALL_MEMBER_SILENCE);
+}
+
+/**
+ * What a join does with the party's place: a new one, a refusal while it
+ * is in the call in another window (two windows of one person would be one
+ * member to the others, and their connections would cross), or that
+ * window's place taken over when the person chose Join here. Pure.
+ *
+ * @param array|null $mine  the party's live row in the call
+ * @param bool       $again the person chose Join here
+ * @return string new | elsewhere | replace
+ */
+function ws_call_join_place($mine, $again)
+{
+    if (!is_array($mine)) {
+        return 'new';
+    }
+
+    return $again ? 'replace' : 'elsewhere';
+}
+
+/**
+ * Is a window's place the party's live row? A window names its member id
+ * with a leave and a signal, so a window whose place another one took over
+ * neither leaves nor speaks for the new one. No id (0): the party's row.
+ * Pure.
+ *
+ * @param array|null $mine      the party's live row
+ * @param int        $member_id the place the window holds, 0 when not named
+ * @return bool
+ */
+function ws_call_member_matches($mine, $member_id)
+{
+    if (!is_array($mine)) {
+        return false;
+    }
+
+    return ((int) $member_id === 0) || ((int) $member_id === (int) $mine['id']);
+}
+
+/**
  * May this person end the call for everyone? Its starter, or whoever may
  * manage the channel. A guest never. Pure.
  *
@@ -598,6 +661,19 @@ function ws_call_member_add($party, $call_id, $now)
 }
 
 /**
+ * A member is out of its call: its row closed and its signals deleted, so
+ * its screen share ends with them.
+ *
+ * @param int $member_id
+ * @param int $now
+ */
+function ws_call_member_out($member_id, $now)
+{
+    db("UPDATE ws_call_members SET left_at = '" . (int) $now . "' WHERE id = '" . (int) $member_id . "' AND left_at = 0");
+    db("DELETE FROM ws_call_signals WHERE to_member_id = '" . (int) $member_id . "' OR from_member_id = '" . (int) $member_id . "'");
+}
+
+/**
  * Starts a call in a channel, or joins the one already live there.
  *
  * @param array      $party
@@ -664,14 +740,18 @@ function ws_call_start($party, $channel, $kind)
 }
 
 /**
- * Joins a live call. A party already in it keeps its place (one row).
+ * Joins a live call. A party already in it is refused (code
+ * call_elsewhere: it is in the call in another window), unless it chose
+ * Join here: that window's place is then taken over by a new one, so the
+ * others connect to this window and the old one reads that it moved.
  *
  * @param array      $party
  * @param array|null $channel
  * @param int        $call_id
- * @return array ok, error, call_id, member_id
+ * @param bool       $again   Join here
+ * @return array ok, error, call_id, member_id (code on a refusal)
  */
-function ws_call_join($party, $channel, $call_id)
+function ws_call_join($party, $channel, $call_id, $again = false)
 {
     if (!ws_calls_ready()) {
         return array('ok' => false, 'error' => lang('Calls are not available yet.'));
@@ -698,15 +778,24 @@ function ws_call_join($party, $channel, $call_id)
     }
 
     $call = ws_call($call_id);
-    $mine = ws_call_member_of($party, $call_id);
+    $mine = (is_array($call) && ((string) $call['state'] === 'live')) ? ws_call_member_of($party, $call_id) : null;
+    $place = ws_call_join_place($mine, $again);
 
-    if ($mine && ((string) $call['state'] === 'live')) {
+    if ($place === 'elsewhere') {
         ws_call_unlock($channel['id']);
 
-        return array('ok' => true, 'error' => '', 'call_id' => (int) $call_id, 'member_id' => (int) $mine['id']);
+        return array('ok' => false, 'error' => lang('You are already in this call in another window.'), 'code' => 'call_elsewhere');
     }
 
-    $error = ws_call_join_check($call, count(ws_call_members_live($call_id)));
+    // The old window's place goes and this one takes a new place: the count
+    // stays the same, so the limit is not asked again.
+    if ($place === 'replace') {
+        ws_call_member_out((int) $mine['id'], time());
+        $error = '';
+    } else {
+        $error = ws_call_join_check($call, count(ws_call_members_live($call_id)));
+    }
+
     $member_id = ($error === '') ? ws_call_member_add($party, $call_id, time()) : 0;
 
     ws_call_unlock($channel['id']);
@@ -720,23 +809,25 @@ function ws_call_join($party, $channel, $call_id)
 }
 
 /**
- * Leaves a call. The last one out ends it.
+ * Leaves a call. The last one out ends it. A window that names its place
+ * leaves only that place: one whose place another window took over leaves
+ * nothing.
  *
  * @param array $party
  * @param int   $call_id
+ * @param int   $member_id the window's place, 0 when not named
  * @return array ok, error, ended
  */
-function ws_call_leave($party, $call_id)
+function ws_call_leave($party, $call_id, $member_id = 0)
 {
     $call = ws_calls_ready() ? ws_call($call_id) : null;
     $mine = $call ? ws_call_member_of($party, $call_id) : null;
 
-    if (!$mine) {
+    if (!ws_call_member_matches($mine, $member_id)) {
         return array('ok' => true, 'error' => '', 'ended' => !$call || ((string) $call['state'] !== 'live'));
     }
 
-    db("UPDATE ws_call_members SET left_at = '" . time() . "' WHERE id = '" . (int) $mine['id'] . "' AND left_at = 0");
-    db("DELETE FROM ws_call_signals WHERE to_member_id = '" . (int) $mine['id'] . "' OR from_member_id = '" . (int) $mine['id'] . "'");
+    ws_call_member_out((int) $mine['id'], time());
 
     $ended = false;
 
@@ -804,14 +895,15 @@ function ws_call_end_row($call, $declined_by = 0)
  * @param int    $to_member_id 0 for a ping
  * @param string $kind
  * @param string $body
+ * @param int    $member_id    the sending window's place, 0 when not named
  * @return array ok, error, signal_id
  */
-function ws_call_signal_send($party, $call_id, $to_member_id, $kind, $body)
+function ws_call_signal_send($party, $call_id, $to_member_id, $kind, $body, $member_id = 0)
 {
     $call = ws_calls_ready() ? ws_call($call_id) : null;
     $from = ($call && ((string) $call['state'] === 'live')) ? ws_call_member_of($party, $call_id) : null;
 
-    if (!$from) {
+    if (!ws_call_member_matches($from, $member_id)) {
         return array('ok' => false, 'error' => lang('You are not in this call.'));
     }
 
@@ -939,6 +1031,28 @@ function ws_calls_sweep($force = false)
     }
 
     db("DELETE FROM ws_call_signals WHERE created_at < '" . ($now - WS_CALL_SIGNAL_LIFE) . "'");
+
+    // Members unheard too long are out (a tab closed without its leave);
+    // the last one out ends the call.
+    $emptied = array();
+
+    foreach ((array) db_items("SELECT m.id, m.call_id, m.joined_at,
+            (SELECT MAX(s.created_at) FROM ws_call_signals s WHERE s.from_member_id = m.id) AS last_signal_at
+        FROM ws_call_members m JOIN ws_calls c ON c.id = m.call_id
+        WHERE c.state = 'live' AND m.left_at = 0") as $member) {
+        if (ws_call_member_is_gone($member, (int) $member['last_signal_at'], $now)) {
+            ws_call_member_out((int) $member['id'], $now);
+            $emptied[(int) $member['call_id']] = true;
+        }
+    }
+
+    foreach (array_keys($emptied) as $call_id) {
+        $call = ws_call($call_id);
+
+        if ($call && ((string) $call['state'] === 'live') && !ws_call_members_live($call_id)) {
+            ws_call_end_row($call);
+        }
+    }
 
     foreach ((array) db_items("SELECT c.*,
             (SELECT MAX(s.created_at) FROM ws_call_signals s WHERE s.call_id = c.id) AS last_signal_at,
@@ -1200,5 +1314,8 @@ function ws_call_js_strings()
         'call_larger'     => lang('Make larger'),
         'call_full_screen' => lang('Full screen'),
         'call_full_exit'  => lang('Exit full screen'),
+        'call_join_here'  => lang('Join here'),
+        'call_elsewhere'  => lang('You are already in this call in another window.'),
+        'call_moved'      => lang('The call goes on in another window.'),
     );
 }

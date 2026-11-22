@@ -43,7 +43,19 @@
     // how long a broken connection may last before the call is given up.
     var LOOK_EVERY = 1000;
     var PING_EVERY = 30000;
-    var LOST_AFTER = 15000;
+    var LOST_AFTER = 30000;
+
+    // A connection broken this long (or failed) is restarted by its offerer
+    // (an ICE restart finds a new route, as after a phone moves from Wi-Fi to
+    // its mobile network), again at most every RESTART_EVERY while it stays
+    // broken (milliseconds).
+    var RESTART_AFTER = 2000;
+    var RESTART_EVERY = 5000;
+
+    // How long the call's reads may fail on the network (offline, a network
+    // being changed) before the call is given up here (milliseconds); the
+    // server keeps a member for 90 seconds without a word from it.
+    var READ_LOST_AFTER = 45000;
 
     // How long a new share's own reads may still say nobody shares, read
     // before it was written (milliseconds).
@@ -101,18 +113,65 @@
     }
 
     // The head's Join button against the open channel's call (the look's
-    // call part): hidden without a call or while the viewer is in it; full
-    // at max members.
+    // call part): hidden without a call or in the window that is in it; full
+    // at max members. A person in the call in another window gets Join here
+    // (here), which takes that window's place over: one person is one
+    // member, never two.
     function joinState(part, current, max) {
         var live = part && part.call;
 
-        if (!live || part.member_id || (live.id === current)) {
-            return { show: false, full: false, count: 0, callId: 0, kind: '' };
+        if (!live || (live.id === current)) {
+            return { show: false, full: false, here: false, count: 0, callId: 0, kind: '' };
         }
 
         var count = (live.members || []).length;
+        var here = !!part.member_id;
 
-        return { show: true, full: count >= (max || 4), count: count, callId: live.id, kind: live.kind };
+        return { show: true, full: !here && (count >= (max || 4)), here: here, count: count, callId: live.id, kind: live.kind };
+    }
+
+    // Is a connection's ICE restart due? Only its offerer restarts it (one
+    // offer a pair): failed, or disconnected for RESTART_AFTER, or any
+    // connection once the device's network changed (network), spaced by
+    // RESTART_EVERY.
+    function restartDue(state, offerer, lostAt, lastRestart, now, network) {
+        if (!offerer || (lastRestart && ((now - lastRestart) < RESTART_EVERY))) {
+            return false;
+        }
+
+        if (network || (state === 'failed')) {
+            return true;
+        }
+
+        return (state === 'disconnected') && !!lostAt && ((now - lostAt) >= RESTART_AFTER);
+    }
+
+    // What a window's read says of its place in the call: '' it goes on;
+    // another window of the person took the place (call_moved); the server
+    // took it out as unheard while the call goes on (call_lost); the call is
+    // over (call_ended, or call_unanswered when nobody ever came).
+    function placeOutcome(part, callId, memberId, ever) {
+        if (part && part.call && (part.call.id === callId)) {
+            if (part.member_id === memberId) {
+                return '';
+            }
+
+            return part.member_id ? 'call_moved' : 'call_lost';
+        }
+
+        return ever ? 'call_ended' : 'call_unanswered';
+    }
+
+    // Does a failed read end the call here? A refusal from the server (the
+    // call ended, or is no longer readable) at once; a read lost on the
+    // network (fetch's TypeError) only after READ_LOST_AFTER without one
+    // read through.
+    function readGiveUp(error, lastRead, now) {
+        if (!error || (error.name !== 'TypeError')) {
+            return true;
+        }
+
+        return (now - lastRead) > READ_LOST_AFTER;
     }
 
     // What becomes of a call left with nobody else in it: a conversation of
@@ -417,7 +476,9 @@
             return null;
         }
 
-        var box = h().el('span', 'ws-call-head ws-head-wide');
+        // Kept in a narrow (phone) head, where the head's other tools move
+        // into the channel menu.
+        var box = h().el('span', 'ws-call-head');
         var starts = [];
         var group = isGroup(channel);
 
@@ -437,7 +498,7 @@
         join.hidden = true;
         join.addEventListener('click', function () {
             if (head && head.state.callId) {
-                begin(channel.id, head.state.kind, head.state.callId, callName(channel), group);
+                begin(channel.id, head.state.kind, head.state.callId, callName(channel), group, head.state.here);
             }
         });
         box.appendChild(join);
@@ -463,7 +524,7 @@
         join.hidden = true;
         join.addEventListener('click', function () {
             if (head && head.state.callId) {
-                begin(channelId, head.state.kind, head.state.callId, name, true);
+                begin(channelId, head.state.kind, head.state.callId, name, true, head.state.here);
             }
         });
         box.appendChild(join);
@@ -508,20 +569,25 @@
             return;
         }
 
-        var state = joinState(part, call ? call.id : 0, hooks.max);
+        // A call this window is starting has no id until its start answers.
+        var current = call ? (call.id || ((call.channelId === channelId && part && part.call) ? part.call.id : 0)) : 0;
+        var state = joinState(part, current, hooks.max);
 
         head.state = state;
         head.join.hidden = !state.show;
         head.join.disabled = state.full;
+        head.join.classList.toggle('pg-button-fill', !state.here);
         head.starts.forEach(function (node) { node.hidden = state.show || !!(part && part.member_id); });
 
         if (state.show) {
-            relabel(head.join, state.full ? t('call_full') : t('call_join_count', state.count, hooks.max || 4));
+            relabel(head.join, state.here ? t('call_join_here') : (state.full ? t('call_full') : t('call_join_count', state.count, hooks.max || 4)));
+            head.join.title = state.here ? t('call_elsewhere') : head.join.title;
         }
     }
 
-    // Starts a call (callId 0) or joins one, once the devices are given.
-    function begin(channelId, kind, callId, name, group) {
+    // Starts a call (callId 0) or joins one, once the devices are given;
+    // again takes over the place the person holds in another window.
+    function begin(channelId, kind, callId, name, group, again) {
         if (call) {
             h().toast(t('call_busy'), 'warning');
             return;
@@ -540,7 +606,13 @@
         navigator.mediaDevices.getUserMedia(mediaAsk(kind, null)).then(function (stream) {
             mine.stream = stream;
 
-            return callId ? h().api('ws_call_join', { channel_id: channelId, call_id: callId })
+            var ask = { channel_id: channelId, call_id: callId };
+
+            if (again) {
+                ask.again = 1;
+            }
+
+            return callId ? h().api('ws_call_join', ask)
                 : h().api('ws_call_start', { channel_id: channelId, kind: kind });
         }).then(function (result) {
             if (call !== mine) {
@@ -551,6 +623,7 @@
             mine.memberId = result.member_id;
             // The member's own servers, the relay's credentials among them.
             mine.ice = result.ice || null;
+            mine.readAt = Date.now();
             draw();
             look();
             // A sharer's keep-alive renews its share too.
@@ -572,7 +645,7 @@
         }
 
         mine.sending = mine.sending.then(function () {
-            return h().api('ws_call_signal', { call_id: mine.id, to_member_id: to, kind: kind, body: body });
+            return h().api('ws_call_signal', { call_id: mine.id, to_member_id: to, kind: kind, body: body, member_id: mine.memberId });
         }).catch(function () {});
     }
 
@@ -585,12 +658,14 @@
 
         h().api('ws_call_sync', { call_id: mine.id, call_after: mine.after }).then(function (data) {
             if (call === mine) {
+                mine.readAt = Date.now();
                 heard(mine, data.call);
             }
-        }).catch(function () {
-            // The call is gone (ended, or no longer readable).
-            if (call === mine) {
-                hangUp(mine.ever ? 'call_ended' : 'call_unanswered');
+        }).catch(function (error) {
+            // The call is gone (ended, or no longer readable); a read lost
+            // on the network is tried again a while.
+            if ((call === mine) && readGiveUp(error, mine.readAt, Date.now())) {
+                hangUp((error && (error.name === 'TypeError')) ? 'call_lost' : (mine.ever ? 'call_ended' : 'call_unanswered'));
             }
         }).then(function () {
             if (call === mine) {
@@ -600,8 +675,11 @@
     }
 
     function heard(mine, part) {
-        if (!part || !part.call || (part.call.id !== mine.id) || !part.member_id) {
-            hangUp(mine.ever ? 'call_ended' : 'call_unanswered');
+        var outcome = placeOutcome(part, mine.id, mine.memberId, mine.ever);
+
+        if (outcome) {
+            // Its place is gone: nothing is left to leave on the server.
+            finish(mine, outcome);
             return;
         }
 
@@ -644,10 +722,10 @@
         if (Object.keys(mine.peers).length) {
             mine.aloneSince = Date.now();
         } else if (mine.ever || mine.outgoing || mine.group) {
-            var outcome = aloneOutcome(mine.group, mine.ever, mine.ever ? mine.aloneSince : mine.since, Date.now(), hooks.ring || 45);
+            var alone = aloneOutcome(mine.group, mine.ever, mine.ever ? mine.aloneSince : mine.since, Date.now(), hooks.ring || 45);
 
-            if (outcome) {
-                hangUp(outcome);
+            if (alone) {
+                hangUp(alone);
                 return;
             }
         }
@@ -659,7 +737,7 @@
 
     function peer(mine, id, offer) {
         var pc = new RTCPeerConnection({ iceServers: mine.ice || hooks.ice || [] });
-        var held = { pc: pc, queue: [], lostAt: 0, tile: tile(mine, id) };
+        var held = { id: id, pc: pc, queue: [], lostAt: 0, restartAt: 0, offerer: !!offer, tile: tile(mine, id) };
 
         mine.peers[id] = held;
         mine.stream.getTracks().forEach(function (track) {
@@ -717,6 +795,39 @@
         }
 
         return held;
+    }
+
+    // An ICE restart of one connection, by its offerer: a new offer that
+    // gathers new routes; the answerer answers it as any offer. Not while an
+    // offer is still unanswered.
+    function restart(mine, held) {
+        var pc = held.pc;
+
+        if (pc.signalingState !== 'stable') {
+            return;
+        }
+
+        held.restartAt = Date.now();
+
+        pc.createOffer({ iceRestart: true }).then(function (description) {
+            return pc.setLocalDescription(description);
+        }).then(function () {
+            send(held.id, 'offer', JSON.stringify(pc.localDescription));
+        }).catch(function () {});
+    }
+
+    // Restarts the connections that are due; network: the device's network
+    // changed, so every connection this window offers looks for a new route.
+    function restartAll(mine, network) {
+        var now = Date.now();
+
+        Object.keys(mine.peers).forEach(function (id) {
+            var held = mine.peers[id];
+
+            if (restartDue(held.pc.connectionState, held.offerer, held.lostAt, held.restartAt, now, network)) {
+                restart(mine, held);
+            }
+        });
     }
 
     function peerClose(mine, id) {
@@ -815,7 +926,7 @@
                 return;
             }
 
-            return h().api('ws_call_signal', { call_id: mine.id, to_member_id: 0, kind: 'share', body: '' }).then(function () {
+            return h().api('ws_call_signal', { call_id: mine.id, to_member_id: 0, kind: 'share', body: '', member_id: mine.memberId }).then(function () {
                 mine.shareAsking = false;
 
                 if (call !== mine) {
@@ -1239,6 +1350,9 @@
         }
 
         var ids = Object.keys(mine.peers);
+
+        restartAll(mine, false);
+
         var lost = ids.filter(function (id) {
             var held = mine.peers[id];
 
@@ -1396,7 +1510,7 @@
         }
 
         if (mine.id && mine.memberId) {
-            h().api('ws_call_leave', { call_id: mine.id }, { keepalive: true }).catch(function () {});
+            h().api('ws_call_leave', { call_id: mine.id, member_id: mine.memberId }, { keepalive: true }).catch(function () {});
         }
 
         finish(mine, reason);
@@ -1444,12 +1558,32 @@
         }
     }
 
-    // A tab closed or reloaded leaves its call.
+    // A tab closed or reloaded leaves its call: the leave is sent as the
+    // page goes (keepalive). Where it never arrives (a phone that dropped
+    // the page) the server takes the member out once it is unheard for 90
+    // seconds.
     window.addEventListener('pagehide', function (event) {
         if (call && !event.persisted) {
             hangUp('');
         }
     });
+
+    // The device back online, or on another network (a phone from Wi-Fi to
+    // its mobile network): every connection this window offers is restarted
+    // at once, before it is seen to break.
+    window.addEventListener('online', function () {
+        if (call && call.node) {
+            restartAll(call, true);
+        }
+    });
+
+    if (navigator.connection && navigator.connection.addEventListener) {
+        navigator.connection.addEventListener('change', function () {
+            if (call && call.node) {
+                restartAll(call, true);
+            }
+        });
+    }
 
     window.PGWsCalls = {
         supported: supported,
@@ -1462,6 +1596,9 @@
         callable: callable,
         isGroup: isGroup,
         joinState: joinState,
+        restartDue: restartDue,
+        placeOutcome: placeOutcome,
+        readGiveUp: readGiveUp,
         aloneOutcome: aloneOutcome,
         level: level,
         speaking: speaking,

@@ -71,16 +71,16 @@ function test_workspace_calls_share_the_server_keeps_the_rules()
 {
 	$send = workspace_calls_share_test_function('ws_call_signal_send');
 	$share = workspace_calls_share_test_function('ws_call_share_send');
-	$leave = workspace_calls_share_test_function('ws_call_leave');
+	$leave = workspace_calls_share_test_function('ws_call_leave') . workspace_calls_share_test_function('ws_call_member_out');
 	$part = workspace_calls_share_test_function('ws_call_live_part');
 	$sharer = workspace_calls_share_test_function('ws_call_sharer');
 
-	pg_assert_true(strpos($send, 'ws_call_member_of($party, $call_id)') !== false && strpos($send, "if (!\$from) {") !== false, 'only a member in the live call sends a mark');
+	pg_assert_true(strpos($send, 'ws_call_member_of($party, $call_id)') !== false && strpos($send, "if (!ws_call_member_matches(\$from, \$member_id)) {") !== false, 'only a member in the live call sends a mark');
 	pg_assert_true(strpos($send, 'return ws_call_share_send($call, $from, $kind, $now);') !== false, 'a share or unshare goes through its own writer');
 	pg_assert_true(strpos($send, 'ws_call_over_limit($sent, WS_CALL_SIGNALS_A_MINUTE)') < strpos($send, 'ws_call_share_send('), 'marks count in the member\'s signals a minute');
 	pg_assert_true(strpos($share, 'ws_call_lock($call[\'channel_id\'])') !== false && strpos($share, 'ws_call_unlock($call[\'channel_id\']);') !== false, 'the check and the write are held together: two shares at once cannot both win');
 	pg_assert_true(strpos($share, 'ws_call_share_check($from, ws_call_sharer(') !== false, 'the check reads who shares now');
-	pg_assert_true(strpos($leave, "DELETE FROM ws_call_signals WHERE to_member_id = '\" . (int) \$mine['id'] . \"' OR from_member_id = '\" . (int) \$mine['id'] . \"'") !== false, 'a member\'s marks go when it leaves: its share ends');
+	pg_assert_true(strpos($leave, 'ws_call_member_out((int) $mine[\'id\'], time());') !== false && strpos($leave, "DELETE FROM ws_call_signals WHERE to_member_id = '\" . (int) \$member_id . \"' OR from_member_id = '\" . (int) \$member_id . \"'") !== false, 'a member\'s marks go when it leaves: its share ends');
 	pg_assert_true(strpos($part, 'ws_call_sharer((int) $call[\'id\'], $members)') !== false, 'the live read says who shares');
 	pg_assert_true(strpos($sharer, "to_member_id = 0 AND kind IN ('share', 'unshare')") !== false && strpos($sharer, 'body') === false, 'the sharer is read from the marks, never from a body');
 }
