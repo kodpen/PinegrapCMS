@@ -187,6 +187,7 @@
 - marketplace-product-import-queue.md: The product import queues the products it updated for the marketplaces in one call at the end, after the bundle refresh, without webhooks
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
 - marketplace-repricer-robot.md: The repricer's robot pass (RP4): Win and Grow while winning, the floor and cap, the day's limits, Try first, the log, the listing state, the two operations alerts
+- marketplace-repricer.md: The marketplace repricer as a whole (2026.11.0, RP1 to RP5): what binds it, the architect's choices, which PR carries each feature R1 to R13, what is not built, where each part is written up [decision: decisions-made-product-89.md]
 - marketplace-repricing-lists.md: The Repricing view's cards and lists (RP3b): what Winning, Losing, At the floor and No cost count, how each filters in SQL, the products list's price and columns, the price log's columns
 - marketplace-repricing-screen.md: Marketplace Products › Repricing view (RP3b): figure cards, one segment row with Price log, lists on the table driver, Try first notice, rank on a product row [decision: here]
 - marketplace-shop-view.md: Shop view of marketplace_products.php (#1931): shop products with pictures and their state on an account, codes typed in the row, bulk own-code match, send, remove, listing changes

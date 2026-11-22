@@ -1008,6 +1008,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/gift-card-part-owed.md: How an order's gift card part is counted (architect 2026-11-17, #10259, #10260): the cards gave SUM(applied_gift_cards.amount); a return gave back order_refunds rows of type return_gift_card
 - commerce/marketplace-buybox-read.md: The hourly buybox read (2026.11.0): the Trendyol connector ability buybox, its body, header and limit, the job pass, and what marketplace_price_state keeps
 - commerce/marketplace-pricing-tab.md: Marketplaces › Settings drawer › Pricing tab and the Products in this shop row's own price and strategy (repricer RP2): what is stored, when nothing is written, the one-time requeue by the general job
+- commerce/marketplace-repricer.md: The marketplace repricer as a whole (2026.11.0, RP1 to RP5): what binds it, the architect's choices, which PR carries each feature R1 to R13, what is not built, where each part is written up
 - commerce/marketplace-repricing-screen.md: Marketplace Products › Repricing view (RP3b): figure cards, one segment row with Price log, lists on the table driver, Try first notice, rank on a product row
 - commerce/merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
 - commerce/n11-warehouse.md: Products n11 ships from its own warehouse (n11depom): read into the catalogue with sender=ALL and marked, their stock never pushed, their orders not pulled
