@@ -432,3 +432,44 @@ function test_booking_settings_staff_rows_and_drawers()
 	pg_assert_contains("\$liveform->mark_error('booking_staff[new][' . \$box . ']'", $save);
 	pg_assert_contains('pg_booking_settings_save_staff($booking_staff_rows, $booking_add, $booking_enabled_services, $booking_now, $booking_add_hours);', $save);
 }
+
+// The Messages row: which booking mails (a switched-on campaign profile per
+// action) and texts (a switched-on SMS event) go; a reminder nothing sends
+// says so, and with neither the meta line warns that Reminders send nothing.
+function test_booking_settings_messages()
+{
+	$messages = pg_booking_settings_messages(
+		array('booking_confirmed', 'booking_reminder', 'contact_group_joined'),
+		array('booking_cancelled'),
+		array(24, 2)
+	);
+
+	pg_assert_same(array('mails', 'texts'), array_keys($messages['rows']));
+	pg_assert_same('Mails', $messages['rows']['mails']['name']);
+	pg_assert_same('Sent when confirmed and as a reminder', $messages['rows']['mails']['line']);
+	pg_assert_same('Text messages', $messages['rows']['texts']['name']);
+	pg_assert_same('Sent when cancelled · Reminder: Not sent', $messages['rows']['texts']['line']);
+	pg_assert_same('2 of 4 mails · 1 of 4 texts', $messages['line']);
+	pg_assert_same(false, $messages['warning']);
+
+	$messages = pg_booking_settings_messages(
+		array('booking_cancelled', 'booking_rescheduled', 'booking_reminder', 'booking_confirmed'),
+		array(),
+		array(24)
+	);
+
+	pg_assert_same('Sent when confirmed, as a reminder, when moved and when cancelled', $messages['rows']['mails']['line']);
+	pg_assert_same('Nothing is sent', $messages['rows']['texts']['line']);
+
+	$messages = pg_booking_settings_messages(array('booking_rescheduled'), array(), array(24, 2));
+
+	pg_assert_same('Sent when moved · Reminder: Not sent', $messages['rows']['mails']['line']);
+	pg_assert_same(true, $messages['warning']);
+	pg_assert_same('No reminder mail or text is switched on: Reminders send nothing.', $messages['meta']);
+
+	// No reminder hours: nothing to warn about.
+	$messages = pg_booking_settings_messages(array(), array(), array());
+
+	pg_assert_same(false, $messages['warning']);
+	pg_assert_same('0 of 4 mails · 0 of 4 texts', $messages['line']);
+}
