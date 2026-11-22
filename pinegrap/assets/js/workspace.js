@@ -9205,7 +9205,7 @@
 
             return {
                 data: function () {
-                    return { channels: BOOT.channels || [], groups: BOOT.groups || [], threads: BOOT.threads || [], inbox: BOOT.inbox || 0 };
+                    return { channels: BOOT.channels || [], groups: BOOT.groups || [], threads: BOOT.threads || [], inbox: BOOT.inbox || 0, tasks_due: BOOT.tasks_due };
                 },
                 current: function () {
                     return { view: self.view || '', channel: self.channel ? self.channel.id : 0, thread: self.openThreadId() };
@@ -12158,14 +12158,9 @@
             return !!(window.PgTour && window.PG_TOUR && window.PG_TOUR.key);
         },
 
-        // Plays the tour again. It points at the tiles of the Tools section,
-        // so that section is opened first; a place behind More is opened by
-        // the tour itself (PGWsSide.openFor()).
+        // Plays the tour again. The Tools dock is never folded; a place
+        // behind More is opened by the tour itself (PGWsSide.openFor()).
         startTour: function () {
-            if (window.PGWsSide) {
-                window.PGWsSide.openSections(['tools']);
-            }
-
             window.PgTour.start(window.PG_TOUR.key);
         },
 
@@ -23198,6 +23193,8 @@
                 era_id: self.era ? self.era.id : 0,
                 read: (document.hasFocus() && !self.era) ? 1 : 0,
                 counts: (counts && !self.isThread) ? 1 : 0,
+                // The count on My Tasks in the list, read with the counts.
+                due: (counts && !self.isThread) ? 1 : 0,
                 board: ((self.tab === 'board') && !self.isThread) ? 1 : 0,
                 panel: self.isThread ? 1 : 0,
                 sound: (!self.isThread && soundOn(CFG.api_url, CFG.me)) ? 1 : 0,
@@ -23367,6 +23364,10 @@
                     BOOT.threads = data.threads || [];
                     BOOT.inbox = data.inbox;
 
+                    if (typeof data.tasks_due === 'number') {
+                        BOOT.tasks_due = data.tasks_due;
+                    }
+
                     if (data.sound) {
                         self.soundHeard(data.sound);
                     }
@@ -23379,7 +23380,7 @@
                     // The channel list is drawn again only when it changed: every
                     // few seconds from scratch it dropped a half-typed search, the
                     // list's scroll and the pointer's hover.
-                    var sideKey = JSON.stringify([data.channels, data.groups || [], data.threads || [], data.inbox, self.channel ? self.channel.id : 0, self.openThreadId()]);
+                    var sideKey = JSON.stringify([data.channels, data.groups || [], data.threads || [], data.inbox, BOOT.tasks_due, self.channel ? self.channel.id : 0, self.openThreadId()]);
 
                     if (!self.dragging && (sideKey !== self.sideKey)) {
                         self.sideKey = sideKey;
@@ -32132,6 +32133,7 @@
                 BOOT.groups = inline.groups || [];
                 BOOT.threads = inline.threads || [];
                 BOOT.inbox = inline.inbox || 0;
+                BOOT.tasks_due = inline.tasks_due || 0;
             }
 
             var root = document.getElementById('ws-root');

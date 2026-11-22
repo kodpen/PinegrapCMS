@@ -71,8 +71,8 @@ function test_panel_contrast_workspace_nav_icons()
 {
 	$css = panel_contrast_source('assets/css/backend.src.css');
 
-	// A row and a Tools tile of the same place share one tone.
-	preg_match_all('/^:is\(\.ws-channel-link, \.ws-side-tile\)\[data-ws-nav="([a-z_]+)"\] > \.bi \{ color: (#[0-9a-f]{6}); \}/m', $css, $icons, PREG_SET_ORDER);
+	// Each place's row (Today, More's rows) has its own tone.
+	preg_match_all('/^\.ws-channel-link\[data-ws-nav="([a-z_]+)"\] > \.bi \{ color: (#[0-9a-f]{6}); \}/m', $css, $icons, PREG_SET_ORDER);
 
 	pg_assert_true(count($icons) > 8, 'the sidebar icon tones are found');
 

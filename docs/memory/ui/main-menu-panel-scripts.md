@@ -16,10 +16,10 @@ description: A main menu panel a script fills (the Workspace list, the explorer 
 - A hidden menu with `.pg-menu-peek` slides in over the screen (`.software-container.menu-hidden.pg-menu-peek .software-sidebar`), without the slide under reduced motion. The cookie is not touched.
 
 ## What keeps the widened rail open?
-- `insideMenu()`: the sidebar, or a node in `[data-pg-menu-hold]` (workspace.js `ctxMenu()` and `floatBox()`, the tour's veil and bubble in `pg_tour.js`, the explorer's `#explorer_menu`), for the outside click, `focusout` and the frame check; the phone drawer's tap-behind closer leaves such a layer alone too (Rename in the tree's menu edits a row in the drawer). The outside click also reads `composedPath()`, so a toggle that redrew itself still counts as inside.
+- `insideMenu()`: the sidebar, or a node in `[data-pg-menu-hold]` (workspace.js `ctxMenu()` and `floatBox()`, the list's More card, the tour's veil and bubble in `pg_tour.js`, the explorer's `#explorer_menu`), for the outside click, `focusout` and the frame check; the phone drawer's tap-behind closer leaves such a layer alone too (Rename in the tree's menu edits a row in the drawer). The outside click also reads `composedPath()`, so a toggle that redrew itself still counts as inside.
 - The `#menu` Escape returns when `defaultPrevented`: a search box in a panel clears itself first.
 
 ## Which entries mark the current page?
 - `markMenuCurrent()` reads `a[href]` at any depth except `[data-pg-menu-skip]` (actions such as New channel); the row's hint takes `data-pg-menu-label` when set. The entry rules (`.pg-menu-panel-body > a`) style direct children only; a list in a wrapper styles itself.
 - `#menu .menu-body .bi:not(:where(#ws-menu-side *, .pg-explorer-side *))`: `:where()` keeps the 1.3rem rule at (1,2,0), so panel entries, chevrons and the back icon keep their sizes.
-- `.menu-body` drops its 100px bottom room while the Workspace list is open (`:has()`), so the list's sticky foot sits at the bottom edge (Chromium insets sticky boxes by the scroller's padding).
+- `.menu-body` drops its 100px bottom room while the Workspace list is open (`:has()`, #11101), so the list's sticky tools dock sits at the bottom edge (Chromium insets sticky boxes by the scroller's padding); its `scroll-padding` keeps an entry scrolled to clear of the head and the dock.
