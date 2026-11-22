@@ -11,7 +11,7 @@ description: How a flow box looks: a 196 x 72 card, group colour on tile, kind a
 ## Which colours?
 - `.wsf-group-<group>` sets `--wsf-kind` once per theme in backend.src.css. Dark (`[data-bs-theme="dark"]`, any dark subtree, so the Design examples' dark pane too): start #6fdca6, system #45c4d6, logic #e9b44c, message #6ea8ff, people #b49cff, values #e58fd0. Light: #1a7f4e, #0e7383, #8a5c00, #2f62c4, #6d4bd0, #a8468f, each at least 4.5:1 on white (`test_workspace_flows_canvas_group_colours` computes it).
 
-## How is a box drawn? (FE1 of flows-editor-next)
+## How is a box drawn? (FE1, #11083)
 - A card (`.pgc-node.wsf-card`), 196 × 72 px (`BOX_W`, `BOX_H` of workspace_flow.js; the canvas adapter's `size()` hands them to the core, which places, fits and routes arrows by them): the card surface gradient, the hairline (`--pg-border-color-translucent`), `--pg-shadow-card`, radius 13 px. The group colour is never on the border.
 - `cardFace()`: a 30 px `.pg-icon-tile.wsf-node-tile` with the kind's line icon, its `--pg-tone` the group colour; beside it `.wsf-node-text` with three lines: the kind in capitals in the group colour (`.wsf-node-head`, which also holds the warning mark and the run or AI badges), the title, the line of what it does (second ink). Each is cut with an ellipsis.
 - The tooltip holds the three lines whole (`data-face`), then the box's problems and warnings (`data-told`, `markProblems()`); `boxTip()` joins them. In the run view the run's result follows the lines.
