@@ -395,7 +395,7 @@
 - workspace-flows-arrow-names.md: Flow canvas: an arrow's outcome name on a pill at its middle (edgeNamed(), edgePill(), FW5 #9251), which arrows carry one, the rose warning mark of a box with a problem
 - workspace-flows-arrows-always.md: Arrows on always in a flow (PR #2249): taken however the box ended, as a scheduled follow-up on always; which boxes have it, routing a failure, the timeout check, canvas
 - workspace-flows-box-form.md: PGWsFlow.boxForm() and its siblings in workspace_flow.js: a box's canvas settings drawn in another screen (the quick setup's step setting) with its own state, safe beside a mounted canvas
-- workspace-flows-box-look.md: How a flow box looks (V1, V2 of the flows look work, PRs #3118, #3158): group colour per theme, line icon, 1.5 px border, selection ring, arrows, the palette's rows in their column
+- workspace-flows-box-look.md: How a flow box looks: a 196 x 72 card, group colour on tile, kind and port, three cut lines, tooltip, 8 px ports, ring, problem and run lines, 1.75 px arrows, List view entry
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
 - workspace-flows-canvas-harness.md: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, by hand, not in CI): what is real, how to run it, the scenarios, the result, touch emulation
 - workspace-flows-canvas-leave-focus.md: Flow canvas: an untouched blank canvas binned when left, one keepalive save as the page is left (state.leaveSent) and the box's focus after C › Add the arrow (#4318, #4319, PR #4322)

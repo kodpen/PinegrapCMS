@@ -62,10 +62,10 @@ function test_settings_private_label_card_is_drawn_for_the_administrator()
 		pg_assert_contains('name="' . $field . '"', $cards, $field . ' posted');
 	}
 
-	// The five footer link pairs, drawn in a loop.
-	pg_assert_contains('name="footer_link_\' . $private_label_link . \'_label"', $cards, 'the footer link labels');
-	pg_assert_contains('name="footer_link_\' . $private_label_link . \'_url"', $cards, 'the footer link addresses');
-	pg_assert_contains('$private_label_link <= 5', $cards, 'all five');
+	// The footer links, each row's pair in its drawer, in row order.
+	pg_assert_contains('name="footer_link_\' . $n . \'_label"', $cards, 'the footer link labels');
+	pg_assert_contains('name="footer_link_\' . $n . \'_url"', $cards, 'the footer link addresses');
+	pg_assert_contains('$private_label_links = pg_private_label_links_order($private_label_values);', $cards, 'the rows in their saved order');
 }
 
 function test_settings_private_label_save_follows_the_same_gate()
@@ -75,6 +75,7 @@ function test_settings_private_label_save_follows_the_same_gate()
 	pg_assert_contains("\$private_label_save = ((int) \$user['role'] === 0) && (post_value('private_label_card') !== null);", $save, 'administrator and the card posted');
 	pg_assert_contains('UPDATE config SET private_label = ?', $save, 'the config row');
 	pg_assert_contains('pg_private_label_config_content(', $save, 'data/config.php through the same writer');
+	pg_assert_contains("pg_private_label_links_order(\$_POST, post_value('footer_link_action'))", $save, 'the footer links closed up, a row\'s move or removal applied');
 	pg_assert_contains('pg_write_config_file(', $save, 'written through a temp file');
 
 	$refuse = strpos($save, 'pg_request_unexpected_lists(');

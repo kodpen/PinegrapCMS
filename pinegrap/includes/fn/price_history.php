@@ -335,7 +335,8 @@ function pg_price_history_insert_sql($changes, $channel, $currency, $source, $no
  * a window's lowest price is read in.
  *
  * Rows are ordered by changed_at and then by id, and a cursor compares the
- * pair, so two rows stamped in the same second are each walked once. The
+ * pair, so two rows stamped in the same second are each walked once;
+ * $descending walks the same pair the other way, the latest change first. The
  * optional channel narrows the rows to one sales channel and is written into
  * the statement as it is, so only a name pg_price_history_channel() accepts
  * reaches it; $since keeps rows stamped at or after a moment.
@@ -345,9 +346,10 @@ function pg_price_history_insert_sql($changes, $channel, $currency, $source, $no
  * @param int        $since    unix time, 0 for no lower bound
  * @param array|null $cursor   array('v' => changed_at, 'i' => id) of the last row read, as api_cursor_decode() gives it
  * @param int        $rows     rows to fetch (a caller fetches one more than its page to learn whether there is another)
+ * @param bool       $descending  true for the latest change first
  * @return string '' when the product id is not one or the channel is not a channel
  */
-function pg_price_history_list_sql($product_id, $channel = null, $since = 0, $cursor = null, $rows = 50)
+function pg_price_history_list_sql($product_id, $channel = null, $since = 0, $cursor = null, $rows = 50, $descending = false)
 {
     $ids = pg_price_history_ids($product_id);
 
@@ -371,15 +373,18 @@ function pg_price_history_list_sql($product_id, $channel = null, $since = 0, $cu
         $where[] = "changed_at >= '" . (int) $since . "'";
     }
 
+    $past = $descending ? '<' : '>';
+    $direction = $descending ? 'DESC' : 'ASC';
+
     if (is_array($cursor) && isset($cursor['v'], $cursor['i'])) {
-        $where[] = "(changed_at > '" . (int) $cursor['v'] . "'
-                OR (changed_at = '" . (int) $cursor['v'] . "' AND id > '" . (int) $cursor['i'] . "'))";
+        $where[] = "(changed_at " . $past . " '" . (int) $cursor['v'] . "'
+                OR (changed_at = '" . (int) $cursor['v'] . "' AND id " . $past . " '" . (int) $cursor['i'] . "'))";
     }
 
     return "SELECT id, channel, price, currency, changed_at, source
         FROM product_price_history
         WHERE " . implode(' AND ', $where) . "
-        ORDER BY changed_at ASC, id ASC
+        ORDER BY changed_at " . $direction . ", id " . $direction . "
         LIMIT " . max(1, (int) $rows);
 }
 

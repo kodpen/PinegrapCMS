@@ -27,19 +27,19 @@ function test_system_screens_smtp_ligatures_hidden()
 {
 	$source = system_screens_names_source('includes/settings/mail_sending.php');
 
-	pg_assert_same(3, preg_match_all('/<i class="bi bi-[a-z-]+" aria-hidden="true"><\/i><span class="pg-btn-label">/', $source), 'each button icon is aria-hidden');
+	pg_assert_same(2, preg_match_all('/<i class="bi bi-[a-z-]+" aria-hidden="true"><\/i><span class="pg-btn-label">/', $source), 'each button icon is aria-hidden');
 	pg_assert_false(strpos($source, 'material-icons') !== false, 'no ligature icon left');
 }
 
-// The DKIM record to publish is a named, read-only box on its card; the
+// The DKIM record to publish is offered in Sending domain's DKIM row; the
 // notice after generating says where it is instead of repeating it.
 function test_system_screens_dkim_record_named()
 {
 	$source = system_screens_names_source('includes/settings/mail_sending.php');
 
-	pg_assert_contains('<label for="textrecord" class="pg-field-label">', $source, 'record label for');
-	pg_assert_contains('<textarea id="textrecord" class="pg-input font-monospace" rows="4" readonly>', $source, 'record textarea id');
-	pg_assert_contains("lang('Add the TXT record shown on the DKIM TXT Record card to your DNS.')", system_screens_names_source('includes/fn/mail_settings.php'), 'the notice points at the card');
+	pg_assert_contains("'record' => \$mail_txt_record", $source, 'the record is offered in the DKIM row, under its Copy');
+	pg_assert_contains('<div class="pg-field-label" id="dkim_names_label">', $source, 'the selector and domain as one group with its label');
+	pg_assert_contains("lang('Publish the TXT record shown in the DKIM row of Sending domain.')", system_screens_names_source('includes/fn/mail_settings.php'), 'the notice points at the row');
 }
 
 function test_system_screens_efatura_date_and_share()

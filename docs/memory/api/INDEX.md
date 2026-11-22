@@ -23,6 +23,7 @@
 - ai-connections.md: One connection per AI provider (CX9a): where its key is kept, the key an assistant calls with, the 11.0.240 data step that moved the keys, its page on Connections and who may change it [decision: here]
 - api-answer-check.md: tools/check_api_answers.php, the read-only check that calls every GET route of a running site and compares each answer with the site's OpenAPI document; how it is run, what it flags and skips
 - api-app-token.md: An application key and its secret as one token (Authorization: Bearer pgkt_<key>.<secret>, feature U10): format, where it is read, same path as HTTP Basic, never from the query string
+- api-batch-reads.md: POST /batch (M8b): up to 20 GETs of the API in one request, each checked as its own call; which routes are no entry, rate limit, 304, headers, page cache, no MCP tool
 - api-bookings.md: Bookings API (BK8): list, get, free slots, staff-made create, status and cancel through the agenda's write path, bookings:* for roles 0-2 and role-3 staff (own rows), events
 - api-calendar-event-move.md: External API POST /calendars/events/{id}: what moving an event (start, end, all_day) does to its cancelled repeats and its room bookings
 - api-calendar-locations-reservations.md: /calendars/locations CRUD (fn/calendar_writes.php, role 3 refused), GET /calendars/events/{id}/reservations, the calendar_event.reserved webhook
@@ -76,7 +77,8 @@
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record
 - api-if-match.md: If-Match on an update of the external API: 412 precondition_failed when the record changed since, which updates honour it (GET twin), how the tag is read, no lock
 - api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, /inventory, /inventory/moves, POST /inventory/transfer; scopes, refusals, dry run, inventory.changed
-- api-list-newest-first.md: sort=newest on the lists automation triggers sample (customers, form submissions, products, subscriptions, ERP invoices and quotes): the walk, the marked cursor, list_order.php
+- api-list-newest-device-lists.md: Which cursor-paged lists a team device reads take sort=newest (M8a), which are newest first already, and which cannot take it
+- api-list-newest-first.md: sort=newest on cursor-paged lists (the automation samples, and the team device lists in api-list-newest-device-lists.md): the walk, the marked cursor, list_order.php
 - api-marketplace-repricing.md: GET /marketplaces/{account}/repricing and POST (PATCH) /marketplaces/{account}/repricing/{product}: each listing's price, floor, buybox rank and last change; setting its strategy and own price
 - api-mcp-client-streams.md: The MCP client reads an event-stream answer only until the event that answers its request (api_http_request() option complete); why curl's error 23 then counts as success; other callers unchanged
 - api-mcp-client.md: The site as an MCP client (includes/mcp/client.php, the Workspace's MCP servers): what a refusal says (OAuth challenge, moved address, old /sse address, JSON-RPC error, timeout) and why

@@ -1051,6 +1051,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/campaign-profile-screens-left.md: Profile screens after the switch to flows (MA9f): only profiles left, converted ones lead to their flow, screens leave with none, the report and who reads what of it, reasons as specs
 - core/campaign-profile-switch-writer.md: The code that switches e-mail campaign profiles to their flows (MA9e2): update step marks due, general job converts, the file in data/, the window on events, the report notice and bell, a second run
 - core/content-translation-record-save-jobs.md: Translate on save for form records: who opens a translation job by saving a record (never a visitor), the records scope, and the save paths that are not hooked
+- core/mail-campaign-way.md: How campaign e-mail leaves: the layers email() reads, the campaigns' ways sheet and its stored way (config_text campaign_mail_way), why a site that never chose keeps today's order
 - core/mail-settings-module.md: includes/fn/mail_settings.php: what E-mail sending saves and runs (config.php defines, kept password, DKIM, test e-mail), moved out of the screen (CX3a)
 - core/output-escaping.md: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags
 - core/passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384, #2226): who may add one, the proofs incl. the e-mailed code, recovery codes of passkey-only accounts, rename and remove
@@ -1064,6 +1065,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/picture-text-translation-draw.md: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the 70% fit floor, the draw after a Save
 - core/picture-text-translation-fit-letters.md: Picture text translation, a translated text's fit and its letters: the owner's words of 2026-11-17, what the draw already does in a browser and on the server, three open points
 - core/picture-text-translation-store.md: A Artifact Canvas picture's texts in the translation store: owner type file, layer fields read, file_translation states, what saves, deletes and translation writes do
+- core/privacy-centre-decisions.md: What binds the Privacy centre (KVKK): opt-in rules off by default, one removal engine, what no rule removes, staff never removed, public request form off, answer by link, who changes rules
 - core/privacy-request-export-link.md: The signed download link of an information answer (KV4c, #10944): the file in data/privacy_exports, HMAC, 7 days, privacy_download.php 410, Send a new link, Withdraw the link
 - core/privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer
 - core/sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
@@ -1345,7 +1347,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed
 - ui/settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows
 - ui/settings-mail-sending-rows.md: E-mail sending's folded rows (EM2): How e-mail leaves with a sentence a kind of mail, the ways sheet of system e-mail and what its choice saves, each row's line and pill, Send a test's result
-- ui/settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors
+- ui/settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2, EM3): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors
 - ui/settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility.
 - ui/settings-modal-save-place.md: After a save the Site Settings dialog keeps the form's scroll, opens the drawer the save came from again and says "saved" in one toast; when the drawer stays shut (#9751)
 - ui/settings-picker-field.md: The picker field inside Site Settings cards: one 32px line, a 20px thumb, a quiet Browse icon at the end, and placeholders that say what to choose

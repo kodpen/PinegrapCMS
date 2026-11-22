@@ -48,7 +48,7 @@
 - erp-edoc-registry-and-service.md: Shared e-document helpers in edoc/registry.php (settings, session, http, mask, log) and edoc/service.php, owner of the invoice's e-document columns, statuses and list views.
 - erp-edoc-send-and-cancel.md: How an ERP invoice goes through the e-document provider: the send gate, a send that stopped, create then hand to GİB (autosend, 4.63), status on request, taking a document back before the cancel.
 - erp-edoc-send-readiness.md: What the provider would refuse, asked before it is: missing-field lists and format helpers, the repair form, the not-ready filter, the final-consumer number, sales-only rules, GİB's date order.
-- erp-edoc-settings-card.md: Where the e-document provider settings card lives (pgset-invoice), how it saves, the connection test endpoint, and the owner decision to keep it there.
+- erp-edoc-settings-card.md: The E-Invoice card (pgset-invoice, Site Settings › Accounting): e-Document Provider choice (only a connected one), Test the connection, the owner decision to keep it there
 - erp-efatura-threshold.md: The e-Fatura threshold warning (includes/erp/efatura_threshold.php): the two threshold settings, what counts as a sale, the daily cached sum, the System Status tile and its deadline. [decision: decisions-made.md]
 - erp-expense-change-reaches-repeat.md: Changing an expense also updates the active repeat of its family (supplier, tax number, category, description, amount, tax rate, tax_deductible); frequency, day, end and till stay [decision: decisions-made-product-28.md]
 - erp-expense-form-checks.md: Expense screen checks: non-numbers, the field a refusal marks, the paid cancel's till right, send_to, repeat end dates, refused category saves, kept dates, card-body grids, the form layout.
@@ -109,7 +109,7 @@
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients, Workspace collection follow-up.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices
-- erp-parasut-connect-card.md: The Paraşüt part of Settings › Accounting › E-Invoice: status line, connect steps, secret and password boxes, default product help, what Connect answers, which company it takes
+- erp-parasut-connect-card.md: Paraşüt's boxes on its page of Connections: Connect in three steps, secret and password boxes, Save, Disconnect, which company Connect takes; Default Product/Service ID
 - erp-parasut-connection.md: How Pinegrap connects to Paraşüt (authorization code or password grant), where the token and secrets live, the token's owner stamp, the Connect endpoint
 - erp-parasut-driver-2.md: Paraşüt driver, part 2: how the conversion picks e-Fatura or e-Arşiv (fresh GİB lookup, the card's alias, the scenario, a failed lookup) and its request layer (token lock, retries, throttle)
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed

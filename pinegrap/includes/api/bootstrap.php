@@ -102,6 +102,7 @@ require_once($pg_api_directory . '/resources/design_ads.php');
 require_once($pg_api_directory . '/resources/design_dialogs_regions.php');
 require_once($pg_api_directory . '/resources/design_bundles.php');
 require_once($pg_api_directory . '/resources/account.php');
+require_once($pg_api_directory . '/resources/batch.php');
 
 // API settings, read straight from the config row.
 //

@@ -37,7 +37,7 @@ priority: 6
 - A variant set's total over its products, a comparison of products, "bought together", an export of the figures, the same card on a product group.
 
 ## Which steps?
-- PI1 (M): `includes/fn/product_insights.php` (named in its memory file's `module:`), the readers and their pure parts with tests, the panel action, the ten-minute keep.
+- PI1 (M), done in #11094: `includes/fn/product_insights.php` (named in its memory file's `module:`), the readers and their pure parts with tests, the panel action, the ten-minute keep.
 - PI2 (M) after PI1: the head, the section entry and the card in `product_builder.php` and its script; patterns "Record head" (shared with View Order's OS1, whichever lands first adds it) and "Figure grid" on Design examples.
 - PI3 (S): `commerce/product-insights.md` written from what was built, `ui/look-kept-screens.md` corrected, these plan files deleted.
 - Checked as `order-screen-redraw-steps.md` says; PI1's PR shows `EXPLAIN` of each read for a product with many lines. A read that needs an index stops and asks the architect.
