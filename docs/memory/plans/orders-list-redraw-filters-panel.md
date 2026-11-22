@@ -29,7 +29,7 @@ priority: 6
 - The CSS is shared (`.advanced-filter-bar`), so Contacts, Submitted Forms, Commissions, Site Log and the shipping report get the scroll, the bar and the foot's place with it; their markup (head, labels, the foot's wrapper) is changed in the same step where it is the same few lines, else named in the PR as left.
 
 ## Which step?
-- OL2b (M), after OL2 has landed and before OL3; in `view_orders.php` and `assets/css/backend.src.css`. OL3's close-out deletes this file with the plan's.
+- OL2b (M): done (#11167, `ui/advanced-filters-panel.md`); in `view_orders.php` and `assets/css/backend.src.css`. OL3's close-out deletes this file with the plan's.
 - Checked on a sandbox at 1440, 1280, 1024 and 390 px in both themes with the panel open and the list holding thirty orders: the foot in sight at every scroll position, one bar per scroller, Update and Clear working, Tab order as today.
 - The architect looks at the landed step on a sandbox; no step waits for it (`workflow/screen-described-in-plan.md`).
 

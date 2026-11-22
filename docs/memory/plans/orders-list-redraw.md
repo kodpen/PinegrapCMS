@@ -42,7 +42,7 @@ priority: 6
 - Bulk actions, quick edit, the Details panel, exports, advanced filters, the sort menu, the phone cards, every filter's meaning. No schema.
 
 ## Which steps?
-- OL1 (M): the bar, the strip, Summary; done (#11093). OL2 (M): the four new columns and the default set; done (#11142, `commerce/orders-list-columns.md`). OL3 (M) after OL2: the quick filters, the change figures, close-out (`commerce/orders-list-*.md`, `ui/look-figure-cards.md` rewritten; this file deleted).
+- OL1 (M): the bar, the strip, Summary; done (#11093). OL2 (M): the four new columns and the default set; done (#11142, `commerce/orders-list-columns.md`). OL2b (M): the Advanced Filters panel; done (#11167, `ui/advanced-filters-panel.md`). OL3 (M) after OL2: the quick filters, the change figures, close-out (`commerce/orders-list-*.md`, `ui/look-figure-cards.md` rewritten; this file deleted).
 - Checked as `order-screen-redraw-steps.md` says, with at least thirty orders of every state in the period.
 
 Related: docs/memory/plans/order-screen-redraw.md, docs/memory/plans/order-screen-redraw-states.md, docs/memory/plans/product-insights.md
