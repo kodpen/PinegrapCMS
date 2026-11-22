@@ -1009,6 +1009,67 @@ function ws_channel_mark_read($channel_id, $user_id, $message_id)
 }
 
 /**
+ * Which read marks "Mark all as read" moves: for each membership row the
+ * channel's newest message id, where it is past the reader's mark. A row
+ * already read, or one without a message, is left out.
+ *
+ * @param array[] $rows channel_id, last_read_id, newest_id
+ * @return int[] channel id => message id to mark read up to
+ */
+function ws_read_all_marks($rows)
+{
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        $channel_id = (int) ($row['channel_id'] ?? 0);
+        $newest = (int) ($row['newest_id'] ?? 0);
+
+        if (($channel_id > 0) && ($newest > (int) ($row['last_read_id'] ?? 0))) {
+            $out[$channel_id] = max($newest, $out[$channel_id] ?? 0);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Marks read every channel and discussion the reader is a member of, muted
+ * ones too, each up to its last message, as if each were opened: the read
+ * mark and the inbox and bell rows of those messages. Archived channels and
+ * mailbox rooms are left alone; nothing else is written (no read receipt,
+ * no answer).
+ *
+ * @param array $viewer ws_viewer()
+ * @return int how many channels and discussions were marked
+ */
+function ws_read_all($viewer)
+{
+    if (empty($viewer['member'])) {
+        return 0;
+    }
+
+    $me = (int) $viewer['id'];
+    $rows = (array) db_items("SELECT m.channel_id, m.last_read_id, MAX(msg.id) AS newest_id
+        FROM ws_channel_members m
+        INNER JOIN ws_channels c ON c.id = m.channel_id AND c.archived_at = 0 AND c.kind <> 'mailbox'
+        INNER JOIN ws_messages msg ON msg.channel_id = m.channel_id AND msg.id > m.last_read_id
+        WHERE m.user_id = '" . $me . "'
+        GROUP BY m.channel_id, m.last_read_id");
+    $marked = 0;
+
+    foreach (ws_read_all_marks($rows) as $channel_id => $message_id) {
+        if (!ws_can_read_channel($viewer, ws_channel($channel_id))) {
+            continue;
+        }
+
+        ws_channel_mark_read($channel_id, $me, $message_id);
+        $marked++;
+    }
+
+    return $marked;
+}
+
+/**
  * On a workspace that has no channel yet, the first visitor finds one: a
  * public "general" channel for the whole team, with everyone in it.
  *

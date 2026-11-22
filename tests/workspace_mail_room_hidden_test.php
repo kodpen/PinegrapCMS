@@ -75,6 +75,8 @@ function workspace_mail_room_hidden_test_readers()
 		'includes/workspace/channels.php::ws_contact_channels'             => array('key:contact_id'),
 		'includes/workspace/channels.php::ws_ensure_first_channel'         => array('hidden'),
 		'includes/workspace/channels.php::ws_private_channels_for_audit'   => array('kinds'),
+		// Mark all as read: the reader's memberships, the room left out.
+		'includes/workspace/channels.php::ws_read_all'                     => array('hidden'),
 		'includes/workspace/claude.php::ws_claude_latest_requests'         => array('id'),
 		'includes/workspace/claude.php::ws_claude_summary_channels'        => array('kinds'),
 		'includes/workspace/customer.php::ws_customer_channels'            => array('by:the customer a channel is about (contact_id, customer_id), which a room never has'),
