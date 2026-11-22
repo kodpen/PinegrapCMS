@@ -1,6 +1,6 @@
 ---
 name: user-docs-2026-11
-description: Plan (owner 2026-11-23): pinegrap.com documentation from 2026.4.10 (#500) to 2026.11.0; six new pages, steps UD1 to UD15, one page per session
+description: Plan (owner 2026-11-23): pinegrap.com docs from #500 to 2026.11.0; features, help anchors, how-to pass and three new pages done; left the smaller changes and UD15
 ---
 
 ## What is asked?
@@ -9,7 +9,7 @@ description: Plan (owner 2026-11-23): pinegrap.com documentation from 2026.4.10 
 ## What is there today?
 - 28 documentation pages, every one written up to #500 (2026.4.10); nothing merged after it is on a page (`workflow/user-docs-pages.md`).
 - The 2026.11.0 section of `pinegrap/changelog.txt` has 182 `[NEW]` lines, the backbone of this plan. Smaller user-visible changes are found per page with the git log recipe of `user-docs-pages.md`.
-- Which page gets which feature: `user-docs-2026-11-pages.md`, `user-docs-2026-11-modules.md`; the new pages: `user-docs-2026-11-new-pages.md`.
+- Which page got which feature: `user-docs-2026-11-pages.md`, `user-docs-2026-11-modules.md`; the new pages: `user-docs-2026-11-new-pages.md`.
 
 ## What binds the work?
 - Everything in `workflow/user-docs-writing.md` (English only, structure, Access lines, bold labels, Publish is live, never a `/tr/` page).
@@ -21,20 +21,12 @@ description: Plan (owner 2026-11-23): pinegrap.com documentation from 2026.4.10 
 - Design templates are listed once, on `/templates`; other pages link there.
 
 ## Which steps are there?
-One step is one page (or one new page), one session on the owner's machine, one docs-only PR for the mark. Order: the screens every user meets first, then the big modules, then the new pages.
-- UD1 `/introduction`, done 2026-11-23 (four sections). Left: smaller changes since #500, the new logo.
-- UD2 `/site-settings`, `/system`, done 2026-11-23 (six sections). Left: Docker and the importers (to UD14 `/installation`), smaller changes since #500.
-- UD3 `/visual-page-editor`, part 1 done 2026-11-23 (eight sections; the page is ~21,000 words, its split into `-cont` is still open). Left: the `-cont` subjects in the modules file.
-- UD4 `/templates` (new).
-- UD5 `/commerce`, `/commerce-cont`, done 2026-11-23: sections `returns`, `cart-quotes`, `subscriptions`, `checkout` (help anchors), six h3s. Left: order report dashboard, POST /orders (UD6).
-- UD6 `/marketplaces` (new) and the commerce part of `/api`.
-- UD7 `/erp`, done 2026-11-23: h3 `order-flow-auto-invoice`. Left: other ERP changes since #500 (git log recipe).
-- UD8 `/workspace`, done 2026-11-23: eight h3s; at ~20,500 words its new subjects went to `-cont` (`e-mails`, `calls`, `canvas`).
-- UD9 `/workspace-cont`, done 2026-11-23: notes, agents, voice, MCP h3s, `repository-links`. Help anchors `#flows`, `#workflow-tables` point here: UD10/UD11 add a short linking section.
-- UD10 `/flows` (new). UD11 `/workflow-tables` (new).
-- UD12 `/communication` (new) and `/campaigns`.
-- UD13 `/privacy` (new) and `/security`: `/security` done 2026-11-23 (sections `passkeys`, `spam-protection`, `signed-updates`); `/privacy` left.
-- UD14 `/visitors`, `/seo`, `/multilingual`, `/pages-cont`, `/files`, `/folders`, `/calendars`, `/users`, `/contacts`, `/installation`: their rows in the pages file.
+One step is one page, one session on the owner's machine, one docs-only PR. State on 2026-11-23, all published in English:
+- Done, UD1 to UD14: every 2026.11.0 `[NEW]` feature of the plan's pages and module files is on a page, and every help anchor of `get_help_url.php` has its section (`workflow/user-docs-help-anchors.md`).
+- Done, the how-to pass: every 2026.11.0 part says what it is for and how to use it, step by step (`workflow/user-docs-writing.md`).
+- New pages: `/templates` (UD4), `/visual-page-editor-cont` (the newer editor subjects of UD3) and `/artifact-canvas` (owner, 2026-11-23: the canvas got a page of its own; its help button is issue #11185).
+- The other planned pages became sections, so no help anchor moved: marketplaces on `/api` (`marketplaces`, `marketplace-products`); Flows and Workflow Tables on `/workspace-cont`; Communication, SMS, WhatsApp and surveys on `/campaigns`; privacy on `/contacts` (personal data export and erasure) and `/security` (`audit-trail`); bounces and transports on `/site-settings#smtp-settings`.
+- Left: the smaller changes since #500 per page (git log recipe of `user-docs-pages.md`), which move each page's mark; then UD15.
 - UD15 release round, when 2026.11.0 is released: remove the "Available from" notes, `/changelog` article `v2026-11-0`, the home page's Recent releases box.
 
 ## Where does a step start?
