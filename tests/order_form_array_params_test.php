@@ -297,3 +297,14 @@ function test_order_form_array_order_warnings()
 	pg_assert_same(2, substr_count($source, "\$custom_field_2_label = \$row['custom_field_2_label'] ?? '';"), 'custom field 2 label');
 	pg_assert_contains("\$_SESSION['ecommerce']['shipping_address_and_arrival_page_id'] ?? ''", $source, 'shipping address page');
 }
+
+// The order form's page id is bound as a number. One posted as a list is
+// emptied first (pg_liveform_single_values()), and compared as '' with the numeric column it made MariaDB
+// warn 1292 ("Truncated incorrect DECIMAL value") before the "can no longer
+// be found" answer.
+function test_order_form_array_page_id_bound_as_number()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/order_form.php');
+
+	pg_assert_contains("\$result = db_q(\$query, array((int) \$liveform->get_field_value('page_id'))) or output_error('Query failed.');", $source, 'order form page query');
+}

@@ -140,14 +140,14 @@ $double_opt_in = isset($row['double_opt_in']) ? (int) $row['double_opt_in'] : 0;
 if ($auto_registration == 0) {
     // if custom form grants membership access and the user is not logged in, then output error
     if ((($membership == 1) && ($membership_days > 0)) && ((isset($_SESSION['sessionusername']) == false ) || (pg_session_signed_in() == false))) {
-        log_activity(pg_log_lang(array('string'=>'access denied to submit data to membership trial custom form ({var:1}) because user is not logged in','vars'=>$form_name)), $_SESSION['sessionusername']);
+        log_activity(pg_log_lang(array('string'=>'access denied to submit data to membership trial custom form ({var:1}) because user is not logged in','vars'=>$form_name)), $_SESSION['sessionusername'] ?? '');
         output_error(lang('You do not have access to submit data to this membership trial form because you are not logged in.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
     // If the user is not logged in and this form grants private access,
     // then log activity and output error.
     if (!USER_LOGGED_IN && $private && $private_folder_id) {
-        log_activity(pg_log_lang(array('string'=>'access denied to submit data to custom form ({var:1}) that grants private access because user is not logged in','vars'=>$form_name)), $_SESSION['sessionusername']);
+        log_activity(pg_log_lang(array('string'=>'access denied to submit data to custom form ({var:1}) that grants private access because user is not logged in','vars'=>$form_name)), $_SESSION['sessionusername'] ?? '');
         output_error(lang('You do not have access to submit data to this form because you are not logged in.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 }
@@ -187,7 +187,7 @@ if (isset($_SESSION['sessionusername']) == TRUE) {
 
 // if user does not have access to form, log and output error
 if (check_view_access($folder_id) == false) {
-    log_activity(pg_log_lang(array('string'=>'access denied to submit data to custom form ({var:1})','vars'=>$form_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit data to custom form ({var:1})','vars'=>$form_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang('You do not have access to submit data to this form.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -671,7 +671,7 @@ if ($liveform->check_form_errors() == false) {
             (string) $field['upload_folder_id'],
             (string) $file_extension,
             (string) $_FILES[$field['id']]['size'],
-            (string) $user_id)) or output_error('Query failed.');
+            (int) $user_id)) or output_error('Query failed.');
 
         $placed_uploads[$field['id']] = array('id' => mysqli_insert_id(db::$con), 'name' => $file_name);
     }
@@ -710,13 +710,13 @@ if ($liveform->check_form_errors() == false) {
     $result = db_q($query, array(
         (string) ($_POST['page_id'] ?? ''),
         (string) $complete,
-        (string) $user_id,
+        (int) $user_id,
         (string) $reference_code,
         (string) get_tracking_code(),
         (string) get_affiliate_code(),
         (string) (isset($_SESSION['software']['http_referer']) ? $_SESSION['software']['http_referer'] : ''),
         (string) $_SERVER['REMOTE_ADDR'],
-        (string) $user_id)) or output_error('Query failed.');
+        (int) $user_id)) or output_error('Query failed.');
     $form_id = mysqli_insert_id(db::$con);
     
     // if this is a quiz custom form, then initialize variables for tracking quiz score
@@ -881,7 +881,7 @@ if ($liveform->check_form_errors() == false) {
             $result = db_q($query, array(
                 (string) $form_id,
                 (string) $field['id'],
-                (string) $file_id,
+                (int) $file_id,
                 (string) prepare_form_data_for_input($data, $field['type']),
                 (string) $field['name'],
                 (string) $form_data_type)) or output_error('Query failed.');
@@ -1243,7 +1243,8 @@ if ($liveform->check_form_errors() == false) {
             if ($eligible == true) {
                 $key_code = $reference_code;
 
-                $expiration_date = '';
+                // A code with no end date keeps the zero date, as the panel writes it.
+                $expiration_date = '0000-00-00';
 
                 // If a number of validity days has been defined, then calculate expiration date.
                 if ($offer_days) {
@@ -1258,6 +1259,7 @@ if ($liveform->check_form_errors() == false) {
                         expiration_date,
                         single_use,
                         report,
+                        notes,
                         user,
                         timestamp)
                     VALUES (
@@ -1267,10 +1269,11 @@ if ($liveform->check_form_errors() == false) {
                         '" . $expiration_date . "',
                         '1',
                         'offer_code',
-                        '" . USER_ID . "',
+                        '',
+                        '" . (int) USER_ID . "',
                         UNIX_TIMESTAMP())");
 
-                log_activity(pg_log_lang(array('string'=>'key code ({var:1}) was created because a custom form, that grants an offer, was submitted','vars'=>$reference_code)), $_SESSION['sessionusername']);
+                log_activity(pg_log_lang(array('string'=>'key code ({var:1}) was created because a custom form, that grants an offer, was submitted','vars'=>$reference_code)), $_SESSION['sessionusername'] ?? '');
             }
         }
     }
@@ -1304,10 +1307,11 @@ if ($liveform->check_form_errors() == false) {
         // if contact does not exist, create new contact
         if (!$contact_id) {
             $query = "INSERT INTO contacts (
+                        description,
                         user,
                         timestamp)
-                     VALUES (?, UNIX_TIMESTAMP())";
-            $result = db_q($query, array((string) $user_id)) or output_error('Query failed.');
+                     VALUES ('', ?, UNIX_TIMESTAMP())";
+            $result = db_q($query, array((int) $user_id)) or output_error('Query failed.');
             $contact_id = mysqli_insert_id(db::$con);
             $new_contact_id = $contact_id;
 
@@ -1332,7 +1336,7 @@ if ($liveform->check_form_errors() == false) {
         $query = "UPDATE contacts
                  SET
                     $sql_update_contact
-                    user = '$user_id',
+                    user = '" . (int) $user_id . "',
                     timestamp = UNIX_TIMESTAMP()
                  WHERE id = '$contact_id'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

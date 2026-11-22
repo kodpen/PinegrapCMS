@@ -20,8 +20,13 @@ include('init.php');
 
 validate_token_field();
 
+// Each of these fields holds one value. One posted as a list counts as not
+// given: page_id[] became the form's session key and stopped the request
+// with a TypeError.
+pg_request_single_values(array('page_id', 'id', 'item_id', 'item_type', 'action', 'username_or_email_address', 'management'));
+
 include_once('liveform.class.php');
-$liveform = new liveform('add_or_remove_watcher', $_POST['page_id']);
+$liveform = new liveform('add_or_remove_watcher', $_POST['page_id'] ?? 0);
 $liveform->add_fields_to_session();
 
 // If the user is managing watchers instead of adding/removing him/herself, then set variable for that.
@@ -54,7 +59,10 @@ $query =
     FROM page
     WHERE page_id = ?";
 $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
-$row = mysqli_fetch_assoc($result);
+// A page that does not exist (or none given) has no comments to watch: it
+// stops at the check below, as a page with comments turned off does.
+$row = mysqli_fetch_assoc($result) ?: array('page_name' => '', 'page_type' => '', 'folder_id' => 0, 'comments' => 0,
+    'comments_label' => '', 'comments_watcher_email_page_id' => 0);
 
 $page_name = $row['page_name'];
 $page_type = $row['page_type'];
@@ -76,19 +84,19 @@ if (($page_type != 'form item view') && ($item_type == 'submitted_form') && func
 
 // if comments are disabled for the page, log and output error
 if ($comments == 0) {
-    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because comments are disabled', 'vars' => $page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because comments are disabled', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang('You do not have access to add or remove watchers because comments are disabled for the page. <a href="javascript:history.go(-1);">Go back</a>.'));
 }
 
 // if watching comments is disabled for the page, log and output error
 if ($comments_watcher_email_page_id == 0) {
-    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because watching comments is disabled', 'vars' => $page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because watching comments is disabled', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang('You do not have access to add or remove watchers because watching comments is disabled for the page. <a href="javascript:history.go(-1);">Go back</a>.'));
 }
 
 // if the visitor is not logged in, log and output error
 if (USER_LOGGED_IN == FALSE) {
-    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because visitor is not logged in', 'vars' => $page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because visitor is not logged in', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang('You do not have access to add or remove watchers because you are not logged in. <a href="javascript:history.go(-1);">Go back</a>.'));
 }
 
