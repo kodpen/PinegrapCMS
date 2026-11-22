@@ -1,6 +1,6 @@
 ---
 name: legacy-page-parts
-description: The move run's page_parts step (LE2, #PRNUM): region nodes in moved pages and in the components the run made become components and widgets; Login, Cart, Comments Block in frame and page_parts
+description: The move run's page_parts step (LE2, #11159): region nodes in moved pages and in the components the run made become components and widgets; Login, Cart, Comments Block in frame and page_parts
 ---
 
 ## What does the page_parts step do?
