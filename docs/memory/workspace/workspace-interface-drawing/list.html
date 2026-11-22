@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Workspace interface: the list in the main menu, proposal (2026-11-22)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<link rel="stylesheet" href="parts.css">
+<style>
+.cols { display: flex; gap: 26px; align-items: flex-start; }
+.col { flex: none; }
+</style>
+<script>if (location.search === "?light") { document.documentElement.dataset.theme = "light"; }</script>
+</head>
+<body>
+<div class="stage">
+
+<div class="part">Çalışma Alanı listesi <em>ana menünün paneli, 250 px · yeri, sırası ve erişim kuralları aynı kalır</em></div>
+
+<div class="board">
+<div class="cols">
+
+<!-- today -->
+<div class="col">
+<div class="cap"><b>Bugün</b><small>900 px yükseklikte pencere, 13 kanal</small></div>
+<div class="wl old">
+  <div class="wl-h"><i class="bi bi-arrow-left"></i><b>Çalışma Alanı</b><span class="sp"></span><i class="bi bi-gear dim"></i><i class="plus bi bi-plus"></i></div>
+  <div class="in s"><i class="bi bi-search"></i><span class="ph">Çalışma Alanında ara</span><kbd class="end">Ctrl K</kbd></div>
+  <div class="scroll">
+    <a class="r"><i class="bi bi-house"></i>Bugün</a>
+    <div class="sh caps"><i class="bi bi-chevron-down"></i>Kanallar</div>
+    <a class="r un"><i class="hash" style="color:var(--amber)">#</i>destek<span class="n">12</span><i class="bi bi-pin-angle-fill pin"></i></a>
+    <a class="r un"><i class="hash" style="color:var(--rose)">#</i>genel<span class="n">3</span><i class="bi bi-pin-angle-fill pin"></i></a>
+    <a class="r g" style="--c:var(--amber)"><i class="bi bi-folder2"></i>Pazarlama</a>
+    <div class="gi" style="--c:var(--amber)">
+      <a class="r"><i class="hash" style="color:var(--teal)">#</i>sosyal-medya</a>
+      <a class="r un"><i class="hash" style="color:var(--teal)">#</i>e-bulten<span class="n">2</span></a>
+      <a class="r un"><i class="hash" style="color:var(--amber)">#</i>urun-lansmani<span class="n">2</span></a>
+    </div>
+    <a class="r g" style="--c:var(--teal)"><i class="bi bi-folder2"></i>Mağaza</a>
+    <div class="gi" style="--c:var(--teal)">
+      <a class="r un"><i class="hash" style="color:var(--teal)">#</i>siparisler<span class="n">27</span></a>
+      <a class="r"><i class="hash" style="color:var(--blue)">#</i>stok-ve-tedarik</a>
+      <a class="r g" style="--c:var(--teal)"><i class="bi bi-folder2"></i>Pazaryerleri</a>
+      <div class="gi" style="--c:var(--teal)">
+        <a class="r un"><i class="hash" style="color:var(--blue)">#</i>trendyol<span class="n">1</span></a>
+        <a class="r"><i class="hash" style="color:var(--violet)">#</i>hepsiburada</a>
+      </div>
+    </div>
+    <a class="r"><i class="bi bi-lock" style="color:var(--violet)"></i>yonetim</a>
+    <a class="r un"><i class="hash" style="color:var(--violet)">#</i>web-sitesi-yenileme<span class="n">5</span></a>
+    <a class="r"><i class="hash" style="color:var(--rose)">#</i>muhasebe</a>
+    <a class="r off"><i class="hash">#</i>fikir-kutusu</a>
+    <a class="r off"><i class="hash">#</i>fuar-2027</a>
+    <a class="r off2"><i class="bi bi-folder-plus"></i>Yeni grup</a>
+    <div class="sh caps"><i class="bi bi-chevron-down"></i>Araçlar</div>
+    <div class="tiles">
+      <a><i class="bi bi-check2-square" style="color:var(--teal)"></i>Görevlerim</a><a><i class="bi bi-journal-text" style="color:var(--amber)"></i>Notlarım</a>
+      <a><i class="bi bi-table" style="color:var(--amber)"></i>Veri</a><a><i class="bi bi-diagram-3" style="color:var(--blue)"></i>Akışlar</a>
+      <a><i class="bi bi-calendar3" style="color:var(--rose)"></i>Takvim</a><a><i class="bi bi-calendar-heart" style="color:var(--fg2)"></i>Takvimim</a>
+    </div>
+  </div>
+</div>
+<ul class="notes one w250">
+  <li><b>Araçlar kanalların altında.</b> Kanal sayısı arttıkça ekranın dışına düşüyor; Görevlerim'e gitmek için listeyi kaydırmak gerekiyor.</li>
+  <li><b>Okunmamışı bulmak göz işi.</b> Yalnız kalın yazı ve gri sayı; anılma ile okunmamış zor ayrılıyor.</li>
+  <li><b>Katılmadığınız kanallar</b> listenin içinde soluk duruyor.</li>
+</ul>
+</div>
+
+<!-- proposal at rest -->
+<div class="col">
+<div class="cap"><b>L1 · Öneri, durağan</b><small>Aynı pencere, aynı 13 kanal</small></div>
+<div class="wl">
+  <div class="wl-h"><i class="bi bi-arrow-left"></i><b>Çalışma Alanı</b><span class="sp"></span><i class="bi bi-gear dim"></i><i class="plus bi bi-plus"></i></div>
+  <div class="in s"><i class="bi bi-search"></i><span class="ph">Ara ya da git</span><kbd class="end">Ctrl K</kbd></div>
+  <div class="seg full"><span class="on">Tümü</span><span>Okunmamış <em>7</em></span></div>
+  <div class="scroll fade">
+    <a class="r"><i class="tile ct t-blue bi bi-house"></i>Bugün</a>
+    <div class="sh">Kanallar</div>
+    <a class="r un"><i class="tile ct t-amber">#</i>destek<span class="n at">12</span></a>
+    <a class="r un"><i class="tile ct t-rose">#</i>genel<span class="n">3</span></a>
+    <hr>
+    <a class="r g" style="--c:var(--amber)"><i class="bi bi-folder2"></i>Pazarlama</a>
+    <div class="gi" style="--c:var(--amber)">
+      <a class="r"><i class="tile ct t-teal">#</i>sosyal-medya</a>
+      <a class="r un"><i class="tile ct t-teal bi bi-envelope"></i>e-bulten<span class="n">2</span></a>
+      <a class="r un"><i class="tile ct t-amber bi bi-rocket-takeoff"></i>urun-lansmani<span class="n">2</span></a>
+    </div>
+    <a class="r g" style="--c:var(--teal)"><i class="bi bi-folder2"></i>Mağaza</a>
+    <div class="gi" style="--c:var(--teal)">
+      <a class="r un"><i class="tile ct t-teal bi bi-bag"></i>siparisler<span class="n">27</span></a>
+      <a class="r"><i class="tile ct t-blue">#</i>stok-ve-tedarik</a>
+      <a class="r g" style="--c:var(--teal)"><i class="bi bi-folder2"></i>Pazaryerleri</a>
+      <div class="gi" style="--c:var(--teal)">
+        <a class="r un"><i class="tile ct t-blue">#</i>trendyol<span class="n">1</span></a>
+        <a class="r"><i class="tile ct t-violet">#</i>hepsiburada</a>
+      </div>
+    </div>
+    <a class="r"><i class="tile ct t-violet bi bi-lock"></i>yonetim</a>
+    <a class="r un"><i class="tile ct t-violet">#</i>web-sitesi-yenileme<span class="n at">5</span></a>
+    <a class="r"><i class="tile ct t-rose">#</i>muhasebe<i class="bi bi-pencil draft"></i></a>
+    <a class="r q"><i class="bi bi-plus-circle-dotted"></i>Katılabileceğiniz 2 kanal<i class="bi bi-chevron-right end"></i></a>
+    <a class="r q"><i class="bi bi-folder-plus"></i>Yeni grup</a>
+    <div class="sh">Tartışmalarım</div>
+    <a class="r two"><i class="bi bi-chat-left-text"></i><span>Kargo gecikmesi<small>destek</small></span><span class="n">2</span></a>
+  </div>
+  <div class="dk">
+    <div class="dk-h">Araçlar<span class="sp"></span><i class="bi bi-three-dots" title="Daha fazla"></i><i class="bi bi-chevron-down"></i></div>
+    <div class="dk-g">
+      <a class="on"><i class="tile t-teal bi bi-check2-square"></i>Görevler<u>3</u></a>
+      <a><i class="tile t-amber bi bi-journal-text"></i>Notlar</a>
+      <a><i class="tile t-amber bi bi-table"></i>Veri</a>
+      <a><i class="tile t-blue bi bi-diagram-3"></i>Akışlar</a>
+      <a><i class="tile t-rose bi bi-calendar3"></i>Takvim</a>
+      <a><i class="tile bi bi-calendar-heart"></i>Takvimim</a>
+      <a><i class="tile t-violet bi bi-calendar-week"></i>Pano</a>
+      <a><i class="tile t-blue bi bi-clock-history"></i>Kararlar</a>
+    </div>
+  </div>
+</div>
+<ul class="notes one w250">
+  <li><b>Araçlar listenin ayağında</b> sabit durur; kanallar onun üstünde kayar. Sekiz ekran her an bir tık.</li>
+  <li><b>Tümü / Okunmamış</b> aramanın altında.</li>
+  <li><b>Kanalın simgesi</b> kendi renginde küçük kutuda; sizi anan kanalın sayısı vurgu renginde.</li>
+</ul>
+</div>
+
+<!-- unread, dock folded, More open -->
+<div class="col">
+<div class="cap"><b>L2 · Okunmamış seçili</b><small>Araçlar katlanmış, Daha fazla açık</small></div>
+<div class="wl">
+  <div class="wl-h"><i class="bi bi-arrow-left"></i><b>Çalışma Alanı</b><span class="sp"></span><i class="bi bi-gear dim"></i><i class="plus bi bi-plus"></i></div>
+  <div class="in s"><i class="bi bi-search"></i><span class="ph">Ara ya da git</span><kbd class="end">Ctrl K</kbd></div>
+  <div class="seg full"><span>Tümü</span><span class="on">Okunmamış <em>7</em></span></div>
+  <div class="scroll">
+    <a class="r"><i class="tile ct t-blue bi bi-house"></i>Bugün</a>
+    <div class="sh">Kanallar<span class="sp"></span><span class="lk">Tümünü okundu say</span></div>
+    <a class="r un"><i class="tile ct t-amber">#</i>destek<span class="n at">12</span></a>
+    <a class="r un"><i class="tile ct t-rose">#</i>genel<span class="n">3</span></a>
+    <hr>
+    <a class="r g" style="--c:var(--amber)"><i class="bi bi-folder2"></i>Pazarlama</a>
+    <div class="gi" style="--c:var(--amber)">
+      <a class="r un"><i class="tile ct t-teal bi bi-envelope"></i>e-bulten<span class="n">2</span></a>
+      <a class="r un"><i class="tile ct t-amber bi bi-rocket-takeoff"></i>urun-lansmani<span class="n">2</span></a>
+    </div>
+    <a class="r g" style="--c:var(--teal)"><i class="bi bi-folder2"></i>Mağaza</a>
+    <div class="gi" style="--c:var(--teal)">
+      <a class="r un"><i class="tile ct t-teal bi bi-bag"></i>siparisler<span class="n">27</span></a>
+      <a class="r g" style="--c:var(--teal)"><i class="bi bi-folder2"></i>Pazaryerleri</a>
+      <div class="gi" style="--c:var(--teal)">
+        <a class="r un"><i class="tile ct t-blue">#</i>trendyol<span class="n">1</span></a>
+      </div>
+    </div>
+    <a class="r un"><i class="tile ct t-violet">#</i>web-sitesi-yenileme<span class="n at">5</span></a>
+    <div class="sh">Tartışmalarım</div>
+    <a class="r two"><i class="bi bi-chat-left-text"></i><span>Kargo gecikmesi<small>destek</small></span><span class="n">2</span></a>
+  </div>
+  <div class="more glass">
+    <a><i class="bi bi-alarm"></i>Zamanlanmış mesajlar</a>
+    <a><i class="bi bi-plug"></i>MCP bağlantılarım</a>
+    <a><i class="bi bi-calendar-plus"></i>Takvim aboneliği</a>
+    <a><i class="bi bi-person-video3"></i>Toplantı bağlantım</a>
+    <a><i class="bi bi-journal-bookmark"></i>Genel hafıza</a>
+    <a><i class="bi bi-archive"></i>Arşivlenen kanallar</a>
+    <a><i class="bi bi-shield-lock"></i>Özel kanallar</a>
+  </div>
+  <div class="dk folded">
+    <div class="dk-r">
+      <i class="tile t-teal bi bi-check2-square"><u>3</u></i><i class="tile t-amber bi bi-journal-text"></i><i class="tile t-amber bi bi-table"></i><i class="tile t-blue bi bi-diagram-3"></i><i class="tile t-rose bi bi-calendar3"></i><i class="tile bi bi-calendar-heart"></i><i class="tile t-violet bi bi-calendar-week"></i><i class="tile t-blue bi bi-clock-history"></i><i class="ib sm on bi bi-three-dots"></i>
+    </div>
+  </div>
+</div>
+<ul class="notes one w250">
+  <li><b>Okunmamış:</b> yalnız yeni mesajı olan kanallar ve tartışmalar, grupları içinde. Açık kanal hep görünür. Seçim kişide kalır.</li>
+  <li><b>Tümünü okundu say</b> bir kez sorar.</li>
+  <li><b>Katlanmış araçlar:</b> tek sıra simge, adı üzerine gelince. Daha fazla, listenin üstünde açılan bir kart.</li>
+</ul>
+</div>
+
+<!-- row states and keys -->
+<div class="col">
+<div class="cap"><b>L3 · Satırın hâlleri ve tuşlar</b><small>30 px satır, 18 px simge kutusu</small></div>
+<div class="states">
+  <small>Durağan</small>
+  <a class="r"><i class="tile ct t-blue">#</i>stok-ve-tedarik</a>
+  <small>Üzerine gelince: sabitle ve menü; sayı yerini bırakır</small>
+  <a class="r hov"><i class="tile ct t-blue">#</i>stok-ve-tedarik<i class="bi bi-pin-angle end"></i><i class="bi bi-three-dots act"></i></a>
+  <small>Açık kanal</small>
+  <a class="r on"><i class="tile ct t-amber">#</i>destek</a>
+  <small>Okunmamış</small>
+  <a class="r un"><i class="tile ct t-rose">#</i>genel<span class="n">3</span></a>
+  <small>Sizi anan mesaj var</small>
+  <a class="r un"><i class="tile ct t-violet">#</i>web-sitesi-yenileme<span class="n at">5</span></a>
+  <small>Sessize alınmış: sayı yerine nokta</small>
+  <a class="r mute"><i class="tile ct">#</i>duyurular<i class="bi bi-bell-slash end"></i><i class="dot"></i></a>
+  <small>Gönderilmemiş taslağınız var</small>
+  <a class="r"><i class="tile ct t-rose">#</i>muhasebe<i class="bi bi-pencil draft"></i></a>
+  <small>Özel kanal · kendi simgesi olan kanal</small>
+  <a class="r"><i class="tile ct t-violet bi bi-lock"></i>yonetim</a>
+  <a class="r"><i class="tile ct t-teal bi bi-bag"></i>siparisler</a>
+  <small>Kapalı grup: içindeki okunmamışların toplamı</small>
+  <a class="r g" style="--c:var(--teal)"><i class="bi bi-folder2"></i>Mağaza<i class="bi bi-chevron-right chev"></i><span class="n">28</span></a>
+  <small>Katılabileceğiniz kanallar, açılınca</small>
+  <a class="r q"><i class="bi bi-plus-circle-dotted"></i>Katılabileceğiniz 2 kanal<i class="bi bi-chevron-down end"></i></a>
+  <a class="r off"><i class="tile ct">#</i>fikir-kutusu<span class="join">Katıl</span></a>
+  <div class="keys">
+    <p><kbd>Alt</kbd> <kbd>↑</kbd> <kbd>↓</kbd><span>önceki, sonraki kanal</span></p>
+    <p><kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>↑</kbd> <kbd>↓</kbd><span>önceki, sonraki okunmamış</span></p>
+    <p><kbd>Ctrl</kbd> <kbd>K</kbd><span>ara ya da git</span></p>
+  </div>
+</div>
+</div>
+
+<!-- what stays -->
+<div class="col" style="width:254px">
+<div class="cap"><b>Aynı kalanlar</b><small>Verdiğiniz kararlar</small></div>
+<ul class="notes one" style="margin-top:0">
+  <li><b>Yer:</b> liste yalnız ana menünün panelinde; kanal ekranında ayrı sütun yok.</li>
+  <li><b>Sıra:</b> arama, Bugün, Kanallar, Tartışmalarım, Araçlar ve Daha fazla.</li>
+  <li><b>Erişim:</b> kimse açamayacağı kanalı, grubu ya da ekranı görmez; liste yalnız sunucunun gönderdiğini çizer.</li>
+  <li><b>Kanal ekranında:</b> sürükleyip gruba taşıma, sabitleme, sağ tık menüsü, yerinde açılma.</li>
+  <li><b>Başka sayfalarda:</b> aynı liste bağlantılarla, ilk tıklamada yüklenir.</li>
+  <li><b>Telefonda:</b> çekmecede aynı liste; araçlar çekmecenin ayağında.</li>
+  <li><b>Gelen kutusu</b> yine zil; listede ayrı satırı yok.</li>
+</ul>
+<div class="cap" style="margin-top:22px"><b>Yeni olanlar</b></div>
+<ul class="notes one" style="margin-top:0">
+  <li>Okunmamış süzgeci ve "Tümünü okundu say".</li>
+  <li>Görevler simgesinde bugün ve geciken iş sayısı.</li>
+  <li>Taslak işareti, sessize alınmış kanalın işareti.</li>
+  <li>Kanallar arasında tuşla gezme.</li>
+</ul>
+</div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>
