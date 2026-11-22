@@ -150,7 +150,7 @@ if (!$_POST) {
 
         // if there is an error, forward user back to edit currency screen
         if ($liveform->check_form_errors() == true) {
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_currency.php?id=' . $_POST['id']);
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_currency.php?id=' . $id);
             exit();
         }
         
@@ -158,7 +158,7 @@ if (!$_POST) {
         if (pg_currency_form_code_in_use($liveform->get_field_value('code'), (string) ($_POST['id'] ?? ''))) {
             $liveform->mark_error('code', lang('The code that you entered is already in use by another currency, please enter a different code.'));
             // forward user to edit currency screen
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_currency.php?id=' . $_POST['id']);
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_currency.php?id=' . $id);
             exit();
         }
 

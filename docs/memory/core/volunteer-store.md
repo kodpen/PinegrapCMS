@@ -1,10 +1,10 @@
 ---
 name: volunteer-store
-description: The five volunteer_* tables (11.0.266): JSON and DATETIME columns, NULL shift_id for outside hours, erasure, export, inventory, the left-volunteers rule
+description: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, NULL shift_id for outside hours, erasure, export, inventory, the left-volunteers rule
 ---
 
 ## Which tables hold volunteer shifts?
-- `volunteer_programmes`, `volunteers`, `volunteer_documents`, `volunteer_shifts`, `volunteer_signups`, made by `upgrade_2026_11_0_volunteer_shifts()` (11.0.266) and listed in `get_tables()`. `tests/volunteer_store_test.php` pins every line of the five CREATE TABLE statements. Tables chosen by the architect, poll 206 (`workflow/decisions-made-schema-46.md`).
+- `volunteer_programmes`, `volunteers`, `volunteer_documents`, `volunteer_shifts`, `volunteer_signups`, made by `upgrade_2026_11_0_volunteer_shifts()` (11.0.270) and listed in `get_tables()`. `tests/volunteer_store_test.php` pins every line of the five CREATE TABLE statements. Tables chosen by the architect, poll 206 (`workflow/decisions-made-schema-46.md`).
 - Architect (2026-11-21, decision schema-47): the columns approved with changes; `volunteer_signups.minutes` and `volunteers.thanked_hours` are SMALLINT UNSIGNED.
 - JSON on the rows: a programme's `form_fields`, `roles` (key => name, skills, trainings, document kinds), `coordinators` (a list of user ids), `texts`; a volunteer's `skills` and `hours` (the bookings' hours shape, `pg_booking_hours_clean()`); a shift's `roles` (key => count) and `called` (volunteer ids already called for it).
 - States are words: programme `open`/`paused`; volunteer `applied`/`active`/`paused`/`left`; sign-up `state` `signed`/`waiting`/`cancelled`, `outcome` ''/`came`/`no_show`.

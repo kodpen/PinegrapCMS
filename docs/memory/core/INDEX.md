@@ -189,6 +189,7 @@
 - recycle-bin-offline.md: Everything inside the Recycle Bin folder is offline for visitors, whatever the access type a binned folder carries itself
 - recycle-bin-purge-rights.md: The daily recycle bin purge deletes as the software (administrator role), whoever's explorer visit claims it; a hidden short link is refused, never its record dropped
 - registration-gate-form-submitter.md: The registration folder gate in get_page.php lets a visitor without a session reach a custom form's confirmation page with the code of a form this session submitted (PR #4959, bug #4804)
+- request-lists-record-screens.md: Edit Page, Edit File, Edit Theme File and the Product Builder (add and edit) refuse a field posted as a list (name[]=x) before any write; pg_pb_list_fields() names the product form's own lists
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers
 - reset-link-revoked-on-change.md: A pending password reset or set password link (user.token) is cleared when the owner changes the password or the e-mail address on the site.
 - sdt-designer-js-text-rules.md: How visible text in style_designer.src.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
@@ -223,6 +224,7 @@
 - user-disabled.md: Disabled users (2026.11.0, 11.0.160): user.user_disabled_at, the helpers every sign-in path asks, the gates, the Account enabled switch and its guards (#6186)
 - user-write.md: Creating, saving and deleting a panel account goes through includes/fn/user_write.php, shared by add_user.php, edit_user.php, delete_users.php and the /users API writes
 - vanilla-calendar-library.md: The vendored vanilla-calendar-pro (assets/lib/vanilla-calendar-pro/, 3.4.0, unmodified) behind the one date-and-time control: why, how it loads once, how to update it [decision: decisions-made-panel-2.md, decisions-made-panel.md]
+- visitor-form-list-fields.md: Visitor form handlers with a field posted as a list: member registration and activation, the reservation and watcher forms' session index, the built-in CAPTCHA answer (PR #11061)
 - volunteer-shift-rules.md: Pure rules of volunteer shifts: who fits a role on a shift, the waitlist pass, the cancel cut-off, the unfilled call's pick, show-up rate, hours sums, document notices, the signed link's token
 - web-address-rule.md: Short link destination and auto dialog URL share pg_web_address_problem() on save; pg_address_opens_as_web() and its JS twin guard a stored address where it is printed
 - webauthn-verifier.md: WebAuthn (passkey) verifier in includes/webauthn/ (PR #594): API, what it accepts and refuses, error codes, record fields, W3C test vectors, what a caller must do

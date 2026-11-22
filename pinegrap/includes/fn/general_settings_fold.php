@@ -83,6 +83,35 @@ function pg_general_fold_site($hostname)
 }
 
 /**
+ * Site address's value rows: what the other host names and HTTPS do today.
+ * Each is set in its own pane (SEO, Firewall and HTTPS); General only shows
+ * it and leads there.
+ *
+ * @param bool $redirect "Redirect other host names to the site address" is on
+ * @param bool $secure   Secure Mode is on
+ * @return array[] name, line, icon, tone, href
+ */
+function pg_general_site_values($redirect, $secure)
+{
+    return array(
+        array(
+            'name' => lang('Other host names'),
+            'line' => $redirect ? lang('Redirected to the site address.') : lang('Not redirected: each name opens the pages as it is.'),
+            'icon' => 'bi-signpost-split',
+            'tone' => 'blue',
+            'href' => '#settings/seo/pgset-seo',
+        ),
+        array(
+            'name' => lang('HTTPS'),
+            'line' => $secure ? lang('Secure Mode is on: pages open over HTTPS.') : lang('Secure Mode is off: pages open over HTTP.'),
+            'icon' => $secure ? 'bi-lock' : 'bi-unlock',
+            'tone' => $secure ? 'teal' : 'amber',
+            'href' => '#settings/firewall/pgset-headers',
+        ),
+    );
+}
+
+/**
  * Software's line: whether a licence key is set, and verbose database errors
  * while they are on, as visitors then see them.
  *

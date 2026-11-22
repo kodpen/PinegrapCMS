@@ -518,30 +518,73 @@ function pg_arrival_date_form_cutoff($shipping_method_id, $date_and_time, $start
 }
 
 /**
- * Saves the posted shipping cut-offs of an arrival date in place of the
- * stored ones (pg_store_arrival_date_cutoffs_save()). A row
- * pg_arrival_date_form_cutoff() cannot keep is left out.
+ * The numbers of the shipping cut-off rows a post holds, smallest first.
+ * The cut-off table numbers its rows from 1 and a row deleted from it
+ * posts no field, so the rows are found by their field names; the posted
+ * last_shipping_cutoff_number (the table script's counter) is not read.
  *
- * @param mixed $arrival_date_id
  * @param array $post
- * @return bool  Whether a row was left out
+ * @return int[]
  */
-function pg_arrival_date_form_save_cutoffs($arrival_date_id, $post)
+function pg_arrival_date_form_cutoff_numbers($post)
+{
+    $numbers = array();
+
+    foreach (array_keys($post) as $name) {
+        if (preg_match('/^shipping_cutoff_([1-9][0-9]{0,8})_(?:shipping_method_id|date_and_time)$/', (string) $name, $match) === 1) {
+            $numbers[(int) $match[1]] = (int) $match[1];
+        }
+    }
+
+    ksort($numbers);
+
+    return array_values($numbers);
+}
+
+/**
+ * The posted shipping cut-offs of an arrival date as they are stored, in
+ * the table's order, and whether a posted row was left out: one
+ * pg_arrival_date_form_cutoff() cannot keep. A deleted row posts nothing
+ * and is not counted.
+ *
+ * @param array $post
+ * @return array  array(cut-offs, whether a row was left out)
+ */
+function pg_arrival_date_form_cutoffs($post)
 {
     $left_out = false;
     $cutoffs = array();
     $taken = array();
     $start = prepare_form_data_for_input($post['start_date'] ?? '', 'date') . ' 00:00:00';
     $end = prepare_form_data_for_input($post['end_date'] ?? '', 'date') . ' 23:59:59';
-    for ($i = 1; $i <= ($post['last_shipping_cutoff_number'] ?? 0); $i++) {
+
+    foreach (pg_arrival_date_form_cutoff_numbers($post) as $i) {
         $cutoff = pg_arrival_date_form_cutoff($post['shipping_cutoff_' . $i . '_shipping_method_id'] ?? '', $post['shipping_cutoff_' . $i . '_date_and_time'] ?? '', $start, $end, $taken);
+
         if ($cutoff === null) {
             $left_out = true;
             continue;
         }
+
         $cutoffs[] = $cutoff;
         $taken[] = $cutoff[0];
     }
+
+    return array($cutoffs, $left_out);
+}
+
+/**
+ * Saves the posted shipping cut-offs of an arrival date in place of the
+ * stored ones (pg_store_arrival_date_cutoffs_save()).
+ *
+ * @param mixed $arrival_date_id
+ * @param array $post
+ * @return bool  Whether a posted row was left out
+ */
+function pg_arrival_date_form_save_cutoffs($arrival_date_id, $post)
+{
+    list($cutoffs, $left_out) = pg_arrival_date_form_cutoffs($post);
     pg_store_arrival_date_cutoffs_save($arrival_date_id, $cutoffs) or output_error('Query failed.');
+
     return $left_out;
 }

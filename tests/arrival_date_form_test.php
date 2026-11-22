@@ -218,6 +218,53 @@ function test_arrival_date_cutoff_row_names()
 	pg_assert_contains('<span class="material-icons" aria-hidden="true">delete</span>', $body, 'its icon is hidden from screen readers');
 }
 
+// A cut-off row deleted from the table posts no field: it is not a row
+// left out, so the save lands on the list without the notice. The rows
+// are read by their field names, so the posted last row number, a list
+// or a huge number included, never decides how many are read.
+function test_arrival_date_form_cutoffs_read_the_posted_rows()
+{
+	$post = array(
+		'start_date' => '2026-12-01',
+		'end_date' => '2026-12-20',
+		'last_shipping_cutoff_number' => '3',
+		'shipping_cutoff_1_shipping_method_id' => '2',
+		'shipping_cutoff_1_date_and_time' => '2026-12-10T17:30',
+		'shipping_cutoff_3_shipping_method_id' => '5',
+		'shipping_cutoff_3_date_and_time' => '2026-12-11T09:00',
+	);
+	$kept = array(array(2, '2026-12-10 17:30'), array(5, '2026-12-11 09:00'));
+
+	pg_assert_same(array(1, 3), pg_arrival_date_form_cutoff_numbers($post), 'the rows the table posted, row 2 deleted');
+	pg_assert_same(array($kept, false), pg_arrival_date_form_cutoffs($post), 'the deleted row is not left out');
+	pg_assert_same(array(array(), false), pg_arrival_date_form_cutoffs(array('start_date' => '2026-12-01', 'end_date' => '2026-12-20', 'last_shipping_cutoff_number' => '1')), 'a row added and deleted again');
+
+	// A row the table posted blank, or with a method used twice, is still
+	// left out with the notice.
+	$blank = $post + array('shipping_cutoff_4_shipping_method_id' => '', 'shipping_cutoff_4_date_and_time' => '');
+	pg_assert_same(array($kept, true), pg_arrival_date_form_cutoffs(array('last_shipping_cutoff_number' => '4') + $blank), 'a blank row');
+	$twice = $post + array('shipping_cutoff_4_shipping_method_id' => '2', 'shipping_cutoff_4_date_and_time' => '2026-12-12T09:00');
+	pg_assert_same(array($kept, true), pg_arrival_date_form_cutoffs(array('last_shipping_cutoff_number' => '4') + $twice), 'a method used twice');
+
+	// The rows go in table order whatever order the fields arrive in.
+	pg_assert_same(array(2, 10), pg_arrival_date_form_cutoff_numbers(array('shipping_cutoff_10_date_and_time' => '', 'shipping_cutoff_2_shipping_method_id' => '', 'shipping_cutoff_10_shipping_method_id' => '')), 'by number');
+
+	// Only the names the table writes count as rows.
+	pg_assert_same(array(), pg_arrival_date_form_cutoff_numbers(array('shipping_cutoff_0_shipping_method_id' => '2', 'shipping_cutoff_01_date_and_time' => '', 'shipping_cutoff_x_shipping_method_id' => '', 'shipping_cutoff_1_note' => '', 0 => 'x')), 'not a row name');
+
+	// The last row number posted as a list or as a huge number read the
+	// endless loop $i <= array() and a billion empty rows before.
+	foreach (array(array('1'), '999999999', 'x') as $last) {
+		pg_assert_same(array($kept, false), pg_arrival_date_form_cutoffs(array('last_shipping_cutoff_number' => $last) + $post), 'last row number ' . json_encode($last));
+	}
+
+	$form = arrival_date_form_test_source('includes/forms/arrival_date_form.php');
+	$start = strpos($form, 'function pg_arrival_date_form_save_cutoffs(');
+	$save = substr($form, $start, 600);
+	pg_assert_contains('pg_arrival_date_form_cutoffs($post)', $save, 'the screens save the rows read here');
+	pg_assert_same(false, strpos($save, 'last_shipping_cutoff_number'), 'and never loop to the posted last number');
+}
+
 // The posted select of a combobox stays 1px wide whatever its inline
 // style: width:100% pushed a 375px page 2px sideways.
 function test_combobox_native_select_size()

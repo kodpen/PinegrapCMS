@@ -5,7 +5,8 @@
  * Tests for the unsent draft of the Workspace composer
  * (assets/js/workspace.js). Run under Node: draftKey() names the slot per
  * site, viewer, channel and discussion, draftFresh() reads a kept value and
- * refuses an expired or broken one, draftPrune() picks what goes so the
+ * refuses an expired or broken one (both in assets/js/workspace_side.js,
+ * window.PGWsDraft, which the list reads too), draftPrune() picks what goes so the
  * browser keeps at most DRAFT_KEEP drafts. The rest holds the wiring the
  * browser runs: saved while typing, restored into an empty box, cleared on
  * send, never from the box that changes a sent message.
@@ -20,16 +21,16 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-function workspace_unsent_draft_test_source()
+function workspace_unsent_draft_test_source($file = 'workspace.js')
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/' . $file);
 }
 
 // One top-level function of workspace.js, from its line to the closing brace
 // at its own indent; '' when it is not found.
-function workspace_unsent_draft_test_function($name)
+function workspace_unsent_draft_test_function($name, $file = 'workspace.js')
 {
-	$source = workspace_unsent_draft_test_source();
+	$source = workspace_unsent_draft_test_source($file);
 	$start = strpos($source, "\n    function " . $name . '(');
 
 	if ($start === false) {
@@ -57,9 +58,9 @@ function workspace_unsent_draft_test_method($name)
 }
 
 // One "var NAME = ...;" line of the file.
-function workspace_unsent_draft_test_var($name)
+function workspace_unsent_draft_test_var($name, $file = 'workspace.js')
 {
-	$source = workspace_unsent_draft_test_source();
+	$source = workspace_unsent_draft_test_source($file);
 	$start = strpos($source, "\n    var " . $name . ' = ');
 
 	if ($start === false) {
@@ -85,15 +86,15 @@ function workspace_unsent_draft_test_run($steps)
 
 	$script = "'use strict';\n";
 
-	foreach (array('DRAFT_PREFIX', 'DRAFT_DAYS', 'DRAFT_KEEP') as $name) {
-		$part = workspace_unsent_draft_test_var($name);
-		pg_assert_true($part !== '', $name . ' is found');
+	foreach (array('DRAFT_PREFIX' => 'workspace_side.js', 'DRAFT_DAYS' => 'workspace_side.js', 'DRAFT_KEEP' => 'workspace.js') as $name => $file) {
+		$part = workspace_unsent_draft_test_var($name, $file);
+		pg_assert_true($part !== '', $name . ' is found in ' . $file);
 		$script .= $part;
 	}
 
-	foreach (array('draftKey', 'draftFresh', 'draftPrune') as $name) {
-		$part = workspace_unsent_draft_test_function($name);
-		pg_assert_true($part !== '', $name . ' is found');
+	foreach (array('draftKey' => 'workspace_side.js', 'draftFresh' => 'workspace_side.js', 'draftPrune' => 'workspace.js') as $name => $file) {
+		$part = workspace_unsent_draft_test_function($name, $file);
+		pg_assert_true($part !== '', $name . ' is found in ' . $file);
 		$script .= $part;
 	}
 
@@ -101,7 +102,7 @@ function workspace_unsent_draft_test_run($steps)
 		. "console.log(JSON.stringify(steps.map(function (step) {\n"
 		. "  if (step[0] === 'key') { return draftKey(step[1], step[2], step[3], step[4]); }\n"
 		. "  if (step[0] === 'fresh') { return draftFresh(step[1], step[2]); }\n"
-		. "  if (step[0] === 'prune') { return draftPrune(step[1], step[2]); }\n"
+		. "  if (step[0] === 'prune') { return draftPrune(step[1], step[2], DRAFT_DAYS); }\n"
 		. "  if (step[0] === 'limits') { return [DRAFT_DAYS, DRAFT_KEEP]; }\n"
 		. "  return null;\n"
 		. "})));\n";
@@ -247,5 +248,13 @@ function test_workspace_unsent_draft_wiring()
 
 	pg_assert_true(strpos(workspace_unsent_draft_test_method('dropDraft'), 'editing') !== false, 'the edit box never drops the channel\'s draft');
 	pg_assert_true(strpos(workspace_unsent_draft_test_method('draftSlot'), 'CFG.me') !== false, 'the slot names the viewer');
-	pg_assert_same(1, substr_count($source, "\n    var DRAFT_PREFIX = "), 'one draft prefix');
+	// One helper names the slot for the composer and the list: the
+	// composer asks the list's (window.PGWsDraft) and keeps no copy.
+	$side = workspace_unsent_draft_test_source('workspace_side.js');
+	pg_assert_same(1, substr_count($side, "\n    var DRAFT_PREFIX = "), 'one draft prefix, in the list');
+	pg_assert_same(0, substr_count($source, "var DRAFT_PREFIX = "), 'none in the composer');
+	pg_assert_contains('window.PGWsDraft = {', $side, 'the list hands the helper out');
+	pg_assert_true(strpos($side, 'window.PGWsDraft = {') < strpos($side, "var root = document.getElementById('ws-menu-side');"), 'before it looks for its box, so the composer has it on every page');
+	pg_assert_contains('helper.key(site, viewer, channelId, threadId)', workspace_unsent_draft_test_function('draftKey'), 'the composer\'s draftKey() is the list\'s');
+	pg_assert_contains('window.PGWsSide.redraw()', workspace_unsent_draft_test_function('draftTold'), 'a draft kept or dropped marks the list\'s row');
 }

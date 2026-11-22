@@ -4,7 +4,8 @@
  *
  * Site Settings > General as folded rows: each part's line of state, the
  * rows' order, Organization's three groups, the IP as a line, the outgoing
- * proxy's line and link, the pg-switch, Date format's line, and the names
+ * proxy's line and link, the value rows of other host names and HTTPS,
+ * the pg-switch, Date format's line, and the names
  * that stay (card ids, field names, the save, the search words).
  *
  * @author      Erdal Güral (Kodpen)
@@ -88,6 +89,25 @@ function test_settings_general_fold_lines()
 	}
 }
 
+function test_settings_general_site_values()
+{
+	$on = pg_general_site_values(true, true);
+	$off = pg_general_site_values(false, false);
+
+	pg_assert_same(array(lang('Other host names'), lang('HTTPS')), array($on[0]['name'], $on[1]['name']), 'two rows, in order');
+	pg_assert_same(lang('Redirected to the site address.'), $on[0]['line'], 'redirect on');
+	pg_assert_same(lang('Not redirected: each name opens the pages as it is.'), $off[0]['line'], 'redirect off');
+	pg_assert_same(lang('Secure Mode is on: pages open over HTTPS.'), $on[1]['line'], 'Secure Mode on');
+	pg_assert_same(lang('Secure Mode is off: pages open over HTTP.'), $off[1]['line'], 'Secure Mode off');
+	pg_assert_same('#settings/seo/pgset-seo', $off[0]['href'], 'Other host names change in SEO');
+	pg_assert_same('#settings/firewall/pgset-headers', $off[1]['href'], 'HTTPS changes in Firewall and HTTPS');
+
+	$server = settings_general_fold_test_card('pgset-server');
+	pg_assert_contains('<div class="pg-card-inner">\' . $general_site_values', $server, 'the value rows in one inner card');
+	pg_assert_true(strpos($server, '$general_site_values') < strpos($server, 'name="proxy_address"'), 'before the outgoing proxy');
+	pg_assert_false(strpos($server, 'name="main_host_redirect"') !== false || strpos($server, 'name="secure_mode"') !== false, 'Site address writes neither setting');
+}
+
 function test_settings_general_fold_pane_is_rows()
 {
 	$pane = settings_general_fold_test_source('includes/settings/general.php');
@@ -168,6 +188,7 @@ function test_settings_general_fold_registry_and_search()
 	pg_assert_true(in_array('outgoing proxy', $words, true), 'the search finds outgoing proxy');
 	pg_assert_true(in_array('proxy address', $words, true), 'and still proxy address');
 	pg_assert_true(in_array('hostname', $words, true), 'and hostname');
+	pg_assert_true(in_array('redirect', $words, true) && in_array('https', $words, true), 'and the value rows\' words');
 	pg_assert_contains(', vkn, seller', $general, 'VKN');
 	pg_assert_contains("lang('date, time, timezone, format')", $general, 'timezone');
 

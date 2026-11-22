@@ -38,11 +38,15 @@ function ws_nested_test_between($source, $from, $to)
 function test_ws_channel_pin_is_no_button_inside_the_link()
 {
 	$source = ws_nested_test_source('pinegrap/assets/js/workspace_side.js');
-	$pin = ws_nested_test_between($source, "var pin = el('span', 'ws-pin", 'node.appendChild(pin);');
+	// The pin, "⋯" and Join are built by one helper, rowShortcut().
+	$shortcut = ws_nested_test_between($source, 'function rowShortcut(className, iconName, title, handler) {', 'return node;');
+	$row = ws_nested_test_between($source, 'function channelLink(channel, box, sortable) {', 'return node;');
 
-	pg_assert_true($pin !== '', 'the pin is still built in channelLink()');
-	pg_assert_false(strpos($pin, "'role', 'button'") !== false, 'no button role inside the channel link');
-	pg_assert_contains("pin.setAttribute('aria-hidden', 'true');", $pin, 'the pin stays out of the link name');
+	pg_assert_true($shortcut !== '', 'the row\'s shortcuts are built by rowShortcut()');
+	pg_assert_contains("rowShortcut('ws-pin'", $row, 'the pin is still built in channelLink()');
+	pg_assert_false(strpos($shortcut . $row, "'role', 'button'") !== false, 'no button role inside the channel link');
+	pg_assert_contains("node.setAttribute('aria-hidden', 'true');", $shortcut, 'the pin stays out of the link name');
+	pg_assert_false(strpos($shortcut, 'tabIndex') !== false, 'and out of the Tab order');
 }
 
 function test_ws_palette_account_link_leaves_the_option()

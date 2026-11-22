@@ -204,8 +204,9 @@ $result = db_q($query, array((string) ($liveform->get_field_value('billing_salut
 // if an error does not exist
 if ($liveform->check_form_errors() == false) {
 
-    $user_id = '';
-    $contact_id = '';
+    // A guest has no user: 0, as the contact and order columns hold it.
+    $user_id = 0;
+    $contact_id = 0;
 
     // If the user is logged in and not ghosting, then use this user and contact.
     if (USER_LOGGED_IN and !$ghost) {
@@ -240,11 +241,14 @@ if ($liveform->check_form_errors() == false) {
     // If we could not find a contact, then create one.
     if (!$contact_id) {
 
+        // description is NOT NULL with no default, so it is named.
         $query =
             "INSERT INTO contacts (
+                description,
                 user,
                 timestamp)
             VALUES (
+                '',
                 ?,
                 UNIX_TIMESTAMP())";
         $result = db_q($query, array((string) $user_id)) or output_error('Query failed.');

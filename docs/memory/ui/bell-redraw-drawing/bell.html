@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>The bell's drawer redrawn: one head of icon buttons, one selector, rows that fit a phone, proposal (2026-11-22)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../plans/panel-design-language/sheet.css">
+<script>if (location.search === "?light") { document.documentElement.dataset.theme = "light"; }</script>
+<style>
+body { background: radial-gradient(700px 420px at 20% -6%, var(--glow1), transparent 62%), radial-gradient(600px 380px at 100% -4%, var(--glow2), transparent 60%), var(--page); }
+.stage { width: 980px; padding: 30px 34px 36px; }
+.rowb { display: flex; gap: 34px; align-items: flex-start; }
+.rowb + .rowb { margin-top: 34px; }
+.board { position: relative; }
+.cap small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--fg2); max-width: 460px; }
+.legend { margin: 14px 4px 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--fg2); max-width: 430px; }
+.legend li { display: flex; gap: 8px; padding: 3px 0; }
+.mark { flex: none; width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; font: 650 10.5px/1 Inter, sans-serif; color: var(--on-accent); background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.mark.abs { position: absolute; z-index: 3; }
+
+/* the drawer */
+.drawer { position: relative; width: 430px; height: 900px; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.drawer.fon { width: 390px; height: 844px; border-radius: 34px; }
+.drawer.mini { width: 290px; height: 380px; border-radius: 16px; }
+.head { flex: none; display: flex; align-items: center; gap: 2px; height: 56px; padding: 0 10px 0 20px; }
+.head h2 { margin: 0; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.head .new { margin: 0 auto 0 9px; padding: 0 8px; height: 20px; border-radius: 10px; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent); }
+.head h2:only-of-type:last-child, .head .grow { margin-right: auto; }
+.head .ib { width: 34px; height: 34px; border-radius: 10px; font-size: 16px; }
+.head .in { flex: 1; height: 36px; margin-right: 6px; }
+.filters { flex: none; padding: 0 16px 10px; }
+.filters .seg { display: flex; }
+.filters .seg span { flex: 1; }
+.chips { display: flex; gap: 6px; margin-top: 10px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
+.chip { --c: var(--gray); flex: none; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 9px; border-radius: 13px; font-size: 12.5px; font-weight: 500; color: var(--fg2); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.chip em { font-style: normal; font-size: 11.5px; color: var(--fg3); }
+.chip.on { color: var(--fg); background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 34%, transparent); }
+.scroll { flex: 1; min-height: 0; overflow: hidden; border-top: 1px solid var(--line); }
+.day { display: flex; align-items: center; padding: 12px 20px 6px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+.day .all { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 550; color: var(--accent); }
+.row { position: relative; display: flex; gap: 11px; margin: 0 8px 2px; padding: 10px 12px; border-radius: 12px; }
+.row.un { background: color-mix(in srgb, var(--accent) 6.5%, transparent); }
+.row.hov { background: var(--hover); }
+.row .tile, .row .av { margin-top: 2px; }
+.row .av { width: 28px; height: 28px; font-size: 10.5px; }
+.row .body { flex: 1; min-width: 0; }
+.l1 { display: flex; align-items: center; gap: 8px; min-height: 22px; }
+.title { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title span { font-weight: 400; color: var(--fg2); }
+.time { flex: none; font-size: 12px; color: var(--fg3); }
+.dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.text { margin-top: 1px; font-size: 13px; color: var(--fg2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.text b { color: var(--fg); font-weight: 550; }
+.l3 { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.place { font-size: 12px; color: var(--fg3); }
+.row.read .title { font-weight: 450; color: var(--fg2); }
+.row.read .tile { filter: saturate(.55); opacity: .8; }
+.count { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 9px; font-size: 11px; font-weight: 600; line-height: 17px; vertical-align: 1px; color: var(--fg2); background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.fold { margin: 8px 0 2px; padding-left: 10px; border-left: 2px solid var(--line); }
+.fold div { display: flex; gap: 8px; padding: 3px 0; font-size: 13px; color: var(--fg2); white-space: nowrap; }
+.fold div b { color: var(--fg); font-weight: 550; }
+.fold div span:last-child { margin-left: auto; color: var(--fg); }
+.link { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12.5px; font-weight: 500; color: var(--fg2); }
+.quick { display: flex; gap: 2px; flex: none; margin: -3px -6px -3px 0; }
+.quick .ib { width: 28px; height: 28px; font-size: 14px; border-radius: 8px; }
+.fon .quick .ib { width: 32px; height: 32px; margin: -5px -8px -5px -2px; }
+.mini .seg span { padding: 0 6px; font-size: 12px; }
+.mini .seg em { font-size: 11px; }
+.pop { position: absolute; z-index: 4; min-width: 190px; padding: 5px; border-radius: 12px; background: var(--float); border: 1px solid var(--line); box-shadow: var(--shadow-float); backdrop-filter: blur(14px); }
+.pop div { display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
+.pop div i { font-size: 14px; color: var(--fg2); }
+.pop div.hov { background: var(--hover); }
+.pop div.red, .pop div.red i { color: var(--rose); }
+.pop hr { margin: 4px 6px; border: 0; border-top: 1px solid var(--line); }
+.foot { flex: none; display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 10px 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--fg2); }
+.foot i { font-size: 15px; }
+.foot .sw { margin-left: auto; }
+.foot small { display: block; font-size: 12px; color: var(--fg3); }
+.foot.warn i { color: var(--amber); }
+.note { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0 28px; text-align: center; font-size: 13px; color: var(--fg2); border-top: 1px solid var(--line); }
+.note .tile { width: 40px; height: 40px; border-radius: 13px; font-size: 18px; margin-bottom: 8px; }
+.note b { font-size: 14px; font-weight: 600; color: var(--fg); }
+.note .btn { margin-top: 10px; }
+.skr { display: flex; gap: 11px; padding: 12px 20px; }
+.skr i { flex: none; width: 28px; height: 28px; border-radius: 9px; background: var(--sk); }
+.skr div { flex: 1; display: grid; gap: 8px; padding-top: 3px; }
+.states { display: grid; grid-template-columns: repeat(3, 290px); gap: 20px 21px; }
+.states h3 { margin: 0 2px 8px; font-size: 12.5px; font-weight: 550; color: var(--fg2); }
+mark { background: color-mix(in srgb, var(--amber) 30%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+.foots { display: grid; grid-template-columns: repeat(3, 290px); gap: 21px; margin-top: 20px; }
+.foots .foot { border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+</style>
+</head>
+<body>
+<div class="stage">
+
+<div class="rowb">
+  <div class="board">
+    <div class="cap"><b>Z1 · Bildirim paneli, masaüstü</b><small>Sağ kenardan açılan çekmece, 30rem. Fare üçüncü satırın üstünde: saatin yerine "Okundu say" ve satır menüsü gelir.</small></div>
+    <section class="drawer" id="desk"></section>
+    <span class="mark abs" style="left:318px;top:66px">1</span>
+    <span class="mark abs" style="left:-9px;top:118px">2</span>
+    <span class="mark abs" style="left:-9px;top:158px">3</span>
+    <span class="mark abs" style="left:292px;top:196px">4</span>
+    <span class="mark abs" style="left:-9px;top:238px">5</span>
+    <span class="mark abs" style="left:-9px;top:928px">6</span>
+  </div>
+  <div class="board">
+    <div class="cap"><b>Z2 · Telefon</b><small>390 px, tam ekran. Aynı parçalar; satır menüsü hep görünür, ikinci satırınki açık.</small></div>
+    <section class="drawer fon" id="fon"></section>
+    <ul class="legend">
+      <li><span class="mark">1</span><span>Başlıkta yalnız simge düğmeleri: Ara, Diğer işlemler, Kapat. Hepsi aynı düğme; telefondaki ham düğme kalmaz. Yanında okunmamış sayısı.</span></li>
+      <li><span class="mark">2</span><span>Tek seçici: Tümü, Okunmamış, Bana sorulan. "Yalnızca okunmamışlar" anahtarı ve "Bana sorulan" çipi buraya taşınır.</span></li>
+      <li><span class="mark">3</span><span>Modül çipleri tek satır, sığmazsa yana kayar. Bir çipe basınca o modül, yeniden basınca hepsi.</span></li>
+      <li><span class="mark">4</span><span>"Tümünü okundu say" listenin başında, yalnız okunmamış varken.</span></li>
+      <li><span class="mark">5</span><span>Satır: okunmamış hafif renkli ve kalın, okunmuş soluk. Saat kısa ("5 dk", "3 sa", "Dün"), başlığa yer kalır.</span></li>
+      <li><span class="mark">6</span><span>Alt satır: "Bu cihazda bildirimler" bir anahtar.</span></li>
+    </ul>
+  </div>
+</div>
+
+<div class="rowb">
+  <div class="board">
+    <div class="cap"><b>Z3 · Durumlar</b><small>Arama başlıkta açılır, süzgeç satırı yer kaplamaz. Boş, yükleniyor ve hata durumları; üst menü; alt satırın üç hâli.</small></div>
+    <div class="states" id="states"></div>
+    <div class="foots">
+      <div class="foot"><i class="bi bi-bell"></i>Bu cihazda bildirimler<span class="sw"></span></div>
+      <div class="foot"><i class="bi bi-bell-fill"></i>Bu cihazda bildirimler<span class="sw on"></span></div>
+      <div class="foot warn"><i class="bi bi-bell-slash"></i><span>Bu site için bildirimler kapalı<small>Tarayıcının bildirim ayarlarından açabilirsiniz.</small></span></div>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+var N = [
+  { day: 'Bugün', tone: 'blue', icon: 'robot', who: 'Stok ajanı', verb: 'size sordu', place: '#satis', t: '16 dk', text: 'Depoda 3 ürün kritik seviyenin altına düştü: KAH-250, KUP-12 ve FLT-02. Tedarikçiye bu hafta sipariş açalım mı?', act: 'Yanıtla', pri: 1, un: 1 },
+  { day: 'Bugün', av: 'AD', who: 'Ayşe Demir', verb: 'sizi andı', place: '#satis', t: '41 dk', text: 'Yarınki teklif toplantısı için güncel fiyat listesini paylaşabilir misin? Müşteri toptan indirim oranlarını soruyor.', act: 'Yanıtla', un: 1, menu: 1 },
+  { day: 'Bugün', tone: 'teal', icon: 'bag', who: 'Yeni sipariş #1171', t: '1 sa', value: '353,94 ₺', text: 'Mehmet Kaya · 3 ürün', un: 1, hov: 1 },
+  { day: 'Bugün', tone: 'amber', icon: 'exclamation-triangle', who: 'Vadesi geçen alacaklar', t: '3 sa', value: '18.450,00 ₺', text: '3 alacak hatırlatma eşiğini geçti, biri bir aydır açık.', act: 'Göster', un: 1 },
+  { day: 'Dün', tone: 'violet', icon: 'diagram-3', who: 'Akış tamamlandı', count: 3, t: 'Dün', text: 'Sepet hatırlatma · son çalışma 16:20',
+    fold: [['16:20', 'Sepet hatırlatma', '12 e-posta'], ['11:05', 'Sepet hatırlatma', '9 e-posta']], less: 'Gizle', un: 0 },
+  { day: 'Dün', tone: 'rose', icon: 'ui-checks', who: 'Form gönderildi', t: 'Dün', text: 'İletişim formu · Elif Şahin', un: 0 },
+  { day: 'Dün', tone: 'amber', icon: 'box-seam', who: 'Stok tükendi', t: 'Dün', text: 'Seramik Kupa (Mavi) son satışla tükendi.', un: 0 },
+  { day: 'Daha önce', tone: 'gray', icon: 'arrow-repeat', who: 'Güncelleme hazır', t: '9 Kas', text: 'Pinegrap 2026.11.0 kurulabilir.', un: 0 },
+  { day: 'Daha önce', tone: 'gray', icon: 'hdd', who: 'Yedekleme tamamlandı', t: '8 Kas', text: 'Veritabanı ve dosyalar, 412 MB.', un: 0 }
+];
+function tile(n) { return n.av ? '<span class="av">' + n.av + '</span>' : '<span class="tile t-' + n.tone + '"><i class="bi bi-' + n.icon + '"></i></span>'; }
+function head(search) {
+  if (search) { return '<div class="head" style="padding-left:12px"><span class="ib"><i class="bi bi-arrow-left"></i></span><span class="in focus"><i class="bi bi-search"></i><span>' + search + '</span><span class="end"><i class="bi bi-x-circle-fill"></i></span></span></div>'; }
+  return '<div class="head"><h2>Bildirimler</h2><span class="new">4 yeni</span><span class="ib"><i class="bi bi-search"></i></span><span class="ib"><i class="bi bi-three-dots"></i></span><span class="ib"><i class="bi bi-x-lg"></i></span></div>';
+}
+function filters(on, chips, none) {
+  var s = (none ? ['Tümü', 'Okunmamış', 'Bana sorulan'] : ['Tümü', 'Okunmamış <em>4</em>', 'Bana sorulan <em>2</em>']).map(function (t, i) { return '<span' + (i === on ? ' class="on"' : '') + '>' + t + '</span>'; }).join('');
+  return '<div class="filters"><div class="seg">' + s + '</div>' + (chips ? '<div class="chips"><span class="chip t-teal">Mağaza <em>1</em></span><span class="chip t-amber">Muhasebe <em>1</em></span><span class="chip t-rose">İçerik</span><span class="chip t-blue">Ekip <em>2</em></span><span class="chip">Sistem</span></div>' : '') + '</div>';
+}
+function row(n, fon, q) {
+  var quick = '<span class="quick">' + (fon ? '' : '<span class="ib on"><i class="bi bi-check2"></i></span>') + '<span class="ib' + (n.menu && fon ? ' on' : '') + '"><i class="bi bi-three-dots"></i></span></span>';
+  var who = q ? n.who.replace(q, '<mark>' + q + '</mark>') : n.who, text = q ? n.text.replace(q, '<mark>' + q + '</mark>') : n.text;
+  return '<div class="row' + (n.un ? ' un' : ' read') + (n.hov && !fon ? ' hov' : '') + '">' + tile(n) + '<div class="body">'
+    + '<div class="l1"><div class="title">' + who + (n.verb ? ' <span>' + n.verb + '</span>' : '') + (n.count ? '<span class="count">' + n.count + '</span>' : '') + '</div>'
+    + (n.hov && !fon ? quick + (n.un ? '<span class="dot"></span>' : '') : '<span class="time">' + n.t + '</span>' + (n.un ? '<span class="dot"></span>' : '') + (fon ? quick : '')) + '</div>'
+    + '<div class="text">' + (n.value ? '<b class="num">' + n.value + '</b> · ' : '') + text + '</div>'
+    + (n.fold ? '<div class="fold">' + n.fold.map(function (f) { return '<div><b>' + f[0] + '</b><span>' + f[1] + '</span><span class="num">' + f[2] + '</span></div>'; }).join('') + '</div><span class="link">' + n.less + ' <i class="bi bi-chevron-up"></i></span>' : '')
+    + (n.act ? '<div class="l3"><span class="btn sm ' + (n.pri ? 'fill' : 'quiet') + '">' + n.act + '</span>' + (n.place ? '<span class="place">' + n.place + '</span>' : '') + '</div>' : '')
+    + (n.menu && fon ? '<div class="pop" style="right:0;top:34px"><div><i class="bi bi-check2"></i>Okundu say</div><hr><div class="red"><i class="bi bi-trash"></i>Sil</div></div>' : '')
+    + '</div></div>';
+}
+function list(rows, fon, q) {
+  var out = '', day = '', first = true;
+  rows.forEach(function (n) {
+    if (n.day !== day) { day = n.day; out += '<div class="day">' + day + (first && !q ? '<span class="all"><i class="bi bi-check2-all"></i>Tümünü okundu say</span>' : '') + '</div>'; first = false; }
+    out += row(n, fon, q);
+  });
+  return out;
+}
+var foot = '<div class="foot"><i class="bi bi-bell"></i>Bu cihazda bildirimler<span class="sw"></span></div>';
+document.getElementById('desk').innerHTML = head() + filters(0, 1) + '<div class="scroll">' + list(N, 0) + '</div>' + foot;
+document.getElementById('fon').innerHTML = head() + filters(0, 1) + '<div class="scroll">' + list(N, 1) + '</div>' + foot;
+function mini(name, html) { return '<div><h3>' + name + '</h3><section class="drawer mini">' + html + '</section></div>'; }
+var sk = '<div class="skr"><i></i><div><span class="sk" style="width:62%"></span><span class="sk" style="width:88%"></span></div></div>';
+document.getElementById('states').innerHTML =
+  mini('Arama açık', head('sipariş') + '<div class="scroll">' + list([N[2], { day: 'Daha önce', tone: 'teal', icon: 'bag', who: 'Yeni sipariş #1164', t: '7 Kas', value: '129,00 ₺', text: 'Zeynep Arslan · 1 ürün', un: 0 }], 0, 'sipariş') + '</div>')
+  + mini('Okunmamış kalmadı', head().replace('<span class="new">4 yeni</span>', '<span class="grow"></span>') + filters(1, 0, 1) + '<div class="note"><span class="tile t-teal"><i class="bi bi-check2-all"></i></span><b>Hepsi okundu</b>Okunmamış bildirim yok.<span class="btn quiet sm">Tümünü göster</span></div>')
+  + mini('Hiç bildirim yok', head().replace('<span class="new">4 yeni</span>', '<span class="grow"></span>') + '<div class="note"><span class="tile"><i class="bi bi-bell"></i></span><b>Bildirim yok</b>Yeni siparişler, formlar ve ekip mesajları burada görünür.</div>')
+  + mini('Yükleniyor', head().replace('<span class="new">4 yeni</span>', '<span class="grow"></span>') + filters(0) + '<div class="scroll"><div class="day"><span class="sk" style="width:46px;height:8px"></span></div>' + sk + sk + sk + sk + '</div>')
+  + mini('Yüklenemedi', head().replace('<span class="new">4 yeni</span>', '<span class="grow"></span>') + '<div class="note"><span class="tile t-rose"><i class="bi bi-exclamation-triangle"></i></span><b>Bildirimler yüklenemedi</b>Oturumunuzun süresi doldu. Sayfayı yenileyip yeniden deneyin.<span class="btn quiet sm"><i class="bi bi-arrow-clockwise"></i>Yeniden dene</span></div>')
+  + mini('Üst menü', head().replace('<span class="ib"><i class="bi bi-three-dots"></i></span>', '<span class="ib on"><i class="bi bi-three-dots"></i></span>') + filters(0) + '<div class="scroll">' + list(N.slice(0, 2), 0) + '</div><div class="pop" style="right:44px;top:50px"><div><i class="bi bi-check2-all"></i>Tümünü okundu say</div><hr><div class="red"><i class="bi bi-trash"></i>Tüm bildirimleri sil</div></div>');
+</script>
+</body>
+</html>

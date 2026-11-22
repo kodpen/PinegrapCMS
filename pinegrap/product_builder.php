@@ -1046,6 +1046,31 @@ function pg_pb_managed_product_columns()
 
 
 /**
+ * The fields the product form draws as a list, with how deep, for
+ * pg_request_unexpected_lists(): the ticked catalog groups and shipping
+ * zones, the picked images, the bundle's items and quantities, and each
+ * stock location's count, the count it was drawn with and its shelf. Any
+ * other field posted as a list makes the create and the edit screen refuse
+ * the save, so a new list field is named here too.
+ *
+ * @return array  name => levels
+ */
+function pg_pb_list_fields()
+{
+    return array(
+        'allowed_zones' => 1,
+        'catalog_group_ids' => 1,
+        'selected_images' => 1,
+        'bundle_item_product_id' => 1,
+        'bundle_item_quantity' => 1,
+        'stock_location' => 1,
+        'stock_location_was' => 1,
+        'product_bin' => 1,
+    );
+}
+
+
+/**
  * Whether the "Gives tickets" switch is drawn: products.gives_tickets is
  * there and Tickets is on in Site Settings. Not drawn, it posts nothing and
  * the stored mark is kept.

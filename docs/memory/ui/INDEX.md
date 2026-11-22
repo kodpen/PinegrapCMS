@@ -21,6 +21,7 @@
 - app-screen-messages.md: Application-like screens (File Manager, visual designer) show liveform messages as their own toasts; a send_to redirect leaves its notice on the screen it opens [decision: decisions-made-panel-2.md]
 - approve-affiliate-shared-form.md: approve_affiliate.php draws its request card, Summary and save bar through includes/forms/approve_affiliate_form.php (wide layout, step B11); what the screen keeps, the website link rule
 - area-tab-strip-centred.md: An area's tab strip sits centred in the window on every tab (owner 2026-11-19, poll 153): the shared class .pg-area-tabs, the screens that have it, the strips that are not area strips [decision: decisions-made-panel-10.md]
+- arrival-date-cutoff-rows.md: Shipping Cut-offs table on the arrival date screen: how rows are numbered, which posted rows the save reads, when the left-out notice shows, a deleted row
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS hands non-ASCII paths over in the ANSI code page: file names made ASCII, the request address read back as UTF-8 (pg_request_uri_utf8); no stored file name ends in a dot
 - audit-log-paging.md: The audit trail list (view_audit_log.php) on the list table driver, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
@@ -305,7 +306,7 @@
 - image-editor-follow.md: The Artifact Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks [decision: decisions-made-product-63.md, decisions-made-product-69.md, decisions-made-product-80.md]
 - image-editor-fonts.md: The Artifact Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The Artifact Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
-- image-editor-groups-look.md: Artifact Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw
+- image-editor-groups-look.md: Artifact Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw [decision: here]
 - image-editor-groups.md: Artifact Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw [decision: decisions-made-product-80.md]
 - image-editor-import.md: Import in the Artifact Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
@@ -460,7 +461,7 @@
 - look-screen-widths.md: Root panel screens outside the look's widths (no pg-measure-edit, -list or -report, or a container of their own) on 2026-11-13, and the PR that took each (#9230, #9330, #9249) [decision: decisions-made-panel-7.md, decisions-made-panel-8.md]
 - look-settings-categories.md: Site Settings categories in look A (S5 of panel-old-screens): which note holds each category's move, the shared files that needed none, the inline styles kept on purpose
 - look-settings-mail-sending.md: Site Settings › E-mail sending in look A (S5e, EM2): settings rows with pg-field-label, the ways sheet's drawer fields, tiles, the DKIM field, the Sending domain card's list rows and pills
-- look-settings-mailboxes.md: Site Settings › Mailboxes in look A (S5d, #10431): purpose line and link to E-mail sending, box rows as list rows, button ranks, the box form's fields and switches
+- look-settings-mailboxes.md: Site Settings › E-mail › Mailboxes in look A: the folded rows, a box row with its state pill and menu, Accounts for mailboxes, button ranks, the drawer's parts [decision: here]
 - look-settings-maintenance-security.md: Site Settings Maintenance, Firewall, Security and Features in look A (S5b of panel-old-screens): quiet small buttons, group labels, the auto-bans table, what stayed
 - look-settings-other-categories.md: Site Settings Privacy to General and the settings page toolbar in look A (S5c of panel-old-screens): buttons, pills, tables, the date format segments, what stayed
 - look-settings-pages-outside.md: Settings pages outside the Site Settings dialog in look A (S6b): Application Access, Cloudflare Tools, Connected applications, Pair a device; what moved, what stayed
@@ -666,7 +667,8 @@
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
 - settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab [decision: here]
-- settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, the folded rows below it
+- settings-features-rows.md: Site Settings › Features below the Modules board: the folded rows Site search, Sharing buttons, Speed, Badge and the rest, their card ids, state lines and what moved into them
+- settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed [decision: here]
 - settings-filter-autofill.md: Settings category screens: a password manager wrote the saved username ("admin") into the toolbar filter and every section card vanished; the token and the focus guard that stop it (PR #1700)
 - settings-firewall.md: Site Settings › Firewall and HTTPS as folded rows: the six firewall rows and their state lines, the Limits row, the bans drawer, the two segmented controls, what stayed (ids, field names, the save)
 - settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows [decision: decisions-made-panel-11.md, decisions-made-panel-12.md]
