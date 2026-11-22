@@ -445,7 +445,7 @@ function test_workspace_flows_canvas_add_rail_and_strip()
 
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 	pg_assert_false(strpos($css, 'wsf-palette-folded') !== false, 'no folded column left in the stylesheet');
-	pg_assert_true((bool) preg_match('/\n\.wsf-app \{\n  display: grid;\n  grid-template-columns: minmax\(0, 1fr\) 19rem;/', $css), 'the canvas runs from the left edge');
+	pg_assert_true((bool) preg_match('/\n\.wsf-app \{\n  position: relative;\n  display: grid;\n  grid-template-columns: minmax\(0, 1fr\);/', $css), 'the canvas runs from edge to edge');
 
 	$result = ws_flows_canvas_test_node(
 		array('railGroups', 'paletteUnfold', 'paletteGroupOf', 'paletteGroupOpen'),
@@ -476,6 +476,38 @@ JS
 	pg_assert_same(array(true, false, false, true, false), $result['unfolded'], 'the group opened from the rail unfolds, the others as at first');
 	pg_assert_same(array(false, true, true), $result['kept'], 'a group the person folded stays folded');
 	pg_assert_same(true, $result['same'], 'the first folds are not changed');
+}
+
+// The chosen box's panel is a card over the canvas, open only while
+// something is chosen; with nothing chosen the flow's facts sit in the
+// name's window and the problems in a list under their button; a box under
+// the card is moved left into the free part, never past the left margin.
+function test_workspace_flows_canvas_side_card_and_windows()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$settings = ws_flows_canvas_test_function('drawSettings');
+	pg_assert_false(strpos($settings, 'sideFlow(') !== false, 'nothing chosen draws no panel');
+	pg_assert_contains("toggle('wsf-side-open'", $settings);
+	pg_assert_contains("barWindow('flow'", ws_flows_canvas_test_function('drawBar'));
+	pg_assert_contains("barWindow('problems'", ws_flows_canvas_test_function('drawBar'));
+	pg_assert_contains("'windows'", ws_flows_canvas_test_function('sideFlow'));
+	pg_assert_contains('clearCard(drag.item)', ws_flows_canvas_test_function('pointerRelease'));
+	pg_assert_false(strpos($source, 'ui.problemButton.disabled') !== false, '"No problems" opens its list too');
+	pg_assert_contains("'fl_key_windows'", ws_flows_canvas_test_strings_source());
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_true((bool) preg_match('/\n\.wsf-app:not\(\.wsf-side-open\) \.wsf-side \{\n  display: none;\n\}/', $css), 'the card is closed with nothing chosen');
+
+	$result = ws_flows_canvas_test_node(array('clearOfCard'), <<<'JS'
+console.log(JSON.stringify([clearOfCard(100, 296, 600, 24), clearOfCard(500, 696, 600, 24), clearOfCard(60, 256, 200, 24), clearOfCard(10, 206, 100, 24)]));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array(0, 96, 36, 0), $result, 'clear of the card: no move, moved by the overlap, stopped at the left margin, never right');
 }
 
 // The right panel of a chosen box: Settings and Connections, Try for the

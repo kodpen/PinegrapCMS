@@ -355,7 +355,7 @@
         return {
             save: words(document.querySelector('#ws-root .wsf-save')),
             problems: problems ? { text: words(problems), disabled: problems.disabled } : null,
-            problemList: Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-problem:not(.wsf-warning) .wsf-problem-text'), words),
+            problemList: Array.prototype.map.call(document.querySelectorAll('#wsf-pop-problems .wsf-problem:not(.wsf-warning) .wsf-problem-text'), words),
             zoom: words(document.querySelector('#ws-root .wsf-zoom-label')),
             canvas: shown(document.querySelector('#ws-root .pgc-stage')),
             outline: shown(document.querySelector('#ws-root .wsf-outline')),

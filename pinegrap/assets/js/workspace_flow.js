@@ -76,6 +76,8 @@
     var GRID = G.GRID;
     var BOX_W = 196;
     var BOX_H = 72;
+    // The free gap kept between a chosen box and the card over the canvas.
+    var CARD_GAP = 24;
     // The label of each kind of template setting (ws_flow_template_setting_types()).
     var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table', text: 'fl_tpl_set_text',
         page: 'fl_records_page', group: 'fl_tpl_set_group', subject: 'fl_email_subject', day: 'fl_tpl_set_day' };
@@ -329,6 +331,8 @@
         problems: [],
         warnings: [],       // what may be published but a reader should know
         selected: null,     // { type: node | edge, id }
+        pop: '',            // the bar's window open: '', flow (the name's) or problems
+        popFlow: null,      // the flow that window belongs to
         view: { x: 40, y: 40, k: 1 },
         outline: false,
         threads: true,      // the data threads shown (the "Data threads" toggle)
@@ -1250,6 +1254,8 @@
                 foldPalette(false, false);
             }
         });
+        // The chosen box's panel: a card over the canvas's right edge, open
+        // only while a box, an arrow, a thread or a run is chosen.
         ui.side = el('aside', 'wsf-side');
         ui.side.id = 'wsf-side';
         ui.side.setAttribute('aria-label', t('fl_settings'));
@@ -1293,6 +1299,7 @@
         ui.app.appendChild(ui.scrim);
         ui.side.addEventListener('keydown', sideKey);
         root.addEventListener('keydown', areaKey);
+        root.addEventListener('pointerdown', popOutside, true);
 
         root.appendChild(ui.bar);
         root.appendChild(ui.conflictBox);
@@ -3131,6 +3138,14 @@
             ui.bar.appendChild(nameText);
         }
 
+        if (state.popFlow !== flow.id) {
+            state.pop = '';
+            state.popFlow = flow.id;
+        }
+
+        ui.pops = {};
+        ui.bar.appendChild(barWindow('flow', K.button('pg-icon-button pg-icon-button-sm wsf-name-more', '', 'bi-chevron-down', t('fl_flow_about')), t('fl_flow_about'), function () { openPop('flow'); }));
+
         // Publish and Pause redraw the bar; the focus then goes to the
         // status they changed.
         ui.status = statusPill(flow);
@@ -3155,11 +3170,12 @@
 
         drawStrip();
 
+        ui.sideProblems = null;
+
         if (state.edit) {
             ui.problemButton = barButton(BAR_QUIET, '', '');
-            ui.problemButton.setAttribute('aria-controls', ui.side.id);
-            ui.problemButton.addEventListener('click', showProblems);
-            ui.bar.appendChild(ui.problemButton);
+            ui.bar.appendChild(barWindow('problems', ui.problemButton, t('fl_problems_list'), showProblems));
+            ui.sideProblems = ui.pops.problems.pop;
         }
 
         runsButton();
@@ -3182,6 +3198,101 @@
 
         moreMenu();
         drawState();
+
+        if (state.pop) {
+            openPop(state.pop);
+        }
+    }
+
+    // A window of the bar under its button: the flow's facts under the
+    // chevron beside its name, the problems under their button. One is open
+    // at a time; the button again, Esc (the focus back on the button) or a
+    // press outside it closes it.
+    function barWindow(kind, button, label, open) {
+        var wrap = el('span', 'pg-menu-wrap wsf-pop-wrap');
+        var pop = el('section', 'wsf-pop wsf-pop-' + kind + ' d-none');
+
+        pop.id = 'wsf-pop-' + kind;
+        pop.setAttribute('role', 'dialog');
+        pop.setAttribute('aria-label', label);
+        button.setAttribute('aria-expanded', 'false');
+        button.setAttribute('aria-controls', pop.id);
+        button.setAttribute('data-refocus', 'pop-' + kind);
+        button.addEventListener('click', function () {
+            if (state.pop === kind) {
+                openPop('');
+            } else {
+                open();
+            }
+        });
+        // Esc in the window or on its button while it is open.
+        wrap.addEventListener('keydown', function (event) {
+            if ((event.key === 'Escape') && !event.defaultPrevented && (state.pop === kind)) {
+                event.preventDefault();
+                event.stopPropagation();
+                openPop('', true);
+            }
+        });
+        wrap.appendChild(button);
+        wrap.appendChild(pop);
+        ui.pops[kind] = { button: button, pop: pop };
+
+        return wrap;
+    }
+
+    // The bar's window of that kind opened ('' closes the open one), drawn
+    // afresh as it opens; back puts the focus on the button of the one closed.
+    function openPop(kind, back) {
+        var was = state.pop;
+
+        state.pop = (kind && ui.pops && ui.pops[kind]) ? kind : '';
+        Object.keys(ui.pops || {}).forEach(function (name) {
+            var item = ui.pops[name];
+            var on = name === state.pop;
+
+            item.button.setAttribute('aria-expanded', on ? 'true' : 'false');
+            item.pop.classList.toggle('d-none', !on);
+
+            if (on) {
+                K.clear(item.pop);
+
+                if (name === 'flow') {
+                    sideFlow(item.pop);
+                } else {
+                    drawProblems();
+                }
+
+                placePop(item.pop);
+            }
+        });
+
+        if (back && was && ui.pops[was]) {
+            ui.pops[was].button.focus();
+        }
+    }
+
+    // A press outside the open window and its button closes it.
+    function popOutside(event) {
+        var item = state.pop && ui.pops ? ui.pops[state.pop] : null;
+
+        if (item && !item.pop.contains(event.target) && !item.button.contains(event.target)) {
+            openPop('');
+        }
+    }
+
+    // A window kept inside the screen, 16 px from either side.
+    function placePop(pop) {
+        pop.style.left = '';
+        pop.style.right = '';
+
+        var rect = pop.getBoundingClientRect();
+        var room = document.documentElement.clientWidth;
+        var shift = (rect.right > room - 16) ? (room - 16 - rect.right) : ((rect.left < 16) ? (16 - rect.left) : 0);
+
+        if (shift) {
+            pop.style.left = (pop.offsetLeft + shift) + 'px';
+            pop.style.right = 'auto';
+        }
     }
 
     // A button of the bar in the panel's look: its icon, then its label;
@@ -3385,7 +3496,6 @@
         ui.problemButton.className = 'pg-button pg-button-sm wsf-problems-button ' + (count ? 'pg-button-danger' : (warned ? 'pg-button-quiet' : 'pg-button-ghost'));
         ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : (warned ? 'bi-exclamation-circle fg-warning' : 'bi-check2-circle')));
         ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : (warned ? t('fl_warnings', warned) : t('fl_no_problems'))));
-        ui.problemButton.disabled = !count && !warned;
 
         if (!ui.publish) {
             return;
@@ -6577,6 +6687,7 @@
 
         K.clear(ui.side);
         ui.app.classList.toggle('wsf-side-chosen', !!(selected && !state.outline && !state.run));
+        ui.app.classList.remove('wsf-side-open');
 
         if (!state.flow) {
             return;
@@ -6592,10 +6703,10 @@
             sideEdge(selected.id);
         } else if (selected && (selected.type === 'thread') && threadByKey(selected.id) && !state.outline) {
             sideThread(threadByKey(selected.id));
-        } else {
-            sideFlow();
         }
 
+        // Nothing chosen: no card; the flow's facts are in the name's window.
+        ui.app.classList.toggle('wsf-side-open', !!ui.side.firstChild);
         markRunsButton();
         refocus();
     }
@@ -6763,18 +6874,15 @@
         })[0] || null;
     }
 
-    // Nothing chosen: the flow itself. Its head, then what starts it, its
-    // boxes and arrows, the last run and how far it is published; the home
-    // channel; the problems and warnings, each with "Go to the box"; the
-    // keys folded at the foot.
-    function sideFlow() {
+    // The name's window (the chevron beside the flow's name): what starts
+    // the flow, its boxes and arrows, the last run and how far it is
+    // published; the live/draft hint; the home channel; the keys folded.
+    function sideFlow(box) {
         var flow = state.flow;
         var facts = el('dl', 'wsf-side-facts');
         var start = startNode();
         var last = lastRunOf(flow.id);
         var published = el('dd', '');
-
-        ui.side.appendChild(sideHead(sideTile('', 'bi-diagram-3'), t('fl_side_flow'), el('span', '', flow.name), [], true));
 
         var fact = function (label, value) {
             facts.appendChild(el('dt', 'fg-secondary', label));
@@ -6787,7 +6895,10 @@
         if (last) {
             var flag = el('dd', '');
 
-            flag.appendChild(runFlag(last, { key: 'side-flag', label: t('fl_flag_last') + ': ' + flow.name, open: openLastRun }));
+            flag.appendChild(runFlag(last, { key: 'side-flag', label: t('fl_flag_last') + ': ' + flow.name, open: function (run) {
+                openPop('');
+                return openLastRun(run);
+            } }));
             fact(t('fl_flag_last'), flag);
         } else {
             fact(t('fl_flag_last'), t('fl_list_never'));
@@ -6800,41 +6911,33 @@
         }
 
         fact(t('fl_side_published'), published);
-        ui.side.appendChild(facts);
-        ui.side.appendChild(el('p', 'pg-text-meta fg-secondary', state.edit ? flowHelp() : t('fl_read_only')));
+        box.appendChild(facts);
+        box.appendChild(el('p', 'pg-text-meta fg-secondary', state.edit ? flowHelp() : t('fl_read_only')));
 
-        homeField(ui.side);
-        ui.sideProblems = el('div', 'wsf-side-problems');
-        ui.side.appendChild(ui.sideProblems);
-        drawProblems();
+        homeField(box);
 
         var keys = el('details', 'pg-text-meta wsf-keys');
         var list = el('ul', 'mb-0 ps-5 fg-secondary');
 
         keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'areas', 'rail', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+        ['tab', 'areas', 'windows', 'rail', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
-        ui.side.appendChild(keys);
+        box.appendChild(keys);
     }
 
-    // The problems and warnings of the flow in the panel with nothing
-    // chosen, each with "Go to the box" (or the arrow it names); refilled as
-    // the server's check comes back, without drawing the panel again.
+    // The problems and warnings of the flow in the window under their
+    // button, each with "Go to the box" (or the arrow it names); refilled as
+    // the server's check comes back, while the window is open.
     function drawProblems() {
         var box = ui.sideProblems;
 
-        if (!box || !ui.side.contains(box)) {
+        if (!box || (state.pop !== 'problems') || !state.edit) {
             return;
         }
 
         K.clear(box);
-
-        if (!state.edit) {
-            return;
-        }
-
         box.appendChild(el('h3', 'wsf-side-sub', state.problems.length ? t('fl_problems', state.problems.length) : t('fl_no_problems')));
         box.appendChild(problemList(state.problems, 'wsf-problem', 'bi-exclamation-triangle'));
 
@@ -6844,16 +6947,10 @@
         }
     }
 
-    // Problems in the bar: the right panel with nothing chosen, which lists
-    // them; the focus on the first one's "Go to the box", else its heading.
+    // Problems in the bar: their list opens under the button; the focus on
+    // the first one's "Go to the box", else its heading.
     function showProblems() {
-        state.panel = '';
-
-        if (state.selected) {
-            select(null);
-        } else {
-            drawSettings();
-        }
+        openPop('problems');
 
         var first = ui.sideProblems && (ui.sideProblems.querySelector('.wsf-problem-go') || ui.sideProblems.querySelector('h3'));
 
@@ -6880,10 +6977,16 @@
 
             if (problem.node && nodeById(problem.node)) {
                 go = K.button('pg-button pg-button-ghost pg-button-sm wsf-problem-go', t('fl_go_box'));
-                go.addEventListener('click', function () { select({ type: 'node', id: problem.node }, { reveal: true, focus: true }); });
+                go.addEventListener('click', function () {
+                    openPop('');
+                    select({ type: 'node', id: problem.node }, { reveal: true, focus: true });
+                });
             } else if ((problem.edge !== null) && (problem.edge !== undefined) && state.graph.edges[problem.edge]) {
                 go = K.button('pg-button pg-button-ghost pg-button-sm wsf-problem-go', t('fl_go_arrow'));
-                go.addEventListener('click', function () { select({ type: 'edge', id: problem.edge }, { reveal: true }); });
+                go.addEventListener('click', function () {
+                    openPop('');
+                    select({ type: 'edge', id: problem.edge }, { reveal: true });
+                });
             }
 
             if (go) {
@@ -14066,6 +14169,11 @@
     function select(selected, options) {
         var open = outlineOpen();
 
+        // A second tap opens the settings only while its box stayed chosen.
+        if (state.tap && !(selected && (selected.type === 'node') && (selected.id === state.tap.item.id))) {
+            state.tap = null;
+        }
+
         state.selected = selected;
         markSelected();
         drawSettings();
@@ -14089,9 +14197,45 @@
             reveal(selected);
         }
 
+        // A box pressed is brought out when the press ends without a move
+        // (pointerRelease()), so the canvas never slides under the pointer.
+        if (selected && (selected.type === 'node') && !canvas.dragging()) {
+            clearCard(nodeById(selected.id));
+        }
+
         if (options && options.focus) {
             focusSelected();
         }
+    }
+
+    // A chosen box under the card over the canvas's right edge: the canvas
+    // moved left until the box sits in the free part beside the card.
+    function clearCard(node) {
+        if (!node || state.embed || state.outline || !ui.app || !ui.app.classList.contains('wsf-side-open')
+            || (window.getComputedStyle(ui.side).position !== 'absolute')) {
+            return;
+        }
+
+        var port = ui.viewport.getBoundingClientRect();
+        var v = state.view;
+        var left = node.x * v.k + v.x;
+        var shift = clearOfCard(left, left + BOX_W * v.k, ui.side.getBoundingClientRect().left - port.left - CARD_GAP, CARD_GAP);
+
+        if (shift) {
+            v.x -= shift;
+            applyView();
+        }
+    }
+
+    // How far the canvas moves left so a box from left to right (px in the
+    // viewport) ends before free, the card's edge less its gap; never so far
+    // that the box passes the margin at the left edge. 0 when it is clear.
+    function clearOfCard(left, right, free, margin) {
+        if (right <= free) {
+            return 0;
+        }
+
+        return Math.max(0, Math.min(right - free, left - margin));
     }
 
     function focusSelected() {
@@ -14350,6 +14494,8 @@
         }
 
         if (drag.item && !drag.moved) {
+            clearCard(drag.item);
+
             // A second tap on the same box opens its settings (the captured
             // pointer sends no dblclick to the box itself).
             var now = Date.now();

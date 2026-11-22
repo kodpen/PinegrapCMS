@@ -21,7 +21,7 @@ description: The list of boxes to add (FW2 #9178, FE2): a card beside the add ra
 
 ## Where is it, and how does it open?
 - A 264 px card beside the add rail over the canvas's top left, opened by "+" or a group's icon, closed by Esc, Close, a box added or a click on the canvas; nothing kept in the browser (FE2, `workspace-flows-canvas-tools.md`).
-- Under 768 px one "Add a box" button opens the same card as a full-height page (`workspace-flows-empty-panel.md`).
+- Under 768 px one "Add a box" button opens the same card as a full-height page (`workspace-flows-name-window.md`).
 
 ## Tests
 - `test_workspace_flows_canvas_palette_groups` (Node): group and section order, Records and tables, folding, search, Turkish fold, hints, start rows, `startFilled()`, `startTaken()`.
