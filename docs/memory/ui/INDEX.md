@@ -105,7 +105,7 @@
 - connections-payment-gateways-page.md: The card gateways on Connections (CX11g1): each gateway of the Payment Gateway list has a page with its keys; the card keeps the choice, Mode, Transaction Type, shop options [decision: here]
 - connections-payment-services-page.md: Stripe, PayPal (Checkout and Express Checkout), PayTR and Givex on Connections (CX11g2): their keys on their pages; the cards keep the switches, Mode, Transaction Type and choices
 - connections-provider-page.md: Google's and Microsoft's own pages on Connections (CX10a, #10512): application, accounts, both redirect addresses, Google's APIs to turn on, the "API not enabled" error, the verification warning
-- connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block
+- connections-screen-drawers.md: Connections screen's drawers (CN4): a provider's drawer with its application and accounts, the last error only where stored, the other side's block [decision: here]
 - connections-screen-layout.md: Connections screen (connections.php, CN3): registry services in groups with their state, the attention block, search and filter, rows under their place's gate [decision: here]
 - connections-service-page.md: A service's own page on Connections (connections.php?service=<key>, CX7): Status and Where it is used from the registry, the Connections row in Site Settings
 - connections-shipping-services-page.md: The shipping services on Connections (CX11g3): the label services' keys and UPS's, FedEx's, USPS's client ID and secret on their pages; the Shipping card keeps switches, choices, environment

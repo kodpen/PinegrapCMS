@@ -282,6 +282,7 @@
 - order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window with parcel arrivals, estimate rules, none for a dateless delivery, order view token, fallback card, panel row
 - orders-list-amount-column.md: Orders list amount cell: an incomplete order shows its cart total (muted, titled "Cart total"), never added to the filter totals; one GROUP BY query per page
 - orders-list-bulk-actions.md: Orders list bulk actions and exports: Paraşüt export (scope, end, refusals), Cancel Selected (open carts, refunds), CSV empty cells, Country and Product Name filters, phone bar
+- orders-list-columns.md: All Orders (view_orders.php) columns: the default set, Customer, Payment and Shipping pills from View Order's function, Products with "+N more", one query each (#11142)
 - orders-list-figure-strip.md: All Orders (view_orders.php) one bar with the period navigator, the figure strip and Summary: closed until opened, read when it opens, open or closed kept per person in the browser
 - orders-list-state-filter.md: The orders list's Billing and Shipping State filters join states by code inside the address's own country (pg_order_list_state_join()), since a state code is unique only per country
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date, no SKU column), optional columns, status enum, and the shape the external API returns for an order.
@@ -338,6 +339,7 @@
 - product-group-edit-checks.md: Edit Product Group, Duplicate Product Group and Featured and New Items (PR #5551): the Recycle Bin left out of status changes and lists, the parent checked on the server, the duplicate form cleared
 - product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
 - product-import-row-refusals.md: Product import rows left out and why each list says so (too large, not whole, not a number, in the Recycle Bin); an update finds its product by id (PR #4917)
+- product-insights-card.md: Edit Product's head and Performance card (#11138): the stored row behind the head, View on site's page, the card's period control, the body the product_insights action draws, the Figure grid recipe
 - product-insights-module.md: Readers of Edit Product's Performance card (includes/fn/product_insights.php): periods, the grouped sales read, views, margin, carts, the product_insights action, ten-minute keep
 - product-mass-edit-checks.md: Products › Modify Selected (edit_products.php) refuses an empty stock figure, a tax rate missing or outside 0..100, a zone in both cards and an empty submit, before any write
 - product-preorder.md: Product pre-order (11.0.151, PR #5550): columns, back order path, when it runs, tokens and notes, arrival date bound, hourly end, API field
