@@ -206,6 +206,9 @@ function test_record_head_markup()
 	pg_assert_contains('<span class="pg-pill pg-tone-teal">Complete</span>', $html, 'order pill');
 	pg_assert_contains('<span class="pg-pill pg-tone-gray">Not shipped</span>', $html, 'shipping pill');
 	pg_assert_same(2, substr_count($html, 'pg-pill '), 'a missing pill is left out');
+	pg_assert_contains('<span class="pg-record-head-pills">', $html, 'the pills in their own box, under the number on a phone');
+	pg_assert_contains('id="look-1"', pg_record_head(array('title' => 'X', 'id' => 'look-1')), 'the title takes the id it is given');
+	pg_assert_true(strpos(pg_record_head(array('title' => 'X')), 'pg-record-head-pills') === false, 'no pill, no box');
 	pg_assert_contains('16 Apr 2020 · R&D <x>', $html, 'the meta parts are markup the caller escaped');
 	pg_assert_contains('<div class="pg-record-head-actions"><nav id="button_bar"></nav></div>', $html, 'the toolbar at the right');
 }

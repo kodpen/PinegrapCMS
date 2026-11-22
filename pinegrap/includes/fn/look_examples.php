@@ -830,7 +830,7 @@ function pg_look_examples_record_patterns($p)
         array(
             'id'      => 'pattern-record-head',
             'title'   => lang('Record head'),
-            'classes' => array('.pg-record-head', '.pg-record-head-main', '.pg-record-head-line', '.pg-record-head-title', '.pg-copy', '.pg-pill', '.pg-record-head-meta', '.pg-record-head-actions'),
+            'classes' => array('.pg-record-head', '.pg-record-head-main', '.pg-record-head-line', '.pg-record-head-title', '.pg-copy', '.pg-record-head-pills', '.pg-pill', '.pg-record-head-meta', '.pg-record-head-actions'),
             'html'    => pg_record_head(array(
                     'id' => 'pg-look-record-title-' . $p,
                     'title' => lang(array('string' => 'Order #{var:1}', 'vars' => array('1171'))),

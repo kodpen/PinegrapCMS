@@ -35080,7 +35080,12 @@ button.pg-var-chip:focus-visible {
   display: inline-flex;
   margin-left: -4px;
 }
-.pg-record-head-line .pg-pill {
+.pg-record-head-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pg-record-head-pills .pg-pill {
   flex: none;
 }
 .pg-record-head-meta {
@@ -35093,11 +35098,14 @@ button.pg-var-chip:focus-visible {
   flex: 0 1 auto;
   min-width: 0;
 }
+/* The page bar (#button_bar) and a bar without the id weigh differently,
+   so both are named. */
+.pg-record-head-actions .pg-toolbar,
 .pg-record-head-actions #button_bar {
   justify-content: flex-end;
   margin-bottom: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 0;
+  border-bottom: 0;
 }
 /* The bar's spacer has nothing to push inside the head. */
 .pg-record-head-actions .pg-toolbar-grow:empty {
@@ -35105,9 +35113,13 @@ button.pg-var-chip:focus-visible {
 }
 /* A phone: the bar goes under the line, from the left. */
 @media (max-width: 575.98px) {
+  .pg-record-head-pills {
+    flex-basis: 100%;
+  }
   .pg-record-head-actions {
     flex-basis: 100%;
   }
+  .pg-record-head-actions .pg-toolbar,
   .pg-record-head-actions #button_bar {
     justify-content: flex-start;
   }

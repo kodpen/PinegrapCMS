@@ -2189,7 +2189,7 @@ function pg_record_head(array $head)
     return '<div class="pg-record-head">
                 <div class="pg-record-head-main">
                     <div class="pg-record-head-line">
-                        <h2 class="pg-record-head-title" id="' . h($id) . '">' . h((string) ($head['title'] ?? '')) . '</h2>' . $copy . $pills . '
+                        <h2 class="pg-record-head-title" id="' . h($id) . '">' . h((string) ($head['title'] ?? '')) . '</h2>' . $copy . (($pills !== '') ? '<span class="pg-record-head-pills">' . $pills . '</span>' : '') . '
                     </div>
                     ' . pg_record_head_meta((array) ($head['meta'] ?? array())) . '
                 </div>' . (($actions !== '') ? '
