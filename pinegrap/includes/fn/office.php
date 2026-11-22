@@ -2106,6 +2106,12 @@ function pg_office_docx_edit_mark(&$state, $paragraph)
 
     $state['edit']['texts'][(string) $position] = $edit['text'];
 
+    // Bold, italic and underline of the text, which the editor's format
+    // bar starts from (includes/fn/office_docx_format.php).
+    if (function_exists('pg_office_docx_paragraph_marks')) {
+        $state['edit']['marks'][(string) $position] = pg_office_docx_paragraph_marks($edit);
+    }
+
     return ' data-p="' . $position . '"';
 }
 
@@ -2163,7 +2169,7 @@ function pg_office_docx_read($path, $edit = false)
     }
 
     if ($edit && ($refusal === '')) {
-        $state['edit'] = array('index' => array(), 'texts' => array());
+        $state['edit'] = array('index' => array(), 'texts' => array(), 'marks' => array());
 
         foreach (pg_office_docx_paragraphs($document) as $position => $paragraph) {
             $state['edit']['index'][$paragraph->getNodePath()] = $position;
@@ -2182,7 +2188,7 @@ function pg_office_docx_read($path, $edit = false)
     if ($edit) {
         $out['edit'] = ($refusal !== '')
             ? array('ok' => false, 'why' => $refusal)
-            : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts']);
+            : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts'], 'marks' => (object) $state['edit']['marks']);
         $out['version'] = $version;
     }
 
@@ -3558,6 +3564,9 @@ function pg_office_view_strings()
         'doc_changed'       => lang('{1} paragraph(s) changed.'),
         'doc_format'        => lang('Changed paragraphs show their formatting again once saved.'),
         'doc'               => lang('Document preview'),
+        'doc_format_bar'    => lang('Format of the selected text'),
+        'doc_underline'     => lang('Underline'),
+        'doc_format_select' => lang('Select text in a paragraph to format it.'),
         'doc_editor'        => lang('Text of the paragraph'),
         'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
         'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),

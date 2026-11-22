@@ -24,7 +24,7 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 - OE5, "New spreadsheet" and "New document" in the File Manager's new menu and a channel's attach menu: an empty .xlsx or .docx written by the product's writer, opened for editing. Done: PR #11119 (`platform/office-new-files.md`).
 
 ## Document editing (.docx)
-- OD1, bold, italic and underline on the selected text of a paragraph (runs split and joined; a run's other properties kept).
+- OD1, bold, italic and underline on selected text. Done: PR #11152 (`platform/office-docx-format.md`).
 - OD2, a paragraph's kind: normal, heading 1 to 3, bullet list, numbered list, with the styles and numbering the document already has, or the product's own added when it has none (`platform/office-docx-controls-numbering.md`).
 - OD3, add a paragraph after another and delete one; a paragraph holding a picture, a table cell's last paragraph or a section break is not deleted.
 
