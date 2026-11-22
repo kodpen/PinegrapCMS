@@ -15,6 +15,7 @@
 - architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20 [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back [decision: here]
+- architect-hand-over.md: Hand-over note of the architect session that stopped on 2026-11-22 (development paused): what is owed to the owner, the landed steps still to look at, what others were told [decision: here]
 - architect-looks-at-landed-screen.md: The architect opens each landed step of a screen the owner asked for on a sandbox, in the states nobody drew, and writes what differs into the plan; no step waits for the look [decision: here]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
 - architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19) [decision: here]

@@ -127,7 +127,7 @@
 - order-screen-redraw-steps.md: Plan order-screen-redraw, steps OS1 to OS4: the head and its pills, the side panel and Payment, the shipment card with its lines, the later cards and close-out; how a step is checked
 - order-screen-redraw.md: Plan (owner 2026-11-22): View Order redrawn: a head with the order's states, a card per shipment holding its lines, payment with the totals, who and billing in the side panel
 - orders-list-redraw-filters-panel.md: Plan orders-list-redraw, step OL2b: the Advanced Filters panel's faults on All Orders (Update floating over the fields, thick scrollbars, large labels) and how the panel is put together
-- orders-list-redraw-fixes.md: All Orders as landed after OL2 (#11142) against the drawing: four differences OL3 takes first (Products cell shows the SKU, Status badge, bar in two rows at 1440 px, six bar rows on a phone)
+- orders-list-redraw-fixes.md: All Orders as landed after OL2 (#11142) and OL2b (#11167) against the drawing: five differences OL3 takes first (SKU in Products, Status badge, bar in two rows, phone bar, Total hidden)
 - orders-list-redraw.md: Plan (owner 2026-11-22): All Orders redrawn: one bar, quick filters with counts, the figures as one strip with the charts behind Summary, rows with customer, three state pills and items
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
