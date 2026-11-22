@@ -2048,6 +2048,11 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(ws_side_payload($viewer, ''));
 
+        // "Mark all as read" of the list's Unread filter (ws_read_all()):
+        // the list is asked again after it.
+        case 'ws_read_all':
+            return ws_action_ok(array('marked' => ws_read_all($viewer)));
+
         case 'ws_channels':
             return ws_action_ok(array(
                 'channels' => ws_channels_for($viewer),

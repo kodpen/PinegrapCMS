@@ -296,7 +296,7 @@ function pg_panel_actions()
     // The workspace is open to its team, role 3 members included; the
     // handler checks the session and the token, the module decides the rest.
     foreach (array(
-        'ws_bootstrap', 'ws_channels', 'ws_side', 'ws_channel_open', 'ws_channel_get',
+        'ws_bootstrap', 'ws_channels', 'ws_side', 'ws_read_all', 'ws_channel_open', 'ws_channel_get',
         'ws_brief_recap',
         'ws_message_seen', 'ws_scheduled_list', 'ws_scheduled_get',
         'ws_scheduled_status', 'ws_scheduled_run_now',
