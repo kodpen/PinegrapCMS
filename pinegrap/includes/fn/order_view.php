@@ -10,7 +10,9 @@
  * shipping card (print_order.php), the totals rows of the customer's printed
  * invoice (order_invoice_print.php), and the shipping input the screen and
  * update_order() check (ship and delivery dates, shipped quantity), the
- * column of cards the screen stacks, and the order lines under them.
+ * column of cards the screen stacks, and the order lines under them; the
+ * side panel's address block, its "Same as the shipping address" check, the
+ * count of the contact's orders and the rows of its label and value lists.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
