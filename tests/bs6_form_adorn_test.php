@@ -125,14 +125,11 @@ function pg_test_form_adorn_settings_fields()
 			'waf_auto_ban_minutes' => "lang('minute(s)')",
 			'waf_auto_ban_max_minutes' => "lang('minute(s)')",
 		),
-		'prep.php' => array(
-			'login_throttle_minutes' => "lang('minutes')",
-			'login_throttle_lockout' => "lang('minutes')",
-			'login_throttle_captcha_after' => "lang('failures')",
-		),
+		// The number boxes of Accounts and sign-in share one drawing
+		// ($security_number); the expiration warning's days are their own.
 		'security.php' => array(
-			'\' . $form_limit_input[0] . \'' => 'h($form_limit_input[3])',
-			'audit_log_retention_years' => "lang('years')",
+			'\' . $id . \'' => '\' . $unit . \'',
+			'membership_expiration_warning_email_days_before_expiration' => "lang('day(s)')",
 		),
 		'privacy.php' => array(
 			'tracking_code_duration' => "lang('day(s)')",
@@ -245,11 +242,11 @@ function test_bs6_form_adorn_settings_cards_keep_no_single_add_on_group()
 {
 	$root = dirname(__DIR__) . '/pinegrap/includes/settings/';
 
-	// The groups left are the ones form-adorn cannot hold: two add-ons
-	// (language address prefix) and a hint on the add-on (membership warning).
+	// The group left is the one form-adorn cannot hold: two add-ons
+	// (language address prefix).
 	// The feed address, the Paraşüt connect code and the IndexNow key set
 	// their button beside the field as a small look A button, in no group.
-	$left = array('languages.php' => 1, 'security.php' => 1);
+	$left = array('languages.php' => 1);
 
 	foreach (array('api.php', 'appearance.php', 'commerce.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'privacy.php', 'screen.php', 'security.php', 'seo.php') as $file) {
 		$source = (string) file_get_contents($root . $file);

@@ -13,11 +13,11 @@ module: connections_screen
 ## Where are the CAPTCHA keys typed?
 - On `?service=turnstile` and `?service=hcaptcha`: "Site Key", "Secret Key" (never drawn back), "Save" and "Save and try" (siteverify with a made-up token, as the card's check). Status has "Disconnect" (`captcha_remove`) while keys are stored.
 - The write builds the card's post for one provider and runs `pg_captcha_settings_check()` / `pg_captcha_settings_save()`: keys of the provider forms use are asked about before they are saved (`waf/form-captcha-providers.md`).
-- StopForumSpam has no key: its switch stays on Spam Protection; its page keeps Status and Where it is used.
+- StopForumSpam has no key: its switch stays on Forms and spam; its page keeps Status and Where it is used.
 
 ## What do the cards keep?
 - "Sign in with Google, Microsoft and Apple": the three switches, each with its state and a row to its page (Google's, Microsoft's, Sign in with Apple's). Microsoft's return address is no longer on the card: Microsoft's page lists it (`connections-provider-page.md`).
-- Spam Protection: "Enable CAPTCHA", "CAPTCHA Type", the warnings, form limits, blocked addresses, and a line per provider ("Keys stored" / "No keys yet", "Manage in Connections" / "Connect in Connections").
+- Forms and spam: "CAPTCHA", "CAPTCHA type", the warnings, form limits, blocked addresses, and a line per provider ("Keys stored" / "No keys yet", "Manage in Connections" / "Connect in Connections").
 - Choosing a provider whose keys are missing marks "CAPTCHA Type": "Set up the … keys on its page of Connections first."
 
 ## Who may change them?

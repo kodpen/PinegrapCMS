@@ -122,5 +122,5 @@ function test_google_cloud_pages_on_the_screen()
 	pg_assert_contains('pg_google_cloud_redirect_addresses($provider)', $mail, 'and the same addresses, Google\'s and Microsoft\'s');
 
 	$security = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/security.php');
-	pg_assert_contains('href="connections.php?service=microsoft"', $security, 'Microsoft sign-in leads to Microsoft\'s page');
+	pg_assert_contains("'connections.php?service=microsoft'", $security, 'Microsoft sign-in leads to Microsoft\'s page');
 }
