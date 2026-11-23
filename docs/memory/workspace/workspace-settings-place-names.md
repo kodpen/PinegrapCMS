@@ -14,6 +14,6 @@ description: How a message, an assistant's prompt line or an API description nam
 - The routine's instructions (`ws_claude_routine_text()`): their words are hashed into the instructions version (`ws_claude_instructions_version()`), so a change makes every routine read them again; left until the text changes for its own reason.
 
 ## What is left for later?
-- Mailboxes: "Site Settings › Mailboxes" until EM1 of `plans/mail-settings-one-steps.md` makes the E-mail category; EM1 changes `system_status.php`'s mailbox line and the other texts naming Mailboxes to "Site Settings › E-mail › Mailboxes".
+- Mailboxes: "Site Settings › Mailboxes" until EM1 (#10983) made the E-mail category (`ui/settings-mail.md`); EM1 changed `system_status.php`'s mailbox line and the other texts naming Mailboxes to "Site Settings › E-mail › Mailboxes".
 - An API description stays within the MCP tool budget of 600 characters (`tests/mcp_tool_budget_test.php`): the agent routes say "(Site Settings, Workspace agents)".
 - `notes_notion_settings` ("Open Workspace settings") is drawn by no path: the Notion state never carries the anchor the script waits for.

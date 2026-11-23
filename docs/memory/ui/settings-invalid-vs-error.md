@@ -8,9 +8,9 @@ description: Settings save outcomes: rejected input returns status invalid (no r
 - The pane is NOT re-read in this case, deliberately: the marks are on the form, but repainting from stored data would take away everything the operator just typed, which is exactly what they need in front of them to fix it. The dialog stays dirty, the fields stay as they are, the sentences show at the top of the box.
 
 ## What must a rejecting module guarantee?
-- A module that marks writes NOTHING, for the whole category. If the MailChimp key is rejected, the organization name is not written either: a half-saved category is one Save button reporting two different things. The module validates BEFORE the `UPDATE` and `return`s if anything was marked.
+- A module that marks writes NOTHING, for the whole category. If a mail setting is refused, the campaign texts are not written either: a half-saved category is one Save button reporting two different things. The module validates BEFORE the `UPDATE` and `return`s if anything was marked.
 - A rejected save does not log "changed": `pg_settings_apply()` put `log_activity()` behind the `check_form_errors()` gate.
-- Network validation happens inside the save, not in a separate button: the MailChimp key asks Mailchimp for list and store and creates the store there if needed, all inside Save. The dialog's save is AJAX anyway; seconds do not matter.
+- Network validation happens inside the save, not in a separate button: Mailchimp's key, list and store are asked at Mailchimp inside Save (on its page of Connections since EM6). The dialog's save is AJAX anyway; seconds do not matter.
 
 ## Why must sentences going to the dialog be plain text?
 - `pg_settings_pane_words()` passes every notice and error through `strip_tags` + `html_entity_decode`. The notice box writes TEXT (`.text()`): the sentences come from save modules, tools that pass through here and services like Mailchimp through them; none must enter the page as markup.

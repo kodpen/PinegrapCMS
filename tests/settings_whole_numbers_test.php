@@ -63,9 +63,9 @@ function test_settings_whole_numbers_save_modules_use_the_reader()
 	pg_assert_contains("pg_parse_whole_number(post_value('ecommerce_gift_card_validity_days'), 65535)", $commerce);
 	pg_assert_contains("pg_parse_whole_number(post_value('ecommerce_reward_program_membership_days'), 4294967295)", $commerce);
 
-	$contact = settings_whole_numbers_test_source('includes/settings/mail_sending.save.php');
-	pg_assert_contains("pg_parse_whole_number(post_value('mailchimp_sync_days'), 65535)", $contact);
-	pg_assert_contains("pg_parse_whole_number(post_value('mailchimp_sync_limit'), 4294967295)", $contact);
+	$mailchimp = settings_whole_numbers_test_source('includes/fn/mailchimp_settings.php');
+	pg_assert_contains('pg_parse_whole_number($text(\'mailchimp_sync_days\'), 65535)', $mailchimp);
+	pg_assert_contains('pg_parse_whole_number($text(\'mailchimp_sync_limit\'), 4294967295)', $mailchimp);
 
 	foreach (array($features, $firewall, $security) as $source) {
 		pg_assert_true(!preg_match("/\\(int\\) post_value\\('(image_|waf_|login_throttle_|form_limit_)/", $source), 'no (int) read of a whole-number box is left');

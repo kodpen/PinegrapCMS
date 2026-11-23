@@ -190,6 +190,20 @@ function connections_commerce_may_manage($user) {
 
 }
 
+// May the user change Mailchimp's key, list and sync? They came from Site
+// Settings › E-mail › Sending, so they keep that tab's gate.
+function connections_mail_sending_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('mail_sending', $user);
+
+}
+
 // May the user connect an account for mailboxes on Google's or Microsoft's
 // page? The action came from Site Settings › Mailboxes, so it keeps that
 // category's gate.
@@ -520,6 +534,36 @@ if ($_POST) {
 					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $contact_name)), $_SESSION['sessionusername']);
 				}
 
+			}
+
+		}
+
+	}
+
+	// Mailchimp's key, list and sync, saved or removed on its page under the
+	// gate of E-mail › Sending, where they were. The key, the list and the
+	// store are asked about at Mailchimp first; a refusal is marked on its
+	// field with nothing written.
+	if (in_array($action, array('mailchimp_save', 'mailchimp_remove'), true) && connections_mail_sending_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/mailchimp_settings.php');
+
+		if ($action === 'mailchimp_remove') {
+
+			pg_mailchimp_settings_forget((int) $user['id']);
+
+			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => 'Mailchimp')));
+			log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => 'Mailchimp')), $_SESSION['sessionusername']);
+
+		} else {
+
+			$mailchimp_decision = pg_mailchimp_settings_check($_POST, $liveform);
+
+			if (!$liveform->check_form_errors()) {
+				pg_mailchimp_settings_save($mailchimp_decision, (int) $user['id']);
+
+				$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => 'Mailchimp')));
+				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Mailchimp')), $_SESSION['sessionusername']);
 			}
 
 		}
@@ -2612,6 +2656,57 @@ function connections_captcha_page($page, $id, $may_manage, $can_seal) {
 
 }
 
+/* Mailchimp's page: "Connection details" holds the sync switch, the key
+   (never drawn back), the list, the store and the sync's limits for who may
+   open Site Settings › E-mail › Sending; Status has Disconnect while a key
+   is stored; "Where it is used" leads to the Campaign mail row, which shows
+   the connection. */
+
+function connections_mailchimp_page($page, $may_manage) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/mailchimp_settings.php');
+
+	$app = pg_mailchimp_settings_before();
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+
+		$page['details'] = '
+		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+			<p class="pg-card-sub mb-4">' . h(lang('The Mailchimp account, list and store the site\'s customers, orders and products are synced with by the scheduled job.')) . '</p>
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="mailchimp_save">
+				<input type="hidden" name="connections_return" value="mailchimp">
+				' . pg_mailchimp_settings_fields($app) . '
+			</form>
+		</section>';
+
+		if ($app['key_stored']) {
+			$page['status_extra'] = '
+			<div class="mt-4">
+				<button type="button" class="pg-button pg-button-sm pg-button-danger connections-action" data-action="mailchimp_remove" data-id="0"
+					data-confirm="' . h(lang('The Mailchimp key is removed and the sync stops: customers, orders and products are no longer sent to Mailchimp.')) . '">
+					<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+			</div>';
+		}
+
+	}
+
+	$page['uses'] = '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('email', 'pgset-mail-campaign')) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h(lang('Customers, orders and products synced to a list')) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('E-mail')) . ' › ' . h(lang('Campaign mail')) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($app['enabled'] && $app['key_stored']) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+
+	return $page;
+
+}
+
 /* The page of a Communication service, WhatsApp or İYS: "Connection
    details" holds the account the card of Site Settings › Communication held
    (its secrets never drawn back), for who may open that category; Status
@@ -4354,6 +4449,7 @@ if ($provider_page !== '') {
 			'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
 			'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
 			'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
+			'mail_sending' => ($page_id === 'mailchimp') && connections_mail_sending_may_manage($user),
 			'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
 			'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
 			'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
@@ -4365,7 +4461,7 @@ if ($provider_page !== '') {
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
+		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'mailchimp', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
 			|| in_array($page_id, pg_connections_screen_accounting_pages(), true) || ($page_id === 'google_reviews'),
 	);
 
@@ -4432,6 +4528,11 @@ if ($provider_page !== '') {
 	// An SMS provider's page: its account and the SMS cards that use it.
 	if (in_array($page_id, array('netgsm', 'iletimerkezi', 'twilio'), true)) {
 		$page = connections_sms_page($page, $page_id, connections_contact_may_manage($user));
+	}
+
+	// Mailchimp's page: its key, list and sync, and the row that shows it.
+	if ($page_id === 'mailchimp') {
+		$page = connections_mailchimp_page($page, connections_mail_sending_may_manage($user));
 	}
 
 	// WhatsApp's and İYS's pages: the account and the cards that use it.

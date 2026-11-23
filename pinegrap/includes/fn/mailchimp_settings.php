@@ -257,20 +257,20 @@ function pg_mailchimp_settings_fields(array $app)
                     </div>' : '') . '
                 </div>
                 <div class="row g-5">
-                    <div class="col-md-6">
+                    <div class="col-12 md:col-6">
                         <label class="pg-field-label" for="mailchimp_list_id">' . h(lang('List ID')) . '</label>
                         <input type="text" class="pg-input" id="mailchimp_list_id" name="mailchimp_list_id" value="' . h($app['list']) . '" maxlength="100" spellcheck="false">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 md:col-6">
                         <label class="pg-field-label" for="mailchimp_store_id">' . h(lang('Store ID')) . '</label>
                         <input type="text" class="pg-input" id="mailchimp_store_id" name="mailchimp_store_id" value="' . h($app['store']) . '" maxlength="100" spellcheck="false">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 md:col-6">
                         <label class="pg-field-label" for="mailchimp_sync_days">' . h(lang('Historical Sync')) . '</label>
                         <input type="text" class="pg-input text-end" id="mailchimp_sync_days" name="mailchimp_sync_days" value="' . h($app['days'] ? (string) $app['days'] : '') . '" maxlength="6" inputmode="numeric" aria-describedby="mailchimp_sync_days_help">
                         <div class="pg-field-help" id="mailchimp_sync_days_help">' . h(lang('Set how far in the past to sync orders. Leave blank to sync all historical orders.')) . '</div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-12 md:col-6">
                         <label class="pg-field-label" for="mailchimp_sync_limit">' . h(lang('Limit Sync')) . '</label>
                         <input type="text" class="pg-input text-end" id="mailchimp_sync_limit" name="mailchimp_sync_limit" value="' . h($app['limit'] ? (string) $app['limit'] : '') . '" maxlength="10" inputmode="numeric" aria-describedby="mailchimp_sync_limit_help">
                         <div class="pg-field-help" id="mailchimp_sync_limit_help">' . h(lang('max number of orders to sync each time cron job runs')) . '</div>

@@ -12032,6 +12032,7 @@ var pgSettingsModal = (function () {
     var endpoint = '';
     var anchors = {};
     var moved = {};             // old category key => 'category|tab section'
+    var away = {};              // old card anchor => its page of Connections
     var helps = {};             // category => its section of the documentation
 
     var pane = '';              // the category on screen
@@ -12095,6 +12096,12 @@ var pgSettingsModal = (function () {
             moved = JSON.parse(el.getAttribute('data-pgmoved') || '{}');
         } catch (error) {
             moved = {};
+        }
+
+        try {
+            away = JSON.parse(el.getAttribute('data-pgaway') || '{}');
+        } catch (error) {
+            away = {};
         }
 
         try {
@@ -14181,6 +14188,13 @@ window.pgCodeEditorReady = function (markup, done) {
             return;
         }
 
+        // A card that left for a page of Connections opens that page.
+        if (section && away[String(section)]) {
+            window.location.assign(away[String(section)]);
+
+            return;
+        }
+
         // A category that became a tab of another opens that one on it.
         var shift = moved[String(key || '')] ? String(moved[String(key)]).split('|') : null;
 
@@ -14302,6 +14316,10 @@ window.pgCodeEditorReady = function (markup, done) {
         hit = href.match(/(?:^|\/)smtp_settings\.php(?:\?[^#]*)?(?:#([a-z0-9_-]+))?$/i);
 
         if (hit) {
+
+            if (hit[1] && away[hit[1].toLowerCase()]) {
+                return { pane: '', section: hit[1].toLowerCase() };
+            }
 
             var mailCard = (hit[1] && anchors[hit[1].toLowerCase()]) ? String(anchors[hit[1].toLowerCase()]).split('|') : String(moved.mail_sending || 'email|').split('|');
 
@@ -14450,6 +14468,13 @@ window.pgCodeEditorReady = function (markup, done) {
 
         // Every branch below that opens the dialog was asked by this
         // fragment: it is the dialog's, not the page's, and goes on close.
+        // A card that left for a page of Connections: that page opens.
+        if (away[hash] && !ownAnchor(hash)) {
+            window.location.assign(away[hash]);
+
+            return true;
+        }
+
         if ((address === null) && ((hash === 'settings') || (hash.indexOf('settings/') === 0)
             || (anchors[hash] && !ownAnchor(hash)))) {
             address = '';

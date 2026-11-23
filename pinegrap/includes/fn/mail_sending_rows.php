@@ -27,7 +27,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_mail_sending_fold_order()
 {
-    return array('leaves', 'domain', 'campaign', 'mailchimp', 'test');
+    return array('leaves', 'domain', 'campaign', 'test');
 }
 
 /**
@@ -45,8 +45,6 @@ function pg_mail_sending_fold_face($key)
             return array('name' => lang('Sending domain'), 'icon' => 'bi-patch-check', 'tone' => 'pg-tone-teal');
         case 'campaign':
             return array('name' => lang('Campaign mail'), 'icon' => 'bi-megaphone', 'tone' => 'pg-tone-violet');
-        case 'mailchimp':
-            return array('name' => lang('MailChimp'), 'icon' => 'bi-envelope-paper', 'tone' => '');
         default:
             return array('name' => lang('Send a test'), 'icon' => 'bi-envelope-check', 'tone' => '');
     }
@@ -195,23 +193,6 @@ function pg_mail_sending_fold_campaign($on, $max)
         : lang('Scheduled sending on');
 
     return array('line' => $line, 'pill' => array(lang('On'), 'pg-tone-teal'), 'attention' => false);
-}
-
-/**
- * The MailChimp row's line.
- *
- * @param bool   $on   MailChimp Sync
- * @param string $list the list's id
- * @return array line, pill, attention
- */
-function pg_mail_sending_fold_mailchimp($on, $list)
-{
-    if (!$on) {
-        return array('line' => lang('Sync off'), 'pill' => array(lang('Off'), 'pg-tone-gray'), 'attention' => false);
-    }
-
-    return array('line' => ($list !== '') ? lang(array('string' => 'Sync on · list {var:1}', 'vars' => array($list))) : lang('Sync on'),
-        'pill' => array(lang('On'), 'pg-tone-teal'), 'attention' => false);
 }
 
 /**

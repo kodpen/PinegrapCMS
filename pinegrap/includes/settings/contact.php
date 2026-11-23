@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - the Communication cards: chat, chat on the site, SMS, SMS
- * messages, WhatsApp, WhatsApp messages and İYS. The campaign texts and
- * MailChimp are E-mail sending's (includes/settings/mail_sending.php).
+ * messages, WhatsApp, WhatsApp messages and İYS. The campaign texts are
+ * E-mail sending's (includes/settings/mail_sending.php); Mailchimp is set
+ * up on its page of Connections.
  *
  * Each part is one folded row (includes/settings/fold.php) holding its card;
  * the rows' order, names and lines are includes/fn/communication_settings_fold.php.

@@ -9,7 +9,7 @@ description: Step DX2b of the Design examples plan: the parts of the approved e-
 ## Which step is it and when does it run?
 - DX2b (M) of `plans/design-examples-patterns.md`: after DX2 (#10885) has landed and before DX3, the one step open on `includes/fn/look_examples.php` and `design_examples.php` at that time.
 - EM1 of the one e-mail settings plan waits for DX2b: the EM steps copy these patterns and write no recipe of their own.
-- The source is the drawing `plans/mail-settings-one/email-settings.html` (boards A to E), in words `plans/mail-settings-one-design.md` and `plans/mail-settings-one-design-box.md`.
+- The source is the drawing `ui/email-settings-drawing/email-settings.html` (boards A to E), in words `ui/settings-mail.md`.
 
 ## Which patterns does it add to the Patterns group?
 - "Tabs with a state" (board A): the taller segmented control as one modifier of `.pg-seg` (34 px items, the label strong), each item its label and a state pill in the three tones; at 390 px the pill is a dot with the word as `title`.
@@ -27,4 +27,4 @@ description: Step DX2b of the Design examples plan: the parts of the approved e-
 - Rendered at 1440 and 390 px beside the drawing before ready; the PR's "Screen check" names each pattern.
 - The two buttons' brand rules are read on the providers' pages by this step; a difference from the box note is asked of the architect.
 
-Related: docs/memory/plans/design-examples-patterns.md, docs/memory/plans/mail-settings-one-design.md, docs/memory/plans/mail-settings-one-design-box.md
+Related: docs/memory/plans/design-examples-patterns.md, docs/memory/ui/settings-mail.md, docs/memory/ui/look-mail-patterns.md

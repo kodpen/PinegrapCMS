@@ -4,7 +4,7 @@ description: Survey of the Site Settings categories (owner 2026-11-21: tidy ever
 ---
 
 ## What is this?
-- Owner (2026-11-21): find and fix the settings screens' contradictions, gather settings spread over several places, make old screens modern, starting with e-mail (`plans/mail-settings-one.md`), then the other categories.
+- Owner (2026-11-21): find and fix the settings screens' contradictions, gather settings spread over several places, make old screens modern, starting with e-mail (done, `ui/settings-mail.md`), then the other categories.
 - Read on development 1c77838b32; paths under `pinegrap/`. The order of the plans it leads to: `settings-tidy-census-order.md`. Architect (2026-11-21, message 11313): one category a plan, each asking the architect only for the parts it truly lacks.
 
 ## Which contradictions confuse most?
@@ -27,4 +27,4 @@ description: Survey of the Site Settings categories (owner 2026-11-21: tidy ever
 - Seller identity in General › Organization and again in Ecommerce's feeds (`commerce.php:1095-1117`).
 - Smaller: the GeoIP note and refresh twice (`firewall.php:463`, `languages.php:339`); two deletion gates (`mass_deletion`, `ws_ai_bulk_delete`).
 
-Related: docs/memory/plans/settings-tidy-census-order.md, docs/memory/plans/mail-settings-one.md
+Related: docs/memory/plans/settings-tidy-census-order.md, docs/memory/ui/settings-mail.md

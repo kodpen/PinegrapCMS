@@ -4,7 +4,7 @@ description: Add a mailbox as the three-step sheet (EM5 #11175): Choose, Sign in
 ---
 
 ## What is drawn?
-- Site Settings › E-mail › Mailboxes › "Add a mailbox" opens the drawer `pgset-ws-mail-0` as a sheet (design D of `plans/mail-settings-one-design-box.md`): the step line "Choose", "Sign in", "Details" in the band, no Done step (`includes/workspace/mail_add.php`, `ws_mail_add_sheet()`).
+- Site Settings › E-mail › Mailboxes › "Add a mailbox" opens the drawer `pgset-ws-mail-0` as a sheet (board D of `ui/email-settings-drawing/`, `ui/settings-mail.md`): the step line "Choose", "Sign in", "Details" in the band, no Done step (`includes/workspace/mail_add.php`, `ws_mail_add_sheet()`).
 - Choose: the four starting points as choice cards (`ws_mail_start_points()`: Gmail, Microsoft, Another server, No server); Continue fill, Cancel quiet. No server skips Sign in.
 - Sign in: Gmail or Microsoft with the site's application set up and a manager signed in (`ws_mail_add_ready()`) shows the provider's own button and one line. Otherwise Gmail shows "Set up Google sign-in" (opens Google's numbered steps drawer) and "Use an app password"; Microsoft a line and "Set up the Microsoft application". Another server and the app password show the box's server fields and "Test connection".
 - Details: the result line, "Which channel?" (focused; Kept in above it when the Workspace is on), Name and E-mail address, "Other settings" folded (On, Support box, signature, answers, routing). Finish is `ws_mail_box_save` value 0.

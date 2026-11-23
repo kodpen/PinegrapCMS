@@ -72,7 +72,7 @@ function test_settings_mail_sending_fold_leaves_line_and_pill()
 	pg_assert_same(array('Sign-in needed', 'pg-tone-amber'), $ask['pill']);
 }
 
-function test_settings_mail_sending_fold_domain_campaign_mailchimp()
+function test_settings_mail_sending_fold_domain_campaign()
 {
 	$health = array('domain' => 'example.com', 'spf' => array('state' => 'ok'), 'dkim' => array('state' => 'ok'), 'dmarc' => array('state' => 'error'));
 	$domain = pg_mail_sending_fold_domain($health);
@@ -86,10 +86,7 @@ function test_settings_mail_sending_fold_domain_campaign_mailchimp()
 	pg_assert_same('Scheduled sending on · at most 200 a run', pg_mail_sending_fold_campaign(true, '200')['line']);
 	pg_assert_same(array('Off', 'pg-tone-gray'), pg_mail_sending_fold_campaign(false, 200)['pill']);
 
-	pg_assert_same('Sync on · list abc', pg_mail_sending_fold_mailchimp(true, 'abc')['line']);
-	pg_assert_same('Sync off', pg_mail_sending_fold_mailchimp(false, 'abc')['line']);
-
-	pg_assert_same(array('leaves', 'domain', 'campaign', 'mailchimp', 'test'), pg_mail_sending_fold_order(), 'How e-mail leaves first, Send a test last, DKIM inside Sending domain');
+	pg_assert_same(array('leaves', 'domain', 'campaign', 'test'), pg_mail_sending_fold_order(), 'How e-mail leaves first, Send a test last, DKIM inside Sending domain, MailChimp on Connections');
 }
 
 function test_settings_mail_sending_fold_test_result()
@@ -180,7 +177,8 @@ function test_settings_mail_sending_fold_way_drawn_once()
 	pg_assert_false(strpos($transport, '<option value="smtp">') !== false, 'the service select lists services only');
 
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.save.php');
-	pg_assert_true(strpos($save, 'pg_mail_way_post(') < strpos($save, '// ── MailChimp ──'), 'the way is read before anything is checked or written');
+	pg_assert_true(strpos($save, 'pg_mail_way_post(') < strpos($save, '$mail_saved = pg_mail_settings_save('), 'the way is read before anything is written');
+	pg_assert_false(strpos($save, 'mailchimp_key') !== false, 'the Sending tab writes no MailChimp column');
 }
 
 // Campaigns leave as they always did until a way is chosen: their account,

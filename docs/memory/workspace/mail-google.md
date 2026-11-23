@@ -12,8 +12,8 @@ description: A Gmail or Google Workspace mailbox (MG1): a connected Google accou
 - Registry (`connections_registry.php`): the `gmail` entry covers purposes `mail` and `mail_read`.
 
 ## What does the box's drawer show with Gmail?
-- A new box starts from the starting point "Gmail or Google Workspace", which sets Mail service and opens the Reading tab (`mail-box-start-setup.md`).
-- In the Reading tab, "Sign in with" (`google_way`, not stored, `ws_mail_google_signin()`): "A connected Google account" first, "An app password". `ws_mail_google_way()` opens a box with an account or no password (a new one) on the account, a box keeping a password on the app password.
+- A new box is added on the three-step sheet since EM5 (#11175, `mail-add-sheet.md`): Choose › Gmail, then Sign in shows "Sign in with Google" on the site's own Google application (owner, poll 212: no broker, no Google verification), and Details after the return. Not set up: "Set up Google sign-in" (the drawer below) or "Use an app password".
+- In an existing box's Reading tab, "Sign in with" (`google_way`, not stored, `ws_mail_google_signin()`): "A connected Google account" first, "An app password". `ws_mail_google_way()` opens a box with an account or no password (a new one) on the account, a box keeping a password on the app password.
 - Under it one quiet button opens the drawer "Set up the Google application" (since MT3): the OAuth client, the two redirect addresses each with Copy, the Gmail API's enable link, the Google account's state with "Connect in Connections" (new tab), what to choose in the box, Google's verification warning, the app password's steps folded under "Use an app password instead" (`mail-box-start-setup.md`). The box's form holds no paragraph or list of steps.
 - Its words come from `includes/fn/google_cloud.php`, shared with Google's page (`ui/connections-provider-page.md`).
 

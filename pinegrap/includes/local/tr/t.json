@@ -1739,6 +1739,8 @@
     "The MCP server took too long to answer.": "MCP sunucusunun yanıtı çok uzun sürdü.",
     "The MVP launched with 50 beta customers.": "MVP sürümü 50 beta müşteri ile lansmanı yapıldı.",
     "The MailChimp settings have been saved.": "MailChimp ayarları kaydedildi.",
+    "The Mailchimp account, list and store the site's customers, orders and products are synced with by the scheduled job.": "Zamanlanmış görevin sitenin müşterilerini, siparişlerini ve ürünlerini eşitlediği Mailchimp hesabı, listesi ve mağazası.",
+    "The Mailchimp key is removed and the sync stops: customers, orders and products are no longer sent to Mailchimp.": "Mailchimp anahtarı kaldırılır ve eşitleme durur: müşteriler, siparişler ve ürünler artık Mailchimp'e gönderilmez.",
     "The Main House": "Büyük Sahne",
     "The Map of places block draws its places on a map beside its list.": "Yerler haritası bloğu yerlerini listesinin yanında bir haritada gösterir.",
     "The Map of places block draws its places on a map beside its list; off, it shows the list alone. While the cookie notice is on, the map loads only after the visitor allows marketing, and the block shows a Show the map button until then.": "Yerlerin Haritası bloğu yerlerini listesinin yanında bir haritada gösterir; kapalıyken yalnızca listeyi gösterir. Çerez bildirimi açıkken harita ancak ziyaretçi pazarlamaya izin verdikten sonra yüklenir; o zamana kadar blok bir Haritayı göster düğmesi gösterir.",

@@ -5,8 +5,8 @@ module: mail_sending_rows
 ---
 
 ## Why folded rows?
-- Owner (2026-11-21, poll 211): the drawing of the E-mail category, board A (rows) and B (the ways sheet), `plans/mail-settings-one-design.md`. The scan of 2026-11-21 found the sending way drawn twice (Sending service and System cards, each with a "Send through" select) and cut off; EM2 draws it once.
-- Built from `pg_settings_fold()` (`settings-fold-rows.md`); the lines are `includes/fn/mail_sending_rows.php`. Order `pg_mail_sending_fold_order()`: leaves, domain, campaign, mailchimp, test (row ids `pg-fold-mail-<key>`).
+- Owner (2026-11-21, poll 211): the drawing of the E-mail category, board A (rows) and B (the ways sheet), `ui/email-settings-drawing/` (`settings-mail.md`). The scan of 2026-11-21 found the sending way drawn twice (Sending service and System cards, each with a "Send through" select) and cut off; EM2 draws it once.
+- Built from `pg_settings_fold()` (`settings-fold-rows.md`); the lines are `includes/fn/mail_sending_rows.php`. Order `pg_mail_sending_fold_order()`: leaves, domain, campaign, test (row ids `pg-fold-mail-<key>`); the MailChimp row went to Connections in EM6.
 
 ## What does How e-mail leaves say?
 - A value row a kind of mail (Design examples' Value rows): "System e-mail" and "Campaigns", each one sentence of what happens today (`pg_mail_way_read()` → `pg_mail_way_now()`), in `email()`'s order: the account chosen for the kind, the sending service switched on, the kind's own server, PHP mail(), else "Cannot leave". Campaigns may follow system e-mail (`core/mail-campaign-way.md`).
@@ -25,7 +25,7 @@ module: mail_sending_rows
 - `pg_mail_way_post()` before anything else: an account way keeps the service as it is (campaigns without an account may use it) and needs an account of its provider; a sending service clears the account; the mail server clears the account and switches the service off, as a service would take system e-mail before the server. So choosing the server can change how campaigns leave; the Campaigns sentence says so after the save.
 
 ## What do the other rows say?
-- Sending domain: "domain · DMARC to check" with "n to check" amber, Good, or Could not check. Campaign mail: "Scheduled sending on · at most n a run" / off. MailChimp: "Sync on · list x" / off. None asks for attention, so How e-mail leaves opens first.
+- Sending domain: "domain · DMARC to check" with "n to check" amber, Good, or Could not check. Campaign mail: "Scheduled sending on · at most n a run" / off. None asks for attention, so How e-mail leaves opens first.
 - Send a test: "The test goes to <address>.", the last result as one line with its pill (Sent / Failed and the reason), "Save and send a test". Line "Last test 16:20 · accepted" (the date when not today) or "No test sent yet".
 
-Related: docs/memory/ui/settings-mail-sending.md, docs/memory/plans/mail-settings-one-steps.md
+Related: docs/memory/ui/settings-mail-sending.md, docs/memory/ui/settings-mail.md
