@@ -1,6 +1,6 @@
 ---
 name: application-review-report
-description: A programme's Report tab and Excel (AR7, #PRNUM); GET /application-programs and its entries (API, MCP); events application.scored and application.decided in the webhook and flow catalogues
+description: A programme's Report tab and Excel (AR7, #11222); GET /application-programs and its entries (API, MCP); events application.scored and application.decided in the webhook and flow catalogues
 module: application_report
 ---
 
