@@ -1,6 +1,6 @@
 ---
 name: theme-screens
-description: Create and Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
+description: Create and Edit Theme, the themes list and where Private label branding is drawn: labelled fields, theme tools in the toolbar, named list marks
 ---
 
 ## How are Create Theme and Edit Theme drawn?
@@ -14,9 +14,8 @@ description: Create and Edit Theme, the themes list and Private Label Branding o
 ## How does the themes list name its marks?
 - `view_themes.php` (cells in `includes/fn/theme_list_edit.php`): the active desktop and mobile `task_alt` marks are `role="img"` with `aria-label` Yes; the `folder` ligature before a folder name is `aria-hidden` (`list-and-table-screens.md`). Quick edit: `list-table-quick-edit-themes.md`.
 
-## How is Private Label Branding drawn?
-- The Private Label Branding card of Site Settings › Appearance (`includes/settings/appearance.php`, administrator only, #4095; `private_label.php` redirects there). The Enable Private Label switch is a `collapse-switcher` for `#private_label_fields` (opened with `show` when the setting is on), replacing an inline `style.display` script.
-- Logo URL and Control Panel Stylesheet URL, then the footer links as list rows whose drawers hold each label/URL pair (`settings-appearance-footer-links.md`), each box with a label and id equal to its posted name. The logo hint is `form-text` under the field.
+## Where is Private label branding drawn?
+- The Private label branding row of Site Settings › Appearance (`includes/settings/appearance.php`, administrator only, #4095; `private_label.php` redirects there): `ui/settings-appearance.md`. Its switch hides nothing; Logo address, Panel stylesheet address and the footer links are always drawn (`settings-appearance-footer-links.md`), each box with a label and id equal to its posted name.
 
 ## Which test covers it?
 - `tests/theme_screens_names_test.php` (source scans); the save itself: `tests/private_label_config_test.php`.
