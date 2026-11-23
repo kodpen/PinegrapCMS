@@ -803,7 +803,9 @@ function pg_connections_screen_carrier_pages()
  *                    that read mailboxes), 'accounting' (bool: may open
  *                    Accounting, Paraşüt's and Logo İşbaşı's connection),
  *                    'integrations' (bool: may open Integrations, Google
- *                    reviews' key and Place ID)
+ *                    reviews' key and Place ID), 'maintenance' (bool:
+ *                    may open Updates and maintenance, connecting Google
+ *                    Drive, OneDrive and Dropbox accounts for backups)
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -817,6 +819,12 @@ function pg_connections_screen_page_cards($id, $can)
 
     if (($id === 'google') && !empty($can['signin'])) {
         $cards[] = 'signin';
+    }
+
+    // connect.php connects the site's accounts for a manager only; which
+    // account a destination uses stays on the Backups card.
+    if ((pg_backup_cloud_type_of_service($id) !== '') && !empty($can['manager']) && !empty($can['maintenance'])) {
+        $cards[] = 'backups';
     }
 
     if (!empty($can['manager']) && isset(pg_connections_screen_page_providers()[$id])) {

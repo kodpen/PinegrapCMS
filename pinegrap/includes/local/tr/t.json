@@ -2430,6 +2430,7 @@
     "The automatic answer is at most {var:1} characters.": "Otomatik yanıt en çok {var:1} karakter olabilir.",
     "The automatic backup failed": "Otomatik yedekleme başarısız oldu",
     "The automatic backup keeps one backup per week; every run in the same week replaces it. Older weeks beyond this number are deleted. 0 keeps all of them. Backups taken by hand and the install dumps are never deleted.": "Otomatik yedekleme her hafta için bir yedek tutar; aynı hafta içindeki her çalışma o yedeğin yerine yazar. Bu sayıyı aşan eski haftalar silinir. 0 hepsini saklar. Elle alınan yedekler ve kurulum dökümleri hiçbir zaman silinmez.",
+    "The automatic backup sends its remote copy through an account connected for backups; which account and folder it uses is chosen on the Backups card in Site Settings › Updates and maintenance.": "Otomatik yedekleme uzak kopyasını yedekler için bağlanan bir hesap üzerinden gönderir; hangi hesabı ve klasörü kullanacağı Site Ayarları › Güncellemeler ve Bakım içindeki Yedeklemeler kartında seçilir.",
     "The automatic campaign send will be deleted.": "Otomatik kampanya gönderimi silinecek.",
     "The automatic check found no known limitations.": "Otomatik denetim bilinen bir kısıtlama bulmadı.",
     "The automatic label could not be created, so there is no label to print.": "Otomatik etiket oluşturulamadı; yazdırılacak bir etiket yok.",

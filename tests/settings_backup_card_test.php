@@ -97,7 +97,8 @@ function test_settings_backup_card_connect_returns_to_the_new_place()
 {
 	$cards = settings_backup_card_test_source('includes/settings/maintenance.php');
 
-	pg_assert_contains("pg_settings_url('maintenance') . '?backup_connect=' . \$backup_cloud_type . '#pgset-backup'", $cards, 'the account connection comes back to the card');
+	pg_assert_contains('pg_backup_cloud_connections_url($backup_cloud_type)', $cards, 'the account is connected on its page of Connections');
+	pg_assert_same('settings_maintenance.php?backup_connect=gdrive#pgset-backup', pg_backup_cloud_connect_return('gdrive'), 'and the connection comes back to the card');
 	pg_assert_contains("\$_GET['backup_connect']", $cards, 'and is read there');
 
 	// A connection started before the move still comes back to General.

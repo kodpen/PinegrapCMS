@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The remote copy of the automatic backup in the site's own cloud storage:
- * Google Drive, OneDrive or Dropbox, through an account connected on
- * Connected accounts for the "backup" purpose (includes/fn/connect.php).
+ * Google Drive, OneDrive or Dropbox, through an account connected for the
+ * "backup" purpose on the service's page of Connections
+ * (includes/fn/connect.php).
  *
  * An archive is sent in 10 MiB parts (Drive's resumable upload, a Graph
  * upload session, a Dropbox upload session), so neither the site nor the
@@ -32,17 +33,73 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // ----------------------------------------------------------------------------
 
 /**
- * The cloud destinations: remote type => the provider that serves it.
+ * The cloud destinations: remote type => the provider that serves it and
+ * the service whose page on Connections connects its accounts.
  *
- * @return array type => array('provider' => string, 'label' => string)
+ * @return array type => array('provider' => string, 'label' => string,
+ *               'service' => string, a key of pg_connections_registry())
  */
 function pg_backup_cloud_types()
 {
     return array(
-        'gdrive'   => array('provider' => 'google', 'label' => 'Google Drive'),
-        'onedrive' => array('provider' => 'microsoft', 'label' => 'OneDrive'),
-        'dropbox'  => array('provider' => 'dropbox', 'label' => 'Dropbox'),
+        'gdrive'   => array('provider' => 'google', 'label' => 'Google Drive', 'service' => 'google_drive'),
+        'onedrive' => array('provider' => 'microsoft', 'label' => 'OneDrive', 'service' => 'onedrive'),
+        'dropbox'  => array('provider' => 'dropbox', 'label' => 'Dropbox', 'service' => 'dropbox'),
     );
+}
+
+
+/**
+ * The cloud destination a service's page on Connections connects accounts
+ * for, or '' for any other page. Pure.
+ *
+ * @param mixed $service a page key of connections.php
+ * @return string a key of pg_backup_cloud_types(), or ''
+ */
+function pg_backup_cloud_type_of_service($service)
+{
+    foreach (pg_backup_cloud_types() as $type => $cloud) {
+        if ($service === $cloud['service']) {
+            return $type;
+        }
+    }
+
+    return '';
+}
+
+
+/**
+ * The page on Connections where a destination's accounts are connected,
+ * asked to return to the Backups card (backup_return). Pure.
+ *
+ * @param string $type a key of pg_backup_cloud_types()
+ * @return string the address, or '' for an unknown type
+ */
+function pg_backup_cloud_connections_url($type)
+{
+    if (!pg_backup_cloud_is_type($type)) {
+        return '';
+    }
+
+    return 'connections.php?service=' . pg_backup_cloud_types()[$type]['service'] . '&backup_return=1';
+}
+
+
+/**
+ * Where an account connected for a destination returns to: the Backups
+ * card with that destination shown chosen, which reads connect.php's
+ * message (?backup_connect=). Pure.
+ *
+ * @param string $type a key of pg_backup_cloud_types()
+ * @return string the address, or '' for an unknown type
+ */
+function pg_backup_cloud_connect_return($type)
+{
+    if (!pg_backup_cloud_is_type($type)) {
+        return '';
+    }
+
+    return 'settings_maintenance.php?backup_connect=' . $type . '#pgset-backup';
 }
 
 
