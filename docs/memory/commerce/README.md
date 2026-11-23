@@ -31,6 +31,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - `order-completion-*`: 10 files; start at `order-completion.md`.
 - `order-returns-*`: 14 files; start at `order-returns.md`.
 - `order-screen-*`: 8 files.
+- `orders-list-*`: 6 files.
 - `payment-driver-*`: 9 files; start at `payment-drivers.md`.
 - `product-price-*`: 6 files.
 - `product-review-*`: 6 files.

@@ -118,9 +118,6 @@
 - office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
 - office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
-- orders-list-redraw-filters-panel.md: Plan orders-list-redraw, step OL2b: the Advanced Filters panel's faults on All Orders (Update floating over the fields, thick scrollbars, large labels) and how the panel is put together
-- orders-list-redraw-fixes.md: All Orders as landed after OL2 (#11142) and OL2b (#11167) against the drawing: five differences OL3 takes first (SKU in Products, Status badge, bar in two rows, phone bar, Total hidden)
-- orders-list-redraw.md: Plan (owner 2026-11-22): All Orders redrawn: one bar, quick filters with counts, the figures as one strip with the charts behind Summary, rows with customer, three state pills and items
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer

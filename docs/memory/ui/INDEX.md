@@ -120,7 +120,7 @@
 - contact-group-shared-form.md: The contact group create and edit screens share includes/forms/contact_group_form.php: what it holds, what stays in the screens, one required message, the list sorted on shown values
 - contact-list-filters.md: Contacts list filters (contact_list.php): offered groups only, [None] from [All], range to today, box search, typed date, period links keep the view, export formula guard
 - contact-list-names.md: Contacts list (view_contacts.php): one Website filter, labels on their own field, group counts in the panel's number format, the editor link and Opt-In mark names, silent icon words
-- contact-orders-list.md: All Orders for Contact (view_orders_for_contact.php): open carts left out, a Status column with the orders list's badge, paid_at probed
+- contact-orders-list.md: All Orders for Contact (view_orders_for_contact.php): open carts left out, a Status column with the orders list's status pills, paid_at probed
 - contact-shared-form.md: The contact create and edit screens share includes/forms/contact_form.php: what it holds, what stays in the screens
 - contact-user-list-view-kept.md: Contacts and Users lists keep their view (filter) through Export, Delete All, Merge, Advanced Filters, Create and Import
 - contacts-organize-dialog.md: Organize Selected on the Contacts list is an in-page pgUI dialog (no popup), offers only groups filled by hand, counts only contacts whose groups changed
@@ -373,6 +373,7 @@
 - invoice-order-shared-form.md: add_erp_invoice.php (Invoice an Order) draws its Order card, Summary and save bar through includes/forms/invoice_order_form.php (wide layout, step B11); what the screen keeps
 - key-code-shared-form.md: The key code create and edit screens share includes/forms/key_code_form.php: the checks, the offer-code clash, the values, the generator, what stays in the screens
 - launch-journey-catalogue.md: The launch journey's pure catalogue (SJ1a, PR #11160): purposes, steps per purpose, each step's rule over a facts array, blocker or warning, payment live per driver, the first week
+- launch-summary-lines.md: The agency summary's "What we need from you" lines table launch_summary_lines (SJ1b, 2026.11.0 step 11.0.274): its columns, why no person is held, what it does not store
 - lazy-picture-failure.md: Panel lazy pictures (img.lazy, jQuery Lazy) that fail to load show a still picture mark instead of the endlessly spinning loading.gif; reduced motion gets a still square while loading
 - link-rights.md: Names, orders and products link to their edit screen only when it admits the viewer (pg_can_open_user(), pg_can_open_contact(), USER_MANAGE_ECOMMERCE); Sessions rows drop refused actions
 - list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs. [decision: here]
@@ -666,6 +667,7 @@
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
 - server-paged-lists.md: Lists the server searches and pages (list table driver): which moved off DataTables' server paging, what the search box finds (words, labels, Turkish I), the row cells [decision: decisions-made-product-10.md, decisions-made-product-22.md]
+- settings-accounts-rows.md: Site Settings › Accounts and sign-in as folded rows: order, each row's line, Sign-in attempts and Deleting many at once on rows of their own, providers as connect rows, anchors
 - settings-ai-voice-rows.md: Pinegrap AI's and Voice's opened rows in Site Settings › Assistants and agents (AT5): one column, the fold Application, their drawers, what a test pins
 - settings-appearance-footer-links.md: Footer links of Private label branding (Site Settings › Appearance) as list rows with a drawer each; Move up, Move down, Remove; the order function; the pane drawn after a save
 - settings-appearance.md: Site Settings › Appearance as folded rows: Panel look (acrylic, Panel CSS), Dashboard, Rich-text editor, Private label branding; who sees which row, what moved, what stayed
@@ -796,5 +798,6 @@
 - waf-log-paging.md: The firewall log's events (view_waf_log.php) on the list table driver, sorted and searched on the server; period, category and search filters stay in the address and drive the summary
 - whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand; the auto dialog boxes take none
 - workspace-avatar-faces.md: A face from avatar() in the Workspace scripts keeps Bootstrap's .avatar (classList.add, never className =) and is sized by --bs-avatar-size; why a check-in answer's photo once covered the channel
+- workspace-screen-bar-notes-data.md: The one-line bar and empty screen of My Notes (startNotes(), "⋯" with Pin to the menu, Import, Export all) and Data (ws_wtable_list_bar(), ws_empty_screen_html())
 - workspace-screen-bar.md: A Workspace screen's one-line bar (My Tasks first): "Filter", its box and tags line, views as a select when narrow, the empty screen; barFilter(), emptyScreen() in workspace.js
 - zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps
