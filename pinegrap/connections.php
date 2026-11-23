@@ -205,6 +205,20 @@ function connections_mailboxes_may_manage($user) {
 
 }
 
+// May the user connect accounts for backups? The Backups card is in Site
+// Settings › Updates and maintenance.
+function connections_maintenance_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('maintenance', $user);
+
+}
+
 // May the user change Google Analytics' tag and figures? They came from
 // Site Settings › Visitors and privacy, so they keep that category's gate.
 function connections_privacy_may_manage($user) {
@@ -3919,6 +3933,28 @@ function connections_mail_part($provider_key, $accounts, $ready, $return) {
 
 }
 
+/* Connect an account for backups, in Status on Google Drive's, OneDrive's
+   and Dropbox's pages (purpose backup): the Backups card leads here. Which
+   account and folder a destination uses stays the card's setting. The
+   connection returns to $return: the Backups card when the person came
+   from it, else this page. */
+
+function connections_backup_part($provider_key, $provider_label, $ready, $return) {
+
+	return '
+			<div class="mt-5" id="connections-backup">
+				<div class="pg-field-label">' . h(lang('Backups')) . '</div>
+				<p class="pg-text-2 mb-3">' . h(lang('The automatic backup sends its remote copy through an account connected for backups; which account and folder it uses is chosen on the Backups card in Site Settings › Updates and maintenance.')) . '</p>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-connect"
+						data-provider="' . h($provider_key) . '" data-purpose="backup" data-connection="0" data-return="' . h($return) . '"' . ($ready ? '' : ' disabled') . '>
+						<i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account for backups', 'vars' => $provider_label))) . '</button>
+					<a class="pg-text-2" href="settings_maintenance.php#pgset-backup">' . h(lang('Backups')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+				</div>
+			</div>';
+
+}
+
 /* The Sign in with Google application on Google's page: its client ID and
    secret (config.oauth_google_*, the columns it always had), saved by
    signin_google_save. The secret is shown back in the field as it was on
@@ -4359,6 +4395,7 @@ if ($provider_page !== '') {
 			'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
 			'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
 			'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
+			'maintenance'  => (pg_backup_cloud_type_of_service($page_id) !== '') && connections_maintenance_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
@@ -4477,6 +4514,17 @@ if ($provider_page !== '') {
 	// details, under the same gate.
 	if (in_array($page_id, pg_ad_conversion_services(), true) && connections_privacy_may_manage($user)) {
 		$page['details'] .= pg_ad_conversion_log_card($page_id);
+	}
+
+	// Google Drive's, OneDrive's and Dropbox's pages: connect an account for
+	// backups, back to the Backups card when started from it.
+	if (in_array('backups', $page['cards'], true)) {
+		$backup_type = pg_backup_cloud_type_of_service($page_id);
+		$backup_provider = pg_backup_cloud_types()[$backup_type]['provider'];
+		$page['status_extra'] .= connections_backup_part($backup_provider,
+			isset($providers[$backup_provider]) ? $providers[$backup_provider]['label'] : $backup_provider,
+			isset($provider_apps[$backup_provider]) && pg_connect_app_ready($provider_apps[$backup_provider]) && $can_seal && pg_connect_purpose('backup'),
+			pg_connect_return_path(!empty($_GET['backup_return']) ? pg_backup_cloud_connect_return($backup_type) : pg_connections_screen_page_url($page_id)));
 	}
 
 	// An AI provider's page: its key, and the assistants that use it.

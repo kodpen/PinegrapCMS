@@ -5,8 +5,8 @@ module: connections_screen
 ---
 
 ## What is a service's page?
-- `connections.php?service=<registry key>`, built in CX7 (plan `plans/connections-merges-build.md`) as the owner accepted it in poll 149 (`workflow/decisions-made-product-77.md`). Breadcrumb System tools › Connections › the service; heading its name, then group and uses.
-- Every registry service the user may see has one; `pg_connections_screen_page_id()` refuses any other key: back to the list.
+- `connections.php?service=<registry key>`, built in CX7 as the owner accepted it in poll 149 (`workflow/decisions-made-product-77.md`). Breadcrumb System tools › Connections › the service; heading its name, then group and uses.
+- Every registry service the user may see has one; `pg_connections_screen_page_id()` refuses other keys.
 
 ## What does it show?
 - "Status" ("Durum"): the state pill, why no state is read, and for an account reader the accounts with Connect again (the service's purpose) and Disconnect for the site's own, the last error on file, a link to the provider's drawer. Then where its settings are and "Open its settings".
@@ -29,7 +29,7 @@ module: connections_screen
 ## Which pages did CX11 give a key service? (Status, details under the card's gate, uses)
 - IndexNow (CX11a): the key, SEO gate, `connections-indexnow-page.md`. Google Analytics (CX11b): tag and GA4 property, Visitors gate, `connections-google-analytics-page.md`.
 - Google Cloud Translation (CX11c): the API key, Languages gate, `connections-google-translate-page.md`. WhatsApp, İYS (CX11d): `connections-communication-page.md`; the SMS providers: `connections-sms-providers-page.md`. Ads: `api/ad-conversions.md` (Meta, GA4, TikTok).
-- Paraşüt, Logo İşbaşı (CX11h): `connections-accounting-page.md`; Google reviews (CX11i): `connections-google-reviews-page.md`.
+- Paraşüt, Logo İşbaşı (CX11h): `connections-accounting-page.md`; Google reviews (CX11i): `connections-google-reviews-page.md`; backup accounts (CX11j1): `connections-backup-accounts.md`.
 
 ## Where does a write from it return?
 - The page's hidden `connections_return` sends Check/Disconnect back to `?service=<key>`; Connect again returns there through `pg_connect_start_fields()`'s return path.

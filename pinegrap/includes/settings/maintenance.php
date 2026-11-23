@@ -222,9 +222,10 @@ if ($backup_settings_ready) {
         : lang('The secret and the password are stored encrypted and are never shown again after saving.');
 
     // Google Drive, OneDrive and Dropbox go through an account connected for
-    // backups. A connection started here comes back with the destination it
-    // was started for, which is shown chosen (not yet saved) together with
-    // the new account.
+    // backups, connected on the service's page of Connections. A connection
+    // started there from this card comes back with the destination it was
+    // started for, which is shown chosen (not yet saved) together with the
+    // new account.
     $backup_connect_type = isset($_GET['backup_connect']) ? pg_backup_remote_type($_GET['backup_connect']) : '';
     $backup_remote_type_shown = $backup_remote_type;
 
@@ -310,22 +311,13 @@ if ($backup_settings_ready) {
                             </div>
                             <div class="col-12">
                                 <div class="form-text">' . h($backup_cloud_help) . '</div>
-                            </div>' . ($backup_cloud_ready ? '
+                            </div>
                             <div class="col-12">
-                                <button type="submit" form="pgset_backup_connect_' . $backup_cloud_type . '" class="pg-button pg-button-quiet pg-button-sm">
-                                    <i class="bi ' . h($backup_cloud_provider['icon']) . '" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $backup_cloud_provider['label']))) . '</button>
-                            </div>' : '') . '
+                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(pg_backup_cloud_connections_url($backup_cloud_type)) . '">
+                                    <i class="bi ' . h($backup_cloud_provider['icon']) . '" aria-hidden="true"></i>' . h($backup_cloud_accounts ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                            </div>
                         </div>
                     </div>';
-
-        // The button above submits this form by its form attribute: it
-        // lives outside the settings form, since forms cannot be nested.
-        if ($backup_cloud_ready) {
-            $pg_settings_modals[] = '
-            <form method="post" action="connect.php" id="pgset_backup_connect_' . $backup_cloud_type . '" class="disable_shortcut d-none">
-                ' . pg_connect_start_fields($backup_cloud['provider'], 'backup', pg_settings_url('maintenance') . '?backup_connect=' . $backup_cloud_type . '#pgset-backup') . '
-            </form>';
-        }
     }
 
     $backup_remote_status = '';
