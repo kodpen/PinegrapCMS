@@ -19,7 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 // pg_image_editor_includes() and its config, drawn in a PHP process of its
 // own: the URLs need OUTPUT_PATH, which the tests after this one must not
 // find defined, and the loader prints once per process.
-function image_editor_includes_run()
+function image_editor_includes_run($private_label = false)
 {
 	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
 		return null;
@@ -35,6 +35,7 @@ function image_editor_includes_run()
 		. "define('PG_TEST_RUNNER', true);\n"
 		. "define('OUTPUT_PATH', '/');\n"
 		. "define('OUTPUT_SOFTWARE_DIRECTORY', 'pinegrap');\n"
+		. ($private_label ? "define('PRIVATE_LABEL', true);\n" : '')
 		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
 		. "echo json_encode(array('first' => pg_image_editor_includes(), 'second' => pg_image_editor_includes(), 'config' => pg_image_editor_config()));\n");
 
@@ -78,6 +79,32 @@ function test_image_editor_includes_print_the_loader_once()
 
 	pg_assert_true((bool) preg_match('#^/pinegrap/assets/css/pg_image_editor\.(min|src)\.css\?v=\d+$#', $config['style']), $config['style'] . ' is the editor stylesheet with its stamp');
 	pg_assert_same(pg_image_editor_strings(), $config['strings'], 'the labels travel with the config');
+}
+
+// The top bar's help button opens the canvas's documentation page; a
+// private-labelled site gets no address, which hides the button.
+function test_image_editor_config_help_url()
+{
+	$run = image_editor_includes_run();
+
+	if ($run === null) {
+		return;
+	}
+
+	pg_assert_same(0, $run['code'], 'drawn: ' . implode("\n", array_slice($run['out'], 0, 8)));
+	pg_assert_true(is_array($run['res']) && isset($run['res']['config']['help']), 'the config has a help entry');
+
+	if (!is_array($run['res'])) {
+		return;
+	}
+
+	pg_assert_true((bool) preg_match('#^https://pinegrap\.com/([a-z]{2}/)?artifact-canvas$#', $run['res']['config']['help']), $run['res']['config']['help'] . ' is the canvas page without an anchor');
+	pg_assert_same('Help', $run['res']['config']['strings']['help'], 'the button has its label');
+
+	$private = image_editor_includes_run(true);
+
+	pg_assert_same(0, $private['code'], 'drawn under private label: ' . implode("\n", array_slice($private['out'], 0, 8)));
+	pg_assert_same('', is_array($private['res']) ? $private['res']['config']['help'] : null, 'no help under private label');
 }
 
 // The model runs before the modal that reads it; the stylesheet is built
