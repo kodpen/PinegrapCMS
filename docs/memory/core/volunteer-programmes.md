@@ -11,7 +11,7 @@ module: volunteer_programmes, volunteer_programme_setup
 
 ## Who sees what?
 - Roles 0-2 see every programme, add programmes and edit Set-up. A panel user listed in a programme's `coordinators` sees that programme's Applications and Volunteers tabs and approves, pauses and marks as left (`pg_volunteer_user_sees()`, `pg_volunteer_coordinator()`); no Set-up tab.
-- The profile drawer shows a document's kind and dates only, never its number or file. Uploading documents is not open: no `volunteer-doc-` file is written yet, so the search and picker exclusion (`core/volunteer-document-file.md`) is still due with the step that opens uploading (VS4).
+- The profile drawer shows a document's kind and dates only, never its number or file. Uploading (and its exclusion, `core/volunteer-document-file.md`) comes with VS4c.
 
 ## How does an application come in?
 - `custom_form.php`, after the contact is known, calls `pg_volunteer_application_record()` for a completed entry: each open programme on that form page gets a `volunteers` row `applied` with skills and free days from the fields named in Set-up. No contact (no e-mail mapped to the contact) means no application.
@@ -32,4 +32,4 @@ module: volunteer_programmes, volunteer_programme_setup
 - Applications: name, applied, skills, documents pill (Valid, Missing, Running out within 30 days; "None needed" when no role needs a document), Approve per row and "Approve selected" (the fill) for ticked rows.
 - Volunteers: state pill, roles whose skills they have, approved hours this year, show-up rate.
 
-Related: docs/memory/core/volunteer-store.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens.md
+Related: docs/memory/core/volunteer-signup.md, docs/memory/core/volunteer-store.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens.md

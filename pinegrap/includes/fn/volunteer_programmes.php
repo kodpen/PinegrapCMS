@@ -763,3 +763,18 @@ function pg_volunteer_move(array $programme, array $volunteer, $to, $user_id)
 
     return true;
 }
+
+/**
+ * The volunteer profiles of a signed-in member's contact that are not left.
+ *
+ * @param int $contact_id
+ * @return array volunteer ids
+ */
+function pg_volunteer_account_ids($contact_id)
+{
+    if (((int) $contact_id <= 0) || !pg_volunteer_ready()) {
+        return array();
+    }
+
+    return array_map('intval', (array) db_values("SELECT id FROM volunteers WHERE contact_id = '" . (int) $contact_id . "' AND state <> 'left' ORDER BY applied_at, id"));
+}

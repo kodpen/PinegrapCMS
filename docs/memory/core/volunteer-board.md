@@ -23,7 +23,7 @@ module: volunteer_board, volunteer_board_view
 - Copies the week before into the week shown, roles and note kept, `series_id` 0; a shift with the same place, start and end already there is skipped, so a second press adds nothing. Under `GET_LOCK('pg_volunteer_copy_<programme>')`.
 
 ## What does a shift's drawer do?
-- Lists each role with its pill and the names signed up, waitlist rows marked.
+- Lists each role with its pill and the names signed up, waitlist rows and offered places marked; a swap waiting for approval has Approve and Refuse (`core/volunteer-signup.md`).
 - Call volunteers: for each short role `pg_volunteer_call_pick()` over the active volunteers (skills, completed courses through `user.user_contact`, documents, free hours, their signed shifts nearby); asks only within the call days. Sends the programme's Call message by e-mail and adds the ids to the shift's `called`, so nobody is asked twice. The button says how many; SMS and WhatsApp come with VS5.
 - Remove (danger): the confirm says how many are told; deletes the shift and its sign-ups and e-mails the signed and waiting volunteers. A shift with a check-in or approved hours stays (button off).
 

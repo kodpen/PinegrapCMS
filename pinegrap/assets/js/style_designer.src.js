@@ -49210,6 +49210,7 @@ const StyleDesigner = (function () {
             ['has_store_credit_cards', _sdT('The member has store credit cards')],
             ['has_subscriptions', _sdT('The member has subscriptions')],
             ['has_tickets', _sdT('The member has orders with event tickets')],
+            ['has_volunteering', _sdT('The member volunteers in a programme')],
             ['has_referral', _sdT('The referral programme is on for the member')],
             ['can_refer', _sdT('The member can refer friends (has a completed order, is no affiliate)')]
         ],

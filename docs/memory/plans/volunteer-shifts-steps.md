@@ -10,14 +10,14 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
   - Built (#10949), `core/volunteer-store.md`.
 
 - VS2 (M) after VS1b (done, #11136): Contacts › Volunteers: the programmes list and a programme's Set-up (form and its fields, roles, rules, messages, coordinators); applications with Approve; the volunteer's profile. Features: G1, G2, G3.
-  - Built (#11136), `core/volunteer-programmes.md`; uploading not opened, so the exclusion stays with VS4.
+  - Built (#11136), `core/volunteer-programmes.md`; uploading not opened, so the exclusion goes with VS4c.
 
 - VS3 (M) after VS2 (done, #11163): shifts with roles and counts, the weekly series, "Copy last week", the board. Features: G5, G6.
   - Built (#11163), `core/volunteer-board.md`; its Call volunteers goes by e-mail.
 
 - VS4 (M) after VS3: "My volunteering" in My Account (`_pg_my_account_extras()`, its list and designer twin) and the signed-link page (new root `volunteer.php`, in `waf_sensitive_scripts()`): sign up, cancel, the waitlist pass, "Offer my place". Features: G7, G8, G9.
   - If it opens document uploading first: the same PR leaves `volunteer-doc-` `files` rows out of the panel search and the file pickers (decision schema-47, `core/volunteer-document-file.md`); uploading is never opened without it.
-  - Cut for size: VS4 is the sign-up store, the signed page, the link from the profile drawer, the swap approval, the My Account section and flag.
+  - Built (#11217), `core/volunteer-signup.md`: the sign-up store, the signed page, the link from the profile drawer, the swap approval, the My Account section and flag.
 
 - VS4b (S) after VS4: the `account.volunteering` list and its designer twins, as `account.tickets` (`commerce/event-tickets-page.md`). Features: G7.
 
