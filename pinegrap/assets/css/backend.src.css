@@ -31414,6 +31414,7 @@ select.pg-list-table-field option.private {
   --pg-tone-teal: light-dark(#0e9a74, #3fd0a8);
   --pg-tone-rose: light-dark(#d43d6b, #f58aa0);
   --pg-tone-gray: light-dark(#6b7280, #9aa0a8);
+  --pg-tone-lime: light-dark(#5f8a14, #b3d968);
   /* Rose as text (an error, a danger button): the bare light rose reads
      4.49:1 on white and 3.8:1 on its own tint; pulled 80% toward the
      strongest text colour it reads 5.0:1 or more in both themes. */
