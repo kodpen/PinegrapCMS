@@ -341,7 +341,7 @@ function test_lead_journey_each_tie_path_names_its_act()
 function test_lead_journey_tie_back_at_the_store()
 {
 	$store = lead_journey_test_source('includes/fn/lead_journey_store.php');
-	pg_assert_contains('pg_lead_tie_back_ids($visits, $browser[\'consent_at\'], pg_lead_keep_start($now))', $store, 'the pure rule picks the visits');
+	pg_assert_contains('pg_lead_tie_back_ids($visits, $browser[\'consent_at\'], pg_lead_keep_start($now, pg_lead_keep_months()))', $store, 'the pure rule picks the visits');
 	pg_assert_contains('AND contact_id = 0", array((string) $contact_id)', $store, 'a visit with a contact is never moved');
 
 	$visits = array(

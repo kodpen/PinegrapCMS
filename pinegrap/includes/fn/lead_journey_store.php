@@ -367,7 +367,7 @@ function pg_lead_tie($act, $contact_id, $ref_id = 0)
         $visits[] = $row;
     }
 
-    $ids = pg_lead_tie_back_ids($visits, $browser['consent_at'], pg_lead_keep_start($now));
+    $ids = pg_lead_tie_back_ids($visits, $browser['consent_at'], pg_lead_keep_start($now, pg_lead_keep_months()));
 
     if ($ids) {
         db_q("UPDATE lead_visits SET contact_id = ? WHERE id IN (" . implode(',', array_map('intval', $ids)) . ") AND contact_id = 0", array((string) $contact_id));

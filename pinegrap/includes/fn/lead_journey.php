@@ -249,7 +249,7 @@ function pg_lead_score_decay($points, $age_seconds, $half_life_days = PG_LEAD_HA
  * @param int       $now
  * @param array     $site_weights   kind => points, see pg_lead_score_weights()
  * @param int|float $half_life_days
- * @return array{score: int, reasons: array[]}
+ * @return array{score: int, reasons: array[], points: array} points: each kind's faded points, most first
  */
 function pg_lead_interest_score(array $events, $now, array $site_weights = array(), $half_life_days = PG_LEAD_HALF_LIFE_DAYS)
 {
@@ -286,9 +286,15 @@ function pg_lead_interest_score(array $events, $now, array $site_weights = array
         $reasons[] = array('kind' => $kind, 'points' => round($by_kind[$kind], 1));
     }
 
+    $points = array();
+    foreach ($kinds as $kind) {
+        $points[$kind] = round($by_kind[$kind], 1);
+    }
+
     return array(
         'score' => (int) max(0, min(100, round($total))),
         'reasons' => $reasons,
+        'points' => $points,
     );
 }
 

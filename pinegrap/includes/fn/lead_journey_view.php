@@ -571,7 +571,7 @@ function pg_lead_trim_run($now)
         return 0;
     }
 
-    $start = pg_lead_keep_start($now);
+    $start = pg_lead_keep_start($now, pg_lead_keep_months());
     $deleted = 0;
 
     foreach (array('lead_visits' => 'started_at', 'contact_journey' => 'at', 'lead_browsers' => 'last_seen_at') as $table => $column) {

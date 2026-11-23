@@ -194,6 +194,15 @@ if (function_exists('pg_lead_trim_run')) {
 
 }
 
+// The visitor journey's scores (includes/fn/lead_score.php): contacts touched
+// since the last pass scored again every PG_LEAD_SCORE_EVERY seconds, a batch
+// within PG_LEAD_SCORE_TICK_SECONDS, never in the visitor's request.
+if (function_exists('pg_lead_score_run')) {
+
+    pg_lead_score_run(time(), pg_cron_time_left(PG_LEAD_SCORE_TICK_SECONDS));
+
+}
+
 // Customer value summary (includes/fn/customer_values.php): rebuilt whole from
 // the orders once a day, at most PG_CUSTOMER_VALUE_TICK_SECONDS of this tick,
 // going on from its place next tick; one write when the walk is done.
