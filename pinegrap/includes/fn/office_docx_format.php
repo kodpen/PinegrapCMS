@@ -508,8 +508,8 @@ function pg_office_docx_paragraph_format($paragraph, $ranges)
                 $length = mb_strlen($run['text'], 'UTF-8');
 
                 if (($point > $offset) && ($point < $offset + $length)) {
-                    $reached->attach(pg_office_docx_run_split($run['run'], $point - $offset));
-                    $reached->attach($run['run']);
+                    $reached[pg_office_docx_run_split($run['run'], $point - $offset)] = true;
+                    $reached[$run['run']] = true;
                     break;
                 }
 
@@ -531,7 +531,7 @@ function pg_office_docx_paragraph_format($paragraph, $ranges)
                     pg_office_docx_rpr_set($run['run'], $property, $on, $styled);
                 }
 
-                $reached->attach($run['run']);
+                $reached[$run['run']] = true;
             }
 
             $offset += $length;
@@ -546,10 +546,10 @@ function pg_office_docx_paragraph_format($paragraph, $ranges)
     foreach ($edit['runs'] as $run) {
         $node = $run['run'];
 
-        if (($previous !== null) && ($previous->nextSibling === $node) && ($reached->contains($previous) || $reached->contains($node))
+        if (($previous !== null) && ($previous->nextSibling === $node) && (isset($reached[$previous]) || isset($reached[$node]))
             && (pg_office_docx_rpr_key($previous) === pg_office_docx_rpr_key($node))) {
             pg_office_docx_runs_join($previous, $node);
-            $reached->attach($previous);
+            $reached[$previous] = true;
             continue;
         }
 
