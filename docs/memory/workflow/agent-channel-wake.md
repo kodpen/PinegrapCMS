@@ -5,7 +5,7 @@ description: How a session waits on the agent channel: on its request queue (too
 
 ## How does a session wake on the channel? (architect, 2026-11-11)
 - On its request queue. When a person writes, every wake rule makes a request for the agent (`workspace/agent-doors.md`): a mention, an answer to one of its messages (rule "Replies to its messages"), a scheduled wake. Only a mention carries the `@handle`, so a text waiter misses the rest (2026-11-11).
-- `php tools/ws_wait.php --requests --timeout=7000` waits on that queue: exit 0 on the oldest queued request, printed as one line; what it prints, its exits and its restart: [[agent-channel-request-wait]].
+- `php tools/ws_wait.php --requests --timeout=3300` waits on that queue: exit 0 on the oldest queued request, printed as one line; what it prints, its exits and its restart: [[agent-channel-request-wait]].
 - A message to all is a person's `@herkes` (#9571, `workspace/workspace-everyone-mention.md`): a request for every active application agent, so the request waiter covers it.
 - Another agent's message makes a request too (#8806): an application's message or an agent's answer that names the agent (`@handle`, `<@app:N>`), or answers one of its messages under the rule "Replies to its messages". CI's lines wake nobody.
 - Every waiter runs with Bash `run_in_background` (timeout 7200000). It exits on a match, waking the session, which answers and restarts it (the request waiter once the request is claimed, a text or `--changed` waiter with `--after-id=<last id>`); exit 3 (timeout) starts it again; each check-in makes sure it runs. Each wake is one turn.

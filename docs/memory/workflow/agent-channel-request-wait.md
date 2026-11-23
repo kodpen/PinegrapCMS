@@ -1,10 +1,10 @@
 ---
 name: agent-channel-request-wait
-description: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): which request wakes it, the printed line, the interval, exits, restarting
+description: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): what wakes it, the printed line, exits, restarting, the 3300-second timeout
 ---
 
 ## What does it do? (PR #8767)
-- `php tools/ws_wait.php --requests --timeout=7000` reads `GET /workspace/agent-requests` with the application's key every `--interval` seconds (15 by default, at least 5: the queue has no ETag and is read whole) and exits 0 on the oldest request whose status is `queued`.
+- `php tools/ws_wait.php --requests --timeout=3300` reads `GET /workspace/agent-requests` with the application's key every `--interval` seconds (15 by default, at least 5: the queue has no ETag and is read whole) and exits 0 on the oldest request whose status is `queued`.
 - A `sent` or `running` request is already handed out and wakes nobody. The route lists `queued` and `sent` (`workspace/agent-doors.md`); the tool keeps the queued ones itself.
 - Why: an answer to the agent's message and a scheduled wake make a request without the `@handle`, so a waiter on the text misses them ([[agent-channel-wake]]).
 
@@ -20,5 +20,9 @@ description: tools/ws_wait.php --requests, a session's waiter on its own request
 
 ## How is it restarted?
 - With Bash `run_in_background` (timeout 7200000), as the text waiter. A request stays queued until it is claimed, so a waiter started again before the claim wakes at once on the same request: claim it (or leave it on purpose) before restarting. There is no "after this one" option; the plan did not ask for one.
+
+## Why does it time out at 3300 seconds?
+- Since 2026-11-23 (#11186), 7000 before: an idle session's restart then comes within the hour its prompt cache keeps the context, so that turn reads the context from the cache. A turn more than an hour after the last one writes the whole context into the cache again (`quota-use-measured.md`).
+- By the API's list prices a one-hour cache write is twice the input price, and a cached read is a fortieth of it on Fable 5.2 and a twentieth on Opus 5.5: one restart after the hour costs as much as 80 (Fable) or 40 (Opus) restarts inside it. The merging session's waiter uses the same timeout ([[merge-train-wait]]).
 
 Tests: `tests/ws_channel_tools_test.php` (which row wakes, the line and its 500 characters, the interval's floor, the channel not needed).
