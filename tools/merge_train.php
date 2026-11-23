@@ -45,7 +45,19 @@
  *             Pushes the current merge-train/* branch to development as a
  *             fast-forward, once it is pushed, origin/development is its
  *             ancestor and CI is green on its tip.
- * Exit:   0 on success; 1 when a check refused or a step stopped.
+ *         php tools/merge_train.php --wait [--since=KEY] [--interval=SECONDS]
+ *                                          [--timeout=SECONDS]
+ *             The merging session's waiter: reads GitHub every --interval
+ *             seconds (120 by default, at least 30) as a tick would, and
+ *             exits once a tick would act: an open train whose CI has
+ *             finished, green or red, or with no open train the PRs that
+ *             may ride one. It prints one JSON line (key, wake, state); the
+ *             session acts and starts it again with --since=<key>, so a
+ *             state it chose to leave as it is does not wake it again. A
+ *             failed gh call is waited out. --timeout defaults to 3300, so
+ *             an idle session is restarted while its prompt cache is warm.
+ * Exit:   0 on success, or --wait found work; 1 when a check refused or a
+ *         step stopped; 3 when --wait timed out with nothing to act on.
  *
  * GitHub is read and written through `gh api` (REST): gh pr, gh issue,
  * GraphQL and the search API are blocked in cloud sessions. The tool pushes
@@ -76,6 +88,9 @@ define('MERGE_TRAIN_MODULE_LIST', 'docs/memory/core/fn-modules.md');
 define('MERGE_TRAIN_DECISION_LIST', 'docs/memory/workflow/DECISIONS.md');
 define('MERGE_TRAIN_INDEX_COMMIT', 'Regenerate the memory indexes');
 define('MERGE_TRAIN_BUNDLE_COMMIT', 'Rebuild the bundles');
+define('MERGE_TRAIN_WAIT_INTERVAL', 120);
+define('MERGE_TRAIN_WAIT_MIN_INTERVAL', 30);
+define('MERGE_TRAIN_WAIT_TIMEOUT', 3300);
 
 // The product lines of a change, path => changed lines: lines in files under
 // pinegrap/, minified bundles and the language files under includes/local/
@@ -167,6 +182,31 @@ function merge_train_checks_green(array $runs)
 	}
 
 	return true;
+}
+
+// The CI state of a commit as a tick of the merging session reads it:
+// 'green' as merge_train_checks_green() says, 'red' when every gating run has
+// finished and one did not pass, 'running' while one is unfinished or none
+// has started yet.
+function merge_train_checks_state(array $runs)
+{
+	if (merge_train_checks_green($runs)) {
+		return 'green';
+	}
+
+	$runs = merge_train_gating_runs($runs);
+
+	if (!$runs) {
+		return 'running';
+	}
+
+	foreach ($runs as $run) {
+		if (!isset($run['status']) || ($run['status'] !== 'completed')) {
+			return 'running';
+		}
+	}
+
+	return 'red';
 }
 
 // Whether a green PR may ride a train: it carries the ready label, or its
@@ -591,6 +631,85 @@ function merge_train_windows_arg($arg)
 	}, (string) $arg) . '"';
 }
 
+// What a tick of the merging session would act on, as one line: each open
+// train whose CI has finished ("train #n <sha> green|red"), or, with no train
+// open, each PR that may ride one ("build #n <sha>"), in number order and
+// joined by "; ". '' when a tick would end quietly: every open train still
+// running, or nothing to build. A train is array('number', 'sha', 'state'),
+// a PR array('number', 'sha'); while a train is open the PRs do not count,
+// as a tick builds no train then.
+function merge_train_wait_state(array $trains, array $eligible)
+{
+	$parts = array();
+
+	if ($trains) {
+		foreach ($trains as $train) {
+			if ($train['state'] !== 'running') {
+				$parts[(int) $train['number']] = 'train #' . (int) $train['number'] . ' ' . $train['sha'] . ' ' . $train['state'];
+			}
+		}
+	} else {
+		foreach ($eligible as $pr) {
+			$parts[(int) $pr['number']] = 'build #' . (int) $pr['number'] . ' ' . $pr['sha'];
+		}
+	}
+
+	ksort($parts);
+
+	return implode('; ', $parts);
+}
+
+// The key --wait prints for a state line and takes back as --since: the
+// first 12 hex digits of its SHA-1, '' for the quiet state.
+function merge_train_wait_key($state)
+{
+	return ($state === '') ? '' : substr(sha1($state), 0, 12);
+}
+
+// Whether --wait ends on a key: there is something to act on, and it is not
+// the state the session woke on last time and chose to leave as it was.
+function merge_train_wait_wakes($key, $since)
+{
+	return ($key !== '') && ($key !== $since);
+}
+
+// The --wait settings from its arguments: 'since' a key --wait printed (12
+// hex digits) or '', 'interval' and 'timeout' in seconds, the interval at
+// least MERGE_TRAIN_WAIT_MIN_INTERVAL so the polling stays well inside
+// GitHub's hourly request budget, 'error' '' or what is wrong.
+function merge_train_wait_settings(array $arguments)
+{
+	$settings = array('since' => '', 'interval' => MERGE_TRAIN_WAIT_INTERVAL, 'timeout' => MERGE_TRAIN_WAIT_TIMEOUT, 'error' => '');
+
+	foreach ($arguments as $argument) {
+		if (!preg_match('/^--(since|interval|timeout)=(.*)$/', (string) $argument, $match)) {
+			$settings['error'] = "Unknown argument: $argument";
+
+			return $settings;
+		}
+
+		if ($match[1] === 'since') {
+			if (($match[2] !== '') && !preg_match('/^[0-9a-f]{12}$/', $match[2])) {
+				$settings['error'] = '--since takes the key --wait printed (12 hex digits).';
+
+				return $settings;
+			}
+
+			$settings['since'] = $match[2];
+		} elseif (!ctype_digit($match[2]) || ((int) $match[2] < 1)) {
+			$settings['error'] = '--' . $match[1] . ' takes a number of seconds.';
+
+			return $settings;
+		} else {
+			$settings[$match[1]] = (int) $match[2];
+		}
+	}
+
+	$settings['interval'] = max(MERGE_TRAIN_WAIT_MIN_INTERVAL, $settings['interval']);
+
+	return $settings;
+}
+
 // The test runner loads this file for the functions above.
 if (defined('PG_TEST_RUNNER')) {
 	return;
@@ -649,12 +768,30 @@ function merge_train_gh($method, $path, array $fields = array())
 	}
 
 	if (merge_train_run($args, $out) !== 0) {
+		if (merge_train_gh_soft()) {
+			throw new RuntimeException("gh api $method $path failed");
+		}
+
 		merge_train_fail("gh api $method $path failed");
 	}
 
 	$data = json_decode($out, true);
 
 	return is_array($data) ? $data : array();
+}
+
+// Whether a failed gh call throws instead of exiting: --wait waits out a
+// network error or GitHub's rate limit instead of waking the session for it.
+// With $soft the setting is changed first.
+function merge_train_gh_soft($soft = null)
+{
+	static $on = false;
+
+	if ($soft !== null) {
+		$on = (bool) $soft;
+	}
+
+	return $on;
 }
 
 // Every page of a list endpoint.
@@ -810,6 +947,7 @@ function merge_train_candidates()
 
 		$candidates[] = array(
 			'number' => (int) $pr['number'],
+			'sha' => $pr['head']['sha'],
 			'product_lines' => merge_train_product_lines($files),
 			'docs_only' => merge_train_docs_only(array_keys($files)),
 			'title' => $pr['title'],
@@ -1255,19 +1393,78 @@ function merge_train_land()
 	fwrite(STDOUT, "Landed $branch ($head) on development.\n");
 }
 
+// The open trains with their CI state and, with none open, the PRs that may
+// ride one, read from GitHub; throws when a gh call fails.
+function merge_train_wait_read()
+{
+	$trains = array();
+
+	foreach (merge_train_open_trains(merge_train_gh_all('pulls?state=open&base=development')) as $train) {
+		$runs = merge_train_gh('GET', 'commits/' . $train['head']['sha'] . '/check-runs?per_page=100');
+		$trains[] = array(
+			'number' => (int) $train['number'],
+			'sha' => $train['head']['sha'],
+			'state' => merge_train_checks_state(isset($runs['check_runs']) ? $runs['check_runs'] : array()),
+		);
+	}
+
+	return merge_train_wait_state($trains, $trains ? array() : merge_train_candidates());
+}
+
+// --wait: polls until a tick would act on a state other than --since, then
+// prints it and exits 0; exits 3 at the timeout. The merging session starts
+// it in the background, so only work wakes the session, not the clock.
+function merge_train_wait(array $arguments)
+{
+	$settings = merge_train_wait_settings($arguments);
+
+	if ($settings['error'] !== '') {
+		merge_train_fail($settings['error'] . "\nUsage: php tools/merge_train.php --wait [--since=KEY] [--interval=SECONDS] [--timeout=SECONDS]");
+	}
+
+	merge_train_gh_soft(true);
+	$deadline = time() + $settings['timeout'];
+
+	while (true) {
+		try {
+			$state = merge_train_wait_read();
+			$key = merge_train_wait_key($state);
+
+			if (merge_train_wait_wakes($key, $settings['since'])) {
+				$wake = (strpos($state, 'train ') === 0) ? 'train' : 'build';
+				fwrite(STDOUT, json_encode(array('key' => $key, 'wake' => $wake, 'state' => $state)) . "\n");
+				exit(0);
+			}
+		} catch (RuntimeException $error) {
+			fwrite(STDERR, $error->getMessage() . "; trying again\n");
+		}
+
+		if ((time() + $settings['interval']) > $deadline) {
+			fwrite(STDERR, "merge_train: nothing to act on before the timeout\n");
+			exit(3);
+		}
+
+		sleep($settings['interval']);
+	}
+}
+
 $mode = '';
 $options = array();
 $numbers = array();
+$wait_arguments = array();
+$usage = 'Usage: php tools/merge_train.php --start [--stack] | --list | --build [<n> ...] [--no-push] | --indexes | --land | --wait [--since=KEY] [--interval=SECONDS] [--timeout=SECONDS]';
 
 foreach (array_slice($argv, 1) as $argument) {
-	if (in_array($argument, array('--start', '--list', '--build', '--indexes', '--land'), true) && ($mode === '')) {
+	if (in_array($argument, array('--start', '--list', '--build', '--indexes', '--land', '--wait'), true) && ($mode === '')) {
 		$mode = $argument;
 	} elseif (in_array($argument, array('--stack', '--no-push'), true)) {
 		$options[] = $argument;
 	} elseif (ctype_digit(ltrim($argument, '#')) && ($mode === '--build')) {
 		$numbers[] = (int) ltrim($argument, '#');
+	} elseif (($mode === '--wait') && (strpos($argument, '=') !== false)) {
+		$wait_arguments[] = $argument;
 	} else {
-		merge_train_fail("Unknown argument: $argument\nUsage: php tools/merge_train.php --start [--stack] | --list | --build [<n> ...] [--no-push] | --indexes | --land");
+		merge_train_fail("Unknown argument: $argument\n$usage");
 	}
 }
 
@@ -1281,6 +1478,8 @@ if ($mode === '--start') {
 	merge_train_indexes();
 } elseif ($mode === '--land') {
 	merge_train_land();
+} elseif ($mode === '--wait') {
+	merge_train_wait($wait_arguments);
 } else {
-	merge_train_fail('Usage: php tools/merge_train.php --start [--stack] | --list | --build [<n> ...] [--no-push] | --indexes | --land');
+	merge_train_fail($usage);
 }

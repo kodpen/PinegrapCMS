@@ -4,6 +4,7 @@
     "pr": "",
     "sessionUrl": false
   },
+  "autoMemoryEnabled": false,
   "channelsEnabled": true,
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
