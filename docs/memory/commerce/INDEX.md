@@ -267,6 +267,7 @@
 - order-returns.md: Customer return model (includes/fn/returns.php; order_returns, order_return_items, step 11.0.11): statuses and moves, held quantities, withdrawal window, refund deadline, what callers check
 - order-screen-head.md: View Order's head under the breadcrumb (#11098): the order number with a copy button, the order, payment and shipping pills worked out from the stored order, the grey line, the toolbar at its right
 - order-screen-offer-code-escape.md: (PR #5215) The panel order screen (view_order.php) escapes the order's special offer code and reference code; an offer code is free text up to 50 characters set by any commerce user
+- order-screen-redraw-rules.md: What the View Order redraw (OS1-OS4, #11098 #11139 #11171 #11204) settled for good: nothing taken away, Save unchanged, what was left out, the drawing as reference, how such a screen is checked [decision: decisions-made-panel-15.md]
 - order-screen-shipment-card.md: View Order's shipment cards (OS3, #11171): one card per address holding its address, its lines as line rows and its shipping fields; "Items not shipped" / "Products"; the line row
 - order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning and how Save writes them
 - order-screen-shipping-input.md: Order screen shipping card input: cancelled order read only and refused by update_order(), ship and delivery dates checked, shipped quantity 0 to ordered, paid on row
