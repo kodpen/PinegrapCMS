@@ -235,10 +235,11 @@ function pg_look_examples($prefix = 'light')
 /**
  * The patterns under the parts: whole pieces of a screen, each copied from
  * the screen that built it, with the classes it is put together from. $prefix
- * keeps the ids apart when they are drawn twice (light and dark).
+ * keeps the ids apart when they are drawn twice (light and dark). 'phone'
+ * marks the patterns the phone pane draws as well.
  *
  * @param string $prefix
- * @return array list of array('id', 'title', 'classes', 'html')
+ * @return array list of array('id', 'title', 'classes', 'html', 'phone')
  */
 function pg_look_examples_patterns($prefix = 'light')
 {
@@ -295,6 +296,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = array(
         'id'      => 'pattern-settings',
         'title'   => lang('Settings pane'),
+        'phone'   => true,
         'classes' => array('.pg-sm-heading', '.pg-sm-desc', '.pg-set-fold', '.pg-set-fold-item', '.is-open', '.pg-set-fold-head', '.pg-set-fold-text', '.pg-set-fold-name', '.pg-set-fold-line', '.pg-set-fold-chevron', '.pg-set-fold-body', '.ws-agset-row', '.ws-agset-face', '.ws-agset-main', '.ws-agset-name', '.ws-agset-state', '.ws-agset-edit'),
         'html'    => '<div class="pg-look-stack">'
             . '<div class="pg-sm-heading"><div class="pg-title-section">' . h(lang('Assistants and agents')) . '</div><p class="pg-sm-desc pg-text-2">' . h(lang('Claude, the agents, Pinegrap AI, voice transcripts, the MCP servers and bulk changes.')) . '</p></div>'
@@ -565,6 +567,7 @@ function pg_look_examples_form_drawer_pattern($p)
     return array(
         'id'      => 'pattern-form',
         'title'   => lang('Form drawer'),
+        'phone'   => true,
         'classes' => array('drawer-header', '.pg-seg', '.pg-list-seg', '.pg-seg-item', '.pg-seg-count', 'role="tablist"', 'role="tab"', 'aria-selected="true"', 'role="tabpanel"', '.pg-pill', '.pg-text-meta', '.pg-field-label', '.pg-card-inner', '.pg-card-inner-row', '.pg-switch', '.pg-set-fold-item', '.pg-set-fold-head', '.pg-set-fold-body', '.pg-button-danger', 'drawer-footer', '.pg-button-quiet', '.pg-button-fill'),
         'html'    => '<div class="pg-look-stack">' . $drawer . $confirm . '</div>'
             . '<p class="pg-text-meta">' . h(lang('From Application Access\' application drawer: tabs as the segmented control, the first tab\'s groups under their labels, Advanced folded, the danger group last; Cancel and the one filled Save in the foot. Delete asks in its own row. A confirm that names what goes with it is "Confirm with its effects".')) . '</p>',
@@ -1248,11 +1251,10 @@ function pg_look_examples_not_done()
         array(
             'title' => lang('Not drawn yet'),
             'items' => array(
-                lang('Dialogs and the settings modal'),
+                lang('Dialogs'),
                 lang('Dashboard cards'),
                 lang('Report screens'),
                 lang('Workspace: channel screen'),
-                lang('Phone widths'),
             ),
         ),
     );
@@ -1270,28 +1272,71 @@ function pg_look_examples_pane($theme)
     $out = '<div class="pg-look-pane" data-bs-theme="' . $theme . '">'
         . '<h2 class="pg-title-section pg-look-pane-title">' . h(($theme === 'dark') ? lang('Dark') : lang('Light')) . '</h2>';
 
-    $draw = function ($section) use ($theme) {
-        return '<section class="pg-look-example" aria-labelledby="pg_look_' . $theme . '_' . $section['id'] . '">'
-            . '<h3 class="pg-title-status" id="pg_look_' . $theme . '_' . $section['id'] . '">' . h($section['title']) . '</h3>'
-            . $section['html']
-            . '<p class="pg-look-classes pg-text-meta">' . implode(' ', array_map(function ($name) {
-                return '<code>' . h($name) . '</code>';
-            }, $section['classes'])) . '</p>'
-            . '</section>';
-    };
-
     foreach (pg_look_examples($theme) as $section) {
-        $out .= $draw($section);
+        $out .= pg_look_examples_section($section, $theme);
     }
 
     // The patterns: whole pieces put together from the parts above.
     $out .= '<h3 class="pg-title-section pg-look-pane-title" id="pg_look_' . $theme . '_patterns">' . h(lang('Patterns')) . '</h3>';
 
     foreach (pg_look_examples_patterns($theme) as $section) {
-        $out .= $draw($section);
+        $out .= pg_look_examples_section($section, $theme);
     }
 
     return $out . '</div>';
+}
+
+/**
+ * One example: its title, its live markup and the classes that draw it.
+ *
+ * @param array $section array('id', 'title', 'classes', 'html')
+ * @param string $prefix the pane's id prefix
+ * @return string
+ */
+function pg_look_examples_section($section, $prefix)
+{
+    return '<section class="pg-look-example" aria-labelledby="pg_look_' . $prefix . '_' . $section['id'] . '">'
+        . '<h3 class="pg-title-status" id="pg_look_' . $prefix . '_' . $section['id'] . '">' . h($section['title']) . '</h3>'
+        . $section['html']
+        . '<p class="pg-look-classes pg-text-meta">' . implode(' ', array_map(function ($name) {
+            return '<code>' . h($name) . '</code>';
+        }, $section['classes'])) . '</p>'
+        . '</section>';
+}
+
+/**
+ * The phone pane: the patterns marked 'phone', drawn on their own page
+ * (design_examples.php?phone=1) that the screen shows in a 390 px frame.
+ * A frame, not a narrow box, because the panel's phone rules are media
+ * queries on the window's width.
+ *
+ * @return string
+ */
+function pg_look_examples_phone_pane()
+{
+    $out = '<div class="pg-look-pane pg-look-phone-pane">';
+
+    foreach (pg_look_examples_patterns('phone') as $section) {
+        if (!empty($section['phone'])) {
+            $out .= pg_look_examples_section($section, 'phone');
+        }
+    }
+
+    return $out . '</div>';
+}
+
+/**
+ * The frame the screen shows the phone pane in: a phone's 390 px wide.
+ *
+ * @return string
+ */
+function pg_look_examples_phone_frame()
+{
+    return '<section class="pg-look-phone" aria-labelledby="pg_look_phone_title">'
+        . '<h2 class="pg-title-section pg-look-pane-title" id="pg_look_phone_title">' . h(lang('Phone')) . '</h2>'
+        . '<p class="pg-text-2 pg-look-phone-line">' . h(lang('The settings pane, the form drawer, the choice cards and the step line at 390 px, as a phone draws them.')) . '</p>'
+        . '<iframe class="pg-look-phone-frame" src="design_examples.php?phone=1" width="390" height="844" loading="lazy" title="' . h(lang('Design examples at 390 px')) . '"></iframe>'
+        . '</section>';
 }
 
 /**
