@@ -89,3 +89,21 @@ function test_panel_header_nothing_over_the_logo()
 	pg_assert_false(strpos($php, 'pinegrap-version') !== false, 'no version pill in the header');
 	pg_assert_false(strpos($css, '.pinegrap-version') !== false, 'no rule left for it');
 }
+
+// The quick note gave way below sm, or its 44px pushed the mascot off a
+// phone's bar (#11187).
+function test_panel_header_phone_quick_note_gives_way()
+{
+	$css = file_get_contents(dirname(__DIR__) . '/pinegrap/assets/css/backend.src.css');
+	$notes = file_get_contents(dirname(__DIR__) . '/pinegrap/includes/workspace/notes.php');
+	$hidden = false;
+
+	foreach (panel_header_phone_test_media_bodies($css, '(max-width: 575.98px)') as $body) {
+		if (preg_match('/#header \.pg-quick-note-nav\s*\{\s*display: none;\s*\}/', $body)) {
+			$hidden = true;
+		}
+	}
+
+	pg_assert_true($hidden, 'below sm the quick note is hidden');
+	pg_assert_true(strpos($notes, '<ul class="navbar-nav pg-quick-note-nav">') !== false, 'the quick note list carries the class');
+}

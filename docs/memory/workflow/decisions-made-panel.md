@@ -18,7 +18,9 @@ description: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose
 - Categories as headings over the rows, never one row per category (Ecommerce stays five rows); a heading only over rows the person gets, also over a single one; Calendars and Forms stay in Content beside Pages and the File Manager; the File Manager row is the destination, the Files row is retired; the store rows lose "All" (`ui/main-menu-categories.md`). Not an empty-heading bug or a lost Files row.
 
 ## Where does the front-end editing button box sit? (owner, 2026-10-29, #3316)
-- In the top-right corner, as before #2879; this replaces the right-edge vertical strip of #2849. The SEO panel and the inline save/cancel pair open under it; the collapse arrow keeps a theme's covered top-right controls reachable; under 768 px it starts collapsed. Its colour follows the site page (`data-bs-theme` / `color-scheme`), not the panel theme, with icons at least 3:1 in both sets (`ui/site-button-box.md`).
+- In the top-right corner, as before #2879; this replaces the right-edge vertical strip of #2849. The SEO panel and the inline save/cancel pair open under it; the collapse arrow keeps a theme's covered top-right controls reachable.
+- Its colour follows the site page (`data-bs-theme` / `color-scheme`), not the panel theme, with icons at least 3:1 in both sets (`ui/site-button-box.md`).
+- Owner (2026-11-23, #11187): it starts open on a phone too; starting collapsed under 768 px hid the way into the toolbar.
 
 ## Why is the menu open on the workspace, file manager and catalog screens? (owner, 2026-10-28)
 - Their own navigation is the menu panel (the Workspace list, the explorer tree, `ui/explorer-menu-tree.md`): the menu comes open there even if mini or hidden is saved; the button narrows it to the rail, never hides it ("daralır ama gizlenmez, dar menü olarak kalır, mobilde gizlenir"), kept in its own cookie; phones keep the shut drawer; the "Folder tree" switch is gone (`ui/main-menu-navigator-screens.md`). Not a lost hidden state.

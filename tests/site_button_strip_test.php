@@ -4,7 +4,7 @@
  *
  * Source checks for the editing button box over a site page
  * (#software_pinegrap_button_container in get_page.php): a row in the
- * top-right corner, collapsed to its arrow by default on a narrow screen,
+ * top-right corner, open by default at every width,
  * with the SEO panel and the inline save/cancel pair opening under it.
  *
  * @author      Erdal Güral (Kodpen)
@@ -46,12 +46,14 @@ function test_site_button_box_sits_in_the_top_right_corner()
 	pg_assert_true($pair !== '' && strpos($pair, 'top: 50%') === false, 'the save/cancel pair is not centred on the edge');
 }
 
-// Collapsed by default under 768 px; the session choice wins once made.
-function test_site_button_box_starts_collapsed_on_a_narrow_screen()
+// Open by default at every width, a phone too (#11187); the session choice
+// wins once made.
+function test_site_button_box_starts_open_on_every_screen()
 {
 	$page = site_button_strip_source('get_page.php');
 
-	pg_assert_true(strpos($page, 'window.matchMedia("(max-width: 767.98px)").matches ? "hide" : "show"') !== false, 'a narrow screen starts collapsed');
+	pg_assert_true(strpos($page, 'max-width: 767.98px') === false, 'a narrow screen no longer starts collapsed');
+	pg_assert_true(strpos($page, "state = \"show\";\n") !== false, 'without a choice the box is open');
 	pg_assert_true(strpos($page, 'if (state !== "show" && state !== "hide") {') !== false, 'the default applies only without a stored choice');
 	pg_assert_true(strpos($page, 'id="software_pinegrap_button_container" role="toolbar" aria-label=') !== false, 'the box is a labelled toolbar');
 	pg_assert_true(strpos($page, 'aria-orientation="vertical"') === false, 'the box is not a vertical toolbar');

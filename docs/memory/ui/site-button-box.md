@@ -1,6 +1,6 @@
 ---
 name: site-button-box
-description: Editing buttons over a site page (get_page.php) as a top-right corner box in the site page's colours (#3316): place, collapse arrow, narrow default, SEO panel and save/cancel pair under it
+description: Editing buttons over a site page (get_page.php): top-right corner box in the page's colours (#3316), collapse arrow, open by default at every width (#11187), SEO panel and save pair under it
 ---
 
 ## Where does the box sit, and why?
@@ -13,7 +13,9 @@ description: Editing buttons over a site page (get_page.php) as a top-right corn
 - The box has no transform: a transformed element becomes the containing block of its fixed descendants, and the arrow and pair are fixed children.
 
 ## When is it open?
-- `toggle_control_buttons()`: the `sessionStorage` choice ("show"/"hide") when there is one; without one, collapsed under 768 px (`max-width: 767.98px`) and open otherwise. The default is not stored, so widening the window opens it. The arrow carries `aria-expanded`; the box is `role="toolbar"` (horizontal), labelled "Page editing controls".
+- `toggle_control_buttons()`: the `sessionStorage` choice ("show"/"hide") when there is one; without one, open at every width. The default is not stored.
+- Until #11187 a screen under 768 px started collapsed: on a phone every new tab (a sign-in, the site's home page) showed only the arrow, and the way into the toolbar looked gone (owner's report).
+- The arrow carries `aria-expanded`; the box is `role="toolbar"` (horizontal), labelled "Page editing controls".
 
 ## Where does the SEO panel go?
 - On the site (seo.php): under the box, `top: 50px; right: 0`, no transform, open at the top and right edges, `max-width: calc(100vw - 8px)` for phones. In the toolbar frame (toolbar.php) the panel is a column under the bar; its rule resets `right: 0`, `transform: none` and the borders.
@@ -22,4 +24,4 @@ description: Editing buttons over a site page (get_page.php) as a top-right corn
 - The page's, not the panel theme's: `dress_control_buttons()` (get_page.php) and the panel's `dress()` (seo.php) put `pg_seo_tb_dark` on when `<html>`'s, then `<body>`'s `data-bs-theme` is "dark"; with neither, when the root `color-scheme` holds only `dark`, or `light dark` and the machine prefers dark. A MutationObserver on html and body (`data-bs-theme`, `class`, `style`) and the `prefers-color-scheme` change event re-dress it.
 - Symptom fixed (#3316): with a dark panel preference, a dark strip sat on light sites. Both read `localStorage['pinegrap backend color scheme']` before.
 - The SEO panel uses the same rule, since it opens from the box and shares `--pg-sp-*`. In the toolbar frame toolbar.php maps both states to panel tokens.
-- Every icon reads 3:1 on both grounds (`tests/seo_score_contrast_test.php`); `tests/site_button_strip_test.php` pins the corner, the narrow default and the panel place.
+- Every icon reads 3:1 on both grounds (`tests/seo_score_contrast_test.php`); `tests/site_button_strip_test.php` pins the corner, the open default and the panel place.

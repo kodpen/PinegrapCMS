@@ -428,7 +428,7 @@ function ws_notes_quick_markup($rights, $parent_target = '')
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
     return '
-                <ul class="navbar-nav">
+                <ul class="navbar-nav pg-quick-note-nav">
                     <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . h(lang('Quick note')) . '">
                         <button type="button" id="pg_quick_note_toggle" class="nav-link nav-link-sm no-popover pg-menu-caret" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false" aria-label="' . h(lang('Quick note')) . '">
                             <span class="bi bi-journal-plus" aria-hidden="true"></span>
