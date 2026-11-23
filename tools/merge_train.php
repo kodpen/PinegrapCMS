@@ -50,7 +50,8 @@
  *             The merging session's waiter: reads GitHub every --interval
  *             seconds (120 by default, at least 30) as a tick would, and
  *             exits once a tick would act: an open train whose CI has
- *             finished, green or red, or with no open train the PRs that
+ *             finished, green or red, or that has had no check run for half
+ *             an hour after its push, or with no open train the PRs that
  *             may ride one. It prints one JSON line (key, wake, state); the
  *             session acts and starts it again with --since=<key>, so a
  *             state it chose to leave as it is does not wake it again. A
@@ -91,6 +92,7 @@ define('MERGE_TRAIN_BUNDLE_COMMIT', 'Rebuild the bundles');
 define('MERGE_TRAIN_WAIT_INTERVAL', 120);
 define('MERGE_TRAIN_WAIT_MIN_INTERVAL', 30);
 define('MERGE_TRAIN_WAIT_TIMEOUT', 3300);
+define('MERGE_TRAIN_WAIT_STUCK_SECONDS', 1800);
 
 // The product lines of a change, path => changed lines: lines in files under
 // pinegrap/, minified bundles and the language files under includes/local/
@@ -207,6 +209,20 @@ function merge_train_checks_state(array $runs)
 	}
 
 	return 'red';
+}
+
+// A train's state for the waiter: its CI state, or 'stuck' when no gating
+// run has started half an hour after its head commit was written, a train
+// whose CI never began and that a tick would never see finish.
+function merge_train_train_state(array $runs, $committed_at, $now)
+{
+	$state = merge_train_checks_state($runs);
+
+	if (($state === 'running') && !merge_train_gating_runs($runs) && ($committed_at > 0) && (($now - $committed_at) >= MERGE_TRAIN_WAIT_STUCK_SECONDS)) {
+		return 'stuck';
+	}
+
+	return $state;
 }
 
 // Whether a green PR may ride a train: it carries the ready label, or its
@@ -632,7 +648,8 @@ function merge_train_windows_arg($arg)
 }
 
 // What a tick of the merging session would act on, as one line: each open
-// train whose CI has finished ("train #n <sha> green|red"), or, with no train
+// train whose CI has finished or never started ("train #n <sha>
+// green|red|stuck"), or, with no train
 // open, each PR that may ride one ("build #n <sha>"), in number order and
 // joined by "; ". '' when a tick would end quietly: every open train still
 // running, or nothing to build. A train is array('number', 'sha', 'state'),
@@ -1401,10 +1418,19 @@ function merge_train_wait_read()
 
 	foreach (merge_train_open_trains(merge_train_gh_all('pulls?state=open&base=development')) as $train) {
 		$runs = merge_train_gh('GET', 'commits/' . $train['head']['sha'] . '/check-runs?per_page=100');
+		$runs = isset($runs['check_runs']) ? $runs['check_runs'] : array();
+		$committed_at = 0;
+
+		// Only a train without a check run needs its age.
+		if (!merge_train_gating_runs($runs)) {
+			$commit = merge_train_gh('GET', 'commits/' . $train['head']['sha']);
+			$committed_at = isset($commit['commit']['committer']['date']) ? (int) strtotime($commit['commit']['committer']['date']) : 0;
+		}
+
 		$trains[] = array(
 			'number' => (int) $train['number'],
 			'sha' => $train['head']['sha'],
-			'state' => merge_train_checks_state(isset($runs['check_runs']) ? $runs['check_runs'] : array()),
+			'state' => merge_train_train_state($runs, $committed_at, time()),
 		);
 	}
 

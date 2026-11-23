@@ -565,3 +565,20 @@ function test_merge_train_wait_settings()
 	pg_assert_false(merge_train_wait_settings(array('--interval=1m'))['error'] === '', 'not a number');
 	pg_assert_false(merge_train_wait_settings(array('--after=3'))['error'] === '', 'an unknown option');
 }
+
+// A train whose CI never started wakes the session after half an hour
+// instead of reading as running for ever.
+function test_merge_train_train_state_stuck()
+{
+	$now = 1800000000;
+	$report = array('name' => 'report to the agent channel', 'status' => 'queued', 'conclusion' => null);
+	$running = array('name' => 'guards', 'status' => 'in_progress', 'conclusion' => null);
+
+	pg_assert_same('running', merge_train_train_state(array(), $now - 600, $now), 'ten minutes after the push');
+	pg_assert_same('stuck', merge_train_train_state(array(), $now - 1800, $now));
+	pg_assert_same('stuck', merge_train_train_state(array($report), $now - 3600, $now), 'only the report job');
+	pg_assert_same('running', merge_train_train_state(array($running), $now - 7200, $now), 'a run that started is not stuck');
+	pg_assert_same('running', merge_train_train_state(array(), 0, $now), 'no commit time');
+	pg_assert_same('green', merge_train_train_state(array(array('name' => 'checks', 'status' => 'completed', 'conclusion' => 'success')), $now - 7200, $now));
+	pg_assert_same('train #4 abc stuck', merge_train_wait_state(array(array('number' => 4, 'sha' => 'abc', 'state' => 'stuck')), array()));
+}
