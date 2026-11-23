@@ -20,7 +20,7 @@ description: Plan connections-merges, the build after poll 149: CX7 the frame, C
 - Done (pages in `ui/connections-service-page.md`): CX11a SEO #10553, CX11b Visitors and privacy #10562, CX11c Languages #10576, CX11d Communication #10621 (WhatsApp, İYS), CX11d2 the SMS providers #10686 (`ui/connections-sms-providers-page.md`), CX11e Mailboxes #10720 (`ui/connections-mailboxes-accounts.md`), CX11f Accounts and sign-in #10785 (`ui/connections-accounts-signin-page.md`: Apple's application, the Turnstile and hCaptcha keys).
 - CX11g Ecommerce, done: g1 the card gateways #10919, g2 Stripe, PayPal, PayTR, Givex #10973, g3 shipping #10988, g4 address autocomplete, Merchant Center #11007 (pages: `ui/connections-payment-*`, `-shipping-*`, `-address-merchant-*`). CX11h Accounting (Paraşüt, Logo İşbaşı): done (#11030).
 - CX11i Integrations (Google reviews): done (#11117).
-- CX11j2 the Chat notifications targets. Architect (2026-11-23, message 12293): they move, Slack, Teams and Telegram each a service page listing its targets with a target's whole block; the card becomes the line to Connections; storage, pg_notify_test() and the queue do not change (full answer: `ui/connections-chat-notify-page.md`). In progress.
+- CX11j2 the Chat notifications targets. Architect (2026-11-23, message 12293): they move, Slack, Teams and Telegram each a service page listing its targets with a target's whole block; the card becomes the line to Connections; storage, pg_notify_test() and the queue do not change (full answer: `ui/connections-chat-notify-page.md`). Done (#11215).
 
 ## Where are CX9's binding decisions?
 - In `api/ai-connections.md` (architect 2026-11-17, message 9391) and `api/ai-connections-feature-cards.md`.

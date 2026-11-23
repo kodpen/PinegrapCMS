@@ -248,6 +248,21 @@ function connections_integrations_may_manage($user) {
 
 }
 
+// May the user change Slack's, Teams' and Telegram's targets? They came
+// from the Chat notifications card of Site Settings › Updates and
+// maintenance, so they keep that category's gate.
+function connections_chat_notify_may_manage($user) {
+
+	if (!defined('PG_SETTINGS_MENU')) {
+		define('PG_SETTINGS_MENU', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	return pg_settings_may_open('maintenance', $user);
+
+}
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
@@ -664,6 +679,72 @@ if ($_POST) {
 			if (!$liveform->check_form_errors() && pg_grev_page_save($grev_decision, $liveform) && $grev_decision['changed']) {
 				$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => h(lang('Google reviews')))));
 				log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => 'Google reviews')), $_SESSION['sessionusername']);
+			}
+
+		}
+
+	}
+
+	// A Slack, Teams or Telegram target saved, added or deleted on its
+	// service's page under the gate of the Chat notifications card it came
+	// from. Only a target of that service is touched; an address or token
+	// the service does not give out is marked with nothing written. "Save
+	// and send a test" sends at once, outside the queue, after the save.
+	if (in_array($action, array('notify_save', 'notify_add', 'notify_delete'), true) && connections_chat_notify_may_manage($user)
+		&& pg_connect_schema_ready() && pg_connect_can_seal()) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/notify_channels_page.php');
+
+		$notify_kind = (isset($_POST['connections_return']) && is_string($_POST['connections_return'])) ? $_POST['connections_return'] : '';
+		$notify_kinds = pg_notify_channel_kinds();
+
+		if (isset($notify_kinds[$notify_kind])) {
+
+			$notify_now = pg_notify_targets(true);
+			$notify_outcome = pg_notify_page_apply($action, $_POST, $notify_kind, $notify_now,
+				array_keys(pg_ops_alert_codes()), array_keys(pg_notify_events()), substr(md5(uniqid('', true) . mt_rand()), 0, 16));
+
+			foreach ($notify_outcome['marks'] as $notify_field => $notify_mark) {
+				$liveform->mark_error($notify_field, h($notify_mark));
+			}
+
+			// The target's name after the write; a deleted one's before it.
+			$notify_id = $notify_outcome['id'];
+			$notify_label = isset($notify_outcome['targets'][$notify_id]['label']) ? (string) $notify_outcome['targets'][$notify_id]['label']
+				: (isset($notify_now[$notify_id]['label']) ? (string) $notify_now[$notify_id]['label'] : '');
+
+			if (!$liveform->check_form_errors() && $notify_outcome['changed']) {
+
+				if (!pg_notify_targets_save($notify_outcome['targets'])) {
+
+					$liveform->add_error(h(lang('This site has no encryption key, so the settings were not saved.')));
+
+				} else {
+
+					if ($action === 'notify_delete') {
+						$liveform->add_notice(lang(array('string' => '{var:1} was deleted.', 'vars' => h($notify_label))));
+					} elseif ($action === 'notify_add') {
+						$liveform->add_notice(lang(array('string' => 'The target {var:1} was added.', 'vars' => h($notify_label))));
+					} else {
+						$liveform->add_notice(lang(array('string' => 'The {var:1} settings were saved.', 'vars' => h($notify_label))));
+					}
+
+					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $notify_kinds[$notify_kind]['label'])), $_SESSION['sessionusername']);
+
+				}
+
+			}
+
+			if (($action === 'notify_save') && !empty($_POST['submit_test']) && ($notify_id !== '') && !$liveform->check_form_errors()) {
+
+				$notify_test = pg_notify_test($notify_id);
+
+				if ($notify_test['ok']) {
+					$liveform->add_notice(lang(array('string' => 'The test message was sent to {var:1}.', 'vars' => array(h($notify_label)))));
+				} else {
+					$liveform->add_error(lang(array('string' => 'The test message to {var:1} was refused: {var:2}', 'vars' => array(h($notify_label), h($notify_test['error'])))));
+				}
+
 			}
 
 		}
@@ -3044,6 +3125,46 @@ function connections_grev_page($page, $may_manage, $can_seal) {
 
 }
 
+/* Slack's, Microsoft Teams' and Telegram's pages: "Connection details"
+   lists that service's targets, each with its name, alert codes, Workspace
+   events, Save, "Save and send a test" and Delete, then Add a target, for
+   who may open Site Settings › Updates and maintenance. "Where it is used"
+   leads to the Alerts card and the Chat notifications card. */
+
+function connections_notify_page($page, $kind, $may_manage) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/notify_channels_page.php');
+
+	$ready = pg_connect_schema_ready() && pg_connect_can_seal();
+	$targets = $ready ? pg_notify_targets(true) : array();
+	$count = pg_notify_target_counts($targets)[$kind];
+
+	if ($may_manage && in_array('details', $page['cards'], true)) {
+		$page['details'] = pg_notify_page_details($kind, $targets, pg_notify_alert_groups(pg_ops_alert_codes()), pg_notify_events(), $ready,
+			function_exists('pg_cron_job_is_enabled') && pg_cron_job_is_enabled('api_webhook_job'));
+	}
+
+	$uses = array(
+		array(lang('Operations alerts'), 'pgset-alerts', lang('Alerts')),
+		array(lang('Chat notifications'), 'pgset-chat-notify', lang('Chat notifications')),
+	);
+
+	foreach ($uses as $use) {
+		$page['uses'] .= '
+				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('maintenance', $use[1])) . '">
+					<span class="connections-row-main">
+						<span class="connections-row-name">' . h($use[0]) . '</span>
+						<span class="pg-text-meta d-block">' . h(lang('Site Settings')) . ' › ' . h(lang('Updates and maintenance')) . ' › ' . h($use[2]) . '</span>
+					</span>
+					<span class="connections-row-side">' . connections_state_pill(($count > 0) ? 'connected' : 'not_connected') . '</span>
+					<i class="bi bi-chevron-right connections-row-chevron" aria-hidden="true"></i>
+				</a>';
+	}
+
+	return $page;
+
+}
+
 /* Google Merchant Center's page: "Connection details" holds what the
    Product Feeds card held, the Merchant Center account, its country, the
    feed registered as a data source and the product issues, for who may
@@ -4359,6 +4480,7 @@ if ($provider_page !== '') {
 			'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
 			'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
 			'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
+			'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
 		)),
 		'details'      => '',
 		'note'         => '',
@@ -4366,7 +4488,8 @@ if ($provider_page !== '') {
 		'uses'         => '',
 		'status_extra' => '',
 		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
-			|| in_array($page_id, pg_connections_screen_accounting_pages(), true) || ($page_id === 'google_reviews'),
+			|| in_array($page_id, pg_connections_screen_accounting_pages(), true) || ($page_id === 'google_reviews')
+			|| in_array($page_id, array('slack', 'teams', 'telegram'), true),
 	);
 
 	// A card gateway's page: its keys and the card that chooses it.
@@ -4417,6 +4540,12 @@ if ($provider_page !== '') {
 	// Google reviews' page: its key and Place ID, and what reads them.
 	if ($page_id === 'google_reviews') {
 		$page = connections_grev_page($page, connections_integrations_may_manage($user), $can_seal);
+	}
+
+	// Slack's, Teams' and Telegram's pages: their targets and the cards
+	// that send to them.
+	if (in_array($page_id, array('slack', 'teams', 'telegram'), true)) {
+		$page = connections_notify_page($page, $page_id, connections_chat_notify_may_manage($user));
 	}
 
 	// A CAPTCHA provider's page: its keys and the card that chooses it.

@@ -11,7 +11,7 @@ module: connections_registry
 - Marketplaces and feeds: n11, Trendyol (`marketplace_settings.php`) by their account; Google Merchant Center (its page, found at `pgset-feeds`) by the Google account for `merchant_center`; OpenAI product feed none.
 - E-documents: Paraşüt, Logo İşbaşı (`connections.php` since CX11h, found at `accounting/pgset-invoice`) by the active e-document provider; VIES (`pgset-store`) none.
 - E-mail: Postmark, Mailgun, Brevo, Resend, Amazon SES (`email/pgset-mail-system`, How e-mail leaves) by the app `mail_<key>`; Gmail and Microsoft 365 mail (the same place) by the account for `mail` (Microsoft's also covers `mail_read`); Mailchimp (`email/pgset-mailchimp`) by `MAILCHIMP`.
-- SMS and messaging (`contact/`): Netgsm, İleti Merkezi, Twilio (`connections.php` since CX11d2) by the app `sms_<key>`; İYS, WhatsApp (since CX11d) by the app `iys` / `whatsapp`; Slack, Microsoft Teams, Telegram (`maintenance/pgset-chat-notify`) by a stored target of that kind.
+- SMS and messaging (`contact/`): Netgsm, İleti Merkezi, Twilio (`connections.php` since CX11d2) by the app `sms_<key>`; İYS, WhatsApp (since CX11d) by the app `iys` / `whatsapp`; Slack, Microsoft Teams, Telegram (`connections.php` since CX11j2) by a stored target of that kind.
 - Files and backups (`maintenance/pgset-backup`): Google Drive, OneDrive, Dropbox by the account for `backup`.
 - Sign-in (`security/pgset-signin`): Google, Microsoft, Apple by `pg_signin_enabled()`.
 - Calendars and notes: Google Calendar, Outlook Calendar (`workspace_team/pgset-ws-calendar`) by the account for `calendar_sync`; OneNote (`connections.php`) by the account for `notes`.

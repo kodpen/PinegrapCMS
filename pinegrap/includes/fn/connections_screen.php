@@ -803,7 +803,9 @@ function pg_connections_screen_carrier_pages()
  *                    that read mailboxes), 'accounting' (bool: may open
  *                    Accounting, Paraşüt's and Logo İşbaşı's connection),
  *                    'integrations' (bool: may open Integrations, Google
- *                    reviews' key and Place ID)
+ *                    reviews' key and Place ID), 'chat_notify' (bool: may
+ *                    open Updates and maintenance, Slack's, Teams' and
+ *                    Telegram's targets)
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -840,6 +842,8 @@ function pg_connections_screen_page_cards($id, $can)
     } elseif (in_array($id, pg_connections_screen_accounting_pages(), true) && !empty($can['accounting'])) {
         $cards[] = 'details';
     } elseif (($id === 'google_reviews') && !empty($can['integrations'])) {
+        $cards[] = 'details';
+    } elseif (in_array($id, array('slack', 'teams', 'telegram'), true) && !empty($can['chat_notify'])) {
         $cards[] = 'details';
     }
 
