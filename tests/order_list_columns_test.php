@@ -50,7 +50,7 @@ function test_order_list_customer_text()
 function test_order_list_items_html()
 {
 	pg_assert_same('', pg_order_list_items_html(null), 'no line, an empty cell');
-	pg_assert_same('Mocha &lt;Chair&gt;', pg_order_list_items_html(array('product_name' => 'Mocha <Chair>', 'line_count' => 1)), 'one line: its product, escaped');
+	pg_assert_same('Mocha &amp; Chair', pg_order_list_items_html(array('product_name' => '<p>Mocha & <b>Chair</b></p>', 'line_count' => 1)), 'one line: its product, tags stripped, escaped');
 
 	$html = pg_order_list_items_html(array('product_name' => 'Green Chair', 'line_count' => '3'));
 	pg_assert_contains('Green Chair', $html, 'the first line\'s product');
@@ -105,6 +105,8 @@ function test_order_list_column_queries()
 	pg_assert_contains('MIN(order_items.id)', $sql, 'the first line');
 	pg_assert_contains('saved_for_later = 0', $sql, 'lines saved for later stay out');
 	pg_assert_false(stripos($sql, ' AS lines') !== false, 'no alias MySQL 8 reserves');
+	pg_assert_contains('LEFT JOIN products ON products.id = order_items.product_id', $sql, 'the product of the first line, kept when it is deleted');
+	pg_assert_contains("COALESCE(NULLIF(products.short_description, ''), order_items.product_name) AS product_name", $sql, 'the name people know, the SKU when there is none');
 
 	$sql = pg_order_list_ship_lines_sql(array(4));
 	pg_assert_contains('LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id', $sql, 'the address from the lines, as View Order reads it');

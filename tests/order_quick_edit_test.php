@@ -52,11 +52,13 @@ function test_order_quick_edit_refuses_cancelled_and_incomplete_as_values()
 
 function test_order_quick_edit_status_badge_per_status()
 {
-	pg_assert_contains('theme-warning', pg_order_list_status_html(order_quick_edit_row(array('status' => 'incomplete')), true), 'incomplete');
-	pg_assert_contains('theme-primary', pg_order_list_status_html(order_quick_edit_row(array('status' => 'complete')), true), 'complete');
-	pg_assert_contains('theme-success', pg_order_list_status_html(order_quick_edit_row(array('status' => 'exported')), true), 'exported');
-	pg_assert_contains('theme-danger', pg_order_list_status_html(order_quick_edit_row(array('status' => 'cancelled')), true), 'cancelled');
-	pg_assert_contains('theme-danger', pg_order_list_status_html(order_quick_edit_row(array('status' => 'canceled')), true), 'the old spelling');
+	pg_assert_contains(pg_pill(lang('Incomplete'), 'gray'), pg_order_list_status_html(order_quick_edit_row(array('status' => 'incomplete')), true), 'incomplete');
+	pg_assert_contains(pg_pill(lang('Complete'), 'teal'), pg_order_list_status_html(order_quick_edit_row(array('status' => 'complete')), true), 'complete');
+	pg_assert_contains(pg_pill(lang('Exported'), 'teal'), pg_order_list_status_html(order_quick_edit_row(array('status' => 'exported')), true), 'exported');
+	pg_assert_contains(pg_pill(lang('Cancelled'), 'rose'), pg_order_list_status_html(order_quick_edit_row(array('status' => 'cancelled')), true), 'cancelled');
+	pg_assert_contains(pg_pill(lang('Cancelled'), 'rose'), pg_order_list_status_html(order_quick_edit_row(array('status' => 'canceled')), true), 'the old spelling');
+	pg_assert_false(strpos(pg_order_list_status_html(order_quick_edit_row(array('status' => 'complete')), true), 'badge') !== false, 'one family with the Payment and Shipping pills');
+	pg_assert_same('', pg_order_list_status_html(order_quick_edit_row(array('status' => '')), true), 'no status, nothing');
 }
 
 function test_order_quick_edit_awaiting_payment_needs_the_paid_column()
@@ -64,7 +66,7 @@ function test_order_quick_edit_awaiting_payment_needs_the_paid_column()
 	$unpaid = order_quick_edit_row(array('payment_method' => 'Offline Payment', 'paid_at' => 0));
 	$badge = lang('Awaiting Payment');
 
-	pg_assert_contains($badge, pg_order_list_status_html($unpaid, true), 'unpaid bank transfer');
+	pg_assert_contains(pg_pill($badge, 'amber'), pg_order_list_status_html($unpaid, true), 'unpaid bank transfer, an amber pill');
 	pg_assert_same(false, strpos(pg_order_list_status_html($unpaid, false), $badge) !== false, 'nothing known before the upgrade');
 	pg_assert_same(false, strpos(pg_order_list_status_html(order_quick_edit_row(array('payment_method' => 'Offline Payment', 'paid_at' => 1700000000)), true), $badge) !== false, 'paid');
 	pg_assert_contains($badge, pg_order_list_status_html(array_merge($unpaid, array('status' => 'exported')), true), 'an exported order can still be unpaid');

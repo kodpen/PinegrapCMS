@@ -833,6 +833,29 @@ function pg_order_view_address_shipping(array $address, $today)
 }
 
 /**
+ * The order pill: the word for orders.status and its tone (Incomplete grey,
+ * Complete and Exported teal, Cancelled rose). View Order's head and the
+ * orders list's Status cell both draw it.
+ *
+ * @param string $status orders.status
+ * @return array array(translated text, tone)
+ */
+function pg_order_status_pill($status)
+{
+    $status = (string) $status;
+    $pills = array(
+        'incomplete' => array(lang('Incomplete'), 'gray'),
+        'complete' => array(lang('Complete'), 'teal'),
+        'exported' => array(lang('Exported'), 'teal'),
+        'cancelled' => array(lang('Cancelled'), 'rose'),
+        // The old single-L spelling some rows still carry.
+        'canceled' => array(lang('Cancelled'), 'rose'),
+    );
+
+    return isset($pills[$status]) ? $pills[$status] : array(lang(ucwords($status)), 'gray');
+}
+
+/**
  * The three pills of the order screen's head, worked out from what the
  * screen already read: the order (its status), the payment and the
  * shipping, and the shipping pill of each address for its shipment card.
@@ -848,13 +871,7 @@ function pg_order_view_address_shipping(array $address, $today)
 function pg_order_view_states(array $order, array $addresses, $today)
 {
     $status = (string) ($order['status'] ?? '');
-    $order_pills = array(
-        'incomplete' => array(lang('Incomplete'), 'gray'),
-        'complete' => array(lang('Complete'), 'teal'),
-        'exported' => array(lang('Exported'), 'teal'),
-        'cancelled' => array(lang('Cancelled'), 'rose'),
-    );
-    $order_pill = isset($order_pills[$status]) ? $order_pills[$status] : array(lang(ucwords($status)), 'gray');
+    $order_pill = pg_order_status_pill($status);
 
     // Payment: the awaiting state first, as the Order Information card's
     // badge words it; then the refund; then how it was paid.

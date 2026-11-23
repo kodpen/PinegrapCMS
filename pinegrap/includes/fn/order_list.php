@@ -514,8 +514,10 @@ function pg_order_list_customer_text($first_name, $last_name, $company)
 
 /**
  * The query that reads the first line of each order and how many lines it
- * has (order_id, product_name, line_count). Lines saved for later are left
- * out, as the cart and the order leave them out.
+ * has (order_id, product_name, line_count). product_name is the name people
+ * know (products.short_description), as Summary reads it: order_items keeps
+ * the SKU there, which a deleted product falls back to. Lines saved for
+ * later are left out, as the cart and the order leave them out.
  *
  * @param array  $order_ids  order ids; anything but a positive integer is dropped
  * @param string $active_sql pg_order_item_active_sql() of the caller
@@ -531,7 +533,7 @@ function pg_order_list_items_sql($order_ids, $active_sql = '')
 
     return "SELECT
             first_line.order_id,
-            order_items.product_name,
+            COALESCE(NULLIF(products.short_description, ''), order_items.product_name) AS product_name,
             first_line.line_count
         FROM (
             SELECT
@@ -543,7 +545,8 @@ function pg_order_list_items_sql($order_ids, $active_sql = '')
                 (order_items.order_id IN (" . implode(', ', $ids) . "))" . $active_sql . "
             GROUP BY order_items.order_id
         ) AS first_line
-        INNER JOIN order_items ON order_items.id = first_line.first_id";
+        INNER JOIN order_items ON order_items.id = first_line.first_id
+        LEFT JOIN products ON products.id = order_items.product_id";
 }
 
 /**
@@ -735,7 +738,8 @@ function pg_order_list_items_html($line)
         return '';
     }
 
-    $html = h((string) ($line['product_name'] ?? ''));
+    // short_description may carry markup from the product editor.
+    $html = h(trim(strip_tags((string) ($line['product_name'] ?? ''))));
     $others = (int) ($line['line_count'] ?? 0) - 1;
 
     if ($others > 0) {
