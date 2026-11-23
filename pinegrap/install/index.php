@@ -9088,6 +9088,7 @@ function get_tables() {
 		'import_items',
 		'imports',
 		'key_codes',
+		'launch_summary_lines',
 		'lead_browsers',
 		'lead_visits',
 		'log',

@@ -262,6 +262,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_volunteer_shifts();        // 11.0.270
 	upgrade_2026_11_0_kvkk_switch();             // 11.0.271
 	upgrade_2026_11_0_order_cost_supplier();     // 11.0.272
+	upgrade_2026_11_0_launch_summary_lines();    // 11.0.273
 
 }
 
@@ -9286,5 +9287,31 @@ function upgrade_2026_11_0_kvkk_switch() {
 	db_q("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', ?)", array($on));
 
 	install_note('KVKK notice: the notice page and the consent sentence now have a switch of their own under Site Settings, Visitors and privacy, KVKK notice. It starts as the legal documents switch is now, so nothing changes until you change it.');
+
+}
+
+// 11.0.273 - The agency summary's "What we need from you" lines (owner, poll
+// 206; the launch journey). One row is one line the agency wrote for the
+// customer: its text, the customer's text answer and when it was given, and
+// its place in the list. The summary link's hash and expiry, the site's
+// purpose and the go-live time are one JSON row in config_text, so no column
+// is added to an existing table. A line names no person: the customer answers
+// through the signed link, not as a user or a contact.
+function upgrade_2026_11_0_launch_summary_lines() {
+
+	install_create_table('launch_summary_lines', "CREATE TABLE launch_summary_lines (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		line_text    VARCHAR(500) NOT NULL DEFAULT '',
+		answer       TEXT NULL,
+		answered_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		sort_order   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order (sort_order)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Set-up journey: the table for the agency summary\'s lines was added; it stays empty until an agency writes one.');
 
 }
