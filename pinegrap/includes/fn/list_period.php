@@ -291,16 +291,22 @@ function pg_list_period_range_from_dates($start, $stop)
 
 /**
  * One date of a range in the site's date order with the month's name in
- * the panel language: '26 September 2026' or 'September 26, 2026'.
+ * the panel language: '26 September 2026' or 'September 26, 2026'; short,
+ * '26 Sep 2026' or 'Sep 26, 2026'.
  *
  * @param array  $range       the range
  * @param string $which       'start' or 'stop'
  * @param string $date_format 'day_month' or 'month_day'
+ * @param bool   $short       the month's short name
  * @return string
  */
-function pg_list_period_date($range, $which, $date_format)
+function pg_list_period_date($range, $which, $date_format, $short = false)
 {
-    $month = get_month_name_from_number(sprintf('%02d', (int) ($range[$which . '_month'] ?? 0)));
+    $number = (int) ($range[$which . '_month'] ?? 0);
+    $short_names = array(1 => 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
+    $month = ($short && isset($short_names[$number]))
+        ? lang($short_names[$number])
+        : get_month_name_from_number(sprintf('%02d', $number));
     $day = (int) ($range[$which . '_day'] ?? 0);
     $year = (int) ($range[$which . '_year'] ?? 0);
 
@@ -316,22 +322,33 @@ function pg_list_period_date($range, $which, $date_format)
  * site's date order ('26 September 2026 – 27 October 2026'); a one-day
  * range is written once. Not escaped.
  *
+ * Short, the months are their short names and a range inside one year
+ * names the year once at its end ('22 Oct – 22 Nov 2026',
+ * 'Oct 22 – Nov 22, 2026'), for a bar that must stay one row.
+ *
  * @param array       $range       the range on screen
  * @param string|null $date_format 'day_month' or 'month_day'; the site's
  *                                 DATE_FORMAT when null
+ * @param bool        $short       short month names, the year once
  * @return string
  */
-function pg_list_period_heading($range, $date_format = null)
+function pg_list_period_heading($range, $date_format = null, $short = false)
 {
     if ($date_format === null) {
         $date_format = defined('DATE_FORMAT') ? DATE_FORMAT : 'month_day';
     }
 
-    $start = pg_list_period_date($range, 'start', $date_format);
-    $stop = pg_list_period_date($range, 'stop', $date_format);
+    $start = pg_list_period_date($range, 'start', $date_format, $short);
+    $stop = pg_list_period_date($range, 'stop', $date_format, $short);
 
     if ($start === $stop) {
         return $start;
+    }
+
+    if ($short && ((int) ($range['start_year'] ?? 0) === (int) ($range['stop_year'] ?? 0))) {
+        $year = (int) ($range['start_year'] ?? 0);
+        $suffix = ($date_format === 'month_day') ? ', ' . $year : ' ' . $year;
+        $start = substr($start, 0, -strlen($suffix));
     }
 
     return $start . ' – ' . $stop;

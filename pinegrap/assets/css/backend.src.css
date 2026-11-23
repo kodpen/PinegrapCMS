@@ -9823,6 +9823,38 @@ button.no-popover:focus-visible {
   min-width: 0;
   max-width: 100%;
 }
+/* The status select keeps the bar one row at 1440 px: at most 200 px, its
+   text cut with an ellipsis (.pg-toolbar-filter select); the open list shows
+   the whole text. The utility w-auto sets the width, so the cap is a
+   max-width. */
+.pg-orders-bar-end #status { max-width: 200px; }
+/* On a phone Sort, the status select, the type select and the filters button
+   share one row, the status select taking the free width; Sort stays first
+   in its markup place, so Tab follows the rows. */
+@media (max-width: 575.98px) {
+  .pg-orders-bar-end {
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+  .pg-orders-bar-end > .pg-toolbar-filter:has(#status) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .pg-orders-bar-end #status {
+    min-width: 100%;
+    max-width: 100%;
+  }
+}
+/* Customer and Products give way so the default columns fit beside the open
+   Filters panel: one line, cut with an ellipsis, the whole text as the
+   title (pg_order_list_clip_html()). */
+.pg-orders-clip {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .pg-orders-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

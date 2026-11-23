@@ -727,7 +727,36 @@ function pg_order_list_pill_html($pill)
 }
 
 /**
- * The Items cell: the first line's product and "+N more" for the others.
+ * The text of a cell that gives way when the list is narrow: one line cut
+ * with an ellipsis, the whole text as its title.
+ *
+ * @param string $html  the cell's markup
+ * @param string $title the whole text, plain
+ * @return string HTML
+ */
+function pg_order_list_clip_html($html, $title)
+{
+    if ((string) $html === '') {
+        return '';
+    }
+
+    return '<span class="pg-orders-clip" title="' . h((string) $title) . '">' . $html . '</span>';
+}
+
+/**
+ * The Customer cell: the name, cut with an ellipsis when it is long.
+ *
+ * @param string $text pg_order_list_customer_text()
+ * @return string HTML
+ */
+function pg_order_list_customer_html($text)
+{
+    return pg_order_list_clip_html(h((string) $text), (string) $text);
+}
+
+/**
+ * The Items cell: the first line's product and "+N more" for the others,
+ * cut with an ellipsis when it is long.
  *
  * @param array|null $line pg_order_list_items_sql() row
  * @return string HTML
@@ -739,12 +768,16 @@ function pg_order_list_items_html($line)
     }
 
     // short_description may carry markup from the product editor.
-    $html = h(trim(strip_tags((string) ($line['product_name'] ?? ''))));
+    $name = trim(strip_tags((string) ($line['product_name'] ?? '')));
+    $html = h($name);
+    $title = $name;
     $others = (int) ($line['line_count'] ?? 0) - 1;
 
     if ($others > 0) {
-        $html .= ' <small class="fg-secondary">' . h(lang(array('string' => '+{var:1} more', 'vars' => array($others)))) . '</small>';
+        $more = lang(array('string' => '+{var:1} more', 'vars' => array($others)));
+        $html .= ' <small class="fg-secondary">' . h($more) . '</small>';
+        $title .= ' ' . $more;
     }
 
-    return $html;
+    return pg_order_list_clip_html($html, $title);
 }

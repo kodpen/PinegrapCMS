@@ -50,11 +50,20 @@ function test_order_list_customer_text()
 function test_order_list_items_html()
 {
 	pg_assert_same('', pg_order_list_items_html(null), 'no line, an empty cell');
-	pg_assert_same('Mocha &amp; Chair', pg_order_list_items_html(array('product_name' => '<p>Mocha & <b>Chair</b></p>', 'line_count' => 1)), 'one line: its product, tags stripped, escaped');
+	pg_assert_same('<span class="pg-orders-clip" title="Mocha &amp; Chair">Mocha &amp; Chair</span>', pg_order_list_items_html(array('product_name' => '<p>Mocha & <b>Chair</b></p>', 'line_count' => 1)), 'one line: its product, tags stripped, escaped, cut with its title');
 
+	$more = lang(array('string' => '+{var:1} more', 'vars' => array(2)));
 	$html = pg_order_list_items_html(array('product_name' => 'Green Chair', 'line_count' => '3'));
 	pg_assert_contains('Green Chair', $html, 'the first line\'s product');
-	pg_assert_contains(h(lang(array('string' => '+{var:1} more', 'vars' => array(2)))), $html, 'the other lines counted');
+	pg_assert_contains(h($more), $html, 'the other lines counted');
+	pg_assert_contains('title="' . h('Green Chair ' . $more) . '"', $html, 'the whole text as the title');
+}
+
+function test_order_list_customer_html()
+{
+	pg_assert_same('', pg_order_list_customer_html(''), 'no customer, an empty cell');
+	pg_assert_same('<span class="pg-orders-clip" title="Ada &lt;Lovelace&gt;">Ada &lt;Lovelace&gt;</span>', pg_order_list_customer_html('Ada <Lovelace>'), 'escaped, cut with its title');
+	pg_assert_contains('pg_order_list_customer_html($output_customer)', file_get_contents(dirname(__DIR__) . '/pinegrap/view_orders.php'), 'the list draws the Customer cell with it');
 }
 
 function test_order_list_addresses_feed_the_pill_function()

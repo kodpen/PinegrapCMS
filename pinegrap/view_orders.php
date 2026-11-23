@@ -309,8 +309,8 @@ $increase_day['stop_year'] = $increase_day['new_year'];
 $start_timestamp = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
 $stop_timestamp = mktime(23, 59, 59, ($_SESSION['software']['ecommerce']['view_orders']['stop_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['stop_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['stop_year'] ?? ''));
 
-// The range on screen, in the site's date order.
-$output_date_range_time = h(pg_list_period_heading($_SESSION['software']['ecommerce']['view_orders'] ?? array()));
+// The range on screen, in the site's date order, short so the bar stays one row.
+$output_date_range_time = h(pg_list_period_heading($_SESSION['software']['ecommerce']['view_orders'] ?? array(), null, true));
 
 // if advanced filters are not set yet, then default them to off
 if (isset($_SESSION['software']['ecommerce']['view_orders']['advanced_filters']) == false) {
@@ -2713,7 +2713,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             'id' => (int) $id,
             'cells' => array(
                 'order_number' => pg_list_cell(pg_commerce_list_open_link('view_order.php?id=' . (int) $id . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_orders.php'), h($output_row_name)), 'align-middle', array('data-pg-sort-value' => (string) $order_number)),
-                'customer' => pg_list_cell(h($output_customer), 'align-middle', array('data-pg-sort-value' => $output_customer)),
+                'customer' => pg_list_cell(pg_order_list_customer_html($output_customer), 'align-middle', array('data-pg-sort-value' => $output_customer)),
                 'payment' => pg_list_cell(pg_order_list_pill_html($row_states[(int) $id]['payment'] ?? null), 'align-middle text-nowrap'),
                 'shipping' => pg_list_cell(pg_order_list_pill_html($row_states[(int) $id]['shipping'] ?? null), 'align-middle text-nowrap'),
                 'items' => pg_list_cell(pg_order_list_items_html($row_states[(int) $id]['items'] ?? null)),
