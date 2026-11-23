@@ -166,6 +166,10 @@
 - storefront-api-routes-cart.md: Storefront API design note: the cart routes (create, read, add/update/remove line, coupon, shipping choice), their scopes and the cart code each one calls instead of copying it
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
+- user-docs-2026-11-modules.md: Plan user-docs-2026-11: which 2026.11.0 feature goes on which module page of pinegrap.com (designer, SEO, commerce, ERP, Workspace, API, security), with the memory to write it from
+- user-docs-2026-11-new-pages.md: Plan user-docs-2026-11: the new pinegrap.com documentation pages (/templates, /visual-page-editor-cont, /artifact-canvas), what each holds, and where the other planned pages went instead
+- user-docs-2026-11-pages.md: Plan user-docs-2026-11: which 2026.11.0 feature goes on which existing pinegrap.com page, with the memory to write it from
+- user-docs-2026-11.md: Plan (owner 2026-11-23): pinegrap.com docs from #500 to 2026.11.0; features, help anchors, how-to pass and three new pages done; left the smaller changes and UD15
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - volunteer-shifts-features.md: Plan volunteer-shifts, features G1 to G16: programmes, profiles from the form, documents, shifts and roles, sign-up, waitlist, swaps, the unfilled call, check-in, hours, certificate, report
 - volunteer-shifts-screens-own.md: Plan volunteer-shifts, the volunteer's own pages (VS4, VS6, VS7) in the site's look and the scan page on a phone; the words the screens use
