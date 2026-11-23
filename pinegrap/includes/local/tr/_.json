@@ -2168,6 +2168,7 @@
     "{var:1} users were imported": "{var:1} kullanıcı içe aktarıldı",
     "{var:1} uses the connection's key now.": "{var:1} artık bağlantıdaki anahtarı kullanıyor.",
     "{var:1} valid": "{var:1} geçerli",
+    "{var:1} values": "{var:1} değer",
     "{var:1} variant product{suffix:1} were created in group ({var:2})": "{var:1} varyant ürün ({var:2}) grubunda oluşturuldu.",
     "{var:1} variant product{suffix:1} were created.": "{var:1} varyant ürün oluşturuldu.",
     "{var:1} variant set was updated": "{var:1} varyant seti güncellendi",

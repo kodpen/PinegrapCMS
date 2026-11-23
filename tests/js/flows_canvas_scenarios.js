@@ -669,14 +669,18 @@ module.exports = [
     },
 
     {
-        name: 'data threads: a value an earlier box gives hangs as a thread into the field that reads it; a value dragged onto a field is put in it; the toggle hides them and is kept',
+        name: 'data threads: none at rest but a mark on the box reading values; the box in hand shows its threads, a value dragged onto a field is put in it; the strip button draws them all and is kept',
         fixture: 'threads',
         run: async (h) => {
             await h.open();
 
-            const threads = () => h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .pgc-edges .wsf-thread:not(.wsf-thread-hit)'), (path) => [path.getAttribute('data-from'), path.getAttribute('data-to'), path.getAttribute('data-field'), path.classList.contains('wsf-dim')]));
+            const threads = () => h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .pgc-edges .wsf-thread:not(.wsf-thread-hit)'), (path) => [path.getAttribute('data-from'), path.getAttribute('data-to'), path.getAttribute('data-field')]));
 
-            h.same('one thread, from the task to the field reading it', await threads(), [['task_1', 'task_2', 'description', false]]);
+            h.same('at rest no thread', await threads(), []);
+            h.ok('the reading box carries the values mark', !!(await h.probe('find', { css: BOX('task_2') + ' .wsf-data-mark' })));
+
+            await pick(h, 'task_2');
+            h.same('chosen: one thread, from the task to the field reading it', await threads(), [['task_1', 'task_2', 'description']]);
             h.ok('the field shows as a chip under the box', !!(await h.probe('find', { css: BOX('task_2') + ' .wsf-data-field', text: h.t('fl_description') })));
             h.ok('the value as a dot under the box giving it', !!(await h.probe('find', { css: BOX('task_1') + ' .wsf-data-out' })));
 
@@ -694,9 +698,9 @@ module.exports = [
             h.ok('it hangs from under the dot to under the chip', (ends.from < 3) && (ends.to < 3), ends);
 
             await pick(h, 'end_1');
-            h.same('a box selected dims the threads that do not touch it', (await threads()).map((thread) => thread[3]), [true]);
+            h.same('a box chosen draws none of the threads that do not touch it', await threads(), []);
             await pick(h, 'task_1');
-            h.same('and not those that do', (await threads()).map((thread) => thread[3]), [false]);
+            h.same('and those that do', (await threads()).length, 1);
 
             // Fitted, the first boxes are under the palette: the canvas is
             // moved clear of it first.
@@ -717,10 +721,11 @@ module.exports = [
             h.same('the server finds nothing wrong with it', (await h.state()).problems.text, h.t('fl_no_problems'));
 
             await h.click({ label: h.t('fl_threads'), within: STRIP });
-            h.ok('the toggle hides them', await h.page(() => document.querySelector('#ws-root .pgc-stage').classList.contains('wsf-threads-off')));
+            await pick(h, 'end_1');
+            h.same('pressed, every thread is drawn', (await threads()).length, 2);
             await h.open();
-            h.ok('still hidden when the screen is opened again', await h.page(() => document.querySelector('#ws-root .pgc-stage').classList.contains('wsf-threads-off')));
-            h.same('the toggle says so', await h.page((harness, label) => harness.find({ label: label, within: '#ws-root .wsf-strip' }).getAttribute('aria-pressed'), h.t('fl_threads')), 'false');
+            h.same('still every one when the screen is opened again', (await threads()).length, 2);
+            h.same('the toggle says so', await h.page((harness, label) => harness.find({ label: label, within: '#ws-root .wsf-strip' }).getAttribute('aria-pressed'), h.t('fl_threads')), 'true');
             h.ok('and the bar has no such toggle', !(await h.probe('find', { label: h.t('fl_threads'), within: BAR })));
         }
     },

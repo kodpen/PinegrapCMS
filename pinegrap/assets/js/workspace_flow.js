@@ -3511,7 +3511,6 @@
 
     function drawAll() {
         ui.stage.classList.toggle('d-none', state.outline);
-        ui.stage.classList.toggle('wsf-threads-off', !state.threads);
         ui.outlineBox.classList.toggle('d-none', !state.outline);
         ui.app.classList.toggle('wsf-outlined', state.outline);
         drawCanvas();
@@ -3820,8 +3819,10 @@
     // The row under a box: a field chip's and a value dot's full width, the
     // gap between them, where the row starts and ends inside the box, and
     // the ring's size; all 14 px high, half under the box's bottom edge. A
-    // thread bends at most `deep` px further down to pass under a box.
-    var DATA_ROW = { field: 76, out: 84, gap: 4, left: 8, half: 7, ring: 14, deep: 160 };
+    // thread bends at most `deep` px further down to pass under a box, and
+    // runs `upright` px straight down from its dot and straight up into its
+    // chip, so it never crosses a name beside them.
+    var DATA_ROW = { field: 76, out: 84, gap: 4, left: 8, half: 7, ring: 14, deep: 160, upright: 12 };
 
     // A loop's frame around its boxes: beside them, above (its label) and
     // below (their data rows).
@@ -3884,17 +3885,22 @@
         return slots;
     }
 
-    // A thread hanging from (x1, y1) to (x2, y2), sag px below the lower
-    // end. When its curve would pass under one of the boxes given ({ x, y }
-    // of their top left corner, the two it joins left out), it hangs deeper,
-    // 16 px at a time, until it passes below them all, at most DATA_ROW.deep
-    // px more; past that (a box far below) it keeps its own sag. Gives the
-    // path and the sag taken.
+    // A thread hanging from (x1, y1) to (x2, y2): upright for its first and
+    // last DATA_ROW.upright px, between them a cubic curve whose control points
+    // stand right below its ends, two thirds of sag px below the lower end
+    // (so it bottoms out about sag / 2 below it). When the curve would pass
+    // under one of the boxes given ({ x, y } of their top left corner, the
+    // two it joins left out), it hangs deeper, 16 px at a time, until it
+    // passes below them all, at most DATA_ROW.deep px more; past that (a box
+    // far below) it keeps its own sag. Gives the path and the sag taken.
     function threadPath(x1, y1, x2, y2, sag, boxes) {
-        var low = Math.max(y1, y2);
+        var a = y1 + DATA_ROW.upright;
+        var b = y2 + DATA_ROW.upright;
+        var control = function (depth) {
+            return Math.max(a, b) + Math.round(depth * 2 / 3);
+        };
         var crosses = function (depth) {
-            var cx = (x1 + x2) / 2;
-            var cy = low + depth;
+            var cy = control(depth);
 
             return boxes.some(function (box) {
                 var left = box.x - 4;
@@ -3904,8 +3910,9 @@
 
                 for (var n = 1; n < 24; n++) {
                     var u = n / 24;
-                    var x = (1 - u) * (1 - u) * x1 + 2 * u * (1 - u) * cx + u * u * x2;
-                    var y = (1 - u) * (1 - u) * y1 + 2 * u * (1 - u) * cy + u * u * y2;
+                    var v = 1 - u;
+                    var x = v * v * v * x1 + 3 * u * v * v * x1 + 3 * u * u * v * x2 + u * u * u * x2;
+                    var y = v * v * v * a + 3 * u * v * (v + u) * cy + u * u * u * b;
 
                     if ((x > left) && (x < right) && (y > top) && (y < bottom)) {
                         return true;
@@ -3925,7 +3932,9 @@
             depth = sag;
         }
 
-        return { d: 'M' + x1 + ' ' + y1 + ' Q' + ((x1 + x2) / 2) + ' ' + (low + depth) + ' ' + x2 + ' ' + y2, sag: depth };
+        var cy = control(depth);
+
+        return { d: 'M' + x1 + ' ' + y1 + ' V' + a + ' C' + x1 + ' ' + cy + ' ' + x2 + ' ' + cy + ' ' + x2 + ' ' + b + ' V' + y2, sag: depth };
     }
 
     function fieldTexts(node) {
@@ -4236,11 +4245,16 @@
     // boxes hang 4 px apart. The row is hidden from screen readers: the
     // outline says the same in words.
     function drawData() {
-        Array.prototype.slice.call(ui.layer.querySelectorAll('.wsf-thread, .wsf-data')).forEach(function (node) {
+        Array.prototype.slice.call(ui.layer.querySelectorAll('.wsf-thread, .wsf-data, .wsf-data-mark')).forEach(function (node) {
             node.remove();
         });
 
-        var threads = dataThreads();
+        var every = dataThreads();
+        var focus = state.threads ? null : threadFocus();
+        var touches = function (thread) {
+            return (focus.indexOf(String(thread.to)) !== -1) || (!!thread.from && (focus.indexOf(String(thread.from)) !== -1));
+        };
+        var threads = focus ? every.filter(touches) : every;
         var binding = state.binding;
         var rows = {};
         var row = function (id) {
@@ -4295,11 +4309,11 @@
             into.labels[thread.field] = into.labels[thread.field] || thread;
         });
 
-        // In a draft a thread may start from any value of the box selected,
-        // and from every dot already drawn.
-        var live = (state.edit && !state.run && state.selected && (state.selected.type === 'node')) ? nodeById(state.selected.id) : null;
+        // In a draft a thread may start from any value of the box chosen or
+        // pointed at, and from every dot already drawn.
+        var live = (state.edit && !state.run) ? (focus || threadFocus()).map(nodeById).filter(Boolean) : [];
 
-        if (live) {
+        live.forEach(function (live) {
             boxValues(live).forEach(function (value) {
                 var item = row(live.id);
 
@@ -4309,7 +4323,7 @@
                     item.values[value.token] = { value: value.label, type: THREAD_TONES[value.type] ? value.type : 'text', tone: 0, unused: true };
                 }
             });
-        }
+        });
 
         // A thread being drawn: every field it may go into lights up.
         var targets = binding ? bindTargets(binding.from, binding.token) : [];
@@ -4446,7 +4460,7 @@
             threadHit(path, thread);
         });
 
-        markThreads();
+        markThreads(every, focus);
 
         return targets.length;
     }
@@ -4617,24 +4631,106 @@
         });
     }
 
-    // With a box selected its threads are drawn at full colour, the others
-    // dimmed; with none (or an arrow) all of them.
-    function markThreads() {
+    // The boxes whose threads are drawn while the strip's Data threads is not
+    // pressed: the one a thread is being drawn from, the box chosen (a chosen
+    // thread: the box it goes into) and the box pointed at (state.pointed).
+    function threadFocus() {
         var selected = state.selected;
-        var id = (selected && (selected.type === 'node')) ? String(selected.id) : '';
+        var ids = [];
 
-        Array.prototype.forEach.call(ui.layer.querySelectorAll('.wsf-thread, .wsf-data'), function (item) {
-            item.classList.toggle('wsf-dim', !!id && ((item.getAttribute('data-ends') || '').split(' ').indexOf(id) === -1));
+        if (state.binding) {
+            ids.push(String(state.binding.from));
+        }
+
+        if (selected && (selected.type === 'node')) {
+            ids.push(String(selected.id));
+        } else if (selected && (selected.type === 'thread')) {
+            ids.push(String(selected.id).split(' ')[0]);
+        }
+
+        if (state.pointed) {
+            ids.push(String(state.pointed));
+        }
+
+        return ids;
+    }
+
+    // A box that reads values and whose threads are not drawn carries one
+    // mark on its bottom edge: a dot per value in the value's colour (red for
+    // one no box before it gives), then "2 values". Pointing at the box
+    // draws its threads (pointThreads()). Hidden from screen readers: the
+    // outline says what each box reads.
+    function markThreads(threads, focus) {
+        if (!focus) {
+            return;
+        }
+
+        var reads = {};
+
+        threads.forEach(function (thread) {
+            var id = String(thread.to);
+
+            if (focus.indexOf(id) === -1) {
+                (reads[id] = reads[id] || []).push(thread);
+            }
+        });
+
+        Object.keys(reads).forEach(function (id) {
+            var box = ui.boxes.querySelector('.pgc-node[data-node="' + id + '"]');
+            var count = reads[id].length;
+            var text = (count === 1) ? t('fl_values_one') : t('fl_values_mark', count);
+
+            if (!box) {
+                return;
+            }
+
+            var mark = el('span', 'wsf-data-mark');
+
+            reads[id].slice(0, 5).forEach(function (thread) {
+                mark.appendChild(el('span', 'wsf-data-mark-dot ' + (thread.from ? toneClass(thread) : 'wsf-data-bad')));
+            });
+
+            mark.appendChild(el('span', 'wsf-data-mark-label', text));
+            mark.title = text;
+            mark.setAttribute('aria-hidden', 'true');
+            box.appendChild(mark);
         });
     }
 
-    // The "Data threads" toggle: shown unless the viewer hid them, kept in
-    // this browser.
+    // Pointing at a box draws its threads; they go 200 ms after the pointer
+    // leaves it (to another box: that box's at once). Not while a thread is
+    // being drawn, whose box stays in hand.
+    function pointThreads(id) {
+        id = id ? String(id) : '';
+        window.clearTimeout(state.pointTimer);
+
+        var apply = function () {
+            if (state.binding || ((state.pointed || '') === id)) {
+                return;
+            }
+
+            state.pointed = id;
+
+            if (!state.threads) {
+                drawData();
+            }
+        };
+
+        if (id) {
+            apply();
+        } else {
+            state.pointTimer = window.setTimeout(apply, 200);
+        }
+    }
+
+    // The strip's "Data threads": pressed, every thread of the flow is
+    // drawn; not pressed (the start), only those of the box in hand
+    // (threadFocus()). The choice is kept in this browser.
     function threadsShown() {
         try {
-            return window.localStorage.getItem('pg_wsf_threads') !== 'off';
+            return window.localStorage.getItem('pg_wsf_threads') === 'all';
         } catch (error) {
-            return true;
+            return false;
         }
     }
 
@@ -4646,16 +4742,12 @@
         button.addEventListener('click', function () {
             state.threads = !state.threads;
             button.setAttribute('aria-pressed', state.threads ? 'true' : 'false');
-            ui.stage.classList.toggle('wsf-threads-off', !state.threads);
-
-            if (!state.threads && state.selected && (state.selected.type === 'thread')) {
-                select(null);
-            }
+            drawData();
 
             try {
-                window.localStorage.setItem('pg_wsf_threads', state.threads ? 'on' : 'off');
+                window.localStorage.setItem('pg_wsf_threads', state.threads ? 'all' : 'focus');
             } catch (error) {
-                // Not kept: shown again next time.
+                // Not kept: not pressed again next time.
             }
         });
 
@@ -14341,6 +14433,21 @@
 
         canvas.bind();
 
+        // A box pointed at shows its data threads (pointThreads()).
+        ui.boxes.addEventListener('pointerover', function (event) {
+            var box = event.target.closest ? event.target.closest('.pgc-node[data-node]') : null;
+
+            pointThreads(box ? box.getAttribute('data-node') : '');
+        });
+
+        ui.boxes.addEventListener('pointerout', function (event) {
+            var to = event.relatedTarget;
+
+            if (!to || !to.closest || !to.closest('.pgc-node[data-node]')) {
+                pointThreads('');
+            }
+        });
+
         viewport.addEventListener('dragover', function (event) {
             if (state.edit) {
                 event.preventDefault();
@@ -14783,7 +14890,7 @@
         state.selected = null;
         state.binding = null;
         state.outline = false;
-        state.threads = true;
+        state.threads = false;
         state.view = { x: 40, y: 40, k: 1 };
         state.embed = instance;
 

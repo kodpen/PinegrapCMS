@@ -28370,6 +28370,13 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   gap: 3px;
   color: var(--pg-fg-2);
 }
+/* The name keeps the ground's colour behind it, so a thread passing by
+   never runs through it. */
+.wsf-data-out .wsf-data-label {
+  padding-right: 4px;
+  border-radius: 0 999px 999px 0;
+  background: var(--pg-bg-body);
+}
 .wsf-data-field,
 .wsf-data-out {
   pointer-events: auto;
@@ -28412,9 +28419,34 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.wsf-thread.wsf-dim,
-.wsf-data.wsf-dim {
-  opacity: .25;
+/* A box whose threads are not drawn (markThreads()): a dot per value it
+   reads, then "2 values", on its bottom edge. */
+.wsf-data-mark {
+  position: absolute;
+  top: calc(100% - 9px);
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 18px;
+  padding: 0 8px 0 6px;
+  border-radius: 999px;
+  background: var(--pg-bg-body);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color);
+  color: var(--pg-fg-3);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.wsf-data-mark-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wsf-tone, #a8760f);
+}
+.wsf-data-mark-dot.wsf-data-bad {
+  background: var(--pg-danger);
 }
 /* Drawing a thread (T2): the dots of a draft take the pointer; while a
    thread is on its way the fields it may go into are lit and the one
@@ -28446,17 +28478,10 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   border-style: solid;
   background: var(--ws-soft);
 }
-.wsf-binding .wsf-data.wsf-dim.wsf-data-target {
-  opacity: 1;
-}
 .pgc-edge-temp.wsf-temp-thread {
   stroke: var(--ws-accent);
   stroke-width: 1;
   stroke-dasharray: none;
-}
-.wsf-threads-off .wsf-thread,
-.wsf-threads-off .wsf-data {
-  display: none;
 }
 @media (prefers-reduced-motion: no-preference) {
   .wsf-thread,
