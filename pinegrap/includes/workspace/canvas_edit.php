@@ -23,6 +23,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layer_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_board.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_chart.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_data_write.php');
 
 /**
  * The operations an edit takes.
@@ -31,7 +32,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_chart.php');
  */
 function ws_canvas_edit_ops()
 {
-    return array('add', 'replace', 'remove', 'text', 'box', 'svg', 'style', 'order', 'name', 'lock', 'size', 'background', 'scene', 'chart');
+    return array('add', 'replace', 'remove', 'text', 'box', 'svg', 'style', 'order', 'name', 'lock', 'size', 'background', 'scene', 'chart', 'data');
 }
 
 /**
@@ -233,9 +234,13 @@ function ws_canvas_edit_split_mode($op)
  *                               (ws_canvas_write_file_resolver())
  * @param string        $tone    the channel's colour (#rrggbb, '' for none),
  *                               which a one-series chart takes
+ * @param callable|null $tables  a data layer's table id => its column ids,
+ *                               or null when it may not be read
+ *                               (ws_canvas_data_table_resolver()); none
+ *                               refuses every data layer
  * @return array error ('' or the refusal), index (of the refused operation, -1), doc (array)
  */
-function ws_canvas_edit_apply($doc, $operations, $resolve = null, $file = null, $tone = '')
+function ws_canvas_edit_apply($doc, $operations, $resolve = null, $file = null, $tone = '', $tables = null)
 {
     $fail = function ($error, $index = -1) {
         return array('error' => $error, 'index' => $index, 'doc' => null);
@@ -305,11 +310,11 @@ function ws_canvas_edit_apply($doc, $operations, $resolve = null, $file = null, 
         }
 
         if (($kind === 'add') && array_key_exists('type', $op) && ($op['type'] !== 'svg')) {
-            if (!in_array($op['type'], ws_canvas_write_types(), true)) {
+            if (!in_array($op['type'], array_merge(ws_canvas_write_types(), array('data')), true)) {
                 return $fail('type', $i);
             }
 
-            $layer = ws_canvas_write_layer($doc, $op, $file, ws_canvas_split_google_fonts() + ws_canvas_split_site_fonts());
+            $layer = ($op['type'] === 'data') ? ws_canvas_data_write_layer($doc, $op, $tables) : ws_canvas_write_layer($doc, $op, $file, ws_canvas_split_google_fonts() + ws_canvas_split_site_fonts());
 
             if (!is_array($layer)) {
                 return $fail($layer, $i);
@@ -438,6 +443,17 @@ function ws_canvas_edit_apply($doc, $operations, $resolve = null, $file = null, 
 
         if ($kind === 'remove') {
             array_splice($doc['layers'], $at, 1);
+            continue;
+        }
+
+        if ($kind === 'data') {
+            $changed = ws_canvas_data_write_change($layer, $op, $tables);
+
+            if (!is_array($changed)) {
+                return $fail($changed, $i);
+            }
+
+            $doc['layers'][$at] = $changed;
             continue;
         }
 
@@ -575,7 +591,7 @@ function ws_canvas_edit_error_text($error)
         case 'too_many':
             return lang(array('string' => 'At most {var:1} operations at once.', 'vars' => ws_canvas_edit_max_ops()));
         case 'op':
-            return lang('An operation is one of add, replace, remove, text, box, svg, style, order, name, lock, size, background, scene or chart.');
+            return lang('An operation is one of add, replace, remove, text, box, svg, style, order, name, lock, size, background, scene, chart or data.');
         case 'layer':
             return lang('That layer is not on the canvas.');
         case 'locked':
@@ -589,7 +605,7 @@ function ws_canvas_edit_error_text($error)
         case 'not_svg':
             return lang('Only an svg layer takes new SVG.');
         case 'type':
-            return lang('A layer to add is of type svg, text, picture, shape or icon.');
+            return lang('A layer to add is of type svg, text, picture, shape, icon or data.');
         case 'picture':
             return lang('The picture is a file of this channel, or with files:read a public file of the site, named by file_id or its address.');
         case 'shape':
@@ -629,7 +645,9 @@ function ws_canvas_edit_error_text($error)
         case 'layers':
             return ws_canvas_from_svg_error_text('layers');
         default:
-            return ws_canvas_from_svg_error_text($error);
+            $data = ws_canvas_data_write_error_text($error);
+
+            return ($data !== '') ? $data : ws_canvas_from_svg_error_text($error);
     }
 }
 

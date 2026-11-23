@@ -527,3 +527,20 @@ function ws_canvas_data_rows($viewer, $table_id)
 
     return ws_canvas_data_rows_shape($columns, ws_wtable_joined_fill($viewer, $columns, $rows));
 }
+
+/**
+ * The tables a data layer an agent writes may name: a table id => its
+ * column ids when the viewer may read it, else null
+ * (ws_canvas_data_write_check()).
+ *
+ * @param array $viewer
+ * @return callable
+ */
+function ws_canvas_data_table_resolver($viewer)
+{
+    return function ($table_id) use ($viewer) {
+        $table = (function_exists('ws_wtables_ready') && ws_wtables_ready() && ((int) $table_id > 0)) ? ws_wtable_for($viewer, (int) $table_id, 'view') : null;
+
+        return $table ? array_map('strval', array_keys((array) ws_wtable_columns((int) $table['id']))) : null;
+    };
+}

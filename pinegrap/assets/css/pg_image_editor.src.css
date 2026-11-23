@@ -5182,6 +5182,43 @@ button.pgie-sndfile:hover {
   padding-top: 12px;
 }
 
+/* A phone: the picker takes the whole screen but a narrow edge, its cards
+   two a row; in the panel's sheet the kinds go three a row, so the Look
+   group stays short above the rail. */
+@media (max-width: 599.98px) {
+  .pgie-importbox.pgie-databox {
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .pgie-datakinds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .pgie-datakinds .pgie-datacard {
+    padding: 6px;
+    gap: 4px;
+  }
+}
+
+/* Touch: a table row, a fold and a value column are a finger's height. */
+@media (pointer: coarse) {
+  .pgie .pgie-datatable,
+  .pgie-datafold {
+    min-height: 44px;
+  }
+
+  .pgie-datavalues .pgie-check {
+    min-height: 44px;
+    margin: 0;
+  }
+
+  .pgie-datatablerow .pgie-btn {
+    min-height: 44px;
+  }
+}
+
 /* The phone's rows (pg_image_editor_phone.js): in the sheet under the play
    bar, each name above its lane, one ruler, the playhead across them all;
    the clip's row tall with finger-size grips; the sounds folded into one

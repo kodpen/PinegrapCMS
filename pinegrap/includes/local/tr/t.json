@@ -1482,6 +1482,7 @@
     "That table is no longer in the note.": "O tablo artık notta yok.",
     "That table is not in this database.": "Bu tablo bu veritabanında yok.",
     "That table is not one of the tables this screen converts.": "Bu tablo, bu ekranın dönüştürdüğü tablolardan biri değil.",
+    "That table is not one you may read: see GET /workspace/tables.": "Bu tabloyu okuyamazsınız: GET /workspace/tables'a bakın.",
     "That task could not be found.": "Bu görev bulunamadı.",
     "That template could not be found, or you cannot change it.": "Bu şablon bulunamadı ya da onu değiştiremezsiniz.",
     "That template could not be found.": "Şablon bulunamadı.",
