@@ -209,67 +209,30 @@ function test_automation_flows_running_count_reads_open_runs_only()
 	pg_assert_same(0, ws_flows_running_count(array('id' => 1, 'role' => 0)), 'nobody outside the team');
 }
 
-function test_automation_flows_menu_icon_is_drawing_a()
+function test_automation_flows_menu_icon_is_two_boxes_and_a_connector()
 {
-	$svg = pg_menu_icon('flows', 'workspace-color');
+	$svg = pg_menu_icon('flows', '', '');
 
-	pg_assert_contains('class="pg-mi pg-mi-flows me-3 workspace-color"', $svg, 'its classes');
-	pg_assert_contains('<circle class="pg-mi-2" fill="currentColor" fill-opacity=".3" stroke="none" cx="5.2" cy="6" r="2.7"/>', $svg, 'the start');
-	pg_assert_contains('<g class="pg-mi-step"><rect class="pg-mi-2" fill="currentColor" fill-opacity=".3" stroke="none" x="9.2" y="9.2" width="5.6" height="5.6" rx="1.7"/>', $svg, 'the step');
-	pg_assert_contains('<circle cx="18.8" cy="18" r="2.7"/>', $svg, 'the end');
-	pg_assert_contains('<g class="pg-mi-a"><path d="M7.9 6H10a2 2 0 0 1 2 2v1.2M12 14.8V16a2 2 0 0 0 2 2h2.1"/>', $svg, 'the path in the second colour');
-	pg_assert_contains('<circle class="pg-mi-dot" fill="currentColor" stroke="none" r="1.5" transform="translate(18.8 18)"/>', $svg, 'the dot, resting in the end');
+	pg_assert_contains('class="pg-mi pg-mi-flows"', $svg, 'its classes');
+	pg_assert_contains('<rect x="2.5" y="3.5" width="8" height="6.5" rx="2"/>', $svg, 'the first box');
+	pg_assert_contains('<path d="M10.5 6.75h4a3 3 0 0 1 3 3V14"/>', $svg, 'the elbow connector');
+	pg_assert_contains('<rect data-m="pulse" x="13.5" y="14" width="8" height="6.5" rx="2"/>', $svg, 'the second box, lit on hover');
+	pg_assert_contains('<circle class="pg-mi-f" data-l="run" r="1.4"/>', $svg, 'the live dot');
 	pg_assert_false(strpos($svg, '<animate') !== false, 'moved by the stylesheet, which a device asking for less motion stops');
+	pg_assert_same('top', pg_menu_category_tone(26), 'in the blue of the untitled block');
 }
 
-function test_automation_flows_menu_icon_moves_along_its_path()
+function test_automation_flows_menu_icon_live_dot_and_count()
 {
 	$css = preg_replace('#/\*.*?\*/#s', '', automation_flows_menu_test_file('assets/css/backend.src.css'));
+	$rest = strpos($css, "#menu .pg-mi [data-l] {\n  opacity: 0;\n}");
 
-	pg_assert_contains('#menu .pg-mi-flows { --pg-mi-a: var(--pg-mi-sky); }', $css, 'the second colour');
+	pg_assert_true($rest !== false, 'the live dot is hidden at rest');
+	pg_assert_false(automation_flows_menu_test_in_motion_block($css, (int) $rest), 'hidden whatever the motion setting');
 
-	foreach (array(
-		'#menu .list-group-item[data-pg-flows-running] .pg-mi-flows .pg-mi-dot {' => 'pg-mi-flow-round 4.8s linear infinite',
-		'#menu .list-group-item:is(:hover, :focus-visible) .pg-mi-flows .pg-mi-dot {' => 'pg-mi-flow 0.9s linear;',
-		'#menu .list-group-item:is(:hover, :focus-visible) .pg-mi-flows .pg-mi-step {' => 'pg-mi-bounce',
-		'#menu .pg-menu-live::before {' . "\n    animation:" => 'pg-menu-live 1.8s',
-	) as $rule => $animation) {
-		$at = strpos($css, $rule);
+	$at = strpos($css, '#menu .pg-menu-live::before {' . "\n    animation:");
 
-		pg_assert_true($at !== false, $rule);
-		pg_assert_true(automation_flows_menu_test_in_motion_block($css, (int) $at), $rule . ' moves only where more motion is welcome');
-		pg_assert_contains($animation, substr($css, (int) $at, 160), $rule . ' plays ' . $animation);
-	}
-
-	pg_assert_false(automation_flows_menu_test_in_motion_block($css, strpos($css, '#menu .pg-mi-flows { --pg-mi-a')), 'the colour is not motion');
-
-	// The trip's points lie on the dot's path at their share of its length:
-	// 4.8 along, a quarter turn of radius 2, 8 down, a quarter turn, 4.8.
-	$turn = M_PI;
-	$length = 4.8 + $turn + 8 + $turn + 4.8;
-	$points = array(
-		array(0, 5.2, 6),
-		array(4.8, 10, 6),
-		array(4.8 + $turn / 2, 10 + M_SQRT2, 8 - M_SQRT2),
-		array(4.8 + $turn, 12, 8),
-		array(12.8 + $turn, 12, 16),
-		array(12.8 + 1.5 * $turn, 14 - M_SQRT2, 16 + M_SQRT2),
-		array(12.8 + 2 * $turn, 14, 18),
-		array($length, 18.8, 18),
-	);
-
-	foreach (array('pg-mi-flow' => 1, 'pg-mi-flow-round' => 0.75) as $name => $share) {
-		pg_assert_true((bool) preg_match('/@keyframes ' . preg_quote($name, '/') . ' \{(.*?)\n\}/s', $css, $block), $name);
-		preg_match_all('/(from|to|[\d.]+%)(?:, to)? \{ transform: translate\(([\d.]+)px, ([\d.]+)px\); \}/', $block[1], $frames, PREG_SET_ORDER);
-		pg_assert_same(count($points), count($frames), $name . ': one frame a point');
-
-		foreach ($frames as $i => $frame) {
-			$at = ($frame[1] === 'from') ? 0 : (($frame[1] === 'to') ? 100 : (float) $frame[1]);
-
-			pg_assert_true(abs($at - 100 * $share * $points[$i][0] / $length) < 0.1, $name . ' frame ' . $i . ' at its share');
-			pg_assert_true((abs((float) $frame[2] - $points[$i][1]) < 0.01) && (abs((float) $frame[3] - $points[$i][2]) < 0.01), $name . ' frame ' . $i . ' on the path');
-		}
-	}
-
-	pg_assert_contains('75%, to { transform: translate(18.8px, 18px); }', $css, 'the slow trip rests in the end, where the dot sits at rest');
+	pg_assert_true($at !== false, 'the live count pulses');
+	pg_assert_true(automation_flows_menu_test_in_motion_block($css, (int) $at), 'only where more motion is welcome');
+	pg_assert_contains('pg-menu-live 1.8s', substr($css, (int) $at, 160), 'its pulse');
 }

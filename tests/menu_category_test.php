@@ -311,7 +311,7 @@ function test_menu_row_21_is_drawn_for_whoever_may_open_one_of_its_entries()
 	pg_assert_contains("\$menu_items[21]['href'] = 'view_system_styles.php';", $menu, 'the row keeps its address');
 
 	// Other is the last entry, drawn only when one of its own is there.
-	pg_assert_contains("if (isset(\$menu_items[21]['id']) && (\$design_other_content !== '')) {\n        \$design_other = pg_menu_other_markup(21, \$design_other_content, \$output_parent_target, pg_menu_tone(\$menu_items[21]['color_class']), \$menu_other_here);", $menu, 'Other from its entries');
+	pg_assert_contains("if (isset(\$menu_items[21]['id']) && (\$design_other_content !== '')) {\n        \$design_other = pg_menu_other_markup(21, \$design_other_content, \$output_parent_target, pg_menu_category_tone(21), \$menu_other_here);", $menu, 'Other from its entries');
 	pg_assert_contains("\$menu_items[21]['data-bs-content'] .= \$design_other['entry'];\n            \$menu_panels_nested .= \$design_other['panel'];", $menu, 'the entry in the row\'s panel, its panel at the second level');
 	pg_assert_true(strpos($menu, "\$design_other = pg_menu_other_markup(") > strpos($menu, "/experiments.php"), 'after the studio\'s own entries');
 }

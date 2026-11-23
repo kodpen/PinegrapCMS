@@ -1,31 +1,29 @@
 ---
 name: main-menu-icons
-description: Main menu icons in two colours: row drawings (pg_menu_icon()), grid, module and accent colours, hover motion, the System tools toolbox, the panel entries' coloured tiles
+description: Main menu icons: the rows' one-line drawings (pg_menu_icon()) on a tile in their category's colour (pg_menu_icon_tile(), pg_menu_category_tone()), the seven tones, the panel entries' tiles
+module: output
 ---
 
 ## Which icons are not Bootstrap Icons?
-- Only the rows of the panel's main menu (`output_menu()`): each item names its drawing with `'menu_icon' => '<name>'`, drawn by `pg_menu_icon($name, $color_class)` (`includes/fn/output.php`). Everything else, the entries in the panels those rows open included, stays `bi` (coloured as below).
-- A new main menu item gets its own drawing in `pg_menu_icon()`. Without one the row falls back to a `bi` icon (`'icon'`), then an svg, then a letter in a circle.
+- Only the rows of the panel's main menu (`output_menu()`): each item names its drawing with `'menu_icon' => '<name>'`, drawn by `pg_menu_icon($name, '', '')` (`includes/fn/output.php`). Everything else, the entries in the panels those rows open included, stays `bi`.
+- The drawings are copied from `ui/main-menu-icons-drawing/icons.js` (owner 2026-11-22, `workflow/decisions-made-panel-17.md`): one line family on a 24-unit grid, `currentColor`, stroke 1.7, no tint and no second colour. Parts that move carry `data-m` (the move), the Automation flows dot `data-l`. Which name takes which drawing: `plans/main-menu-icons-redraw-rows.md` until the plan's close-out.
+- Page Design Studio (row 21) is `menu_icon` `design`, the selection frame; the neon sign went (#11202). `design_canvas` is the Artifact Canvas's own two-colour drawing (`design-canvas-icon.md`), not a row's.
+- A new main menu item gets its own drawing in `pg_menu_icon()`. Without one the row falls back to a `bi` icon (`'icon'`), then an svg, then a letter in a circle, all on the tile. `tests/menu_panel_test.php` checks every `menu_icon` name of `output_menu()` has a drawing.
+
+## What colour is a row?
+- The colour of its category in `pg_menu_categories()`, not of its module class: `pg_menu_category_tone($slot)` gives `top` (the untitled block, and a row no category lists), `content`, `design`, `ecommerce`, `accounting`, `marketing` or `system`.
+- `backend.src.css`, block "Main menu icons", has one line a category: `#menu [data-pg-menu-tone="…"]` sets `--pg-menu-tone` to blue, teal, rose, amber, lime, violet or grey (`--pg-tone-*`, `light-dark()` so both themes). A new category needs its line; the test checks each.
+- The row's icon sits on `pg_menu_icon_tile()`: `<span class="pg-mi-tile me-3" data-pg-menu-tone="…">`, 26 px, radius 8 px, the 15 px icon in the tone on a 13% tint with a 16% inner line; the current row (`.active`) 26% and 34%. The row is 34 px high, its label 13.5 px; collapsed, 11 px item padding centres the tile on the 60 px rail.
+- The Workspace's pin actions (My Notes, Incoming e-mail) return the same tile, so a row added without a reload looks like the server's.
 
 ## Which icons do the panel entries carry?
-- Bootstrap Icons, always as `bi bi-<name> bi-me-2` (a bare `bi-<name>` reads as a mistake). A list or screen: the outline icon of what it lists, one icon per subject across the menu and never the same one for two subjects. Create/Add: always `bi-plus-lg`. Reports: one chart shape each (`graph-up-arrow` order reports, `bar-chart` shipping, `clipboard2-data` visitors; the ERP's aging, P&L, VAT, cash flow and stock each their own). No `-fill` or half-filled glyphs. A link that leaves the panel: `box-arrow-up-right`. A module's own settings: `sliders`. `bi-stars` stays the AI mark.
+- Bootstrap Icons, always as `bi bi-<name> bi-me-2` (a bare `bi-<name>` reads as a mistake). A list or screen: the outline icon of what it lists, one icon per subject across the menu and never the same one for two subjects. Create/Add: always `bi-plus-lg`. Reports: one chart shape each. No `-fill` or half-filled glyphs. A link that leaves the panel: `box-arrow-up-right`. A module's own settings: `sliders`. `bi-stars` stays the AI mark.
 - The System tools groups take their icons from `includes/settings/registry.php`, so the dialog and the search box show the same ones.
 - A jump point inside a screen (the Visitors sections): no icon, `.pg-menu-anchor` (`visitors-screen-look.md`).
-- Communication (row 9): `main-menu-communication-icon.md`.
-- System tools is a toolbox (`pg-mi-tools`, `settings-color`, amber accent): latch on the front, a screwdriver and a spanner hidden inside (box and lid opaque); on hover the lid swings open on its right hinge, the latch pops and the tools come up. The Site Settings gear went with its row (`main-menu-settings-row.md`).
+- On a tile like the rows': a panel carries its row's category (`data-pg-menu-tone`, passed to `pg_menu_panel()`, `pg_menu_other_markup()`, `pg_menu_tools_markup()`), the glyph in the tone on a 13% tint.
+- Bootstrap Icons' `::before` rule is unlayered and beats `@layer custom`, so its `line-height: 1` stays: the tile centres the glyph with top padding, not line-height.
 
-## Why are the panel entries' icons in two colours?
-- The owner asked for every menu icon in two colours, for legibility (2026-11-02). A panel carries its row's module (`data-pg-menu-tone`, from `pg_menu_tone($color_class)`, passed to `pg_menu_panel()`; System tools' group panels via `pg_menu_tools_markup()`'s `$tone`). `backend.src.css` maps each tone to the module's two shades: the glyph in one, a rounded tile of the other behind it, swapped in the dark theme like `.pg-mi-2`.
-- A new row colour class needs its `[data-pg-menu-tone="…"]` line, or its panel's icons stay plain; `tests/menu_panel_test.php` checks every class `output_menu()` uses.
-- Bootstrap Icons' `::before` rule is unlayered and beats `@layer custom`, so its `line-height: 1` stays: the tile centres the glyph with top padding, not line-height. Entry padding shrank so the 1.625rem tile keeps the entry height.
+## Where do the moves and live parts go?
+- Step MI2 of `plans/main-menu-icons-redraw.md`. Until then the icons are at rest: the flows dot is hidden (`#menu .pg-mi [data-l]`). The Dashboard svg keeps `data-pg-clock` only so `backend.src.js` rolls the Calendars day (`.pg-mi-date`) over at midnight.
 
-## How is a menu icon drawn?
-- On a 24-unit grid. First colour: the module's colour class on the `<svg>` sets `currentColor`, which draws the outline; the same colour as a tint (`.pg-mi-2`) fills the body.
-- Second colour: the one detail the icon is about (the clock's hands, the tick, the sun, the per cent sign), as an outline (`.pg-mi-a`) and a tint (`.pg-mi-at`). Its hue, `--pg-mi-a`, is picked per icon in `assets/css/backend.src.css`, block "Main menu icons", to stand apart from the module colour. Without a second colour the operator sees the icon as single-coloured.
-- The `fill-opacity` attributes are the fallback until the stylesheet has loaded; the light and dark themes swap the module's two shades.
-
-## Where does the hover movement go?
-- Into the same CSS block, inside its `prefers-reduced-motion: no-preference` section, so a device that asks for less motion gets none: one movement per icon, under a second, on the parts that carry a class of their own (`.pg-mi-lid`, `.pg-mi-check`...). Transform origins are points on the 24-unit grid.
-- The dashboard clock's hands and the calendar's day are set by the server (site time zone) and kept moving by `backend.src.js`.
-
-Related: docs/memory/ui/main-menu-states.md
+Related: docs/memory/ui/main-menu-states.md, docs/memory/ui/main-menu-categories.md

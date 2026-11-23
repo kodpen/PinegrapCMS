@@ -3896,343 +3896,94 @@ function output_footer_secure($properties = false)
 }
 
 // pg_menu_icon()
-// The icons of the panel's main menu, drawn on a 24-unit grid in two
-// colours. The module colour (the .X-color class on the <svg>) draws the
-// outline and, as a tint (.pg-mi-2), the body. A second hue picked per icon
-// in backend.src.css (--pg-mi-a) draws the one detail the icon is about --
-// the clock's hands, the tick, the sun, the per cent sign -- as an outline
-// (.pg-mi-a) and a tint (.pg-mi-at). The fill-opacity attributes are the
-// fallback for a page that has not loaded the stylesheet yet.
+// The drawings of the panel's main menu rows: one line family on a 24-unit
+// grid, stroked in currentColor at one weight. A row shows its drawing on a
+// tile in its category's colour (pg_menu_icon_tile()), so the svg carries no
+// colour of its own; .pg-mi-f parts are filled with the line colour and
+// .pg-mi-h parts with the menu's ground, to hide the line behind them.
 //
-// Parts that move on hover carry a class of their own (.pg-mi-lid,
-// .pg-mi-check, ...); the movements live in backend.src.css under
+// Parts that move on hover are named by data-m (the move) and data-l (a live
+// part, the Automation flows dot); the moves live in backend.src.css under
 // "Main menu icons".
 //
-// Dashboard: a clock set to the site's time. The hands are placed here, from
-// the site's time zone, and backend.src.js keeps them turning from the time
-// the page has been open, so a browser in another zone does not move them.
-// Calendars: today's day of the month, which the same script rolls over at
-// midnight.
+// Dashboard: the svg keeps the site's time (data-pg-clock) for the script in
+// backend.src.js that rolls the Calendars day over at midnight. Calendars:
+// today's day of the month, from the site's time zone.
 //
-// $space is the margin class after the icon (the menu's me-3); the Design
-// Canvas's drawing is also shown outside the menu (pg_design_canvas_icon()).
+// $space is the margin class after the icon; the menu's rows pass '' and the
+// tile carries the margin. The Artifact Canvas's drawing (design_canvas) is
+// shown outside the menu (pg_design_canvas_icon()) and keeps its two colours.
 function pg_menu_icon($name, $color_class = '', $space = 'me-3')
 {
-    // Module tint, accent tint and solid fill attribute sets. A tint drawn
-    // at full strength (.pg-mi-solid) is opaque enough to hide what is
-    // behind it, as the front of the folder hides the sheet inside.
-    $tint = ' fill="currentColor" fill-opacity=".3" stroke="none"';
-    $d = ' class="pg-mi-2"' . $tint;
-    $a = ' class="pg-mi-at"' . $tint;
-    $f = ' fill="currentColor" stroke="none"';
-
     $extra = '';
 
-    switch ($name) {
-        case 'dashboard':
+    $icons = array(
+        'dashboard' => '<rect data-m="pop" x="3.5" y="3.5" width="7.5" height="17" rx="2"/><rect data-m="pop" style="animation-delay:.08s" x="13.5" y="3.5" width="7" height="7" rx="2"/><rect data-m="pop" style="animation-delay:.16s" x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+        'flows' => '<rect x="2.5" y="3.5" width="8" height="6.5" rx="2"/><path d="M10.5 6.75h4a3 3 0 0 1 3 3V14"/><rect data-m="pulse" x="13.5" y="14" width="8" height="6.5" rx="2"/><circle class="pg-mi-f" data-l="run" r="1.4"/>',
+        'workspace' => '<path d="M9.3 4.5L7.7 19.5M16.3 4.5l-1.6 15"/><path data-m="write" d="M4.5 9h15.5"/><path data-m="write2" d="M4 15h15.5"/>',
+        'notes' => '<path d="M5.5 3.5h13a2 2 0 0 1 2 2V14l-6.5 6.5h-8.5a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2z"/><path data-m="peel" d="M20.5 14H16a2 2 0 0 0-2 2v4.5"/><path d="M7.5 8.5h8M7.5 12h4.5"/>',
+        'mail' => '<path d="M3.5 13.5l2.6-8a1.5 1.5 0 0 1 1.4-1h9a1.5 1.5 0 0 1 1.4 1l2.6 8V18a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.5 13.5h4.7l1.3 2.5h5l1.3-2.5h4.7"/><path data-m="drop" d="M12 6.5v5M9.9 9.5l2.1 2.1 2.1-2.1"/>',
+        'pages' => '<rect x="3" y="4" width="18" height="16" rx="2.2"/><path d="M3 8.5h18"/><circle class="pg-mi-f" cx="6" cy="6.3" r=".85"/><circle class="pg-mi-f" cx="8.7" cy="6.3" r=".85"/><rect x="6" y="11.5" width="4.5" height="5.5" rx="1"/><path data-m="write" d="M13.5 12.3h4.5"/><path data-m="write2" d="M13.5 15.8h3"/>',
+        'folders' => '<path data-m="up" d="M12.5 8.5V5.5H19v3.5"/><path d="M3 8a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 12h18"/>',
+        'calendars' => '<rect x="3.5" y="5" width="17" height="15.5" rx="2.2"/><path d="M3.5 9.5h17M8 3v3.5M16 3v3.5"/><text class="pg-mi-date" data-m="flip" x="12" y="17.9" font-size="8" font-weight="700" text-anchor="middle">{day}</text>',
+        'forms' => '<path d="M4 4.5h6"/><rect x="3.5" y="7" width="17" height="6.5" rx="1.8"/><path data-m="write" d="M6.5 10.3h6"/><rect class="pg-mi-f" data-m="pulse" style="animation-delay:.2s" x="12" y="16.5" width="8.5" height="4.3" rx="2.15"/>',
+        'design' => '<g data-m="resize"><rect x="5.5" y="5.5" width="11" height="9.5" rx=".6"/><rect class="pg-mi-h" x="4" y="4" width="3" height="3" rx=".8"/><rect class="pg-mi-h" x="15" y="4" width="3" height="3" rx=".8"/><rect class="pg-mi-h" x="4" y="13.5" width="3" height="3" rx=".8"/></g><path class="pg-mi-f" data-m="drag" d="M14.3 13l6.7 2.6-2.8 1.2-1.2 2.8z"/>',
+        'orders' => '<g data-m="print"><path d="M6 3.5h12V20.5l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3z"/><path d="M9 7.8h6M9 11h3.5"/><path data-m="draw" pathLength="30" d="M9.2 15.2l1.7 1.7 3.6-3.8"/></g>',
+        'products' => '<g data-m="up"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></g>',
+        'catalog' => '<rect x="3.5" y="3.5" width="8" height="5" rx="1.5"/><path d="M7 8.5v9h4.5M7 12.5h4.5"/><rect data-m="in" x="11.5" y="10.5" width="9" height="4" rx="1.3"/><rect data-m="in" style="animation-delay:.12s" x="11.5" y="15.5" width="9" height="4" rx="1.3"/>',
+        'offers' => '<g data-m="tilt"><path d="M3.5 7.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v2.2a2.3 2.3 0 0 0 0 4.6v2.2a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-2.2a2.3 2.3 0 0 0 0-4.6z"/><path d="M9.8 14.7l4.4-5.4"/><circle cx="9.4" cy="9.8" r="1.1"/><circle cx="14.6" cy="14.2" r="1.1"/></g>',
+        'shipping' => '<path data-m="speed" d="M2 10h2.5M1 13h3.5"/><g data-m="drive"><rect x="5.5" y="6" width="9" height="10.5" rx="1.8"/><path d="M14.5 9.5h3a2 2 0 0 1 1.7.9l1.8 2.9v3.2h-6.5z"/><circle class="pg-mi-h" cx="9" cy="17.3" r="1.9"/><circle class="pg-mi-h" cx="17.5" cy="17.3" r="1.9"/></g>',
+        'erp' => '<rect x="4" y="3.5" width="16" height="17" rx="2.2"/><path d="M4 8.5h16M12 8.5v12"/><path data-m="write" d="M6.5 12h3"/><path d="M6.5 15.8h3"/><path data-m="write2" d="M14.5 12h3"/>',
+        'statistics' => '<path data-m="draw" pathLength="30" d="M2.5 12.5h4l2.5-6.5 4 12.5 2.5-6h6"/>',
+        'contacts' => '<rect x="4" y="3" width="14" height="18" rx="2.2"/><circle cx="11" cy="9.7" r="2.2"/><path d="M7.3 16.5a3.8 3.8 0 0 1 7.4 0"/><path data-m="tab" d="M18 7h2.5"/><path data-m="tab" style="animation-delay:.08s" d="M18 12h2.5"/><path data-m="tab" style="animation-delay:.16s" d="M18 17h2.5"/>',
+        'communication' => '<path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7.5l-4 3.5V17H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><g data-m="send"><path d="M8 8.3h8M13.8 6.3l2.2 2-2.2 2"/></g><g data-m="recv"><path d="M16 12.8H8M10.2 10.8l-2.2 2 2.2 2"/></g>',
+        'users' => '<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><g data-m="join"><circle cx="16.8" cy="9.5" r="2.3"/><path d="M16.5 14.2a4.5 4.5 0 0 1 4.3 5.3"/></g>',
+        'tools' => '<rect x="3" y="10" width="18" height="10" rx="2"/><rect x="10.5" y="12.5" width="3" height="3" rx=".7"/><g data-m="lid"><path d="M3 10V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1"/><path d="M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7"/></g>',
+    );
+
+    if (isset($icons[$name])) {
+        $body = $icons[$name];
+
+        if ($name === 'dashboard') {
             $seconds = ((int) date('G') * 3600) + ((int) date('i') * 60) + (int) date('s');
-            $hour = round(($seconds % 43200) / 120, 2);
-            $minute = round(($seconds % 3600) / 10, 2);
             $extra = ' data-pg-clock="' . $seconds . '" data-pg-clock-date="' . date('Y-m-d') . '"';
-            $body =
-                '<g class="pg-mi-face">' .
-                '<circle' . $d . ' cx="12" cy="12" r="9"/>' .
-                '<circle cx="12" cy="12" r="9"/>' .
-                '<path d="M12 4.9v1.2M19.1 12h-1.2M12 19.1v-1.2M4.9 12h1.2" stroke-width="1.4"/>' .
-                '</g>' .
-                '<g class="pg-mi-a">' .
-                '<g class="pg-mi-hand-h"><path class="pg-mi-hour" d="M12 12V8.3" stroke-width="2.1" transform="rotate(' . $hour . ' 12 12)"/></g>' .
-                '<g class="pg-mi-hand-m"><path class="pg-mi-minute" d="M12 12V6.1" stroke-width="1.8" transform="rotate(' . $minute . ' 12 12)"/></g>' .
-                '<circle' . $f . ' cx="12" cy="12" r="1.4"/>' .
-                '</g>';
-            break;
-
-        case 'flows':
-            // Automation flows: a start, a step and an end on a path (accent),
-            // and a dot that follows it. At rest the dot sits in the end; it
-            // runs the path once on hover, and slowly round while a flow runs
-            // (the row's data-pg-flows-running, output_menu()). Its place is
-            // a transform, which the movements in backend.src.css replace.
-            $body =
-                '<circle' . $d . ' cx="5.2" cy="6" r="2.7"/>' .
-                '<circle cx="5.2" cy="6" r="2.7"/>' .
-                '<g class="pg-mi-step">' .
-                '<rect' . $d . ' x="9.2" y="9.2" width="5.6" height="5.6" rx="1.7"/>' .
-                '<rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.7"/>' .
-                '</g>' .
-                '<circle' . $d . ' cx="18.8" cy="18" r="2.7"/>' .
-                '<circle cx="18.8" cy="18" r="2.7"/>' .
-                '<g class="pg-mi-a">' .
-                '<path d="M7.9 6H10a2 2 0 0 1 2 2v1.2M12 14.8V16a2 2 0 0 0 2 2h2.1"/>' .
-                '<circle class="pg-mi-dot"' . $f . ' r="1.5" transform="translate(18.8 18)"/>' .
-                '</g>';
-            break;
-
-        case 'workspace':
-            $bubble = 'M6.5 4h11A2.5 2.5 0 0 1 20 6.5V14a2.5 2.5 0 0 1-2.5 2.5h-7l-4 3.3v-3.3A2.5 2.5 0 0 1 4 14V6.5A2.5 2.5 0 0 1 6.5 4z';
-            $body =
-                '<g class="pg-mi-bubble">' .
-                '<path' . $d . ' d="' . $bubble . '"/>' .
-                '<path d="' . $bubble . '"/>' .
-                '<path class="pg-mi-a pg-mi-check" pathLength="1" d="M8.6 10.3l2.3 2.3 4.5-4.6" stroke-width="2"/>' .
-                '</g>';
-            break;
-
-        case 'notes':
-            $book = 'M7.5 3h9A2.5 2.5 0 0 1 19 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 18.5v-13A2.5 2.5 0 0 1 7.5 3z';
-            $body =
-                '<path' . $d . ' d="' . $book . '"/>' .
-                '<path d="' . $book . '"/>' .
-                '<path d="M5 7.5H3.5M5 12H3.5M5 16.5H3.5" stroke-width="1.5"/>' .
-                '<path class="pg-mi-a" d="M9 8.5h6M9 12h6M9 15.5h3.5" stroke-width="1.6"/>';
-            break;
-
-        case 'mail':
-            // Incoming e-mail pinned to the menu: an envelope with a letter
-            // coming out of it. The back is a tint, the letter and the
-            // pocket's front are opaque, so the pocket hides the letter's
-            // foot; on hover the letter comes up (backend.src.css).
-            $pocket = 'M3 10.5l9 6 9-6v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5z';
-            $letter = 'M6.5 14V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9';
-            $body =
-                '<path' . $d . ' d="M3 10.5h18v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5z"/>' .
-                '<g class="pg-mi-a pg-mi-sheet">' .
-                '<path class="pg-mi-at pg-mi-solid"' . $tint . ' d="' . $letter . 'z"/>' .
-                '<path d="' . $letter . '" stroke-width="1.5"/>' .
-                '<path d="M9.5 7.5h5M9.5 10h3" stroke-width="1.5"/>' .
-                '</g>' .
-                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $pocket . '"/>' .
-                '<path d="M3 10.5v8A2.5 2.5 0 0 0 5.5 21h13a2.5 2.5 0 0 0 2.5-2.5v-8M3 10.5h3.5M17.5 10.5H21M3 10.5l9 6 9-6"/>';
-            break;
-
-        case 'folders':
-            $flap = 'M3 17.5v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
-            $body =
-                '<path' . $d . ' d="M3 17.5v-11A2.5 2.5 0 0 1 5.5 4h3.6a2 2 0 0 1 1.5.7L12 6.3h6.5A2.5 2.5 0 0 1 21 8.8v8.7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>' .
-                '<path d="M3 17.5v-11A2.5 2.5 0 0 1 5.5 4h3.6a2 2 0 0 1 1.5.7L12 6.3h6.5A2.5 2.5 0 0 1 21 8.8v.7"/>' .
-                '<g class="pg-mi-a pg-mi-sheet">' .
-                '<path' . $a . ' d="M6.5 15V8.2a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1V15z"/>' .
-                '<path d="M6.5 15V8.2a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1V15" stroke-width="1.5"/>' .
-                '</g>' .
-                '<g class="pg-mi-flap">' .
-                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $flap . '"/>' .
-                '<path d="' . $flap . '"/>' .
-                '</g>';
-            break;
-
-        case 'design_canvas':
-            // Two sheets: the back one, tinted, ends where the front one
-            // covers it; a wave on the front sheet is the second colour.
-            $back = 'M17 7V6.1A3.6 3.6 0 0 0 13.4 2.5H6.1A3.6 3.6 0 0 0 2.5 6.1v7.3A3.6 3.6 0 0 0 6.1 17H7';
-            $body =
-                '<path' . $d . ' d="' . $back . 'v-6.4A3.6 3.6 0 0 1 10.6 7z"/>' .
-                '<path d="' . $back . '"/>' .
-                '<rect x="7" y="7" width="14.5" height="14.5" rx="3.6"/>' .
-                '<g class="pg-mi-a pg-mi-wave"><path d="M9.9 18.7C10.8 15.2 11.8 13 13.2 13C14.6 13 14.4 14.9 15.8 14.9C17.3 14.9 18 12.4 18.7 9.8"/></g>';
-            break;
-
-        case 'pages':
-            $body =
-                '<path' . $d . ' d="M3.5 9V6.5A2.5 2.5 0 0 1 6 4h12a2.5 2.5 0 0 1 2.5 2.5V9z"/>' .
-                '<rect x="3.5" y="4" width="17" height="16" rx="2.5"/>' .
-                '<path d="M3.5 9h17"/>' .
-                '<g class="pg-mi-a pg-mi-lights">' .
-                '<circle' . $f . ' cx="6.6" cy="6.5" r=".95"/>' .
-                '<circle' . $f . ' cx="9.2" cy="6.5" r=".95"/>' .
-                '</g>' .
-                '<g class="pg-mi-content">' .
-                '<g class="pg-mi-a">' .
-                '<rect' . $a . ' x="6.5" y="11.6" width="4.6" height="5.6" rx="1"/>' .
-                '<rect x="6.5" y="11.6" width="4.6" height="5.6" rx="1" stroke-width="1.4"/>' .
-                '</g>' .
-                '<path d="M13.6 12.5h3.9M13.6 14.9h3.9M13.6 17.3h2.4" stroke-width="1.5"/>' .
-                '</g>';
-            break;
-
-        case 'calendars':
+        } else if ($name === 'calendars') {
             $extra = ' data-pg-day="1"';
-            $body =
-                '<g class="pg-mi-page">' .
-                '<path class="pg-mi-a pg-mi-at pg-mi-solid"' . $tint . ' d="M3.5 10V7A2.5 2.5 0 0 1 6 4.5h12A2.5 2.5 0 0 1 20.5 7v3z"/>' .
-                '<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/>' .
-                '<text class="pg-mi-date" x="12" y="18.2" text-anchor="middle" font-size="8" font-weight="700"' . $f . '>' . date('j') . '</text>' .
-                '</g>' .
-                '<path class="pg-mi-rings" d="M8 2.9v3.3M16 2.9v3.3"/>';
-            break;
+            $body = str_replace('{day}', date('j'), $body);
+        }
+    } else if ($name === 'design_canvas') {
+        // Module tint, accent tint and solid fill attribute sets.
+        $tint = ' fill="currentColor" fill-opacity=".3" stroke="none"';
+        $d = ' class="pg-mi-2"' . $tint;
 
-        case 'forms':
-            $body =
-                '<g class="pg-mi-sheet">' .
-                '<rect x="4.5" y="3" width="15" height="18" rx="2.5"/>' .
-                '<rect' . $d . ' x="7.5" y="6.4" width="9" height="2.8" rx="1"/>' .
-                '<rect' . $d . ' x="7.5" y="10.8" width="9" height="2.8" rx="1"/>' .
-                '</g>' .
-                '<path class="pg-mi-a pg-mi-check" pathLength="1" d="M8 16.9l2 2 3.9-4.1" stroke-width="2"/>';
-            break;
-
-        case 'statistics':
-            $body =
-                '<rect class="pg-mi-2 pg-mi-bar"' . $tint . ' x="4.2" y="13" width="3.6" height="7" rx="1"/>' .
-                '<rect class="pg-mi-2 pg-mi-bar"' . $tint . ' x="10.2" y="9.8" width="3.6" height="10.2" rx="1"/>' .
-                '<rect class="pg-mi-2 pg-mi-bar"' . $tint . ' x="16.2" y="12" width="3.6" height="8" rx="1"/>' .
-                '<g class="pg-mi-a">' .
-                '<path class="pg-mi-trend" pathLength="1" d="M4.5 9.8l5.5-4.4 4 3 5.2-4.7" stroke-width="1.9"/>' .
-                '<circle' . $f . ' class="pg-mi-tip" cx="19.4" cy="3.7" r="1.4"/>' .
-                '</g>';
-            break;
-
-        case 'contacts':
-            $body =
-                '<g class="pg-mi-card">' .
-                '<rect' . $d . ' x="2.5" y="4.5" width="19" height="15" rx="2.5"/>' .
-                '<rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/>' .
-                '<g class="pg-mi-a">' .
-                '<circle cx="8.5" cy="10.3" r="2.2"/>' .
-                '<path d="M5.1 16.1a3.6 3.6 0 0 1 6.8 0"/>' .
-                '</g>' .
-                '<path d="M14.5 10h4M14.5 13.6h2.8" stroke-width="1.5"/>' .
-                '</g>';
-            break;
-
-        case 'users':
-            $body =
-                '<g class="pg-mi-a pg-mi-back">' .
-                '<circle' . $a . ' cx="16.4" cy="8.2" r="3"/>' .
-                '<path' . $a . ' d="M12.2 19.8a4.6 4.6 0 0 1 9.2 0z"/>' .
-                '<circle cx="16.4" cy="8.2" r="3" stroke-width="1.4"/>' .
-                '</g>' .
-                '<g class="pg-mi-front">' .
-                '<circle cx="9" cy="8.5" r="3.3"/>' .
-                '<path d="M3 19.8v-.3A5.5 5.5 0 0 1 8.5 14h1a5.5 5.5 0 0 1 5.5 5.5v.3"/>' .
-                '</g>';
-            break;
-
-        case 'communication':
-            // A speech bubble with one arrow going out and one coming in:
-            // messages sent and received, whatever the channel.
-            $bubble = 'M6 3.5h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-6.5L7 21v-3.5H6a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3z';
-            $body =
-                '<path' . $d . ' d="' . $bubble . '"/>' .
-                '<path d="' . $bubble . '"/>' .
-                '<g class="pg-mi-a" stroke-width="1.9">' .
-                '<path class="pg-mi-out" d="M7.5 8.2h9M14.2 5.9l2.3 2.3-2.3 2.3"/>' .
-                '<path class="pg-mi-in" d="M16.5 12.8h-9M9.8 10.5l-2.3 2.3 2.3 2.3"/>' .
-                '</g>';
-            break;
-
-        case 'erp':
-            $keys = '';
-            foreach (array(12.6, 15.4, 18.2) as $y) {
-                foreach (array(8.8, 12, 15.2) as $x) {
-                    $keys .= '<circle' . $f . ' cx="' . $x . '" cy="' . $y . '" r=".95"/>';
-                }
-            }
-            $body =
-                '<rect' . $d . ' x="5" y="2.8" width="14" height="18.4" rx="2.6"/>' .
-                '<rect x="5" y="2.8" width="14" height="18.4" rx="2.6"/>' .
-                '<g class="pg-mi-a pg-mi-screen">' .
-                '<rect' . $a . ' x="8" y="5.8" width="8" height="3.4" rx=".9"/>' .
-                '<rect x="8" y="5.8" width="8" height="3.4" rx=".9" stroke-width="1.4"/>' .
-                '</g>' .
-                '<g class="pg-mi-keys">' . $keys . '</g>';
-            break;
-
-        case 'orders':
-            $bag = 'M5.4 8h13.2l-.9 11a2 2 0 0 1-2 1.8H8.3a2 2 0 0 1-2-1.8z';
-            $body =
-                '<g class="pg-mi-bag">' .
-                '<path' . $d . ' d="' . $bag . '"/>' .
-                '<path d="' . $bag . '"/>' .
-                '<path class="pg-mi-a" d="M9 10.5V7a3 3 0 0 1 6 0v3.5" stroke-width="1.9"/>' .
-                '</g>';
-            break;
-
-        case 'products':
-            $lid = 'M12 3l8 4.5-8 4.5-8-4.5z';
-            $body =
-                '<path' . $d . ' d="M4 7.5v9l8 4.5 8-4.5v-9l-8 4.5z"/>' .
-                '<path d="M4 7.5v9l8 4.5 8-4.5v-9M4 7.5l8 4.5 8-4.5M12 12v9"/>' .
-                '<g class="pg-mi-a pg-mi-lid">' .
-                '<path' . $a . ' d="' . $lid . '"/>' .
-                '<path d="' . $lid . '"/>' .
-                '</g>';
-            break;
-
-        case 'catalog':
-            $top = 'M12 3.5l8.5 4.3-8.5 4.3-8.5-4.3z';
-            $body =
-                '<path class="pg-mi-l3" d="M3.5 16.2l8.5 4.3 8.5-4.3"/>' .
-                '<path class="pg-mi-l2" d="M3.5 12.2l8.5 4.3 8.5-4.3"/>' .
-                '<g class="pg-mi-a pg-mi-l1">' .
-                '<path' . $a . ' d="' . $top . '"/>' .
-                '<path d="' . $top . '"/>' .
-                '</g>';
-            break;
-
-        case 'offers':
-            $tag = 'M3.5 11.6V5.5a2 2 0 0 1 2-2h6.1a2 2 0 0 1 1.4.6l7.4 7.4a2 2 0 0 1 0 2.8l-6.1 6.1a2 2 0 0 1-2.8 0L4.1 13a2 2 0 0 1-.6-1.4z';
-            $body =
-                '<g class="pg-mi-tag">' .
-                '<path' . $d . ' d="' . $tag . '"/>' .
-                '<path d="' . $tag . '"/>' .
-                '<circle cx="7.6" cy="7.6" r="1.3" stroke-width="1.5"/>' .
-                '<g class="pg-mi-a">' .
-                '<path d="M10.8 15.4l4.6-4.6" stroke-width="1.7"/>' .
-                '<circle' . $f . ' cx="11.3" cy="11.3" r="1.05"/>' .
-                '<circle' . $f . ' cx="14.9" cy="14.9" r="1.05"/>' .
-                '</g>' .
-                '</g>';
-            break;
-
-        case 'shipping':
-            $body =
-                '<path class="pg-mi-speed" d="M.2 9.2h1.4M-.4 12.2h2" stroke-width="1.4"/>' .
-                '<g class="pg-mi-truck">' .
-                '<g class="pg-mi-a">' .
-                '<path' . $a . ' d="M3.5 6H13a1 1 0 0 1 1 1v9H3.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/>' .
-                '<path d="M4.9 16H3.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1H13a1 1 0 0 1 1 1v9"/>' .
-                '</g>' .
-                '<path' . $d . ' d="M14 9h3.8a1 1 0 0 1 .8.4l2.3 3.2a1 1 0 0 1 .2.6V15a1 1 0 0 1-1 1H14z"/>' .
-                '<path d="M9.1 16h5.8M19.1 16h1.4a1 1 0 0 0 1-1v-2.6a1 1 0 0 0-.2-.6l-2.3-3.2a1 1 0 0 0-.8-.4H14"/>' .
-                '<circle class="pg-mi-wheel" cx="7" cy="16.6" r="2.1"/>' .
-                '<circle class="pg-mi-wheel" cx="17" cy="16.6" r="2.1"/>' .
-                '</g>';
-            break;
-
-        case 'tools':
-            // A toolbox: the box with its latch (accent) on the front, and the
-            // lid with its handle over it. A screwdriver and a spanner
-            // (accent) wait inside, hidden at rest because the box and the
-            // lid are opaque (.pg-mi-solid, backend.src.css); on hover the lid
-            // swings open on its right hinge and the two tools come up out of
-            // the box.
-            $lid = 'M3 12V9.5A2.5 2.5 0 0 1 5.5 7h13A2.5 2.5 0 0 1 21 9.5V12z';
-            $box = 'M3 12h18v5.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
-            $body =
-                '<g class="pg-mi-a pg-mi-kit">' .
-                '<rect' . $a . ' x="5.9" y="8.6" width="2.2" height="3.2" rx=".8"/>' .
-                '<rect x="5.9" y="8.6" width="2.2" height="3.2" rx=".8" stroke-width="1.3"/>' .
-                '<path d="M7 11.8V15M10.6 11.4V15" stroke-width="1.5"/>' .
-                '<circle cx="10.6" cy="10" r="1.4" stroke-width="1.4"/>' .
-                '</g>' .
-                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $box . '"/>' .
-                '<path d="' . $box . '"/>' .
-                '<g class="pg-mi-lid">' .
-                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $lid . '"/>' .
-                '<path d="' . $lid . '"/>' .
-                '<path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/>' .
-                '</g>' .
-                '<g class="pg-mi-a pg-mi-latch">' .
-                '<rect class="pg-mi-at pg-mi-solid"' . $tint . ' x="10" y="12.6" width="4" height="3.2" rx="1"/>' .
-                '<rect x="10" y="12.6" width="4" height="3.2" rx="1" stroke-width="1.5"/>' .
-                '</g>';
-            break;
-
-        default:
-            return '';
+        // Two sheets: the back one, tinted, ends where the front one
+        // covers it; a wave on the front sheet is the second colour.
+        $back = 'M17 7V6.1A3.6 3.6 0 0 0 13.4 2.5H6.1A3.6 3.6 0 0 0 2.5 6.1v7.3A3.6 3.6 0 0 0 6.1 17H7';
+        $body =
+            '<path' . $d . ' d="' . $back . 'v-6.4A3.6 3.6 0 0 1 10.6 7z"/>' .
+            '<path d="' . $back . '"/>' .
+            '<rect x="7" y="7" width="14.5" height="14.5" rx="3.6"/>' .
+            '<g class="pg-mi-a pg-mi-wave"><path d="M9.9 18.7C10.8 15.2 11.8 13 13.2 13C14.6 13 14.4 14.9 15.8 14.9C17.3 14.9 18 12.4 18.7 9.8"/></g>';
+    } else {
+        return '';
     }
 
     return '<svg class="pg-mi pg-mi-' . $name . ($space !== '' ? ' ' . $space : '') . ($color_class !== '' ? ' ' . $color_class : '') . '"' . $extra . ' width="1.3rem" height="1.3rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">' . $body . '</svg>';
+}
+
+/**
+ * A main menu row's icon on its tile: the drawing (pg_menu_icon()) or the
+ * fallback icon, in the colour of the row's category, on a tint of it.
+ *
+ * @param string $icon the icon markup
+ * @param string $tone the row's category (pg_menu_category_tone())
+ * @return string
+ */
+function pg_menu_icon_tile($icon, $tone)
+{
+    $tone = preg_match('/^[a-z]+$/', (string) $tone) ? $tone : 'top';
+
+    return '<span class="pg-mi-tile me-3" data-pg-menu-tone="' . $tone . '">' . $icon . '</span>';
 }
 
 function output_menu($properties = false)
@@ -4938,10 +4689,7 @@ function output_menu($properties = false)
     if (($user['role'] < 2) || ($design_other_content !== '')) {
         $menu_items[21]['id'] = 21;
         $menu_items[21]['href'] = 'view_system_styles.php';
-        // A neon sign of its own: a page frame in the module colour, a cyan
-        // cursor and spark, both glowing (backend.src.css: .pg-neon-icon).
-        $menu_items[21]['icon'] = '';
-        $menu_items[21]['svg'] = '<svg class="me-3 design-color pg-neon-icon" width="1.3rem" height="1.3rem" viewBox="1.6 -0.5 22 22" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><defs><filter id="pg-neon-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="wide"/><feGaussianBlur in="SourceGraphic" stdDeviation=".5" result="near"/><feMerge><feMergeNode in="wide"/><feMergeNode in="near"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#pg-neon-glow)"><g stroke="currentColor"><rect x="2.6" y="4.4" width="15.6" height="12.8" rx="2.6" stroke-width="1.7"/><path d="M2.6 8.3h15.6" stroke-width="1.3"/><rect class="pg-neon-block" x="5.5" y="11" width="5.4" height="3.4" rx="1" stroke-width="1.3" fill="currentColor" fill-opacity="0"/></g><g class="pg-neon-accent"><path class="pg-neon-cursor" d="M14 11.6l7.2 3-3.1 1.2-1.2 3.2z" stroke="currentColor" stroke-width="1.5" fill="currentColor" fill-opacity=".25"/><path class="pg-neon-spark" d="M20.6 1.6l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z" fill="currentColor"/></g></g><g stroke="#fff" stroke-opacity=".5" stroke-width=".45"><rect x="2.6" y="4.4" width="15.6" height="12.8" rx="2.6"/><path class="pg-neon-cursor" d="M14 11.6l7.2 3-3.1 1.2-1.2 3.2z"/></g></svg>';
+        $menu_items[21]['menu_icon'] = 'design';
         $menu_items[21]['color_class'] = 'design-color';
         $menu_items[21]['title'] = 'Page Design Studio';
         $menu_items[21]['context'] = true;
@@ -5149,7 +4897,7 @@ function output_menu($properties = false)
     }
 
     if ($user['role'] <= 2 && pg_settings_tool_count($menu_tools_groups) > 0) {
-        $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target, pg_menu_tone('settings-color'));
+        $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target, pg_menu_category_tone(25));
 
         $menu_items[25]['id'] = 25;
         $menu_items[25]['href'] = 'system_tools.php';
@@ -5615,7 +5363,7 @@ function output_menu($properties = false)
     // so its panel is kept open from one of them to the next, and the row
     // opens it at once (pg_menu_row_click_panel()).
     if (isset($menu_items[21]['id']) && ($design_other_content !== '')) {
-        $design_other = pg_menu_other_markup(21, $design_other_content, $output_parent_target, pg_menu_tone($menu_items[21]['color_class']), $menu_other_here);
+        $design_other = pg_menu_other_markup(21, $design_other_content, $output_parent_target, pg_menu_category_tone(21), $menu_other_here);
 
         if ($design_other['entry'] !== '') {
             if ($menu_items[21]['data-bs-content'] !== '') {
@@ -5668,22 +5416,20 @@ function output_menu($properties = false)
 
         $menu_panel_id = pg_menu_row_panel_id($options, $menu_panel_entries, $menu_panels_drawn);
 
-        $output_menu_item_icon = '';
-        // The drawn two-tone icon (pg_menu_icon()), then a Bootstrap icon,
-        // then a hand-made svg, then a letter in a circle.
-        if (isset($options['menu_icon']) && (($menu_icon_svg = pg_menu_icon($options['menu_icon'], $options['color_class'])) !== '')) {
+        // The row's drawing (pg_menu_icon()), then a Bootstrap icon, then a
+        // hand-made svg, then a letter in a circle, on a tile in the colour
+        // of the row's category.
+        $menu_row_tone = pg_menu_category_tone($key);
+        if (isset($options['menu_icon']) && (($menu_icon_svg = pg_menu_icon($options['menu_icon'], '', '')) !== '')) {
             $output_menu_item_icon = $menu_icon_svg;
         } else if (isset($options['icon']) && $options['icon'] != '') {
-            $output_menu_item_icon = '<i class="me-3 bi ' . $options['color_class'] . ' ' . $options['icon'] . '"></i>';
-
+            $output_menu_item_icon = '<i class="bi ' . $options['icon'] . '"></i>';
         } else if (isset($options['svg']) && $options['svg'] != '') {
-            //else check if svg exist
             $output_menu_item_icon = $options['svg'];
         } else {
-            //else generate icon
-            $output_menu_item_icon = '<svg style="font-size:10px" width="16px" height="16px" class="me-3 ' . $options['color_class'] . '" data-name="empty icon" fill="currentcolor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><text transform="translate(5 12)"><tspan x="0" y="0">' . (function_exists('mb_substr') ? mb_substr(lang($options['title']), 0, 1, 'UTF-8') : substr(lang($options['title']), 0, 1)) . '</tspan></text><path d="M8,.55C3.89.55.55,3.89.55,8s3.34,7.45,7.45,7.45,7.45-3.34,7.45-7.45S12.11.55,8,.55ZM8,14.86c-3.79,0-6.86-3.07-6.86-6.86S4.21,1.14,8,1.14s6.86,3.07,6.86,6.86-3.07,6.86-6.86,6.86Z"/></svg>';
-
+            $output_menu_item_icon = '<svg style="font-size:10px" width="16px" height="16px" data-name="empty icon" fill="currentcolor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><text transform="translate(5 12)"><tspan x="0" y="0">' . (function_exists('mb_substr') ? mb_substr(lang($options['title']), 0, 1, 'UTF-8') : substr(lang($options['title']), 0, 1)) . '</tspan></text><path d="M8,.55C3.89.55.55,3.89.55,8s3.34,7.45,7.45,7.45,7.45-3.34,7.45-7.45S12.11.55,8,.55ZM8,14.86c-3.79,0-6.86-3.07-6.86-6.86S4.21,1.14,8,1.14s6.86,3.07,6.86,6.86-3.07,6.86-6.86,6.86Z"/></svg>';
         }
+        $output_menu_item_icon = pg_menu_icon_tile($output_menu_item_icon, $menu_row_tone);
 
         // A count worth acting on, pinned to the row's right edge; collapsed
         // to the rail it sits on the icon's corner (backend.src.css). Zero
@@ -5708,7 +5454,7 @@ function output_menu($properties = false)
 
             // A row that opens another row's panel draws none of its own.
             if ($menu_panel_id === 'menu_panel_' . (int) $options['id']) {
-                $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries, pg_menu_tone(isset($options['color_class']) ? $options['color_class'] : ''));
+                $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries, $menu_row_tone);
                 $menu_panels_drawn[(int) $options['id']] = true;
             }
         }
@@ -5908,7 +5654,7 @@ function pg_menu_heading($key, $label)
  * @param array  $groups        label, icon, items (label, icon, url, target, confirm)
  * @param string $base          the panel folder's address, ending in /
  * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
- * @param string $tone          the row's module (pg_menu_tone()), for the
+ * @param string $tone          the row's category (pg_menu_category_tone()), for the
  *                              group panels' icons
  * @return array entries (first level), panels (the second level, as markup);
  *               both empty when no group has a screen
@@ -5976,7 +5722,7 @@ function pg_menu_tools_markup($groups, $base, $parent_target, $tone = '')
  * @param int    $row           the slot of the row whose panel holds the entry
  * @param string $entries       Other's entries, as output_menu() built them
  * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
- * @param string $tone          the row's module (pg_menu_tone()), for the
+ * @param string $tone          the row's category (pg_menu_category_tone()), for the
  *                              panel's icons
  * @param bool   $here          the page is a screen of one of Other's entries
  * @return array entry and panel (markup) and panel_id; all '' when Other
@@ -6168,22 +5914,25 @@ function pg_menu_live_count($count, $title = '')
 }
 
 /**
- * The module a colour class names: 'pages' for 'pages-color'.
+ * The colour of a main menu row and of the panel it opens: the key of the
+ * row's category in pg_menu_categories() ('top' for the untitled block at
+ * the top, and for a row no category lists).
  *
- * A panel carries it as data-pg-menu-tone, which backend.src.css turns into
- * the module's two shades for its entries' icons, so they are two-coloured
- * like the row that opens the panel.
+ * A row's tile (pg_menu_icon_tile()) and its panel (data-pg-menu-tone)
+ * carry it; backend.src.css gives each category its tone.
  *
- * @param string $color_class a row's color_class (<module>-color)
- * @return string the module name, or '' when the class is not one
+ * @param int $slot the row's slot id
+ * @return string top, content, design, ecommerce, accounting, marketing or system
  */
-function pg_menu_tone($color_class)
+function pg_menu_category_tone($slot)
 {
-    if (preg_match('/^([a-z]+)-color$/', (string) $color_class, $match)) {
-        return $match[1];
+    foreach (pg_menu_categories() as $key => $category) {
+        if (in_array((int) $slot, $category['slots'], true)) {
+            return ($key === '') ? 'top' : (string) $key;
+        }
     }
 
-    return '';
+    return 'top';
 }
 
 /**
@@ -6194,7 +5943,7 @@ function pg_menu_tone($color_class)
  * @param string $row_id   id of the row that opens it
  * @param string $title    the row's name, translated
  * @param string $entries  the row's entries, as output_menu() built them
- * @param string $tone     the row's module (pg_menu_tone()), which colours
+ * @param string $tone     the row's category (pg_menu_category_tone()), which colours
  *                         the entries' icons; '' leaves them plain
  * @return string
  */
