@@ -13,6 +13,9 @@ module: booking_settings
 ## How is Reminders drawn?
 - In Booking rules, a text box with its unit "hours before" (`form-adorn`), help naming the bounds (three at most, 1-168) and Messages; it posts `booking_reminder_hours` as before (#11133).
 
+## What is left out?
+- A reminder sent without a campaign profile or an SMS event: separate work, not planned; until then Reminders with neither send nothing.
+
 ## Where do the values come from?
 - One pure `pg_booking_settings_messages($mail_actions, $sms_events, $reminder_hours)` (`includes/fn/booking_settings.php`, `test_booking_settings_messages`).
 - Mails: the actions of switched-on campaign profiles with `action_item_id` 0 among `pg_booking_mail_actions()` (no profile, no mail: `commerce/booking-messages.md`). Texts: the switched-on events of `pg_sms_message_settings()`.
