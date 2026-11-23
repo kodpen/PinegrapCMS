@@ -195,7 +195,10 @@ echo
         <div class="col-12">
             ' . $liveform->get_messages() . '
             ' . pg_screen_toolbar(array(
-                'primary' => '<button type="button" class="pg-button pg-button-fill" data-pg-pick-drawer="pick_wave_make"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Make a wave')) . '</button>',
+                'primary' => array(
+                    '<button type="button" class="pg-button pg-button-fill" data-pg-pick-drawer="pick_wave_make"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Make a wave')) . '</button>',
+                    '<a class="pg-button pg-button-quiet" href="pack.php"><i class="bi bi-upc-scan" aria-hidden="true"></i>' . h(lang('Pack')) . '</a>',
+                ),
                 'search'  => array(pg_list_table_search_box('view_pick_waves'), pg_list_sort_menu('view_pick_waves.php', $waves_sort_columns, $waves_sort_levels, $waves_sort_default)),
             )) . '
             <form name="form" id="pick_waves_form" action="view_pick_waves.php" method="post">

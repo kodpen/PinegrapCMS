@@ -4641,6 +4641,7 @@ function output_menu($properties = false)
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_delivery_problems.php\'' . $output_parent_target . ' class=\'' . $orders_link_class . 'bi-truck\'>' . lang('Delivery problems') . '</a>';
             if (pg_pick_waves_ready()) {
                 $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pick_waves.php\'' . $output_parent_target . ' class=\'' . $orders_link_class . 'bi-basket2\'>' . lang('Pick waves') . '</a>';
+                $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/pack.php\'' . $output_parent_target . ' class=\'' . $orders_link_class . 'bi-upc-scan\'>' . lang('Pack') . '</a>';
             }
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_cart_quotes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart3 bi-me-2\'>' . lang('Cart quotes') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_subscriptions.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-repeat bi-me-2\'>' . lang('Subscriptions') . '</a>';
@@ -5408,6 +5409,7 @@ function output_menu($properties = false)
             break;
         case 'view_pick_waves.php':
         case 'pick_wave.php':
+        case 'pack.php':
             // A user with the "Packing only" right alone has its own row.
             $active_menu = isset($menu_items[29]) ? 29 : 10;
             break;

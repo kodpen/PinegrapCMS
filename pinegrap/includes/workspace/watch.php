@@ -146,6 +146,7 @@ function ws_events_catalog()
             'order.return.requested' => array('label' => lang('A return is requested'), 'when' => lang('When a return is requested'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'stock.low'            => array('label' => lang('A product runs low in stock'), 'when' => lang('When a product runs low in stock'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
             'order.return.approved' => array('label' => lang('A return is approved'), 'when' => lang('When a return is approved'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.packed'         => array('label' => lang('An order is packed'), 'when' => lang('When an order\'s parcel is packed and checked'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.return.received' => array('label' => lang('A return arrives back'), 'when' => lang('When the goods of a return arrive back'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.return.refunded' => array('label' => lang('A return is refunded'), 'when' => lang('When a return is refunded'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'marketplace.order.imported' => array('label' => lang('A marketplace order is imported'), 'when' => lang('When a marketplace order is imported'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),

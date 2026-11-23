@@ -48,6 +48,11 @@ function api_webhook_core_events() {
 		'order.shipped'        => 'A tracking number was recorded for an order',
 		'order.delivered'      => 'A delivery date was recorded for an order',
 		'order.cancelled'      => 'An order was cancelled',
+		// A parcel checked on the Pack screen (includes/fn/pack.php): every
+		// unit of the address scanned into the box. id is the order's; the
+		// address, its wave, the packer and the units follow, never the
+		// customer.
+		'order.packed'         => 'Every unit of an order\'s address was scanned into its box on the Pack screen, once per address (a pack closed short is not announced as packed)',
 		// A customer return (includes/fn/returns.php). id is the order's, as
 		// in every order.* event; return_id, status, source, reason and the
 		// lines follow. Announced from the return model, so every path that

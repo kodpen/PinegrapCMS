@@ -2588,6 +2588,7 @@
     "Print the Delivery Note": "İrsaliyeyi yazdır",
     "Print the Invoice": "Faturayı yazdır",
     "Print the QR poster": "QR afişini yazdır",
+    "Print the label": "Etiketi yazdır",
     "Print the pick list": "Toplama listesini yazdır",
     "Print the statement": "Beyanı yazdır",
     "Print the {var:1}": "{var:1} yazdır",
