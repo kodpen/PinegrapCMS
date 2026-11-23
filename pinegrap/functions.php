@@ -323,6 +323,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_link_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_store.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_places.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_screens.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_tickets.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_desk.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit.php');

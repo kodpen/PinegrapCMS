@@ -8,7 +8,7 @@ description: The walk-in queue's status read (queue.php?n=&t=&read=1) skips the 
 
 ## Which request is the read?
 - `waf_queue_status_read($method, $script, $query)` (waf.php, pure): a GET or HEAD of `queue.php` with a scalar `n` and a `read` that is neither empty nor `0`. Opening the page (no `read`), the take page (`place=`), taking a number, "Leave the queue", "I'm on my way" and every staff action are POSTs or other GETs and stay sensitive.
-- The lobby screen's read (WQ6) joins this function and the same bucket.
+- The lobby screen's read, a GET of `queue_lobby.php` with a scalar `place` and `read` (WQ6, #11223), is taken by the same function and counted in the same bucket; opening the lobby is not the read.
 
 ## What does the firewall do with it?
 - `waf_sensitive_request_counts()` takes the query as a fifth argument (`waf_is_sensitive_request()` passes `$_GET`) and answers false for the read: no sensitive count, no open-request slot. The global limit still counts it.

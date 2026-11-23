@@ -48,6 +48,19 @@ function test_waf_queue_status_read_detected()
 	pg_assert_false(waf_queue_status_read('GET', 'Queue.php', $read), 'name case');
 }
 
+// The lobby screen's read shares the bucket; opening the lobby does not.
+function test_waf_queue_status_read_takes_the_lobby_read()
+{
+	$lobby = array('place' => '3', 'k' => 'abc', 'read' => '1');
+
+	pg_assert_true(waf_queue_status_read('GET', 'queue_lobby.php', $lobby), 'the lobby read');
+	pg_assert_false(waf_queue_status_read('GET', 'queue_lobby.php', array('place' => '3', 'k' => 'abc')), 'opening the lobby');
+	pg_assert_false(waf_queue_status_read('GET', 'queue_lobby.php', array('n' => '3', 'read' => '1')), 'no place');
+	pg_assert_false(waf_queue_status_read('POST', 'queue_lobby.php', $lobby), 'a POST');
+	pg_assert_false(waf_queue_status_read('GET', 'queue_kiosk.php', $lobby), 'the kiosk');
+	pg_assert_false(waf_sensitive_request_counts('GET', 'queue_lobby.php', 'empty', '*/*', $lobby), 'off the sensitive allowance');
+}
+
 // The read is off the sensitive allowance; everything else on queue.php stays on it.
 function test_waf_queue_status_leaves_sensitive_allowance()
 {
