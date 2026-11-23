@@ -1,11 +1,11 @@
 ---
 name: order-screen-redraw-rules
-description: What the View Order redraw (OS1-OS4, #11098 #11139 #11171 and OS4) settled for good: nothing taken away, Save unchanged, what was left out, the drawing as reference, how such a screen is checked
+description: What the View Order redraw (OS1-OS4, #11098 #11139 #11171 #11204) settled for good: nothing taken away, Save unchanged, what was left out, the drawing as reference, how such a screen is checked
 module: order_view
 ---
 
 ## What did the redraw do?
-- Owner (2026-11-22): View Order is redrawn as `commerce-screens-drawing/order.html` (boards O1-O4) shows (`workflow/decisions-made-panel-15.md`). Built in four steps: the head (#11098, `order-screen-head.md`), the side panel and Payment (#11139, `order-screen-side-panel.md`), the shipment card (#11171, `order-screen-shipment-card.md`), the layout of the later cards and the close-out (OS4, `ui/order-screen-wide-layout.md`).
+- Owner (2026-11-22): View Order is redrawn as `commerce-screens-drawing/order.html` (boards O1-O4) shows (`workflow/decisions-made-panel-15.md`). Built in four steps: the head (#11098, `order-screen-head.md`), the side panel and Payment (#11139, `order-screen-side-panel.md`), the shipment card (#11171, `order-screen-shipment-card.md`), the layout of the later cards and the close-out (#11204, `ui/order-screen-wide-layout.md`).
 - The drawing stays the reference picture; where it shows Turkish, the English texts of these files are the screen's.
 
 ## What must a later change keep?

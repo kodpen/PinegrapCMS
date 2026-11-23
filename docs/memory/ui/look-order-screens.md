@@ -14,7 +14,7 @@ description: The order screens in look A (C1, #9681): View Order and View Return
 
 ## How are titles and values drawn?
 - Card titles `h2.card-header.bg-reset.border-0.pg-title-section`; a title with a button, pill or picture beside it is `h2.pg-title-section.mb-0` inside a flex `card-header` (the shipment cards, Payment, Returns, the ERP documents card).
-- View Order's side panel uses the second form on all three cards (OS4): on `h2.card-header` the header's size won, so Customer and Order Information were 15 px beside 17 px titles.
+- View Order's side panel uses the second form on all three cards (#11204): on `h2.card-header` the header's size won, so Customer and Order Information were 15 px beside 17 px titles.
 - Groups over rows (View Order's UTM, the Advanced Search sections) are `h3.pg-group-label`, no longer green or bold `h5`/`h6`.
 - The status column dropped its 110–120 % inline sizes: the order number `fw-medium pg-tabular`, sums `pg-tabular`, totals `strong.pg-tabular`; address lines `fw-medium`, their value at the right edge like every row (`pg_order_view_row()` with `$wide`; architect, channel 25 message 4309).
 - The sale screen's card titles keep `.pg-sale-ch` for their margin: Cart `pg-title-section`, the status column's `pg-title-status`.
