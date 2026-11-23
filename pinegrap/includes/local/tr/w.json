@@ -1378,6 +1378,7 @@
     "What is written in a channel where Pinegrap AI is asked is sent to the model at ai.pinegrap.com. Public channels are open to it, private ones only when their manager allows it.": "Pinegrap AI'a sorulan kanalda yazılanlar ai.pinegrap.com'daki modele gönderilir. Herkese açık kanallar ona açıktır, özel kanallar yalnızca yöneticisi izin verirse.",
     "What is written in this private channel will be sent to Claude (Anthropic) when somebody asks it. Allow it?": "Biri Claude'u çağırdığında bu özel kanalda yazılanlar Claude'a (Anthropic) gönderilecek. İzin verilsin mi?",
     "What is written in this private channel will be sent to Pinegrap AI (ai.pinegrap.com) when somebody asks it. Allow it?": "Biri Pinegrap AI'ı çağırdığında bu özel kanalda yazılanlar Pinegrap AI'a (ai.pinegrap.com) gönderilecek. İzin verilsin mi?",
+    "What is written, line by line": "Yazılacaklar, satır satır",
     "What is wrong?": "Sorun ne?",
     "What is your home worth?": "Eviniz ne kadar eder?",
     "What is your home worth? Tell us about it; an agent visits within two working days and sends a price in writing, free of charge.": "Eviniz ne eder? Bize anlatın; bir danışman iki iş günü içinde gelir ve fiyatı yazılı olarak ücretsiz gönderir.",

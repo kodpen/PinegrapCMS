@@ -151,13 +151,24 @@ if (!$_POST) {
         $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
+    // A designer reaches the Page Design Studio through the move screen, the
+    // style or its set ticked and its dry run drawn (legacy_to_designer.php).
+    $output_designer_notice = '';
+    if ((int) $user['role'] <= 1) {
+        $output_designer_notice = '
+            <div class="pg-card pg-card-inner-row my-5"><span class="pg-icon-tile pg-tone-blue" aria-hidden="true"><span class="bi bi-magic"></span></span>
+                <div class="pg-look-grow"><div class="pg-field-help mb-0">' . h(lang('To edit this style in the Page Design Studio, move it: the dry run shows what becomes editable and what stays code before anything is written.')) . '</div></div>
+                <a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/legacy_to_designer.php?style=' . (int) $style_id . '#ltd-dry-run">' . h(lang('Open in the Page Design Studio')) . '</a>
+            </div>';
+    }
+
     print
     $output_header . '
     ' . pg_screen_toolbar(array(
         'secondary' => '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_style.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
         'grow'      => '<span class="fw-semibold text-break me-3">' . h($style_name) . '</span>',
     )) . '
-            ' . $liveform->output_notices() . '
+            ' . $liveform->output_notices() . $output_designer_notice . '
             <form name="form" action="edit_custom_style.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="'. h($_REQUEST['id']) .'">

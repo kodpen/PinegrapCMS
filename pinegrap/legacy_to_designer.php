@@ -182,6 +182,18 @@ $busy = pg_lbs_moves_running();
 $report = pg_ltd_report();
 $sets = pg_ltd_sets($report);
 
+// The one door from All Page Styles (?style=<id>): the style, or the set it
+// moves with, arrives ticked with its dry run drawn; the link's
+// #ltd-dry-run scrolls to it. Nothing is written.
+if ($plan === null && !$busy && is_scalar($_GET['style'] ?? null)) {
+    $door = pg_ltd_door_choice($sets, (int)$_GET['style']);
+    if ($door['styles'] || $door['sets']) {
+        $chosen = array_fill_keys($door['styles'], true);
+        $chosen_sets = array_fill_keys($door['sets'], true);
+        $plan = pg_ltd_plan($door['styles'], $door['sets']);
+    }
+}
+
 $state_badges = array(
     'ready'     => array('theme-success', lang('Ready')),
     'attention' => array('theme-warning', lang('Needs attention')),
@@ -284,7 +296,7 @@ $style_row = function ($s) use ($state_badges, $region_labels, $page_list, $chos
     $output_action = '';
     if ($s['state'] !== 'blocked') {
         $output_action .= '<input class="check m-1" type="checkbox" name="styles[]" value="' . (int)$s['id'] . '" form="ltd_dry_run" aria-label="' . h($s['name']) . '"' . (isset($chosen[$s['id']]) ? ' checked' : '') . '>';
-        $output_action .= '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the Page Design Studio')) . '" href="edit_system_style.php?id=' . (int)$s['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
+        $output_action .= '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the Page Design Studio')) . '" href="legacy_to_designer.php?style=' . (int)$s['id'] . '#ltd-dry-run"><i class="bi bi-magic"></i></a>';
     }
 
     return '
@@ -421,8 +433,15 @@ if ($output_classic !== '') {
 $output_plan = '';
 if ($plan !== null) {
     $output_plan = $plan ? '' : '<p class="mb-0">' . h(lang('Choose a set or the styles to move first.')) . '</p>';
+    $common_converts = false;
     foreach ($plan as $p) {
         $output_plan .= pg_ltd_plan_html($p);
+        if (pg_ltd_plan_groups($p)['common']) $common_converts = true;
+    }
+    // A converted common region's component is its one source, on classic
+    // pages too (classic-regions-in-designer): said before Convert.
+    if ($common_converts) {
+        $output_plan .= '<p class="pg-field-help mb-0"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . h(lang('From now on these common regions are edited in the Page Design Studio, on classic pages too.')) . '</p>';
     }
     $output_convert = '';
     if ($plan && !$busy) {
@@ -435,7 +454,8 @@ if ($plan !== null) {
         if ($hidden !== '') {
             $output_convert .= '
         <form method="post" action="legacy_to_designer.php" class="card-footer d-flex flex-wrap align-items-center gap-3">' . get_token_field() . $hidden . '
-            <button type="submit" name="convert" value="1" class="pg-button pg-button-fill"><i class="bi bi-magic"></i>' . h(lang('Move to the Page Design Studio')) . '</button>
+            <button type="submit" name="convert" value="1" class="pg-button pg-button-fill"><i class="bi bi-magic" aria-hidden="true"></i>' . h(lang('Convert')) . '</button>
+            <a class="pg-button pg-button-quiet" href="legacy_to_designer.php">' . h(lang('Cancel')) . '</a>
             <span class="small fg-secondary">' . h(lang('Writes what is listed above. A page somebody holds is skipped; undo is a page\'s revision history and deleting a shared component.')) . '</span>
         </form>';
         }
@@ -462,7 +482,7 @@ if ($running !== null || $moving !== null) {
         $progress = pg_ltd_state_progress($running);
         $run_title = lang('Moving to the Page Design Studio');
         $run_text = lang('{var:1} of {var:2} styles done');
-        $run_done = 'legacy_to_designer.php?ended=1#ltd-runs';
+        $run_done = 'legacy_to_designer.php?ended=1#ltd-ended';
     }
     $output_run = '
     <div class="card my-7" id="ltd-run">
@@ -495,9 +515,11 @@ if ($running !== null || $moving !== null) {
 </script>';
 }
 
-// The kept reports of the last runs.
+// The kept reports of the last runs; the one just ended opens.
+$ended = !empty($_GET['ended']) && $running === null && $moving === null;
 $output_runs = '';
-foreach (pg_ltd_reports(5) as $r) {
+$output_ended = '';
+foreach (pg_ltd_reports(5) as $r_index => $r) {
     $c = $r['counts'];
     $lines = '';
     foreach ($r['lines'] as $l) {
@@ -507,10 +529,32 @@ foreach (pg_ltd_reports(5) as $r) {
     }
     if (!empty($r['more'])) $lines .= '<li class="fg-secondary">' . h(lang(array('string' => '{var:1} more lines', 'vars' => array(pg_format_number($r['more'], 0))))) . '</li>';
     $output_runs .= '
-        <details class="mb-3"><summary>' . h(get_absolute_time(array('timestamp' => (int)($r['finished'] ?? $r['started']), 'format' => 'plain_text'))) . ' · '
+        <details class="mb-3"' . (($ended && $r_index === 0) ? ' open' : '') . '><summary>' . h(get_absolute_time(array('timestamp' => (int)($r['finished'] ?? $r['started']), 'format' => 'plain_text'))) . ' · '
         . h(lang(array('string' => '{var:1} styles, {var:2} pages, {var:3} components, {var:4} widgets, {var:5} skipped, {var:6} failed',
             'vars' => array($c['styles'], $c['pages'], $c['components'], $c['widgets'], $c['skipped'], $c['failed'])))) . ' · ' . h((string)$r['username']) . '</summary>
             <ul class="small mb-0 mt-1 ps-12">' . $lines . '</ul></details>';
+}
+// The move just ended: the designs it made open in the editor, the report
+// is the first of the earlier moves.
+if ($ended) {
+    $last = pg_ltd_reports(1);
+    $designs = $last ? pg_ltd_run_designs($last[0]) : array();
+    $design_rows = $designs ? db_items("SELECT style_id, style_name FROM style WHERE style_layout = 'visual_designer' AND style_id IN (" . implode(',', array_map('intval', $designs)) . ") ORDER BY style_name") : array();
+    $open = '';
+    foreach ($design_rows as $i => $d) {
+        $open .= '<a class="pg-button ' . ($i === 0 ? 'pg-button-fill' : 'pg-button-quiet') . '" href="edit_system_style.php?id=' . (int)$d['style_id'] . '">'
+            . '<i class="bi bi-brush" aria-hidden="true"></i>'
+            . h(count($design_rows) === 1 ? lang('Open the design') : lang(array('string' => 'Open {var:1}', 'vars' => array((string)$d['style_name'])))) . '</a>';
+    }
+    if ($last) {
+        $output_ended = '
+    <div class="card my-7" id="ltd-ended">
+        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('The move has ended')) . '</h2></div>
+        <div class="card-footer d-flex flex-wrap align-items-center gap-3">' . $open . '
+            <a class="pg-button pg-button-quiet" href="#ltd-runs">' . h(lang('Report')) . '</a>
+        </div>
+    </div>';
+    }
 }
 if ($output_runs !== '') {
     $output_runs = '
@@ -629,7 +673,7 @@ pg_page_shell([
         'secondary' => array('label' => lang('All Page Styles'), 'url' => 'view_styles.php', 'icon' => 'bi-arrow-left'),
     )) . '
     <div class="pg-figures my-7" role="group" aria-label="' . h(lang('The move')) . '">' . $output_summary . '</div>
-    ' . $output_form . $output_run . $output_plan . '
+    ' . $output_form . $output_run . $output_ended . $output_plan . '
     <div class="card my-7" id="ltd-styles">
         <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Styles')) . '</h2>
             <div class="small fg-secondary">' . h(lang(array('string' => 'Sets: {var:1}. Styles that load the same stylesheets and scripts in the same order, with the same theme file and collection, form a set and move as one Legacy design.', 'vars' => array(count($sets['sets']))))) . '</div></div>
