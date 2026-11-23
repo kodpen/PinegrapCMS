@@ -11,6 +11,8 @@ module: privacy_inventory
 ## How is it kept live?
 - `tests/privacy_inventory_test.php` fails when `pg_privacy_erase_tables()` reaches a table the catalogue lacks, when a line is not whole, and when a `person` column is not one the erasure finds or replaces in that table (so it exists wherever the erasure runs).
 - A new personal table goes into both lists in the same PR.
+- Tables no erasure reaches are listed too when they hold an IP address: `visitors` (retention `visitor_records` and `visitor_ips`), `waf_log` (`firewall_log`), `api_request_log` (`api_log`); IP and cookie, visitors, legitimate interest, no `person` column, so counted but never erased by a person's erasure (#10998, `test_privacy_inventory_names_the_logs_holding_ip_addresses`).
+- A retention key names the setting that sets it (`pg_privacy_inventory_retentions()`); every period also shows in Site Settings › Visitors and privacy › How long we keep data (`ui/settings-privacy-retention.md`).
 
 ## How are the counts read?
 - `pg_privacy_inventory_counts()`: `COUNT(*) AS records` and, with a person column, `COUNT(DISTINCT NULLIF(col, 0 or ''))` as people; an `int` column counts only rows linked to somebody (`col > 0`). `files` counts only files of form submissions (`where`).

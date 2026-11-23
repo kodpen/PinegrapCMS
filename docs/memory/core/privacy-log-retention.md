@@ -20,8 +20,9 @@ module: privacy_retention
 
 ## Where is it set?
 - Settings › Security › Audit Trail (`pgset-audit`, drawn only once the column exists; the card links to `view_audit_log.php`). `security.save.php` checks the field with `pg_audit_retention_years_from_input()` before anything is written and writes the column on its own; a change is itself in the settings audit line. `pg_audit_retention_years()` reads it back, clamped, the default before the step has run.
+- Both periods also show, read-only beside the others, in Visitors and privacy › How long we keep data: Audit trail lines with Change to this card, Consent history fixed with no Change (`ui/settings-privacy-retention.md`).
 
 ## Tests?
 - `tests/privacy_retention_test.php`: the input rule, the cutoff, the consent query's conditions, the bounds.
 
-Related: docs/memory/core/audit-trail-screen.md, docs/memory/core/consent-log-and-audit-trail.md
+Related: docs/memory/ui/settings-privacy-retention.md, docs/memory/core/audit-trail-screen.md, docs/memory/core/consent-log-and-audit-trail.md
