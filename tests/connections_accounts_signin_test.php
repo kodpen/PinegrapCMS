@@ -94,8 +94,8 @@ function test_connections_signin_apple_fields_moved_to_the_page()
 	pg_assert_false(strpos($card, 'name="apple_client_id"') !== false, 'the sign-in card no longer types the Services ID');
 	pg_assert_false(strpos($card, 'name="apple_private_key"') !== false, 'nor the key');
 	pg_assert_false(strpos($card, 'signin_microsoft_redirect') !== false, 'Microsoft\'s return address is on Microsoft\'s page');
-	pg_assert_contains('name="signin_apple"', $card, 'the switch stays');
-	pg_assert_contains('href="connections.php?service=signin_apple"', $card, 'a row leads to the page');
+	pg_assert_contains('$signin_connect_row(\'signin_apple\'', $card, 'the switch stays, a connect row posting signin_apple');
+	pg_assert_contains("'connections.php?service=signin_apple'", $card, 'a row leads to the page');
 
 	$save = connections_accounts_signin_test_source('includes/settings/security.save.php');
 	pg_assert_false(strpos($save, 'apple_client_id') !== false, 'saving the sign-in settings leaves the application alone');
