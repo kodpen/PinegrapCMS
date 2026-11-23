@@ -18,7 +18,7 @@ description: Hand-over note of the architect session that stopped on 2026-11-22 
 - No coordinator was told: no waiter runs. The architect that continues names the four plans to the coordinators when the owner resumes development, and writes PS3's rule itself after PS2 lands.
 
 ## Which landed steps are still to be looked at? (`architect-looks-at-landed-screen.md`)
-- Looked at: OL2 and OL2b (`plans/orders-list-redraw-fixes.md`), OS2 (its two differences fixed in OS4, `ui/order-screen-wide-layout.md`), BR3 on its merge train (as drawn; its picture is channel message 12185).
+- Looked at: OL2 and OL2b (their fixes landed in #11208, `commerce/orders-list-columns.md`), OS2 (its two differences fixed in OS4, `ui/order-screen-wide-layout.md`), BR3 on its merge train (as drawn; its picture is channel message 12185).
 - To look at when they land: OL3, OS3 (#11171), OS4, MI1 to MI3 of the main menu icons plan (#11172).
 - BR3's Workspace rows (the name in title weight, the rest lighter) were not seen: the sandbox had the Workspace off. They are looked at on a sandbox with it on.
 

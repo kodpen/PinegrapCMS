@@ -16,7 +16,7 @@ module: order_view
 ## What was left out?
 - A history of the order (who did what, when): the audit trail holds it; its own request.
 - Editing an address, a line or the customer on this screen.
-- The printed order, the packing slip, View Return; All Orders has its own plan (`plans/orders-list-redraw.md`).
+- The printed order, the packing slip, View Return; All Orders is drawn on its own (`commerce/orders-list-columns.md`).
 
 ## How is a redrawn order screen checked?
 - A screenshot round on the sandbox (`ui/panel-screenshots.md`) at 1440 and 390 px in both themes against the board; the pictures as a private page, never committed.

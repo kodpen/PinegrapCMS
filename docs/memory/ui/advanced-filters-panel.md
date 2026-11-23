@@ -25,4 +25,4 @@ module: advanced_filters
 - All Orders: head with the count, labels `pg-field-label`, controls `pg-input` (the date selects keep `form-control`, `data-pg-date-selects` turns them into a picker), Clear and Update.
 - Contacts, Submitted Forms, Commissions, Site Log: the same head (no count), scroll and foot with Update only (`pg_advanced_filters_foot()` with no address draws no Clear); labels `pg-field-label`, controls still `form-control`. Their count and Clear wait for a list of their fields.
 
-Related: docs/memory/ui/order-filter-names.md, docs/memory/plans/orders-list-redraw-filters-panel.md
+Related: docs/memory/ui/order-filter-names.md

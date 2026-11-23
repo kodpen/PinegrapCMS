@@ -514,8 +514,10 @@ function pg_order_list_customer_text($first_name, $last_name, $company)
 
 /**
  * The query that reads the first line of each order and how many lines it
- * has (order_id, product_name, line_count). Lines saved for later are left
- * out, as the cart and the order leave them out.
+ * has (order_id, product_name, line_count). product_name is the name people
+ * know (products.short_description), as Summary reads it: order_items keeps
+ * the SKU there, which a deleted product falls back to. Lines saved for
+ * later are left out, as the cart and the order leave them out.
  *
  * @param array  $order_ids  order ids; anything but a positive integer is dropped
  * @param string $active_sql pg_order_item_active_sql() of the caller
@@ -531,7 +533,7 @@ function pg_order_list_items_sql($order_ids, $active_sql = '')
 
     return "SELECT
             first_line.order_id,
-            order_items.product_name,
+            COALESCE(NULLIF(products.short_description, ''), order_items.product_name) AS product_name,
             first_line.line_count
         FROM (
             SELECT
@@ -543,7 +545,8 @@ function pg_order_list_items_sql($order_ids, $active_sql = '')
                 (order_items.order_id IN (" . implode(', ', $ids) . "))" . $active_sql . "
             GROUP BY order_items.order_id
         ) AS first_line
-        INNER JOIN order_items ON order_items.id = first_line.first_id";
+        INNER JOIN order_items ON order_items.id = first_line.first_id
+        LEFT JOIN products ON products.id = order_items.product_id";
 }
 
 /**
@@ -724,7 +727,36 @@ function pg_order_list_pill_html($pill)
 }
 
 /**
- * The Items cell: the first line's product and "+N more" for the others.
+ * The text of a cell that gives way when the list is narrow: one line cut
+ * with an ellipsis, the whole text as its title.
+ *
+ * @param string $html  the cell's markup
+ * @param string $title the whole text, plain
+ * @return string HTML
+ */
+function pg_order_list_clip_html($html, $title)
+{
+    if ((string) $html === '') {
+        return '';
+    }
+
+    return '<span class="pg-orders-clip" title="' . h((string) $title) . '">' . $html . '</span>';
+}
+
+/**
+ * The Customer cell: the name, cut with an ellipsis when it is long.
+ *
+ * @param string $text pg_order_list_customer_text()
+ * @return string HTML
+ */
+function pg_order_list_customer_html($text)
+{
+    return pg_order_list_clip_html(h((string) $text), (string) $text);
+}
+
+/**
+ * The Items cell: the first line's product and "+N more" for the others,
+ * cut with an ellipsis when it is long.
  *
  * @param array|null $line pg_order_list_items_sql() row
  * @return string HTML
@@ -735,12 +767,227 @@ function pg_order_list_items_html($line)
         return '';
     }
 
-    $html = h((string) ($line['product_name'] ?? ''));
+    // short_description may carry markup from the product editor.
+    $name = trim(strip_tags((string) ($line['product_name'] ?? '')));
+    $html = h($name);
+    $title = $name;
     $others = (int) ($line['line_count'] ?? 0) - 1;
 
     if ($others > 0) {
-        $html .= ' <small class="fg-secondary">' . h(lang(array('string' => '+{var:1} more', 'vars' => array($others)))) . '</small>';
+        $more = lang(array('string' => '+{var:1} more', 'vars' => array($others)));
+        $html .= ' <small class="fg-secondary">' . h($more) . '</small>';
+        $title .= ' ' . $more;
     }
 
-    return $html;
+    return pg_order_list_clip_html($html, $title);
+}
+
+/**
+ * The quick filters over the orders list, in their order: code => label.
+ * '' is All.
+ *
+ * @return array
+ */
+function pg_order_list_quick_filters()
+{
+    return array(
+        '' => lang('All'),
+        'awaiting_payment' => lang('Awaiting payment'),
+        'to_ship' => lang('To ship'),
+        'shipped' => lang('Shipped'),
+        'delivered' => lang('Delivered'),
+    );
+}
+
+/**
+ * A quick filter's code as kept in the session, '' (All) for anything that
+ * is not one.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_order_list_quick_value($value)
+{
+    $value = is_string($value) ? trim($value) : '';
+
+    return (($value !== '') && array_key_exists($value, pg_order_list_quick_filters())) ? $value : '';
+}
+
+/**
+ * The condition, over the current orders row, that a quick filter keeps:
+ * the rule pg_order_awaiting_payment() and the shipping pill of
+ * pg_order_view_states() apply to one order, written in SQL that MySQL and
+ * SQLite both read (tests/order_list_quick_test.php runs it over the same
+ * sample orders as the pills).
+ *
+ * The addresses of an order are those its lines point to, as View Order
+ * reads them; a parcel without a number is not one, and a parcel status
+ * that is not known reads as created.
+ *
+ * @param string $quick        a code of pg_order_list_quick_filters()
+ * @param string $today        Y-m-d
+ * @param bool   $paid_known   orders.paid_at exists
+ * @param bool   $status_ready shipping_tracking_numbers.status exists
+ * @return string '' for All or an unknown code
+ */
+function pg_order_list_quick_sql($quick, $today, $paid_known, $status_ready)
+{
+    $today = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $today) ? (string) $today : date('Y-m-d');
+    $methods = array();
+    foreach (array_merge(array('Offline Payment'), pg_order_pending_payment_methods()) as $method) {
+        $methods[] = "'" . str_replace("'", "''", $method) . "'";
+    }
+
+    // Without paid_at nothing is known to be unpaid, as on View Order.
+    $awaiting = $paid_known
+        ? "((orders.payment_method IN (" . implode(', ', $methods) . ")) AND (orders.paid_at = 0) AND (orders.status IN ('complete', 'exported')) AND (orders.total > 0))"
+        : '(1 = 0)';
+
+    // One address (a.ship_to_id) of the order, and its state.
+    $has_address = "EXISTS (SELECT 1 FROM order_items AS a WHERE a.order_id = orders.id AND a.ship_to_id > 0)";
+    $parcel = "FROM shipping_tracking_numbers AS p WHERE p.order_id = orders.id AND p.ship_to_id = a.ship_to_id AND TRIM(p.number) <> ''";
+    $date_due = function ($column) use ($today) {
+        return "EXISTS (SELECT 1 FROM ship_tos AS s WHERE s.id = a.ship_to_id AND s." . $column . " > '0000-00-00' AND s." . $column . " <= '" . $today . "')";
+    };
+    $delivered = "(" . $date_due('delivery_date')
+        . ($status_ready ? " OR (EXISTS (SELECT 1 " . $parcel . ") AND NOT EXISTS (SELECT 1 " . $parcel . " AND p.status <> 'delivered'))" : '')
+        . ")";
+    $counted = "FROM order_items AS l WHERE l.order_id = orders.id AND l.ship_to_id = a.ship_to_id AND l.show_shipped_quantity <> 0";
+    $shipped = "(" . $delivered . " OR " . $date_due('ship_date')
+        . " OR EXISTS (SELECT 1 " . $parcel . ")"
+        . " OR (EXISTS (SELECT 1 " . $counted . ") AND NOT EXISTS (SELECT 1 " . $counted . " AND l.shipped_quantity < l.quantity)))";
+    $address = "FROM order_items AS a WHERE a.order_id = orders.id AND a.ship_to_id > 0";
+
+    switch ((string) $quick) {
+        case 'awaiting_payment':
+            return $awaiting;
+
+        case 'to_ship':
+            return "((orders.status IN ('complete', 'exported')) AND NOT " . $awaiting . " AND " . $has_address
+                . " AND NOT EXISTS (SELECT 1 " . $address . " AND " . $shipped . "))";
+
+        case 'shipped':
+            return "(" . $has_address
+                . " AND NOT EXISTS (SELECT 1 " . $address . " AND NOT " . $shipped . ")"
+                . " AND EXISTS (SELECT 1 " . $address . " AND NOT " . $delivered . "))";
+
+        case 'delivered':
+            return "(" . $has_address . " AND NOT EXISTS (SELECT 1 " . $address . " AND NOT " . $delivered . "))";
+    }
+
+    return '';
+}
+
+/**
+ * The query that counts the orders of each quick filter among the orders
+ * of $base_sql (the list's other filters and period), in one row: n_all
+ * and n_<code>.
+ *
+ * @param string $base_sql     a query whose id column names the orders
+ * @param string $today        Y-m-d
+ * @param bool   $paid_known
+ * @param bool   $status_ready
+ * @return string
+ */
+function pg_order_list_quick_counts_sql($base_sql, $today, $paid_known, $status_ready)
+{
+    $parts = array('COUNT(*) AS n_all');
+
+    foreach (array_keys(pg_order_list_quick_filters()) as $code) {
+        if ($code === '') {
+            continue;
+        }
+
+        $parts[] = "SUM(CASE WHEN " . pg_order_list_quick_sql($code, $today, $paid_known, $status_ready) . " THEN 1 ELSE 0 END) AS n_" . $code;
+    }
+
+    return "SELECT " . implode(",\n        ", $parts) . "
+        FROM orders
+        WHERE orders.id IN (SELECT quick_base.id FROM (" . $base_sql . ") AS quick_base)";
+}
+
+/**
+ * The quick filters as a segmented control of links, each with its count.
+ *
+ * @param string $current a code of pg_order_list_quick_filters()
+ * @param array  $counts  the row of pg_order_list_quick_counts_sql(); a
+ *                        count that is missing is not shown
+ * @return string HTML
+ */
+function pg_order_list_quick_html($current, array $counts)
+{
+    $current = pg_order_list_quick_value($current);
+    $items = '';
+
+    foreach (pg_order_list_quick_filters() as $code => $label) {
+        $key = 'n_' . (($code === '') ? 'all' : $code);
+        $count = isset($counts[$key]) ? ' <span class="pg-seg-count pg-tabular">' . pg_format_number((int) $counts[$key], 0) . '</span>' : '';
+        $items .= '<a class="pg-seg-item' . (($code === $current) ? ' is-active" aria-current="true"' : '"')
+            . ' href="view_orders.php?quick=' . h($code) . '">' . h($label) . $count . '</a>';
+    }
+
+    return '<div class="pg-seg pg-seg-wrap pg-orders-quick" role="group" aria-label="' . h(lang('Quick filters')) . '">' . $items . '</div>';
+}
+
+/**
+ * The period before a period, of the same number of days: it ends the
+ * second before the period starts.
+ *
+ * @param int $start the period's first second (00:00:00 of its first day)
+ * @param int $stop  the period's last second (23:59:59 of its last day)
+ * @return array array(first second, last second)
+ */
+function pg_order_list_previous_period($start, $stop)
+{
+    $start = (int) $start;
+    $days = max(1, (int) round(((int) $stop + 1 - $start) / 86400));
+
+    // mktime() counts in days, so a change of clocks inside the period
+    // moves neither end off midnight.
+    $previous_start = mktime(0, 0, 0, (int) date('n', $start), (int) date('j', $start) - $days, (int) date('Y', $start));
+
+    return array($previous_start, $start - 1);
+}
+
+/**
+ * The change of a figure against the period before, in whole per cent, or
+ * null when the period before had nothing to compare with.
+ *
+ * @param int|float $now
+ * @param int|float $before
+ * @return int|null
+ */
+function pg_order_list_change($now, $before)
+{
+    $before = (float) $before;
+
+    if ($before <= 0) {
+        return null;
+    }
+
+    return (int) round((((float) $now - $before) / $before) * 100);
+}
+
+/**
+ * The change note beside a figure of the strip: "+12%", "−8%", "0%", in the
+ * strip's note ink, a rise good and a fall bad; nothing when there is no
+ * period before to compare with.
+ *
+ * @param int|float $now
+ * @param int|float $before
+ * @return string HTML
+ */
+function pg_order_list_change_html($now, $before)
+{
+    $change = pg_order_list_change($now, $before);
+
+    if ($change === null) {
+        return '';
+    }
+
+    $text = ($change > 0) ? '+' . $change . '%' : (($change < 0) ? "\u{2212}" . abs($change) . '%' : '0%');
+    $class = ($change > 0) ? ' is-good' : (($change < 0) ? ' is-bad' : '');
+    $title = lang('Against the period before, of the same length');
+
+    return '<span class="pg-figure-note pg-tabular' . $class . '" title="' . h($title) . '">' . h($text) . '<span class="visually-hidden"> ' . h($title) . '</span></span>';
 }

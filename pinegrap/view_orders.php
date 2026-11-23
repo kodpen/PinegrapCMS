@@ -230,6 +230,20 @@ if ($order_profit_on) {
     $sql_type .= ' ' . erp_order_profit_filter_sql((string) ($_SESSION['software']['ecommerce']['view_orders']['profit'] ?? ''));
 }
 
+// The quick filters (All, Awaiting payment, To ship, Shipped, Delivered),
+// kept in the session as the status select is. They narrow every query the
+// other filters narrow; their counts are taken over the list without them.
+$quick_filter = pg_order_list_quick_value($_SESSION['software']['ecommerce']['view_orders']['quick'] ?? '');
+$_SESSION['software']['ecommerce']['view_orders']['quick'] = $quick_filter;
+$quick_today = date('Y-m-d');
+$quick_status_ready = pg_shipment_rows_ready();
+$sql_type_without_quick = $sql_type;
+$sql_quick = pg_order_list_quick_sql($quick_filter, $quick_today, $paid_at_column_exists, $quick_status_ready);
+
+if ($sql_quick !== '') {
+    $sql_type .= ' AND ' . $sql_quick;
+}
+
 $decrease_year['start_month'] = '01';
 $decrease_year['start_day'] = '01';
 $decrease_year['start_year'] = ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '') - 1;
@@ -309,8 +323,8 @@ $increase_day['stop_year'] = $increase_day['new_year'];
 $start_timestamp = mktime(0, 0, 0, ($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? ''));
 $stop_timestamp = mktime(23, 59, 59, ($_SESSION['software']['ecommerce']['view_orders']['stop_month'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['stop_day'] ?? ''), ($_SESSION['software']['ecommerce']['view_orders']['stop_year'] ?? ''));
 
-// The range on screen, in the site's date order.
-$output_date_range_time = h(pg_list_period_heading($_SESSION['software']['ecommerce']['view_orders'] ?? array()));
+// The range on screen, in the site's date order, short so the bar stays one row.
+$output_date_range_time = h(pg_list_period_heading($_SESSION['software']['ecommerce']['view_orders'] ?? array(), null, true));
 
 // if advanced filters are not set yet, then default them to off
 if (isset($_SESSION['software']['ecommerce']['view_orders']['advanced_filters']) == false) {
@@ -330,6 +344,16 @@ if (
 } else {
     $where = "WHERE (ship_tos.ship_date >= '" . date('Y-m-d', $start_timestamp) . "') AND (ship_tos.ship_date <= '" . date('Y-m-d', $stop_timestamp) . "')";
 }
+
+// The same condition over the period before, of the same length: the
+// filtered figures of the strip show their change against it.
+list($previous_start_timestamp, $previous_stop_timestamp) = pg_order_list_previous_period($start_timestamp, $stop_timestamp);
+$where_period = $where;
+$where_previous_period = str_replace(
+    array((string) $start_timestamp, (string) $stop_timestamp, date('Y-m-d', $start_timestamp), date('Y-m-d', $stop_timestamp)),
+    array((string) $previous_start_timestamp, (string) $previous_stop_timestamp, date('Y-m-d', $previous_start_timestamp), date('Y-m-d', $previous_stop_timestamp)),
+    $where_period
+);
 
 
 // if advanced filters are on, prepare SQL
@@ -568,8 +592,7 @@ $export_distinct = (($join_order_items !== '') || ($join_ship_tos !== '')) ? 'DI
 // The orders the list shows (same joins and conditions as its count), one row
 // each: the joins for the advanced filters can repeat an order, so every
 // figure of the strip and of Summary is taken over this distinct set.
-$orders_filtered_sql =
-    "SELECT DISTINCT orders.id, orders.total, orders.order_date, orders.payment_method, " . (pg_schema_has('orders', 'type') ? 'orders.type' : "'' AS type") . "
+$orders_filtered_select = "SELECT DISTINCT orders.id, orders.total, orders.order_date, orders.payment_method, " . (pg_schema_has('orders', 'type') ? 'orders.type' : "'' AS type") . "
     FROM orders
     LEFT JOIN user ON orders.user_id = user.user_id
     LEFT JOIN contacts on orders.contact_id = contacts.id
@@ -580,8 +603,17 @@ $orders_filtered_sql =
     $join_shipping_states
     $join_shipping_countries
     $where
-    $sql_status
+    $sql_status";
+$orders_filtered_sql = $orders_filtered_select . "
     $sql_type";
+
+// The same orders without the quick filter: what the quick filters count.
+$orders_quick_base_sql = $orders_filtered_select . "
+    $sql_type_without_quick";
+
+// The same orders over the period before (the change figures).
+// $where starts with $where_period; only that first part is swapped.
+$orders_previous_sql = substr_replace($orders_filtered_sql, $where_previous_period, (int) strpos($orders_filtered_sql, $where_period), strlen($where_period));
 
 // Summary under the figure strip, read only when it is opened: the best
 // sellers by quantity, named as the catalog names them (order_items.product_name
@@ -2584,6 +2616,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     $list_rows = array();
 
     $filter_totals = 0;
+    $filter_totals_minor = 0;
     foreach ($order_rows as $row) {
         $id = $row['id'];
         $billing_first_name = $row['billing_first_name'];
@@ -2612,6 +2645,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $card_verification_number = $row['card_verification_number'];
         $total = $row['total'] / 100;
         $filter_totals = $filter_totals + $total;
+        $filter_totals_minor += (int) $row['total'];
         $order_date = get_relative_time(array('timestamp' => $row['order_date']));
         
         $output_link_url = 'view_order.php?id=' . $id . '&send_to=' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY)) . '/view_orders.php';
@@ -2713,7 +2747,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             'id' => (int) $id,
             'cells' => array(
                 'order_number' => pg_list_cell(pg_commerce_list_open_link('view_order.php?id=' . (int) $id . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_orders.php'), h($output_row_name)), 'align-middle', array('data-pg-sort-value' => (string) $order_number)),
-                'customer' => pg_list_cell(h($output_customer), 'align-middle', array('data-pg-sort-value' => $output_customer)),
+                'customer' => pg_list_cell(pg_order_list_customer_html($output_customer), 'align-middle', array('data-pg-sort-value' => $output_customer)),
                 'payment' => pg_list_cell(pg_order_list_pill_html($row_states[(int) $id]['payment'] ?? null), 'align-middle text-nowrap'),
                 'shipping' => pg_list_cell(pg_order_list_pill_html($row_states[(int) $id]['shipping'] ?? null), 'align-middle text-nowrap'),
                 'items' => pg_list_cell(pg_order_list_items_html($row_states[(int) $id]['items'] ?? null)),
@@ -3232,16 +3266,25 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // One figure of the strip: its label, the value and, at its right, the
     // sparkline of the period when it has one.
-    $strip_cell = function ($value, $label, $canvas, $value_class = '') {
+    $strip_cell = function ($value, $label, $canvas, $value_class = '', $note = '') {
         return '
                     <div class="pg-figure-strip-cell">
                         <div class="pg-figure-label">' . $label . '</div>
                         <div class="pg-figure-strip-line">
                             <div class="pg-figure-value' . $value_class . '">' . $value . '</div>
+                            ' . $note . '
                             ' . (($canvas !== '') ? '<div class="pg-orders-spark"><canvas id="' . $canvas . '" aria-hidden="true"></canvas></div>' : '') . '
                         </div>
                     </div>';
     };
+
+    // The two filtered figures over the period before, of the same length.
+    $previous_figures = db_item("SELECT COUNT(*) AS n, COALESCE(SUM(f.total), 0) AS t FROM ($orders_previous_sql) AS f");
+    $change_total = pg_order_list_change_html($filter_totals_minor, (int) ($previous_figures['t'] ?? 0));
+    $change_count = pg_order_list_change_html((int) $number_of_results, (int) ($previous_figures['n'] ?? 0));
+
+    // The quick filters and their counts over the list without them.
+    $output_quick_filters = pg_order_list_quick_html($quick_filter, (array) db_item(pg_order_list_quick_counts_sql($orders_quick_base_sql, $quick_today, $paid_at_column_exists, $quick_status_ready)));
 
     // Today's four figures as cells of one card; Summary at its end opens the
     // best sellers and the payment methods under it, read when it opens
@@ -3250,8 +3293,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     $output_order_stats = '
                 <section class="pg-card pg-figure-strip" aria-label="' . h(lang('Figures')) . '">'
                     . $strip_cell($online_orders_total_all, h(lang('Total Sales Amount')) . ' (' . h(lang('Online')) . ')', '')
-                    . $strip_cell($filter_totals, h(lang('Total Sales Amount')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_total')
-                    . $strip_cell(h(pg_format_number((int) $number_of_results, 0)), h(lang('Orders')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_count')
+                    . $strip_cell($filter_totals, h(lang('Total Sales Amount')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_total', '', $change_total)
+                    . $strip_cell(h(pg_format_number((int) $number_of_results, 0)), h(lang('Orders')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_count', '', $change_count)
                     . $strip_cell($refund_pending_total_all, h(lang('Refund Pending')), '', ($refund_pending_total > 0) ? ' is-bad' : '') . '
                     <div class="pg-figure-strip-end">
                         <button type="button" class="pg-button pg-button-quiet pg-button-sm" id="pg_orders_summary_toggle" aria-expanded="false" aria-controls="pg_orders_summary" data-pg-user="' . (defined('USER_ID') ? (int) USER_ID : 0) . '"><i class="bi bi-bar-chart" aria-hidden="true"></i>' . h(lang('Summary')) . '<i class="bi bi-chevron-down" aria-hidden="true"></i></button>
@@ -3301,6 +3344,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     </div>
                 </nav>
+                ' . $output_quick_filters . '
                 ' . $output_advanced_filters . '
                 ' . $output_order_stats . '
                 <form name="form" action="edit_orders.php" method="post" class="view_orders disable_shortcut">

@@ -148,6 +148,10 @@ function test_list_period_heading_follows_the_date_order()
 	pg_assert_same('September 26, 2026 – October 27, 2026', pg_list_period_heading($range, 'month_day'), 'month first');
 	pg_assert_same('5 September 2026 – 7 October 2026', pg_list_period_heading(list_period_test_range('2026-09-05', '2026-10-07'), 'day_month'), 'no leading zero on the day');
 	pg_assert_same('27 October 2026', pg_list_period_heading(list_period_test_range('2026-10-27', '2026-10-27'), 'day_month'), 'one day is written once');
+	pg_assert_same('26 ' . lang('Sep') . ' – 27 ' . lang('Oct') . ' 2026', pg_list_period_heading($range, 'day_month', true), 'short: short months, the year once');
+	pg_assert_same(lang('Sep') . ' 26 – ' . lang('Oct') . ' 27, 2026', pg_list_period_heading($range, 'month_day', true), 'short, month first: the year once');
+	pg_assert_same('22 ' . lang('Dec') . ' 2025 – 21 ' . lang('Jan') . ' 2026', pg_list_period_heading(list_period_test_range('2025-12-22', '2026-01-21'), 'day_month', true), 'short across two years: each year');
+	pg_assert_same(lang('Oct') . ' 27, 2026', pg_list_period_heading(list_period_test_range('2026-10-27', '2026-10-27'), 'month_day', true), 'short, one day written once');
 }
 
 function test_list_period_time_format_follows_the_clock_setting()

@@ -1390,7 +1390,7 @@ function pg_order_quick_edit_columns()
 
 /**
  * The order list's status cell, drawn the one way the list and the answer to
- * a quick edit both use: the status badge, "Awaiting Payment" for a bank
+ * a quick edit both use: the status pill, "Awaiting Payment" for a bank
  * transfer whose money has not arrived, and the Parasut mark.
  *
  * @param array $order      status, payment_method, paid_at, parasut_exported
@@ -1404,20 +1404,18 @@ function pg_order_list_status_html($order, $paid_known)
     $status = (string) ($order['status'] ?? '');
     $html = '';
 
-    if ($status == 'incomplete') {
-        $html = '<span class="badge theme-warning fg-black bg-gradient fw-light">' . lang('Incomplete') . '</span>';
-    } elseif ($status == 'complete') {
-        $html = '<span class="badge theme-primary bg-gradient fw-light">' . lang('Complete') . '</span>';
-    } elseif ($status == 'exported') {
-        $html = '<span class="badge theme-success bg-gradient fw-light">' . lang('Exported') . '</span>';
-    } elseif (($status == 'canceled') || ($status == 'cancelled')) {
-        $html = '<span class="badge theme-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
+    // The order pill of View Order's head; an unknown or empty status draws
+    // nothing, as before.
+    if (in_array($status, array('incomplete', 'complete', 'exported', 'canceled', 'cancelled'), true)) {
+        $pill = pg_order_status_pill($status);
+        $html = pg_pill($pill[0], $pill[1]);
     }
 
     // A bank transfer order whose money has not arrived is complete but not
-    // paid; a second badge says so without changing the status itself.
+    // paid; a second pill says so without changing the status itself, kept
+    // here because a person may hide the Payment column.
     if ($paid_known && pg_order_awaiting_payment($order)) {
-        $html .= '<span class="badge theme-warning fg-black bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
+        $html .= ' ' . pg_pill(lang('Awaiting Payment'), 'amber');
     }
 
     // parasut_exported is set by two different things: the spreadsheet export

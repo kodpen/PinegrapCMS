@@ -863,10 +863,6 @@ function bs6_switch_test_pins()
 			array("'\\\\.dropdown-divider'", "'\\\\.menu-divider'"),
 		),
 		'tests/order_quick_edit_test.php' => array(
-			array("pg_assert_contains('bg-warning', pg_order_list_status_html(", "pg_assert_contains('theme-warning', pg_order_list_status_html("),
-			array("pg_assert_contains('bg-primary', pg_order_list_status_html(", "pg_assert_contains('theme-primary', pg_order_list_status_html("),
-			array("pg_assert_contains('bg-success', pg_order_list_status_html(", "pg_assert_contains('theme-success', pg_order_list_status_html("),
-			array("pg_assert_contains('bg-danger', pg_order_list_status_html(", "pg_assert_contains('theme-danger', pg_order_list_status_html("),
 			array("pg_assert_contains('bg-warning', \$unsure);", "pg_assert_contains('theme-warning', \$unsure);"),
 		),
 		'tests/waf_offence_test.php' => array(
