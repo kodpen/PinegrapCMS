@@ -103,7 +103,6 @@ function pg_test_form_adorn_settings_fields()
 			'ecommerce_surcharge_percentage' => '>%</span>',
 			'affiliate_default_commission_rate' => '>%</span>',
 		),
-		'mail_sending.php' => array('mailchimp_sync_days' => "lang('days in the past')"),
 		'features.php' => array(
 			'image_quality_webp' => array('>%</span>', 'form-adorn-end'),
 			'image_quality_avif' => array('>%</span>', 'form-adorn-end'),
