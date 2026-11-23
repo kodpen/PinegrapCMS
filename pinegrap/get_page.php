@@ -3187,11 +3187,12 @@ else
 					function toggle_control_buttons(update = false){
 						var state = sessionStorage.getItem("toggle_control_buttons");
 
-						// No choice yet: open, except on a narrow screen,
-						// where the box would sit on the page itself. The
-						// default is not stored, so a wider window opens it.
+						// No choice yet: open at every width. A phone used to
+						// start with the box folded to its arrow, which left
+						// the way into the toolbar hidden on every new tab.
+						// The default is not stored.
 						if (state !== "show" && state !== "hide") {
-							state = window.matchMedia("(max-width: 767.98px)").matches ? "hide" : "show";
+							state = "show";
 						}
 
 						if (update === true) {

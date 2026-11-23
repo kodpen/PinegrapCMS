@@ -95,6 +95,24 @@ function test_menu_script_opens_the_drawer_at_every_width_on_such_a_screen()
 	pg_assert_same(1, substr_count($js, "setCookie('softwaremenustatus'"), 'the drawer writes no state');
 }
 
+// The bar over a site page on a phone (#11187): a site page wider than the
+// screen widened the frame past the breakpoint, and the menu came up open
+// from the desktop cookie. The device's screen decides there.
+function test_site_bar_on_a_phone_keeps_the_menu_a_drawer()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	$call = strpos($js, "    pgSiteBarPhoneDrawer();\n    var MENU_DRAWER_ONLY");
+	pg_assert_true($call !== false, 'marked before the drawer-only flag is read');
+	pg_assert_contains("document.body.classList.contains('toolbar')", $js, 'only in the site bar frame');
+	pg_assert_contains('(window.screen.width < MENU_DRAWER_BREAKPOINT)', $js, 'by the screen, not the frame');
+	pg_assert_contains("container.classList.add('menu-drawer-only');", $js, 'the drawer at every frame width');
+
+	pg_assert_contains('.software-container.menu-drawer-only #header #menu_mode_toggle > .bi.pg-mt-collapsed,', $css, 'no wide-screen picture on the bar button');
+	pg_assert_contains('.software-container.menu-drawer-only:not(.drawer-open) #header #menu_mode_toggle > .pg-mt-shut,', $css, 'the shut drawer picture');
+}
+
 function test_designer_left_panel_hide_is_gone()
 {
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');

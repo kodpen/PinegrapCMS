@@ -11,6 +11,10 @@ module: output
 - `backend.src.css` repeats the below-lg drawer rules under `.menu-drawer-only` at every width (block "Drawer-only screens", keep the two in step); the scrim's rules sit outside any query.
 - `backend.src.js`: `MENU_DRAWER_ONLY` makes `isMenuDrawerMode()` true whatever the width, so the phone drawer's behaviour holds as it is (scrim, Escape, inert while shut, focus leaving shuts it, no cookie). The screen's own button, marked `data-pg-menu-drawer-toggle` with `data-label-show` / `data-label-hide`, opens and shuts it (`paintMenuDrawerToggles()`); Escape gives the focus back to the opener last used (`menuDrawerToggle()`). Pictures `.pg-mt-shut` / `.pg-mt-open` inside it.
 
+## Why does the bar over a site page on a phone become one?
+- `toolbar.php` (the bar in `#software_toolbar` over a site page) is a frame as wide as the site page's layout viewport. A phone widens that viewport to a page wider than its screen (an element 1400 px wide gives 1408), so the frame passed for a wide screen: the menu came up open from the desktop `softwaremenustatus` cookie, on the left of the opened bar (#11187).
+- `pgSiteBarPhoneDrawer()` in `backend.src.js`, run before `MENU_DRAWER_ONLY` is read, adds `menu-drawer-only` in a `body.toolbar` frame when `screen.width` is under 1024. The bar keeps `#menu_mode_toggle`; `backend.src.css` shows only its drawer pictures (`.pg-mt-shut` / `.pg-mt-open`) under `.menu-drawer-only`.
+
 ## Why?
 - Page Design Studio needs its whole width, so it was drawn with `hide_menu` and the main menu could not be reached there at any width (owner's report #9712). Its toolbar's first button (`#sd-left-toggle`) is now the menu's opener (`designer/designer-left-panel-hide.md`).
 

@@ -1187,7 +1187,26 @@ $(document).ready(function () {
     // A screen that needs its whole width (Page Design Studio, output_header()'s
     // menu_drawer) keeps the menu as the phone's drawer at every width, opened
     // by a button of its own instead of the bar's. Read up here too.
+    pgSiteBarPhoneDrawer();
     var MENU_DRAWER_ONLY = document.querySelector('.software-container.menu-drawer-only') !== null;
+
+    // The bar over a site page (toolbar.php) is a frame as wide as the site
+    // page's layout viewport. A phone widens that viewport to a page wider
+    // than its screen, so the frame passed for a wide screen and showed the
+    // menu open from the desktop cookie, the bar laid out as on a desktop.
+    // There the device's screen decides: on a phone the menu stays the shut
+    // drawer whatever the frame's width.
+    function pgSiteBarPhoneDrawer() {
+        var container = document.querySelector('.software-container');
+
+        if (!container || !document.body || !document.body.classList.contains('toolbar')) {
+            return;
+        }
+
+        if (window.screen && (window.screen.width > 0) && (window.screen.width < MENU_DRAWER_BREAKPOINT)) {
+            container.classList.add('menu-drawer-only');
+        }
+    }
     // Every button that opens and shuts the drawer: the bar's, and a screen's
     // own marked data-pg-menu-drawer-toggle.
     var MENU_TOGGLES = '#menu_mode_toggle, [data-pg-menu-drawer-toggle]';

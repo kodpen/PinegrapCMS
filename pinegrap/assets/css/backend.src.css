@@ -3488,6 +3488,20 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
 .software-container.drawer-open [data-pg-menu-drawer-toggle] > .pg-mt-open {
   display: inline-block;
 }
+/* The bar over a site page on a phone (backend.src.js,
+   pgSiteBarPhoneDrawer()) keeps the bar's button and makes the menu the
+   drawer however wide the frame is: the button shows the drawer's pictures
+   there, never the wide-screen states. As heavy as the lg rules above and
+   after them. */
+.software-container.menu-drawer-only #header #menu_mode_toggle > .bi.pg-mt-collapsed,
+.software-container.menu-drawer-only #header #menu_mode_toggle > .bi.pg-mt-expanded,
+.software-container.menu-drawer-only #header #menu_mode_toggle > .bi.pg-mt-hidden {
+  display: none;
+}
+.software-container.menu-drawer-only:not(.drawer-open) #header #menu_mode_toggle > .pg-mt-shut,
+.software-container.menu-drawer-only.drawer-open #header #menu_mode_toggle > .pg-mt-open {
+  display: inline-flex;
+}
 
 /* ══ Page action bar ═══════════════════════════════════════════════════════
    The strip under the heading on seventy-odd screens. It is the same object as
@@ -9543,6 +9557,15 @@ html[data-bs-theme="dark"] .pg-next {
   #header .pg-brand-item > a {
     padding-left: 4px;
     padding-right: 4px;
+  }
+}
+
+/* The quick note beside the bell takes another 44px, which on a phone
+   pushed the logo off the bar (#11187). Below sm it gives way: the notes are
+   one tap away under My Notes in the menu. */
+@media (max-width: 575.98px) {
+  #header .pg-quick-note-nav {
+    display: none;
   }
 }
 
