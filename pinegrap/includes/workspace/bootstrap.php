@@ -198,6 +198,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approvals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/status.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/open_items.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approval_guests.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/share_links.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approval_agents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/acks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/voice.php');
