@@ -1115,7 +1115,7 @@ function ws_note_import_plan($viewer, $stage)
     }
 
     $stage['rows'] = $rows;
-    $stage['capacity'] = max(0, WS_NOTE_LIMIT - (int) db_value("SELECT COUNT(*) FROM ws_notes WHERE user_id = '" . (int) $viewer['id'] . "'"));
+    $stage['capacity'] = max(0, WS_NOTE_LIMIT - (int) db_value("SELECT COUNT(*) FROM ws_notes WHERE user_id = '" . (int) $viewer['id'] . "'" . ws_note_own_sql('')));
     $stage['more'] = max(0, count($index['notes']) - WS_NOTE_IMPORT_NOTES_MAX);
 
     return $stage;
@@ -1429,7 +1429,7 @@ function ws_note_import_finish($viewer, &$stage)
         }
     }
 
-    foreach ((array) db_items("SELECT id, title FROM ws_notes WHERE user_id = '" . (int) $viewer['id'] . "' AND title <> '' ORDER BY id") as $own) {
+    foreach ((array) db_items("SELECT id, title FROM ws_notes WHERE user_id = '" . (int) $viewer['id'] . "'" . ws_note_own_sql('') . " AND title <> '' ORDER BY id") as $own) {
         $key = mb_strtolower(trim((string) $own['title']));
 
         if (!isset($titles[$key])) {

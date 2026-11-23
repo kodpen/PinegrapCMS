@@ -948,7 +948,7 @@ function ws_template_apply_check($viewer, $channel, $template, $options = array(
             return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
         }
 
-        if ((int) db_value("SELECT COUNT(*) FROM ws_notes WHERE user_id = '" . (int) $viewer['id'] . "'") + count($body['notes']) > WS_NOTE_LIMIT) {
+        if ((int) db_value("SELECT COUNT(*) FROM ws_notes WHERE user_id = '" . (int) $viewer['id'] . "'" . ws_note_own_sql('')) + count($body['notes']) > WS_NOTE_LIMIT) {
             return $fail(lang(array('string' => 'You can keep at most {var:1} notes.', 'vars' => WS_NOTE_LIMIT)));
         }
     }

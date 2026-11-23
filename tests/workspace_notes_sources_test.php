@@ -123,6 +123,6 @@ function test_workspace_notes_sources_written_read_and_dropped()
 {
 	pg_assert_contains('ws_note_source_save(', workspace_notes_sources_test_body('includes/workspace/notes_import.php', 'ws_note_import_write'), 'the import writes the row');
 	pg_assert_contains('ws_note_source_find(', workspace_notes_sources_test_body('includes/workspace/notes_import.php', 'ws_note_import_entry'), 'the plan reads it');
-	pg_assert_contains('DELETE FROM ws_note_sources', workspace_notes_sources_test_body('includes/workspace/notes.php', 'ws_note_delete'), 'a deleted note drops its rows');
+	pg_assert_contains('DELETE FROM ws_note_sources', workspace_notes_sources_test_body('includes/workspace/notes.php', 'ws_note_delete_rows'), 'a deleted note drops its rows');
 	pg_assert_contains("'provider'", workspace_notes_sources_test_body('includes/workspace/notes_import.php', 'ws_note_import_stage'), 'the stage keeps the kind of upload');
 }
