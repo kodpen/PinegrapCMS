@@ -535,10 +535,10 @@ function test_workspace_highlights_mine_button_and_texts()
 	$workspace = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_highlights.js');
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
-	$import = strpos($workspace, "bar.appendChild(importNotes);");
-	$button = strpos($workspace, "button('btn btn-sm btn-text theme-secondary', t('hl_mine'), 'bi-highlighter')");
+	$new = strpos($workspace, "var newNote = lookButton('pg-button pg-button-fill', t('notes_new'), 'bi-plus-lg');");
+	$button = strpos($workspace, "barLabel(lookButton('pg-button pg-button-ghost', t('hl_mine'), 'bi-highlighter'))");
 
-	pg_assert_true(($import !== false) && ($button !== false) && ($button > $import) && ($button - $import < 600), 'beside Import');
+	pg_assert_true(($new !== false) && ($button !== false) && ($button > $new), 'in the bar after New note');
 	pg_assert_contains("if (CFG.highlights && window.PGWsHighlights)", $workspace);
 	pg_assert_contains('window.PGWsHighlights.myList(pane, featureHelpers()', $workspace);
 	pg_assert_contains("'highlights'   => function_exists('ws_highlights_ready') && ws_highlights_ready(),", $screen);

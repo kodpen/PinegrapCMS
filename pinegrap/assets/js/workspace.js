@@ -1058,6 +1058,20 @@
         };
     }
 
+    // A second action of a bar keeps its icon on a phone: its word goes
+    // into .ws-bar-label, which the stylesheet hides there from the eye only.
+    function barLabel(node) {
+        Array.prototype.slice.call(node.childNodes).forEach(function (child) {
+            if (child.nodeType === 3 && child.textContent.trim()) {
+                var label = el('span', 'ws-bar-label', child.textContent);
+
+                node.replaceChild(label, child);
+            }
+        });
+
+        return node;
+    }
+
     // An empty screen in the content's card: a 44 px tile in the screen's
     // tone, a title, one sentence and the screen's main action when it has
     // one ({ label, icon, onClick }). A filtered list that finds nothing
@@ -28581,7 +28595,10 @@
         var aiKicking = false;
         var aiKickAt = 0;
 
-        var bar = el('nav', 'pg-toolbar navigation mb-5');
+        // One line: New note, My highlights, Lock; the search; "⋯" for
+        // the rare ones (Pin to the menu, Import, Export all).
+        var frame = el('div', 'ws-bar-frame');
+        var bar = el('nav', 'pg-toolbar ws-bar');
         var layout = el('div', 'row g-7 ws-nb');
         var listCol = el('div', 'lg:col-5 xl:col-4 ws-nb-list-col');
         var paneCol = el('div', 'lg:col-7 xl:col-8 ws-nb-pane-col');
@@ -28592,27 +28609,22 @@
         paneCol.appendChild(pane);
         layout.appendChild(listCol);
         layout.appendChild(paneCol);
-        root.appendChild(bar);
+        frame.appendChild(bar);
+        root.appendChild(frame);
         root.appendChild(layout);
 
         // ── toolbar ──
 
-        var newNote = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('notes_new'), 'bi-plus-lg');
+        var newNote = lookButton('pg-button pg-button-fill', t('notes_new'), 'bi-plus-lg');
         newNote.addEventListener('click', function () { startNew(); });
         bar.appendChild(newNote);
 
         // My Notes pinned to the panel menu, right under the workspace: the
-        // person's own choice, shown once the list says it can be made.
-        var menuPin = button('btn btn-sm btn-text theme-secondary d-none ws-nb-menu-pin', '', 'bi-pin-angle');
+        // person's own choice, offered in "⋯" once the list says it can be
+        // made.
+        var menuPinReady = false;
         var menuPinned = false;
-
-        function drawMenuPin() {
-            menuPin.innerHTML = '';
-            menuPin.appendChild(icon(menuPinned ? 'bi-pin-angle-fill' : 'bi-pin-angle', 'me-1'));
-            menuPin.appendChild(document.createTextNode(menuPinned ? t('notes_menu_unpin') : t('notes_menu_pin')));
-            menuPin.classList.toggle('active', menuPinned);
-            menuPin.setAttribute('aria-pressed', menuPinned ? 'true' : 'false');
-        }
+        var menuPinBusy = false;
 
         // The row in the menu, added or taken away without a reload; the
         // next page draws it on the server the same way (includes/fn/output.php).
@@ -28665,42 +28677,28 @@
             });
         }
 
-        menuPin.addEventListener('click', function () {
+        function toggleMenuPin() {
             var wanted = !menuPinned;
 
-            menuPin.disabled = true;
+            if (menuPinBusy) {
+                return;
+            }
+
+            menuPinBusy = true;
 
             api('ws_note_menu_pin', { pinned: wanted ? 1 : 0 }).then(function (data) {
                 menuPinned = !!data.pinned;
-                drawMenuPin();
                 drawMenuRow(data.icon || '');
                 toast(menuPinned ? t('notes_menu_pinned') : t('notes_menu_unpinned'));
             }).catch(fail).then(function () {
-                menuPin.disabled = false;
+                menuPinBusy = false;
             });
-        });
-
-        bar.appendChild(menuPin);
-
-        // Every note as a zip that opens as a vault in Obsidian and the like.
-        if (CFG.urls.notes_export) {
-            var exportAll = button('btn btn-sm btn-text theme-secondary', t('notes_export_all'), 'bi-file-earmark-zip');
-            exportAll.addEventListener('click', function () { window.location.href = CFG.urls.notes_export + '?all=1'; });
-            bar.appendChild(exportAll);
-        }
-
-        // Notes from another app: Markdown and text files, or a zip of them
-        // (workspace_notes_import.php).
-        if (CFG.urls.notes_import && CFG.notes_import) {
-            var importNotes = button('btn btn-sm btn-text theme-secondary', t('notes_import'), 'bi-box-arrow-in-down');
-            importNotes.addEventListener('click', function () { save().then(openImport); });
-            bar.appendChild(importNotes);
         }
 
         // My highlights: the person's own highlights of messages, drawn
         // where a note opens (workspace_highlights.js).
         if (CFG.highlights && window.PGWsHighlights) {
-            var myHighlights = button('btn btn-sm btn-text theme-secondary', t('hl_mine'), 'bi-highlighter');
+            var myHighlights = barLabel(lookButton('pg-button pg-button-ghost', t('hl_mine'), 'bi-highlighter'));
             myHighlights.addEventListener('click', function () { save().then(openHighlights); });
             bar.appendChild(myHighlights);
         }
@@ -28722,26 +28720,57 @@
 
         // The notes lock: Lock and its menu (workspace_note_lock.js).
         if (lockCtx()) {
-            bar.appendChild(window.PGWsNoteLock.button(lockCtx()));
+            bar.appendChild(barLabel(window.PGWsNoteLock.button(lockCtx())));
         }
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
-        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
-        var searchIcon = el('span', 'form-adorn-text');
-        searchIcon.setAttribute('aria-hidden', 'true');
-        searchIcon.appendChild(icon('bi-search'));
-        searchGroup.appendChild(searchIcon);
-        var searchInput = el('input', 'form-ghost');
-        searchInput.type = 'search';
-        searchInput.placeholder = t('notes_search');
-        searchInput.setAttribute('aria-label', searchInput.placeholder);
-        searchInput.addEventListener('input', debounce(function () {
-            search = searchInput.value.trim();
+        var searchGroup = barSearch(t('notes_search'), function (value) {
+            search = value.trim();
             loadList();
-        }, 300));
-        searchGroup.appendChild(searchInput);
+        });
+        var searchInput = searchGroup.input;
+
         bar.appendChild(searchGroup);
+
+        // "⋯": Pin to the menu (or Unpin), Import (workspace_notes_import.php:
+        // Markdown and text files, or a zip of them) and Export all (every
+        // note as a zip that opens as a vault in Obsidian and the like).
+        function barMenuItems() {
+            var items = [];
+
+            if (menuPinReady) {
+                items.push({ icon: menuPinned ? 'bi-pin-angle-fill' : 'bi-pin-angle', label: menuPinned ? t('notes_menu_unpin') : t('notes_menu_pin'), action: toggleMenuPin });
+            }
+
+            if (CFG.urls.notes_import && CFG.notes_import) {
+                items.push({ icon: 'bi-box-arrow-in-down', label: t('notes_import'), action: function () { save().then(openImport); } });
+            }
+
+            if (CFG.urls.notes_export) {
+                items.push({ icon: 'bi-box-arrow-up', label: t('notes_export_all'), action: function () { window.location.href = CFG.urls.notes_export + '?all=1'; } });
+            }
+
+            return items;
+        }
+
+        var barMore = menuButton(button('pg-icon-button ws-nb-bar-more', '', 'bi-three-dots', t('more')));
+
+        barMore.addEventListener('click', function (event) {
+            var box = barMore.getBoundingClientRect();
+
+            event.stopPropagation();
+            ctxMenu(Math.max(8, box.right - 220), box.bottom + 4, barMenuItems());
+        });
+
+        // Shown while it holds something: Import and Export all are known
+        // now, Pin to the menu once the list has said it can be made.
+        function drawBarMore() {
+            barMore.hidden = !barMenuItems().length;
+        }
+
+        drawBarMore();
+        bar.appendChild(barMore);
 
         // ── the lists ──
 
@@ -29083,11 +29112,30 @@
             clear(list);
             drawTabs();
 
-            if (!lists.mine.length && !lists.shared.length && !search) {
-                var intro = el('div', 'ws-nb-intro');
-                intro.appendChild(emptyState('notes', t('notes_none')));
-                intro.appendChild(el('div', 'small fg-secondary', t('notes_intro')));
-                list.appendChild(intro);
+            var none = !lists.mine.length && !lists.shared.length;
+
+            // A search that finds nothing says so and offers Clear in place
+            // of the lists.
+            if (none && search) {
+                var found = el('div', 'pg-card');
+
+                found.appendChild(barEmptyFound(t('notes_empty_search'), function () {
+                    searchInput.value = '';
+                    search = '';
+                    loadList();
+                    searchInput.focus();
+                }));
+                list.appendChild(found);
+                return;
+            }
+
+            // Before the first note: the empty screen over the lists, which
+            // keep New group.
+            if (none) {
+                var empty = el('div', 'pg-card');
+
+                empty.appendChild(emptyScreen({ tone: 'amber', icon: 'bi-journal-text', title: t('notes_none_title'), text: t('notes_intro'), action: { label: t('notes_new'), icon: 'bi-plus-lg', onClick: function () { startNew(); } } }));
+                list.appendChild(empty);
             }
 
             var groups = groupsCtx();
@@ -29111,8 +29159,8 @@
 
                 if (data.menu) {
                     menuPinned = !!data.menu.pinned;
-                    menuPin.classList.toggle('d-none', !data.menu.ready);
-                    drawMenuPin();
+                    menuPinReady = !!data.menu.ready;
+                    drawBarMore();
                 }
 
                 drawList();
@@ -32481,6 +32529,7 @@
             icon: icon,
             flowIcon: flowIcon,
             button: button,
+            lookButton: lookButton,
             viewBack: viewBack,
             select: select,
             dateField: pgDateField,

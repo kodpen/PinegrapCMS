@@ -541,6 +541,7 @@
     "Deleted rows ({var:1})": "Silinmiş satırlar ({var:1})",
     "Deleted table": "Silinmiş tablo",
     "Deleted tables": "Silinmiş tablolar",
+    "Deleted tables ({var:1})": "Silinmiş tablolar ({var:1})",
     "Deleted workflow table rows naming the person": "Kişiyi anan silinmiş iş akışı tablosu satırları",
     "Deleted.": "Silindi.",
     "Deleting": "Siliniyor",

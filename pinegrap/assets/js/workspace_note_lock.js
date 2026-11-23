@@ -274,7 +274,8 @@
 
     function toolbarButton(ctx) {
         var kit = ctx.kit;
-        var node = kit.button('btn btn-sm btn-text theme-secondary ws-nb-lock-button', kit.t('nlock_lock'), 'bi-lock');
+        // A ghost button of the screen's bar, beside My highlights.
+        var node = kit.lookButton('pg-button pg-button-ghost ws-nb-lock-button', kit.t('nlock_lock'), 'bi-lock');
 
         // A menu once the lock is set up; before that the set-up dialog.
         function popup() {

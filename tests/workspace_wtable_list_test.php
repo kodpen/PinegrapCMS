@@ -144,15 +144,34 @@ function test_ws_wtable_list_segments_with_icons()
 	pg_assert_contains('<a class="pg-seg-item" href="b" title="Mine &amp; more"><i class="bi bi-person" aria-hidden="true"></i><span class="pg-seg-label">Mine &amp; more <span class="pg-seg-count">2</span></span></a>', $html, 'icon, then the label with its count, the name as tooltip');
 	pg_assert_same(2, substr_count($html, 'pg-seg-label'));
 
-	$icons = ws_wtable_list_segment_icons();
+}
 
-	foreach (array_merge(array_keys(ws_wtable_list_scopes(true)), array('tables', 'deleted')) as $key) {
-		pg_assert_true(isset($icons[$key]), 'an icon for ' . $key);
-	}
+function test_ws_wtable_list_bar()
+{
+	$scopes = array(
+		array('label' => 'All', 'url' => 'w.php', 'current' => true, 'count' => 12),
+		array('label' => 'Mine', 'url' => 'w.php?scope=mine', 'current' => false, 'count' => 7),
+	);
+	$html = ws_wtable_list_bar('ws_wtables', $scopes, array('url' => 'w.php?view=deleted', 'current' => false, 'count' => 2));
 
-	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/workspace_wtables.php');
+	pg_assert_true(strpos($html, '<div class="ws-bar-frame"><nav class="pg-toolbar ws-bar"') === 0, 'one bar line in its frame, without the #button_bar rules');
+	pg_assert_same(1, substr_count($html, 'pg-button-fill'), 'one filled button: New table');
+	pg_assert_contains('data-bs-target="#ws_wt_import_new"', $html, 'Import from file stays');
+	pg_assert_contains('<span class="pg-seg ws-bar-views-seg" role="group" aria-label="Show">', $html, 'the scopes as the views, without icons');
+	pg_assert_contains('<a class="pg-seg-item is-active" href="w.php" aria-current="page">All <span class="pg-seg-count">12</span></a>', $html, 'the chosen scope with its count');
+	pg_assert_contains('<option value="w.php?scope=mine">Mine (7)</option>', $html, 'the narrow select goes to the same addresses');
+	pg_assert_contains('data-pg-list-search="ws_wtables"', $html, 'the search names the list');
+	pg_assert_contains('href="w.php?view=deleted" title="Deleted tables (2)"', $html, 'Deleted tables as an icon button with its count');
+	pg_assert_true(strpos($html, 'pg-toolbar-grow') < strpos($html, 'ws-bar-search'), 'the search after the grow slot');
+	pg_assert_true(strpos($html, 'ws-bar-search') < strpos($html, 'bi-trash3'), 'Deleted tables at the end');
 
-	pg_assert_true(substr_count($screen, "'icon' => \$segment_icons[") === 3, 'both strips of the screen carry icons');
+	$deleted = ws_wtable_list_bar('ws_wtables_deleted', array(array('label' => 'All', 'url' => 'w.php', 'current' => false, 'count' => 12)), array('url' => 'w.php', 'current' => true, 'count' => 0));
+
+	pg_assert_contains('<a class="pg-icon-button ws-bar-icon is-active" href="w.php" title="Deleted tables" aria-label="Deleted tables" aria-current="page">', $deleted, 'pressed in the deleted view, it goes back');
+	pg_assert_contains('<option value="w.php" selected>Deleted tables</option>', $deleted, 'the select names the deleted view');
+	pg_assert_same(0, substr_count($deleted, 'is-active" href="w.php" aria-current'), 'no scope pressed in the deleted view');
+
+	pg_assert_true(strpos(ws_wtable_list_bar('l', $scopes, null), 'bi-trash3') === false, 'no Deleted tables without the bin');
 }
 
 function test_ws_wtable_list_columns()
@@ -303,10 +322,10 @@ function test_ws_wtable_list_screen_is_wired()
 	pg_assert_contains('pg_list_table_html($list[\'source\'], $list[\'page\'], lang(\'Data\'))', $screen, 'the list is named for readers');
 	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_list_table.min.js')", $screen, 'the list\'s script is served');
 	pg_assert_contains("(\$table ? '' : ' pg-measure-list')", $screen, 'only the list wears the list measure');
-	pg_assert_contains('pg_screen_toolbar(', $screen, 'the toolbar is the shared one');
+	pg_assert_contains('$toolbar = ws_wtable_list_bar($list_name, $scope_items, $deleted_link);', $screen, 'the list\'s one-line bar');
+	pg_assert_contains('select[data-ws-bar-go]', $screen, 'the narrow select goes to the chosen address');
 
 	pg_assert_contains('data-bs-toggle="dialog" data-bs-target="#ws_wt_new"', $screen, 'New table opens its window');
-	pg_assert_contains('data-bs-toggle="dialog" data-bs-target="#ws_wt_import_new"', $screen, 'Import from file opens its window');
 	pg_assert_contains('<dialog class="dialog pg-dialog-centered" id="ws_wt_new"', $screen);
 	pg_assert_contains('<dialog class="dialog pg-dialog-centered" id="ws_wt_import_new"', $screen);
 

@@ -36,7 +36,7 @@ function test_workspace_canvas_phone_data_list()
 	$css = file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 
 	pg_assert_true(strpos($screen, 'class="pg-button pg-button-fill ws-wt-fab sm:d-none"') !== false, 'New table floats on a phone');
-	pg_assert_true(strpos($screen, 'class="pg-button pg-button-fill d-none sm:d-inline-flex" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"') !== false, 'the toolbar\'s New table from 576 px');
+	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_list.php'), 'class="pg-button pg-button-fill d-none sm:d-inline-flex" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"') !== false, 'the bar\'s New table from 576 px');
 
 	pg_assert_true(strpos($css, '.pg-seg-icons .pg-seg-item:not(.is-active, [aria-pressed="true"], [aria-current]) .pg-seg-label {') !== false, 'below 576 px only the chosen segment keeps its label');
 
