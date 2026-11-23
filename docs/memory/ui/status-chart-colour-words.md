@@ -10,7 +10,7 @@ description: Status chips, the orders' Payment methods bars and Search Console c
 - Chip and job panels draw rows through one closure, `$status_detail_row`. The 6px dot is `aria-hidden`; ok, warn and fail rows put OK / Warning / Problem before the time (`Problem · 3 hours ago`). Info rows carry no word, their time already says Never or Missing. This tells a stalled scheduled task from a healthy one, a required missing server rule from a recommended one, an operations error from a warning.
 
 ## How are the orders' payment methods read without colour?
-- All Orders' Summary draws them as bars of one colour, each row the method's name and its count as text (`pg_order_list_summary_html()`, counts through `pg_format_number(…, 0)`); the doughnut is gone (OL1 of `plans/orders-list-redraw.md`).
+- All Orders' Summary draws them as bars of one colour, each row the method's name and its count as text (`pg_order_list_summary_html()`, counts through `pg_format_number(…, 0)`); the doughnut is gone (`commerce/orders-list-figure-strip.md`).
 
 ## How are Clicks and Impressions told apart on Search Console?
 - Impressions is dashed (`borderDash: [6, 4]`) with `pointStyle: "rectRot"`, the legend uses point styles, and both y-axes carry the Clicks / Impressions titles. The current 7/28/90-day link has `aria-current="page"`.

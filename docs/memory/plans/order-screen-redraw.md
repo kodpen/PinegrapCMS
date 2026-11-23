@@ -20,7 +20,7 @@ priority: 6
 - Rows with no value are printed (Special Offer Code).
 
 ## Is it accepted?
-- Yes. Owner (2026-11-22), shown the drawing with its four new things listed: "bunu ve ürün sayfasını ve tüm siparişler ekranıyla birlikte güncelleyelim." (`workflow/decisions-made-panel-15.md`). All Orders and Edit Product follow in `orders-list-redraw.md` and `commerce/product-insights.md`
+- Yes. Owner (2026-11-22), shown the drawing with its four new things listed: "bunu ve ürün sayfasını ve tüm siparişler ekranıyla birlikte güncelleyelim." (`workflow/decisions-made-panel-15.md`). All Orders and Edit Product follow in `commerce/orders-list-quick-filters.md` and `commerce/product-insights.md`
 
 ## What does the plan settle itself?
 - Nothing is taken away: every value, field, button and card of today stays, in a new place; a row with no value is not printed.

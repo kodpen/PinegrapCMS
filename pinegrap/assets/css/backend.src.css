@@ -9845,6 +9845,21 @@ button.no-popover:focus-visible {
     max-width: 100%;
   }
 }
+/* The quick filters stand under the bar, above the figure strip. */
+.pg-orders-quick { margin: 0 0 12px; }
+/* A change note stands between a figure and its sparkline, in the figure
+   grid's change inks. */
+.pg-figure-strip-line > .pg-figure-note {
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+}
+.pg-figure-strip-line > .pg-figure-note.is-good {
+  color: var(--pg-success-fg-emphasis);
+  font-weight: var(--pg-weight-medium);
+}
+.pg-figure-strip-line > .pg-figure-note.is-bad {
+  font-weight: var(--pg-weight-medium);
+}
 /* Customer and Products give way so the default columns fit beside the open
    Filters panel: one line, cut with an ellipsis, the whole text as the
    title (pg_order_list_clip_html()). */
