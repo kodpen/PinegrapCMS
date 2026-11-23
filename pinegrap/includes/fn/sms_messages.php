@@ -437,9 +437,9 @@ function pg_sms_message_settings_fields()
 
         $html .= '
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input type="checkbox" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($settings[$event]['on'] ? ' checked="checked"' : '') . ' class=""/></div>
-                                                <label class="" for="' . h($name) . 'on" id="' . h($name) . 'label">' . h($definition['label']) . '</label>
+                                            <div class="d-flex align-items-center gap-5">
+                                                <input type="checkbox" class="pg-switch" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($settings[$event]['on'] ? ' checked="checked"' : '') . '/>
+                                                <label class="pg-text-2" for="' . h($name) . 'on" id="' . h($name) . 'label">' . h($definition['label']) . '</label>
                                             </div>
                                             <textarea name="' . h($name) . 'text" id="' . h($name) . 'text" aria-labelledby="' . h($name) . 'label" class="form-control mt-3" rows="2" maxlength="' . (int) pg_sms_message_max_length() . '">' . h($text) . '</textarea>
                                             <div class="form-text">' . lang(array('string' => 'Fields: {var:1}', 'vars' => array(h(pg_sms_message_field_list($definition['fields']))))) . '</div>' . (isset($definition['note']) ? '

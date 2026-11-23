@@ -228,3 +228,24 @@ function test_settings_communication_fold_registry_anchors_and_search()
 	pg_assert_same(array('Who answers visitors'), $labels['pgset-chat-site'], 'the bubble\'s label');
 	pg_assert_contains('aria-expanded="true" aria-controls="pg-fold-chat-site-body"', $html, 'the row asking for attention arrives open');
 }
+
+// The SMS, SMS messages and WhatsApp messages rows draw their switches as
+// pg-switch, with the names each function posted before.
+function test_settings_communication_fold_message_rows_switches()
+{
+	$files = array(
+		'includes/fn/sms.php'               => array('name="sms_enabled"'),
+		'includes/fn/sms_messages.php'      => array('name="\' . h($name) . \'on"'),
+		'includes/fn/whatsapp_messages.php' => array('name="\' . h($name) . \'on"'),
+	);
+
+	foreach ($files as $file => $names) {
+		$source = settings_communication_fold_test_source($file);
+
+		pg_assert_same(false, strpos($source, '<div class="switch">'), $file . ' draws no div.switch');
+
+		foreach ($names as $name) {
+			pg_assert_true(strpos($source, '<input type="checkbox" class="pg-switch" ' . $name) !== false, $file . ' posts ' . $name . ' from a pg-switch');
+		}
+	}
+}
