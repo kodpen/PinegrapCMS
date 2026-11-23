@@ -9077,6 +9077,7 @@
     "These shared components place each other in a loop: {var:1}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var:1}",
     "These shared components place each other in a loop: {var}": "Bu ortak bileşenler birbirini döngü hâlinde içeriyor: {var}",
     "These shortcuts work in the desktop and web apps. Press Ctrl+/ in the app to see them at any time.": "Bu kısayollar masaüstü ve web uygulamalarında çalışır. Hepsini istediğiniz an görmek için uygulamada Ctrl+/ tuşlarına basın.",
+    "These steps follow Anthropic's pages on Claude Managed Agents as read on 20 November 2026. The product is in beta: its screens may differ.": "Bu adımlar Anthropic'in Claude Managed Agents sayfalarını 20 Kasım 2026'da okunduğu hâliyle izler. Ürün beta aşamasında: ekranları farklı olabilir.",
     "These tools write, so they can be turned on only on a server people sign in to, each call approved: {var:1}": "Bu araçlar yazar; yalnızca kişilerin oturum açtığı bir sunucuda, her çağrı onaylanarak açılabilir: {var:1}",
     "These topics have no reply yet. A short answer is better than none.": "Bu konulara henüz yanıt verilmedi. Kısa bir yanıt, hiç yanıt olmamasından iyidir.",
     "These values are sealed again with the new key in the same save:": "Bu değerler aynı kayıtta yeni anahtarla yeniden şifrelenir:",

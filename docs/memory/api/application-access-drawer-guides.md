@@ -14,10 +14,10 @@ description: Application Access's edit drawer (head, tabs, Overview, Connect) an
 - A locked row hides Save, New secret and Danger (`application-access-keys.md`).
 
 ## Which guides are there?
-- `api_app_guides($at)` (pure; the site's addresses come in), in order: key_secret, token, mcp_signin, devices, agent. Each: icon, tone, title, line, acts (application or person), kinds, secret, steps (title, text, a value with Copy or a link), clients, notes.
+- `api_app_guides($at)` (pure; the site's addresses come in), in order: key_secret, token, console, mcp_signin, devices, agent. Each: icon, tone, title, line, acts (application or person), kinds, secret, intro, steps (title, text, a value with Copy or a link), clients, notes.
 - MCP with sign-in: the MCP file address, the compact list's (`mcp-compact-list.md`), Connect to Claude (`claude-connect-button.md`); no short or discovery address.
 - One token: the API and the MCP address and `Authorization: Bearer TOKEN` (`application-access-keys.md`). Agent in a channel: PINEGRAP_KEY and PINEGRAP_SECRET, the start text (`ws_agent_start_text()`, English as written, only with the Workspace), how it waits.
-- Id `console` is kept for the Claude Console guide (AA7b), after token.
+- Claude Console: `application-access-console-guide.md`.
 - Guide texts go through `lang()`; the start text an agent reads stays English (`workflow/decisions-made-product-92.md`).
 
 ## Which guide suits which application?

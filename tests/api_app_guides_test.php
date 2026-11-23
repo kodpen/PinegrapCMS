@@ -50,7 +50,7 @@ function test_api_app_guides_shape()
 {
 	$guides = api_app_guides(api_app_guides_test_at());
 
-	pg_assert_same(array('key_secret', 'token', 'mcp_signin', 'devices', 'agent'), array_keys($guides), 'the guides in reading order');
+	pg_assert_same(array('key_secret', 'token', 'console', 'mcp_signin', 'devices', 'agent'), array_keys($guides), 'the guides in reading order');
 
 	foreach ($guides as $id => $guide) {
 		pg_assert_same($id, $guide['id'], $id . ' carries its id');
@@ -72,7 +72,43 @@ function test_api_app_guides_shape()
 
 	pg_assert_same('person', $guides['mcp_signin']['acts'], 'MCP with sign-in acts as the person');
 	pg_assert_same('application', $guides['key_secret']['acts'], 'a key acts as the application');
-	pg_assert_true(!isset($guides['console']), 'the Claude Console guide is not written yet');
+	pg_assert_same('application', $guides['console']['acts'], 'the Claude Console agent acts as the application');
+}
+
+function test_api_app_guides_console()
+{
+	$guides = api_app_guides(api_app_guides_test_at());
+	$console = $guides['console'];
+	$values = array_column($console['steps'], 'value', 'value_id');
+
+	pg_assert_contains('as read on 20 November 2026', $console['intro'], 'the first line names the date the pages were read');
+	pg_assert_contains('beta', $console['intro'], 'and that the product is in beta');
+	pg_assert_same('', $guides['token']['intro'], 'another guide has no first line');
+	pg_assert_same('https://example.com/pinegrap/mcp.php', $values['console_mcp'], 'the MCP server\'s address');
+	pg_assert_same('example.com', $values['console_host'], 'the site\'s host for the allowed hosts');
+	pg_assert_same('You are an agent in the Workspace of a Pinegrap site.', $values['console_start'], 'the start text as the system prompt');
+
+	$titles = implode("\n", array_column($console['steps'], 'title'));
+	pg_assert_contains('vault', $titles, 'the token goes in a vault');
+	pg_assert_contains('schedule', $titles, 'a scheduled run wakes it');
+	pg_assert_contains('next scheduled run', implode("\n", $console['notes']), 'the delay is said plainly');
+	pg_assert_contains('Sign-in is not offered', implode("\n", $console['notes']), 'no OAuth connection: it acts as the person');
+
+	pg_assert_same('', api_app_guide_fit($console, 'server', true), 'suits an integration with a secret');
+	pg_assert_same('no_secret', api_app_guide_fit($console, 'server', false), 'a key without a secret has no token');
+	pg_assert_same('kind', api_app_guide_fit($console, 'oauth', false), 'never offered on an OAuth application');
+
+	$bare = api_app_guides(api_app_guides_test_at(array('site' => '', 'start_text' => '')));
+	$ids = array_column($bare['console']['steps'], 'value_id');
+	pg_assert_true(!in_array('console_host', $ids, true), 'no host value without the site address');
+	pg_assert_true(!in_array('console_start', $ids, true), 'no start text without the Workspace');
+}
+
+function test_api_app_guide_intro_drawn()
+{
+	$view = api_app_guides_test_view();
+
+	pg_assert_contains("h(\$guide['intro'])", $view, 'the guide body draws its first line');
 }
 
 function test_api_app_guides_mcp_addresses()

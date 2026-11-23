@@ -12,7 +12,7 @@ description: Plan app-access-redraw, step AA7 (U15 to U18): a Claude Console age
 - (U15) The key as one token (step AA4) is what a vault's bearer entry carries. The application's own key acts as the application, so the agent's call reads as the agent, never as a person.
 - (U16) The agent's own routes are MCP tools only for an active application agent's own key: the instructions, the request list, claim, brief, answer, fail, progress, report and the wake schedule. An OAuth connection, a device session and a key with no active agent never see them; a test holds each. Built in AA7a (#10867) as `'mcp' => 'agent'`: `api/mcp-agent-own-tools.md`.
 - (U17) The agent's instructions and the start text name a second sending form beside `-u`: the two headers, or the single token, for an environment where a secret is put in only when sent word for word. `-u` stays the default. The instructions' version changes. Built in AA7a (#10867).
-- (U18) The guide "Claude Console" in `api_app_guides()`: the vault entry, the MCP server's address, the site's host among the allowed hosts, the start text as the agent's system prompt, the scheduled run as how it wakes. Its first line says it follows Anthropic's pages as read on that date and that the product is in beta. An OAuth connection is not offered there: it acts as the person.
+- (U18) The guide "Claude Console" in `api_app_guides()`: the vault entry, the MCP server's address, the site's host among the allowed hosts, the start text as the agent's system prompt, the scheduled run as how it wakes. Its first line says it follows Anthropic's pages as read on that date and that the product is in beta. An OAuth connection is not offered there: it acts as the person. Built in AA7b (#11203): `api/application-access-console-guide.md`.
 
 ## How does a Console agent wake?
 - Owner (2026-11-20, poll 182): on a schedule (`workflow/decisions-made-workspace-43.md`). Each run reads the request list, takes what waits, answers and ends. The site keeps no Anthropic key and calls no Anthropic address; no third door form is added.
@@ -21,7 +21,7 @@ description: Plan app-access-redraw, step AA7 (U15 to U18): a Claude Console age
 ## How is the step cut?
 - Architect (2026-11-20): in two, so that a Console agent works before the drawer is drawn.
   - AA7a, after AA4 alone: U16 and U17 with their tests. It goes before the Workspace's diet (AG10 of `plans/ai-guide.md`), which enters the same route files.
-  - AA7b, after AA3 and AA7a: U18, the guide. Until it lands the architect gives the owner the set-up steps in his window.
+  - AA7b, after AA3 and AA7a: U18, the guide (done #11203). Until it lands the architect gives the owner the set-up steps in his window.
 - Why: the owner said on 2026-11-20 that he has credit in the Claude Console to use on development once the connection works.
 
 ## What binds the step?
