@@ -6,7 +6,7 @@ description: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the sto
 ## Which steps are there?
 - SJ1a (S) done, PR #11160. First, no schema: new `includes/fn/launch_journey.php`, pure: the step catalogue per purpose, each step's rule over a facts array, blocker or warning, the payment-live rule per driver (Stripe by key prefix), the first-week window. `tests/launch_journey_test.php` red first: a shop with PayTR in test mode, a blog, `Disallow: /` in the robots extras, a hidden blocker, a week ending. Features: L1, L2, L4.
 
-- SJ1b (S) after SJ1a: the agency summary's lines table (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, its columns brought to the architect before ready. Features: L7 (the store).
+- SJ1b (S) done, PR #11200. After SJ1a: the agency summary's lines table (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, its columns brought to the architect before ready. Features: L7 (the store).
 
 - SJ2 (M) after SJ1a: the journey's `config_text` row (purpose, go-live time, hidden steps; `pg_config_text_save()`, no schema), the facts reader (each source's function, no title matching), a template key's purpose, the dashboard card through `pg_dashboard_v2_cards()` (`cards/launch.php` answering data, its renderer in `pg_dash_cards_<group>.js`), the purpose choice, "Do it" links, "Not for this site", "Hide set-up", Site Settings › General's purpose field. Features: L1, L2, L3.
 
