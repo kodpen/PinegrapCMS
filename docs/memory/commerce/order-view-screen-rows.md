@@ -22,6 +22,9 @@ module: order_view
 ## Where are the Restore Order button and the order's columns taken?
 - `pg_order_view_restore_button($status)` builds Restore Order for every cancelled order, after both shipping branches: it sat inside the branch with a shipping address, so a cancelled download, gift card or counter sale had no way back. `view_order.php` reuses `$row` for later result sets: an order column the cards print (e.g. `vat_id` for the EU VAT ID row) is taken next to the main query (tests `tests/view_order_restore_button_test.php`, `tests/view_order_vat_id_row_test.php`).
 
+## Where do these rows stand since the redraw?
+- The side panel and Payment print `.pg-kv` rows (`pg_order_view_kv()`, #11139); `pg_order_view_row()` stays for `print_order.php` and the gift card boxes. Layout: `ui/order-screen-wide-layout.md`.
+
 ## What is left?
 - The "Withdrawal deadline" date on the legal documents card still prints in the US order (#2040 names it with the other date displays).
 

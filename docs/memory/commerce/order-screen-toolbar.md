@@ -8,6 +8,9 @@ description: The order screen's toolbar (view_order.php): which buttons stay on 
 - Everything else is a row of the `overflow` slot (`$output_toolbar_more`, `ul.menu.pg-menu-end`): the payment provider's panel (`$output_gateway_menu_item`), Paraşüt Create Invoice / E-Shipment (`$output_parasut_menu_items`), the ERP invoice, delivery note or Issue the Invoice (`$output_erp_menu_items`, emptied when the ERP document card shows) and Workspace (`ws_record_button(…, 'menu-item pg-link-body-emphasis')`). No row, no menu.
 - Before, every button sat in `secondary`; with all integrations on the bar held seven or more and wrapped onto several lines on a narrow screen.
 
+## Where is the bar?
+- At the head's right since OS1 (#11098, `order-screen-head.md`); on a phone under the head's line. The slots and the rule above did not change in the redraw.
+
 ## Why do the Paraşüt and ERP rows have no colour?
 - Menu rows are all `link-body-emphasis` (`ui/admin-screen-toolbar-rules.md`). The old green/yellow button colours are gone; the "Sent" badges and the Order Information card's Paraşüt rows tell the state.
 - The Issue the Invoice form is `form.d-contents.disable_shortcut` so its button lays out as a menu row (`tests/save_shortcut_test.php`).

@@ -14,7 +14,7 @@ priority: 6
 
 ## 2. Why are the three states in two looks?
 - Status is still the filled blue badge (`badge theme-primary bg-gradient`); Payment and Shipping beside it are `pg_pill()` pills. The drawing shows three pills of one family.
-- Fix: the order status is drawn with `pg_pill()` in the tones of `order-screen-redraw-states.md` (Incomplete grey, Complete and Exported teal, Cancelled rose). Its quick edit and the Paraşüt badge behave as today.
+- Fix: the order status is drawn with `pg_pill()` in the tones of `commerce/order-screen-head.md` (Incomplete grey, Complete and Exported teal, Cancelled rose). Its quick edit and the Paraşüt badge behave as today.
 - The "Awaiting Payment" mark of the Status cell stays, as an amber pill: a person may have hidden the Payment column.
 
 ## 3. Why is the bar two rows at 1440 px?

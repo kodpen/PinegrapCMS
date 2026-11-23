@@ -25,7 +25,7 @@ priority: 6
 
 ## Which columns? (mark 4)
 - Default: Order Number, Order Date, Customer, Status, Payment, Shipping, Items, Total, Action.
-- New: Customer (first and last name; the company when there is no name), Payment and Shipping (the pills of View Order's head, `order-screen-redraw-states.md`, from the same function), Items (the first line's product and "+N" for the others).
+- New: Customer (first and last name; the company when there is no name), Payment and Shipping (the pills of View Order's head, `commerce/order-screen-head.md`, from the same function), Items (the first line's product and "+N" for the others).
 - First Name, Last Name, Type, User, Tracking Code, Member ID, Affiliate Code, Card Data and Profit stay in the column chooser, off by default. A person's saved columns are not changed.
 - The new cells' data is read for the page's rows in one query each, as the amount cell's is.
 
@@ -43,6 +43,6 @@ priority: 6
 
 ## Which steps?
 - OL1 (M): the bar, the strip, Summary; done (#11093). OL2 (M): the four new columns and the default set; done (#11142, `commerce/orders-list-columns.md`). OL2b (M): the Advanced Filters panel; done (#11167, `ui/advanced-filters-panel.md`). OL3 (M) after OL2: the quick filters, the change figures, close-out (`commerce/orders-list-*.md`, `ui/look-figure-cards.md` rewritten; this file deleted).
-- Checked as `order-screen-redraw-steps.md` says, with at least thirty orders of every state in the period.
+- Checked as `commerce/order-screen-redraw-rules.md` says, with at least thirty orders of every state in the period.
 
-Related: docs/memory/plans/order-screen-redraw.md, docs/memory/plans/order-screen-redraw-states.md, docs/memory/commerce/product-insights.md
+Related: docs/memory/commerce/order-screen-redraw-rules.md, docs/memory/commerce/order-screen-head.md, docs/memory/commerce/product-insights.md

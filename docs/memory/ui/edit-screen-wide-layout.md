@@ -18,7 +18,7 @@ description: Owner decision for panel edit screens: a wide screen is not spent o
 
 ## What are the placement rules?
 - Below `lg` (1024px; `2xl` is 1536px) the columns stack in source order: write the status column AFTER the form column, so on a narrow screen the summary does not push the first field off screen.
-- Stickiness goes on the box inside the status column, not on the column (the column is as tall as the row); the save bar is sticky on its own column.
+- Stickiness goes on the box inside the status column, not on the column (it is as tall as the row); View Order's does not stick; the save bar is sticky on its own column.
 - The status box sticks at `top:3.3rem`, below the 50px top bar; `top:1rem` slid its card title under the bar (`add_return.php`, `view_return.php`, `privacy_erase.php`, `privacy_export.php` fixed).
 - Short cards are paired in one row or moved into the status column.
 - A screen that departs from the pattern says why in a code comment.

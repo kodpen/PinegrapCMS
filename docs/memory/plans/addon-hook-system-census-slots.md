@@ -14,9 +14,8 @@ description: Add-on hook system AH1 census, UI slot places: how the order screen
 - Elsewhere: refund and cancel modals built as strings, the sticky Save / Restore / Delete bar, label buttons inline in each ship-to card (Create Label, Print Label, Request Pickup ...) posting `#shipment-label-form` to `shipment_label.php`, the packing slip's Print button in the shipping card header.
 
 ## How does the order screen draw its cards? (Order screen › extra card)
-- Left column (`lg:col-8`): Billing Information, custom billing fields, Customer Information, payment information, written inline.
-- Right card column: `pg_order_view_card_column(array(...))` (`includes/fn/order_view.php`), an array of card strings (shipping details per ship-to, source, gift cards, affiliate, legal documents card, returns card); empty strings are skipped. The order lines follow (`pg_order_view_line()`); the status column (`lg:col-4`) holds one inline Order Information card.
-- The ERP documents card sits under the bar. There is no timeline card on the panel screen.
+- Form column (`lg:col-8`), one stack: the shipment cards with their lines, "Items not shipped", Payment, the ERP documents card, then the later cards through `pg_order_view_card_grid(array(...))` (`includes/fn/order_view.php`), an array of card strings (Returns, Legal Documents, Profit, Applied Gift Cards, Affiliate, Custom Billing); empty strings are skipped. An extra card is one more string of that array, after the others (`ui/order-screen-wide-layout.md`).
+- Side panel (`lg:col-4`): Customer, Billing Information, Order Information. The actions are the head's toolbar. There is no timeline card on the panel screen.
 
 ## How does the orders list draw its actions? (Orders list › row action, toolbar)
 - `view_orders.php`. Toolbar: a hand-written `nav#button_bar.pg-toolbar`, not `pg_screen_toolbar()`: Add Order, the Export menu with `$output_gateway_buttons`, Import Tracking Numbers, sort menu, status and type filters, advanced filters, period navigator.
