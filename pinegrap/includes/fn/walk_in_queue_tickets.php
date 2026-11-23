@@ -33,13 +33,18 @@ const PG_WAITING_NOTICE_EXPIRES = 7200;
 
 /**
  * The join form read back: the service (the only one when the place has
- * one), and the optional name, phone, e-mail and party size. Pure.
+ * one), and the optional name, phone, e-mail and party size. A priority
+ * group is read only where it is asked (the kiosk, staff); "I have a
+ * booking" only where the place folds bookings in, and then the phone or
+ * the e-mail it was made with is needed. Pure but for pg_sms_number().
  *
  * @param array $post
- * @param array $place services, settings as decoded
- * @return array values => array(service, name, phone, email, party_size), error ('' when it may be taken)
+ * @param array $place          services, settings as decoded
+ * @param bool  $ask_priority   whether the form offers the priority groups
+ * @param bool  $takes_bookings pg_waiting_takes_bookings()
+ * @return array values => array(service, name, phone, email, party_size, priority, booking), error ('' when it may be taken)
  */
-function pg_waiting_join_input($post, $place)
+function pg_waiting_join_input($post, $place, $ask_priority = false, $takes_bookings = false)
 {
     $post = is_array($post) ? $post : array();
     $keys = array_column((array) $place['services'], 'key');
@@ -53,6 +58,8 @@ function pg_waiting_join_input($post, $place)
     $phone = ($phone_typed === '') ? '' : pg_sms_number($phone_typed);
     $email = pg_waiting_text($post['email'] ?? '', 190);
     $party = empty($place['settings']['party_size']) ? 0 : pg_waiting_int($post['party_size'] ?? '', 1, PG_WAITING_PARTY_MAX, 1);
+    $priority = $ask_priority ? pg_waiting_priority_clean($post['priority'] ?? '', $place['settings']['priority'] ?? array()) : '';
+    $booking = $takes_bookings && !empty($post['booking']);
     $error = '';
 
     if (!in_array($service, $keys, true)) {
@@ -61,10 +68,12 @@ function pg_waiting_join_input($post, $place)
         $error = lang('This phone number cannot be read.');
     } elseif (($email !== '') && (filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
         $error = lang('This e-mail address cannot be read.');
+    } elseif ($booking && ($phone === '') && ($email === '')) {
+        $error = lang('Give the phone or e-mail you booked with.');
     }
 
     return array(
-        'values' => array('service' => $service, 'name' => pg_waiting_text($post['name'] ?? '', 100), 'phone' => $phone, 'email' => $email, 'party_size' => $party),
+        'values' => array('service' => $service, 'name' => pg_waiting_text($post['name'] ?? '', 100), 'phone' => $phone, 'email' => $email, 'party_size' => $party, 'priority' => $priority, 'booking' => $booking),
         'error'  => $error,
     );
 }
@@ -240,6 +249,10 @@ function pg_waiting_refusal_text($code, $place)
         return lang('The wait would pass the closing time, so no more numbers are given today.');
     }
 
+    if ($code === 'booking') {
+        return lang('No booking for today was found with this phone or e-mail. Take a number without it, or ask at the desk.');
+    }
+
     $text = (string) ($place['settings']['closed_text'] ?? '');
 
     return ($text !== '') ? $text : lang('Numbers are not given now. Please try again within the opening hours.');
@@ -250,11 +263,11 @@ function pg_waiting_refusal_text($code, $place)
  *
  * @param int $place_id
  * @param int $day
- * @return array list of array(id, service, joined_at, priority, booking_at, notices)
+ * @return array list of array(id, service, joined_at, priority, booking_at, moved_back, called_at, notices)
  */
 function pg_waiting_place_waiting($place_id, $day)
 {
-    return (array) db_items("SELECT id, service, joined_at, priority, booking_at, notices FROM waiting_tickets WHERE place_id = '" . (int) $place_id . "' AND state = 'waiting' AND day = '" . (int) $day . "'");
+    return (array) db_items("SELECT id, service, joined_at, priority, booking_at, moved_back, called_at, notices FROM waiting_tickets WHERE place_id = '" . (int) $place_id . "' AND state = 'waiting' AND day = '" . (int) $day . "'");
 }
 
 /**
@@ -295,13 +308,17 @@ function pg_waiting_estimate($place, $service, $ahead, $now)
  * A new number at a place, when the way is open and the hours, the daily
  * cap and the closing time allow it. The day's count is the service's last
  * plus one; two numbers taken at once meet on the unique key and the later
- * one takes the next count. Its "taken" notice is sent.
+ * one takes the next count. Its "taken" notice is sent. With "I have a
+ * booking" the day's booking made with the phone or e-mail is named on
+ * the number, which then stands at the booked time within the grace
+ * window; a person with a booking is held back only by the hours, never
+ * by the daily cap or the closing estimate.
  *
  * @param array    $place  pg_waiting_place_get()
  * @param array    $values pg_waiting_join_input() values
  * @param string   $way    qr, site, kiosk or staff
  * @param int|null $now
- * @return array ok, error (pg_waiting_join_refusal() code or 'way', 'write'), id, token, number
+ * @return array ok, error (pg_waiting_join_refusal() code or 'way', 'booking', 'write'), id, token, number
  */
 function pg_waiting_take($place, $values, $way, $now = null)
 {
@@ -328,9 +345,23 @@ function pg_waiting_take($place, $values, $way, $now = null)
     $taken = (int) db_value("SELECT COUNT(*) FROM waiting_tickets WHERE place_id = '" . (int) $place['id'] . "' AND day = '" . $day . "'");
     $closes = pg_waiting_closes_at($place['hours'], $place['exceptions'], $now, new DateTimeZone(date_default_timezone_get()));
     $result['error'] = pg_waiting_join_refusal($taken, $place['settings']['cap'], pg_waiting_estimate($place, $values['service'], $ahead + 1, $now), $now, $closes);
+    $booking = null;
+
+    if (!empty($values['booking']) && ($result['error'] !== 'closed')) {
+        $booking = pg_waiting_booking_find($place, $values['phone'], $values['email'], $now);
+        $result['error'] = $booking ? '' : 'booking';
+    }
 
     if ($result['error'] !== '') {
         return $result;
+    }
+
+    // A priority person or a booking in time stands before some of those
+    // waiting: the people ahead are counted in the calling order.
+    if (($booking !== null) || ((string) ($values['priority'] ?? '') !== '')) {
+        $ahead = (int) pg_waiting_ahead(array_merge($waiting, array(array(
+            'id' => PHP_INT_MAX, 'service' => $values['service'], 'joined_at' => $now, 'priority' => (string) ($values['priority'] ?? ''), 'booking_at' => $booking ? (int) $booking['start_at'] : 0,
+        ))), PHP_INT_MAX, (int) $place['settings']['grace_minutes'] * 60);
     }
 
     // Few ahead already: the "taken" notice says so, no second one.
@@ -340,8 +371,9 @@ function pg_waiting_take($place, $values, $way, $now = null)
 
     for ($try = 0; $try < 5; $try++) {
         $count = pg_waiting_next_count(db_value("SELECT MAX(number) FROM waiting_tickets WHERE place_id = '" . (int) $place['id'] . "' AND day = '" . $day . "' AND service = '" . e($values['service']) . "'"));
-        $written = db_q("INSERT INTO waiting_tickets (place_id, service, letter, day, number, state, source, party_size, notices, joined_at, name, phone, email) VALUES (?, ?, ?, ?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?)", array(
-            (int) $place['id'], $values['service'], $letter, $day, $count, $way, (int) $values['party_size'], $notices, $now, $values['name'], $values['phone'], $values['email'],
+        $written = db_q("INSERT INTO waiting_tickets (place_id, service, letter, day, number, state, source, priority, booking_id, booking_at, party_size, notices, joined_at, name, phone, email) VALUES (?, ?, ?, ?, ?, 'waiting', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", array(
+            (int) $place['id'], $values['service'], $letter, $day, $count, $way, (string) ($values['priority'] ?? ''), $booking ? (int) $booking['id'] : 0, $booking ? (int) $booking['start_at'] : 0,
+            (int) $values['party_size'], $notices, $now, $values['name'], $values['phone'], $values['email'],
         ));
 
         if ($written !== false) {
@@ -419,6 +451,8 @@ function pg_waiting_ticket_status($ticket, $place, $now = null)
     return array(
         'number' => pg_waiting_number($ticket['letter'], $ticket['number']),
         'place'  => (string) $place['name'],
+        'note'   => (($state === 'waiting') && !empty($ticket['moved_back'])) ? lang('You were not here when called, so you wait again, once.') : '',
+        'on_way' => pg_waiting_on_way_offered(array('state' => $state) + $ticket),
     ) + pg_waiting_status_view($state, $ahead, $minutes, $desk);
 }
 

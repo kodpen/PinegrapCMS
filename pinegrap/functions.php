@@ -325,6 +325,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_store.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_places.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_tickets.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_desk.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/walk_in_queue_arrivals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit_points.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit_refunds.php');

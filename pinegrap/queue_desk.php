@@ -73,6 +73,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         go($qd_self);
     }
 
+    // A waiting number's priority group, set or taken away from its row; no
+    // desk needs to be open for it.
+    if (isset($_POST['submit_priority'])) {
+        $qd_pick = explode(':', (string) $_POST['submit_priority'], 2);
+
+        if (!pg_waiting_set_priority($qd_place, (int) $qd_pick[0], $qd_pick[1] ?? '')) {
+            $liveform->add_error(h(lang('The number is no longer waiting.')));
+        }
+
+        go($qd_self);
+    }
+
     if (!$qd_desk) {
         $liveform->add_error(h(lang('Open a desk first.')));
         go($qd_self);
@@ -133,6 +145,12 @@ $qd_pills = function ($ticket) use ($qd_place, $qd_pill_words) {
 
     foreach (pg_waiting_desk_pills($ticket, $qd_place['settings']['priority']) as $pill) {
         $word = $qd_pill_words[$pill[0]];
+
+        // A booking shows its time: the order keeps it within the grace window.
+        if (($pill[0] === 'booked') && ((int) $ticket['booking_at'] > 0)) {
+            $pill[1] = date('H:i', (int) $ticket['booking_at']);
+        }
+
         $html .= '<span class="pg-pill ' . $word[1] . '">' . h(($pill[1] !== '') ? $word[0] . ' · ' . $pill[1] : $word[0]) . '</span>';
     }
 
@@ -200,12 +218,30 @@ if ($qd_desk) {
 // The people waiting, in calling order.
 $qd_rows = '';
 
+$qd_priority_menu = function ($ticket) use ($qd_place) {
+    if (!$qd_place['settings']['priority']) {
+        return '';
+    }
+
+    $items = '';
+
+    foreach ($qd_place['settings']['priority'] as $group) {
+        $on = ((string) $ticket['priority'] === $group['key']);
+        $items .= '<li><button type="submit" form="qd_form" name="submit_priority" value="' . (int) $ticket['id'] . ':' . h($group['key']) . '" class="menu-item"' . ($on ? ' disabled' : '') . '><i class="bi ' . ($on ? 'bi-check2' : 'bi-star') . ' me-3" aria-hidden="true"></i>' . h($group['name']) . '</button></li>';
+    }
+
+    $items .= '<li><button type="submit" form="qd_form" name="submit_priority" value="' . (int) $ticket['id'] . ':" class="menu-item"' . (((string) $ticket['priority'] === '') ? ' disabled' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i>' . h(lang('No priority')) . '</button></li>';
+
+    return '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button" data-bs-toggle="menu" data-bs-container="body" aria-expanded="false" aria-label="' . h(lang('Priority')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button><ul class="menu pg-menu-end">' . $items . '</ul></span>';
+};
+
 foreach ($qd_waiting as $ticket) {
     $qd_rows .= '<div class="pg-card-inner-row flex-wrap">'
         . '<strong class="pg-list-row-title pg-tabular text-nowrap" style="flex:0 0 6rem">' . h($qd_number($ticket)) . '</strong>'
         . '<span class="pg-text-2 text-truncate" style="flex:0 1 12rem">' . h($qd_service_names[$ticket['service']] ?? '') . '</span>'
         . '<span class="d-flex flex-wrap gap-2 flex-grow-1">' . $qd_pills($ticket) . '</span>'
         . '<span class="pg-text-meta text-nowrap">' . h(lang(array('string' => '{var:1} min', 'vars' => array(pg_waiting_minutes_since($ticket['joined_at'], $qd_now))))) . '</span>'
+        . $qd_priority_menu($ticket)
         . '</div>';
 }
 

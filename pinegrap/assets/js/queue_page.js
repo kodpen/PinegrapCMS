@@ -3,7 +3,8 @@
  *
  * The person's page of a walk-in queue number (queue.php): reads where the
  * number stands every 15 seconds while the page is shown, and stops once
- * the number is over. "Leave the queue" asks first.
+ * the number is over. "Leave the queue" asks first; "I'm on my way" goes
+ * once the number is no longer waiting.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -16,6 +17,7 @@
 
     var leave = document.querySelector('[data-pg-queue-leave]');
     var source = document.querySelector('[data-pg-queue-read]');
+    var onWay = document.querySelector('[data-pg-queue-on-way]');
     var timer = null;
 
     if (leave) {
@@ -35,16 +37,25 @@
             return;
         }
 
-        ['headline', 'line'].forEach(function (name) {
+        ['headline', 'line', 'note'].forEach(function (name) {
             var field = document.querySelector('[data-pg-queue-field="' + name + '"]');
+            var text = status[name] || '';
 
-            if (field && (field.textContent !== status[name])) {
-                field.textContent = status[name];
+            if (field && (field.textContent !== text)) {
+                field.textContent = text;
+            }
+
+            if (field && (name === 'note')) {
+                field.hidden = (text === '');
             }
         });
 
         if (leave && (status.state !== 'waiting')) {
             leave.hidden = true;
+        }
+
+        if (onWay && !status.on_way) {
+            onWay.hidden = true;
         }
 
         if (status.final) {

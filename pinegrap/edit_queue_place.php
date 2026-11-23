@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // A number added by staff: the same rules as the public page, any way.
     if (isset($_POST['submit_number_add'])) {
-        $qp_join = pg_waiting_join_input($_POST, $qp_place);
+        $qp_join = pg_waiting_join_input($_POST, $qp_place, true, pg_waiting_takes_bookings($qp_place));
         $qp_taken = ($qp_join['error'] === '') ? pg_waiting_take($qp_place, $qp_join['values'], 'staff') : null;
 
         if ($qp_taken && $qp_taken['ok']) {
@@ -418,6 +418,12 @@ foreach ($qp_place['services'] as $service) {
     $qp_number_boxes .= '<option value="' . h($service['key']) . '">' . h($service['letter'] . ' ' . $service['name']) . '</option>';
 }
 
+$qp_number_priority = '<option value="">' . h(lang('No priority')) . '</option>';
+
+foreach ($qp_place['settings']['priority'] as $group) {
+    $qp_number_priority .= '<option value="' . h($group['key']) . '">' . h($group['name']) . '</option>';
+}
+
 $qp_number_field = function ($name, $type, $label, $extra = '') {
     return '<div class="form-field mb-5"><label class="form-label pg-field-label" for="qp_number_' . $name . '">' . h($label) . '</label><input type="' . $type . '" class="pg-input" id="qp_number_' . $name . '" name="' . $name . '"' . $extra . '></div>';
 };
@@ -436,7 +442,9 @@ $qp_number_html = '<dialog class="drawer drawer-end" id="qp_number_add" aria-lab
                 . ($qp_place['settings']['party_size'] ? $qp_number_field('party_size', 'number', lang('How many people come'), ' min="1" max="' . PG_WAITING_PARTY_MAX . '" step="1" value="1"') : '')
                 . $qp_number_field('name', 'text', lang('Name (optional)'), ' maxlength="100"')
                 . $qp_number_field('phone', 'tel', lang('Phone (optional)'), ' maxlength="40"')
-                . $qp_number_field('email', 'email', lang('E-mail (optional)'), ' maxlength="190"') . '
+                . $qp_number_field('email', 'email', lang('E-mail (optional)'), ' maxlength="190"')
+                . ($qp_place['settings']['priority'] ? '<div class="form-field mb-5"><label class="form-label pg-field-label" for="qp_number_priority">' . h(lang('Priority')) . '</label><select class="pg-input" id="qp_number_priority" name="priority">' . $qp_number_priority . '</select></div>' : '')
+                . (pg_waiting_takes_bookings($qp_place) ? '<div class="d-flex align-items-start gap-3 mb-5"><input type="checkbox" class="pg-switch" id="qp_number_booking" name="booking" value="1" aria-describedby="qp_number_booking_help"><div><label class="pg-text-2" for="qp_number_booking">' . h(lang('Has a booking today')) . '</label><p class="pg-field-help mb-0" id="qp_number_booking_help">' . h(lang('Found by the phone or e-mail above, among the bookings of the staff this place folds in.')) . '</p></div></div>' : '') . '
             </div>
             <div class="drawer-footer border-top p-5 d-flex align-items-center gap-3"><span class="flex-grow-1"></span>
                 <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>

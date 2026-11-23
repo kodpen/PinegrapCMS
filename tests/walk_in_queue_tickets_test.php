@@ -38,7 +38,7 @@ function test_walk_in_queue_tickets_join_input_reads_the_form()
 	$read = pg_waiting_join_input(array('service' => 's2', 'name' => '  Ayşe  ', 'phone' => '0532 123 45 67', 'email' => ''), $place);
 
 	pg_assert_same('', $read['error']);
-	pg_assert_same(array('service' => 's2', 'name' => 'Ayşe', 'phone' => '905321234567', 'email' => '', 'party_size' => 0), $read['values']);
+	pg_assert_same(array('service' => 's2', 'name' => 'Ayşe', 'phone' => '905321234567', 'email' => '', 'party_size' => 0, 'priority' => '', 'booking' => false), $read['values']);
 
 	// Name, phone and e-mail are optional.
 	pg_assert_same('', pg_waiting_join_input(array('service' => 's1'), $place)['error']);
