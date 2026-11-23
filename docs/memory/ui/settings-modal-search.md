@@ -14,7 +14,7 @@ description: The Site Settings dialog's search box (index, system tools, ranking
 - Palette keywords fixed with it: "logo" no longer lands on E-Invoice (Logo İşbaşı stays findable by "isbasi"), "prefetch" finds the Speed row of Features, "workspace" finds Related screens in Turkish too.
 
 ## How does a text name a card's place?
-- As `Site Settings › <category> › <card>`, with today's category names: Update Channel, Alerts, Maintenance Mode under Updates and maintenance; Visitor Tracking, Legal Documents under Visitors and privacy; Google Reviews, Application API under Integrations; Audit Trail under Accounts and sign-in.
+- As `Site Settings › <category> › <card>`, with today's category names: Update Channel, Alerts, Maintenance Mode under Updates and maintenance; Visitor tracking, Legal documents under Visitors and privacy; Google Reviews, Application API under Integrations; Audit Trail under Accounts and sign-in.
 - After the regrouping (#4135) panel, e-mail, installer and open-version note texts still named old places; #4303 (issue #4217) moved them. A moved card means its texts move too: `grep` the old name. Test: `tests/settings_place_texts_test.php`.
 
 Related: docs/memory/ui/settings-modal-navigation.md, docs/memory/ui/settings-system-tools.md

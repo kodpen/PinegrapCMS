@@ -21,7 +21,7 @@ priority: 8
 - (X7) The top card's "not drawn yet" list loses what is drawn; each pattern has the test the parts have (`tests/look_examples_test.php`).
 
 ## Which steps are there?
-- DX1 (M) first, after AT1 (#10807, its fold helper and row style, `ui/settings-fold-rows.md`) has landed: X1, X2, X3.
+- DX1 (M) done #10859: X1, X2, X3, on AT1's fold helper (`ui/settings-fold-rows.md`); the patterns, their order and frame: `ui/look-design-examples-patterns.md`.
 - DX2 (S) done #10885: X4. The sheet's rules became the recipe "Look A: starting-point cards" in `backend.src.css` (`.pg-start`, `.pg-start-head`, `.pg-start-acts`, `.pg-start-advanced`, `.pg-start-copy`); the examples stand in the Drawer section's frame.
 - DX2b (M) done #10930: the e-mail settings drawing's parts and the Features board's switch rows as patterns (`plans/design-examples-patterns-mail.md`), before EM1; recipes and classes in `ui/look-mail-patterns.md`.
 - DX3 (M) done #11105: X5 as "Form drawer" (`pg_look_examples_form_drawer_pattern()`), copied from `#api_drawer`. New application, the one-time values and the Events tab's signing secret draw with `.pg-start*`; the inline `.api-start*`, `.api-new-advanced` and `.api-secret-box` rules of `api_settings.php` are gone.

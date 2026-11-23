@@ -1,25 +1,25 @@
 ---
 name: settings-privacy
-description: Site Settings › Visitors and privacy as folded rows: the six rows and their state lines, what each row holds, what stayed (ids, field names, the save), the KVKK notice's own row
+description: Site Settings › Visitors and privacy as seven folded rows (Visitor tracking, How long we keep data, KVKK notice…): what each holds, its line, ids and anchors kept
 module: privacy_settings_fold
 ---
 
 ## How is the pane drawn?
-- Folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`), first row open, in this order: Visitor tracking, Cookie consent, Legal documents, KVKK notice, Accessibility statement, Privacy centre. The order, names, icons and lines: `includes/fn/privacy_settings_fold.php` (`pg_privacy_fold_order()`, `pg_privacy_fold_face()`, `pg_privacy_fold_<part>()`, pure but for `lang()`).
-- The purpose line is the category's description in `registry.php`: what the site records of its visitors, how long it keeps personal data and what it asks them.
-- No popover and no `div.switch`: every switch is `pg-switch`, its fields drawn under it whatever its state. Test: `tests/settings_privacy_fold_test.php`.
+- Folded rows (`pg_settings_fold()`, `ui/settings-fold-rows.md`), first row open: Visitor tracking, How long we keep data, Cookie consent, Legal documents, KVKK notice, Accessibility statement, Privacy centre. Order, names, icons, lines: `includes/fn/privacy_settings_fold.php` (`pg_privacy_fold_order()`, `_face()`, `pg_privacy_fold_<part>()`, pure but for `lang()`). Test: `tests/settings_privacy_fold_test.php`.
+- No popover, no `div.switch`: every switch is `pg-switch`, its fields drawn under it whatever its state. One Save for the pane. Built in #10964 (rows), #10998 (retention row), #11096 (KVKK switch, Site chats rule).
 
-## What does each row say and hold?
-- Visitor tracking (`pgset-analytics`): "Visits are recorded" / "Visits are not recorded", "· Google Analytics connected" when the tag is on; pill On/Off. Holds "Record visits" (`visitor_tracking`), "Remember a tracking code for" (`tracking_code_duration`), "Paid tracking code mark" (`pay_per_click_flag`), the visitor periods and the daily summary, and Google Analytics as a connect row (`#pgsub-google-analytics`).
-- Cookie consent (`pgset-cookies`): the switch, Cookie Policy Address, the `#cookie-settings` line; the held scripts and Google tags help under a `details` "Your own scripts".
+## What does each row hold?
+- Visitor tracking (`pgset-analytics`): line "Visits are recorded" / "not recorded", "· Google Analytics connected"; pill On/Off. "Record visits" (`visitor_tracking`), "Remember a tracking code for" (`tracking_code_duration`), "Paid tracking code mark" (`pay_per_click_flag`), Google Analytics as a connect row (`ui/connections-google-analytics-page.md`).
+- How long we keep data (`pgset-retention`): "Keep visitor records for" (`visitor_retention_days`), "Remove IP addresses after" (`visitor_ip_days`), "Keep a daily summary of every day" (`visitor_summary`) with the Database Engine link; then the overview of every other period (`ui/settings-privacy-retention.md`). Line `pg_privacy_fold_retention()`: the visitor records' days and when IP addresses go; no pill.
+- Cookie consent (`pgset-cookies`): the switch, Cookie Policy Address, the `#cookie-settings` line; held scripts and Google tags under a `details` "Your own scripts".
 - Legal documents (`pgset-legal`): the switch and its help, the two templates, "Fields you can use in a template" under a `details`; drawn while off.
-- KVKK notice (`pgset-kvkk`, its own card since this row): "Show the KVKK notice" (`ecommerce_kvkk_enabled`, its own switch, `commerce/checkout-kvkk-notice.md`), KVKK Notice Page and Explicit Consent Sentence. The line names what is filled; pill Off while the switch is off, "In use" when on and something is filled, else "Not used".
-- Accessibility statement (`pgset-a11y-statement`): the fields as before, "Print the statement" a quiet button; the line "Dated …" or "Not filled".
-- Privacy centre (`pgset-privacy-centre`): the line names its parts short ("Personal data inventory, retention rules and requests"); the opened row says what the centre holds in one help sentence, then "Open the Privacy centre".
-- How long we keep data: Site chats is a rule of the Privacy centre (Change opens `privacy_centre.php`); the two rows without Change say why in their line: Consent history "a fixed period, as proof of consent", Cancelled bookings "a fixed period, the agenda keeps the rest".
+- KVKK notice (`pgset-kvkk`): "Show the KVKK notice" (`ecommerce_kvkk_enabled`, its own switch: `commerce/kvkk-notice-switch.md`), KVKK Notice Page, Explicit Consent Sentence. Line names what is filled; pill Off, "In use" or "Not used".
+- Accessibility statement (`pgset-a11y-statement`): the fields, "Print the statement" quiet; line "Dated …" or "Not filled".
+- Privacy centre (`pgset-privacy-centre`): line "Personal data inventory, retention rules and requests"; open, one help sentence, then "Open the Privacy centre".
 
-## What stayed?
-- Card ids, field names and `privacy.save.php`; old anchors (`pg_settings_legacy_anchors()`) land on the cards, and the client opens the row a card or field sits in (`pgSettingsFoldReveal()`).
-- The search finds the KVKK row by its keywords (kvkk, explicit consent, aydınlatma metni) and Visitor tracking by "retention" and "IP address".
+## What stayed where?
+- Card ids, field names and `privacy.save.php`; old anchors (`pg_settings_legacy_anchors()`): `visitor_retention_days`, `visitor_ip_days`, `visitor_summary` land on `pgset-retention`. In the dialog a field anchor opens its row (`pgSettingsFoldReveal()`); the page path follows only `#pgset-` anchors, so Database Engine links `settings_privacy.php#pgset-retention`.
+- Search: the retention row by "retention", "IP address", "how long"; the KVKK row by "kvkk", "explicit consent", "privacy notice" (`registry.php` keywords).
+- Chat Retention Period left Communication › Chat: `core/privacy-rule-site-chats.md`.
 
-Related: docs/memory/ui/settings-fold-rows.md, docs/memory/ui/screen-composition-rules.md, docs/memory/commerce/checkout-kvkk-notice.md
+Related: docs/memory/ui/settings-privacy-retention.md, docs/memory/ui/settings-fold-rows.md, docs/memory/core/privacy-log-retention.md, docs/memory/commerce/kvkk-notice-switch.md

@@ -8,7 +8,7 @@ description: Site Settings Privacy to General and the settings page toolbar in l
 - `tools/check_look.php` counts 0 old buttons in all of them; their baseline entries are gone.
 
 ## What changed in the cards?
-- Card and row buttons are `pg-button pg-button-quiet pg-button-sm` (Connect a Google account, Read the figures now, Open the Translations screen, Search and audits, Block All Search Engines, robots.txt, llms.txt, Look me up, Lift, Try again, Reset Widgets, Release, Update Bot IP Lists, New department, Add a holiday, Add a calendar address).
+- Card and row buttons are `pg-button pg-button-quiet pg-button-sm` (Connect a Google account, Read the figures now, Open the Translations screen, Search and audits, Block All Search Engines, robots.txt, llms.txt, Look me up, Lift, Try again, Reset widgets, Release, Update Bot IP Lists, New department, Add a holiday, Add a calendar address).
 - Stop using this property and the Fediverse Block are `pg-button-danger pg-button-sm`.
 - A department's Edit and a calendar's Days are `pg-button-ghost pg-button-sm`, its archive button `pg-icon-button pg-icon-button-sm`.
 - The holiday and calendar drawers' Add / Add and read are the drawer's one `pg-button-fill`, no icon.
@@ -21,7 +21,7 @@ description: Site Settings Privacy to General and the settings page toolbar in l
 - Icon tiles: the four Application API switches (`system`) and the Integrations link rows (34 px tile instead of a grey icon).
 
 ## What are the Date Format and Time Format?
-- General's two radio pairs are a segmented control: `fieldset` > `div.pg-seg` > `label.pg-seg-item` holding a `visually-hidden` radio. `backend.src.css` draws the thumb for `.pg-seg-item:has(> input:checked)` and the focus ring for `:has(> input:focus-visible)`, in the shared `pg-seg` rules. The names and values posted are unchanged.
+- General's two radio pairs (and Editor version, #11012) are a segmented control: `fieldset` > `div.pg-seg` > `label.pg-seg-item` holding a `visually-hidden` radio. `backend.src.css` draws the thumb for `.pg-seg-item:has(> input:checked)` and the focus ring for `:has(> input:focus-visible)`, in the shared `pg-seg` rules. The names and values posted are unchanged.
 
 ## What changed on the settings page?
 - The category menu button is `pg-button-quiet` (Save is the page's one fill), the section jumps are `pg-button-ghost pg-button-sm` links (no `.chip`), the section count is `pg-text-meta`, the previous/next icon buttons sit in `d-flex gap-1`. The save bar's `bottom: .5rem` moved from `style=` into `backend.src.css`.

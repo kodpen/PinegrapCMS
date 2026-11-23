@@ -11,7 +11,7 @@ description: Survey of the Site Settings categories, its second part: how old ea
 - Old buttons in helpers drawn into settings, not reached by the S5 pass: `includes/fn/address_autocomplete.php:804`, `carrier_api.php:648`, `carrier_labels.php:1446`, `geo.php:658`, `google_reviews.php:451`.
 
 ## What is already planned?
-- Assistants and agents: done (AT1 to AT6, `ui/settings-fold-rows.md`). Features: done (`ui/settings-features.md`). E-mail: done (`ui/settings-mail.md`). Mailboxes: done (`ui/look-settings-mailboxes.md`). Items 2 to 6 below: each names its plan, its other files `<plan>-*.md`.
+- Assistants and agents: done (AT1 to AT6, `ui/settings-fold-rows.md`). Features: done (`ui/settings-features.md`). E-mail: done (`ui/settings-mail.md`). Mailboxes: done (`ui/look-settings-mailboxes.md`). Visitors and privacy: done (`ui/settings-privacy.md`). Items 3 to 6 below: each names its plan, its other files `<plan>-*.md`.
 - Credentials on category cards: connections-merges CX11 (`plans/connections-merges-build.md`); Ecommerce, Accounting, Integrations, Updates and maintenance and the Workspace's categories are still to come, and a tidy of one of them waits for its CX11 step.
 - The starting-point sheet and the numbered-steps drawer: DX2 (#10885).
 
@@ -21,12 +21,11 @@ description: Survey of the Site Settings categories, its second part: how old ea
 
 ## In which order are the plans written?
 - One category a plan, each written when the queue allows and the session's PR before it has landed.
-- 2. Visitors and privacy: `plans/privacy-settings-tidy.md`; every retention shown in one row, each still set beside its feature; K1 decided: the KVKK notice gets its own switch (`workflow/decisions-made-product-96.md`).
 - 3. Bookings: `plans/bookings-settings-tidy.md`; services and staff as rows with drawers, one Messages row saying which booking mails and texts go.
 - 4. Firewall and HTTPS with Accounts and sign-in: `plans/security-settings-tidy.md`; one Limits row, radios to `pg-seg`, popovers to folds, bans and logs as rows (K8); K4 (AI training against the firewall) decided: step SE1b.
-- 5. General and Appearance: `plans/general-appearance-settings-tidy.md`; one Site address row, K3, K5, K6, K7, footer links as rows.
+- 5. General and Appearance: done (`ui/settings-general.md`, `ui/settings-appearance.md`).
 - 6. Communication: `plans/communication-settings-tidy.md`; the pane as folded rows, the Chat card split in two.
 - 7. Ecommerce, after its CX11 step. 8. Accounting's ERP card split, after its CX11 step. 9. Updates and maintenance (cron steps, one S3, K2), after its CX11 step.
-- Which date format wins: G4 of the General plan. The Workspace menu's "Workspace Settings" entry stays: it names the group (`workspace/workspace-settings-place-names.md`).
+- Which date format wins: a page in another language uses that language's format, said under Date Format (`ui/settings-general.md`). The Workspace menu's "Workspace Settings" entry stays: it names the group (`workspace/workspace-settings-place-names.md`).
 
 Related: docs/memory/plans/settings-tidy-census.md
