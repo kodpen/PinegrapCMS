@@ -15,12 +15,13 @@ module: look_examples
 
 ## What does the top card say is not done?
 - Drawn in the sheet, not a recipe yet: figure cards with a trend line, the 12-column field grid (DL5c), the bell row's avatar and verb.
-- Not drawn yet: dialogs and the settings modal, dashboard cards, report screens, Workspace (channel screen), phone widths.
+- Not drawn yet: dialogs, dashboard cards, report screens, Workspace (channel screen). The settings modal's pane and phone widths left the list with DX4 (the settings pane pattern and the phone frame).
 - The list table is drawn by the driver itself (`list-table-layout.md`, #8921), so it left the list.
 - A new recipe adds its section here in the same PR; a part that is done leaves the list.
 - Drawer (#10851): drawn in place without the dialog, as `#privacy_request` and Application Access' `#api_new` build it; the Bootstrap classes are named without a dot (they are not rules of `backend.src.css`). The numbered steps come with KV4b.
 - Menus (SF2, #10852): a row's "more" menu, `pg-icon-button-sm` opening a Bootstrap `.menu.pg-menu-end` in `.pg-menu-wrap`; a danger item `fg-emphasis-danger` last under `.menu-divider`. No new CSS (architect, 2026-11-20, channel message 11049).
 - Patterns (`pg_look_examples_patterns()`, under the parts): which there are, in which order, and their frame: `look-design-examples-patterns.md`.
+- Phone (DX4): under the two panes a 390 × 844 px `iframe.pg-look-phone-frame` of `design_examples.php?phone=1`, the same screen behind the same gate drawing only `pg_look_examples_phone_pane()` with `hide_menu`. A frame, not a narrow box: the panel's phone rules are `@media` queries on the window.
 
 ## What keeps it honest?
 - `tests/look_examples_test.php`: every class a section names is a rule of `backend.src.css` and is drawn in that section's markup; no id twice on the page; the gate and the System tools link.

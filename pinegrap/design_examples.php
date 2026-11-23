@@ -6,7 +6,8 @@
  * themes, then the patterns put together from them (a settings pane, a
  * connect row, a list's empty state), with the classes that draw each and
  * what the look does not cover yet. A screen copies its markup from here
- * (includes/fn/look_examples.php).
+ * (includes/fn/look_examples.php). With ?phone=1 it draws only the phone
+ * pane, the page the screen shows in its 390 px frame.
  * For the Designer role and above.
  *
  * @author      Erdal Güral (Kodpen)
@@ -20,6 +21,23 @@ $user = validate_user();
 validate_area_access($user, 'designer');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/look_examples.php');
+
+if (isset($_GET['phone'])) {
+    echo
+    pg_page_shell(array(
+            'title'         => lang('Design examples'),
+            'extra classes' => 'pg-look-examples',
+            'icon'          => 'setting',
+            'heading'       => lang('Phone'),
+            'hide_menu'     => true,
+        )) . '
+<main id="content" class="container-fluid">
+    ' . pg_look_examples_phone_pane() . '
+</main>
+' .
+    output_footer();
+    exit;
+}
 
 $not_done = '';
 
@@ -54,6 +72,7 @@ pg_page_shell(array(
         ' . pg_look_examples_pane('light') . '
         ' . pg_look_examples_pane('dark') . '
     </div>
+    ' . pg_look_examples_phone_frame() . '
 </main>
 ' .
 output_footer();

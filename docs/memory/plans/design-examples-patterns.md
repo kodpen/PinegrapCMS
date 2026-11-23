@@ -25,7 +25,7 @@ priority: 8
 - DX2 (S) done #10885: X4. The sheet's rules became the recipe "Look A: starting-point cards" in `backend.src.css` (`.pg-start`, `.pg-start-head`, `.pg-start-acts`, `.pg-start-advanced`, `.pg-start-copy`); the examples stand in the Drawer section's frame.
 - DX2b (M) done #10930: the e-mail settings drawing's parts and the Features board's switch rows as patterns (`plans/design-examples-patterns-mail.md`), before EM1; recipes and classes in `ui/look-mail-patterns.md`.
 - DX3 (M) done #11105: X5 as "Form drawer" (`pg_look_examples_form_drawer_pattern()`), copied from `#api_drawer`. New application, the one-time values and the Events tab's signing secret draw with `.pg-start*`; the inline `.api-start*`, `.api-new-advanced` and `.api-secret-box` rules of `api_settings.php` are gone.
-- DX4 (S) after DX3: X6, X7.
+- DX4 (S) done #11205: X6, X7. The phone pane is a 390 px frame of `design_examples.php?phone=1` drawing the patterns marked `'phone'` (settings pane, form drawer, choice cards, step line); the not-drawn list lost phone widths and the settings modal.
 - DX5 (S) close-out: `ui/look-design-examples.md` corrected, each line of `ui/screen-composition-rules.md` names its pattern, this plan deleted.
 
 ## What binds it?

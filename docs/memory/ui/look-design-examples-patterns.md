@@ -12,6 +12,9 @@ module: look_examples
 - "Address block" (#11139, `pg_look_examples_address_pattern()`, `commerce/order-screen-side-panel.md`) follows "Copy button".
 - The e-mail settings drawing's seven parts close the group (DX2b #10930, `pg_look_examples_mail_patterns()`): `look-mail-patterns.md`.
 
+## Which patterns does the phone pane draw?
+- Those whose entry has `'phone' => true`, in the group's order: Settings pane, Form drawer, Choice cards, Step line (DX4). A new pattern whose screen changes on a phone sets the flag; `test_look_examples_phone_pane()` names the list.
+
 ## How is a drawer pattern framed?
 - The patterns' frame is no `.drawer`, which sets `--bs-drawer-padding-*`: its head and body take `p-5` (16 px, measured on the real `#api_new`; the sheet's head `p-5 pb-1`), as the Drawer section does since DX2. The sheet's cards use the recipe "Look A: starting-point cards" (`.pg-start*`); the steps drawer draws Claude's own guide (`ws_claude_setup_guide()`) with its tile, line and Close, as the real drawer.
 

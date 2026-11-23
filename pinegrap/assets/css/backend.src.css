@@ -4903,6 +4903,26 @@ a.link-top-row {
   flex-direction: column;
   margin: 0 -12px;
 }
+.pg-look-phone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 24px;
+}
+.pg-look-phone-line {
+  margin: 0;
+}
+/* A phone's width: the panel's phone rules are media queries, so the
+   pane is its own page in a frame rather than a narrow box. */
+.pg-look-phone-frame {
+  width: 390px;
+  max-width: 100%;
+  height: 844px;
+  border: 0;
+  border-radius: var(--pg-radius-sheet);
+  box-shadow: 0 0 0 1px var(--pg-border-color-translucent);
+}
 
 .alert p.notice,
 .alert p.warning,

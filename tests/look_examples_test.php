@@ -171,13 +171,35 @@ function test_look_examples_numbered_steps_drawer()
 	pg_assert_contains('class="drawer-footer', $html, 'Close in the foot');
 }
 
+function test_look_examples_phone_pane()
+{
+	$pane = pg_look_examples_phone_pane();
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/design_examples.php');
+
+	preg_match_all('/<h3 class="pg-title-status" id="pg_look_phone_([^"]+)"/', $pane, $drawn);
+	pg_assert_same(array('pattern-settings', 'pattern-form', 'pattern-choice', 'pattern-stepline'), $drawn[1], 'the phone pane draws the marked patterns, in their order');
+	preg_match_all('/\sid="([^"]+)"/', $pane, $ids);
+	pg_assert_same(count($ids[1]), count(array_unique($ids[1])), 'no id twice in the phone pane');
+	pg_assert_contains('<iframe class="pg-look-phone-frame" src="design_examples.php?phone=1" width="390"', pg_look_examples_phone_frame(), 'the frame is a phone\'s width');
+	pg_assert_contains("width: 390px;\n  max-width: 100%;", $css, 'and stays inside a narrow window');
+	pg_assert_contains("if (isset(\$_GET['phone'])) {", $screen, 'the screen draws the phone pane on its own page');
+	pg_assert_true(strpos($screen, 'validate_area_access($user, \'designer\')') < strpos($screen, "isset(\$_GET['phone'])"), 'behind the same gate');
+	pg_assert_contains('pg_look_examples_phone_frame()', $screen, 'and shows it under the two panes');
+
+	$not_drawn = pg_look_examples_not_done()[1]['items'];
+	pg_assert_true(!in_array(lang('Phone widths'), $not_drawn, true), 'phone widths left the not-drawn list');
+	pg_assert_true(!in_array(lang('Dialogs and the settings modal'), $not_drawn, true), 'the settings pane is drawn; dialogs stay');
+	pg_assert_true(in_array(lang('Dialogs'), $not_drawn, true), 'dialogs are not drawn yet');
+}
+
 function test_look_examples_mail_patterns_in_order()
 {
 	$ids = array_column(pg_look_examples_patterns('light'), 'id');
 	$mail = array('pattern-tabs', 'pattern-values', 'pattern-choice', 'pattern-stepline', 'pattern-signin', 'pattern-result', 'pattern-confirm', 'pattern-switch');
 
 	pg_assert_same($mail, array_slice($ids, -8), 'the e-mail drawing\'s seven parts, then the switch rows, close the Patterns group');
-	pg_assert_same(array('pattern-choice', 'pattern-stepline'), array_keys(array_filter(array_column(pg_look_examples_patterns('light'), 'phone', 'id'))), 'the phone pane takes the choice cards and the step line');
+	pg_assert_same(array('pattern-settings', 'pattern-form', 'pattern-choice', 'pattern-stepline'), array_keys(array_filter(array_column(pg_look_examples_patterns('light'), 'phone', 'id'))), 'the phone pane takes the settings pane, the form drawer, the choice cards and the step line');
 	pg_assert_contains('Look A: tabs with a state, value rows, choice cards, step line, provider', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'), 'the recipes in their own block');
 }
 
