@@ -34,4 +34,8 @@ description: Decisions list, schema part 46 (2026-11-21 on): the tables of the w
 - The architect. Each table step lists its columns, types and keys in its PR body and asks the architect before it is marked ready; what is agreed is added to this part.
 - Every table that holds a person registers with the five privacy lists and `pg_contact_holders()` in the same step.
 
+## Which columns did launch_summary_lines get? (architect, 2026-11-23, agent channel message 12265, #11200)
+- `id`, `line_text` VARCHAR(500), `answer` TEXT NULL (NULL while unanswered), `answered_at`, `sort_order`, `created_by` (the panel user whose bell hears an answer), `created_at`, `updated_at`; `PRIMARY KEY (id)`, `KEY idx_order (sort_order)`.
+- It holds no person (the customer answers through the signed link), so it is on no privacy list.
+
 Related: docs/memory/workflow/decisions-made.md, docs/memory/data/config-table-no-varchar.md
