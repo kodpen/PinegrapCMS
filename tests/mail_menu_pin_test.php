@@ -146,7 +146,7 @@ function test_mail_menu_pin_action()
 
 	pg_assert_contains('ws_mail_list_visible($viewer)', $body, 'only whoever may open Incoming e-mail pins it');
 	pg_assert_contains("ws_mail_menu_pin(\$viewer, !empty(\$request['pinned']))", $body, 'the person\'s own choice');
-	pg_assert_contains("pg_menu_icon('mail', 'campaigns-color')", $body, 'the row\'s drawing for the script');
+	pg_assert_contains("pg_menu_icon_tile(pg_menu_icon('mail', '', ''), pg_menu_category_tone(27))", $body, 'the row\'s drawing on its tile for the script');
 	pg_assert_contains('pg_menu_count_badge(', $body, 'and its unread count');
 
 	$js = mail_menu_pin_test_file('assets/js/workspace_mail.js');
@@ -181,13 +181,10 @@ function test_mail_menu_pin_row_in_the_menu()
 
 function test_mail_menu_pin_row_icon()
 {
-	$svg = pg_menu_icon('mail', 'campaigns-color');
+	$svg = pg_menu_icon('mail', '', '');
 
-	pg_assert_contains('class="pg-mi pg-mi-mail me-3 campaigns-color"', $svg, 'its classes');
-	pg_assert_contains('class="pg-mi-a pg-mi-sheet"', $svg, 'the letter in the second colour');
-
-	$css = mail_menu_pin_test_file('assets/css/backend.src.css');
-
-	pg_assert_contains('#menu .pg-mi-mail { --pg-mi-a: var(--pg-mi-sky); }', $css, 'the second colour');
-	pg_assert_contains('#menu .list-group-item:is(:hover, :focus-visible) .pg-mi-mail .pg-mi-sheet {', $css, 'the letter comes up on hover');
+	pg_assert_contains('class="pg-mi pg-mi-mail"', $svg, 'its classes');
+	pg_assert_contains('<path d="M3.5 13.5h4.7l1.3 2.5h5l1.3-2.5h4.7"/>', $svg, 'an inbox tray');
+	pg_assert_contains('<path data-m="drop" d="M12 6.5v5M9.9 9.5l2.1 2.1 2.1-2.1"/>', $svg, 'the arrow that drops into it');
+	pg_assert_same('top', pg_menu_category_tone(27), 'in the blue of the untitled block, not Communication\'s violet');
 }

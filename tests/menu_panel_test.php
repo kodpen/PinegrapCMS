@@ -5,7 +5,7 @@
  * Tests for the panels of the main menu (includes/fn/output.php): which rows
  * open their entries inside the menu (pg_menu_row_opens_panel()), the panel
  * they open (pg_menu_panel()) and the module that colours its icons
- * (pg_menu_tone()), the System tools row (pg_menu_tools_markup()), and the
+ * (pg_menu_category_tone()), the System tools row (pg_menu_tools_markup()), and the
  * retired Site Settings row (slot 20).
  *
  * @author      Erdal Güral (Kodpen)
@@ -129,34 +129,80 @@ function test_menu_panel_entries_wrap_instead_of_ending_in_an_ellipsis()
 	pg_assert_contains("#menu .menu-body .pg-menu-panel-body > a.bi {\n  display: flex;\n  align-items: center;\n}", $css, 'the name wraps beside its icon');
 }
 
-function test_menu_panel_names_its_module_for_two_colour_icons()
+function test_menu_panel_names_its_category_for_its_icons()
 {
-	pg_assert_contains('data-pg-menu-row="menu_item_2" data-pg-menu-tone="pages" role="group"', pg_menu_panel('menu_panel_2', 'menu_item_2', 'Pages', '', 'pages'), 'the module');
-	pg_assert_false(strpos(pg_menu_panel('menu_panel_2', 'menu_item_2', 'Pages', '', 'pages" onclick="x'), 'data-pg-menu-tone') !== false, 'anything but a plain name is left out');
+	pg_assert_contains('data-pg-menu-row="menu_item_2" data-pg-menu-tone="content" role="group"', pg_menu_panel('menu_panel_2', 'menu_item_2', 'Pages', '', 'content'), 'the category');
+	pg_assert_false(strpos(pg_menu_panel('menu_panel_2', 'menu_item_2', 'Pages', '', 'content" onclick="x'), 'data-pg-menu-tone') !== false, 'anything but a plain name is left out');
 }
 
-function test_menu_tone_is_the_module_of_a_colour_class()
+function test_menu_category_tone_is_the_category_of_a_slot()
 {
-	pg_assert_same('pages', pg_menu_tone('pages-color'), 'a module colour');
-	pg_assert_same('settings', pg_menu_tone('settings-color'), 'the System tools row');
-	pg_assert_same('', pg_menu_tone(''), 'no class');
-	pg_assert_same('', pg_menu_tone('pg-neon-icon'), 'not a module colour');
-	pg_assert_same('', pg_menu_tone('pages-color extra'), 'one class only');
+	pg_assert_same('top', pg_menu_category_tone(0), 'the untitled block at the top');
+	pg_assert_same('top', pg_menu_category_tone(26), 'Automation flows');
+	pg_assert_same('content', pg_menu_category_tone(2), 'Pages');
+	pg_assert_same('design', pg_menu_category_tone(21), 'Page Design Studio');
+	pg_assert_same('ecommerce', pg_menu_category_tone(29), 'Pick waves');
+	pg_assert_same('accounting', pg_menu_category_tone(22), 'the ERP');
+	pg_assert_same('marketing', pg_menu_category_tone(9), 'Communication, not its module colour');
+	pg_assert_same('system', pg_menu_category_tone(25), 'System tools');
+	pg_assert_same('top', pg_menu_category_tone(99), 'a row no category lists');
 }
 
-function test_menu_every_row_colour_has_its_tone_in_the_stylesheet()
+function test_menu_every_category_has_its_tone_in_the_stylesheet()
 {
-	// Every colour class a row is given must have its two shades for the
-	// panel's icons, or that panel's icons are drawn without colour.
-	$menu = pg_test_function_source('output_menu');
+	// Every category colours its rows' tiles and its panels' icons; without
+	// a tone line they are drawn without colour.
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$tones = array('top' => 'blue', 'content' => 'teal', 'design' => 'rose', 'ecommerce' => 'amber', 'accounting' => 'lime', 'marketing' => 'violet', 'system' => 'gray');
 
-	preg_match_all("/\['color_class'\] = '([a-z]+)-color';/", $menu, $match);
-	pg_assert_true(count($match[1]) > 10, 'the rows are read');
+	foreach (array_keys(pg_menu_categories()) as $key) {
+		$tone = ($key === '') ? 'top' : $key;
 
-	foreach (array_unique($match[1]) as $tone) {
-		pg_assert_contains('#menu .pg-menu-panel[data-pg-menu-tone="' . $tone . '"] { --pg-menu-tone: var(--' . $tone . '-color); --pg-menu-tone-2: var(--' . $tone . '-color-highlight); }', $css, $tone);
+		pg_assert_true(isset($tones[$tone]), $tone . ' has a colour');
+		pg_assert_contains('#menu [data-pg-menu-tone="' . $tone . '"] { --pg-menu-tone: var(--pg-tone-' . $tones[$tone] . '); }', $css, $tone);
+		pg_assert_contains('--pg-tone-' . $tones[$tone] . ': light-dark(', $css, $tone . ' in both themes');
 	}
+
+	pg_assert_same(7, substr_count($css, '#menu [data-pg-menu-tone="'), 'one line a category');
+	pg_assert_false(strpos($css, '#menu .pg-menu-panel[data-pg-menu-tone="') !== false, 'no tone a module');
+}
+
+function test_menu_every_row_icon_has_a_drawing()
+{
+	$menu = pg_test_function_source('output_menu');
+
+	preg_match_all("/\['menu_icon'\] = '([a-z_]+)';/", $menu, $match);
+	pg_assert_true(count(array_unique($match[1])) > 15, 'the rows are read');
+
+	foreach (array_unique($match[1]) as $name) {
+		$svg = pg_menu_icon($name, '', '');
+
+		pg_assert_contains('<svg class="pg-mi pg-mi-' . $name . '" ', $svg, $name . ' is drawn, without a colour or margin of its own');
+		pg_assert_contains('stroke="currentColor" stroke-width="1.7"', $svg, $name . ' in the one line family');
+		pg_assert_false(strpos($svg, 'fill-opacity') !== false, $name . ' has no tint of its own');
+		pg_assert_false((bool) preg_match('/\d\.\d*0(?!\d)/', $svg), $name . ' writes no trailing zeros');
+	}
+
+	pg_assert_contains("\$menu_items[21]['menu_icon'] = 'design';", $menu, 'Page Design Studio draws the selection frame');
+	pg_assert_false(strpos($menu, 'pg-neon') !== false, 'the neon sign went');
+}
+
+function test_menu_row_icon_sits_on_its_category_tile()
+{
+	$tile = pg_menu_icon_tile(pg_menu_icon('pages', '', ''), 'content');
+
+	pg_assert_true(strpos($tile, '<span class="pg-mi-tile me-3" data-pg-menu-tone="content"><svg class="pg-mi pg-mi-pages" ') === 0, 'the tile carries the margin and the colour');
+	pg_assert_contains('data-pg-menu-tone="top"', pg_menu_icon_tile('<i class="bi bi-dot"></i>', 'x" onclick="y'), 'anything but a plain name takes the top block');
+
+	$menu = pg_test_function_source('output_menu');
+	pg_assert_contains("\$output_menu_item_icon = pg_menu_icon_tile(\$output_menu_item_icon, \$menu_row_tone);", $menu, 'every row, its fallback icons too');
+	pg_assert_contains("\$menu_row_tone = pg_menu_category_tone(\$key);", $menu, 'the colour of its category');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_contains("  width: 1.625rem;\n  height: 1.625rem;\n  border-radius: 0.5rem;", $css, 'a 26 px tile');
+	pg_assert_contains("  --pg-mi-tint: 13%;\n  --pg-mi-line: 16%;", $css, 'a tint and an inner line');
+	pg_assert_contains("#menu .list-group-item.active .pg-mi-tile {\n  --pg-mi-tint: 26%;\n  --pg-mi-line: 34%;", $css, 'stronger on the current row');
+	pg_assert_contains("#menu .pg-mi-tile > svg {\n  width: 0.9375rem;", $css, 'a 15 px icon');
 }
 
 function test_menu_site_settings_row_is_retired()
@@ -179,31 +225,25 @@ function test_menu_translations_has_a_way_for_managers()
 	pg_assert_contains("case 'translations.php':\n            // A manager reaches it from the Pages panel; row 21 holds it for\n            // role < 2 only.\n            \$active_menu = (\$user['role'] < 2) ? 21 : 2;", $menu, 'the row that lists it is marked');
 }
 
-function test_menu_tools_icon_is_two_coloured_and_moves()
+function test_menu_tools_icon_is_a_toolbox_with_a_lid()
 {
-	$svg = pg_menu_icon('tools', 'settings-color');
-	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$svg = pg_menu_icon('tools', '', '');
 
-	pg_assert_contains('class="pg-mi pg-mi-tools me-3 settings-color"', $svg, 'the module colour');
-	pg_assert_contains('<g class="pg-mi-a pg-mi-latch">', $svg, 'the latch in the accent colour');
-	pg_assert_contains('<g class="pg-mi-a pg-mi-kit">', $svg, 'the tools inside in the accent colour');
-	pg_assert_contains('<g class="pg-mi-lid">', $svg, 'the lid that opens');
-	pg_assert_contains('#menu .pg-mi-tools { --pg-mi-a: var(--pg-mi-amber); }', $css, 'its accent hue');
-	pg_assert_contains('#menu .list-group-item:is(:hover, :focus-visible) .pg-mi-tools .pg-mi-lid {', $css, 'the lid opens on hover');
+	pg_assert_contains('class="pg-mi pg-mi-tools"', $svg, 'its classes');
+	pg_assert_contains('<rect x="3" y="10" width="18" height="10" rx="2"/><rect x="10.5" y="12.5" width="3" height="3" rx=".7"/>', $svg, 'the box and its latch');
+	pg_assert_contains('<g data-m="lid"><path d="M3 10V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1"/>', $svg, 'the lid that opens');
+	pg_assert_same('system', pg_menu_category_tone(25), 'in the System grey');
 }
-
 function test_menu_communication_row_draws_a_bubble_with_two_arrows()
 {
-	$svg = pg_menu_icon('communication', 'campaigns-color');
+	$svg = pg_menu_icon('communication', '', '');
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 
 	pg_assert_contains("\$menu_items[9]['menu_icon'] = 'communication';", pg_test_function_source('output_menu'), 'row 9 names its own drawing');
-	pg_assert_contains('class="pg-mi pg-mi-communication me-3 campaigns-color"', $svg, 'the module colour');
-	pg_assert_contains('<path class="pg-mi-out" d="M7.5 8.2h9M14.2 5.9l2.3 2.3-2.3 2.3"/>', $svg, 'the arrow going out');
-	pg_assert_contains('<path class="pg-mi-in" d="M16.5 12.8h-9M9.8 10.5l-2.3 2.3 2.3 2.3"/>', $svg, 'the arrow coming in');
+	pg_assert_contains('class="pg-mi pg-mi-communication"', $svg, 'its classes');
+	pg_assert_contains('<g data-m="send"><path d="M8 8.3h8M13.8 6.3l2.2 2-2.2 2"/></g>', $svg, 'the arrow going out');
+	pg_assert_contains('<g data-m="recv"><path d="M16 12.8H8M10.2 10.8l-2.2 2 2.2 2"/></g>', $svg, 'the arrow coming in');
 	pg_assert_same('', pg_menu_icon('campaigns', 'campaigns-color'), 'the megaphone went with it');
-	pg_assert_contains('#menu .pg-mi-communication { --pg-mi-a: var(--pg-mi-sky); }', $css, 'its accent hue');
-	pg_assert_contains('.pg-mi-communication .pg-mi-out {', $css, 'the arrows move on hover');
 	pg_assert_false(strpos($css, 'pg-mi-campaigns') !== false, 'no rule of the megaphone is left');
 }
 
@@ -217,7 +257,7 @@ function test_menu_tools_markup_opens_its_groups()
 		array('label' => 'Jobs', 'icon' => 'bi-tools', 'items' => array(
 			array('label' => 'Purge Cache', 'icon' => 'bi-trash3', 'url' => 'purge_cache.php?token=a&b', 'confirm' => 'Sure?'))));
 
-	$menu = pg_menu_tools_markup($groups, '/pinegrap/', '', 'settings');
+	$menu = pg_menu_tools_markup($groups, '/pinegrap/', '', 'system');
 
 	// First level: the screen itself, then every group with screens.
 	pg_assert_true(strpos($menu['entries'], 'href=\'/pinegrap/system_tools.php\'') < strpos($menu['entries'], 'menu_entry_25_tools_0'), 'the screen comes first');
@@ -230,7 +270,7 @@ function test_menu_tools_markup_opens_its_groups()
 
 	// Second level.
 	pg_assert_contains('id="menu_panel_25_tools_0"', $menu['panels'], 'the group panel');
-	pg_assert_same(2, substr_count($menu['panels'], 'data-pg-menu-tone="settings"'), 'each group panel colours its icons as the row');
+	pg_assert_same(2, substr_count($menu['panels'], 'data-pg-menu-tone="system"'), 'each group panel colours its icons as the row');
 	pg_assert_contains('data-pg-menu-row="menu_entry_25_tools_0"', $menu['panels'], 'belongs to its entry');
 	pg_assert_contains('target=\'_blank\' rel=\'noopener\'', $menu['panels'], 'a screen that opens apart keeps its target');
 	pg_assert_contains('data-confirm-content=\'Sure?\'', $menu['panels'], 'a job keeps its question');

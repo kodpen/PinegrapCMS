@@ -1523,7 +1523,7 @@ function ws_handle_action($action, $request)
             // The row's drawn icon, for the screen to add the row without a reload.
             return ws_action_ok(array(
                 'pinned' => !empty($request['pinned']),
-                'icon'   => function_exists('pg_menu_icon') ? pg_menu_icon('notes', 'workspace-color') : '',
+                'icon'   => function_exists('pg_menu_icon_tile') ? pg_menu_icon_tile(pg_menu_icon('notes', '', ''), pg_menu_category_tone(24)) : '',
             ));
 
         case 'ws_note_get':
@@ -3266,7 +3266,7 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array(
                 'pinned' => !empty($request['pinned']),
-                'icon'   => pg_menu_icon('mail', 'campaigns-color'),
+                'icon'   => pg_menu_icon_tile(pg_menu_icon('mail', '', ''), pg_menu_category_tone(27)),
                 'badge'  => pg_menu_count_badge($unread, lang(array('string' => '{var:1} unread e-mail conversation(s)', 'vars' => $unread))),
             ));
 
