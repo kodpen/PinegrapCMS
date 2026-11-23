@@ -4460,7 +4460,7 @@
             threadHit(path, thread);
         });
 
-        markThreads(every, focus);
+        markThreads(every, focus, rows);
 
         return targets.length;
     }
@@ -4657,10 +4657,11 @@
 
     // A box that reads values and whose threads are not drawn carries one
     // mark on its bottom edge: a dot per value in the value's colour (red for
-    // one no box before it gives), then "2 values". Pointing at the box
-    // draws its threads (pointThreads()). Hidden from screen readers: the
-    // outline says what each box reads.
-    function markThreads(threads, focus) {
+    // one no box before it gives), then "2 values"; not one showing a row of
+    // its own (a dot a thread of the box in hand leaves), which takes that
+    // place. Pointing at the box draws its threads (pointThreads()). Hidden
+    // from screen readers: the outline says what each box reads.
+    function markThreads(threads, focus, rows) {
         if (!focus) {
             return;
         }
@@ -4670,7 +4671,7 @@
         threads.forEach(function (thread) {
             var id = String(thread.to);
 
-            if (focus.indexOf(id) === -1) {
+            if ((focus.indexOf(id) === -1) && !(rows && rows[id])) {
                 (reads[id] = reads[id] || []).push(thread);
             }
         });

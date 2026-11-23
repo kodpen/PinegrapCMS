@@ -679,8 +679,10 @@ module.exports = [
             h.same('at rest no thread', await threads(), []);
             h.ok('the reading box carries the values mark', !!(await h.probe('find', { css: BOX('task_2') + ' .wsf-data-mark' })));
 
-            await pick(h, 'task_2');
-            h.same('chosen: one thread, from the task to the field reading it', await threads(), [['task_1', 'task_2', 'description']]);
+            await pick(h, 'end_1');
+            h.same('a box chosen draws none of the threads that do not touch it', await threads(), []);
+            await pick(h, 'task_1');
+            h.same('chosen: its thread, from the task to the field reading it', await threads(), [['task_1', 'task_2', 'description']]);
             h.ok('the field shows as a chip under the box', !!(await h.probe('find', { css: BOX('task_2') + ' .wsf-data-field', text: h.t('fl_description') })));
             h.ok('the value as a dot under the box giving it', !!(await h.probe('find', { css: BOX('task_1') + ' .wsf-data-out' })));
 
@@ -697,10 +699,6 @@ module.exports = [
 
             h.ok('it hangs from under the dot to under the chip', (ends.from < 3) && (ends.to < 3), ends);
 
-            await pick(h, 'end_1');
-            h.same('a box chosen draws none of the threads that do not touch it', await threads(), []);
-            await pick(h, 'task_1');
-            h.same('and those that do', (await threads()).length, 1);
 
             // Fitted, the first boxes are under the palette: the canvas is
             // moved clear of it first.
@@ -720,8 +718,10 @@ module.exports = [
             h.same('the value put at the end of the field', nodeIn(save.data.graph, 'task_2').config.title, 'Send the welcome pack {{node.task_1.task_id}}');
             h.same('the server finds nothing wrong with it', (await h.state()).problems.text, h.t('fl_no_problems'));
 
+            await h.key('Escape');
+            await h.moveTo(await h.probe('empty'), { steps: 4 });
+            await h.waitFor('nothing in hand: no thread', (harness) => !document.querySelector('#ws-root .pgc-edges .wsf-thread:not(.wsf-thread-hit)'), 3000);
             await h.click({ label: h.t('fl_threads'), within: STRIP });
-            await pick(h, 'end_1');
             h.same('pressed, every thread is drawn', (await threads()).length, 2);
             await h.open();
             h.same('still every one when the screen is opened again', (await threads()).length, 2);

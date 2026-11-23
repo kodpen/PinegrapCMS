@@ -2685,7 +2685,8 @@ var nodes = [
 ];
 function nodeById(id) { return nodes.filter(function (node) { return node.id === id; })[0] || null; }
 function thread(token, to, field) { return { token: token, from: 'a', to: to, field: field, fieldLabel: field, value: token, type: 'text', tone: 0, skipped: false }; }
-function dataThreads() { return [thread('t1', 'b', 'title'), thread('t2', 'b', 'text'), thread('t3', 'c', 'text'), thread('t4', 'b', 'title')]; }
+var extra = [];
+function dataThreads() { return [thread('t1', 'b', 'title'), thread('t2', 'b', 'text'), thread('t3', 'c', 'text'), thread('t4', 'b', 'title')].concat(extra); }
 function boxValues() { return ['t1', 't2', 't3', 't4', 't5', 't6'].map(function (token) { return { token: token, label: token, type: 'text' }; }); }
 function bindTargets() { return []; }
 function liveDot() {}
@@ -2739,6 +2740,11 @@ out.left = { paths: ui.svg.children.length, markC: mark('c') };
 state.selected = { type: 'node', id: 'b' };
 redraw();
 out.chosen = { a: row('a').map(function (item) { return item.name; }), b: row('b').filter(function (item) { return !item.unused; }).map(function (item) { return item.name; }), open: row('b').filter(function (item) { return item.unused; }).length, paths: ui.svg.children.length, markC: mark('c') };
+// The chosen box reads a value of c, which reads one of a: c shows the dot
+// its thread leaves, not its mark under it.
+extra = [{ token: 't7', from: 'c', to: 'b', field: 'note', fieldLabel: 'note', value: 't7', type: 'number', tone: 0, skipped: false }];
+redraw();
+out.giving = { c: row('c').map(function (item) { return item.name; }), markC: mark('c') };
 console.log(JSON.stringify(out));
 JS
 	);
@@ -2782,6 +2788,8 @@ JS
 	pg_assert_same(6, $result['chosen']['open'], 'and its own unused values, so a thread can be drawn from one');
 	pg_assert_same(3, $result['chosen']['paths'], 'chosen: its threads in, none of the others');
 	pg_assert_same(1, $result['chosen']['markC']['dots'], 'another reading box keeps its mark');
+	pg_assert_same(array('t7'), $result['giving']['c'], 'a reading box giving the chosen one a value shows its dot');
+	pg_assert_same(null, $result['giving']['markC'], 'and no mark under it');
 }
 
 // Every kind of box has a line icon of its own in workspace.js's set (16 ×
