@@ -181,7 +181,7 @@ $signin_connect_row = function ($id, $checked, $icon, $tone, $name, $ready, $sen
                                     <span class="pg-text-meta d-block">' . h($sentence) . '</span>' . (($more !== '') ? '
                                     <span class="pg-text-meta d-block mt-1">' . h($more) . '</span>' : '') . '
                                 </span>
-                                <span class="connections-row-side">
+                                <span class="connections-row-side flex-wrap">
                                     <span class="pg-pill ' . ($ready ? 'pg-tone-teal' : 'pg-tone-gray') . '">' . h($ready ? lang('Ready') : lang('Not set up')) . '</span>
                                     <input type="checkbox" class="pg-switch" value="1"' . $checked . ' id="' . $id . '" name="' . $id . '"/>
                                     <a href="' . h($href) . '" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Set up in Connections')) . '</a>
