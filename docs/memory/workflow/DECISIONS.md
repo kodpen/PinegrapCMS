@@ -708,6 +708,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-48.md: Where are the rules and the earlier parts?
 - decisions-made-schema-48.md: Does erp_order_costs.source gain "supplier"? (architect, 2026-11-22, agent channel message 11988, #11121)
 - decisions-made-schema-48.md: How is a value appended to an ENUM of the open version? (architect, 2026-11-22)
+- decisions-made-schema-48.md: Does ws_notes get a column for the channel that owns a note? (owner, 2026-11-23, in the architect's window)
+- decisions-made-schema-48.md: Is there a table for share links? (owner, 2026-11-23, in the architect's window)
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
@@ -911,6 +913,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-48.md: What else changes of them? (owner, 2026-11-22, in the architect's window)
 - decisions-made-workspace-48.md: What is added? (the same word)
 - decisions-made-workspace-48.md: When may its steps be given out?
+- decisions-made-workspace-49.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-49.md: Whose is a note written in a channel? (owner, 2026-11-23, in the architect's window)
+- decisions-made-workspace-49.md: Is an item of an agent channel shared by a link? (owner, 2026-11-23, in the architect's window)
+- decisions-made-workspace-49.md: Do agents get an index of the memory and a search in it? (owner, 2026-11-23, in the architect's window)
+- decisions-made-workspace-49.md: Do this project's memory and plans leave git for the agent channel? (owner, 2026-11-23, in the architect's window)
 - decisions-made-workspace-5.md: How is the Workspace list laid out?
 - decisions-made-workspace-5.md: Does the channel screen change too?
 - decisions-made-workspace-5.md: Who builds the Workspace design?
@@ -1402,7 +1409,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes (a note's card too), the handles typed
 - workflow/architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20
 - workflow/architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back
-- workflow/architect-hand-over.md: Hand-over note of the architect session that stopped on 2026-11-22 (development paused): what is owed to the owner, the landed steps still to look at, what others were told
+- workflow/architect-hand-over.md: Hand-over note of the architect session that stopped on 2026-11-22 (development paused): what is owed to the owner, plans written since, the landed steps still to look at
 - workflow/architect-looks-at-landed-screen.md: The architect opens each landed step of a screen the owner asked for on a sandbox, in the states nobody drew, and writes what differs into the plan; no step waits for the look
 - workflow/architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19)
 - workflow/architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17)

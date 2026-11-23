@@ -16,6 +16,7 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- agent-memory-search.md: Plan (owner 2026-11-23), held until he opens it: text search and a per-project index in the channel and general memory for agents, this repository's memory mirrored there; steps MS1 to MS4
 - ai-guide-features-2.md: Plan ai-guide, features G11 to G19: the panel's door for a browser agent, the plugin, the compact tool list, the Design and Content presets, size budgets, hints on refusals, the refused calls report
 - ai-guide-features.md: Plan ai-guide, features G1 to G10: the guide's registry, its text built from code, sizes, version and digest, the topics (start, designer, the design's values, panel) and who reads it where
 - ai-guide-steps-2.md: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the Design and Content presets, the size budget, the description diet by area, hints on refusals, the refused calls report, close-out
@@ -43,6 +44,9 @@
 - canvas-data-views-follow.md: Plan canvas-data-views, DV4's census: how a channel's canvas card with data layers shows the current rows (drawn in the card by the reader's browser), and what it leaves to DV5
 - canvas-data-views-screens.md: Plan canvas-data-views, how the Data menu and the data layer's panel are put together in the Design Canvas (DV2) and the Data screen's "Show on a canvas" (DV3)
 - canvas-data-views.md: Plan (owner 2026-11-20): a Data table as a chart or table layer of the Design Canvas's document: a Data menu, edited on the canvas, following its table where the document is shown; DV1-DV6
+- channel-notes-own.md: Plan (owner 2026-11-23): a note written in a channel belongs to the channel, off My Notes and off a person's limit, listed in the channel's Notes tab; steps CN1 to CN3
+- channel-share-links-screens.md: Screens of the share links plan: the mark on a shared item, Share by link in its menu and the dialog, the head's share mark with its menu, Channel info's Sharing part, the system line
+- channel-share-links.md: Plan (owner 2026-11-23): an item of an agent channel shared by an unguessable link with an end date: files first, then notes, tables and lists; what the address answers; steps SL1 to SL6
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - communication-settings-tidy-screens.md: Plan communication-settings-tidy, its screen: the Communication pane as folded rows, Chat and Chat on the site with their groups, the words and what must be true
@@ -139,6 +143,7 @@
 - pick-pack-screens.md: Plan pick-pack, how the shelf and wave screens are put together (PP2, PP3): the shelf address field, the Pick waves list, "Make a wave", a wave's screen, its pick list on paper and phone
 - pick-pack-steps.md: Plan pick-pack, steps PP1a to PP7: the pure rules, shelf addresses, waves and the pick list, the pack check, label and marketplace on a checked pack, short picks and measures, API, close-out
 - pick-pack.md: Plan (owner 2026-11-20, poll 181): shelf addresses, pick waves in shelf order, barcode pack checks that stop a wrong or short parcel, label on a checked pack, measures, events; PP1a to PP7
+- plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - privacy-settings-tidy-screens.md: Plan privacy-settings-tidy, its screen: the Visitors and privacy pane as folded rows, the "How long we keep data" row of value rows, the words and what must be true
 - privacy-settings-tidy-steps.md: Plan privacy-settings-tidy, steps VP1 to VP4: the pane as folded rows, the "How long we keep data" row and the inventory's IP lines, the owner's two answers, close-out
 - privacy-settings-tidy.md: Plan (owner 2026-11-21): Site Settings › Visitors and privacy as folded rows, one "How long we keep data" row showing every retention, popovers gone, the KVKK fields on their own

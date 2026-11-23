@@ -15,7 +15,7 @@
 - architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20 [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
 - architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back [decision: here]
-- architect-hand-over.md: Hand-over note of the architect session that stopped on 2026-11-22 (development paused): what is owed to the owner, the landed steps still to look at, what others were told [decision: here]
+- architect-hand-over.md: Hand-over note of the architect session that stopped on 2026-11-22 (development paused): what is owed to the owner, plans written since, the landed steps still to look at [decision: here]
 - architect-looks-at-landed-screen.md: The architect opens each landed step of a screen the owner asked for on a sandbox, in the states nobody drew, and writes what differs into the plan; no step waits for the look [decision: here]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact at 300k (2026-11-23) summarises its context in place; what it reads again after a compaction
 - architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19) [decision: here]
@@ -232,7 +232,7 @@
 - decisions-made-schema-45.md: Decisions list, schema part 45 (2026-11-20 on): the satisfaction loop's two tables, feedback_surveys (a survey's settings) and feedback_responses (one row per sent survey), their columns (poll 197)
 - decisions-made-schema-46.md: Decisions list, schema part 46 (2026-11-21 on): the tables of the walk-in queue, volunteer shifts, the set-up journey and prototype approval, five columns on prototype_links (poll 206)
 - decisions-made-schema-47.md: Decisions list, schema part 47 (2026-11-21 on): the agreed columns and keys of the walk-in queue's three tables (WQ1b) and the volunteer shifts' five tables (VS1b)
-- decisions-made-schema-48.md: Decisions list, schema part 48 (2026-11-22 on): erp_order_costs.source gains the value supplier for a supplier feed's cost, under the ERP schema approval; how an ENUM value is appended
+- decisions-made-schema-48.md: Decisions list, schema part 48 (2026-11-22 on): erp_order_costs.source gains supplier; ws_notes.owner_channel_id for a channel's note; the ws_share_links table
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
@@ -285,6 +285,7 @@
 - decisions-made-workspace-46.md: Decisions made, workspace part 46 (2026-11-21 on): the conversation timeline smaller in both ways, Ctrl and Shift with the wheel, the keyboard; its card carries shortcuts to what a message holds
 - decisions-made-workspace-47.md: Decisions made, workspace part 47 (2026-11-22 on): the Flows editor is redrawn and widened as drawn (canvas edge to edge, add at the arrow, whole-flow trial, counts, Split, sending hours, leaving)
 - decisions-made-workspace-48.md: Decisions made, workspace part 48 (2026-11-22 on): a plan to improve the Workspace's interface and its menu; the Tools as a dock that never folds; the rest of the two sheets accepted
+- decisions-made-workspace-49.md: Decisions made, workspace part 49 (2026-11-23 on): a note written in a channel is the channel's; an agent channel's item shared by a link; memory search for agents; git stays the record
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
 - decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel: an agent's own messages, how far an unattended flow goes, decision marks, the loop-guard text, agents woken from the channel
