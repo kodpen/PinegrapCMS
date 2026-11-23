@@ -9,7 +9,7 @@
 - agent-channel-note-tool.md: tools/ws_note.php new|read|update: a session keeps a plan or a long explanation as one note in a channel, changed in place; the base kept in PATH.ws_note, exits 0/1/2, a 409 writes nothing
 - agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with [decision: here]
 - agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks [decision: here]
-- agent-channel-request-wait.md: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): which request wakes it, the printed line, the interval, exits, restarting
+- agent-channel-request-wait.md: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): what wakes it, the printed line, exits, restarting, the 3300-second timeout
 - agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes (a note's card too), the handles typed [decision: here]
 - api-answer-check-run.md: Working rule: who runs tools/check_api_answers.php, when and how: a running site with a database, settings from the environment only, never in CI, findings filed as bug issues
 - architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20 [decision: here]
@@ -17,10 +17,11 @@
 - architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back [decision: here]
 - architect-hand-over.md: Hand-over note of the architect session that stopped on 2026-11-22 (development paused): what is owed to the owner, the landed steps still to look at, what others were told [decision: here]
 - architect-looks-at-landed-screen.md: The architect opens each landed step of a screen the owner asked for on a sandbox, in the states nobody drew, and writes what differs into the plan; no step waits for the look [decision: here]
-- architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
+- architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact at 300k (2026-11-23) summarises its context in place; what it reads again after a compaction
 - architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19) [decision: here]
 - architect-wake.md: What wakes the architect session (owner, 2026-11-16): a mention in the agent channel through the request waiter only; no hourly check; a pause he names; the week's pause, economy mode (2026-11-17) [decision: here]
 - architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer [decision: decisions-made-schema.md, decisions-made.md]
+- auto-memory-off.md: Claude Code's auto memory (MEMORY.md) is off for this repository (2026-11-23, #11186): memory lives in docs/memory; what it cost
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean [decision: here]
 - bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
@@ -292,6 +293,7 @@
 - decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants, the Workspace list, the retired scheduled form
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest [decision: here]
+- design-work-session.md: Where a screen's look is designed (2026-11-23, #11186): in a design session of its own that the owner talks to, not in the architect session; why
 - dev-machine-testing.md: Testing on dev.pinegrap.com (the owner's PC): what may be written, the shared sign-in and page lock, the shared checkout, asking for a page as a visitor, logs and the job's heartbeat, browser traps
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files [decision: here]
 - github-rest-without-gh.md: GitHub from the owner's machine, where gh is not installed: the token from git credential fill, a REST helper, GraphQL for draft and ready, the ready label, reading CI, mergeable_state unstable
@@ -312,9 +314,10 @@
 - merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
 - merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, 2,000 lines in all, an oversized PR alone, at the latest an hour after it is eligible
-- merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward); what it leaves to the merging session
+- merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward), --wait; what it leaves to the merging session
+- merge-train-wait.md: tools/merge_train.php --wait (#11186), the merging session's waiter: what it reads, when it exits, the --since key, its interval and timeout, failed gh calls, its GitHub calls
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
-- merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on [decision: here]
+- merger-wake.md: How the merging session wakes: its waiter merge_train.php --wait (#11186), restarted within the cache hour, and an hourly routine that starts it again; GitHub events are not relied on [decision: here]
 - owner-contact-channel.md: Where sessions reach the owner (2026-11-13): no coordinator writes to him in its chat window or waits there; problems to PR MERGE in the agent channel; visuals posted there, his answer there [decision: decisions-made-panel-8.md]
 - owner-night-stand-in.md: At night, when the owner sleeps, the architect answers the questions meant for him (owner, 2026-11-16, agent channel message 7054); how such an answer is marked and listed [decision: here]
 - owner-question-picture.md: A question to the owner about a picture carries it in its own box (owner 2026-11-15, 2026-11-16): ws_poll.php ask --file with "Other"; looks compared by option pictures [decision: decisions-made-product-58.md, decisions-made-product-61.md]
@@ -326,7 +329,7 @@
 - pr-text-generated-footer.md: A cloud session's GitHub path appends a generated-by footer to a PR text on every write; the session cannot remove it, the label is not held for it, no session strips it now [decision: here]
 - pre-push-checks.md: git push runs tools/pre_push.sh first (installed when a cloud session starts in the clone): which CI checks it runs on the pushed commit, why, installing it elsewhere, its blind spots, skipping
 - project-overview.md: What Pinegrap is, supported PHP range, stack, repo layout (pinegrap/ root), dev-only folders, files never in any branch
-- quota-use-measured.md: Where the quota goes, measured 2026-11-19 in session records: a fixed start of 80-92k tokens, every call reading the whole context again, the time after the ready label; what changed, what is open [decision: here]
+- quota-use-measured.md: Where the quota goes (2026-11-19): a fixed start of 80-92k tokens, every call reading the whole context again, the time after the ready label; changes of 2026-11-19 and 11-23, what is open [decision: here]
 - readme-screenshots.md: The README's screenshots in .github/readme/: which files, light and dark, why not docs/, how they are taken again before a release
 - sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout [decision: here]
 - sandbox-on-windows.md: A throwaway Pinegrap install on the owner's Windows machine without touching dev: a private mysqld on its own port, a git archive export, php -S, the installer by curl, CLI scripts, the API over HTTP [decision: decisions-made-workspace-31.md]
