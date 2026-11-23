@@ -699,6 +699,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-46.md: What does the set-up journey get? (architect, 2026-11-21)
 - decisions-made-schema-46.md: What does prototype approval get? (architect, 2026-11-21)
 - decisions-made-schema-46.md: Who sets the columns?
+- decisions-made-schema-46.md: Which columns did launch_summary_lines get? (architect, 2026-11-23, agent channel message 12265, #11200)
 - decisions-made-schema-47.md: Where are the rules and the earlier parts?
 - decisions-made-schema-47.md: Which columns do the walk-in queue's tables have? (architect, 2026-11-21, #10956)
 - decisions-made-schema-47.md: What does the walk-in queue do with personal data? (architect, 2026-11-21)
