@@ -17,7 +17,7 @@ description: Plan walk-in-queue, steps WQ1a to WQ9: the pure rules, the store, p
 
 - WQ4 (M) after WQ3, done in #11153: the desk screen: open and close a desk, Call next, Call again, Not here, Send to another service, Finish, Pause. Features: W2, W7.
 
-- WQ5 (M) after WQ4: priority at the kiosk and the desk; bookings folded in ("I have a booking" finds today's booking with the place's staff); remote join, "I'm on my way", moved back once. Features: W4, W8.
+- WQ5 (M) after WQ4, done in #11219: priority at the kiosk and the desk; bookings folded in ("I have a booking" finds today's booking with the place's staff); remote join, "I'm on my way", moved back once. Features: W4, W8.
 
 - WQ6 (S) after WQ4: the lobby screen (a signed display link, no menu, the chime) and the kiosk screen. Features: W10.
 

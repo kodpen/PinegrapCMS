@@ -9,7 +9,7 @@ module: walk_in_queue
 
 ## In what order are people called?
 - `pg_waiting_order($tickets, $grace_seconds)`: priority people first (a non-empty `priority` reason), then by `pg_waiting_order_time()`, then by id.
-- A walk-in stands at `joined_at`. A booking (`booking_at` > 0) that arrived by its time plus the grace window stands at its booked time, never earlier when it came early; a later one stands at its arrival as a walk-in.
+- A walk-in stands at `joined_at`; a moved-back number at the later of that and its `called_at`. A booking (`booking_at` > 0) that arrived by its time plus the grace window stands at its booked time, never earlier when it came early; a later one stands at its arrival as a walk-in.
 - `pg_waiting_next($tickets, $services, $grace)`: the first in that order among the desk's services. `pg_waiting_ahead()` counts only the same service.
 
 ## How is a number written?
@@ -25,7 +25,7 @@ module: walk_in_queue
 - `pg_waiting_estimate_minutes()`: to the nearest 5 minutes, never below 5 while there is a wait.
 
 ## What does Not here do?
-- `pg_waiting_not_here_allowed($called_at, $now, $minutes)`: offered M minutes after the call. `pg_waiting_not_here_outcome($moved_back, $move_back)`: `moved_back` the first time when the place's setting is on (off by default), else `left`. Where a moved-back number stands is WQ5's.
+- `pg_waiting_not_here_allowed($called_at, $now, $minutes)`: offered M minutes after the call. `pg_waiting_not_here_outcome($moved_back, $move_back)`: `moved_back` the first time when the place's setting is on (off by default), else `left`. A moved-back number keeps `called_at` as the moment of the move and stands there (`walk-in-queue-arrivals.md`).
 
 ## How is a number's link signed?
 - `pg_waiting_ticket_token($id, $joined_at, $key)`: HMAC-SHA256 of `waiting-ticket:<id>:<joined_at>` under `ENCRYPTION_KEY` (`pg_booking_key()`), the booking manage link's way; only its sha256 is stored and `pg_waiting_ticket_token_valid()` compares with `hash_equals()`. No new secret. A cleared hash opens nothing.

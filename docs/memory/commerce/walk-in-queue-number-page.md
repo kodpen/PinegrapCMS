@@ -7,7 +7,8 @@ module: walk_in_queue_tickets
 ## Where is a number taken?
 - `queue.php?place=<id>[&from=qr]` (root, in the secure shell `output_header_secure()` + `pg_secure_card()`, as `feedback.php` and `booking_manage.php`). The QR poster links with `from=qr` (way `qr`), the site with nothing (way `site`); each needs its switch in "Taking a number" and the place `open` (`pg_waiting_way_open()`), else the closed text (or the standard one) shows.
 - The form: services as radio cards (`form-field form-field-card`, the letter in `.pg-icon-tile-lg`), party size when asked (1-50), name, phone, e-mail (only while the place's e-mail notice is on), all optional; "Take a number" is the one fill. Read by `pg_waiting_join_input()` (phone through `pg_sms_number()`).
-- Staff: "Add a number" (ghost, toolbar of the place's screen, both tabs; disabled while the queue is not open) opens a drawer: service, party size, name, phone, e-mail. Way `staff`: any switch, same hours, cap and closing rules.
+- Staff: "Add a number" (ghost, toolbar of the place's screen, both tabs; disabled while the queue is not open) opens a drawer: service, party size, name, phone, e-mail, Priority, "Has a booking today".
+- "I have a booking", "I'm on my way" and priority: `walk-in-queue-arrivals.md`. Way `staff`: any switch, same hours, cap and closing rules.
 
 ## What does taking a number do?
 - `pg_waiting_take()`: `pg_waiting_join_refusal()` with the day's count, the cap, the estimate of the new number and `pg_waiting_closes_at()`; the count is the service's `MAX(number) + 1`, a clash on the unique key retries (5 tries). The token (`pg_waiting_ticket_token()` of id and joined_at) is made after the insert and only its sha256 stored.
