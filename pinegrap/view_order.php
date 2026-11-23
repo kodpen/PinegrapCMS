@@ -515,7 +515,9 @@ if (!$_POST) {
 
     $output_customer_card =
         '<div class="card pg-card">
-            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Customer') . '</h2>
+            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                <h2 class="pg-title-section mb-0">' . lang('Customer') . '</h2>
+            </div>
             <div class="card-body">
                 <div class="pg-order-who">' . $output_contact_image . $output_customer_who . '</div>
                 ' . (($output_customer_rows !== '') ? '<dl class="pg-kv mt-5">' . $output_customer_rows . '</dl>' : '') . '
@@ -2546,11 +2548,12 @@ if (!$_POST) {
         '<div class="card pg-card mt-5">
             <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
                 <h2 class="pg-title-section mb-0">' . lang('Billing Information') . '</h2>
-                <span class="pg-copy ms-auto">' . pg_copy_button(implode("\n", $billing_address_lines), lang('Copy the billing address'), 'pg_billing_address') . '</span>
+                ' . (($billing_address_lines !== array()) ? '<span class="pg-copy ms-auto">' . pg_copy_button(implode("\n", $billing_address_lines), lang('Copy the billing address'), 'pg_billing_address') . '</span>' : '') . '
             </div>
             <div class="card-body">
                 ' . (($output_billing_address !== '') ? '<div class="pg-address-block">' . $output_billing_address . '</div>' : '') . '
                 ' . (($output_billing_rows !== '') ? '<dl class="pg-kv">' . $output_billing_rows . '</dl>' : '') . '
+                ' . ((($output_billing_address === '') && ($output_billing_rows === '')) ? '<span class="pg-text-meta">' . h(lang('No billing address')) . '</span>' : '') . '
             </div>
         </div>';
 
@@ -2558,7 +2561,9 @@ if (!$_POST) {
     // the head's. Under a hairline, where the order came from.
     $output_order_information_card =
         '<div class="card pg-card mt-5">
-            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Order Information') . '</h2>
+            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                <h2 class="pg-title-section mb-0">' . lang('Order Information') . '</h2>
+            </div>
             <div class="card-body">
                 <dl class="pg-kv">
                     ' . pg_order_view_kv(lang('Type'), lang(h(ucwords($order_type)))) . '
@@ -2572,6 +2577,11 @@ if (!$_POST) {
                 ' . $source . '
             </div>
         </div>';
+
+    // The ERP documents card stands in the form column, inside the screen's
+    // form; its own hidden form goes after the screen's.
+    list($output_erp_card, $output_erp_forms) = pg_order_view_split_forms($output_erp_documents);
+    $output_returns_card = pg_returns_panel_card((int) $_GET['id']);
 
     $output_head = pg_record_head(array(
         'title' => pg_order_view_head_title($order_number, $id),
@@ -2622,36 +2632,29 @@ if (!$_POST) {
                 ' . $output_payment_pending_banner . '
                 ' . $output_refund_banner . '
                 ' . $output_head . '
-                ' . $output_erp_documents . '
                 <form method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
 
                     <div class="row g-7">
+                        <!-- The form column in the order of the drawing, on every width:
+                             the shipments, "Items not shipped", Payment across the
+                             whole column (its two halves side by side when there is
+                             room), the ERP documents, then the later cards. -->
                         <div class="col-12 lg:col-8 2xl:col-9 order-1">
-                            <!-- Two columns of cards only from xl: in the 8/12 form
-                                 column of a 1024px screen half a column is too narrow
-                                 for a label and its value side by side. How it was
-                                 paid and the totals on the left; the parcels and what
-                                 followed the order on the right. -->
-                            ' . (($output_shipping_details !== '') ? '<div class="pg-order-shipments mb-7">' . $output_shipping_details . '</div>' : '') . '
-                            <div class="row g-7">
-                                <div class="col-12 md:col-6 lg:col-12 xl:col-6">
-                                    ' . pg_order_view_card_column(array(
-                                        $output_payment_card,
-                                        $output_custom_billing_information,
-                                    )) . '
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-12 xl:col-6">
-                                    ' . pg_order_view_card_column(array(
-                                        $output_applied_gift_cards,
-                                        $output_affiliate,
-                                        pg_legal_documents_panel_card((int) $_GET['id']),
-                                        pg_returns_panel_card((int) $_GET['id']),
-                                        $output_order_profit,
-                                    )) . '
-                                </div>
+                            <div class="d-flex flex-column gap-7">
+                                ' . (($output_shipping_details !== '') ? '<div class="pg-order-shipments">' . $output_shipping_details . '</div>' : '') . '
+                                ' . $output_payment_card . '
+                                ' . pg_order_view_card_flush($output_erp_card) . '
+                                ' . pg_order_view_card_grid(array(
+                                    $output_returns_card,
+                                    pg_legal_documents_panel_card((int) $_GET['id']),
+                                    $output_order_profit,
+                                    $output_applied_gift_cards,
+                                    $output_affiliate,
+                                    $output_custom_billing_information,
+                                )) . '
                             </div>
                         </div>
                         <!-- The side panel: who ordered, the billing address and the
@@ -2686,6 +2689,7 @@ if (!$_POST) {
         $output_payment_refund_modal .
         $output_cancel_modal .
         $output_refund_modal .
+        $output_erp_forms .
         $output_parasut_forms .
         (!empty($shipment_label_chooser_shown) ? pg_shipment_label_chooser_dialog() : '') .
         '<form method="post" action="shipment_label.php" id="shipment-label-form" class="d-none">

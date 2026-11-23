@@ -59,21 +59,71 @@ function pg_order_view_row($label, $value_html, $wide = false)
 }
 
 /**
- * A column of the order screen's cards, joined. Each card is printed with
- * mt-5 to keep its distance from the one above; the first card of the column
- * loses it, so the column starts level with its neighbour whichever card the
- * order has first (an order with no ship-to address starts with another one).
- * A margin rule of the panel stylesheet cannot do it: Bootstrap 6 utilities
- * sit in a later cascade layer than the panel's own rules.
+ * A card without the outer margin it was printed with (mt-5 to keep its
+ * distance from the card above, mb-7 on the ERP documents card): in a stack
+ * or a grid of the order screen the gap between the cards is the stack's.
+ * Only the card's own opening tag is touched.
+ *
+ * @param string $card card markup
+ * @return string trimmed markup, '' for an empty card
+ */
+function pg_order_view_card_flush($card)
+{
+    $card = trim((string) $card);
+    if ($card === '') {
+        return '';
+    }
+
+    return preg_replace_callback('/^<[a-z]+\b[^>]*>/i', function ($tag) {
+        return preg_replace_callback('/\bclass="([^"]*)"/', function ($class) {
+            $kept = array_diff(preg_split('/\s+/', trim($class[1])), array('mt-5', 'mb-7', ''));
+
+            return 'class="' . implode(' ', $kept) . '"';
+        }, $tag[0], 1);
+    }, $card, 1);
+}
+
+/**
+ * The later cards of the order screen (Returns, Legal Documents, Profit...):
+ * two across from xl, and from md while the side panel is not beside them;
+ * one column in the 8/12 form column of a 1024 px screen, where half of it
+ * is too narrow for a label and its value side by side. Empty cards take no
+ * place.
  *
  * @param array $cards card markup in order; empty strings are skipped
- * @return string
+ * @return string the row, or '' when no card has content
  */
-function pg_order_view_card_column($cards)
+function pg_order_view_card_grid($cards)
 {
-    $html = implode("\n", array_filter(array_map('trim', array_map('strval', (array) $cards)), 'strlen'));
+    $html = '';
+    foreach ((array) $cards as $card) {
+        $card = pg_order_view_card_flush($card);
+        if ($card !== '') {
+            $html .= '<div class="col-12 md:col-6 lg:col-12 xl:col-6">' . $card . '</div>';
+        }
+    }
 
-    return preg_replace('/^<div class="card( pg-card)? mt-5"/', '<div class="card$1"', $html, 1);
+    return ($html === '') ? '' : '<div class="row g-7">' . $html . '</div>';
+}
+
+/**
+ * A card printed with its own hidden form after it (the ERP documents card,
+ * whose buttons name the form by id) cut in two: the card, which can stand
+ * inside the screen's form, and the forms, printed after it, since a form
+ * inside a form is dropped by the browser.
+ *
+ * @param string $html the card and its forms
+ * @return array array(card markup, forms markup)
+ */
+function pg_order_view_split_forms($html)
+{
+    $html = (string) $html;
+    $at = stripos($html, '<form');
+    if ($at === false) {
+        return array(trim($html), '');
+    }
+
+    return array(trim(substr($html, 0, $at)), trim(substr($html, $at)));
 }
 
 /**

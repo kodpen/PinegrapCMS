@@ -112,21 +112,36 @@ function test_order_view_contact_text_name_company_email_id()
 	pg_assert_same('O&#039;Neil &lt;x&gt;', pg_order_view_contact_text(1, "O'Neil", '<x>', '', ''), 'escaped');
 }
 
-// The first card of a column loses its top margin, whichever card it is;
-// the others keep theirs, and empty cards leave no gap.
-function test_order_view_card_column_first_card_flush()
+// A card in a stack or grid loses the outer margin it was printed with,
+// only on its own tag; an empty card is nothing.
+function test_order_view_card_flush_drops_outer_margin()
 {
-	$ship = '<div class="card mt-5"><div class="card-body">Ship</div></div>';
-	$returns = '  <div class="card mt-5"><div class="card-body">Returns</div></div>';
+	pg_assert_same('<div class="card pg-card"><div class="mt-5">x</div></div>', pg_order_view_card_flush('  <div class="card pg-card mt-5"><div class="mt-5">x</div></div>'), 'top margin, inner one kept');
+	pg_assert_same('<div class="card pg-card pg-print-none" id="erp">x</div>', pg_order_view_card_flush('<div class="card pg-card mb-7 pg-print-none" id="erp">x</div>'), 'bottom margin');
+	pg_assert_same('<section class="card">x</section>', pg_order_view_card_flush('<section class="card">x</section>'), 'nothing to drop');
+	pg_assert_same('', pg_order_view_card_flush("  \n "), 'empty');
+}
 
-	$html = pg_order_view_card_column(array($ship, '', $returns));
-	pg_assert_same(0, strpos($html, '<div class="card"><div class="card-body">Ship'), 'first card flush');
-	pg_assert_same(1, substr_count($html, 'card mt-5'), 'the second card keeps its margin');
+// The later cards: one column each, two across from xl; empty ones take no place.
+function test_order_view_card_grid()
+{
+	$returns = '<div class="card mt-5">Returns</div>';
+	$profit = '<div class="card pg-card mt-5">Profit</div>';
 
-	$html = pg_order_view_card_column(array('', '   ', $returns));
-	pg_assert_same(0, strpos($html, '<div class="card"><div class="card-body">Returns'), 'no ship-to: the next card is flush');
+	$html = pg_order_view_card_grid(array('', $returns, '  ', $profit));
+	pg_assert_same('<div class="row g-7"><div class="col-12 md:col-6 lg:col-12 xl:col-6"><div class="card">Returns</div></div><div class="col-12 md:col-6 lg:col-12 xl:col-6"><div class="card pg-card">Profit</div></div></div>', $html, 'two cards, flush');
+	pg_assert_same('', pg_order_view_card_grid(array('', ' ')), 'no cards, no row');
+}
 
-	pg_assert_same('', pg_order_view_card_column(array('', '')), 'no cards, nothing');
+// The ERP documents card is cut from the hidden form printed after it.
+function test_order_view_split_forms()
+{
+	$card = '<div class="card" id="erp_order_documents"><button form="f">Go</button></div>';
+	$form = '<form id="f" method="post" class="d-none"><input type="hidden" name="order_id" value="7" /></form>';
+
+	pg_assert_same(array($card, $form), pg_order_view_split_forms("\n" . $card . "\n" . $form), 'card, then its form');
+	pg_assert_same(array($card, ''), pg_order_view_split_forms($card), 'no form');
+	pg_assert_same(array('', ''), pg_order_view_split_forms(''), 'no card');
 }
 
 function test_order_view_line_fact_caption_and_value()
