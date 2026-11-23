@@ -19,7 +19,7 @@ description: Plan walk-in-queue, steps WQ1a to WQ9: the pure rules, the store, p
 
 - WQ5 (M) after WQ4: priority at the kiosk and the desk; bookings folded in ("I have a booking" finds today's booking with the place's staff); remote join, "I'm on my way", moved back once. Features: W4, W8.
 
-- WQ6 (S) after WQ4: the lobby screen (a signed display link, no menu, the chime) and the kiosk screen. Features: W10.
+- WQ6 (S) after WQ4, in progress: the lobby screen (a signed display link, no menu, the chime) and the kiosk screen. Features: W10.
 
 - WQ7 (M) after WQ5: the report with the staffing line, Excel. Features: W11.
 
