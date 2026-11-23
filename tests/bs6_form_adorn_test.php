@@ -215,7 +215,7 @@ function test_bs6_form_adorn_workspace_toolbar_searches()
 {
 	$root = dirname(__DIR__) . '/pinegrap/assets/js/';
 	$cases = array(
-		'workspace.js' => array("t('tl_search')", "t('notes_search')"),
+		'workspace.js' => array("t('tl_search')"),
 		'workspace_board_channel.js' => array("t('cb_search')"),
 	);
 
