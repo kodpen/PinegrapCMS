@@ -1706,6 +1706,11 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
 
         ws_inbox_delete("channel_id = '" . $thread_id . "'");
 
+        // The notes written in it are its own (notes.php).
+        if (function_exists('ws_note_channel_purge')) {
+            ws_note_channel_purge($thread_id);
+        }
+
         foreach (array('ws_polls', 'ws_refs', 'ws_blocks', 'ws_note_shares', 'ws_channel_eras', 'ws_ai_drafts', 'ws_ai_changes', 'ws_ai_requests', 'design_proposals') as $table) {
             // A content editor's waiting change outlives the conversation its
             // approval request was asked in (includes/fn/content_proposals.php).

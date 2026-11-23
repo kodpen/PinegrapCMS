@@ -1036,7 +1036,8 @@ function ws_note_lock_note($viewer, $note, $locked, $confirm = false, $pin = '')
 {
     $user_id = (int) $viewer['id'];
 
-    if (!is_array($note) || ((int) $note['user_id'] !== $user_id)) {
+    // A channel's note is the channel's: no person's lock reaches it.
+    if (!is_array($note) || ((int) $note['user_id'] !== $user_id) || (ws_note_channel_of($note) > 0)) {
         return ws_note_lock_refusal('owner', lang('Only the one who wrote a note can lock it.'));
     }
 

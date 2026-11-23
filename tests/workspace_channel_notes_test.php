@@ -191,7 +191,7 @@ function test_ws_channel_notes_write_check_refusals()
 	$write = ws_channel_notes_test_source('ws_note_channel_write');
 
 	pg_assert_true(strpos($write, 'ws_note_channel_write_check(') < strpos($write, 'ws_note_save('), 'checked before written');
-	pg_assert_contains("'can_edit'      => !empty(\$data['channel_edit'])", $write, 'the switch goes to the share');
+	pg_assert_contains("'can_edit'      => false,", $write, 'a channel\'s note takes its access from the channel, not the card\'s share');
 	pg_assert_contains('ws_note_delete($viewer, $note);', $write, 'no note left without its card');
 }
 

@@ -349,7 +349,8 @@ function ws_note_place_check($viewer, $note, $group_id)
 
     $me = (int) $viewer['id'];
 
-    if (!is_array($note) || (((int) $note['user_id'] !== $me)
+    // A channel's note is kept in no person's group (notes.php).
+    if (!is_array($note) || (ws_note_channel_of($note) > 0) || (((int) $note['user_id'] !== $me)
         && !db_value("SELECT 1 FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id = '" . $me . "' LIMIT 1"))) {
         return $fail(lang('That note could not be found.'), 'note_id');
     }
@@ -527,7 +528,7 @@ function ws_note_places_forget_reader($user_id, $note_id)
         return;
     }
 
-    $kept = db_value("SELECT 1 FROM ws_notes WHERE id = '" . (int) $note_id . "' AND user_id = '" . (int) $user_id . "'")
+    $kept = db_value("SELECT 1 FROM ws_notes WHERE id = '" . (int) $note_id . "' AND user_id = '" . (int) $user_id . "'" . ws_note_own_sql(''))
         || db_value("SELECT 1 FROM ws_note_shares WHERE note_id = '" . (int) $note_id . "' AND user_id = '" . (int) $user_id . "' LIMIT 1");
 
     if (!$kept) {

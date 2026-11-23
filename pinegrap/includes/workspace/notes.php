@@ -47,6 +47,12 @@ define('WS_NOTE_MAX', 60000);
 define('WS_NOTE_LIMIT', 2000);
 
 /**
+ * How many notes one channel keeps (notes written in it, which are the
+ * channel's and count in nobody's WS_NOTE_LIMIT).
+ */
+define('WS_NOTE_CHANNEL_LIMIT', 2000);
+
+/**
  * How many earlier versions of a note are kept, and how long a note is
  * written on before the state it had is kept again (seconds). A save that
  * takes away much of a note keeps the state before it whatever the time.
@@ -129,6 +135,52 @@ function ws_note_app_ready()
     }
 
     return $ready;
+}
+
+/**
+ * Does a note know the channel it belongs to (2026.11.0, 11.0.273)? The
+ * column is named only once the step has added it.
+ *
+ * @return bool
+ */
+function ws_note_channel_owner_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('ws_notes', 'owner_channel_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The channel a note belongs to; 0 for a person's own note. Pure.
+ *
+ * @param array|null $note
+ * @return int
+ */
+function ws_note_channel_of($note)
+{
+    return is_array($note) ? max(0, (int) ($note['owner_channel_id'] ?? 0)) : 0;
+}
+
+/**
+ * The condition that keeps a person's own notes and leaves a channel's note
+ * out: every list, search, export, count and limit of "my notes" adds it to
+ * its user_id condition (tests/workspace_note_channel_readers_test.php).
+ * Before the step has run every note is a person's, and nothing is added.
+ *
+ * @param string $alias the table's alias in the query, '' for none
+ * @return string " AND ..." or ''
+ */
+function ws_note_own_sql($alias = 'n')
+{
+    if (!ws_note_channel_owner_ready()) {
+        return '';
+    }
+
+    return " AND " . (($alias !== '') ? $alias . '.' : '') . "owner_channel_id = 0";
 }
 
 /**
@@ -508,7 +560,11 @@ function ws_note_access($viewer, $note, $shares = null)
         return '';
     }
 
-    if ((int) $note['user_id'] === (int) $viewer['id']) {
+    // A channel's note is its channel's (ws_note_access_of()): its writer
+    // owns nothing, and no share row is read.
+    if (ws_note_channel_of($note) > 0) {
+        $shares = array();
+    } elseif ((int) $note['user_id'] === (int) $viewer['id']) {
         return 'owner';
     }
 
@@ -533,8 +589,14 @@ function ws_note_access($viewer, $note, $shares = null)
 /**
  * ws_note_access() on rows given: pure but for $reach.
  *
+ * A channel's note (owner_channel_id above 0) takes its access from that
+ * channel alone, its writer included: who may post there edits it, who
+ * reads it reads it (an archived channel is posted in by nobody), and no
+ * share row counts. Nobody owns it, so a person's own rights (the lock, a
+ * group, a share with a person, pinning) never reach it.
+ *
  * @param int      $viewer_id
- * @param array    $note   user_id
+ * @param array    $note   user_id, owner_channel_id
  * @param array[]  $shares ws_note_shares rows: user_id, channel_id, can_edit
  * @param callable $reach  (channel_id, need: read | post) => '' | read | post,
  *                         the person's reach in that channel
@@ -542,6 +604,14 @@ function ws_note_access($viewer, $note, $shares = null)
  */
 function ws_note_access_of($viewer_id, $note, $shares, $reach)
 {
+    $owner_channel = ws_note_channel_of($note);
+
+    if ($owner_channel > 0) {
+        $got = (string) $reach($owner_channel, 'post');
+
+        return ($got === 'post') ? 'edit' : (($got === 'read') ? 'view' : '');
+    }
+
     if ((int) $note['user_id'] === (int) $viewer_id) {
         return 'owner';
     }
@@ -1098,7 +1168,7 @@ function ws_notes_list($viewer, $search = '')
     $me = (int) $viewer['id'];
     $filter = ws_notes_filter_sql($search);
 
-    $mine = (array) db_items("SELECT " . ws_notes_list_columns() . " FROM ws_notes n WHERE n.user_id = '" . $me . "'" . $filter . "
+    $mine = (array) db_items("SELECT " . ws_notes_list_columns() . " FROM ws_notes n WHERE n.user_id = '" . $me . "'" . ws_note_own_sql() . $filter . "
         ORDER BY n.pinned DESC, n.updated_at DESC, n.id DESC LIMIT " . WS_NOTE_LIMIT);
 
     $shared = (array) db_items("SELECT " . ws_notes_list_columns() . ", IF(MAX(s.can_edit) = 1, 'edit', 'view') AS access FROM ws_notes n
@@ -1164,7 +1234,7 @@ function ws_notes_latest($viewer, $limit)
     $me = (int) $viewer['id'];
 
     // A few more than asked, for the notes the lock leaves out.
-    $rows = (array) db_items("SELECT " . ws_notes_list_columns() . " FROM ws_notes n WHERE n.user_id = '" . $me . "'
+    $rows = (array) db_items("SELECT " . ws_notes_list_columns() . " FROM ws_notes n WHERE n.user_id = '" . $me . "'" . ws_note_own_sql() . "
         ORDER BY n.updated_at DESC, n.id DESC LIMIT " . ($limit * 3));
 
     foreach ($rows as $index => $row) {
@@ -1266,10 +1336,10 @@ function ws_notes_page_rows($user_id, $options)
     if ($scope !== 'shared') {
         $own = "IF(n.pinned = 1, 0, 1)";
 
-        $total += (int) db_value("SELECT COUNT(*) FROM ws_notes n WHERE n.user_id = '" . $me . "'" . $filter);
+        $total += (int) db_value("SELECT COUNT(*) FROM ws_notes n WHERE n.user_id = '" . $me . "'" . ws_note_own_sql() . $filter);
 
         $rows = (array) db_items("SELECT " . ws_notes_list_columns() . ", " . $own . " AS list_group FROM ws_notes n
-            WHERE n.user_id = '" . $me . "'" . $filter . ws_notes_after_sql($own, $after) . "
+            WHERE n.user_id = '" . $me . "'" . ws_note_own_sql() . $filter . ws_notes_after_sql($own, $after) . "
             ORDER BY list_group, n.updated_at DESC, n.id DESC LIMIT " . ($limit + 1));
 
         foreach ($rows as $index => $row) {
@@ -1339,11 +1409,12 @@ function ws_notes_page($viewer, $options)
  *
  * @param array $viewer
  * @param array $data see ws_note_save()
+ * @param int   $owner_channel_id see ws_note_save()
  * @return array ok, error, note_id, conflict, note (as it is now, null for a
  *               new one), sets (the fields as they would be stored), pin (1 or
  *               0, null when it is left as it is)
  */
-function ws_note_save_check($viewer, $data)
+function ws_note_save_check($viewer, $data, $owner_channel_id = 0)
 {
     $fail = function ($error, $note_id = 0, $conflict = false) {
         return array('ok' => false, 'error' => $error, 'note_id' => $note_id, 'conflict' => $conflict, 'note' => null, 'sets' => array(), 'pin' => null);
@@ -1377,7 +1448,16 @@ function ws_note_save_check($viewer, $data)
 
             return $fail($error, $note_id, true);
         }
-    } elseif ((int) db_value("SELECT COUNT(*) FROM ws_notes WHERE user_id = '" . (int) $viewer['id'] . "'") >= WS_NOTE_LIMIT) {
+    } elseif ((int) $owner_channel_id > 0) {
+        if (!ws_note_channel_owner_ready()) {
+            return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
+        }
+
+        // A channel's notes count in the channel's limit, not the writer's.
+        if ((int) db_value("SELECT COUNT(*) FROM ws_notes WHERE owner_channel_id = '" . (int) $owner_channel_id . "'") >= WS_NOTE_CHANNEL_LIMIT) {
+            return $fail(lang(array('string' => 'A channel can keep at most {var:1} notes.', 'vars' => WS_NOTE_CHANNEL_LIMIT)));
+        }
+    } elseif ((int) db_value("SELECT COUNT(*) FROM ws_notes WHERE user_id = '" . (int) $viewer['id'] . "'" . ws_note_own_sql('')) >= WS_NOTE_LIMIT) {
         return $fail(lang(array('string' => 'You can keep at most {var:1} notes.', 'vars' => WS_NOTE_LIMIT)));
     }
 
@@ -1397,10 +1477,10 @@ function ws_note_save_check($viewer, $data)
         $sets['body'] = $body;
     }
 
-    // Pinning is the owner's, and is not an edit.
+    // Pinning is the owner's, and is not an edit; a channel's note has none.
     $pin = null;
 
-    if (array_key_exists('pinned', $data) && (($note === null) || ($note['access'] === 'owner'))) {
+    if (array_key_exists('pinned', $data) && ((($note === null) && ((int) $owner_channel_id <= 0)) || (($note !== null) && ($note['access'] === 'owner')))) {
         $pin = !empty($data['pinned']) ? 1 : 0;
     }
 
@@ -1414,11 +1494,14 @@ function ws_note_save_check($viewer, $data)
  *
  * @param array $viewer
  * @param array $data note_id (0 for a new one), title, body, pinned (the owner's), base (updated_at it was loaded at)
+ * @param int   $owner_channel_id a new note written in this channel is the
+ *                                channel's (ws_note_channel_write() only;
+ *                                never taken from a request's data)
  * @return array ok, error, note_id, conflict
  */
-function ws_note_save($viewer, $data)
+function ws_note_save($viewer, $data, $owner_channel_id = 0)
 {
-    $check = ws_note_save_check($viewer, $data);
+    $check = ws_note_save_check($viewer, $data, $owner_channel_id);
 
     if (!$check['ok']) {
         return array('ok' => false, 'error' => $check['error'], 'note_id' => $check['note_id'], 'conflict' => $check['conflict']);
@@ -1434,9 +1517,11 @@ function ws_note_save($viewer, $data)
     $app_ready = ws_note_app_ready();
 
     if ($note === null) {
-        db("INSERT INTO ws_notes (user_id, title, body, pinned, updated_by, " . ($app_ready ? 'updated_app_id, ' : '') . "created_at, updated_at)
+        $owned = ((int) $owner_channel_id > 0);
+
+        db("INSERT INTO ws_notes (user_id, title, body, pinned, updated_by, " . ($app_ready ? 'updated_app_id, ' : '') . ($owned ? 'owner_channel_id, ' : '') . "created_at, updated_at)
             VALUES ('" . (int) $viewer['id'] . "', '" . e($sets['title']) . "', '" . e($sets['body']) . "',
-                '" . (int) $pin . "', '" . (int) $viewer['id'] . "', " . ($app_ready ? "'" . $app_id . "', " : '') . "'" . $now . "', '" . $now . "')");
+                '" . (int) $pin . "', '" . (int) $viewer['id'] . "', " . ($app_ready ? "'" . $app_id . "', " : '') . ($owned ? "'" . (int) $owner_channel_id . "', " : '') . "'" . $now . "', '" . $now . "')");
 
         $note_id = (int) mysqli_insert_id(db::$con);
 
@@ -1635,7 +1720,7 @@ function ws_note_deletions_since($viewer, $since)
     $me = (int) $viewer['id'];
     $ids = implode(',', array_column($out, 'id'));
     $kept = array_merge(
-        (array) db_values("SELECT id FROM ws_notes WHERE user_id = '" . $me . "' AND id IN (" . $ids . ")"),
+        (array) db_values("SELECT id FROM ws_notes WHERE user_id = '" . $me . "'" . ws_note_own_sql('') . " AND id IN (" . $ids . ")"),
         (array) db_values("SELECT note_id FROM ws_note_shares WHERE user_id = '" . $me . "' AND note_id IN (" . $ids . ")")
     );
 
@@ -1737,6 +1822,20 @@ function ws_note_delete($viewer, $note)
         return $check;
     }
 
+    ws_note_delete_rows($note, (int) $viewer['id']);
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Deletes a note with everything kept for it, without asking who may: the
+ * caller has. Its cards say it is no longer shared.
+ *
+ * @param array $note
+ * @param int   $by who deletes it (0: the site, as with its channel)
+ */
+function ws_note_delete_rows($note, $by)
+{
     $id = (int) $note['id'];
 
     // Who kept it is read before the shares go, for the apps that keep
@@ -1745,7 +1844,7 @@ function ws_note_delete($viewer, $note)
         $now = time();
         $shares = (array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . $id . "'");
 
-        foreach (ws_note_deletion_rows($note, $shares, (int) $viewer['id'], $now) as $row) {
+        foreach (ws_note_deletion_rows($note, $shares, (int) $by, $now) as $row) {
             db("INSERT INTO ws_note_deletions (note_id, user_id, channel_id, deleted_by, deleted_at)
                 VALUES ('" . $row['note_id'] . "', '" . $row['user_id'] . "', '" . $row['channel_id'] . "', '" . $row['deleted_by'] . "', '" . $row['deleted_at'] . "')");
         }
@@ -1782,8 +1881,28 @@ function ws_note_delete($viewer, $note)
     if (ws_notes_inbox_ready()) {
         ws_inbox_delete("note_id = '" . $id . "'");
     }
+}
 
-    return array('ok' => true, 'error' => '');
+/**
+ * Deletes the notes that belong to a channel which is being deleted, as its
+ * messages are (ws_threads_purge()).
+ *
+ * @param int $channel_id
+ * @return int how many
+ */
+function ws_note_channel_purge($channel_id)
+{
+    if (((int) $channel_id <= 0) || !ws_notes_ready() || !ws_note_channel_owner_ready()) {
+        return 0;
+    }
+
+    $notes = (array) db_items("SELECT * FROM ws_notes WHERE owner_channel_id = '" . (int) $channel_id . "'");
+
+    foreach ($notes as $note) {
+        ws_note_delete_rows($note, 0);
+    }
+
+    return count($notes);
 }
 
 /**
@@ -1868,6 +1987,10 @@ function ws_note_from_message($viewer, $message)
  */
 function ws_note_share_people($viewer, $note, $user_ids, $can_edit)
 {
+    if (ws_note_channel_of($note) > 0) {
+        return array('ok' => false, 'error' => lang('A channel\'s note is not shared elsewhere.'), 'shared' => 0);
+    }
+
     $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
 
     if ($locked !== '') {
@@ -1925,6 +2048,11 @@ function ws_note_share_people($viewer, $note, $user_ids, $can_edit)
  */
 function ws_note_share_channel($viewer, $note, $channel, $options = array())
 {
+    // A channel's note has its one card in its own channel.
+    if ((ws_note_channel_of($note) > 0) && (ws_note_channel_of($note) !== (int) $channel['id'])) {
+        return array('ok' => false, 'error' => lang('A channel\'s note is not shared elsewhere.'), 'message_id' => 0);
+    }
+
     $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
 
     if ($locked !== '') {
@@ -2096,7 +2224,7 @@ function ws_note_cards_touch($note_id)
  */
 function ws_note_channel_edit_set($viewer, $note, $channel_id, $can_edit)
 {
-    if (!is_array($note) || ((int) $note['user_id'] !== (int) $viewer['id'])) {
+    if (!is_array($note) || ((int) $note['user_id'] !== (int) $viewer['id']) || (ws_note_channel_of($note) > 0)) {
         return array('ok' => false, 'error' => lang('Only the one who wrote a note can share it.'), 'message_id' => 0);
     }
 
@@ -2172,7 +2300,7 @@ function ws_note_channel_write_check($viewer, $channel, $data)
         return $fail(lang('The note is empty.'), 'body');
     }
 
-    $saved = ws_note_save_check($viewer, array('note_id' => 0, 'title' => $title, 'body' => $body));
+    $saved = ws_note_save_check($viewer, array('note_id' => 0, 'title' => $title, 'body' => $body), (int) $channel['id']);
 
     if (!$saved['ok']) {
         return $fail($saved['error'], (mb_strlen($body) > WS_NOTE_MAX) ? 'body' : '');
@@ -2189,9 +2317,13 @@ function ws_note_channel_write_check($viewer, $channel, $data)
 }
 
 /**
- * Writes a new note of the person's own and posts its card in the channel in
- * one move. channel_edit on lets the channel's posters change it. The card's
- * message is written as $data's app_id / via_client_id say.
+ * Writes a new note of the channel's and posts its card there in one move.
+ * The note belongs to the channel (owner_channel_id), user_id keeps its
+ * writer: who may post in the channel changes it, and it is on nobody's own
+ * notes nor in their limit. Its card is tied to it by a channel share row
+ * that gives no access (ws_note_access_of() reads none for a channel's
+ * note), so channel_edit has no effect on it. The card's message is written
+ * as $data's app_id / via_client_id say.
  *
  * @param array $viewer
  * @param array $channel
@@ -2206,7 +2338,7 @@ function ws_note_channel_write($viewer, $channel, $data)
         return array('ok' => false, 'error' => $check['error'], 'field' => $check['field'], 'note_id' => 0, 'message_id' => 0, 'revision' => 0);
     }
 
-    $saved = ws_note_save($viewer, array('note_id' => 0, 'title' => $check['title'], 'body' => $check['body'], 'app_id' => (int) ($data['app_id'] ?? 0)));
+    $saved = ws_note_save($viewer, array('note_id' => 0, 'title' => $check['title'], 'body' => $check['body'], 'app_id' => (int) ($data['app_id'] ?? 0)), (int) $channel['id']);
 
     if (!$saved['ok']) {
         return array('ok' => false, 'error' => $saved['error'], 'field' => '', 'note_id' => 0, 'message_id' => 0, 'revision' => 0);
@@ -2214,7 +2346,7 @@ function ws_note_channel_write($viewer, $channel, $data)
 
     $note = ws_note($saved['note_id']);
     $shared = ws_note_share_channel($viewer, $note, $channel, array(
-        'can_edit'      => !empty($data['channel_edit']),
+        'can_edit'      => false,
         'app_id'        => (int) ($data['app_id'] ?? 0),
         'via_client_id' => (int) ($data['via_client_id'] ?? 0),
     ));

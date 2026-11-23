@@ -262,6 +262,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_volunteer_shifts();        // 11.0.270
 	upgrade_2026_11_0_kvkk_switch();             // 11.0.271
 	upgrade_2026_11_0_order_cost_supplier();     // 11.0.272
+	upgrade_2026_11_0_ws_note_channel();         // 11.0.273
 
 }
 
@@ -9286,5 +9287,22 @@ function upgrade_2026_11_0_kvkk_switch() {
 	db_q("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', ?)", array($on));
 
 	install_note('KVKK notice: the notice page and the consent sentence now have a switch of their own under Site Settings, Visitors and privacy, KVKK notice. It starts as the legal documents switch is now, so nothing changes until you change it.');
+
+}
+
+// 11.0.273 - A note that belongs to a channel (includes/workspace/notes.php).
+//
+// A note written in a channel ("Write a note", POST
+// /workspace/channels/{id}/notes) is the channel's: ws_notes.owner_channel_id
+// names that channel, 0 is a person's own note, which every existing row
+// stays. user_id keeps who wrote it. Access comes from the channel, and the
+// note is left out of every list and limit of a person's notes; the index
+// serves the channel's count and its list.
+function upgrade_2026_11_0_ws_note_channel() {
+
+	install_add_column('ws_notes', 'owner_channel_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_notes', 'idx_owner_channel', "KEY idx_owner_channel (owner_channel_id)");
+
+	install_note('Workspace: a note written in a channel now belongs to the channel; existing notes stay with the people who wrote them.');
 
 }

@@ -235,7 +235,7 @@ function ws_note_export_rows($viewer)
 {
     $me = (int) $viewer['id'];
 
-    $mine = (array) db_items("SELECT * FROM ws_notes WHERE user_id = '" . $me . "' ORDER BY pinned DESC, updated_at DESC, id DESC");
+    $mine = (array) db_items("SELECT * FROM ws_notes WHERE user_id = '" . $me . "'" . ws_note_own_sql('') . " ORDER BY pinned DESC, updated_at DESC, id DESC");
 
     $shared = (array) db_items("SELECT n.* FROM ws_notes n
         INNER JOIN ws_note_shares s ON s.note_id = n.id AND s.user_id = '" . $me . "'

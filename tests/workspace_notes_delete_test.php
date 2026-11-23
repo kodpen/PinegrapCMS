@@ -64,6 +64,11 @@ function test_workspace_notes_delete_keeps_its_record_before_the_shares_go()
 	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
 
 	pg_assert_contains('ws_note_delete_check($viewer, $note)', $body, 'the screen and the API meet one check');
+	pg_assert_contains('ws_note_delete_rows($note, (int) $viewer[\'id\']);', $body, 'then the rows go');
+
+	$start = strpos($source, 'function ws_note_delete_rows($note, $by)');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
 	pg_assert_true(strpos($body, 'INSERT INTO ws_note_deletions') < strpos($body, 'DELETE FROM ws_note_shares'), 'who kept it is written before the shares are deleted');
 	pg_assert_contains('WS_NOTE_DELETIONS_KEEP', $body, 'older records go at the same time');
 }

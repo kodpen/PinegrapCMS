@@ -144,7 +144,7 @@ function test_ws_ref_note_writers()
 		pg_assert_contains('ws_note_ref_tokens(', $source, $function . ' from its text');
 	}
 
-	pg_assert_contains("ws_ref_source_write('note', array(\$id => array()))", workspace_ref_sources_test_source('ws_note_delete'), 'a deleted note\'s tags go');
+	pg_assert_contains("ws_ref_source_write('note', array(\$id => array()))", workspace_ref_sources_test_source('ws_note_delete_rows'), 'a deleted note\'s tags go');
 	pg_assert_contains('ws_note_save($viewer', workspace_ref_sources_test_source('ws_note_import_write'), 'an import that updates a note saves it');
 }
 
