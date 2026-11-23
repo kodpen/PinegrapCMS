@@ -519,6 +519,37 @@ function test_image_editor_model_panel_title()
 	pg_assert_same(array('layers', 'layers', 'tool_adjust', 'layers', 'tool_artboard', 'layer_text', 'layer_rect', 'selection'), $r, 'the title follows the list, the selection, the canvas and the tool');
 }
 
+// The help button's section: an open list first, then the tool, under
+// Select the selection's one type, and Export by whether anything moves.
+function test_image_editor_model_help_anchor()
+{
+	$r = image_editor_model_node(
+		'console.log(JSON.stringify(['
+		. ' M.helpAnchor("select", {}), M.helpAnchor("select", { artboard: true }),'
+		. ' M.helpAnchor("crop", {}), M.helpAnchor("adjust", {}), M.helpAnchor("frame", {}),'
+		. ' M.helpAnchor("redact", {}), M.helpAnchor("area", {}), M.helpAnchor("text", {}),'
+		. ' M.helpAnchor("rect", {}), M.helpAnchor("sticker", {}), M.helpAnchor("vector", {}),'
+		. ' M.helpAnchor("builder", {}), M.helpAnchor("artboard", {}), M.helpAnchor("motion", {}),'
+		. ' M.helpAnchor("export", { motion: true }), M.helpAnchor("export", { motion: false }),'
+		. ' M.helpAnchor("crop", { layersOpen: true }), M.helpAnchor("crop", { versionsOpen: true, layersOpen: true }),'
+		. ' M.helpAnchor("select", { types: ["text", "text"] }), M.helpAnchor("select", { types: ["text", "rect"] }),'
+		. ' M.helpAnchor("nothing-known", {})'
+		. ']));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(
+		'opening', 'blank-canvas', 'photo-crop', 'photo-adjust', 'photo-frame', 'redact', 'select-area',
+		'text-and-shapes-text', 'text-and-shapes-draw', 'text-and-shapes-stickers', 'vector-pen', 'vector-combine',
+		'blank-canvas-size', 'animate', 'export', 'saving-export', 'layers', 'saving-versions',
+		'text-and-shapes-text', 'layers', 'opening',
+	), $r, 'each tool and list opens its own section');
+}
+
 // A selection box takes the visible, unlocked layers its box touches, a
 // turned layer by its upright bounds, bottom to top; a locked or hidden
 // layer stays out.

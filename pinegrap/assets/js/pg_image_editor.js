@@ -111,7 +111,8 @@
         distx: 'M4 3v18M20 3v18M9.5 8h5v8h-5z',
         disty: 'M3 4h18M3 20h18M8 9.5h8v5H8z',
         duplicate: 'M8.5 8.5h11v11h-11zM4.5 15.5v-11h11',
-        trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'
+        trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+        help: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM9.6 9.6a2.4 2.4 0 1 1 3.4 2.2c-.6.3-1 .9-1 1.6v.6M12 16.8h.01'
     };
 
     var current = null, serial = 0;
@@ -414,6 +415,9 @@
         this.undoBtn = button('pgie-ibtn', t('undo'), 'undo', function () { self.undo(); });
         this.redoBtn = button('pgie-ibtn', t('redo'), 'redo', function () { self.redo(); });
         this.fullBtn = button('pgie-ibtn pgie-fullbtn', t('fullscreen'), 'expand', function () { self.setFull(!self.full); });
+        // The documentation page at the open tool's section; the server
+        // gives no address on a private-labelled site.
+        this.helpBtn = config().help ? button('pgie-ibtn', t('help'), 'help', function () { self.openHelp(); }) : null;
         this.meta = el('div', { class: 'pgie-fmeta' });
 
         this.nameEl = el('div', { class: 'pgie-fname', text: name || t('dialog') });
@@ -441,6 +445,7 @@
             mini ? this.closeBtn : null
         ].concat(Editor.topItems.map(function (item) { return mini ? null : item.call(self); }), [
             this.saveBox,
+            this.helpBtn,
             this.fullBtn
         ]));
 
@@ -1237,6 +1242,24 @@
         }
 
         this.render();
+    };
+
+    // Opens the canvas's documentation in a new tab at the section of what
+    // is open (M.helpAnchor()).
+    Editor.prototype.openHelp = function () {
+        var types = (this.tool === 'select') ? this.selected().map(function (l) { return l.type; }) : [];
+        var anchor = M.helpAnchor(this.tool, {
+            layersOpen: !!this.layersOpen,
+            versionsOpen: !!this.versionsOpen,
+            types: types,
+            artboard: !!this.doc.artboard,
+            motion: M.hasMotion(this.doc)
+        });
+        var win = window.open(String(config().help).split('#')[0] + '#' + anchor, '_blank', 'noopener');
+
+        if (win) {
+            win.opener = null;
+        }
     };
 
     Editor.prototype.renderPanel = function () {

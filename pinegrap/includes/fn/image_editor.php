@@ -94,6 +94,7 @@ function pg_image_editor_strings_core()
         'done'           => lang('Done'),
         'cancel'         => lang('Cancel'),
         'fullscreen'     => lang('Full screen'),
+        'help'           => lang('Help'),
         'exitFullscreen' => lang('Exit full screen'),
         'zoomIn'         => lang('Zoom in'),
         'zoomOut'        => lang('Zoom out'),
@@ -216,6 +217,10 @@ function pg_image_editor_config()
         // may edit a folder; the File Manager's address for its link.
         'filesEdit'      => pg_image_editor_files_edit(),
         'filesUrl'       => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php',
+        // The documentation page of the canvas in the panel's language, for
+        // the top bar's help button; the open tool adds its anchor
+        // (M.helpAnchor()). '' on a private-labelled site hides the button.
+        'help'           => pg_help_url(array('topic' => 'artifact-canvas')),
         // The Design Canvas's icon before the file name in the top bar.
         'brandIcon'      => pg_design_canvas_icon(),
         // Its one-colour form, for the buttons of a screen that opens it

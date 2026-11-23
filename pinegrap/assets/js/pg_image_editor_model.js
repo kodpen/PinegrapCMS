@@ -1172,6 +1172,59 @@
         return types.every(function (type) { return type === types[0]; }) ? 'layer_' + types[0] : 'selection';
     }
 
+    // The section of the canvas's documentation page (pg_help_url()'s
+    // artifact-canvas) for what the editor shows: the open list or panel
+    // first, then the tool; under Select, the selected layers' one type.
+    // state: { layersOpen, versionsOpen, types, artboard, motion } where
+    // motion is true when a layer moves (Export then saves an animation).
+    var HELP_TOOLS = {
+        crop: 'photo-crop', adjust: 'photo-adjust', frame: 'photo-frame', redact: 'redact', area: 'select-area',
+        text: 'text-and-shapes-text', draw: 'text-and-shapes-draw', arrow: 'text-and-shapes-draw',
+        line: 'text-and-shapes-draw', rect: 'text-and-shapes-draw', ellipse: 'text-and-shapes-draw',
+        pen: 'text-and-shapes-draw', sticker: 'text-and-shapes-stickers', image: 'text-and-shapes-stickers',
+        vector: 'vector-pen', scissors: 'vector', builder: 'vector-combine', warp: 'vector-bend', puppet: 'vector-bend',
+        artboard: 'blank-canvas-size', motion: 'animate'
+    };
+    var HELP_TYPES = {
+        text: 'text-and-shapes-text', arrow: 'text-and-shapes-draw', line: 'text-and-shapes-draw',
+        rect: 'text-and-shapes-draw', ellipse: 'text-and-shapes-draw', triangle: 'text-and-shapes-draw',
+        polygon: 'text-and-shapes-draw', star: 'text-and-shapes-draw', pen: 'text-and-shapes-draw',
+        sticker: 'text-and-shapes-stickers', glyph: 'text-and-shapes-stickers', image: 'text-and-shapes-stickers',
+        redact: 'redact', path: 'vector'
+    };
+
+    function helpAnchor(tool, state) {
+        state = state || {};
+
+        if (state.versionsOpen) {
+            return 'saving-versions';
+        }
+
+        if (state.layersOpen) {
+            return 'layers';
+        }
+
+        if (tool === 'export') {
+            return state.motion ? 'export' : 'saving-export';
+        }
+
+        if (HELP_TOOLS.hasOwnProperty(tool)) {
+            return HELP_TOOLS[tool];
+        }
+
+        var types = state.types || [];
+
+        if (types.length && types.every(function (type) { return type === types[0]; }) && HELP_TYPES.hasOwnProperty(types[0])) {
+            return HELP_TYPES[types[0]];
+        }
+
+        if (types.length) {
+            return 'layers';
+        }
+
+        return state.artboard ? 'blank-canvas' : 'opening';
+    }
+
     // ---- the tools' own maths ----
     // Each tool keeps its pure functions in its section here, so the tests
     // reach them under Node (tests/image_editor_<tool>_test.php), and names
@@ -12805,7 +12858,7 @@
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
         newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, layersInBox: layersInBox, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
         align: align, distribute: distribute, snapBox: snapBox, reorder: reorder, pressSelects: pressSelects,
-        ownsKey: ownsKey, focusMatch: focusMatch, panelTitle: panelTitle
+        ownsKey: ownsKey, focusMatch: focusMatch, panelTitle: panelTitle, helpAnchor: helpAnchor
     };
 
     // A name taken twice would hide a function: the model refuses to load,
