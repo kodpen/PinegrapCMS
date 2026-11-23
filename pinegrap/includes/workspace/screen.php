@@ -81,6 +81,7 @@ function ws_js_strings()
         'tasks_views'            => lang('Which tasks'),
         'tasks_found_none'       => lang('No task matches the filters or the search.'),
         'tasks_none_title'       => lang('No tasks'),
+        'notes_none_title'       => lang('No notes yet'),
         'cancel'                 => lang('Cancel'),
         'cannot_post'            => lang('You cannot write in this channel.'),
         'cell_title'             => ws_js_template('{var:1} h planned of {var:2} h', 2),

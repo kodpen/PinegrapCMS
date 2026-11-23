@@ -5,7 +5,7 @@ description: Notes leaving the Workspace as files (workspace_notes_export.php, n
 
 ## What leaves, and from where?
 - `workspace_notes_export.php` (PR #528), for the person signed in and a workspace member: `?note=N` sends the note as `<title>.md` (`text/markdown`), `?note=N&print=1` draws it as a small page of its own that calls `window.print()`, `?all=1` sends `notes-<date>.zip`. A note the person may not view answers 404 (`ws_note_for(…, 'view')`). GET with the session: a read of the person's own data, no state changes.
-- Buttons: the note menu (`noteMenu()` in workspace.js: "Download as Markdown", "Print") and the toolbar ("Export all"); the URL is `CFG.urls.notes_export`.
+- Buttons: the note menu (`noteMenu()` in workspace.js: "Download as Markdown", "Print") and the bar's "⋯" ("Export all"); the URL is `CFG.urls.notes_export`.
 
 ## What does a Markdown file hold?
 - Built by `ws_note_export_markdown()` (`includes/workspace/notes_io.php`): a YAML front matter (`title` quoted by `ws_note_export_yaml()`, `created` and `updated` as ISO 8601 in the site's time zone, `author`, `source` = the channel the note was kept from when the reader may still read it, `shared_by` for a shared note, `pinegrap_note` = the note's id for a later import), a blank line, then the body as the note keeps it with LF endings.

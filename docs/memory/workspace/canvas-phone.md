@@ -17,7 +17,7 @@ description: The canvas screens at phone width (CO8, #9361): chips under the nam
 
 ## And the Data list?
 - New table is the filled button floating at the bottom right on a phone (`.ws-wt-fab`, placing only: fixed, 16 px from the edges and the safe area, z-index 1010 under the menu drawer); the toolbar's New table shows from 576 px.
-- The rows are the list table driver's phone cards (every column under its label). Its strips All / Mine / Channels / Shared with me and Tables / Deleted tables are icon segments (`ws_wtable_list_segment_icons()`), so both fit one line at 390 px.
+- The rows are the list table driver's phone cards (every column under its label). Its scopes are a select on a phone, Deleted tables an icon button (`ui/workspace-screen-bar.md`); the icon segments of #9361 went with the one-line bar.
 
 ## What did CO8 leave to DL5f?
 - Built from the nearest recipe, no new one: the floating button is `pg-button-fill` with its label, not the drawing's 52 px icon tile. Not built: the drawing's compact row card (name, rows, place, time, canvases on two lines) and the groups "Channel tables" / "Mine and shared"; the list driver has neither.

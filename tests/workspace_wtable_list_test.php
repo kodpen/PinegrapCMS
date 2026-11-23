@@ -154,7 +154,7 @@ function test_ws_wtable_list_bar()
 	);
 	$html = ws_wtable_list_bar('ws_wtables', $scopes, array('url' => 'w.php?view=deleted', 'current' => false, 'count' => 2));
 
-	pg_assert_true(strpos($html, '<div class="ws-bar-frame"><nav id="button_bar" class="pg-toolbar ws-bar"') === 0, 'one bar line in its frame, still #button_bar');
+	pg_assert_true(strpos($html, '<div class="ws-bar-frame"><nav class="pg-toolbar ws-bar"') === 0, 'one bar line in its frame, without the #button_bar rules');
 	pg_assert_same(1, substr_count($html, 'pg-button-fill'), 'one filled button: New table');
 	pg_assert_contains('data-bs-target="#ws_wt_import_new"', $html, 'Import from file stays');
 	pg_assert_contains('<span class="pg-seg ws-bar-views-seg" role="group" aria-label="Show">', $html, 'the scopes as the views, without icons');

@@ -251,7 +251,7 @@ function ws_wtable_list_bar($list, array $scopes, $deleted)
 
     // On a phone New table floats at the bottom right (.ws-wt-fab), and
     // Import from file keeps its icon, the word for screen readers.
-    return '<div class="ws-bar-frame"><nav id="button_bar" class="pg-toolbar ws-bar" aria-label="' . h(lang('Button Bar')) . '">'
+    return '<div class="ws-bar-frame"><nav class="pg-toolbar ws-bar" aria-label="' . h(lang('Button Bar')) . '">'
         . '<button type="button" class="pg-button pg-button-fill d-none sm:d-inline-flex" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>'
         . '<button type="button" class="pg-button pg-button-quiet" data-bs-toggle="dialog" data-bs-target="#ws_wt_import_new"><i class="bi bi-upload" aria-hidden="true"></i><span class="ws-bar-label">' . h(lang('Import from file')) . '</span></button>'
         . $views
