@@ -4,7 +4,8 @@
  *
  * Tests for an application programme's report that need no database
  * (includes/fn/application_report.php): reviewer progress, the spread by
- * criterion and reviewer, the entries by state, the workbook's sheets.
+ * criterion and reviewer, the entries by state, the workbook's sheets; the
+ * two events' payload, and the API's programme and entry presenters.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -16,7 +17,24 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/application_report.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_payloads.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/application_programs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+// The presenters' time helper lives in includes/api/response.php, which loads
+// only behind the API's own entry: a stand-in of the same shape.
+if (!function_exists('api_time')) {
+	function api_time($unix)
+	{
+		return ((int) $unix > 0) ? gmdate('Y-m-d\\TH:i:s\\Z', (int) $unix) : null;
+	}
+}
 
 function _application_report_reviewers()
 {
@@ -113,4 +131,56 @@ function test_application_report_workbook_sheets()
 	pg_assert_same(6, count($sheets[1]['rows']));
 	pg_assert_same(array('t' => 's', 'v' => 'Arts'), $sheets[2]['rows'][2][1]);
 	pg_assert_same(11, count($sheets[2]['rows'][1]));
+}
+
+function test_application_report_event_payload_and_record()
+{
+	$row = array('id' => 88, 'form_id' => 2210, 'page_id' => 14, 'reference_code' => 'K4M9QZ', 'category' => 'painting', 'round' => 2, 'score_raw' => 725, 'decision' => 3, 'reviewer_id' => 5, 'eligibility_note' => '{"override":{"note":"x"}}');
+	$program = array('id' => 3, 'name' => 'Young artists');
+	$payload = pg_application_event_payload($row, $program) + array('previous_decision' => 'none');
+
+	pg_assert_same(array('id' => 2210, 'form_id' => 14, 'entry_id' => 88, 'program_id' => 3, 'program_name' => 'Young artists', 'reference_code' => 'K4M9QZ', 'category' => 'painting', 'round' => 2, 'score_raw' => 7.25, 'decision' => 'waitlisted', 'previous_decision' => 'none'), $payload);
+	pg_assert_same(null, pg_application_event_payload(array('score_raw' => 0, 'decision' => 9) + $row, $program)['score_raw']);
+	pg_assert_same('none', pg_application_event_payload(array('decision' => 9) + $row, $program)['decision']);
+
+	// Every key is documented with a sample, and the event is a known one.
+	$documented = api_webhook_event_payloads();
+
+	foreach (array('application.scored' => array('total' => 7.5, 'reviews_sent' => 2), 'application.decided' => array('previous_decision' => 'none')) as $event => $extra) {
+		pg_assert_true(api_webhook_event_is_valid($event), $event);
+		pg_assert_same(array_keys($documented[$event]['fields']), array_keys(pg_application_event_payload($row, $program) + $extra), $event);
+		pg_assert_true(in_array($event, pg_event_workspace_events(), true), $event . ' is kept for the Workspace');
+	}
+}
+
+function test_application_report_event_names_the_submission()
+{
+	pg_assert_same(array('form', 2210), ws_events_record_of('application.scored', array('id' => 2210, 'form_id' => 14, 'entry_id' => 88)));
+	pg_assert_same(array('form', 2210), ws_events_record_of('application.decided', array('id' => 2210, 'form_id' => 14, 'entry_id' => 88)));
+	pg_assert_same(array('reference_code', 'program_name', 'category', 'round', 'decision', 'previous_decision', 'score_raw'), array_column(ws_flow_event_outputs()['application.decided'], 'key'));
+}
+
+function test_application_report_api_presenters()
+{
+	$program = array('id' => 3, 'name' => 'Young artists', 'page_id' => 14, 'status' => 1, 'opens_at' => 0, 'closes_at' => 1800000000, 'round' => 0, 'blind' => 1, 'created_at' => 0, 'updated_at' => 0,
+		'rounds' => array(array('criteria' => array(array('id' => 'c1', 'name' => 'Idea', 'weight' => '100')), 'reviewers' => 2, 'ends_at' => 0, 'cut' => array('mode' => 'top', 'value' => 3))));
+	$out = api_application_program_present($program, 5);
+
+	pg_assert_same(array_keys(api_application_program_schema()), array_keys($out));
+	pg_assert_same('open', $out['status']);
+	pg_assert_same(1, $out['round']);
+	pg_assert_same(null, $out['opens_at']);
+	pg_assert_same(array(array('round' => 1, 'criteria' => array(array('id' => 'c1', 'name' => 'Idea', 'weight' => 100)), 'reviewers_per_entry' => 2, 'ends_at' => null)), $out['rounds']);
+
+	$entry = array('id' => 88, 'form_id' => 2210, 'reference_code' => 'K4M9QZ', 'category' => 'a', 'round' => 1, 'eligible' => 3, 'score_raw' => 725, 'score_adjusted' => 700, 'spread' => 0,
+		'consensus' => 2, 'shortlisted' => 1, 'decision' => 4, 'decided_at' => 0, 'mailed_at' => 0, 'created_at' => 0, 'eligibility_note' => 'secret');
+	$out = api_application_entry_present($entry, array(array('round' => 1, 'total' => 750, 'scores' => '{"c1":{"score":7,"note":"never"}}', 'submitted_at' => 0, 'reviewer_id' => 5)));
+
+	pg_assert_same(array_keys(api_application_entry_schema()), array_keys($out));
+	pg_assert_same(array('let_in', 7.25, 7.0, 0.0, 'settled', true, 'declined'), array($out['eligible'], $out['score_raw'], $out['score_adjusted'], $out['spread'], $out['consensus'], $out['shortlisted'], $out['decision']));
+	pg_assert_same(array_keys(api_application_review_schema()), array_keys($out['reviews'][0]));
+	pg_assert_same('{"c1":7}', json_encode($out['reviews'][0]['scores']), 'only the score: no note, no reviewer');
+
+	$none = api_application_entry_present(array('score_raw' => 0, 'score_adjusted' => 0, 'spread' => 0) + $entry, array());
+	pg_assert_same(array(null, null, null, array()), array($none['score_raw'], $none['score_adjusted'], $none['spread'], $none['reviews']));
 }

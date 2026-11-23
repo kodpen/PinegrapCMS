@@ -4360,7 +4360,7 @@ function api_schema() {
 		/* ----- Forms -------------------------------------------------------- */
 
 		array(
-			'id'      => 'application_programs.list',
+			'id'      => 'forms.application_programs',
 			'method'  => 'GET',
 			'path'    => '/application-programs',
 			'scope'   => 'forms:read',
@@ -4377,14 +4377,15 @@ function api_schema() {
 		),
 
 		array(
-			'id'      => 'application_programs.entries',
+			'id'      => 'forms.application_entries',
 			'method'  => 'GET',
 			'path'    => '/application-programs/{id}/entries',
 			'scope'   => 'forms:read',
 			'handler' => 'api_application_program_entries',
 			'returns' => array('list' => 'ApplicationEntry'),
 			'summary' => 'Entries of an application programme, with their scores',
-			'description' => 'Cursor paged by id. Each entry: its submission (read it through /forms/{form_id}/submissions/{submission_id}), category, round, eligible (unchecked, yes, no, let_in), the combined scores of its round (score_raw the mean of the weighted totals, score_adjusted the corrected mean, spread; null before a review is sent), consensus (none, needed, settled), shortlisted, decision (none, accepted, rejected, waitlisted, declined) with decided_at and mailed_at, and its sent reviews: round, weighted total and each criterion\'s score 1-10. A review never names its reviewer or carries a note. A programme on a form in a folder the owner may not edit is 404.',
+			'description' => 'Cursor paged by id. Each entry: its submission, category, round, eligibility, the combined scores of its round (null before a review is sent), consensus, shortlisted, decision with decided_at and mailed_at, and its sent reviews (round, weighted total, each criterion\'s score 1-10). A review never names its reviewer or carries a note. A programme on a form in a folder the owner may not edit is 404.',
+			'details' => 'submission_id is read through /forms/{form_id}/submissions/{submission_id}. eligible is unchecked, yes, no or let_in (a not eligible entry a manager let in). score_raw is the mean of the weighted totals, score_adjusted the corrected mean that evens out strict and generous reviewers, spread how far the totals lie apart. consensus is none, needed or settled; decision none, accepted, rejected, waitlisted or declined. A review\'s scores are keyed by the criterion ids of GET /application-programs.',
 			'params'  => array(
 				array('name' => 'id',          'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The programme id.'),
 				array('name' => 'round',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 255, 'description' => 'Only entries now in this round.'),

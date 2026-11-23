@@ -267,6 +267,12 @@ function api_webhook_core_events() {
 		'feedback.received'    => 'A person answered a satisfaction survey, or changed or completed their answer within 7 days (first tells which)',
 		'feedback.detractor'   => 'A satisfaction survey answer became a low score (NPS 0-6, CSAT 1-2, effort 6-7); once per answer, with the follow-up\'s owner and task',
 		'form.submitted'       => 'A visitor submitted a form',
+		// Application programmes (pg_application_event_payload()): a
+		// reviewer's sent review (application_my_reviews.php), and each
+		// decision change, one by one or for ticked rows, and the waitlist
+		// call (application_decisions.php).
+		'application.scored'   => 'A reviewer sent their scores on an application programme entry (the reviewer and notes are never sent)',
+		'application.decided'  => 'An application programme entry was accepted, rejected, waitlisted or declined, or its decision taken back, by a manager or the waitlist call',
 		// The order's completion when the payment service confirmed it, or the
 		// payment staff recorded for an offline one.
 		'form.paid'            => 'The fee of a designed form\'s record was paid',

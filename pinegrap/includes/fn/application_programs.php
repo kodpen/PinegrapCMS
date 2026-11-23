@@ -912,3 +912,49 @@ function pg_application_entry_card($form_id)
 
     return array('card' => pg_submitted_form_status_card(lang('Application'), $body), 'form' => $form);
 }
+
+/**
+ * The payload of application.scored and application.decided: the entry's
+ * submission (id, as form.submitted gives it) and form, the programme, the
+ * round, the stored combined score and decision; the caller adds the
+ * event's own keys. Never a reviewer or a note. Pure.
+ *
+ * @param array $row     application_entries row with reference_code and the
+ *                       form's page_id
+ * @param array $program decoded
+ * @return array
+ */
+function pg_application_event_payload(array $row, array $program)
+{
+    $decisions = array('none', 'accepted', 'rejected', 'waitlisted', 'declined');
+    $raw = (int) $row['score_raw'];
+
+    return array(
+        'id'             => (int) $row['form_id'],
+        'form_id'        => (int) $row['page_id'],
+        'entry_id'       => (int) $row['id'],
+        'program_id'     => (int) $program['id'],
+        'program_name'   => (string) $program['name'],
+        'reference_code' => (string) $row['reference_code'],
+        'category'       => (string) $row['category'],
+        'round'          => (int) $row['round'],
+        'score_raw'      => ($raw > 0) ? round($raw / 100, 2) : null,
+        'decision'       => $decisions[(int) $row['decision']] ?? 'none',
+    );
+}
+
+/**
+ * An entry's row as pg_application_event_payload() reads it, read fresh
+ * after the change it announces; null when it is gone.
+ *
+ * @param int $entry_id
+ * @return array|null
+ */
+function pg_application_event_row($entry_id)
+{
+    $rows = _pg_application_rows("SELECT application_entries.*, forms.reference_code, forms.page_id
+        FROM application_entries LEFT JOIN forms ON forms.id = application_entries.form_id
+        WHERE application_entries.id = ?", array((int) $entry_id));
+
+    return $rows ? $rows[0] : null;
+}

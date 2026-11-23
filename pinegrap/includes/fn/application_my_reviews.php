@@ -371,8 +371,9 @@ function pg_application_entry_view(array $program, $form_id)
 /**
  * Saves a reviewer's scores as typed; with $send, sends the review: every
  * criterion must be scored, the weighted total is kept, and it can no
- * longer be changed. Sending is an audit_log line on the entry and
- * recombines the round's scores (pg_application_scores_refresh()).
+ * longer be changed. Sending is an audit_log line on the entry,
+ * recombines the round's scores (pg_application_scores_refresh()) and is
+ * announced as application.scored.
  *
  * @param array $context pg_application_my_review(), open
  * @param array $scores  pg_application_review_scores_input()
@@ -405,6 +406,14 @@ function pg_application_review_save(array $context, array $scores, $send)
     // The entry's stored means, spread and consensus flag follow each sent
     // review; the corrected means of the reviewer's other entries move too.
     pg_application_scores_refresh($context['program']);
+    $row = pg_application_event_row((int) $review['entry_id']);
+
+    if ($row !== null) {
+        pg_announce('application.scored', pg_application_event_payload($row, $context['program']) + array(
+            'total'        => $total,
+            'reviews_sent' => (int) db_value("SELECT COUNT(*) FROM application_reviews WHERE entry_id = '" . (int) $review['entry_id'] . "' AND round = '" . (int) $review['round'] . "' AND status = 2"),
+        ));
+    }
 
     return true;
 }

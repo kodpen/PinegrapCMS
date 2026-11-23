@@ -218,6 +218,15 @@ function ws_events_catalog()
         if (function_exists('pg_form_payment_ready') && pg_form_payment_ready()) {
             $catalog['form.paid'] = array('label' => lang('A form\'s fee is paid'), 'when' => lang('When a form\'s fee is paid'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page');
         }
+
+        // Application programmes, about the entry's submission, narrowed to
+        // one form like a submission.
+        if (function_exists('pg_application_program_ready') && pg_application_program_ready()) {
+            $catalog += array(
+                'application.scored'  => array('label' => lang('An application is scored'), 'when' => lang('When a reviewer sends their scores on an application'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page'),
+                'application.decided' => array('label' => lang('An application is decided'), 'when' => lang('When an application is accepted, rejected, waitlisted or declined'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page'),
+            );
+        }
     }
 
     $catalog += array(
@@ -794,6 +803,8 @@ function ws_events_record_of($event, $payload)
 
         case 'form.submitted':
         case 'form.paid':
+        case 'application.scored':
+        case 'application.decided':
             return array('form', (int) ($payload['id'] ?? 0));
     }
 

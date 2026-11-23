@@ -619,6 +619,41 @@ function api_webhook_event_payloads_site() {
 			'sample' => array('id' => 2210, 'form_id' => 14, 'form_name' => 'Contact us', 'reference_code' => 'K4M9QZ', 'contact_id' => 884)
 		),
 
+		'application.scored' => array(
+			'fields' => array(
+				'id'             => array('integer', 'The entry\'s submission (GET /forms/{form_id}/submissions/{id}).'),
+				'form_id'        => array('integer', 'The form.'),
+				'entry_id'       => array('integer', 'The entry (GET /application-programs/{program_id}/entries).'),
+				'program_id'     => array('integer', 'The application programme.'),
+				'program_name'   => array('string', 'The programme\'s name.'),
+				'reference_code' => array('string', 'The submission\'s reference code.'),
+				'category'       => array('string', 'The entry\'s category, \'\' for none.'),
+				'round'          => array('integer', 'The round the entry is in.'),
+				'score_raw'      => array('number?', 'The mean of the round\'s sent weighted totals, 1-10; null before one is sent.'),
+				'decision'       => array('string', 'none, accepted, rejected, waitlisted or declined.'),
+				'total'          => array('number', 'The weighted total of the review just sent, 1-10.'),
+				'reviews_sent'   => array('integer', 'The entry\'s sent reviews in its round, this one included.')
+			),
+			'sample' => array('id' => 2210, 'form_id' => 14, 'entry_id' => 88, 'program_id' => 3, 'program_name' => 'Young artists 2027', 'reference_code' => 'K4M9QZ', 'category' => 'painting', 'round' => 1, 'score_raw' => 7.25, 'decision' => 'none', 'total' => 7.5, 'reviews_sent' => 2)
+		),
+
+		'application.decided' => array(
+			'fields' => array(
+				'id'             => array('integer', 'The entry\'s submission (GET /forms/{form_id}/submissions/{id}).'),
+				'form_id'        => array('integer', 'The form.'),
+				'entry_id'       => array('integer', 'The entry (GET /application-programs/{program_id}/entries).'),
+				'program_id'     => array('integer', 'The application programme.'),
+				'program_name'   => array('string', 'The programme\'s name.'),
+				'reference_code' => array('string', 'The submission\'s reference code.'),
+				'category'       => array('string', 'The entry\'s category, \'\' for none.'),
+				'round'          => array('integer', 'The round the entry is in.'),
+				'score_raw'      => array('number?', 'The mean of the round\'s sent weighted totals, 1-10; null before one is sent.'),
+				'decision'       => array('string', 'none, accepted, rejected, waitlisted or declined.'),
+				'previous_decision' => array('string', 'The decision before: none, accepted, rejected, waitlisted or declined.')
+			),
+			'sample' => array('id' => 2210, 'form_id' => 14, 'entry_id' => 88, 'program_id' => 3, 'program_name' => 'Young artists 2027', 'reference_code' => 'K4M9QZ', 'category' => 'painting', 'round' => 1, 'score_raw' => 7.25, 'decision' => 'accepted', 'previous_decision' => 'waitlisted')
+		),
+
 		'form.paid' => array(
 			'fields' => array(
 				'id'             => array('integer', 'The submission whose fee was paid.'),

@@ -327,6 +327,8 @@ function pg_event_workspace_events()
         'subscription.renewed',
         'subscription.cancelled',
         'form.paid',
+        'application.scored',
+        'application.decided',
         'inventory.changed',
         'user.created',
         'customer.consent_changed',
