@@ -262,6 +262,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_volunteer_shifts();        // 11.0.270
 	upgrade_2026_11_0_kvkk_switch();             // 11.0.271
 	upgrade_2026_11_0_order_cost_supplier();     // 11.0.272
+	upgrade_2026_11_0_ws_share_links();          // 11.0.273
 
 }
 
@@ -9286,5 +9287,40 @@ function upgrade_2026_11_0_kvkk_switch() {
 	db_q("INSERT IGNORE INTO config_text (name, value) VALUES ('ecommerce_kvkk_enabled', ?)", array($on));
 
 	install_note('KVKK notice: the notice page and the consent sentence now have a switch of their own under Site Settings, Visitors and privacy, KVKK notice. It starts as the legal documents switch is now, so nothing changes until you change it.');
+
+}
+
+// 11.0.273 - Share links of an agent channel's items
+// (includes/workspace/share_links.php): one row per link to one item of one
+// message, read only. The token is kept only as its SHA-256 (token_hash,
+// unique), as ws_approval_guests keeps it, so the address is shown once and
+// neither the database nor a backup of it opens anything. created_by_kind /
+// created_by_id name who made it (a person or an application); expires_at is
+// never 0; revoked_at is set when it is taken back; opened_at and opens count
+// the opens. kind lists every kind the plan names, so a later step adds no
+// schema. Rows ended 30 days ago are swept by the recurring job.
+function upgrade_2026_11_0_ws_share_links() {
+
+	install_create_table('ws_share_links', "CREATE TABLE ws_share_links (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		token_hash       CHAR(64) CHARACTER SET ascii NOT NULL DEFAULT '',
+		channel_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		kind             ENUM('file','note','table','list') NOT NULL DEFAULT 'file',
+		item_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by_kind  ENUM('user','app') NOT NULL DEFAULT 'user',
+		created_by_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		expires_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		revoked_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		opened_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		opens            INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_token (token_hash),
+		KEY idx_channel (channel_id),
+		KEY idx_item (kind, item_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: an item of an agent channel can be shared by a link that ends after 1, 7 or 30 days.');
 
 }

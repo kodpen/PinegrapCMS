@@ -9336,6 +9336,7 @@ function get_tables() {
 		'ws_approvals',
 		'ws_approval_people',
 		'ws_approval_guests',
+		'ws_share_links',
 		'ws_approval_agents',
 		'ws_agent_feedback',
 		'ws_highlights',
