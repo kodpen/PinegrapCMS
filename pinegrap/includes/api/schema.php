@@ -4360,6 +4360,43 @@ function api_schema() {
 		/* ----- Forms -------------------------------------------------------- */
 
 		array(
+			'id'      => 'application_programs.list',
+			'method'  => 'GET',
+			'path'    => '/application-programs',
+			'scope'   => 'forms:read',
+			'handler' => 'api_application_programs_list',
+			'returns' => array('list' => 'ApplicationProgram'),
+			'summary' => 'List application programmes',
+			'description' => 'The application programmes run on forms: status (draft, open, closed), the period, the current round and each round\'s criteria with their weights (a criterion id is the key of a review\'s scores), reviewers per entry and end. form_id is the form\'s page id. An account with the user role sees only programmes on forms in folders it may edit. 503 service_unavailable until the database update has made the programme tables.',
+			'params'  => array(
+				array('name' => 'form_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the programmes of this form (page id).'),
+				array('name' => 'status',  'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'open', 'closed'), 'description' => 'Only programmes in this status.'),
+				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
+				array('name' => 'cursor',  'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'application_programs.entries',
+			'method'  => 'GET',
+			'path'    => '/application-programs/{id}/entries',
+			'scope'   => 'forms:read',
+			'handler' => 'api_application_program_entries',
+			'returns' => array('list' => 'ApplicationEntry'),
+			'summary' => 'Entries of an application programme, with their scores',
+			'description' => 'Cursor paged by id. Each entry: its submission (read it through /forms/{form_id}/submissions/{submission_id}), category, round, eligible (unchecked, yes, no, let_in), the combined scores of its round (score_raw the mean of the weighted totals, score_adjusted the corrected mean, spread; null before a review is sent), consensus (none, needed, settled), shortlisted, decision (none, accepted, rejected, waitlisted, declined) with decided_at and mailed_at, and its sent reviews: round, weighted total and each criterion\'s score 1-10. A review never names its reviewer or carries a note. A programme on a form in a folder the owner may not edit is 404.',
+			'params'  => array(
+				array('name' => 'id',          'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The programme id.'),
+				array('name' => 'round',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 255, 'description' => 'Only entries now in this round.'),
+				array('name' => 'category',    'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only entries of this category (the value of the category field\'s choice).'),
+				array('name' => 'decision',    'in' => 'query', 'type' => 'enum', 'values' => array('none', 'accepted', 'rejected', 'waitlisted', 'declined'), 'description' => 'Only entries with this decision.'),
+				array('name' => 'shortlisted', 'in' => 'query', 'type' => 'bool', 'description' => 'true for the shortlist only, false for the rest.'),
+				array('name' => 'limit',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => '1-250. Rows per page.'),
+				array('name' => 'cursor',      'in' => 'query', 'type' => 'string', 'max_length' => 255, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
 			'id'      => 'forms.list',
 			'method'  => 'GET',
 			'path'    => '/forms',
