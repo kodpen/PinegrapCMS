@@ -177,9 +177,10 @@ function ws_wtable_list_count_text($count)
  * @param array  $items list of array('label', 'url', 'current' (bool),
  *                      'count' (left out for a segment without one),
  *                      'icon' (a Bootstrap icon name, optional))
+ * @param string $class extra classes on the control
  * @return string
  */
-function ws_wtable_list_segments($label, array $items)
+function ws_wtable_list_segments($label, array $items, $class = '')
 {
     $html = '';
     $icons = false;
@@ -199,24 +200,64 @@ function ws_wtable_list_segments($label, array $items)
             . ($current ? ' aria-current="page"' : '') . '>' . $text . '</a>';
     }
 
-    return '<span class="pg-seg' . ($icons ? ' pg-seg-icons' : '') . '" role="group" aria-label="' . h((string) $label) . '">' . $html . '</span>';
+    return '<span class="pg-seg' . ($icons ? ' pg-seg-icons' : '') . (((string) $class !== '') ? ' ' . h((string) $class) : '') . '" role="group" aria-label="' . h((string) $label) . '">' . $html . '</span>';
 }
 
 /**
- * The icon of each scope of the list and of its two views.
+ * The Data list's bar, one line: New table, Import from file, the scopes
+ * with their counts (a segmented control, and one select the stylesheet
+ * shows when the bar is narrow); the grow slot; the list's search and
+ * Deleted tables as an icon button at the end. The scopes stay addresses,
+ * so a choice is a page as before.
  *
- * @return array scope or view => Bootstrap icon name
+ * @param string     $list    the printed list's name, which its search names
+ * @param array      $scopes  the scopes as ws_wtable_list_segments() takes them
+ * @param array|null $deleted null while the bin is not installed, else
+ *                            array('url', 'current' (bool), 'count' (int))
+ * @return string
  */
-function ws_wtable_list_segment_icons()
+function ws_wtable_list_bar($list, array $scopes, $deleted)
 {
-    return array(
-        'all'      => 'bi-grid',
-        'mine'     => 'bi-person',
-        'channels' => 'bi-hash',
-        'shared'   => 'bi-people',
-        'tables'   => 'bi-table',
-        'deleted'  => 'bi-trash3',
-    );
+    $options = '';
+    $chosen = false;
+
+    foreach ($scopes as $item) {
+        $current = !empty($item['current']);
+        $chosen = $chosen || $current;
+        $options .= '<option value="' . h((string) $item['url']) . '"' . ($current ? ' selected' : '') . '>'
+            . h((string) $item['label'] . (isset($item['count']) ? ' (' . (int) $item['count'] . ')' : '')) . '</option>';
+    }
+
+    // The deleted tables are no scope: the select names them while they show.
+    if ($deleted !== null && !empty($deleted['current']) && !$chosen) {
+        $options .= '<option value="' . h((string) $deleted['url']) . '" selected>' . h(lang('Deleted tables')) . '</option>';
+    }
+
+    $views = '<div class="ws-bar-views">' . ws_wtable_list_segments(lang('Show'), $scopes, 'ws-bar-views-seg')
+        . '<select class="pg-input pg-input-sm ws-bar-views-select" data-ws-bar-go aria-label="' . h(lang('Show')) . '">' . $options . '</select></div>';
+
+    $search = '<label class="pg-input pg-input-sm ws-bar-search"><i class="bi bi-search" aria-hidden="true"></i>'
+        . '<input type="search" data-pg-list-search="' . h((string) $list) . '" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '"></label>';
+
+    $bin = '';
+
+    if ($deleted !== null) {
+        $count = (int) ($deleted['count'] ?? 0);
+        $name = $count ? lang(array('string' => 'Deleted tables ({var:1})', 'vars' => $count)) : lang('Deleted tables');
+        $current = !empty($deleted['current']);
+        $bin = '<a class="pg-icon-button ws-bar-icon' . ($current ? ' is-active' : '') . '" href="' . h((string) $deleted['url']) . '" title="' . h($name) . '" aria-label="' . h($name) . '"'
+            . ($current ? ' aria-current="page"' : '') . '><i class="bi bi-trash3" aria-hidden="true"></i></a>';
+    }
+
+    // On a phone New table floats at the bottom right (.ws-wt-fab), and
+    // Import from file keeps its icon, the word for screen readers.
+    return '<div class="ws-bar-frame"><nav id="button_bar" class="pg-toolbar ws-bar" aria-label="' . h(lang('Button Bar')) . '">'
+        . '<button type="button" class="pg-button pg-button-fill d-none sm:d-inline-flex" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>'
+        . '<button type="button" class="pg-button pg-button-quiet" data-bs-toggle="dialog" data-bs-target="#ws_wt_import_new"><i class="bi bi-upload" aria-hidden="true"></i><span class="ws-bar-label">' . h(lang('Import from file')) . '</span></button>'
+        . $views
+        . '<div class="pg-toolbar-grow"></div>'
+        . $search . $bin
+        . '</nav></div>';
 }
 
 /**

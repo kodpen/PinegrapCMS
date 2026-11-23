@@ -35486,6 +35486,7 @@ textarea.pg-campaign-text {
   padding-top: 12px;
 }
 .ws-bar > .pg-button,
+.ws-bar > .pg-icon-button,
 .ws-bar-filter > .pg-button {
   flex: none;
 }
@@ -35661,9 +35662,11 @@ textarea.pg-campaign-text {
   }
 }
 /* A phone keeps the main action, "Filter" (its icon and count) and the
-   search on the line; the views are in the box "Filter" opens. */
+   search on the line; the views are in the box "Filter" opens. A second
+   action keeps its icon, its word (.ws-bar-label) for screen readers. */
 @media (max-width: 575.98px) {
-  .ws-bar-filter-label {
+  .ws-bar-filter-label,
+  .ws-bar-label {
     position: absolute;
     width: 1px;
     height: 1px;

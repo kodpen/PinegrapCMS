@@ -1561,3 +1561,27 @@ function ws_screen_messages($liveform)
 
     return ws_screen_toasts_script(ws_screen_toasts($liveform->get_errors(), $warnings, $liveform->get_notices()));
 }
+
+/**
+ * An empty screen printed by the server, the twin of emptyScreen() in
+ * assets/js/workspace.js: in the content's card, a 44 px tile in the
+ * screen's tone, a short title, the one sentence and the screen's main
+ * action as a quiet button (the bar keeps the one filled button).
+ *
+ * @param string $tone   a look tone: blue, violet, amber, teal, rose, gray
+ * @param string $icon   a Bootstrap icon name
+ * @param string $title  the title, plain text
+ * @param string $text   the sentence, plain text; '' for none
+ * @param string $action the action's markup (a button or link of class
+ *                       "pg-button pg-button-quiet pg-button-sm"); '' for none
+ * @return string
+ */
+function ws_empty_screen_html($tone, $icon, $title, $text = '', $action = '')
+{
+    return '<div class="pg-card"><div class="ws-empty-screen">'
+        . '<span class="pg-icon-tile ws-empty-screen-tile pg-tone-' . h((string) $tone) . '" aria-hidden="true"><i class="bi ' . h((string) $icon) . '"></i></span>'
+        . '<div class="pg-title-section ws-empty-screen-title">' . h((string) $title) . '</div>'
+        . (((string) $text !== '') ? '<p class="pg-text-2 ws-empty-screen-text">' . h((string) $text) . '</p>' : '')
+        . (string) $action
+        . '</div></div>';
+}

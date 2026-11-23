@@ -851,31 +851,28 @@ if (!$table) {
             )),
         ));
 
-        // Before the first table the list says what a table is for; a
-        // search that finds nothing is the driver's own line.
+        // Before the first table the list says what a table is for, with
+        // New table; a search that finds nothing is the driver's own line.
         $list_html = empty($tables)
-            ? '<div class="pg-card">' . pg_empty_state('bi-table', ($scope === 'shared') ? lang('Nothing is shared with you yet') : lang('No table yet'), lang('A table keeps rows of your own columns: text, numbers, money, dates, people, statuses and formulas. Share it with a colleague or a channel.')) . '</div>'
+            ? ws_empty_screen_html('amber', 'bi-table', ($scope === 'shared') ? lang('Nothing is shared with you yet') : lang('No table yet'),
+                lang('A table keeps rows of your own columns: text, numbers, money, dates, people, statuses and formulas. Share it with a colleague or a channel.'),
+                '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>')
             : pg_list_table_html($list['source'], $list['page'], lang('Data'));
     }
 
-    // The scopes as a segmented control with their counts, and the tables
-    // beside the deleted ones; each segment is an address.
+    // The scopes with their counts, each an address; in the deleted view
+    // none is pressed and each leads back to the tables.
     $scope_items = array();
-    $segment_icons = ws_wtable_list_segment_icons();
 
     foreach (ws_wtable_list_scopes($with_channels) as $key => $label) {
-        $scope_items[] = array('label' => $label, 'url' => $self_url . (($key === 'all') ? '' : '?scope=' . $key), 'count' => $counts[$key], 'current' => ($key === $scope), 'icon' => $segment_icons[$key] ?? 'bi-grid');
+        $scope_items[] = array('label' => $label, 'url' => $self_url . (($key === 'all') ? '' : '?scope=' . $key), 'count' => $counts[$key], 'current' => (!$deleted_view && ($key === $scope)));
     }
 
-    $scopes = $deleted_view ? '' : ws_wtable_list_segments(lang('Show'), $scope_items);
-    $views = '';
-
-    if (ws_wtable_bin_ready()) {
-        $views = ws_wtable_list_segments(lang('View'), array(
-            array('label' => lang('Tables'), 'url' => $self_url, 'current' => !$deleted_view, 'icon' => $segment_icons['tables']),
-            array('label' => lang('Deleted tables'), 'url' => $self_url . '?view=deleted', 'current' => $deleted_view, 'icon' => $segment_icons['deleted']) + (empty($binned) ? array() : array('count' => count($binned))),
-        ));
-    }
+    // Deleted tables, an icon button at the bar's end: pressed, it goes
+    // back to the tables.
+    $deleted_link = ws_wtable_bin_ready()
+        ? array('url' => $deleted_view ? $self_url : $self_url . '?view=deleted', 'current' => $deleted_view, 'count' => count($binned))
+        : null;
 
     $starter_options = '<option value="">' . h(lang('An empty table')) . '</option>';
 
@@ -938,14 +935,7 @@ if (!$table) {
 
     $body = $import_card . $list_html . $windows . $fab;
 
-    $toolbar = pg_screen_toolbar(array(
-        'primary'   => '<button type="button" class="pg-button pg-button-fill d-none sm:d-inline-flex" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>',
-        'secondary' => '<button type="button" class="pg-button pg-button-quiet" data-bs-toggle="dialog" data-bs-target="#ws_wt_import_new"><i class="bi bi-upload" aria-hidden="true"></i>' . h(lang('Import from file')) . '</button>',
-        // Under the buttons, on a line of their own: the search, the
-        // scopes and, at the right, the tables beside the deleted ones.
-        'search'    => '<div class="d-flex flex-wrap align-items-center gap-3 w-100">' . pg_list_table_search_box($list_name) . $scopes
-            . (($views !== '') ? '<span class="ms-auto">' . $views . '</span>' : '') . '</div>',
-    ), array('class' => 'mb-5'));
+    $toolbar = ws_wtable_list_bar($list_name, $scope_items, $deleted_link);
 
     // Workflow tables are the Workspace's Data: the place takes that name,
     // one of them stays a table.
@@ -2046,6 +2036,13 @@ $shell . '
                 }
             });
         });
+    });
+
+    // The views of the bar as one select on a narrow screen: a choice is the
+    // address of its segment.
+    document.addEventListener("change", function (e) {
+        var go = e.target.closest("select[data-ws-bar-go]");
+        if (go && go.value) { window.location.href = go.value; }
     });
 
     // A type change of a column asks first.
