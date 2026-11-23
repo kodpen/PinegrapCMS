@@ -8,12 +8,13 @@ description: The order screens in look A (C1, #9681): View Order and View Return
 - View Order and View Return take `pg-measure-edit`: the form column is 1300 px since #9269, wide enough for their item tables.
 
 ## Which cards are look cards?
-- Only a card straight in its column takes the look by the measure. View Order's cards sit in an inner two-column row, so each prints `card pg-card` (Source, Payment, Affiliate, Custom Billing, Applied Gift Cards, Billing, Customer, Legal Documents, Returns, the ERP documents card). `pg_order_view_card_column()` drops the first card's `mt-5` with or without `pg-card`.
+- Only a card straight in its column takes the look by the measure. View Order's cards sit in a stack or the later cards' grid, so each prints `card pg-card` (Payment, Affiliate, Custom Billing, Applied Gift Cards, Billing, Customer, Order Information, Legal Documents, Returns, the ERP documents card). `pg_order_view_card_flush()` drops `mt-5` / `mb-7` there (`order-screen-wide-layout.md`).
 - The order lines are line rows inside the shipment cards and "Items not shipped" since #11171 (`commerce/order-screen-shipment-card.md`).
 - Orders' summary boxes are `card pg-card h-100`; the sale screen's status cards (Summary, Payment, Ledger account, done) are `card pg-card`.
 
 ## How are titles and values drawn?
-- Card titles `h2.card-header.bg-reset.border-0.pg-title-section`; a title with a button or picture beside it is `h2.pg-title-section.mb-0` inside a flex `card-header` (Shipping Information, Customer Information, Returns, the ERP documents card).
+- Card titles `h2.card-header.bg-reset.border-0.pg-title-section`; a title with a button, pill or picture beside it is `h2.pg-title-section.mb-0` inside a flex `card-header` (the shipment cards, Payment, Returns, the ERP documents card).
+- View Order's side panel uses the second form on all three cards (OS4): on `h2.card-header` the header's size won, so Customer and Order Information were 15 px beside 17 px titles.
 - Groups over rows (View Order's UTM, the Advanced Search sections) are `h3.pg-group-label`, no longer green or bold `h5`/`h6`.
 - The status column dropped its 110–120 % inline sizes: the order number `fw-medium pg-tabular`, sums `pg-tabular`, totals `strong.pg-tabular`; address lines `fw-medium`, their value at the right edge like every row (`pg_order_view_row()` with `$wide`; architect, channel 25 message 4309).
 - The sale screen's card titles keep `.pg-sale-ch` for their margin: Cart `pg-title-section`, the status column's `pg-title-status`.

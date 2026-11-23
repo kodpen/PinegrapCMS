@@ -7,9 +7,9 @@ module: order_view
 ## What does the side panel hold?
 - The status column of `view_order.php` (`col-12 lg:col-4 2xl:col-3 order-2`) holds three cards, each a `.pg-kv` of the rows that hold a value (`pg_order_view_kv()`, '' for an empty value).
 - Customer: the contact's picture, name (a link when `pg_can_open_contact()`) and "Contact · N orders"; rows Email with a copy button, Phone, Fax, User, the member id, Opt-In, IP Address. With no contact: "No contact".
-- Billing Information: the address block with a copy button in the title, then the tax number (VKN / TCKN on a Turkish store), Tax Office, EU VAT ID with the VIES note, Tax-Exempt only when yes, PO Number, Salutation, Custom Field #1 and #2.
+- Billing Information: the address block with a copy button in the title (no button with no address), then the tax number (VKN / TCKN on a Turkish store), Tax Office, EU VAT ID with the VIES note, Tax-Exempt only when yes, PO Number, Salutation, Custom Field #1 and #2. No address, no row: a grey "No billing address" (OS4).
 - Order Information: Type, Order Date, the cancellation reason, Special Offer Code, Reference Code with a copy button, Currency; the Paraşüt status rows as a second list; then "Source" under a hairline: Tracking Code, Referring URL, Referral Source, and the UTM rows as a second list.
-- The order's number and status rows left the card: the head shows them (`order-screen-head.md`).
+- The number and status rows are the head's (`order-screen-head.md`).
 
 ## Why does the status column no longer stick?
 - Three cards are taller than a laptop's window, so a sticking column hid its own end; the comment in the markup says so. The save bar still sticks.
@@ -28,7 +28,7 @@ module: order_view
 - `pg_order_view_contact_orders_count($contact_id)`: one `COUNT(*)` of the contact's orders whose status is not incomplete, this one counted. `pg_order_view_orders_count_text()`: "First order" at one, "N orders" above, a link to `view_orders_for_contact.php?id=` only above one and for a user who may open the contact.
 
 ## What is the Payment card? (#11139)
-- First card of the form column's left half until OS4 places the later cards. Title "Payment" with the head's payment pill. Left (when the order has a payment method): the method with its tile, the card's type, masked number and expiration as a grey line; rows Paid on, Cardholder, Verification Number, Transaction ID, Authorization Code, Number of Installments.
+- Across the whole form column after the shipments (OS4, `ui/order-screen-wide-layout.md`). Title "Payment" with the head's payment pill. Left (when the order has a payment method): the method with its tile, the card's type, masked number and expiration as a grey line; rows Paid on, Cardholder, Verification Number, Transaction ID, Authorization Code, Number of Installments.
 - Right: Subtotal, Discount with the offer code beside it, Tax, Shipping, gift cards, Surcharge, Installment Charge; under a hairline Total, and Total Refunded and Net Total when a refund exists. The two halves sit side by side when the card is wide (`.pg-order-pay`, an auto-fit grid), stacked otherwise.
 
 Test: `tests/order_view_address_block_test.php`.

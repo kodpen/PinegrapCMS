@@ -9,7 +9,7 @@ description: Decisions list, panel part 15 (2026-11-22 on): View Order, All Orde
 ## Is View Order redrawn? (owner, 2026-11-22, in the architect's window)
 - Owner: "sipariş görüntüleme sayfasında da modernleştirme yapalım. fatura vs. ayarları için sipariş ürün ve detayları bayağı aşağıda kalıyor, bu ekran çok eskiden kalma o yüzden modernleştirmekte fayda var. sağ paneli de olabilir hangi amaç uygunsa."
 - The architect drew the screen (`commerce/commerce-screens-drawing/order.html`) and showed it to him with what is new named: the head's three state pills, the copy buttons, the count of the customer's orders, "Same as the shipping address".
-- Owner, on that: "bunu ve ürün sayfasını ve tüm siparişler ekranıyla birlikte güncelleyelim." So View Order is built as drawn: a head with the states, a card per shipment holding its lines, Payment with the totals, the customer and billing in the side panel. Plan `plans/order-screen-redraw.md`.
+- Owner, on that: "bunu ve ürün sayfasını ve tüm siparişler ekranıyla birlikte güncelleyelim." So View Order is built as drawn: a head with the states, a card per shipment holding its lines, Payment with the totals, the customer and billing in the side panel. Built as `commerce/order-screen-redraw-rules.md` records.
 - Nothing of the screen is taken away and Save writes what it wrote; a history of the order is not part of it.
 
 ## Are All Orders and Edit Product updated with it? (the same words)
@@ -21,4 +21,4 @@ description: Decisions list, panel part 15 (2026-11-22 on): View Order, All Orde
 - So Edit Product gets a read-only part with the product's figures; units sold and the times it was left in a cart are his two examples. The figures of the drawing he accepted are listed in `commerce/product-insights.md`.
 - This opens the Product Builder, one of his kept screens (`decisions-made-panel-3.md`), for this part; the rest of the screen stays as he likes it.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-panel-14.md, docs/memory/workflow/decisions-made-panel-3.md, docs/memory/plans/order-screen-redraw.md, docs/memory/plans/orders-list-redraw.md, docs/memory/commerce/product-insights.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-panel-14.md, docs/memory/workflow/decisions-made-panel-3.md, docs/memory/commerce/order-screen-redraw-rules.md, docs/memory/plans/orders-list-redraw.md, docs/memory/commerce/product-insights.md
