@@ -1,6 +1,6 @@
 ---
 name: quota-use-measured
-description: Where the quota goes, measured 2026-11-19 in session records: a fixed start of 80-92k tokens, every call reading the whole context again, the time after the ready label; what changed, what is open
+description: Where the quota goes (2026-11-19): a fixed start of 80-92k tokens, every call reading the whole context again, the time after the ready label; changes of 2026-11-19 and 11-23, what is open
 ---
 
 ## What was measured, and how?
@@ -18,11 +18,16 @@ description: Where the quota goes, measured 2026-11-19 in session records: a fix
 - A worker ends at the `ready` label, a plan's next step goes to a new worker, and work in one file or on one screen is one task (`coordinator-worker-steps.md`, `session-lifecycle.md`).
 - A bug hunt fixes what it finds in its own PR (`bug-hunt.md`).
 
+## What changed on 2026-11-23? (#11186)
+- The merging session waits on `merge_train.php --wait`, not on a 3- or 15-minute tick chain ([[merger-wake]]).
+- Request waiters time out at 3300 seconds, so an idle restart reads the cached context instead of writing it again (`agent-channel-request-wait.md`).
+- The architect's auto-compact window is 300k (`architect-no-hand-over.md`); a screen's look is designed in a session of its own (`design-work-session.md`); Claude Code's auto memory is off (`auto-memory-off.md`).
+- The architect's `/context` that day: 322,600 of a 400,000 window, 253,900 of it messages, tool definitions 47,900 (system 25,800, MCP 22,100), `CLAUDE.md` 5,500.
+
 ## What is open?
-- The compaction window of the standing sessions. A session stands at about 95,000 tokens right after a compaction, so by the reckoning a window of 250,000 uses about 18% less than one of 350,000, one of 200,000 about 24%, one of 150,000 no less. `/autocompact 250k` (from the Claude Code documentation, not tried) in a coordinator or the merging session is the owner's to try.
-- Owner (2026-11-19): "bağlamları 250k ile 400k arasında tutuyorum çünkü düşürürsem bağlam kopması yüzünden geliştirme kalitesi düşeceğinden endişeleniyordum özellikle mimar için."
+- Owner (2026-11-19): "bağlamları 250k ile 400k arasında tutuyorum çünkü düşürürsem bağlam kopması yüzünden geliştirme kalitesi düşeceğinden endişeleniyordum özellikle mimar için." The architect's 300k is the step he took; a lower one is his to try.
 - Standing sessions: one command that answers a request, waits for the next and prints its brief; a PR's checks waited for in one shell loop, never read call by call; a look only for a new screen, as one small picture.
-- The fixed start: `/context all` in a worker shows what fills it; connectors and skills a development session never uses are turned off for it. The owner's hand.
+- The fixed start: connectors and skills a development session never uses are turned off for it. The owner's hand.
 - Models stay. Owner (2026-11-19): "sonet5.5 kodlama konusunda başarısız ve aynı yere geri dönme riskimizi artırır."
 
 Related: `architect-no-hand-over.md`, `working-mode.md`, `agent-channel-wake.md`

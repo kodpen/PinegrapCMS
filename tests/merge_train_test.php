@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the pure parts of tools/merge_train.php: which PRs may ride a
- * train and in what order, an approval the owner has not given yet, the product-line count, reading the Changelog
+ * train and in what order, an approval the owner has not given yet, when the
+ * merging session's waiter wakes it, the product-line count, reading the Changelog
  * section of a PR body and writing it into changelog.txt, quoting a
  * command's arguments on Windows.
  *
@@ -483,4 +484,101 @@ function test_merge_train_generated_changed()
 	pg_assert_same(array('docs/memory/ui/README.md', 'docs/memory/ui/INDEX.md', 'docs/memory/erp/INDEX.md'), merge_train_generated_changed($status, 'index'));
 	pg_assert_same(array('pinegrap/assets/js/pg_dash.min.js'), merge_train_generated_changed($status, 'script'));
 	pg_assert_same(array(), merge_train_generated_changed('', 'index'));
+}
+
+// The merging session's waiter tells a running train from a finished one: a
+// train with no check run yet, or only the channel report unfinished beside
+// a failure, is read the same way a tick reads it.
+function test_merge_train_checks_state()
+{
+	$success = array('name' => 'checks', 'status' => 'completed', 'conclusion' => 'success');
+	$failure = array('name' => 'guards', 'status' => 'completed', 'conclusion' => 'failure');
+	$running = array('name' => 'guards', 'status' => 'in_progress', 'conclusion' => null);
+	$report = array('name' => 'report to the agent channel', 'status' => 'queued', 'conclusion' => null);
+
+	pg_assert_same('green', merge_train_checks_state(array($success, $report)));
+	pg_assert_same('red', merge_train_checks_state(array($success, $failure)));
+	pg_assert_same('red', merge_train_checks_state(array($failure, $report)), 'the report job does not keep a failure running');
+	pg_assert_same('running', merge_train_checks_state(array($success, $running)));
+	pg_assert_same('running', merge_train_checks_state(array($failure, $running)), 'a failure while another run goes on');
+	pg_assert_same('running', merge_train_checks_state(array()), 'CI has not started');
+	pg_assert_same('running', merge_train_checks_state(array($report)), 'only the report job');
+}
+
+// A tick lands or fixes a finished train, ends quietly while every train
+// runs, and builds only when no train is open.
+function test_merge_train_wait_state_trains()
+{
+	$running = array('number' => 12, 'sha' => 'aaa', 'state' => 'running');
+	$green = array('number' => 15, 'sha' => 'bbb', 'state' => 'green');
+	$red = array('number' => 9, 'sha' => 'ccc', 'state' => 'red');
+	$eligible = array(array('number' => 20, 'sha' => 'ddd'));
+
+	pg_assert_same('', merge_train_wait_state(array($running), $eligible), 'a running train holds the build');
+	pg_assert_same('train #15 bbb green', merge_train_wait_state(array($running, $green), $eligible));
+	pg_assert_same('train #9 ccc red; train #15 bbb green', merge_train_wait_state(array($green, $red), array()), 'number order');
+}
+
+function test_merge_train_wait_state_build()
+{
+	pg_assert_same('', merge_train_wait_state(array(), array()), 'nothing to do');
+	pg_assert_same(
+		'build #7 abc; build #31 def',
+		merge_train_wait_state(array(), array(array('number' => 31, 'sha' => 'def'), array('number' => 7, 'sha' => 'abc')))
+	);
+	pg_assert_same('build #7 new', merge_train_wait_state(array(), array(array('number' => 7, 'sha' => 'new'))), 'a new push is a new state');
+}
+
+// The session is woken for work only, and not again for a state it chose to
+// leave as it was.
+function test_merge_train_wait_key_and_wakes()
+{
+	$key = merge_train_wait_key('build #7 abc');
+
+	pg_assert_same('', merge_train_wait_key(''));
+	pg_assert_same(1, preg_match('/^[0-9a-f]{12}$/', $key));
+	pg_assert_same($key, merge_train_wait_key('build #7 abc'), 'the same state, the same key');
+	pg_assert_false($key === merge_train_wait_key('build #7 abd'));
+	pg_assert_false(merge_train_wait_wakes('', ''), 'nothing to act on');
+	pg_assert_false(merge_train_wait_wakes('', $key), 'the old state is gone');
+	pg_assert_true(merge_train_wait_wakes($key, ''));
+	pg_assert_false(merge_train_wait_wakes($key, $key), 'the state it woke on last time');
+	pg_assert_true(merge_train_wait_wakes(merge_train_wait_key('build #7 abd'), $key));
+}
+
+function test_merge_train_wait_settings()
+{
+	$defaults = merge_train_wait_settings(array());
+
+	pg_assert_same(array('since' => '', 'interval' => 120, 'timeout' => 3300, 'error' => ''), $defaults);
+
+	$set = merge_train_wait_settings(array('--since=0123456789ab', '--interval=60', '--timeout=600'));
+	pg_assert_same('0123456789ab', $set['since']);
+	pg_assert_same(60, $set['interval']);
+	pg_assert_same(600, $set['timeout']);
+	pg_assert_same('', $set['error']);
+
+	pg_assert_same(30, merge_train_wait_settings(array('--interval=5'))['interval'], 'the interval floor');
+	pg_assert_same('', merge_train_wait_settings(array('--since='))['since'], 'an empty key');
+	pg_assert_false(merge_train_wait_settings(array('--since=xyz'))['error'] === '', 'not a key');
+	pg_assert_false(merge_train_wait_settings(array('--timeout=0'))['error'] === '', 'no time');
+	pg_assert_false(merge_train_wait_settings(array('--interval=1m'))['error'] === '', 'not a number');
+	pg_assert_false(merge_train_wait_settings(array('--after=3'))['error'] === '', 'an unknown option');
+}
+
+// A train whose CI never started wakes the session after half an hour
+// instead of reading as running for ever.
+function test_merge_train_train_state_stuck()
+{
+	$now = 1800000000;
+	$report = array('name' => 'report to the agent channel', 'status' => 'queued', 'conclusion' => null);
+	$running = array('name' => 'guards', 'status' => 'in_progress', 'conclusion' => null);
+
+	pg_assert_same('running', merge_train_train_state(array(), $now - 600, $now), 'ten minutes after the push');
+	pg_assert_same('stuck', merge_train_train_state(array(), $now - 1800, $now));
+	pg_assert_same('stuck', merge_train_train_state(array($report), $now - 3600, $now), 'only the report job');
+	pg_assert_same('running', merge_train_train_state(array($running), $now - 7200, $now), 'a run that started is not stuck');
+	pg_assert_same('running', merge_train_train_state(array(), 0, $now), 'no commit time');
+	pg_assert_same('green', merge_train_train_state(array(array('name' => 'checks', 'status' => 'completed', 'conclusion' => 'success')), $now - 7200, $now));
+	pg_assert_same('train #4 abc stuck', merge_train_wait_state(array(array('number' => 4, 'sha' => 'abc', 'state' => 'stuck')), array()));
 }
