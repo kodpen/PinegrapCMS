@@ -55,13 +55,18 @@ function settings_security_moves_test_card($file, $id)
 	$source = settings_security_moves_test_source($file);
 	$start = strpos($source, '<div id="' . $id . '" class="pg-set-card">');
 
+	// Accounts and sign-in draws each card through $security_card().
+	if ($start === false) {
+		$start = strpos($source, "\$security_card('" . $id . "'");
+	}
+
 	if ($start === false) {
 		return '';
 	}
 
 	$ends = array();
 
-	foreach (array('$pg_settings_cards[]', '$firewall_parts[') as $mark) {
+	foreach (array('$pg_settings_cards[]', '$firewall_parts[', '$security_parts[') as $mark) {
 		$at = strpos($source, $mark, $start);
 
 		if ($at !== false) {
@@ -91,7 +96,7 @@ function test_settings_security_moves_labels_and_keys()
 function test_settings_security_moves_card_order()
 {
 	pg_assert_same(
-		array('pgset-session', 'pgset-captcha', 'pgset-device', 'pgset-mfa', 'pgset-audit', 'pgset-signin', 'pgset-membership', 'pgset-encryption'),
+		array('pgset-session', 'pgset-throttle', 'pgset-mfa', 'pgset-device', 'pgset-signin', 'pgset-captcha', 'pgset-membership', 'pgset-audit', 'pgset-deletion', 'pgset-encryption'),
 		settings_security_moves_test_sections('security'));
 	pg_assert_same(
 		array('pgset-headers', 'pgset-waf', 'pgset-limits', 'pgset-bots', 'pgset-iplists', 'pgset-countries', 'pgset-proxies', 'pgset-waf-logs'),
@@ -111,16 +116,18 @@ function test_settings_security_moves_card_order()
 		pg_assert_contains('<div id="' . $id . '" class="pg-set-card">', settings_security_moves_test_source('includes/settings/firewall.php'), $id . ' is drawn');
 	}
 
-	// The Accounts and sign-in pane draws the cards in the order the registry lists them.
-	foreach (array('security' => 'includes/settings/security.php') as $key => $file) {
-		$source = settings_security_moves_test_source($file);
-		$last = -1;
+	// The Accounts and sign-in pane draws its cards as rows in pg_security_fold_order().
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/security_settings_fold.php');
+	$rows = array();
 
-		foreach (settings_security_moves_test_sections($key) as $id) {
-			$at = strpos($source, '<div id="' . $id . '" class="pg-set-card">');
-			pg_assert_true(($at !== false) && ($at > $last), $id . ' is drawn in its place in ' . $file);
-			$last = (int) $at;
-		}
+	foreach (pg_security_fold_order() as $key) {
+		$rows[] = 'pgset-' . $key;
+	}
+
+	pg_assert_same(settings_security_moves_test_sections('security'), $rows, 'the Accounts and sign-in rows in the registry\'s order');
+
+	foreach (settings_security_moves_test_sections('security') as $id) {
+		pg_assert_contains('$security_card(\'' . $id . '\'', settings_security_moves_test_source('includes/settings/security.php'), $id . ' is drawn');
 	}
 }
 
@@ -147,7 +154,7 @@ function test_settings_security_moves_mfa_hint()
 {
 	$card = settings_security_moves_test_card('includes/settings/security.php', 'pgset-mfa');
 	pg_assert_false(strpos($card, 'Payment Methods') !== false, 'the hint no longer sends to Payment Methods');
-	pg_assert_contains("pg_settings_link('security', 'pgset-encryption')", $card, 'the hint links the Encryption Key card');
+	pg_assert_contains("pg_settings_link('security', 'pgset-encryption')", $card, 'the hint links the Encryption key row');
 }
 
 function test_settings_security_moves_trusted_proxies()
@@ -161,13 +168,13 @@ function test_settings_security_moves_blocked_email_addresses()
 {
 	pg_assert_false(strpos(settings_security_moves_test_source('includes/settings/firewall.php'), 'banned_email_addresses') !== false, 'IP Lists no longer draws the blocked e-mail addresses');
 	pg_assert_false(strpos(settings_security_moves_test_source('includes/settings/firewall.save.php'), 'banned_email_addresses') !== false, 'the Firewall save no longer writes them');
-	pg_assert_contains('name="banned_email_addresses"', settings_security_moves_test_card('includes/settings/security.php', 'pgset-captcha'), 'Spam Protection draws them under the same post name');
+	pg_assert_contains('name="banned_email_addresses"', settings_security_moves_test_card('includes/settings/security.php', 'pgset-captcha'), 'Forms and spam draws them under the same post name');
 
 	$save = settings_security_moves_test_source('includes/settings/security.save.php');
 	pg_assert_contains("post_value('banned_email_addresses')", $save, 'the Accounts and sign-in save reads them');
 	pg_assert_contains('UPDATE config SET banned_email_addresses', $save, 'and writes the same column');
 	pg_assert_contains('pg_auth_token_revoke_user(', $save, 'a blocked member still loses the open sessions');
 
-	pg_assert_contains("'pgset-captcha'", settings_security_moves_test_category('security'), 'Spam Protection is in Accounts and sign-in');
+	pg_assert_contains("'pgset-captcha'", settings_security_moves_test_category('security'), 'Forms and spam is in Accounts and sign-in');
 	pg_assert_false(strpos(settings_security_moves_test_category('firewall'), 'blocked email') !== false, 'IP Lists keywords no longer name blocked e-mail');
 }

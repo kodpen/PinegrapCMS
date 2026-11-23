@@ -3782,7 +3782,7 @@ function validate_password_strength($password)
     return true;
 }
 // The fewest characters a password a person chooses may have while
-// "Require Strong Password" (STRONG_PASSWORD) is off; on, it is the 10 of
+// "Require a strong password" (STRONG_PASSWORD) is off; on, it is the 10 of
 // validate_password_strength(). Before, a site with the setting off took a
 // password of any length, one character included.
 function pg_password_min_length()

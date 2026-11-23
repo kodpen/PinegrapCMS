@@ -552,7 +552,7 @@ function pg_captcha_settings_fields()
 
     $html = '
                                         <div class="col-12">
-                                            <label for="captcha_provider" class="form-label">' . lang('CAPTCHA Type') . '</label>
+                                            <label for="captcha_provider" class="form-label">' . lang('CAPTCHA type') . '</label>
                                             <select name="captcha_provider" id="captcha_provider" class="form-control pg-f-md">' . $options . '</select>
                                             <div class="form-text">' . lang('The built-in question needs no account. Turnstile and hCaptcha draw their own check and are verified with the provider when the form is sent; when the provider cannot be reached or refuses the keys, the form is not accepted and the visitor is asked to try again. Staff never see a CAPTCHA.') . '</div>
                                         </div>';

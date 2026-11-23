@@ -1883,58 +1883,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // ── AI bot switches + published range list freshness ─────────────────
     // Rendered as a prebuilt fragment so the block simply does not exist on
     // an install that has not run the 2026.4.4 upgrade.
-    $output_login_throttle = '';
-
-    if ($login_throttle_ready) {
-
-        $login_throttle_checked = ($login_throttle == 1) ? ' checked="checked"' : '';
-
-        $output_login_throttle = '
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $login_throttle_checked . ' class="collapse-switcher" type="checkbox" id="login_throttle" name="login_throttle" data-bs-target="#login_throttle_row"/></div>
-                                                <label class="" for="login_throttle">' . lang('Limit Failed Sign-in Attempts') . '</label>
-                                                <div class="form-text">' . lang('Counts failed sign-ins against both the visitor\'s address and the account being tried, and locks that pair out for a while once the limit is passed. Successful sign-ins are never counted.') . '</div>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="login_throttle_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
-                                                <div class="popover-body">
-                                                   <div class="row gy-5">
-                                                        <div class="pg-f-xs">
-                                                            <label for="login_throttle_attempts" class="form-label">' . lang('Failed Attempts') . '</label>
-                                                            <input type="text" name="login_throttle_attempts" id="login_throttle_attempts" class="form-control text-end" value="' . (int) $login_throttle_attempts . '" size="5" maxlength="4" inputmode="numeric"/>
-                                                        </div>
-                                                        <div class="pg-f-sm">
-                                                            <label for="login_throttle_minutes" class="form-label">' . lang('Counted Over') . '</label>
-                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('minutes') . '</span>
-                                                                <input type="text" name="login_throttle_minutes" id="login_throttle_minutes" class="form-ghost text-end" value="' . (int) $login_throttle_minutes . '" size="5" maxlength="4" inputmode="numeric"/>
-                                                            </label>
-                                                        </div>
-                                                        <div class="pg-f-sm">
-                                                            <label for="login_throttle_lockout" class="form-label">' . lang('Locked Out For') . '</label>
-                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('minutes') . '</span>
-                                                                <input type="text" name="login_throttle_lockout" id="login_throttle_lockout" class="form-ghost text-end" value="' . (int) $login_throttle_lockout . '" size="5" maxlength="5" inputmode="numeric"/>
-                                                            </label>
-                                                        </div>
-                                                        ' . ($security_ready ? '<div class="pg-f-xs">
-                                                            <label for="login_throttle_captcha_after" class="form-label">' . lang('Ask a Question After') . '</label>
-                                                            <label class="form-control form-adorn form-adorn-end">
-                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('failures') . '</span>
-                                                                <input type="text" name="login_throttle_captcha_after" id="login_throttle_captcha_after" class="form-ghost text-end" value="' . (int) $login_throttle_captcha_after . '" size="4" maxlength="3" inputmode="numeric"/>
-                                                            </label>
-                                                            <div class="form-text">' . lang('From this many failures on, a sign-in attempt must also answer a simple arithmetic question before the password is checked. A person answers it in a second; a password list cannot. 0 turns it off.') . '</div>
-                                                        </div>' : '') . '
-                                                        <div class="col-12">
-                                                            <div class="form-text">' . lang('Offices and schools share one address across many people. If visitors report being locked out, raise the number of attempts or add the address to the allowed list.') . '</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>';
-    }
-
     $output_waf_ai_block = '';
 
     if ($waf_ai_ready) {

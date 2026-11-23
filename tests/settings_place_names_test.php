@@ -39,11 +39,11 @@ function settings_place_names_test_tr($key)
 // Encryption Key card of Accounts and sign-in, which the hint links.
 function test_settings_place_names_two_step_verification_key_hint()
 {
-	$key = 'Two-step verification needs an encryption key in config.php. Make one on the Encryption Key card: switch on Reset Encryption Key and save.';
+	$key = 'Two-step verification needs an encryption key in config.php. Make one under Encryption key: switch on Reset the encryption key and save.';
 
 	pg_assert_contains("lang('" . $key . "')", settings_place_names_test_source('includes/settings/security.php'));
-	pg_assert_contains('Şifreleme Anahtarı kartında', settings_place_names_test_tr($key));
-	pg_assert_contains('Şifreleme Anahtarını Sıfırla', settings_place_names_test_tr($key));
+	pg_assert_contains('Şifreleme anahtarı altında', settings_place_names_test_tr($key));
+	pg_assert_contains('Şifreleme anahtarını sıfırla', settings_place_names_test_tr($key));
 }
 
 // The nightly accessibility check: its switch is in Updates and maintenance › Cron Jobs and

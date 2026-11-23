@@ -8,7 +8,7 @@ module: encryption_key
 - #3858: Security became "Accounts and sign-in", Firewall "Firewall and HTTPS". The keys `security` and `firewall` stay, so old links and `settings_security.php` / `settings_firewall.php` work as before.
 
 ## Where is the encryption key?
-- The Encryption Key card (`pgset-encryption`, post `ecommerce_reset_encryption_key`) came from Ecommerce › Payment Methods; `security.save.php` writes config.php, then, last in the save, `pg_reseal_run()` seals again what `pg_reseal_registry()` lists. It is always drawn now, not only with Enable Commerce and Credit/Debit Card on: two-step verification needs the key, and the MFA hint links the card.
+- The Encryption key row (`pgset-encryption`, post `ecommerce_reset_encryption_key`) came from Ecommerce › Payment Methods; `security.save.php` writes config.php, then, last in the save, `pg_reseal_run()` seals again what `pg_reseal_registry()` lists. It is always drawn now, not only with Enable Commerce and Credit/Debit Card on: two-step verification needs the key, and the MFA hint links the card.
 
 ## What does the card say before a key reset?
 - `prep.php` counts the non-empty sealed values per area (`pg_encryption_key_reset_counts()` over `pg_encryption_key_reset_source()`, `includes/fn/encryption_key.php`): connect_accounts + connect_apps `secret`, `marketplace_accounts.credentials`, `erp_edoc_providers.credentials_enc`, config `parasut_credentials_enc`, `backup_remote_settings`, the `product_feeds` formats' `token_secret`, `oauth_google_client_secret`, `user_mfa` keys with `enabled_at > 0`, and `api_devices` whose refresh token still runs (area `devices`). A missing table or column counts as nothing.
@@ -19,7 +19,7 @@ module: encryption_key
 - A notice "The encryption key has been reset. Sealed again with the new key: <label>: <done>, …" from `pg_encryption_key_reset_summary()` over `pg_reseal_run()`'s areas (labels from `pg_encryption_key_reset_labels()`, which also names the registry-only areas `cards`, `gateway`, `subscriptions`, `translation`, `activitypub`, `workspace`); values that did not open with the old key (skipped) are not mentioned. Values that opened but could not be sealed again come as a warning naming area and count. Both reach the screen and the settings modal through the liveform.
 
 ## Where are the blocked e-mail addresses?
-- Blocked Email Addresses (`banned_email_addresses`) sits on Spam Protection (`pgset-captcha`), out of Firewall › IP Lists; `security.save.php` writes it (same normalising, same column guard) and ends the matching members' sessions. `firewall.save.php` no longer touches it.
+- Blocked e-mail addresses (`banned_email_addresses`) sits in the Forms and spam row (`pgset-captcha`), out of Firewall › IP Lists; `security.save.php` writes it (same normalising, same column guard) and ends the matching members' sessions. `firewall.save.php` no longer touches it.
 
 ## Where are the trusted proxies?
 - Trusted Proxies (`pgset-proxies`) is its own card after Firewall, no longer inside the Enable Firewall popover; `firewall.save.php` still writes `waf_trusted_proxies` in the firewall block, so nothing is saved there before the 2026.2.4 columns exist, as before.
