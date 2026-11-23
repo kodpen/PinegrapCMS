@@ -1,6 +1,6 @@
 ---
 name: architect-hand-over
-description: Hand-over note of the architect session that stopped on 2026-11-22 (development paused): what is owed to the owner, the landed steps still to look at, what others were told
+description: Hand-over note of the architect session that stopped on 2026-11-22 (development paused): what is owed to the owner, plans written since, the landed steps still to look at
 ---
 
 ## Why is there a note?
@@ -12,6 +12,10 @@ description: Hand-over note of the architect session that stopped on 2026-11-22 
 - System tools: he wrote that tools are missing under the menu row (message 12156) and named none when asked (poll 220). The menu lists the screen's 19 tools; nothing to do until he names one.
 - The lists' look: the All Orders drawing he accepted shows 14 px rows, quiet row actions and a checkbox per row; every list draws 16 px rows and boxed Action buttons from the list table driver. Told to him in the architect's window, not asked: a question for him before any plan, since it changes every list.
 - Claude Console: the set-up steps of `plans/app-access-redraw-console.md` were given to him in the architect's window on 2026-11-22 (AA7a landed, #10867). AA7b, the guide, is not built; AA8 closes that plan only after his try on dev.
+
+## What was written on 2026-11-23, with development still paused?
+- In the architect's window the owner asked for four plans, each a 6: `plans/plan-state-channel.md` (PS1 and PS2 can start at once), `plans/channel-notes-own.md`, `plans/channel-share-links.md` (its SL5 after CN1) and `plans/agent-memory-search.md`, held until he opens it. The schema of the first three is decided (`decisions-made-schema-48.md`).
+- No coordinator was told: no waiter runs. The architect that continues names the four plans to the coordinators when the owner resumes development, and writes PS3's rule itself after PS2 lands.
 
 ## Which landed steps are still to be looked at? (`architect-looks-at-landed-screen.md`)
 - Looked at: OL2 and OL2b (`plans/orders-list-redraw-fixes.md`), OS2 (`plans/order-screen-redraw-fixes.md`), BR3 on its merge train (as drawn; its picture is channel message 12185).
