@@ -7,7 +7,7 @@ description: Order SMS (received, shipped, delivered) and back in stock: templat
 - `includes/fn/sms_messages.php`. Three events (`pg_sms_message_events()`): `order_received` (kind `order`), `order_shipped` and `order_delivered` (kind `shipping`). Each is queued with `pg_sms_enqueue()`, never sent in the request, to the order's `billing_phone_number`; a number that is not a mobile, an event switched off or SMS not set up sends nothing and stops nothing.
 - A fourth event, `stock_back` (kind `stock`), texts a back-in-stock notice to the number the request kept: [[back-in-stock-sms]].
 - `cod_code` and `signin_code` (kind `otp`) carry the cash-on-delivery and member sign-in codes ([[sms-codes]]); a code event's template must contain `^^code^^`. `pg_sms_message_text()` fills any event's template.
-- Every event is off until switched on (Settings › Communication › SMS Messages): each message is paid, so switching SMS on for a test does not start texting every customer.
+- Every event is off until switched on (Settings › Communication › SMS messages): each message is paid, so switching SMS on for a test does not start texting every customer.
 
 ## Where is each one queued?
 - `submit_order()` right after the `order.created` webhook (the order has its number): `pg_sms_order_received()`, reference `order:<id>:received`.
