@@ -3482,6 +3482,7 @@
     "Sign-in code": "Giriş kodu",
     "Sign-in did not complete": "Giriş tamamlanamadı",
     "Sign-in is locked.": "Giriş kilitli.",
+    "Sign-in is not offered here: it acts as the person who signs in, never as the agent.": "Oturum açma burada sunulmaz: oturum açan kişi olarak davranır, asla ajan olarak değil.",
     "Sign-in link": "Giriş yap bağlantısı",
     "Sign-in link (filled by the backend)": "Giriş yap bağlantısı (sunucu doldurur)",
     "Sign-in needed": "Giriş gerekir",

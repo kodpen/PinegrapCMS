@@ -104,7 +104,8 @@ function api_app_guide_body_html($guide, $prefix, $skip = array()) {
 		$notes .= '<li>' . h($note) . '</li>';
 	}
 
-	return '
+	return ((isset($guide['intro']) && ($guide['intro'] !== '')) ? '
+			<p class="pg-text-meta mb-2">' . h($guide['intro']) . '</p>' : '') . '
 			<p class="pg-text-2 mb-3"><i class="bi ' . (($guide['acts'] === 'person') ? 'bi-person' : 'bi-box') . ' me-1" aria-hidden="true"></i>'
 				. lang('Acts as:') . ' <b>' . h(api_app_acts_text($guide['acts'])) . '</b></p>
 			<p class="alert theme-warning py-2 px-4 small mb-3" data-guide-off hidden></p>

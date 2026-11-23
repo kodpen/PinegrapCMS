@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The connection guides of Application Access: one guide per way an outside
- * client connects (key and secret, one token, MCP with sign-in, team
- * devices, an agent in a channel), each opening with who the connection acts
+ * client connects (key and secret, one token, Claude Console, MCP with
+ * sign-in, team devices, an agent in a channel), each opening with who the connection acts
  * as, then numbered steps built from the site's own addresses. Drawn on the
  * edit drawer's Connect tab and in step 3 of New application's sheet
  * (includes/api/app_drawer_view.php). Pure: the addresses come in.
@@ -30,12 +30,10 @@ if (!defined('PG_API_PANEL')) {
 //
 // Each guide: id, icon, tone, title, line (one line of what it is for),
 // acts ('application' or 'person'), kinds (the application kinds it suits),
-// secret (whether it needs a key made with a secret), steps (each: title,
-// text, value, value_id, link, link_label), clients (the MCP clients' own
-// steps, only the sign-in guide), notes (lines under the steps).
-//
-// A guide for a named client (Claude Console) takes its place after the one
-// token guide once it is written; its id is reserved here as 'console'.
+// secret (whether it needs a key made with a secret), intro (a line above
+// the steps, '' for none), steps (each: title, text, value, value_id, link,
+// link_label), clients (the MCP clients' own steps, only the sign-in guide),
+// notes (lines under the steps).
 function api_app_guides($at) {
 
 	$at = array_merge(array(
@@ -86,6 +84,8 @@ function api_app_guides($at) {
 		'clients' => array(),
 		'notes' => array(lang('The token is never read from the address: a client that puts it there is refused.'))
 	);
+
+	$guides['console'] = api_app_console_guide($at);
 
 	$mcp_steps = array(
 		api_app_guide_step(lang('Add the MCP address in the application'),
@@ -172,10 +172,63 @@ function api_app_guides($at) {
 	);
 
 	foreach ($guides as $id => $guide) {
-		$guides[$id] = array_merge(array('id' => $id), $guide);
+		$guides[$id] = array_merge(array('id' => $id, 'intro' => ''), $guide);
 	}
 
 	return $guides;
+
+}
+
+// The Claude Console guide: an agent of Claude Managed Agents that works its
+// channel requests over MCP as the application. The application's one token
+// is a vault's bearer credential for the MCP address, the site's host is
+// allowed in the agent's environment, the start text is its system prompt and
+// a scheduled run wakes it: the site keeps no Anthropic key and calls no
+// Anthropic address. Sign-in (OAuth) is not offered here, as it acts as the
+// person who signs in. Written to Anthropic's pages as read on 2026-11-20.
+function api_app_console_guide($at) {
+
+	$host = (string)parse_url((string)$at['site'], PHP_URL_HOST);
+
+	$steps = array(
+		api_app_guide_step(lang('Make this application an agent'),
+			lang('On its AI agent tab, with the channels it answers in. The agent\'s own tools are offered over MCP only to an active agent\'s own key.')),
+		api_app_guide_step(lang('Add the MCP server to the agent'),
+			lang('In the agent\'s definition, an MCP server named pinegrap at this address. The Console asks for no token at this point.'), $at['mcp'], 'console_mcp'),
+		api_app_guide_step(lang('Put the token in a vault'),
+			lang('A credential of the static bearer kind for the same MCP server address, its token the application\'s one token. Name the vault when the session or the scheduled run is made.')),
+		($host !== '')
+			? api_app_guide_step(lang('Allow the site\'s host'),
+				lang('In the agent\'s environment, under networking: the Console starts with no host allowed. Add this one.'), $host, 'console_host')
+			: api_app_guide_step(lang('Allow the site\'s host'),
+				lang('In the agent\'s environment, under networking: the Console starts with no host allowed. Add the host of the site address.'))
+	);
+
+	$steps[] = ($at['start_text'] !== '')
+		? api_app_guide_step(lang('Make the start text the agent\'s system prompt'),
+			lang('The agent reads its instructions from the site; this text only tells it where to look.'), $at['start_text'], 'console_start')
+		: api_app_guide_step(lang('Make the start text the agent\'s system prompt'),
+			lang('The start text comes with the Workspace: switch it on to give an agent a channel.'));
+
+	$steps[] = api_app_guide_step(lang('Wake it on a schedule'),
+		lang('Make a scheduled run of the agent. Each run reads the request list, takes what waits, answers and ends.'));
+
+	return array(
+		'icon'  => 'bi-cloud',
+		'tone'  => 'pg-tone-amber',
+		'title' => lang('Claude Console'),
+		'line'  => lang('An agent in the Claude Console that answers in a channel as the application: the token in a vault, the MCP address, a scheduled run.'),
+		'acts'  => 'application',
+		'kinds' => array('server'),
+		'secret' => true,
+		'intro' => lang('These steps follow Anthropic\'s pages on Claude Managed Agents as read on 20 November 2026. The product is in beta: its screens may differ.'),
+		'steps' => $steps,
+		'clients' => array(),
+		'notes' => array(
+			lang('A call to the agent waits in its request queue until the next scheduled run.'),
+			lang('Sign-in is not offered here: it acts as the person who signs in, never as the agent.')
+		)
+	);
 
 }
 
