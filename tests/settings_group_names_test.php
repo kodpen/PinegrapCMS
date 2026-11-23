@@ -67,7 +67,7 @@ function test_settings_group_names_sms_text_is_named_by_its_event()
 {
 	$src = settings_group_names_source('includes/fn/sms_messages.php');
 
-	pg_assert_contains('<label class="" for="\' . h($name) . \'on" id="\' . h($name) . \'label">', $src, 'the event switch label has an id');
+	pg_assert_contains('<label class="pg-text-2" for="\' . h($name) . \'on" id="\' . h($name) . \'label">', $src, 'the event switch label has an id');
 	pg_assert_contains('id="\' . h($name) . \'text" aria-labelledby="\' . h($name) . \'label"', $src, 'the message box is named by its event');
 }
 

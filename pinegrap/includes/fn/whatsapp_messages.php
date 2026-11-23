@@ -703,9 +703,9 @@ function pg_whatsapp_message_event_html($event, $definition, $stored, $offered)
                                             <h6 class="fw-bold mb-0">' . h($definition['label']) . '</h6>
                                         </div>
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input type="checkbox" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($stored['on'] ? ' checked="checked"' : '') . ' class=""/></div>
-                                                <label class="" for="' . h($name) . 'on">' . lang('Send this message') . '</label>
+                                            <div class="d-flex align-items-center gap-5">
+                                                <input type="checkbox" class="pg-switch" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($stored['on'] ? ' checked="checked"' : '') . '/>
+                                                <label class="pg-text-2" for="' . h($name) . 'on">' . lang('Send this message') . '</label>
                                             </div>
                                         </div>' . pg_whatsapp_choice_html('wa_msg_' . $event, $stored, $offered, $choices, 'col-12');
 }

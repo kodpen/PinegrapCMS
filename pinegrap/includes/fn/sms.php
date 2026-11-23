@@ -1733,10 +1733,11 @@ function pg_sms_settings_fields()
 
     $html = '
                                         <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ((!$enabled && !$connected) ? ' disabled="disabled"' : '') . '/></div>
-                                                <label class="" for="sms_enabled">' . lang('Send SMS') . '</label><div class="form-text">' . lang('Text messages through an SMS provider account of the site. Transactional messages carry no promotion; a marketing message goes only to a number whose owner consented to it, with the sender identity and type label set on the SMS Messages card.') . '</div>
+                                            <div class="d-flex align-items-center gap-5">
+                                                <input type="checkbox" class="pg-switch" name="sms_enabled" id="sms_enabled" value="1" aria-describedby="sms_enabled_help"' . ($enabled ? ' checked="checked"' : '') . ((!$enabled && !$connected) ? ' disabled="disabled"' : '') . '/>
+                                                <label class="pg-text-2" for="sms_enabled">' . lang('Send SMS') . '</label>
                                             </div>
+                                            <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="sms_enabled_help">' . lang('Text messages through an SMS provider account of the site. Transactional messages carry no promotion; a marketing message goes only to a number whose owner consented to it, with the sender identity and type label set under SMS messages.') . '</p>
                                         </div>';
 
     if ($warning !== '') {
