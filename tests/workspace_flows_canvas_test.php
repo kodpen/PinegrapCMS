@@ -2652,12 +2652,17 @@ JS
 	}
 
 	pg_assert_same(46, $result['clear']['sag'], 'nothing in the way: its own sag');
-	pg_assert_same('M104 81 Q404 127 704 81', $result['clear']['d'], 'the quadratic curve below the chord');
+	// It leaves the dot straight down and enters the chip straight up: 12 px
+	// upright at each end, the curve between them with its control points
+	// right below the ends, so it never crosses a name beside them.
+	pg_assert_same('M104 81 V93 C104 124 704 124 704 93 V81', $result['clear']['d'], 'upright ends, the curve below the chord');
 	pg_assert_same(46, $result['below']['sag'], 'a box far below is not in the way');
 	pg_assert_true($result['under']['sag'] > 46, 'a box in the way: it hangs deeper');
-	// The curve's lowest point is halfway between the ends' level and the
-	// control point; it passes below the box and its data row (40 + 72 + 18).
-	pg_assert_true(81 + $result['under']['sag'] / 2 > 130, 'and passes below the box');
+	// The curve's lowest point is three quarters of the way from the upright
+	// ends' level to its control points; it passes below the box and its
+	// data row (40 + 72 + 18).
+	preg_match('/ C[0-9.]+ ([0-9.]+) /', $result['under']['d'], $control);
+	pg_assert_true(93 + 0.75 * ((float) $control[1] - 93) > 130, 'and passes below the box');
 	pg_assert_same(46, $result['deep']['sag'], 'a box too far down to pass below: its own sag');
 }
 
