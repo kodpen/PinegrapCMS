@@ -12,12 +12,21 @@ description: How a pinegrap.com documentation page is written and published: Eng
 - `article#docs-<page>`: a header with the `h1` and a lead paragraph, an "On this page" list, then one `section#<anchor>.mb-12` per subject. The section's id is the help anchor (`ui/panel-help-links.md`); a subsection is `h3#<anchor>-<part>`.
 - Classes: `h2.text-3xl.mb-5`, `h3.text-xl.mt-9.mb-3`, `h4.text-lg.mt-7.mb-2`. A table is `div.table-responsive.my-6 > table.table.table-sm.md:table-stacked.align-middle`, every `td` with `data-cell="<column heading>"`. A note is `div.alert.theme-info.my-6[role=note] > p.mb-0`, a warning `theme-warning`.
 - A screen's section opens with an Access line naming the roles. Labels are written as on screen, in bold. The pages hold text and tables only, no pictures.
-- A section on a feature the released version lacks says which version brings it.
+- A section on a feature the released version lacks says which version brings it: a note right after its `h2`, or after the `h3` of a part added to an older section. Replacing an `h3` block drops its note; put it back.
+
+## What does a section say?
+- Owner (2026-11-23): not a "we have this feature" area, but what a feature is for and how it is used.
+- Each section or `h3` says what it is for, where to open it, the steps of each task with the on-screen labels and what follows, then short notes. One `h3` per task; a feature list without steps is rewritten.
 - The resource tables of `/api` have four columns: Endpoint, Permission, What it does, Dry run (`Yes` or `—`).
 
 ## How is it edited and published?
 - Read the page's tree first. `StyleDesigner.aiBridge()` gives `treeJSON()` (a JSON string), `apply(tree)`, which puts a changed tree in place as one undo step, and `post('import_fragment', {html})`, which turns HTML into nodes without saving (`designer/html-import-and-paste.md`).
 - Publish (`#sd-ajax-save`) saves, and a live page is public at once. It can refuse while shared components load: wait and press again. Leave the editor afterwards, so the page lock is released.
+- The first press after `apply()` often saves nothing: check the live page signed out for the change itself (a new id or link, the number of notes), not for ids it had before.
+
+## How is a new page made?
+- Duplicate a documentation page's tab (tab menu, Duplicate); the copy is a draft. Set the address, the title `<Title> — Pinegrap Docs`, the description (the lead), Draft off, then the article's id, breadcrumb, `h1`, lead, list and sections.
+- The Docs menu (`nav.bd-links`) is stored per page: add the link on every English page, `aria-current="page"` on the own link only; a sub-page is `nav-link ps-6 text-sm`.
 - In a node, `props._attrs` is a list of `{name, value}`: an object there makes `apply()` fail after the tree is already replaced. A `td` or `li` prints its own text escaped, so inline HTML (`<code>`, `<strong>`) goes into a content span child; one span per sentence keeps it one translation string. After publishing, search the live page for `&lt;code`.
 
 ## How is a release note published?

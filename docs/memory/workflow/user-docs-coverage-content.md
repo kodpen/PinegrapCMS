@@ -4,13 +4,14 @@ description: pinegrap.com documentation pages for the panel, settings, files, pa
 ---
 
 ## Which pages cover the panel, its settings, content and people?
-A line gives the page's subjects, then the memory to write it from. The mark of each page is in `user-docs-pages.md`; the other 13 pages are in `user-docs-coverage-modules.md`.
+A line gives the page's subjects, then the memory to write it from. The mark of each page is in `user-docs-pages.md`; the other 15 pages are in `user-docs-coverage-modules.md`.
 - `/introduction`: roles and rights, Dashboard, main menu, top bar, keyboard shortcuts, sorting and Quick edit on lists, Site Log. `ui/`: `dashboard-v2-*`, `main-menu-*`, `list-table-*`; roles in `core/`.
 - `/installation`: requirements, the installation wizard, `data/config.php`, web server rules, upgrading, moving a site. `release/`, `platform/`.
 - `/system`: Software Updater and its channels, System Status, File Integrity, Write Permissions, cron, Performance Log, caches, Database Engine, Notifications, the panel as an app, private label. `platform/`, `core/`, `release/`.
 - `/site-settings`: every settings category, SMTP Settings, Connected Accounts, Mail queue, Repair Software, Backup Manager, Cloudflare Tools. `ui/`: `settings-modal-*`, `settings-card-*`; `platform/` (`object-storage-*`); mail in `core/`.
 - `/folders`: File Manager, Recycle Bin, Shared Folders, folder rights and settings. `ui/`, `platform/`.
-- `/files`: Upload Files, Edit File, Artifact Canvas, optimizing images. `platform/`; `ui/`: `image-editor-*`.
+- `/files`: Upload Files, Edit File, a pointer to the Artifact Canvas, optimizing images. `platform/`.
+- `/artifact-canvas`: the picture editor, task by task, from opening it to saving and versions. `ui/`: `image-editor-*`.
 - `/pages`: the page list, page properties, editing content, the rich-text editor, comments, page types, custom forms, form views. `designer/`: `custom-form-*`, `form-list-*`; `ui/`.
 - `/pages-cont`: commerce page types, the views of the page list, Short Links, Auto Dialogs. `commerce/`: `express-order-*`; `platform/`.
 - `/calendars`: calendars, events, event locations. `ui/`: `calendar-event-*`. The Bookings screens link here too; their memory is in `commerce/`.

@@ -1,6 +1,6 @@
 ---
 name: user-docs-help-anchors
-description: Help anchors of get_help_url.php that pinegrap.com lacks (25 of 288 on 2026-11-10): sections to write per page, the Connected accounts and Calendar subscription rows corrected, how the list is made
+description: Help anchors of get_help_url.php on pinegrap.com: none missing since 2026-11-23, the Artifact Canvas anchors waiting for a help button (#11185), two rows corrected, how to recheck
 ---
 
 ## What is a missing help anchor?
@@ -8,14 +8,11 @@ description: Help anchors of get_help_url.php that pinegrap.com lacks (25 of 288
 - The table holds 288 `page#anchor` addresses on 26 pages, each counted once and the ones a list filter opens included. 25 of them were missing on the live pages on 2026-11-10, in English and under `/tr/` alike. `/installation` and `/chat` have no row.
 
 ## Which sections are still to write?
-- `/commerce`: `cart-quotes`, `import-tracking-numbers`, `returns`, `view-return`, `subscriptions`. `/commerce-cont`: `stock-history`.
-- `/contacts`: `personal-data-export`, `personal-data-erasure`. `/pages-cont`: `import`.
-- `/site-settings`: `accounting`, `bookings`, `fediverse`, `system-tools`, `updates-and-maintenance`, `visitors-and-privacy`.
-- `/visitors`: `overview`, `site-search`, `page-speed`, `ai-visibility`. `/seo`: `accessibility-check`. `/security`: `audit-trail`.
-- `/workspace-cont`: `flows`, `workflow-tables`, `e-mails`. `/api`: `marketplace-products`.
-- `/calendars`: `ticket-check-in` (Ticket check-in, `event_check_in.php`), added after the 2026-11-10 count.
-- `/erp`: `profitability` (Profitability, `erp_profitability.php`, #10698), added after the 2026-11-10 count.
-- All 25 are screens of the open version 2026.11.0: their sections come when the page is written past #500 (`user-docs-pages.md`).
+- None since 2026-11-23: the 27 missing anchors (the 25 of 2026-11-10 plus `calendars#ticket-check-in` and `erp#profitability`) were written in the 2026.11.0 round (`plans/user-docs-2026-11.md`), each section under its anchor.
+- `/workspace-cont#flows` and `#workflow-tables` are short sections there, as Flows and Workflow Tables have no page of their own.
+
+## Which anchors wait for a row?
+- `/artifact-canvas` has no row: the canvas is an overlay without the header's help button. Issue #11185 asks for a help button in its top bar that opens the section of the open tool (`#opening`, `#photo-crop`, `#redact`, `#select-area`, `#text-and-shapes-text`, `#vector`, `#layers`, `#blank-canvas`, `#animate`, `#export`, `#saving`, `#saving-versions`). The docs keep these ids.
 
 ## Which rows point beside a section that exists?
 - None since #8551. Until then two help buttons opened the top of their page although the section was written.
@@ -25,4 +22,4 @@ description: Help anchors of get_help_url.php that pinegrap.com lacks (25 of 288
 
 ## How is the list made again?
 - Only on the owner's machine, signed out: load every page the table names, in English and under `/tr/` (a plain GET such as `curl` is enough), collect each element's `id`, and compare with the table's anchors.
-- A feature of the open version gets its row with its screen (`tests/help_url_test.php`), so the list grows until the pages are written.
+- A feature of the open version gets its row with its screen (`tests/help_url_test.php`); its section is written in the next documentation round.

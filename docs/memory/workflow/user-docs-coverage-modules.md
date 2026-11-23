@@ -4,12 +4,14 @@ description: pinegrap.com documentation pages for visitors, SEO, design, languag
 ---
 
 ## Which pages cover visitors, design and languages?
-A line gives the page's subjects, then the memory to write it from. The mark of each page is in `user-docs-pages.md`; the other 15 pages are in `user-docs-coverage-content.md`.
+A line gives the page's subjects, then its memory. The mark of each page is in `user-docs-pages.md`; the other 16 pages are in `user-docs-coverage-content.md`.
 - `/visitors`: visitor reports, visit details, how long visitor records are kept, Google Search Console. `visitors/`.
 - `/seo`: SEO score and checks, `sitemap.xml`, `robots.txt`, IndexNow, structured data, social sharing tags. `visitors/`, `ui/`, `platform/`.
 - `/design`: classic page styles, menus, regions, themes, design files, Import My Site, Find And Replace, Mass Edit, Migration. `designer/`.
-- `/visual-page-editor`: the editor's home, starting a design, templates, import, the editor, pages and tabs, building blocks, shared components, system widgets, data binding, theme, e-mail pages, publishing, who can edit, working together, the assistant. `designer/`: `designer-blocks-*`, `designer-canvas-*`, `designer-code-*`, `system-widget-*`, `widget-lists-*`, `comments-widget-*`, `design-template-*`.
-- `/multilingual`: site languages, translation engines, the Translations screen, glossary, the language switcher, visitors and search engines in other languages. `core/`: `content-translation-*`. Translated pictures (`core/picture-text-overview.md`), drawn by themselves, have no section yet.
+- `/visual-page-editor`: the editor's home, starting a design, templates, import, the editor, pages and tabs, building blocks, shared components, system widgets, data binding, theme, e-mail pages, publishing, who can edit, working together, the assistant. `designer/`: `designer-blocks-*`, `designer-canvas-*`, `designer-code-*`, `system-widget-*`, `widget-lists-*`, `comments-widget-*`.
+- `/visual-page-editor-cont`: the editor's newer subjects. `designer/`: `custom-form-*`, `widget-default-*`, `legacy-*`.
+- `/templates`: the design templates. `designer/`: `design-template-*`.
+- `/multilingual`: site languages, translation engines, the Translations screen, glossary, the language switcher, visitors and search engines in other languages. `core/`: `content-translation-*`. Translated pictures: `core/picture-text-overview.md`.
 
 ## Which pages cover commerce and the ERP?
 - `/commerce`: orders, Add Local Order, order reports, commissions, products, variant sets, Catalog Manager, product attributes, gift cards. `commerce/`: `order-completion-*`, `order-returns-*`, `payment-driver-*`, `product-price-*`, `product-review-*`, `gift-card-*`, `store-credit-*`; totals from `commerce/order-totals-overview.md`.
@@ -19,7 +21,7 @@ A line gives the page's subjects, then the memory to write it from. The mark of 
 
 ## Which pages cover the Workspace, the API and security?
 - `/workspace`: channels, messages, blocks, approvals, mentions, slash commands, tasks, the planning board, the work calendar, the decision timeline, guests, Workspace Settings. `workspace/`: `workspace-channel-*`, `workspace-command-*`, `workspace-editor-*`.
-- `/workspace-cont`: discussions, channel templates, My Notes, scheduled actions, AI assistants, MCP servers, notifications, the Workspace API. `workspace/`: `workspace-notes-*`, `workspace-voice-*`, `workspace-api-*`. Flows (`workspace/workspace-flows-overview.md`) and workflow tables (`workspace/workflow-tables.md`) have no section yet.
+- `/workspace-cont`: discussions, channel templates, My Notes, scheduled actions, AI assistants, MCP servers, notifications, the Workspace API. `workspace/`: `workspace-notes-*`, `workspace-voice-*`, `workspace-api-*`. Flows (`workspace/workspace-flows-overview.md`) and workflow tables (`workspace/workflow-tables.md`) are short sections.
 - `/api`: the external API, Application Access, authentication, resources, webhooks, marketplaces, team devices, connected apps and MCP. `api/`: `api-store-*`; marketplaces in `commerce/`.
 - `/security`: firewall, bot filtering, IP lists, country restriction, Firewall Log, security headers, sign-in protection, Two-Step Verification, Device Limit, Sign in with Google, Microsoft and Apple, Developer Lock. `waf/`; sign-in and the audit trail in `core/` (`audit-trail-*`).
 
