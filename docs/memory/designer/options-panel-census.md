@@ -11,6 +11,7 @@ description: Start file of the Options panel census (DO1, 2026-11-24): what the 
 - Controls today, per element kind and per section: `options-panel-census-today.md`.
 - Missing ways to place and size an element (grid tracks and areas, position and layer order, per screen size values, sticky and scroll snapping, aspect ratio, object fit): `options-panel-census-layout.md`.
 - Missing ways to dress and move it (hover, focus and pressed states, transitions and entrance motion, gradients and several backgrounds, filters and blend, transforms, text effects, masks and clip shapes): `options-panel-census-look.md`.
+- What Bootstrap Studio has that ours lacks, as have, partly or missing (view transitions, scrollspy, Markdown, favourites, notes, Check for issues, find and replace, easing curve, collection pages): `options-panel-census-bss.md`.
 
 ## What do S and M mean here?
 - S: one new row or a few values in a row that writes a Bootstrap class or a prop the page already prints, with the twins (canvas, editor HTML, site) already in place; one PR of a few hundred lines.
