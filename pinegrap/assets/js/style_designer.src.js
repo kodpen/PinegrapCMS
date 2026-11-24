@@ -43341,8 +43341,8 @@ const StyleDesigner = (function () {
     ];
     var SW_ATTR_MARKUP = [
         '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
-        '__price_range', '__active_cat_description', '__active_cat_code', '__variant_picker',
-        '__code', '__product_line', '__product_lines_html', '__product_choice_options', '__keywords_html',
+        '__price_range', '__active_cat_description', '__active_cat_code',
+        '__code', '__product_line', '__product_lines_html', '__product_choice_options', '__keywords_html', '__variant_picker',
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
         '__comment_message_html', '__comment_seller_reply_html',
