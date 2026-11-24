@@ -458,6 +458,7 @@
 - workspace-flows-form-retirement.md: How the scheduled actions form was retired (R1-R4, done in #2970): what went in each slice, and what cards, scheduled messages, the draft card and the canvas still use
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
 - workspace-flows-from-table.md: Run from a workflow table (F6c-a #3145, F6c-b, decision #3122): rows compiled into a draft flow (ws_flow_from_wtable()), rights; Run's optional customer, one open run per flow and contact [decision: decisions-made-workspace-2.md]
+- workspace-flows-leave.md: Leaving a flow (FE14, flow_leave.php): leave rules in the graph, events offered, a run's subject from its event, the hook by idx_subject, status left, the name window's part
 - workspace-flows-list.md: The Flows screen's flow list (#3172, #3222): table, start words with the next run, kept in a row after opening (#9127), converted flows, search, chips, Not converted group, the way back
 - workspace-flows-mcp-box-writes.md: The MCP box with a tool that asks first (F8c-1 #3144, canvas F8c-2 #3321): asks the flow's owner in a channel, waits on approval:<id>, calls once with their own account and the approved arguments
 - workspace-flows-mcp-box.md: The MCP box of flows (F8a #3000, F8b #3028 canvas, answer 5): step kind mcp runs a connected server's tool through ws_mcp_tool_call() with the owner's account, its answer an output; asking first: F8c
