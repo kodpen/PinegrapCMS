@@ -2164,6 +2164,9 @@ function pg_page_draft_move($page_id, $on, $folder, $user_id = null)
             VALUES ('$page_id', '" . (int)$folder . "', UNIX_TIMESTAMP(), '" . (int)$user_id . "')
             ON DUPLICATE KEY UPDATE folder_id = VALUES(folder_id), drafted_at = VALUES(drafted_at), drafted_by = VALUES(drafted_by)");
     } else {
+        // A draft a prototype link holds until it is approved stays off the
+        // site (pg_proto_approval_hold()); the caller reports it.
+        if (function_exists('pg_proto_approval_hold') && pg_proto_approval_hold($page_id)) return false;
         $to = pg_page_draft_publish_folder($page_id);
         db("UPDATE page SET page_folder = '$to', page_timestamp = UNIX_TIMESTAMP()$author" . ($sched ? ", publish_at = 0" : '') . "
             WHERE page_id = '$page_id'");
@@ -2293,12 +2296,13 @@ function pg_designer_design_state($c)
  * @param int   $style_id
  * @param bool  $on   true: off the site; false: on it
  * @param array $user
- * @return array ok, error, changed, home (pages kept on the site as the home page)
+ * @return array ok, error, changed, home (pages kept on the site as the home page),
+ *               held (drafts a prototype link holds until they are approved)
  */
 function pg_designer_design_set_draft($style_id, $on, $user)
 {
     $style_id = (int)$style_id;
-    $out = array('ok' => false, 'error' => '', 'changed' => 0, 'home' => 0);
+    $out = array('ok' => false, 'error' => '', 'changed' => 0, 'home' => 0, 'held' => 0);
 
     if (!pg_page_draft_ready()) {
         $out['error'] = lang('Drafts are not available on this site yet.');
@@ -2341,7 +2345,8 @@ function pg_designer_design_set_draft($style_id, $on, $user)
             log_activity(lang(array('string' => 'page ({var:1}) was taken off the site as a draft', 'vars' => array($r['page_name']))), $who);
         } else {
             if (!$draft) continue;
-            pg_page_draft_move($pid, false, (int)$r['page_folder'], $uid);
+            // A draft waiting for a prototype link's approval stays a draft.
+            if (!pg_page_draft_move($pid, false, (int)$r['page_folder'], $uid)) { $out['held']++; continue; }
             log_activity(lang(array('string' => 'page ({var:1}) was published', 'vars' => array($r['page_name']))), $who);
         }
         $out['changed']++;
@@ -3631,6 +3636,24 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         }
     }
 
+    // A draft a prototype link asks approval of before it goes live
+    // ("Publish only after approval") stays a draft until the link's
+    // approver approves it as it is now. A writer that copies a draft into a
+    // live page (a release bundle, an experiment's winner) names the draft
+    // as publish_from_draft. An administrator may publish it anyway with a
+    // reason, which goes to the Site Log.
+    $approval_from = ($draft_plan['was'] && !$draft_plan['want']) ? $page_id : 0;
+    if (!empty($page['publish_from_draft'])) $approval_from = (int)$page['publish_from_draft'];
+    $approval_hold = ($approval_from > 0 && function_exists('pg_proto_approval_hold')) ? pg_proto_approval_hold($approval_from) : null;
+    $approval_reason = '';
+    if ($approval_hold) {
+        $approval_reason = pg_proto_approval_override_reason($page, $user);
+        if ($approval_reason === '') {
+            return array('ok' => false, 'page_id' => $page_id, 'warnings' => $warnings,
+                'errors' => array(pg_proto_approval_hold_text($approval_hold['page_name'], $approval_hold)));
+        }
+    }
+
     if ($dry_run) {
         return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => $draft_plan['want']);
     }
@@ -4011,6 +4034,11 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 : lang(array('string' => 'page ({var:1}) was published', 'vars' => array($name)));
             log_activity($draft_log, isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
         }
+    }
+
+    // A held draft an administrator published anyway, with the reason.
+    if ($approval_hold && $approval_reason !== '' && $page_id > 0) {
+        pg_proto_approval_override_log($approval_hold['page_name'], $approval_hold, $approval_reason);
     }
 
     // Un-migrated database: the only place the tree can live is the style.

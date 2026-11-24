@@ -1033,6 +1033,7 @@ function pg_panel_designer($request, $action)
                 $dp_message = ($dp['changed'] > 1) ? str_replace('{var}', $dp['changed'], lang('{var} pages were published.')) : lang('The page was published.');
             }
             if ($dp['home'] > 0) $dp_message .= ' ' . lang('The home page stays on the site.');
+            if (!empty($dp['held'])) $dp_message .= ' ' . str_replace('{var}', (int)$dp['held'], lang('{var} drafts wait for approval on a prototype link and stay off the site.'));
             require_once(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
             $dp_counts = pg_designer_design_draft_counts(array($dp_style_id));
             $dp_row = array(

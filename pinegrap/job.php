@@ -732,6 +732,10 @@ if (function_exists('pg_page_schedule_run')) {
         log_activity(lang(array('string' => 'page ({var:1}) was taken off the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
     }
 
+    foreach ($page_schedule['held'] as $page_schedule_name) {
+        log_activity(lang(array('string' => 'page ({var:1}) waits for approval on a prototype link, so it stayed a draft at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
+    }
+
     foreach ($page_schedule['home'] as $page_schedule_name) {
         log_activity(lang(array('string' => 'page ({var:1}) is the home page, so it stayed on the site at its scheduled time', 'vars' => array($page_schedule_name))), 'UNKNOWN');
     }
