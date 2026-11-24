@@ -16324,7 +16324,7 @@ const StyleDesigner = (function () {
             return '<div class="pg-cart-pending-offers card card-body mb-3">' +
                    '<div class="fw-semibold mb-2"><span class="bi bi-gift me-1"></span>' + esc(_sdT('Special Offers')) + '</div>' +
                    '<div class="pg-cart-pending-offer d-flex flex-wrap align-items-end gap-2 py-2 border-bottom">' +
-                   '<div class="flex-grow-1 min-w-0"><span class="fw-semibold">' + esc(_sdT('Buy 2, get 1 free')) + '</span></div>' +
+                   '<div class="flex-grow-1 min-width-0"><span class="fw-semibold">' + esc(_sdT('Buy 2, get 1 free')) + '</span></div>' +
                    '<div><button type="button" class="btn btn-primary btn-sm" disabled>' + esc(_sdT('Add')) + '</button></div>' +
                    '</div></div>';
         },
@@ -46932,7 +46932,7 @@ const StyleDesigner = (function () {
     /* @pg-site-output */
     function _sdCartPendingRowHtml(offerId, actionId, label, recipientHtml) {
         return '<div class="pg-cart-pending-offer d-flex flex-wrap align-items-end gap-2 py-2 border-bottom">'
-            + '<div class="flex-grow-1 min-w-0"><span class="fw-semibold">' + esc(label) + '</span></div>'
+            + '<div class="flex-grow-1 min-width-0"><span class="fw-semibold">' + esc(label) + '</span></div>'
             + (recipientHtml ? '<div class="pg-cart-pending-offer-recipient">' + recipientHtml + '</div>' : '')
             + '<div><button type="submit" class="btn btn-primary btn-sm" name="add_pending_offer_' + (parseInt(offerId, 10) || 0) + '_' + (parseInt(actionId, 10) || 0) + '" value="1">'
             + esc(_sdT('Add')) + '</button></div>'
@@ -68947,7 +68947,7 @@ const StyleDesigner = (function () {
                                                             ],
                                                             _bindings: { src: '__item_image' }
                                                         }, []),
-                                                        sem('div', 'flex-grow-1 min-w-0', [
+                                                        sem('div', 'flex-grow-1 min-width-0', [
                                                             sem('p', 'fw-semibold mb-1', _sdT('Sample Product Name'), { bindings: { text: '__item_short_description' } }),
                                                             sem('p', 'small text-muted mb-0', _sdT('A sample product description — short and clear.'), { bindings: { text: '__item_summary' } })
                                                         ])
@@ -70858,7 +70858,7 @@ const StyleDesigner = (function () {
                                 _attrs: [{ name: 'style', value: 'width:72px;height:72px;object-fit:cover' }],
                                 _bindings: { src: '__item_image', alt: '__item_image_alt' } }),
                             // Name + SKU
-                            createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1 min-w-0', customName: _sdT('Product Information') }, [
+                            createNode('semantic', { tag: 'div', cssClass: 'flex-grow-1 min-width-0', customName: _sdT('Product Information') }, [
                                 createNode('content', { contentType: 'heading', tag: 'h6',
                                     text: _sdT('Product name'), cssClass: 'fw-semibold mb-1',
                                     _bindings: { text: '__item_short_description' } }),

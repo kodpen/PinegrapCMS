@@ -28,8 +28,9 @@ function test_panel_min_width_class_bootstrap_6_defines_min_w_0()
 
 function test_panel_min_width_class_no_panel_markup_uses_min_width_0()
 {
-	// Site widgets print Bootstrap 5.3.8 markup, which has neither class.
-	$site = array('includes/fn/widgets_cart.php', 'includes/fn/widgets_express_order.php');
+	// Site widgets print Bootstrap 5.3.8 markup, which has neither class;
+	// the designer's canvas twins of them print the same.
+	$site = array('includes/fn/widgets_cart.php', 'includes/fn/widgets_express_order.php', 'assets/js/style_designer.src.js');
 	$found = array();
 	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
 	foreach ($files as $file) {
