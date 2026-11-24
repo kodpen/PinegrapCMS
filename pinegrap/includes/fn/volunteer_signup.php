@@ -736,6 +736,12 @@ function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $t
         }
     }
 
+    // A volunteer leaving the waitlist never held a place: the row keeps no
+    // cancel stamp, so the report never counts it as a late cancel.
+    if (($answer === 'cancelled') && ($own['state'] === 'waiting')) {
+        db_q("UPDATE volunteer_signups SET cancelled_at = 0 WHERE id = ? AND state = 'cancelled'", array((int) $own['id']));
+    }
+
     db_value("SELECT RELEASE_LOCK('" . escape($lock) . "')");
 
     foreach ($signed as $place) {
