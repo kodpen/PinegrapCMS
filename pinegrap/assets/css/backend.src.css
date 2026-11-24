@@ -28193,6 +28193,22 @@ html.ws-flow-layer-on body {
 .wsf-app.wsf-outlined .wsf-add-pop {
   display: none;
 }
+/* The tools of several boxes chosen (drawSeveral(), board B2): a floating
+   bar 12 px under the lowest box, at the canvas's zoom: the count,
+   Duplicate, Copy and Delete. */
+.wsf-several {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 12px;
+  white-space: nowrap;
+}
+.wsf-several-count {
+  margin-right: 4px;
+  color: var(--pg-fg-2);
+}
 /* The bottom strip (drawStrip()): centred 16 px over the canvas's bottom,
    44 px high; Undo and Redo, the zoom and Fit, the data threads. */
 .wsf-strip {

@@ -1681,12 +1681,16 @@
         var elbow = adapter.route === 'elbow';
         var routeBoxes = null;
         var settling = false;
-        // Several boxes (adapter.several): the ids chosen (two or more, else
-        // none), what mark() was last given, the rectangle being drawn.
-        var many = !!adapter.several;
+        // Several boxes (adapter.several, read at each use): the ids chosen
+        // (two or more, else none), what mark() was last given, the
+        // rectangle being drawn.
         var chosen = [];
         var marked = null;
         var lasso = null;
+
+        function many() {
+            return !!adapter.several;
+        }
 
         function text() {
             return adapter.text.apply(null, arguments);
@@ -2478,7 +2482,7 @@
             var out = node ? closest(target, '.' + classes.port + '-out') : null;
             var id = node ? node.getAttribute('data-node') : null;
 
-            if (many && event.shiftKey && node) {
+            if (many() && event.shiftKey && node) {
                 // Shift+click: the box added to the set or taken out.
                 next.kind = 'none';
                 event.preventDefault();
@@ -2487,7 +2491,7 @@
                 return;
             }
 
-            if (many && event.shiftKey && !node && !arrow) {
+            if (many() && event.shiftKey && !node && !arrow) {
                 next.kind = 'lasso';
                 next.at = view.point(event.clientX, event.clientY);
                 next.base = base();
@@ -2811,10 +2815,10 @@
 
             if (handled) {
                 // The adapter's own key.
-            } else if (many && (event.ctrlKey || event.metaKey) && ((name === 'a') || (name === 'A'))) {
+            } else if (many() && (event.ctrlKey || event.metaKey) && ((name === 'a') || (name === 'A'))) {
                 choose(adapter.items().map(function (item) { return item.id; }), true);
                 handled = true;
-            } else if (many && (name === 'Escape') && chosen.length) {
+            } else if (many() && (name === 'Escape') && chosen.length) {
                 choose([]);
                 handled = true;
             } else if ((name === 'ArrowLeft') || (name === 'ArrowRight') || (name === 'ArrowUp') || (name === 'ArrowDown')) {

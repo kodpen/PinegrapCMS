@@ -1289,6 +1289,69 @@ module.exports = [
     },
 
     {
+        name: 'several boxes: Shift+click, the Shift+drag rectangle and Ctrl+A choose them, a drag moves them together, Duplicate, Copy and Paste keep their arrows and threads, Delete, each one undo step',
+        fixture: 'threads',
+        run: async (h) => {
+            const chosen = () => h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .pgc-node.pgc-selected'), (box) => box.getAttribute('data-node')));
+            const tools = () => h.page(() => {
+                const bar = document.querySelector('#ws-root .wsf-several');
+
+                return bar.classList.contains('d-none') ? null : Array.prototype.map.call(bar.children, (child) => child.textContent.trim());
+            });
+
+            await h.open();
+            await pick(h, 'task_1');
+            await h.click(BOX('task_2'), { modifiers: ['Shift'] });
+            h.same('Shift+click adds the box to the one selected', await chosen(), ['task_1', 'task_2']);
+            h.same('their tools float under them', await tools(), [h.t('fl_boxes_count', 2), h.t('fl_duplicate'), h.t('fl_copy'), h.t('fl_delete_boxes')]);
+            h.ok('the panel is closed', await h.page(() => !document.querySelector('#ws-root .wsf-side-open')));
+
+            await h.drag(BOX('task_1'), { x: (await h.at(BOX('task_1'))).x + 64, y: (await h.at(BOX('task_1'))).y + 32 });
+            h.same('a drag moves them together', [(await h.probe('box', 'task_1')).x, (await h.probe('box', 'task_2')).x, (await h.probe('box', 'end_1')).x], [384, 704, 960]);
+            await h.key('ArrowRight');
+            h.same('an arrow key moves them a grid step', [(await h.probe('box', 'task_1')).x, (await h.probe('box', 'task_2')).x], [400, 720]);
+
+            await h.key('d', 'Control');
+            h.same('Ctrl+D: the copies chosen', await chosen(), ['task_3', 'task_4']);
+
+            let save = await saveNumber(h, 1);
+
+            h.ok('the arrow among them kept, none to the boxes left out', arrows(save.data.graph).indexOf('task_3>task_4:done') !== -1 && arrows(save.data.graph).length === 4, arrows(save.data.graph));
+            h.same('the thread among them reads the copy', nodeIn(save.data.graph, 'task_4').config.description, 'After task {{node.task_3.task_id}}');
+            await h.key('z', 'Control');
+            h.same('one undo takes the copies away', (await h.probe('boxes')).length, 4);
+
+            await h.key('a', 'Control');
+            h.same('Ctrl+A chooses all', (await chosen()).length, 4);
+            await h.key('c', 'Control');
+            await h.key('Escape');
+            h.same('Esc lets them go', await chosen(), []);
+            await h.key('v', 'Control');
+            h.same('Ctrl+V: the start box is not pasted into a flow that has one', (await chosen()).length, 3);
+            h.same('pasted under the boxes there', (await h.probe('boxes')).length, 7);
+            await h.key('Delete');
+            h.same('Delete removes the boxes chosen', (await h.probe('boxes')).length, 4);
+            await h.key('z', 'Control');
+            h.same('one undo brings them back', (await h.probe('boxes')).length, 7);
+            await h.key('z', 'Control');
+
+            const left = await h.page(() => {
+                const one = document.querySelector('#ws-root .pgc-node[data-node="task_2"]').getBoundingClientRect();
+                const two = document.querySelector('#ws-root .pgc-node[data-node="end_1"]').getBoundingClientRect();
+
+                return { x: one.left - 24, y: one.bottom + 24, ex: two.left + 8, ey: two.top + 8 };
+            });
+
+            await h.click({ x: left.x, y: left.y });
+            await h.drag({ x: left.x, y: left.y }, { x: left.ex, y: left.ey }, { modifiers: ['Shift'] });
+            h.same('the Shift+drag rectangle chooses the boxes it touches', await chosen(), ['task_2', 'end_1']);
+            h.ok('the rectangle is gone', await h.page(() => document.querySelector('#ws-root .pgc-lasso').classList.contains('pgc-hidden')));
+            await h.click({ x: left.x, y: left.y });
+            h.same('a click on the empty canvas lets them go', await chosen(), []);
+        }
+    },
+
+    {
         name: 'the problems the server finds are listed, each leading to its box; an arrow it names is outlined',
         fixture: 'problems',
         run: async (h) => {
