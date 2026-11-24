@@ -1,6 +1,6 @@
 ---
 name: designer-canvas-guides-geometry
-description: The canvas guides' pure geometry (CG1 #11517, window.PGCanvasGuides): distances between two boxes, a parent's inner distances, the spacing scale's nearest step, the column under a pointer, equal sibling gaps
+description: Canvas guides' pure geometry (CG1 #11517, PGCanvasGuides): box distances, inner distances, nearest spacing step, column under a pointer, equal sibling gaps
 ---
 
 ## What is it?
