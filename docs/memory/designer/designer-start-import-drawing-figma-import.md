@@ -1,6 +1,6 @@
 ---
 name: designer-start-import-drawing-figma-import
-description: The Figma start as drawn, second half (figma.html, boards B7 to B9): the variables card in place of the start questions, the running import and the report
+description: The Figma start as drawn, second half (figma.html, B7 to B9): the variables card in place of the start questions (ST5a), the running import and the report (ST5b)
 ---
 
 ## What comes in place of the start questions?
@@ -9,12 +9,13 @@ description: The Figma start as drawn, second half (figma.html, boards B7 to B9)
 - A row with nothing found reads "The site's default"; a file with no colour at all goes straight to the questions.
 
 ## What does the running import show?
-- "Making n pages", a bar, and a row per ticked frame: done with its counts of pictures and vectors, working with a spinner, waiting in grey. The window may be closed; the design is listed on the designer's home when ready.
+- "Making n pages", a bar, and a row per ticked frame: done with its counts of pictures and vectors, working with a spinner, waiting in grey. The window says it may be closed: the import goes on, and the design's card on the designs home says where it is (`designer-start-import-drawing-home-line.md`).
 - Foot: "Stop" quiet and a grey "Working…". "Stop" makes no design and removes what was fetched.
-- A frame that fails turns rose and the others go on. The limit met half way: the row reads "Waiting for Figma, goes on at <time>" and the import goes on by itself.
+- The bar is the progress bar, a Design example made from this board.
+- A frame that fails turns rose and the others go on; the report lists it as "Not made". The limit met half way: the row reads "Waiting for Figma, goes on at <time>" and the import goes on by itself.
 
 ## How is the report laid out?
-- The window's last pane: "n pages made from “<file>”", four counts (pictures saved, vectors saved, shared components, variables), one grey line naming the source of the variables and the file manager folder.
+- The window's last pane: "n pages made from “<file>”" ("n of n pages made" when a frame failed), the counts as pills ("n pictures", "n vectors", "n shared components", "n variables" plain, "n notes" amber, "n not made" rose; a tone with nothing to count is left out), one grey line naming the source of the variables and the file manager folder.
 - A fold per frame with a pill: "Carried whole" teal, "n notes" amber, "Not made" rose. The frames with notes come first open, one at a time; a note names the layer, says what happened and what it means on the page.
-- Foot: "Copy the report" ghost at the left, "Open the design" the one filled button. Escape and the cross open the design too.
-- The sheet draws no place where the report is read again after the window is closed.
+- Foot: "Copy the report" ghost at the left, "Open the design" the one filled button. Escape and the cross close the window; the pages are already made.
+- The report is read again from one place only: the line on the design's card of the designs home (`designer-start-import-drawing-home-line.md`).

@@ -6,12 +6,12 @@ description: The Canva start as drawn (canva.html, boards C1 to C5): the upload 
 ## How does the Canva start open?
 - No connection, no account, no link field: the pane is an upload. Canva has no page and no row on Connections.
 - Pane title "Start from Canva pages" and one sentence: download the pages from Canva as PNG or PDF and add them; each comes in as a picture to build on, a model for the page, not layers that can be edited. It is not a warning box and has no "Got it".
-- A drop place: "Drop PNG or PDF files here", the line "In Canva: Share, Download, then “PNG” or “PDF Standard”.", and the quiet button "Choose files" (several files at once).
+- A drop place (not a Design example yet; one is made from this sheet): "Drop PNG or PDF files here", the line "In Canva: Share, Download, then “PNG” or “PDF Standard”.", and the quiet button "Choose files" (several files at once).
 - Foot: "Cancel" quiet, "Next" filled; grey until one page is there.
 - On a touch screen the place reads "Add PNG or PDF files" and the whole place is the button.
 
 ## How are the added pages shown?
-- Head "n pages" with "from n files". A tile per page, four a row: the picture, its place as a number at the top left, a bin at the top right, the page's name and the file's name.
+- Head "n pages" with "from n files". A tile per page, four a row, the same card as a Figma frame's: its place as a number, the page's name and a bin in the head, the picture inside, the file's name as the note.
 - A PDF is unfolded into its pages, named "<file>, page n"; a PNG takes its file's name. The name becomes the page's name in the design.
 - Dragging a tile changes the order. The bin takes a page out without a question.
 - The drop place shrinks to one row under the tiles, "Drop more files here", with "Choose files".

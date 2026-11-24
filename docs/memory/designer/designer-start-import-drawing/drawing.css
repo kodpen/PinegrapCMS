@@ -57,10 +57,11 @@
 .btn.off { opacity: .45; } .btn.fill.off { opacity: 1; background: var(--quiet); color: var(--fg3); box-shadow: inset 0 0 0 1px var(--line); text-shadow: none; } .btn.wide { width: 100%; justify-content: center; }
 .spin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid color-mix(in srgb, currentColor 30%, transparent); border-top-color: currentColor; flex: none; }
 
-/* a line that says what happened or what is missing */
-.msg { --c: var(--amber); display: flex; gap: 10px; padding: 11px 13px; border-radius: 12px; font-size: 13px; line-height: 1.45; background: color-mix(in srgb, var(--c) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 24%, transparent); }
-.msg > i { flex: none; color: var(--c); font-size: 15px; margin-top: 1px; } .msg b { font-weight: 600; } .msg small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--fg2); }
-.msg.rose { --c: var(--rose); } .msg.teal { --c: var(--teal); } .msg.blue { --c: var(--blue); } .msg .t { flex: 1; min-width: 0; } .msg .btn { align-self: center; }
+/* a line that says what was found or what is missing: the Result line, in the tone of its tile */
+.res { --c: var(--amber); display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 13px; background: color-mix(in srgb, var(--c) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent); }
+.res.t-teal { --c: var(--teal); } .res.t-rose { --c: var(--rose); } .res.t-blue { --c: var(--blue); }
+.res .t { flex: 1; min-width: 0; } .res b { display: block; font-size: 13.5px; font-weight: 600; } .res small { display: block; font-size: 12.5px; color: var(--fg2); line-height: 1.45; }
+.more { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; font-size: 12.5px; font-weight: 550; color: var(--fg2); } .more i { font-size: 11px; color: var(--fg3); } .help.mo { margin: 6px 0 0 17px; max-width: 520px; }
 
 /* a small question dialog */
 .dlg { position: relative; z-index: 1; width: 400px; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
@@ -94,21 +95,20 @@
 .fhead small { font-size: 12.5px; color: var(--fg3); } .fhead .btn { margin-left: auto; }
 .pgh { display: flex; align-items: center; gap: 8px; margin: 18px 0 9px; font-size: 13px; font-weight: 600; } .pgh em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--fg3); } .pgh .lk { margin-left: auto; font-size: 12.5px; }
 .frs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.fr { position: relative; min-width: 0; padding: 6px 6px 9px; border-radius: 13px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
-.fr.on { box-shadow: inset 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
-.fr .pic { height: 102px; border-radius: 8px; overflow: hidden; display: flex; justify-content: center; padding: 9px 12px 0; background: var(--quiet); }
-.fr .ck { position: absolute; top: 12px; left: 12px; background: var(--surf1); box-shadow: inset 0 0 0 1.5px var(--fg3), 0 1px 3px rgba(0,0,0,.25); } .fr.on .ck { background: linear-gradient(180deg, var(--a1), var(--a2)); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
-.fr b { display: block; margin: 8px 4px 0; font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .fr small { display: block; margin: 1px 4px 0; font-size: 11.5px; color: var(--fg3); white-space: nowrap; }
-.fr .no { position: absolute; top: 12px; left: 12px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 7px; display: grid; place-items: center; font-size: 11.5px; font-weight: 650; background: var(--surf1); box-shadow: 0 1px 3px rgba(0,0,0,.3), inset 0 0 0 1px var(--line); }
-.fr .rm2 { position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-size: 12px; color: var(--fg2); background: var(--surf1); box-shadow: 0 1px 3px rgba(0,0,0,.3), inset 0 0 0 1px var(--line); }
-.fr.bad { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rose) 45%, transparent); } .fr.bad small { color: var(--rose); white-space: normal; line-height: 1.35; }
+.fr { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 9px; padding: 12px 12px 11px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi); }
+.fr.on { background: color-mix(in srgb, var(--accent) 5%, transparent); box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent); }
+.fh { display: flex; align-items: center; gap: 8px; min-height: 20px; } .fh b { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fh .ib.sm { width: 24px; height: 24px; margin: -2px -4px -2px 0; font-size: 13px; }
+.fr .pic { height: 92px; border-radius: 8px; overflow: hidden; display: flex; justify-content: center; padding: 9px 12px 0; background: var(--quiet); }
+.fr small { display: block; font-size: 12px; color: var(--fg3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fr .no { flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 7px; display: grid; place-items: center; font-size: 11.5px; font-weight: 650; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
 .fr .pic.nopic { align-items: center; padding: 0; color: var(--fg3); font-size: 20px; }
 .m { width: 100%; display: grid; align-content: start; gap: 5px; padding: 7px 8px; border-radius: 5px 5px 0 0; background: var(--surf1); box-shadow: 0 0 0 1px var(--line); }
 .m.ph { width: 44%; } .m i { display: block; height: 5px; border-radius: 2px; background: var(--sk); }
 .m .h { width: 34%; } .m .hero { height: 30px; border-radius: 4px; background: color-mix(in srgb, var(--c, var(--accent)) 30%, transparent); } .m .w6 { width: 62%; } .m .w4 { width: 44%; }
 .m .r3 { height: auto; background: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; } .m .r3 i { height: 20px; border-radius: 3px; } .m.ph .r3 { grid-template-columns: 1fr; }
 .m .bt { width: 26%; height: 8px; border-radius: 3px; background: var(--c, var(--accent)); }
-.skl .pic { background: var(--sk); } .skl b, .skl small { height: 8px; border-radius: 4px; background: var(--sk); width: 70%; margin-top: 10px; } .skl small { width: 42%; margin-top: 6px; }
+.skl .pic { background: var(--sk); } .skl .fh b, .skl small { flex: none; height: 8px; border-radius: 4px; background: var(--sk); width: 70%; } .skl small { width: 42%; }
 .cntl { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--fg2); } .cntl b { color: var(--fg); font-weight: 600; } .cntl.warn, .cntl.warn b { color: var(--amber); }
 
 /* the variables found, the import running, the report */
@@ -120,8 +120,7 @@
 .prow > i, .prow > .spin { flex: none; width: 16px; text-align: center; color: var(--fg3); } .prow.ok > i { color: var(--teal); } .prow > .spin { color: var(--accent); width: 14px; margin: 0 1px; }
 .prow b { font-weight: 600; } .prow small { margin-left: auto; font-size: 12.5px; color: var(--fg2); } .prow.wait b { color: var(--fg2); font-weight: 500; } .prow.wait small { color: var(--fg3); }
 .pbar { height: 6px; margin: 16px 0 8px; border-radius: 3px; background: var(--quiet); overflow: hidden; } .pbar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--a1), var(--a2)); }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0 6px; }
-.stat { padding: 10px 12px 11px; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi); } .stat b { display: block; font: 650 19px/1.2 "Inter Display", Inter, sans-serif; letter-spacing: -.02em; } .stat small { font-size: 12px; color: var(--fg2); }
+.cnts { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
 .src { margin: 0 0 16px; font-size: 12.5px; color: var(--fg3); }
 .rf { border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); } .rf + .rf { margin-top: 8px; }
 .rfh { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-weight: 600; font-size: 13.5px; } .rfh > i { color: var(--fg3); font-size: 12px; } .rfh em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--fg3); } .rfh .st { margin-left: auto; }
@@ -140,3 +139,14 @@
 .cv i { display: block; height: 6px; border-radius: 2px; background: rgba(255,255,255,.85); width: 60%; } .cv i + i { width: 36%; height: 4px; opacity: .7; }
 .qc { border-radius: 18px; border: 1px solid var(--line); box-shadow: var(--shadow-card); background: linear-gradient(180deg, var(--surf1), var(--surf2)); overflow: hidden; }
 .qc .qb { padding: 22px 22px 24px; }
+.src.top { margin: 8px 0 0; }
+
+/* the designs home: a design's card with its import line */
+.hcs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
+.hcap { margin: 0 2px 8px; font-size: 12px; font-weight: 600; color: var(--fg3); }
+.hc { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: linear-gradient(180deg, var(--surf1), var(--surf2)); box-shadow: var(--shadow-card); }
+.hc .pic { height: 132px; display: flex; justify-content: center; padding: 14px 34px 0; background: var(--quiet); overflow: hidden; }
+.hb { padding: 12px 14px 0; } .hn { display: flex; align-items: center; gap: 8px; } .hn b { flex: 1; font: 650 15px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.01em; } .hn .ib { margin: -4px -6px -4px 0; }
+.hs { margin: 2px 0 0; font-size: 12.5px; color: var(--fg2); }
+.hl { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 12px -14px 0; padding: 7px 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--fg2); }
+.hl > i { flex: none; font-size: 13px; color: var(--fg3); } .hl > .spin { color: var(--accent); width: 12px; height: 12px; } .hl b { font-weight: 600; color: var(--fg); } .hl .lk { font-size: 12.5px; } .hl .btn { flex: none; }
