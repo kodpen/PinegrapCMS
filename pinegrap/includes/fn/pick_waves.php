@@ -503,13 +503,12 @@ function pg_pick_wave_lines($wave_id)
 
     $images = array();
     $rows = array();
+    $default_location_id = pg_pick_location_of(0);
 
     foreach ($items as $item) {
         $product_id = (int) $item['product_id'];
         $location_id = pg_pick_location_of($item['stock_location_id']);
-
-        // An address typed before the first location was added stays at 0.
-        $bin = isset($bins[$product_id][$location_id]) ? $bins[$product_id][$location_id] : (isset($bins[$product_id][0]) ? $bins[$product_id][0] : '');
+        $bin = pg_pick_line_bin(isset($bins[$product_id]) ? $bins[$product_id] : array(), $location_id, $default_location_id);
         $name = trim(strip_tags((string) $item['short_description']));
 
         $rows[] = array(

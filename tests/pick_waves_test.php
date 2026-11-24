@@ -124,3 +124,17 @@ function test_pick_waves_single_item_scan_finds_the_oldest_address()
 	);
 	pg_assert_same(1, pg_pick_single_item_address($late, 5), 'an unknown day comes last');
 }
+
+// A shelf address typed before the first location was added (location 0)
+// is the default location's; an order picked at another location never
+// reads it.
+function test_pick_waves_line_shelf_by_location()
+{
+	$bins = array(0 => 'A-3', 7 => 'B-1');
+
+	pg_assert_same('B-1', pg_pick_line_bin($bins, 7, 5), 'the location\'s own address');
+	pg_assert_same('A-3', pg_pick_line_bin($bins, 5, 5), 'the default location reads the address typed before locations');
+	pg_assert_same('', pg_pick_line_bin($bins, 9, 5), 'another location without an address has none');
+	pg_assert_same('A-3', pg_pick_line_bin(array(0 => 'A-3'), 0, 0), 'without locations');
+	pg_assert_same('', pg_pick_line_bin(array(), 5, 5), 'no address at all');
+}

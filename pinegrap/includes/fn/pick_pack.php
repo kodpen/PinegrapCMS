@@ -420,6 +420,29 @@ function pg_pick_wave_rule_clean(array $in, $today)
 }
 
 /**
+ * A pick list line's shelf address at its location. An address kept at
+ * location 0 was typed before the first location was added and belongs to
+ * the default location only: another location without its own address has
+ * none, never the default location's shelf.
+ *
+ * @param array $bins                location_id => address of one product
+ * @param int   $location_id         where the line is picked
+ * @param int   $default_location_id the default location, 0 without
+ *                                   locations
+ * @return string '' when none
+ */
+function pg_pick_line_bin(array $bins, $location_id, $default_location_id)
+{
+    $location_id = (int) $location_id;
+
+    if (isset($bins[$location_id])) {
+        return (string) $bins[$location_id];
+    }
+
+    return ($location_id === (int) $default_location_id && isset($bins[0])) ? (string) $bins[0] : '';
+}
+
+/**
  * The key of a pick list line, as the wave's picked list keeps it.
  *
  * @param int $product_id
