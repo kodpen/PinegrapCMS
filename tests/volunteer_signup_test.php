@@ -145,3 +145,11 @@ function test_volunteer_swap_approve_checks_the_taker_again()
 	pg_assert_contains('pg_volunteer_fits(', $source, 'an approved swap goes only to a volunteer who still fits the role');
 	pg_assert_true(strpos($source, 'pg_volunteer_fits(') < strpos($source, '_pg_volunteer_swap_finish('), 'checked before the place is handed over');
 }
+
+function test_volunteer_swap_refuse_needs_no_offered_place()
+{
+	$source = pg_test_function_source('pg_volunteer_swap_decide');
+
+	pg_assert_contains('$done = $approve', $source, 'Approve and Refuse are decided apart');
+	pg_assert_contains(': (($asking !== null) && db_q(', $source, 'Refuse clears a request whose offered place is gone (its volunteer erased), which else waits for approval for good');
+}

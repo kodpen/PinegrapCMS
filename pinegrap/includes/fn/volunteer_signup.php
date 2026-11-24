@@ -708,9 +708,11 @@ function pg_volunteer_swap_decide(array $programme, $shift_id, $taker, $approve,
         $offered = $unfit ? null : $offered;
     }
 
-    $done = ($offered !== null) && ($approve
-        ? _pg_volunteer_swap_finish($programme, $shift, $offered, (int) $taker)
-        : (db_q("UPDATE volunteer_signups SET state = 'cancelled', cancelled_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = 'waiting'", array((int) $taker)) && (mysqli_affected_rows(db::$con) > 0)));
+    // Refuse needs only the request: its offered place may be gone (its
+    // volunteer's data erased), and the request must still be cleared.
+    $done = $approve
+        ? (($offered !== null) && _pg_volunteer_swap_finish($programme, $shift, $offered, (int) $taker))
+        : (($asking !== null) && db_q("UPDATE volunteer_signups SET state = 'cancelled', cancelled_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = 'waiting'", array((int) $taker)) && (mysqli_affected_rows(db::$con) > 0));
 
     db_value("SELECT RELEASE_LOCK('" . escape($lock) . "')");
 
