@@ -163,3 +163,27 @@ function test_explorer_restore_style_note()
 	pg_assert_true(strpos($loop, '$page_style_left_name = \'\';') < strpos($loop, 'continue;'), 'reset before anything skips or reads it');
 	pg_assert_contains('pg_explorer_restore_style_note($item_name, $page_style_left_name)', $handler, 'note built by the helper');
 }
+
+// Sending a folder to the bin takes its subtree along, and the daily purge
+// later deletes it for the software: a manager or a user may not carry a
+// design file in with it, as they may not bin one on its own, and a user
+// without the right to delete pages may not carry pages.
+function test_explorer_folder_bin_refusal()
+{
+	$designer = array('role' => 1, 'delete_pages' => false);
+	$manager = array('role' => 2, 'delete_pages' => false);
+	$user = array('role' => 3, 'delete_pages' => false);
+	$user_deleting = array('role' => 3, 'delete_pages' => true);
+
+	pg_assert_same('', pg_explorer_folder_bin_refusal($designer, 4, 2), 'a designer bins design files');
+	pg_assert_contains('Design files', pg_explorer_folder_bin_refusal($manager, 0, 1), 'a manager carries no design file in');
+	pg_assert_same('', pg_explorer_folder_bin_refusal($manager, 3, 0), 'a manager bins pages and plain files');
+	pg_assert_contains('delete pages', pg_explorer_folder_bin_refusal($user, 1, 0), 'a user without the page right');
+	pg_assert_same('', pg_explorer_folder_bin_refusal($user_deleting, 1, 0), 'a user with it');
+	pg_assert_contains('Design files', pg_explorer_folder_bin_refusal($user_deleting, 1, 1), 'a user carries no design file in either');
+
+	$handler = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_recycle.php');
+	$from = strpos($handler, 'function pg_explorer_handle_recycle_delete(');
+	$to = strpos($handler, "\nfunction ", $from + 10);
+	pg_assert_contains('$folder_refusal = pg_explorer_folder_bin_refusal(', substr($handler, $from, $to - $from), 'the bin delete asks it for a folder');
+}
