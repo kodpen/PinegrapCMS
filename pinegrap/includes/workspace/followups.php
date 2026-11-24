@@ -299,7 +299,10 @@ function ws_contact_followup_open($viewer, $contact_id, $request, $dry = false)
         return array('ok' => false, 'error' => lang('Access denied.'), 'field' => '', 'task' => null);
     }
 
-    if (!ws_customer_exists('contact', $contact_id)) {
+    // A user-role reader sees only the contacts of their contact groups
+    // (validate_contact_access()); one outside is answered like a missing
+    // one, so the action neither tags it nor tells it exists.
+    if (!ws_customer_exists('contact', $contact_id) || empty(ws_viewer_contacts_open($viewer, array((int) $contact_id)))) {
         return array('ok' => false, 'error' => lang('The contact could not be found.'), 'field' => '', 'task' => null);
     }
 
