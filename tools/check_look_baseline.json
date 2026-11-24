@@ -203,7 +203,7 @@
         "field": 1
     },
     "assets/js/workspace_mail.js": {
-        "button": 25,
+        "button": 0,
         "tabs": 0,
         "field": 35
     },
@@ -885,17 +885,13 @@
         "button": 3,
         "tabs": 0
     },
-    "includes/workspace/mail_blocks.php": {
-        "button": 1,
-        "tabs": 0
-    },
     "includes/workspace/mail_list.php": {
-        "button": 6,
+        "button": 1,
         "tabs": 0,
         "field": 1
     },
     "includes/workspace/mail_pane.php": {
-        "button": 6,
+        "button": 1,
         "tabs": 0
     },
     "includes/workspace/notes.php": {
