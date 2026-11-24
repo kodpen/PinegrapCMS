@@ -1371,13 +1371,13 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 							// an address name, then prepare pretty URL.
 							if (($pretty_urls == true) && ($submitted_form['address_name'] != ''))
 							{
-								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name)) . '/' . h($submitted_form['address_name']);
+								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($page_name)) . '/' . h($submitted_form['address_name']);
 								// Otherwise, prepare ugly URL.
 								
 							}
 							else
 							{
-								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
+								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
 							}
 							$output_rss_guid = '<guid>' . $output_form_item_view_page_link . '</guid>';
 						}
@@ -1385,8 +1385,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						{
 							// No form item view page: the item links to the list page,
 							// and its guid is that page with the record's code.
-							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name));
-							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
+							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($page_name));
+							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
 						}
 						// build RSS item
 						$output_rss_items .= '<item>
@@ -1613,13 +1613,13 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 							// an address name, then prepare pretty URL.
 							if (($pretty_urls == true) && ($submitted_form['address_name'] != ''))
 							{
-								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name)) . '/' . h($submitted_form['address_name']);
+								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($page_name)) . '/' . h($submitted_form['address_name']);
 								// Otherwise, prepare ugly URL.
 								
 							}
 							else
 							{
-								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
+								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
 							}
 							$output_rss_guid = '<guid>' . $output_form_item_view_page_link . '</guid>';
 						}
@@ -1627,8 +1627,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						{
 							// No form item view page: the item links to the list page,
 							// and its guid is that page with the record's code.
-							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name));
-							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
+							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($page_name));
+							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
 						}
 						// build RSS item
 						$output_rss_items .= '<item>
@@ -2050,7 +2050,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					{
 						$output_recurring_query_string = '&amp;recurrence_number=' . $event['recurrence_number'];
 					}
-					$output_calendar_event_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($calendar_event_view_page_name)) . '?id=' . $event['id'] . $output_recurring_query_string;
+					$output_calendar_event_view_page_link = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . h(encode_url_path($calendar_event_view_page_name)) . '?id=' . $event['id'] . $output_recurring_query_string;
 					// else output a error
 					
 				}
