@@ -283,7 +283,11 @@
 
         if (here) {
             [['all', t('pal_everywhere')], ['here', t('pal_here', here.name)]].forEach(function (option) {
-                var item = el('button', 'pg-seg-item', option[1]);
+                // The look's segment never wraps: a long channel name is
+                // cut inside its label, and shown whole in the title.
+                var item = el('button', 'pg-seg-item');
+                item.appendChild(el('span', 'text-truncate', option[1]));
+                item.title = option[1];
                 item.type = 'button';
                 item.setAttribute('aria-pressed', state.scope === option[0] ? 'true' : 'false');
                 item.addEventListener('click', function () {

@@ -1777,7 +1777,7 @@ if (!$table) {
 
         // More than one status column: which one the board groups by.
         if (count($status_columns) > 1) {
-            $by = '<div class="pg-seg" role="group" aria-label="' . h(lang('Group by')) . '">';
+            $by = '<div class="pg-seg pg-seg-wrap" role="group" aria-label="' . h(lang('Group by')) . '">';
 
             foreach ($status_columns as $column_id => $name) {
                 $by .= '<a class="pg-seg-item' . (($column_id === $board_id) ? ' is-active" aria-current="page' : '') . '" href="' . h($table_url . '&view=board&by=' . $column_id) . '">' . h($name) . '</a>';
