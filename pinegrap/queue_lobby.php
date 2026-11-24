@@ -65,7 +65,7 @@ foreach ($ql_board['now'] as $ql_call) {
 $ql_past = '';
 
 foreach ($ql_board['past'] as $ql_call) {
-    $ql_past .= '<div class="pg-card-inner-row"><strong class="pg-tabular flex-grow-1" style="font-size:clamp(1.25rem,2.5vw,2.25rem)">' . h($ql_call['number']) . '</strong>'
+    $ql_past .= '<div class="pg-card-inner-row"><strong class="pg-tabular flex-grow-1 text-nowrap" style="font-size:clamp(1.25rem,2.5vw,2.25rem)">' . h($ql_call['number']) . '</strong>'
         . '<span class="pg-text-2" style="font-size:clamp(1rem,2vw,1.75rem)">' . h($ql_call['desk']) . '</span></div>';
 }
 
