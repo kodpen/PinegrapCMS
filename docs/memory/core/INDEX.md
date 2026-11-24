@@ -192,7 +192,7 @@
 - privacy-request-export-link.md: The signed download link of an information answer (KV4c, #10944): the file in data/privacy_exports, HMAC, 7 days, privacy_download.php 410, Send a new link, Withdraw the link [decision: decisions-made-product-95.md]
 - privacy-request-form.md: A person's own privacy request (P10, P10b, #10921): privacy_request.php, off for visitors by default, always from My Account; 48-hour proof link; 5 an address an hour; the switch
 - privacy-requests.md: The Privacy centre's request box (P11, KV4): the privacy_requests table, the 30 days from received_at, the 7-day sweep, the reminders, the Requests view, its drawer [decision: here]
-- privacy-retention-rules.md: Privacy centre retention rules (P6-P9): rules and bounds, config_text settings, dry run and yes, the nightly pass through the erase entries, the skips, privacy_rule audit lines and their 3-year keep
+- privacy-retention-rules.md: Privacy centre retention rules (P6-P9): bounds, settings, dry run and yes, the nightly pass through the erase entries, skips and activity, privacy_rule audit lines
 - privacy-rule-site-chats.md: The Privacy centre's "Site chats" rule (off, 60 days) that replaced Chat's unread Chat Retention Period; what it picks and deletes, why the update deletes nothing [decision: here]
 - privacy-rules-card.md: Privacy centre › Inventory's Retention rules card (KV3b): switch rows with periods, each form's own period, the interval, Dry run with its effect lines and sample, the yes; anchor privacy-rules
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())

@@ -630,6 +630,7 @@
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter [decision: decisions-made-product-19.md]
 - prototype-approval-fingerprints.md: Approve this page and Request changes on a prototype share link, pure rules (PA1a): draft and node fingerprints, what changed, a verdict's state, Answer by, mail timing
 - prototype-approval-hold.md: "Publish only after approval" on a prototype link (PA4): which link holds a draft, every writer of a draft going live reading the hold, role 0's Publish anyway with its reason in the Site Log
+- prototype-approval-mails.md: The approver's answer mail (at most one an hour per link) and the "Answer by" reminder of the general job (PA5): when each goes, what it counts, what it carries
 - prototype-approval-review.md: A prototype link asking approval (PA2): the Share prototype dialog's and the API's approval fields, the viewer's "Review this page" box, the verdict door, the approver's receipt mail, the bell line
 - prototype-approval-round-two.md: Prototype approval round two (PA3): "Show what changed" outlines, the viewer page list marks, verdicts in the Comments list and the Share prototype dialog count
 - prototype-approval-store.md: Prototype link approval store (11.0.276): five prototype_links columns, prototype_verdicts, deleted with the design and by Delete comments, privacy erase and export
