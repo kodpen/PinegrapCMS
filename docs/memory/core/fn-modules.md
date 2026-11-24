@@ -206,6 +206,7 @@ description: Generated from the module field of the memory files: each includes/
 - `lang_files`: [[lang-file-writes]], [[lang-files]]
 - `language_redirect`: [[language-redirect-matching]]
 - `launch_journey`: [[launch-journey-catalogue]]
+- `launch_journey_site`: [[launch-journey-setup-card]]
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]], [[legacy-stock-types]]
 - `lead_journey`: [[lead-journey-rules]]
