@@ -13,7 +13,7 @@ description: Bug hunt area 37, the shop customer's account (2026-11-24): address
 - A personal data erasure left the shipping address's district on the order's recipient (`core/personal-data-erasure.md`).
 
 ## Which issue did it open?
-- An incomplete order taken over through its cart link (`?r=`) keeps the account of the person who built it: the buyer's billing address, e-mail and payment card show in that account's order history and order view, and not in the buyer's. Whose order it becomes is a product decision, so it waits for the architect.
+- #11435: an incomplete order taken over through its cart link (`?r=`) keeps the account of the person who built it: the buyer's billing address, e-mail and payment card show in that account's order history and order view, and not in the buyer's. Whose order it becomes is a product decision, so it waits for the architect.
 
 ## What was read clean?
 - Every order history action (view, retrieve, reorder, delete) and the classic order view check `pg_order_view_owner_matches()`: a signed-in account and the order's own `user_id`; the order_view widget allows the owner, the session's just completed order or its receipt mail, and answers 404 for anything else.
