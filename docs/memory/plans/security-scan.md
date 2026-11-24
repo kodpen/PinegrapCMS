@@ -21,7 +21,7 @@ priority: 6
 - SC3 (M) The section: findings by severity with place, reason and "What to do"; Quarantine (moved to a folder that cannot run, with Restore), Ignore with a note, "Scan now" with its progress, the last run. After SC2.
 - SC4 (S) The Firewall card: last scan, open findings by severity, "Scan now"; the ops alert `security_finding`, once a day (`platform/ops-alerts.md`). After SC3.
 - SC5 (M) Stored content: a script, hidden iframe or redirect from a host the site never used, in pages, regions, styles and settings. After SC1.
-- SC6 (M) Accounts and settings: a new Administrator or Designer account, a new API key, a writable core folder, risky PHP settings, the PHP security fixes check joined in. After SC1.
+- SC6 (M) done (#PRNUM, `waf/security-scan-accounts-settings.md`) Accounts and settings: a new Administrator or Designer account, a new API key, a writable core folder, risky PHP settings, the PHP security fixes check joined in. After SC1.
 - SC7 (S) API read route and one MCP tool ("is the site at risk?"): findings and last run, read only. After SC3.
 - SC8 (M) The test round, below. After SC2 to SC7.
 - SC9 (S) Close-out: memory in `waf/`, this file deleted, the `[NEW]` line named.
