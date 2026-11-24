@@ -1363,11 +1363,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed
 - ui/look-settings-mailboxes.md: Site Settings › E-mail › Mailboxes in look A: the folded rows, a box row with its state pill and menu, Accounts for mailboxes, button ranks, the drawer's parts
 - ui/look-shared-buttons.md: LM2 (#9680): the toolbar's primary pill and labelled text buttons as look A's .pg-button, the save bar's buttons by role; what was left and why
-- ui/main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
-- ui/main-menu-communication-icon.md: The Communication row's own drawing (row 9): a speech bubble with an arrow out and an arrow in, its colours and hover movement; the megaphone it replaced
+- ui/main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, its icon and the live dot
+- ui/main-menu-communication-icon.md: The Communication row's drawing (row 9): a speech bubble with an arrow out and an arrow in, in the Marketing violet, its hover move; the megaphone it replaced
 - ui/main-menu-icons.md: Main menu icons: the rows' one-line drawings (pg_menu_icon()) on a tile in their category's colour (pg_menu_icon_tile(), pg_menu_category_tone()), the seven tones, the panel entries' tiles
 - ui/main-menu-mail-row.md: Incoming e-mail pinned to a person's own main menu (IM1, #10408): the tab's Pin to main menu, ws_profiles.mail_pinned, row 27 under the Workspace, its gate, badge and icon
 - ui/main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part
+- ui/main-menu-system-tools-row.md: Main menu row 25, System tools: its slot and gate, its panel as one list of every tool under group headings (pg_menu_tools_markup()), the screens that light it
 - ui/messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside
 - ui/messages-area-mail-tab.md: Communication › Incoming e-mail (MA10b #9453): the tab and its gate, the moved list and pane, the door from workspace_mail.php, the menu row and its unread badge, what MA10b2 and MA10c add
 - ui/messages-area-rules.md: What binds every change to the Communication area (İletişim): the owner decisions of #8961 and #9295, what a change keeps, the architect's shell and rights rulings
@@ -1532,7 +1533,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-members-agents.md: A channel's agents and guests among its members (#8936, GV2): agent faces in the head; People, Agents and Guests in Channel info; last seen, a person's and a guest's only for a manager
 - workspace/channel-memory-general.md: A memory record's project (ws_channel_memory.project) and the general memory (channel_id 0) the agent channels share: who keeps it, the checks, the routes, the sweep
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
-- workspace/channel-note-owned.md: A channel's note (ws_notes.owner_channel_id): access from the channel, off My Notes and its limit (ws_note_own_sql(), guard test), WS_NOTE_CHANNEL_LIMIT, deleted with its channel
+- workspace/channel-note-owned.md: A channel's note (ws_notes.owner_channel_id): access from the channel, off My Notes and its limit (ws_note_own_sql(), guard test), WS_NOTE_CHANNEL_LIMIT, who deletes it, deleted with its channel
 - workspace/channel-notes-written.md: A document in a channel is a note written there: Write a note, POST /workspace/channels/{id}/notes, edit through the channel's share, the card touched on a save, note_card's fields
 - workspace/channel-open-items-line.md: The open items line under a channel's pin (OI1 #9783) and on GET /workspace/channels/{id} (OI2 #9827): open polls, agent questions, the running check-in, waiting approvals; whose answer each waits for
 - workspace/channel-settings-drawer.md: The Channel settings drawer (channelForm(), #9616): four tabs, icon and colour popovers by the name, switches at the row end, one versions list; what stays in Channel info

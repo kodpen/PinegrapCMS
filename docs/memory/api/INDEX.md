@@ -64,6 +64,7 @@
 - api-experiments.md: The experiments API resource (PX7, #6295; dry_run #8099): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
 - api-fault-envelope.md: An uncaught Throwable or a fatal error inside integration.php or mcp.php answers 500 server_error as JSON with request_id and X-Request-Id, never PHP's message; the error log line carries the same id
 - api-fediverse.md: GET /fediverse/followers and /fediverse/deliveries (fediverse:read): shapes, paging, the state filter, who may hold the scope; the personal data export and erasure of a Fediverse account
+- api-feedback.md: GET /feedback/responses and GET /feedback/summary (FD7, customers:read, MCP tools): the sent surveys with their answers, the Results screen's figures, staff and contact rules for the user role
 - api-field-errors.md: External API 422 lists every wrong field in error.errors (field, code, message; at most 20); a JSON list as body is 400 invalid_json, [] an empty body (#10156)
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies

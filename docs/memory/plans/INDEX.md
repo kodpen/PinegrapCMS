@@ -91,8 +91,6 @@
 - legacy-editable-steps.md: Plan legacy-editable, steps LE1 to LE12 with size and order: the measure, page_parts, one door, the true canvas, stock layouts, the layout converter by families, earlier designs, close-out
 - legacy-editable.md: Plan (owner 2026-11-21): a classic page arrives in the visual designer as editable elements, not name boxes: regions as HTML, a true canvas for code, layouts by a piece map; LE1 to LE12
 - main-menu-icon-size.md: Plan (owner 2026-11-24): main menu row icons grow to at least 1.2rem so each can be told apart, and the menu widens without stuttering; one step MZ1 after MI3
-- main-menu-icons-redraw-rows.md: Plan main-menu-icons-redraw, the rows: which drawing of ui/main-menu-icons-drawing/icons.js each menu_icon name takes, its idea and hover move, the timing and the live parts
-- main-menu-icons-redraw.md: Plan (owner 2026-11-22): main menu row icons redrawn as one line family on category-coloured tiles with one hover move each; the System tools row's panel as one list; steps MI1 to MI3
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
