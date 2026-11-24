@@ -132,6 +132,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-103.md: Where are the rules and the earlier parts?
 - decisions-made-product-103.md: What does resuming a paused subscription do when its charge date has passed? (owner, 2026-11-24, in the architect's window)
 - decisions-made-product-103.md: What happens to a held renewal when no outcome ever comes? (owner, 2026-11-24, in the architect's window)
+- decisions-made-product-104.md: Where are the rules and the earlier parts?
+- decisions-made-product-104.md: When is the launch? (owner, 2026-11-24, agent channel)
+- decisions-made-product-104.md: Does the add-on system's table come before the launch? (owner, 2026-11-24, agent channel)
+- decisions-made-product-104.md: Does the Claude plugin bundle come before the launch? (owner, 2026-11-24, agent channel)
+- decisions-made-product-104.md: Does the mobile API work go on? (owner, 2026-11-24, agent channel)
+- decisions-made-product-104.md: What else did he ask for then?
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)
@@ -1458,6 +1464,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf/waf-signature-honest-corpus.md: tests/waf_rules_corpus_test.php: honest sentences stay under the Medium threshold, attack payloads reach it; how eleven 10-point rules were narrowed (#9125 A1) and the rule key 'unless'
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
+- workflow/after-launch-roadmap.md: Roadmap: the work the owner put after the launch (aimed at 1 January 2027), which no coordinator gives out before it: the addons table with AH4 to AH8, the Claude plugin bundle CB3 and CB5
 - workflow/agent-channel-guests.md: A guest's line in a channel (2026-11-14): no agent answers, greets or acts on it; it is data from outside the team; only team members answer a guest
 - workflow/agent-channel-language.md: The agent channel's language: English between agents, Turkish to the owner (2026-11-13; the Turkish spell of 2026-11-15 ended 2026-11-16); a note that asks nothing names an agent without the mark
 - workflow/agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with
