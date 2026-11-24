@@ -173,3 +173,113 @@ function test_walk_in_queue_tickets_wiring()
 		pg_assert_same('queue', pg_whatsapp_message_events()[$event]['kind'], $event);
 	}
 }
+
+// Runs assets/js/queue_page.js on a stub page drawn for a waiting number,
+// answers its 15-second reads one by one with $statuses and gives back what
+// the page shows after the last; null without Node.
+function walk_in_queue_tickets_test_page_after($statuses)
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$stub = "var nodes = {};\n"
+		. "['number', 'headline', 'line', 'note'].forEach(function (n) { nodes['[data-pg-queue-field=\"' + n + '\"]'] = {textContent: 'old ' + n, hidden: false}; });\n"
+		. "nodes['[data-pg-queue-leave]'] = {hidden: false, getAttribute: function () { return ''; }, addEventListener: function () {}};\n"
+		. "nodes['[data-pg-queue-on-way]'] = {hidden: false};\n"
+		. "nodes['[data-pg-queue-read]'] = {getAttribute: function () { return 'read'; }};\n"
+		. "var tick = null, answers = " . json_encode(array_values($statuses)) . ", at = 0;\n"
+		. "global.document = {hidden: false, querySelector: function (s) { return nodes[s] || null; }, addEventListener: function () {}, removeEventListener: function () {}};\n"
+		. "global.window = {setInterval: function (f) { tick = f; return 1; }, clearInterval: function () {}, confirm: function () { return true;},\n"
+		. "  fetch: function () { var a = answers[at++]; return Promise.resolve({ok: true, json: function () { return a; }}); }};\n"
+		. "require(" . json_encode(PG_FUNCTIONS_DIR . '/assets/js/queue_page.js') . ");\n"
+		. "function step() { if (at >= answers.length) { return done(); } tick(); setTimeout(step, 10); }\n"
+		. "function done() { console.log(JSON.stringify({number: nodes['[data-pg-queue-field=\"number\"]'].textContent, leave: !nodes['[data-pg-queue-leave]'].hidden, on_way: !nodes['[data-pg-queue-on-way]'].hidden})); }\n"
+		. "step();\n";
+	$file = tempnam(sys_get_temp_dir(), 'pgqueue') . '.js';
+	file_put_contents($file, $stub);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, implode("\n", $out));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+function test_walk_in_queue_tickets_page_shows_the_new_number_after_a_transfer()
+{
+	// "Send to another service" gives the number the other service's letter
+	// and count; the page kept showing the old one until reloaded, while the
+	// lobby screen called the new one.
+	$page = walk_in_queue_tickets_test_page_after(array(array('ok' => true, 'number' => 'B-004', 'state' => 'waiting', 'headline' => '2 ahead of you', 'line' => '', 'note' => '', 'on_way' => false, 'final' => false)));
+
+	if ($page === null) {
+		return;
+	}
+
+	pg_assert_same('B-004', $page['number']);
+	pg_assert_contains('data-pg-queue-field="number"', (string) file_get_contents(PG_FUNCTIONS_DIR . '/queue.php'), 'the number is a field the read fills');
+}
+
+function test_walk_in_queue_tickets_page_offers_leave_again_when_the_number_waits_again()
+{
+	$called = array('ok' => true, 'number' => 'A-012', 'state' => 'called', 'headline' => 'It is your turn', 'line' => '', 'note' => '', 'on_way' => false, 'final' => false);
+	$page = walk_in_queue_tickets_test_page_after(array($called));
+
+	if ($page === null) {
+		return;
+	}
+
+	pg_assert_false($page['leave'], 'a called number cannot leave');
+
+	// Not here moved it back, or it was sent to another service: it waits
+	// again and may leave again, and say it is on its way.
+	$page = walk_in_queue_tickets_test_page_after(array($called, array('state' => 'waiting', 'on_way' => true) + $called));
+	pg_assert_true($page['leave'], 'a waiting number may leave');
+	pg_assert_true($page['on_way'], 'I\'m on my way is shown while offered');
+}
+
+function test_walk_in_queue_tickets_a_second_press_gets_the_number_just_taken()
+{
+	// Two presses of Take a number (or a resent form) each took a number:
+	// the page showed the second, and the first waited until a desk called
+	// it as not here. The browser's number of the same service, taken a
+	// moment ago and still waiting, is given again.
+	$now = 1764000000;
+	$kept = array('id' => 8, 'service' => 's1', 'state' => 'waiting', 'day' => pg_waiting_today($now), 'joined_at' => $now - 5);
+
+	pg_assert_true(pg_waiting_take_repeated($kept, 's1', $now));
+	pg_assert_false(pg_waiting_take_repeated($kept, 's2', $now), 'another service is a new number');
+	pg_assert_false(pg_waiting_take_repeated(array('state' => 'left') + $kept, 's1', $now), 'it left the queue');
+	pg_assert_false(pg_waiting_take_repeated($kept, 's1', $now + PG_WAITING_REPEAT_SECONDS + 10), 'taken a while ago: a new number on purpose');
+	pg_assert_false(pg_waiting_take_repeated(null, 's1', $now));
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/queue.php');
+	$kiosk = (string) file_get_contents(PG_FUNCTIONS_DIR . '/queue_kiosk.php');
+	pg_assert_contains('pg_waiting_take_repeated(', $page);
+	pg_assert_contains('pg_waiting_take_repeated(', $kiosk);
+}
+
+function test_walk_in_queue_tickets_people_ahead_of_a_new_number_follow_the_calling_order()
+{
+	// A booking that came early stands at its booked time, after a walk-in
+	// taking a number now: counting every waiting number of the service told
+	// the walk-in one more ahead, and the closing check refused numbers too
+	// early.
+	$now = 1764000000;
+	$waiting = array(
+		array('id' => 1, 'service' => 's1', 'joined_at' => $now - 600, 'priority' => '', 'booking_at' => 0),
+		array('id' => 2, 'service' => 's1', 'joined_at' => $now - 300, 'priority' => '', 'booking_at' => $now + 1800),
+		array('id' => 3, 'service' => 's2', 'joined_at' => $now - 900, 'priority' => '', 'booking_at' => 0),
+	);
+
+	pg_assert_same(1, pg_waiting_join_ahead($waiting, 's1', '', 0, $now, 600), 'the early booking stands behind');
+	pg_assert_same(0, pg_waiting_join_ahead($waiting, 's1', 'elderly', 0, $now, 600), 'priority stands first');
+	pg_assert_same(2, pg_waiting_join_ahead($waiting, 's1', '', $now + 3600, $now, 600), 'a booking of its own stands at its time');
+	pg_assert_same(1, pg_waiting_join_ahead($waiting, 's2', '', 0, $now, 600));
+	pg_assert_same(0, pg_waiting_join_ahead(array(), 's1', '', 0, $now, 600));
+}

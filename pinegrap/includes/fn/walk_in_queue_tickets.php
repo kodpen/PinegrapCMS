@@ -31,6 +31,9 @@ const PG_WAITING_HANDLED_DAYS = 14;
 /** Seconds a notice may wait in its queue before it is no longer worth sending. */
 const PG_WAITING_NOTICE_EXPIRES = 7200;
 
+/** Seconds in which a second press of Take a number gets the number just taken. */
+const PG_WAITING_REPEAT_SECONDS = 60;
+
 /**
  * The join form read back: the service (the only one when the place has
  * one), and the optional name, phone, e-mail and party size. A priority
@@ -76,6 +79,26 @@ function pg_waiting_join_input($post, $place, $ask_priority = false, $takes_book
         'values' => array('service' => $service, 'name' => pg_waiting_text($post['name'] ?? '', 100), 'phone' => $phone, 'email' => $email, 'party_size' => $party, 'priority' => $priority, 'booking' => $booking),
         'error'  => $error,
     );
+}
+
+/**
+ * Whether a press of Take a number repeats the one before: the number this
+ * browser (or kiosk) took a moment ago for the same service still waits
+ * today. Then that number is given again instead of a second one: two
+ * presses, or a form sent again, never take two. Pure but for the zone.
+ *
+ * @param array|null $kept    the number held in the session, as its row
+ * @param string     $service the service asked for now
+ * @param int        $now
+ * @return bool
+ */
+function pg_waiting_take_repeated($kept, $service, $now)
+{
+    if (!is_array($kept) || (($kept['state'] ?? '') !== 'waiting') || ((string) ($kept['service'] ?? '') !== (string) $service)) {
+        return false;
+    }
+
+    return ((int) $kept['day'] === pg_waiting_today($now)) && ((int) $now - (int) $kept['joined_at'] <= PG_WAITING_REPEAT_SECONDS);
 }
 
 /**
@@ -259,6 +282,27 @@ function pg_waiting_refusal_text($code, $place)
 }
 
 /**
+ * How many of the same service stand before a number taken now, in the
+ * calling order: a priority person stands before those without, a booking
+ * that came early stands at its booked time (so a walk-in taken now may
+ * stand before it). Pure.
+ *
+ * @param array  $waiting    pg_waiting_place_waiting() rows
+ * @param string $service
+ * @param string $priority   the new number's priority group, '' for none
+ * @param int    $booking_at the new number's booked time, 0 for a walk-in
+ * @param int    $now
+ * @param int    $grace_seconds
+ * @return int
+ */
+function pg_waiting_join_ahead($waiting, $service, $priority, $booking_at, $now, $grace_seconds)
+{
+    $waiting[] = array('id' => PHP_INT_MAX, 'service' => (string) $service, 'joined_at' => (int) $now, 'priority' => (string) $priority, 'booking_at' => (int) $booking_at);
+
+    return (int) pg_waiting_ahead($waiting, PHP_INT_MAX, (int) $grace_seconds);
+}
+
+/**
  * The numbers waiting at a place today, as the order rules take them.
  *
  * @param int $place_id
@@ -339,9 +383,8 @@ function pg_waiting_take($place, $values, $way, $now = null)
     }
 
     $waiting = pg_waiting_place_waiting($place['id'], $day);
-    $ahead = count(array_filter($waiting, function ($row) use ($values) {
-        return $row['service'] === $values['service'];
-    }));
+    $grace = (int) $place['settings']['grace_minutes'] * 60;
+    $ahead = pg_waiting_join_ahead($waiting, $values['service'], (string) ($values['priority'] ?? ''), 0, $now, $grace);
     $taken = (int) db_value("SELECT COUNT(*) FROM waiting_tickets WHERE place_id = '" . (int) $place['id'] . "' AND day = '" . $day . "'");
     $closes = pg_waiting_closes_at($place['hours'], $place['exceptions'], $now, new DateTimeZone(date_default_timezone_get()));
     $result['error'] = pg_waiting_join_refusal($taken, $place['settings']['cap'], pg_waiting_estimate($place, $values['service'], $ahead + 1, $now), $now, $closes);
@@ -356,12 +399,9 @@ function pg_waiting_take($place, $values, $way, $now = null)
         return $result;
     }
 
-    // A priority person or a booking in time stands before some of those
-    // waiting: the people ahead are counted in the calling order.
-    if (($booking !== null) || ((string) ($values['priority'] ?? '') !== '')) {
-        $ahead = (int) pg_waiting_ahead(array_merge($waiting, array(array(
-            'id' => PHP_INT_MAX, 'service' => $values['service'], 'joined_at' => $now, 'priority' => (string) ($values['priority'] ?? ''), 'booking_at' => $booking ? (int) $booking['start_at'] : 0,
-        ))), PHP_INT_MAX, (int) $place['settings']['grace_minutes'] * 60);
+    // A booking stands at its booked time: the people ahead are counted again.
+    if ($booking !== null) {
+        $ahead = pg_waiting_join_ahead($waiting, $values['service'], (string) ($values['priority'] ?? ''), (int) $booking['start_at'], $now, $grace);
     }
 
     // Few ahead already: the "taken" notice says so, no second one.
