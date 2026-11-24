@@ -114,7 +114,8 @@
         waiting: ['fl_run_waiting', 'bi-hourglass-split'],
         done: ['fl_run_done', 'bi-check-circle-fill'],
         failed: ['fl_run_failed', 'bi-x-octagon-fill'],
-        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle']
+        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle'],
+        left: ['fl_run_left_state', 'bi-box-arrow-right']
     };
     var STEP_STATES = {
         ready: ['fl_step_ready', 'bi-hourglass'],
@@ -590,7 +591,7 @@
     // The graph as the editor keeps it: every part there, a box's settings
     // an object, the notes and frames in their kept shape.
     function graphOf(source) {
-        var graph = { v: 1, nodes: [], edges: [], notes: [], frames: [] };
+        var graph = { v: 1, nodes: [], edges: [], notes: [], frames: [], leave: [] };
 
         (source && source.nodes || []).forEach(function (node) {
             var config = (node.config && !Array.isArray(node.config)) ? JSON.parse(JSON.stringify(node.config)) : {};
@@ -610,6 +611,10 @@
         ((source && Array.isArray(source.frames)) ? source.frames : []).forEach(function (frame) {
             graph.frames.push({ id: String(frame.id || ''), name: String(frame.name || ''), x: +frame.x || 0, y: +frame.y || 0,
                 w: +frame.w || 0, h: +frame.h || 0, folded: frame.folded === true });
+        });
+
+        ((source && Array.isArray(source.leave)) ? source.leave : []).forEach(function (rule) {
+            graph.leave.push({ event: String((rule && rule.event) || '') });
         });
 
         return graph;
@@ -7421,6 +7426,7 @@
         box.appendChild(el('p', 'pg-text-meta fg-secondary', state.edit ? flowHelp() : t('fl_read_only')));
 
         homeField(box);
+        leaveField(box);
 
         var keys = el('details', 'pg-text-meta wsf-keys');
         var list = el('ul', 'mb-0 ps-5 fg-secondary');
@@ -8711,6 +8717,90 @@
             changed(false);
         });
         box.appendChild(field(t('fl_home'), home, (state.edit && !state.flow.manage) ? t('fl_home_owner_only') : t('fl_home_help')));
+    }
+
+    // "Leaving the flow" in the name's window: rules "if this happens, the
+    // run ends", each an event that names a person or a record (FL.leave);
+    // a run about the same contact or record then ends as left
+    // (flow_leave.php). Kept on the graph, so published with a version.
+    function leaveField(box) {
+        var offered = FL.leave || [];
+        var limit = (FL.limits && FL.limits.leave) || 10;
+        var part = el('div', 'wsf-leave mb-5');
+        var named = {};
+
+        if (!state.graph.leave) {
+            state.graph.leave = [];
+        }
+
+        if (!offered.length && !state.graph.leave.length) {
+            return;
+        }
+
+        offered.forEach(function (pair) { named[pair[0]] = pair[1]; });
+
+        function draw() {
+            var rules = state.graph.leave;
+            var taken = rules.map(function (rule) { return rule.event; });
+
+            K.clear(part);
+            part.appendChild(el('h3', 'wsf-side-sub', t('fl_exit')));
+            part.appendChild(el('p', 'pg-text-meta fg-secondary mb-2', t('fl_exit_help')));
+
+            rules.forEach(function (rule, index) {
+                var row = el('div', 'wsf-link-row');
+
+                row.appendChild(K.icon('bi-box-arrow-right'));
+                row.appendChild(el('span', 'flex-grow-1', named[rule.event] || rule.event));
+
+                if (state.edit) {
+                    var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg', t('fl_exit_remove', named[rule.event] || rule.event));
+
+                    remove.addEventListener('click', function () {
+                        state.graph.leave.splice(index, 1);
+                        changed(true);
+                        draw();
+                        (part.querySelector('select') || part).focus();
+                    });
+                    row.appendChild(remove);
+                }
+
+                part.appendChild(row);
+            });
+
+            if (state.edit && (rules.length < limit)) {
+                var free = offered.filter(function (pair) { return taken.indexOf(pair[0]) < 0; });
+                var group = el('div', 'wsf-link-add');
+                var pick = K.select([['', t('fl_exit_pick')]].concat(free), '');
+                var add = K.button('pg-button pg-button-ghost pg-button-sm', t('fl_exit_add'), 'bi-plus-lg');
+
+                pick.className = 'pg-input pg-input-sm wsf-connect';
+                pick.setAttribute('aria-label', t('fl_exit_pick'));
+                add.addEventListener('click', function () {
+                    if (!pick.value) {
+                        pick.focus();
+                        return;
+                    }
+
+                    state.graph.leave.push({ event: pick.value });
+                    changed(true);
+                    announce(t('fl_exit_added', named[pick.value] || pick.value));
+                    draw();
+                    part.querySelector('select').focus();
+                });
+                group.appendChild(pick);
+                group.appendChild(add);
+                part.appendChild(group);
+            }
+
+            if ((state.flow.left_30 !== null) && (state.flow.left_30 !== undefined)) {
+                part.appendChild(el('p', 'pg-text-meta fg-secondary mt-2 mb-0', t('fl_exit_count', state.flow.left_30)));
+            }
+        }
+
+        part.tabIndex = -1;
+        draw();
+        box.appendChild(part);
     }
 
     // A box's settings; the outline adds its connections, Try and Remove
@@ -15499,7 +15589,7 @@
         // A failed box (one that stopped half way too) is tried again or
         // skipped by the flow's owner, in whose name it runs; a run done or
         // cancelled takes neither.
-        if (state.flow && state.flow.manage && step && (step.status === 'failed') && (['done', 'cancelled'].indexOf(state.run.status) < 0)) {
+        if (state.flow && state.flow.manage && step && (step.status === 'failed') && (['done', 'cancelled', 'left'].indexOf(state.run.status) < 0)) {
             var mend = el('div', 'd-flex flex-wrap gap-3 mt-3');
             var retry = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_step_retry'), 'bi-arrow-repeat');
             var skip = K.lookButton('pg-button pg-button-quiet pg-button-sm', t('fl_step_skip'), 'bi-skip-forward');

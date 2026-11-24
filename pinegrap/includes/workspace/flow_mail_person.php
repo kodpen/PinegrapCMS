@@ -60,11 +60,14 @@ function ws_flow_mail_purposes()
  */
 function ws_flow_mail_person_source($subject_type, $subject_id, $context)
 {
-    if (((string) $subject_type === 'contact') && ((int) $subject_id > 0)) {
+    $event = (string) ($context['event'] ?? '');
+
+    // A run an event started keeps its person's contact as its subject
+    // (flow_leave.php); its record still names the address, as before.
+    if (((string) $subject_type === 'contact') && ((int) $subject_id > 0) && ($event === '')) {
         return array('contact', (int) $subject_id);
     }
 
-    $event = (string) ($context['event'] ?? '');
     $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
 
     if ($event === 'workspace.mail.received') {

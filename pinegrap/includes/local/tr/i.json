@@ -390,6 +390,7 @@
     "If nobody on your team made this account, disable it, change the passwords of the other staff accounts and look at the Site Log.": "Bu hesabı ekibinizden kimse oluşturmadıysa hesabı devre dışı bırakın, diğer personel hesaplarının parolalarını değiştirin ve Site Günlüğü'ne bakın.",
     "If nobody on your team made this key, revoke it on Application Access.": "Bu anahtarı ekibinizden kimse oluşturmadıysa Uygulama Erişimi'nde iptal edin.",
     "If not selected or true, Pinegrap controls error reporting. Set false to let php.ini take over.": "Seçilmedi veya true ise Pinegrap hata raporlamayı yönetir. php.ini'ye bırakmak için false seçin.",
+    "If one of these happens, the run about that contact or record ends, whichever box it is at.": "Bunlardan biri olursa o kişinin ya da kaydın çalıştırması, hangi kutuda olursa olsun biter.",
     "If our answer does not satisfy you, you may contact the enforcement body.": "Yanıtımız sizi tatmin etmezse denetim kuruluna başvurabilirsiniz.",
     "If our answer does not satisfy you, you may turn to the public body responsible for digital accessibility in your country; in Türkiye a complaint is filed through the e-Government gateway.": "Yanıtımız sizi tatmin etmezse ülkenizde dijital erişilebilirlikten sorumlu kamu kurumuna başvurabilirsiniz; Türkiye'de şikâyet e-Devlet Kapısı üzerinden yapılır.",
     "If our work fails within a year, we come back and fix it at no charge.": "İşimiz bir yıl içinde bozulursa gelip ücretsiz onarırız.",

@@ -177,13 +177,13 @@ function ws_flow_runs_node_where($node, $state, $since)
  * @param array         $flow   ws_flow_for() row
  * @param mixed         $days   ws_flow_counts_days()
  * @param callable|null $keep   a further test a run must pass to be counted
- * @return array ok, error, days, since, boxes (node, waiting, passed, failed), partial
+ * @return array ok, error, days, since, boxes (node, waiting, passed, failed), left (the runs that left the flow in the days), partial
  */
 function ws_flow_counts($viewer, $flow, $days, $keep = null)
 {
     $days = ws_flow_counts_days($days);
     $since = time() - ($days * 86400);
-    $answer = array('ok' => true, 'error' => '', 'days' => $days, 'since' => $since, 'boxes' => array(), 'partial' => false);
+    $answer = array('ok' => true, 'error' => '', 'days' => $days, 'since' => $since, 'boxes' => array(), 'left' => 0, 'partial' => false);
 
     if (!is_array($flow) || ((string) $flow['status'] === 'binned') || (ws_flow_access($viewer, $flow) === '')) {
         return array('ok' => false, 'error' => lang('That flow could not be found.')) + $answer;
@@ -217,6 +217,13 @@ function ws_flow_counts($viewer, $flow, $days, $keep = null)
 
     if ($sql !== '') {
         $answer['boxes'] = ws_flow_counts_fold(db_items($sql));
+    }
+
+    // The runs that left the flow (flow_leave.php), the same runs read.
+    if (($run_ids === null) || !empty($run_ids)) {
+        $answer['left'] = (int) db_value("SELECT COUNT(*) FROM ws_flow_runs USE INDEX (idx_flow)
+            WHERE flow_id = '" . (int) $flow['id'] . "' AND status = 'left' AND finished_at >= '" . $since . "'"
+            . (($run_ids === null) ? '' : " AND id IN (" . implode(',', array_map('intval', $run_ids)) . ")"));
     }
 
     return $answer;
