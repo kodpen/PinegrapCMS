@@ -595,9 +595,11 @@ function pg_lead_score_contact($contact_id, array $settings, $now)
 /**
  * The contacts a scoring pass works out, at most PG_LEAD_SCORE_BATCH: a
  * visit started since a day before the last pass, a journey row since the
- * last pass, a score with interest not worked out for a day (it fades), or
- * a row marked for work (scored_at 0: a contact merge); minus those this
- * pass already scored. Pure.
+ * last pass, a score with interest not worked out for a day (it fades), a
+ * score whose newest visit is past the keep period not worked out for a
+ * day (its visits are trimmed, so the row goes, as the journey's own rows
+ * do, even at interest 0), or a row marked for work (scored_at 0: a contact
+ * merge); minus those this pass already scored. Pure.
  *
  * @param int $since      the last finished pass's start
  * @param int $started    this pass's start
@@ -610,7 +612,7 @@ function pg_lead_score_candidates_sql($since, $started, $now, $keep_start)
     return "SELECT c.contact_id FROM (
             SELECT contact_id FROM lead_visits WHERE started_at >= '" . max(0, (int) $since - 86400) . "' AND contact_id > 0
             UNION SELECT contact_id FROM contact_journey WHERE at >= '" . (int) $since . "' AND contact_id > 0
-            UNION SELECT contact_id FROM contact_scores WHERE (interest > 0 AND scored_at < '" . ((int) $now - 86400) . "') OR scored_at = 0
+            UNION SELECT contact_id FROM contact_scores WHERE ((interest > 0 OR last_visit_at < '" . (int) $keep_start . "') AND scored_at < '" . ((int) $now - 86400) . "') OR scored_at = 0
         ) c
         LEFT JOIN contact_scores s ON s.contact_id = c.contact_id
         WHERE s.contact_id IS NULL OR s.scored_at < '" . (int) $started . "'

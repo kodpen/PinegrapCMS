@@ -47,3 +47,10 @@ function test_lead_score_candidates_take_a_row_marked_for_work()
 
 	pg_assert_contains("scored_at = 0", $sql, 'a row marked after a merge is worked out on the next pass');
 }
+
+function test_lead_score_candidates_take_a_row_past_the_keep_period()
+{
+	$sql = pg_lead_score_candidates_sql(1000, 2000, 90000, 500);
+
+	pg_assert_contains("last_visit_at < '500'", $sql, 'a row whose visits are past the keep period is worked out (and goes), whatever its interest');
+}
