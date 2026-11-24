@@ -85407,6 +85407,7 @@ const StyleDesigner = (function () {
                          (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
                          (l.comments ? '<span class="badge theme-secondary me-1"><span class="bi bi-chat-left-text me-1" aria-hidden="true"></span>' + esc(_sdT('Comments')) + '</span>' : '') +
                          (l.approval ? '<span class="badge theme-primary me-1"><span class="bi bi-patch-check me-1" aria-hidden="true"></span>' + esc(_sdT('Asks for approval')) + '</span>' : '') +
+                         ((l.approval && l.review && l.review.changes > 0) ? '<span class="badge theme-warning me-1"><span class="bi bi-pencil me-1" aria-hidden="true"></span>' + esc(_sdT('Changes requested')) + '</span>' : '') +
                          (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '') +
                          (l.state === 'revoked' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Revoked')) + '</span>' : '');
             // A revoked link is listed only while its comments are kept:
@@ -85421,6 +85422,9 @@ const StyleDesigner = (function () {
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
             if (count) facts.push(_sdT('Comments: {var}', String(count)));
+            // A link asking approval: its pages approved as they are now.
+            var review = (l.approval && l.review) ? l.review : null;
+            if (review) facts.push(_sdT('Approved {var:1} of {var:2} pages', [String(review.approved), String(review.pages)]));
             if (l.approval && l.approver_name) facts.push(_sdT('Approver: {var}', l.approver_name));
             if (l.approval && l.answer_by) facts.push(_sdT('Answer by: {var}', l.answer_by));
             var showable = state.canShow && l.can_show && !revoked;

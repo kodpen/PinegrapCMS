@@ -183,6 +183,38 @@ function pg_proto_nodes_diff($before, $after)
     return $out;
 }
 
+/**
+ * What the viewer's "Show what changed" draws for a verdict given to an
+ * older version of the draft: the nodes to outline (changed and added, in
+ * the draft's order now) and the nodes no longer there (in the earlier
+ * draft's order), each list at most $cap long. Null when the verdict was
+ * given to the draft as it is (nothing to show).
+ *
+ * @param array|null $before the verdict's node fingerprints
+ * @param array|null $after  pg_proto_node_fingerprints() of the draft now
+ * @param bool       $older  pg_proto_verdict_state()['older']
+ * @param int        $cap
+ * @return array|null marks, removed
+ */
+function pg_proto_viewer_changes($before, $after, $older, $cap = 500)
+{
+    if (!$older) {
+        return null;
+    }
+
+    $diff = pg_proto_nodes_diff($before, $after);
+    $outlined = array_flip(array_merge($diff['changed'], $diff['added']));
+    $marks = array();
+
+    foreach (is_array($after) ? $after : array() as $id => $print) {
+        if (isset($outlined[(string) $id]) && (count($marks) < $cap)) {
+            $marks[] = (string) $id;
+        }
+    }
+
+    return array('marks' => $marks, 'removed' => array_slice($diff['removed'], 0, $cap));
+}
+
 /* ---------------------------------------------------------------------------
    Verdicts
    --------------------------------------------------------------------------- */
@@ -322,6 +354,58 @@ function pg_proto_verdict_approves($verdict, $fingerprint)
     $state = pg_proto_verdict_state($verdict, $fingerprint);
 
     return $state['state'] === 'approved' && !$state['older'];
+}
+
+/**
+ * Each draft page's mark for one link, as the viewer's page list and the
+ * Share prototype dialog read it: approved, changes_requested, changed (the
+ * standing verdict was given to an older version) or not_reviewed. Only the
+ * pages given are marked: a verdict on a page that is no longer a draft
+ * counts for nothing.
+ *
+ * @param array[] $rows         prototype_verdicts rows of one link
+ * @param array   $fingerprints page id => the draft's fingerprint now
+ * @return array page id => state
+ */
+function pg_proto_review_page_states($rows, $fingerprints)
+{
+    $newest = pg_proto_verdicts_newest($rows);
+    $out = array();
+
+    foreach ((array) $fingerprints as $page_id => $fingerprint) {
+        $page_id = (int) $page_id;
+
+        if (!isset($newest[$page_id])) {
+            $out[$page_id] = 'not_reviewed';
+            continue;
+        }
+
+        $state = pg_proto_verdict_state($newest[$page_id], (string) $fingerprint);
+        $out[$page_id] = $state['older'] ? 'changed' : $state['state'];
+    }
+
+    return $out;
+}
+
+/**
+ * A link's count over its pages (pg_proto_review_page_states()): pages
+ * approved as they are now, the pages, and pages with changes requested
+ * of the draft as it is now.
+ *
+ * @param array $states page id => state
+ * @return array approved, pages, changes
+ */
+function pg_proto_review_tally($states)
+{
+    $out = array('approved' => 0, 'pages' => 0, 'changes' => 0);
+
+    foreach ((array) $states as $state) {
+        $out['pages']++;
+        $out['approved'] += ($state === 'approved') ? 1 : 0;
+        $out['changes'] += ($state === 'changes_requested') ? 1 : 0;
+    }
+
+    return $out;
 }
 
 /* ---------------------------------------------------------------------------

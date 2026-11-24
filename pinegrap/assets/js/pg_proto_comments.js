@@ -21,9 +21,14 @@
  *   box's place: Approve this page or Request changes, a note (needed to
  *   request changes) and the name, sent to the same door with a verdict.
  *   The bar then names the verdict that stands and its day.
+ * - Round two: when the draft moved since that verdict, "Show what changed"
+ *   has the frame outline the nodes changed or added since (their ids come
+ *   with the viewer) and lists in the bar, under "Not on the page any
+ *   more", the threads left on removed nodes; pins and their states stay.
  *
- * place(), pinId(), missing(), threads(), unsent() and reviewLine() are pure (tests/
- * prototype_comment_mode_test.php); init() runs the mode in a browser.
+ * place(), pinId(), missing(), threads(), unsent(), reviewLine(), changes()
+ * and removedThreads() are pure (tests/prototype_comment_mode_test.php,
+ * prototype_approval_round_test.php); init() runs the mode in a browser.
  * Served minified as assets/js/pg_proto_comments.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
  *
@@ -113,6 +118,32 @@
         return '';
     }
 
+    // Node ids of the node shape, once each, at most 500.
+    function nodeIds(value) {
+        var seen = {}, out = [];
+        (Array.isArray(value) ? value : []).forEach(function (id) {
+            if (typeof id === 'string' && NODE.test(id) && !seen[id] && out.length < 500) {
+                seen[id] = true;
+                out.push(id);
+            }
+        });
+        return out;
+    }
+
+    // What "Show what changed" draws, as the viewer takes it from the
+    // server: the nodes to outline and the nodes removed; null for none.
+    function changes(data) {
+        if (!data || typeof data !== 'object') return null;
+        return { marks: nodeIds(data.marks), removed: nodeIds(data.removed) };
+    }
+
+    // The threads left on nodes removed since the verdict, in their order.
+    function removedThreads(removed, list) {
+        var gone = {};
+        (Array.isArray(removed) ? removed : []).forEach(function (id) { gone[id] = true; });
+        return (Array.isArray(list) ? list : []).filter(function (t) { return t && Object.prototype.hasOwnProperty.call(gone, t.node); });
+    }
+
     /* ---------------------------------------------------------------------
        The mode in the viewer
        --------------------------------------------------------------------- */
@@ -136,6 +167,8 @@
         var comments = Array.isArray(cfg.comments) ? cfg.comments.slice() : [];
         var list = [], known = {}, gone = [];
         var on = false, box = null, open = null, sending = false;
+        // "Show what changed" while on: { marks, removed } (changes()).
+        var shown = null;
 
         try { on = window.sessionStorage.getItem(KEY) === '1'; } catch (e) {}
 
@@ -165,7 +198,7 @@
             if (!frame.contentWindow) return;
             var pins = list.map(function (t) { return { id: t.id, n: t.n, node: t.node, x: t.x, y: t.y, done: t.resolved }; });
             var draft = (open && open.place) ? { node: open.place.node, x: open.place.x, y: open.place.y } : null;
-            frame.contentWindow.postMessage({ pgPrototype: 'comment', on: on, pins: pins, draft: draft, active: (open && open.thread) ? open.thread : 0 }, '*');
+            frame.contentWindow.postMessage({ pgPrototype: 'comment', on: on, pins: pins, draft: draft, active: (open && open.thread) ? open.thread : 0, marks: shown ? shown.marks : [] }, '*');
         }
 
         function openCount() {
@@ -185,17 +218,27 @@
 
         function paintBar() {
             bar.textContent = '';
-            bar.classList.toggle('d-none', !on);
-            if (!on) return;
-            bar.appendChild(el('span', 'pg-proto-cbar-hint', S.hint));
-            if (!gone.length) return;
+            bar.classList.toggle('d-none', !on && !shown);
+            if (!on && !shown) return;
+            if (on) bar.appendChild(el('span', 'pg-proto-cbar-hint', S.hint));
+            if (shown) bar.appendChild(el('span', 'pg-proto-cbar-hint pg-proto-cbar-changes', S.changesHint));
+            // The lost threads; while "Show what changed" is on, also the
+            // threads on removed nodes, and the count is of removed nodes.
+            var lost = on ? gone.slice() : [];
+            if (shown) {
+                removedThreads(shown.removed, list).forEach(function (t) {
+                    if (lost.indexOf(t.id) === -1) lost.push(t.id);
+                });
+            }
+            var count = shown ? Math.max(shown.removed.length, lost.length) : lost.length;
+            if (!count) return;
             // The title, then one row of the lost threads that scrolls
             // sideways: never more than one row, however many there are.
             var wrap = el('div', 'pg-proto-gone');
-            wrap.appendChild(el('span', 'pg-proto-gone-title fw-semibold', S.gone + ' (' + gone.length + ')'));
+            wrap.appendChild(el('span', 'pg-proto-gone-title fw-semibold', S.gone + ' (' + count + ')'));
             var row = el('div', 'pg-proto-gone-row');
             wrap.appendChild(row);
-            gone.forEach(function (id) {
+            lost.forEach(function (id) {
                 var t = known[id];
                 var first = t.items[0];
                 var b = el('button', 'btn btn-sm btn-outline theme-secondary pg-proto-gone-item');
@@ -523,6 +566,40 @@
             var state = document.getElementById('pg-proto-review-state');
             var RS = R.strings || {};
             if (!opener) return;
+            S.changesHint = RS.changesHint;
+            var changed = null;
+
+            // "Show what changed" beside the line, only while the verdict
+            // that stands was given to an older version of the draft.
+            function paintChanges() {
+                var marks = (R.verdict && R.verdict.older) ? changes(R.changes) : null;
+                if (!marks) {
+                    if (changed) changed.remove();
+                    changed = null;
+                    if (shown) { shown = null; paint(); }
+                    return;
+                }
+                if (!changed) {
+                    changed = el('button', opener.className);
+                    changed.type = 'button';
+                    changed.id = 'pg-proto-changes';
+                    changed.appendChild(el('span', 'bi bi-bounding-box-circles'));
+                    changed.firstChild.setAttribute('aria-hidden', 'true');
+                    changed.appendChild(document.createTextNode(' '));
+                    changed.appendChild(el('span', 'pg-proto-label'));
+                    opener.parentNode.insertBefore(changed, opener);
+                    changed.addEventListener('click', function () {
+                        shown = shown ? null : changes(R.changes);
+                        paintChanges();
+                        paint();
+                    });
+                }
+                var label = shown ? RS.hide : RS.show;
+                changed.setAttribute('aria-pressed', shown ? 'true' : 'false');
+                changed.classList.toggle('active', !!shown);
+                changed.title = label;
+                changed.querySelector('.pg-proto-label').textContent = label;
+            }
 
             function day(unix) {
                 var d = new Date(unix * 1000);
@@ -642,7 +719,9 @@
                             }
                             keepName(n);
                             R.verdict = answer.verdict;
+                            R.changes = null;
                             paintState();
+                            paintChanges();
                             close();
                         })
                         .catch(function () {
@@ -664,10 +743,11 @@
                 if (!holding()) show();
             });
             paintState();
+            paintChanges();
         }
     }
 
-    window.PGProtoComments = { place: place, pinId: pinId, missing: missing, threads: threads, unsent: unsent, reviewLine: reviewLine, init: init };
+    window.PGProtoComments = { place: place, pinId: pinId, missing: missing, threads: threads, unsent: unsent, reviewLine: reviewLine, changes: changes, removedThreads: removedThreads, init: init };
 
     // The viewer prints its settings as JSON beside the script.
     if (typeof document !== 'undefined') {

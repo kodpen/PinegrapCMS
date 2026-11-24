@@ -12,7 +12,7 @@ module: prototype_verdicts
 ## What does the approver see?
 - Only on a link asking approval: `pg_proto_viewer_review()` adds `review` to the comment mode's settings (page label, the standing verdict of this link and page with `older`, limits, words); the shell draws "Review this page" beside Comment and a status line before it.
 - The box takes the comment box's place (`frameBox()`): two choices "Approve this page" and "Request changes" (radios drawn as the bar's button), Note (optional; needed for Request changes, refused under the field), Your name (the comment box's stored name), Send.
-- After a verdict the line reads "You approved this page on {date}" or "You asked for changes on {date}"; a verdict whose fingerprint is not the draft's now reads "Changed since your last review" (`reviewLine()`, pure). "Show what changed" is PA3.
+- After a verdict the line reads "You approved this page on {date}" or "You asked for changes on {date}"; a verdict whose fingerprint is not the draft's now reads "Changed since your last review" (`reviewLine()`, pure). "Show what changed" and the page list's marks: `prototype-approval-round-two.md`.
 - The address of the approver never reaches the viewer.
 
 ## What does the door do?

@@ -8140,6 +8140,20 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-pc-answers { margin-top: .45rem; padding-left: .6rem; border-left: 2px solid var(--sd-border-strong); }
 .sd-pc-answer + .sd-pc-answer { margin-top: .4rem; }
 .sd-pc-gone { margin-top: .25rem; font-size: .74rem; color: var(--sd-warning); }
+/* A link asking approval: its verdict in the page group's head, and a
+   Request changes note as a thread without a pin. */
+.sd-pc-verdicts { display: flex; flex-wrap: wrap; gap: .3rem; margin: -.15rem 0 .45rem; }
+.sd-pc-verdict {
+    display: inline-flex; align-items: center; gap: .3rem; max-width: 100%; padding: .1rem .45rem; border-radius: 999px;
+    font-size: .7rem; border: 1px solid var(--sd-panel-border); background: var(--sd-raised-bg); color: var(--sd-text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sd-pc-verdict code { font-size: inherit; color: var(--sd-text-muted); }
+.sd-pc-verdict.is-approved .bi { color: var(--sd-success); }
+.sd-pc-verdict.is-changes .bi { color: var(--sd-warning); }
+.sd-pc-verdict.is-older { color: var(--sd-text-muted); }
+.sd-pc-request { cursor: default; }
+.sd-pc-request .sd-pc-num { cursor: default; display: inline-flex; align-items: center; justify-content: center; }
 .sd-pc-resolved { margin-top: .35rem; font-size: .74rem; color: var(--sd-success); }
 .sd-pc-actions, .sd-pc-confirm { display: flex; align-items: center; gap: .25rem; margin-top: .4rem; flex-wrap: wrap; }
 .sd-pc-confirm > span { flex: 1 1 100%; color: var(--sd-danger); }
