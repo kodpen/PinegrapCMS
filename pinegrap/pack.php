@@ -208,7 +208,7 @@ function pack_short_drawer(array $pack)
                     <label class="visually-hidden" for="pack_found_' . $id . '">' . h(lang('Units found')) . '</label>
                     <input type="number" class="pg-input pg-pack-found" id="pack_found_' . $id . '" name="found[' . $id . ']" value="0" min="0" max="' . PG_PACK_COUNT_MAX . '" step="1" inputmode="numeric">
                 </div>
-                <div class="pg-field-help" id="pack_fix_' . $id . '_help">' . h(lang('The units still on the shelf.')) . '</div>';
+                <div class="pg-field-help" id="pack_fix_' . $id . '_help">' . h(lang('The units still on the shelf.')) . '<br>' . h(lang('The units of orders waiting to be sent are taken off.')) . '</div>';
         }
 
         $rows .= '

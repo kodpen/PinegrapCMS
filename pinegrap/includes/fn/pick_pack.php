@@ -1036,6 +1036,55 @@ function pg_pack_count_fixes($on, $found, array $missing, array $tracked)
 }
 
 /**
+ * The units of a product that paid orders waiting to be sent hold at a
+ * location: a short pick's count is the shelf less these. Each other
+ * address counts what its lines took from the stock; the short pack's own
+ * address counts only its units not yet scanned and not missing, as those
+ * scanned are in the box and those missing are not on the shelf.
+ *
+ * @param array $rows           pg_pack_held_rows(): 'ship_to_id',
+ *                              'location_id', 'units'
+ * @param int   $location_id    the location counted, 0 without locations
+ * @param int   $own_ship_to_id the short pack's address
+ * @param int   $own_off        the short pack's scanned and missing units
+ *                              of the product
+ * @return int
+ */
+function pg_pack_held_units(array $rows, $location_id, $own_ship_to_id, $own_off)
+{
+    $held = 0;
+
+    foreach ($rows as $row) {
+        if ((int) $row['location_id'] !== (int) $location_id) {
+            continue;
+        }
+
+        $units = max(0, (int) $row['units']);
+
+        if ((int) $row['ship_to_id'] === (int) $own_ship_to_id) {
+            $units = max(0, $units - max(0, (int) $own_off));
+        }
+
+        $held += $units;
+    }
+
+    return $held;
+}
+
+/**
+ * The count a short pick writes: the units found on the shelf less those
+ * held by orders waiting to be sent, never below 0.
+ *
+ * @param int $shelf units found on the shelf
+ * @param int $held  pg_pack_held_units()
+ * @return int
+ */
+function pg_pack_count_after($shelf, $held)
+{
+    return max(0, (int) $shelf - max(0, (int) $held));
+}
+
+/**
  * A short pack's missing lines as short texts, "Cap × 2", in product order.
  *
  * @param array  $missing    product_id => units (pg_pack_missing_decode())

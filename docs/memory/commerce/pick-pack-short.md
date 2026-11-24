@@ -1,6 +1,6 @@
 ---
 name: pick-pack-short
-description: Short picks (PP5, #11259): the "Short…" drawer, the count fix as a stock_moves count line, Finish the pack, pack_short alert, order.pack_short, the Packing dashboard card
+description: Short picks (PP5, #11259): the "Short…" drawer, the count fix (pick-pack-short-count.md), Finish the pack, pack_short alert, order.pack_short, the Packing dashboard card
 ---
 
 ## How is a pack closed short?
@@ -9,8 +9,7 @@ description: Short picks (PP5, #11259): the "Short…" drawer, the count fix as 
 - The answer turns the screen to the "Short" pill with what followed and "Next order", as a packed one does.
 
 ## How is a location's count set down?
-- Each row of a product that tracks stock (`products.inventory = 1`, `pg_pack_tracked_products()`) has the switch "Set this location's count to what was found" and a number, default 0 (the units still on the shelf).
-- `pg_pack_count_fixes()` keeps only switched-on, still missing, tracked products with a whole number 0..`PG_PACK_COUNT_MAX`. Each is `pg_stock_set()` at the order's location (`pg_pack_address()['location_id']`, 0 without locations) with reason `count`, ref the order number, note "Counted at a short pick", then `pg_marketplace_product_changed()`.
+- The drawer's switch per tracked product sets the location's count from the shelf figure, less the units held by waiting orders: `pick-pack-short-count.md`.
 
 ## What follows a short close?
 - `pg_pack_after_short()`: the count fixes, one `pg_audit('pack', 'order_pack', …)` line with missing and counted, `pg_ops_alert('pack_short', …)` (group Deliveries, link Pick waves; once a day, no subject), `order.pack_short`.
