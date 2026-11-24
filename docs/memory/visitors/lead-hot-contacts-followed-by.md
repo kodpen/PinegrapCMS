@@ -1,6 +1,7 @@
 ---
 name: lead-hot-contacts-followed-by
-description: What the Hot Contacts view's "assignee" column reads (lead-journey J11): "Followed by", the people holding an open follow-up task of the contact; no assignee column on contacts
+description: The Hot Contacts view's "Followed by" column (LJ4c, #11301): the people holding an open follow-up task of the contact, read in one batch; no assignee column on contacts
+module: contact_list
 ---
 
 ## What does the plan's "assignee" column read?
@@ -13,9 +14,16 @@ description: What the Hot Contacts view's "assignee" column reads (lead-journey 
 - Read in one batch for the page's rows, never a query a row.
 - "Remind me" stays offered on a followed contact: a second person may follow too.
 
-## Which step?
-- LJ4c (S) of the lead-journey plan, after LJ4b lands, before LJ6. LJ6's API answer of a hot contact carries the same people as `followed_by` (user ids), null with the Workspace off.
-- The step's PR adds its line to the plan's steps file and corrects the screens file's word "assignee".
+## Where is the code?
+- LJ4c (#11301), `includes/fn/contact_list.php`. `pg_contact_list_workspace_on()` gates the column (and Remind me). `pg_contact_list_followers()` reads the page's contacts in one query (`ws_refs` of `task`/`contact` joined to `ws_tasks` status todo, doing, waiting and `ws_task_assignees`); `pg_contact_list_rows()` then names the people with one `ws_people()` call.
+- `pg_contact_list_followers_map()` (pure) keeps each person once, in the order of their first open task; `pg_contact_list_followed_cell()` (pure) draws the chips (`pg-initials` in the person's tone, then the name).
+- Any open task tagged with the contact counts, not only the ones Remind me opened: a channel task on the contact also says somebody is on it.
+
+## And the API?
+- LJ6's answer of a hot contact carries the same people as `followed_by` (user ids), null with the Workspace off.
 
 ## Tests?
-- Unit: the batch reader on rows with none, one and three open follow-ups, a done task left out, the Workspace off.
+- `tests/contact_list_followed_by_test.php`: the map on none, one and four people, a done and a cancelled task left out, the Workspace off, the cell (You first, two chips, "+N", an account gone), the column's place.
+
+## What was not checked live?
+- No running site: the query and the column never ran against a database or in a browser (2026-11-24).

@@ -885,7 +885,7 @@ function pg_contact_list_columns($filter, $shows_groups, $scores = false)
     $columns = array('picture' => array('heading' => lang('Image'), 'width' => '5rem', 'kind' => 'image'));
 
     if ($filter == 'hot_contacts') {
-        return pg_contact_list_hot_columns($columns, $shows_groups);
+        return pg_contact_list_hot_columns($columns, $shows_groups, pg_contact_list_workspace_on());
     }
 
     if ($duplicates) {
@@ -930,18 +930,25 @@ function pg_contact_list_columns($filter, $shows_groups, $scores = false)
 
 /**
  * The Hot Contacts view's columns: the contact, the score, the strongest
- * reason, the last visit and the row's actions (Open, Remind me).
+ * reason, the last visit, who follows the contact up (with the Workspace
+ * on) and the row's actions (Open, Remind me).
  *
  * @param array $columns      the picture column
  * @param bool  $shows_groups whether the groups are shown (the toggle)
+ * @param bool  $followed     whether "Followed by" is shown (the Workspace is on)
  * @return array key => spec
  */
-function pg_contact_list_hot_columns(array $columns, $shows_groups)
+function pg_contact_list_hot_columns(array $columns, $shows_groups, $followed = false)
 {
     $columns['contact'] = array('heading' => lang('Contact'), 'width' => '16rem', 'sort' => 'contacts.last_name');
     $columns['score'] = array('heading' => lang('Score'), 'width' => '7rem', 'kind' => 'number', 'sort' => 'contact_scores.interest');
     $columns['reason'] = array('heading' => lang('Why'), 'width' => '16rem');
     $columns['last_visit'] = array('heading' => lang('Last visit'), 'width' => '10rem', 'kind' => 'date', 'sort' => 'contact_scores.last_visit_at');
+
+    // Not sortable: the people come from Workspace tasks, read after the page.
+    if ($followed) {
+        $columns['followed_by'] = array('heading' => lang('Followed by'), 'width' => '12rem');
+    }
 
     if ($shows_groups) {
         $columns['groups'] = array('heading' => lang('Contact Groups'), 'width' => '12rem');
@@ -1031,6 +1038,7 @@ function pg_contact_list_hot_row($contact, $filter, $picture, $group_names, $rem
         'score' => pg_list_cell(pg_lead_score_list_cell($contact['lead_interest'] ?? null, $settings['threshold']), 'align-middle text-end'),
         'reason' => pg_list_cell(h(pg_contact_list_hot_reason($contact['lead_reasons'] ?? '')), 'align-middle'),
         'last_visit' => pg_list_cell(($visit > 0) ? pg_list_when($visit, '') : '', 'align-middle'),
+        'followed_by' => pg_list_cell((string) ($contact['followed_by_cell'] ?? ''), 'align-middle'),
         'groups' => pg_list_cell($group_names),
         'actions' => pg_list_cell($actions, 'align-middle text-nowrap action-buttons'),
     ));
@@ -1055,16 +1063,132 @@ function pg_contact_list_hot_remind($user)
 
     $answer[$key] = false;
 
-    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && is_file(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php')) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-
-        if (function_exists('ws_enabled') && ws_enabled() && function_exists('ws_contact_followup_open')) {
-            $viewer = ws_viewer($user);
-            $answer[$key] = !empty($viewer['member']) && !empty($viewer['contacts']);
-        }
+    if (pg_contact_list_workspace_on() && function_exists('ws_contact_followup_open')) {
+        $viewer = ws_viewer($user);
+        $answer[$key] = !empty($viewer['member']) && !empty($viewer['contacts']);
     }
 
     return $answer[$key];
+}
+
+/**
+ * Whether the Workspace is on, its functions loaded: the Hot Contacts view's
+ * Remind me and "Followed by" read its tasks.
+ *
+ * @return bool
+ */
+function pg_contact_list_workspace_on()
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED || !is_file(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php')) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    return function_exists('ws_enabled') && ws_enabled();
+}
+
+/**
+ * The people following each of these contacts up: those holding an open
+ * task (todo, doing, waiting) tagged with the contact, the tasks Remind me
+ * opens. One query for the whole page, never one a row. Nothing with the
+ * Workspace off.
+ *
+ * @param int[] $contact_ids
+ * @param bool  $workspace_on pg_contact_list_workspace_on()
+ * @return array contact id => user ids (pg_contact_list_followers_map())
+ */
+function pg_contact_list_followers(array $contact_ids, $workspace_on)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $contact_ids))));
+
+    if (!$workspace_on || empty($ids)) {
+        return array();
+    }
+
+    $rows = db_items("SELECT r.ref_id AS contact_id, a.user_id, t.status
+        FROM ws_refs AS r
+        INNER JOIN ws_tasks AS t ON t.id = r.source_id
+        INNER JOIN ws_task_assignees AS a ON a.task_id = t.id
+        WHERE r.source_type = 'task' AND r.ref_type = 'contact'
+            AND r.ref_id IN (" . implode(',', $ids) . ")
+            AND t.status IN ('todo', 'doing', 'waiting')
+        ORDER BY t.id ASC");
+
+    return pg_contact_list_followers_map(is_array($rows) ? $rows : array());
+}
+
+/**
+ * Lays the follow-up rows out by contact: each person once, in the order
+ * their first open task came; a done or cancelled task is left out. Pure.
+ *
+ * @param array $rows contact_id, user_id, status
+ * @return array contact id => user ids
+ */
+function pg_contact_list_followers_map(array $rows)
+{
+    $map = array();
+
+    foreach ($rows as $row) {
+        $contact_id = (int) ($row['contact_id'] ?? 0);
+        $user_id = (int) ($row['user_id'] ?? 0);
+
+        if (($contact_id <= 0) || ($user_id <= 0) || !in_array((string) ($row['status'] ?? ''), array('todo', 'doing', 'waiting'), true)) {
+            continue;
+        }
+
+        if (!isset($map[$contact_id]) || !in_array($user_id, $map[$contact_id], true)) {
+            $map[$contact_id][] = $user_id;
+        }
+    }
+
+    return $map;
+}
+
+/**
+ * The "Followed by" cell: up to two people as chips (the reader as "You",
+ * first), then "+N" for the rest; '' when nobody follows the contact up.
+ * Pure but for lang().
+ *
+ * @param int[] $user_ids  pg_contact_list_followers_map()'s list for the contact
+ * @param array $people    user id => brief (ws_people(): name, initials, tone)
+ * @param int   $viewer_id the reader
+ * @return string HTML
+ */
+function pg_contact_list_followed_cell(array $user_ids, array $people, $viewer_id)
+{
+    $ids = array_values(array_unique(array_map('intval', $user_ids)));
+
+    if (empty($ids)) {
+        return '';
+    }
+
+    $mine = array_search((int) $viewer_id, $ids, true);
+
+    if ($mine !== false) {
+        unset($ids[$mine]);
+        array_unshift($ids, (int) $viewer_id);
+    }
+
+    $tones = array('', ' pg-initials-2', ' pg-initials-3');
+    $html = '';
+
+    foreach (array_slice($ids, 0, 2) as $user_id) {
+        $person = $people[$user_id] ?? array();
+        $name = ($user_id == (int) $viewer_id) ? lang('You') : (string) ($person['name'] ?? lang('Former member'));
+        $initials = (string) ($person['initials'] ?? '?');
+        $tone = $tones[abs((int) ($person['tone'] ?? 0)) % 3];
+
+        $html .= '<span class="d-inline-flex align-items-center gap-2 me-3 text-nowrap">'
+            . '<span class="pg-initials' . $tone . '" aria-hidden="true">' . h($initials) . '</span>'
+            . '<span>' . h($name) . '</span></span>';
+    }
+
+    if (count($ids) > 2) {
+        $html .= '<span class="pg-text-meta text-nowrap">+' . (count($ids) - 2) . '</span>';
+    }
+
+    return $html;
 }
 
 /**
@@ -1369,12 +1493,21 @@ function pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts)
         }
     }
 
+    // The Hot Contacts view's "Followed by": the page's follow-ups and the
+    // people holding them, in one query each.
+    $followers = ($filter == 'hot_contacts') ? pg_contact_list_followers($contact_ids, pg_contact_list_workspace_on()) : array();
+    $people = $followers ? ws_people(array_merge(...array_values($followers))) : array();
+
     $rows = array();
     $group_options = $shows_groups ? pg_contact_quick_group_options($user) : array();
 
     foreach ($contacts as $contact) {
         $group_names = array();
         $contact['file_timestamp'] = $stamps[(int) $contact['file_id']] ?? 0;
+
+        if ($followers) {
+            $contact['followed_by_cell'] = pg_contact_list_followed_cell($followers[(int) $contact['id']] ?? array(), $people, (int) ($user['id'] ?? 0));
+        }
 
         if ($shows_groups) {
             foreach ($groups as $group) {
