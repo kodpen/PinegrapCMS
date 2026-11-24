@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-counts-canvas
-description: A live flow's counts on the Flows canvas (FE11b): Counts and the days in the bar, pills over boxes, a pill's runs in the panel with the box's pass and the record's name, Open all in Flow runs
+description: A live flow's counts on the Flows canvas (FE11b, #11380): Counts and the days in the bar, pills over boxes, a pill's runs in the panel with the box's pass and the record's name, Open all in Flow runs
 ---
 
 ## Who sees Counts, and what does it do?
