@@ -28,6 +28,9 @@ return array(
     'authorize_url'    => 'https://accounts.google.com/o/oauth2/v2/auth',
     'token_url'        => 'https://oauth2.googleapis.com/token',
     'revoke_url'       => 'https://oauth2.googleapis.com/revoke',
+    // Revoking one token ends every token of the account for this client
+    // (pg_connect_revoke_allowed()).
+    'revoke_ends_grant' => true,
     'userinfo_url'     => 'https://openidconnect.googleapis.com/v1/userinfo',
     'issuers'          => array('https://accounts.google.com', 'accounts.google.com'),
     'identity_scopes'  => array('openid', 'email', 'profile'),

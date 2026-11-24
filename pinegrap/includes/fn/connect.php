@@ -1097,6 +1097,31 @@ function pg_connect_mark_reauth($row, $reason)
 }
 
 /**
+ * Whether ending a connection tells the provider. A provider whose
+ * revocation ends the account's whole permission for the application
+ * ('revoke_ends_grant': Google) is not told while another connection holds
+ * the same account, which would stop working with it. A provider that names
+ * no account (identity false: one connection per owner under a fixed id)
+ * has a sign-in of its own for each, so it is always told.
+ *
+ * @param array|null $provider
+ * @param int        $sharing other connections of the same provider and account
+ * @return bool
+ */
+function pg_connect_revoke_allowed($provider, $sharing)
+{
+    if (!is_array($provider)) {
+        return false;
+    }
+
+    if (empty($provider['revoke_ends_grant']) || (isset($provider['identity']) && ($provider['identity'] === false))) {
+        return true;
+    }
+
+    return (int) $sharing === 0;
+}
+
+/**
  * Ends a connection: the provider is told when it can be (best effort), then
  * the row is deleted.
  *
@@ -1130,7 +1155,17 @@ function pg_connect_disconnect($id)
         $token = pg_connect_cached_access($secret, 'default', time(), 0);
     }
 
-    if (is_array($provider) && ($token !== '') && (pg_connect_revoke_url($provider, $app) !== '')) {
+    // Another row holding the same account (the site's and a person's own)
+    // keeps its permission where revoking one token ends them all.
+    $sharing = (int) db_value(
+        "SELECT COUNT(*) FROM connect_accounts
+        WHERE
+            provider = '" . e($row['provider']) . "'
+            AND external_id = '" . e($row['external_id']) . "'
+            AND id <> '" . (int) $row['id'] . "'");
+
+    if (is_array($provider) && ($token !== '') && (pg_connect_revoke_url($provider, $app) !== '')
+        && pg_connect_revoke_allowed($provider, $sharing)) {
         require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
 
         if (isset($provider['revoke_auth']) && ($provider['revoke_auth'] === 'bearer')) {
@@ -1356,26 +1391,51 @@ function pg_connect_access_token($connection_id, $scopes = array(), $force = fal
     $row = $read();
     $secret = is_array($row) ? pg_connect_unseal($row['secret']) : array();
     $cached = pg_connect_cached_access($secret, $key, $now);
+    $step = pg_connect_renew_step($locked, $cached, $seen, $force);
 
-    if (is_array($row) && ($cached !== '') && (!$force || ($cached !== $seen))) {
-        if ($locked) {
-            db("SELECT RELEASE_LOCK('" . e($lock) . "')");
-        }
-
+    if (!is_array($row)) {
+        $result = $fail(lang('The connected account was not found.'));
+    } elseif ($step === 'cached') {
         pg_connect_touch($row);
 
-        return array('ok' => true, 'token' => $cached, 'error' => '');
+        $result = array('ok' => true, 'token' => $cached, 'error' => '');
+    } elseif ($step === 'busy') {
+        // The request holding the lock is still waiting on the provider; the
+        // connection stays as it is and the next call tries again.
+        $result = $fail(lang('The account is being renewed by another request. Please try again in a moment.'));
+    } else {
+        $result = pg_connect_refresh($row, $provider, $secret, $scopes, $key);
     }
-
-    $result = is_array($row)
-        ? pg_connect_refresh($row, $provider, $secret, $scopes, $key)
-        : $fail(lang('The connected account was not found.'));
 
     if ($locked) {
         db("SELECT RELEASE_LOCK('" . e($lock) . "')");
     }
 
     return $result;
+}
+
+/**
+ * What a request that waited for a connection's renewal lock does next:
+ * 'cached' takes the token found after the wait (stored by the request that
+ * held the lock, or, when forced, one other than the refused token),
+ * 'refresh' renews it, and 'busy' gives up for now. A renewal without the
+ * lock could send a refresh token the holder is about to have replaced: a
+ * provider that rotates them (Microsoft, an MCP server) then refuses it as
+ * invalid_grant and the connection would be marked to be connected again.
+ *
+ * @param bool   $locked whether GET_LOCK was had within its wait
+ * @param string $cached the token cached after the wait, or ''
+ * @param string $seen   the token cached before it, or ''
+ * @param bool   $force  the caller wants a token other than the cached one
+ * @return string 'cached', 'refresh' or 'busy'
+ */
+function pg_connect_renew_step($locked, $cached, $seen, $force)
+{
+    if (((string) $cached !== '') && (!$force || ((string) $cached !== (string) $seen))) {
+        return 'cached';
+    }
+
+    return $locked ? 'refresh' : 'busy';
 }
 
 /**
