@@ -28,4 +28,7 @@ description: Claude Console's agents (Claude Managed Agents) as Anthropic's page
 ## Can it stay open and poll a queue?
 - "Tasks that run for minutes or hours" (`/overview`); an idle session waits for input; a `budget` cap pauses it (`budget_reached`). A maximum run time, an idle timeout or a sleep loop: not found.
 
+## Is the Console agent's try on dev passed?
+- Owner (2026-11-24, poll 221): the try of a Claude Console agent on dev counts as passed; a fault found later becomes a `bug` issue. The guide: `application-access-console-guide.md`.
+
 Related: docs/memory/api/claude-connector-listing.md, docs/memory/api/api-mcp-server.md
