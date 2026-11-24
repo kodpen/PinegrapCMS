@@ -1248,6 +1248,8 @@ function api_openapi_objects()
         'DesignBundle'   => 'api_design_bundle_schema',
         'DesignBundlePage' => 'api_design_bundle_page_schema',
         'DesignPrototypeLinkCreated' => 'api_design_prototype_link_created_schema',
+        'DesignPrototypeVerdict' => 'api_design_prototype_verdict_schema',
+        'DesignPrototypeComment' => 'api_design_prototype_comment_schema',
         'AuthSession'    => 'api_auth_session_schema',
         'Me'             => 'api_auth_me_schema',
         'Device'         => 'api_device_schema',
