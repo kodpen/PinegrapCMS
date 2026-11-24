@@ -19,4 +19,4 @@ description: Tidy and the map on the Flows canvas strip (FE9, #11325): ws_flow_t
 - `tests/workspace_flow_draft_test.php`: `test_ws_flow_tidy`. `tests/workspace_flows_canvas_test.php`: `test_workspace_flows_canvas_tidy_and_map` (Node: places, frames, the map inside its card).
 - Design examples: the pattern "Canvas tools" shows Tidy, Note, Map and the map card.
 
-Related: docs/memory/workspace/workspace-flows-canvas-tools.md, docs/memory/workspace/workspace-flows-notes-frames.md, docs/memory/plans/flows-editor-next-screens-4.md
+Related: docs/memory/workspace/workspace-flows-canvas-tools.md, docs/memory/workspace/workspace-flows-notes-frames.md, docs/memory/workspace/workspace-flows-overview.md

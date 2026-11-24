@@ -13,6 +13,6 @@ description: Flows canvas data threads drawn only for the box in hand (FE4): thr
 - Tests `…_data_row_drawing`, `…_thread_bends_around_a_box`; harness scenario "data threads" in `tests/js/flows_canvas_scenarios.js`.
 
 ## Why?
-- Before, every thread was drawn all the time along the dots' rows, and a chosen box dimmed the others to 25%; the canvas read as a web of lines (`plans/flows-editor-next.md`).
+- Before, every thread was drawn all the time along the dots' rows, and a chosen box dimmed the others to 25%; the canvas read as a web of lines (`workflow/decisions-made-workspace-47.md`).
 
 Related: workspace-flows-thread-drawing.md

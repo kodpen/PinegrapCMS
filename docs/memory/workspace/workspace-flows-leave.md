@@ -33,4 +33,4 @@ description: Leaving a flow (FE14, flow_leave.php): leave rules in the graph, ev
 ## Where is it tested?
 - `tests/workspace_flow_leave_test.php`.
 
-Related: docs/memory/workspace/workspace-flows-runner.md, docs/memory/workspace/workspace-flows-name-window.md, docs/memory/plans/flows-editor-next-screens-3.md
+Related: docs/memory/workspace/workspace-flows-runner.md, docs/memory/workspace/workspace-flows-name-window.md, docs/memory/workflow/decisions-made-workspace-47.md
