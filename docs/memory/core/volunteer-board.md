@@ -5,7 +5,7 @@ module: volunteer_board, volunteer_board_view
 ---
 
 ## Where is it?
-- The first tab and the default view of `edit_volunteer_programme.php` (`view=shifts`, `week=` any day of the week, `place=`, `shift=` opens a shift's drawer). Built in #11163, step VS3 of plan `volunteer-shifts`.
+- The first tab and the default view of `edit_volunteer_programme.php` (`view=shifts`, `week=` any day of the week, `place=`, `shift=` opens a shift's drawer). Built in #11163, step VS3 (`volunteer-shifts.md`).
 - Rules and store: `includes/fn/volunteer_board.php`; markup: `includes/fn/volunteer_board_view.php`; both loaded by the screen only. Pure parts tested in `tests/volunteer_board_test.php`.
 - Anyone who sees the programme (roles 0-2, its coordinators) adds, copies, calls and removes shifts.
 
@@ -27,4 +27,4 @@ module: volunteer_board, volunteer_board_view
 - Call volunteers: for each short role `pg_volunteer_call_pick()` over the active volunteers (skills, completed courses through `user.user_contact`, documents, free hours, their signed shifts nearby); asks only within the call days. Sends the programme's Call message by each volunteer's channel and adds the ids to the shift's `called`, so nobody is asked twice; only between 09:00 and 20:00 (`core/volunteer-messages.md`). The hint says how many.
 - Remove (danger): the confirm says how many are told; deletes the shift and its sign-ups and e-mails the signed and waiting volunteers. A shift with a check-in or approved hours stays (button off).
 
-Related: docs/memory/core/volunteer-programmes.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts-screens.md
+Related: docs/memory/core/volunteer-programmes.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/core/volunteer-shifts-decisions.md

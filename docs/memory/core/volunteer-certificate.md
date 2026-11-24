@@ -5,7 +5,7 @@ module: volunteer_certificate
 ---
 
 ## Where is it?
-- Rules and store: `includes/fn/volunteer_certificate.php`, pure parts tested in `tests/volunteer_certificate_test.php`. Page: root `volunteer_certificate.php`, in `waf_sensitive_scripts()`, no-store, noindex, no referrer, no frame, the volunteer page's throttle (`pg_volunteer_page_throttled()`). Built in step VS7 of plan `volunteer-shifts`.
+- Rules and store: `includes/fn/volunteer_certificate.php`, pure parts tested in `tests/volunteer_certificate_test.php`. Page: root `volunteer_certificate.php`, in `waf_sensitive_scripts()`, no-store, noindex, no referrer, no frame, the volunteer page's throttle (`pg_volunteer_page_throttled()`). Built in step VS7 (`volunteer-shifts.md`).
 - Drawn in `certificate.php`'s look (`assets/css/certificate.css`, one A4 landscape page, "Print or save as PDF"); no PDF is made on the server (`commerce/course-certificate.md`).
 
 ## Who opens a certificate?

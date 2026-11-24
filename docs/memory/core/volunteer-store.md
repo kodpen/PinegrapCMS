@@ -29,4 +29,4 @@ description: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, 
 - Rule `volunteers` in `pg_privacy_rules_catalogue()`: profiles with `state = 'left'` and `left_at` before the period (3 years, 1-20, off by default; architect's yes, schema-47) go with their documents, files, shifts and hours (`pg_privacy_rule_one()`), the contact stays; no skip.
 - The passive contacts rule counts a profile not left, or left within the period, as activity (`_pg_privacy_rule_active()`): a sign-up changes neither the contact nor an order.
 
-Related: docs/memory/core/volunteer-document-file.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/plans/volunteer-shifts.md, docs/memory/core/personal-data-erasure.md, docs/memory/core/privacy-retention-rules.md
+Related: docs/memory/core/volunteer-document-file.md, docs/memory/core/volunteer-shift-rules.md, docs/memory/core/personal-data-erasure.md, docs/memory/core/privacy-retention-rules.md
