@@ -231,7 +231,8 @@ function pg_notify_page_choices($prefix, $id, $groups, $events, $codes, $chosen)
 /**
  * One target's block: its own form with its name, alert codes and
  * Workspace events, Save, "Save and send a test" and Delete. Its address or
- * token is never drawn back, only where it sends.
+ * token is never drawn back, only where it sends. The last failure is dated
+ * by get_absolute_time(), as Connections dates the rest.
  *
  * @param string $kind
  * @param array  $target
@@ -257,10 +258,10 @@ function pg_notify_page_target_form($kind, $target, $groups, $events)
 					<input type="text" class="pg-input" id="notify_label_' . h($id) . '" name="notify_label" value="' . h($label) . '" maxlength="100">
 					<div class="pg-field-help">' . h($kinds[$kind]['label'] . ' · ' . pg_notify_target_where($kind, $target)) . '</div>
 				</div>' . (($failure !== null) ? '
-				<div class="alert theme-danger small py-3 mb-0">' . lang(array(
+				<div class="alert theme-danger small py-3 mb-0">' . h(lang(array(
 					'string' => 'Last failure {var:1}: {var:2}',
-					'vars'   => array(h(date('Y-m-d H:i', (int) ($failure['at'] ?? 0))), h((string) ($failure['reason'] ?? ''))),
-				)) . '</div>' : '')
+					'vars'   => array(get_absolute_time(array('timestamp' => (int) ($failure['at'] ?? 0), 'format' => 'plain_text')), (string) ($failure['reason'] ?? '')),
+				))) . '</div>' : '')
 				. pg_notify_page_choices('notify_', 'notify_' . $id, $groups, $events, (array) ($target['codes'] ?? array()), (array) ($target['events'] ?? array())) . '
 				<div class="d-flex flex-wrap align-items-center gap-3">
 					<button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>

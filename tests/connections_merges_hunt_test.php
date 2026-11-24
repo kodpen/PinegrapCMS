@@ -18,6 +18,11 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/claude_setup.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/notify_channels_page.php');
+
+if (!function_exists('get_token_field')) {
+	function get_token_field() { return '<input type="hidden" name="token" value="t">'; }
+}
 
 // Claude's page sends the application as stored: a linked application
 // deleted in Application Access must not refuse the routine's address.
@@ -54,4 +59,22 @@ function test_connections_merges_claude_page_unchanged_save_writes_nothing()
 
 	$clear = ws_claude_routine_decision(array('claude_routine_url' => $url, 'claude_token_clear' => '1'), $config);
 	pg_assert_true($clear['write'], 'removing the token is written');
+}
+
+// A chat target's last failure on its Connections page is dated as the
+// rest of Connections dates: in the site's date order and clock, in the
+// viewer's zone, not the server's fixed Y-m-d H:i.
+function test_connections_merges_chat_target_failure_date()
+{
+	$at = 1795000000;
+	$target = array('id' => 'abcdef0123456789', 'kind' => 'slack', 'label' => 'Ops', 'url' => 'https://hooks.slack.com/services/T0/B0/x',
+		'codes' => array(), 'events' => array(), 'failure' => array('status' => 404, 'at' => $at, 'reason' => 'no_service'));
+	$html = pg_notify_page_target_form('slack', $target, array(), array());
+	$when = get_absolute_time(array('timestamp' => $at, 'format' => 'plain_text'));
+
+	pg_assert_contains(h(lang(array('string' => 'Last failure {var:1}: {var:2}', 'vars' => array($when, 'no_service')))), $html, 'the failure dated by get_absolute_time()');
+
+	if ($when !== date('Y-m-d H:i', $at)) {
+		pg_assert_false(strpos($html, date('Y-m-d H:i', $at)) !== false, 'not the fixed server format');
+	}
 }
