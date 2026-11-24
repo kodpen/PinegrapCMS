@@ -68,6 +68,30 @@ function pg_panel_user_online_check($request, $action)
     respond($response);
 }
 
+// The form token of the caller's session. A page keeps the token it was
+// drawn with; when the server drops an idle session overnight, the
+// remember-me cookie signs the person in again on the next request and the
+// sign-in renews the token, so the page's writes are refused although the
+// person is still signed in. The page asks here once and sends again. The
+// general gate has already refused a request without a signed-in session.
+// Another site cannot read this answer: api.php sends no CORS header that
+// lets a browser show it a credentialed response.
+function pg_panel_session_token($request, $action)
+{
+    // A caller that signed in with a password in the request holds no page
+    // and no session token to renew.
+    if (defined('API_AUTHENTICATED') || defined('API_USERNAME')) {
+        return panel_login_refusal();
+    }
+
+    initialize_token();
+
+    return array(
+        'status' => 'success',
+        'data' => array('token' => (string) $_SESSION['software']['token'])
+    );
+}
+
 function pg_panel_sitemap_check($request, $action)
 {
     // The action sits on the general gate's exemption list because every
