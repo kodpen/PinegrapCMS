@@ -363,6 +363,7 @@ function pg_delete_page_record($page_id, $user)
         }
     }
 
+    pg_comment_delete_page_notifications($page_id);
     db("DELETE FROM comments WHERE page_id = '" . e($page_id) . "'");
     db("DELETE FROM submitted_form_info WHERE page_id = '" . e($page_id) . "'");
     db("DELETE FROM allow_new_comments_for_items WHERE page_id = '" . e($page_id) . "'");
