@@ -817,6 +817,39 @@ function pg_comment_refresh_record_info($page_id, $item_type, $item_id)
 }
 
 /**
+ * Deletes the panel notifications of every comment written on a page, run by
+ * each path that deletes a page (Edit Page, the Pages list, the Recycle Bin)
+ * just before the page's comments go. Without it a notification outlived its
+ * comment: no page folder stood behind it, so Manager and above still saw
+ * "There is a new  exist." in the bell, its label empty, and its link opened
+ * edit_comment.php with no id.
+ *
+ * A failed query is logged and answers false; the page delete goes on.
+ *
+ * @param mixed $page_id page.page_id
+ * @return bool
+ */
+function pg_comment_delete_page_notifications($page_id)
+{
+    $pid = is_scalar($page_id) ? (int) $page_id : 0;
+
+    if ($pid <= 0) {
+        return false;
+    }
+
+    // The derived table lets MySQL read comments in the subquery of a
+    // DELETE from notifications without a join on the deleted table.
+    if (!db_q(
+        "DELETE FROM notifications WHERE comment_id IN (SELECT id FROM (SELECT id FROM comments WHERE page_id = ?) AS page_comments)",
+        array((string) $pid))) {
+        _pg_comment_db_failed();
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Removes what hangs off a form record that is being deleted: its comments
  * (on every page they were written on) with their notifications and the
  * attachment files no other comment shares, its watchers, its "allow new
