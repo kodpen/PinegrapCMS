@@ -44,6 +44,7 @@ function pg_feedback_touchpoints()
         'form'     => array('label' => 'After a form', 'line' => 'When a form is sent, or when a choice on it changes.', 'icon' => 'bi-ui-checks', 'tone' => 'blue', 'kind' => PG_FEEDBACK_CSAT, 'delay' => 1440, 'filter' => array('form' => 0, 'field' => 0, 'value' => '')),
         'delivery' => array('label' => 'After a delivery', 'line' => 'When an order is delivered.', 'icon' => 'bi-truck', 'tone' => 'shop', 'kind' => PG_FEEDBACK_CSAT, 'delay' => 2880, 'filter' => array()),
         'mail'     => array('label' => 'After a mail conversation', 'line' => 'When a conversation in a mailbox is closed.', 'icon' => 'bi-envelope', 'tone' => 'blue', 'kind' => PG_FEEDBACK_EFFORT, 'delay' => 60, 'filter' => array('box' => 0)),
+        'queue'    => array('label' => 'After a queue visit', 'line' => 'When staff finish a walk-in queue number at the desk.', 'icon' => 'bi-people', 'tone' => 'teal', 'kind' => PG_FEEDBACK_CSAT, 'delay' => 120, 'filter' => array('place' => 0)),
         'periodic' => array('label' => 'Every few months', 'line' => 'Asks recent customers how likely they are to recommend you.', 'icon' => 'bi-arrow-repeat', 'tone' => 'gray', 'kind' => PG_FEEDBACK_NPS, 'delay' => 0, 'filter' => array('every' => 6, 'active' => 12)),
     );
 }
@@ -420,6 +421,7 @@ function pg_feedback_sent_after_words(array $survey)
         'form'     => array('Right after a form', '{var:1} hours after a form', '{var:1} days after a form'),
         'delivery' => array('Right after a delivery', '{var:1} hours after a delivery', '{var:1} days after a delivery'),
         'mail'     => array('Right after a mail conversation', '{var:1} hours after a mail conversation', '{var:1} days after a mail conversation'),
+        'queue'    => array('Right after a queue visit', '{var:1} hours after a queue visit', '{var:1} days after a queue visit'),
     );
     $sentences = $words[$survey['touchpoint']] ?? $words['booking'];
     $delay = pg_feedback_delay_split($survey['delay_minutes']);
@@ -619,7 +621,8 @@ function pg_feedback_survey_remove($id)
  * The choices of the edit screen's selects, each id => name, read once.
  *
  * @return array services, events, courses, forms, fields (id => form,
- *               label), boxes, users, channels (empty without the Workspace)
+ *               label), boxes, places (walk-in queue), users, channels
+ *               (empty without the Workspace)
  */
 function pg_feedback_survey_choices()
 {
@@ -639,6 +642,7 @@ function pg_feedback_survey_choices()
         'forms'    => $pairs("SELECT page_id AS id, form_name AS name FROM custom_form_pages ORDER BY form_name"),
         'fields'   => array(),
         'boxes'    => pg_schema_has('ws_mail_boxes') ? $pairs("SELECT id, IF(name = '', address, name) AS name FROM ws_mail_boxes ORDER BY name") : array(),
+        'places'   => (function_exists('pg_waiting_ready') && pg_waiting_ready()) ? $pairs("SELECT id, name FROM waiting_places ORDER BY name") : array(),
         'users'    => $pairs("SELECT user_id AS id, user_username AS name FROM user WHERE user_role <= 3 ORDER BY user_username LIMIT 1000"),
         'channels' => array(),
     );

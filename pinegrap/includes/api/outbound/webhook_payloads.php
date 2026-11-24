@@ -535,7 +535,7 @@ function api_webhook_event_payloads_site() {
 		'survey_id'   => array('integer', 'The survey.'),
 		'survey_name' => array('string', 'The survey\'s name.'),
 		'kind'        => array('string', 'nps (0 to 10), csat (1 to 5) or effort (1 to 7, 1 is very easy).'),
-		'touchpoint'  => array('string', 'What it followed: booking, ticket, course, form, delivery, mail or periodic.'),
+		'touchpoint'  => array('string', 'What it followed: booking, ticket, course, form, delivery, mail, queue or periodic.'),
 		'record_type' => array('string', 'The record it is about: booking, ticket, course, form, order, conversation or periodic.'),
 		'record_id'   => array('integer', 'That record\'s id (the survey\'s own id for periodic).'),
 		'contact_id'  => array('integer?', 'The person\'s contact (GET /customers/{id}), null for none.'),

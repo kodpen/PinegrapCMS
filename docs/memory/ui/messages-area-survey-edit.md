@@ -14,7 +14,7 @@ module: feedback_surveys
 - Status column: the On switch with its pill, the e-mail preview (`pg_feedback_mail_html()`, buttons not links), Send me a test, Delete or Archive. Script `assets/js/feedback_survey.js`, served as written.
 
 ## What is stored?
-- `pg_feedback_survey_input()` (pure) reads the form: ids the screen did not offer read as 0, a filter keeps only its touchpoint's keys. Filters: booking `service`, ticket `event` (events with reservations), course `course`, form `form`, `field` (a pick list or radio field, 0 for "when it is sent") and `value`, mail `box`, periodic `every` and `active`; delivery none (`filter` NULL).
+- `pg_feedback_survey_input()` (pure) reads the form: ids the screen did not offer read as 0, a filter keeps only its touchpoint's keys. Filters: booking `service`, ticket `event` (events with reservations), course `course`, form `form`, `field` (a pick list or radio field, 0 for "when it is sent") and `value`, mail `box`, queue `place` (walk-in queue places, Place / Any place), periodic `every` and `active`; delivery none (`filter` NULL).
 - `texts`: `{"question": {lang: text}, "comment": {lang: text}, "extra": [{"type": "text"|"choice", "label": {lang: text}, "choices": {lang: [..]}}]}`; an extra question without a label in the site's first language is dropped; a choice needs two choices. Languages: `pg_feedback_survey_languages()`, the translation source first.
 
 ## What does Send me a test do?

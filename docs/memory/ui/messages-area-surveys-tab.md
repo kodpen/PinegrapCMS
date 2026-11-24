@@ -15,7 +15,7 @@ module: feedback_surveys
 - Empty: one line on what a survey does and the Add survey button.
 
 ## How does a new survey start?
-- "Add survey" opens a drawer with seven starting-point cards (the Design examples' starting-point sheet, `.pg-start`): After a booking, After an event, After a course, After a form, After a delivery, After a mail conversation, Every few months. Continue opens `edit_feedback_survey.php?start=<key>`; nothing is stored before Save.
+- "Add survey" opens a drawer with eight starting-point cards (the Design examples' starting-point sheet, `.pg-start`): After a booking, After an event, After a course, After a form, After a delivery, After a mail conversation, After a queue visit, Every few months. Continue opens `edit_feedback_survey.php?start=<key>`; nothing is stored before Save.
 - `pg_feedback_touchpoints()` holds each one's kind, delay and filter keys; `pg_feedback_survey_start()` makes the survey: off, by e-mail, review invitation on, the periodic one commercial. What a survey follows is fixed once made.
 
 The edit screen, what it stores and Send me a test: [[messages-area-survey-edit]].

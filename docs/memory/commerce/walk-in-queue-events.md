@@ -16,7 +16,7 @@ description: Walk-in queue events queue.joined, called, served, no_show (WQ8): w
 - Kept on demand (`pg_event_workspace_on_demand()`): a busy place makes hundreds a day, so a row is kept only while a flow names the event.
 - A flow's creator must reach the place's desks (`ws_events_creator_sees()` through `pg_waiting_user_desk_scope()`): roles 0-2 every place, a role-3 user the places whose staff list names them. About the contact when `contact_id` is set, else no record.
 
-## What is not built?
-- `queue.served` as a satisfaction-survey touchpoint: step WQ8b of the plan.
+## Does a served number get a satisfaction survey?
+- Yes, when a survey "After a queue visit" is on: `queue.served` is a touchpoint of `pg_feedback_event_record()` (WQ8b, `platform/feedback-sends.md`).
 
 Related: docs/memory/commerce/walk-in-queue-desk.md, docs/memory/api/api-walk-in-queue-routes.md, docs/memory/api/api-webhook-events.md

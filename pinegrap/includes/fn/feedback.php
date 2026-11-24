@@ -399,10 +399,11 @@ function pg_feedback_fatigue($person, $history, $rules, $now)
 /**
  * The user who follows up a low score: a booking's staff user
  * (booking_staff.user_id), a form's Form Editor, a mail conversation's
- * assignee; any other record, or one without that user, goes to the
+ * assignee, the staff user who called a queue number; any other record,
+ * or one without that user, goes to the
  * survey's fallback owner. 0 when there is none. Pure.
  *
- * @param string $record_type booking, ticket, course, form, order, conversation
+ * @param string $record_type booking, ticket, course, form, order, conversation, queue
  * @param array  $facts       staff_user_id, form_editor_user_id, assignee_user_id
  * @param int    $fallback_user_id
  * @return int
@@ -413,6 +414,7 @@ function pg_feedback_owner($record_type, $facts, $fallback_user_id)
         'booking'      => 'staff_user_id',
         'form'         => 'form_editor_user_id',
         'conversation' => 'assignee_user_id',
+        'queue'        => 'staff_user_id',
     );
     $record_type = (string) $record_type;
 

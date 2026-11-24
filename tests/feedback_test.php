@@ -141,6 +141,7 @@ function test_feedback_owner_chooser()
 	pg_assert_same(12, pg_feedback_owner('booking', array('staff_user_id' => 12), 5), 'a booking goes to its staff user');
 	pg_assert_same(5, pg_feedback_owner('booking', array('staff_user_id' => 0), 5), 'a booking with no staff user goes to the fallback');
 	pg_assert_same(5, pg_feedback_owner('booking', array(), 5), 'a booking with no staff facts goes to the fallback');
+	pg_assert_same(14, pg_feedback_owner('queue', array('staff_user_id' => 14), 5), 'a queue number goes to the staff user who called it');
 	pg_assert_same(14, pg_feedback_owner('form', array('form_editor_user_id' => 14), 5), 'a form goes to its Form Editor');
 	pg_assert_same(16, pg_feedback_owner('conversation', array('assignee_user_id' => 16), 5), 'a conversation goes to its assignee');
 	pg_assert_same(5, pg_feedback_owner('order', array('staff_user_id' => 12), 5), 'an order goes to the fallback');

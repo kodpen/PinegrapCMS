@@ -4,9 +4,9 @@
  *
  * Satisfaction surveys on their way out. pg_announce() hands every event to
  * pg_feedback_heard(): a booking marked done, a ticket checked in, a course
- * completed, a form sent, an order delivered or a mail conversation closed
- * queues one feedback_responses row for each switched-on survey that
- * follows it, due after the survey's delay inside the sending hours (09:00
+ * completed, a form sent, an order delivered, a mail conversation closed or
+ * a walk-in queue number served queues one feedback_responses row for each
+ * switched-on survey that follows it, due after the survey's delay inside the sending hours (09:00
  * to 20:00 site time). The touchpoint's own code only announces; nothing
  * here sends.
  *
@@ -73,6 +73,7 @@ function pg_feedback_event_record($event, $data)
         'form.submitted'        => array('form', 'form', 'id'),
         'order.delivered'       => array('delivery', 'order', 'id'),
         'workspace.mail.closed' => array('mail', 'conversation', 'conversation_id'),
+        'queue.served'          => array('queue', 'queue', 'id'),
     );
     $event = (string) $event;
 
@@ -87,16 +88,16 @@ function pg_feedback_event_record($event, $data)
 
 /**
  * Whether a survey's filter takes this record: its service, event, course,
- * form or mail box, 0 for any. Pure.
+ * form, mail box or queue place, 0 for any. Pure.
  *
  * @param string $touchpoint
  * @param array  $filter     the survey's filter
- * @param int    $subject_id the record's service, event, course, form page or box
+ * @param int    $subject_id the record's service, event, course, form page, box or place
  * @return bool
  */
 function pg_feedback_filter_takes($touchpoint, $filter, $subject_id)
 {
-    $keys = array('booking' => 'service', 'ticket' => 'event', 'course' => 'course', 'form' => 'form', 'mail' => 'box');
+    $keys = array('booking' => 'service', 'ticket' => 'event', 'course' => 'course', 'form' => 'form', 'mail' => 'box', 'queue' => 'place');
 
     if (!isset($keys[$touchpoint])) {
         return true;
@@ -186,7 +187,8 @@ function pg_feedback_queue_row(array $survey, array $record, array $facts, $now,
  * not taken the chosen value yet, for at most 90 days) or 'cancel' (the
  * record is gone, the booking is no longer done, the ticket void, the order
  * cancelled or its review request went in the last 30 days, the
- * conversation opened again). Pure.
+ * conversation opened again, the queue number's personal fields cleared).
+ * Pure.
  *
  * @param string $type    feedback_responses.record_type
  * @param array  $facts   pg_feedback_record_facts(); array() when the record is gone
@@ -212,6 +214,9 @@ function pg_feedback_record_verdict($type, array $facts, array $filter, $created
             return (($state === 'cancelled') || !empty($facts['review_requested'])) ? 'cancel' : 'send';
         case 'conversation':
             return ($state === 'closed') ? 'send' : 'cancel';
+        case 'queue':
+            // A number whose personal fields the keep period cleared asks nobody.
+            return (($state === 'served') && empty($facts['cleared_at'])) ? 'send' : 'cancel';
         case 'form':
             if ((int) ($filter['field'] ?? 0) <= 0) {
                 return 'send';
@@ -544,6 +549,13 @@ function pg_feedback_record_facts($type, $id, array $data = array(), $field_id =
                 FROM ws_mail_conversations
                 LEFT JOIN contacts ON contacts.id = ws_mail_conversations.contact_id
                 WHERE ws_mail_conversations.id = '" . $id . "'") : null;
+            break;
+
+        case 'queue':
+            $row = (function_exists('pg_waiting_ready') && pg_waiting_ready()) ? db_item(
+                "SELECT email, phone, contact_id, place_id AS subject_id, staff_user_id, state, cleared_at
+                FROM waiting_tickets
+                WHERE id = '" . $id . "'") : null;
             break;
 
         case 'periodic':

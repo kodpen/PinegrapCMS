@@ -4,7 +4,7 @@ description: Satisfaction surveys as a whole (built 2026.11.0, #10808 to #11235)
 ---
 
 ## What is it?
-- NPS (0-10), CSAT (1-5) and effort (1-7) surveys sent after a booking done, a ticket checked in, `course.completed`, a form submission, `order.delivered`, a Workspace mail conversation closed, or every few months (periodic NPS). One-click signed answers, low scores followed up, a report and an API. Owner (2026-11-20): asked in agent channel poll 187.
+- NPS (0-10), CSAT (1-5) and effort (1-7) surveys sent after a booking done, a ticket checked in, `course.completed`, a form submission, `order.delivered`, a Workspace mail conversation closed, a walk-in queue number served (`queue.served`, WQ8b), or every few months (periodic NPS). One-click signed answers, low scores followed up, a report and an API. Owner (2026-11-20): asked in agent channel poll 187.
 
 ## What binds every change?
 - The touchpoint code only announces; the general job's pass sends (`pg_feedback_job_run()` in `job.php`), never the request.
@@ -29,6 +29,5 @@ description: Satisfaction surveys as a whole (built 2026.11.0, #10808 to #11235)
 
 ## What was left out?
 - AI summaries of comments, comments turned into site testimonials, surveys inside site pages, more than three extra questions: each needs a new yes from the owner.
-- `queue.served` of the walk-in queue becomes a touchpoint once both are built (`plans/walk-in-queue-features.md`).
 
 Related: docs/memory/platform/feedback-rules.md, docs/memory/platform/feedback-sends.md, docs/memory/platform/feedback-report.md, docs/memory/api/api-feedback.md
