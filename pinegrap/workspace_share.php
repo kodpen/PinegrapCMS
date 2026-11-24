@@ -7,10 +7,11 @@
  * and no session. The token in the address is the credential, and it opens
  * this one item.
  *
- *   GET workspace_share.php?t=<token>
+ *   GET workspace_share.php?t=<token>[&raw=1]
  *
  * A file is sent with its type: a picture, sound, video or PDF shown in the
- * page, anything else (and anything a browser could run) downloaded. Every
+ * page, anything else (and anything a browser could run) downloaded. A
+ * channel's note is a read-only page, and with &raw=1 its Markdown. Every
  * fault (a bad shape, an unknown token, a link ended, taken back or closed)
  * is the same 404 line, and a token no link has counts against the address.
  * Counted on the firewall's sensitive allowance (waf_sensitive_scripts()).
@@ -61,6 +62,22 @@ if (!is_array($answer)) {
 }
 
 ws_share_link_count_open($answer['link']);
+
+// A note: its read-only page, or with raw=1 its Markdown.
+if ($answer['kind'] === 'note') {
+    pg_send_nosniff();
+
+    if ((string) ($_GET['raw'] ?? '') === '1') {
+        header('Content-Type: text/markdown; charset=utf-8');
+        header('Content-Disposition: ' . pg_http_content_disposition($answer['name'] . '.md', true));
+        echo ws_share_link_note_markdown($answer['note']);
+        exit;
+    }
+
+    header('Content-Type: text/html; charset=utf-8');
+    echo ws_share_link_note_page($answer);
+    exit;
+}
 
 header('Content-Type: ' . $answer['mime']);
 header('Content-Disposition: ' . $answer['disposition']);

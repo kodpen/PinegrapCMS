@@ -214,8 +214,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'design'     => (function_exists('ws_design_ai') && ws_design_ai()) ? pg_design_ai_proposals_map($viewer, $ids) : array(),
         // How many earlier versions of an edited file the viewer may list
         // (file_edits.php).
-        // The open share link of a file in an agent channel, and whether the
-        // reader may make one (share_links.php).
+        // The open share link of a file or a channel's note in an agent
+        // channel, and whether the reader may make one (share_links.php).
         'share_links' => function_exists('ws_share_links_map') ? ws_share_links_map($viewer, $rows, $can_post) : array(),
         'versions'   => function_exists('ws_file_versions_map') ? ws_file_versions_map(array_map(function ($row) {
             return ((int) $row['file_id'] > 0) ? (int) $row['id'] : 0;
@@ -458,7 +458,11 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'design'      => $deleted ? array() : ($extra['design'][$id] ?? array()),
         // Mentioned, but not in the channel (see ws_message_mention_invite()).
         'invite'      => $deleted ? array() : ($extra['outside'][$id] ?? array()),
-        'note_card'   => $deleted ? null : ($extra['note_cards'][$id] ?? null),
+        'note_card'   => ($deleted || !isset($extra['note_cards'][$id])) ? null : $extra['note_cards'][$id] + array(
+            // A note of the channel's own in an agent channel: its open link
+            // and can_make, as a file's (share_links.php).
+            'share' => (($extra['share_links'][$id]['kind'] ?? '') === 'note') ? $extra['share_links'][$id] : null,
+        ),
         'note_group_card' => $deleted ? null : ($extra['note_group_cards'][$id] ?? null),
         'scheduled'   => $deleted ? null : ($extra['scheduled'][$id] ?? null),
         'flow_run'    => $deleted ? null : ($extra['flow_runs'][$id] ?? null),
@@ -541,7 +545,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 'voice'    => (($kind === 'audio') && function_exists('ws_voice_panel_present')) ? ws_voice_panel_present((int) $row['file_id']) : null,
                 // In an agent channel: the open link to it (its mark, Stop
                 // sharing) and can_make (Share by link...); null elsewhere.
-                'share'    => $extra['share_links'][$id] ?? null,
+                'share'    => (($extra['share_links'][$id]['kind'] ?? '') === 'file') ? $extra['share_links'][$id] : null,
             );
         }
     }

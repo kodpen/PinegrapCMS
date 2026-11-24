@@ -22,6 +22,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approvals.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approval_guests.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/share_links.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_io.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/guests.php');
 
 if (!defined('PG_API_PANEL')) {
 	define('PG_API_PANEL', true);
@@ -121,9 +125,51 @@ function test_share_link_item_is_the_file_the_message_carries()
 	pg_assert_true(!ws_share_link_item_in($message, 'file', 9, false), 'files row gone');
 	pg_assert_true(!ws_share_link_item_in($message, 'file', 8, true), 'another file');
 	pg_assert_true(!ws_share_link_item_in(share_links_test_message(array('file_id' => 0)), 'file', 0, true), 'no file');
-	pg_assert_true(!ws_share_link_item_in($message, 'note', 9, true), 'kind not built yet');
+	pg_assert_true(!ws_share_link_item_in($message, 'table', 9, true), 'kind not built yet');
 	pg_assert_true(!ws_share_link_item_in(null, 'file', 9, true));
-	pg_assert_same(array('file'), ws_share_link_kinds());
+	pg_assert_same(array('file', 'note'), ws_share_link_kinds());
+}
+
+function test_share_link_note_is_only_one_of_the_message_channel()
+{
+	$message = share_links_test_message();
+	$note = array('id' => 12, 'owner_channel_id' => 3, 'title' => 'Brief', 'body' => 'Text');
+
+	pg_assert_true(ws_share_link_item_in($message, 'note', 12, $note), 'the channel\'s note whose card the message is');
+	pg_assert_true(!ws_share_link_item_in($message, 'note', 12, array('owner_channel_id' => 0) + $note), 'a person\'s note shown in the channel');
+	pg_assert_true(!ws_share_link_item_in($message, 'note', 12, array('owner_channel_id' => 4) + $note), 'a note of another channel');
+	pg_assert_true(!ws_share_link_item_in($message, 'note', 13, $note), 'another note');
+	pg_assert_true(!ws_share_link_item_in($message, 'note', 12, null), 'the note or its card is gone');
+	pg_assert_true(!ws_share_link_item_in($message, 'note', 12, true), 'a file\'s answer is not a note');
+	pg_assert_true(!ws_share_link_item_in($message, 'file', 9, $note), 'a note\'s row is not a file\'s');
+}
+
+function test_share_link_note_name_and_markdown()
+{
+	$note = array('id' => 12, 'owner_channel_id' => 3, 'title' => "  Release\nbrief ", 'body' => "First line\r\n\n- [ ] Second");
+
+	pg_assert_same("Release\nbrief", ws_share_link_note_name($note), 'the stored title');
+	pg_assert_same('First line', ws_share_link_note_name(array('title' => '') + $note), 'else its first line');
+	pg_assert_same("# Release brief\n\nFirst line\n\n- [ ] Second\n", ws_share_link_note_markdown($note));
+	pg_assert_same("First line\n\n- [ ] Second\n", ws_share_link_note_markdown(array('title' => '') + $note), 'no heading without a title');
+}
+
+function test_share_link_note_page_reads_tags_as_plain_names()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/share_links.php');
+
+	foreach (array('function ws_share_link_note_page(', 'function ws_share_link_note_plain_tags(') as $name) {
+		$start = strpos($source, $name);
+		$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+		pg_assert_contains('ws_guest_refs(', $body, $name . ' names tags as the guest page does');
+		pg_assert_true(strpos($body, 'ws_refs_resolve(') === false, $name . ' resolves no tag for a reader');
+	}
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_share.php');
+
+	pg_assert_contains("\$_GET['raw']", $page, 'raw=1 gives the Markdown');
+	pg_assert_contains('ws_share_link_note_page(', $page);
 }
 
 function test_share_link_maker_is_the_application_of_a_key_else_the_person()

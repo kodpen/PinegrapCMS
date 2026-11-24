@@ -76,13 +76,15 @@ function ws_share_links_ready()
 
 /**
  * The kinds of item a link can be made to now. The address answers these
- * only; a note, a table and a list join as their pages are built. Pure.
+ * only; a table and a list join as their pages are built. A note is only
+ * one written in the channel, which is the channel's (ws_notes.owner_channel_id).
+ * Pure.
  *
  * @return string[]
  */
 function ws_share_link_kinds()
 {
-    return array('file');
+    return array('file', 'note');
 }
 
 /**
@@ -190,25 +192,84 @@ function ws_share_link_state($link, $now, $channel, $parent, $message, $in_past,
 
 /**
  * Does the item stand in the message? A file is the one the message carries,
- * still in the file manager's table. Pure.
+ * still in the file manager's table. A note is the one whose card the
+ * message is, and it belongs to the message's channel: a person's note shown
+ * in the channel is theirs, never handed on by the channel. Pure.
  *
- * @param array|null $message ws_messages row
+ * @param array|null $message  ws_messages row
  * @param string     $kind
  * @param int        $item_id
- * @param bool       $file_row the files row of the message's file exists
+ * @param mixed      $item_row ws_share_link_item_row(): for a file whether its
+ *                             files row exists, for a note the ws_notes row
+ *                             the message's card shows, or null
  * @return bool
  */
-function ws_share_link_item_in($message, $kind, $item_id, $file_row)
+function ws_share_link_item_in($message, $kind, $item_id, $item_row)
 {
     if (!is_array($message) || ((int) $item_id <= 0)) {
         return false;
     }
 
     if ((string) $kind === 'file') {
-        return ((int) $message['file_id'] === (int) $item_id) && $file_row;
+        return ((int) $message['file_id'] === (int) $item_id) && ($item_row === true);
+    }
+
+    if ((string) $kind === 'note') {
+        return is_array($item_row) && ((int) $item_row['id'] === (int) $item_id)
+            && (ws_note_channel_of($item_row) === (int) $message['channel_id']);
     }
 
     return false;
+}
+
+/**
+ * What a note is called on its link's page, in the conversation's line and
+ * in the channel's Sharing: its title, or its first line with tags read as
+ * plain names (ws_guest_refs()), so a name never says more than the page.
+ *
+ * @param array $note ws_notes row
+ * @return string
+ */
+function ws_share_link_note_name($note)
+{
+    $title = trim((string) ($note['title'] ?? ''));
+
+    if ($title !== '') {
+        return $title;
+    }
+
+    $body = ws_share_link_note_plain_tags((string) ($note['body'] ?? ''));
+
+    // No tag is left for ws_note_title() to resolve, so no reader's rights
+    // decide the name.
+    return ws_note_title(array('id' => 0, 'role' => 3), array('title' => '', 'body' => $body));
+}
+
+/**
+ * A note's text with its tags as plain names: a person as @name, a record
+ * by its kind alone, never a link into the panel (ws_guest_refs()).
+ *
+ * @param string $body
+ * @return string
+ */
+function ws_share_link_note_plain_tags($body)
+{
+    return ws_note_export_tokens(str_replace("\r\n", "\n", (string) $body), ws_guest_refs(array((string) $body)));
+}
+
+/**
+ * A shared note as Markdown (&raw=1): its title as the heading, then its
+ * text with tags as plain names.
+ *
+ * @param array $note ws_notes row
+ * @return string
+ */
+function ws_share_link_note_markdown($note)
+{
+    $title = trim((string) ($note['title'] ?? ''));
+    $body = rtrim(ws_share_link_note_plain_tags((string) $note['body']));
+
+    return (($title !== '') ? '# ' . preg_replace('/\s+/u', ' ', $title) . "\n\n" : '') . $body . "\n";
 }
 
 /**
@@ -501,11 +562,67 @@ function ws_share_link_file_row($message)
 }
 
 /**
+ * The note a message's card shows, when the note belongs to the message's
+ * channel: the ws_notes row, or null.
+ *
+ * @param array|null $message
+ * @param int        $note_id
+ * @return array|null
+ */
+function ws_share_link_note_row($message, $note_id)
+{
+    if (!is_array($message) || ((int) $note_id <= 0) || !function_exists('ws_note_channel_owner_ready') || !ws_note_channel_owner_ready()) {
+        return null;
+    }
+
+    $row = db_item("SELECT n.* FROM ws_notes n
+        JOIN ws_note_shares s ON s.note_id = n.id AND s.message_id = '" . (int) $message['id'] . "'
+        WHERE n.id = '" . (int) $note_id . "' AND n.owner_channel_id = '" . (int) $message['channel_id'] . "' LIMIT 1");
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * What ws_share_link_item_in() is given for an item: for a file whether its
+ * files row exists, for a note its row.
+ *
+ * @param array|null $message
+ * @param string     $kind
+ * @param int        $item_id
+ * @return mixed
+ */
+function ws_share_link_item_row($message, $kind, $item_id)
+{
+    if ((string) $kind === 'file') {
+        return ws_share_link_file_row($message);
+    }
+
+    return ((string) $kind === 'note') ? ws_share_link_note_row($message, (int) $item_id) : null;
+}
+
+/**
+ * The name of an item that stands in its message.
+ *
+ * @param array  $message
+ * @param string $kind
+ * @param mixed  $item_row ws_share_link_item_row()
+ * @return string
+ */
+function ws_share_link_item_name($message, $kind, $item_row)
+{
+    if (((string) $kind === 'note') && is_array($item_row)) {
+        return ws_share_link_note_name($item_row);
+    }
+
+    return (string) $message['file_name'];
+}
+
+/**
  * The state of a stored link, read from its channel, message and item now.
  *
  * @param array $link
  * @param int   $now
- * @return array state, channel, message
+ * @return array state, channel, message, item (ws_share_link_item_row()), name
  */
 function ws_share_link_read($link, $now = null)
 {
@@ -516,13 +633,15 @@ function ws_share_link_read($link, $now = null)
     $channel = is_array($channel) ? $channel : null;
     $parent = ($channel && function_exists('ws_thread_parent_channel')) ? ws_thread_parent_channel($channel) : null;
     $in_past = $message && function_exists('ws_message_in_past') && ws_message_in_past($message);
-    $present = ws_share_link_item_in($message, (string) $link['kind'], (int) $link['item_id'],
-        ((string) $link['kind'] === 'file') && ws_share_link_file_row($message));
+    $row = ws_share_link_item_row($message, (string) $link['kind'], (int) $link['item_id']);
+    $present = ws_share_link_item_in($message, (string) $link['kind'], (int) $link['item_id'], $row);
 
     return array(
         'state'   => ws_share_link_state($link, $now, $channel, $parent, $message, $in_past, $present),
         'channel' => $channel,
         'message' => $message,
+        'item'    => $row,
+        'name'    => $present ? ws_share_link_item_name($message, (string) $link['kind'], $row) : '',
     );
 }
 
@@ -672,9 +791,9 @@ function ws_share_link_make_check($viewer, $message, $kind, $item_id, $days, $ma
         return $fail(lang('This kind of item cannot be shared by link yet.'), 'kind');
     }
 
-    $file_row = ((string) $kind === 'file') && ws_share_link_file_row($message);
+    $item_row = ws_share_link_item_row($message, (string) $kind, (int) $item_id);
 
-    if (!ws_share_link_item_in($message, (string) $kind, (int) $item_id, $file_row)) {
+    if (!ws_share_link_item_in($message, (string) $kind, (int) $item_id, $item_row)) {
         return $fail(lang('The item is not in this message.'), 'item_id');
     }
 
@@ -702,7 +821,7 @@ function ws_share_link_make_check($viewer, $message, $kind, $item_id, $days, $ma
         'channel'    => $agent_channel,
         'days'       => $days,
         'expires_at' => ws_share_link_expiry($now, $days),
-        'name'       => (string) $message['file_name'],
+        'name'       => ws_share_link_item_name($message, (string) $kind, $item_row),
     );
 }
 
@@ -736,7 +855,7 @@ function ws_share_link_make($message, $checked, $kind, $item_id, $maker, $now = 
 
     log_activity(lang(array('string' => 'a workspace item was shared by link until {var:1}: {var:2}', 'vars' => array(date('d.m.Y H:i', (int) $checked['expires_at']), (string) $checked['name']))));
 
-    ws_share_link_note($message, $maker, true, (int) $checked['expires_at'], (int) $checked['channel']['id']);
+    ws_share_link_note($message, $maker, true, (int) $checked['expires_at'], (int) $checked['channel']['id'], (string) $checked['name']);
 
     return array('ok' => true, 'error' => '', 'link' => ws_share_link($id), 'url' => ws_share_link_url($token));
 }
@@ -791,7 +910,11 @@ function ws_share_link_revoke($link, $now = null, $by = null)
             $message = ws_message((int) $link['message_id']);
 
             if (is_array($message) && ((int) $message['deleted_at'] === 0)) {
-                ws_share_link_note($message, $by, false, (int) $link['expires_at'], (int) $link['channel_id']);
+                $row = ws_share_link_item_row($message, (string) $link['kind'], (int) $link['item_id']);
+                $name = ws_share_link_item_in($message, (string) $link['kind'], (int) $link['item_id'], $row)
+                    ? ws_share_link_item_name($message, (string) $link['kind'], $row) : (string) $message['file_name'];
+
+                ws_share_link_note($message, $by, false, (int) $link['expires_at'], (int) $link['channel_id'], $name);
             }
         }
     }
@@ -839,13 +962,14 @@ function ws_share_link_who($maker, $channel_id)
  * @param array $message    ws_messages row
  * @param array $maker      ws_share_link_maker() of who did it
  * @param bool  $made
- * @param int   $until_at   the link's end
- * @param int   $channel_id the agent channel
+ * @param int    $until_at   the link's end
+ * @param int    $channel_id the agent channel
+ * @param string $name       the item's name (ws_share_link_item_name())
  */
-function ws_share_link_note($message, $maker, $made, $until_at, $channel_id)
+function ws_share_link_note($message, $maker, $made, $until_at, $channel_id, $name)
 {
     ws_message_system((int) $message['channel_id'], ws_share_link_line($made, ws_share_link_who($maker, $channel_id),
-        (string) $message['file_name'], $until_at));
+        (string) $name, $until_at));
 
     if (function_exists('ws_message_touch')) {
         ws_message_touch((int) $message['id']);
@@ -854,14 +978,15 @@ function ws_share_link_note($message, $maker, $made, $until_at, $channel_id)
 
 /**
  * The share marks of a page of messages, read in one query: per message
- * with a file, the open link (ws_share_link_item_mark()) or null, and
- * whether this reader may make one (can_make). Messages outside an agent
- * channel get nothing.
+ * with a file or with the card of a note of the channel's own, the kind of
+ * item, the open link (ws_share_link_item_mark()) or null, and whether this
+ * reader may make one (can_make). Messages outside an agent channel get
+ * nothing.
  *
  * @param array   $viewer
  * @param array[] $rows     ws_messages rows
  * @param array   $can_post channel id => may post
- * @return array message id => open, can_make
+ * @return array message id => kind, open, can_make
  */
 function ws_share_links_map($viewer, $rows, $can_post)
 {
@@ -870,12 +995,12 @@ function ws_share_links_map($viewer, $rows, $can_post)
     }
 
     $agent = array();
-    $files = array();
+    $live = array();
 
     foreach ((array) $rows as $row) {
         $channel_id = (int) $row['channel_id'];
 
-        if (((int) $row['file_id'] <= 0) || ((int) $row['deleted_at'] > 0)) {
+        if ((int) $row['deleted_at'] > 0) {
             continue;
         }
 
@@ -884,38 +1009,67 @@ function ws_share_links_map($viewer, $rows, $can_post)
         }
 
         if ($agent[$channel_id]) {
-            $files[(int) $row['id']] = $row;
+            $live[(int) $row['id']] = $row;
         }
     }
 
-    if (!$files) {
+    if (!$live) {
+        return array();
+    }
+
+    // The item of each message: its file, or the note of the channel's own
+    // whose card it is (a person's note shown here is not the channel's).
+    $items = array();
+
+    foreach ($live as $id => $row) {
+        if ((int) $row['file_id'] > 0) {
+            $items[$id] = array('kind' => 'file', 'item_id' => (int) $row['file_id']);
+        }
+    }
+
+    if (function_exists('ws_note_channel_owner_ready') && ws_note_channel_owner_ready()) {
+        foreach ((array) db_items("SELECT s.message_id, n.id, n.owner_channel_id FROM ws_note_shares s
+            JOIN ws_notes n ON n.id = s.note_id
+            WHERE s.message_id IN (" . implode(',', array_keys($live)) . ") AND n.owner_channel_id > 0") as $card) {
+            $id = (int) $card['message_id'];
+
+            if (!isset($items[$id]) && ((int) $card['owner_channel_id'] === (int) $live[$id]['channel_id'])) {
+                $items[$id] = array('kind' => 'note', 'item_id' => (int) $card['id']);
+            }
+        }
+    }
+
+    if (!$items) {
         return array();
     }
 
     $now = time();
     $open = array();
 
-    foreach ((array) db_items("SELECT * FROM ws_share_links WHERE message_id IN (" . implode(',', array_keys($files)) . ")
-        AND kind = 'file' AND revoked_at = 0 AND expires_at > '" . $now . "'") as $link) {
+    foreach ((array) db_items("SELECT * FROM ws_share_links WHERE message_id IN (" . implode(',', array_keys($items)) . ")
+        AND kind IN ('file', 'note') AND revoked_at = 0 AND expires_at > '" . $now . "'") as $link) {
         $open[(int) $link['message_id']] = $link;
     }
 
     $maker = ws_share_link_maker((int) $viewer['id']);
     $out = array();
 
-    foreach ($files as $id => $row) {
+    foreach ($items as $id => $item) {
+        $row = $live[$id];
         $channel = $agent[(int) $row['channel_id']];
         $link = $open[$id] ?? null;
 
-        // A link stays to the file it was made to; a file replaced since
+        // A link stays to the item it was made to; a file replaced since
         // has none.
-        if ($link && ((int) $link['item_id'] !== (int) $row['file_id'])) {
+        if ($link && (((string) $link['kind'] !== $item['kind']) || ((int) $link['item_id'] !== $item['item_id']))) {
             $link = null;
         }
 
         $past = function_exists('ws_message_in_past') && ws_message_in_past($row);
 
         $out[$id] = array(
+            'kind'     => $item['kind'],
+            'item_id'  => $item['item_id'],
             'open'     => ($link && !$past) ? ws_share_link_item_mark($link, ws_share_link_can_revoke($viewer, $link, $channel, $maker)) : null,
             'can_make' => !$link && !$past && !empty($can_post[(int) $row['channel_id']]),
         );
@@ -978,6 +1132,24 @@ function ws_channel_share_links($viewer, $channel)
 
     $file_ids = array_filter(array_map(function ($row) { return (int) $row['file_id']; }, $messages));
     $files = $file_ids ? array_flip(array_map('intval', (array) db_values("SELECT id FROM files WHERE id IN (" . implode(',', array_unique($file_ids)) . ")"))) : array();
+    $note_ids = array();
+
+    foreach ($links as $link) {
+        if ((string) $link['kind'] === 'note') {
+            $note_ids[] = (int) $link['item_id'];
+        }
+    }
+
+    // The notes the links are to, each with the message whose card it is.
+    $notes = array();
+
+    if ($note_ids && function_exists('ws_note_channel_owner_ready') && ws_note_channel_owner_ready()) {
+        foreach ((array) db_items("SELECT n.*, s.message_id AS card_message_id FROM ws_notes n
+            JOIN ws_note_shares s ON s.note_id = n.id
+            WHERE n.id IN (" . implode(',', array_unique($note_ids)) . ") AND s.message_id IN (" . implode(',', $message_ids) . ")") as $note) {
+            $notes[(int) $note['id'] . ':' . (int) $note['card_message_id']] = $note;
+        }
+    }
     $channels = array((int) $channel['id'] => $channel);
     $maker = ws_share_link_maker((int) $viewer['id']);
     $names = array();
@@ -1003,7 +1175,10 @@ function ws_channel_share_links($viewer, $channel)
         $own = $channels[$own_id];
         $parent = ($own_id === (int) $channel['id']) ? null : $channel;
         $in_past = function_exists('ws_message_in_past') && ws_message_in_past($message);
-        $present = ws_share_link_item_in($message, (string) $link['kind'], (int) $link['item_id'], isset($files[(int) $message['file_id']]));
+        $row = ((string) $link['kind'] === 'note')
+            ? ($notes[(int) $link['item_id'] . ':' . (int) $message['id']] ?? null)
+            : isset($files[(int) $message['file_id']]);
+        $present = ws_share_link_item_in($message, (string) $link['kind'], (int) $link['item_id'], $row);
 
         if (ws_share_link_state($link, $now, $own, $parent, $message, $in_past, $present) !== 'open') {
             continue;
@@ -1015,7 +1190,7 @@ function ws_channel_share_links($viewer, $channel)
             $names[$key] = ws_share_link_maker_name($link, (int) $channel['id']);
         }
 
-        $out[] = ws_share_link_row($link, (string) $message['file_name'], $names[$key], ws_share_link_can_revoke($viewer, $link, $channel, $maker));
+        $out[] = ws_share_link_row($link, ws_share_link_item_name($message, (string) $link['kind'], $row), $names[$key], ws_share_link_can_revoke($viewer, $link, $channel, $maker));
     }
 
     return $out;
@@ -1073,14 +1248,15 @@ function ws_share_link_count_open($link, $now = null)
 }
 
 /**
- * What the address answers for a token: the file of an open link, or null
- * for every fault (a bad shape, unknown, ended, taken back, closed, a kind
- * the address does not answer yet, the bytes gone), which is one 404. A
- * token no row has counts against the address, as a wrong guest or approval
- * link does; a link that ended is nobody's guess.
+ * What the address answers for a token: the file or the note of an open
+ * link, or null for every fault (a bad shape, unknown, ended, taken back,
+ * closed, a kind the address does not answer yet, the bytes gone), which is
+ * one 404. A token no row has counts against the address, as a wrong guest
+ * or approval link does; a link that ended is nobody's guess.
  *
  * @param mixed $token
- * @return array|null link, path, name, mime, disposition
+ * @return array|null kind; a file: link, path, name, mime, disposition; a
+ *                    note: link, note, name
  */
 function ws_share_link_answer($token)
 {
@@ -1102,7 +1278,15 @@ function ws_share_link_answer($token)
     $link = $found['link'];
     $message = $found['message'];
 
-    if (($found['state'] !== 'open') || ((string) $link['kind'] !== 'file') || !is_array($message)) {
+    if (($found['state'] !== 'open') || !is_array($message)) {
+        return null;
+    }
+
+    if ((string) $link['kind'] === 'note') {
+        return is_array($found['item']) ? array('kind' => 'note', 'link' => $link, 'note' => $found['item'], 'name' => (string) $found['name']) : null;
+    }
+
+    if ((string) $link['kind'] !== 'file') {
         return null;
     }
 
@@ -1122,5 +1306,55 @@ function ws_share_link_answer($token)
         return null;
     }
 
-    return array('link' => $link, 'path' => $path, 'name' => $name) + ws_share_link_file_headers($name);
+    return array('kind' => 'file', 'link' => $link, 'path' => $path, 'name' => $name) + ws_share_link_file_headers($name);
+}
+
+/**
+ * The page of a shared note: read only, drawn as the channel draws it with
+ * tags and record links as plain names (ws_guest_refs()), the site's name
+ * above it and the link's end under it. Nothing on it opens the panel.
+ *
+ * @param array $answer ws_share_link_answer() of a note
+ * @return string HTML
+ */
+function ws_share_link_note_page($answer)
+{
+    $note = $answer['note'];
+    $body = (string) $note['body'];
+    $html = ws_render_body($body, ws_guest_refs(array($body)), null, false, null, null, true);
+    $software = PATH . SOFTWARE_DIRECTORY;
+    $version = function ($file) {
+        $path = PG_FUNCTIONS_DIR . $file;
+
+        return is_file($path) ? (string) filemtime($path) : '0';
+    };
+    $site = (string) ORGANIZATION_NAME;
+    $name = (string) $answer['name'];
+    $until = lang(array('string' => 'Shared by link until {var:1}', 'vars' => date('d.m.Y H:i', (int) $answer['link']['expires_at'])));
+
+    return '<!DOCTYPE html>
+<html lang="' . h(lang(array('info' => ''))) . '">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>' . h($name . (($site !== '') ? ' · ' . $site : '')) . '</title>
+<link rel="stylesheet" href="' . $software . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-6/css/bootstrap.min.css') . '">
+<link rel="stylesheet" href="' . $software . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
+<link rel="stylesheet" href="' . $software . '/assets/css/workspace_guest.css?v=' . $version('/assets/css/workspace_guest.css') . '">
+</head>
+<body class="pg-guest">
+<main class="pg-guest-shared">
+    <header class="pg-guest-shared-head">
+        <div class="pg-guest-site">' . h($site) . '</div>
+        <h1 class="pg-guest-title">' . h($name) . '</h1>
+    </header>
+    <article class="pg-guest-body pg-guest-shared-body">' . $html . '</article>
+    <footer class="pg-guest-shared-foot">
+        <i class="bi bi-link-45deg" aria-hidden="true"></i> ' . h($until) . ' · ' . h(lang('Read only')) . '
+    </footer>
+</main>
+</body>
+</html>';
 }

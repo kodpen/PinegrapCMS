@@ -737,7 +737,8 @@
      * @param {object} kit   window.PGWsKit
      * @param {object} card  the message's note_card (ws_note_cards_map())
      * @param {object} hooks setHtml, chipMenus, menu(x, y, items),
-     *                       read(noteId), notes(noteId), richField, sync
+     *                       read(noteId), notes(noteId), richField, sync,
+     *                       share() the menu entries of a share link
      * @return {HTMLElement}
      */
     function cardNode(kit, card, hooks) {
@@ -768,9 +769,15 @@
             };
 
             event.stopPropagation();
-            hooks.menu(more, place.left, place.bottom + 4, menuItems(card).map(function (name) {
+            var items = menuItems(card).map(function (name) {
                 return ((name === 'channel_edit') || (name === 'copy')) ? ['-', actions[name]] : [actions[name]];
-            }).reduce(function (all, part) { return all.concat(part); }, []));
+            }).reduce(function (all, part) { return all.concat(part); }, []);
+
+            // Share by link... or Stop sharing, from the screen (a note of
+            // the channel's own in an agent channel).
+            var share = hooks.share ? hooks.share() : [];
+
+            hooks.menu(more, place.left, place.bottom + 4, share.length ? items.concat(['-'], share) : items);
         });
         top.appendChild(more);
         box.appendChild(top);

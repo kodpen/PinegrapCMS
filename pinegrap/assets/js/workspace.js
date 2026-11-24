@@ -14186,7 +14186,7 @@
             if (message.deleted) {
                 body.textContent = t('message_deleted');
             } else if (message.note_card) {
-                body.appendChild(self.noteCardNode(message.note_card));
+                body.appendChild(self.shareMark(self.noteCardNode(message.note_card, message), message.note_card));
             } else if (message.note_group_card && window.PGWsNoteGroupShares && window.PGWsKit) {
                 // A group of notes shared here (workspace_note_group_shares.js).
                 body.appendChild(window.PGWsNoteGroupShares.card(window.PGWsKit, message.note_group_card, openNoteView));
@@ -14529,6 +14529,9 @@
                 if (noteCardEditable(message.note_card)) {
                     items.push({ icon: 'bi-pencil-square', label: t('notes_card_edit'), action: function () { openNoteEdit(message.note_card.id); } });
                 }
+
+                // A note of the channel's own in an agent channel.
+                items = items.concat(self.shareItems(message));
             } else if (CFG.notes && !message.deleted && (message.sender_kind === 'user' || message.sender_kind === 'app')
                 && ['message', 'note', 'decision'].indexOf(message.kind) !== -1) {
                 // Anybody's message, kept as a copy in the person's own notes.
@@ -15094,8 +15097,14 @@
 
         // A note shared in the channel, drawn up to its fold, with its foot
         // and its menu (workspace_channel_notes.js).
-        noteCardNode: function (card) {
-            return window.PGWsChannelNotes.card(window.PGWsKit, card, this.noteHooks());
+        // The card's menu also offers Share by link... / Stop sharing for a
+        // note of the channel's own in an agent channel.
+        noteCardNode: function (card, message) {
+            var self = this;
+
+            return window.PGWsChannelNotes.card(window.PGWsKit, card, Object.assign(self.noteHooks(), {
+                share: function () { return message ? self.shareItems(message) : []; }
+            }));
         },
 
         // What the note card and the Write a note window borrow from the
@@ -15342,14 +15351,30 @@
         // message, the conversation is brought up to date.
         // ── Share by link (includes/workspace/share_links.php) ──────────
         //
-        // An item of an agent channel handed on by an address with an end.
-        // file.share: open (the link: id, until, can_revoke) or null, and
-        // can_make; null outside an agent channel.
+        // An item of an agent channel handed on by an address with an end:
+        // the message's file, or the channel's note whose card it is.
+        // file.share / note_card.share: open (the link: id, until,
+        // can_revoke) or null, and can_make; null outside an agent channel
+        // and on a person's note.
+
+        // The item of a message a link is made to: kind, id, name, share;
+        // null when it has none.
+        shareItem: function (message) {
+            if (message.file && message.file.share) {
+                return { kind: 'file', id: message.file.share.item_id, name: message.file.name, share: message.file.share };
+            }
+
+            if (message.note_card && message.note_card.share) {
+                return { kind: 'note', id: message.note_card.id, name: message.note_card.name, share: message.note_card.share };
+            }
+
+            return null;
+        },
 
         // The link icon of an item a link is open to, named by its end; null
         // for any other item.
-        shareMarkNode: function (file) {
-            var open = file && file.share && file.share.open;
+        shareMarkNode: function (item) {
+            var open = item && item.share && item.share.open;
 
             if (!open) {
                 return null;
@@ -15368,8 +15393,8 @@
 
         // The mark as a quiet round badge at the card's top right; the card
         // is given back.
-        shareMark: function (node, file) {
-            var mark = this.shareMarkNode(file);
+        shareMark: function (node, item) {
+            var mark = this.shareMarkNode(item);
 
             if (mark && node) {
                 node.classList.add('ws-share-host');
@@ -15384,7 +15409,8 @@
         // back. done() runs once the change is made (the Files tab redraws).
         shareItems: function (message, done) {
             var self = this;
-            var share = message.file && message.file.share;
+            var item = self.shareItem(message);
+            var share = item && item.share;
 
             if (!share || message.deleted || message.past || self.era) {
                 return [];
@@ -15418,12 +15444,14 @@
 
             press();
 
-            ask(message.file.name, t('sl_create'), false, formParts.group(t('sl_ends'), seg.node)).then(function (yes) {
+            var item = self.shareItem(message);
+
+            ask(item.name, t('sl_create'), false, formParts.group(t('sl_ends'), seg.node)).then(function (yes) {
                 if (!yes) {
                     return;
                 }
 
-                api('ws_share_link_make', { message_id: message.id, days: days }).then(function (data) {
+                api('ws_share_link_make', { message_id: message.id, kind: item.kind, item_id: item.id, days: days }).then(function (data) {
                     self.shareChanged(data.message, done);
                     askClosed().then(function () { self.shareShow(data.url, data.until); });
                 }).catch(fail);
@@ -15448,7 +15476,7 @@
 
         // Stop sharing, asked once: the address stops working at once.
         shareStop: function (message, done) {
-            this.shareStopLink(message.file.share.open.id, done);
+            this.shareStopLink(this.shareItem(message).share.open.id, done);
         },
 
         // Stop sharing a link by its id, asked once (the item's menu, the

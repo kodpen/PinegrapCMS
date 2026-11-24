@@ -50,12 +50,12 @@ function ws_share_link_api_routes()
             'returns'     => 'WorkspaceShareLinkMade',
             'status'      => 201,
             'summary'     => 'Share an item of an agent channel by link',
-            'description' => 'Makes a read-only link to one item of a message in an agent channel: kind file, item_id the message\'s file.id. Anyone with the address reads the item without signing in until the link ends (days 1, 7 or 30; 7 unless given) or is taken back, or the message is deleted or the channel archived. The address is given here once: only its hash is kept. One open link an item, 200 a channel. Needs no proposal.',
-            'details'     => 'A discussion of an agent channel counts as the channel.' . $who . ' Refusals: a message of another channel, a kind not offered, an item not in the message, an item with an open link (the message names its end), days not 1, 7 or 30, or a channel at its limit 422 validation_failed; a channel the owner may not post in, or an application the channel does not allow as an agent, 403 forbidden; a message not found or not readable 404; the database not updated yet 503 service_unavailable.',
+            'description' => 'Makes a read-only link to one item of a message in an agent channel: kind file, item_id the message\'s file.id; kind note, item_id its note_card.id. Anyone with the address reads the item without signing in until the link ends (days 1, 7 or 30; 7 unless given) or is taken back, or the message is deleted or the channel archived. The address is given here once: only its hash is kept. One open link an item, 200 a channel. Needs no proposal.',
+            'details'     => 'A note is one written in the channel, never a person\'s note shown there; its address is a read-only page, and with &raw=1 its Markdown, tags read as plain names. A discussion of an agent channel counts as the channel.' . $who . ' Refusals: a message of another channel, a kind not offered, an item not in the message, an item with an open link (the message names its end), days not 1, 7 or 30, or a channel at its limit 422 validation_failed; a channel the owner may not post in, or an application the channel does not allow as an agent, 403 forbidden; a message not found or not readable 404; the database not updated yet 503 service_unavailable.',
             'params'      => array(
                 $id,
-                array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => ws_share_link_kinds(), 'required' => true, 'description' => 'The kind of item: file (a picture or any file the message carries).'),
-                array('name' => 'item_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The item\'s id: for a file, file.id of the message.'),
+                array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => ws_share_link_kinds(), 'required' => true, 'description' => 'The kind of item: file (a picture or any file the message carries) or note (the channel\'s note whose card the message is).'),
+                array('name' => 'item_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The item\'s id: for a file, file.id of the message; for a note, note_card.id.'),
                 array('name' => 'days', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 30, 'description' => 'How long the link lasts: 1, 7 or 30 days; 7 when left out.'),
             ),
         ),
@@ -155,7 +155,7 @@ function ws_api_share_link_read($link)
 {
     $read = ws_share_link_read($link);
 
-    return ws_api_share_link_present($link, $read['state'], is_array($read['message']) ? (string) $read['message']['file_name'] : '');
+    return ws_api_share_link_present($link, $read['state'], (string) $read['name']);
 }
 
 /**
