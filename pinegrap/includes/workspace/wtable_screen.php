@@ -900,7 +900,7 @@ function ws_wtable_screen_action_button($data, $label, $icon, $confirm)
         $attributes .= ' data-' . $key . '="' . h((string) $value) . '"';
     }
 
-    return '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action"' . $attributes . ' data-confirm="' . h($confirm) . '" title="' . h($label) . '" aria-label="' . h($label) . '">'
+    return '<button type="button" class="pg-icon-button pg-icon-button-sm fg-danger ws-wt-action"' . $attributes . ' data-confirm="' . h($confirm) . '" title="' . h($label) . '" aria-label="' . h($label) . '">'
         . '<i class="bi ' . h($icon) . '" aria-hidden="true"></i></button>';
 }
 

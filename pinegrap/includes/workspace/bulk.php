@@ -1492,7 +1492,7 @@ function ws_bulk_settings_card($self_url, $viewer, $form = null)
                 <input type="hidden" name="ws_action" value="bulk">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-collection me-1" aria-hidden="true"></i>' . h(lang('Bulk changes by the assistants')) . '</h2></div>
                 <div class="card-body">' . $body . '
-                    ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can change this.')) . '</div>') . '
+                    ' . ($admin ? '<button type="submit" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-check2" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can change this.')) . '</div>') . '
                 </div>
             </form>';
 }

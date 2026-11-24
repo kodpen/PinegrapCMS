@@ -873,16 +873,16 @@
         "tabs": 0
     },
     "includes/workspace/agent_activity.php": {
-        "button": 2,
+        "button": 0,
         "tabs": 0
     },
     "includes/workspace/bulk.php": {
-        "button": 1,
+        "button": 0,
         "tabs": 0,
         "field": 3
     },
     "includes/workspace/calendar_sync.php": {
-        "button": 3,
+        "button": 0,
         "tabs": 0
     },
     "includes/workspace/mail_blocks.php": {
@@ -904,24 +904,24 @@
         "field": 1
     },
     "includes/workspace/personal_ical.php": {
-        "button": 4,
+        "button": 0,
         "tabs": 0,
         "field": 4
     },
     "includes/workspace/personal_plan_mail.php": {
-        "button": 1,
+        "button": 0,
         "tabs": 0
     },
     "includes/workspace/screen.php": {
-        "button": 1,
+        "button": 0,
         "tabs": 0
     },
     "includes/workspace/tasks.php": {
-        "button": 3,
+        "button": 0,
         "tabs": 0
     },
     "includes/workspace/team_settings.php": {
-        "button": 1,
+        "button": 0,
         "tabs": 0,
         "field": 7
     },
@@ -930,22 +930,22 @@
         "tabs": 0
     },
     "includes/workspace/workdays.php": {
-        "button": 7,
+        "button": 0,
         "tabs": 0,
         "field": 15
     },
     "includes/workspace/wtable_channel.php": {
-        "button": 1,
+        "button": 0,
         "tabs": 0,
         "field": 3
     },
     "includes/workspace/wtable_query.php": {
-        "button": 3,
+        "button": 0,
         "tabs": 0,
         "field": 8
     },
     "includes/workspace/wtable_screen.php": {
-        "button": 1,
+        "button": 0,
         "tabs": 0
     },
     "install/index.php": {
@@ -1174,7 +1174,7 @@
         "field": 3
     },
     "workspace_calendar_feed.php": {
-        "button": 7,
+        "button": 0,
         "tabs": 0,
         "field": 2
     },
@@ -1184,12 +1184,12 @@
         "field": 1
     },
     "workspace_mcp.php": {
-        "button": 4,
+        "button": 0,
         "tabs": 0,
         "field": 3
     },
     "workspace_meeting_link.php": {
-        "button": 6,
+        "button": 0,
         "tabs": 0,
         "field": 6
     },
@@ -1199,7 +1199,7 @@
         "field": 23
     },
     "workspace_wtables.php": {
-        "button": 26,
+        "button": 0,
         "tabs": 0,
         "field": 81
     },

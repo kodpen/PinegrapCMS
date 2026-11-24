@@ -1393,7 +1393,7 @@ function ws_screen_gate($user, $flows = false, $mail = false)
  * @param string $class the button's classes
  * @return string
  */
-function ws_record_button($user, $type, $id, $label = '', $class = 'btn btn-sm btn-outline theme-secondary')
+function ws_record_button($user, $type, $id, $label = '', $class = 'pg-button pg-button-quiet pg-button-sm')
 {
     if (((int) $id <= 0) || !ws_ready() || !ws_enabled()) {
         return '';
