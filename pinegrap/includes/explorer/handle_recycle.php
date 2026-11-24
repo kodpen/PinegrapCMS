@@ -179,6 +179,24 @@ function pg_explorer_handle_delete_check($type, $request, $user)
         'blockers' => $blockers));
 }
 
+// Why this person may not send a folder to the bin, '' when they may. The
+// folder takes its subtree along: a basic user without the right to delete
+// pages carries no page in, and only a designer or an administrator carries
+// a design file in, the rules a page or a design file binned on its own
+// meets. The counts are the subtree's pages and design files.
+function pg_explorer_folder_bin_refusal($user, $subtree_pages, $subtree_design_files)
+{
+    if (((int) $user['role'] == 3) && empty($user['delete_pages']) && ((int) $subtree_pages > 0)) {
+        return lang('You do not have access to delete pages.');
+    }
+
+    if (((int) $user['role'] > 1) && ((int) $subtree_design_files > 0)) {
+        return lang('Design files in this folder can only be deleted by a designer or administrator.');
+    }
+
+    return '';
+}
+
 // Moves files, pages and folders into the recycle bin, each with a restore
 // record and its name parked.
 function pg_explorer_handle_recycle_delete($type, $request, $user)
@@ -305,25 +323,26 @@ function pg_explorer_handle_recycle_delete($type, $request, $user)
                     break;
                 }
 
-                // A folder whose subtree still holds pages carries
-                // them into the bin with it; without the delete-pages
-                // right that is a delete the basic user may not do.
-                if (($user['role'] == 3) && ($user['delete_pages'] == false)) {
+                // A folder carries its whole subtree into the bin, and the
+                // daily purge deletes it later for the software, so what
+                // its pages and design files need is asked here.
+                if ((int) $user['role'] > 1) {
 
-                    $map_for_pages = pg_explorer_folder_map();
-                    $subtree_ids = array((int) $item_id);
+                    $subtree_ids = array();
 
-                    foreach ($map_for_pages as $map_row) {
-                        if (pg_explorer_is_self_or_descendant($item_id, $map_row['folder_id'])) {
-                            $subtree_ids[] = (int) $map_row['folder_id'];
-                        }
+                    foreach (pg_explorer_subtree_bottom_up(pg_explorer_folder_map(), $item_id) as $subtree_entry) {
+                        $subtree_ids[] = (int) $subtree_entry['id'];
                     }
 
-                    $subtree_page_count = (int) db_value(
-                        "SELECT COUNT(*) FROM page WHERE page_folder IN (" . implode(',', array_unique($subtree_ids)) . ")");
+                    $subtree_sql = implode(',', $subtree_ids);
 
-                    if ($subtree_page_count > 0) {
-                        $errors[] = lang('You do not have access to delete pages.');
+                    $folder_refusal = pg_explorer_folder_bin_refusal(
+                        $user,
+                        (int) db_value("SELECT COUNT(*) FROM page WHERE page_folder IN (" . $subtree_sql . ")"),
+                        (int) db_value("SELECT COUNT(*) FROM files WHERE (folder IN (" . $subtree_sql . ")) AND (design = '1')"));
+
+                    if ($folder_refusal !== '') {
+                        $errors[] = $folder_refusal;
                         break;
                     }
                 }

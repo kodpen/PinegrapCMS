@@ -232,6 +232,7 @@
 - explorer-details-rows.md: File Manager details panel rows for pages, files, archived pages, bin items and backups (folder link, address, exact time and editor, impact, bin rows, backup location) and the Pages view columns
 - explorer-drawer-names.md: File and Catalog Manager drawer rows drawn by script name themselves: access selects per user, commerce switch groups, shipping-zone lists, bulk description, backup upload path, file window code field
 - explorer-file-window-encoding.md: File Manager Edit File window on a text file that is not UTF-8 (Windows-1254): opens with no text and a note, saves no text; panel answers never go out as an empty JSON body (pg_panel_answer_json())
+- explorer-folder-bin-rights.md: Who may send a folder to the File Manager's Recycle Bin: the subtree's pages need a basic user's Delete pages right, its design files a designer or administrator (pg_explorer_folder_bin_refusal())
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate (PR #2200), the SEO ring's top right corner
 - explorer-keyboard.md: File manager (view_folders.php) from the keyboard: shortcuts leave focused controls alone, crumbs with href, Quick Look focus and Tab trap, the context menu from ContextMenu/Shift+F10 (#2783)
 - explorer-list-headings.md: File manager list view (view_folders.php): headings sort from a button and carry aria-sort; column edges resize by keyboard, any pointer, double-click fit and a menu reset

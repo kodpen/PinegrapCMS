@@ -25,7 +25,7 @@ priority: 7
 - Kept as files, one per item, the way a design's theme is a file: no table or column. A step that needs one stops and asks the architect.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- ML1 (M) The item, pure: a subtree to an item and an item into a design (rule names, variables, cleared bindings); the store as files; rights.
+- ML1 (M) The item, pure: a subtree to an item and an item into a design (rule names, variables, cleared bindings); the store as files; rights. Done (#11521, `designer/designer-library-item.md`).
 - ML2 (M) after ML1 and DD9: "Save to my library" and the "My library" group with search and the hover card.
 - ML3 (M) after ML2: "Manage library".
 - ML4 (M) after ML1: Export and Import with the import's checks.

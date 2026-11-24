@@ -384,6 +384,7 @@
 - products-list-bulk-writes.md: Products list, Catalog Manager and product group status bulk writes: bundle component refusal, restore limited to the bin, SEO stale mark, marketplace send, tag cloud keywords
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule. [decision: decisions-made-product-26.md]
 - recurring-calendar-days.md: Recurring start dates are counted in calendar days with pg_calendar_days_later(), never time() + 86400 * N, so a clock change does not shift the date
+- redeem-partly-spent-card.md: At order completion a gift card or store credit card another order spent part of gives what it still holds, written only over the balance read (pg_order_gift_card_redeem_take(), #11496)
 - referral-account-part.md: Referral programme in My Account (RF3): section referral, flags has_referral and can_refer, __referral_url, why a customer cannot refer, referrals as initials
 - referral-busy-retry.md: A referral reward whose referrer's lock was busy at completion: kept in config_text referral_pending and tried again by the general job; limits and why only busy orders [decision: here]
 - referral-checks.md: What each check of a referred friend's order reads (pg_referral_check()): the code's one spelling, self by both e-mails, the friend's other orders by account and folded e-mail; the household limit

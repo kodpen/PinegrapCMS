@@ -1,0 +1,206 @@
+{
+  "name": "Landing",
+  "lastModified": "2026-11-20T09:12:44Z",
+  "version": "4419802113",
+  "role": "owner",
+  "nodes": {
+    "12:3": {
+      "document": {
+        "id": "12:3",
+        "name": "Home / Desktop",
+        "type": "FRAME",
+        "visible": true,
+        "absoluteBoundingBox": {"x": 0, "y": 0, "width": 1440, "height": 900},
+        "fills": [{"blendMode": "NORMAL", "type": "SOLID", "color": {"r": 1, "g": 1, "b": 1, "a": 1}}],
+        "styles": {"fill": "S:bg01"},
+        "strokes": [],
+        "clipsContent": true,
+        "layoutMode": "VERTICAL",
+        "itemSpacing": 48,
+        "paddingLeft": 80, "paddingRight": 80, "paddingTop": 64, "paddingBottom": 64,
+        "primaryAxisAlignItems": "MIN",
+        "counterAxisAlignItems": "CENTER",
+        "layoutSizingHorizontal": "FIXED",
+        "layoutSizingVertical": "HUG",
+        "children": [
+          {
+            "id": "12:4",
+            "name": "Hero title",
+            "type": "TEXT",
+            "absoluteBoundingBox": {"x": 80, "y": 64, "width": 820, "height": 72},
+            "characters": "Grow your shop <faster>\nwith Pinegrap",
+            "style": {"fontFamily": "Inter", "fontWeight": 700, "fontSize": 56, "textAlignHorizontal": "CENTER", "letterSpacing": -1.12, "lineHeightPx": 64, "lineHeightUnit": "PIXELS"},
+            "fills": [{"type": "SOLID", "color": {"r": 0.0627, "g": 0.0941, "b": 0.1569, "a": 1}}],
+            "styles": {"fill": "S:ink01", "text": "S:h1"},
+            "characterStyleOverrides": [],
+            "styleOverrideTable": {},
+            "layoutSizingHorizontal": "HUG",
+            "layoutSizingVertical": "HUG"
+          },
+          {
+            "id": "12:5",
+            "name": "Lead",
+            "type": "TEXT",
+            "absoluteBoundingBox": {"x": 80, "y": 184, "width": 640, "height": 56},
+            "characters": "Pages, products and orders in one place.",
+            "style": {"fontFamily": "Inter", "fontWeight": 400, "fontSize": 20, "textAlignHorizontal": "CENTER", "lineHeightPercentFontSize": 140, "lineHeightUnit": "FONT_SIZE_%"},
+            "fills": [{"type": "SOLID", "color": {"r": 0.2, "g": 0.2, "b": 0.2, "a": 0.8}}],
+            "characterStyleOverrides": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,7,7,7,7,7],
+            "styleOverrideTable": {"7": {"fontWeight": 700, "hyperlink": {"type": "URL", "url": "https://example.com/place"}}},
+            "layoutSizingHorizontal": "FIXED",
+            "layoutSizingVertical": "HUG"
+          },
+          {
+            "id": "12:6",
+            "name": "Actions",
+            "type": "FRAME",
+            "absoluteBoundingBox": {"x": 560, "y": 288, "width": 320, "height": 48},
+            "fills": [],
+            "layoutMode": "HORIZONTAL",
+            "itemSpacing": 16,
+            "primaryAxisAlignItems": "CENTER",
+            "counterAxisAlignItems": "CENTER",
+            "layoutSizingHorizontal": "HUG",
+            "layoutSizingVertical": "HUG",
+            "children": [
+              {
+                "id": "12:7",
+                "name": "Button",
+                "type": "INSTANCE",
+                "componentId": "3:10",
+                "absoluteBoundingBox": {"x": 560, "y": 288, "width": 152, "height": 48},
+                "fills": [{"type": "SOLID", "color": {"r": 0.1608, "g": 0.3216, "b": 0.9608, "a": 1}}],
+                "styles": {"fill": "S:brand01"},
+                "boundVariables": {"fills": [{"type": "VARIABLE_ALIAS", "id": "VariableID:1:5"}]},
+                "cornerRadius": 8,
+                "layoutMode": "HORIZONTAL",
+                "paddingLeft": 24, "paddingRight": 24, "paddingTop": 12, "paddingBottom": 12,
+                "primaryAxisAlignItems": "CENTER",
+                "counterAxisAlignItems": "CENTER",
+                "layoutSizingHorizontal": "HUG",
+                "layoutSizingVertical": "HUG",
+                "children": [
+                  {
+                    "id": "I12:7;3:11",
+                    "name": "Label",
+                    "type": "TEXT",
+                    "absoluteBoundingBox": {"x": 584, "y": 300, "width": 104, "height": 24},
+                    "characters": "Start free",
+                    "style": {"fontFamily": "Inter", "fontWeight": 600, "fontSize": 16, "textAlignHorizontal": "LEFT", "lineHeightPx": 24},
+                    "fills": [{"type": "SOLID", "color": {"r": 1, "g": 1, "b": 1, "a": 1}}],
+                    "styles": {"text": "S:btn"}
+                  }
+                ]
+              },
+              {
+                "id": "12:8",
+                "name": "Button",
+                "type": "INSTANCE",
+                "componentId": "3:10",
+                "absoluteBoundingBox": {"x": 728, "y": 288, "width": 152, "height": 48},
+                "fills": [],
+                "strokes": [{"type": "SOLID", "color": {"r": 0.1608, "g": 0.3216, "b": 0.9608, "a": 1}}],
+                "strokeWeight": 1,
+                "rectangleCornerRadii": [8, 8, 8, 8],
+                "layoutMode": "HORIZONTAL",
+                "paddingLeft": 24, "paddingRight": 24, "paddingTop": 12, "paddingBottom": 12,
+                "primaryAxisAlignItems": "CENTER",
+                "counterAxisAlignItems": "CENTER",
+                "children": [
+                  {
+                    "id": "I12:8;3:11",
+                    "name": "Label",
+                    "type": "TEXT",
+                    "absoluteBoundingBox": {"x": 752, "y": 300, "width": 104, "height": 24},
+                    "characters": "See a demo",
+                    "style": {"fontFamily": "Inter", "fontWeight": 600, "fontSize": 16, "lineHeightPx": 24, "textCase": "UPPER", "textDecoration": "UNDERLINE"},
+                    "fills": [{"type": "SOLID", "color": {"r": 0.1608, "g": 0.3216, "b": 0.9608, "a": 1}}]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "12:9",
+            "name": "Cards",
+            "type": "FRAME",
+            "absoluteBoundingBox": {"x": 80, "y": 384, "width": 1280, "height": 320},
+            "fills": [],
+            "layoutMode": "HORIZONTAL",
+            "layoutWrap": "WRAP",
+            "itemSpacing": 24,
+            "counterAxisSpacing": 32,
+            "primaryAxisAlignItems": "SPACE_BETWEEN",
+            "counterAxisAlignItems": "MIN",
+            "layoutSizingHorizontal": "FILL",
+            "layoutSizingVertical": "HUG",
+            "children": [
+              {
+                "id": "12:10",
+                "name": "Card",
+                "type": "FRAME",
+                "absoluteBoundingBox": {"x": 80, "y": 384, "width": 410, "height": 320},
+                "fills": [{"type": "SOLID", "color": {"r": 0.96, "g": 0.97, "b": 0.98, "a": 1}}],
+                "effects": [
+                  {"type": "DROP_SHADOW", "visible": true, "color": {"r": 0, "g": 0, "b": 0, "a": 0.1}, "offset": {"x": 0, "y": 4}, "radius": 12, "spread": 0},
+                  {"type": "BACKGROUND_BLUR", "visible": true, "radius": 8}
+                ],
+                "cornerRadius": 16,
+                "layoutMode": "VERTICAL",
+                "itemSpacing": 12,
+                "paddingLeft": 24, "paddingRight": 24, "paddingTop": 24, "paddingBottom": 24,
+                "layoutSizingHorizontal": "FILL",
+                "layoutSizingVertical": "HUG",
+                "children": [
+                  {
+                    "id": "12:11",
+                    "name": "Photo",
+                    "type": "RECTANGLE",
+                    "absoluteBoundingBox": {"x": 104, "y": 408, "width": 362, "height": 200},
+                    "fills": [{"type": "IMAGE", "scaleMode": "FILL", "imageRef": "a1b2c3d4e5"}],
+                    "cornerRadius": 8,
+                    "layoutSizingHorizontal": "FILL",
+                    "layoutSizingVertical": "FIXED"
+                  },
+                  {
+                    "id": "12:12",
+                    "name": "Card title",
+                    "type": "TEXT",
+                    "absoluteBoundingBox": {"x": 104, "y": 620, "width": 362, "height": 32},
+                    "characters": "Fast pages",
+                    "style": {"fontFamily": "Playfair Display", "fontWeight": 700, "fontSize": 24, "italic": true, "lineHeightPx": 32},
+                    "fills": [{"type": "SOLID", "color": {"r": 0.0627, "g": 0.0941, "b": 0.1569, "a": 1}}],
+                    "styles": {"fill": "S:ink01", "text": "S:h3"}
+                  }
+                ]
+              },
+              {
+                "id": "12:13",
+                "name": "Old card",
+                "type": "FRAME",
+                "visible": false,
+                "absoluteBoundingBox": {"x": 514, "y": 384, "width": 410, "height": 320},
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "components": {
+        "3:10": {"key": "k310", "name": "Button", "description": "", "remote": false, "componentSetId": "3:9"}
+      },
+      "componentSets": {
+        "3:9": {"key": "k39", "name": "Button"}
+      },
+      "styles": {
+        "S:bg01":    {"key": "kbg", "name": "Surface/Page", "styleType": "FILL", "remote": false, "description": ""},
+        "S:ink01":   {"key": "kink", "name": "Text/Ink", "styleType": "FILL", "remote": false, "description": ""},
+        "S:brand01": {"key": "kbr", "name": "Brand/Primary", "styleType": "FILL", "remote": false, "description": ""},
+        "S:h1":      {"key": "kh1", "name": "Heading/H1", "styleType": "TEXT", "remote": false, "description": ""},
+        "S:h3":      {"key": "kh3", "name": "Heading/H3", "styleType": "TEXT", "remote": false, "description": ""},
+        "S:btn":     {"key": "kbt", "name": "Button/Label", "styleType": "TEXT", "remote": false, "description": ""}
+      },
+      "schemaVersion": 0
+    }
+  }
+}

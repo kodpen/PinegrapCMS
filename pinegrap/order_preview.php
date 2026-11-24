@@ -88,7 +88,7 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                 FROM order_items
                 LEFT JOIN products ON order_items.product_id = products.id
                 WHERE
-                    (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
+                    (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
                     AND products.gift_card = '0'") == 0
         ) {
             $liveform->assign_field_value('gift_card_code', '');

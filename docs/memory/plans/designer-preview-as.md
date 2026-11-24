@@ -24,7 +24,7 @@ priority: 7
 - The search goes through the widget's own readers, never a new statement on its table.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- PW1 (M) The case model, pure: per widget kind the cases it has and what each sets (record, visitor, flags).
+- PW1 (M) The case model, pure: per widget kind the cases it has and what each sets (record, visitor, flags). Done (#11516).
 - PW2 (M) after PW1: the server: `preview_widgets` takes a case per widget; the record search with the rights check; the never-writes tests.
 - PW3 (M) after PW2 and DD5: the bar and its three choosers.
 - PW4 (M) after PW3: "Check all cases", measured in the Preview's frame.

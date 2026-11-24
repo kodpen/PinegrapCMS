@@ -43,6 +43,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // not counted against memory_limit.
 define('PG_DI_MAX_HTML', 8 * 1024 * 1024);
 
+// The most folders an archive entry may lie in. Each folder of its path is a
+// file manager folder row; a web project is a handful deep.
+define('PG_DI_MAX_DEPTH', 16);
+
 // ── Public entry points ─────────────────────────────────────────────────────
 
 /**
@@ -111,17 +115,18 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
         $path = ($it === false) ? '' : (string)$it['name'];
         if ($path === '' || substr($path, -1) === '/') continue;
         $norm = pg_di_norm_path('', $path);
-        if ($norm === '' || pg_di_should_skip($norm)) continue;
-        $ext = strtolower(pathinfo($norm, PATHINFO_EXTENSION));
-        if ($ext === 'html' || $ext === 'htm' || $ext === 'xhtml') {
-            $entries[$norm] = array('type' => 'html', 'index' => $i);
-        } elseif ($ext === 'css') {
-            $entries[$norm] = array('type' => 'css', 'index' => $i);
-        } elseif ($ext === 'js') {
-            $entries[$norm] = array('type' => 'js', 'index' => $i);
-        } else {
-            $entries[$norm] = array('type' => 'asset', 'index' => $i);
+        if ($norm === '') continue;
+        $type = pg_di_entry_type($norm);
+        if ($type === 'skip') continue;
+        if ($type === 'blocked') {
+            $res['warnings'][] = lang(array('string' => 'Not uploaded, files of that type are not allowed: {var:1}', 'vars' => $norm));
+            continue;
         }
+        if ($type === 'deep') {
+            $res['warnings'][] = lang(array('string' => '{var:1} was not imported: it lies more than {var:2} folders deep.', 'vars' => array(mb_substr($norm, 0, 200), PG_DI_MAX_DEPTH)));
+            continue;
+        }
+        $entries[$norm] = array('type' => $type, 'index' => $i);
     }
     if (empty($entries)) {
         $zip->close();
@@ -314,6 +319,12 @@ function pg_designer_import_undo(&$res)
 function pg_designer_import_single_html($html, $file_name, $user, $opts = array())
 {
     $res = pg_designer_import_result();
+    // The ceiling a page in an archive has (PG_DI_MAX_HTML): libxml's memory
+    // for the DOM is several times the page and escapes memory_limit.
+    if (strlen((string)$html) > PG_DI_MAX_HTML) {
+        $res['errors'][] = lang(array('string' => '{var:1} is larger than {var:2} MB.', 'vars' => array(pg_basename((string)$file_name), PG_DI_MAX_HTML / 1048576)));
+        return $res;
+    }
     $ctx = new stdClass();
     $ctx->user_id  = (int)$user['id'];
     $ctx->files    = array();
@@ -653,6 +664,14 @@ function pg_designer_import_html($html, $html_path, $ctx)
         $type = strtolower(trim((string)$sc->getAttribute('type')));
         $is_module = ($type === 'module');
         if ($src !== '') {
+            // A script of another type is not one the page runs: a consent
+            // manager holds back a tracker as type="text/plain" until the
+            // visitor agrees. Loaded as a design script it would run on
+            // every visit, agreed or not.
+            if (!pg_di_script_type_runs($type)) {
+                $out['warnings'][] = lang(array('string' => '{var:1}: script "{var:2}" was left out: its type "{var:3}" does not run on the page (a script waiting for cookie consent, for example).', 'vars' => array($html_path, $src, $type)));
+                continue;
+            }
             if (empty($ctx->keep_framework) && pg_di_is_framework_url($src)) {
                 pg_di_note_bootstrap_major(pg_di_bootstrap_major($src, ''), $src, $ctx);
                 continue;
@@ -673,7 +692,7 @@ function pg_designer_import_html($html, $html_path, $ctx)
         }
         // Inline script — only real JavaScript. JSON-LD, templates and the
         // like stay out; they would only run as errors.
-        if ($type !== '' && $type !== 'text/javascript' && $type !== 'module' && $type !== 'application/javascript') continue;
+        if (!pg_di_script_type_runs($type)) continue;
         $code = trim($sc->textContent);
         if ($code === '') continue;
         if ($is_module) $inline_mod .= $code . "\n";
@@ -712,6 +731,16 @@ function pg_designer_import_html($html, $html_path, $ctx)
     if (!empty($ctx->classic) && $out['page_title'] !== '') $root_props['title'] = $out['page_title'];
     $out['tree'] = pg_di_restore_region_tags(pg_di_root($children, $root_props), $ctx);
     return $out;
+}
+
+// Whether a <script> of this type attribute (lower-cased, trimmed) is one a
+// browser runs: none, a JavaScript MIME type or "module". Pure.
+function pg_di_script_type_runs($type)
+{
+    $type = trim(strtolower((string)$type));
+    if (($semi = strpos($type, ';')) !== false) $type = trim(substr($type, 0, $semi));
+    return in_array($type, array('', 'module', 'text/javascript', 'application/javascript', 'application/x-javascript',
+        'text/ecmascript', 'application/ecmascript'), true);
 }
 
 /**
@@ -1137,7 +1166,21 @@ function pg_di_attrs($node, $ctx, $skip)
 function pg_di_inner_html($node, $ctx)
 {
     $html = '';
-    foreach ($node->childNodes as $cn) $html .= pg_dom_html($cn);
+    foreach ($node->childNodes as $cn) {
+        // A script inside the text is not text: a page import has already
+        // made it the page's script, a paste drops it. Kept here as well it
+        // ran a second time, or ran after the paste said it was left out.
+        if ($cn->nodeType === XML_ELEMENT_NODE) {
+            if (strtolower($cn->nodeName) === 'script') continue;
+            if ($cn->getElementsByTagName('script')->length > 0) {
+                $cn = $cn->cloneNode(true);
+                $scripts = array();
+                foreach ($cn->getElementsByTagName('script') as $sc) $scripts[] = $sc;
+                foreach ($scripts as $sc) $sc->parentNode->removeChild($sc);
+            }
+        }
+        $html .= pg_dom_html($cn);
+    }
     // An icon inside a heading or link text stays inline markup; the
     // placeholder gives way to the original <svg>.
     if (!empty($ctx->svg_raw) && strpos($html, '<pg-svg') !== false) {
@@ -1409,6 +1452,20 @@ function pg_di_should_skip($path)
     if (preg_match('#\.(?:psd|ai|sketch|fig|xd|scss|sass|less|map|md|txt|log|zip|rar|7z|exe|php|bat|sh)$#', $p)) return true;
     if (preg_match('#(?:^|/)(?:package(?:-lock)?\.json|composer\.(?:json|lock)|gulpfile\.js|webpack\.config\.js|\.htaccess)$#', $p)) return true;
     return false;
+}
+
+// What an archive entry is to the import: html, css, js, asset, deep (more
+// than PG_DI_MAX_DEPTH folders), skip (noise, pg_di_should_skip()) or blocked (a name the upload rule refuses at every
+// other door, pg_upload_name_blocked()). Pure.
+function pg_di_entry_type($path)
+{
+    if (substr_count((string)$path, '/') > PG_DI_MAX_DEPTH) return 'deep';
+    if (pg_di_should_skip($path)) return 'skip';
+    if (pg_upload_name_blocked(pg_basename($path))) return 'blocked';
+    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    if ($ext === 'html' || $ext === 'htm' || $ext === 'xhtml') return 'html';
+    if ($ext === 'css' || $ext === 'js') return $ext;
+    return 'asset';
 }
 
 // Normalise an archive path: forward slashes, no leading ./ or /, ../ resolved.
@@ -1705,12 +1762,7 @@ function pg_di_slug($s)
 // database).
 function pg_di_page_name($path, $taken, &$seen)
 {
-    $base = pg_di_slug(pg_file_name_stem($path));
-    $dir  = str_replace('\\', '/', dirname($path));
-    $cands = array($base);
-    if ($dir !== '.' && $dir !== '') {
-        $cands[] = pg_di_slug(str_replace('/', '-', $dir) . '-' . $base);
-    }
+    $cands = pg_di_page_name_candidates($path);
     foreach ($cands as $c) {
         if (in_array($c, $taken, true) || in_array($c, $seen, true)) continue;
         $exists = (int)db_value("SELECT page_id FROM page WHERE page_name = '" . e($c) . "' LIMIT 1");
@@ -1719,12 +1771,42 @@ function pg_di_page_name($path, $taken, &$seen)
     }
     $c = $cands[count($cands) - 1];
     for ($i = 2; $i < 500; $i++) {
-        $try = $c . '-' . $i;
+        $try = pg_di_page_name_numbered($c, $i);
         if (in_array($try, $taken, true) || in_array($try, $seen, true)) continue;
         if ((int)db_value("SELECT page_id FROM page WHERE page_name = '" . e($try) . "' LIMIT 1")) continue;
         return $try;
     }
-    return $c . '-' . uniqid();
+    return pg_di_page_name_numbered($c, uniqid());
+}
+
+// The names a page file may take, in order: its own (index.html → index),
+// then with its folders in front (blog/post.html → blog-post). Each fits the
+// 100 characters a page name holds (pg_designer_page_name_error()); a longer
+// one lost the page at its save. Pure.
+function pg_di_page_name_candidates($path)
+{
+    $base = pg_di_slug(pg_file_name_stem($path));
+    $dir  = str_replace('\\', '/', dirname($path));
+    $cands = array(pg_di_page_name_cut($base, 100));
+    if ($dir !== '.' && $dir !== '') {
+        $cands[] = pg_di_page_name_cut(pg_di_slug(str_replace('/', '-', $dir) . '-' . $base), 100);
+    }
+    return $cands;
+}
+
+// $name with "-$n" after it, the name cut so the whole fits 100. Pure.
+function pg_di_page_name_numbered($name, $n)
+{
+    $suffix = '-' . $n;
+    return pg_di_page_name_cut($name, 100 - strlen($suffix)) . $suffix;
+}
+
+// A slug cut to $max characters, without a hyphen left at its end. Pure.
+function pg_di_page_name_cut($slug, $max)
+{
+    if (strlen($slug) <= $max) return $slug;
+    $cut = rtrim(substr($slug, 0, $max), '-');
+    return $cut === '' ? 'page' : $cut;
 }
 
 // ── File manager ────────────────────────────────────────────────────────────
@@ -1736,7 +1818,7 @@ function pg_di_folder_path($segments, $ctx)
     $level  = (int)db_value("SELECT folder_level FROM folder WHERE folder_id = '$parent' LIMIT 1");
     $key    = '';
     foreach ($segments as $seg) {
-        $seg = trim((string)$seg);
+        $seg = pg_di_folder_segment($seg);
         if ($seg === '') continue;
         $key .= '/' . $seg;
         if (isset($ctx->folders[$key])) { $parent = $ctx->folders[$key]; $level++; continue; }
@@ -1745,7 +1827,7 @@ function pg_di_folder_path($segments, $ctx)
         if (!$found) {
             $level++;
             db("INSERT INTO folder (folder_name, folder_parent, folder_level, folder_order, folder_user, folder_timestamp)
-                VALUES ('" . e(mb_substr($seg, 0, 100)) . "', '$parent', '$level', '0', '" . (int)$ctx->user_id . "', UNIX_TIMESTAMP())");
+                VALUES ('" . e($seg) . "', '$parent', '$level', '0', '" . (int)$ctx->user_id . "', UNIX_TIMESTAMP())");
             $found = (int)mysqli_insert_id(db::$con);
             if ($found > 0 && isset($ctx->created)) $ctx->created['folders'][] = $found;
         } else {
@@ -1757,24 +1839,46 @@ function pg_di_folder_path($segments, $ctx)
     return $parent;
 }
 
+// A folder name as folder_name (100 characters) stores it, so the name that
+// is looked up is the name that was written. Pure.
+function pg_di_folder_segment($seg)
+{
+    return trim(mb_substr(trim((string)$seg), 0, 100, 'UTF-8'));
+}
+
 // Flat, unique, URL-safe name for an archive file. Reserved up front so
 // references can be rewritten before the file is written.
 function pg_di_reserve_file_name($basename, $ctx)
 {
     static $reserved = array();
-    $name = prepare_file_name($basename);
-    $name = get_unique_name(array('name' => $name, 'type' => 'file'));
-    // get_unique_name only checks the database; two archive entries with the
-    // same basename in different directories would otherwise collide here.
-    $i = 1; $base = $name;
-    while (isset($reserved[$name])) {
-        $ext = pathinfo($base, PATHINFO_EXTENSION);
-        $stem = $ext !== '' ? substr($base, 0, -strlen($ext) - 1) : $base;
-        $name = $stem . '[' . $i . ']' . ($ext !== '' ? '.' . $ext : '');
-        $i++;
-    }
+    $name = pg_di_free_file_name(prepare_file_name($basename), $reserved, function ($candidate) {
+        return (bool)check_name_availability(array('name' => $candidate));
+    });
     $reserved[$name] = true;
     return $name;
+}
+
+/**
+ * The first of name, name[1], name[2] ... that this import has not reserved
+ * and the library has free. Two archive entries with one basename in
+ * different directories ask for the same name; the second's name[n] has to
+ * be free in the library too, or its file overwrites the one stored there.
+ *
+ * @param string   $name      prepared file name
+ * @param array    $reserved  names this import took (name => true)
+ * @param callable $free      name => whether no file or page has it
+ * @return string
+ */
+function pg_di_free_file_name($name, $reserved, $free)
+{
+    $ext  = pathinfo($name, PATHINFO_EXTENSION);
+    $stem = $ext !== '' ? substr($name, 0, -strlen($ext) - 1) : $name;
+    $candidate = $name;
+    for ($i = 1; $i < 10000; $i++) {
+        if (!isset($reserved[$candidate]) && $free($candidate)) return $candidate;
+        $candidate = $stem . '[' . $i . ']' . ($ext !== '' ? '.' . $ext : '');
+    }
+    return $stem . '-' . uniqid() . ($ext !== '' ? '.' . $ext : '');
 }
 
 function pg_di_store_file($path, $content, $ctx)

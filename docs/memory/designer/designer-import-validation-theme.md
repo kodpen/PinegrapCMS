@@ -8,6 +8,8 @@ description: Designer HTML/ZIP import rules, SEO validation badges (client twin)
 - Core `includes/designer_import.php`, endpoint `designer_import.php` (multipart; `api.php` reads JSON only). Pages are unsaved tabs; files are written at once under `Import/<project>/...`.
 - A ZIP is measured before it is read (`pg_zip_import_open()`); every entry is read by its own index through `pg_zip_entry_contents()`, a page at most 8 MB: docs/memory/platform/zip-entry-declared-size.md.
 - Inline `<svg>` is taken raw BEFORE parsing (`pg_di_lift_svgs()`; libxml nests `<path/>`): a `bi-*` class -> icon node, otherwise an `svg` content node holding the drawing (no file, never custom_html; cleaned by `pg_designer_svg_markup()` when drawn): `html-import-and-paste.md`.
+- An entry the upload rule refuses or more than 16 folders deep is left out with a warning (`pg_di_entry_type()`); a second same-named file's `name[n]` is checked against the library; page names fit 100 characters; a single `.html` has the 8 MB ceiling too (#11501).
+- A `<script src>` of a non-JavaScript type (consent-held `text/plain`) is left out (#11501).
 - `srcset`/`sizes` are not carried to the image (it would override src).
 - An `<img>` without an alt attribute gets no `alt` prop (the audit asks for one); `alt=""` is kept as the decorative statement.
 - Page names are fixed before translation (`$ctx->page_names`); cross-page links resolve from there.
