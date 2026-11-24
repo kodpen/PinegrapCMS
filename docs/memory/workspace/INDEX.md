@@ -415,6 +415,7 @@
 - workspace-flows-box-form.md: PGWsFlow.boxForm() and its siblings in workspace_flow.js: a box's canvas settings drawn in another screen (the quick setup's step setting) with its own state, safe beside a mounted canvas
 - workspace-flows-box-look.md: How a flow box looks: a 196 x 72 card, group colour on tile, kind and port, three cut lines, tooltip, 8 px ports, ring, problem and run lines, 1.75 px arrows, List view entry
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
+- workspace-flows-buttons-look.md: The Flows screens' buttons in look A (WL3, #11360): which rank each part takes in workspace_flow.js and workspace_flow_flag.js, the filter chips as pg-seg, the compact run flag, what was left
 - workspace-flows-canvas-harness.md: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, by hand, not in CI): what is real, how to run it, the scenarios, the result, touch emulation
 - workspace-flows-canvas-leave-focus.md: Flow canvas: an untouched blank canvas binned when left, one keepalive save as the page is left (state.leaveSent) and the box's focus after C › Add the arrow (#4318, #4319, PR #4322)
 - workspace-flows-canvas-tools.md: The flow canvas's tools (FE2): the add rail with group icons and the list as a card beside it; the bottom strip with Undo, Redo, zoom, Fit, Tidy, Data threads, Note, Map; no palette column
@@ -689,4 +690,5 @@
 - workspace-voice-transcripts.md: Voice message transcripts (V3a #2674): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap
 - workspace-voice-unheard.md: Why nobody heard a voice message (VA1): the recorder's hint while transcripts are off or the channel keeps its recordings, ws_voice_unheard_reason() in the assistants' briefings, Claude's instruction
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does
+- workspace-writing-box-look.md: Which look recipe each button of the writing box's tips and windows, highlights, saved replies, voice player and translation line takes
 - workspace-writing-rules.md: How every AI is told to write a Workspace message (bold, code, lists, tables, no headings): one English text in code for the agent instructions, the guide, the assistants, the message routes [decision: decisions-made-product-92.md]

@@ -449,7 +449,7 @@
 - designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
 - designer-prototype-viewer-links.md: how prototype.php rewrites a draft's links: link kinds from pg_proto_link_target(), a bare ?query, what pg_proto_rewrite_links() skips
 - designer-prototype-viewer.md: prototype.php plays a design's saved drafts (roles 0-2, or a share link): a session-less frame signed for one browser, link kinds, inert forms, no tracking, link_resolve.php
-- designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft), the bundle's label and text, the toast and box title naming the bundle [decision: here]
+- designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway [decision: here]
 - designer-publish-sheet.md: The visual designer's Publish sheet: which pages it lists and checks, what Publish selected writes, how an unchecked changed page is held out of the one save, and where the old publishing menu went [decision: decisions-made-product-36.md]
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 - designer-region-to-shared-component.md: A classic designer region made a designer-only shared component from the designer (R3): PHP blocks as custom_php nodes, placeholders as region nodes, nested refs
@@ -628,6 +628,7 @@
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter [decision: decisions-made-product-19.md]
 - prototype-approval-fingerprints.md: Approve this page and Request changes on a prototype share link, pure rules (PA1a): draft and node fingerprints, what changed, a verdict's state, Answer by, mail timing
+- prototype-approval-hold.md: "Publish only after approval" on a prototype link (PA4): which link holds a draft, every writer of a draft going live reading the hold, role 0's Publish anyway with its reason in the Site Log
 - prototype-approval-review.md: A prototype link asking approval (PA2): the Share prototype dialog's and the API's approval fields, the viewer's "Review this page" box, the verdict door, the approver's receipt mail, the bell line
 - prototype-approval-store.md: Prototype link approval store (11.0.276): five prototype_links columns, prototype_verdicts, deleted with the design and by Delete comments, privacy erase and export
 - prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up [decision: here]
