@@ -1,6 +1,6 @@
 ---
 name: order-completion-stock-and-spots
-description: What a completed order or local sale does to stock and event spots: fresh stock read before the decrement, the out_of_stock flag and bell, what is announced, event spots
+description: What a completed order or local sale does to stock and event spots: fresh stock read, the hold released with the take, the out_of_stock flag, what is announced
 ---
 
 ## Where is it?
@@ -14,6 +14,7 @@ description: What a completed order or local sale does to stock and event spots:
 - After each row's decrement, by one conditional update: `out_of_stock = '1'` and `out_of_stock_timestamp` where `inventory_quantity <= 0 AND out_of_stock != '1'`. The `out_stock` bell warning is raised only when that update changed a row, so once per product per order.
 - Before PR #1082 (issue #734) it compared the row's quantity with the stock read before the loop (`$quantity == $inventory_quantity`): stock 5 sold as 2 + 3 to two recipients, or 3 sold from a stock of 2, reached 0 with no flag and no warning.
 - A local sale (`pg_local_order_complete()` step 5) runs the same stage, `pg_order_complete_line_stock()`, with source `local_sale` (counter-sale-site-line-stages). Before issue #1163 its own loop compared one line's quantity with the stock read before the loop.
+- The checkout's units held for its payment are freed in the same pass: `pg_order_complete_lines()` calls `pg_stock_hold_release()` after every line's take (bundles included), before `pg_stock_oversold_warn()`; a local sale holds nothing (`stock-holds.md`).
 - Other writers follow the same "stock left <= 0" rule: marketplace import (`mp_order_take_stock()`), the API inventory endpoints, ERP stock, the product builder (derived on save, reset to 0 on restock).
 
 ## What does the sale tell the outside?

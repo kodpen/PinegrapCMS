@@ -6,7 +6,7 @@ module: stock_sales
 
 ## What was wrong? (#10682, PR #11077)
 - The stock is read at submit and taken after the payment; nothing holds the units between. Two orders of the last unit (a bundle or a plain product) were both paid and completed, the take stopped at 0, and only the `out_stock` bell (once per product) showed it.
-- Decided (`workflow/decisions-made-product-86.md`): flag it now; no lock, no automatic refund. Holding units is `plans/stock-holds.md`.
+- Decided (`workflow/decisions-made-product-86.md`): flag it now; no lock, no automatic refund. Holding units is built: `stock-holds.md`.
 
 ## When is it raised?
 - After the takers ran: `pg_stock_oversold_warn()` (`includes/fn/stock_sales.php`), called at the end of `pg_order_complete_lines()` (checkout and counter sale) and after `mp_order_take_stock()` in the marketplace import.
