@@ -119,3 +119,71 @@ function test_common_region_ids_from_categories()
 	)), 'only well-formed common region categories, each once, in order');
 	pg_assert_same(array(), pg_common_region_ids_from_categories(array()));
 }
+
+function test_common_region_component_usage_read()
+{
+	$queries = array();
+	$fetch = function ($sql) use (&$queries) {
+		$queries[] = $sql;
+		if (strpos($sql, 'FROM shared_components') !== false && strpos($sql, 'id IN') !== false) {
+			// 7 draws region 3; 9 is a second row made from it and draws nothing.
+			return array(
+				array('id' => '7', 'category' => 'common_region:3'),
+				array('id' => '9', 'category' => 'common_region:3'),
+			);
+		}
+		if (strpos($sql, 'FROM shared_components') !== false) {
+			return array(array('id' => '7', 'category' => 'common_region:3'), array('id' => '9', 'category' => 'common_region:3'));
+		}
+		if (strpos($sql, 'cregion_id IN') !== false) {
+			return array(array('cregion_id' => '3', 'cregion_name' => 'Footer'));
+		}
+		if (strpos($sql, 'FROM cregion') !== false) {
+			// A designer region printing the footer's tag: its own tag counts too.
+			return (strpos($sql, 'Outer') === false)
+				? array(array('cregion_name' => 'Outer', 'cregion_content' => '<p><cregion>Footer</cregion></p>'), array('cregion_name' => 'Plain', 'cregion_content' => '<p>Footer</p>'))
+				: array();
+		}
+		if (strpos($sql, 'FROM style') !== false) {
+			return array(
+				array('style_id' => '2', 'style_code' => '<body><cregion>Footer</cregion></body>'),
+				array('style_id' => '4', 'style_code' => '<body><cregion>Footer2</cregion></body>'),
+			);
+		}
+		if (strpos($sql, 'FROM pregion') !== false) {
+			return array(array('pregion_page' => '30', 'pregion_content' => '<div><cregion>Outer</cregion></div>'));
+		}
+		if (strpos($sql, 'FROM page') !== false) {
+			return array(
+				array('page_id' => '10', 'page_name' => 'home', 'page_folder' => '1', 'style_id' => '2', 'style_name' => 'Classic'),
+				array('page_id' => '30', 'page_name' => 'about', 'page_folder' => '1', 'style_id' => '5', 'style_name' => 'Other'),
+				array('page_id' => '40', 'page_name' => 'shop', 'page_folder' => '1', 'style_id' => '6', 'style_name' => 'Visual'),
+			);
+		}
+		return array();
+	};
+	$trees = array(
+		array('page_id' => '40', 'tree_json' => '{"type":"root","children":[{"type":"region","props":{"regionType":"common","regionName":"Footer"}}]}'),
+		array('page_id' => '41', 'tree_json' => '{"type":"root","children":[{"type":"region","props":{"regionType":"page","regionName":"Footer"}}]}'),
+	);
+
+	$out = pg_shared_component_region_usage_read(array(7, 9, 8), $trees, $fetch);
+	pg_assert_same(array(7), array_keys($out), 'only the row that draws the region');
+	$pages = array();
+	foreach ($out[7] as $u) {
+		$pages[] = $u['page_id'];
+		pg_assert_same('Footer', $u['common_region']);
+	}
+	sort($pages);
+	pg_assert_same(array(10, 30, 40), $pages, 'style tag (not Footer2), page region through Outer, designer tree node');
+
+	$queries = array();
+	$none = function ($sql) use (&$queries) {
+		$queries[] = $sql;
+		return array();
+	};
+	pg_assert_same(array(), pg_shared_component_region_usage_read(array(5), $trees, $none));
+	pg_assert_same(1, count($queries), 'one query when no row is a converted region');
+	pg_assert_same(array(), pg_shared_component_region_usage_read(array(), $trees, $none));
+	pg_assert_same(1, count($queries), 'no query for no ids');
+}
