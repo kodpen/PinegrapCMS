@@ -76,8 +76,9 @@ if ($changes && pg_consent_enabled() && pg_consent_log_ready() && pg_consent_ans
 }
 
 // Marketing refused: the ad services' rows of this visitor's order not sent
-// yet lose the buyer's ids, and the session drops the ad click ids it holds.
-if ($changes && ($status === 200)) {
+// yet lose the buyer's ids, and the session drops the ad click ids it holds;
+// also over the log limit, which only stops the rows above.
+if (pg_consent_answer_acts($changes, $status)) {
     pg_ad_conversion_consent_changed($changes);
     pg_ad_click_ids_consent_changed($changes);
     pg_lead_consent_changed($changes);
