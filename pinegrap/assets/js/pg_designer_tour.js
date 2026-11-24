@@ -1,0 +1,212 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The model of the visual designer's first tour (window.PGDesignerTour):
+ * its stops and the controls they point at per access level, the order,
+ * Next and Back over the stops whose control is on the screen, and what a
+ * person has already been offered and seen. Pure: it reads and returns
+ * plain values and touches no element and no storage.
+ *
+ * - stops(access): the stops of 'full' (five) or 'content' (three), each
+ *   { id, anchors } with the selectors tried in order; copies, so a caller
+ *   may change them.
+ * - shown(list, has) / move(list, at, dir, has): `has(selector)` says
+ *   whether that control is on the screen now; a stop with none of its
+ *   controls on it is skipped.
+ * - key(userId), read(raw), write(state): what was seen, kept per person in
+ *   the browser under pg.designer.<user id>.tour.
+ * - offer(state, access, busy): whether the card "New here?" may be shown.
+ *
+ * Nothing runs at load but the definition of window.PGDesignerTour.
+ * tests/designer_tour_model_test.php runs it in Node.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+(function (root) {
+    'use strict';
+
+    // The stops in their order. A designer's five: add something (the
+    // palette), shape it (Options, else the canvas), see it (Preview), put
+    // it on the site (the main button, else the Publish sheet's), find
+    // anything (the "?" button that lists the command palette's keys).
+    // A content editor's three: what they may change (the canvas), how
+    // (Options), how it reaches the site (the main button).
+    var STOPS = {
+        full: [
+            { id: 'add', anchors: ['#sd-components'] },
+            { id: 'shape', anchors: ['#sd-properties', '#sd-canvas'] },
+            { id: 'see', anchors: ['#sd-preview-menu-btn'] },
+            { id: 'publish', anchors: ['#sd-ajax-save', '#sd-publish-page'] },
+            { id: 'find', anchors: ['#sd-status-shortcuts'] }
+        ],
+        content: [
+            { id: 'change', anchors: ['#sd-canvas'] },
+            { id: 'edit', anchors: ['#sd-properties', '#sd-canvas'] },
+            { id: 'send', anchors: ['#sd-ajax-save', '#sd-publish-page'] }
+        ]
+    };
+
+    var VERSION = 1;
+
+    function level(access) {
+        return access === 'content' ? 'content' : 'full';
+    }
+
+    function stops(access) {
+        return STOPS[level(access)].map(function (s) {
+            return { id: s.id, anchors: s.anchors.slice() };
+        });
+    }
+
+    // The first of the stop's selectors `has` finds, '' when none is there.
+    function anchor(stop, has) {
+        var list = (stop && stop.anchors) || [];
+        for (var i = 0; i < list.length; i++) {
+            if (has(list[i])) return list[i];
+        }
+        return '';
+    }
+
+    // The stops whose control is on the screen, in order, each
+    // { id, anchor, i } (i: its place in `list`).
+    function shown(list, has) {
+        var out = [];
+        (list || []).forEach(function (s, i) {
+            var a = anchor(s, has);
+            if (a) out.push({ id: s.id, anchor: a, i: i });
+        });
+        return out;
+    }
+
+    // The stop after (dir 1) or before (dir -1) place `at` whose control is
+    // on the screen now, as { i, id, anchor }. Asked again at each step, so a
+    // control that went away since the tour began is skipped too. Forward
+    // past the last: null, the tour is over. Back before the first: the
+    // stop at `at` when its control is still there, else null.
+    function move(list, at, dir, has) {
+        list = list || [];
+        var step = dir < 0 ? -1 : 1;
+        for (var i = at + step; i >= 0 && i < list.length; i += step) {
+            var a = anchor(list[i], has);
+            if (a) return { i: i, id: list[i].id, anchor: a };
+        }
+        if (step < 0 && at >= 0 && at < list.length) {
+            var here = anchor(list[at], has);
+            if (here) return { i: at, id: list[at].id, anchor: here };
+        }
+        return null;
+    }
+
+    // The tour's first stop: the one after "before the first".
+    function first(list, has) {
+        return move(list, -1, 1, has);
+    }
+
+    // The browser storage key of a person's tour state; '' without a person.
+    function key(userId) {
+        var n = parseInt(userId, 10);
+        return n > 0 ? 'pg.designer.' + n + '.tour' : '';
+    }
+
+    function blank() {
+        return { v: VERSION, offered: false, seen: { full: false, content: false }, tips: {}, tipsOff: false };
+    }
+
+    // The stored text as a state; anything unreadable is a first visit.
+    function read(raw) {
+        var s = blank();
+        var o = null;
+        if (typeof raw === 'string' && raw !== '') {
+            try { o = JSON.parse(raw); } catch (e) { o = null; }
+        }
+        if (!o || typeof o !== 'object' || Array.isArray(o)) return s;
+        s.offered = o.offered === true;
+        if (o.seen && typeof o.seen === 'object') {
+            s.seen.full = o.seen.full === true;
+            s.seen.content = o.seen.content === true;
+        }
+        if (o.tips && typeof o.tips === 'object' && !Array.isArray(o.tips)) {
+            Object.keys(o.tips).forEach(function (k) {
+                if (o.tips[k] === true && /^[a-z0-9_-]{1,40}$/.test(k)) s.tips[k] = true;
+            });
+        }
+        s.tipsOff = o.tipsOff === true;
+        return s;
+    }
+
+    function write(state) {
+        return JSON.stringify(read(JSON.stringify(state || {})));
+    }
+
+    function copy(state) {
+        return read(write(state));
+    }
+
+    // Whether the card may be shown: never offered before, the person's
+    // tour not seen, and nothing in the way. `busy` holds what is going on:
+    // { dialog, typing, dragging } (a dialog open, a text being typed, a
+    // drag under way).
+    function offer(state, access, busy) {
+        var s = read(write(state));
+        busy = busy || {};
+        if (s.offered || s.seen[level(access)]) return false;
+        return !(busy.dialog || busy.typing || busy.dragging);
+    }
+
+    // The state after the card was shown, whatever the answer: it is
+    // offered once.
+    function offered(state) {
+        var s = copy(state);
+        s.offered = true;
+        return s;
+    }
+
+    // The state after the person's tour was ended: by its last stop, Skip
+    // or Escape alike.
+    function seen(state, access) {
+        var s = copy(state);
+        s.offered = true;
+        s.seen[level(access)] = true;
+        return s;
+    }
+
+    // Whether the first-use tip `name` is due: tips on and not seen yet.
+    function tipDue(state, name) {
+        var s = read(write(state));
+        return !s.tipsOff && /^[a-z0-9_-]{1,40}$/.test(String(name)) && !s.tips[name];
+    }
+
+    // The state after the tip `name` was answered with "Got it".
+    function tipSeen(state, name) {
+        var s = copy(state);
+        if (/^[a-z0-9_-]{1,40}$/.test(String(name))) s.tips[name] = true;
+        return s;
+    }
+
+    // The state after "Tips" was switched on or off.
+    function tipsOn(state, on) {
+        var s = copy(state);
+        s.tipsOff = !on;
+        return s;
+    }
+
+    root.PGDesignerTour = {
+        stops: stops,
+        anchor: anchor,
+        shown: shown,
+        move: move,
+        first: first,
+        key: key,
+        read: read,
+        write: write,
+        offer: offer,
+        offered: offered,
+        seen: seen,
+        tipDue: tipDue,
+        tipSeen: tipSeen,
+        tipsOn: tipsOn
+    };
+})(typeof window !== 'undefined' ? window : this);
