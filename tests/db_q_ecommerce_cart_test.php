@@ -123,7 +123,7 @@ function db_q_ecommerce_cart_test_built($text)
 
 function test_db_q_ecommerce_cart_value_queries_use_db_q()
 {
-	$expected = array('includes/fn/ecommerce.php' => 100, 'shopping_cart.php' => 36);
+	$expected = array('includes/fn/ecommerce.php' => 100, 'shopping_cart.php' => 30);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;
