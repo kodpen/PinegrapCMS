@@ -7,7 +7,9 @@
  * and the call window that stays at the bottom of the screen while the
  * person moves between channels: a grid of up to four, the one speaking
  * marked; mute, the camera, sharing one's screen (one member at a time),
- * the microphone and camera in use, hang up. Another member's shared
+ * the microphone, camera and speaker in use (remembered in this browser
+ * for the next call, with whether the person was muted or had the camera
+ * off), hang up. Another member's shared
  * screen is shown large in the same window (the stage), the tiles beside
  * it, or under it on a narrow screen; it can be made smaller or full screen.
  *
@@ -70,6 +72,12 @@
     var LEVEL_EVERY = 150;
     var SPEAKING_LEVEL = 0.04;
     var SPEAKING_HOLD = 600;
+
+    // The browser's own key for the person's last choices: the microphone,
+    // camera and speaker, and whether they were muted or had the camera
+    // off. Device ids mean something only in this browser, so they are
+    // never sent to the site.
+    var CHOICES_KEY = 'pg_ws_call_choices';
 
     // The one call of this screen, the rings shown and the ones answered.
     var call = null;
@@ -264,11 +272,15 @@
     }
 
     // What is asked of the devices: the chosen ones where there is a choice.
-    function mediaAsk(kind, devices) {
+    // A remembered device (soft) is only preferred, so one no longer there
+    // gives way to the browser's default instead of failing the call; a
+    // device picked in the window is asked for exactly.
+    function mediaAsk(kind, devices, soft) {
         var audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+        var pick = function (id) { return soft ? { ideal: id } : { exact: id }; };
 
         if (devices && devices.audio) {
-            audio.deviceId = { exact: devices.audio };
+            audio.deviceId = pick(devices.audio);
         }
 
         var video = false;
@@ -277,11 +289,59 @@
             video = { width: { ideal: 1280 }, height: { ideal: 720 } };
 
             if (devices && devices.video) {
-                video.deviceId = { exact: devices.video };
+                video.deviceId = pick(devices.video);
             }
         }
 
         return { audio: audio, video: video };
+    }
+
+    // The remembered choices from their stored text: anything missing,
+    // broken or of the wrong type reads as no choice.
+    function choicesRead(text) {
+        var read = null;
+        var out = { audio: '', video: '', speaker: '', muted: false, cameraOff: false };
+
+        try {
+            read = JSON.parse(text || 'null');
+        } catch (error) {
+            read = null;
+        }
+
+        if (!read || (typeof read !== 'object')) {
+            return out;
+        }
+
+        ['audio', 'video', 'speaker'].forEach(function (name) {
+            if ((typeof read[name] === 'string') && (read[name].length <= 512)) {
+                out[name] = read[name];
+            }
+        });
+        out.muted = read.muted === true;
+        out.cameraOff = read.cameraOff === true;
+
+        return out;
+    }
+
+    // The choices with one change made (only the known names are taken).
+    function choicesWith(choices, change) {
+        var out = choicesRead(JSON.stringify(choices || {}));
+
+        Object.keys(change || {}).forEach(function (name) {
+            if (!Object.prototype.hasOwnProperty.call(out, name)) {
+                return;
+            }
+
+            out[name] = (typeof out[name] === 'boolean') ? (change[name] === true) : String(change[name] || '');
+        });
+
+        return out;
+    }
+
+    // The speaker to show as chosen among the outputs: the remembered one
+    // while it is there, else the browser's default ('').
+    function speakerOf(outputs, chosen) {
+        return (chosen && (outputs || []).some(function (device) { return device.deviceId === chosen; })) ? chosen : '';
     }
 
     // The mid of a connection's screen line, among its video lines' mids:
@@ -364,6 +424,37 @@
 
     function makeButton(className, label, iconName, title) {
         return hooks.helpers.button(className, label, iconName, title);
+    }
+
+    // The remembered choices; a browser that keeps nothing (a private
+    // window, site data blocked) remembers nothing and the call goes on.
+    function choicesLoad() {
+        try {
+            return choicesRead(window.localStorage.getItem(CHOICES_KEY));
+        } catch (error) {
+            return choicesRead('');
+        }
+    }
+
+    function choicesSave(change) {
+        try {
+            window.localStorage.setItem(CHOICES_KEY, JSON.stringify(choicesWith(choicesLoad(), change)));
+        } catch (error) {
+            // Nothing kept: the next call starts with the browser's defaults.
+        }
+    }
+
+    // Whether the browser can play a picture's sound on a chosen speaker.
+    function sinkSupported() {
+        return (typeof HTMLMediaElement !== 'undefined') && ('setSinkId' in HTMLMediaElement.prototype);
+    }
+
+    // Plays the element's sound on the speaker ('' the browser's default);
+    // a speaker no longer there leaves it on the one it had.
+    function sinkSet(video, speaker) {
+        if (video && video.setSinkId) {
+            video.setSinkId(speaker || '').catch(function () {});
+        }
     }
 
     // Two short tones every two seconds while a card rings, when the
@@ -630,16 +721,23 @@
             return;
         }
 
+        // The devices and the mute and camera of the person's last call in
+        // this browser.
+        var chosen = choicesLoad();
+
         // Held at once, so a second click does not start a second call.
-        call = { id: callId, channelId: channelId, kind: kind, name: name, group: !!group, memberId: 0, after: 0, peers: {}, names: {}, outgoing: !callId, since: Date.now(), aloneSince: Date.now(), devices: {}, muted: false, cameraOff: false, ever: false, sending: Promise.resolve() };
+        call = { id: callId, channelId: channelId, kind: kind, name: name, group: !!group, memberId: 0, after: 0, peers: {}, names: {}, outgoing: !callId, since: Date.now(), aloneSince: Date.now(), devices: { audio: chosen.audio, video: chosen.video }, speaker: chosen.speaker, muted: false, cameraOff: false, ever: false, sending: Promise.resolve() };
         // Added only for the call's length: a beforeunload listener keeps
         // some browsers from holding the page in their back-forward cache.
         window.addEventListener('beforeunload', askBeforeLeaving);
 
         var mine = call;
 
-        navigator.mediaDevices.getUserMedia(mediaAsk(kind, null)).then(function (stream) {
+        navigator.mediaDevices.getUserMedia(mediaAsk(kind, mine.devices, true)).then(function (stream) {
             mine.stream = stream;
+            // Silent from the first moment when the last call ended muted.
+            stream.getAudioTracks().forEach(function (track) { track.enabled = !chosen.muted; });
+            stream.getVideoTracks().forEach(function (track) { track.enabled = !chosen.cameraOff; });
 
             var ask = { channel_id: channelId, call_id: callId };
 
@@ -660,6 +758,15 @@
             mine.ice = result.ice || null;
             mine.readAt = Date.now();
             draw();
+
+            if (chosen.muted) {
+                mute(true);
+            }
+
+            if (chosen.cameraOff && (mine.kind === 'video')) {
+                camera(true);
+            }
+
             look();
             // A sharer's keep-alive renews its share too.
             mine.pinger = setInterval(function () { send(0, mine.sharing ? 'share' : 'ping', ''); }, PING_EVERY);
@@ -1178,12 +1285,18 @@
         var tools = el('div', 'ws-call-tools');
 
         mine.muteButton = makeButton('pg-icon-button', '', 'bi-mic', t('call_mute'));
-        mine.muteButton.addEventListener('click', function () { mute(!mine.muted); });
+        mine.muteButton.addEventListener('click', function () {
+            mute(!mine.muted);
+            choicesSave({ muted: mine.muted });
+        });
         tools.appendChild(mine.muteButton);
 
         if (mine.kind === 'video') {
             mine.cameraButton = makeButton('pg-icon-button', '', 'bi-camera-video', t('call_camera_off'));
-            mine.cameraButton.addEventListener('click', function () { camera(!mine.cameraOff); });
+            mine.cameraButton.addEventListener('click', function () {
+                camera(!mine.cameraOff);
+                choicesSave({ cameraOff: mine.cameraOff });
+            });
             tools.appendChild(mine.cameraButton);
         }
 
@@ -1260,6 +1373,11 @@
         node.appendChild(name);
 
         var held = { id: id, node: node, video: video, name: name, loudAt: 0, speaking: false };
+
+        // Another member's sound plays on the chosen speaker.
+        if (id && mine.speaker && sinkSupported()) {
+            sinkSet(video, mine.speaker);
+        }
 
         mine.grid.appendChild(node);
         layout(mine);
@@ -1449,8 +1567,10 @@
         mine.selfTile.node.classList.toggle('is-camera-off', off);
     }
 
-    // The microphones and cameras of the device, each a select; a choice
-    // takes the new device's track into every connection.
+    // The microphones, cameras and speakers of the device, each a select
+    // (speakers where the browser can choose one); a microphone or camera
+    // chosen takes its track into every connection, a speaker plays every
+    // member's sound. Each choice is remembered for the next call.
     function drawDevices(panel) {
         var mine = call;
 
@@ -1461,13 +1581,21 @@
 
             h().clear(panel);
 
-            [['audio', 'audioinput', 'call_microphone'], ['video', 'videoinput', 'call_camera']].forEach(function (one) {
+            [['audio', 'audioinput', 'call_microphone'], ['video', 'videoinput', 'call_camera'], ['speaker', 'audiooutput', 'call_speaker']].forEach(function (one) {
                 if ((one[0] === 'video') && (mine.kind !== 'video')) {
+                    return;
+                }
+
+                if ((one[0] === 'speaker') && !sinkSupported()) {
                     return;
                 }
 
                 var track = (one[0] === 'audio') ? mine.stream.getAudioTracks()[0] : mine.stream.getVideoTracks()[0];
                 var using = (track && track.getSettings) ? (track.getSettings().deviceId || '') : '';
+
+                if (one[0] === 'speaker') {
+                    using = speakerOf(list.filter(function (device) { return device.kind === 'audiooutput'; }), mine.speaker);
+                }
                 var id = 'ws-call-' + one[0];
                 var label = h().el('label', 'pg-field-label', t(one[2]));
                 var select = h().el('select', 'pg-input pg-input-sm');
@@ -1483,7 +1611,13 @@
                     select.appendChild(option);
                 });
 
-                select.addEventListener('change', function () { useDevice(one[0], select.value); });
+                select.addEventListener('change', function () {
+                    if (one[0] === 'speaker') {
+                        useSpeaker(select.value);
+                    } else {
+                        useDevice(one[0], select.value);
+                    }
+                });
                 panel.appendChild(label);
                 panel.appendChild(select);
             });
@@ -1526,6 +1660,7 @@
             }
 
             mine.stream.addTrack(fresh);
+            choicesSave(kind === 'audio' ? { audio: deviceId } : { video: deviceId });
 
             // The speaking mark hears the new microphone.
             if (kind === 'audio') {
@@ -1534,6 +1669,18 @@
         }).catch(function () {
             h().toast(t('call_denied'), 'danger');
         });
+    }
+
+    function useSpeaker(deviceId) {
+        var mine = call;
+
+        mine.speaker = deviceId;
+        Object.keys(mine.peers).forEach(function (id) {
+            if (mine.peers[id].tile) {
+                sinkSet(mine.peers[id].tile.video, deviceId);
+            }
+        });
+        choicesSave({ speaker: deviceId });
     }
 
     // Leaves the call and closes the window; a reason is told in a toast.
@@ -1678,6 +1825,9 @@
         ringsGone: ringsGone,
         clock: clock,
         mediaAsk: mediaAsk,
+        choicesRead: choicesRead,
+        choicesWith: choicesWith,
+        speakerOf: speakerOf,
         screenSlot: screenSlot,
         shareState: shareState,
         stageState: stageState,

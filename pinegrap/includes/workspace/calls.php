@@ -1292,6 +1292,7 @@ function ws_call_js_strings()
         'call_devices'    => lang('Microphone and camera'),
         'call_microphone' => lang('Microphone'),
         'call_camera'     => lang('Camera'),
+        'call_speaker'    => lang('Speaker or headphones'),
         'call_hang_up'    => lang('Hang up'),
         'call_open'       => lang('Open the conversation'),
         'call_ended'      => lang('The call ended.'),
