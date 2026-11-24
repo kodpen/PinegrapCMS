@@ -660,16 +660,17 @@ function api_files_create($params) {
 
 	}
 
-	// A PDF has none, which is why this is allowed to find nothing.
+	// A PDF has none, which is why this is allowed to find nothing. As
+	// shown, EXIF orientation applied (pg_image_display_size()).
 	if ($width === null) {
 
-		$size = @getimagesize($destination);
+		list($shown_width, $shown_height) = pg_image_display_size($destination);
 
-		if (is_array($size) && !empty($size[0])) {
+		if ($shown_width > 0) {
 
-			$width  = (int)$size[0];
+			$width  = $shown_width;
 
-			$height = (int)$size[1];
+			$height = $shown_height;
 
 		}
 

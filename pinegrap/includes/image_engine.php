@@ -553,18 +553,21 @@ function pg_image_ensure_memory($width, $height)
     // decoder's own working space.
     $needed = (int) ($width * $height * 4 * 2 * 1.5) + (16 * 1024 * 1024) + memory_get_usage(true);
 
+    // Above this the image is refused rather than granted whatever it asks
+    // for. A photo needing more than a gigabyte to open is not a product
+    // photo, and honouring it would take the site down rather than one upload.
+    // Checked before the limit: where memory_limit is off (-1, php-cli
+    // without a php.ini, a batch screen that turns it off) nothing else stops
+    // a 20000 px square from asking GD for gigabytes.
+    if ($needed > (1024 * 1024 * 1024)) {
+        return false;
+    }
+
     // pg_ini_bytes() answers 0 for an unlimited or unset memory_limit.
     $bytes = pg_ini_bytes(@ini_get('memory_limit'));
 
     if (($bytes === 0) || ($bytes >= $needed)) {
         return true;
-    }
-
-    // Above this the image is refused rather than granted whatever it asks
-    // for. A photo needing more than a gigabyte to open is not a product
-    // photo, and honouring it would take the site down rather than one upload.
-    if ($needed > (1024 * 1024 * 1024)) {
-        return false;
     }
 
     @ini_set('memory_limit', ((int) ceil($needed / (1024 * 1024))) . 'M');
@@ -973,11 +976,10 @@ function pg_process_image_file($file_path, $options = array())
         $report['reason']  = 'no_gain';
         $report['resized'] = false;
 
-        // Nothing was written, so the file on disk still has whatever
-        // getimagesize() reported at the top — including its unapplied EXIF
-        // rotation.
-        $report['width']   = $width;
-        $report['height']  = $height;
+        // Nothing was written: the file on disk keeps its EXIF rotation,
+        // and the size it is shown at is the one a write would have
+        // reported. The callers write it into the width and height cache.
+        list($report['width'], $report['height']) = pg_image_display_size($file_path);
         return $report;
     }
 
@@ -4509,6 +4511,34 @@ function pg_image_oriented_size($file_path)
     }
 
     return array($width, $height);
+}
+
+
+/**
+ * The size a picture is shown at, for the width and height cache
+ * (files.image_width / image_height): EXIF orientation applied, so a phone
+ * portrait stored 4000 x 3000 on its side is 3000 x 4000, as a browser
+ * draws it and as the engine reports the pixels it writes. Where the
+ * orientation cannot be read, the stored size: the cache still has one.
+ *
+ * @param string $file_path
+ * @return array width, height; zeros when the file is no picture
+ */
+function pg_image_display_size($file_path)
+{
+    list($width, $height) = pg_image_oriented_size($file_path);
+
+    if (($width > 0) && ($height > 0)) {
+        return array($width, $height);
+    }
+
+    $size = @getimagesize($file_path);
+
+    if (!$size || empty($size[0]) || empty($size[1])) {
+        return array(0, 0);
+    }
+
+    return array((int) $size[0], (int) $size[1]);
 }
 
 
