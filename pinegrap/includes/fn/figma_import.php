@@ -87,8 +87,10 @@ function pg_figma_convert_frame($frame, $styles = array(), $components = array()
     usort($colors, function ($a, $b) {
         return ($b['count'] - $a['count']) ?: ($a['order'] - $b['order']);
     });
-    foreach ($colors as &$c) unset($c['order']);
-    unset($c);
+    $colors = array_map(function ($c) {
+        unset($c['order']);
+        return $c;
+    }, $colors);
 
     return array(
         'name'        => (is_array($frame) && isset($frame['name'])) ? (string)$frame['name'] : '',

@@ -1,6 +1,6 @@
 ---
 name: figma-import-converter
-description: The Figma converter (#PRNUM): a frame of a Figma nodes answer to a designer tree, with the lists of pictures, instances, colours, variables and the report left for the next step
+description: The Figma converter (#11509): a frame of a Figma nodes answer to a designer tree, with the lists of pictures, instances, colours, variables and the report left for the next step
 module: figma_import
 ---
 
