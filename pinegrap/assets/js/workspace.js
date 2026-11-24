@@ -5728,8 +5728,6 @@
         var row = el('div', 'row g-3');
         [[formRow(t('remind_time'), time), 'col-5'], [formRow(t('remind_before'), group), 'col-7']].forEach(function (pair) {
             var cell = el('div', pair[1]);
-            pair[0].classList.remove('mb-5');
-            pair[0].classList.add('mb-3');
             cell.appendChild(pair[0]);
             row.appendChild(cell);
         });
@@ -5880,32 +5878,11 @@
         return !!(control.id && root.querySelector && root.querySelector('label[for="' + control.id + '"]'));
     }
 
+    // A form row in look A: the drawer form parts' field, so every form
+    // built on formRow() (here and in the scripts that get it through
+    // featureHelpers()) takes the same label, gap and help line.
     function formRow(label, control, help) {
-        var row = el('div', 'mb-5');
-        var caption = el('label', 'form-label', label);
-        var field = labelTarget(control);
-
-        // A wrapper's field that is named already (a radio with its own
-        // label, a search box with an aria-label) keeps its name.
-        if (field && (field === control || !hasName(field))) {
-            if (!field.id) {
-                field.id = nextId('ws-field-');
-            }
-
-            caption.htmlFor = field.id;
-        } else if (!field && control.getAttribute('role') && !hasName(control)) {
-            caption.id = nextId('ws-caption-');
-            control.setAttribute('aria-labelledby', caption.id);
-        }
-
-        row.appendChild(caption);
-        row.appendChild(control);
-
-        if (help) {
-            row.appendChild(el('div', 'form-text', help));
-        }
-
-        return row;
+        return formParts.field(label, control, help);
     }
 
     // The person's own quiet hours under a channel's Notifications, for all
@@ -5943,8 +5920,8 @@
         part.appendChild(hint);
         fromCell.appendChild(formRow(t('qh_from'), from));
         toCell.appendChild(formRow(t('qh_to'), to));
-        fromCell.firstChild.classList.replace('mb-5', 'mb-0');
-        toCell.firstChild.classList.replace('mb-5', 'mb-0');
+        fromCell.firstChild.classList.add('ws-field-flush');
+        toCell.firstChild.classList.add('ws-field-flush');
         grid.appendChild(fromCell);
         grid.appendChild(toCell);
         part.appendChild(grid);
@@ -6015,16 +5992,26 @@
     // textarea, a select, a pair of fields side by side, a switch row, a
     // segmented choice and the footer's buttons. My calendar's plan drawer,
     // its roadmap and the plan item form ("Add to the plan") are built from
-    // them; formRow() stays for the forms in Bootstrap's small look.
+    // them; formRow() hands every other form to field().
     var formParts = {
-        // A field: its caption bound to the control (an id is given when it
-        // has none), then an optional muted help line.
+        // A field: its caption bound to the control, or to the first field
+        // inside a wrapper (an id is given when it has none), then an
+        // optional muted help line.
         field: function (label, control, help) {
             var row = el('div', 'ws-plan-field');
             var caption = el('label', 'pg-field-label', label);
+            var field = labelTarget(control);
 
-            control.id = control.id || nextId('ws-plan-');
-            caption.htmlFor = control.id;
+            // A wrapper's field that is named already (a radio with its own
+            // label, a search box with an aria-label) keeps its name.
+            if (field && (field === control || !hasName(field))) {
+                field.id = field.id || nextId('ws-plan-');
+                caption.htmlFor = field.id;
+            } else if (!field && control.getAttribute('role') && !hasName(control)) {
+                caption.id = nextId('ws-caption-');
+                control.setAttribute('aria-labelledby', caption.id);
+            }
+
             row.appendChild(caption);
             row.appendChild(control);
 
@@ -8523,7 +8510,7 @@
 
             var addRow = formRow(t('add_people'), picker);
 
-            addRow.classList.remove('mb-5');
+            addRow.classList.add('ws-field-flush');
             adding.appendChild(addRow);
             adding.appendChild(add);
             box.appendChild(adding);

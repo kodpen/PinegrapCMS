@@ -13974,10 +13974,6 @@ b.ws-agent-card-anchor:focus-visible {
   font-size: .85rem;
 }
 /* The person's own quiet hours under a channel's notifications. */
-.ws-info-qh .form-label {
-  margin-bottom: .25rem;
-  font-size: .85em;
-}
 .ws-info-qh-actions {
   display: flex;
   flex-wrap: wrap;
@@ -22235,6 +22231,22 @@ button.ws-cal-more {
   flex-direction: column;
   gap: 6px;
   margin-bottom: 16px;
+}
+.ws-plan-field.ws-field-flush {
+  margin-bottom: 0;
+}
+/* A look A field joined to its buttons in an .input-group: the field
+   takes the room left, a button is as tall as the field. The joined
+   corners come from the restated .input-group.input-group rules. */
+.input-group > .pg-input {
+  flex: 1 1 auto;
+  width: 1%;
+}
+.input-group > :is(.pg-button, .pg-icon-button) {
+  height: auto;
+}
+.input-group > .pg-input:focus {
+  z-index: 5;
 }
 .ws-plan-pair {
   display: grid;
