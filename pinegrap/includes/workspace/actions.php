@@ -1584,7 +1584,9 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array('note' => ws_note_present($viewer, ws_note_for($viewer, $result['note_id'], 'view'))));
 
         case 'ws_note_delete':
-            $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'owner');
+            // ws_note_delete() checks who may: a person's note its owner, a
+            // channel's note its writer or the channel's managers.
+            $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'view');
 
             if (!$note) {
                 return ws_action_error(lang('Only the one who wrote a note can delete it.'));

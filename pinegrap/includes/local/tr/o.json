@@ -1252,6 +1252,7 @@
     "Only the one who wrote a note can lock it.": "Bir notu yalnızca onu yazan kilitleyebilir.",
     "Only the one who wrote a note can pin it.": "Notu yalnız yazan sabitleyebilir.",
     "Only the one who wrote a note can share it.": "Notu yalnız yazan paylaşabilir.",
+    "Only the one who wrote a note or who manages its channel can delete it.": "Bir notu yalnızca onu yazan ya da kanalını yöneten silebilir.",
     "Only the one who wrote the time, or staff, can change it.": "Süreyi yalnızca yazan kişi veya personel değiştirebilir.",
     "Only the one who wrote the time, or staff, can delete it.": "Süreyi yalnız yazan kişi ya da yöneticiler silebilir.",
     "Only the other languages are listed; an element bound to \"{var}\" shows the current one.": "Yalnız öteki diller listelenir; geçerli dili \"{var}\" alanına bağlanan öğe gösterir.",

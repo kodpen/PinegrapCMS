@@ -1651,8 +1651,24 @@ function ws_note_ask_tags($viewer, $note, $old, $new, $only_channel_id = 0)
 }
 
 /**
- * Whether the person may delete a note: its owner only. The screen's delete
- * and the API's (and its dry run) meet the same refusal.
+ * Who may delete a channel's note: its writer while they still read the
+ * channel, and whoever manages the channel. Pure.
+ *
+ * @param bool $writer     the person wrote it (user_id)
+ * @param bool $can_read   the person reads its channel
+ * @param bool $can_manage the person manages its channel
+ * @return bool
+ */
+function ws_note_channel_may_delete($writer, $can_read, $can_manage)
+{
+    return ($writer && $can_read) || $can_manage;
+}
+
+/**
+ * Whether the person may delete a note: a person's note by its owner only;
+ * a channel's note by its writer or whoever manages the channel
+ * (ws_note_channel_may_delete()). The screen's delete and the API's (and
+ * its dry run) meet the same refusal.
  *
  * @param array $viewer
  * @param array $note
@@ -1660,6 +1676,20 @@ function ws_note_ask_tags($viewer, $note, $old, $new, $only_channel_id = 0)
  */
 function ws_note_delete_check($viewer, $note)
 {
+    $owner_channel = ws_note_channel_of($note);
+
+    if ($owner_channel > 0) {
+        $channel = ws_channel($owner_channel);
+        $may = is_array($channel) && ws_note_channel_may_delete(
+            (int) $note['user_id'] === (int) $viewer['id'],
+            ws_can_read_channel($viewer, $channel),
+            ws_can_manage_channel($viewer, $channel)
+        );
+
+        return $may ? array('ok' => true, 'error' => '')
+            : array('ok' => false, 'error' => lang('Only the one who wrote a note or who manages its channel can delete it.'));
+    }
+
     if (!is_array($note) || ((int) $note['user_id'] !== (int) $viewer['id'])) {
         return array('ok' => false, 'error' => lang('Only the one who wrote a note can delete it.'));
     }
