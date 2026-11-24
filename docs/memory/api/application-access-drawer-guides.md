@@ -4,7 +4,7 @@ description: Application Access's edit drawer (head, tabs, Overview, Connect) an
 ---
 
 ## What does the edit drawer show?
-- `#api_drawer`, `min(760px, 100%)`, from the end; under 576 px the script swaps in `drawer-bottom` (88vh). Drawn by `api_app_drawer_view()` (`includes/api/app_drawer_view.php`) to `plans/app-access-redraw/app-edit.html`, since AA3. `openApp()` in `api_settings.php` fills it.
+- `#api_drawer`, `min(760px, 100%)`, from the end; under 576 px the script swaps in `drawer-bottom` (88vh). Drawn by `api_app_drawer_view()` (`includes/api/app_drawer_view.php`) to `application-access-drawings/app-edit.html` (#10884). `openApp()` in `api_settings.php` fills it.
 - Head: the kind's tile, the name, "Integration · key and secret · Acts as: the application itself" (OAuth and team devices: "sign-in", "the person who signs in"), the list's state as a pill, Close.
 - Tabs (`pg-seg`): Overview, Connect, Permissions (its count beside it), Events, Devices (Connections on OAuth), Logs, AI agent (`application-access-agent-tab.md`). The old Security tab's fields are in Overview's Advanced row.
 

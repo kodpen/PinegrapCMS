@@ -4,7 +4,7 @@ description: Application Access permission picker: areas with icons, a row per s
 ---
 
 ## Where is the picker drawn?
-- `includes/api/app_permissions_view.php`: `api_settings_permission_rows($prefix, $id_prefix)` (moved out of `api_settings.php`) draws it for the drawer (`d_scope`) and New application's step 2 (`n_scope`); the first copy brings its `<style>` and the plain script `assets/js/api_app_access.js` (no bundle). Since step AA2 of the redraw plan.
+- `includes/api/app_permissions_view.php`: `api_settings_permission_rows($prefix, $id_prefix)` (moved out of `api_settings.php`) draws it for the drawer (`d_scope`) and New application's step 2 (`n_scope`); the first copy brings its `<style>` and the plain script `assets/js/api_app_access.js` (no bundle). Since #10826.
 - Posted names stay `scope[<group>]`, so the save, the starting points (`START_CARDS`) and the drawer's `setRadio()` read them as before.
 
 ## How is it laid out?
@@ -27,4 +27,4 @@ description: Application Access permission picker: areas with icons, a row per s
 
 ## What did it not take on?
 - A permission the owner's account lacks is not shown off: the screen has never done so; the API caps the key at the owner's rights (`external-api-authorization.md`).
-- The old `.api-seg` rules in `api_settings.php`'s style block no longer match any row; the drawer step (AA3) can drop them.
+- The old `.api-seg` rules in `api_settings.php`'s style block no longer match any row; a later change can drop them.

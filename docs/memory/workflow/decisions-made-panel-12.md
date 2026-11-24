@@ -7,13 +7,13 @@ description: Decisions list, panel part 12 (2026-11-20 on): the owner's yes to t
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries. The part before: `decisions-made-panel-11.md`.
 
 ## Is New application drawn in three steps? (owner, 2026-11-20, agent channel poll 188, channel message 10735)
-- "Evet, böyle çıksın", on the drawing `plans/app-access-redraw/app-new.html` (and JPG): 1 What connects (ready starting points), 2 Details and permissions (the permission picker with its bulk buttons), 3 Connect (the keys and the guide).
-- Binds: AA1 and AA2 of `plans/app-access-redraw-steps.md` build the sheet as drawn. AA1 #10745 no longer waits as a draft.
+- "Evet, böyle çıksın", on the drawing `api/application-access-drawings/app-new.html` (and JPG): 1 What connects (ready starting points), 2 Details and permissions (the permission picker with its bulk buttons), 3 Connect (the keys and the guide).
+- Binds: the New application sheet as drawn (#10745, #10826; `api/application-access-new-sheet.md`).
 - Not chosen: "Hayır, baştan çiz".
 
 ## Is Edit application a drawer with three tabs? (owner, 2026-11-20, agent channel poll 189, channel message 10736)
-- "Evet, böyle çıksın", on the drawing `plans/app-access-redraw/app-edit.html` (and JPG): A General, B Connect (a guide for each way to connect, Claude Console among them), C Agent (the agent and its channels in one place).
-- Binds: AA3 and AA5 build the drawer as drawn.
+- "Evet, böyle çıksın", on the drawing `api/application-access-drawings/app-edit.html` (and JPG): A General, B Connect (a guide for each way to connect, Claude Console among them), C Agent (the agent and its channels in one place).
+- Binds: the edit drawer as drawn (#10884, #11072; `api/application-access-drawer-guides.md`).
 - Not chosen: "Hayır, baştan çiz".
 
 ## Is Assistants and agents gathered as drawn? (owner, 2026-11-20, agent channel poll 190, channel message 10740)

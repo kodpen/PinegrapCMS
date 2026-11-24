@@ -11,7 +11,7 @@ description: Hand-over note of the architect session that stopped on 2026-11-22 
 - Add-on hooks: AH2, the design note from the census (`plans/addon-hook-system-steps.md`), is not written. It goes to him as a question with its picture.
 - System tools: he wrote that tools are missing under the menu row (message 12156) and named none when asked (poll 220). The menu lists the screen's 19 tools; nothing to do until he names one.
 - The lists' look: the All Orders drawing he accepted shows 14 px rows, quiet row actions and a checkbox per row; every list draws 16 px rows and boxed Action buttons from the list table driver. Told to him in the architect's window, not asked: a question for him before any plan, since it changes every list.
-- Claude Console: the set-up steps of `plans/app-access-redraw-console.md` were given to him in the architect's window on 2026-11-22 (AA7a landed, #10867). AA7b, the guide, is not built; AA8 closes that plan only after his try on dev.
+- Claude Console: the set-up steps were given to him in the architect's window on 2026-11-22; the guide is on Application Access's Connect tab since #11203 (`api/application-access-console-guide.md`). His try on dev with a Console agent is not recorded.
 
 ## What was written on 2026-11-23, with development still paused?
 - In the architect's window the owner asked for four plans, each a 6: `plans/plan-state-channel.md` (PS1 and PS2 can start at once), `plans/channel-notes-own.md`, `plans/channel-share-links.md` (its SL5 after CN1) and `plans/agent-memory-search.md`, held until he opens it. The schema of the first three is decided (`decisions-made-schema-48.md`).

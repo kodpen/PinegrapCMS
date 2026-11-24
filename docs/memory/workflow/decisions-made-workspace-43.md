@@ -11,7 +11,7 @@ description: Decisions made, workspace part 43 (2026-11-20 on): a Claude Console
 - The site keeps no Anthropic API key and calls no Anthropic address; no third door form is added beside waiting and the push door.
 - Not chosen: the site waking the session itself through Anthropic's API with an Anthropic key kept on the site.
 - Why it was asked: the research agent's reading (#10731) found that a Console session is started or woken only through Anthropic's API; nothing calls in.
-- Built by plan app-access-redraw, step AA7 (`plans/app-access-redraw-console.md`).
+- Built in #10867 and #11203 (`api/application-access-console-guide.md`, `api/mcp-agent-own-tools.md`).
 
 ## Which agents does @herkes wake in a discussion? (owner, 2026-11-20, agent channel poll 184, channel message 10624)
 - "Eklenenler uyansın, ipucu ve toplu ekleme gelsin": the rule stays. In a discussion `@herkes` wakes only the discussion's own agents; the channel's other agents answer there when named (`workspace/workspace-everyone-mention.md`).

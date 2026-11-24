@@ -14,6 +14,7 @@ description: User documentation on pinegrap.com: the 31 pages by address, the PR
 - How it is known: the rounds of 2026-10-13 to 2026-10-17 went through the merged PRs in order, and the pages hold #484, #486, #487, #489, #495, #499 and #500.
 - Three pages were added in the 2026.11.0 round (2026-11-23) and hold only 2026.11.0 subjects: `/artifact-canvas` (under Files in the Docs menu), `/visual-page-editor-cont` and `/templates` (under Visual Page Editor).
 - Everything merged after #500 belongs to the open version 2026.11.0 (`release/release-status.md`); its round is plan `plans/user-docs-2026-11.md`. Its `[NEW]` features are on the pages since 2026-11-23 (noted "Available from 2026.11.0"); a page's mark stays #500 until its smaller changes are checked.
+- Application Access was redrawn in 2026.11.0 (#10745 to #11203): `/api`'s section on it is written from `api/application-access-overview.md`, and its mark stays #500 until then.
 - What each page covers and the memory it is written from: `user-docs-coverage-content.md`, `user-docs-coverage-modules.md`. A page's sections that a screen links to are its rows in `pinegrap/get_help_url.php`; the ones a page lacks: `user-docs-help-anchors.md`.
 
 ## How does a mark move?

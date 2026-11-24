@@ -10,8 +10,9 @@ description: Settings pages outside the Site Settings dialog in look A (S6b): Ap
 ## What changed on Application Access?
 - Card titles are `h2.card-header.bg-reset.border-0.pg-title-section`, no icon; a card's side note `pg-text-2`.
 - Summary is `dl.pg-kv` (`look-kv-list.md`); Errors in 24 hours keeps `fg-danger` on its `dd`.
-- Row and drawer buttons are `pg-button pg-button-quiet pg-button-sm`; Remove, Delete, Yes, delete and a device's revoke `pg-button-danger pg-button-sm`. The drawer's Save, New Application's Create and step 3's Close are the view's one `pg-button-fill`, its Cancel `pg-button-quiet`.
+- Row and drawer buttons are `pg-button pg-button-quiet pg-button-sm`; Remove, Delete, Yes, delete and a device's revoke `pg-button-danger pg-button-sm`. The drawer's Save, New application's Create and step 3's Close are the view's one `pg-button-fill`, its Cancel `pg-button-quiet`.
 - `api_settings_copy_button()` takes the whole class list; its Bootstrap fallback went.
+- Redrawn in 2026.11.0: `api/application-access-overview.md`.
 - The drawer's tabs are `div.pg-seg.pg-list-seg[role=tablist]` > `button.pg-seg-item` with Bootstrap's `data-bs-toggle="tab"`, which moves `aria-selected` (the thumb). The script hides Devices / Webhook events on the buttons (`d_devices_label`, `d_hooks_label`); on a phone the row scrolls sideways.
 - Labels are `form-label pg-field-label` (the sheets' upper-case labels too). The sheet's backdrop is `var(--pg-scrim)`.
 - The screen's `<style>` block: every text size a type token (10 to 11 px to `--pg-text-count`, 11.5 to 12.5 px to `--pg-text-meta`, 13 px to `--pg-text-2`), weights 500 / 600 / 700 to `--pg-weight-medium` / `-strong`. The list head is 12 px weight 550 without capitals and keeps the second text colour (`tests/api_screens_contrast_test.php`).
@@ -30,7 +31,7 @@ description: Settings pages outside the Site Settings dialog in look A (S6b): Ap
 
 ## What stayed?
 - The status columns' `top:3.3rem` sticky offset, the drawer's `min(760px,100%)` width, the pairing card's 520 px cap and the QR code's white box: no token names them.
-- The permission rows' Read / Write control (`.api-seg`, Bootstrap `btn-check` with the `implied` state) and the New Application kind cards' labels: only their sizes moved to tokens.
+- The permission rows' control is a `pg-seg` radio group since #10826 (`api/application-access-permission-picker.md`), `.pg-start` cards since #10745.
 - The plug glyph's size on a connection card (an icon outside a tile, `look-sheet-silent.md`).
 
 ## What was not seen in the panel?
