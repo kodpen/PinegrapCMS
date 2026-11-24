@@ -26,7 +26,7 @@ description: Incoming e-mail pinned to a person's own main menu (IM1, #10408): t
 - `messages_mail.php` lights row 27 when it is built, row 9 otherwise. Communication keeps its row, its panel entry and the tab.
 
 ## What is its icon?
-- `pg_menu_icon('mail')`: an envelope with a letter coming out of it; the letter in the second colour (`--pg-mi-sky`), the pocket's front opaque. On hover the letter comes up 3px (`.pg-mi-sheet`, in the reduced-motion block of `backend.src.css`).
+- `pg_menu_icon('mail')`: an inbox tray in the untitled block's blue, on its tile; on hover the arrow drops into the tray (`main-menu-icon-rows.md`, `main-menu-icon-motion.md`).
 
 ## Tests?
 - `tests/mail_menu_pin_test.php`; the untitled slots also in `tests/automation_flows_menu_test.php`. The step was not run on a database in the PR; it is idempotent by `install_add_column()`.

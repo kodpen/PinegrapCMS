@@ -5,7 +5,7 @@ description: Main menu row 21, Page Design Studio: its Other entry holding the o
 
 ## What is in row 21?
 - Titled Page Design Studio (slot 21, the only row under Design, #8987). Its panel keeps the studio's own entries for role < 2, then a divider and Other (`bi-three-dots`, a chevron), last.
-- Other opens a second-level panel, `menu_panel_21_other` (`pg_menu_other_markup()`, pure, `includes/fn/output.php`; `tests/menu_panel_test.php`), shut until opened: the former Page Styles row's entries in their order (Page Styles, Themes, Design Files, Find and Replace, Mass Edit, Menus, the region lists), then Ads and Create Ad after a divider. Back goes up to row 21's panel, as in System tools.
+- Other opens a second-level panel, `menu_panel_21_other` (`pg_menu_other_markup()`, pure, `includes/fn/output.php`; `tests/menu_panel_test.php`), shut until opened: the former Page Styles row's entries in their order (Page Styles, Themes, Design Files, Find and Replace, Mass Edit, Menus, the region lists), then Ads and Create Ad after a divider. Back goes up to row 21's panel.
 
 ## Who gets row 21 and Other?
 - Each entry keeps its gate (`main-menu-entry-gates.md`): the studio's entries and Other's design entries role < 2; Ads `ADS === true` and (role < 3 or an ad region the user may edit). Other is drawn only when one of its entries is there; row 21 when role < 2 or Other is.
