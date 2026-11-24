@@ -578,12 +578,70 @@ function pg_pack_close_short(array $address, $user_id)
 }
 
 /**
+ * The units of a product that the addresses of paid orders waiting to be
+ * sent hold, one row per address: what each line took from the stock at
+ * completion (stock_taken; the line's quantity when not recorded), a
+ * bundle's components included. Orders as pg_pick_waiting_addresses()
+ * reads them; an address with a parcel number or a unit shipped holds
+ * nothing, as its units are off the shelf.
+ *
+ * @param int $product_id
+ * @return array rows: 'ship_to_id', 'location_id' (pg_pick_location_of()),
+ *               'units'
+ */
+function pg_pack_held_rows($product_id)
+{
+    $product_id = (int) $product_id;
+    $line_taken = pg_schema_has('order_items', 'stock_taken') ? 'COALESCE(order_items.stock_taken, order_items.quantity)' : 'order_items.quantity';
+    $waiting = "orders.status IN ('complete', 'exported')
+            AND orders.paid_at > 0
+            AND orders.order_date >= '" . (time() - PG_PICK_WAITING_DAYS * 86400) . "'
+            AND NOT EXISTS (SELECT 1 FROM shipping_tracking_numbers AS tracking WHERE tracking.ship_to_id = ship_tos.id)
+            AND NOT EXISTS (SELECT 1 FROM order_items AS sent WHERE sent.ship_to_id = ship_tos.id AND sent.shipped_quantity > 0)" . pg_order_item_active_sql();
+    $sql = "SELECT ship_tos.id AS ship_to_id, orders.stock_location_id, " . $line_taken . " AS units
+        FROM order_items
+        INNER JOIN ship_tos ON ship_tos.id = order_items.ship_to_id
+        INNER JOIN orders ON orders.id = order_items.order_id
+        WHERE order_items.product_id = '" . $product_id . "' AND " . $waiting;
+
+    if (pg_schema_has('order_item_components', 'stock_taken')) {
+        $sql .= "
+        UNION ALL
+        SELECT ship_tos.id AS ship_to_id, orders.stock_location_id,
+            COALESCE(order_item_components.stock_taken, order_item_components.quantity * order_items.quantity) AS units
+        FROM order_item_components
+        INNER JOIN order_items ON order_items.id = order_item_components.order_item_id
+        INNER JOIN ship_tos ON ship_tos.id = order_items.ship_to_id
+        INNER JOIN orders ON orders.id = order_items.order_id
+        WHERE order_item_components.product_id = '" . $product_id . "' AND " . $waiting;
+    }
+
+    $by_address = array();
+
+    foreach (db_items($sql) as $row) {
+        $id = (int) $row['ship_to_id'];
+
+        if (!isset($by_address[$id])) {
+            $by_address[$id] = array('ship_to_id' => $id, 'location_id' => pg_pick_location_of($row['stock_location_id']), 'units' => 0);
+        }
+
+        $by_address[$id]['units'] += max(0, (int) $row['units']);
+    }
+
+    return array_values($by_address);
+}
+
+/**
  * What follows a pack closed short: the counts the packer set, one audit
- * line, staff told (pack_short, once a day) and order.pack_short.
+ * line, staff told (pack_short, once a day) and order.pack_short. A count
+ * is the units found on the shelf less those that paid orders waiting to
+ * be sent hold at the location (pg_pack_count_after()), so their units do
+ * not turn sellable again.
  *
  * @param array $address pg_pack_address()
  * @param array $pack    pg_pack_close_short()'s pack
  * @param array $fixes   pg_pack_count_fixes(): product_id => units found
+ *                       on the shelf
  * @param int   $user_id
  * @return array rows: 'tone' (teal, amber), 'text' (plain)
  */
@@ -592,9 +650,22 @@ function pg_pack_after_short(array $address, array $pack, array $fixes, $user_id
     $label = lang(array('string' => 'Order {var:1}', 'vars' => array($address['order_number'])));
     $rows = array();
 
-    foreach ($fixes as $product_id => $units) {
-        $set = pg_stock_set((int) $product_id, (int) $address['location_id'], (int) $units, 'count', (string) $address['order_number'],
-            array('user_id' => (int) $user_id, 'note' => lang('Counted at a short pick')));
+    $scanned = array();
+
+    foreach ($pack['lines'] as $line) {
+        $id = (int) $line['product_id'];
+        $scanned[$id] = (isset($scanned[$id]) ? $scanned[$id] : 0) + min(max(0, (int) $line['quantity']), max(0, (int) $line['scanned']));
+    }
+
+    $counted = array();
+
+    foreach ($fixes as $product_id => $shelf) {
+        $own_off = (isset($scanned[$product_id]) ? $scanned[$product_id] : 0) + (isset($pack['missing'][$product_id]) ? (int) $pack['missing'][$product_id] : 0);
+        $held = pg_pack_held_units(pg_pack_held_rows((int) $product_id), (int) $address['location_id'], (int) $address['ship_to_id'], $own_off);
+        $units = pg_pack_count_after((int) $shelf, $held);
+        $counted[$product_id] = array('shelf' => (int) $shelf, 'held' => $held, 'count' => $units);
+        $set = pg_stock_set((int) $product_id, (int) $address['location_id'], $units, 'count', (string) $address['order_number'],
+            array('user_id' => (int) $user_id, 'note' => lang(array('string' => 'Counted at a short pick: {var:1} on the shelf, {var:2} held by orders waiting to be sent', 'vars' => array((int) $shelf, $held)))));
         $code = (string) db_value("SELECT name FROM products WHERE id = '" . (int) $product_id . "'");
 
         if (!empty($set['ok'])) {
@@ -612,7 +683,7 @@ function pg_pack_after_short(array $address, array $pack, array $fixes, $user_id
         'scanned' => (int) $pack['scanned'],
         'refused' => (int) $pack['refused'],
         'missing' => $pack['missing'],
-        'counted' => $fixes,
+        'counted' => $counted,
     ), $label);
 
     $missing = array_sum($pack['missing']);

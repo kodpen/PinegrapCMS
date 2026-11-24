@@ -8246,6 +8246,7 @@
     "The unbilled billable time between the two days, one line per task, the hours as the quantity. The draft is not issued.": "İki gün arasındaki faturalanmamış, faturalanabilir süre: görev başına bir satır, miktar saat olarak. Taslak kesilmez.",
     "The underground city of Derinkuyu": "Derinkuyu yeraltı şehri",
     "The unfinished restore of the backup {var:1} was discarded.": "{var:1} yedeğinin yarım kalmış geri yüklemesi silindi.",
+    "The units of orders waiting to be sent are taken off.": "Gönderilmeyi bekleyen siparişlerin adetleri düşülür.",
     "The units still on the shelf.": "Rafta kalan adet.",
     "The university quarter and the northern avenues": "Üniversite semti ve kuzeydeki caddeler",
     "The up-sell message can be at most 255 characters long.": "Yukarı satış mesajı en fazla 255 karakter olabilir.",
