@@ -6530,8 +6530,14 @@ function _render_content_html($props, $pad, $kids = '')
             // font, the inline style, the Attributes panel's entries, and
             // the Sizing panel's classes (in cssClass, _pg_content_sizing()).
             // The composing and the escaping are the helpers'.
-            $_obj_pos_v  = isset($props['objectPosition']) ? pg_designer_prop_text($props['objectPosition']) : '';
-            $extra_style = $_obj_pos_v !== '' ? 'object-position:' . $_obj_pos_v : '';
+            // The focus point (pg_focus_image_style()): one value is the
+            // object-position as typed; a value per screen size adds the
+            // custom properties and the pg-focus class.
+            $_focus_props = $props;
+            if (isset($_focus_props['objectPosition'])) $_focus_props['objectPosition'] = pg_designer_prop_text($_focus_props['objectPosition']);
+            $extra_style = pg_focus_image_style($_focus_props);
+            $_focus_cls  = pg_focus_image_class($_focus_props);
+            if ($_focus_cls !== '') $cls .= ($cls ? ' ' : '') . $_focus_cls;
             $obj_pos     = _compose_inline_style($props, $extra_style, $_in_ratio ? '' : implode(';', $_sizing));
             $img_extra   = _render_extra_attrs($props, array('src', 'alt', 'width', 'height', 'onerror'), true);
 
