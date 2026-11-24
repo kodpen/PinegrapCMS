@@ -983,6 +983,63 @@ function getPublicRootFolderId()
     return 0;
 }
 
+/**
+ * The folders whose files every visitor opens: public by their own type or
+ * by the first type set up their parent chain, and not in the Recycle Bin.
+ * The same answer get_access_control_type() gives per folder; a folder that
+ * inherits keeps '' in its own column, so a test on that column alone leaves
+ * it out, and a public folder moved into the bin keeps 'public' there. Pure.
+ *
+ * @param array $rows   folder_id => folder_parent, folder_access_control_type
+ * @param int   $bin_id the Recycle Bin folder, 0 for none
+ * @return int[]
+ */
+function pg_folder_public_ids($rows, $bin_id)
+{
+    $ids = array();
+
+    foreach ((array) $rows as $folder_id => $row) {
+        if (pg_folder_access_resolve($rows, $folder_id, (int) $bin_id) === 'public') {
+            $ids[] = (int) $folder_id;
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The SQL condition on `files` for a file every visitor opens, from the
+ * folders pg_folder_public_ids() names: in one of them, and not a form or
+ * comment upload (attachment = 1), which get_file.php opens only to people
+ * who may see its record. Pure.
+ *
+ * @param array $folder_ids
+ * @return string
+ */
+function pg_files_public_sql_for($folder_ids)
+{
+    $ids = array();
+
+    foreach ((array) $folder_ids as $id) {
+        $ids[] = (int) $id;
+    }
+
+    return ($ids ? "(files.folder IN (" . implode(', ', $ids) . "))" : "(1 = 0)") . " AND (files.attachment = '0')";
+}
+
+/**
+ * pg_files_public_sql_for() over this site's folder tree, read once per
+ * request (pg_folder_access_tree()).
+ *
+ * @return string
+ */
+function pg_files_public_sql()
+{
+    $tree = pg_folder_access_tree();
+
+    return pg_files_public_sql_for(pg_folder_public_ids($tree['rows'], $tree['bin']));
+}
+
 /* ---------------------------------------------------------------------------
  * Image processing
  *
