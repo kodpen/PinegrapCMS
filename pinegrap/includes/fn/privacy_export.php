@@ -59,6 +59,7 @@ function pg_privacy_export_sections()
         'signatures'         => lang('Signatures'),
         'applications'       => lang('Applications'),
         'comments'           => lang('Comments and reviews'),
+        'prototype_reviews'  => lang('Prototype approvals'),
         'watchers'           => lang('Watched items'),
         'wishlist'           => lang('Favourites'),
         'stock_notify'       => lang('Back-in-stock requests'),
@@ -1061,6 +1062,23 @@ function pg_privacy_export_collect(array $found)
     ));
 
     $sections['comments'] = _pg_privacy_export_select("SELECT * FROM comments WHERE " . $comment_where . " ORDER BY id", ($comment_where !== '') ? array(1) : array());
+
+    // The prototype links naming the person as their approver, one row per
+    // verdict given on them (or one for a link without any), with the
+    // design's name. The link's token, hint and password are left out, and
+    // so are the node fingerprints, which hold no personal data.
+    if (pg_proto_approval_ready()) {
+        $sections['prototype_reviews'] = _pg_privacy_export_select(
+            "SELECT l.id AS link_id, s.style_name AS design, l.approver_name, l.approver_email, l.answer_by, l.created_at AS link_created_at, l.expires_at,
+                v.page_id, v.verdict, v.author_name, v.note, v.fingerprint, v.created_at
+            FROM prototype_links AS l
+            LEFT JOIN prototype_verdicts AS v ON v.link_id = l.id
+            LEFT JOIN style AS s ON s.style_id = l.style_id
+            WHERE " . _pg_privacy_export_in('l.approver_email', $emails) . "
+            ORDER BY l.id, v.id",
+            $emails
+        );
+    }
 
     $watch_where = _pg_privacy_export_any(array(
         _pg_privacy_export_in('user_id', $user_ids),

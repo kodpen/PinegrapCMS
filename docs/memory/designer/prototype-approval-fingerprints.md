@@ -5,7 +5,7 @@ module: prototype_approval
 ---
 
 ## Where are the rules?
-- `includes/fn/prototype_approval.php`, pure (no database, no request), tested by `tests/prototype_approval_test.php`. The store (`prototype_verdicts`, the link's approval columns) comes with PA1b of `plans/prototype-approval-steps.md`; the column names there may differ from the row keys below (`verdict`, `fingerprint`, `page_id`, `created_at`, `id`).
+- `includes/fn/prototype_approval.php`, pure (no database, no request), tested by `tests/prototype_approval_test.php`. The store (`prototype_verdicts`, the link's approval columns): `prototype-approval-store.md`; its columns carry the row keys below (`verdict`, `fingerprint`, `page_id`, `created_at`, `id`).
 
 ## What is the draft's fingerprint?
 - `pg_proto_draft_fingerprint($tree_json, $settings)`: sha1 (40 hex, the `page_revisions.tree_hash` shape) over sha1 of the stored tree JSON and the settings a revision records (`pg_page_revision_settings_from_row()`) in key order. `pg_proto_draft_fingerprint_of_row($row)` reads both from a page row.

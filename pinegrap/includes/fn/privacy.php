@@ -931,6 +931,18 @@ function pg_privacy_erase_tables()
             'author_name' => '{name}',
             'user_id'     => 0,
         )),
+        // A verdict on a prototype link that names the person as its approver
+        // stays with the design, sealed to its draft, without the name typed
+        // or the note; then the link no longer names the approver, so no
+        // mail of the review goes to the address.
+        'prototype_verdicts' => array('find' => array('link_id' => 'prototype_link_ids'), 'action' => 'anonymise', 'fields' => array(
+            'author_name' => '{name}',
+            'note'        => '',
+        )),
+        'prototype_link_approvers' => array('table' => 'prototype_links', 'find' => array('approver_email' => 'emails'), 'action' => 'anonymise', 'fields' => array(
+            'approver_name'  => '',
+            'approver_email' => '',
+        )),
         // What a Fediverse account sent goes whole, as a block or a Delete
         // of the account removes it (_pg_privacy_erase_apply_remote_comments()).
         'remote_comments' => array('table' => 'comments', 'find' => array('remote_actor' => 'actors'), 'action' => 'delete', 'fields' => array()),
@@ -1156,6 +1168,8 @@ function pg_privacy_erase_labels()
         'erp_waybills'                 => lang('Waybills'),
         'comments'                     => lang('Comments and reviews'),
         'prototype_comments'           => lang('Prototype comment answers'),
+        'prototype_verdicts'           => lang('Prototype approvals'),
+        'prototype_link_approvers'     => lang('Prototype approvers'),
         'remote_comments'              => lang('Fediverse comments'),
         'consent_log'                  => lang('Consents'),
         'ws_approval_guests'           => lang('Workspace approvals'),
@@ -1346,6 +1360,7 @@ function pg_privacy_erase_scope(array $found)
         'feedback_hashes'  => array(),
         'volunteer_ids'    => array(),
         'ad_conversion_ids' => array(),
+        'prototype_link_ids' => array(),
         'customer_keys'    => pg_privacy_customer_keys($person['emails'], $person['contact_ids']),
     );
 
@@ -1429,6 +1444,11 @@ function pg_privacy_erase_scope(array $found)
         if ($where !== '') {
             $scope['conversation_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM chat_conversations WHERE (channel = 'site') AND " . $where));
         }
+    }
+
+    // The prototype links naming the person as their approver, by address.
+    if ($scope['emails'] && pg_schema_has('prototype_links', 'approver_email')) {
+        $scope['prototype_link_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM prototype_links WHERE " . _pg_privacy_export_in('approver_email', $scope['emails'])));
     }
 
     // The person's volunteer profiles, by their contacts.
