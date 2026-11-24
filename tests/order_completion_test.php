@@ -97,7 +97,7 @@ function test_order_completion_tail_writes_in_order()
 		'order number unlocked' => array('UNLOCK TABLES'),
 		'order number written' => array('SET order_number = ?'),
 		'legal documents kept' => array('pg_legal_documents_store('),
-		'order.created queued' => array("api_webhook_enqueue('order.created'"),
+		'order.created queued' => array("pg_announce('order.created'"),
 		'order SMS queued' => array('pg_sms_order_received('),
 		'key code use' => array('"UPDATE key_codes'),
 		'gift card redemption' => array('"UPDATE gift_cards'),
@@ -164,7 +164,7 @@ function test_order_completion_number_written_once()
 	$tail = order_completion_test_tail();
 
 	pg_assert_same(1, substr_count($tail, 'LOCK TABLES next_order_number WRITE'), 'one order number per completion');
-	pg_assert_same(1, substr_count($tail, "api_webhook_enqueue('order.created'"), 'one order.created');
+	pg_assert_same(1, substr_count($tail, "pg_announce('order.created'"), 'one order.created');
 	pg_assert_same(1, substr_count($tail, 'pg_sms_order_received('), 'one order SMS');
 }
 

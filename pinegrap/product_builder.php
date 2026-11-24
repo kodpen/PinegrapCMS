@@ -2575,10 +2575,10 @@ function pg_pb_delete_product($product_id)
     // this line.
     require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
 
-    api_webhook_enqueue('product.deleted', array(
+    pg_announce('product.deleted', array(
         'id'   => $product_id,
         'name' => $pg_deleted_name
-    ));
+    ), array('listeners' => false));
 
     // Stored SEO structure findings. Guarded on the table existing, because
     // a product can be deleted on an installation that has not run the

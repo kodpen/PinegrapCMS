@@ -1787,7 +1787,7 @@ if ($liveform->check_form_errors() == false) {
         'contact_id'     => ((int) $contact_id > 0) ? (int) $contact_id : null
     );
 
-    api_webhook_enqueue('form.submitted', $form_submitted_event);
+    pg_announce('form.submitted', $form_submitted_event, array('listeners' => false));
 
     // The satisfaction surveys that follow this form (pg_announce() tells
     // them elsewhere; this event goes to the queue directly).

@@ -1017,10 +1017,10 @@ function api_customers_create($params) {
 
 	$row = api_row(api_customer_select() . " WHERE contacts.id = '" . $id . "' LIMIT 1");
 
-	api_webhook_enqueue('customer.created', array(
+	pg_announce('customer.created', array(
 		'id'    => $id,
 		'email' => isset($params['email']) ? trim((string)$params['email']) : ''
-	));
+	), array('listeners' => false));
 
 	api_ok(api_customer_present($row), 201);
 
@@ -1115,10 +1115,10 @@ function api_customers_update($params) {
 
 	$row = api_row(api_customer_select() . " WHERE contacts.id = '" . $id . "' LIMIT 1");
 
-	api_webhook_enqueue('customer.updated', array(
+	pg_announce('customer.updated', array(
 		'id'    => $id,
 		'email' => (string)$row['email_address']
-	));
+	), array('listeners' => false));
 
 	api_ok(api_customer_present($row));
 
@@ -1181,10 +1181,10 @@ function api_customers_delete($params) {
 		'vars'   => array($id, $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
-	api_webhook_enqueue('customer.deleted', array(
+	pg_announce('customer.deleted', array(
 		'id'    => $id,
 		'email' => (string)$existing['email_address']
-	));
+	), array('listeners' => false));
 
 	api_ok(array('id' => $id, 'deleted' => true));
 

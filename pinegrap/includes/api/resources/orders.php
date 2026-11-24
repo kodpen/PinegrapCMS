@@ -911,12 +911,12 @@ function api_orders_update($params) {
 	// so only the other status moves are reported here.
 	if (isset($params['status']) && $params['status'] !== 'cancelled' && $params['status'] !== $existing['status']) {
 
-		api_webhook_enqueue('order.status_changed', array(
+		pg_announce('order.status_changed', array(
 			'id'           => $id,
 			'order_number' => $row['order_number'],
 			'status'       => $params['status'],
 			'previous'     => $existing['status']
-		));
+		), array('listeners' => false));
 
 	}
 

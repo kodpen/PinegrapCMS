@@ -12295,12 +12295,12 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // own self-service, and the API all arrive here.
     require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
 
-    api_webhook_enqueue('order.cancelled', array(
+    pg_announce('order.cancelled', array(
         'id'            => $order_id,
         'order_number'  => $order['order_number'],
         'reason'        => $reason_clean,
         'refund_status' => $refund_status_outcome
-    ));
+    ), array('listeners' => false));
 
     return array(
         'status'        => 'success',

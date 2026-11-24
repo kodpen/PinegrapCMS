@@ -28,12 +28,43 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
-function pg_announce($event, $data = array())
+// The one door every announced moment goes through: the Workspace record, the
+// in-process listeners and the webhook queue. $options['listeners'] = false
+// records and queues the event without the in-process listeners: the API
+// resources, the order paths and the ERP module announce that way. Returns the
+// rows queued (one per subscription).
+function pg_announce($event, $data = array(), $options = array())
 {
     // The workspace hears about it first, and whether or not the API is here:
     // a site with no webhooks still wants the new order in its channel.
     pg_event_record($event, (array) $data);
 
+    if (!isset($options['listeners']) || $options['listeners']) {
+        pg_announce_listeners($event, $data);
+    }
+
+    if (!function_exists('api_webhook_enqueue')) {
+
+        $file = PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php';
+
+        if (!file_exists($file)) {
+            return 0;
+        }
+
+        require_once($file);
+    }
+
+    if (!function_exists('api_webhook_enqueue')) {
+        return 0;
+    }
+
+    // Recorded above already: the queue must not hold the event twice.
+    return (int) api_webhook_enqueue($event, (array) $data, true);
+}
+
+// What runs in this request when something is announced.
+function pg_announce_listeners($event, $data)
+{
     // A changed page, product, product group or file makes every page the
     // page cache keeps old once the request ends, whoever made the change
     // (the panel, the API, the MCP server, the workspace).
@@ -72,24 +103,6 @@ function pg_announce($event, $data = array())
     if (function_exists('pg_notify_announced')) {
         pg_notify_announced($event, (array) $data);
     }
-
-    if (!function_exists('api_webhook_enqueue')) {
-
-        $file = PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php';
-
-        if (!file_exists($file)) {
-            return;
-        }
-
-        require_once($file);
-    }
-
-    if (!function_exists('api_webhook_enqueue')) {
-        return;
-    }
-
-    // Recorded above already: the queue must not hold the event twice.
-    api_webhook_enqueue($event, (array) $data, true);
 }
 
 // What customer.consent_changed carries for a consent_log row, or null when

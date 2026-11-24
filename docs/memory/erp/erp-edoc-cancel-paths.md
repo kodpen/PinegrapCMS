@@ -18,7 +18,7 @@ A consumer who is not a taxpayer cannot issue an invoice; the return document co
 - `erp_invoices.earchive_cancel_deadline` (2026.4.4) was meant for a remaining-days counter that shows the operator which path applies; nothing writes or reads it yet. The Paraşüt driver asks the provider's `cancellable_until` instead (`erp-parasut-driver.md`).
 
 ## Where does ERP code hook order cancellation?
-- `process_order_cancellation()` (`includes/fn/ecommerce.php`) has no hook system; its only announcement is `api_webhook_enqueue('order.cancelled', …)`. ERP code goes right next to it, in the same order.
+- `process_order_cancellation()` (`includes/fn/ecommerce.php`) has no hook system; its only announcement is `pg_announce('order.cancelled', …, array('listeners' => false))`. ERP code goes right next to it, in the same order.
 
 ## When is the e-document work (phase 3) accepted?
 - A taxpayer's tax number gets an e-invoice, others an e-archive; a taxpayer with a TCKN gets an e-invoice too.

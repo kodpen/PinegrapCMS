@@ -7,7 +7,7 @@ description: ERP events a flow can start on (PR #7428): invoices, receipts, inco
 - `erp.invoice.created`, `.paid`, `.overdue`, `.edoc_changed` (the invoice's e-document answered: sent, accepted or rejected), `erp.receipt.created`, `erp.edoc.received`, `erp.quote.accepted`, `.rejected`. In `pg_event_workspace_events()`, `ws_events_catalog()` (only with `ERP_ENABLED`) and `ws_flow_event_outputs()`. Every other ERP event stays a webhook only.
 
 ## How do they reach the Workspace?
-- `erp_event()` (includes/erp/events.php) calls `pg_event_record()` itself, then `api_webhook_enqueue(..., true)` so the queue does not keep it twice; it reaches the Workspace even where the API's webhook file is missing.
+- `erp_event()` (includes/erp/events.php) hands it to `pg_announce(..., array('listeners' => false))`, which records it once and then queues it; it reaches the Workspace even where the API's webhook file is missing.
 
 ## Which are new, and where are they announced?
 - `erp.invoice.overdue`: `erp_overdue_check()` (includes/erp/notify.php), for each sales invoice the overdue digest lists for the first time, after the `overdue_notified_at` stamp; carries `days_overdue`. Only while the overdue reminders are on (`erp_overdue_notify_enabled()`): there is no other first-overdue stamp, and adding one is a schema change.

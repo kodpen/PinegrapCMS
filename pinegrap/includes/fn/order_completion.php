@@ -952,10 +952,10 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // holds up the customer.
     require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
 
-    api_webhook_enqueue('order.created', array(
+    pg_announce('order.created', array(
         'id'           => $order_id,
         'order_number' => $order_number
-    ));
+    ), array('listeners' => false));
 
     // The customer's text and WhatsApp messages, when the store sends them:
     // only queued, so neither provider is waited on here.
