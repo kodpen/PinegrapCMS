@@ -45,11 +45,13 @@
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
 - bug-hunt-areas-comments-reviews.md: Bug hunt 23, page comments and product reviews (2026-11-24): links in a comment's text, a deleted page's comment notifications, the deleted product finding, what read clean
 - bug-hunt-areas-connections-merges.md: The bug hunt in Connections after the CX11 merges (area connections-merges): Claude's, the chat services' and the MCP connectors' pages; the faults fixed and what was read clean
+- bug-hunt-areas-cookie-consent.md: The bug hunt of the cookie notice (area 46, 2026-11-24): the four faults fixed, what was read clean, what is no fault, the embedded-video question left for the architect
 - bug-hunt-areas-coupons-discounts.md: The bug hunt of coupons and discounts (area 31, 2026-11-24): offer dates, usage limits under two checkouts, a gift of a deleted product; what it fixed, what was read clean
 - bug-hunt-areas-csv-import-export.md: The bug hunt of the panel's CSV imports and exports (area 27, 2026-11-24): the four faults fixed, what was read clean, what was not run
 - bug-hunt-areas-customer-accounts-addresses.md: Bug hunt area 37, the shop customer's account (2026-11-24): address book, order history ownership, guest orders, erasure; what was fixed, the issue opened, what read clean
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
+- bug-hunt-areas-image-pipeline.md: The bug hunt of the image pipeline (2026-11-24, #11449): the two faults fixed, the finding left for a decision, what was read clean
 - bug-hunt-areas-lead-scoring.md: Bug hunt of lead scoring (LJ1 to LJ4c), named by the architect in the agent channel: what was read, the three faults fixed, what was found clean
 - bug-hunt-areas-mail-api-reading.md: Bug hunt of Workspace e-mail read and drafted over the API and MCP (MT1-MT6, #11367): the three faults fixed, what was read clean, what was left as it is
 - bug-hunt-areas-mail-campaigns.md: Bug hunt of bulk e-mail campaigns and their lists (area 25) (#11402): the three faults fixed, what was read clean, what was left as a decision question
@@ -78,6 +80,7 @@
 - bug-hunt-areas-scheduled-tasks.md: The bug hunt in the scheduled tasks (area 19, #11394): the cron entry and its jobs, what was fixed, what was read clean, what is left
 - bug-hunt-areas-settings-save.md: The owner's backend sweep of 2026-11-22: every Site Settings pane saved unchanged on the sandbox; what an unchanged save rewrites and why that is no fault; the one fault it found
 - bug-hunt-areas-shipping-rates.md: The bug hunt of shipping rates (area 34, 2026-11-24): zones, base rate bands, free shipping offers, a method for an address it does not serve; three faults fixed, what was read clean
+- bug-hunt-areas-site-forms-builder.md: The bug hunt of building a form in the panel (area 44, 2026-11-24, #11453): the five faults fixed, what was read clean, what was not run
 - bug-hunt-areas-site-search.md: Bug hunt of the visitor site search (area 20, 2026-11-24): four faults fixed in the hunt's PR, what was read clean, and the noindex question left as it is
 - bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean [decision: decisions-made-product-19.md]
 - bug-hunt-areas-subscriptions-recurring.md: The bug hunt of subscriptions and recurring orders (area 33, 2026-11-24): renewals, retries, pause and cancel dates, price changes, card tokens, mails; what it fixed, what was read clean

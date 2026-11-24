@@ -88,6 +88,7 @@
 - calls-leave-page.md: Leaving the Workspace during a call (CN3): links that leave the page open in a new tab, a reload or a close asks first [decision: here]
 - calls-lines.md: A Workspace call's channel lines (CL7, #11125): started, ended with length and who took part, missed or declined in a conversation of two; system lines, never to an agent
 - calls-overview.md: Start here for Workspace voice and video calls (plan CL1-CL8, closed with #11156): what is built, the rules every change keeps, which file answers what [decision: decisions-made-workspace-40.md]
+- calls-popout.md: The Workspace call's Pop out (CN5): the call window moved into a Document Picture-in-Picture window above other windows and tabs, what it keeps, how it comes back
 - calls-screen.md: Workspace calls of two people on the channel screen (CL2, #10522): head buttons, the ring and Decline, the call window kept across channels, ws_call_sync each second, STUN default
 - calls-server.md: Workspace calls on the server (CL1, #10499, step 11.0.243): tables, start/join/leave/end, signals read by their member only, the 2-minute end, who may, limits, read-only API [decision: decisions-made-schema-29.md]
 - calls-settings.md: The Calls card of Workspace settings (CL6, #10608): off until turned on, STUN addresses, the TURN relay with its sealed secret, member-only time-limited credentials, the browser's connection test
