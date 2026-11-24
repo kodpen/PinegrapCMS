@@ -1159,6 +1159,65 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'volunteer.programmes',
+			'method'  => 'GET',
+			'path'    => '/volunteer/programmes',
+			'scope'   => 'customers:read',
+			'handler' => 'api_volunteer_programmes',
+			'returns' => array('list' => 'VolunteerProgramme'),
+			'summary' => 'Volunteer programmes',
+			'description' => 'The volunteer programmes of Contacts > Volunteers, by id, cursor paged: name, state (open or paused), the application form, the roles with the skills, courses and document kinds each needs, the sign-up rules, the call settings, the coordinators and how many volunteers are applied, active and paused. Read only.',
+			'details' => 'roles lists key (what a shift and a sign-up name), name, skills, course_ids (trainings to have completed) and documents (the kinds of document needed). cutoff_hours is how long before a shift a volunteer may still cancel; swap_approval says whether a coordinator approves a place taken from another volunteer; call_days is how many days before a short shift volunteers are asked, by call_channels (email, sms, whatsapp). An account with the user role lists only the programmes it coordinates (coordinator_ids). Documents and messages are never given. Before the update with volunteer tables the list is empty. Events: volunteer.applied, volunteer.approved.',
+			'params'  => array(
+				array('name' => 'state',  'in' => 'query', 'type' => 'enum', 'values' => array('open', 'paused', 'all'), 'default' => 'all'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'volunteer.shifts',
+			'method'  => 'GET',
+			'path'    => '/volunteer/shifts',
+			'scope'   => 'customers:read',
+			'handler' => 'api_volunteer_shifts',
+			'returns' => array('list' => 'VolunteerShift'),
+			'summary' => 'Volunteer shifts with their places per role',
+			'description' => 'The shifts of the volunteer programmes, earliest first, cursor paged, from today unless from is sent: place, start and end, note, the weekly series, and per role the places, how many are signed up and waiting. needed is the places still free; called is how many volunteers the unfilled-shift call asked. Read only.',
+			'details' => 'from and to are days of the site (YYYY-MM-DD), both included, compared with the shift\'s start. start_at and end_at are UTC. A shift of a weekly series carries the first shift\'s id in series_id. The names of the volunteers are not given. An account with the user role reads only the programmes it coordinates; another programme_id answers 404. Events: shift.signed_up, shift.unfilled.',
+			'params'  => array(
+				array('name' => 'programme_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the shifts of this programme.'),
+				array('name' => 'from',   'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The first day, YYYY-MM-DD; defaults to today.'),
+				array('name' => 'to',     'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The last day, YYYY-MM-DD.'),
+				array('name' => 'place',  'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only the shifts at this place.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'volunteer.hours',
+			'method'  => 'GET',
+			'path'    => '/volunteer/hours',
+			'scope'   => 'customers:read',
+			'handler' => 'api_volunteer_hours',
+			'returns' => array('list' => 'VolunteerHours'),
+			'summary' => 'Volunteer hours',
+			'description' => 'The hours volunteers worked, newest first, cursor paged: a shift once checked in, or hours entered outside a shift. status approved (the default), pending (waiting for a coordinator) or all. Each carries the programme, volunteer, contact, shift, role, place, day, check-in and check-out, minutes and who approved them. Read only.',
+			'details' => 'minutes is what was approved; for a pending row it is what would count now (check-in to check-out, else the shift\'s length). Only approved hours count on the certificate and the report. day is the shift\'s or the entered day in the site\'s time; from and to (YYYY-MM-DD) filter by it. shift_id, role and place are null for hours outside a shift. An account with the user role reads only the programmes it coordinates; another programme_id answers 404. Event: volunteer.hours_approved, volunteer.checked_in.',
+			'params'  => array(
+				array('name' => 'programme_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the hours of this programme.'),
+				array('name' => 'volunteer_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the hours of this volunteer profile.'),
+				array('name' => 'contact_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the hours of this contact\'s volunteer profiles.'),
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('approved', 'pending', 'all'), 'default' => 'approved'),
+				array('name' => 'from',   'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The first day, YYYY-MM-DD.'),
+				array('name' => 'to',     'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'The last day, YYYY-MM-DD.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
 			'id'      => 'returns.get',
 			'method'  => 'GET',
 			'path'    => '/returns/{id}',

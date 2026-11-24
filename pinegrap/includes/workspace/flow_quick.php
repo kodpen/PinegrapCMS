@@ -79,6 +79,8 @@ function ws_flow_quick_areas()
         'bookings'      => $area(lang('Reservations'), 'bi-calendar-event', 'site', array('event:booking.created', 'event:booking.confirmed',
             'event:booking.rescheduled', 'event:booking.cancelled', 'event:booking.completed', 'event:calendar_event.reserved', 'event:ticket.checked_in',
             'event:queue.joined', 'event:queue.called', 'event:queue.served', 'event:queue.no_show')),
+        'volunteers'    => $area(lang('Volunteers'), 'bi-person-raised-hand', 'site', array('event:volunteer.applied', 'event:volunteer.approved',
+            'event:shift.signed_up', 'event:shift.unfilled', 'event:volunteer.checked_in', 'event:volunteer.hours_approved')),
         'products'      => $area(lang('Products and stock'), 'bi-box-seam', 'site', array('event:stock.low', 'event:inventory.changed')),
         'reviews'       => $area(lang('Reviews'), 'bi-star-half', 'site', array('event:product.review.created', 'event:feedback.received', 'event:feedback.detractor')),
         'subscriptions' => $area(lang('Subscriptions'), 'bi-arrow-repeat', 'site', array('event:subscription.renewed', 'event:subscription.failed',

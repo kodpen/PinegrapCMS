@@ -319,7 +319,13 @@ function pg_volunteer_check_write($signup_id, $step, $user_id, $now)
         return false;
     }
 
-    return $ok && (mysqli_affected_rows(db::$con) === 1);
+    $written = $ok && (mysqli_affected_rows(db::$con) === 1);
+
+    if ($written && ($step === 'check_in')) {
+        pg_volunteer_announce('volunteer.checked_in', (int) $signup_id);
+    }
+
+    return $written;
 }
 
 /**
@@ -457,6 +463,7 @@ function pg_volunteer_hours_approve($programme_id, array $ids, array $queue, $us
         if ($ok && (mysqli_affected_rows(db::$con) === 1)) {
             $done++;
             $volunteers[(int) $queue[$id]['volunteer_id']] = true;
+            pg_volunteer_announce('volunteer.hours_approved', $id);
         }
     }
 

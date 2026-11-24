@@ -31,7 +31,8 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 
 - VS7 (M) after VS6 (done, #11285): the hours certificate, the thank-you mails, the report and Excel; `core/volunteer-certificate.md`, `core/volunteer-report.md`. Features: G14, G15.
 
-- VS8 (S) after VS7: the six events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`); the API routes with their types, `php tools/check_api_schema.php`; the MCP tools. Features: G16.
+- VS8 (S) after VS7 (done, #11307): the six events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`); the API routes with their types, `php tools/check_api_schema.php`; the MCP tools. Features: G16.
+  - Built (#11307), `core/volunteer-events.md`, `api/api-volunteers.md`.
 
 - VS9 (S) close-out: every G number checked against the code with its PR; `core/volunteer-shifts.md` written; this plan's files deleted; the changelog `[NEW]` line named in its PR.
 

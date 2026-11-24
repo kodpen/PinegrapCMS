@@ -652,6 +652,7 @@ function pg_volunteer_application_record($page_id, $form_id, $contact_id)
             $programme['id'], (int) $contact_id, (int) $form_id, json_encode($values['skills'], JSON_UNESCAPED_UNICODE), json_encode((object) $values['hours']),
         ))) {
             $made++;
+            pg_volunteer_announce('volunteer.applied', (int) mysqli_insert_id(db::$con));
         }
     }
 
@@ -748,6 +749,10 @@ function pg_volunteer_move(array $programme, array $volunteer, $to, $user_id)
 
     if (!$ok || (mysqli_affected_rows(db::$con) < 1)) {
         return false;
+    }
+
+    if ($volunteer['state'] === 'applied') {
+        pg_volunteer_announce('volunteer.approved', (int) $volunteer['id']);
     }
 
     if (($volunteer['state'] === 'applied') && validate_email_address((string) $volunteer['email_address'])) {
