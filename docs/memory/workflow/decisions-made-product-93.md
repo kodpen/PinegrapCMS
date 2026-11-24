@@ -8,7 +8,7 @@ description: Decisions list, product part 93 (2026-11-20 on): plans from the own
 
 ## Should walk-in visitors take a number by QR, follow their place on the phone and be called to a desk? (owner, 2026-11-20, agent channel poll 201, channel message 10980)
 - "Evet, plana girsin": taking a number, remote join, the person's page, SMS and WhatsApp notices, desks, the measured estimate, report, events and API.
-- Not chosen: "Evet, önce yerinde sıra ve çağırma" (on-site queue and calling first), "Hayır, gerek yok". The plan: `plans/walk-in-queue.md`.
+- Not chosen: "Evet, önce yerinde sıra ve çağırma" (on-site queue and calling first), "Hayır, gerek yok". Built: `commerce/walk-in-queue.md`.
 
 ## Should a body run its volunteers by shifts: sign-up, waitlist, calls for an unfilled shift, check-in and hours? (owner, 2026-11-20, agent channel poll 202, channel message 11057)
 - "Evet, plana girsin": profile and documents, the shift board, sign-up and swaps, the unfilled-shift call, check-in on the spot, hours and the certificate, report, events and API.

@@ -31,4 +31,4 @@ module: walk_in_queue_store
 - Inventory line: identity and contact, customers and visitors, legitimate interest, retention `queue_keep` ("The queue place's keep period"), person column `contact_id`.
 - `pg_contact_holders()`: `move`, `find`. Places and desks name nobody and are in no list.
 
-Related: docs/memory/commerce/walk-in-queue-rules.md, docs/memory/plans/walk-in-queue.md
+Related: docs/memory/commerce/walk-in-queue-rules.md, docs/memory/commerce/walk-in-queue-decisions.md
