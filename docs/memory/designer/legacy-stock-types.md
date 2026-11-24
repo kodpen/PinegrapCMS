@@ -1,6 +1,6 @@
 ---
 name: legacy-stock-types
-description: Stock-layout page types in the move to the designer (LE5, #PR): type settings into the widget's layout, the settings no widget holds, the dry run naming them; the run's types step is LE5b
+description: Stock-layout page types in the move to the designer (LE5, #11270): type settings into the widget's layout, the settings no widget holds, the dry run naming them; the run's types step is LE5b
 module: layouts
 ---
 
