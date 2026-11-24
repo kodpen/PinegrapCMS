@@ -225,6 +225,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/waf_rescue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/price_history.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_revisions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_schedule.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_base_version.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/collections.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/record_revisions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/reviews.php');
