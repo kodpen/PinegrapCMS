@@ -212,7 +212,9 @@ function erp_late_fee_for_invoice($total, $due_date, $reductions, $after, $as_of
     }
 
     return array(
-        'fee' => (int) round($kurus_days * ((float) $rate) / 100 / 30),
+        // Percent a month over thirty days: the rate at three places
+        // (100000) times 30, the exact product rounded half away from zero.
+        'fee' => (int) erp_multiply_units($kurus_days, erp_decimal_units($rate, 3), 3000000),
         'days' => $days,
         'average' => (int) round($kurus_days / $days),
     );
