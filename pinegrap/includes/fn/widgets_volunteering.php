@@ -37,6 +37,10 @@ function pg_volunteer_page_site_classes()
         'quiet'  => 'btn btn-sm btn-outline-secondary',
         'fill'   => 'btn btn-sm btn-primary',
         'danger' => 'btn btn-sm btn-outline-danger',
+        'check'  => 'form-check form-switch mb-0',
+        'switch' => 'form-check-input',
+        'label'  => 'form-check-label',
+        'select' => 'form-select form-select-sm w-auto',
     );
 }
 

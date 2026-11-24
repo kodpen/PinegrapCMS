@@ -202,6 +202,31 @@ function pg_volunteer_shift_add_html(array $programme, $monday, array $post, $op
 }
 
 /**
+ * What the drawer says under Call volunteers. Pure.
+ *
+ * @param int  $to_call  volunteers it would ask
+ * @param bool $channels whether the programme has a call channel
+ * @param bool $in_hours whether now is inside the sending hours
+ * @return string
+ */
+function pg_volunteer_call_hint($to_call, $channels, $in_hours)
+{
+    if (!$channels) {
+        return lang('Calls are off: choose a channel under Set-up, Calls and reminders.');
+    }
+
+    if ((int) $to_call <= 0) {
+        return lang('Nobody to ask: every role is full, the shift is not within the call days, or everyone who fits was asked.');
+    }
+
+    if (!$in_hours) {
+        return lang(array('string' => 'Calls go out between 09:00 and 20:00: the {var:1} volunteers who fit are asked then without a press.', 'vars' => array((int) $to_call)));
+    }
+
+    return lang(array('string' => 'Asks {var:1} volunteers who fit, each by the channel they chose.', 'vars' => array((int) $to_call)));
+}
+
+/**
  * A shift's drawer: who signed up per role, the waitlist, Call volunteers
  * with how many it asks, Remove with how many are told.
  *
@@ -214,6 +239,8 @@ function pg_volunteer_shift_add_html(array $programme, $monday, array $post, $op
  */
 function pg_volunteer_shift_drawer_html(array $programme, array $shift, $to_call, $back, $now)
 {
+    $in_hours = pg_volunteer_send_hour($now);
+
     $roles = '';
 
     foreach ($shift['roles'] as $key => $count) {
@@ -245,9 +272,8 @@ function pg_volunteer_shift_drawer_html(array $programme, array $shift, $to_call
         $kept = $kept || ($signup['check_in'] !== null) || ((int) $signup['approved_at'] > 0);
     }
 
-    $call_hint = ($to_call > 0)
-        ? lang(array('string' => 'Asks {var:1} volunteers who fit by e-mail.', 'vars' => array($to_call)))
-        : lang('Nobody to ask: every role is full, the shift is not within the call days, or everyone who fits was asked.');
+    $call_hint = pg_volunteer_call_hint($to_call, (bool) $programme['call_channels'], $in_hours);
+    $to_call = ($programme['call_channels'] && $in_hours) ? $to_call : 0;
 
     return '
     <dialog class="drawer drawer-end" id="vs_shift" aria-labelledby="vs_shift_title" style="width:min(520px,100%);--pg-drawer-height:85vh" data-open="1">

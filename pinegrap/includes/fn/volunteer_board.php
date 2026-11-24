@@ -8,7 +8,8 @@
  * places filled, the board's days and places; then the store: the week's
  * shifts with their places filled, one shift with its sign-ups, adding,
  * copying, removing (telling who had signed up) and calling volunteers for
- * a short shift by e-mail. Loaded by that screen only.
+ * a short shift by their channels (volunteer_messages.php). Loaded by that
+ * screen and by the general job.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,6 +20,8 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_messages.php');
 
 // The most weeks one "Repeat weekly" adds: half a year.
 if (!defined('PG_VOLUNTEER_SERIES_WEEKS')) {
@@ -530,7 +533,7 @@ function pg_volunteer_call_people(array $programme, array $shift)
 {
     $people = array();
 
-    foreach ((array) db_items("SELECT volunteers.id, volunteers.contact_id, volunteers.state, volunteers.skills, volunteers.hours, volunteers.calls, contacts.first_name, contacts.email_address FROM volunteers
+    foreach ((array) db_items("SELECT volunteers.id, volunteers.contact_id, volunteers.state, volunteers.skills, volunteers.hours, volunteers.calls, volunteers.call_channel, volunteers.link_hash, volunteers.link_issued_at, contacts.first_name, contacts.email_address, contacts.mobile_phone FROM volunteers
         LEFT JOIN contacts ON contacts.id = volunteers.contact_id
         WHERE volunteers.programme_id = '" . (int) $programme['id'] . "' AND volunteers.state = 'active'") as $row) {
         $row['skills'] = pg_volunteer_list_text((array) json_decode((string) $row['skills'], true));
@@ -605,9 +608,10 @@ function pg_volunteer_shift_call_ids(array $programme, array $shift, array $peop
 }
 
 /**
- * Sends the programme's Call message by e-mail to the volunteers a short
- * shift asks and records them in the shift's 'called', so nobody is asked
- * twice for one shift.
+ * Sends the programme's Call message to the volunteers a short shift asks,
+ * each by their own channel, and records them in the shift's 'called', so
+ * nobody is asked twice for one shift (pg_volunteer_shift_call_send()).
+ * Outside the sending hours nobody is asked.
  *
  * @param array $programme
  * @param array $shift pg_volunteer_shift_get()
@@ -615,21 +619,5 @@ function pg_volunteer_shift_call_ids(array $programme, array $shift, array $peop
  */
 function pg_volunteer_shift_call(array $programme, array $shift)
 {
-    $people = pg_volunteer_call_people($programme, $shift);
-    $ids = pg_volunteer_shift_call_ids($programme, $shift, $people, date('Y-m-d H:i:s'));
-
-    if (!$ids) {
-        return 0;
-    }
-
-    db_q("UPDATE volunteer_shifts SET called = ?, updated_at = UNIX_TIMESTAMP() WHERE id = ?", array(json_encode(array_values(array_unique(array_merge($shift['called'], $ids)))), $shift['id']));
-
-    foreach ($ids as $id) {
-        if (validate_email_address((string) $people[$id]['email_address'])) {
-            $message = pg_volunteer_message($programme['texts'], 'call', array('name' => (string) $people[$id]['first_name'], 'programme' => $programme['name']));
-            _pg_volunteer_mail((string) $people[$id]['email_address'], array('subject' => $message['subject'], 'body' => $message['body'] . "\n\n" . pg_volunteer_shift_when($shift)));
-        }
-    }
-
-    return count($ids);
+    return pg_volunteer_shift_call_send($programme, $shift, date('Y-m-d H:i:s'));
 }

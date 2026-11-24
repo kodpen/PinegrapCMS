@@ -268,6 +268,10 @@ function pg_sms_kinds()
         // A walk-in queue number's notices (walk_in_queue_tickets.php): a
         // service message to the phone given for the number.
         'queue'     => false,
+        // A volunteer programme's shift call and day-before reminder
+        // (volunteer_messages.php): a service message the volunteer turns
+        // off on their own page.
+        'volunteer' => false,
         'marketing' => true,
     );
 }

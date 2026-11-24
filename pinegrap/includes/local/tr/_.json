@@ -589,6 +589,7 @@
     "{km} km": "{km} km",
     "{name} is downloaded.": "{name} indirildi.",
     "{name} is saved in Files.": "{name} Dosyalara kaydedildi.",
+    "{name}: {kind} ends on {date}": "{name}: {kind} belgesinin süresi {date} tarihinde doluyor",
     "{notebook}: the notebook the note goes into": "{notebook}: notun gireceği defter",
     "{number}: it is your turn. Please go to {desk}.": "{number}: sıra sizde. Lütfen {desk} noktasına gidin.",
     "{n} changes": "{n} değişiklik",
