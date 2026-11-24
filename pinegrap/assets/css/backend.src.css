@@ -17821,7 +17821,10 @@ html[data-bs-theme="dark"] .ws-hl {
 .ws-msg-tr .bi {
   font-size: 11px;
 }
-.ws-msg-tr-toggle {
+.ws-msg-tr .ws-msg-tr-toggle {
+  display: inline;
+  height: auto;
+  padding: 0;
   font-size: inherit;
   line-height: inherit;
   vertical-align: baseline;
@@ -18355,16 +18358,17 @@ a.ws-chip-message:hover,
   font-weight: 600;
 }
 /* A mark the caret or the selection has, on a button of a box's row of
-   tools: the tint of the bar over a selection. Undo and redo with nothing to
-   take back draw no frame: .btn-text.theme-secondary leaves the disabled
-   border colour at initial, so the border would fall back to the text
-   colour. */
-.ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"] {
-  background: rgba(var(--ws-accent-rgb), .15);
-  color: rgba(var(--ws-accent-rgb), 1);
+   tools: the tint of the bar over a selection, in place of the icon
+   button's grey pressed fill. Undo and redo with nothing to take back are
+   faded and draw no hover. */
+.ws-rich-tools .pg-icon-button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--ws-accent) 15%, transparent);
+  color: var(--ws-accent);
+  box-shadow: none;
 }
-.ws-rich-tools .btn-text.theme-secondary:disabled {
-  border-color: transparent;
+.ws-rich-tools .pg-icon-button:disabled {
+  opacity: .45;
+  pointer-events: none;
 }
 
 /* The writing box: formatted text, chips and cards, and still a chat field.
@@ -18611,7 +18615,7 @@ a.ws-chip-message:hover,
 .ws-link-tip .form-control {
   min-width: 0;
 }
-.ws-link-tip .btn {
+.ws-link-tip :is(.pg-button, .pg-icon-button) {
   flex-shrink: 0;
 }
 /* The find tip of a writing box and the matches it paints. */
@@ -18708,13 +18712,11 @@ a.ws-chip-message:hover,
   flex: 1 1 auto;
   min-width: 0;
 }
-.ws-check-edit-row > .btn {
-  flex-shrink: 0;
-  padding: .3rem .45rem;
+.ws-check-edit-row > .pg-icon-button {
   opacity: .45;
 }
-.ws-check-edit-row:hover > .btn,
-.ws-check-edit-row:focus-within > .btn {
+.ws-check-edit-row:hover > .pg-icon-button,
+.ws-check-edit-row:focus-within > .pg-icon-button {
   opacity: 1;
 }
 .ws-code-language {
@@ -20378,11 +20380,8 @@ a.ws-chip-message:hover,
 .ws-voice audio {
   display: none;
 }
-.ws-voice-play {
+.ws-voice > .ws-voice-play {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: var(--ws-avatar);
   height: var(--ws-avatar);
   padding: 0;
@@ -20433,18 +20432,12 @@ a.ws-chip-message:hover,
   font-variant-numeric: tabular-nums;
   color: var(--pg-fg-2);
 }
-.ws-voice .btn-sm {
+.ws-voice-tools > :is(.pg-button, .pg-icon-button) {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
-.ws-voice-speed {
+.ws-voice .ws-voice-speed {
   min-width: 2.75rem;
-  padding-left: .35rem;
-  padding-right: .35rem;
-  font-size: .75rem;
-  font-weight: 600;
+  padding-inline: .35rem;
   font-variant-numeric: tabular-nums;
 }
 /* Convert to text (pg_voice_text.js): a small "Aa" in the player's row. */
@@ -22726,7 +22719,8 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   /* Narrow pads keep the inserts, Send and Send later on one line at
      375 px; the row still wraps where even that has no room. 44 px high,
      the touch target a finger hits; the height costs no width. */
-  .ws-composer-tools .btn {
+  .ws-composer-tools .btn,
+  .ws-composer-tools .pg-icon-button {
     min-height: 2.75rem;
     padding: .3rem .4rem;
   }
@@ -22744,8 +22738,8 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-voice-rec {
     min-height: 3.4rem;
   }
-  .ws-voice-rec .btn,
-  .ws-voice .btn-sm {
+  .ws-voice-rec :is(.pg-button, .pg-icon-button),
+  .ws-voice-tools > :is(.pg-button, .pg-icon-button) {
     min-width: 2.5rem;
     min-height: 2.5rem;
   }
@@ -24562,14 +24556,7 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   font-size: .75rem;
   color: var(--pg-fg-2);
 }
-.ws-calc-name {
-  padding: .05rem .5rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: 999px;
-  font-size: .75rem;
-}
 .ws-calc-name:hover {
-  border-color: var(--ws-accent);
   color: var(--ws-accent);
 }
 /* A note's earlier versions */
@@ -29452,7 +29439,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .pg-sale-switch .btn.active,
     .pg-sale-switch .btn[aria-pressed="true"],
     .pg-sale-method[aria-pressed="true"],
-    .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
+    .ws-rich-tools .pg-icon-button[aria-pressed="true"],
     .ws-format-tool.active,
     .btn-check:checked + .pg-role-card,
     .ws-status-choice.btn-check:has(input:checked)
@@ -29478,7 +29465,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .pg-sale-switch .btn.active,
     .pg-sale-switch .btn[aria-pressed="true"],
     .pg-sale-method[aria-pressed="true"],
-    .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
+    .ws-rich-tools .pg-icon-button[aria-pressed="true"],
     .ws-format-tool.active,
     .btn-check:checked + .pg-role-card
   ) *,

@@ -1,8 +1,8 @@
 {
     "assets/css/backend.src.css": {
         "size": 434,
-        "weight": 228,
-        "colour": 380
+        "weight": 223,
+        "colour": 376
     },
     "assets/css/pg_dash.src.css": {
         "size": 21,
@@ -180,7 +180,7 @@
         "field": 5
     },
     "assets/js/workspace_editor.js": {
-        "button": 28,
+        "button": 1,
         "tabs": 0,
         "field": 15
     },
@@ -198,7 +198,7 @@
         "tabs": 0
     },
     "assets/js/workspace_highlights.js": {
-        "button": 7,
+        "button": 0,
         "tabs": 0,
         "field": 1
     },
@@ -238,7 +238,7 @@
         "field": 10
     },
     "assets/js/workspace_replies.js": {
-        "button": 6,
+        "button": 0,
         "tabs": 0,
         "field": 7
     },
@@ -275,14 +275,6 @@
         "button": 13,
         "tabs": 0,
         "field": 13
-    },
-    "assets/js/workspace_translate.js": {
-        "button": 1,
-        "tabs": 0
-    },
-    "assets/js/workspace_voice.js": {
-        "button": 6,
-        "tabs": 0
     },
     "backups.php": {
         "button": 5,

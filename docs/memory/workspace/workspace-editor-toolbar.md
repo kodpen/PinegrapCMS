@@ -23,7 +23,7 @@ description: One row of tools for every Workspace writing box (PGWsEditor.toolba
 - `tool_*` keys in `ws_editor_js_strings()` (`includes/workspace/screen.php`); tr.json keys reused where they existed; Strikethrough, Highlight, Code, Link with their keys and Text, Message, Note tools added. On a Mac the title shows ⌘, `aria-keyshortcuts` says Meta. The notes' `notes_bold` ... `notes_redo` keys are gone.
 
 ## What does it look like?
-- Ghost icon buttons as before. The composer's groups show only in its expanded box ("Aa", `workspace-channel-composer.md`). Pressed is the selection bar's accent tint; a disabled ghost button has no frame.
+- `pg-icon-button-sm` buttons; the composer's groups show only in its "Aa" box (`workspace-channel-composer.md`). Pressed: the selection bar's accent tint, not the grey fill; how and the tips around the box: `workspace-writing-box-look.md`.
 
 ## How was it checked?
 - Headless Chromium on `workspace.min.js`, stubbed `api.php`: composer, notes (phone size too), approval box: marks, pressed, focus, undo/redo, shortcuts, waiting marks, IME words (CDP), backward selections, links, cells, Enter sends, autosave, widths 760-1400px. Not Safari, Firefox, a phone or a running site.

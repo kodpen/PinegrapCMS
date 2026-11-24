@@ -70,8 +70,8 @@ function test_bs6_btn_ghost_swap_workspace_and_erp()
 	pg_assert_same(0, preg_match_all('/\.ws-rich-tools \.btn-ghost/', $css), 'no .ws-rich-tools .btn-ghost rule is left');
 	// The screen rule only: the forced-colours block repeats the selector.
 	$screen = (string) strstr($css, '@media (forced-colors: active)', true);
-	pg_assert_same(1, preg_match_all('/\.ws-rich-tools \.btn-text\.theme-secondary\[aria-pressed="true"\]/', $screen), 'pressed tool rule');
-	pg_assert_same(1, preg_match_all('/\.ws-rich-tools \.btn-text\.theme-secondary:disabled/', $css), 'disabled tool rule');
+	pg_assert_same(1, preg_match_all('/\.ws-rich-tools \.pg-icon-button\[aria-pressed="true"\]/', $screen), 'pressed tool rule');
+	pg_assert_same(1, preg_match_all('/\.ws-rich-tools \.pg-icon-button:disabled/', $css), 'disabled tool rule');
 }
 
 function test_bs6_btn_ghost_swap_designer_and_list_helpers()
