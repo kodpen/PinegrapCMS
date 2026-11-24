@@ -312,7 +312,8 @@ if (
     $new_request_url_without_path = (string) substr($request_url_without_path, 6);
 
     // The request address is UTF-8; a Location header carries it encoded.
-    header('Location: ' . $config['url_scheme'] . $config['hostname'] . PATH . pg_uri_ascii($new_request_url_without_path), true, 301);
+    // An address under a language directory (/en/pages/about) stays in it.
+    header('Location: ' . $config['url_scheme'] . $config['hostname'] . (defined('LANGUAGE_PATH') ? LANGUAGE_PATH : PATH) . pg_uri_ascii($new_request_url_without_path), true, 301);
     exit();
 }
 
@@ -606,53 +607,15 @@ if ($short_link) {
         
         // If the destination type is URL then forward visitor to URL.
         case 'url':
-            // Build a full URL with scheme and everything from the
-            // possibly short URL that they might have entered,
-            // so it is compatible with header call below.
-
-            $query =
-                "SELECT
-                    url_scheme,
-                    hostname
-                FROM config";
-            $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
+            // The address is completed as a 301 link's is (a full address
+            // as it is, /x from the host's root, x below the site) by
+            // pg_short_link_location(), without the visitor's query string.
+            // Rebuilt from parse_url() before, it lost the port and the user
+            // part of a full address and sent other characters unencoded.
+            $result = mysqli_query(db::$con, "SELECT url_scheme, hostname FROM config") or router_output_error('Query failed.');
             $config = mysqli_fetch_assoc($result);
 
-            // parse_url() omits the parts that are absent from the URL.
-            $url_parts = array_merge(
-                array('scheme' => '', 'host' => '', 'path' => '', 'query' => '', 'fragment' => ''),
-                (array) parse_url($short_link['url']));
-
-            $url = '';
-
-            if ($url_parts['scheme'] == '') {
-                $url .= $config['url_scheme'];
-            } else {
-                $url .= $url_parts['scheme'] . '://';
-            }
-
-            if ($url_parts['host'] == '') {
-                $url .= $config['hostname'];
-            } else {
-                $url .= $url_parts['host'];
-            }
-
-            if ($url_parts['path'] != '') {
-                // If the first character in the path is not a /, then add the path.
-                if (mb_substr($url_parts['path'], 0, 1) != '/') {
-                    $url .= PATH;
-                }
-
-                $url .= $url_parts['path'];
-            }
-
-            if ($url_parts['query'] != '') {
-                $url .= '?' . $url_parts['query'];
-            }
-
-            if ($url_parts['fragment'] != '') {
-                $url .= '#' . $url_parts['fragment'];
-            }
+            $url = pg_short_link_location($short_link, array(), '', $config['url_scheme'] . $config['hostname'], PATH, PATH);
 
             // A link that closes is not remembered by the browser as a
             // permanent move: the next visit has to ask again.
