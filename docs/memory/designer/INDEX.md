@@ -523,7 +523,8 @@
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
 - layout-type-converter-editor.md: LE6b: a file page's System region in the editor, the dropped pieces listed in the Region panel, Convert to design elements from the layout file (layout_code convert_type)
 - layout-type-converter-order-form.md: An order form page's layout file into the Order Form widget's design elements (LE7): what each piece becomes, the map options it brought, the new flags and token, the starting-site texts
-- layout-type-converter.md: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; the order form in its own file
+- layout-type-converter-photo-gallery.md: A photo gallery page's layout file into the Photo Gallery widget's design elements (LE8a): the two loops as one list by row flags, what each piece becomes, the new flags, the starting-site texts
+- layout-type-converter.md: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; other types in their own files
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 - legacy-bootstrap-card.md: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, system widgets, sheets, scripts, files left out), nothing written [decision: decisions-made-product-48.md]
 - legacy-bootstrap-census.md: Census of the starting sites' Legacy designs for the Bootstrap 5.3.8 helper (LB1, #8940): sets, Bootstrap 3 and theme classes, scripts, theme parts, map coverage and gaps
@@ -630,6 +631,7 @@
 - prototype-approval-fingerprints.md: Approve this page and Request changes on a prototype share link, pure rules (PA1a): draft and node fingerprints, what changed, a verdict's state, Answer by, mail timing
 - prototype-approval-hold.md: "Publish only after approval" on a prototype link (PA4): which link holds a draft, every writer of a draft going live reading the hold, role 0's Publish anyway with its reason in the Site Log
 - prototype-approval-review.md: A prototype link asking approval (PA2): the Share prototype dialog's and the API's approval fields, the viewer's "Review this page" box, the verdict door, the approver's receipt mail, the bell line
+- prototype-approval-round-two.md: Prototype approval round two (PA3): "Show what changed" outlines, the viewer page list marks, verdicts in the Comments list and the Share prototype dialog count
 - prototype-approval-store.md: Prototype link approval store (11.0.276): five prototype_links columns, prototype_verdicts, deleted with the design and by Delete comments, privacy erase and export
 - prototype-arrangement.md: The Prototype view's layout(): frames, rows, chips, arrows; a grid of tab-group sections in flow order, shared parts left (wrapped at the grid's height), chips right, Start, Fit's corner, Tidy up [decision: here]
 - prototype-back-key.md: P in the visual editor opens the Prototype view with the selected element's link picked (_sdProtoBack()); where the key is left alone, what it picks, why P
