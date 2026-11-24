@@ -284,7 +284,7 @@ $qd_transfer = '<dialog class="drawer drawer-end" id="qd_transfer" aria-labelled
 
 // A manager reaches the desk as the place's Today tab.
 $qd_tabs = $qd_manager
-    ? '<span class="pg-seg" role="group" aria-label="' . h(lang('Place')) . '"><a class="pg-seg-item" href="edit_queue_place.php?id=' . $qd_id . '">' . h(lang('Set-up')) . '</a><a class="pg-seg-item" href="edit_queue_place.php?id=' . $qd_id . '&amp;view=desks">' . h(lang('Desks')) . ' <span class="pg-seg-count">' . count($qd_desks) . '</span></a><a class="pg-seg-item is-active" aria-current="page" href="queue_desk.php?place=' . $qd_id . '">' . h(lang('Today')) . '</a></span>'
+    ? pg_waiting_place_tabs($qd_id, 'today', count($qd_desks))
     : '';
 
 echo pg_page_shell(array(
