@@ -142,6 +142,7 @@
 - api-walk-in-queue-routes.md: Walk-in queue API routes (WQ8): places, a day's numbers, kiosk join, Call next at a desk, Finish; scope queue, role-3 rows, 409 codes, the link given once
 - api-webhook-dispatch-run.md: One run of the webhook dispatcher: a receiver that failed is left for the rest of the run, and a delivery's answer never switches a disabled subscription back on
 - api-webhook-event-payloads.md: Fields and samples of webhook events (api_webhook_event_payloads()), GET /webhooks/events, POST /webhooks/{id}/test with event, the test that reads the announcing code
+- api-webhook-event-scopes.md: Webhook events follow the read scope of their data: the event → scope map, the 403 on create/change/sample, the skip at enqueue, the Events tab line and the one bell row per subscription [decision: here]
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries
 - api-webhook-log-address.md: Site Log lines about an event subscription name its address as scheme and host only (pg_ops_alert_mask_url()): API change and secret renewal, panel stop/resume and removal, given-up delivery
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
