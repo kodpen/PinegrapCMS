@@ -15,7 +15,7 @@ description: Plan legacy-editable, steps LE1 to LE12 with size and order: the me
 - LE5b (M) done (#11290) the run's `types` step, a "Page types" row (`designer/legacy-types-step.md`).
 - LE6 (M) the converter's core: `pg_layout_convert()`, `pg_layout_piece_map()`, the Region panel's dropped list and confirm, the run converting a file page with nothing dropped; first family form list view and form item view.
 - LE7 (M) order form. LE8 (M) photo gallery, catalog, catalog detail. LE9 (M, a and b if past the size) shopping cart, express order, the checkout steps, view order. LE10 (M) the account pages and search results.
-- LE11 (S) the "Designs moved earlier" card, its dry run drawer and run.
+- LE11 (S) done (#11309) the "Designs moved earlier" card, its dry run drawer and run.
 - LE12 (S) close-out: `designer/legacy-editable-overview.md` written with the last numbers; `designer/legacy-overview.md`, `classic-style-to-design.md`, `canvas-closed-blocks-regions.md` and `layout-widget-offer.md` corrected; this plan's five files deleted; the changelog `[NEW]` line named in its PR.
 
 ## In which order?
