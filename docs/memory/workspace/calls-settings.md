@@ -8,7 +8,7 @@ description: The Calls card of Workspace settings (CL6, #10608): off until turne
 - The switch and the STUN addresses: anyone with the Workspace settings right (`ws_calls_settings_allowed()`). The relay (TURN) part: an administrator only (`ws_calls_turn_allowed()`, role 0, as other services' keys); for others it is drawn disabled and a posted value is ignored.
 
 ## Where are the values kept?
-- No schema: config_text `ws_calls` holds JSON `on`, `stun` (list), `turn_url` (list), `turn_user`; `ws_calls_turn_secret` holds the relay's shared secret sealed `<ciphertext>:<iv>` (`encrypt_string_with_iv()`), listed in `pg_reseal_registry()`.
+- No schema: config_text `ws_calls` holds JSON `on`, `stun` (list), `turn_url` (list), `turn_user`, `background` (the "Background effects" switch, `calls-background.md`); `ws_calls_turn_secret` holds the relay's shared secret sealed `<ciphertext>:<iv>` (`encrypt_string_with_iv()`), listed in `pg_reseal_registry()`.
 - Nothing stored reads as off: an upgraded site, and a new one too (no install seeds the row), has no call buttons until the switch is turned on.
 
 ## What does off do?

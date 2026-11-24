@@ -8,7 +8,7 @@ description: Start here for Workspace voice and video calls (plan CL1-CL8, close
 - About one participant in ten needs a relay (TURN) the site's owner enters; a larger meeting would be an outside meeting service in a plan of its own.
 
 ## Which rules does every change keep?
-- No library, no CDN, no outside service but the STUN and TURN addresses of the Calls card. No recording, no transcript, nothing of the media stored.
+- No library, no CDN, no outside service but the STUN and TURN addresses of the Calls card, and the background effects' pinned files, which the server fetches once when their switch is turned on (`calls-background.md`). No recording, no transcript, nothing of the media stored.
 - A call rings only while the Workspace is open in a browser: no push service.
 - The signalling rides the existing live reads; an idle channel costs one file check (`calls-signalling.md`). A change must not raise that.
 - Texts through `lang()`; look A; tests for the server's rules and, for the browser side, Chromium with fake media devices.
@@ -25,3 +25,4 @@ description: Start here for Workspace voice and video calls (plan CL1-CL8, close
 - The channel's call lines: `calls-lines.md` (CL7, #11125).
 - Phone, ICE restart, a closed tab, a second window: `calls-endurance.md` (CL8, #11156).
 - Raise hand, the weak-connection mark, "You are muted": `calls-hand.md` (CN6, #11385).
+- Blur background, Remove background, the Background effects switch: `calls-background.md` (CN7, #11412).

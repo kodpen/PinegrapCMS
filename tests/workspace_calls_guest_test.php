@@ -135,7 +135,7 @@ function test_workspace_calls_guest_page_wiring()
 	pg_assert_contains('<div class="pg-guest-call d-none" id="pg-guest-call" role="status">', $page, 'the bar under the head is drawn hidden');
 	pg_assert_true(strpos($page, 'id="pg-guest-call"') < strpos($page, 'id="pg-guest-log"'), 'between the head and the conversation');
 	pg_assert_contains("\$calls = function_exists('ws_calls_on') && ws_calls_on();", $page, 'the page carries calls only while they are on');
-	pg_assert_contains("'calls'    => \$calls ? array('ice' => ws_call_ice_servers(), 'max' => WS_CALL_MAX_MEMBERS) : null,", $page, 'STUN only in the page; the relay comes with a granted join');
+	pg_assert_contains("'calls'    => \$calls ? array('ice' => ws_call_ice_servers(), 'max' => WS_CALL_MAX_MEMBERS, 'background' => ws_call_background_config(ws_calls_settings())) : null,", $page, 'STUN only in the page; the relay comes with a granted join');
 
 	preg_match('/var CALL_ACTIONS = \{([^}]*)\}/', $script, $map);
 	pg_assert_true(!empty($map[1]), 'the guest page names the call actions it maps');
@@ -158,7 +158,7 @@ function test_workspace_calls_guest_page_wiring()
 
 	$bundles = pg_js_bundles();
 	$parts = $bundles['assets/js/workspace_guest.min.js'];
-	pg_assert_same(array('assets/js/workspace_calls.js', 'assets/js/workspace_guest.js'), $parts, 'the guest bundle carries the call module before the page');
+	pg_assert_same(array('assets/js/workspace_call_background.js', 'assets/js/workspace_calls.js', 'assets/js/workspace_guest.js'), $parts, 'the guest bundle carries the background effects and the call module before the page');
 }
 
 function test_workspace_calls_guest_room_rings_nobody()

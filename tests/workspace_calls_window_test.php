@@ -70,7 +70,7 @@ JS
 	pg_assert_same('small', $got['small'], 'a window made smaller is read back');
 	pg_assert_same('', $got['other'], 'an unknown size reads as none');
 	pg_assert_same('', $got['wrong'], 'a size of the wrong type reads as none');
-	pg_assert_same(array('audio' => 'mic2', 'video' => '', 'speaker' => '', 'muted' => true, 'cameraOff' => false, 'size' => 'large'), $got['changed'], 'the size is kept beside the other choices');
+	pg_assert_same(array('audio' => 'mic2', 'video' => '', 'speaker' => '', 'muted' => true, 'cameraOff' => false, 'size' => 'large', 'background' => ''), $got['changed'], 'the size is kept beside the other choices');
 	pg_assert_same('', $got['bad'], 'an unknown size is never stored');
 }
 

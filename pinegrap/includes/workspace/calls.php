@@ -1398,5 +1398,9 @@ function ws_call_js_strings()
         'call_more'       => lang('More'),
         'call_self_hide'  => lang('Hide my picture'),
         'call_self_show'  => lang('Show my picture'),
+        'call_background' => lang('Background'),
+        'call_background_blur' => lang('Blur background'),
+        'call_background_remove' => lang('Remove background'),
+        'call_background_failed' => lang('The background effect could not be started.'),
     );
 }
