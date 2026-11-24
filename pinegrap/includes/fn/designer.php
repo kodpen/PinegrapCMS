@@ -2644,9 +2644,15 @@ function pg_designer_i18n_map()
 /** SQL fragment (" AND col NOT IN (...)") that drops binned pages; '' without a bin. */
 function pg_designer_not_binned_sql($column = 'page.page_folder')
 {
-    $ids = pg_recycle_bin_folder_ids();
+    return pg_designer_not_binned_sql_for(pg_recycle_bin_folder_ids(), $column);
+}
+
+/** pg_designer_not_binned_sql() from the bin folder ids. Pure. */
+function pg_designer_not_binned_sql_for($ids, $column)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)$ids))));
     if (count($ids) === 0) return '';
-    return " AND $column NOT IN (" . implode(',', array_map('intval', $ids)) . ")";
+    return " AND $column NOT IN (" . implode(',', $ids) . ")";
 }
 
 /**

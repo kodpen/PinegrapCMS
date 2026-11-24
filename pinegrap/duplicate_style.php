@@ -150,10 +150,13 @@ if ($style['layout'] === 'visual_designer' && pg_multi_page_design_ready()) {
         WHERE dst.style_id = '" . (int)$new_style_id . "'
           AND src.style_id = '" . (int)$_GET['id'] . "'");
 
+    // Only the pages on the site: a page in the Recycle Bin keeps its
+    // page_style, and its copy would land in the bin folder with no bin row
+    // of its own: no deletion date, no folder to go back to, never purged.
     $src_pages = db_items(
         "SELECT * FROM page
          WHERE page_style = '" . (int)$_GET['id'] . "'
-           AND " . pg_page_visual_design_sql() . "
+           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql('page_folder') . "
          ORDER BY page_id ASC");
     $copied_ids = array();
     foreach ((array)$src_pages as $src_page) {
