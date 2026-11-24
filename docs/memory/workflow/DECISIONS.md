@@ -127,6 +127,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-101.md: Where are the rules and the earlier parts?
 - decisions-made-product-101.md: Does the customer's page show the steps that are not done? (owner, 2026-11-24, in the architect's window)
 - decisions-made-product-101.md: Can a line ask the customer for files? (owner, 2026-11-24, in the architect's window)
+- decisions-made-product-102.md: Where are the rules and the earlier parts?
+- decisions-made-product-102.md: Does the software scan itself for security faults? (owner, 2026-11-24, agent channel messages 12839 and 12847)
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)
@@ -731,6 +733,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?
 - decisions-made-schema-50.md: Where are the rules and the earlier parts?
 - decisions-made-schema-50.md: Does launch_summary_lines get a column for the answer's kind? (owner, 2026-11-24, in the architect's window)
+- decisions-made-schema-51.md: Where are the rules and the earlier parts?
+- decisions-made-schema-51.md: Does the Security Scan get a table? (owner, 2026-11-24, agent channel message 12847)
 - decisions-made-schema-6.md: Where are the rules and the earlier steps?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (midday)?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (afternoon)?
