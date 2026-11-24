@@ -1,10 +1,10 @@
 ---
 name: workspace-flows-buttons-look
-description: The Flows screens' buttons in look A (WL3, #PRNUM): which rank each part takes in workspace_flow.js and workspace_flow_flag.js, the filter chips as pg-seg, the compact run flag, what was left
+description: The Flows screens' buttons in look A (WL3, #11360): which rank each part takes in workspace_flow.js and workspace_flow_flag.js, the filter chips as pg-seg, the compact run flag, what was left
 ---
 
 ## What changed?
-- WL3 (#PRNUM): the 56 `btn btn-` buttons of `assets/js/workspace_flow.js` and the 3 of `workspace_flow_flag.js` take look A's recipes (`plans/workspace-look-leftover.md`); both files count 0 old buttons in `tools/check_look_baseline.json`. Nothing a button does, says or where it sits changed.
+- WL3 (#11360): the 56 `btn btn-` buttons of `assets/js/workspace_flow.js` and the 3 of `workspace_flow_flag.js` take look A's recipes (`plans/workspace-look-leftover.md`); both files count 0 old buttons in `tools/check_look_baseline.json`. Nothing a button does, says or where it sits changed.
 - A labelled button is built with `K.lookButton()` (no `me-1` on its icon, the button's gap spaces it); an icon-only one with `K.button(…, '', icon, name)`, so it keeps its `aria-label` and `title`.
 
 ## Which rank does each part take?
