@@ -14,7 +14,7 @@ description: "@Claude" in Workspace channels through one site-wide claude.ai rou
 - Claude reads records only as far as the application key allows; it writes records only through approved drafts. No delete endpoint.
 - Private channels are off by default (`ws_channels.claude_access`): their content goes to Anthropic under the admin's account, so the channel owner must turn it on.
 - The admin who owns the application need not be in a channel or a discussion Claude was asked in: it is read and answered through the person who asked while the request is open (docs/memory/workspace/workspace-assistant-reach.md).
-- The routine's address and sealed token sit in Claude's `ws_agents` row (`agent-registry.md`); the card never shows the token back.
+- The routine's address and sealed token sit in Claude's `ws_agents` row (`agent-registry.md`), typed on Connections.
 
 ## What limits come from Anthropic?
 - Daily runs (April 2026, may change): Pro 5, Max 15, Team/Enterprise 25; API triggers count. With usage credits on, extra runs are billed.
@@ -24,7 +24,7 @@ description: "@Claude" in Workspace channels through one site-wide claude.ai rou
 - API credential proxy (key never visible to the session) exists only on Pro/Max; on Team/Enterprise the key sits in an environment variable every user of that environment can read.
 
 ## How is the routine set up on claude.ai?
-- Admin: claude.ai/code/routines → New routine (Cloud), the short bootstrap prompt copied from the "Claude in channels" card in Workspace settings (the rest is read from the site: workspace-claude-bootstrap.md), a model; environment with Custom network allowing the site's domain and the API credential (header `Authorization`, `Basic base64(key:secret)`); remove all connectors; Trigger → API → generate token, paste URL and token into the card. The owner enters every credential.
+- Admin: claude.ai/code/routines → New routine (Cloud), the short bootstrap prompt copied from the "Claude in channels" card in Workspace settings (the rest is read from the site: workspace-claude-bootstrap.md), a model; environment with Custom network allowing the site's domain and the API credential (header `Authorization`, `Basic base64(key:secret)`); remove all connectors; Trigger → API → generate token, paste both on Connections. The owner enters every credential.
 - Key: "Create Claude's key" on the card, shown once; "Reset secret" (`workspace-assistant-keys.md`).
 
 ## What was never tested with a real routine?

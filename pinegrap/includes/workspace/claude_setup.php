@@ -11,6 +11,10 @@
  * language of the panel: they are put into the translated sentence
  * afterwards, so a translation cannot change them.
  *
+ * The routine address and the token, which step 4 has pasted, are typed on
+ * Claude's page of Connections (connections.php?service=claude), in the card
+ * ws_claude_connection_card_html() draws.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -173,12 +177,13 @@ function ws_claude_setup_guide($host, $prompt, $key = '')
             'extra' => '',
         ),
         array(
-            'title' => h(lang('Paste the routine address and the token here')),
+            'title' => h(lang('Paste the routine address and the token in Connections')),
             'text'  => ws_claude_setup_text(
-                lang(array('string' => 'Copy the URL of the routine\'s {var:1} trigger, press {var:2} and copy the token at once: both go into the two fields behind this drawer.', 'vars' => ws_claude_setup_marks(2))),
+                lang(array('string' => 'Copy the URL of the routine\'s {var:1} trigger, press {var:2} and copy the token at once: both go into Claude\'s page of Connections.', 'vars' => ws_claude_setup_marks(2))),
                 array('API', 'Generate token')
             ),
-            'extra' => '',
+            'extra' => '<a class="pg-button pg-button-quiet pg-button-sm mt-3" href="' . h(ws_claude_connections_url()) . '" target="_blank" rel="noopener">'
+                . h(lang('Open Claude in Connections')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>',
         ),
         array(
             'title' => h(lang('Try')),
@@ -203,4 +208,103 @@ function ws_claude_setup_guide($host, $prompt, $key = '')
     }
 
     return $html;
+}
+
+/**
+ * The address of Claude's page on Connections, where the routine address and
+ * the token are typed. Pure but for the path constants.
+ *
+ * @return string
+ */
+function ws_claude_connections_url()
+{
+    return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
+        . '/connections.php?service=claude';
+}
+
+/**
+ * The card "Connection details" of Claude's page on Connections: the
+ * routine's address and its token, as step 4 of "Set up on claude.ai" has
+ * them pasted, then Save and "Save and try". The token is never drawn back:
+ * a stored one is dots in the empty field, the eye shows what is typed, the
+ * bin ticks claude_token_clear, which removes it at the Save
+ * (ws_claude_fold_script() binds both). Pure but for lang().
+ *
+ * @param array $v routine_url, token_set (bool), token_field (the form's
+ *                 CSRF field), can_seal (bool: the site can encrypt the
+ *                 token), https (bool: the site is opened over HTTPS)
+ * @return string HTML
+ */
+function ws_claude_connection_card_html($v)
+{
+    $stored = !empty($v['token_set']);
+    $can_seal = !empty($v['can_seal']);
+    $notes = '';
+
+    if (empty($v['https'])) {
+        $notes .= '<div class="alert theme-warning small py-3 mb-4">' . h(lang('This site is not opened over HTTPS, so the routine cannot reach it.')) . '</div>';
+    }
+
+    if (!$can_seal) {
+        $notes .= '<div class="alert theme-warning small py-3 mb-4">' . h(lang('The token cannot be stored: encryption is not available on this site.')) . '</div>';
+    }
+
+    $clear = $stored
+        ? '<button type="button" class="pg-icon-button pg-icon-button-sm no-popover" data-ws-claude-clear="ws_claude_token_clear" aria-pressed="false" data-stored="' . h('••••••••••••••••') . '" data-cleared="' . h(lang('The stored token is removed when you save.')) . '" title="' . h(lang('Remove the stored token')) . '" aria-label="' . h(lang('Remove the stored token')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
+            . '<input class="d-none" type="checkbox" name="claude_token_clear" value="1" id="ws_claude_token_clear" tabindex="-1" aria-hidden="true">'
+        : '';
+
+    return '
+        <section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
+            <h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
+            <p class="pg-card-sub mb-4">' . h(lang('The address and the token of the API trigger of your routine on claude.ai, which answers @claude in the channels.')) . '</p>
+            ' . $notes . '
+            <form method="post" action="connections.php" class="connections-app-form">
+                ' . (string) ($v['token_field'] ?? '') . '
+                <input type="hidden" name="connections_action" value="claude_save">
+                <input type="hidden" name="connections_return" value="claude">
+                <div>
+                    <label class="pg-field-label" for="ws_claude_routine_url">' . h(lang('Routine address')) . '</label>
+                    <input class="pg-input font-monospace" type="url" name="claude_routine_url" id="ws_claude_routine_url" value="' . h((string) ($v['routine_url'] ?? '')) . '" maxlength="500" placeholder="https://api.anthropic.com/v1/claude_code/routines/trig_…/fire" autocomplete="off" spellcheck="false" aria-describedby="ws_claude_routine_url-help">
+                    <div class="pg-field-help" id="ws_claude_routine_url-help">' . ws_claude_setup_text(lang(array('string' => 'The URL of the routine\'s {var:1} trigger on claude.ai.', 'vars' => ws_claude_setup_marks(1))), array('API')) . '</div>
+                </div>
+                <div>
+                    <label class="pg-field-label" for="ws_claude_token">' . h(lang('Token')) . '</label>
+                    <span class="pg-input ws-claude-token"><input type="password" name="claude_token" id="ws_claude_token" value="" maxlength="500" autocomplete="new-password" spellcheck="false" placeholder="' . h($stored ? '••••••••••••••••' : 'sk-ant-oat01-…') . '" aria-describedby="ws_claude_token-help">'
+                    . '<button type="button" class="pg-icon-button pg-icon-button-sm no-popover" data-ws-claude-eye="ws_claude_token" aria-pressed="false" title="' . h(lang('Show the token')) . '" aria-label="' . h(lang('Show the token')) . '"><i class="bi bi-eye" aria-hidden="true"></i></button>' . $clear . '</span>
+                    <div class="pg-field-help" id="ws_claude_token-help">' . h($stored ? lang('Stored and never shown again. Leave it empty to keep it.') : lang('Shown once on claude.ai when the token is generated. It is stored encrypted.')) . '</div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <button type="submit" name="submit_save" value="1" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save')) . '</button>
+                    <button type="submit" name="submit_try" value="1" class="pg-button pg-button-sm pg-button-quiet"' . ($can_seal ? '' : ' disabled') . '>' . h(lang('Save and try')) . '</button>
+                </div>
+            </form>
+        </section>';
+}
+
+/**
+ * The routine's fields posted from Claude's page on Connections, in the
+ * shape ws_claude_settings_save() takes: the switch, the application and
+ * the summary as stored, so the save writes only the address and the token.
+ * Pure.
+ *
+ * @param array $source $_POST
+ * @param array $config ws_claude_config()
+ * @return array as ws_claude_settings_input()
+ */
+function ws_claude_routine_input($source, $config)
+{
+    $url = $source['claude_routine_url'] ?? '';
+    $token = $source['claude_token'] ?? '';
+    $clear = $source['claude_token_clear'] ?? '';
+
+    return array(
+        'enabled'         => !empty($config['enabled']),
+        'app_id'          => (int) ($config['app_id'] ?? 0),
+        'routine_url'     => is_scalar($url) ? trim((string) $url) : '',
+        'token'           => is_scalar($token) ? trim((string) $token) : '',
+        'token_clear'     => is_scalar($clear) && ((string) $clear !== '') && ((string) $clear !== '0'),
+        'summary_hour'    => null,
+        'summary_channel' => 0,
+    );
 }

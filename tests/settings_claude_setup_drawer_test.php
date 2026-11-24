@@ -74,7 +74,7 @@ function test_settings_claude_setup_drawer_steps()
 	pg_assert_same(5, substr_count($guide, '<p class="pg-text-2 fg-2 mb-0">'), 'and one sentence');
 	pg_assert_false(strpos($guide, '<svg') !== false || strpos($guide, '<img') !== false, 'no pictures');
 
-	$titles = array(lang('Create the routine'), lang('Set up its environment'), lang('Add the API trigger'), lang('Paste the routine address and the token here'), lang('Try'));
+	$titles = array(lang('Create the routine'), lang('Set up its environment'), lang('Add the API trigger'), lang('Paste the routine address and the token in Connections'), lang('Try'));
 	$last = -1;
 
 	foreach ($titles as $title) {

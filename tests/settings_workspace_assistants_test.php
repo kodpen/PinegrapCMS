@@ -107,6 +107,10 @@ function test_settings_workspace_assistants_claude_names_read_alike()
 	pg_assert_false($empty['enabled'], 'a list is no tick');
 	pg_assert_same(null, $empty['summary_hour'], 'a summary not posted is left alone');
 	pg_assert_false($empty['token_clear'], 'no clear');
+
+	// The row posts no routine address: it is typed on Connections, and the
+	// save leaves the stored one alone.
+	pg_assert_same(null, ws_claude_settings_input(array('ws_claude_app_id' => '7'), 'ws_')['routine_url'], 'an address not posted is left alone');
 }
 
 function test_settings_workspace_assistants_claude_unchanged_writes_nothing()
@@ -124,6 +128,7 @@ function test_settings_workspace_assistants_claude_unchanged_writes_nothing()
 	pg_assert_true(ws_claude_settings_changed(array('summary_hour' => '') + $input, $config, $summary), 'the summary off');
 	pg_assert_true(ws_claude_settings_changed(array('summary_channel' => 5) + $input, $config, $summary), 'another summary channel');
 	pg_assert_false(ws_claude_settings_changed(array('summary_hour' => null, 'summary_channel' => 5) + $input, $config, $summary), 'no summary posted');
+	pg_assert_false(ws_claude_settings_changed(array('routine_url' => null) + $input, $config, $summary), 'no address posted');
 	pg_assert_false(ws_claude_settings_changed(array('summary_channel' => 5) + $input, $config, null), 'before the summary upgrade');
 
 	$off = array('hour' => WS_CLAUDE_SUMMARY_OFF, 'channel_id' => 4, 'message_id' => 0);
@@ -170,7 +175,7 @@ function test_settings_workspace_assistants_cards_have_no_form_in_the_dialog()
 	pg_assert_same(2, substr_count($card, '<form method="post"'), 'the old screen\'s forms: the connection and a button\'s');
 	pg_assert_contains("\$sheet = \$dialog ? '' :", $card, 'no window of its own in the dialog');
 
-	foreach (array('enabled', 'routine_url', 'token', 'token_clear') as $field) {
+	foreach (array('enabled') as $field) {
 		pg_assert_contains("name=\"' . \$field_name('" . $field . "') . '\"", $card, $field . ' named for the screen');
 	}
 

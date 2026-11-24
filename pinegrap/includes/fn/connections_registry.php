@@ -755,7 +755,7 @@ function pg_connections_registry()
         // Connections (includes/fn/ai_connections.php).
         'pinegrap_ai' => array('name' => 'Pinegrap AI', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-ai', 'uses' => 'Writing help and translation on the licence key',
             'state' => array('kind' => 'reader', 'function' => 'ws_ai_ready')),
-        'claude' => array('name' => 'Claude', 'group' => 'ai', 'place' => '#settings/workspace_assistants/pgset-ws-claude', 'uses' => 'Claude in the channels, through a routine',
+        'claude' => array('name' => 'Claude', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-claude', 'uses' => 'Claude in the channels, through a routine',
             'state' => array('kind' => 'reader', 'function' => 'ws_claude_ready')),
         'openai' => array('name' => 'OpenAI', 'group' => 'ai', 'place' => 'connections.php', 'found_at' => '#settings/workspace_assistants/pgset-ws-agents', 'uses' => 'Workspace assistants',
             'state' => array('kind' => 'reader', 'function' => 'pg_ai_connection_ready', 'args' => array('openai')),

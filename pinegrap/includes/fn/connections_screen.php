@@ -809,7 +809,9 @@ function pg_connections_screen_carrier_pages()
  *                    'mail_sending' (bool: may open E-mail › Sending,
  *                    Mailchimp's key and sync), 'chat_notify' (bool: may
  *                    open Updates and maintenance, Slack's, Teams' and
- *                    Telegram's targets)
+ *                    Telegram's targets), 'claude' (bool: may open
+ *                    Assistants and agents as the Workspace's
+ *                    administrator, Claude's routine address and token)
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -856,6 +858,8 @@ function pg_connections_screen_page_cards($id, $can)
     } elseif (($id === 'google_reviews') && !empty($can['integrations'])) {
         $cards[] = 'details';
     } elseif (in_array($id, array('slack', 'teams', 'telegram'), true) && !empty($can['chat_notify'])) {
+        $cards[] = 'details';
+    } elseif (($id === 'claude') && !empty($can['claude'])) {
         $cards[] = 'details';
     }
 
