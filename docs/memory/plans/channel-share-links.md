@@ -30,7 +30,7 @@ priority: 6
 - SL1 (M), done (#11201): the table, `includes/workspace/share_links.php` (make, find, state, take back, a sweep of rows ended 30 days ago in the recurring job), the routes and tools, tests.
 - SL2 (M), done (#11243): `workspace_share.php` for pictures and files, the headers, the limit, the 404, the count.
 - SL3 (M), done (#11264): the item's mark and menu, the dialog, the system line.
-- SL4 (M): the head's share mark and menu, Channel info's Sharing part.
+- SL4 (M), done (#11282): the head's share mark and menu, Channel info's Sharing part.
 - SL5 (M): a channel's note and its Markdown; a note written in a channel is the channel's (`workspace/channel-note-owned.md`).
 - SL6 (M): a table and a list, then the close-out.
 - SL1 then SL2; SL3 and SL4 one after the other (both enter `assets/js/workspace.js`).
