@@ -1,0 +1,82 @@
+{
+  "name": "Gallery",
+  "lastModified": "2026-11-21T14:02:10Z",
+  "version": "4420011873",
+  "nodes": {
+    "40:1": {
+      "document": {
+        "id": "40:1",
+        "name": "Gallery",
+        "type": "FRAME",
+        "absoluteBoundingBox": {"x": 2000, "y": 0, "width": 1200, "height": 800},
+        "fills": [{"type": "GRADIENT_LINEAR", "gradientHandlePositions": [{"x": 0.5, "y": 0}, {"x": 0.5, "y": 1}, {"x": 0, "y": 0}], "gradientStops": [{"position": 0, "color": {"r": 1, "g": 1, "b": 1, "a": 1}}, {"position": 1, "color": {"r": 0.9, "g": 0.92, "b": 1, "a": 1}}]}],
+        "layoutMode": "GRID",
+        "gridColumnCount": 3,
+        "gridRowCount": 2,
+        "gridColumnGap": 20,
+        "gridRowGap": 30,
+        "paddingLeft": 40, "paddingRight": 40, "paddingTop": 40, "paddingBottom": 40,
+        "children": [
+          {
+            "id": "40:2",
+            "name": "Wide tile",
+            "type": "FRAME",
+            "absoluteBoundingBox": {"x": 2040, "y": 40, "width": 760, "height": 340},
+            "fills": [{"type": "SOLID", "color": {"r": 0.1608, "g": 0.3216, "b": 0.9608, "a": 1}, "opacity": 0.5}],
+            "gridColumnSpan": 2,
+            "gridRowSpan": 1,
+            "layoutMode": "NONE",
+            "children": [
+              {
+                "id": "40:3",
+                "name": "icon/star",
+                "type": "GROUP",
+                "absoluteBoundingBox": {"x": 2060, "y": 60, "width": 24, "height": 24},
+                "children": [
+                  {"id": "40:4", "name": "Vector", "type": "VECTOR", "absoluteBoundingBox": {"x": 2060, "y": 60, "width": 24, "height": 24}, "fills": [{"type": "SOLID", "color": {"r": 1, "g": 0.8, "b": 0, "a": 1}}]},
+                  {"id": "40:5", "name": "Union", "type": "BOOLEAN_OPERATION", "absoluteBoundingBox": {"x": 2064, "y": 64, "width": 16, "height": 16}, "children": []}
+                ]
+              },
+              {
+                "id": "40:6",
+                "name": "Badge",
+                "type": "ELLIPSE",
+                "absoluteBoundingBox": {"x": 2700, "y": 60, "width": 40, "height": 40},
+                "rotation": 0.5,
+                "fills": [{"type": "SOLID", "color": {"r": 0.9, "g": 0.1, "b": 0.1, "a": 1}}]
+              },
+              {
+                "id": "40:7",
+                "name": "Note",
+                "type": "STICKY",
+                "absoluteBoundingBox": {"x": 2100, "y": 200, "width": 200, "height": 200}
+              }
+            ]
+          },
+          {
+            "id": "40:8",
+            "name": "Caption",
+            "type": "TEXT",
+            "absoluteBoundingBox": {"x": 2820, "y": 40, "width": 340, "height": 40},
+            "characters": "Selected work",
+            "style": {"fontFamily": "Inter", "fontWeight": 500, "fontSize": 14, "textAlignHorizontal": "RIGHT", "lineHeightPercent": 100, "lineHeightUnit": "INTRINSIC_%"},
+            "fills": [{"type": "SOLID", "color": {"r": 0.2, "g": 0.2, "b": 0.2, "a": 1}}],
+            "layoutPositioning": "AUTO"
+          },
+          {
+            "id": "40:9",
+            "name": "Floating label",
+            "type": "TEXT",
+            "absoluteBoundingBox": {"x": 3100, "y": 760, "width": 80, "height": 20},
+            "characters": "v2",
+            "style": {"fontFamily": "Inter", "fontWeight": 400, "fontSize": 12},
+            "fills": [],
+            "layoutPositioning": "ABSOLUTE"
+          }
+        ]
+      },
+      "components": {},
+      "styles": {}
+    }
+  }
+}
