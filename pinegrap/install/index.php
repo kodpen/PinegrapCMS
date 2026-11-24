@@ -800,10 +800,11 @@ function get_site_backups() {
 			// time, which moves whenever anything is written into the folder.
 			'modified' => pg_backup_taken_time($directory_path . $entry),
 
-			// A folder can only be installed when it holds a database dump.
-			'installable' => file_exists($directory_path . $entry . '/sql.sql'),
+			// A folder can only be installed when it holds a database dump and its
+			// writer finished it (pg_backup_folder_complete()).
+			'installable' => pg_backup_folder_complete($directory_path . $entry),
 
-			'problem' => lang('no database file')
+			'problem' => file_exists($directory_path . $entry . '/sql.sql') ? lang('the backup was not finished') : lang('no database file')
 
 		);
 

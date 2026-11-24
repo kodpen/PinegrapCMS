@@ -350,3 +350,54 @@ function test_backup_ftp_password_kept_only_for_the_same_server()
 	$plain = array_merge($stored, array('tls' => false));
 	pg_assert_same('s3cret', pg_backup_ftp_password_kept($posted(array('tls' => true)), $plain), 'TLS turned on');
 }
+
+// A folder backup counts as complete only with its dump and without the
+// marker its writer leaves until the last file is in: a run cut short while
+// the files were being copied holds a dump and half of the files.
+function test_backup_folder_complete_needs_dump_and_no_marker()
+{
+	$folder = sys_get_temp_dir() . '/pg_backup_complete_' . uniqid('', true);
+	mkdir($folder);
+
+	pg_assert_false(pg_backup_folder_complete($folder), 'empty folder');
+
+	pg_backup_folder_writing($folder, true);
+	file_put_contents($folder . '/sql.sql', '-- dump');
+	pg_assert_false(pg_backup_folder_complete($folder), 'dump written, files still copying');
+
+	pg_backup_folder_writing($folder, false);
+	pg_assert_true(pg_backup_folder_complete($folder), 'finished');
+	pg_assert_false(file_exists($folder . '/' . PG_BACKUP_WRITING_MARKER), 'marker gone');
+
+	// Finishing twice, or a folder that is gone, is no error.
+	pg_backup_folder_writing($folder, false);
+	pg_assert_false(pg_backup_folder_complete($folder . '_missing'), 'missing folder');
+
+	unlink($folder . '/sql.sql');
+	rmdir($folder);
+}
+
+// The newest-backup count leaves out a folder that is still being written.
+function test_backup_newest_skips_a_folder_being_written()
+{
+	$root = sys_get_temp_dir() . '/pg_backup_newest_' . uniqid('', true);
+	mkdir($root . '/done', 0777, true);
+	mkdir($root . '/writing', 0777, true);
+	file_put_contents($root . '/done/sql.sql', '-- dump');
+	file_put_contents($root . '/writing/sql.sql', '-- dump');
+	touch($root . '/done/sql.sql', 1700000000);
+	pg_backup_folder_writing($root . '/writing', true);
+
+	$found = pg_backup_newest($root);
+	pg_assert_same(1, $found['count'], 'one complete backup');
+	pg_assert_same(1700000000, $found['newest'], 'its time');
+
+	pg_backup_folder_writing($root . '/writing', false);
+	pg_assert_same(2, pg_backup_newest($root)['count'], 'both once finished');
+
+	foreach (array('done', 'writing') as $sub) {
+		unlink($root . '/' . $sub . '/sql.sql');
+		rmdir($root . '/' . $sub);
+	}
+	rmdir($root);
+}
