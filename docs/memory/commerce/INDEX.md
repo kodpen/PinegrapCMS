@@ -316,6 +316,7 @@
 - pick-pack-short.md: Short picks (PP5, #11259): the "Short…" drawer, the count fix as a stock_moves count line, Finish the pack, pack_short alert, order.pack_short, the Packing dashboard card
 - pick-pack-tables.md: Pick and pack's four tables and their keys, the reserved `lines` column, what an order's deletion removes, the "Packing only" right user.manage_packing [decision: here]
 - pick-pack-waves.md: Orders › Pick waves (view_pick_waves.php, pick_wave.php, print_pick_list.php): access, waiting addresses, Make a wave, ticks on a phone, close, delete, leavers, the order code
+- pick-pack.md: Pick and pack start file: shelf address, Orders › Pick waves, Orders › Pack barcode check, label on a checked pack, Short…, Packing card, API; K1-K16 with PRs, what is not built [decision: decisions-made-product-90.md]
 - place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country [decision: decisions-made-product-17.md]
 - print-order-header-facts.md: The printed order (print_order.php) carries the order screen's tax number, on-account, unpaid and cancelled state, order codes, installments and gift cards
 - print-order-id.md: print_order.php reads every order query with the one id it checked ($id from $_REQUEST, whole number), never $_GET['id'] again

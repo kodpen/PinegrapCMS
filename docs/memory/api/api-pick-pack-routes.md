@@ -16,7 +16,7 @@ description: GET /pick-waves, GET /pick-waves/{id} (the pick list), GET /orders/
 
 ## What is left out?
 - No price, total, customer name or address on any of them, as on the screens. Rows are not narrowed for the user role (3): the screens narrow none; a "Packing only" user holds no `orders:read`.
-- Each GET is an MCP tool by itself (`pick_waves_list`, `pick_waves_get`, `orders_packs`). The Packing card (K14) has no route yet: it comes with the card (PP5).
+- Each GET is an MCP tool by itself (`pick_waves_list`, `pick_waves_get`, `orders_packs`). The Packing card (K14) has no route or MCP tool: not built (`commerce/pick-pack.md`).
 
 ## How is it tested?
 - `tests/api_pick_waves_test.php` (route rows, presenters against their `*_schema()`, status words); `php tools/check_api_schema.php` pairs `PickWave` and `OrderPack` with their presenters. Not run against a database.

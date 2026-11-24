@@ -19,11 +19,11 @@ description: Decisions list, product part 90 (2026-11-20 on): plans from the own
 ## Should the shop pick, pack and verify orders by shelf and barcode? (owner, 2026-11-20, agent channel poll 181, channel message 10582)
 - "Evet, plana girsin": shelf addresses, pick waves in shelf order, barcode pack verification, label and marketplace status on a verified pack, short picks, measures, `order.packed` / `order.pack_short` events, API.
 - Not chosen: "Evet, önce yalnız barkodla paketleme doğrulaması" (barcode pack verification first), "Hayır, gerek yok".
-- The plan: `plans/pick-pack.md`.
+- Built and closed out: `commerce/pick-pack.md`.
 
 ## Should visits be tied to a known person, with an interest score and lead sources? (owner, 2026-11-20, agent channel poll 183, channel message 10612)
 - "Evet, plana girsin": visits tied to a contact with consent, the person's journey, a decaying interest score and interests, `contact.hot` / `contact.returned`, first and last touch per channel, campaign and content, KVKK, API.
 - Not chosen: "Evet, önce yalnız yolculuk ve kaynak ölçümü" (journey and source measuring first), "Hayır, gerek yok".
 - The plan: `plans/lead-journey.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/customer-rhythm.md, docs/memory/commerce/delivery-tower.md, docs/memory/plans/pick-pack.md, docs/memory/plans/lead-journey.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/customer-rhythm.md, docs/memory/commerce/delivery-tower.md, docs/memory/commerce/pick-pack.md, docs/memory/plans/lead-journey.md

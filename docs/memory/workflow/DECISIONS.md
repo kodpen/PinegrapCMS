@@ -1053,6 +1053,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/payment-iyzico-refusals.md: iyzico card refusals (PR #8517): the visitor sentence by error code, the Site Log line with order, payment id, error group and mdStatus, the 3-D Secure return stopping at a failed verification
 - commerce/payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
 - commerce/pick-pack-tables.md: Pick and pack's four tables and their keys, the reserved `lines` column, what an order's deletion removes, the "Packing only" right user.manage_packing
+- commerce/pick-pack.md: Pick and pack start file: shelf address, Orders › Pick waves, Orders › Pack barcode check, label on a checked pack, Short…, Packing card, API; K1-K16 with PRs, what is not built
 - commerce/place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country
 - commerce/product-form-upload-field.md: The File Upload field of product forms: its rule in form_fields.rules, the check, place and keep functions, who opens the file in get_file.php, the one remove function
 - commerce/product-form-upload-sweep.md: The general job's sweep of a product form's uploaded files in carts that never became an order: 30 days after the cart's last touch, what counts as a touch, how the pass walks, orders never swept
@@ -1180,6 +1181,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move
 - designer/legacy-layouts-output-map.md: How a bootstrap5 design's page types get 5.3.8 names (architect, #8969): the system region's output mapped per request, no converted copies; the rules every change keeps
 - designer/legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open
+- designer/legacy-run-starters.md: Where the legacy-editable run gets a widget's starter layout for a stock-layout page (step LE5b): built in the browser at Convert and posted, never a PHP twin or an empty tree
 - designer/legacy-to-classic.md: Back to classic (LG7): a set's Legacy design sends its pages, all or one, back to the classic styles they came from; how the origin is found, why the tree leaves the page, the refusals, the card
 - designer/legacy-to-designer-report.md: The "Move to the Page Design Studio" readiness report (LD1, #6219): what it lists per classic style, its sets (LG4), its state, the "What stays classic" card (#6488), the rules the whole move keeps
 - designer/member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box.

@@ -33,7 +33,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - `order-screen-*`: 8 files.
 - `orders-list-*`: 6 files.
 - `payment-driver-*`: 9 files; start at `payment-drivers.md`.
-- `pick-pack-*`: 7 files.
+- `pick-pack-*`: 8 files; start at `pick-pack.md`.
 - `product-price-*`: 6 files.
 - `product-review-*`: 6 files.
 - `shipment-label-*`: 8 files; start at `shipment-labels.md`.
