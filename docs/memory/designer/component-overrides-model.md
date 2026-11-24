@@ -1,0 +1,26 @@
+---
+name: component-overrides-model
+description: The pure model of a shared component's per-place values: props._open on a component node, props._place on the placing shared_ref, stable field ids, apply, left-overs; PHP and its JS twin
+module: component_overrides
+---
+
+## Where are the open fields and a place's values kept?
+- In the component's tree: a node's `props._open` is a list of `{id, kind, label}`. Kinds: `text` (`props.text`), `picture` (`props.src`, `props.alt`), `link` (`props.href`), `icon` (`props.iconName`), `shown` (false leaves the node out). An entry with an unknown kind or a bad id is ignored.
+- On the page: the placing `shared_ref` node's `props._place`, an object id => value. No table or column (plan `designer-component-overrides.md`).
+
+## What is a field id?
+- `of_` and eight random lower-case letters or digits (`pg_co_new_field_id($taken)`); valid ids are a lower-case letter then up to 39 of `[a-z0-9_]` (`pg_co_valid_field_id()`). Random, never counted, so a field opened after another was closed never takes the closed field's stored values. An id met twice in a tree keeps its first node.
+
+## Which functions are there?
+- PHP `includes/fn/component_overrides.php`; the twin `assets/js/pg_component_overrides.js` (`window.PGComponentOverrides`), not in a bundle yet: the step that draws with it (CO2) loads it.
+- `pg_co_open_fields($tree)` / `openFields`: `{id, kind, label, nodeId, value}` in document order, `value` the component's own (a picture `{src, alt}`, shown `true`). A `shared_ref` inside the component is not entered.
+- `pg_co_apply($tree, $values)` / `apply`: the tree as drawn at a place; a copy, the given tree unchanged. Nothing to apply (no values, no open field, only unfit values) gives the tree back as given (JS: the same object), so a component with no open field draws byte for byte as before. The root is never left out.
+- `pg_co_clean_value($kind, $value)` / `cleanValue`: text, link and icon strings; shown a boolean; picture `{src, alt}` (a string is the src; no alt keeps the component's). Unfit is `null` and ignored.
+- `pg_co_leftovers($tree, $values)` / `leftovers`: ids no open field takes any more, or whose value no longer fits; the Publish check lists them (CO2 on).
+- `pg_co_place_values($ref)` / `placeValues`: `props._place` or nothing.
+
+## What does the model not do?
+- No check of a link or picture address and no escaping: the field's own checks run where the value is saved and drawn (CO2, CO4).
+
+## Tests?
+- `tests/component_overrides_test.php`: the PHP functions, and the twin run in Node on the same cases with the answers compared (skipped without Node). CO1, #PR.
