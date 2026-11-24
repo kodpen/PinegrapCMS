@@ -550,6 +550,7 @@
 - legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open [decision: decisions-made-product-21.md, decisions-made-product-23.md, decisions-made-product-43.md]
 - legacy-page-parts.md: The move run's page_parts step (LE2, #11159): region nodes in moved pages and in the components the run made become components and widgets; Login, Cart, Comments Block in frame and page_parts
 - legacy-region-preview.md: The canvas's true picture of every region node (LE4): markers around each region tag, designer/legacy_region_preview, the band and pill, the match, who may ask
+- legacy-run-starters.md: Where the legacy-editable run gets a widget's starter layout for a stock-layout page (step LE5b): built in the browser at Convert and posted, never a PHP twin or an empty tree [decision: here]
 - legacy-set-run.md: The run of a set of classic styles into one Legacy design (LG5, #8795): its steps, the design row, the pages moved, a resume, the report, a set moved before
 - legacy-set.md: A set of classic styles on the move report (LG4, #8776): the set key, who moves alone, mobile styles, folder pages, Head code, body classes, the set's dry run
 - legacy-stock-types.md: Stock-layout page types in the move to the designer (LE5, #11270): type settings into the widget's layout, the settings no widget holds, the dry run naming them; the run's types step is LE5b
