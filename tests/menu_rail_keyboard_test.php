@@ -70,3 +70,21 @@ function test_menu_rail_label_stays_in_the_row_name()
 	pg_assert_true(count($drawer) > 0, 'the drawer rule for the row labels is there');
 	pg_assert_true((bool) preg_match('/opacity\s*:\s*1\s*;/', implode('', $drawer)), 'the drawer shows the labels');
 }
+
+// Opened from its button with the keyboard, the phone drawer left the focus
+// on the button in the bar, which comes after the drawer in the page: Tab
+// went on through the bar and never reached a row. The focus now goes into
+// the drawer, to the open panel's way back, the current row or the first.
+function test_menu_drawer_opened_from_its_button_takes_the_focus()
+{
+	$focus = menu_rail_keyboard_test_function('focusMenuDrawer');
+	pg_assert_contains('[data-pg-menu-back]', $focus, 'an open panel: its way back');
+	pg_assert_contains('.list-group-item.active', $focus, 'else the current row');
+	pg_assert_contains('preventScroll: true', $focus);
+
+	$init = menu_rail_keyboard_test_function('initMenuToggle');
+	pg_assert_same(2, substr_count($init, 'focusMenuDrawer();'), 'both openers: the bar button and a screen\'s own');
+
+	$toggle = menu_rail_keyboard_test_function('toggleMenuDrawer');
+	pg_assert_contains('return true;', $toggle, 'says whether it opened the drawer');
+}
