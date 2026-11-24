@@ -18,7 +18,7 @@ module: publish_weight
 
 ## How are unused rules found?
 - `pg_publish_weight_unused_rules($css, $used)`, `$used` the pages' `pg_publish_weight_used_names()` merged with `+`. A rule is listed when none of its selectors can match: a class or id it needs is on no page. Rules inside `@media`/`@supports`/`@layer`/`@container` are read with their condition; `@font-face`, `@keyframes`, `@import` give none.
-- Kept as used: selectors with no class or id, attribute selectors and pseudo-class arguments (`:not(.x)`) not read, classes scripts add while the page runs (`show`, `active`, `fade`, `is-*`, `has-*`, `js-*` …, `pg_publish_weight_state_class()`). Listed only, never removed.
+- Kept as used: selectors with no class or id, attribute selectors and pseudo-class arguments (`:not(.x)`) not read, classes scripts add while the page runs (`show`, `active`, `fade`, `is-*`, `has-*`, `js-*`, `was-*` …, `pg_publish_weight_state_class()`). Listed only, never removed.
 
 ## Which findings does it give?
 - `pg_publish_weight_findings($measure, $unused, $texts)` in PC1's shape (`designer-publish-findings.md`), source and group `weight`, level `look`, never blocking: `weight_<measure>` over budget (detail `bytes / budget`), `img_oversized` and `img_no_size` per picture (node = nearest `data-pg-node`, detail its address), `script_blocking` per script, one `css_unused` (count, one rule a line).

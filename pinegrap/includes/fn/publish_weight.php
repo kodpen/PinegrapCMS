@@ -529,9 +529,9 @@ function pg_publish_weight_state_class($name)
 {
     static $states = array('active', 'show', 'showing', 'hide', 'hiding', 'collapsing', 'fade', 'open', 'opened',
         'closed', 'disabled', 'focus', 'hover', 'visible', 'hidden', 'loaded', 'loading', 'scrolled', 'sticky', 'stuck',
-        'in-view', 'was-validated', 'modal-open', 'dropdown-menu-end', 'animated');
+        'in-view', 'animated');
 
-    return in_array($name, $states, true) || preg_match('/^(is|has|js)-/', $name);
+    return in_array($name, $states, true) || preg_match('/^(is|has|js|was)-/', $name);
 }
 
 /**
