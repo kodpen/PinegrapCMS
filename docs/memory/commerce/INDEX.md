@@ -484,6 +484,7 @@
 - visitor-currency-zero-rate.md: init.php uses a visitor's chosen currency only while its exchange rate is above zero (pg_visitor_currency_row()); a 0 rate falls back to the base currency
 - walk-in-queue-arrivals.md: Walk-in queue arrivals (WQ5): priority from staff, the kiosk and the desk row; I have a booking (today's booking by phone or e-mail); I'm on my way; where a moved-back number stands
 - walk-in-queue-desk.md: Walk-in queue desk (WQ4, queue_desk.php): Today tab, My desk, place staff, Open this desk, Call next, Call again, Not here, Send to another service, Finish, Pause
+- walk-in-queue-lobby-kiosk.md: Walk-in queue lobby screen (queue_lobby.php) and kiosk (queue_kiosk.php), WQ6: signed display links, the board, the chime, the kiosk's cards, the Screens card on the Desks tab
 - walk-in-queue-notices.md: A walk-in queue number's three notices (WQ3): taken, ahead, called; each once by its bit; WhatsApp, SMS or e-mail; kind queue as a service message; the texts and their places
 - walk-in-queue-number-page.md: The walk-in queue's public queue.php (WQ3): taking a number, the person's page and its 15-second read, Leave the queue, staff's Add a number, the limit, the firewall entry
 - walk-in-queue-places.md: Calendars › Queue (WQ2): the places list, a place's Set-up (six folded rows) and Desks tabs, the place's JSON keys and bounds, Open the queue's checks, Delete and Remove, the QR poster [decision: here]
