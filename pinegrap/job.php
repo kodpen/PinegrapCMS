@@ -278,6 +278,15 @@ if (ECOMMERCE) {
 // If commerce is enabled and there is at least one enabled campaign profile
 // that creates auto campaigns for abandoned orders, then check if any orders
 // have been abandoned.
+//
+// One run of the pass at a time: the general job is not locked against
+// itself, and two ticks side by side (a tick running past the next minute, a
+// second cron entry, a manager's run) read the same orders, none of which had
+// a campaign yet, and each made one, so the customer got the mail twice. The
+// lock is a row of its own in cron_runs (pg_cron_claim()); a tick that finds
+// it held leaves the orders to the run that holds it. It expires on its own
+// should a process be killed outright.
+define('PG_ORDER_ABANDONED_LOCK', 'job_order_abandoned');
 
 if (
     ECOMMERCE
@@ -286,7 +295,12 @@ if (
         FROM email_campaign_profiles
         WHERE (enabled = '1') AND (action = 'order_abandoned')
         LIMIT 1")
+    and pg_cron_claim(PG_ORDER_ABANDONED_LOCK, 600)
 ) {
+
+    // Given back at once below; the shutdown handler covers a run that ends
+    // inside the pass. A second release changes nothing.
+    register_shutdown_function('pg_cron_release', PG_ORDER_ABANDONED_LOCK);
 
     $six_hours_ago_timestamp = time() - 21600;
 
@@ -382,6 +396,8 @@ if (
             'contact_id' => $order['contact_id']));
 
     }
+
+    pg_cron_release(PG_ORDER_ABANDONED_LOCK);
 
 }
 

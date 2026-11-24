@@ -28,7 +28,10 @@ if (!pg_cron_is_background_run()) {
 
 require_once(dirname(__FILE__) . '/includes/api/outbound/sync.php');
 
-$result = mp_sync_run(25);
+// Capped by what is left of the general job's time limit when dispatched
+// (pg_cron_time_left()), so a host runner does not kill the run with its lock
+// held; what is left waits for the next run.
+$result = mp_sync_run(pg_cron_time_left(25));
 
 // Scheduled-task health, the same as the other jobs record.
 if (function_exists('pg_cron_ran')) {
