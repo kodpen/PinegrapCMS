@@ -21,6 +21,7 @@
  * One member at a time shares a screen: its share and unshare signals,
  * addressed to nobody, say who; the sharer renews its share with the
  * keep-alive, and a member's signals go when it leaves, so its share ends.
+ * A raised hand works the same way (hand and unhand), one for each member.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -68,6 +69,12 @@ define('WS_CALL_RING', 45);
 define('WS_CALL_SHARE_LIFE', 75);
 
 /**
+ * Seconds a raised hand holds without its member renewing it (with the
+ * keep-alive, as a share), so a closed tab's hand comes down.
+ */
+define('WS_CALL_HAND_LIFE', 75);
+
+/**
  * Seconds a member may go unheard (no signal of its own, not even the
  * keep-alive every 30 seconds) before the clean-up takes it out of the
  * call: a tab closed without its leave arriving, a phone that lost the
@@ -111,18 +118,19 @@ function ws_call_kinds()
  */
 function ws_call_signal_kinds()
 {
-    return array('offer', 'answer', 'candidate', 'ping', 'share', 'unshare');
+    return array('offer', 'answer', 'candidate', 'ping', 'share', 'unshare', 'hand', 'unhand');
 }
 
 /**
- * Is a signal of this kind addressed to nobody? Pure.
+ * Is a signal of this kind addressed to nobody (the keep-alive, the share
+ * and hand marks)? Pure.
  *
  * @param string $kind
  * @return bool
  */
 function ws_call_signal_to_nobody($kind)
 {
-    return in_array((string) $kind, array('ping', 'share', 'unshare'), true);
+    return in_array((string) $kind, array('ping', 'share', 'unshare', 'hand', 'unhand'), true);
 }
 
 // ── The stamp that keeps an idle channel's reads free ──
@@ -327,6 +335,43 @@ function ws_call_sharer_from($mark, $live_ids, $now)
 }
 
 /**
+ * Whose hands are raised in a call now? Pure. Each member's newest hand or
+ * unhand mark decides for that member: a hand by a member still in the
+ * call, renewed within WS_CALL_HAND_LIFE seconds. A hand is the member's
+ * own, so nobody lowers another's.
+ *
+ * @param array[] $marks    hand/unhand signals, newest first: from_member_id, kind, created_at
+ * @param int[]   $live_ids the member ids in the call now
+ * @param int     $now
+ * @return int[] the member ids with a raised hand, in member order
+ */
+function ws_call_hands_from($marks, $live_ids, $now)
+{
+    $live_ids = array_map('intval', (array) $live_ids);
+    $seen = array();
+    $hands = array();
+
+    foreach ((array) $marks as $mark) {
+        $member_id = (int) $mark['from_member_id'];
+
+        if (isset($seen[$member_id])) {
+            continue;
+        }
+
+        $seen[$member_id] = true;
+
+        if (((string) $mark['kind'] === 'hand') && ((int) $mark['created_at'] > ((int) $now - WS_CALL_HAND_LIFE))
+            && in_array($member_id, $live_ids, true)) {
+            $hands[] = $member_id;
+        }
+    }
+
+    sort($hands);
+
+    return $hands;
+}
+
+/**
  * May this member start or renew a share, or stop one? Pure. One share at a
  * time: only while nobody else shares. Stopping is the sharer's own; from
  * anyone else it changes nothing (null: write nothing).
@@ -460,9 +505,10 @@ function ws_call_may_end($party, $call, $manages)
  * @param array[]  $members its live ws_call_members rows
  * @param string[] $names   'user:<id>' / 'guest:<id>' => name
  * @param int      $sharer  the member id sharing a screen, 0 for none
+ * @param int[]    $hands   the member ids with a raised hand
  * @return array
  */
-function ws_call_present($call, $members, $names, $sharer = 0)
+function ws_call_present($call, $members, $names, $sharer = 0, $hands = array())
 {
     $people = array();
 
@@ -487,6 +533,7 @@ function ws_call_present($call, $members, $names, $sharer = 0)
         'started_at' => (int) $call['started_at'],
         'members'    => $people,
         'sharer'     => (int) $sharer,
+        'hands'      => array_values(array_map('intval', (array) $hands)),
     );
 }
 
@@ -563,6 +610,31 @@ function ws_call_sharer($call_id, $members)
     }
 
     return ws_call_sharer_from(is_array($mark) ? $mark : null, $live_ids, time());
+}
+
+/**
+ * Whose hands are raised in a call now (ws_call_hands_from()): the call's
+ * hand marks of the last WS_CALL_HAND_LIFE seconds (idx_call).
+ *
+ * @param int     $call_id
+ * @param array[] $members its live ws_call_members rows
+ * @return int[]
+ */
+function ws_call_hands($call_id, $members)
+{
+    $now = time();
+    $live_ids = array();
+
+    foreach ((array) $members as $member) {
+        $live_ids[] = (int) $member['id'];
+    }
+
+    $marks = db_items("SELECT from_member_id, kind, created_at FROM ws_call_signals
+        WHERE call_id = '" . (int) $call_id . "' AND created_at > '" . ($now - WS_CALL_HAND_LIFE) . "'
+        AND to_member_id = 0 AND kind IN ('hand', 'unhand')
+        ORDER BY id DESC LIMIT " . WS_CALL_SIGNAL_READ);
+
+    return ws_call_hands_from(is_array($marks) ? $marks : array(), $live_ids, $now);
 }
 
 /**
@@ -1099,7 +1171,8 @@ function ws_call_live_part($party, $channel_id, $signal_after)
     $mine = ws_call_member_of($party, $call['id']);
 
     return array(
-        'call'      => ws_call_present($call, $members, ws_call_member_names($members), ws_call_sharer((int) $call['id'], $members)),
+        'call'      => ws_call_present($call, $members, ws_call_member_names($members), ws_call_sharer((int) $call['id'], $members),
+            ws_call_hands((int) $call['id'], $members)),
         'member_id' => $mine ? (int) $mine['id'] : 0,
         'signals'   => $mine ? ws_call_signals_for((int) $mine['id'], (int) $signal_after) : array(),
     );
@@ -1319,5 +1392,10 @@ function ws_call_js_strings()
         'call_elsewhere'  => lang('You are already in this call in another window.'),
         'call_moved'      => lang('The call goes on in another window.'),
         'call_new_tab'    => lang('Opened in a new tab, so the call goes on.'),
+        'call_hand_raise' => lang('Raise hand'),
+        'call_hand_lower' => lang('Lower hand'),
+        'call_hand_up'    => lang('Hand raised'),
+        'call_weak'       => lang('Weak connection'),
+        'call_muted_talk' => lang('You are muted'),
     );
 }

@@ -24,3 +24,4 @@ description: Start here for Workspace voice and video calls (plan CL1-CL8, close
 - A guest in a call: `calls-guest.md` (CL5, #10975).
 - The channel's call lines: `calls-lines.md` (CL7, #11125).
 - Phone, ICE restart, a closed tab, a second window: `calls-endurance.md` (CL8, #11156).
+- Raise hand, the weak-connection mark, "You are muted": `calls-hand.md` (CN6, #11385).

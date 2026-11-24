@@ -6,7 +6,7 @@ description: Workspace calls on the server (CL1, #10499, step 11.0.243): tables,
 ## What do the tables hold? (step 11.0.243)
 - `ws_calls`: channel_id, started_by (a user id), kind voice|video, state live|ended, started_at, ended_at. One live call a channel: a start where one is on joins it.
 - `ws_call_members`: one row per join (user_id or guest_id), joined_at, left_at (0 while in the call). A party already in the call is refused a second row; its Join here takes the old place over (`calls-endurance.md`).
-- `ws_call_signals`: from_member_id, to_member_id, kind offer|answer|candidate|ping, body (at most 32 KB), created_at. A ping is the keep-alive, to nobody.
+- `ws_call_signals`: from_member_id, to_member_id, kind offer|answer|candidate|ping|share|unshare|hand|unhand, body (at most 32 KB), created_at. A ping is the keep-alive; it and the share and hand marks (`calls-share.md`, `calls-hand.md`) go to nobody.
 - No media, recording or transcript is stored (`workflow/decisions-made-schema-29.md`).
 
 ## Who may take part?

@@ -9,7 +9,8 @@
  * marked; mute, the camera, sharing one's screen (one member at a time),
  * the microphone, camera and speaker in use (remembered in this browser
  * for the next call, with whether the person was muted or had the camera
- * off), hang up. Another member's shared
+ * off), raising a hand, hang up. A tile shows a raised hand and a weak
+ * connection; the person speaking while muted is told so. Another member's shared
  * screen is shown large in the same window (the stage), the tiles beside
  * it, or under it on a narrow screen; it can be made smaller or full screen.
  *
@@ -78,6 +79,15 @@
     // off. Device ids mean something only in this browser, so they are
     // never sent to the site.
     var CHOICES_KEY = 'pg_ws_call_choices';
+
+    // How often each connection's received packets are counted (getStats),
+    // and the share of them lost that marks its tile as weak (0-1).
+    var STATS_EVERY = 2000;
+    var WEAK_LOSS = 0.05;
+
+    // How long "You are muted" stays after the muted voice drops
+    // (milliseconds).
+    var MUTED_HINT_HOLD = 3000;
 
     // The one call of this screen, the rings shown and the ones answered.
     var call = null;
@@ -219,6 +229,68 @@
     // does not flicker between words.
     function speaking(loudness, loudAt, now) {
         return (loudness >= SPEAKING_LEVEL) || (!!loudAt && ((now - loudAt) < SPEAKING_HOLD));
+    }
+
+    // The marks the keep-alive sends: a share and a raised hand are renewed
+    // with it (the server lets them lapse otherwise), a plain ping when
+    // neither is on.
+    function keepAlive(sharing, hand) {
+        var kinds = [];
+
+        if (sharing) {
+            kinds.push('share');
+        }
+
+        if (hand) {
+            kinds.push('hand');
+        }
+
+        return kinds.length ? kinds : ['ping'];
+    }
+
+    // The hand button's label and icon, raised or not.
+    function handState(on) {
+        return on ? { label: 'call_hand_lower', icon: 'bi-hand-index-fill', pressed: 'true' }
+            : { label: 'call_hand_raise', icon: 'bi-hand-index', pressed: 'false' };
+    }
+
+    // A connection's received and lost packets, summed over its incoming
+    // lines, from the entries of a getStats() report.
+    function inbound(entries) {
+        var counts = { received: 0, lost: 0 };
+
+        (entries || []).forEach(function (entry) {
+            if (entry && (entry.type === 'inbound-rtp')) {
+                counts.received += Number(entry.packetsReceived) || 0;
+                counts.lost += Number(entry.packetsLost) || 0;
+            }
+        });
+
+        return counts;
+    }
+
+    // The share of packets lost between two counts (0-1); 0 when there is
+    // no earlier count or nothing came.
+    function lossRatio(before, after) {
+        if (!before || !after) {
+            return 0;
+        }
+
+        var lost = Math.max(0, after.lost - before.lost);
+        var received = Math.max(0, after.received - before.received);
+
+        return (lost + received) ? lost / (lost + received) : 0;
+    }
+
+    // Is a connection weak: broken while its route is restarted, or losing
+    // WEAK_LOSS of its packets or more?
+    function weak(state, ratio) {
+        return (state === 'disconnected') || (state === 'failed') || (ratio >= WEAK_LOSS);
+    }
+
+    // Is "You are muted" shown: muted, and the voice heard a moment ago.
+    function mutedHint(muted, talkAt, now) {
+        return !!muted && !!talkAt && ((now - talkAt) < MUTED_HINT_HOLD);
     }
 
     // Does this member make the offer to that one? The later joiner does.
@@ -768,8 +840,10 @@
             }
 
             look();
-            // A sharer's keep-alive renews its share too.
-            mine.pinger = setInterval(function () { send(0, mine.sharing ? 'share' : 'ping', ''); }, PING_EVERY);
+            // The keep-alive renews a share and a raised hand too.
+            mine.pinger = setInterval(function () {
+                keepAlive(mine.sharing, mine.hand).forEach(function (kind) { send(0, kind, ''); });
+            }, PING_EVERY);
         }).catch(function (error) {
             var denied = error && (error.name === 'NotAllowedError' || error.name === 'NotFoundError' || error.name === 'SecurityError');
 
@@ -830,6 +904,7 @@
         });
 
         mine.sharer = part.call.sharer || 0;
+        mine.hands = part.call.hands || [];
 
         // The server no longer holds this member's share (it lapsed): the
         // screen stops. A read sent before the share was written is not
@@ -873,6 +948,7 @@
         }
 
         names();
+        marksDraw(mine);
         stageDraw(mine);
         status();
     }
@@ -1237,6 +1313,22 @@
         return notice;
     }
 
+    // "You are muted", with Unmute, while the muted person speaks.
+    function mutedDraw(mine) {
+        var el = h().el;
+        var notice = el('div', 'alert theme-info small ws-call-notice');
+        var unmute = makeButton('pg-button pg-button-sm', t('call_unmute'), '');
+
+        notice.hidden = true;
+        notice.setAttribute('role', 'status');
+        notice.appendChild(el('span', '', t('call_muted_talk')));
+        unmute.addEventListener('click', function () { mute(false); });
+        notice.appendChild(unmute);
+        mine.mutedNotice = notice;
+
+        return notice;
+    }
+
     // ── The window ──
 
     function draw() {
@@ -1260,7 +1352,7 @@
         mine.selfTile = tile(mine, 0);
         mine.selfTile.video.muted = true;
         mine.selfTile.video.srcObject = mine.stream;
-        listen(mine, mine.selfTile, mine.stream);
+        selfListen(mine);
         Object.keys(mine.peers).forEach(function (id) {
             mine.peers[id].tile = mine.peers[id].tile || tile(mine, Number(id));
         });
@@ -1281,6 +1373,7 @@
         bar.appendChild(mine.state);
         win.appendChild(bar);
         win.appendChild(noticeDraw(mine));
+        win.appendChild(mutedDraw(mine));
 
         var tools = el('div', 'ws-call-tools');
 
@@ -1314,6 +1407,11 @@
             tools.appendChild(mine.shareButton);
         }
 
+        mine.handButton = makeButton('pg-icon-button', '', 'bi-hand-index', t('call_hand_raise'));
+        mine.handButton.setAttribute('aria-pressed', 'false');
+        mine.handButton.addEventListener('click', function () { hand(!mine.hand); });
+        tools.appendChild(mine.handButton);
+
         var devices = makeButton('pg-icon-button', '', 'bi-gear', t('call_devices'));
         var panel = el('div', 'ws-call-devices');
 
@@ -1336,7 +1434,7 @@
         win.appendChild(tools);
         win.appendChild(panel);
 
-        [mine.muteButton, mine.cameraButton, mine.shareButton, devices, mine.sizeButton, mine.fullButton].forEach(function (node) {
+        [mine.muteButton, mine.cameraButton, mine.shareButton, mine.handButton, devices, mine.sizeButton, mine.fullButton].forEach(function (node) {
             if (node) {
                 node.setAttribute('aria-label', node.title);
             }
@@ -1349,12 +1447,14 @@
         document.addEventListener('fullscreenchange', mine.onFull);
         mine.clock = setInterval(status, 1000);
         mine.meter = setInterval(function () { measure(mine); }, LEVEL_EVERY);
+        mine.stats = setInterval(function () { statsRead(mine); }, STATS_EVERY);
         stageDraw(mine);
         status();
     }
 
-    // A member's tile: the picture (with the sound), the name, and the mark
-    // of the one speaking. Member 0 is the viewer.
+    // A member's tile: the picture (with the sound), the name, the mark of
+    // the one speaking, and the marks of a raised hand and a weak
+    // connection. Member 0 is the viewer.
     function tile(mine, id) {
         if (!mine.grid) {
             return null;
@@ -1372,7 +1472,17 @@
         node.appendChild(h().icon('bi-person-circle'));
         node.appendChild(name);
 
-        var held = { id: id, node: node, video: video, name: name, loudAt: 0, speaking: false };
+        var marks = el('div', 'ws-call-tile-marks');
+        var handMark = mark('bi-hand-index-fill', t('call_hand_up'));
+        var weakMark = mark('bi-reception-1', t('call_weak'));
+
+        weakMark.classList.add('is-weak');
+
+        marks.appendChild(handMark);
+        marks.appendChild(weakMark);
+        node.appendChild(marks);
+
+        var held = { id: id, node: node, video: video, name: name, loudAt: 0, speaking: false, handMark: handMark, weakMark: weakMark };
 
         // Another member's sound plays on the chosen speaker.
         if (id && mine.speaker && sinkSupported()) {
@@ -1383,6 +1493,85 @@
         layout(mine);
 
         return held;
+    }
+
+    // One mark of a tile: an icon named for the screen reader, hidden till on.
+    function mark(iconName, label) {
+        var node = h().el('span', 'ws-call-tile-mark');
+
+        node.hidden = true;
+        node.title = label;
+        node.setAttribute('role', 'img');
+        node.setAttribute('aria-label', label);
+        node.appendChild(h().icon(iconName));
+
+        return node;
+    }
+
+    // The tiles' raised hands (one's own as this window holds it, the
+    // others' as the call part says) and weak connections.
+    function marksDraw(mine) {
+        var show = function (node, on) {
+            if (node && (node.hidden === on)) {
+                node.hidden = !on;
+            }
+        };
+
+        if (mine.selfTile) {
+            show(mine.selfTile.handMark, !!mine.hand);
+        }
+
+        Object.keys(mine.peers).forEach(function (id) {
+            var held = mine.peers[id];
+
+            if (held.tile) {
+                show(held.tile.handMark, (mine.hands || []).indexOf(Number(id)) >= 0);
+                show(held.tile.weakMark, weak(held.pc.connectionState, held.loss || 0));
+            }
+        });
+    }
+
+    // Counts each connection's received and lost packets; the loss since
+    // the last count marks a weak connection.
+    function statsRead(mine) {
+        Object.keys(mine.peers).forEach(function (id) {
+            var held = mine.peers[id];
+
+            if (held.pc.connectionState !== 'connected') {
+                held.counts = null;
+                held.loss = 0;
+                return;
+            }
+
+            held.pc.getStats().then(function (report) {
+                var entries = [];
+
+                report.forEach(function (entry) { entries.push(entry); });
+
+                var counts = inbound(entries);
+
+                held.loss = lossRatio(held.counts, counts);
+                held.counts = counts;
+
+                if (call === mine) {
+                    marksDraw(mine);
+                }
+            }).catch(function () {});
+        });
+    }
+
+    // Raises or lowers this member's hand; the others read it from the
+    // call part, and the keep-alive renews it while it is up.
+    function hand(on) {
+        var mine = call;
+        var state = handState(on);
+
+        mine.hand = on;
+        send(0, on ? 'hand' : 'unhand', '');
+        mine.handButton.setAttribute('aria-pressed', state.pressed);
+        mine.handButton.classList.toggle('is-active', on);
+        iconSwap(mine.handButton, state.icon, t(state.label));
+        marksDraw(mine);
     }
 
     function tileDrop(mine, held) {
@@ -1464,6 +1653,32 @@
         }
     }
 
+    // The person's own voice is heard from a copy of the microphone's track
+    // that stays on while muted (a muted track gives silence), so "You are
+    // muted" can be shown; the copy goes to no connection.
+    function selfListen(mine) {
+        var track = mine.stream.getAudioTracks()[0];
+        var copy = null;
+
+        if (mine.hearCopy) {
+            mine.hearCopy.stop();
+            mine.hearCopy = null;
+        }
+
+        try {
+            copy = (track && window.MediaStream) ? track.clone() : null;
+        } catch (error) {
+            copy = null;
+        }
+
+        if (copy) {
+            copy.enabled = true;
+            mine.hearCopy = copy;
+        }
+
+        listen(mine, mine.selfTile, copy ? new window.MediaStream([copy]) : mine.stream);
+    }
+
     // Marks the tiles of the ones speaking now.
     function measure(mine) {
         var now = Date.now();
@@ -1480,7 +1695,12 @@
 
             held.analyser.getByteTimeDomainData(held.bytes);
 
-            var loudness = (held === mine.selfTile && mine.muted) ? 0 : level(held.bytes);
+            var heard = level(held.bytes);
+            var loudness = (held === mine.selfTile && mine.muted) ? 0 : heard;
+
+            if ((held === mine.selfTile) && mine.muted && (heard >= SPEAKING_LEVEL)) {
+                mine.talkAt = now;
+            }
 
             if (loudness >= SPEAKING_LEVEL) {
                 held.loudAt = now;
@@ -1493,6 +1713,12 @@
                 held.node.classList.toggle('is-speaking', on);
             }
         });
+
+        var hint = mutedHint(mine.muted, mine.talkAt, now);
+
+        if (mine.mutedNotice && (mine.mutedNotice.hidden === hint)) {
+            mine.mutedNotice.hidden = !hint;
+        }
     }
 
     function status() {
@@ -1527,6 +1753,8 @@
             }
         });
 
+        marksDraw(mine);
+
         var connected = Object.keys(mine.peers).some(function (id) {
             return mine.peers[id].pc.connectionState === 'connected';
         });
@@ -1551,6 +1779,12 @@
         var mine = call;
 
         mine.muted = on;
+        mine.talkAt = 0;
+
+        if (mine.mutedNotice) {
+            mine.mutedNotice.hidden = true;
+        }
+
         mine.stream.getAudioTracks().forEach(function (track) { track.enabled = !on; });
         mine.muteButton.setAttribute('aria-pressed', on ? 'true' : 'false');
         iconSwap(mine.muteButton, on ? 'bi-mic-mute' : 'bi-mic', t(on ? 'call_unmute' : 'call_mute'));
@@ -1664,7 +1898,7 @@
 
             // The speaking mark hears the new microphone.
             if (kind === 'audio') {
-                listen(mine, mine.selfTile, mine.stream);
+                selfListen(mine);
             }
         }).catch(function () {
             h().toast(t('call_denied'), 'danger');
@@ -1708,10 +1942,16 @@
         clearInterval(mine.pinger);
         clearInterval(mine.clock);
         clearInterval(mine.meter);
+        clearInterval(mine.stats);
         Object.keys(mine.peers).forEach(function (id) { peerClose(mine, Number(id)); });
 
         if (mine.stream) {
             mine.stream.getTracks().forEach(function (track) { track.stop(); });
+        }
+
+        if (mine.hearCopy) {
+            mine.hearCopy.stop();
+            mine.hearCopy = null;
         }
 
         if (mine.screenTrack) {
@@ -1831,6 +2071,12 @@
         screenSlot: screenSlot,
         shareState: shareState,
         stageState: stageState,
-        leavesPage: leavesPage
+        leavesPage: leavesPage,
+        keepAlive: keepAlive,
+        handState: handState,
+        inbound: inbound,
+        lossRatio: lossRatio,
+        weak: weak,
+        mutedHint: mutedHint
     };
 })();
