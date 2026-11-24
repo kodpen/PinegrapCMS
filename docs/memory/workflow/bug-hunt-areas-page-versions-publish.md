@@ -13,7 +13,7 @@ description: The bug hunt of page drafts, scheduled publishing and revisions (20
 - A menu item with its access switch off linked a draft or binned page for every visitor, naming it and leading to the sign-in page. `pg_menu_item_shown()` (includes/fn/content.php) checks view access for such a page whatever the switch says; the classic menu and the Menu widget (`pg_sw_list_menu_rows()`, fifth argument) use it. Test: `tests/menu_widget_test.php`.
 - `pg_page_off_site_folder_ids()` (includes/fn/designer.php): the Drafts folder plus the recycle bin and its folders.
 
-## What was left as an issue?
+## What was left as an issue (#11430)?
 - A tab whose lock lapsed (laptop asleep past `PG_COLLAB_STALE`, 65 s) while another person opened, saved and closed the page takes the lock back on its next beat and its save writes its old tree over the other person's work without a word. The save has no base version to compare: `page_timestamp` also moves with the job's scheduled move, which an open editor must survive, so the guard needs a decision (a counter column or a tree hash sent back).
 
 ## What was read clean?
