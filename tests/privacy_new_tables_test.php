@@ -93,3 +93,21 @@ function test_privacy_erase_volunteer_frees_coming_places()
 	);
 	pg_assert_same(array(1, 2), array_column(pg_volunteer_give_up_rows($rows, $now), 'id'), 'coming signed and waiting places only');
 }
+
+// The browsers tied to the contact are in the export: when the marketing
+// yes was given, when tied, last seen. The key's hash is not.
+function test_privacy_export_lists_the_tied_browsers()
+{
+	$sections = pg_privacy_export_sections();
+	pg_assert_true(array_key_exists('journey_browsers', $sections), 'a section for the tied browsers');
+
+	$keys = array_keys($sections);
+	pg_assert_same(array_search('interest_score', $keys) + 1, array_search('journey_browsers', $keys), 'after the score');
+
+	$source = privacy_new_tables_test_source('pg_privacy_export_collect');
+	pg_assert_contains('FROM lead_browsers WHERE', $source, 'read from lead_browsers');
+	pg_assert_contains('consent_at', $source, 'the marketing yes');
+
+	$select = substr($source, strpos($source, 'FROM lead_browsers') - 200, 200);
+	pg_assert_true(strpos($select, 'key_hash') === false, 'never the key\'s hash');
+}
