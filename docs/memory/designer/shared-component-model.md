@@ -20,6 +20,7 @@ description: How a shared_ref places a shared component: id link and name snapsh
 
 ## In what order is it saved?
 - Edits are made inline on the canvas. Save first pushes every dirty component (`_flushDirtyShared()`, awaited), then writes the style and the pages: `shared-component-editor-cache.md`.
+- `update`, `update_config` and `rename` of a row deleted meanwhile are refused (`pg_shared_component_gone_message()`, PR #11498), so the editor keeps the change unsaved; before, they answered success and the change was lost. A single `delete` logs the row as `delete_many` does.
 - Opening a component to content editors: `shared-component-content-editing.md`. Deleting rows outside the editor: `shared-components-panel.md`.
 
 ## Which colours mean what in the editor?
