@@ -39,10 +39,13 @@ function workspace_task_filters_body($name, $args = 'root')
 
 function test_workspace_task_filters_department_selects_named()
 {
+	// The board's and the Work Calendar's selects stand behind "Filter",
+	// named by their field's label.
 	foreach (array('startBoard', 'startCalendar') as $name) {
 		$body = workspace_task_filters_body($name);
 
-		pg_assert_contains("var dept = select(departmentOptions(t('all_departments')), 0);\n        dept.classList.add('w-auto');\n        dept.setAttribute('aria-label', t('department'));", $body);
+		pg_assert_contains("var dept = formParts.select(departmentOptions(t('all_departments')), '0', true);", $body);
+		pg_assert_contains("{ label: t('department'), control: dept,", $body);
 	}
 
 	// My Tasks' select stands behind "Filter", named by its field's label
@@ -139,9 +142,54 @@ function test_workspace_task_filters_week_buttons_pressed()
 {
 	$body = workspace_task_filters_body('startBoard');
 
-	pg_assert_contains("item.setAttribute('aria-pressed', state.days === option[0] ? 'true' : 'false');", $body);
-	pg_assert_contains("child.setAttribute('aria-pressed', 'false');", $body);
-	pg_assert_contains("item.setAttribute('aria-pressed', 'true');", $body);
+	pg_assert_contains("span.items[key].setAttribute('aria-pressed', (parseInt(key, 10) === state.days) ? 'true' : 'false');", $body);
+	pg_assert_contains("span.items[key].setAttribute('aria-pressed', 'false');", $body);
+	pg_assert_contains("span.items[days].setAttribute('aria-pressed', 'true');", $body);
+}
+
+// WI7: the Work Calendar, My calendar, the Planning Board and the Decision
+// Timeline each draw one ws-bar line with at most one filled button, no old
+// button group, and keep their filters' meaning and address parameters.
+function test_workspace_task_filters_calendar_board_timeline_bars()
+{
+	foreach (array('startCalendar', 'startBoard', 'startTimeline') as $name) {
+		$body = workspace_task_filters_body($name);
+
+		pg_assert_contains("var bar = el('nav', 'pg-toolbar ws-bar');", $body, $name);
+		pg_assert_contains('frame.appendChild(bar);', $body, $name);
+		pg_assert_contains('barFilter({', $body, $name);
+		pg_assert_true(substr_count($body, 'pg-button-fill') <= 1, $name . ': at most one filled button');
+		pg_assert_false(strpos($body, "'btn-group btn-group-sm'") !== false, $name . ': no button group');
+	}
+
+	$calendar = workspace_task_filters_body('startCalendar');
+
+	pg_assert_contains("barSteps(t('previous_month'), t('this_month'), t('next_month'),", $calendar);
+	pg_assert_contains("shows.items[key].setAttribute('aria-pressed', state.show[key] ? 'true' : 'false');", $calendar);
+	pg_assert_contains("api('ws_calendar', { month: state.month, person_id: state.person_id, department_id: state.department_id, agent_channels: state.agents ? 'only' : '' })", $calendar);
+	pg_assert_contains("clear: function () { state.status = 'all'; statusFilter.value = 'all'; }", $calendar);
+
+	$board = workspace_task_filters_body('startBoard');
+
+	pg_assert_contains("lookButton('pg-button pg-button-fill', t('add_plan_item'), 'bi-calendar-plus')", $board);
+	pg_assert_contains("api('ws_conflicts', conflictRange())", $board);
+	pg_assert_contains("conflictCount.hidden = !number;", $board);
+	pg_assert_contains("emptyScreen({ tone: 'violet', icon: 'bi-people', title: t('board_none_title'), text: t('board_empty') })", $board);
+
+	$timeline = workspace_task_filters_body('startTimeline');
+
+	pg_assert_contains('inline: true,', $timeline);
+	pg_assert_contains("barSearch(t('tl_search'),", $timeline);
+	pg_assert_contains("add('channel', state.channel_id);", $timeline);
+	pg_assert_contains("emptyScreen({ tone: 'blue', icon: 'bi-clock-history', title: t('tl_none_title'), text: t('tl_empty_all') })", $timeline);
+	pg_assert_contains("barEmptyFound(t('tl_empty'),", $timeline);
+
+	$mine = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_my_calendar.js');
+
+	pg_assert_contains("var bar = el('nav', 'pg-toolbar ws-bar');", $mine);
+	pg_assert_contains("h.bar.views(s('view'), [['month', s('month')], ['week', s('week')], ['list', s('list')]], state.view,", $mine);
+	pg_assert_contains('keepView(state.view);', $mine);
+	pg_assert_contains("newPlan.setAttribute('data-ws-new-plan', '');", $mine);
 }
 
 function test_workspace_task_filters_count_announced()

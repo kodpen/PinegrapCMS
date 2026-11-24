@@ -211,8 +211,9 @@ function test_bs6_form_adorn_toolbar_search_keeps_its_toolbar_class()
 function test_bs6_form_adorn_workspace_toolbar_searches()
 {
 	$root = dirname(__DIR__) . '/pinegrap/assets/js/';
+	// The Decision Timeline's search is the screen bar's barSearch()
+	// (tests/workspace_task_filters_test.php) since its one-line bar.
 	$cases = array(
-		'workspace.js' => array("t('tl_search')"),
 		'workspace_board_channel.js' => array("t('cb_search')"),
 	);
 

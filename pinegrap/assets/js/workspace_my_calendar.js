@@ -68,78 +68,55 @@
         h.clear(root);
         root.classList.add('ws-mycal-screen');
 
-        // ── toolbar: previous, Today, next, the range, the view, the Work Calendar ──
+        // ── the bar (board S2 of plans/workspace-interface): New plan, the
+        // Work Calendar; previous, Today, next, the range; the views ──
 
-        var bar = el('nav', 'pg-toolbar navigation mb-5 ws-cal-toolbar ws-mycal-toolbar');
-        var steps = el('div', 'ws-mycal-steps');
-        var prev = el('button', 'pg-icon-button pg-icon-button-sm');
-        var today = el('button', 'pg-button pg-button-quiet pg-button-sm', h.t('today'));
-        var next = el('button', 'pg-icon-button pg-icon-button-sm');
-
-        [prev, today, next].forEach(function (node) { node.type = 'button'; });
-        prev.appendChild(h.icon('bi-chevron-left'));
-        prev.setAttribute('aria-label', s('previous'));
-        prev.title = s('previous');
-        next.appendChild(h.icon('bi-chevron-right'));
-        next.setAttribute('aria-label', s('next'));
-        next.title = s('next');
-        prev.addEventListener('click', function () { if (data) { state.date = data.prev; load(); } });
-        next.addEventListener('click', function () { if (data) { state.date = data.next; load(); } });
-        today.addEventListener('click', function () { state.date = ''; load(); });
-        steps.appendChild(prev);
-        steps.appendChild(today);
-        steps.appendChild(next);
-        bar.appendChild(steps);
-
-        var title = el('h2', 'ws-cal-title pg-title-section');
-        bar.appendChild(title);
-        bar.appendChild(el('div', 'pg-toolbar-grow'));
-
-        var seg = el('div', 'pg-seg');
-        var segItems = {};
-
-        seg.setAttribute('role', 'group');
-        seg.setAttribute('aria-label', s('view'));
-
-        [['month', 'bi-calendar3'], ['week', 'bi-calendar-week'], ['list', 'bi-list-ul']].forEach(function (option) {
-            var item = el('button', 'pg-seg-item');
-            item.type = 'button';
-            item.appendChild(h.icon(option[1], 'me-1'));
-            item.appendChild(document.createTextNode(s(option[0])));
-            item.addEventListener('click', function () {
-                // The list starts on today; earlier days are one step back.
-                if (option[0] === 'list' && state.view !== 'list') {
-                    state.date = '';
-                }
-
-                state.view = option[0];
-                keepView(state.view);
-                load();
-            });
-            segItems[option[0]] = item;
-            seg.appendChild(item);
-        });
-
-        bar.appendChild(seg);
+        var frame = el('div', 'ws-bar-frame');
+        var bar = el('nav', 'pg-toolbar ws-bar');
 
         // New plan: only once the plan tables are there (data.plans).
-        var newPlan = el('button', 'pg-button pg-button-fill pg-button-sm d-none');
-        newPlan.type = 'button';
+        var newPlan = h.bar.button('pg-button pg-button-fill d-none', s('new_plan'), 'bi-plus-lg');
         newPlan.setAttribute('data-ws-new-plan', '');
-        newPlan.appendChild(h.icon('bi-plus-lg'));
-        newPlan.appendChild(document.createTextNode(s('new_plan')));
         newPlan.addEventListener('click', function () { plans.drawer(null, { start: (data && data.today) || h.cfg.today }); });
+        bar.appendChild(newPlan);
 
-        var work = el('a', 'pg-button pg-button-quiet pg-button-sm');
+        var work = el('a', 'pg-button pg-button-quiet');
         work.href = h.cfg.urls.calendar;
         work.appendChild(h.icon('bi-calendar3'));
         work.appendChild(document.createTextNode(s('work_calendar')));
-        bar.appendChild(work);
-        bar.appendChild(newPlan);
+        bar.appendChild(h.bar.label(work));
+
+        bar.appendChild(h.bar.steps(s('previous'), h.t('today'), s('next'), function (step) {
+            if (!step) {
+                state.date = '';
+                load();
+            } else if (data) {
+                state.date = (step < 0) ? data.prev : data.next;
+                load();
+            }
+        }));
+
+        var title = el('h2', 'ws-cal-title pg-title-section');
+        bar.appendChild(title);
+
+        var views = h.bar.views(s('view'), [['month', s('month')], ['week', s('week')], ['list', s('list')]], state.view, function (view) {
+            // The list starts on today; earlier days are one step back.
+            if (view === 'list' && state.view !== 'list') {
+                state.date = '';
+            }
+
+            state.view = view;
+            keepView(state.view);
+            load();
+        });
+
+        bar.appendChild(views.node);
+        bar.appendChild(el('div', 'pg-toolbar-grow'));
+        frame.appendChild(bar);
 
         var card = el('div', 'ws-cal card ws-mycal');
 
-        root.appendChild(bar);
+        root.appendChild(frame);
         root.appendChild(card);
 
         // ── loading ──
@@ -467,9 +444,7 @@
 
         function draw() {
             title.textContent = data.label;
-            Object.keys(segItems).forEach(function (key) {
-                segItems[key].setAttribute('aria-pressed', key === data.view ? 'true' : 'false');
-            });
+            views.set(data.view);
 
             var box = h.clear(card);
 
