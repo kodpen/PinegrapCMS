@@ -3732,6 +3732,7 @@
     "Contacts": "Rehber",
     "Contacts and Campaigns": "Rehber ve Kampanyalar",
     "Contacts and Submitted Forms offer a button that deletes every item their filters match, and everyone who can open the site log or the performance log may clear it. Off, items are deleted one at a time and only administrators clear the logs.": "Kişiler ve Gönderilen Formlar, filtrelerine uyan her kaydı silen bir düğme sunar; site günlüğünü ya da performans günlüğünü açabilen herkes onu temizleyebilir. Kapalıyken kayıtlar tek tek silinir ve günlükleri yalnızca yöneticiler temizler.",
+    "Contacts became hot": "Kişiler sıcak oldu",
     "Contacts that match": "Şunlara uyan kişiler:",
     "Contacts were put into or taken out of a contact group through the API or the contact screens (not forms, the checkout, e-mail preferences or imports)": "Kişiler API üzerinden ya da kişi ekranlarından bir kişi grubuna eklendi veya gruptan çıkarıldı (formlar, ödeme sayfası, e-posta tercihleri ya da içe aktarımlar değil)",
     "Contacts who match the rules are added and taken out by themselves, about once an hour. Contacts added by hand, by a form or by a product stay.": "Kurallara uyan kişiler yaklaşık saatte bir kendiliğinden eklenir ve çıkarılır. Elle, bir formla ya da bir ürünle eklenen kişiler kalır.",

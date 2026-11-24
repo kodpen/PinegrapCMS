@@ -175,6 +175,9 @@ function webhook_payloads_test_builders()
 
 			return pg_pack_event_payload(array('order_id' => 3, 'ship_to_id' => 4, 'wave_id' => 2, 'packer_id' => 5, 'units' => 3, 'scanned' => 3, 'missing' => array()), '1001');
 		},
+		'pg_lead_event_payload' => function () {
+			return pg_lead_event_payload(array('contact_id' => 4, 'interest' => 70, 'fit' => 40, 'reasons' => array(array('kind' => 'form', 'points' => 20)), 'topics' => array(array('name' => 'Services')), 'last_visit_at' => 1000), 60);
+		},
 		'pg_contact_group_members_event' => function () {
 			return pg_contact_group_members_event(3, 'Newsletter', array(4), array());
 		},

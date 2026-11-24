@@ -263,6 +263,14 @@ function ws_events_catalog()
         $catalog['content.review_due'] = array('label' => lang('A page or record is due for review'), 'when' => lang('When a page or collection record passes its review date'), 'record' => 'page', 'right' => 'member', 'filter' => '');
     }
 
+    // A contact turned hot, and a hot contact back on the site, about the
+    // contact (includes/fn/lead_tell.php); listed once the scores table
+    // exists.
+    if (function_exists('pg_lead_ready') && pg_lead_ready() && pg_schema_has('contact_scores', 'returned_at')) {
+        $catalog['customer.hot'] = array('label' => lang('A contact becomes hot'), 'when' => lang('When a contact\'s interest score reaches the hot threshold'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+        $catalog['customer.returned'] = array('label' => lang('A hot contact comes back'), 'when' => lang('When a hot contact starts a new visit'), 'record' => 'contact', 'right' => 'contacts', 'filter' => '');
+    }
+
     // A satisfaction survey's answer, and a low one, about the person's
     // contact (includes/fn/feedback_followup.php); listed once the survey
     // tables exist.
@@ -782,6 +790,8 @@ function ws_events_record_of($event, $payload)
         case 'customer.consent_changed':
         case 'customer.rhythm_stage_changed':
         case 'customer.reorder_due':
+        case 'customer.hot':
+        case 'customer.returned':
             return array('contact', (int) ($payload['id'] ?? 0));
 
         // A WhatsApp message: the contact of its number, none for a number
