@@ -22,7 +22,7 @@ priority: 2
 - WL7 left: `notes.php` (1, held by #11351 then), `workspace_guest.php` (4) and `workspace_approval.php` (2), pages without the panel stylesheet; WL11 names them.
 - WL8 (M) Fields, first part: `formRow()` builds its row from the form parts, so its 65 callers move with it; then the `form-control` and `form-label` lines of `workspace.js`. Waits for WL1 and WL2.
 - WL9 (M) Fields, second part: the other scripts' `form-control` and `form-label` lines. Waits for WL8 and for the button step of each file.
-- WL10 (M) Bulk Delete on Data, not a look step. Waits for WL7. Described in `workspace-look-leftover-screens.md`.
+- WL10 (M) Done (#11404). Bulk Delete on Data, not a look step (`workspace/workflow-tables-data-bulk-delete.md`). Described in `workspace-look-leftover-screens.md`.
 - WL11 (S) Close-out: what stayed goes to `ui/look-open-work.md`, `ui/look-overview.md` takes the Workspace out of its "left out" line, `workspace/canvas-phone.md` loses its DL5f part, this plan is deleted.
 - WL2 to WL7 touch different files and may run beside each other.
 
