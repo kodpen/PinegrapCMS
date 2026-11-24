@@ -15,7 +15,7 @@ module: launch_journey
 ## When does a step block, warn or neither?
 - `pg_launch_journey_rule($key, $facts, $purpose)` answers state (done, todo, unknown), level (blocker, warning, none) and a reason code.
 - Blockers: robots catch-all closed (`pg_robots_catch_all_closed()` over the robots text with its extras) or home page noindex; maintenance mode on; payment in test mode; no personal-data text on a shop or where `collects_data`; mail not sending; a scheduled task that ran and stopped.
-- Warnings: no HTTPS or a certificate expired or expiring; mail SPF, DKIM or DMARC not ok; no consent or a shop's legal documents off; no Search Console; no online payment way or its mode unknown; no booking hours; no backup or an old one; scheduled tasks never ran.
+- Warnings: no HTTPS or a certificate expired or expiring; mail SPF, DKIM or DMARC not ok; no consent or a shop's legal documents off; no Search Console; no online payment way or its mode unknown; no booking hours; no backup or an old one; scheduled tasks never ran; broken internal links or the SEO check never run (`broken_links`, go-live check only, `ui/launch-journey-go-live.md`).
 - Neither (a step, not asked by the go-live check): Analytics not connected while Search Console is; no other user signed in yet (team).
 
 ## How is payment live judged per driver?
