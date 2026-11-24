@@ -5626,6 +5626,22 @@
     margin-top: .75rem;
   }
 
+  /* The go-live check: a group's heading at the list title's size, and a
+     long line wraps with "Fix" kept at the end. */
+  .pg-dash-golive-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: .5rem;
+  }
+
+  .pg-dash-golive .pg-gather-line {
+    flex-wrap: wrap;
+  }
+
+  .pg-dash-golive .pg-gather-line-end {
+    margin-left: auto;
+  }
+
   /* The go-live check: its two groups apart. */
   .pg-dash-golive-group + .pg-dash-golive-group,
   .pg-dash-golive + .pg-dash-golive-confirm:not([hidden]) {

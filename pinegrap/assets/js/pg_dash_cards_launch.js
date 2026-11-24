@@ -186,7 +186,7 @@
     function golivegroup(title, rows, labels) {
         var el = pgDash.el;
         var group = el("section", "pg-dash-golive-group");
-        group.appendChild(el("h3", "pg-list-row-title mb-2", title));
+        group.appendChild(el("h3", "pg-dash-golive-title", title));
 
         if (!rows.length) {
             group.appendChild(el("p", "pg-text-meta mb-0", labels.nothing));
