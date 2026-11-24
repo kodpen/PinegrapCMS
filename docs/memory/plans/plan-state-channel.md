@@ -15,7 +15,7 @@ priority: 6
 ## What changes?
 - PS1 (S, `.github/workflows/php-checks.yml`, done #11196): when every changed file of a PR is under `docs/`, each job keeps its name and ends green after the memory check (`php tools/memory_index.php --files`) and the branch guards; nothing else runs. A PR that touches `CLAUDE.md`, `.github/` or any other path runs everything, and so does the push to `development`. The check names stay, so what the merging session reads as green (`workflow/merge-train.md`) holds.
 - PS2 (S, `tools/`) Done (#11199): `php tools/plan_state.php <plan file>` prints each step that has a PR, with its state from GitHub: a draft `[plan:<file>] <steps>` is held, an open one ready, a merged one done with its number. `--tasks` writes that as tasks of the agent channel with the caller's key: a task a step, titled `<plan> <step>`, status todo, doing, waiting or done, the PR's address in its description; only what differs is changed. Pure parts tested.
-- PS4 (S, `tools/free_work.php`, before PS3): the tool counts a step done from every landed PR titled for its plan, not only those of the last 60 days (`git log --since=60.days`): without done marks in the plan file an older landed step would print as free. A step marked done in a plan file still counts. Test with a landed PR older than the window.
+- PS4 (S, `tools/free_work.php`, before PS3) Done (#11323): the tool counts a step done from every landed PR titled for its plan, not only those of the last 60 days (`git log --since=60.days`): without done marks in the plan file an older landed step would print as free. A step marked done in a plan file still counts. Test with a landed PR older than the window.
 - PS3 (architect, docs only, after PS2 and PS4 land): a worker's PR no longer marks its step in the plan file. The state is what `plan_state.php` prints; a coordinator runs `--tasks` when it starts a worker and when a PR lands. The plan file is the architect's alone; what a worker wants the next step to know goes into the memory file its PR writes. `CLAUDE.md` (Claim work, step 3), `workflow/claim-work.md` and `coordinator-worker-steps.md` are rewritten to it.
 
 ## What does the owner see?
@@ -26,6 +26,6 @@ priority: 6
 - Plan texts and their pictures stay in git: a worker reads them in its clone with no key, and a drawing is an HTML sheet a note cannot hold.
 
 ## Which order?
-- PS1 (#11196) and PS2 (#11199) are done. PS4 next; PS3 follows it. The close-out is PS3's: it writes the rule as a file of the `workflow/` folder and deletes this one.
+- PS1 (#11196), PS2 (#11199) and PS4 (#11323) are done; PS3 is next. The close-out is PS3's: it writes the rule as a file of the `workflow/` folder and deletes this one.
 
 Related: docs/memory/plans/agent-memory-search.md, docs/memory/workflow/claim-work.md
