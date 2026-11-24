@@ -17,6 +17,7 @@ module: pack
 - Lines: `pg_pack_lines_build()`, one per product with units summed; a line whose product is gone stays apart and cannot be scanned.
 - Words: `pg_pack_verdict_text()`; a wrong variant names both option sets ("This is Size: M; the order wants Size: L"), or a general sentence when either has none.
 - The screen (`assets/js/pack.js`) keeps the field focused; a refused scan turns its row red two seconds with a low tone; a full line turns green and sinks. Camera: `BarcodeDetector` with Code 128, EAN, UPC, Code 39, QR.
+- Each code empties the field; one read while the last is answered waits in turn (`afterAnswer()` drops the rest once the pack closes or the screen moves on). The camera reads a held code once, the same code again only after half a second out of view (`cameraRead()`, #11341; `tests/pack_scan_js_test.php`).
 
 ## What follows a checked pack?
 - All units scanned: status packed, `packer_id` (who scanned the last unit), `packed_at`. Then `pg_pack_after_packed()`: one `pg_audit('pack', 'order_pack', …)` line; the label through `pg_shipment_label_create()` when the address has no tracking number and the check passes (no service, an existing label: nothing said), opened in a new tab; each Created, not accepted marketplace package of the order accepted (Picking) with `approve_lines`, as the label and invoiced paths do; then `order.packed`.

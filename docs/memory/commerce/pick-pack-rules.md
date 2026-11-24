@@ -21,14 +21,15 @@ module: pick_pack
 
 ## What do the pick list's ticks follow?
 - `pg_pick_line_key()` is `product:location`; `pg_pick_picked_toggle()` keeps each key once, sorted; `pg_pick_list_ticked()` puts ticked lines after the rest (shelf order kept) and counts only keys of lines on the list.
-- `pg_pick_wave_status_after()`: every line ticked is Picked (`PG_WAVE_PICKED`), an untick Open again, Closed stays; an empty list is never Picked.
+- `pg_pick_line_bin()`: a line's shelf at its location; the location-0 address (typed before locations) only for the default location (#11341). `pg_pick_list_location_names()`: each line names its location when the list spans more than one.
+- `pg_pick_wave_status_now()` (status from the lines left and the ticks) feeds `pg_pick_wave_status_after()`: every line ticked is Picked (`PG_WAVE_PICKED`), an untick Open again, Closed stays; an empty list is never Picked.
 - `pg_pick_ship_by_tone()`: `late` before today, `today`, else ''. `pg_pick_single_item_address()` (K7): of the addresses wanting the scanned product and not done, oldest ship-by (unknown last), then order, then address id.
 
 ## What does the pick list total?
 - `pg_pick_list_totals()`: one line per product and location, units summed, `addresses` counts distinct ship_to_ids; zero-unit lines skipped; shelf order.
 
 ## Which verdicts can a scan get?
-- `pg_pack_scan_verdict()` returns codes, checked in this order: `not_found`, `binned`, `good` (first line with units left), `too_many` (on the address, all scanned), `wrong_variant` (same non-zero variant group; carries `options` and `wanted_options` so the screen names both), `wrong_product`.
+- `pg_pack_scan_verdict()` returns codes, checked in this order: `not_found`, `good` (first line with units left), `too_many` (on the address, all scanned), `binned` (in the Recycle Bin and not on the address; a product binned after the order was paid is still sent, #11341), `wrong_variant` (same non-zero variant group; carries `options` and `wanted_options` so the screen names both), `wrong_product`.
 - `pg_pack_apply_scan()`: a good scan adds one to its line and `scanned`; anything else adds to `refused`.
 
 ## What is the pack state?

@@ -94,7 +94,7 @@ foreach ($pw_list['lines'] as $index => $line) {
     $image = ($line['image'] !== '')
         ? '<img class="pg-pick-image" src="' . h(pg_image_panel_thumb_url(PATH . encode_url_path($line['image']))) . '" alt="" loading="lazy" width="48" height="48">'
         : '<span class="pg-icon-tile pg-tone-gray pg-pick-image" aria-hidden="true"><span class="bi bi-box-seam"></span></span>';
-    $details = array_filter(array_merge(array((string) $line['code']), (array) $line['options']), 'strlen');
+    $details = array_filter(array_merge(array((string) $line['location'], (string) $line['code']), (array) $line['options']), 'strlen');
 
     $pw_rows .= '
         <li class="pg-list-row pg-pick-row' . ($line['picked'] ? ' is-read' : '') . '" data-pg-pick-row data-pg-pick-key="' . h($line['key']) . '" data-pg-pick-place="' . $index . '">

@@ -13,19 +13,19 @@ module: pick_waves
 - Carrier: the method's `carrier`; marketplace: `marketplace_order_map.account_id`; location: `orders.stock_location_id`, 0 as the default; ship-by: `ship_tos.ship_date`, else paid day plus `handle_days`.
 
 ## How is a wave made?
-- "Make a wave" opens a drawer: Carrier, Marketplace, Stock location (each drawn only when there is a choice), Ship-by day (Due today or late, Due by tomorrow), "Single-item addresses only". The foot's live line "N addresses, M units match" is read from `view_pick_waves.php?preview=1`; "Make the wave" waits while nothing matches.
+- "Make a wave" drawer: Carrier, Marketplace, Stock location (each only when there is a choice), Ship-by day (Due today or late, Due by tomorrow), "Single-item addresses only". Live line "N addresses, M units match" from `view_pick_waves.php?preview=1`; "Make the wave" waits while nothing matches.
 - `pg_pick_wave_make()` under one `GET_LOCK` (`pg_pick_waves_lock_name()`), so an address joins one open wave at most: oldest ship-by first, at most 200; `rule` keeps the drawer's choice as JSON, NULL for a wave made by hand.
 - Made by hand (the orders list's "Add to a wave") is not built yet: `pg_pick_wave_make($rule, $user_id, $ship_to_ids)` takes the chosen addresses.
 
 ## What does a wave's screen show?
-- Head: the name ("Wave 12" while `name` is '') and its pill: Open (blue), All picked (teal), Closed (grey). "Print the pick list" fill, "Close the wave" quiet. Segments "Picking list" and "Addresses" with their counts.
-- Picking list (`pg_pick_wave_lines()`): one row per product and location, shelf address in the figure type, picture, name, code and variant options ("Size: M"), units, "for N addresses". Shelf at the order's location, else location 0. The whole row is the tick's label; a tick posts `ajax=1` and greys the row (`.is-read`), which moves to the end; the bar reads "3 of 8 picked".
+- Head: name ("Wave 12" while `name` is '') and pill: Open (blue), All picked (teal), Closed (grey). "Print the pick list" fill, "Close the wave" quiet. Segments "Picking list", "Addresses".
+- Picking list (`pg_pick_wave_lines()`): a row per product and location: shelf, picture, name, code, options ("Size: M"), units, "for N addresses". Shelf at the order's location; the location-0 address only at the default one (#11341). A wave of two locations names each line's location. The row is the tick's label; a tick posts `ajax=1`, greys the row (`.is-read`) and moves it last; bar "3 of 8 picked".
 - Ticks: `pick_waves.picked` (line keys), per-wave lock; all ticked is All picked, an untick Open.
 - Addresses: order, ship-by day (amber pill today, rose when late), units, pack pill (Waiting, Packed, Short); an order cancelled since reads "Cancelled, taken out" in a grey row.
-- "Picking list" and "All picked" in English: "Pick list" and "Picked" were other keys already ("Açılır liste", "Seçildi").
+- "Picking list" and "All picked": "Pick list" and "Picked" were other keys ("Açılır liste", "Seçildi").
 
 ## When does an address leave a wave?
-- `pg_pick_waves_sync_leavers()` runs when the list or a wave's addresses are read: a cancelled order gets `removed_at`, leaves the pick list and the counts.
+- `pg_pick_waves_sync_leavers()` on reading the list or a wave's addresses: a cancelled order gets `removed_at`, leaves the pick list and counts; `pg_pick_wave_status_sync()` redoes the status (rest all ticked: All picked; none left: Open; #11341).
 - Close the wave: status Closed, `closed_at`; its addresses not packed wait again. Delete (row menu, with a confirm): only while no address has a packed or short pack; its `pick_wave_orders` rows go, an open pack's `wave_id` becomes 0.
 
 ## What is printed?
@@ -33,6 +33,6 @@ module: pick_waves
 - Order code: Code 128 of `orders.order_number`, drawn by `assets/lib/JsBarcode` before the print dialog; the Pack screen (PP4) scans it.
 
 ## What was not checked?
-- The functions ran on a MariaDB with sample orders (make, ticks, a leaver, close, delete); the screens were not opened in a browser.
+- Run on a MariaDB with sample orders (make, ticks, a leaver, close, delete); no browser.
 
 Related: docs/memory/commerce/pick-pack-rules.md, docs/memory/commerce/pick-pack-tables.md, docs/memory/commerce/pick-pack.md

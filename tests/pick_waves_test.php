@@ -124,3 +124,50 @@ function test_pick_waves_single_item_scan_finds_the_oldest_address()
 	);
 	pg_assert_same(1, pg_pick_single_item_address($late, 5), 'an unknown day comes last');
 }
+
+// A shelf address typed before the first location was added (location 0)
+// is the default location's; an order picked at another location never
+// reads it.
+function test_pick_waves_line_shelf_by_location()
+{
+	$bins = array(0 => 'A-3', 7 => 'B-1');
+
+	pg_assert_same('B-1', pg_pick_line_bin($bins, 7, 5), 'the location\'s own address');
+	pg_assert_same('A-3', pg_pick_line_bin($bins, 5, 5), 'the default location reads the address typed before locations');
+	pg_assert_same('', pg_pick_line_bin($bins, 9, 5), 'another location without an address has none');
+	pg_assert_same('A-3', pg_pick_line_bin(array(0 => 'A-3'), 0, 0), 'without locations');
+	pg_assert_same('', pg_pick_line_bin(array(), 5, 5), 'no address at all');
+}
+
+// One product at two locations is two lines; each names its location so
+// the picker goes to the right one. A list of one location names none.
+function test_pick_waves_lines_name_their_location_when_two()
+{
+	$names = array(5 => 'Main store', 7 => 'Depot');
+	$two = pg_pick_list_location_names(array(
+		array('product_id' => 4, 'location_id' => 5),
+		array('product_id' => 4, 'location_id' => 7),
+		array('product_id' => 9, 'location_id' => 8),
+	), $names);
+
+	pg_assert_same('Main store', $two[0]['location'], 'the first location named');
+	pg_assert_same('Depot', $two[1]['location'], 'the second location named');
+	pg_assert_same('', $two[2]['location'], 'a location without a name stays blank');
+
+	$one = pg_pick_list_location_names(array(array('product_id' => 4, 'location_id' => 5), array('product_id' => 9, 'location_id' => 5)), $names);
+
+	pg_assert_same(array('', ''), array_column($one, 'location'), 'one location: no name');
+}
+
+// A wave's status from the lines left on its list: when the order of the
+// one line still to pick is cancelled, the rest being ticked makes the wave
+// All picked; when every order left, it is open with nothing to pick.
+function test_pick_waves_status_after_an_order_left()
+{
+	$left = array(array('product_id' => 4, 'location_id' => 0), array('product_id' => 9, 'location_id' => 0));
+
+	pg_assert_same(PG_WAVE_PICKED, pg_pick_wave_status_now(PG_WAVE_OPEN, $left, array('4:0', '9:0', '12:0')), 'the lines left all ticked');
+	pg_assert_same(PG_WAVE_OPEN, pg_pick_wave_status_now(PG_WAVE_OPEN, $left, array('4:0')), 'a line left to pick');
+	pg_assert_same(PG_WAVE_OPEN, pg_pick_wave_status_now(PG_WAVE_PICKED, array(), array('4:0')), 'nothing left to pick');
+	pg_assert_same(PG_WAVE_CLOSED, pg_pick_wave_status_now(PG_WAVE_CLOSED, $left, array()), 'a closed wave stays closed');
+}
