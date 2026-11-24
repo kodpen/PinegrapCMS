@@ -729,8 +729,9 @@ function pg_volunteer_people(array $programme, array $states, $volunteer_id = 0)
 
 /**
  * Moves a volunteer to a state when the move is allowed and nobody moved
- * them first; Approve also stamps who and when and sends the welcome
- * e-mail from the programme's text.
+ * them first, and logs it; Approve also stamps who and when and sends the
+ * welcome e-mail from the programme's text. A user id of 0 is the
+ * volunteer's own Pause or Leave (pg_volunteer_self_act()).
  *
  * @param array  $programme
  * @param array  $volunteer pg_volunteer_people() row
@@ -750,6 +751,10 @@ function pg_volunteer_move(array $programme, array $volunteer, $to, $user_id)
     if (!$ok || (mysqli_affected_rows(db::$con) < 1)) {
         return false;
     }
+
+    // One log line for the coordinator's move and the volunteer's own.
+    $name = (string) ($volunteer['name'] ?? trim(($volunteer['first_name'] ?? '') . ' ' . ($volunteer['last_name'] ?? '')));
+    log_activity('volunteer "' . $name . '" of programme "' . $programme['name'] . '" was moved to ' . $to . (((int) $user_id > 0) ? '' : ' by themselves'));
 
     if ($volunteer['state'] === 'applied') {
         pg_volunteer_announce('volunteer.approved', (int) $volunteer['id']);
