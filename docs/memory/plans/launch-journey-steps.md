@@ -16,7 +16,7 @@ description: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the sto
 
 - SJ5 (M) done, PR #11314. After SJ2 and SJ1b: the agency summary drawer, the signed page (a new root file, in `waf_sensitive_scripts()`), the customer's text answers, the bell line, withdraw. Features: L7.
 
-- SJ6 (S) after SJ3: the read route with its types, `php tools/check_api_schema.php`; the MCP tool; the guide's `start` topic (`includes/fn/agent_guide.php`). Features: L8.
+- SJ6 (S) done, PR #11337: the read route with its types, `php tools/check_api_schema.php`; the MCP tool; the guide's `start` topic (`includes/fn/agent_guide.php`). Features: L8.
 
 - SJ7 (S) close-out: every L number checked against the code with its PR; `ui/launch-journey.md` written; this plan's files deleted; the changelog `[NEW]` line named in its PR.
 
