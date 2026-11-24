@@ -409,15 +409,18 @@ function pg_lead_visit_copy(array $visit, $channel, $landing_page)
 
 /**
  * A visit's pages with one more seen: the page before it gets the seconds
- * up to $now, the new one starts at 0. Rows are array(page, seconds, at);
- * past PG_LEAD_PAGES_MAX the newest pages are dropped, never the landing one.
+ * up to $now, the new one starts at 0. Rows are array(page, seconds, at),
+ * and on a catalogue page array(page, seconds, at, item type, item id) with
+ * the product or product group it showed (pg_track_content()); past
+ * PG_LEAD_PAGES_MAX the newest pages are dropped, never the landing one.
  *
  * @param array[] $pages
  * @param string  $page
  * @param int     $now
+ * @param array   $item pg_track_content()'s answer: type, id
  * @return array[]
  */
-function pg_lead_pages_add(array $pages, $page, $now)
+function pg_lead_pages_add(array $pages, $page, $now, array $item = array())
 {
     $now = (int) $now;
     $page = function_exists('mb_substr') ? mb_substr((string) $page, 0, 255, 'UTF-8') : substr((string) $page, 0, 255);
@@ -431,9 +434,29 @@ function pg_lead_pages_add(array $pages, $page, $now)
         return $pages;
     }
 
-    $pages[] = array($page, 0, $now);
+    $row = array($page, 0, $now);
+    $type = (string) ($item['type'] ?? '');
+    $id = (int) ($item['id'] ?? 0);
+
+    if (($id > 0) && in_array($type, pg_lead_page_item_types(), true)) {
+        $row[] = $type;
+        $row[] = $id;
+    }
+
+    $pages[] = $row;
 
     return $pages;
+}
+
+/**
+ * The catalogue items a visit's page row names: a product and a product
+ * group, as pg_track_content() registers them.
+ *
+ * @return string[]
+ */
+function pg_lead_page_item_types()
+{
+    return array('product', 'product_group');
 }
 
 /**

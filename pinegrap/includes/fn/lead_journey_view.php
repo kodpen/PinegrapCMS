@@ -88,8 +88,10 @@ function pg_lead_journey_row_kind(array $row)
  * A visit's pages as the journey counts them: how many, and the minutes
  * spent, rounded. Pure.
  *
- * @param mixed $pages lead_visits.pages: JSON of array(page, seconds, at)
- * @return array pages (list of array(page, seconds)), count, minutes
+ * @param mixed $pages lead_visits.pages: JSON of array(page, seconds, at),
+ *                     with the item type and id on a catalogue page
+ * @return array pages (list of array(page, seconds), with the item type and
+ *               id after them on a catalogue page), count, minutes
  */
 function pg_lead_journey_visit_pages($pages)
 {
@@ -102,7 +104,14 @@ function pg_lead_journey_visit_pages($pages)
             continue;
         }
 
-        $out[] = array((string) $page[0], max(0, (int) ($page[1] ?? 0)));
+        $row = array((string) $page[0], max(0, (int) ($page[1] ?? 0)));
+
+        if (isset($page[3], $page[4]) && ((int) $page[4] > 0)) {
+            $row[] = (string) $page[3];
+            $row[] = (int) $page[4];
+        }
+
+        $out[] = $row;
         $seconds += max(0, (int) ($page[1] ?? 0));
     }
 

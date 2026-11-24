@@ -365,6 +365,12 @@ function test_lead_journey_store_helpers()
 	$pages = pg_lead_pages_add($pages, 'pricing', 130);
 	pg_assert_same(array(array('home', 30, 100), array('pricing', 0, 130)), $pages, 'seconds of the page before');
 
+	$pages = pg_lead_pages_add($pages, 'product-detail', 150, array('type' => 'product', 'id' => 12));
+	pg_assert_same(array('product-detail', 0, 150, 'product', 12), $pages[2], 'a catalogue page names its product');
+	$pages = pg_lead_pages_add($pages, 'blog', 160, array('type' => 'form', 'id' => 4));
+	pg_assert_same(array('blog', 0, 160), $pages[3], 'a record is not a catalogue item');
+	pg_assert_same(10, $pages[2][1], 'the product page gets its seconds');
+
 	$full = array();
 	for ($i = 0; $i < PG_LEAD_PAGES_MAX + 5; $i++) {
 		$full = pg_lead_pages_add($full, 'p' . $i, $i);

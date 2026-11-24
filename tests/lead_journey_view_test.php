@@ -42,6 +42,7 @@ function test_lead_journey_view_visit_pages()
 	pg_assert_same(3, $pages['count'], 'an empty page is left out');
 	pg_assert_same(3, $pages['minutes'], '190 seconds round to 3 minutes');
 	pg_assert_same(array('/pricing', 150), $pages['pages'][1]);
+	pg_assert_same(array('detail', 30, 'product', 12), pg_lead_journey_visit_pages(array(array('detail', 30, 100, 'product', 12)))['pages'][0], 'the catalogue item stays on the page');
 	pg_assert_same(0, pg_lead_journey_visit_pages(null)['count'], 'no pages');
 	pg_assert_same(0, pg_lead_journey_visit_pages('broken')['count'], 'broken JSON');
 }
