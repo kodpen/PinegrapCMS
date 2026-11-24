@@ -25,7 +25,7 @@ module: launch_journey
 - `GET /launch`, MCP `launch_read`, the guide's start topic: `api/api-launch-journey.md`.
 
 ## What is not built?
-- Left out on purpose, each a later yes: a domain or DNS ownership check, an external link checker, a real invitation flow (accept, expire), uploads by the customer on the summary page, AI-written set-up advice.
+- Left out on purpose, each a later yes: a domain or DNS ownership check, an external link checker, a real invitation flow (accept, expire), AI-written set-up advice.
 
 ## How is a step added?
 - A key in `pg_launch_journey_catalogue()` and its place in `pg_launch_journey_steps()`, its rule in `pg_launch_journey_rule()` with a test, its fact filled in `pg_launch_journey_facts()` from the deciding function (left out when unreadable), its face in `pg_launch_journey_step_face()` and line in `pg_launch_journey_step_line()`. Card, go-live check and API follow without change.
