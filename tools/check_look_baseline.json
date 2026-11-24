@@ -185,13 +185,9 @@
         "field": 15
     },
     "assets/js/workspace_flow.js": {
-        "button": 58,
+        "button": 0,
         "tabs": 0,
         "field": 61
-    },
-    "assets/js/workspace_flow_flag.js": {
-        "button": 3,
-        "tabs": 0
     },
     "assets/js/workspace_guest.js": {
         "button": 3,

@@ -26858,25 +26858,6 @@ html.ws-flow-layer-on body {
 .wsf-flows-search {
   flex: 0 1 18rem;
 }
-.wsf-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ws-space-2);
-}
-.wsf-chip {
-  border: 1px solid var(--pg-border-color);
-  color: var(--pg-fg-body);
-}
-.wsf-chip.active {
-  border-color: var(--ws-accent);
-  background: var(--ws-soft);
-  color: var(--ws-accent);
-  font-weight: 600;
-}
-.wsf-chip-count {
-  color: var(--pg-fg-2);
-  font-variant-numeric: tabular-nums;
-}
 .wsf-flow-table th,
 .wsf-flow-table td {
   vertical-align: top;
@@ -28499,7 +28480,7 @@ html.ws-flow-layer-on body {
 .wsf-tpl-start {
   font-weight: 600;
 }
-.wsf-tpl-card > .btn {
+.wsf-tpl-card > .pg-button {
   align-self: flex-start;
 }
 .wsf-palette-template {
@@ -29000,7 +28981,7 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   flex: 1 1 0;
   min-width: 0;
 }
-.wsf-link > .btn {
+.wsf-link > .pg-icon-button {
   flex: none;
 }
 .wsf-link-on {
@@ -29156,8 +29137,11 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.wsf-flag .btn {
+.wsf-flag .pg-button,
+.wsf-flag .pg-icon-button {
   flex: 0 0 auto;
+  width: auto;
+  height: auto;
   padding: 0 .25rem;
   color: inherit;
   font-size: inherit;
@@ -29173,7 +29157,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.wsf-flag-whole .btn { padding: 0; text-decoration: underline; }
+.wsf-flag-whole .pg-button { padding: 0; text-decoration: underline; }
 /* Above the flow's last box on the canvas, as wide as the box. */
 .wsf-flag-canvas {
   position: absolute;

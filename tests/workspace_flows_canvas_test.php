@@ -1036,6 +1036,7 @@ var K = {
     clear: function (node) { node.children = []; node.textContent = ''; return node; },
     icon: function (name) { return new FakeNode('i', 'bi ' + (name || '')); },
     button: function (className, label) { return new FakeNode('button', className, label); },
+    lookButton: function (className, label) { return new FakeNode('button', className, label); },
     fail: function (error) { failed.push(error && error.message); },
     toast: function () {},
     api: function (action) { calls.push(action); var next = answers.shift(); return next ? next() : new Promise(function () {}); }
@@ -2883,7 +2884,7 @@ function test_workspace_flows_canvas_kinds_have_line_icons()
 	pg_assert_true((bool) preg_match('/\n    var FLOW_ICONS = \{\n.*?\n    \};\n/s', $host, $icons), 'FLOW_ICONS is in workspace.js');
 	pg_assert_false(strpos($kinds[0] . $palette[0], "'bi-") !== false, 'no Bootstrap icon left on a kind');
 
-	foreach (array("cardFace(box, K.flowIcon(node.kind), t(kind.name))", "tile.appendChild(K.flowIcon(node.kind))", "K.flowIcon(item[0], 'me-1')") as $use) {
+	foreach (array("cardFace(box, K.flowIcon(node.kind), t(kind.name))", "tile.appendChild(K.flowIcon(node.kind))", "K.flowIcon(item[0], '')") as $use) {
 		pg_assert_contains($use, $flow, 'the canvas draws ' . $use);
 	}
 

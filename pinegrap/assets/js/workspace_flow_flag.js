@@ -109,7 +109,7 @@
         }
 
         if ((run.status === 'running') && run.can_cancel && opts.stop) {
-            var stop = kit.button('btn btn-sm btn-link', tr('fl_flag_stop'), 'bi-stop-circle');
+            var stop = kit.lookButton('pg-button pg-button-ghost pg-button-sm', tr('fl_flag_stop'), 'bi-stop-circle');
 
             stop.setAttribute('data-refocus', key + '-stop');
             stop.addEventListener('click', function () {
@@ -124,7 +124,7 @@
             return flag;
         }
 
-        var fold = kit.button('btn btn-sm btn-link wsf-flag-fold', '', 'bi-chevron-down', tr('fl_flag_more'));
+        var fold = kit.button('pg-icon-button pg-icon-button-sm wsf-flag-fold', '', 'bi-chevron-down', tr('fl_flag_more'));
         var whole = mk('div', 'wsf-flag-whole d-none');
 
         uid++;
@@ -147,7 +147,7 @@
         }
 
         if (opts.open) {
-            var link = kit.button('btn btn-sm btn-link', tr('fl_flag_open'));
+            var link = kit.lookButton('pg-button pg-button-ghost pg-button-sm', tr('fl_flag_open'), '');
 
             link.setAttribute('data-refocus', key + '-open');
             link.addEventListener('click', function () {
