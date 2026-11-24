@@ -87,8 +87,8 @@ $ls_site = (defined('ORGANIZATION_NAME') && ORGANIZATION_NAME !== '') ? (string)
 $ls_steps = '';
 foreach ($ls_done as $ls_name) {
     $ls_steps .= '<li class="pg-list-row"><span class="pg-icon-tile pg-tone-teal" aria-hidden="true"><i class="bi bi-check2"></i></span>'
-        . '<div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">' . h($ls_name) . '</span></div></div>'
-        . '<div class="pg-list-row-side"><span class="pg-pill pg-tone-teal">' . h(lang('Done')) . '</span></div></li>';
+        . '<div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">' . h($ls_name) . '</span>'
+        . '<span class="pg-pill pg-tone-teal">' . h(lang('Done')) . '</span></div></div></li>';
 }
 
 $ls_lines = '';

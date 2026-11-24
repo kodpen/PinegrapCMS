@@ -215,14 +215,15 @@ function pg_launch_summary_link_face($link, $now)
 }
 
 /**
- * A day as the panel writes dates.
+ * A day as the panel writes dates, as plain text.
  *
  * @param int $time
  * @return string
  */
 function pg_launch_summary_date($time)
 {
-    return function_exists('get_absolute_time') ? (string) get_absolute_time(array('timestamp' => (int) $time, 'size' => 'long')) : date('Y-m-d', (int) $time);
+    // get_absolute_time() answers a <time> element; the drawer prints text.
+    return function_exists('get_absolute_time') ? trim(html_entity_decode(strip_tags((string) get_absolute_time(array('timestamp' => (int) $time, 'size' => 'long'))), ENT_QUOTES, 'UTF-8')) : date('Y-m-d', (int) $time);
 }
 
 /**

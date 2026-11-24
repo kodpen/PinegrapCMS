@@ -23,7 +23,7 @@ module: launch_summary
 - Bell action `launch_answer`, addressed (`target_user_id`) to the line's `created_by`, `reference_id` the line, title the line's text; at most one per line an hour (`waf_rate_exceeded` scope `launch-summary-bell`). Its link `welcome.php#launch-summary` opens the drawer.
 - No e-mail and no device banner.
 
-## Not seen
-- Drawn and tested without a database or a browser when written: the drawer, the page and the bell row were not opened on a sandbox.
+## How was it checked?
+- On the sandbox at 1440 and 390 px: drawer with lines, an answer and a working link; the page with done steps and two lines; an answer sent (one bell row to the writer), a bad token 404, withdrawn 403. Copy and the expired state were not clicked through.
 
 Related: docs/memory/ui/launch-summary-lines.md, docs/memory/ui/launch-journey-setup-card.md
