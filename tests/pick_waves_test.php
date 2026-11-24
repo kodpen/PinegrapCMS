@@ -158,3 +158,16 @@ function test_pick_waves_lines_name_their_location_when_two()
 
 	pg_assert_same(array('', ''), array_column($one, 'location'), 'one location: no name');
 }
+
+// A wave's status from the lines left on its list: when the order of the
+// one line still to pick is cancelled, the rest being ticked makes the wave
+// All picked; when every order left, it is open with nothing to pick.
+function test_pick_waves_status_after_an_order_left()
+{
+	$left = array(array('product_id' => 4, 'location_id' => 0), array('product_id' => 9, 'location_id' => 0));
+
+	pg_assert_same(PG_WAVE_PICKED, pg_pick_wave_status_now(PG_WAVE_OPEN, $left, array('4:0', '9:0', '12:0')), 'the lines left all ticked');
+	pg_assert_same(PG_WAVE_OPEN, pg_pick_wave_status_now(PG_WAVE_OPEN, $left, array('4:0')), 'a line left to pick');
+	pg_assert_same(PG_WAVE_OPEN, pg_pick_wave_status_now(PG_WAVE_PICKED, array(), array('4:0')), 'nothing left to pick');
+	pg_assert_same(PG_WAVE_CLOSED, pg_pick_wave_status_now(PG_WAVE_CLOSED, $left, array()), 'a closed wave stays closed');
+}

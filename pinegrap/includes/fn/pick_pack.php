@@ -557,6 +557,22 @@ function pg_pick_wave_status_after($status, $done, $total)
 }
 
 /**
+ * A wave's status from the lines on its list now and its ticked keys: what
+ * a tick works out, and what an order leaving the wave changes.
+ *
+ * @param int   $status PG_WAVE_*
+ * @param array $lines  the wave's pick list lines
+ * @param array $picked the wave's ticked line keys
+ * @return int PG_WAVE_*
+ */
+function pg_pick_wave_status_now($status, array $lines, array $picked)
+{
+    $list = pg_pick_list_ticked($lines, $picked);
+
+    return pg_pick_wave_status_after($status, $list['done'], $list['total']);
+}
+
+/**
  * How a ship-by day reads against today: 'late' before today, 'today' on
  * it, '' after it or when no day is known.
  *
