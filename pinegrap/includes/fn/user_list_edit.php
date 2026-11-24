@@ -395,8 +395,10 @@ function pg_user_quick_update($user, $user_id, $field, $value, $filter = 'defaul
         $audit_before = pg_audit_fetch('user', $user_id);
 
         // The column comes from pg_user_quick_change(), never from the request.
+        // A new address ends a pending reset link that went to the old one.
         $updated = db_q(
-            "UPDATE user SET " . $change['column'] . " = ?, user_user = ?, user_timestamp = UNIX_TIMESTAMP() WHERE user_id = ?",
+            "UPDATE user SET " . (($change['column'] === 'user_email') ? pg_user_reset_link_clear_sql($change['value']) . ' ' : '')
+            . $change['column'] . " = ?, user_user = ?, user_timestamp = UNIX_TIMESTAMP() WHERE user_id = ?",
             array($change['value'], (int) $user['id'], $user_id));
 
         if ($updated === false) {

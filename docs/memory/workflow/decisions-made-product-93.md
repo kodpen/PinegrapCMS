@@ -24,4 +24,4 @@ description: Decisions list, product part 93 (2026-11-20 on): plans from the own
 
 ## Should a customer approve each prototype page, sealed to the draft they saw? (owner, 2026-11-20, agent channel poll 205, channel message 11084)
 - "Diğer": yes, but most of it exists as prototype sharing; only the missing parts go on top of it, and the architect reviews the plan first. Not chosen: the three offered answers.
-- Kept as built: share links, pinned guest comments, Answer, Resolve and "Make a task" (`designer/prototype-comments.md`). The plan: `plans/prototype-approval.md`.
+- Kept as built: share links, pinned guest comments, Answer, Resolve and "Make a task" (`designer/prototype-comments.md`). Built as `designer/prototype-approval.md`.

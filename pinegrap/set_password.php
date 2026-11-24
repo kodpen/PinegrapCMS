@@ -34,7 +34,7 @@ validate_token_field();
 
 $form->add_fields_to_session();
 
-$token = $form->get('k');
+$token = pg_set_password_token($form->get('k'));
 
 // A designed page (the set_password widget) names itself in return_to, with
 // the token still in its address: errors and the confirmation go back there.

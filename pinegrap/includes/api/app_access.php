@@ -323,6 +323,7 @@ function api_app_event_area($name, $module_label = '') {
 		'page'            => 'Pages',
 		'experiment'      => 'Pages',
 		'content'         => 'Pages',
+		'prototype'       => 'Pages',
 		'zone'            => 'Store settings',
 		'tax_zone'        => 'Store settings',
 		'shipping_method' => 'Store settings',

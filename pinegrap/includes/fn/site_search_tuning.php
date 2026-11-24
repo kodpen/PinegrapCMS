@@ -364,12 +364,17 @@ function pg_search_promoted_row(array $entry)
     $excerpt = '';
 
     $page = (strpos($name, '/') === false)
-        ? db_item("SELECT page.page_title, page.page_meta_description, page.page_folder, page.page_search
-                   FROM page WHERE page.page_name = '" . e($name) . "' LIMIT 1")
+        ? db_item("SELECT page.page_title, page.page_meta_description, page.page_folder, page.page_search,
+                          folder.folder_archived
+                   FROM page LEFT JOIN folder ON folder.folder_id = page.page_folder
+                   WHERE page.page_name = '" . e($name) . "' LIMIT 1")
         : null;
 
     if (is_array($page)) {
-        if (((string) $page['page_search'] !== '1') || !check_view_access($page['page_folder'], true)) {
+        // A page in an archived folder or in the Recycle Bin answers 410, as
+        // the other result lists leave it out.
+        if (((string) $page['page_search'] !== '1') || ((string) $page['folder_archived'] !== '0')
+            || pg_folder_binned($page['page_folder']) || !check_view_access($page['page_folder'], true)) {
             return null;
         }
 

@@ -607,8 +607,8 @@ function pg_proto_comment_list_verdicts($groups, $rows, $names, $hints, $fingerp
  * (pg_proto_comment_door()): the link must ask approval, the fields are
  * checked (pg_proto_verdict_check()), the address counted in the comments'
  * burst, and the verdict sealed with the draft's fingerprints as it is now.
- * Then the link's maker hears of it in the bell and the approver gets a
- * receipt.
+ * Then the link's maker hears of it in the bell, the approver gets a
+ * receipt and the verdict is announced (pg_proto_verdict_announce()).
  *
  * @param array $link    prototype_links row
  * @param int   $page_id a draft page of the link's design it shows
@@ -653,6 +653,7 @@ function pg_proto_verdict_take($link, $page_id, $post, $now)
     $page_name = (string) $draft['page_name'];
     pg_proto_verdict_bell($link, $saved, $page_name);
     pg_proto_verdict_receipt($link, $saved, $page_name);
+    pg_proto_verdict_announce($saved, $page_name);
 
     return array('status' => 201, 'error' => '', 'verdict' => pg_proto_verdict_public($saved, $fingerprint));
 }

@@ -19,4 +19,4 @@ module: prototype_review_mails
 - Undecided pages (`pg_proto_undecided_pages()`): the design's draft pages the link shows (`pg_proto_link_page_shown()`) with no standing verdict or one given to an earlier draft ("Changed since your last review"). Approve and Request changes on the current draft both count as decided.
 - A date set or changed after that day's pass gets no reminder.
 
-Related: docs/memory/designer/prototype-approval-review.md, docs/memory/designer/prototype-approval-fingerprints.md, docs/memory/plans/prototype-approval-steps.md
+Related: docs/memory/designer/prototype-approval-review.md, docs/memory/designer/prototype-approval-fingerprints.md, docs/memory/designer/prototype-approval.md

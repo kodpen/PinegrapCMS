@@ -251,6 +251,7 @@
 - workflow-tables-column-rename.md: Renaming a workflow table column that formulas name (#9029, PR #9062): formulas rewritten with the new name in one transaction; a name that would change one is refused
 - workflow-tables-column-type.md: Changing a workflow table column's type (wtable_retype.php, PR #8512): which types, how each cell converts, decimals and times never lost, the refusal listing cells, binned rows, screen, API
 - workflow-tables-conditions.md: Conditions over workflow table rows (wtable_where.php, PR #8400): comparisons per column type, how each type compares, all or any, sorting with empty cells last, sum/average/smallest/largest
+- workflow-tables-data-bulk-delete.md: The bulk Delete of the Data list's selection bar (WL10 #11404): the button, its confirm dialog, the per-table right, the result notice and the tests [decision: here]
 - workflow-tables-data-list.md: The Data list (CO6 #8978, CO6b #9192): workflow tables named Data, the list table driver, its scopes, windows, Deleted tables view, the canvases that use a table, the channel seam
 - workflow-tables-export.md: A workflow table downloads as an Excel file (TX1): who may, what each cell becomes, the shared xlsx writer the ERP export also uses
 - workflow-tables-import.md: The import route workspace.tables.import (TX2, #8427): a site file or a note's table into a workflow table over the API and MCP, the pairing, the dry run through ws_wtable_import_check(), refusals [decision: decisions-made-workspace-10.md]

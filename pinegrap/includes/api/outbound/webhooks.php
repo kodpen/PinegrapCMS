@@ -242,6 +242,12 @@ function api_webhook_core_events() {
 		'experiment.started'   => 'A page experiment was started for the first time',
 		'experiment.ended'     => 'A page experiment was ended, with or without a winner',
 		'page.updated'         => 'A page was changed through the API',
+		// Prototype review (includes/fn/prototype_events.php): a guest's answer on
+		// a prototype share link, through the viewer only. The guest's name,
+		// note and words follow as data, with no tag or markup.
+		'prototype.approved'   => 'A guest approved a page of a prototype share link asking approval (each Approve this page sent)',
+		'prototype.changes_requested' => 'A guest requested changes on a page of a prototype share link asking approval, with a note',
+		'prototype.commented'  => 'A guest commented on a prototype share link, a new thread or an answer (not the designer\'s answers)',
 		// Content review (includes/fn/content_review.php): the general job,
 		// once per item on its first run after the review date passed. id,
 		// kind (page or record), name, user_id and person (0 and '' for

@@ -39,3 +39,15 @@ function test_backup_install_list_reads_when_a_folder_was_taken()
 
 	pg_backup_delete_tree($folder);
 }
+
+// A folder whose writer has not finished is listed as not installable: the
+// installer offers it only with its dump and without the writer's marker.
+function test_backup_install_list_refuses_an_unfinished_folder()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php');
+	$start = strpos($source, 'function get_site_backups() {');
+	$list = substr($source, (int) $start, (int) strpos($source, 'function get_site_backup(', (int) $start) - (int) $start);
+
+	pg_assert_contains("'installable' => pg_backup_folder_complete(\$directory_path . \$entry),", $list, 'a folder is asked whether it is finished');
+	pg_assert_contains("lang('the backup was not finished')", $list, 'and says so');
+}

@@ -911,6 +911,9 @@ function pg_sw_raw_token_keys()
         '__price_formatted',
         '__price_block_html',
         '__price_range',
+        // A product group's rich text and code field (catalog listing).
+        '__active_cat_description',
+        '__active_cat_code',
         // Renderer-built blocks.
         '__variant_picker',
         '__group_tree_html',
@@ -3523,7 +3526,8 @@ function pg_sw_route_record_address($page_id, $segment)
         // A record the detail page's filters keep out gets no redirect: the
         // answer would tell which names exist.
         if (!pg_sw_record_passes_filters($form_page_id, pg_sw_record_view_filters($detail_view['cfg']), $record['id'], $detail_page_id)) continue;
-        return pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], true);
+        // Under the language directory the visitor came in with (/en/...).
+        return pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], true, defined('LANGUAGE_PATH') ? LANGUAGE_PATH : null);
     }
     return '';
 }
@@ -7041,8 +7045,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 
     $param      = 'query';
     $page_param = pg_sw_list_page_param($cfg);
-    $query = (isset($_GET[$param]) && is_scalar($_GET[$param])) ? trim(strip_tags((string)$_GET[$param])) : '';
-    if (mb_strlen($query) > 100) $query = mb_substr($query, 0, 100);
+    $query = (isset($_GET[$param]) && is_scalar($_GET[$param])) ? pg_search_query_text(strip_tags((string)$_GET[$param])) : '';
 
     $found = _pg_sw_search_collect($query, $cfg);
     $rows  = array();

@@ -114,6 +114,11 @@ $email_campaign = $row;
 $created_user_id = $row['created_user_id'];
 $created_timestamp = $row['created_timestamp'];
 
+// ^^order_reference_code^^ of an abandoned cart's mail.
+$order_reference_code = ((int) $row['order_id'] > 0)
+    ? (string) db_value("SELECT reference_code FROM orders WHERE id = '" . (int) $row['order_id'] . "'")
+    : '';
+
 // if user has a user role and user is not the creator of the e-mail campaign, then output error
 if (($user['role'] == 3) && ($created_user_id != $user['id'])) {
     log_activity(lang('access denied to send e-mail campaign because user is not the creator of the e-mail campaign'), $_SESSION['sessionusername']);
@@ -192,27 +197,15 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
     
     foreach ($email_recipients as $email_recipient) {
 
-        // If this is a commercial campaign and this contact is not the manually entered email
-        // address (i.e. "Also send message to the following e-mail address"), and we can't find
-        // and opted-in contact for this recipient's email address, then delete this recipient,
-        // and skip to the next.  This is necessary because a campaign might have been created and
-        // scheduled in the future, and then a contact might have opted-out after the campaign was
-        // created.  We look for any contact with the same email that is opted-in, because
-        // the original contact might have been deleted or merged.
-
+        // A commercial recipient who opted out since the campaign was created
+        // (globally, or from the campaign's own lists) is dropped, as in the
+        // job (pg_email_campaign_recipient_opted_out()).
         if (
             ($purpose == 'commercial')
-            and $email_recipient['contact_id']
-            and !db_value(
-                "SELECT id
-                FROM contacts
-                WHERE
-                    (email_address = '" . e($email_recipient['email_address']) . "')
-                    AND (opt_in = '1')
-                LIMIT 1")
+            && pg_email_campaign_recipient_opted_out($id, $type, $email_recipient['contact_id'], $email_recipient['email_address'])
         ) {
 
-            db("DELETE FROM email_recipients WHERE id = '" . $email_recipient['id'] . "'");
+            db("DELETE FROM email_recipients WHERE id = '" . (int) $email_recipient['id'] . "'");
 
             // Skip to the next recipient.
             continue;
@@ -351,6 +344,13 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
                     'name' => 'calendar_event_end_date_and_time',
                     'data' => $calendar_event['end_date_and_time'],
                     'type' => 'date and time');
+
+            // An abandoned cart's mail names the order, as the job fills it.
+            } else if ($action == 'order_abandoned') {
+                $fields[] = array(
+                    'name' => 'order_reference_code',
+                    'data' => $order_reference_code,
+                    'type' => '');
             }
         }
 

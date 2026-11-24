@@ -73,6 +73,10 @@ function ws_viewer($user)
     // E-mail and SMS campaigns (validate_email_access()).
     $viewer['emails'] = $staff || $yes($user['manage_emails'] ?? false);
 
+    // A design's prototype review: administrators and designers, as the
+    // Share prototype dialog and its API routes.
+    $viewer['designs'] = ($viewer['role'] <= 1);
+
     return $viewer;
 }
 

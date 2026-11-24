@@ -174,3 +174,48 @@ function test_site_search_query_template_install_refreshes_index()
 	pg_assert_contains("job_name = 'update_search_index'", $fn);
 	pg_assert_contains('LEAST(last_run_at', $fn);
 }
+
+// A page whose site search switch was turned off after the index run is no
+// longer found: the hourly delta pass only reads pages still searchable, so
+// its row stayed until the next full pass.
+function test_site_search_query_live_items_need_page_search()
+{
+	pg_assert_contains("page.page_search = '1'", pg_search_items_live_sql(array()));
+	pg_assert_contains("page.page_search = '1'", pg_search_items_live_sql(array(4)));
+}
+
+// The legacy page's simple search finds pages in $pages, not in $results;
+// the day's rollup counted only featured and catalog items, so a term that
+// found pages was listed among the searches with no result.
+function test_site_search_query_legacy_result_count()
+{
+	pg_assert_same(5, pg_search_legacy_result_count('simple', array(1), array(2, 3), array(7 => 4, 8 => 1), array()));
+	pg_assert_same(4, pg_search_legacy_result_count('advanced', array(1), array(), array(7 => 4), array(1, 2, 3)));
+	pg_assert_same(0, pg_search_legacy_result_count('simple', array(), array(), array(), array()));
+	$legacy = _site_search_query_fn('get_search_results.php', 'get_search_results');
+	pg_assert_contains('pg_site_search_count($query, pg_search_legacy_result_count(SEARCH_TYPE, $featured_items, $catalog_items, $pages, $results))', $legacy);
+}
+
+// The typed text is cut to 100 characters on both search paths, as the
+// highlight script and the rollup read it.
+function test_site_search_query_text_is_capped()
+{
+	pg_assert_same('kahve', pg_search_query_text('  kahve  '));
+	pg_assert_same('', pg_search_query_text(array('x')));
+	pg_assert_same('', pg_search_query_text(null));
+	pg_assert_same(100, mb_strlen(pg_search_query_text(str_repeat('ğ', 250)), 'UTF-8'));
+	pg_assert_same('a', pg_search_query_text('a' . str_repeat(' ', 120) . 'b'));
+	$legacy = _site_search_query_fn('get_search_results.php', 'get_search_results');
+	pg_assert_same(2, substr_count($legacy, '$query = pg_search_query_text('), 'both query parameters are capped');
+	$widget = _site_search_query_fn('includes/fn/widgets.php', '_render_system_widget_search_results');
+	pg_assert_contains('pg_search_query_text(', $widget);
+}
+
+// A promoted result is no row for a page in an archived folder or in the
+// Recycle Bin: the pinned "Recommended" link answered 410.
+function test_site_search_query_promoted_row_skips_gone_pages()
+{
+	$fn = _site_search_query_fn('includes/fn/site_search_tuning.php', 'pg_search_promoted_row');
+	pg_assert_contains('folder.folder_archived', $fn);
+	pg_assert_contains('pg_folder_binned(', $fn);
+}

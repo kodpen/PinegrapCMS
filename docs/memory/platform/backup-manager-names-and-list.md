@@ -1,6 +1,6 @@
 ---
 name: backup-manager-names-and-list
-description: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, the overwrite question, step errors, list time and order, incomplete folders
+description: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, overwrite question, step errors, list order, incomplete folders (no dump or writer marker)
 module: backup
 ---
 
@@ -26,5 +26,8 @@ module: backup
 ## Which time does the list show, in which order?
 - `pg_backup_taken_time()`: a folder's `sql.sql` time, else the folder's or archive's own. The folder's own time moves when Download writes `<name>.zip` into it. `backup_list()` returns name => time; `pg_backup_list_order()` sorts newest first, then by name (the DataTables sorting of `table.chart` is off).
 
-## What does a folder without sql.sql show?
-- An "Incomplete" badge and no Download button. A delete that removed the files but not the folder leaves one; the warning is one line naming the backup and how many entries were refused, never a server path (#6012).
+## What does an incomplete folder show?
+- An "Incomplete" badge and no Download button, when `pg_backup_folder_complete()` says no: no `sql.sql`, or the writer's marker `.pg_backup_writing` is still in the folder.
+- A delete that removed the files but not the folder leaves one; the warning is one line naming the backup and how many entries were refused, never a server path (#6012).
+- The marker is written by the Create Backup folder step and the folder automatic backup (`pg_backup_run_folder()`), and removed only by the check step or that run's end (`pg_backup_folder_writing()`). Before, a tab closed or a time limit while files were copied left a dump and half of the files, listed and offered to the installer as a good backup; replacing a backup left the old files beside the new dump (bug hunt backup-restore).
+- The installation screen lists such a folder as "the backup was not finished"; `pg_backup_newest()` (Last Backup, the age alert) skips it. Folders written before the marker have none and count as before.

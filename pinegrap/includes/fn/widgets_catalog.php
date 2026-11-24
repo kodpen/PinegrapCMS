@@ -946,7 +946,7 @@ function _pg_catalog_html_shows($html)
 function _pg_catalog_card_templates($nodes)
 {
     $card = array('type' => 'root', 'props' => array(), 'children' => $nodes);
-    _pg_sw_mark_visibility($card, array('has_rating', 'no_rating', 'is_bundle', 'has_bundle_saving'));
+    _pg_sw_mark_visibility($card, array_merge(array('has_rating', 'no_rating', 'is_bundle', 'has_bundle_saving'), array_keys(pg_catalog_row_flags(array()))));
 
     $html = '';
     foreach ($card['children'] as $child) {
@@ -971,7 +971,52 @@ function _pg_catalog_card_templates($nodes)
         'unrated' => $unrated,
         'group'   => $group_shows ? $group : $unrated,
         'marked'  => $html,
+        // A card with an element under a row flag (pg_catalog_row_flags())
+        // is resolved for each row's own flags (_pg_catalog_card_for()).
+        'row_flagged' => strpos($html, '<!--pg-vis:catalog_item_') !== false,
     );
+}
+
+/**
+ * A listing row's own flags, read from its values: a picture, a short
+ * description, a price (a classic catalog layout's conditions on the item).
+ *
+ * @param array $values the row's token values (before escaping)
+ * @return array
+ */
+function pg_catalog_row_flags($values)
+{
+    $catalog_row_flags = array(
+        'catalog_item_has_image'             => (string)($values['__image_url'] ?? '') !== '',
+        'catalog_item_has_short_description' => (string)($values['__short_description'] ?? '') !== '',
+        'catalog_item_has_price'             => (string)($values['__price_formatted'] ?? '') !== '',
+    );
+    return $catalog_row_flags;
+}
+
+/**
+ * The listing's flags outside the card: whether anything is listed, a
+ * search is in force, one or more than one result was found, the visitor
+ * can choose a currency.
+ *
+ * @param int   $count         the groups and products listed over all pages
+ * @param bool  $search_active
+ * @param array $currencies    pg_sw_currency_rows()
+ * @return array
+ */
+function pg_catalog_listing_flags($count, $search_active, $currencies)
+{
+    $catalog_flags = array(
+        'has_items'           => $count > 0,
+        'no_items'            => $count <= 0,
+        'has_query'           => (bool)$search_active,
+        'no_query'            => !$search_active,
+        'many_results'        => $count > 1,
+        'one_result'          => $count === 1,
+        'has_currency_choice' => count((array)$currencies) > 1,
+        'no_currency_choice'  => count((array)$currencies) <= 1,
+    );
+    return $catalog_flags;
 }
 
 /**
@@ -982,10 +1027,19 @@ function _pg_catalog_card_templates($nodes)
  * @param array $cards        _pg_catalog_card_templates(), extended in place
  * @param bool  $rated        the product has a rating
  * @param array $bundle_flags _pg_catalog_bundle_flags()
+ * @param array $row_flags    pg_catalog_row_flags(), read when the card has
+ *                            an element under one
  * @return string
  */
-function _pg_catalog_card_for(&$cards, $rated, $bundle_flags)
+function _pg_catalog_card_for(&$cards, $rated, $bundle_flags, $row_flags = array())
 {
+    if (!empty($cards['row_flagged'])) {
+        // Resolved for this row's state, kept by its flags.
+        $catalog_row_flags = (array)$bundle_flags + (array)$row_flags + array('has_rating' => $rated, 'no_rating' => !$rated);
+        $key = 'row:' . implode(',', array_keys(array_filter($catalog_row_flags)));
+        if (!isset($cards[$key])) $cards[$key] = trim(_pg_sw_resolve_visibility($cards['marked'], $catalog_row_flags));
+        return $cards[$key];
+    }
     if (empty($bundle_flags['is_bundle'])) {
         return $rated ? $cards['rated'] : $cards['unrated'];
     }
@@ -1639,6 +1693,15 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         'wishlist_preview'     => (bool)pg_sw_preview_overrides(),
     ), $_pg_bindings_used);
 
+    // A layout's currency choice (a currency_id control): the visitor's
+    // currencies, shown by has_currency_choice.
+    $_pg_currencies = array();
+    if (strpos((string)$tree_json, 'currency_id') !== false) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
+        $_pg_currencies = pg_sw_currency_rows();
+        pg_sw_currency_picker($tree_decoded, $widget_id, $_pg_currencies, defined('VISITOR_CURRENCY_ID') ? (int)VISITOR_CURRENCY_ID : 0);
+    }
+
     $split = _split_widget_tree($tree_decoded);
 
     // The card comes in two states, with and without a rating (has_rating /
@@ -1653,7 +1716,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $_pg_cards     = _pg_catalog_card_templates($split['loop_children']);
         // The paging flags are known after the count: their parts of the
         // surround are marked here and kept or cut at the end.
-        _pg_sw_mark_visibility($split['static_tree'], array('has_prev_page', 'has_next_page', 'has_more_pages'));
+        _pg_sw_mark_visibility($split['static_tree'], array_merge(array('has_prev_page', 'has_next_page', 'has_more_pages'), array_keys(pg_catalog_listing_flags(0, false, array()))));
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
     $loop_template       = $_pg_cards['unrated'];
@@ -1858,10 +1921,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // a group filter is in effect — including drill-down's URL-driven group).
     // When no group context, we look it up per-product in the batch step below.
     $active_group_name = '';
+    $active_group_more = array();
     if ($active_group_id > 0) {
-        $active_group_name = (string)db_value(
-            "SELECT name FROM product_groups WHERE id = '" . (int)$active_group_id . "' LIMIT 1"
+        $active_group_more = db_item(
+            "SELECT name, full_description, code FROM product_groups WHERE id = '" . (int)$active_group_id . "' LIMIT 1"
         );
+        $active_group_more = is_array($active_group_more) ? $active_group_more : array();
+        $active_group_name = (string)($active_group_more['name'] ?? '');
     }
 
     // ── No-products fall-through flag ────────────────────────────────────
@@ -2307,12 +2373,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             }
         }
 
+        $_pg_row_flags = pg_catalog_row_flags($values);
         // Plain text is escaped once, here; the HTML-by-design keys are named
         // in pg_sw_raw_token_keys() and pass through untouched.
         $values = pg_sw_escape_token_values($values);
 
-        // The card of this product's rating and bundle state.
-        $rendered = _pg_catalog_card_for($_pg_cards, $rating['__rating_count'] !== '', _pg_catalog_bundle_flags($bundle));
+        // The card of this product's rating, bundle and row state.
+        $rendered = _pg_catalog_card_for($_pg_cards, $rating['__rating_count'] !== '', _pg_catalog_bundle_flags($bundle), $_pg_row_flags);
         // Longest tokens first so '^^foo_bar^^' isn't truncated by '^^foo^^';
         // a format after a token is read (pg_sw_fill_longest()).
         $rendered = pg_sw_fill_longest($rendered, $values);
@@ -2677,6 +2744,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // sorted by their own sort_order — matches a folder-listing UX (folders
     // first, then files). True interleaved sort across both is a future step.
     $child_groups_html = '';
+    $_pg_group_count = 0;
     $has_children = 0;
     if ($group_navigation !== 'none' && $loop_template_group !== '') {
         // At ROOT (no active group) → show TOP-LEVEL groups (parent_id = 0).
@@ -2885,9 +2953,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     }
                 }
 
+                $_pg_g_flags = pg_catalog_row_flags($g_values);
                 $g_values = pg_sw_escape_token_values($g_values);
 
-                $g_rendered = $loop_template_group;
+                // A card under row flags takes the group's own; a group has
+                // no rating or bundle state.
+                $g_rendered = empty($_pg_cards['row_flagged']) ? $loop_template_group
+                    : _pg_catalog_card_for($_pg_cards, false, array('no_rating' => false, 'is_bundle' => false, 'has_bundle_saving' => false), $_pg_g_flags);
                 // Longest keys first so '__short_description' is replaced before '__description'.
                 $g_rendered = pg_sw_fill_longest($g_rendered, $g_values);
                 // Product-only tokens (inventory, mpn, gallery, …) have no answer
@@ -2924,6 +2996,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 }
 
                 $g_rows .= $g_rendered;
+                $_pg_group_count++;
             }
             $child_groups_html = $g_rows;
         }
@@ -3164,6 +3237,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // a parent that holds only sub-groups) — those groups already fill the
     // grid and an "empty" message would be misleading.
     $_loop_block = $loop_output;
+    $_pg_result_count = ($no_products ? 0 : $total_records) + $_pg_group_count;
+    $_pg_listing_flags = pg_catalog_listing_flags($_pg_result_count, $search_active, $_pg_currencies);
     if ($no_products && $_loop_block === '' && $child_groups_html === '') {
         $_loop_block = $empty_html;
     }
@@ -3180,9 +3255,15 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // available during per-record token replacement because they're widget-
     // wide and may sit in the static_html OR in the loop_template (designer
     // could use them anywhere).
+    // The group's full description and code, as the classic catalog page
+    // prints them while browsing (not in search results).
     $page_tokens = array(
         '__active_cat_id'           => (string)$active_group_id,
         '__active_cat_name'         => $active_group_name,
+        '__active_cat_description'  => $search_active ? '' : (string)($active_group_more['full_description'] ?? ''),
+        '__active_cat_code'         => $search_active ? '' : (string)($active_group_more['code'] ?? ''),
+        '__search_query'            => $search_active ? $search_query : '',
+        '__result_count'            => (string)$_pg_result_count,
         '__has_breadcrumb'          => $has_breadcrumb,
         '__group_tree_html'         => $group_tree_html,
         '__has_children'            => (string)$has_children,
@@ -3220,7 +3301,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // is left is unanswered. This is the loop halves' only sweep.
     $body = pg_sw_sweep_tokens($body);
     if ($static_html !== '') {
-        $static_html = _pg_sw_resolve_visibility($static_html, $paging['flags']);
+        // With nothing listed, a layout may cut the list's place with
+        // has_items: the empty message is its own then.
+        $catalog_flags = $paging['flags'] + $_pg_listing_flags;
+        $static_html = _pg_sw_resolve_visibility($static_html, $catalog_flags);
         $static_html = _pg_catalog_fill_page_tokens($static_html, $page_tokens);
         // The loop halves are swept where they are built; the static surround
         // was not, so an identifier misspelled in a header printed itself.
@@ -3230,8 +3314,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // No auto-prepended messages placeholder — designer drops a Messages
     // content node inside the widget tree to control where alerts render.
     $_pg_assets = _pg_widget_layout_css_once();  // price-block + discount-hide + variant-states CSS
-    if ($static_html === '') return $_pg_assets . $body;
-    return $_pg_assets . str_replace('<!--pg-loop-slot-->', $body, $static_html);
+    // A currency picker's form, after the widget (pg_sw_currency_picker()).
+    $_pg_currency_form = $_pg_currencies ? pg_sw_currency_form_html($widget_id, $_pg_currencies, get_request_uri()) : '';
+    if ($static_html === '') return $_pg_assets . $body . $_pg_currency_form;
+    return $_pg_assets . str_replace('<!--pg-loop-slot-->', $body, $static_html) . $_pg_currency_form;
 }
 
 // Fill the listing's page-level tokens (breadcrumb, group tree, filters) in

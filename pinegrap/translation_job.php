@@ -34,7 +34,10 @@ if (pg_tr_ready()) {
 
 	pg_tr_load();
 
-	$result = pg_tr_jobs_run_due(40);
+	// Capped by what is left of the general job's time limit when dispatched
+	// (pg_cron_time_left()), so a host runner does not kill the run with its
+	// lock held; the jobs left go on next run.
+	$result = pg_tr_jobs_run_due(pg_cron_time_left(40));
 
 	// The translated Design Canvas pictures this server draws whole, with
 	// nobody in the panel. Only while a row may be waiting (the mark, read

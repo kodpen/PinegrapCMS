@@ -178,6 +178,50 @@ function pg_backup_taken_time($path)
 
 
 /**
+ * The file a folder backup holds while it is being written. The Backup
+ * Manager writes a folder in several requests (dump, files, layouts) and the
+ * automatic folder backup copies its files after the dump, so a run cut short
+ * there (a closed tab, a time limit, a full disk) leaves a dump beside half
+ * of the files. A dotfile: the File Manager does not list it.
+ */
+const PG_BACKUP_WRITING_MARKER = '.pg_backup_writing';
+
+
+/**
+ * Mark a folder backup as being written, or as finished.
+ *
+ * @param string $folder the backup folder
+ * @param bool $writing true when a writer starts, false when it has finished
+ * @return bool whether the mark is as asked
+ */
+function pg_backup_folder_writing($folder, $writing)
+{
+    $marker = $folder . '/' . PG_BACKUP_WRITING_MARKER;
+
+    if ($writing) {
+        return is_file($marker) || (@file_put_contents($marker, (string) time()) !== false);
+    }
+
+    return !file_exists($marker) || @unlink($marker);
+}
+
+
+/**
+ * Whether a folder in data/backups is a finished backup: it holds its
+ * database dump, and no writer left its marker (PG_BACKUP_WRITING_MARKER)
+ * behind. Folders written before the marker existed carry none and count as
+ * they always did.
+ *
+ * @param string $path the backup folder
+ * @return bool
+ */
+function pg_backup_folder_complete($path)
+{
+    return is_dir($path) && is_file($path . '/sql.sql') && !file_exists($path . '/' . PG_BACKUP_WRITING_MARKER);
+}
+
+
+/**
  * Whether a directory entry is an automatic backup, as a folder or an archive.
  *
  * The one gate in front of every delete this module makes, so it is strict:
@@ -1142,7 +1186,7 @@ function pg_backup_newest($directory = null)
         $path = $directory . '/' . $entry;
 
         if (is_dir($path)) {
-            if (!is_file($path . '/sql.sql')) {
+            if (!pg_backup_folder_complete($path)) {
                 continue;
             }
         } elseif (!(pg_backup_is_auto_name($entry) && is_file($path))) {
@@ -1381,11 +1425,16 @@ function pg_backup_run_folder($name)
         @mkdir($folder, 0777, true);
     }
 
+    // The week's folder is rewritten in place: until the last file is
+    // copied it is listed as incomplete, not as the week's backup.
+    pg_backup_folder_writing($folder, true);
+
     try {
         pg_backup_dump_database($folder . '/sql.sql');
     } catch (\Exception $e) {
         // An empty folder left by a failed dump is not a backup.
         if (is_dir($folder) && (count(glob($folder . '/*')) === 0)) {
+            pg_backup_folder_writing($folder, false);
             @rmdir($folder);
         }
         log_activity(pg_backup_last_error(lang(array('string' => 'Software Auto Backup error: {var:1}', 'vars' => array($e->getMessage())))), 'SYSTEM');
@@ -1419,7 +1468,11 @@ function pg_backup_run_folder($name)
 
     file_put_contents($folder . '/.htaccess', 'deny from all');
 
-    return (file_exists($folder . '/sql.sql') && is_dir($folder . '/files') && is_dir($folder . '/layouts'));
+    if (!(file_exists($folder . '/sql.sql') && is_dir($folder . '/files') && is_dir($folder . '/layouts'))) {
+        return false;
+    }
+
+    return pg_backup_folder_writing($folder, false);
 }
 
 

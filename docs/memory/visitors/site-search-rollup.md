@@ -9,7 +9,7 @@ module: site_search_stats
 - The term is `pg_site_search_term()`: lower case (İ → i, ı stays), whitespace folded, at most 100 characters, '' without a letter or digit. Days are PHP `date('Y-m-d')`, the site's time zone.
 
 ## Who counts a search?
-- The search results widget (`_render_system_widget_search_results()`, first results page only, with the shown total after `offset`) and the legacy `get_search_results.php` (featured + catalog + pages), both through `pg_site_search_count($query, $results)`; 0 results raises `zero_results` too.
+- The search results widget (`_render_system_widget_search_results()`, first results page only, with the shown total after `offset`) and the legacy `get_search_results.php` (featured + catalog + pages, `pg_search_legacy_result_count()`), both through `pg_site_search_count($query, $results)`; 0 results raises `zero_results` too.
 - Once a day per visit and term: the session keeps the counted keys (`$_SESSION['software']['site_search_seen']`, last 200, `pg_site_search_seen_add()`); without a session every request counts.
 - Not counted: crawlers and scripts (`pg_request_is_automated()`), the SEO render and the search index render, a site that has not run 11.0.147 (`pg_site_search_stats_ready()`), signed-in staff (role < 3): no search, no click (`pg_site_search_user_countable()` on `USER_ROLE`, #9872). Members (role 3) and signed-out visitors count.
 - Counted whether visitor tracking is on or not: the rollup holds no visitor data. The visit's own term list (`pg_search_record_visit_term()`) still follows the switch.

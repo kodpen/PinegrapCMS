@@ -6,8 +6,8 @@ module: cron
 
 ## How long may a dispatched pass work in one tick?
 - `job.php` notes its start and limit (`pg_cron_clock()`): `JOB_TIME_LIMIT` in `data/config.php` when above 0, else `max_execution_time` (none on the command line). A job run alone uses `REQUEST_TIME_FLOAT`.
-- `pg_cron_time_left($budget)` caps a pass's own budget (`SEO_ANALYZE_TIME_BUDGET`) by the time left, less a margin for the closing writes (a fifth of the limit, at most 15 s), never below 1 (`pg_cron_tick_budget()`, pure). The structure and accessibility jobs use it.
-- Why: a hosting job runner or a Windows task stops `job.php` after a fixed time; a pass that worked past it lost its tick and kept its lock.
+- `pg_cron_time_left($budget)` caps a pass's own budget (`SEO_ANALYZE_TIME_BUDGET`) by the time left, less a margin for the closing writes (a fifth of the limit, at most 15 s), never below 1 (`pg_cron_tick_budget()`, pure). Who uses it: `scheduled-job-light-budgets.md`.
+- Why: a hosting job runner or a Windows task stops `job.php` after a fixed time; a pass past it lost its tick and kept its lock.
 - `max_execution_time` does not know the runner's limit: such a host sets `JOB_TIME_LIMIT` below it (the host's setting). Without it the tick budget (`SEO_ANALYZE_TIME_BUDGET`, 120 s) does not run out before the kill, and every tick of the search index ends inside an item (`designer/search-index-item-parts.md`).
 
 ## What does an unfinished pass do at the end of its tick?
