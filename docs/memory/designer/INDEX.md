@@ -552,6 +552,7 @@
 - legacy-region-preview.md: The canvas's true picture of every region node (LE4): markers around each region tag, designer/legacy_region_preview, the band and pill, the match, who may ask
 - legacy-set-run.md: The run of a set of classic styles into one Legacy design (LG5, #8795): its steps, the design row, the pages moved, a resume, the report, a set moved before
 - legacy-set.md: A set of classic styles on the move report (LG4, #8776): the set key, who moves alone, mobile styles, folder pages, Head code, body classes, the set's dry run
+- legacy-stock-types.md: Stock-layout page types in the move to the designer (LE5, #11270): type settings into the widget's layout, the settings no widget holds, the dry run naming them; the run's types step is LE5b
 - legacy-to-classic.md: Back to classic (LG7): a set's Legacy design sends its pages, all or one, back to the classic styles they came from; how the origin is found, why the tree leaves the page, the refusals, the card [decision: decisions-made-product-43.md]
 - legacy-to-designer-bulk-run.md: The bulk move of classic styles to the visual designer (LD2): the decision, the dry run on the report screen, the server twins of the editor steps the run uses [decision: decisions-made-product-23.md]
 - legacy-to-designer-report.md: The "Move to the Page Design Studio" readiness report (LD1, #6219): what it lists per classic style, its sets (LG4), its state, the "What stays classic" card (#6488), the rules the whole move keeps [decision: decisions-made-product-21.md, decisions-made-product-3.md]
