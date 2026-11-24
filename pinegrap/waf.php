@@ -2743,7 +2743,7 @@ function waf_scan_value($name, $value, array &$result)
  * invoice link guessing, privacy request spam, privacy download link
  * guessing, reorder link guessing, survey answer link guessing, queue
  * number spam and number link guessing, and the guessing of an application
- * programme's juror and correction links.
+ * programme's juror and correction links and of a Workspace share link.
  */
 function waf_sensitive_scripts()
 {
@@ -2757,6 +2757,7 @@ function waf_sensitive_scripts()
         'cart_quote.php', 'erp_quote.php', 'erp_invoice.php',
         'privacy_request.php', 'privacy_download.php', 'reorder.php',
         'feedback.php', 'queue.php', 'application_juror.php', 'application_fix.php',
+        'workspace_share.php',
     );
 }
 
