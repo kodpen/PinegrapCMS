@@ -23,7 +23,7 @@ priority: 7
 - The page cache is the page's: a place's values never reach another page's copy. A link or picture value passes the checks its own field passes.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- CO1 (M) The model, pure, PHP and its browser twin: the open-field list, stable ids, a place's values applied to a tree, left-overs found.
+- CO1 (M) Done (#11520). The model, pure, PHP and its browser twin: the open-field list, stable ids, a place's values applied to a tree, left-overs found.
 - CO2 (M) after CO1: site render, canvas and Preview apply them; translation; the cache test.
 - CO3 (M) after CO1 and DD6: marking fields open in the component, the list in its settings.
 - CO4 (M) after CO2, CO3: "This place", the dot and reset, in-place text, content roles.

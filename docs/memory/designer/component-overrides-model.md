@@ -23,4 +23,4 @@ module: component_overrides
 - No check of a link or picture address and no escaping: the field's own checks run where the value is saved and drawn (CO2, CO4).
 
 ## Tests?
-- `tests/component_overrides_test.php`: the PHP functions, and the twin run in Node on the same cases with the answers compared (skipped without Node). CO1, #PR.
+- `tests/component_overrides_test.php`: the PHP functions, and the twin run in Node on the same cases with the answers compared (skipped without Node). CO1, #11520.
