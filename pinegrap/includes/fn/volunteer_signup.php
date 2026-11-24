@@ -457,7 +457,8 @@ function _pg_volunteer_swap_finish(array $programme, array $shift, array $offere
  * One action of a volunteer on a shift, written under the shift's lock so
  * a role's places never go over its count: 'sign_up', 'waitlist', 'take'
  * (an offered place: at once, or waiting for a coordinator when the
- * programme asks), 'cancel' (then the waitlist pass), 'offer', 'keep'.
+ * programme asks), 'cancel' (then the waitlist pass), 'offer', 'keep';
+ * 'hours' adds hours outside a shift from the posted day, hours and note.
  *
  * @param int    $volunteer_id
  * @param string $action
@@ -465,10 +466,19 @@ function _pg_volunteer_swap_finish(array $programme, array $shift, array $offere
  * @param string $role   for sign_up and waitlist
  * @param int    $target the offered sign-up for take
  * @return string the outcome: signed, waiting, asked, cancelled, offered,
- *                kept, or 'refused'
+ *                kept, hours_added, or a refusal ('refused', and for hours
+ *                'day', 'hours', 'closed')
  */
 function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $target = 0)
 {
+    // Hours worked outside a shift take no shift and no lock: their fields
+    // come with the posted form (includes/fn/volunteer_hours.php).
+    if ($action === 'hours') {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_hours.php');
+
+        return pg_volunteer_outside_add($volunteer_id, $_POST);
+    }
+
     $volunteer = pg_volunteer_self_load($volunteer_id);
     $programme = ($volunteer !== null) ? $volunteer['programme'] : null;
     $lock = 'pg_volunteer_shift_' . (int) $shift_id;

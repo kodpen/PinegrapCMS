@@ -27,7 +27,8 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 - VS5 (M) after VS4 (done, #11250): the general job's passes: the unfilled call, the day-before reminder, the document notices; SMS and WhatsApp kind `volunteer`, a service message (poll 207); the profile's "Shift calls" switch turns the calls off. Features: G4, G10.
   - Built (#11250), `core/volunteer-messages.md`.
 
-- VS6 (M) after VS4: the QR poster per place and the scan page (`event_check_in.php`'s way), the coordinator's list of the day, "Did not come", hours and their approval, hours outside a shift. Features: G11, G12, G13.
+- VS6 (M) after VS4 (done, #11256): the QR poster per place and the scan page (`event_check_in.php`'s way), the coordinator's list of the day, "Did not come", hours and their approval, hours outside a shift. Features: G11, G12, G13.
+  - Built (#11256), `core/volunteer-hours.md`.
 
 - VS7 (M) after VS6: the hours certificate (`certificate.php`'s way, a signed check code, nothing stored), the thank-you mails, the report and Excel. Features: G14, G15.
 
