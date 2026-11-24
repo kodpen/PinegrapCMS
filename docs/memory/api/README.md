@@ -27,6 +27,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - `api-store-*`: 6 files.
 - `api-webhook-*`: 7 files.
 - `application-access-*`: 8 files; start at `application-access-overview.md`.
+- `figma-api-*`: 6 files.
 
 ## Files
 

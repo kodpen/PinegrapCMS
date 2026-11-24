@@ -158,6 +158,10 @@
 - application-access-overview.md: Application Access (api_settings.php) as a whole after its redraw (#10745 to #11203): who may reach the site, the decisions that bind it, its parts by label, which file holds what, how a part is added [decision: decisions-made-product-88.md]
 - application-access-permission-picker.md: Application Access permission picker: areas with icons, a row per scope group, None / Read / Write, search, counts, the four bulk buttons and their rule, the money pill
 - automation-contract.md: pg_automation_contract(), the triggers, actions and searches an automation platform app is written from; its scopes, the test that holds it, what was left out
+- canva-api-brand.md: Canva brand over the APIs (read 2026-11-24): no REST endpoint reads a Brand Kit's colours or fonts; brand templates exist; brand kit colours only in the Apps SDK
+- canva-api-designs-export.md: Canva Connect design reads and export (read 2026-11-24): list designs, Get design pages (preview), export job as png/jpg/pdf and more, its limits and 24-hour links; no layer or element read
+- canva-api-sign-in.md: Canva Connect sign-in (read 2026-11-24): public app with Canva review, private app on Enterprise only, service app; OAuth with PKCE, single-use refresh tokens, scopes
+- canva-api-terms.md: Canva restricted uses (read 2026-11-24): no bulk export or scraping, no exfiltration; export into a third-party design platform needs Canva's written consent
 - channel-api-differences.md: Where a /workspace/ route for a channel or its agents still differs from the panel action it mirrors: who may call it, what it lacks, the function it calls
 - channel-api-not-built.md: What of channels and their agents has no API route, on purpose or by its nature (comparison 2026-11-15): private channel opened by an admin, templates, guest links, settings cards [decision: here]
 - claude-connect-button.md: The "Connect to Claude" button on the panel's OAuth connection guide: Claude's install link with the site's name and MCP file address, who sees it, the https rule [decision: here]
@@ -169,6 +173,13 @@
 - connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (84 + 12 MCP connectors), the difference from the census's 79, adding a service [decision: here]
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
 - external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, older deletes on a plain POST, first-match routing [decision: decisions-made-product-13.md]
+- figma-api-file-reads.md: Figma REST file reads (read 2026-11-24): GET file and nodes, depth and ids, frame auto layout (with GRID), text style, component instances, the styles map
+- figma-api-image-export.md: Figma REST picture export (read 2026-11-24): GET images as png, jpg, svg or pdf, scale 0.01 to 4, 32 megapixels, 30-day links; image fills with 14-day links
+- figma-api-rate-limits.md: Figma REST rate limits since 2025-11-17 (read 2026-11-24): three tiers, per seat and plan; View and Collab seats get up to 20 file or image reads a month; 429 with Retry-After
+- figma-api-sign-in.md: Figma REST sign-in (read 2026-11-24): OAuth app (draft, private, public with review), personal and plan access tokens, scopes, PKCE, token lifetimes
+- figma-api-styles-variables.md: Figma styles and variables over REST (read 2026-11-24): style endpoints give published metadata only, values come from the node; Variables API (file_variables:read) is Enterprise only
+- figma-api-terms.md: Figma Developer Terms as far as readable (2026-11-24): licence to build an integration, no credential sharing, privacy policy, delete on termination
+- figma-canva-census.md: Figma and Canva API census for the designer's Figma and Canva starts (read 2026-11-24): what each gives, where it differs from plans/designer-start-import.md, and which file holds each topic
 - forms-api-request-checks.md: get_forms / get_form panel actions refuse a malformed limit, offset, fields, filter or sort value with a JSON error before any query
 - ga4-mp-facts.md: GA4 Measurement Protocol as Google's own documents say it (read 2026-11-20): addresses, secret, body, client id, consent, 72-hour limit, user data hashing, validation endpoint, answers
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on its Connections page, batchRunReports cached by an hourly job, state in a sealed service entry [decision: decisions-made-product-5.md]
