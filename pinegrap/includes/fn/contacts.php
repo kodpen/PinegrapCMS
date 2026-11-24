@@ -150,6 +150,14 @@ function pg_contact_holders_move($merged_ids, $keep_id)
         }
 
         // One row per contact, worked out again for the contact that stays.
+        // The score row is kept for it and marked for the next scoring
+        // pass, which reads only contacts with something new.
+        if (($holder['merge'] === 'drop') && ($table === 'contact_scores')) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/lead_score.php');
+            pg_lead_score_merge($merged_ids, $keep_id) or output_error(lang('Query failed.'));
+            continue;
+        }
+
         if ($holder['merge'] === 'drop') {
             db_q("DELETE FROM " . $table . " WHERE " . $holder['column'] . " IN (" . implode(',', $merged_ids) . ")") or output_error(lang('Query failed.'));
             continue;
