@@ -18615,7 +18615,7 @@ a.ws-chip-message:hover,
   width: min(24rem, calc(100vw - 16px));
   padding: .35rem;
 }
-.ws-link-tip .form-control {
+.ws-link-tip .pg-input {
   min-width: 0;
 }
 .ws-link-tip :is(.pg-button, .pg-icon-button) {
@@ -18725,7 +18725,7 @@ a.ws-chip-message:hover,
 .ws-code-language {
   max-width: 12rem;
 }
-.ws-code-edit {
+.pg-input.ws-code-edit {
   min-height: 16rem;
   font-family: var(--pg-font-mono);
   font-size: .85rem;
@@ -18742,7 +18742,8 @@ a.ws-chip-message:hover,
 @media (pointer: coarse) {
   .ws-emoji-search,
   #ws-poll-form .pg-input,
-  .ws-code-edit {
+  .pg-input.ws-code-edit,
+  .pg-input.ws-tip-touch {
     font-size: var(--pg-text-field-touch);
   }
 }
@@ -20761,6 +20762,77 @@ a.ws-chip-message:hover,
   align-content: start;
   overflow-y: auto;
 }
+/* Made larger with nothing on the stage: the grid fills the window. A
+   tile clicked is pinned large in the share's place, the others in the
+   rail; one's own tile can be hidden on this screen. The head holds the
+   size, full screen and the window's menu. */
+.ws-call.is-stage:not(.is-showing) .ws-call-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws-call.is-stage:not(.is-showing) .ws-call-stage[data-count] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+.ws-call.is-stage:not(.is-showing) .ws-call-stage[data-count="1"],
+.ws-call[data-kind="video"].is-stage:not(.is-showing) .ws-call-stage[data-count="2"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ws-call.is-stage:not(.is-showing) .ws-call-tile {
+  min-height: 0;
+  aspect-ratio: auto;
+}
+.ws-call[data-kind="video"].is-stage:not(.is-showing) .ws-call-stage[data-count="2"] .ws-call-tile.is-self {
+  aspect-ratio: 16 / 9;
+}
+.ws-call:fullscreen {
+  border-radius: 0;
+}
+.ws-call-tile[hidden],
+.ws-call-tile.is-pinned,
+.ws-call-share > .bi[hidden],
+.ws-call-share-tools > [hidden] {
+  display: none;
+}
+.ws-call-tile-pin {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+}
+.ws-call-tile-pin:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: calc(-1 * var(--pg-focus-ring-width));
+}
+.ws-call-tile-name,
+.ws-call-tile-marks {
+  z-index: 1;
+  pointer-events: none;
+}
+.ws-call-share > .bi {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--pg-text-figure);
+  color: var(--pg-fg-2);
+}
+.ws-call-bar .pg-icon-button {
+  flex: 0 0 auto;
+}
+.ws-call-menu-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.ws-call-menu {
+  top: 100%;
+  right: 0;
+  z-index: 2;
+}
 @media (max-width: 991.98px) {
   .ws-call.is-stage {
     inset: 0;
@@ -20776,7 +20848,7 @@ a.ws-chip-message:hover,
     grid-template-columns: repeat(4, minmax(0, 1fr));
     overflow: visible;
   }
-  .ws-call.is-stage .ws-call-tile {
+  .ws-call.is-stage.is-showing .ws-call-tile {
     height: 4.5rem;
     aspect-ratio: auto;
   }
@@ -20813,6 +20885,31 @@ a.ws-chip-message:hover,
   .ws-call:not(.is-stage) .ws-call-stage[data-count="4"] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+/* Popped out: the call window fills its small Picture-in-Picture window,
+   which shows the tiles, Mute, camera and Hang up only. */
+.ws-call-pip {
+  margin: 0;
+  overflow: hidden;
+  background: var(--pg-bg-body);
+}
+.ws-call.is-popped,
+.ws-call.is-popped.is-stage {
+  position: static;
+  inset: auto;
+  width: 100%;
+  height: 100vh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.ws-call.is-popped .ws-call-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ws-call.is-popped .ws-call-not-popped {
+  display: none;
 }
 /* The head's Join button in a narrow head: its words give way first. */
 @container (max-width: 40rem) {
@@ -22071,10 +22168,6 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
   font-size: .8rem;
   font-weight: 600;
   color: var(--pg-fg-2);
-}
-.ws-when .form-label {
-  margin-bottom: .2rem;
-  font-size: .8rem;
 }
 .ws-when-custom,
 .ws-when-end {
@@ -24553,7 +24646,7 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-rich [data-ws-calc-input] {
   cursor: inherit;
 }
-.ws-calc-live-input {
+.pg-input.ws-calc-live-input {
   display: inline-block;
   width: 7.5rem;
   padding: 0 .35rem;
@@ -24601,10 +24694,10 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   gap: .35rem .6rem;
   margin-bottom: .4rem;
 }
-.ws-calc-settings :is(select.form-control) {
+.ws-calc-settings select.pg-input {
   width: auto;
 }
-.ws-calc-settings .form-control {
+.ws-calc-settings .pg-input {
   width: 7rem;
 }
 .ws-calc-names {
@@ -26217,7 +26310,7 @@ a.ws-tag-card-head:hover span {
     flex-wrap: wrap;
     gap: .3rem;
 }
-.ws-tpl-note-body {
+.pg-input.ws-tpl-note-body {
     font-family: var(--pg-font-mono);
     font-size: .8125rem;
 }

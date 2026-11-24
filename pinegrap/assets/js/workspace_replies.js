@@ -248,14 +248,14 @@
                 body.appendChild(el('div', 'small fg-secondary mb-5', t('reply_team_help')));
             }
 
-            var shortcut = el('input', 'form-control');
+            var shortcut = el('input', 'pg-input');
             shortcut.type = 'text';
             shortcut.maxLength = 33;
             shortcut.value = item ? ';' + item.shortcut : ';';
             shortcut.setAttribute('autocomplete', 'off');
             body.appendChild(h.formRow(t('reply_shortcut'), shortcut, t('reply_shortcut_help')));
 
-            var title = el('input', 'form-control');
+            var title = el('input', 'pg-input');
             title.type = 'text';
             title.maxLength = 100;
             title.value = item ? item.title : '';
@@ -271,14 +271,14 @@
                 wrap.appendChild(field.tools(true));
                 field.set(item ? item.body : '', item ? item.labels : {});
             } else {
-                area = el('textarea', 'form-control form-control-sm');
+                area = el('textarea', 'pg-input pg-input-sm');
                 area.rows = 6;
                 area.value = item ? item.body : '';
                 wrap.appendChild(area);
             }
 
             var textRow = el('div', 'mb-5');
-            textRow.appendChild(el('div', 'form-label', t('reply_body')));
+            textRow.appendChild(el('div', 'pg-field-label', t('reply_body')));
             textRow.appendChild(wrap);
             textRow.appendChild(el('div', 'form-text', t('reply_body_help')));
             body.appendChild(textRow);

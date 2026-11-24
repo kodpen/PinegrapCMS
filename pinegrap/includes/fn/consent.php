@@ -194,6 +194,23 @@ function pg_consent_answer_changes($before, $answer)
 }
 
 /**
+ * Whether consent_answer.php acts on an answer's changes (the ad services'
+ * rows lose the buyer's ids, the session its ad click ids, the journey its
+ * browser row): for every answer that passed the checks, also one over the
+ * address's log limit (429). The limit guards consent_log, and many visitors
+ * share one carrier or office address; a refusal it swallowed let an order's
+ * ad rows go out after marketing was refused. Pure.
+ *
+ * @param array[]|null $changes pg_consent_answer_changes()
+ * @param int $status the answer's HTTP status
+ * @return bool
+ */
+function pg_consent_answer_acts($changes, $status)
+{
+    return !empty($changes) && in_array((int) $status, array(200, 429), true);
+}
+
+/**
  * Whether this request's address has recorded too many answers in the
  * window (PG_CONSENT_ANSWER_WRITE_LIMIT). The same-origin check stops other
  * sites' pages, not scripts, and the firewall's own limits refuse nothing
@@ -423,6 +440,41 @@ function pg_consent_hold_scripts($html, $category)
 }
 
 /**
+ * Holds every script a page marks for a category but wrote to run: a
+ * <script data-pg-consent="marketing" src="..."> without type="text/plain"
+ * would load before any answer while the notice lists it as waiting for one.
+ * Such a tag gets type="text/plain" and its src as data-pg-src, as if its
+ * author had held it; its other attributes stay, so pg_consent_page_services()
+ * still lists it and pg_consent.js starts it once the category is allowed.
+ * A tag already held, a tag of no known category and a plain script are left
+ * as they are.
+ *
+ * @param string $content the page
+ * @return string
+ */
+function pg_consent_hold_marked($content)
+{
+    $content = (string) $content;
+
+    $held = preg_replace_callback('/<script\b([^>]*)>/i', function ($match) {
+        $attributes = $match[1];
+
+        if (!preg_match('/\sdata-pg-consent\s*=\s*(?:"(?:analytics|marketing)"|\'(?:analytics|marketing)\'|(?:analytics|marketing)(?=[\s\/]|$))/i', $attributes)
+            || preg_match('/\stype\s*=\s*(?:"\s*text\/plain\s*"|\'\s*text\/plain\s*\'|text\/plain(?=[\s\/]|$))/i', $attributes)) {
+            return $match[0];
+        }
+
+        $attributes = preg_replace('/\stype\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $attributes);
+        $attributes = preg_replace('/\ssrc\s*=/i', ' data-pg-src=', $attributes);
+
+        return '<script type="text/plain"' . $attributes . '>';
+    }, $content);
+
+    // A regex failure (null) keeps the page as it is.
+    return is_string($held) ? $held : $content;
+}
+
+/**
  * The scripts a page holds back on its own: a designer writes a third-party
  * script as <script type="text/plain" data-pg-consent="marketing"
  * data-pg-consent-name="Meta Pixel"> and the notice lists it under its
@@ -443,7 +495,9 @@ function pg_consent_page_services($content)
     $uncommented = preg_replace('/<!--.*?(?:-->|$)/s', '', (string) $content);
     $content = is_string($uncommented) ? $uncommented : (string) $content;
 
-    if (!preg_match_all('/<script\b[^>]*\bdata-pg-consent\s*=\s*("|\')(analytics|marketing)\1[^>]*>/i', (string) $content, $tags, PREG_SET_ORDER)) {
+    // The category quoted or not (data-pg-consent=marketing is valid HTML,
+    // and pg_consent.js reads it either way).
+    if (!preg_match_all('/<script\b[^>]*\bdata-pg-consent\s*=\s*(?:("|\')(analytics|marketing)\1|(analytics|marketing)(?=[\s\/>]))[^>]*>/i', (string) $content, $tags, PREG_SET_ORDER)) {
         return $services;
     }
 
@@ -452,11 +506,11 @@ function pg_consent_page_services($content)
             continue;
         }
 
-        $category = strtolower($tag[2]);
+        $category = strtolower(($tag[2] !== '') ? $tag[2] : $tag[3]);
         $name = '';
 
-        if (preg_match('/\bdata-pg-consent-name\s*=\s*("|\')(.*?)\1/is', $tag[0], $named)) {
-            $name = trim(html_entity_decode($named[2], ENT_QUOTES, 'UTF-8'));
+        if (preg_match('/\bdata-pg-consent-name\s*=\s*(?:("|\')(.*?)\1|([^\s"\'>]+))/is', $tag[0], $named)) {
+            $name = trim(html_entity_decode(isset($named[3]) ? $named[3] : $named[2], ENT_QUOTES, 'UTF-8'));
         }
 
         if (!in_array($name, $services[$category], true)) {
@@ -872,6 +926,10 @@ function pg_consent_insert($content, $choices)
     if ($body === false) {
         return $content;
     }
+
+    // A tag marked for a category but written to run waits like the others.
+    $content = pg_consent_hold_marked($content);
+    $body = strripos($content, '</body>');
 
     $head = pg_consent_mode_position($content);
 

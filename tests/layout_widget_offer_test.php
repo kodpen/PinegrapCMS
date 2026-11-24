@@ -52,6 +52,8 @@ function test_layout_widget_seed_catalog()
 
 	pg_assert_same(array('next_page_id' => 7), pg_layout_widget_seed('catalog detail', array('next_page_id' => '7')));
 	pg_assert_same(array(), pg_layout_widget_seed('catalog detail', array('next_page_id' => '0')), 'no next page: the widget\'s own');
+	pg_assert_same(array('add_button_label' => 'Buy', 'back_button_label' => 'Return'), pg_layout_widget_seed('catalog detail', array('add_button_label' => 'Buy', 'back_button_label' => 'Return')), 'the buttons\' words');
+	pg_assert_same(array(), pg_layout_widget_seed('catalog detail', array('add_button_label' => '', 'back_button_label' => '')), 'no words: the widget\'s own');
 	pg_assert_same(array('product_group_id' => 0, 'detail_page_id' => 0, 'search_enabled' => false), pg_layout_widget_seed('catalog', array()), 'a page without its type row');
 }
 

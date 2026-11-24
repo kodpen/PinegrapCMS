@@ -118,7 +118,7 @@
     // screen, where iOS Safari zooms the page in on a smaller field taking
     // the focus and leaves it zoomed; the small one under a mouse.
     function tipFieldClass(touch) {
-        return touch ? 'form-control' : 'form-control form-control-sm';
+        return touch ? 'pg-input ws-tip-touch' : 'pg-input pg-input-sm';
     }
 
     // The browser's own editing commands, for what behaves as typing does
@@ -387,7 +387,7 @@
             markup: parts.markup,
             attach: function (win) {
                 var wrap = el('div', 'ws-block-title-field mb-3');
-                var label = el('label', 'form-label small mb-1', t('block_title'));
+                var label = el('label', 'pg-field-label', t('block_title'));
 
                 field = el('input', tipFieldClass(touchScreen()));
                 field.maxLength = 160;
@@ -7315,7 +7315,7 @@
 
         titling.attach(win);
         var row = el('div', 'd-flex align-items-center gap-3 mb-3');
-        var label = el('label', 'form-label mb-0 small', t('code_language'));
+        var label = el('label', 'pg-field-label mb-0', t('code_language'));
         var input = el('input', tipFieldClass(touchScreen()) + ' ws-code-language');
         var listId = 'ws-code-languages-' + Date.now();
         var list = el('datalist');
@@ -7339,7 +7339,7 @@
         row.appendChild(list);
         win.body.appendChild(row);
 
-        var area = el('textarea', 'form-control ws-code-edit');
+        var area = el('textarea', 'pg-input ws-code-edit');
         area.rows = 14;
         area.spellcheck = false;
         area.value = code;
@@ -7503,7 +7503,7 @@
         titling.attach(win);
 
         var tools = el('div', 'ws-calc-tools');
-        var area = el('textarea', 'form-control ws-code-edit ws-calc-edit');
+        var area = el('textarea', 'pg-input ws-code-edit ws-calc-edit');
         var namesRow = el('div', 'ws-calc-names');
         var shown = el('div', 'ws-calc-preview');
         var outside = [];
@@ -7692,8 +7692,8 @@
         unit.value = settings.unit;
         unit.placeholder = t('calc_unit_placeholder');
 
-        var decimalsLabel = el('label', 'form-label small mb-0', t('calc_decimals'));
-        var unitLabel = el('label', 'form-label small mb-0', t('calc_unit'));
+        var decimalsLabel = el('label', 'pg-field-label mb-0', t('calc_decimals'));
+        var unitLabel = el('label', 'pg-field-label mb-0', t('calc_unit'));
 
         decimalsLabel.htmlFor = decimals.id;
         unitLabel.htmlFor = unit.id;
@@ -7981,7 +7981,7 @@
         var head = (at >= 0) ? line.slice(0, at).trim() : '';
         var value = ((at >= 0) ? line.slice(at + 1) : line).trim();
         var shown = figure.textContent;
-        var input = el('input', 'form-control form-control-sm ws-calc-live-input');
+        var input = el('input', 'pg-input pg-input-sm ws-calc-live-input');
         var finished = false;
 
         input.type = 'text';

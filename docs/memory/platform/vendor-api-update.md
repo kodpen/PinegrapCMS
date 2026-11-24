@@ -20,7 +20,7 @@ description: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_
 - `$_SESSION['software']['update']`: mode, version, channel, build, package_url, size, sha256, manifest_sha256, sig_key_id, manifest_url, signature_url, package_file (`vendor_update_<16 hex>.zip` for `data/temp/`, one per check). Download, backup and replace read only this (`vendor-api-update-download.md`, #3632); replace or any refusal deletes the package and clears it. Repair also keeps `software.repair.version` for its log line.
 
 ## Flag and notification?
-- `software_update_check()`: an update or a blocked release sets `software_update_available` and leaves one `software_update` notification; any other answer clears both; an unusable one takes the old error path (notification deleted, logged).
+- `software_update_check()`: an update or a blocked release sets `software_update_available` and leaves one `software_update` notification, the same row from check to check (`update-check-errors.md`); any other answer clears both; an unusable one takes the old error path (notification deleted, logged).
 - `software_update.php`: blocked, refused and access-blocked answers go back to Settings with their reason as an error; nothing offered says "There is no update available.".
 
 ## Tests?

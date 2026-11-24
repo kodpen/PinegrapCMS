@@ -1384,6 +1384,7 @@ function ws_call_js_strings()
         'call_larger'     => lang('Make larger'),
         'call_full_screen' => lang('Full screen'),
         'call_full_exit'  => lang('Exit full screen'),
+        'call_pop_out'    => lang('Pop out'),
         'call_join_here'  => lang('Join here'),
         'call_elsewhere'  => lang('You are already in this call in another window.'),
         'call_moved'      => lang('The call goes on in another window.'),
@@ -1393,5 +1394,14 @@ function ws_call_js_strings()
         'call_hand_up'    => lang('Hand raised'),
         'call_weak'       => lang('Weak connection'),
         'call_muted_talk' => lang('You are muted'),
+        'call_pin'        => lang('Show large'),
+        'call_unpin'      => lang('Unpin'),
+        'call_more'       => lang('More'),
+        'call_self_hide'  => lang('Hide my picture'),
+        'call_self_show'  => lang('Show my picture'),
+        'call_background' => lang('Background'),
+        'call_background_blur' => lang('Blur background'),
+        'call_background_remove' => lang('Remove background'),
+        'call_background_failed' => lang('The background effect could not be started.'),
     );
 }

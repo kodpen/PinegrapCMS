@@ -72,3 +72,42 @@ function test_webhook_body_survives_broken_utf8()
 
 	pg_assert_same(null, api_webhook_body('order.created', array('amount' => NAN), '2026-11-05T10:00:00Z'), 'NAN: no body');
 }
+
+// The status a delivery writes back (active after a success, failing after
+// the last attempt) never overwrites a subscription switched off while the
+// delivery was on its way: Stop on the Events tab, or a channel group taken
+// away, used to be undone by the answer of the delivery already in flight.
+function test_webhook_status_after_delivery_leaves_a_disabled_subscription()
+{
+	$active = api_webhook_status_after_delivery_sql(12, 'active');
+
+	pg_assert_true(strpos($active, "status = 'active'") !== false, 'active is written');
+	pg_assert_true(strpos($active, 'last_success = UNIX_TIMESTAMP()') !== false, 'the success time with it');
+	pg_assert_true(strpos($active, "id = '12'") !== false, 'this subscription');
+	pg_assert_true(strpos($active, "status <> 'disabled'") !== false, 'never a disabled one');
+
+	$failing = api_webhook_status_after_delivery_sql('7x', 'failing');
+
+	pg_assert_true(strpos($failing, "status = 'failing'") !== false, 'failing is written');
+	pg_assert_false(strpos($failing, 'last_success'), 'no success time');
+	pg_assert_true(strpos($failing, "id = '7'") !== false, 'the id as a number');
+	pg_assert_true(strpos($failing, "status <> 'disabled'") !== false, 'never a disabled one');
+}
+
+// One run of the dispatcher picks due rows one at a time. A receiver that
+// times out used to be tried row after row until the run's time was gone,
+// so every other subscription waited behind it; a subscription whose
+// delivery failed in this run is left out of the next picks of the run.
+function test_webhook_due_row_leaves_out_subscriptions_failed_in_this_run()
+{
+	$plain = api_webhook_due_row_sql(array());
+
+	pg_assert_true(strpos($plain, 'next_attempt_at > 0') !== false, 'held and given-up rows are not picked');
+	pg_assert_true(strpos($plain, "attempts < '" . api_webhook_max_attempts() . "'") !== false, 'within the attempts');
+	pg_assert_true(strpos($plain, 'LIMIT 1') !== false, 'one row');
+	pg_assert_false(strpos($plain, 'NOT IN'), 'nothing left out');
+
+	$skipping = api_webhook_due_row_sql(array(4, '9', 4, 0, -2));
+
+	pg_assert_true(strpos($skipping, "webhook_id NOT IN ('4', '9')") !== false, 'the failed subscriptions, once each');
+}

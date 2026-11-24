@@ -1956,8 +1956,18 @@ if (ECOMMERCE_SHIPPING) {
             update_shipping_cost_for_ship_to($recipient['id']);
         }
 
-        // If user is logged in and not ghosting, then update address book.
-        if (USER_LOGGED_IN and !$ghost) {
+        // If user is logged in and not ghosting, then update address book. Every
+        // update saves the recipient before any field is required, so only a
+        // whole address is copied: a half-typed one must not replace a saved one.
+        if (USER_LOGGED_IN and !$ghost and pg_address_book_writable(array(
+            'first_name' => $liveform->get($prefix . 'first_name'),
+            'last_name'  => $liveform->get($prefix . 'last_name'),
+            'address_1'  => $liveform->get($prefix . 'address_1'),
+            'city'       => $liveform->get($prefix . 'city'),
+            'state'      => $state,
+            'zip_code'   => $zip_code,
+            'country'    => $country,
+        ), $state_required, $zip_code_required)) {
 
             // Try to find an existing recipient in address book
             $address_book_id = db(

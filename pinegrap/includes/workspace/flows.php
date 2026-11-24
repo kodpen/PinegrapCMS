@@ -1377,7 +1377,7 @@ function ws_flow_graph_check($graph)
         }
 
         if ($kinds[$node['kind']]['step']) {
-            foreach (array_merge(ws_step_config_problems($node['kind'], $node['config'], $name, $joined), ws_flow_retry_problems($node['config'], $name)) as $text) {
+            foreach (array_merge(ws_step_config_problems($node['kind'], $node['config'], $name, $joined), ws_flow_retry_problems($node['config'], $name), ws_flow_hours_problems($node['config'], $name)) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -3925,6 +3925,14 @@ function ws_flow_js_strings()
         'fl_email_body'       => lang('Text of the e-mail'),
         'fl_email_page'       => ws_js_template('Sends page #{var:1} as its body, filled as a campaign fills it; the text above is not sent.', 1),
         'fl_email_sender'     => lang('Sender'),
+        'fl_hours'            => lang('Sending hours'),
+        'fl_hours_off'        => lang('Off'),
+        'fl_hours_on'         => lang('Send only within these hours'),
+        'fl_hours_help'       => lang('In the site\'s time zone. Off, the box sends at once.'),
+        'fl_hours_days'       => lang('Which days'),
+        'fl_hours_outside'    => lang('Outside the hours'),
+        'fl_hours_wait'       => lang('Send at the next hour that fits'),
+        'fl_hours_skip'       => lang('Do not send'),
         'fl_email_from_name'  => lang('From name'),
         'fl_email_from_name_help' => lang('Empty: the organization\'s name.'),
         'fl_email_from_email' => lang('From address'),
@@ -4478,6 +4486,9 @@ function ws_flow_js_config($viewer, $mode)
     // The boxes that may try again on their own after a failure, and how
     // many times at most (flow_runs.php).
     $steps['retry'] = array('kinds' => function_exists('ws_step_kinds') ? array_keys(ws_step_kinds()) : array(), 'max' => WS_FLOW_RETRY_MAX, 'after_max' => WS_FLOW_RETRY_AFTER_MAX);
+
+    // The boxes that take sending hours (flow_send_hours.php).
+    $steps['hours_kinds'] = function_exists('ws_flow_hours_kinds') ? ws_flow_hours_kinds() : array();
 
     if ($build && function_exists('ws_scheduled_metrics')) {
         foreach (ws_scheduled_metrics() as $key => $metric) {

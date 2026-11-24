@@ -8078,6 +8078,7 @@ function pg_js_bundles()
             'assets/js/workspace_mail.js',
             'assets/js/workspace_status.js',
             'assets/js/workspace_voice.js',
+            'assets/js/workspace_call_background.js',
             'assets/js/workspace_calls.js',
             'assets/js/workspace_customer.js',
             'assets/js/workspace_flow_flag.js',
@@ -8123,7 +8124,7 @@ function pg_js_bundles()
         'assets/js/workspace_flow.min.js'          => array('assets/js/pg_var_chips.js', 'assets/js/workspace_flow.js', 'assets/js/workspace_flow_quick.js'),
         // The guest page, after the call window it joins a room's call with
         // (window.PGWsCalls).
-        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_calls.js', 'assets/js/workspace_guest.js'),
+        'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_call_background.js', 'assets/js/workspace_calls.js', 'assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
         // team: small, and apart from the workspace's own set.
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),

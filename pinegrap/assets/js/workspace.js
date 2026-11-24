@@ -9540,6 +9540,7 @@
             ice: (CFG.calls && CFG.calls.ice) || [],
             ring: (CFG.calls && CFG.calls.ring) || 45,
             max: (CFG.calls && CFG.calls.max) || 4,
+            background: (CFG.calls && CFG.calls.background) || null,
             soundOn: function () { return soundOn(CFG.api_url, CFG.me); },
             openChannel: function (channelId) { app.open(channelId, 0); }
         };

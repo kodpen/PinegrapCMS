@@ -25,4 +25,4 @@ module: layout_convert
 
 ## What did the starting sites give?
 - 10 file pages, 9 texts (985, 997, 999, 1000, 1001 on each site; tr 1000 and 1001 the same): all convert with nothing dropped, no setting held, so each converts in the move run. `tests/layout_convert_test.php` runs every text; `tests/catalog_listing_layout_test.php` draws a converted card and surround.
-- Catalog detail is step LE8c.
+- Catalog detail: [[layout-type-converter-catalog-detail]].

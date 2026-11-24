@@ -102,7 +102,19 @@ function pg_page_schedule_parse($value)
     $text = $m[1] . 'T' . $m[2] . ((isset($m[3]) && $m[3] !== '') ? substr($m[3], 0, 3) : ':00');
 
     if (!isset($m[4]) || $m[4] === '') {
+        // Checked against the calendar in UTC, which has no clock changes:
+        // the hour a site's clocks skip in spring (02:30 the night they go
+        // forward) is offered by the datetime-local box and is read in the
+        // site's zone as the moment right after the jump, not refused.
+        $utc = DateTime::createFromFormat('!Y-m-d\TH:i:s', $text, new DateTimeZone('UTC'));
+
+        if ($utc === false || $utc->format('Y-m-d\TH:i:s') !== $text) {
+            return $fail;
+        }
+
         $date = DateTime::createFromFormat('!Y-m-d\TH:i:s', $text);
+
+        return ($date === false) ? $fail : pg_page_schedule_in_range($date->getTimestamp());
     } else {
         $offset = (strtoupper($m[4]) === 'Z') ? '+00:00' : ((strlen($m[4]) === 5) ? substr($m[4], 0, 3) . ':' . substr($m[4], 3) : $m[4]);
 

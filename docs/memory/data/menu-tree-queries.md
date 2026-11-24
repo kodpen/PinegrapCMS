@@ -12,7 +12,7 @@ description: Classic menus (get_menu_content(), get_menu_sequence()) read a menu
 - Byte for byte the old one: compared on the sandbox over every menu, the current item at the top, middle and end, edit mode, sub-menus drawn alone, the sequence and its second call, and a menu with ties, a hidden subtree, an orphan, an accordion and a child in another menu.
 - Children are counted across menus and before security: an item whose only children belong to another menu, or are all hidden from the visitor, still gets the `parent` class and an empty `<ul></ul>`, and an accordion gives it no link.
 - Ties in `sort_order` print by id (the per-level query left them to the database, which gave them by id).
-- Security (`check_view_access()`) is asked per item while drawing, not kept in the tree; the sequence does not ask it.
+- Security (`check_view_access()`) is asked per item while drawing (`pg_menu_item_shown()`), not kept in the tree; the sequence does not ask it but leaves out an offline page (Recycle Bin, drafts). A deleted page's item is left out, and a "New Window" link carries `rel="noopener"` (#11428): the output differs from before only there.
 - `get_menu_sequence()` keeps its global `$page_names_in_menu_sequence`: a second call in the same request adds only pages not seen yet, so a second `<menu_sequence>` of the same menu prints nothing.
 
 ## How does the panel list a menu?

@@ -513,3 +513,30 @@ function test_payment_stripe_webhook_renewal_failure_names_its_subscription()
 	pg_assert_true($order['raw']['ignored']);
 	pg_assert_false(isset($order['raw']['renewal_failed']));
 }
+
+function test_payment_stripe_webhook_order_payment_answers_the_kept_card()
+{
+	// The order's payment kept its card for a subscription: the message that
+	// completes the order carries the card, so the subscription is made even
+	// when the visitor never comes back from the 3-D Secure page.
+	$kept = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent(array(
+		'customer' => 'cus_Q1', 'payment_method' => 'pm_Q2', 'setup_future_usage' => 'off_session'))));
+
+	pg_assert_same('438', $kept['order_reference']);
+	pg_assert_same('cus_Q1|pm_Q2', $kept['card_ref']);
+
+	// A payment that keeps no card answers none.
+	$plain = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent(array(
+		'customer' => 'cus_Q1', 'payment_method' => 'pm_Q2'))));
+	pg_assert_same('', $plain['card_ref']);
+}
+
+function test_payment_stripe_webhook_completion_makes_the_subscriptions()
+{
+	$receive = file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+	$completed = substr($receive, strpos($receive, "if (\$completion['status'] === 'completed') {"), 600);
+
+	// The order the message completed gets the subscriptions of its paid
+	// recurring lines, as the visitor's own return would have made them.
+	pg_assert_contains('pg_subscription_checkout_record((int) $order[\'id\'], $key, $answer);', $completed);
+}

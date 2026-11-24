@@ -2322,3 +2322,40 @@ function pg_shipping_report_period($given_start, $given_end, $stored_start, $sto
 
     return array($today, gmdate('Y-m-d', strtotime($today . ' 00:00:00 UTC') + 13 * 86400));
 }
+
+/**
+ * Whether a recipient's address typed on a shipping step may be copied into
+ * the signed-in customer's address book: the fields the address book screen
+ * requires (update_address_book.php) are all filled, the state and the zip
+ * code when the country asks for them. A refused or half-typed step (the
+ * express order saves its recipients on every update, before any field is
+ * required) then never overwrites a saved address with a broken one. Pure.
+ *
+ * @param array $values         first_name, last_name, address_1, city, state,
+ *                              zip_code, country as posted
+ * @param bool  $state_required the country has states
+ * @param bool  $zip_required   the country requires a zip code
+ * @return bool
+ */
+function pg_address_book_writable(array $values, $state_required, $zip_required)
+{
+    $required = array('first_name', 'last_name', 'address_1', 'city', 'country');
+
+    if ($state_required) {
+        $required[] = 'state';
+    }
+
+    if ($zip_required) {
+        $required[] = 'zip_code';
+    }
+
+    foreach ($required as $field) {
+        $value = $values[$field] ?? '';
+
+        if (!is_scalar($value) || (trim((string) $value) === '')) {
+            return false;
+        }
+    }
+
+    return true;
+}

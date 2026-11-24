@@ -14,6 +14,7 @@ description: An account without TOTP (PR #2226): the e-mailed code (passkey.php 
 ## What changes when an account without TOTP adds one?
 - The passkey becomes its second factor (`core/passkey-second-factor.md`). `pg_passkey_registered()`: the first one revokes the other remember-me tokens and API devices, as turning TOTP on does; with no unused recovery code the account gets ten, in the `register` answer, which `PgPasskey.showRecoveryCodes()` shows once in place of the form.
 - Removing the last passkey of such an account removes its codes (`pg_passkey_remove()`).
+- Turning on an authenticator key later keeps its unused codes (`pg_mfa_setup_keeps_codes()`, #11452): the key asks for the session alone, new codes need the proofs below; `mfa.php` signs in without the codes screen then.
 
 ## How does such an account get new recovery codes?
 - Decided in #2392: with the proofs of adding a passkey, the password (none for algo 3) and a code e-mailed for `recovery`. `pg_mfa_recovery_proof()` picks `totp` (TOTP on), `email` (`pg_mfa_has_passkey()` without TOTP) or nothing.

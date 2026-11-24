@@ -188,7 +188,7 @@
 
             function cell(className, label, control) {
                 var box = h.el('div', className);
-                var caption = h.el('label', 'form-label small mb-1', label);
+                var caption = h.el('label', 'pg-field-label', label);
 
                 control.id = h.nextId('ws-task-time-');
                 caption.htmlFor = control.id;
@@ -199,13 +199,13 @@
                 return control;
             }
 
-            var amount = h.el('input', 'form-control form-control-sm');
+            var amount = h.el('input', 'pg-input pg-input-sm');
             amount.type = 'text';
             amount.placeholder = h.t('tt_placeholder');
             amount.maxLength = 20;
             cell('col-4', h.t('tt_time'), amount);
 
-            var day = h.el('input', 'form-control form-control-sm');
+            var day = h.el('input', 'pg-input pg-input-sm');
             h.dateField(day, 'date');
             day.value = time.today;
             day.max = time.today;
@@ -218,7 +218,7 @@
                 person = cell('col-4', h.t('tt_person'), h.select(people, h.boot().me.id));
             }
 
-            var note = h.el('input', 'form-control form-control-sm');
+            var note = h.el('input', 'pg-input pg-input-sm');
             note.type = 'text';
             note.maxLength = 255;
             cell(person ? 'col-12' : 'col-4', h.t('tt_note'), note);
@@ -318,7 +318,7 @@
 
             function cell(className, label, control) {
                 var box = h.el('div', className);
-                var caption = h.el('label', 'form-label small mb-1', label);
+                var caption = h.el('label', 'pg-field-label', label);
 
                 control.id = h.nextId('ws-task-time-');
                 caption.htmlFor = control.id;
@@ -329,20 +329,20 @@
                 return control;
             }
 
-            var amount = h.el('input', 'form-control form-control-sm');
+            var amount = h.el('input', 'pg-input pg-input-sm');
             amount.type = 'text';
             amount.placeholder = h.t('tt_placeholder');
             amount.maxLength = 20;
             amount.value = String(entry.minutes);
             cell('col-4', h.t('tt_time'), amount);
 
-            var day = h.el('input', 'form-control form-control-sm');
+            var day = h.el('input', 'pg-input pg-input-sm');
             h.dateField(day, 'date');
             day.value = entry.worked_on;
             day.max = time.today;
             cell('col-4', h.t('tt_day'), day);
 
-            var note = h.el('input', 'form-control form-control-sm');
+            var note = h.el('input', 'pg-input pg-input-sm');
             note.type = 'text';
             note.maxLength = 255;
             note.value = entry.note || '';
@@ -607,7 +607,7 @@
 
             function cell(label, control) {
                 var box = h.el('div', 'col-6 lg:col-3');
-                var caption = h.el('label', 'form-label small mb-1', label);
+                var caption = h.el('label', 'pg-field-label', label);
 
                 control.id = h.nextId('ws-task-time-inv-');
                 caption.htmlFor = control.id;
@@ -619,7 +619,7 @@
             }
 
             function input(type, value) {
-                var node = h.el('input', 'form-control form-control-sm');
+                var node = h.el('input', 'pg-input pg-input-sm');
                 node.type = type;
                 node.value = value || '';
                 return node;

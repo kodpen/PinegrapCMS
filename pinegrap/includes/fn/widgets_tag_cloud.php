@@ -21,6 +21,22 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The condition that keeps the keywords of pages in the given folders out
+ * of a read of tag_cloud_keywords ('' when there are none). Pure.
+ *
+ * @param array $folder_ids pg_page_off_site_folder_ids(): the Drafts folder and the
+ *                          recycle bin, whose pages keep their keyword rows
+ * @return string " AND ..." to append to a WHERE
+ */
+function pg_tcw_hidden_page_sql($folder_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)$folder_ids))));
+    if (!$ids) return '';
+    return " AND NOT (tag_cloud_keywords.item_type = 'page' AND tag_cloud_keywords.item_id IN"
+        . " (SELECT page_id FROM page WHERE page_folder IN (" . implode(',', $ids) . ")))";
+}
+
+/**
  * The tag cloud's rows, as the classic region draws them: keywords in
  * alphabetical order, each sized from 100% (used least) to 200% (used
  * most), and a weight of 1 to 5 from that size for a design to pick its
@@ -80,7 +96,7 @@ function pg_tcw_keywords($page)
             WHERE search_results_page_id = '" . (int)$page['page_id'] . "') AS items
             ON items.item_id = tag_cloud_keywords.item_id AND items.item_type = tag_cloud_keywords.item_type"
         : '';
-    $where = ($join === '') ? "WHERE tag_cloud_keywords.item_type = 'page'" : '';
+    $where = ($join === '') ? "WHERE tag_cloud_keywords.item_type = 'page'" . pg_tcw_hidden_page_sql(pg_page_off_site_folder_ids()) : '';
     return (array)db_items(
         "SELECT tag_cloud_keywords.keyword, COUNT(tag_cloud_keywords.keyword) AS count
         FROM tag_cloud_keywords
@@ -197,7 +213,7 @@ function pg_tcw_widget_keywords($cfg)
     if ($scope !== 'products') {
         foreach ((array)db_items(
             "SELECT keyword, COUNT(keyword) AS count FROM tag_cloud_keywords
-             WHERE item_type = 'page' GROUP BY keyword") as $row) {
+             WHERE item_type = 'page'" . pg_tcw_hidden_page_sql(pg_page_off_site_folder_ids()) . " GROUP BY keyword") as $row) {
             $counts[(string)$row['keyword']] = (int)$row['count'];
         }
     }

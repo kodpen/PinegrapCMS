@@ -482,8 +482,17 @@ $result = db_q($query, array((string) ($liveform->get_field_value('salutation'))
 // query above binds its values by placeholder.
 pg_ship_to_district_save((int) ($_POST['ship_to_id'] ?? 0), $liveform->get_field_value('district'), $liveform->get_field_value('country'), $liveform->get_field_value('city'));
 
-// If the user is logged in and not ghosting, then update address book.
-if (USER_LOGGED_IN and !$ghost) {
+// If the user is logged in and not ghosting, then update address book, with
+// an address the step accepted: a refused one must not replace a saved one.
+// The required fields, the state and the zip code among them, were checked
+// above, so the form's own errors decide.
+if (USER_LOGGED_IN and !$ghost and ($liveform->check_form_errors() == false) and pg_address_book_writable(array(
+    'first_name' => $liveform->get_field_value('first_name'),
+    'last_name'  => $liveform->get_field_value('last_name'),
+    'address_1'  => $liveform->get_field_value('address_1'),
+    'city'       => $liveform->get_field_value('city'),
+    'country'    => $liveform->get_field_value('country'),
+), false, false)) {
 
     // find recipient in address book
     $query = "SELECT id FROM address_book WHERE user = ? AND ship_to_name = ?";

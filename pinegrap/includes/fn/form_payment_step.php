@@ -656,7 +656,7 @@ function pg_form_payment_charge($page_id, $method, $token)
         'ip'            => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
         'basket_id'     => (string) (int) $page_id,
         'return_url'    => ($return_mode !== '')
-            ? URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/custom_form.php?mode=' . $return_mode . '&page_id=' . (int) $page_id
+            ? URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/custom_form.php?mode=' . $return_mode . '&page_id=' . (int) $page_id)
             : '',
     )));
 

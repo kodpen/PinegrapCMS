@@ -358,7 +358,7 @@
     // A field of the reminder form with its label.
     function field(h, label, input, className) {
         var wrap = h.el('div', className);
-        var caption = h.el('label', 'form-label small mb-1', label);
+        var caption = h.el('label', 'pg-field-label', label);
 
         input.id = h.nextId('ws-cust-remind-');
         caption.htmlFor = input.id;
@@ -397,9 +397,9 @@
 
         function form() {
             var box = h.el('form', 'd-flex flex-wrap align-items-end gap-3');
-            var what = h.el('input', 'form-control form-control-sm');
-            var day = h.el('input', 'form-control form-control-sm');
-            var time = h.el('input', 'form-control form-control-sm');
+            var what = h.el('input', 'pg-input pg-input-sm');
+            var day = h.el('input', 'pg-input pg-input-sm');
+            var time = h.el('input', 'pg-input pg-input-sm');
             var save = h.el('button', 'pg-button pg-button-fill pg-button-sm', h.t('cust_remind_save'));
             var cancel = h.button('pg-button pg-button-ghost pg-button-sm', h.t('cancel'));
             var actions = h.el('div', 'd-flex gap-3');

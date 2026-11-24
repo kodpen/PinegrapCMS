@@ -1972,8 +1972,11 @@ function submit_order($type) {
                 'customer_id'              => $user_id,
                 'ip'                       => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
                 'basket_id'                => (string) $page_id,
+                // In the language the order was placed in (pg_lang): the
+                // return completes the order, sends its receipt and leads to
+                // the receipt page.
                 'return_url'               => ($payment_return_mode !== '')
-                    ? URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id
+                    ? URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=' . $payment_return_mode . '&page_id=' . (int) $page_id)
                     : '',
                 // The payment service's token for a card typed into its own fields.
                 'token'                    => (isset($_POST['payment_token']) && is_string($_POST['payment_token'])) ? $_POST['payment_token'] : '',
@@ -3258,8 +3261,10 @@ function submit_order($type) {
                 
                 // if mode is not paypal_express_checkout_return, then prepare to send SetExpressCheckout request to PayPal
                 if (($_GET['mode'] ?? '') != 'paypal_express_checkout_return') {
-                    $paypal_express_checkout_returnurl = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id;
-                    $paypal_express_checkout_cancelurl = URL_SCHEME . HOSTNAME . PATH . get_page_name($page_id);
+                    // Back in the language the order was placed in, as the
+                    // other payment services' return.
+                    $paypal_express_checkout_returnurl = URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=paypal_express_checkout_return&page_id=' . $page_id);
+                    $paypal_express_checkout_cancelurl = URL_SCHEME . HOSTNAME . (defined('LANGUAGE_PATH') ? LANGUAGE_PATH : PATH) . get_page_name($page_id);
                     
                     $post_data =
                         'METHOD=SetExpressCheckout&' .
@@ -3633,6 +3638,13 @@ function submit_order($type) {
     if ($order_number === null) {
         $completed_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
 
+        // The payment service's message may have completed the order first,
+        // without the card this return carries: the subscriptions of its
+        // recurring lines are made here (rows already made are kept).
+        if (($payment_driver !== '') && ($recurring_transaction == TRUE)) {
+            pg_subscription_checkout_record($completed_order_id, $payment_driver, $payment_answer, $products);
+        }
+
         log_activity(pg_log_lang(array('string' => 'A second checkout of an order that was already completed changed nothing.')) . ' (' . $completed_order_id . ')');
 
         $_SESSION['ecommerce']['completed_order_id'] = $completed_order_id;
@@ -3655,11 +3667,7 @@ function submit_order($type) {
     // 'store') gets a subscription per paid recurring line, charged later
     // from the card its payment stored; a line that got none is logged.
     if (($payment_driver !== '') && ($recurring_transaction == TRUE)) {
-        foreach (pg_subscription_checkout_create((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $payment_driver, $payment_answer, $products) as $subscription_item_id => $subscription_id) {
-            if ($subscription_id === 0) {
-                log_activity(pg_log_lang(array('string' => 'A subscription could not be created for an order line.')) . ' (' . $order_number . ', ' . $subscription_item_id . ')');
-            }
-        }
+        pg_subscription_checkout_record((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $payment_driver, $payment_answer, $products);
     }
 
     // The frozen legacy gateways' recurring profiles need the card the

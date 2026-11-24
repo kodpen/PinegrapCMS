@@ -79,6 +79,7 @@
 - automation-flows-gate.md: The one gate of automation flows, pg_flows_enabled() (#9109): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - automation-flows-screen.md: The Flows screen with the Workspace off (#9154): its gate, the panel actions the switch lets through, what the screen leaves out that lives in a channel, how it was checked
 - automation-flows-workspace-boxes.md: Which flow boxes and starts need the Workspace (ws_flow_kinds_workspace()): the list, offered only with it, the problem on the canvas, the refusal at run time and in Try [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
+- calls-background.md: Blur/Remove background in a call (CN7, #11412): the Background effects switch, pinned MediaPipe files fetched into data/call_background, the browser's own blur first [decision: here]
 - calls-choices.md: Workspace calls remember the chosen microphone, camera and speaker and the mute and camera state in the browser (CN1): the key, the fallback, the Speaker or headphones select [decision: here]
 - calls-endurance.md: Workspace calls on a phone and a changing network (CL8, #11156): call buttons at phone width, window places, ICE restart, a vanished member out after 90 s, Join here
 - calls-group.md: A group's Workspace call (CL3): no ring in a group, the head's Join button (n/4, full), the mesh grid of four, the speaking mark, five minutes alone
@@ -87,12 +88,14 @@
 - calls-leave-page.md: Leaving the Workspace during a call (CN3): links that leave the page open in a new tab, a reload or a close asks first [decision: here]
 - calls-lines.md: A Workspace call's channel lines (CL7, #11125): started, ended with length and who took part, missed or declined in a conversation of two; system lines, never to an agent
 - calls-overview.md: Start here for Workspace voice and video calls (plan CL1-CL8, closed with #11156): what is built, the rules every change keeps, which file answers what [decision: decisions-made-workspace-40.md]
+- calls-popout.md: The Workspace call's Pop out (CN5): the call window moved into a Document Picture-in-Picture window above other windows and tabs, what it keeps, how it comes back
 - calls-screen.md: Workspace calls of two people on the channel screen (CL2, #10522): head buttons, the ring and Decline, the call window kept across channels, ws_call_sync each second, STUN default
 - calls-server.md: Workspace calls on the server (CL1, #10499, step 11.0.243): tables, start/join/leave/end, signals read by their member only, the 2-minute end, who may, limits, read-only API [decision: decisions-made-schema-29.md]
 - calls-settings.md: The Calls card of Workspace settings (CL6, #10608): off until turned on, STUN addresses, the TURN relay with its sealed secret, member-only time-limited credentials, the browser's connection test
 - calls-share-stage.md: How a Workspace call shows shared screens (CL4 #10908, CN4): the stage, the tile rail, other shares as rail tiles a click swaps, phone layout, smaller and full screen, the sharer's notice
 - calls-share.md: Screen sharing in a Workspace call (CL4 #10908, CN4): several shares at once, one a member, by share/unshare marks, a share ends when its sharer leaves, the screen line, the share button
 - calls-signalling.md: Which live read carries a Workspace call (CL1 census): ws_sync and the guest page's state, the data/temp/ws_calls_live stamp that keeps an idle channel's cost, how often a browser in a call looks
+- calls-window.md: The Workspace call window's head (CN2): Make larger / Make smaller remembered, Full screen of the whole window, a tile pinned large, Hide my picture in the window's menu
 - canvas-binding-line.md: An application's binding of a table to a canvas shows in the channel as a line with Undo (CO7d): the system line and its ws_refs, the reader's words, who may undo, what Undo puts back
 - canvas-bridge.md: A live page's data bridge (#8947): page to shell to panel to site and back, the message shape, the canvas named by the card and never the page, the bounds and the stop, the who call, the proofs
 - canvas-card.md: The joined card of a canvas with a drawing and a page (CO7c, #9274): file.joined, part chips, the Drawing / Page switch, one Versions drawer with Show and Put back, which file each panel action reads [decision: decisions-made-workspace-20.md]
@@ -503,6 +506,7 @@
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice [decision: decisions-made-product-41.md, decisions-made-workspace.md]
 - workspace-flows-scheduled-ways-in.md: Ways onto the canvas for scheduled work: New flow only (the Scheduled flow window went 2026-11-09), Duplicate on a card, Edit retrying the conversion; no New on the list, no note toolbar entry
+- workspace-flows-send-hours.md: Sending hours of a flow's sending boxes (post, email, sms, whatsapp; FE13, #11446): days and hours in the site's zone, a wait through wake_at or "not sent", Try and trial say when, form row, AI hint
 - workspace-flows-settings-tick.md: How a tick in a flow box's settings is drawn (field() in workspace_flow.js, #10274): the box before its label on one line, help under the label, .pg-checkbox
 - workspace-flows-several-boxes.md: Several flow boxes at once (FE7, #11289): chosen with the core's gestures, the floating tools, moved together, Duplicate, Copy and Paste (localStorage, other flows) with arrows and threads, Delete
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, actions, API, Share dialog [decision: here]

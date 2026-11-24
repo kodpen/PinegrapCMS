@@ -134,6 +134,42 @@ function pg_notification_off_line($user_id, $inbox_id)
 	return isset($lines[$user_id][$inbox_id]);
 }
 
+// Whether the Workspace inbox line a bell row points at is still its
+// person's to see (ws_inbox_row_visible(), as ws_bell_describe() asks it). A
+// line that is gone keeps the row: its title was written for that day. One
+// read per line and person per request; the badge asks it of unread rows only.
+function pg_notification_ws_line_open($user_id, $inbox_id)
+{
+	static $open = array();
+
+	$user_id = (int) $user_id;
+	$inbox_id = (int) $inbox_id;
+	$key = $user_id . ':' . $inbox_id;
+
+	if (($user_id <= 0) || ($inbox_id <= 0)) {
+		return true;
+	}
+
+	if (!isset($open[$key])) {
+		require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+		$row = ws_ready() ? db_item("SELECT * FROM ws_inbox WHERE id = '" . $inbox_id . "' AND user_id = '" . $user_id . "'") : null;
+
+		if (!is_array($row) || empty($row)) {
+			$open[$key] = true;
+		} else {
+			include_once(PG_FUNCTIONS_DIR . '/includes/authentication.php');
+
+			$user = pg_load_user_row($user_id);
+			$viewer = is_array($user) ? ws_viewer($user) : ws_rights_for_id($user_id) + array('ecommerce' => false, 'contacts' => false, 'erp' => false);
+
+			$open[$key] = (bool) ws_inbox_row_visible($viewer, $row);
+		}
+	}
+
+	return $open[$key];
+}
+
 // Can this person see this notification?
 //
 // The rights are passed in rather than read from the session, because the
@@ -168,11 +204,16 @@ function pg_notification_visible($notification, $rights)
 			return false;
 		}
 
+		// The inbox line itself must still be the person's to see: a mention
+		// in a private channel they were taken out of, a task no longer
+		// theirs, a mailbox taken from them. The row's kept title names the
+		// channel and what was said, so it is left out, not shown bare.
 		if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
-			return true;
+			return pg_notification_ws_line_open($target, (int) ($notification['reference_id'] ?? 0));
 		}
 
-		return pg_notification_off_line($target, (int) ($notification['reference_id'] ?? 0));
+		return pg_notification_off_line($target, (int) ($notification['reference_id'] ?? 0))
+			&& pg_notification_ws_line_open($target, (int) ($notification['reference_id'] ?? 0));
 	}
 
 	// A customer's return request, or their word that the goods are on their
@@ -1432,8 +1473,8 @@ function pg_bell_state_note($key, $tone, $icon, $title, $text, $button)
 // (whole minutes and hours, at least one minute, a time after now too),
 // "Yesterday", then the day and month ("9 Nov", "Nov 9" where the site writes
 // the month first), with the year only when it is not this year. Read in the
-// site's time zone like pg_notification_day(), so the time and the heading
-// above it never disagree. The full date and time stays in the title
+// zone given (the reader's, '' for the site's) like pg_notification_day(), so
+// the time and the heading above it never disagree. The full date and time stays in the title
 // attribute. Pure: now is passed in.
 function pg_notification_short_time($timestamp, $now, $timezone = '', $date_format = 'day_month')
 {

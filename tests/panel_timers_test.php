@@ -51,7 +51,8 @@ function test_panel_notification_poll_keeps_the_open_list()
 	pg_assert_false(strpos($check, '$unreadsCallback = 0;') !== false, 'the poll does not reset the last seen count');
 	pg_assert_contains('var $unreadsCallback = 0;', $js, 'the last seen count is declared once');
 	pg_assert_contains('get_notifications(true);', $check, 'a poll-driven rebuild keeps scroll and focus');
-	pg_assert_contains('$unreads > $unreadsCallback', $check, 'the open list is redrawn only on a rise');
+	pg_assert_contains('$unreads !== $unreadsCallback && refresh_type != \'editcallback_check\'', $check, 'the open list is redrawn when the count moved, a rise or rows read elsewhere');
+	pg_assert_true(strpos($check, "if (pgUI.drawer.isOpen('#notifications')) {\n                        if (\$unreads !== \$unreadsCallback") < strpos($check, 'if ($unreads > 0) {'), 'also when the count fell to nothing');
 
 	$get = panel_timers_slice($js, 'function get_notifications(keep_place)', '// Opens the page a notification points to.');
 	pg_assert_false(strpos($get, '$unreadsCallback = 0;') !== false, 'opening the bell reads nothing, so the count does not drop to 0');

@@ -18,8 +18,8 @@ module: subscription_renewal
 - `pg_subscription_renewal_hold_end_row()` under the renewal lock: `ended`, `next_charge_at` 0, event `renewal_failed` ("No outcome of the renewal payment came within 7 days."), so the cancelled mail and the `subscription.failed` webhook go out as at the ladder's last step. Held rows with no hold event are not touched.
 - Running sites: rows held over 7 days end on the first run after the update.
 
-## What is not covered?
-- A payment Stripe reports as succeeded after the row was put on the ladder or ended is left alone (`pg_subscription_renewal_confirmed()` takes only a held row): staff refund it on Stripe's screen.
+## What about a payment that comes later?
+- A payment Stripe reports as succeeded after the row was put on the ladder or ended writes nothing: `pg_subscription_renewal_confirmed()` answers `unrecorded`, logged with a `payment_notice` alert (`subscriptions-completion-paths.md`); staff settle it on Stripe's screen.
 
 ## Who decided?
 - Owner (2026-11-24): options 1 + 3 of #11427 — payment_failed puts a held row on the ladder at once; no outcome in 7 days ends it as the ladder's last step does. No schema change.

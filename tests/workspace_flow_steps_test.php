@@ -79,7 +79,7 @@ function test_workspace_flow_steps_are_kinds()
 // addresses given as a list written as one line, unknown keys dropped.
 function test_workspace_flow_steps_config_normalize()
 {
-	pg_assert_same(array('channel_id' => 7, 'body' => 'Hi'), ws_step_config_normalize('post', array('channel_id' => '7', 'body' => " Hi \r\n", 'extra' => 1)));
+	pg_assert_same(array('channel_id' => 7, 'body' => 'Hi', 'hours' => ws_flow_hours_normalize(null)), ws_step_config_normalize('post', array('channel_id' => '7', 'body' => " Hi \r\n", 'extra' => 1)));
 	pg_assert_same(0, ws_step_config_normalize('post', array('channel_id' => -3))['channel_id']);
 	pg_assert_same(0, ws_step_config_normalize('post', array('channel_id' => true))['channel_id']);
 	pg_assert_same(4000, mb_strlen(ws_step_config_normalize('post', array('body' => str_repeat('ğ', 5000)))['body']));
@@ -89,7 +89,7 @@ function test_workspace_flow_steps_config_normalize()
 	pg_assert_same('a@example.com, b@example.com', $email['to']);
 	pg_assert_same('One line', $email['subject']);
 	pg_assert_same(12, $email['page_id']);
-	pg_assert_same(array('to', 'subject', 'body', 'page_id', 'recipient', 'purpose', 'group_id', 'records', 'from_name', 'from_email', 'reply_to', 'bcc'), array_keys($email));
+	pg_assert_same(array('to', 'subject', 'body', 'page_id', 'recipient', 'purpose', 'group_id', 'records', 'from_name', 'from_email', 'reply_to', 'bcc', 'hours'), array_keys($email));
 	pg_assert_same(array('typed', 'info'), array($email['recipient'], $email['purpose']), 'typed addresses for info by default');
 	pg_assert_same(array(), ws_step_config_normalize('nothing', array('a' => 1)));
 }

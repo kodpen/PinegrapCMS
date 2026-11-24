@@ -114,7 +114,7 @@
                 return node;
             },
             select: function (options, value) {
-                var node = el('select', 'form-control form-control-sm');
+                var node = el('select', 'pg-input pg-input-sm');
 
                 options.forEach(function (option) {
                     var item = el('option', '', option[1]);

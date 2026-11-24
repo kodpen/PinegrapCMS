@@ -1,8 +1,8 @@
 {
     "assets/css/backend.src.css": {
-        "size": 434,
-        "weight": 223,
-        "colour": 376
+        "size": 432,
+        "weight": 222,
+        "colour": 375
     },
     "assets/css/pg_dash.src.css": {
         "size": 21,
@@ -159,30 +159,25 @@
         "tabs": 0,
         "field": 15
     },
-    "assets/js/workspace_acks.js": {
-        "button": 0,
-        "tabs": 0,
-        "field": 1
-    },
     "assets/js/workspace_approvals.js": {
         "button": 0,
         "tabs": 0,
-        "field": 20
+        "field": 4
     },
     "assets/js/workspace_board_channel.js": {
         "button": 2,
         "tabs": 0,
-        "field": 2
+        "field": 1
     },
     "assets/js/workspace_customer.js": {
         "button": 0,
         "tabs": 0,
-        "field": 5
+        "field": 1
     },
     "assets/js/workspace_editor.js": {
         "button": 1,
         "tabs": 0,
-        "field": 15
+        "field": 6
     },
     "assets/js/workspace_flow.js": {
         "button": 0,
@@ -193,32 +188,12 @@
         "button": 3,
         "tabs": 0
     },
-    "assets/js/workspace_highlights.js": {
-        "button": 0,
-        "tabs": 0,
-        "field": 1
-    },
     "assets/js/workspace_mail.js": {
         "button": 0,
         "tabs": 0,
-        "field": 15
+        "field": 2
     },
     "assets/js/workspace_note_group_shares.js": {
-        "button": 0,
-        "tabs": 0,
-        "field": 3
-    },
-    "assets/js/workspace_note_groups.js": {
-        "button": 0,
-        "tabs": 0,
-        "field": 3
-    },
-    "assets/js/workspace_note_lock.js": {
-        "button": 0,
-        "tabs": 0,
-        "field": 6
-    },
-    "assets/js/workspace_page_card.js": {
         "button": 0,
         "tabs": 0,
         "field": 1
@@ -231,42 +206,32 @@
     "assets/js/workspace_recurrence.js": {
         "button": 1,
         "tabs": 0,
-        "field": 10
+        "field": 3
     },
     "assets/js/workspace_replies.js": {
         "button": 0,
         "tabs": 0,
-        "field": 5
+        "field": 1
     },
     "assets/js/workspace_status.js": {
         "button": 1,
         "tabs": 0,
-        "field": 9
+        "field": 3
     },
     "assets/js/workspace_task_approval.js": {
         "button": 0,
         "tabs": 0,
-        "field": 5
+        "field": 2
     },
     "assets/js/workspace_task_delegate.js": {
         "button": 0,
         "tabs": 0,
-        "field": 3
-    },
-    "assets/js/workspace_task_links.js": {
-        "button": 0,
-        "tabs": 0,
-        "field": 1
-    },
-    "assets/js/workspace_task_time.js": {
-        "button": 0,
-        "tabs": 0,
-        "field": 10
+        "field": 2
     },
     "assets/js/workspace_templates.js": {
-        "button": 2,
+        "button": 1,
         "tabs": 0,
-        "field": 13
+        "field": 2
     },
     "backups.php": {
         "button": 5,
@@ -1178,11 +1143,6 @@
         "button": 0,
         "tabs": 0,
         "field": 81
-    },
-    "assets/js/workspace_channel_agents.js": {
-        "button": 0,
-        "tabs": 0,
-        "field": 3
     },
     "includes/settings/workspace_team.php": {
         "button": 0,

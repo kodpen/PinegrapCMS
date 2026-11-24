@@ -1593,6 +1593,9 @@ function pg_payment_stripe_notify_with($headers, $body, $settings, $now)
                 'transaction_id'  => $text('id'),
                 'order_reference' => $order_id,
                 'amount'          => pg_payment_stripe_hundredths($amount, $currency),
+                // The card a subscription line kept: the order completed
+                // from this message gets its subscriptions.
+                'card_ref'        => pg_payment_stripe_intent_card_ref($object),
                 'log'             => array(pg_log_lang(array('string' => 'Stripe reports that payment {var:1} of {var:2} succeeded', 'vars' => array($text('id'), pg_payment_stripe_log_amount($amount, $currency))))),
                 'raw'             => $raw,
             );

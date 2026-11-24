@@ -8871,6 +8871,7 @@
         }
 
         retryFields(box, node);
+        hoursFields(box, node);
 
         if (node.kind === 'schedule') {
             scheduleFields(box, node);
@@ -10380,6 +10381,103 @@
         });
         box.appendChild(field(t('fl_self_retry'), times, t('fl_self_retry_help')));
         box.appendChild(field(t('fl_self_retry_after'), after, t('fl_self_retry_after_help')));
+    }
+
+    // The sending hours as kept (ws_flow_hours_normalize()): off, Monday to
+    // Friday, 09:00 to 20:00, waiting for the next hour that fits. Pure.
+    function hoursOf(config) {
+        var hours = (config && config.hours && typeof config.hours === 'object') ? config.hours : {};
+
+        return {
+            on: !!hours.on,
+            days: Array.isArray(hours.days) ? hours.days.slice() : [1, 2, 3, 4, 5],
+            from: hours.from || '09:00',
+            to: hours.to || '20:00',
+            outside: hours.outside === 'skip' ? 'skip' : 'wait'
+        };
+    }
+
+    // What the folded row shows: off, or the hours. Pure.
+    function hoursShown(hours) {
+        return hours.on ? hours.from + '–' + hours.to : t('fl_hours_off');
+    }
+
+    // Sending hours of a box that sends (Post a message, Send an e-mail, an
+    // SMS, a WhatsApp message): a folded row, off at first; on, the days,
+    // from and to in the site's time zone and what it does outside them.
+    function hoursFields(box, node) {
+        if (((FL.steps || {}).hours_kinds || []).indexOf(node.kind) < 0) {
+            return;
+        }
+
+        var hours = hoursOf(node.config);
+        var fold = el('details', 'wsf-fold mb-5');
+        var summary = el('summary', 'wsf-fold-head small fw-semibold');
+        var shown = el('span', 'wsf-fold-shows fw-normal fg-secondary text-truncate', hoursShown(hours));
+        var on = el('input', 'check m-0');
+        var parts = el('div', hours.on ? '' : 'd-none');
+        var days = el('div', 'wsf-people-list');
+        var outside = K.select([['wait', t('fl_hours_wait')], ['skip', t('fl_hours_skip')]], hours.outside);
+        var keep = function () {
+            node.config.hours = hours;
+            shown.textContent = hoursShown(hours);
+            parts.classList.toggle('d-none', !hours.on);
+            refreshNode(node);
+        };
+
+        fold.open = hours.on;
+        summary.appendChild(el('i', 'bi bi-chevron-right'));
+        summary.appendChild(el('span', '', t('fl_hours')));
+        summary.appendChild(shown);
+        fold.appendChild(summary);
+
+        on.type = 'checkbox';
+        on.checked = hours.on;
+        on.addEventListener('change', function () {
+            hours.on = on.checked;
+            keep();
+        });
+        fold.appendChild(field(t('fl_hours_on'), on, t('fl_hours_help')));
+
+        days.setAttribute('role', 'group');
+        days.setAttribute('aria-label', t('fl_hours_days'));
+        [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
+            var row = el('label', 'wsf-person');
+            var check = el('input', 'check m-0');
+
+            check.type = 'checkbox';
+            check.checked = hours.days.indexOf(day) !== -1;
+            check.disabled = !state.edit;
+            check.addEventListener('change', function () {
+                hours.days = hours.days.filter(function (item) { return item !== day; });
+
+                if (check.checked) {
+                    hours.days.push(day);
+                }
+
+                hours.days.sort();
+                keep();
+            });
+            row.appendChild(check);
+            row.appendChild(document.createTextNode(t(DAYS[day])));
+            days.appendChild(row);
+        });
+        parts.appendChild(field(t('fl_hours_days'), days));
+
+        [['from', 'fl_cond_from'], ['to', 'fl_cond_to']].forEach(function (pair) {
+            parts.appendChild(field(t(pair[1]), dateInput('time', hours[pair[0]], function (typed) {
+                hours[pair[0]] = typed;
+                keep();
+            })));
+        });
+
+        outside.addEventListener('change', function () {
+            hours.outside = outside.value;
+            keep();
+        });
+        parts.appendChild(field(t('fl_hours_outside'), outside));
+        fold.appendChild(parts);
+        box.appendChild(fold);
     }
 
     // An approval box: the channel it asks in, the people asked, the text,

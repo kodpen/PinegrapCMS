@@ -38,7 +38,7 @@ define('WS_CALL_ICE_MAX', 5);
  * among them, are dropped. Missing or broken JSON reads as off. Pure.
  *
  * @param string $json
- * @return array on (bool), stun (string[]), turn_url (string[]), turn_user (string)
+ * @return array on (bool), stun (string[]), turn_url (string[]), turn_user (string), background (bool)
  */
 function ws_calls_settings_parse($json)
 {
@@ -53,6 +53,7 @@ function ws_calls_settings_parse($json)
         'stun'      => $list($data['stun'] ?? null),
         'turn_url'  => $list($data['turn_url'] ?? null),
         'turn_user' => (string) ($data['turn_user'] ?? ''),
+        'background' => !empty($data['background']),
     );
 }
 
@@ -236,14 +237,17 @@ function ws_calls_settings_card($viewer)
         return '';
     }
 
-    return ws_calls_settings_card_html(ws_calls_settings(), ws_calls_turn_allowed($viewer), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php');
+    $settings = ws_calls_settings();
+    $settings['background_ready'] = $settings['background'] && ws_call_background_ready();
+
+    return ws_calls_settings_card_html($settings, ws_calls_turn_allowed($viewer), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php');
 }
 
 /**
  * The card's markup for given settings. The secret is never an input's
  * value: the box is drawn empty and says whether one is stored.
  *
- * @param array  $settings ws_calls_settings()
+ * @param array  $settings ws_calls_settings() + background_ready (bool)
  * @param bool   $admin    may change the relay
  * @param string $api_url
  * @return string
@@ -273,6 +277,15 @@ function ws_calls_settings_card_html($settings, $admin, $api_url)
                             <div class="switch"><input type="checkbox" name="ws_calls_on" value="1" id="ws_calls_on" aria-describedby="ws_calls_on-help"' . ($settings['on'] ? ' checked' : '') . '></div>
                             <label for="ws_calls_on">' . h(lang('Voice and video calls in the channels')) . '</label>
                             <div class="form-text" id="ws_calls_on-help">' . h(lang('Sound and picture go from browser to browser; the site carries only who is in a call and the browsers\' connection messages. Nothing is recorded. Off, the call buttons are not shown and no call can be started.')) . '</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-5">
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input type="checkbox" name="ws_calls_background" value="1" id="ws_calls_background" aria-describedby="ws_calls_background-help"' . (!empty($settings['background']) ? ' checked' : '') . '></div>
+                            <label for="ws_calls_background">' . h(lang('Background effects')) . '</label>
+                            <div class="pg-field-help" id="ws_calls_background-help">' . h(lang('"Blur background" and "Remove background" for one\'s own camera. Turned on, the site fetches the segmentation model and its runtime once (about 15 MB, from jsDelivr and Google) and serves them itself; turned off, they are deleted. Where the browser blurs by itself, "Blur background" works without them.')) . (!empty($settings['background']) && empty($settings['background_ready']) ? ' <strong>' . h(lang('The files are not there for this version: Save fetches them again.')) . '</strong>' : '') . '</div>
                         </div>
                     </div>
                 </div>
@@ -495,6 +508,7 @@ function ws_calls_settings_from_post($stored, $post, $admin)
         'stun'      => $stun['list'],
         'turn_url'  => $stored['turn_url'],
         'turn_user' => $stored['turn_user'],
+        'background' => !empty($post['ws_calls_background']),
     );
     $secret = 'keep';
 
@@ -520,7 +534,7 @@ function ws_calls_settings_from_post($stored, $post, $admin)
         }
     }
 
-    $before = array('on' => $stored['on'], 'stun' => $stored['stun'], 'turn_url' => $stored['turn_url'], 'turn_user' => $stored['turn_user']);
+    $before = array('on' => $stored['on'], 'stun' => $stored['stun'], 'turn_url' => $stored['turn_url'], 'turn_user' => $stored['turn_user'], 'background' => !empty($stored['background']));
     $changed = ($settings !== $before) || ($secret !== 'keep');
 
     return array('ok' => true, 'field' => '', 'error' => '', 'settings' => $settings, 'secret' => $secret, 'changed' => $changed);
@@ -552,6 +566,21 @@ function ws_calls_settings_save($viewer, $post, $refuse)
         return false;
     }
 
+    // Background effects on: the pinned files are fetched now (at once
+    // when they are already there for these pins); a refused fetch keeps
+    // the card unwritten. Off: the files are deleted.
+    if ($result['settings']['background']) {
+        $fetched = ws_call_background_fetch();
+
+        if (!$fetched['ok']) {
+            $refuse('ws_calls_background', $fetched['error']);
+
+            return false;
+        }
+    } else {
+        ws_call_background_remove();
+    }
+
     if (!$result['changed']) {
         return false;
     }
@@ -570,7 +599,7 @@ function ws_calls_settings_save($viewer, $post, $refuse)
     log_activity('Workspace call settings were changed (calls ' . ($after['on'] ? 'on' : 'off') . ').');
 
     if (function_exists('pg_audit')) {
-        pg_audit('update', 'settings', 0, array('on' => $stored['on'], 'stun' => $stored['stun'], 'turn_url' => $stored['turn_url'], 'turn_user' => $stored['turn_user']), $after, 'workspace_calls');
+        pg_audit('update', 'settings', 0, array('on' => $stored['on'], 'stun' => $stored['stun'], 'turn_url' => $stored['turn_url'], 'turn_user' => $stored['turn_user'], 'background' => !empty($stored['background'])), $after, 'workspace_calls');
     }
 
     return true;

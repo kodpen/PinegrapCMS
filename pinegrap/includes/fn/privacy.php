@@ -847,6 +847,8 @@ function pg_privacy_erase_tables()
             'company'      => '',
             'address_1'    => '',
             'address_2'    => '',
+            // Added by a later step: an older site without it skips it.
+            'district'     => '',
             'city'         => '',
             'state'        => '',
             'zip_code'     => '',

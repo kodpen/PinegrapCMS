@@ -140,7 +140,8 @@ function get_form_list_view($properties) {
     $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
     $custom_fields = mysqli_fetch_items($result);
 
-    $sql_viewer_filter = "";
+    // Incomplete records stay out unless the list shows the viewer's own.
+    $sql_viewer_filter = pg_form_list_view_complete_sql($viewer_filter == 1);
 
     // If viewer filter is enabled, then prepare SQL to filter results.
     if ($viewer_filter == 1) {

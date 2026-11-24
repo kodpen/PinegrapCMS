@@ -1729,6 +1729,14 @@ const StyleDesigner = (function () {
             .slice(0, 100);
     }
 
+    // A field name as utf8mb4_unicode_ci compares it: lower case, marks
+    // dropped ('ş' = 's', 'İ' = 'i'), a dotless 'ı' kept apart.
+    function _cfNameFold(name) {
+        var s = String(name == null ? '' : name);
+        if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return s.toLowerCase();
+    }
+
     function _cfNodeAttr(node, name) {
         if (!node || !node.props) return null;
         if (name === 'id' && node.props.id) return String(node.props.id);
@@ -2844,7 +2852,20 @@ const StyleDesigner = (function () {
         var group = _cfGroupOf(node, root);
         var lead  = _cfLeadOf(node, root);
         if (group.indexOf(lead) === -1) group.push(lead);
+        var was = String(_cfControlName(lead) || '').toLowerCase();
         group.forEach(function (n) { _cfSetAttr(n, 'name', name); });
+        // Another field's "Required when" or "Shown when" names this field
+        // (the server finds it by name, pg_cf_rule_other_field()): it moves
+        // to the new name, else the rule would quietly stop holding.
+        if (was && was !== name.toLowerCase()) {
+            _cfControls(root).forEach(function (c) {
+                var rules = _cfRulesOf(c.node);
+                ['required_when', 'shown_when'].forEach(function (kind) {
+                    var rule = rules[kind];
+                    if (rule && typeof rule === 'object' && String(rule.field || '').toLowerCase() === was) rule.field = name;
+                });
+            });
+        }
         return true;
     }
 
@@ -2960,8 +2981,11 @@ const StyleDesigner = (function () {
             if (!v) { el.value = _cfControlName(lead); return; }
             // Two fields with one name would be one field. Say so instead
             // of silently merging them.
+            // Compared as the database compares form_fields.name (no case,
+            // no diacritics: 'sehir' = 'şehir'), where the export, the
+            // import and the API find a field by its name.
             var clash = _cfFieldsOf(w.tree).some(function (f) {
-                return f.key === v.toLowerCase() && f.lead !== lead && f.members.indexOf(node) === -1;
+                return _cfNameFold(f.key) === _cfNameFold(v) && f.lead !== lead && f.members.indexOf(node) === -1;
             });
             if (clash) {
                 sdToast(_sdT('Another field already has this name: <code>{var}</code>. Give it a different one.', esc(v)), 'warning', 5000);
@@ -15241,6 +15265,12 @@ const StyleDesigner = (function () {
                     var _catSample = _sdCatalogSectionSample(_sec, doc, _sysWidgetRenderCfg);
                     if (_catSample) _hint = _catSample;
                 }
+                // A catalog detail view's sections of a classic layout,
+                // likewise (_sdCatalogDetailSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'catalog_item_view') {
+                    var _cdSample = _sdCatalogDetailSectionSample(_sec, doc);
+                    if (_cdSample) _hint = _cdSample;
+                }
                 // A booking widget's part its script fills, drawn as a
                 // visitor sees it (_sdBookingSectionSample()).
                 if (!_hasChildren && _SD_BOOKING_FILLED[_sec]) {
@@ -16089,6 +16119,12 @@ const StyleDesigner = (function () {
         '__order_status': _sdT('Completed'),
         '__shipping_method_name': _sdT('Standard Shipping'),
         '__add_button_label': _sdT('Continue'),
+        '__back_label': _sdT('Back'),
+        '__code': '',
+        '__product_line': _sdT('Sample Product Name') + ' ($45.00)',
+        '__product_lines_html': '<ul><li>' + _sdT('Sample Product Name') + ' ($45.00)</li></ul>',
+        '__product_choice_options': '<option selected>' + _sdT('Sample Product Name') + ' ($45.00)</option>',
+        '__keywords_html': '<a href="#">' + _sdT('Linen') + '</a>\n<a href="#">' + _sdT('Relaxed fit') + '</a>',
         '__folder_name': _sdT('Documents'),
         '__album_name': _sdT('Photo Gallery'),
         '__submit_button_label': _sdT('Sign Up'),
@@ -43329,7 +43365,8 @@ const StyleDesigner = (function () {
     ];
     var SW_ATTR_MARKUP = [
         '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
-        '__price_range', '__active_cat_description', '__active_cat_code', '__variant_picker',
+        '__price_range', '__active_cat_description', '__active_cat_code',
+        '__code', '__product_line', '__product_lines_html', '__product_choice_options', '__keywords_html', '__variant_picker',
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
         '__comment_message_html', '__comment_seller_reply_html',
@@ -44413,6 +44450,18 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Breadcrumb / Page Path'), tokens: [
             ['__has_breadcrumb', _sdT('Whether a breadcrumb is drawn (1 or empty)')]
+        ]},
+        // A classic catalog detail layout's values, as the classic page
+        // printed them.
+        { label: _sdT('Classic product page'), tokens: [
+            ['__code',                   _sdT('The product\'s code field (HTML)')],
+            ['__product_line',           _sdT('Product line: its name and price in brackets (HTML)')],
+            ['__product_lines_html',     _sdT('The group\'s product lines (HTML list)')],
+            ['__product_choice_options', _sdT('The group\'s products to pick from (options of a select)')],
+            ['__add_button_label',       _sdT('Add button label (the page\'s setting)')],
+            ['__back_url',               _sdT('The page the visitor came from (the link drops when there is none)')],
+            ['__back_label',             _sdT('Back button label (the page\'s setting)')],
+            ['__keywords_html',          _sdT('The product\'s keywords as searches (HTML)')]
         ]}
     ];
 
@@ -45057,6 +45106,7 @@ const StyleDesigner = (function () {
             ['__menu_item_name',          _sdT('Menu item name')],
             ['__menu_item_id',            _sdT('Menu item ID')],
             ['__menu_item_target',        _sdT('Menu item window (_blank or empty)')],
+            ['__menu_item_rel',           _sdT('Menu item link relation (noopener or empty)')],
             ['__menu_item_has_children',  _sdT('Has sub-items (1 or empty)')],
             ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
             ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
@@ -45818,6 +45868,9 @@ const StyleDesigner = (function () {
             out.push(['pending_offers',    _sdT('Campaign Gifts (with an Add button — its own form)')]);
         } else if (type === 'catalog_item_view') {
             out.push(['recipient_picker',  _sdT('Recipient Picker (hidden on a product that is not shipped)')]);
+            out.push(['product_lines',     _sdT('The group\'s products as lines (a list)')]);
+            out.push(['group_tree',        _sdT('Category Tree (nested list)')]);
+            out.push(['keywords',          _sdT('The product\'s keywords (searches on the catalog page)')]);
             out.push(['payment_methods',   _sdT('Payment methods (a table body: one row per method switched on in the store settings)')]);
         } else if (type === 'custom_form') {
             // Site-wide CAPTCHA (Settings → CAPTCHA). Absent for a signed-in
@@ -46667,6 +46720,32 @@ const StyleDesigner = (function () {
         box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
             + esc(section === 'group_tree' ? _sdT('The site draws the catalog\'s groups, the visitor\'s group in bold.')
                 : _sdT('The site draws the filters the widget\'s settings turn on, with the attributes of the products shown.')) + '</div>';
+        return box;
+    }
+
+    // What a catalog detail view prints in a section of a classic layout's
+    // product row and sidebar: the catalog's group tree, the product's
+    // keywords, a group's product lines (twins of the server's
+    // _apply_catalog_item_view_bindings()); '' for another section.
+    /* @pg-site-output */
+    function _sdCatalogDetailSectionHtml(section) {
+        var line = esc(_sdT('Sample Product Name')) + ' ($45.00)';
+        if (section === 'group_tree') return _sdCatalogGroupTreeHtml(SD_CATALOG_GROUPS_SAMPLE, SD_CATALOG_ACTIVE_GROUP, 0);
+        if (section === 'keywords') return '<a href="#">' + esc(_sdT('Linen')) + '</a>\n<a href="#">' + esc(_sdT('Relaxed fit')) + '</a>';
+        if (section === 'product_lines') return '<ul><li>' + line + '</li><li>' + line + '</li></ul>';
+        return '';
+    }
+
+    // The sample of such a section as a canvas box: inert, never saved.
+    function _sdCatalogDetailSectionSample(section, doc) {
+        var html = _sdCatalogDetailSectionHtml(section);
+        if (!html) return null;
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">'
+            + esc(_sdT('The site fills this in for the product shown.')) + '</div>';
         return box;
     }
 
@@ -49282,7 +49361,20 @@ const StyleDesigner = (function () {
             ['is_bundle',         _sdT('The product is a bundle')],
             ['has_bundle_saving', _sdT('The bundle costs less than its products bought one by one')],
             // Out of stock with no back order: the back-in-stock form shows.
-            ['can_notify', _sdT('The product is out of stock (visitors can ask to be told)')]
+            ['can_notify', _sdT('The product is out of stock (visitors can ask to be told)')],
+            // A classic layout's conditions.
+            ['has_products',         _sdT('The product, or one of its group\'s, can be ordered')],
+            ['no_products',          _sdT('No product shown can be ordered')],
+            ['no_variant_choice',    _sdT('No variant picker is drawn (no attributes)')],
+            ['has_product_choice',   _sdT('The group\'s products are picked from a list')],
+            ['no_product_choice',    _sdT('No list to pick the group\'s products from')],
+            ['one_product',          _sdT('One product is shown')],
+            ['many_products',        _sdT('A group of several products is shown')],
+            ['has_recipient_choice', _sdT('The visitor picks a recipient')],
+            ['has_back_button',      _sdT('The visitor came from a page with a back link')],
+            ['has_keywords',         _sdT('The product has keywords')],
+            ['has_currency_choice',  _sdT('The visitor can choose a currency')],
+            ['no_currency_choice',   _sdT('The visitor cannot choose a currency')]
         ],
         calendar_view: [
             ['has_navigation', _sdT('The view can be stepped through (monthly or weekly)')],
@@ -49816,6 +49908,8 @@ const StyleDesigner = (function () {
             if (region === 'shopping_cart')        fOpts.push(['coupon_form', _sdT('Offer Code Form (shopping_cart)')]);
             else if (region === 'catalog_listing') fOpts.push(['search_form', _sdT('Search Form (catalog_listing)')]);
             else if (region === 'search_results')  fOpts.push(['search_form', _sdT('Search Form')]);
+            // A classic layout's sidebar search: posts to the catalog page.
+            else if (region === 'catalog_item_view') fOpts.push(['search_form', _sdT('Search Form (the catalog page)')]);
             else if (region === 'account_security') {
                 fOpts.push(['account_security_form', _sdT('Account security form')]);
                 fOpts.push(['passkey_add_form',      _sdT('Add a passkey form')]);
@@ -49841,6 +49935,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['quantity',         _sdT('Quantity (quantity) — catalog_item_view')]);
                 vOpts.push(['recipient_name',   _sdT('New recipient name (add_name) — catalog_item_view')]);
                 vOpts.push(['recipient_select', _sdT('Recipient picker (ship_to) — catalog_item_view')]);
+                vOpts.push(['product_choice',   _sdT('The group\'s products to pick from (product_id) — catalog_item_view')]);
                 vOpts.push(['stock_notify_email', _sdT('E-mail for the back-in-stock notice (email_address) — catalog_item_view')]);
                 vOpts.push(['stock_notify_phone', _sdT('Mobile number for the back-in-stock text message (phone) — catalog_item_view')]);
             }
@@ -49866,7 +49961,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['form_field_file_remove',  _sdT('Product form: the Remove check of the field\'s kept file (cart.item_form_fields)')]);
                 vOpts.push(['form_field_option',       _sdT('Product form: one choice of the field (cart.item_form_field_options)')]);
             }
-            if (region === 'catalog_listing' || region === 'search_results') {
+            if (region === 'catalog_listing' || region === 'search_results' || region === 'catalog_item_view') {
                 vOpts.push(['search_query', _sdT('Search text (query)')]);
             }
             if (region === 'comments') {
@@ -66983,6 +67078,7 @@ const StyleDesigner = (function () {
                 ['__menu_item_id',            _sdT('Menu item ID')],
                 ['__menu_item_url',           _sdT('Menu item address')],
                 ['__menu_item_target',        _sdT('Menu item window (_blank or empty)')],
+                ['__menu_item_rel',           _sdT('Menu item link relation (noopener or empty)')],
                 ['__menu_item_has_children',  _sdT('Has sub-items (1 or empty)')],
                 ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
                 ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
@@ -67180,6 +67276,7 @@ const StyleDesigner = (function () {
         __menu_item_id: '2',
         __menu_item_url: '#',
         __menu_item_target: '',
+        __menu_item_rel: '',
         __menu_item_has_children: '',
         __menu_item_is_current: '',
         __menu_item_holds_current: '',
@@ -85209,6 +85306,9 @@ const StyleDesigner = (function () {
             // keeps its stored version, the editor keeps the changes.
             if ((_pgSaveHold[p.key] && p.page_id > 0 && !p.pickedPending) || _pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
             else rec.tree_json = JSON.stringify(t);
+            // The stored tree this tab started from: the server refuses a
+            // page somebody else wrote since (pg_page_base_is_stale()).
+            if (!rec.unchanged && p.page_id > 0 && p.baseHash) rec.base_hash = p.baseHash;
             // A tree loaded back from the History panel is recorded as a
             // restore when it is published (includes/fn/page_revisions.php).
             if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
@@ -85281,6 +85381,9 @@ const StyleDesigner = (function () {
                 // A page that joined the design with this save has its place
                 // in the tab layout stored below.
                 if (p && m.page_id > 0 && (!(p.page_id > 0) || p.pickedPending)) layoutFresh = true;
+                // The stored tree the next save of this page starts from; a
+                // page left out of the write keeps the base it had.
+                if (p && m.base_hash) p.baseHash = m.base_hash;
                 if (p && m.page_id > 0) {
                     p.page_id = m.page_id;
                     var newKey = 'p' + m.page_id;
@@ -86434,6 +86537,8 @@ const StyleDesigner = (function () {
                 converted: sp.converted ? 1 : 0,
                 tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
+                // Hash of the stored tree loaded (pg_page_base_hash()).
+                baseHash: sp.baseHash || '',
                 // The page's form-level settings, as stored; written back
                 // with the page. The fields are the widget's controls.
                 formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},

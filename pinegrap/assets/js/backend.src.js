@@ -4113,15 +4113,19 @@ function check_unread_notifications(refresh_type) {
                     }
 
                     $unreads = response.number_of_unread_notifications;
+                    // An open list is redrawn when the count moved since it
+                    // was drawn: something new came in, or rows were read
+                    // on another device or tab. Drawing it reads nothing; a
+                    // change made in this list sends editcallback_check and
+                    // is drawn already.
+                    if (pgUI.drawer.isOpen('#notifications')) {
+                        if ($unreads !== $unreadsCallback && refresh_type != 'editcallback_check') {
+                            get_notifications(true);
+                        }
+                    }
                     // if there is at least 1 unreaded notification that user is accessable than prepare for output notification badge.
                     // this check system dont get notifications we dont wanna more traffic.
                     if ($unreads > 0) {
-                        // An open list is redrawn when something new came in; drawing it reads nothing.
-                        if (pgUI.drawer.isOpen('#notifications')) {
-                            if ($unreads > $unreadsCallback && refresh_type != 'editcallback_check') {
-                                get_notifications(true);
-                            }
-                        }
                         $output_unreads = 0;
                         if ($unreads > 99) {
                             $output_unreads = '99+';

@@ -422,7 +422,7 @@ function pg_booking_pay_charge($method, $token, $now)
         'customer_id'   => (int) $order['user_id'],
         'ip'            => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
         'basket_id'     => 'booking-' . (int) $pending['booking_id'],
-        'return_url'    => ($return_mode !== '') ? URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/booking_slots.php?mode=' . $return_mode : '',
+        'return_url'    => ($return_mode !== '') ? URL_SCHEME . HOSTNAME . pg_tr_script_url(PATH . SOFTWARE_DIRECTORY . '/booking_slots.php?mode=' . $return_mode) : '',
     )));
 
     $pending['driver'] = $key;

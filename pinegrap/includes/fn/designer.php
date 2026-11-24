@@ -2114,6 +2114,22 @@ function pg_page_is_draft($folder_id)
 }
 
 /**
+ * The folders whose pages are not on the site: the Drafts folder and the
+ * recycle bin with every folder under it. A move into either changes only
+ * page_folder, so what points at a page by id (a menu item, its keyword
+ * rows) still finds it there.
+ *
+ * @return array folder ids
+ */
+function pg_page_off_site_folder_ids()
+{
+    $ids   = pg_recycle_bin_folder_ids();
+    $draft = pg_page_draft_folder_id(false);
+    if ($draft > 0) $ids[] = $draft;
+    return $ids;
+}
+
+/**
  * The folder a draft goes back to when it is published: the one it was taken
  * from, while that folder still exists outside the recycle bin; the top
  * folder otherwise (a page moved into the drafts folder by hand has none).
@@ -7356,8 +7372,10 @@ function get_menu_sequence($menu_id, $parent_id = 0, $menu_sequence = array())
     $menu_items = isset($menu_tree['children'][(int) $parent_id]) ? $menu_tree['children'][(int) $parent_id] : array();
     // loop through all menu items in order to get child menu items, and add to the array
     foreach ($menu_items as $menu_item) {
-        // if this item has a link page name, and if it does not link to a page that is already in the sequence, then add menu item to array
-        if (($menu_item['link_page_name'] != '') && (in_array($menu_item['link_page_name'], $page_names_in_menu_sequence) == false)) {
+        // An item linked to a page not yet in the sequence adds it, unless
+        // the page is offline (Recycle Bin, drafts): its link leads nowhere.
+        if (($menu_item['link_page_name'] != '') && (in_array($menu_item['link_page_name'], $page_names_in_menu_sequence) == false)
+            && !pg_menu_page_offline($menu_item['link_page_folder_id'])) {
             // add the item's link page name to the array
             $page_names_in_menu_sequence[] = $menu_item['link_page_name'];
             // add the menu item to the array

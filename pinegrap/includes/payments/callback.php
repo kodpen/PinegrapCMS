@@ -376,6 +376,10 @@ function pg_payment_callback_renewal($key, $answer)
         $line = pg_log_lang(array('string' => '{var:1}. The amount or the subscription\'s first order does not match: nothing was written. Check the payment on {var:2}\'s own screen.', 'vars' => array($source, pg_payment_log_name($key))));
         log_activity($line, 'SYSTEM');
         pg_ops_alert('payment_notice', $line);
+    } elseif ($result === 'unrecorded') {
+        $line = pg_log_lang(array('string' => '{var:1}. The subscription no longer waits for this payment and no renewal order holds it: nothing was written. Check the payment on {var:2}\'s own screen and refund it if it is not owed.', 'vars' => array($source, pg_payment_log_name($key))));
+        log_activity($line, 'SYSTEM');
+        pg_ops_alert('payment_notice', $line);
     }
 
     pg_payment_callback_answer(($result === 'busy') ? 503 : 200, array('status' => $result));
@@ -449,6 +453,10 @@ function pg_payment_callback_receive()
         $completion = pg_order_complete_from_payment((int) $order['id'], (string) $answer['status'], array('amount' => $answer['amount'], 'installments' => $answer['installments']));
 
         if ($completion['status'] === 'completed') {
+            // The visitor may never come back from the payment page: the
+            // subscriptions of the order's paid recurring lines are made from
+            // the card the message carries.
+            pg_subscription_checkout_record((int) $order['id'], $key, $answer);
             $outcome['status'] = 'completed';
             $outcome['log'] = array(pg_payment_notify_line($key, $outcome['source'], (int) $order['id'], 'completed', array('number' => $completion['order_number'])));
         } elseif ($completion['status'] === 'nothing') {

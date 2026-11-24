@@ -19,8 +19,7 @@ module: subscription_renewal
 - failed: `retry_count` + 1, retry 1/3/7 days later (`pg_subscription_retry_at()`), active → past_due; after the third retry fails: `ended`, `next_charge_at` 0. Event `renewal_failed` (service's words). Unpaid memberships lapse through `membership_job.php`.
 - confirm (Stripe `authentication_required`): past_due, held (`next_charge_at` 0, no ladder charge while the customer may still confirm), event `confirm_needed` with the link ('' over 255).
 - pending / unclear: held, status unchanged, event `renewal_pending` / `renewal_unclear`.
-- A held row is settled by Stripe's `payment_intent.succeeded` with metadata `subscription_id` (`raw.subscription_id`): `pg_payment_callback_renewal()` → `pg_subscription_renewal_confirmed()`: same lock (10 s; busy → 503, Stripe resends), only a held row of that driver with the same amount, then the paid path; event `renewed` with the pi id as `remote_event_id`. A row not held is left alone.
-- A held row's failure report or 7 days without an outcome: `subscriptions-held-renewal.md`.
+- A held row is settled by Stripe's `payment_intent.succeeded` with metadata `subscription_id` (`raw.subscription_id`): `pg_payment_callback_renewal()` → `pg_subscription_renewal_confirmed()`: same lock (10 s; busy → 503, Stripe resends), only a held row of that driver with the same amount, then the paid path; event `renewed` with the pi id as `remote_event_id`. Not held: `subscriptions-completion-paths.md`; failed or no outcome in 7 days: `subscriptions-held-renewal.md`.
 - First order or its line gone: not charged, a ladder step as for a refusal.
 
 ## What is the renewal order?
@@ -31,7 +30,7 @@ module: subscription_renewal
 - Renewed, failed (incl. the confirmation link) and cancelled, once per event: `subscriptions-mails.md`.
 
 ## Tested?
-- `tests/subscriptions_renewal_test.php` (pure rules, stand-in io), `tests/subscription_series_dst_test.php`. No DB or live run.
-- `tests/payment_stripe_webhook_test.php`: Stripe's paid report.
+- `tests/subscriptions_renewal_test.php` (pure rules; stand-in io: lock, one charge), `tests/subscription_series_dst_test.php`. No DB or live run.
+- `tests/payment_stripe_webhook_test.php`: the renewal's `payment_intent.succeeded`.
 
 Related: commerce/subscriptions-held-renewal.md, commerce/subscriptions.md, commerce/subscriptions-stripe.md, commerce/subscriptions-decisions.md

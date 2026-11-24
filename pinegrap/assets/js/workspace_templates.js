@@ -205,7 +205,7 @@
     // template chosen, '' for none.
     function picker(helpers, onPick) {
         var box = el('div', 'mb-5 ws-tpl-picker');
-        var label = el('div', 'form-label', t('tpl_from'));
+        var label = el('div', 'pg-field-label', t('tpl_from'));
         var help = el('div', 'form-text d-none', t('tpl_suggest_help'));
         var list = cardList(helpers, true, function (template) {
             help.classList.toggle('d-none', !template);
@@ -416,7 +416,7 @@
         }
 
         function select(options, value) {
-            var node = el('select', 'form-control form-control-sm');
+            var node = el('select', 'pg-input pg-input-sm');
 
             options.forEach(function (option) {
                 if (option.group) {
@@ -442,7 +442,7 @@
         }
 
         function numberField(value, max) {
-            var node = el('input', 'form-control form-control-sm');
+            var node = el('input', 'pg-input pg-input-sm');
             node.type = 'number';
             node.min = '0';
             node.max = String(max);
@@ -453,7 +453,7 @@
 
         function labelled(label, control, className) {
             var box = el('div', className || 'col-6 md:col-3');
-            var caption = el('label', 'form-label small mb-1', label);
+            var caption = el('label', 'pg-field-label', label);
             control.id = 'ws-tpl-f-' + (++keySeed);
             caption.htmlFor = control.id;
             box.appendChild(caption);
@@ -580,7 +580,7 @@
             head.appendChild(draggable(node, taskBox, tasks, row, drawTasks));
             head.appendChild(el('span', 'ws-tpl-item-n', String(position + 1) + '.'));
 
-            var title = el('input', 'form-control form-control-sm ws-grow');
+            var title = el('input', 'pg-input pg-input-sm ws-grow');
             title.type = 'text';
             title.maxLength = 255;
             title.value = task.title || '';
@@ -616,7 +616,7 @@
             grid.appendChild(labelled(t('tpl_estimate'), estimate));
             grid.appendChild(labelled(t('tpl_assign'), assign, 'col-12 md:col-6'));
 
-            var description = el('textarea', 'form-control form-control-sm');
+            var description = el('textarea', 'pg-input pg-input-sm');
             description.rows = 2;
             description.maxLength = 2000;
             description.value = task.description || '';
@@ -627,11 +627,11 @@
             var listBox = el('div', 'mt-3');
             var items = el('div', 'ws-tpl-checklist');
 
-            listBox.appendChild(el('div', 'form-label small mb-1', t('insert_checklist')));
+            listBox.appendChild(el('div', 'pg-field-label', t('insert_checklist')));
 
             function itemField(value) {
                 var line = el('div', 'input-group input-group-sm mb-1');
-                var text = el('input', 'form-control');
+                var text = el('input', 'pg-input pg-input-sm');
                 text.type = 'text';
                 text.maxLength = 180;
                 text.value = value || '';
@@ -639,7 +639,7 @@
                 text.setAttribute('aria-label', t('tpl_item_placeholder'));
                 line.appendChild(text);
 
-                var drop = button('btn btn-outline theme-secondary', '', 'bi-x-lg', t('remove'));
+                var drop = button('pg-button pg-button-quiet pg-button-sm', '', 'bi-x-lg', t('remove'));
                 drop.addEventListener('click', function () { line.remove(); });
                 line.appendChild(drop);
                 items.appendChild(line);
@@ -660,7 +660,7 @@
 
             if (earlier.length) {
                 var afterBox = el('div', 'mt-3');
-                afterBox.appendChild(el('div', 'form-label small mb-1', t('tpl_after')));
+                afterBox.appendChild(el('div', 'pg-field-label', t('tpl_after')));
 
                 var chips = el('div', 'ws-tpl-after');
 
@@ -757,7 +757,7 @@
 
             head.appendChild(draggable(node, noteBox, notes, row, drawNotes));
 
-            var title = el('input', 'form-control form-control-sm ws-grow');
+            var title = el('input', 'pg-input pg-input-sm ws-grow');
             title.type = 'text';
             title.maxLength = 200;
             title.value = row.data.title || '';
@@ -774,7 +774,7 @@
             head.appendChild(remove);
             node.appendChild(head);
 
-            var text = el('textarea', 'form-control form-control-sm mt-3 ws-tpl-note-body');
+            var text = el('textarea', 'pg-input pg-input-sm mt-3 ws-tpl-note-body');
             text.rows = 6;
             text.maxLength = 20000;
             text.value = row.data.body || '';

@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog');
+    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail');
 }
 
 /**
@@ -735,13 +735,15 @@ function pg_layout_convert_types()
  * holds is the widget's).
  *
  * 'else': the flag the "otherwise" branch of a condition shows under,
- * 'keep' for one drawn as it is.
+ * 'keep' for one drawn as it is, 'widget' for one the widget draws.
  * 'loop': a foreach: 'list' (the widget's list, its body the row's
  * wrapper), or 'list:<row flag>' (one of the kinds of records the
  * widget's one list holds: its body is shown in the rows the flag holds
  * for; the loops of a map's kinds side by side are that one list), or
  * 'section:<name>' (a list the widget draws as that section: the node bound
- * to it stands in the place of the list holding the loop).
+ * to it stands in the place of the list holding the loop), or
+ * 'token:<name>' (rows the widget prints whole as that value: an element
+ * holding it stands in the loop's place, the body is not read).
  *
  * Optional: 'forms' => 'strip' (the layout's <form> tags go: the widget
  * draws its own form around the tree), 'flag_list' => true (a flag may
@@ -753,7 +755,10 @@ function pg_layout_convert_types()
  * the wrapper an image of that address alone fills is shown under the
  * flag), 'cfg_bound' => array(action => settings the widget needs while a
  * node is bound to it), 'opposite' => array(flag => the flag of its
- * opposite: a line of text holding words under the flag is drawn twice).
+ * opposite: a line of text holding words under the flag is drawn twice),
+ * 'record' => true (the widget shows one record and the whole tree is
+ * it: no list is added), 'cross_sell' => the id of the classic cross-sell
+ * container (its element becomes the widget's cross-sell part).
  *
  * @param string $type
  * @return array|null
@@ -796,6 +801,9 @@ function pg_layout_piece_map($type)
 
         case 'catalog':
             return _pg_lc_catalog_map($none);
+
+        case 'catalog detail':
+            return _pg_lc_catalog_detail_map($none);
 
         case 'form item view':
             return array(
@@ -987,6 +995,83 @@ function _pg_lc_catalog_map($none)
         // search text, which the address reads last).
         'controls' => array('page_query' => 'bind:search_query', 'page_submit' => '', 'page_clear' => 'query'),
         'cfg_bound' => array('search_form' => array('search_enabled' => true)),
+    );
+}
+
+// The catalog detail (widgets_catalog.php, catalog_item_view): one product,
+// the whole tree its record; its values the product's tokens, its
+// conditions the flags of pg_civ_layout_flags(); the attributes the
+// widget's variant picker, the products of a group without attributes its
+// product lines and pick list. The add-to-cart form is the widget's own.
+function _pg_lc_catalog_detail_map($none)
+{
+    $line = 'token:__product_line';
+    return array(
+        'echo' => $none + array(
+            '$form_attributes' => 'form:strip',
+            // The attribute script of the classic page: the variant
+            // picker's own script stands for it.
+            '$footer_system' => 'none',
+            'h($image_url)' => 'token:__image_url',
+            '$code' => 'token:__code',
+            'h($short_description)' => 'token:__short_description',
+            '$full_description' => 'token:__description',
+            '$price_info' => 'token:__price_formatted',
+            '$details' => 'token:__details',
+            'h($add_button_label)' => 'token:__add_button_label',
+            'h($back_button_url)' => 'token:__back_url',
+            'h($back_button_label)' => 'token:__back_label',
+            "\$products[0]['description']" => $line,
+            "\$product['description']" => $line,
+            // The sidebar: the search form (bound, the widget prints the
+            // form after its own), the currency form's tags (its select is
+            // the widget's currency picker).
+            '$search_attributes' => 'form:search_form',
+            "\$catalog_page['id']" => 'text:page',
+            '$currency_attributes' => 'form:strip',
+            '$currency_system' => 'none',
+            // The classic cross-sell script (the HTML converter leaves the
+            // script out): its container is the widget's cross-sell part.
+            'json_encode($page_id)' => 'none',
+        ),
+        'if' => array(
+            '$available_products' => array('becomes' => 'flag', 'flag' => 'has_products'),
+            '$product_row' => array('becomes' => 'flag', 'flag' => 'no_variant_choice'),
+            '$product_pick_list' => array('becomes' => 'flag', 'flag' => 'has_product_choice'),
+            'count($products) == 1' => array('becomes' => 'flag', 'flag' => 'one_product'),
+            '$recipient' => array('becomes' => 'flag', 'flag' => 'has_recipient_choice'),
+            // The widget takes a quantity for every product it can add.
+            '$quantity' => array('becomes' => 'keep'),
+            '$back_button_url' => array('becomes' => 'flag', 'flag' => 'has_back_button'),
+            '$keywords' => array('becomes' => 'flag', 'flag' => 'has_keywords'),
+            '$currency' => array('becomes' => 'flag', 'flag' => 'has_currency_choice'),
+            "\$item['type'] == 'product group'" => array('becomes' => 'widget'),
+        ),
+        'else' => array(
+            '$available_products' => 'no_products',
+            '$product_pick_list' => 'no_product_choice',
+            'count($products) == 1' => 'many_products',
+            "\$item['type'] == 'product group'" => 'widget',
+        ),
+        'loop' => array(
+            '$attributes as $attribute' => 'token:__variant_picker',
+            '$products as $product' => 'section:product_lines',
+            '$product_groups as $product_group' => 'section:group_tree',
+            '$keywords as $keyword' => 'section:keywords',
+        ),
+        // The pick list of a group's products, the recipient picker and the
+        // quantity: the widget fills each by its binding. The new
+        // recipient's name keeps its plain field, shown as on the classic
+        // page (bound, the widget would hide it under its label).
+        'controls' => array(
+            'product_id' => 'bind:product_choice',
+            'ship_to' => 'bind:recipient_select',
+            'quantity' => 'bind:quantity',
+            'page_query' => 'bind:search_query',
+            'page_submit' => '',
+        ),
+        'record' => true,
+        'cross_sell' => 'cross-sell',
     );
 }
 
@@ -1182,7 +1267,11 @@ function pg_layout_convert($type, $code, $ctx = array())
             $key = $norm($m[1]);
             $lv = (string)($loops[$key] ?? '');
             $kind = (strpos($lv, 'list:') === 0) ? substr($lv, 5) : '';
-            if (strpos($lv, 'section:') === 0 && !$in_tag()) {
+            if (strpos($lv, 'token:') === 0 && !$in_tag()) {
+                // Rows the widget prints whole: the value in their place.
+                $write('<div>^^' . h(substr($lv, 6)) . '^^</div>');
+                $stack[] = array('mode' => 'skip');
+            } elseif (strpos($lv, 'section:') === 0 && !$in_tag()) {
                 // The widget's own list: its node in the loop's place.
                 $write('<pg-section data-section="' . h(substr($lv, 8)) . '" data-list="1"></pg-section>');
                 $stack[] = array('mode' => 'skip');
@@ -1224,7 +1313,7 @@ function pg_layout_convert($type, $code, $ctx = array())
         $nodes = _pg_lc_first_loop($nodes, $seen);
         for ($i = 1; $i < $seen; $i++) $drop($lists[count($lists) - $seen + $i]['piece'], $lists[count($lists) - $seen + $i]['line'], 'loop');
     }
-    if (_pg_lc_find_loop(array('children' => $nodes)) === null) {
+    if (empty($map['record']) && _pg_lc_find_loop(array('children' => $nodes)) === null) {
         // A widget draws its records where its list stands: one at the end.
         $nodes[] = pg_di_mk('loop_area', array(), $row);
     }
@@ -1337,6 +1426,8 @@ function _pg_lc_else($chain, $else, $in_tag)
     $last = end($chain);
     $key = isset($last['key']) ? $last['key'] : '';
     if ($key !== '' && isset($else[$key]) && $else[$key] === 'keep') return array('mode' => 'keep', 'key' => '');
+    // Both branches are the widget's: neither is read.
+    if ($key !== '' && isset($else[$key]) && $else[$key] === 'widget') return array('mode' => 'skip', 'key' => '');
     if ($key !== '' && isset($else[$key]) && !$in_tag) {
         return array('mode' => 'flag', 'key' => '', 'open' => '<pg-vis data-flag="' . h($else[$key]) . '" data-around-list="1">', 'close' => '</pg-vis>');
     }
@@ -1375,6 +1466,11 @@ function _pg_lc_finish($nodes, $row, $map = array())
             $out[] = pg_di_mk('semantic', $props);
             continue;
         }
+        if (isset($map['cross_sell']) && (string)($n['props']['id'] ?? '') === (string)$map['cross_sell']) {
+            // The classic cross-sell container: the widget's own part.
+            $out[] = _pg_lc_bind(pg_di_mk('semantic', array('tag' => 'div', 'cssClass' => '', 'text' => '^^__cross_sell_html^^')));
+            continue;
+        }
         if (in_array($tag, array('ul', 'ol'), true) && count($kids) === 1 && !empty($kids[0]['props']['_list'])) {
             // The list the loop filled is the widget's: its node instead.
             unset($kids[0]['props']['_list']);
@@ -1399,6 +1495,8 @@ function _pg_lc_finish($nodes, $row, $map = array())
             foreach ($kids as $k) $out[] = _pg_lc_flag($k, $flag, !empty($map['flag_list']));
             continue;
         }
+        // A list the widget draws in a place other than a list's own.
+        foreach ($kids as $i => $k) unset($kids[$i]['props']['_list']);
         $n['children'] = $kids;
         if (!$kids && strpos((string)($n['props']['text'] ?? ''), '<pg-vis') !== false) {
             foreach (_pg_lc_text_flags($n, $map) as $t) $out[] = $t;

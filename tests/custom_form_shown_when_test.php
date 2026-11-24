@@ -188,3 +188,26 @@ function test_custom_form_shown_when_designer()
 	pg_assert_contains("on('sd-cf-shown-answers'", $js, 'and the answers');
 	pg_assert_contains('sd-cf-shown-chip', $js, 'a chip on the canvas control');
 }
+
+// A rule naming its own field is never drawn in the browser, so the server
+// keeps the field shown too: its value is not dropped.
+function test_custom_form_shown_when_own_field_is_shown()
+{
+	$fields = array(
+		_test_cf_shown_row(1, 'size', 'text box', _test_cf_shown_rule('Size', array('Large'))),
+		_test_cf_shown_row(2, 'note', 'text box', _test_cf_shown_rule('size', array('Large'))),
+	);
+	pg_assert_same(array('2' => true), pg_cf_shown_when_hidden($fields, array('1' => 'Small')),
+		'the own-field rule hides nothing; the field it names still answers the other rule');
+}
+
+// Renaming a field in the designer moves the other fields' rules that name
+// it, so "Required when" and "Shown when" keep holding.
+function test_custom_form_rename_moves_rules()
+{
+	$js = _test_cf_shown_source('assets/js/style_designer.src.js');
+	$start = strpos($js, 'function _cfRenameField(');
+	$body = substr($js, $start, strpos($js, "\n    }\n", $start) - $start);
+	pg_assert_contains("['required_when', 'shown_when']", $body, 'both rule kinds follow the rename');
+	pg_assert_contains('rule.field = name', $body);
+}

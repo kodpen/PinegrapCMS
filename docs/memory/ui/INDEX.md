@@ -387,7 +387,8 @@
 - launch-journey-setup-card.md: Dashboard card "Set up your site" (cards/launch.php): the launch_journey config_text row, the facts reader, "Do it", "Not for this site", "Hide set-up", the purpose dialog, General's purpose field
 - launch-journey.md: The site set-up journey as a whole: "Set up your site" card by purpose, go-live check, First week, Start here, hint lines, agency summary, GET /launch; its decisions and which file holds each part [decision: decisions-made-product-93.md, decisions-made-schema-46.md]
 - launch-summary-agency.md: The agency summary (SJ5): the set-up card's "Agency summary" drawer, the customer's signed page launch_summary.php, text answers, the launch_answer bell line, withdraw
-- launch-summary-lines.md: The agency summary's "What we need from you" lines table launch_summary_lines (SJ1b, 2026.11.0 step 11.0.274): its columns, why no person is held, what it does not store
+- launch-summary-file-lines.md: An agency summary line asking for files (LS2): the drawer's "Answer" select, the customer's file field, upload checks, the private "From the customer" folder, remove, the bell's count
+- launch-summary-lines.md: The agency summary's "What we need from you" lines table launch_summary_lines (SJ1b, 2026.11.0 steps 11.0.274 and 11.0.278 answer_kind): its columns, why no person is held, what it does not store
 - lazy-picture-failure.md: Panel lazy pictures (img.lazy, jQuery Lazy) that fail to load show a still picture mark instead of the endlessly spinning loading.gif; reduced motion gets a still square while loading
 - link-rights.md: Names, orders and products link to their edit screen only when it admits the viewer (pg_can_open_user(), pg_can_open_contact(), USER_MANAGE_ECOMMERCE); Sessions rows drop refused actions
 - list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs. [decision: here]
@@ -506,6 +507,7 @@
 - look-system-tools.md: The system tools in look A (S6a of panel-old-screens, #10533; Clean Up in the plan's close-out): section titles, card tables, field spans, measure, what stayed
 - look-translations-screen.md: The Translations screen (translations.php) in look A (S6c): card titles, row Save and review buttons, glossary icon buttons, dialog buttons, status pills, the style block's tokens; what stayed
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
+- look-workspace-fields-scripts.md: WL9: the small Workspace scripts' form-control and form-label lines on pg-input and pg-field-label, the CSS that followed, the 16px tip fields, what stayed
 - look-workspace-fields.md: WL8: formRow() is the form parts' field(), the form-control and form-label lines of assets/js/workspace.js on pg-input and pg-field-label, input groups, the CSS that followed, what is left
 - look-workspace-main-script.md: WL2: the buttons of assets/js/workspace.js (channel head, panes, drawers, dialogs, the writing box's Send and Send later, My Tasks, settings parts) on look A's ranks; the old buttons left and why
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
@@ -556,7 +558,7 @@
 - name-length-refusal.md: File and Catalog Manager and Pages Find & Replace refuse a name longer than its varchar column instead of letting the non-strict session cut it
 - notice-button-names.md: A notice, hint or dialog names the control it means by its label, never "OK", "the button", a colour or a direction
 - notification-links.md: Bell, banner and System Status link only to screens the reader may use: Repair Software for role 0 off hosting; form submissions for the folder's editors
-- notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise [decision: decisions-made-panel-4.md]
+- notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws when the count moves [decision: decisions-made-panel-4.md]
 - notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded and drawn as gathered lines, pgBellOpen() for the old inbox address, the Workspace count [decision: decisions-made-panel-4.md, decisions-made-workspace-5.md, decisions-made-workspace-6.md]
 - offer-code-key-codes.md: A saved offer's code change moves its key codes to the new code (unless another offer keeps the old one); the editor warns while the code changes; All Key Codes names an orphan
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
@@ -786,6 +788,7 @@
 - submitted-form-import-export.md: How Import Submitted Forms reads an exported file (fixed record columns, status, one column per field), converts date cells and checks the chosen custom form
 - submitted-form-layout.md: The submitted form create and edit screens on the wide edit layout: Form Data, a sticky Summary/Form Editor/Details column, the offline payment button's own form
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
+- submitted-forms-export-columns.md: The Forms screen's CSV and Excel export prints each record's field values against one heading list, sort order then id (#11453)
 - suggestion-lists.md: Search-as-you-type lists the screens build themselves (ERP account contact, product bundle, Create Order, ERP lines): keyboard, focus after a pick, how an empty or failed answer is said
 - system-status-gauge-layers.md: System Status gauge (widget 2) as five stacked SVGs: paint order, which layer animates, will-change, the off-screen pause and its redraw guard, reduced motion
 - tax-zone-shared-form.md: The tax zone screens share includes/forms/tax_zone_form.php: wide layout with a Summary, options, links; a blank name is refused and redrawn; states under the country's shown name

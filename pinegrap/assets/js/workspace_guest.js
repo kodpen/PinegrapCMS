@@ -242,6 +242,7 @@
                 me: 0,
                 ice: CONF.calls.ice || [],
                 max: CONF.calls.max || 4,
+                background: CONF.calls.background || null,
                 soundOn: function () { return false; }
             };
 

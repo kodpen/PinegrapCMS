@@ -1003,6 +1003,12 @@ function ws_inbox_visible_rows($viewer, $rows)
 
     if (!empty($hidden)) {
         db("UPDATE ws_inbox SET read_at = '" . time() . "' WHERE read_at = 0 AND id IN (" . implode(',', $hidden) . ")");
+
+        // Counted as read in the bell too, so its badge does not keep a
+        // line the inbox has let go.
+        if ((mysqli_affected_rows(db::$con) > 0) && ((int) ($viewer['id'] ?? 0) > 0)) {
+            ws_bell_sync_read((int) $viewer['id']);
+        }
     }
 
     return $out;

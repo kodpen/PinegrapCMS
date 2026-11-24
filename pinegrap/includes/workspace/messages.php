@@ -2615,8 +2615,13 @@ function ws_message_hide($viewer, $message)
     db("INSERT IGNORE INTO ws_message_hides (message_id, user_id, hidden_at)
         VALUES ('" . (int) $message['id'] . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
 
-    // A mention in it is no longer waiting for them either.
+    // A mention in it is no longer waiting for them either, in the bell
+    // as well.
     db("UPDATE ws_inbox SET read_at = '" . time() . "' WHERE user_id = '" . (int) $viewer['id'] . "' AND message_id = '" . (int) $message['id'] . "' AND read_at = 0");
+
+    if (mysqli_affected_rows(db::$con) > 0) {
+        ws_bell_sync_read((int) $viewer['id']);
+    }
 
     return array('ok' => true, 'error' => '');
 }
