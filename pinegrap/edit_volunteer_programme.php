@@ -213,9 +213,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $vp_approve = isset($_POST['submit_swap_approve']);
         $vp_shift_id = (int) ($_POST['shift'] ?? 0);
 
-        if (pg_volunteer_swap_decide($vp, $vp_shift_id, (int) ($_POST[$vp_approve ? 'submit_swap_approve' : 'submit_swap_refuse'] ?? 0), $vp_approve)) {
+        $vp_unfit = false;
+
+        if (pg_volunteer_swap_decide($vp, $vp_shift_id, (int) ($_POST[$vp_approve ? 'submit_swap_approve' : 'submit_swap_refuse'] ?? 0), $vp_approve, $vp_unfit)) {
             log_activity('a place swap on a shift of volunteer programme "' . $vp['name'] . '" was ' . ($vp_approve ? 'approved' : 'refused'));
             $liveform->add_notice(h($vp_approve ? lang('The place was handed over. Both volunteers are told by e-mail.') : lang('The request was refused. The place stays with its volunteer.')));
+        } elseif ($vp_unfit) {
+            $liveform->add_error(h(lang('The volunteer asking no longer fits this role on this shift. Refuse the request, or check their profile first.')));
         } else {
             $liveform->add_error(h(lang('The shift changed meanwhile. Please check it and try again.')));
         }

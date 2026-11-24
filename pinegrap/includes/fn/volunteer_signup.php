@@ -665,16 +665,21 @@ function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $t
 
 /**
  * A coordinator's answer to a swap waiting for approval: Approve hands the
- * offered place over, Refuse cancels the request (the offer stays).
+ * offered place over when the taker still fits the role, Refuse cancels the
+ * request (the offer stays).
  *
  * @param array $programme
  * @param int   $shift_id
  * @param int   $taker   the asking (waiting) sign-up
  * @param bool  $approve
+ * @param bool  $unfit   set to true when Approve was refused because the
+ *                       taker no longer fits the role
  * @return bool
  */
-function pg_volunteer_swap_decide(array $programme, $shift_id, $taker, $approve)
+function pg_volunteer_swap_decide(array $programme, $shift_id, $taker, $approve, &$unfit = false)
 {
+    $unfit = false;
+
     $lock = 'pg_volunteer_shift_' . (int) $shift_id;
 
     if ((int) db_value("SELECT GET_LOCK('" . escape($lock) . "', 5)") !== 1) {
@@ -691,6 +696,16 @@ function pg_volunteer_swap_decide(array $programme, $shift_id, $taker, $approve)
 
     foreach (($asking !== null) ? $shift['signups'] : array() as $signup) {
         $offered = ((int) $signup['id'] === (int) $asking['swap_from']) ? $signup : $offered;
+    }
+
+    // The request may be days old: the taker still has to fit the role on
+    // this shift (active, documents valid, not busy elsewhere), as the
+    // waitlist pass asks of a waiting volunteer.
+    if ($approve && ($offered !== null)) {
+        $person = pg_volunteer_call_people($programme, $shift)[(int) $asking['volunteer_id']] ?? null;
+        $role = $programme['roles'][(string) $offered['role']] ?? null;
+        $unfit = ($person === null) || ($role === null) || !pg_volunteer_fits($person, $role, $shift);
+        $offered = $unfit ? null : $offered;
     }
 
     $done = ($offered !== null) && ($approve

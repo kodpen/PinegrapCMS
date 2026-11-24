@@ -136,3 +136,12 @@ function test_volunteer_left_frees_coming_places()
 	pg_assert_contains('_pg_volunteer_cancel_write(', pg_test_function_source('pg_volunteer_left_release'), 'each freed place runs the waitlist as a cancel does');
 	pg_assert_contains('_pg_volunteer_cancel_write(', pg_test_function_source('pg_volunteer_self_act'));
 }
+
+function test_volunteer_swap_approve_checks_the_taker_again()
+{
+	$source = pg_test_function_source('pg_volunteer_swap_decide');
+
+	pg_assert_contains('pg_volunteer_call_people($programme, $shift)', $source, 'the taker is read again as the waitlist pass reads them');
+	pg_assert_contains('pg_volunteer_fits(', $source, 'an approved swap goes only to a volunteer who still fits the role');
+	pg_assert_true(strpos($source, 'pg_volunteer_fits(') < strpos($source, '_pg_volunteer_swap_finish('), 'checked before the place is handed over');
+}
