@@ -5,7 +5,7 @@ description: Look A's typeface (self-hosted Inter 4.1), the type scale and tone 
 
 ## Where do the type and the recipes live?
 - In their own block at the end of `assets/css/backend.src.css`: "Look A: the panel's type and recipes". The page widths (DL1b) get a block of their own. A recipe is written there once; a screen's own class only places things.
-- The numbers are the sheet's (`plans/panel-design-language-look.md`, `sheet.css`); where Bootstrap 6 gives the same pixel the token aliases it (`--pg-text-base` is `--bs-font-size-sm`, `--pg-text-meta` is `--bs-font-size-xs`).
+- The numbers are the sheet's (`ui/look-sheet-numbers.md`, `sheet.css`); where Bootstrap 6 gives the same pixel the token aliases it (`--pg-text-base` is `--bs-font-size-sm`, `--pg-text-meta` is `--bs-font-size-xs`).
 
 ## Where does the font come from?
 - Inter 4.1, `assets/fonts/inter/InterVariable.woff2` and `-Italic.woff2`, the release's `web/` files unmodified, with `LICENSE.txt` (SIL OFL 1.1). `tests/look_recipes_test.php` pins their sha256; an update changes the files, licence and digests together.

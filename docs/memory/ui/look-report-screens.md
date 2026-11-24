@@ -5,7 +5,7 @@ module: report_view
 ---
 
 ## Where do the report screens' look rules sit?
-- `backend.src.css` block "Look A: report screens" at the file's end: width (`body.pg-measure-report`), head, strip, tools row, figures, chart, tooltip, bars, map, no-chart line, table frame and table, settings drawer. The drawing: `plans/panel-design-language-report.md`.
+- `backend.src.css` block "Look A: report screens" at the file's end: width (`body.pg-measure-report`), head, strip, tools row, figures, chart, tooltip, bars, map, no-chart line, table frame and table, settings drawer. The drawing: `ui/look-sheet-report.md`.
 - The view (figures, chart) is drawn by `assets/js/pg_report_view.js` (`report-view.md`).
 
 ## What does each part use?

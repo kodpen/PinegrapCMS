@@ -1,10 +1,10 @@
 ---
-name: panel-design-language-dialogs
+name: look-sheet-dialogs
 description: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 ---
 
 ## Where is it drawn?
-- `plans/panel-design-language/dialogs.html` with `dialogs-dark.jpg` and `dialogs-light.jpg`; approved by the owner on 2026-11-12 (#8860, `workflow/decisions-made-panel-7.md`). The tokens and shared parts: `panel-design-language-look.md`.
+- `ui/look-sheet/dialogs.html` with `dialogs-dark.jpg` and `dialogs-light.jpg`; approved by the owner on 2026-11-12 (#8860, `workflow/decisions-made-panel-7.md`). The tokens and shared parts: `look-sheet-numbers.md`.
 
 ## What is a dialog made of?
 - Scrim over the page: `rgba(3,4,7,.6)` dark, `rgba(22,27,38,.3)` light, blur 2 px.

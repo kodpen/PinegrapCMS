@@ -12,7 +12,7 @@ description: Decisions made, workspace part 26: a template is chosen with a prev
 ## Which components does a new part inside a channel use? (owner, 2026-11-14, channel message 2709)
 - The owner, in the same message: "Kanal içinde de moder arayüz öğeleri kullanalim yavaştan geçiş yapariz."
 - So: every new part built inside a channel (a drawer, a card, a bar, a field) uses look A's components and recipes (`ui/look-design-examples.md`), never the browser's own controls. The first case: the drawer's File field was the browser's file input and became the panel's file field.
-- The old parts of the channel are not redrawn in one piece. A step that touches one converts it, and DL5f (`plans/panel-design-language-steps.md`) takes what is left.
+- The old parts of the channel are not redrawn in one piece. A step that touches one converts it; what is left is named in `ui/look-open-work.md`.
 - Refused: one large redraw of the channel screen before other work goes on.
 
 ## May a connected chat send a Workspace e-mail? (owner, 2026-11-14, channel message 2714)
