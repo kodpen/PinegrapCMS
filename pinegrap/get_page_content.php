@@ -2177,7 +2177,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         keyword,
                         COUNT(keyword) AS count
                     FROM tag_cloud_keywords
-                    WHERE (item_type = 'page')
+                    WHERE (item_type = 'page')" . pg_tcw_hidden_page_sql(pg_page_off_site_folder_ids()) . "
                    GROUP BY keyword
                    ORDER BY
                        count DESC,

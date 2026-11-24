@@ -2114,6 +2114,22 @@ function pg_page_is_draft($folder_id)
 }
 
 /**
+ * The folders whose pages are not on the site: the Drafts folder and the
+ * recycle bin with every folder under it. A move into either changes only
+ * page_folder, so what points at a page by id (a menu item, its keyword
+ * rows) still finds it there.
+ *
+ * @return array folder ids
+ */
+function pg_page_off_site_folder_ids()
+{
+    $ids   = pg_recycle_bin_folder_ids();
+    $draft = pg_page_draft_folder_id(false);
+    if ($draft > 0) $ids[] = $draft;
+    return $ids;
+}
+
+/**
  * The folder a draft goes back to when it is published: the one it was taken
  * from, while that folder still exists outside the recycle bin; the top
  * folder otherwise (a page moved into the drafts folder by hand has none).
