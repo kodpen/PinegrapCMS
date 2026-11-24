@@ -1503,7 +1503,9 @@ function ws_mcp_settings_place($change = array())
 }
 
 /**
- * The address a service's sign-in comes back to for a server.
+ * The address a service's sign-in comes back to for a server. A return
+ * that has a query already (a connector's page on Connections,
+ * connections.php?service=mcp_<key>) keeps it.
  *
  * @param int $server_id
  * @return string a panel path with ?mcp_connected= and an anchor
@@ -1512,7 +1514,7 @@ function ws_mcp_settings_return_url($server_id)
 {
     $place = ws_mcp_settings_place();
 
-    return $place['return'] . '?mcp_connected=' . (int) $server_id
+    return $place['return'] . ((strpos($place['return'], '?') === false) ? '?' : '&') . 'mcp_connected=' . (int) $server_id
         . (($place['anchor'] !== '') ? $place['anchor'] : '#ws-mcp-' . (int) $server_id);
 }
 
@@ -2698,6 +2700,7 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null, $form = null
             </div>
             <div class="card-body">
                 ' . $intro . '
+                ' . (function_exists('ws_mcp_connections_line_html') ? ws_mcp_connections_line_html('', lang('The ready-made connectors are added, and their address and sign-in kept, on their pages in Connections.')) : '') . '
                 ' . $ai_alert . '
                 ' . $list . '
                 ' . $add . '
@@ -2739,7 +2742,17 @@ function ws_mcp_settings_add_html($self_url, $servers, $kept, $form = null)
     $refused = ($kept['for'] === 'new');
     $typed_new = ($refused || ($kept['for'] === 'probe')) ? $kept['values'] : array();
 
-    return (function_exists('ws_mcp_settings_catalogue') ? ws_mcp_settings_catalogue($self_url, $servers, $form) : '')
+    // Site Settings: the ready-made connectors are added on their pages in
+    // Connections; a server by its address is added here.
+    if ($form !== null) {
+        $catalogue = function_exists('ws_mcp_connections_line_html')
+            ? ws_mcp_connections_line_html('', lang('The ready-made connectors are added, and their address and sign-in kept, on their pages in Connections.'))
+            : '';
+    } else {
+        $catalogue = function_exists('ws_mcp_settings_catalogue') ? ws_mcp_settings_catalogue($self_url, $servers, $form) : '';
+    }
+
+    return $catalogue
         . (function_exists('ws_mcp_settings_custom')
             ? ws_mcp_settings_custom($self_url, $kept, ws_mcp_settings_form($self_url, null, true, $typed_new, $refused ? $kept['problem'] : '', $refused ? $kept['catalogue'] : '', $form), $form)
             : '');
@@ -2775,6 +2788,16 @@ function ws_settings_mcp_drawer($server, $viewer, $kept, $servers, $form, $in_di
     $foot = ($admin && !empty(ws_mcp_tools($server)))
         ? '<button type="submit" name="ws_mcp_tools" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-fill pg-button-sm">' . h(lang('Save')) . '</button>'
         : '';
+
+    // A ready-made connector's address and sign-in are kept on its page on
+    // Connections; a server added by its address keeps them here.
+    $connector = function_exists('ws_mcp_catalogue_entry_for_url') ? ws_mcp_catalogue_entry_for_url((string) $server['url']) : '';
+
+    if ($connector !== '') {
+        return pg_settings_drawer('pgset-ws-mcp-' . $id, '@' . h($server['alias']) . (($server['name'] !== '') ? ' · ' . h($server['name']) : ''),
+            $error . ws_mcp_settings_tools('', $server, $admin, $form)
+            . ws_mcp_connections_line_html($connector, lang('Its address and sign-in are on its page in Connections.')), $in_dialog, $foot);
+    }
 
     return pg_settings_drawer('pgset-ws-mcp-' . $id, '@' . h($server['alias']) . (($server['name'] !== '') ? ' · ' . h($server['name']) : ''),
         $error . ws_mcp_settings_tools('', $server, $admin, $form) . '

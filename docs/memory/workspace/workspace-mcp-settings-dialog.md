@@ -5,14 +5,14 @@ description: The MCP servers card in Site Settings (Assistants and agents) and o
 
 ## Where is the MCP servers card?
 - PR #8844 (SW5, [[workspace-settings-overview]]): Assistants and agents, section `pgset-ws-mcp`, the fourth folded row, after Workspace agents (`ui/settings-fold-rows.md`). The old screen's address redirects here (PR #8931).
-- Its one home: Connections' MCP connectors have Manage at `#settings/workspace_assistants/pgset-ws-mcp`, which opens this row.
+- Ready-made connectors are added, with their address and sign-in, on Connections (`ui/connections-mcp-connector-page.md`); the tools stay here.
 - `pg_settings_legacy_anchors()` maps `ws-mcp` to the card. "My MCP connections" still links `workspace_mcp.php`.
 
 ## What opens in a drawer?
 - Each server is a row like an agent's (#10432): tile, `@alias` and name, one summary line, the state as a pill, Connect or Disconnect and the icon buttons (ask again, turn off or on, remove), "Tools and settings" at the row's end. The pill's tones (`ws_mcp_settings_state_badge()`, #10918): Not connected and Off gray, No tool on amber, Connect again and Cannot be reached rose, Ready teal.
-- The card opens with one help line and "How does this work?" (`pgset-ws-mcp-guide`). It opens `pgset-ws-mcp-<id>`: its last error, the tools (kinds as toned pills) with the agent choice, the tools' Save in the drawer's foot, then address and sign-in under a closed "Connection settings" with its own quiet Save.
+- The card opens with one help line and "How does this work?" (`pgset-ws-mcp-guide`). It opens `pgset-ws-mcp-<id>`: its last error, the tools (kinds as toned pills) with the agent choice, the tools' Save in the drawer's foot, then "Connection settings" (closed, own quiet Save); a ready-made connector's has "Manage in Connections".
 - More than five servers: five rows, those needing something first, then "Show all N" opening `pgset-ws-mcp-all` with every row (`ui/settings-assistants-long-lists.md`).
-- "Add a server" opens `pgset-ws-mcp-add`: the ready-made connectors, Check the address and its short form, the whole form under More settings. Both from `ws_settings_mcp_drawer()`.
+- "Add a server" opens `pgset-ws-mcp-add`: the line to Connections' connectors, Check the address and its short form, the whole form under More settings. Both from `ws_settings_mcp_drawer()`.
 
 ## Which names does the dialog post?
 - Fields `ws_mcp[<key>][<field>]` (`ws_mcp_settings_name()`), key the server's id, 0 for a new one, `probe` for the short form after a check, `check` for the address to check; a tool is `ws_mcp[<id>][tool][<name>]` (`lists` entry `ws_mcp` 3). No `required`, no `autofocus`.
