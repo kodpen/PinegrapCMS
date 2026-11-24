@@ -118,6 +118,36 @@ function api_webhook_event_payloads() {
 		return array('id' => 418, 'service_id' => 3, 'staff_id' => 2, 'user_id' => 0, 'name' => 'Ayşe Demir', 'email' => 'ayse@example.com', 'start_at' => $start, 'end_at' => $end, 'status' => $status, 'source' => 'site', 'service_name' => 'Haircut', 'staff_name' => 'Deniz');
 	};
 
+	$queue = array(
+		'id'            => array('integer', 'The queue number (GET /queue/tickets lists them).'),
+		'place_id'      => array('integer', 'The queue place (GET /queue/places).'),
+		'place_name'    => array('string', 'The place\'s name.'),
+		'service'       => array('string', 'The service\'s key at the place.'),
+		'service_name'  => array('string', 'The service\'s name, empty when it was removed since.'),
+		'number'        => array('string', 'The number as the person sees it, such as A-012.'),
+		'state'         => array('string', 'The state after the event: waiting, called, served or no_show.'),
+		'source'        => array('string', 'How it was taken: qr, site, kiosk or staff.'),
+		'priority'      => array('string', 'The key of the priority group, empty for none.'),
+		'party_size'    => array('integer', 'The people the number stands for, 0 when the place does not ask.'),
+		'booking_id'    => array('integer', 'The booking it was taken with, 0 for a walk-in.'),
+		'desk_id'       => array('integer', 'The desk it was called to, 0 before a call.'),
+		'desk_name'     => array('string', 'The desk\'s name, empty before a call.'),
+		'staff_user_id' => array('integer', 'The user who called it, 0 before a call.'),
+		'contact_id'    => array('integer', 'The person\'s contact, 0 for none.'),
+		'name'          => array('string', 'The name given, empty for none.'),
+		'phone'         => array('string', 'The phone given, empty for none.'),
+		'email'         => array('string', 'The e-mail address given, empty for none.'),
+		'joined_at'     => array('string?', 'When it was taken (UTC).'),
+		'called_at'     => array('string?', 'The last call (UTC), null before one.'),
+		'done_at'       => array('string?', 'When it ended (UTC), null while it waits or is at the desk.')
+	);
+
+	$queue_sample = function ($state, $called, $done) {
+		return array('id' => 5120, 'place_id' => 2, 'place_name' => 'City office', 'service' => 's1', 'service_name' => 'Applications', 'number' => 'A-012', 'state' => $state, 'source' => 'qr', 'priority' => '', 'party_size' => 0, 'booking_id' => 0,
+			'desk_id' => ($called !== null) ? 3 : 0, 'desk_name' => ($called !== null) ? 'Desk 3' : '', 'staff_user_id' => ($called !== null) ? 4 : 0, 'contact_id' => 0, 'name' => 'Ayşe Demir', 'phone' => '+905321234567', 'email' => '',
+			'joined_at' => '2026-11-20T07:02:00Z', 'called_at' => $called, 'done_at' => $done);
+	};
+
 	$subscription = array(
 		'id'              => array('integer', 'The subscription (GET /customers/{id}/subscriptions lists them).'),
 		'customer_id'     => array('integer?', 'The customer record of the subscription\'s account, null for none.'),
@@ -293,6 +323,11 @@ function api_webhook_event_payloads() {
 		'booking.rescheduled' => array('fields' => $booking, 'sample' => $booking_sample('confirmed', '2026-11-21T11:00:00Z', '2026-11-21T11:45:00Z')),
 		'booking.cancelled'   => array('fields' => $booking, 'sample' => $booking_sample('cancelled', '2026-11-20T07:00:00Z', '2026-11-20T07:45:00Z')),
 		'booking.completed'   => array('fields' => $booking, 'sample' => $booking_sample('done', '2026-11-20T07:00:00Z', '2026-11-20T07:45:00Z')),
+
+		'queue.joined'  => array('fields' => $queue, 'sample' => $queue_sample('waiting', null, null)),
+		'queue.called'  => array('fields' => $queue, 'sample' => $queue_sample('called', '2026-11-20T07:20:00Z', null)),
+		'queue.served'  => array('fields' => $queue, 'sample' => $queue_sample('served', '2026-11-20T07:20:00Z', '2026-11-20T07:31:00Z')),
+		'queue.no_show' => array('fields' => $queue, 'sample' => $queue_sample('no_show', '2026-11-20T07:20:00Z', '2026-11-20T07:24:00Z')),
 
 		'subscription.renewed'   => array('fields' => $subscription, 'sample' => $subscription_sample('active', 'active', 'renewed', 1043, '100319', '2026-12-17T08:00:00Z', 0)),
 		'subscription.failed'    => array('fields' => $subscription, 'sample' => $subscription_sample('active', 'active', 'renewal_failed', null, '', '2026-11-18T08:00:00Z', 1)),

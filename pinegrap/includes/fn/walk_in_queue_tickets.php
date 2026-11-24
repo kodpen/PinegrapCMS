@@ -395,6 +395,7 @@ function pg_waiting_take($place, $values, $way, $now = null)
 
     if ($ticket) {
         pg_waiting_notify($ticket, $place, 'taken', array('ahead' => $ahead));
+        pg_announce('queue.joined', pg_waiting_event_payload($ticket, $place, ''));
     }
 
     return $result;
@@ -601,4 +602,76 @@ function pg_waiting_throttled()
     }
 
     return 600;
+}
+
+/**
+ * What a queue event (queue.joined, queue.called, queue.served,
+ * queue.no_show) carries: the number with its place, service and desk by
+ * name, the person's own fields and the times in UTC. Never the link's
+ * token. Pure.
+ *
+ * @param array  $ticket the row
+ * @param array  $place  pg_waiting_place_get()
+ * @param string $desk   the desk's name, '' for none
+ * @return array
+ */
+function pg_waiting_event_payload($ticket, $place, $desk)
+{
+    $service_name = '';
+
+    foreach ((array) ($place['services'] ?? array()) as $item) {
+        if ((string) $item['key'] === (string) $ticket['service']) {
+            $service_name = (string) $item['name'];
+        }
+    }
+
+    $iso = function ($time) {
+        return ((int) $time > 0) ? gmdate('Y-m-d\TH:i:s\Z', (int) $time) : null;
+    };
+
+    return array(
+        'id'            => (int) $ticket['id'],
+        'place_id'      => (int) $ticket['place_id'],
+        'place_name'    => (string) ($place['name'] ?? ''),
+        'service'       => (string) $ticket['service'],
+        'service_name'  => $service_name,
+        'number'        => pg_waiting_number($ticket['letter'], $ticket['number']),
+        'state'         => (string) $ticket['state'],
+        'source'        => (string) $ticket['source'],
+        'priority'      => (string) $ticket['priority'],
+        'party_size'    => (int) $ticket['party_size'],
+        'booking_id'    => (int) $ticket['booking_id'],
+        'desk_id'       => (int) $ticket['desk_id'],
+        'desk_name'     => (string) $desk,
+        'staff_user_id' => (int) $ticket['staff_user_id'],
+        'contact_id'    => (int) $ticket['contact_id'],
+        'name'          => (string) $ticket['name'],
+        'phone'         => (string) $ticket['phone'],
+        'email'         => (string) $ticket['email'],
+        'joined_at'     => $iso($ticket['joined_at']),
+        'called_at'     => $iso($ticket['called_at']),
+        'done_at'       => $iso($ticket['done_at']),
+    );
+}
+
+/**
+ * A number as it stands now, with its place and the name of its desk, for
+ * an event: read again after the move, so the event carries the written
+ * state. Null when the number or its place is gone.
+ *
+ * @param int $id
+ * @return array|null ticket, place, desk
+ */
+function pg_waiting_event_facts($id)
+{
+    $ticket = db_item("SELECT * FROM waiting_tickets WHERE id = '" . (int) $id . "'");
+    $place = $ticket ? pg_waiting_place_get($ticket['place_id']) : null;
+
+    if (!$ticket || !$place) {
+        return null;
+    }
+
+    $desk = ((int) $ticket['desk_id'] > 0) ? (string) db_value("SELECT name FROM waiting_desks WHERE id = '" . (int) $ticket['desk_id'] . "'") : '';
+
+    return array('ticket' => $ticket, 'place' => $place, 'desk' => $desk);
 }

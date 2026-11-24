@@ -298,6 +298,19 @@ function ws_events_catalog()
         );
     }
 
+    // The walk-in queue's (pg_waiting_event_payload()): every member may wait
+    // for them; each is checked against the places whose desks its creator
+    // reaches when it comes (ws_events_creator_sees()). About the person's
+    // contact when the number has one.
+    if (function_exists('pg_waiting_ready') && pg_waiting_ready()) {
+        $catalog += array(
+            'queue.joined'  => array('label' => lang('A queue number is taken'), 'when' => lang('When a walk-in queue number is taken'), 'record' => 'contact', 'right' => 'member', 'filter' => ''),
+            'queue.called'  => array('label' => lang('A queue number is called'), 'when' => lang('When a walk-in queue number is called to a desk'), 'record' => 'contact', 'right' => 'member', 'filter' => ''),
+            'queue.served'  => array('label' => lang('A queue number is served'), 'when' => lang('When a walk-in queue number is finished at its desk'), 'record' => 'contact', 'right' => 'member', 'filter' => ''),
+            'queue.no_show' => array('label' => lang('A queue number is not here'), 'when' => lang('When a called walk-in queue number is marked Not here'), 'record' => 'contact', 'right' => 'member', 'filter' => ''),
+        );
+    }
+
     // The workspace's own: every member of the staff may wait for them, and
     // each event is checked against what its creator may read when it comes.
     $catalog += array(
@@ -605,6 +618,16 @@ function ws_events_creator_sees($user_id, $event, $payload)
             && pg_booking_agenda_scope_allows(pg_booking_agenda_user_scope(array('id' => $user_id, 'role' => (int) ($viewer['role'] ?? 3))), (int) $staff_id);
     }
 
+    // A queue number: at a place whose desks the creator reaches (roles 0-2
+    // every place, a role-3 user the places whose staff list names them).
+    if (strpos((string) $event, 'queue.') === 0) {
+        if (!function_exists('pg_waiting_ready') || !pg_waiting_ready()) {
+            return false;
+        }
+
+        return pg_waiting_desk_scope_allows(pg_waiting_user_desk_scope(array('id' => $user_id, 'role' => (int) ($viewer['role'] ?? 3))), (int) ($payload['place_id'] ?? 0));
+    }
+
     // A page: the creator's tag of it resolves (the folders they reach).
     if (strpos((string) $event, 'page.') === 0) {
         $id = (int) ($payload['id'] ?? 0);
@@ -784,9 +807,13 @@ function ws_events_record_of($event, $payload)
             return array('contact', (int) ($payload['id'] ?? 0));
 
         // A WhatsApp message: the contact of its number, none for a number
-        // no contact has. A course completed: the member's contact. A
+        // no contact has; a queue number likewise. A course completed: the member's contact. A
         // survey's answer: the person's contact.
         case 'whatsapp.received':
+        case 'queue.joined':
+        case 'queue.called':
+        case 'queue.served':
+        case 'queue.no_show':
         case 'course.completed':
         case 'feedback.received':
         case 'feedback.detractor':
