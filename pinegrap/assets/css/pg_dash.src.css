@@ -5629,8 +5629,8 @@
   /* The go-live check: a group's heading at the list title's size, and a
      long line wraps with "Fix" kept at the end. */
   .pg-dash-golive-title {
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: .9375rem;
+    font-weight: 650;
     margin-bottom: .5rem;
   }
 
