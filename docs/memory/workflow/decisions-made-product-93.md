@@ -20,7 +20,7 @@ description: Decisions list, product part 93 (2026-11-20 on): plans from the own
 
 ## Should a new site get a set-up path by its purpose, steps marked from the real settings and a go-live check? (owner, 2026-11-20, agent channel poll 204, channel message 11083)
 - "Evet, plana girsin": the purpose choice, steps marked by themselves, one click to the screen, the go-live check, the first week, a team member's path, the agency summary, API and MCP.
-- Not chosen: "Evet, önce yol ve yayına hazırlık" (the path and the go-live check first), "Hayır, gerek yok". The plan: `plans/launch-journey.md`.
+- Not chosen: "Evet, önce yol ve yayına hazırlık" (the path and the go-live check first), "Hayır, gerek yok". Built: `ui/launch-journey.md`.
 
 ## Should a customer approve each prototype page, sealed to the draft they saw? (owner, 2026-11-20, agent channel poll 205, channel message 11084)
 - "Diğer": yes, but most of it exists as prototype sharing; only the missing parts go on top of it, and the architect reviews the plan first. Not chosen: the three offered answers.

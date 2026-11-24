@@ -11,8 +11,8 @@ description: The agency summary's "What we need from you" lines table launch_sum
 - `id`; `line_text` VARCHAR(500), the line the agency wrote (logo, texts, domain access); `answer` TEXT NULL, the customer's text answer, NULL while unanswered; `answered_at`; `sort_order`, the line's place in the drawer and on the customer's page (`KEY idx_order`); `created_by` (the panel user who wrote it, the bell line's addressee in SJ5); `created_at`, `updated_at`. Times are Unix seconds, 0 when not set.
 
 ## What is not in it?
-- The summary link's hash and expiry, the site's purpose, the go-live time and hidden steps: one JSON row in `config_text` (`plans/launch-journey.md`), no column anywhere.
+- The summary link's hash and expiry, the site's purpose, the go-live time and hidden steps: one JSON row in `config_text` (`launch-journey.md`), no column anywhere.
 - No person: the customer answers through the signed link, not as a user or a contact, so the table is not on the privacy lists or `pg_contact_holders()`. An answer is free text the agency asked for.
 - A line is never a setting's value; the customer's page shows only the lines and the steps' states.
 
-Related: docs/memory/ui/launch-journey-catalogue.md, docs/memory/plans/launch-journey-steps.md
+Related: docs/memory/ui/launch-journey-catalogue.md, docs/memory/ui/launch-journey.md

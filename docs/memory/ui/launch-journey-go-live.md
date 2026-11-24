@@ -17,6 +17,6 @@ module: launch_journey_site
 - Site Log: one line per change ("Go live: …"), then "The site went live." or "The site went live with these left to fix: …" naming each blocker and its line. System Status cache is forgotten after a change.
 - `live_at` is stored once: a later "Go live" keeps the first time, so the first week counts from it.
 
-## How are broken internal links checked? (SJ3b)
+## How are broken internal links checked? (#11379)
 - Go-live check key `broken_links` (catalogue `card` false: never a card step, never hidden). Fact from `pg_launch_journey_facts()`: the `seo_issue` rows of code `link_broken_internal` (every entity type), or `never` when no page has `seo_struct_checked_at` (the SEO structure check never ran); no crawl of its own.
 - Always a warning, last under "Worth a look" (after the Search Console and backup ones); never a blocker, so "Go live" stays possible. Some rows: "Internal links point nowhere on N pages", "Fix" to `view_pages.php?filter=seo_broken_links`. Never run: "The SEO check has never run on this site" with "Run the SEO check" (row `action`) to `audit_run.php?pass=structure` (Analyze HTML Structure, back to that filter), never "0". None: no row. Fact not read: unknown, no row.
