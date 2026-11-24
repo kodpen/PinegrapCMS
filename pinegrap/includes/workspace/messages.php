@@ -217,6 +217,9 @@ function ws_message_payloads($viewer, $rows, $options = array())
         // The open share link of a file or a channel's note in an agent
         // channel, and whether the reader may make one (share_links.php).
         'share_links' => function_exists('ws_share_links_map') ? ws_share_links_map($viewer, $rows, $can_post) : array(),
+        // The tables and checklists written in a message of an agent channel,
+        // each with its open link and can_make (share_links_text.php).
+        'text_shares' => function_exists('ws_share_links_text_map') ? ws_share_links_text_map($viewer, $rows, $can_post) : array(),
         'versions'   => function_exists('ws_file_versions_map') ? ws_file_versions_map(array_map(function ($row) {
             return ((int) $row['file_id'] > 0) ? (int) $row['id'] : 0;
         }, $rows), (int) $viewer['id']) : array(),
@@ -464,6 +467,10 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
             'share' => (($extra['share_links'][$id]['kind'] ?? '') === 'note') ? $extra['share_links'][$id] : null,
         ),
         'note_group_card' => $deleted ? null : ($extra['note_group_cards'][$id] ?? null),
+        // Its tables and checklists that can be shared by link, in their
+        // order; empty outside an agent channel and for an agent's answer
+        // drawn from another text.
+        'text_shares' => ($deleted || $agent || ($tag_card !== '')) ? array() : ($extra['text_shares'][$id] ?? array()),
         'scheduled'   => $deleted ? null : ($extra['scheduled'][$id] ?? null),
         'flow_run'    => $deleted ? null : ($extra['flow_runs'][$id] ?? null),
         'canvas_binding' => $deleted ? null : ($extra['canvas_bindings'][$id] ?? null),
