@@ -166,3 +166,25 @@ function test_menu_widget_registered()
 	pg_assert_contains("menu_region:       SW_MENU_REGION_TOKEN_GROUPS", $js, 'has a token palette');
 	pg_assert_contains("comments_recent: 1, menu_region: 1,", $js, 'draws no Messages block');
 }
+
+// A menu item's page that is a draft or in the recycle bin (folder 5 here) is
+// shown only to who may view it, even with the item's access switch off.
+function test_menu_item_to_a_page_off_the_site()
+{
+	$visitor = function ($folder) { return (int)$folder === 1; };
+	$staff   = function ($folder) { return true; };
+	$item = array('link_page_name' => 'launch', 'link_page_folder_id' => 5, 'security' => 0);
+
+	pg_assert_false(pg_menu_item_shown($item, array(5, 7), $visitor), 'a draft is not linked for a visitor');
+	pg_assert_true(pg_menu_item_shown($item, array(5, 7), $staff), 'staff who may view the draft see it');
+	pg_assert_true(pg_menu_item_shown($item, array(), $visitor), 'not off the site, switch off: shown');
+	pg_assert_true(pg_menu_item_shown(array('link_page_name' => 'about', 'link_page_folder_id' => 3, 'security' => 0), array(5), $visitor), 'switch off: shown');
+	pg_assert_false(pg_menu_item_shown(array('link_page_name' => 'about', 'link_page_folder_id' => 3, 'security' => 1), array(5), $visitor), 'switch on: the folder decides');
+	pg_assert_true(pg_menu_item_shown(array('link_page_name' => '', 'link_page_folder_id' => 0, 'security' => 1), array(5), $visitor), 'no page: shown');
+
+	$items = _mw_items();
+	$items[2]['link_page_folder_id'] = 5;
+	$rows = pg_sw_list_menu_rows($items, 0, $visitor, null, array(5));
+	pg_assert_same(array('Bags'), array_column($rows[2], '__menu_item_name'), 'the draft and what is under it are left out');
+	pg_assert_false(isset($rows[3]));
+}

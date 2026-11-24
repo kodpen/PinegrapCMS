@@ -147,6 +147,28 @@ function pg_menu_tree_from_rows(array $rows, array $counts)
 }
 
 /**
+ * Whether a menu item is drawn for the visitor (pure). An item without a
+ * page, or with its access check off, is drawn; one with the check on only
+ * for a visitor who may view its page's folder. An item whose page is a
+ * draft or in the recycle bin is checked whatever its switch says: the
+ * switch is for members' areas, and a link to a page that is not on the
+ * site would name it to every visitor and lead them to the sign-in page.
+ *
+ * @param array    $item       menu item row: security, link_page_name, link_page_folder_id
+ * @param array    $off_site   pg_page_off_site_folder_ids()
+ * @param callable $may_view   folder id => bool (check_view_access)
+ * @return bool
+ */
+function pg_menu_item_shown($item, $off_site, $may_view)
+{
+    if ((string)$item['link_page_name'] === '') return true;
+    $folder = (int)$item['link_page_folder_id'];
+    $off    = in_array($folder, array_map('intval', (array)$off_site), true);
+    if (!$off && ((int)$item['security'] === 0)) return true;
+    return (bool)call_user_func($may_view, $folder);
+}
+
+/**
  * A menu's rows in listing order: depth first from the top level, each row
  * with its depth in 'level' (1 = top). An item whose parent is not in the
  * rows is never reached, and an item met a second time (a parent loop) is
@@ -579,6 +601,7 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
     $output_edit_from = ($edit_mode && isset($edit_context['from'])) ? urlencode($edit_context['from']) : '';
     $output_edit_send_to = ($edit_mode && isset($edit_context['send_to'])) ? urlencode($edit_context['send_to']) : '';
     // loop through all menu items in order to get content
+    $off_site_folders = pg_page_off_site_folder_ids();
     foreach ($menu_items as $menu_item) {
         // On a page drawn in another language the item's name is read from
         // the translation table.
@@ -589,7 +612,7 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
         // or if this menu item is not connected to a page
         // or this visitor has access to view this menu item's page,
         // then show the menu item and its child items, if any exist.
-        if (($menu_item['security'] == 0) || ($menu_item['link_page_name'] == '') || (check_view_access($menu_item['link_page_folder_id']) == true)) {
+        if (pg_menu_item_shown($menu_item, $off_site_folders, 'check_view_access')) {
             // A sub menu exists when any item sits under this one.
             $sub_menu_exists = !empty($menu_tree['counts'][(int) $menu_item['id']]);
             $output_link_href = '';

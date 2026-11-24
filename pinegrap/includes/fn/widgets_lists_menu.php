@@ -61,8 +61,10 @@ function pg_sw_list_menu_sources()
 // URL, else '#'; a new window only for an item that links somewhere. The
 // item of the page shown is the first by id that links to $page_id; the
 // items above it hold it. $name_of translates a name (null: as stored).
+// $off_site: the folders of drafts and the bin (pg_page_off_site_folder_ids()),
+// whose pages $can_view decides whatever an item's access switch says.
 // Raw values: the renderer and the list pass escape them once.
-function pg_sw_list_menu_rows($items, $page_id, $can_view = null, $name_of = null)
+function pg_sw_list_menu_rows($items, $page_id, $can_view = null, $name_of = null, $off_site = array())
 {
     $base      = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
     $page_id   = (int)$page_id;
@@ -91,15 +93,17 @@ function pg_sw_list_menu_rows($items, $page_id, $can_view = null, $name_of = nul
 
     $out  = array();
     $seen = array();
-    $walk = function ($parent) use (&$walk, &$out, &$seen, $children, $can_view, $name_of, $current, $holds, $base) {
+    $walk = function ($parent) use (&$walk, &$out, &$seen, $children, $can_view, $name_of, $current, $holds, $base, $off_site) {
         if (empty($children[$parent])) return;
         foreach ($children[$parent] as $item) {
             $id = (int)$item['id'];
             if (isset($seen[$id])) continue;
             $seen[$id] = true;
             $page = isset($item['link_page_name']) ? (string)$item['link_page_name'] : '';
-            if (!empty($item['security']) && $page !== '' && $can_view !== null
-                && !call_user_func($can_view, isset($item['link_page_folder_id']) ? $item['link_page_folder_id'] : 0)) {
+            if ($can_view !== null && !pg_menu_item_shown(array(
+                    'link_page_name'      => $page,
+                    'link_page_folder_id' => isset($item['link_page_folder_id']) ? $item['link_page_folder_id'] : 0,
+                    'security'            => !empty($item['security']) ? 1 : 0), $off_site, $can_view)) {
                 continue;
             }
             $walk($id);
