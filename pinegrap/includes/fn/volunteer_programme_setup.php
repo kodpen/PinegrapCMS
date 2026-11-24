@@ -140,7 +140,7 @@ function pg_volunteer_setup_html(array $values, array $forms, $cancel)
     $person_row = function ($id, $name) use ($remove) {
         return '<div class="pg-card-inner-row" data-pg-vp-row><input type="hidden" name="coordinators[]" value="' . (int) $id . '">'
             . '<span class="pg-icon-tile" aria-hidden="true"><span class="bi bi-person"></span></span>'
-            . '<span class="flex-grow-1 min-width-0 pg-list-row-title" data-pg-vp-person>' . h($name) . '</span>' . $remove . '</div>';
+            . '<span class="flex-grow-1 min-w-0 pg-list-row-title" data-pg-vp-person>' . h($name) . '</span>' . $remove . '</div>';
     };
     $people = '';
 

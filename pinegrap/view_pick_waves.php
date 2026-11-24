@@ -154,7 +154,7 @@ $waves_drawer = '
         <form method="post" action="view_pick_waves.php" class="d-flex flex-column h-100" data-pg-pick-preview="view_pick_waves.php?preview=1">
             ' . get_token_field() . '
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="pick_wave_make_title">' . h(lang('Make a wave')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('Paid addresses not packed yet, oldest ship-by day first, at most 200.')) . '</p>
                 </div>

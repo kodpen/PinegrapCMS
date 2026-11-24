@@ -204,7 +204,7 @@ if ($qd_desk) {
         $state = ($desk['state'] === 'open') ? lang(array('string' => 'Open · {var:1}', 'vars' => array($desk['person']))) : (($desk['state'] === 'paused') ? lang(array('string' => 'Paused · {var:1}', 'vars' => array($desk['person']))) : lang('Closed'));
         $qd_rows .= '<div class="pg-card-inner-row flex-wrap">'
             . '<span class="pg-icon-tile" aria-hidden="true"><span class="bi bi-person-workspace"></span></span>'
-            . '<div class="flex-grow-1 min-width-0"><strong class="pg-list-row-title">' . h($desk['name']) . '</strong><div class="pg-text-meta">' . h(implode(', ', array_values(array_intersect_key($qd_service_names, array_flip($desk['services']))))) . '</div></div>'
+            . '<div class="flex-grow-1 min-w-0"><strong class="pg-list-row-title">' . h($desk['name']) . '</strong><div class="pg-text-meta">' . h(implode(', ', array_values(array_intersect_key($qd_service_names, array_flip($desk['services']))))) . '</div></div>'
             . '<span class="pg-text-2 text-nowrap">' . h($state) . '</span>'
             . (($desk['state'] === 'closed') ? '<button type="submit" form="qd_form" name="submit_open" value="' . (int) $desk['id'] . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>' . h(lang('Open this desk')) . '</button>' : '')
             . '</div>';
@@ -268,7 +268,7 @@ $qd_transfer = '<dialog class="drawer drawer-end" id="qd_transfer" aria-labelled
         <form method="post" action="queue_desk.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '<input type="hidden" name="place" value="' . $qd_id . '">
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="qd_transfer_title">' . h(lang('Send to another service')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . h(lang('The person waits there with a new number and keeps the time they joined.')) . '</p>
                 </div>

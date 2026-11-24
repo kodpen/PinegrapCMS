@@ -184,7 +184,7 @@ function api_app_drawer_view($parts) {
 		<div class="drawer-header pb-1 d-block">
 			<div class="d-flex align-items-start gap-3">
 				<span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" id="d_tile" aria-hidden="true"><i class="bi bi-key" id="d_tile_icon"></i></span>
-				<div class="flex-grow-1 min-width-0">
+				<div class="flex-grow-1 min-w-0">
 					<h5 class="drawer-title mb-0" id="d_title"></h5>
 					<p class="small fg-2 mb-0 mt-1" id="d_sub"></p>
 				</div>
@@ -314,14 +314,14 @@ function api_app_drawer_overview_html($fields_script) {
 
 				<div class="pg-card-inner mb-5">
 					<div class="pg-card-inner-row">
-						<div class="flex-grow-1 min-width-0">
+						<div class="flex-grow-1 min-w-0">
 							<label class="pg-list-row-title d-block" for="d_status">' . lang('Active') . '</label>
 							<div class="pg-text-meta">' . lang('Turning it off refuses the key at once; the settings stay.') . '</div>
 						</div>
 						<input type="checkbox" class="pg-switch" name="status" value="active" id="d_status">
 					</div>
 					<div class="pg-card-inner-row" id="d_key_row">
-						<div class="flex-grow-1 min-width-0">
+						<div class="flex-grow-1 min-w-0">
 							<div class="pg-list-row-title" id="d_key_label">' . lang('Key') . '</div>
 							<code class="pg-text-meta text-break" id="d_key"></code>
 						</div>
@@ -336,7 +336,7 @@ function api_app_drawer_overview_html($fields_script) {
 				<div class="pg-card-inner mb-5">
 					<div class="pg-card-inner-row">
 						<span class="pg-icon-tile pg-tone-blue" aria-hidden="true"><i class="bi bi-shield-check"></i></span>
-						<div class="flex-grow-1 min-width-0">
+						<div class="flex-grow-1 min-w-0">
 							<div class="pg-list-row-title">' . lang('Permissions') . '</div>
 							<div class="pg-text-meta" id="d_sum_perms" data-text="' . h(lang(array('string' => '{var:1} of {var:2} chosen', 'vars' => array('{1}', '{2}')))) . '"></div>
 						</div>
@@ -356,7 +356,7 @@ function api_app_drawer_overview_html($fields_script) {
 				<div class="pg-text-meta fg-danger mb-2" id="d_danger_label">' . lang('Danger') . '</div>
 				<div class="pg-card-inner" id="d_danger_zone">
 					<div class="pg-card-inner-row" id="d_secret_block">
-						<div class="flex-grow-1 min-width-0">
+						<div class="flex-grow-1 min-w-0">
 							<div class="pg-list-row-title">' . lang('New secret') . '</div>
 							<div class="pg-text-meta"><code id="d_hint" class="fg-2"></code> &middot; ' . lang('The old secret works one more day, then closes.') . '</div>
 						</div>
@@ -364,7 +364,7 @@ function api_app_drawer_overview_html($fields_script) {
 							<i class="bi bi-arrow-clockwise" aria-hidden="true"></i>' . lang('Issue a new one') . '</button>
 					</div>
 					<div class="pg-card-inner-row">
-						<div class="flex-grow-1 min-width-0">
+						<div class="flex-grow-1 min-w-0">
 							<div class="pg-list-row-title">' . lang('Delete the application') . '</div>
 							<div class="pg-text-meta">' . lang('Any integration using this key stops working immediately. This cannot be undone.') . '</div>
 						</div>
@@ -487,7 +487,7 @@ function api_app_new_connect_html($made, $site_address, $guide, $others) {
 		return '
 					<div class="pg-card-inner-row api-cred-row">
 						<div class="api-cred-name"><div class="pg-list-row-title" id="' . $id . '_label">' . h($label) . '</div><div class="pg-text-meta">' . h($hint) . '</div></div>
-						<div class="flex-grow-1 min-width-0">' . api_app_value_box($id, $value, $id . '_label', $masked) . '</div>
+						<div class="flex-grow-1 min-w-0">' . api_app_value_box($id, $value, $id . '_label', $masked) . '</div>
 					</div>';
 	};
 

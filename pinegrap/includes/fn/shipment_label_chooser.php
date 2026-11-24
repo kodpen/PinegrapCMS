@@ -165,7 +165,7 @@ function pg_shipment_label_chooser_rows_html($rows, $province_name, $symbol)
         $id = 'shipment_label_driver_' . preg_replace('/[^a-z0-9_]/', '_', strtolower($row['key']));
         $html .= '<label class="pg-card-inner-row" for="' . h($id) . '">'
             . '<input class="radio" type="radio" form="shipment-label-form" name="label_driver" id="' . h($id) . '" value="' . h($row['key']) . '"' . (($index === 0) ? ' checked' : '') . '>'
-            . '<span class="flex-grow-1 min-width-0">'
+            . '<span class="flex-grow-1 min-w-0">'
             . '<span class="d-flex flex-wrap align-items-center gap-3"><strong class="pg-list-row-title">' . h($row['name']) . '</strong>'
             . ($row['suggested'] ? '<span class="pg-pill pg-tone-teal">' . h(lang('Suggested')) . '</span>' : '') . '</span>'
             . '<span class="pg-text-meta d-block">' . h(pg_shipment_label_chooser_line($row, $province_name, $symbol)) . '</span>'
@@ -189,7 +189,7 @@ function pg_shipment_label_chooser_dialog()
     return '<dialog class="drawer drawer-end" id="shipment-label-chooser" aria-labelledby="shipment-label-chooser-title" style="width:min(480px,100%);--pg-drawer-height:auto"'
         . ' data-reading="' . h(lang('Reading prices…')) . '" data-failed="' . h(lang('The carriers could not be read. Close this and try again.')) . '">
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="shipment-label-chooser-title">' . lang('Create label') . '</h5>
                     <p class="small fg-2 mb-0 mt-1">' . lang('This shipping method names no carrier. Choose who carries the parcel.') . '</p>
                 </div>

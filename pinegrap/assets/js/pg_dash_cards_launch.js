@@ -356,7 +356,7 @@
         root.setAttribute("aria-labelledby", "pg_dash_launch_summary_title");
 
         var header = el("div", "drawer-header");
-        var heading = el("div", "flex-grow-1 min-width-0");
+        var heading = el("div", "flex-grow-1 min-w-0");
         var title = el("h5", "drawer-title mb-0", labels.summary);
         title.id = "pg_dash_launch_summary_title";
         heading.appendChild(title);
@@ -551,14 +551,15 @@
         item.appendChild(tile);
 
         var main = el("div", "pg-list-row-main");
-        var head = el("div", "pg-list-row-head");
+        // The head wraps: a pill inside the one-line title was cut off by its
+        // ellipsis on a phone, and a long name now breaks instead.
+        var head = el("div", "pg-list-row-head pg-list-row-head-wrap");
         var title = el("span", "pg-list-row-title", step.name);
+        head.appendChild(title);
         // A blocker says so in words, never by its colour alone.
         if (step.level === "blocker") {
-            title.appendChild(document.createTextNode(" "));
-            title.appendChild(el("span", "pg-pill pg-tone-rose", labels.blocker));
+            head.appendChild(el("span", "pg-pill pg-tone-rose text-nowrap", labels.blocker));
         }
-        head.appendChild(title);
         main.appendChild(head);
         main.appendChild(el("div", "pg-list-row-text", step.line));
         item.appendChild(main);

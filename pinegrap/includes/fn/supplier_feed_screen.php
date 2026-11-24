@@ -970,7 +970,7 @@ function pg_supplier_feed_test_drawer_html($test, $pull_button, $feed_code, $hom
     return '
                 <dialog class="drawer drawer-end" id="sf_test_pull" aria-labelledby="sf_test_pull_title" data-pg-sf-open-at-load style="width:min(640px,100%)">
                     <div class="drawer-header d-flex align-items-start gap-3">
-                        <div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0" id="sf_test_pull_title">' . h(lang('Test pull')) . '</h5>
+                        <div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0" id="sf_test_pull_title">' . h(lang('Test pull')) . '</h5>
                         <p class="small fg-2 mb-0 mt-1">' . h($line) . '</p></div>
                         <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
@@ -1027,7 +1027,7 @@ function pg_supplier_feed_held_html($items, $feed_code)
                                 <button type="button" class="pg-button pg-button-quiet pg-button-sm mt-3" data-bs-toggle="drawer" data-bs-target="#sf_held_all" aria-controls="sf_held_all">' . h(lang(array('string' => 'Show all {var:1}', 'vars' => array(count($items))))) . '</button>
                                 <dialog class="drawer drawer-end" id="sf_held_all" aria-labelledby="sf_held_all_title" style="width:min(640px,100%)">
                                     <div class="drawer-header d-flex align-items-start gap-3">
-                                        <div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0" id="sf_held_all_title">' . h(lang('Held prices')) . '</h5></div>
+                                        <div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0" id="sf_held_all_title">' . h(lang('Held prices')) . '</h5></div>
                                         <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
                                     </div>
                                     <div class="drawer-body">' . $all . '</div>
@@ -1097,7 +1097,7 @@ function pg_supplier_feed_runs_drawer_html($runs)
     return '
                 <dialog class="drawer drawer-end" id="sf_runs" aria-labelledby="sf_runs_title" style="width:min(640px,100%)">
                     <div class="drawer-header d-flex align-items-start gap-3">
-                        <div class="flex-grow-1 min-width-0"><h5 class="drawer-title mb-0" id="sf_runs_title">' . h(lang('Pull history')) . '</h5>
+                        <div class="flex-grow-1 min-w-0"><h5 class="drawer-title mb-0" id="sf_runs_title">' . h(lang('Pull history')) . '</h5>
                         <p class="small fg-2 mb-0 mt-1">' . h(lang(array('string' => 'The pulls of the last {var:1} days, newest first.', 'vars' => array(90)))) . '</p></div>
                         <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
                     </div>

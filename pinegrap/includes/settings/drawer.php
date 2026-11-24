@@ -59,7 +59,7 @@ function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = 
         return '
                 <div class="pg-sm-drawer" id="' . h($id) . '" role="dialog" aria-modal="true" aria-labelledby="' . h($id . '_title') . '" tabindex="-1">
                     <div class="pg-sm-drawer-head">
-                        ' . $tile . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h3 class="pg-sm-drawer-title" id="' . h($id . '_title') . '">' . $title . '</h3>' . (($under !== '') ? $under . '</div>' : '') . '
+                        ' . $tile . (($under !== '') ? '<div class="flex-grow-1 min-w-0">' : '') . '<h3 class="pg-sm-drawer-title" id="' . h($id . '_title') . '">' . $title . '</h3>' . (($under !== '') ? $under . '</div>' : '') . '
                         <button type="button" class="btn-close" data-pgdrawer-close aria-label="' . h($close) . '" title="' . h($close) . '"></button>
                     </div>' . (($bar !== '') ? '
                     <div class="pg-sm-drawer-bar">' . $bar . '</div>' : '') . '
@@ -71,7 +71,7 @@ function pg_settings_drawer($id, $title, $body, $in_dialog, $foot = '', $line = 
     return '
                 <dialog class="drawer drawer-end pg-set-drawer" id="' . h($id) . '" aria-labelledby="' . h($id . '_title') . '">
                     <div class="drawer-header border-bottom' . (($tile !== '') ? ' gap-3' : '') . '">
-                        ' . $tile . (($under !== '') ? '<div class="flex-grow-1 min-width-0">' : '') . '<h5 class="drawer-title" id="' . h($id . '_title') . '">' . $title . '</h5>' . (($under !== '') ? $under . '</div>' : '') . '
+                        ' . $tile . (($under !== '') ? '<div class="flex-grow-1 min-w-0">' : '') . '<h5 class="drawer-title" id="' . h($id . '_title') . '">' . $title . '</h5>' . (($under !== '') ? $under . '</div>' : '') . '
                         <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h($close) . '"></button>
                     </div>' . (($bar !== '') ? '
                     <div class="pg-sm-drawer-bar border-bottom">' . $bar . '</div>' : '') . '

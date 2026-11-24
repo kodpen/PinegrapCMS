@@ -108,7 +108,7 @@ $programs_drawer = '
         <form method="post" action="edit_application_program.php" class="d-flex flex-column h-100">
             ' . get_token_field() . '
             <div class="drawer-header">
-                <div class="flex-grow-1 min-width-0">
+                <div class="flex-grow-1 min-w-0">
                     <h5 class="drawer-title mb-0" id="aprog_add_title">' . h(lang('Add programme')) . '</h5>
                     <p class="small fg-2 mb-0 mt-1 d-flex align-items-center gap-3">' . h(lang('It starts as a draft; you set it up next.')) . '</p>
                 </div>

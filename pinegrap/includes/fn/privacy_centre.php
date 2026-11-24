@@ -620,7 +620,7 @@ function pg_privacy_centre_rules_card(array $card)
         $years = isset($rules['forms']['pages'][$form['id']]) ? (string) $rules['forms']['pages'][$form['id']] : '';
 
         $forms .= '<div class="pg-card-inner-row">'
-            . '<div class="flex-grow-1 min-width-0"><label class="pg-list-row-title" for="' . $field . '">' . h($form['name']) . '</label>'
+            . '<div class="flex-grow-1 min-w-0"><label class="pg-list-row-title" for="' . $field . '">' . h($form['name']) . '</label>'
             . '<div class="pg-text-meta">' . h(lang(array('string' => '{var:1} submissions', 'vars' => array(pg_format_number((int) $form['submissions'], 0))))) . '</div></div>'
             . '<span class="pg-input pg-input-sm" style="width:8.5rem"><input type="text" inputmode="numeric" name="rules[forms][pages][' . (int) $form['id'] . ']" id="' . $field . '" value="' . h($years) . '"' . $off . '><span class="pg-input-end">' . h(lang('years')) . '</span></span>'
             . '</div>';

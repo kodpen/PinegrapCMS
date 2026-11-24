@@ -124,7 +124,7 @@ function api_app_agent_channels_html($prefix, $channels) {
 		$rows .= '
 					<div class="pg-card-inner-row" data-channel-name="' . h(mb_strtolower($channel['name'])) . '">
 						<input class="pg-checkbox" type="checkbox" name="agent_channels[]" value="' . (int)$channel['id'] . '" id="' . $id . '">
-						<label class="flex-grow-1 min-width-0 pg-list-row-title" for="' . $id . '"><i class="bi ' . (($channel['kind'] === 'private') ? 'bi-lock' : 'bi-hash') . ' me-1" aria-hidden="true"></i>' . h($channel['name']) . '</label>
+						<label class="flex-grow-1 min-w-0 pg-list-row-title" for="' . $id . '"><i class="bi ' . (($channel['kind'] === 'private') ? 'bi-lock' : 'bi-hash') . ' me-1" aria-hidden="true"></i>' . h($channel['name']) . '</label>
 						<a class="pg-button pg-button-ghost pg-button-sm" href="workspace.php?channel=' . (int)$channel['id'] . '" target="_blank" rel="noopener" aria-label="' . h(lang(array('string' => 'Open #{var:1}', 'vars' => $channel['name']))) . '">' . lang('Open the channel') . '<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
 					</div>';
 
@@ -160,7 +160,7 @@ function api_app_agent_tab_html($roles, $channels, $start_text) {
 					<div class="pg-card-inner mb-5">
 						<div class="pg-card-inner-row">
 							<span class="pg-icon-tile pg-tone-teal" aria-hidden="true"><i class="bi bi-robot"></i></span>
-							<div class="flex-grow-1 min-width-0">
+							<div class="flex-grow-1 min-w-0">
 								<div class="pg-list-row-title" id="da_title" data-new="' . h(lang('Make this application an agent')) . '"></div>
 								<div class="pg-text-meta" id="da_line" data-new="' . h(lang('An agent answers as itself in Workspace channels when its @handle is called. It signs in with this application\'s key and secret.')) . '"></div>
 							</div>
