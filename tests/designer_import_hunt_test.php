@@ -114,3 +114,26 @@ function test_designer_import_hunt_page_script_inside_text_runs_once()
 	pg_assert_same(1, count($page['js']));
 	pg_assert_contains('var y = 2026;', $page['js'][0]['content']);
 }
+
+function test_designer_import_hunt_blocked_entry_not_written()
+{
+	// The upload rule every other door asks: an entry it refuses is not a
+	// file of the import, under its own name or a defused one.
+	foreach (array('assets/shell.phtml', 'cgi-bin/run.cgi', 'x/web.config', 'a/.user.ini', 'p/page.asp', 'i/inc.php5', 'evil.php.png') as $path) {
+		pg_assert_same('blocked', pg_di_entry_type($path), $path);
+	}
+	pg_assert_same('html', pg_di_entry_type('about/index.HTML'));
+	pg_assert_same('css', pg_di_entry_type('css/site.css'));
+	pg_assert_same('js', pg_di_entry_type('js/app.js'));
+	pg_assert_same('asset', pg_di_entry_type('img/logo.svg'));
+	pg_assert_same('skip', pg_di_entry_type('__MACOSX/img/._logo.png'));
+	pg_assert_same('skip', pg_di_entry_type('src/site.scss'));
+}
+
+function test_designer_import_hunt_blocked_entry_warned()
+{
+	$src = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_import.php');
+
+	pg_assert_contains("pg_di_entry_type(\$norm)", $src);
+	pg_assert_contains("files of that type are not allowed", $src);
+}

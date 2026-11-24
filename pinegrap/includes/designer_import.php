@@ -111,17 +111,14 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
         $path = ($it === false) ? '' : (string)$it['name'];
         if ($path === '' || substr($path, -1) === '/') continue;
         $norm = pg_di_norm_path('', $path);
-        if ($norm === '' || pg_di_should_skip($norm)) continue;
-        $ext = strtolower(pathinfo($norm, PATHINFO_EXTENSION));
-        if ($ext === 'html' || $ext === 'htm' || $ext === 'xhtml') {
-            $entries[$norm] = array('type' => 'html', 'index' => $i);
-        } elseif ($ext === 'css') {
-            $entries[$norm] = array('type' => 'css', 'index' => $i);
-        } elseif ($ext === 'js') {
-            $entries[$norm] = array('type' => 'js', 'index' => $i);
-        } else {
-            $entries[$norm] = array('type' => 'asset', 'index' => $i);
+        if ($norm === '') continue;
+        $type = pg_di_entry_type($norm);
+        if ($type === 'skip') continue;
+        if ($type === 'blocked') {
+            $res['warnings'][] = lang(array('string' => 'Not uploaded, files of that type are not allowed: {var:1}', 'vars' => $norm));
+            continue;
         }
+        $entries[$norm] = array('type' => $type, 'index' => $i);
     }
     if (empty($entries)) {
         $zip->close();
@@ -1441,6 +1438,19 @@ function pg_di_should_skip($path)
     if (preg_match('#\.(?:psd|ai|sketch|fig|xd|scss|sass|less|map|md|txt|log|zip|rar|7z|exe|php|bat|sh)$#', $p)) return true;
     if (preg_match('#(?:^|/)(?:package(?:-lock)?\.json|composer\.(?:json|lock)|gulpfile\.js|webpack\.config\.js|\.htaccess)$#', $p)) return true;
     return false;
+}
+
+// What an archive entry is to the import: html, css, js, asset, skip (noise,
+// pg_di_should_skip()) or blocked (a name the upload rule refuses at every
+// other door, pg_upload_name_blocked()). Pure.
+function pg_di_entry_type($path)
+{
+    if (pg_di_should_skip($path)) return 'skip';
+    if (pg_upload_name_blocked(pg_basename($path))) return 'blocked';
+    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    if ($ext === 'html' || $ext === 'htm' || $ext === 'xhtml') return 'html';
+    if ($ext === 'css' || $ext === 'js') return $ext;
+    return 'asset';
 }
 
 // Normalise an archive path: forward slashes, no leading ./ or /, ../ resolved.
