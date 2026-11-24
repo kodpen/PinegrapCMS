@@ -24,9 +24,6 @@ module: legacy_to_designer, legacy_to_designer_plan, legacy_to_designer_run
 ## What did the sandbox show (#11227)?
 - home-1 from Edit Style arrives with its set ticked: 148 pages, 2 common and 113 designer regions become editable; 11 System regions and 83 custom layout pages stay code. auto-dialog's set converted: "Open the design" opened the new design; the measure went from 0 / 0 to 0 / 2 fully editable, the System region left on both (LE5).
 
-## Not covered yet?
-- "Page types that get a widget" under Becomes editable: the run has no such step until LE5.
-
 ## Tests?
 - `tests/legacy_editable_door_test.php`: stay targets, groups of a style and a set, rows, the door's choice, the run's designs, the wiring of the screen, the style list and Edit Style.
 

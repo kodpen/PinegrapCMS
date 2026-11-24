@@ -39,7 +39,7 @@ function test_ltdr_state_advance_through_the_steps()
 		$seen[] = $p['style'] . ':' . $p['step'];
 		$s = pg_ltd_state_advance($s);
 	}
-	pg_assert_same(array('1:regions', '1:design', '1:page_regions', '1:frame', '1:page_parts', '2:regions', '2:design', '2:page_regions', '2:frame', '2:page_parts'), $seen);
+	pg_assert_same(array('1:regions', '1:design', '1:page_regions', '1:frame', '1:page_parts', '1:types', '2:regions', '2:design', '2:page_regions', '2:frame', '2:page_parts', '2:types'), $seen);
 	pg_assert_same(array('done' => 2, 'total' => 2, 'step' => 'regions', 'style' => 0), pg_ltd_state_progress($s));
 }
 
@@ -103,8 +103,8 @@ function test_ltdr_wiring()
 
 function test_ltdr_set_steps()
 {
-	pg_assert_same(array('regions', 'design', 'page_regions', 'frame', 'page_parts'), pg_ltd_steps());
-	pg_assert_same(array('set_design', 'regions', 'set_pages', 'frame', 'page_parts'), pg_ltd_steps(true));
+	pg_assert_same(array('regions', 'design', 'page_regions', 'frame', 'page_parts', 'types'), pg_ltd_steps());
+	pg_assert_same(array('set_design', 'regions', 'set_pages', 'frame', 'page_parts', 'types'), pg_ltd_steps(true));
 }
 
 function test_ltdr_state_new_with_sets()
@@ -134,8 +134,8 @@ function test_ltdr_state_advance_through_a_set()
 		$seen[] = $p['style'] . ':' . $p['step'];
 		$s = pg_ltd_state_next($s);
 	}
-	pg_assert_same(array('5:set_design', '5:regions', '5:set_pages', '5:frame', '5:page_parts', '6:set_design', '6:regions', '6:set_pages', '6:frame', '6:page_parts',
-	                     '9:regions', '9:design', '9:page_regions', '9:frame', '9:page_parts'), $seen);
+	pg_assert_same(array('5:set_design', '5:regions', '5:set_pages', '5:frame', '5:page_parts', '5:types', '6:set_design', '6:regions', '6:set_pages', '6:frame', '6:page_parts', '6:types',
+	                     '9:regions', '9:design', '9:page_regions', '9:frame', '9:page_parts', '9:types'), $seen);
 }
 
 function test_ltdr_old_cursor_at_frame_goes_on_to_page_parts()
@@ -144,6 +144,8 @@ function test_ltdr_old_cursor_at_frame_goes_on_to_page_parts()
 	$s['step'] = 'frame';
 	$s = pg_ltd_state_next($s);
 	pg_assert_same(array(0, 'page_parts'), array($s['index'], $s['step']));
+	$s = pg_ltd_state_next($s);
+	pg_assert_same(array(0, 'types'), array($s['index'], $s['step']));
 	$s = pg_ltd_state_next($s);
 	pg_assert_same(array(1, 'regions'), array($s['index'], $s['step']));
 }
@@ -218,7 +220,7 @@ function test_ltdr_set_design_row()
 function test_ltdr_set_wiring()
 {
 	$screen = (string)file_get_contents(PG_FUNCTIONS_DIR . '/legacy_to_designer.php');
-	pg_assert_same(true, strpos($screen, 'pg_ltd_run_start(array_keys($chosen), $user, array_keys($chosen_sets))') !== false, 'Convert passes the chosen sets');
+	pg_assert_same(true, strpos($screen, 'pg_ltd_run_start(array_keys($chosen), $user, array_keys($chosen_sets), $starters)') !== false, 'Convert passes the chosen sets');
 	pg_assert_same(true, strpos($screen, '<input type="hidden" name="sets[]" value="') !== false, 'the Convert form carries the sets the dry run did not skip');
 	pg_assert_same(false, strpos($screen, 'A set is shown as a dry run only'), 'no dry-run-only note');
 	$run = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');

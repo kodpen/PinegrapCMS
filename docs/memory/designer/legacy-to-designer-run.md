@@ -16,6 +16,7 @@ module: legacy_to_designer_run
   - `page_regions`: page regions still in a page's tree (a page that had its own, a folder page) get the blocks spliced in; skipped when some page region sits in a shared component.
   - `frame`: the frame's parts (`pg_ltd_frame_rows()`): their designer regions through `pg_designer_region_component()`, one widget row per region (login, cart and comments block too) through `pg_ltd_widget_row()`, spliced into each part row at once.
   - `page_parts`: the same in each moved page's tree and in the components the run made (`legacy-page-parts.md`).
+  - `types`: a page's own System region becomes its page type's widget (`legacy-types-step.md`).
 - A refused or missing style is skipped with its reason; a style already a visual design skips `regions` and `design`. A step that skips its style marks `skip` and `pg_ltd_state_next()` moves on; before LG5 a failed `design` also skipped the next style's `regions`.
 
 ## Where is its state, who works it?

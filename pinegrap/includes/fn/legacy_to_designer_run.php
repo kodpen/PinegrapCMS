@@ -19,6 +19,11 @@
  *   5. page_parts    the same in each moved page's own tree (its common
  *                    regions placed as their components too), then in the
  *                    trees of the components the run made, one level a pass
+ *   6. types         each moved page's own System region whose page type a
+ *                    widget stands in for, drawn from the stock layout with
+ *                    every setting held, made that widget: the starter
+ *                    layout the screen built in the browser at Convert, the
+ *                    page's settings put in
  *
  * A set of styles (pg_ltd_sets()) moves into one new Legacy design instead,
  * each of its styles in turn:
@@ -31,10 +36,12 @@
  *                    the classic style row stays as it is
  *   4. frame         as above
  *   5. page_parts    as above, on the pages the style moved to the design
+ *   6. types         as above
  *
  * The cursor is data/temp/legacy_to_designer.json, written after every
  * step; a lost one ends the run (every step skips what an earlier run
- * wrote, so starting again is safe). The report screen's short requests and
+ * wrote, so starting again is safe). The starter layouts posted with
+ * Convert are kept beside it (pg_ltd_starters_path()) until the run ends. The report screen's short requests and
  * the general job's tick (pg_ltd_job_tick()) work the same pass, one at a
  * time under GET_LOCK('pg_ltd', 0). A finished run is kept as one JSON
  * file in data/legacy_to_designer/.
@@ -55,6 +62,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_plan.php');
 define('PG_LTD_REPORT_LINES', 2000);
 // Levels of components the page_parts step enters below the pages.
 define('PG_LTD_PART_LEVELS', 6);
+// Bytes of starter layouts Convert may post, all kinds together.
+define('PG_LTD_STARTERS_BYTES', 8388608);
 
 /**
  * The steps of one style, in order: a style moving alone, or one of a set.
@@ -64,7 +73,7 @@ define('PG_LTD_PART_LEVELS', 6);
  */
 function pg_ltd_steps($set = false)
 {
-    return $set ? array('set_design', 'regions', 'set_pages', 'frame', 'page_parts') : array('regions', 'design', 'page_regions', 'frame', 'page_parts');
+    return $set ? array('set_design', 'regions', 'set_pages', 'frame', 'page_parts', 'types') : array('regions', 'design', 'page_regions', 'frame', 'page_parts', 'types');
 }
 
 /**
@@ -332,6 +341,135 @@ function pg_ltd_reports($limit = 10)
     return $out;
 }
 
+/**
+ * The starter layouts posted with Convert, kept for the kinds the dry run
+ * listed: a tree rooted at `root` that places no shared component, at most
+ * PG_LTD_STARTERS_BYTES in all. Anything else, and a kind not listed, is
+ * dropped. The run still passes each kept tree through the editor's own
+ * tree check (pg_ltd_run_start()).
+ *
+ * Pure: no query.
+ *
+ * @param mixed $posted  the posted JSON text (kind => tree)
+ * @param array $kinds   pg_ltd_plan_type_kinds()
+ * @return array  kind => tree
+ */
+function pg_ltd_starters_clean($posted, $kinds)
+{
+    if (!is_string($posted) || $posted === '' || strlen($posted) > PG_LTD_STARTERS_BYTES) return array();
+    $received = json_decode($posted, true);
+    if (!is_array($received)) return array();
+    $out = array();
+    foreach ((array)$kinds as $kind) {
+        $kind = (string)$kind;
+        $tree = $received[$kind] ?? null;
+        if (!is_array($tree) || (string)($tree['type'] ?? '') !== 'root') continue;
+        if (pg_ltd_shared_ids($tree)) continue;
+        $out[$kind] = $tree;
+    }
+    return $out;
+}
+
+/**
+ * The starter layouts of a run, kind => tree, kept beside the cursor so a
+ * later tick, a run taken up again or another browser needs no second post.
+ */
+function pg_ltd_starters_path()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/legacy_to_designer_starters.json';
+}
+
+/**
+ * The running pass's starter layouts, read once a request.
+ *
+ * @return array  kind => tree
+ */
+function pg_ltd_starters_read()
+{
+    static $read = null;
+    if ($read === null) {
+        $read = json_decode((string)@file_get_contents(pg_ltd_starters_path()), true);
+        if (!is_array($read)) $read = array();
+    }
+    return $read;
+}
+
+/**
+ * The move screen's Convert, when the dry run converts page types: the
+ * editor script is loaded then (not with the screen), its texts asked for
+ * (step=i18n), StyleDesigner.starterTree() builds each kind's starter and
+ * the trees go with the form. A kind it cannot build is left out, so its
+ * pages keep their System region; when the editor cannot be loaded the
+ * screen says so and the next press converts without the page types.
+ *
+ * @return string  a <script> block for the form #ltd_convert
+ */
+function pg_ltd_convert_script()
+{
+    $data = json_encode(array(
+        'scripts' => array_values(pg_js_bundle_urls('assets/js/style_designer.min.js')),
+        'preparing' => lang('Preparing the page types\' layouts…'),
+        'failed' => lang('The page types\' layouts could not be built in this browser. Press Convert again to move without them: those pages keep their System region.'),
+    ), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    return '
+<script>
+(function () {
+    var o = ' . $data . ';
+    var form = document.getElementById("ltd_convert");
+    if (!form) return;
+    var kinds = [];
+    try { kinds = JSON.parse(form.getAttribute("data-kinds") || "[]"); } catch (error) { kinds = []; }
+    var note = document.getElementById("ltd_convert_note");
+    var button = form.querySelector("button[type=submit]");
+    var plain = false;
+    var send = function (starters) {
+        form.elements.starters.value = starters ? JSON.stringify(starters) : "";
+        form.submit();
+    };
+    var failed = function () {
+        plain = true;
+        button.disabled = false;
+        note.textContent = o.failed;
+    };
+    var build = function () {
+        var starters = {};
+        try {
+            for (var i = 0; i < kinds.length; i++) {
+                var tree = StyleDesigner.starterTree(kinds[i]);
+                if (tree) starters[kinds[i]] = tree;
+            }
+        } catch (error) { failed(); return; }
+        send(starters);
+    };
+    var ready = function () { return (typeof StyleDesigner !== "undefined") && !!StyleDesigner.starterTree; };
+    var load = function (index) {
+        if (ready()) { build(); return; }
+        if (index >= o.scripts.length) { failed(); return; }
+        var script = document.createElement("script");
+        script.src = o.scripts[index];
+        script.onload = function () { load(index + 1); };
+        script.onerror = failed;
+        document.head.appendChild(script);
+    };
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        if (plain || !kinds.length) { send(null); return; }
+        button.disabled = true;
+        note.textContent = o.preparing;
+        var body = new URLSearchParams();
+        body.set("ajax", "1");
+        body.set("step", "i18n");
+        body.set("token", form.elements.token.value);
+        fetch("legacy_to_designer.php", {method: "POST", body: body, credentials: "same-origin"}).then(function (r) { return r.json(); }).then(function (a) {
+            if (!a || !a.ok) { failed(); return; }
+            if (typeof window.sdDesign === "undefined") window.sdDesign = { i18n: (a.i18n && typeof a.i18n === "object") ? a.i18n : {} };
+            load(0);
+        }, failed);
+    });
+})();
+</script>';
+}
+
 // ── The run ─────────────────────────────────────────────────────────────
 
 /**
@@ -343,9 +481,11 @@ function pg_ltd_reports($limit = 10)
  * @param array $style_ids  styles chosen alone
  * @param array $user
  * @param array $set_keys   pg_ltd_sets() keys
+ * @param array $starters   pg_ltd_starters_clean(): the starter layouts of
+ *                          the page types the types step converts
  * @return string  '' when started, else the reason
  */
-function pg_ltd_run_start($style_ids, $user, $set_keys = array())
+function pg_ltd_run_start($style_ids, $user, $set_keys = array(), $starters = array())
 {
     if ((int)$user['role'] > 1) return lang('Only a designer can open a classic style in the Page Design Studio.');
     // Pages moving to or from a trial design (legacy_bootstrap_move.php) hold
@@ -366,6 +506,16 @@ function pg_ltd_run_start($style_ids, $user, $set_keys = array())
     foreach (db_items("SELECT style_id, style_name FROM style WHERE style_id IN (" . implode(',', $state['styles']) . ")") as $r) {
         $state['names'][(string)(int)$r['style_id']] = (string)$r['style_name'];
     }
+    // Each starter passes the check a tree saved from the editor passes; one
+    // that fails is dropped and its pages keep their System region.
+    $kept = array();
+    foreach ((array)$starters as $kind => $tree) {
+        $check = _validate_and_clean_tree_json(json_encode($tree));
+        $clean = $check['ok'] ? json_decode((string)$check['cleaned_json'], true) : null;
+        if (is_array($clean)) $kept[(string)$kind] = $clean;
+    }
+    @unlink(pg_ltd_starters_path());
+    if ($kept) @file_put_contents(pg_ltd_starters_path(), pg_designer_tree_encode($kept));
     pg_ltd_state_write($state);
     return is_file(pg_ltd_state_path()) ? '' : lang('The move could not be started: data/temp is not writable.');
 }
@@ -417,6 +567,7 @@ function pg_ltd_run($budget)
     if (pg_ltd_state_done($state)) {
         pg_ltd_report_keep($state);
         @unlink(pg_ltd_state_path());
+        @unlink(pg_ltd_starters_path());
         $c = $state['counts'];
         log_activity(lang(array('string' => 'the move to the Page Design Studio ended: {var:1} styles, {var:2} pages, {var:3} components, {var:4} widgets, {var:5} skipped, {var:6} failed',
             'vars' => array($c['styles'], $c['pages'], $c['components'], $c['widgets'], $c['skipped'], $c['failed']))), (string)$state['username']);
@@ -502,6 +653,10 @@ function pg_ltd_run_step($state, $user)
 
         case 'page_parts':
             $state = pg_ltd_run_page_parts($state, $row, $user, $set_at);
+            break;
+
+        case 'types':
+            $state = pg_ltd_run_types($state, $row, $user, $set_at, pg_ltd_starters_read());
             break;
     }
     return pg_ltd_state_next($state);
@@ -739,22 +894,25 @@ function pg_ltd_run_widgets($state, $targets, $row, $user, &$made)
  * same settings under the style's widget name (or that name with the
  * server's " [n]"), else a new one.
  *
- * @param array  $target      a pg_ltd_part_targets() widget entry
- * @param string $style_name
+ * @param array  $target      a pg_ltd_part_targets() widget entry, or for a
+ *                            page type array('kind')
+ * @param string $style_name  the style's name, or the page's for a page type
  * @param array  $user
  * @param int    $since       the run's start
+ * @param array|null $config  the settings, null for pg_ltd_widget_config()
+ * @param array|null $tree    the layout, null for pg_ltd_widget_tree()
  * @return array|null  'id', 'name', 'created'; null when it cannot be written
  */
-function pg_ltd_widget_row($target, $style_name, $user, $since)
+function pg_ltd_widget_row($target, $style_name, $user, $since, $config = null, $tree = null)
 {
-    $cfg = json_encode(pg_ltd_widget_config($target));
+    $cfg = json_encode(($config !== null) ? $config : pg_ltd_widget_config($target));
     $base = pg_ltd_widget_name($style_name, $target['kind']);
     $have = db_item("SELECT id, name FROM shared_components
                      WHERE system_region_config = '" . e($cfg) . "' AND created_at >= '" . (int)$since . "'
                        AND (name = '" . e($base) . "' OR name LIKE '" . e(addcslashes($base, '\\%_')) . " [%')
                      ORDER BY id ASC LIMIT 1");
     if (is_array($have)) return array('id' => (int)$have['id'], 'name' => (string)$have['name'], 'created' => false);
-    $tree_json = pg_designer_tree_encode(pg_ltd_widget_tree($target['kind']));
+    $tree_json = pg_designer_tree_encode(($tree !== null) ? $tree : pg_ltd_widget_tree($target['kind']));
     if ($tree_json === '') return null;
     $name = _sc_unique_name($base);
     $now = time();
@@ -815,6 +973,93 @@ function pg_ltd_run_page_parts($state, $row, $user, $set_at)
     $start = array();
     foreach (array_unique(array_map('intval', $placed)) as $sid) $start[$sid] = array();
     return pg_ltd_run_component_parts($state, $row, $user, $made, $start);
+}
+
+/**
+ * The page types' step, the server twin of "Convert to design elements" on
+ * each moved page's own System region: a page whose type a widget stands in
+ * for, drawn from the stock layout with every setting held
+ * (pg_ltd_type_target() 'convert'), gets a widget of that kind in the
+ * region's place. Its layout is the starter built in the browser at Convert
+ * with the page's layout settings put in (pg_layout_widget_tree_apply()),
+ * its settings the page type's (pg_layout_widget_seed()). A kind with no
+ * kept starter leaves its page as it is, listed; so does a page somebody
+ * holds. One widget a page, found again by a resumed step.
+ *
+ * @param int   $set_at    the set the style moves with, -1 alone
+ * @param array $starters  kind => tree (pg_ltd_starters_read())
+ */
+function pg_ltd_run_types($state, $row, $user, $set_at, $starters)
+{
+    $style_id = (int)$row['style_id'];
+    $design_id = ($set_at >= 0) ? (int)$state['sets'][$set_at]['design'] : $style_id;
+    if ($design_id <= 0) return $state;
+    $pages = array();
+    $trees = array();
+    foreach (pg_designer_load_pages($design_id, '', true) as $page) {
+        if ($set_at >= 0 && (int)($state['origins'][(string)(int)$page['page_id']][0] ?? 0) !== $style_id) continue;
+        $tree = json_decode((string)$page['tree_json'], true);
+        if (!is_array($tree) || !pg_ltd_tree_has_own_system($tree)) continue;
+        $pages[(int)$page['page_id']] = $page;
+        $trees[(int)$page['page_id']] = $tree;
+    }
+    if (!$pages) return $state;
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+    $hosted = pg_hosted();
+    foreach (pg_classic_type_facts(array_keys($pages)) as $page_id => $facts) {
+        $page = $pages[$page_id];
+        $target = pg_ltd_type_target((string)$page['page_name'], $facts, $hosted);
+        if ($target['state'] !== 'convert') continue;
+        $widget = pg_ltd_type_widget($target, $facts, $starters);
+        if ($widget === null) {
+            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => '"{var:1}" keeps its System region: its widget\'s layout did not come with Convert.', 'vars' => array($page['page_name']))));
+            continue;
+        }
+        if (!pg_collab_may_edit_page('', (int)$page_id)) {
+            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the Page Design Studio.', 'vars' => array($page['page_name']))));
+            continue;
+        }
+        $w = pg_ltd_widget_row(array('kind' => $target['kind']), (string)$page['page_name'], $user, (int)($state['started'] ?? 0), $widget['cfg'], $widget['tree']);
+        if (!is_array($w)) {
+            $state = pg_ltd_state_line($state, 'failed', lang(array('string' => 'The widget for "{var:1}" could not be saved.', 'vars' => array($page['page_name']))));
+            continue;
+        }
+        $count = 0;
+        $ref = pg_di_mk('shared_ref', array('sharedId' => (int)$w['id'], 'sharedName' => (string)$w['name']));
+        $new_tree = pg_ltd_type_splice($trees[$page_id], $ref, $count);
+        if ($count === 0) continue;
+        $page['tree_json'] = pg_designer_tree_encode($new_tree);
+        $saved = pg_ltd_save_page($design_id, $page, $user);
+        if (!$saved['ok']) {
+            $state = pg_ltd_state_line($state, 'failed', $page['page_name'] . ': ' . implode(' ', (array)$saved['errors']));
+            continue;
+        }
+        $state = pg_ltd_state_line($state, 'made', lang(array('string' => 'The page "{var:1}" is now drawn by the widget {var:2}.', 'vars' => array($page['page_name'], $w['name']))), 'widgets');
+    }
+    return $state;
+}
+
+/**
+ * The widget a 'convert' page type target becomes: its settings (the kind
+ * and pg_layout_widget_seed()'s) and the kind's posted starter with the
+ * page's layout settings put in (pg_layout_widget_tree_apply()). Null when
+ * no starter of the kind was kept: the page keeps its System region, never
+ * an empty widget.
+ *
+ * Pure: no query.
+ *
+ * @param array $target    pg_ltd_type_target()
+ * @param array $facts     the page's pg_classic_type_facts() entry
+ * @param array $starters  kind => tree
+ * @return array|null  'cfg', 'tree'
+ */
+function pg_ltd_type_widget($target, $facts, $starters)
+{
+    $kind = (string)($target['kind'] ?? '');
+    if ($kind === '' || !isset($starters[$kind]) || !is_array($starters[$kind])) return null;
+    return array('cfg' => array('regionType' => $kind) + (array)($facts['cfg'] ?? array()),
+                 'tree' => pg_layout_widget_tree_apply($starters[$kind], (array)($facts['tree'] ?? array())));
 }
 
 /**
