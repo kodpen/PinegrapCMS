@@ -57,7 +57,7 @@ function test_automation_flows_bell_ladder_without_flows()
 // button follow.
 function test_automation_flows_bell_wiring()
 {
-	pg_assert_contains("return pg_notification_off_line(\$target, (int) (\$notification['reference_id'] ?? 0));", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_visible'), 'the ladder asks the line');
+	pg_assert_contains("return pg_notification_off_line(\$target, (int) (\$notification['reference_id'] ?? 0))\n\t\t\t&& pg_notification_ws_line_open(", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_visible'), 'the ladder asks the line');
 	pg_assert_contains(', target_user_id, reference_id', automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_ladder_columns'), 'the columns carry the line');
 	pg_assert_contains("(\$workspace_on || pg_notification_off_lines_on())", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_display'), 'described while flows run');
 	pg_assert_contains("pg_notification_off_lines_on())", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_mark_read'), 'read in the inbox too');
