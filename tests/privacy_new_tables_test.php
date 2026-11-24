@@ -64,3 +64,32 @@ function test_privacy_rule_activity_reads_the_new_tables()
 	pg_assert_contains('pg_privacy_rule_activity_checks($scope)', $active, 'the rule reads the list');
 	pg_assert_contains('pg_schema_has($check[0], $check[1])', $active, 'a table not made yet is skipped');
 }
+
+// Erasing a volunteer gives up their coming places first, as their own
+// Cancel does, so the waitlist moves up and a swap asked of the place ends.
+function test_privacy_erase_volunteer_frees_coming_places()
+{
+	pg_assert_true(function_exists('_pg_privacy_erase_apply_volunteer_signups'), 'the volunteer_signups entry has its own write');
+
+	$source = privacy_new_tables_test_source('_pg_privacy_erase_apply_volunteer_signups');
+
+	pg_assert_contains("includes/fn/volunteer_signup.php", $source, 'the sign-up module is loaded');
+	pg_assert_contains('pg_volunteer_give_up_rows(', $source, 'only places on shifts not started');
+	pg_assert_contains("GET_LOCK('", $source, 'under the shift\'s lock');
+	pg_assert_contains("RELEASE_LOCK('", $source);
+	pg_assert_contains('_pg_volunteer_signup_give_up(', $source, 'given up as a cancel: waitlist and swaps');
+	pg_assert_contains("pg_volunteer_announce('shift.signed_up'", $source, 'a volunteer moved up is announced');
+
+	$give = strpos($source, '_pg_volunteer_signup_give_up(');
+	$write = strpos($source, '_pg_privacy_erase_write(');
+	pg_assert_true(($give !== false) && ($write !== false) && ($give < $write), 'given up first, then deleted');
+
+	$now = '2026-11-24 12:00:00';
+	$rows = array(
+		array('id' => 1, 'state' => 'signed', 'start' => '2026-11-25 09:00:00'),
+		array('id' => 2, 'state' => 'waiting', 'start' => '2026-11-26 09:00:00'),
+		array('id' => 3, 'state' => 'signed', 'start' => '2026-11-23 09:00:00'),
+		array('id' => 4, 'state' => 'cancelled', 'start' => '2026-11-25 09:00:00'),
+	);
+	pg_assert_same(array(1, 2), array_column(pg_volunteer_give_up_rows($rows, $now), 'id'), 'coming signed and waiting places only');
+}
