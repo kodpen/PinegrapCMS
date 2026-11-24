@@ -169,6 +169,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_approval.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_verdicts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/security_scan.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/security_scan_content.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/security_scan_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_review_mails.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
