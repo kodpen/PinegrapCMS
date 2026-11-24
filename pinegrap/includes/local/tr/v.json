@@ -509,6 +509,7 @@
     "Visitors and staff sign in with Google": "Ziyaretçiler ve çalışanlar Google ile giriş yapar",
     "Visitors and staff sign in with Microsoft": "Ziyaretçiler ve çalışanlar Microsoft ile giriş yapar",
     "Visitors and staff sign in with this application. Whether the button is shown is switched in Site Settings › Accounts and sign-in. Google features use it too until an application of their own is saved below.": "Ziyaretçiler ve ekip bu uygulamayla oturum açar. Düğmenin gösterilip gösterilmeyeceği Site Ayarları › Hesaplar ve Giriş bölümünden açılıp kapatılır. Aşağıya kendi uygulamaları kaydedilene kadar Google özellikleri de bunu kullanır.",
+    "Visitors are sent to a host the site does not otherwise use.": "Ziyaretçiler, sitenin başka hiçbir yerde kullanmadığı bir sunucuya yönlendiriliyor.",
     "Visitors by country": "Ülkeye göre ziyaretçiler",
     "Visitors by landing page": "Giriş sayfasına göre ziyaretçiler",
     "Visitors by source": "Kaynağa göre ziyaretçiler",
