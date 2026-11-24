@@ -286,10 +286,35 @@ if ($erp_document === false) {
         }
 
         if (!$ws_legacy) {
-            // The folder's private access stays in charge; a public channel's
-            // file is simply open to the whole team as well.
-            if ($ws_member && ((string) $ws_row['kind'] === 'public')) {
+            // A channel's readers open its file (a public channel's: the
+            // whole team). Anyone else is left to the folder's private
+            // access, which staff pass for every folder: they are refused.
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/workspace_file_gate.php');
+
+            $ws_channel_id = (int) $ws_row['channel_id'];
+            $ws_in = false;
+            $ws_audit = false;
+
+            if ($ws_member && ((string) $ws_row['kind'] !== 'public')) {
+                $ws_in_result = mysqli_query(db::$con, "SELECT 1 FROM ws_channel_members
+                    WHERE channel_id = '" . $ws_channel_id . "' AND user_id = '" . (int) $ws_user['id'] . "'");
+                $ws_in = ($ws_in_result !== false) && (mysqli_num_rows($ws_in_result) > 0);
+
+                if (!$ws_in && ($ws_role < 3) && !empty($_SESSION['software']['ws_audit'][$ws_channel_id])) {
+                    $ws_staff = mysqli_query(db::$con, "SELECT 1 FROM ws_channel_members m
+                        JOIN user u ON u.user_id = m.user_id
+                        WHERE m.channel_id = '" . $ws_channel_id . "' AND u.user_role < 3 LIMIT 1");
+
+                    $ws_audit = ($ws_staff !== false) && (mysqli_num_rows($ws_staff) === 0);
+                }
+            }
+
+            $ws_verdict = pg_ws_channel_file_verdict((string) $ws_row['kind'], $ws_role, $ws_member, $ws_in, $ws_audit);
+
+            if ($ws_verdict === 'open') {
                 $workspace_file = true;
+            } elseif ($ws_verdict === 'refuse') {
+                output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
             }
         } else {
             $workspace_file = true;
@@ -318,6 +343,56 @@ if ($erp_document === false) {
             }
 
             if (!$ws_allowed) {
+                output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
+            }
+        }
+    }
+}
+
+// A file of a note's folder that no public channel opened to the team: the
+// folder's private access follows the note's readers (notes.php), but staff
+// pass every private folder, and a note gives them nothing by rank. Staff
+// get it only while they read the note: its owner, a person it is shared
+// with, a member of a channel it is shared in, or for a channel's own note
+// a member of that channel. Before the notes tables the query fails and
+// nothing changes.
+if (($erp_document === false) && ($workspace_file === false) && ((int) $file['folder_id'] > 0)) {
+    $ws_note_result = @mysqli_query(db::$con, "SELECT id, user_id, owner_channel_id FROM ws_notes
+        WHERE folder_id = '" . (int) $file['folder_id'] . "' AND folder_id > 0 LIMIT 1");
+
+    // Before the channel notes step there is no owner_channel_id.
+    if ($ws_note_result === false) {
+        $ws_note_result = @mysqli_query(db::$con, "SELECT id, user_id, 0 AS owner_channel_id FROM ws_notes
+            WHERE folder_id = '" . (int) $file['folder_id'] . "' AND folder_id > 0 LIMIT 1");
+    }
+
+    $ws_note = ($ws_note_result !== false) ? mysqli_fetch_assoc($ws_note_result) : null;
+
+    if (is_array($ws_note)) {
+        if (defined('USER_LOGGED_IN') == false) {
+            initialize_user();
+        }
+
+        if ((USER_LOGGED_IN == true) && ((int) USER_ROLE < 3)) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/workspace_file_gate.php');
+
+            $ws_me = (int) USER_ID;
+            $ws_note_id = (int) $ws_note['id'];
+            $ws_owner_channel = (int) $ws_note['owner_channel_id'];
+
+            if ($ws_owner_channel > 0) {
+                $ws_reader_result = mysqli_query(db::$con, "SELECT 1 FROM ws_channel_members
+                    WHERE channel_id = '" . $ws_owner_channel . "' AND user_id = '" . $ws_me . "' LIMIT 1");
+            } else {
+                $ws_reader_result = ((int) $ws_note['user_id'] === $ws_me) ? true : mysqli_query(db::$con, "SELECT 1 FROM ws_note_shares s
+                    LEFT JOIN ws_channel_members m ON m.channel_id = s.channel_id AND s.channel_id > 0 AND m.user_id = '" . $ws_me . "'
+                    WHERE s.note_id = '" . $ws_note_id . "' AND (s.user_id = '" . $ws_me . "' OR m.user_id IS NOT NULL)
+                    LIMIT 1");
+            }
+
+            $ws_reader = ($ws_reader_result === true) || (($ws_reader_result !== false) && (mysqli_num_rows($ws_reader_result) > 0));
+
+            if (pg_ws_note_file_verdict((int) USER_ROLE, $ws_reader) === 'refuse') {
                 output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
             }
         }
