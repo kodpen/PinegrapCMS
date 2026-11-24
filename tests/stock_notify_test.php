@@ -221,10 +221,10 @@ function test_stock_notify_heard_never_breaks_the_writer()
 // Every announcer of inventory.changed reaches the listener.
 function test_stock_notify_heard_from_every_announcer()
 {
-	pg_assert_contains('pg_stock_notify_heard(', pg_test_function_source('pg_announce'), 'pg_announce: the site writers, the Workspace, ERP documents');
+	pg_assert_contains('pg_stock_notify_heard(', pg_test_function_source('pg_announce_listeners'), 'pg_announce: the site writers, the Workspace, ERP documents');
 
 	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/inventory.php');
-	$enqueue = strpos($api, "api_webhook_enqueue('inventory.changed'");
+	$enqueue = strpos($api, "pg_announce('inventory.changed'");
 	$heard = strpos($api, 'pg_stock_notify_heard(');
 
 	pg_assert_true(($enqueue !== false) && ($heard !== false) && ($heard > $enqueue), 'the stock API, after its announcement');

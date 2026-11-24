@@ -6,7 +6,7 @@ module: feedback_sends
 
 ## Which events queue a survey?
 - `pg_announce()` hands every event to `pg_feedback_heard()` (`includes/fn/feedback_sends.php`, loaded everywhere). `pg_feedback_event_record()`: `booking.completed` (booking), `ticket.checked_in` (ticket), `course.completed` (course id), `form.submitted` (submission), `order.delivered` (order), `workspace.mail.closed` (conversation), `queue.served` (touchpoint `queue`, record type `queue`, the walk-in number).
-- `custom_form.php` queues `form.submitted` with `api_webhook_enqueue()`, so it calls `pg_feedback_heard()` itself.
+- `custom_form.php` queues `form.submitted` with `pg_announce()` without its listeners, so it calls `pg_feedback_heard()` itself.
 - Each switched-on, not archived survey of the touchpoint whose filter takes the record (`pg_feedback_filter_takes()`: service, event, course, form page, mail box, queue place; 0 any) gets a row. A failure is logged, never thrown to the announcing code.
 
 ## What is stored at the queue?

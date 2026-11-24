@@ -5,8 +5,8 @@
  * ERP - telling the outside world what the module just did.
  *
  * Every event the module announces goes through erp_event(), which hands it to
- * the API's webhook queue and never delivers anything itself: a slow
- * subscriber must not hold up a receipt. The event names are declared in
+ * pg_announce() and so to the API's webhook queue and never delivers anything
+ * itself: a slow subscriber must not hold up a receipt. The event names are declared in
  * includes/erp/api.php (erp_webhook_events()); a name that is not declared
  * there cannot be subscribed to, and the queue drops it without a word.
  *
@@ -53,27 +53,10 @@ function erp_event($event, $payload)
         erp_alert_event($event, $payload);
     }
 
-    // The Workspace hears the ones a flow may start on, with the API or
-    // without it (pg_event_workspace_events()).
-    if (function_exists('pg_event_record')) {
-        pg_event_record((string) $event, (array) $payload);
-    }
-
-    $webhooks = PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php';
-
-    if (!function_exists('api_webhook_enqueue')) {
-        if (!file_exists($webhooks)) {
-            return 0;
-        }
-        require_once($webhooks);
-    }
-
-    if (!function_exists('api_webhook_enqueue')) {
-        return 0;
-    }
-
-    // Recorded above already: the Workspace must not keep the event twice.
-    return (int) api_webhook_enqueue((string) $event, (array) $payload, function_exists('pg_event_record'));
+    // The Workspace record and the webhook queue, through the door every
+    // announced moment takes (includes/fn/events.php), without its in-process
+    // listeners.
+    return (int) pg_announce((string) $event, (array) $payload, array('listeners' => false));
 }
 
 /**

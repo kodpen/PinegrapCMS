@@ -21,7 +21,7 @@ description: People and content webhook events a flow can start on (PR #7416): u
 - `pg_event_workspace_payload()` in `pg_event_record()`: a consent's nested `consent` laid flat as `consent_channel`, `_purpose`, `_status`, `_source`; a bounce's `suppressed` as 0/1 (a yes/no output reads as '') and its `contact_id`. The webhook's body stays as announced.
 
 ## Does the API's page update reach the Workspace?
-- Yes, through `api_webhook_enqueue()`: it calls `pg_event_record()` itself unless `$recorded` says `pg_announce()` already did. A second `pg_event_record()` beside it would keep the event twice and start each waiting flow twice.
+- Yes, through `pg_announce()`, which calls `pg_event_record()` itself. A second `pg_event_record()` beside it would keep the event twice and start each waiting flow twice.
 
 ## What do the start box's outputs give?
 - Single values only: a user's username, email, role; the consent fields; a bounce's address, kind, source, suppressed, contact_id, campaign_id; a campaign's id, channel, type; a page's name; a reservation's repeat, quantity, order id and number, contact_id; credit's customer_id, account_id, kind, reason, expires_at. Amounts in minor units are not offered.

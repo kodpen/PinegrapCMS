@@ -406,14 +406,14 @@ function mp_order_apply_tracking($order_id, $package, $account = null) {
 	// listening for shipments has to hear about a parcel whichever side
 	// recorded it. The guard above means this runs once per number, not once
 	// per poll.
-	api_webhook_enqueue('order.shipped', array(
+	pg_announce('order.shipped', array(
 		'id'               => (int)$order_id,
 		'order_number'     => db_value("SELECT order_number FROM orders WHERE id = '" . e((int)$order_id) . "' LIMIT 1"),
 		'ship_to_id'       => (int)$ship_to_id,
 		'tracking_numbers' => array($recorded['number']),
 		'ship_date'        => null,
 		'parcels'          => pg_shipment_api_parcels((int)$ship_to_id, null, $recorded['number'])
-	) + pg_shipment_event_values(pg_shipment_mail_fields(array((int)$ship_to_id))));
+	) + pg_shipment_event_values(pg_shipment_mail_fields(array((int)$ship_to_id))), array('listeners' => false));
 
 	$ships_itself = false;
 

@@ -715,7 +715,7 @@ function api_files_create($params) {
 		'vars'   => array($file_name, $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
-	api_webhook_enqueue('file.created', array('id' => $id, 'name' => $file_name));
+	pg_announce('file.created', array('id' => $id, 'name' => $file_name), array('listeners' => false));
 
 	$row = api_row(api_file_select() . " WHERE files.id = '" . $id . "' LIMIT 1");
 

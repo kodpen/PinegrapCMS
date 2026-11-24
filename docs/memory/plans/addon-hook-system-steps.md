@@ -10,7 +10,7 @@ description: Steps of plans/addon-hook-system.md, started 2026-11-15: AH1 the ce
 ## Which steps are there?
 - AH1 (S, no product code) Done (#9653). Census, into `plans/addon-hook-system-census.md`, more files past 4 KB: every moment `includes/fn/events.php` announces and where it is fired; the driver interfaces an add-on registers through (payments, shipping, marketplace connectors, SMS, e-document, jobs) and how a shipped driver is found today; the core screens where a UI slot would sit; what file integrity, backup, System Status and the migration runner must learn.
 - AH2 (architect) Done: the design note `plans/addon-hook-system-design.md`.
-- AH3 (S) One door: the direct `api_webhook_enqueue()` and `erp_event()` calls go through `pg_announce()`; no behaviour change, the webhook tests prove it.
+- AH3 (S) Done (#11479). One door: the direct `api_webhook_enqueue()` and `erp_event()` calls go through `pg_announce()`; no behaviour change, the webhook tests prove it.
 - AH4 (M) after the owner's yes to the table: `addons` by a migration step, the registry (folders found, manifest check, enable and disable, the fault guard), the "Add-ons" card in Site Settings › Features, System Status rows.
 - AH5 (M) after AH3 and AH4: `pg_hook_on()` / `pg_hook()`, the four new moments, an add-on's events and its own migration file.
 - AH6 (M) after AH4: the order screen's slots and `addon_action.php` (in `waf_sensitive_scripts()`).

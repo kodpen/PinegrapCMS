@@ -57,7 +57,7 @@ function test_shipworks_announces_only_a_new_parcel()
 	pg_assert_true((bool) preg_match("/if\s*\(\s*!?\s*\\\$recorded\['created'\]\s*\)/", $update), 'guarded by created');
 
 	$guard = strpos($update, "\$recorded['created']");
-	$event = strpos($update, "api_webhook_enqueue('order.shipped'");
+	$event = strpos($update, "pg_announce('order.shipped'");
 
 	pg_assert_true($event !== false, 'announces order.shipped');
 	pg_assert_true($guard !== false && $event > $guard, 'after the created guard');
