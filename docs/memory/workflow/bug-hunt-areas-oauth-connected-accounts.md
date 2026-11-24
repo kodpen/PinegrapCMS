@@ -4,7 +4,7 @@ description: The bug hunt of OAuth and connected accounts (2026-11-24, area 42):
 ---
 
 ## Which area was hunted?
-- Area 42, oauth-connected-accounts: `includes/fn/connect.php` (start, finish, tokens, renewal, Disconnect, service tokens), `connect.php`, the Check and Disconnect actions of `connections.php`, the provider files, and the work that uses an account (cloud backup, calendar writing, MCP sign-in). PR #PR.
+- Area 42, oauth-connected-accounts: `includes/fn/connect.php` (start, finish, tokens, renewal, Disconnect, service tokens), `connect.php`, the Check and Disconnect actions of `connections.php`, the provider files, and the work that uses an account (cloud backup, calendar writing, MCP sign-in). PR #11443.
 - Asked for: the state checked on return, a renewal by two requests at once, a revoked or expired token reported and not retried for ever, secrets sealed and never shown again, who may connect or disconnect, a disconnect ending the scheduled work that used it.
 
 ## What did the hunt's PR fix?
