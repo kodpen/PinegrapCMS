@@ -26,7 +26,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - `agent-guide-*`: 7 files.
 - `api-store-*`: 6 files.
 - `api-webhook-*`: 6 files.
-- `application-access-*`: 7 files.
+- `application-access-*`: 8 files; start at `application-access-overview.md`.
 
 ## Files
 
