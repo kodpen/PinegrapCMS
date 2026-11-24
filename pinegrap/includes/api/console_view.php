@@ -66,6 +66,7 @@ function api_console_group_labels() {
 		'seo'            => lang('SEO'),
 		'content_review' => lang('Content review'),
 		'system'         => lang('System'),
+		'launch'         => lang('Launch'),
 		'reports'        => lang('Reports'),
 		'offers'         => lang('Offers'),
 		'key_codes'      => lang('Key Codes'),

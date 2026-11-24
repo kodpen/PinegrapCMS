@@ -578,6 +578,7 @@ function api_openapi_tag_sentences()
         'Webhooks'           => 'Webhook subscriptions: the events the site sends to an address, signed, with their deliveries.',
         'Subscriptions'      => 'Subscriptions the store charges from a stored card.',
         'Users'              => 'The site\'s users: their accounts, roles and permissions.',
+        'Launch'             => 'The set-up steps before going live: what is done, what blocks and what is worth a look.',
         'System'             => 'The state of the site\'s server: maintenance, storage and the checks it runs.',
         'Reports'            => 'Read-only figures: sales, cart recovery, traffic, visitors, search and the most read content.',
         'Seo'                => 'Search engine findings: the issues of each page and the addresses that answered not found.',
