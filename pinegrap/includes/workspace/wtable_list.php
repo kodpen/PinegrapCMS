@@ -447,3 +447,114 @@ function ws_wtable_list_deleted_cells(array $table)
         'actions' => pg_list_cell($restore),
     );
 }
+
+/**
+ * The most tables one bulk Delete takes.
+ */
+const WS_WTABLE_LIST_BULK_MAX = 200;
+
+/**
+ * The table ids a bulk Delete posted: positive whole numbers, each once,
+ * in the order sent, no more than $max. Pure.
+ *
+ * @param mixed $input the posted wt_tables[] value
+ * @param int   $max
+ * @return array list of ints
+ */
+function ws_wtable_list_bulk_ids($input, $max = WS_WTABLE_LIST_BULK_MAX)
+{
+    if (!is_array($input)) {
+        return array();
+    }
+
+    $ids = array();
+
+    foreach ($input as $value) {
+        if ((is_int($value) || (is_string($value) && ctype_digit($value))) && ((int) $value > 0)) {
+            $ids[(int) $value] = (int) $value;
+        }
+    }
+
+    return array_slice(array_values($ids), 0, max(0, (int) $max));
+}
+
+/**
+ * The bulk Delete of the selection bar: the single delete done for each
+ * chosen table, which checks the person's right on that table. A table the
+ * person reads but may not delete is left and named; one out of their
+ * reach (or gone) is only counted, so its name never shows.
+ *
+ * @param array         $viewer
+ * @param array         $ids    ws_wtable_list_bulk_ids()
+ * @param callable|null $load   id => table or null (ws_wtable())
+ * @param callable|null $delete (viewer, table) => result (ws_wtable_delete())
+ * @return array deleted (the deleted tables), left (names), unreached (count)
+ */
+function ws_wtable_list_bulk_delete($viewer, array $ids, $load = null, $delete = null)
+{
+    $load = $load ?: 'ws_wtable';
+    $delete = $delete ?: 'ws_wtable_delete';
+    $result = array('deleted' => array(), 'left' => array(), 'unreached' => 0);
+
+    foreach ($ids as $id) {
+        $table = call_user_func($load, (int) $id);
+        $outcome = call_user_func($delete, $viewer, $table);
+
+        if (!empty($outcome['ok'])) {
+            $result['deleted'][] = $table;
+        } elseif ($table && (($outcome['error'] ?? '') === 'forbidden')) {
+            $result['left'][] = (string) $table['name'];
+        } else {
+            $result['unreached']++;
+        }
+    }
+
+    return $result;
+}
+
+/**
+ * What the screen says after a bulk Delete: a notice counting the deleted
+ * tables and naming each one left, or an error when none was deleted.
+ * Pure but for lang().
+ *
+ * @param int   $deleted   how many were deleted
+ * @param array $left      the names of the tables left
+ * @param int   $unreached the chosen tables out of reach
+ * @param int   $bin_days  the bin's days, 0 when a delete is for good
+ * @return array notice, error (one of them '')
+ */
+function ws_wtable_list_bulk_delete_texts($deleted, array $left, $unreached, $bin_days)
+{
+    $deleted = (int) $deleted;
+    $parts = array();
+
+    if ($deleted > 0) {
+        if ((int) $bin_days > 0) {
+            $parts[] = ($deleted === 1)
+                ? lang('1 table was deleted. It is in Deleted tables, where you can restore it.')
+                : lang(array('string' => '{var:1} tables were deleted. They are in Deleted tables, where you can restore them.', 'vars' => $deleted));
+        } else {
+            $parts[] = ($deleted === 1)
+                ? lang('1 table was deleted.')
+                : lang(array('string' => '{var:1} tables were deleted.', 'vars' => $deleted));
+        }
+    }
+
+    if ($left) {
+        $parts[] = lang(array('string' => 'Left, as only a table\'s owner deletes it: {var:1}.', 'vars' => implode(', ', $left)));
+    }
+
+    if ((int) $unreached > 0) {
+        $parts[] = ((int) $unreached === 1)
+            ? lang('1 chosen table could not be found.')
+            : lang(array('string' => '{var:1} chosen tables could not be found.', 'vars' => (int) $unreached));
+    }
+
+    if (!$parts) {
+        $parts[] = lang('No table was chosen.');
+    }
+
+    $text = implode(' ', $parts);
+
+    return ($deleted > 0) ? array('notice' => $text, 'error' => '') : array('notice' => '', 'error' => $text);
+}

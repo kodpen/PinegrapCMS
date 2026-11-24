@@ -738,6 +738,7 @@
     "Left unanswered longer, a conversation is marked overdue.": "Bundan uzun süre yanıtsız kalan konuşma gecikmiş olarak işaretlenir.",
     "Left unticked, nobody sees it in the store yet.": "İşaretlenmezse mağazada henüz kimse görmez.",
     "Left where it was.": "Yerinde bırakıldı.",
+    "Left, as only a table's owner deletes it: {var:1}.": "Bir tabloyu yalnızca sahibi silebildiği için bırakılanlar: {var:1}.",
     "Leg Copy": "Aşama Metni",
     "Leg {var}": "Aşama {var}",
     "Legacy": "Eski",
