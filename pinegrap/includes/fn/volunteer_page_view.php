@@ -5,7 +5,7 @@
  * The markup of a volunteer's own shifts (pg_volunteer_self_view()): each
  * programme with "My next shifts" and their Cancel, Offer my place or Keep
  * my place, "Shifts for you" with Sign up, Join the waitlist or Take this
- * place, and the documents' dates. Drawn twice: in the site's look
+ * place, the documents' dates with "Upload a new one". Drawn twice: in the site's look
  * (Bootstrap 5.3.8, the classes of widgets_volunteering.php) for the
  * my_account widget's "volunteering" section, and in look A for the signed
  * page volunteer.php. Every button is a small POST
@@ -23,6 +23,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_signup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_board_view.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_documents.php');
 
 /**
  * The classes of look A (the signed page). Pure.
@@ -46,6 +47,9 @@ function pg_volunteer_page_secure_classes()
         'switch' => 'pg-switch',
         'label'  => '',
         'select' => 'pg-input w-auto',
+        'input'  => 'pg-input',
+        'field_label' => 'pg-field-label',
+        'link'   => 'small ms-2',
     );
 }
 
@@ -177,15 +181,24 @@ function pg_volunteer_page_html(array $views, array $form, array $classes)
             $html .= ($rows !== '') ? '<div class="' . $c['list'] . '">' . $rows . '</div>' : '<p class="' . $c['meta'] . '">' . h(lang('No shifts for you right now.')) . '</p>';
         }
 
-        if ($view['documents']) {
-            $html .= '<h3 class="h6 mb-2">' . h(lang('My documents')) . '</h3><div class="' . $c['list'] . ' mb-0">';
+        $kinds = pg_volunteer_programme_kinds($programme);
+
+        if ($view['documents'] || $kinds) {
+            $html .= '<h3 class="h6 mb-2">' . h(lang('My documents')) . '</h3>';
+            $rows = '';
 
             foreach ($view['documents'] as $document) {
-                $html .= '<div class="' . $c['item'] . '"><span>' . h($document['kind']) . '</span><span class="' . $c['meta'] . '">'
+                // The volunteer's own file, opened through get_file.php's
+                // volunteer door.
+                $open = ((string) ($document['file_name'] ?? '') !== '')
+                    ? ' <a class="' . $c['link'] . '" href="' . h(OUTPUT_PATH . encode_url_path($document['file_name'])) . '" target="_blank" rel="noopener">' . h(lang('Open')) . '</a>'
+                    : '';
+                $rows .= '<div class="' . $c['item'] . '"><span>' . h($document['kind']) . $open . '</span><span class="' . $c['meta'] . '">'
                     . h(($document['valid_until'] !== null) ? lang(array('string' => 'Valid until {var:1}', 'vars' => array(get_absolute_time(array('timestamp' => strtotime($document['valid_until']), 'type' => 'date', 'format' => 'plain_text'))))) : lang('No end date')) . '</span></div>';
             }
 
-            $html .= '</div>';
+            $html .= ($rows !== '') ? '<div class="' . $c['list'] . ' mb-0">' . $rows . '</div>' : '<p class="' . $c['meta'] . ' mb-0">' . h(lang('No documents yet.')) . '</p>';
+            $html .= pg_volunteer_doc_form_html($form, $c, $volunteer, $kinds);
         }
 
         $html .= pg_volunteer_calls_form_html($form, $c, $volunteer, $programme['call_channels']);
@@ -246,7 +259,21 @@ function pg_volunteer_answer_text($answer)
         'offered'   => lang('Your place is offered to the other volunteers. You keep it until someone takes it.'),
         'kept'      => lang('You kept your place.'),
         'calls_saved' => lang('Your shift calls choice was saved.'),
+        'doc_saved'   => lang('Your document was uploaded.'),
     );
+    $refusals = array(
+        'doc_kind'    => lang('Please choose one of the documents listed.'),
+        'doc_date'    => lang('Please enter the date the document is valid until, today or later.'),
+        'doc_missing' => lang('Please choose the file to upload.'),
+        'doc_file'    => lang('Only a PDF or a picture (JPG, PNG, WebP) can be uploaded.'),
+        'doc_size'    => lang('The file is too large.'),
+        'doc_full'    => lang('You have uploaded as many documents as can be kept. Please ask the coordinator to remove an old one.'),
+        'doc_failed'  => lang('The document could not be saved. Please try again.'),
+    );
+
+    if (isset($refusals[$answer])) {
+        return array($refusals[$answer], false);
+    }
 
     return isset($texts[$answer]) ? array($texts[$answer], true) : array(lang('This could not be done: the shift changed meanwhile. Please check it and try again.'), false);
 }

@@ -11,7 +11,7 @@ module: volunteer_programmes, volunteer_programme_setup
 
 ## Who sees what?
 - Roles 0-2 see every programme, add programmes and edit Set-up. A panel user listed in a programme's `coordinators` sees that programme's Applications and Volunteers tabs and approves, pauses and marks as left (`pg_volunteer_user_sees()`, `pg_volunteer_coordinator()`); no Set-up tab.
-- The profile drawer shows a document's kind and dates only, never its number or file. Uploading (and its exclusion, `core/volunteer-document-file.md`) comes with VS4c.
+- The profile drawer shows a document's kind, dates and "Open file" (through `get_file.php`), never its number. Uploading: `core/volunteer-document-upload.md`.
 
 ## How does an application come in?
 - `custom_form.php`, after the contact is known, calls `pg_volunteer_application_record()` for a completed entry: each open programme on that form page gets a `volunteers` row `applied` with skills and free days from the fields named in Set-up. No contact (no e-mail mapped to the contact) means no application.

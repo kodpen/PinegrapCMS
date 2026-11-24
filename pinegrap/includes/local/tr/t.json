@@ -3770,6 +3770,7 @@
     "The document at {var:1}": "{var:1} belgesi",
     "The document could not be found.": "Belge bulunamadı.",
     "The document could not be read: {var:1}": "Belge okunamadı: {var:1}",
+    "The document could not be saved. Please try again.": "Belge kaydedilemedi. Lütfen yeniden deneyin.",
     "The document date for invoices and receipts. Accounts are not filtered by date.": "Fatura ve tahsilatlarda belge tarihi. Cari hesaplar tarihe göre filtrelenmez.",
     "The document has already gone; ask after its status instead of handing it over twice.": "Belge zaten gönderildi; ikinci kez göndermek yerine durumunu sorun.",
     "The document has already gone; ask after its status instead of sending it twice.": "Belge zaten gitti; iki kez göndermek yerine durumunu sorun.",

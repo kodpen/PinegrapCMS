@@ -1845,6 +1845,9 @@ function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = nul
     }
 
     $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp'" . ($svg ? ", 'svg'" : '') . ")) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+    // A volunteer's document is never offered (it opens for its programme's
+    // people only).
+    $where .= pg_volunteer_doc_files_sql();
     $ids = function ($list) {
         return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
     };
@@ -4229,6 +4232,8 @@ function pg_image_editor_sound_where($search, $folders, $bin, $erp_ready = null,
     // name's own extension must be one of the types as well.
     $names = implode(' OR ', array_map(function ($type) { return "(LOWER(name) LIKE '%." . e($type) . "')"; }, $types));
     $where = "(type IN ('" . implode("', '", array_map('e', $types)) . "')) AND ($names)" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+    // A volunteer's document is never offered.
+    $where .= pg_volunteer_doc_files_sql();
 
     if ($folders !== null) {
         $folders = array_values(array_diff(array_map('intval', $folders), array_map('intval', $bin)));

@@ -186,7 +186,7 @@ function test_image_editor_sticker_files_where()
 {
 	$all = pg_image_editor_sticker_where('', null, array(7, 8));
 	pg_assert_contains("folder NOT IN ('7', '8')", $all, 'the Recycle Bin is left out');
-	pg_assert_false(strpos($all, 'LIKE') !== false, 'no search, no LIKE');
+	pg_assert_false(strpos($all, '(name LIKE') !== false, 'no search, no LIKE on the name');
 
 	$none = pg_image_editor_sticker_where('', null, array());
 	pg_assert_false(strpos($none, 'folder') !== false, 'without a Recycle Bin every folder');
