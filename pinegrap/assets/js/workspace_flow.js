@@ -5632,19 +5632,102 @@
 
     // ── Settings ───────────────────────────────────────────────────────
 
-    // A labelled control with an optional help line. A tick (a checkbox,
-    // .pg-checkbox) stands before its label on one line, the help under the
-    // label; any other control stands under its label.
+    // The longest help, in characters, that stands under a field as its
+    // one line in the panel's 320 px card (about 50 of the small text fit).
+    var HELP_LINE = 44;
+
+    // A field's help as the panel shows it: a text that fits one line stands
+    // under the field; a longer one opens whole from the "?" beside the
+    // field's name, its first sentence under the field when that fits one
+    // line. Pure.
+    function helpSplit(text) {
+        var help = String(text || '').trim();
+        var first = help.match(/^[\s\S]*?[.!?…](?=\s|$)/);
+
+        if (Array.from(help).length <= HELP_LINE) {
+            return { line: help, more: '' };
+        }
+
+        first = first ? first[0] : '';
+
+        return { line: (first && (first !== help) && (Array.from(first).length <= HELP_LINE)) ? first : '', more: help };
+    }
+
+    // The "?" at the right of a field's name and the small window it opens
+    // over the panel with the field's whole help; Esc, the "?" again or a
+    // press outside closes it. Returns [button, window].
+    function helpAsk(id, text) {
+        var ask = K.button('pg-icon-button pg-icon-button-sm wsf-help-ask', '', 'bi-question-circle', t('fl_help_more'));
+        var pop = el('div', 'wsf-help-pop small d-none', text);
+        var outside = function (event) {
+            if (!pop.contains(event.target) && !ask.contains(event.target)) {
+                close(false);
+            }
+        };
+        var close = function (focus) {
+            pop.classList.add('d-none');
+            ask.setAttribute('aria-expanded', 'false');
+            document.removeEventListener('pointerdown', outside, true);
+
+            if (focus) {
+                ask.focus();
+            }
+        };
+        var keys = function (event) {
+            if ((event.key === 'Escape') && !pop.classList.contains('d-none')) {
+                event.preventDefault();
+                event.stopPropagation();
+                close(true);
+            }
+        };
+
+        pop.id = id + '-more';
+        pop.setAttribute('role', 'note');
+        ask.setAttribute('aria-controls', pop.id);
+        ask.setAttribute('aria-expanded', 'false');
+        ask.addEventListener('click', function () {
+            if (!pop.classList.contains('d-none')) {
+                close(false);
+                return;
+            }
+
+            pop.classList.remove('d-none');
+            ask.setAttribute('aria-expanded', 'true');
+            document.addEventListener('pointerdown', outside, true);
+        });
+        ask.addEventListener('keydown', keys);
+        pop.addEventListener('keydown', keys);
+
+        return [ask, pop];
+    }
+
+    // A labelled control with an optional help (helpSplit()). A tick (a
+    // checkbox, .pg-checkbox) stands before its label on one line, the help
+    // under the label; any other control stands under its label.
     function field(label, control, help) {
         var wrap = el('div', 'mb-5');
         var id = 'wsf-f' + (++uid);
         var tick = control.tagName === 'INPUT' && control.type === 'checkbox';
+        var parts = helpSplit(help);
         var caption = el('label', tick ? 'small' : 'form-label small fw-semibold mb-1', label);
+        var head = caption;
         var words = wrap;
+        var asked = null;
+        var described = [];
 
         caption.htmlFor = id;
         control.id = id;
         control.disabled = control.disabled || !state.edit;
+
+        if (parts.more) {
+            asked = helpAsk(id, parts.more);
+            head = el('div', 'wsf-field-head' + (tick ? '' : ' mb-1'));
+            caption.classList.remove('mb-1');
+            caption.classList.add('mb-0');
+            head.appendChild(caption);
+            head.appendChild(asked[0]);
+            wrap.classList.add('position-relative');
+        }
 
         if (tick) {
             var line = el('div', 'd-flex align-items-start gap-3');
@@ -5653,19 +5736,31 @@
             control.classList.add('mt-1');
             line.appendChild(control);
             line.appendChild(words);
-            words.appendChild(caption);
+            words.appendChild(head);
             wrap.appendChild(line);
         } else {
-            wrap.appendChild(caption);
+            wrap.appendChild(head);
             wrap.appendChild(control);
         }
 
-        if (help) {
-            var note = el('div', 'form-text', help);
+        if (asked) {
+            head.parentNode.insertBefore(asked[1], head.nextSibling);
+        }
+
+        if (parts.line) {
+            var note = el('div', 'form-text' + (parts.more ? ' text-truncate' : ''), parts.line);
 
             note.id = id + '-help';
-            control.setAttribute('aria-describedby', note.id);
+            described.push(note.id);
             words.appendChild(note);
+        }
+
+        if (asked) {
+            described.push(asked[1].id);
+        }
+
+        if (described.length) {
+            control.setAttribute('aria-describedby', described.join(' '));
         }
 
         return wrap;
@@ -6340,7 +6435,8 @@
 
         chip.contentEditable = 'false';
         chip.setAttribute('data-token', token);
-        chip.title = (name && state.edit && !bare) ? title + ' ' + t('fl_values_empty_tap') : title;
+        // A recipient's word takes no "When empty, write" text.
+        chip.title = (name && !name.word && state.edit && !bare) ? title + ' ' + t('fl_values_empty_tap') : title;
 
         // In a draft a × removes it, its thread with it; valuesText() reads
         // the chip's token, never this. The keyboard has the caret beside
@@ -6378,9 +6474,45 @@
         });
     }
 
-    function drawValues(input, text, names, bare) {
+    // The recipient words among a field's value names ('^^name^^' keys),
+    // bare: ['name', ...].
+    function valueWords(names) {
+        return Object.keys(names).filter(function (token) {
+            return names[token].word;
+        }).map(function (token) {
+            return token.slice(2, -2);
+        });
+    }
+
+    // A text cut into what is drawn as typed ({ text }) and what as a chip
+    // ({ token }): a value (VALUE_TOKEN) and, in an e-mail's texts, one of
+    // the words it fills per recipient as ^^word^^. Pure.
+    function valueParts(text, words) {
+        var source = VALUE_TOKEN.source + (words.length ? '|\\^\\^(?:' + words.join('|') + ')\\^\\^' : '');
+        var pattern = new RegExp(source, 'g');
+        var parts = [];
         var at = 0;
         var match;
+
+        text = String(text || '');
+
+        while ((match = pattern.exec(text)) !== null) {
+            if (match.index > at) {
+                parts.push({ text: text.slice(at, match.index) });
+            }
+
+            parts.push({ token: match[0] });
+            at = match.index + match[0].length;
+        }
+
+        if (at < text.length) {
+            parts.push({ text: text.slice(at) });
+        }
+
+        return parts;
+    }
+
+    function drawValues(input, text, names, bare) {
         var lines = function (part) {
             part.split('\n').forEach(function (line, index) {
                 if (index) {
@@ -6394,15 +6526,13 @@
         };
 
         K.clear(input);
-        VALUE_TOKEN.lastIndex = 0;
-
-        while ((match = VALUE_TOKEN.exec(text)) !== null) {
-            lines(text.slice(at, match.index));
-            input.appendChild(valueChip(match[0], names, bare));
-            at = match.index + match[0].length;
-        }
-
-        lines(text.slice(at));
+        valueParts(text, valueWords(names)).forEach(function (part) {
+            if (part.token) {
+                input.appendChild(valueChip(part.token, names, bare));
+            } else {
+                lines(part.text);
+            }
+        });
 
         // A line break at the end shows only with one more after it, which
         // valuesText() does not read.
@@ -6448,7 +6578,8 @@
     // field takes no "When empty, write" text (fieldFallback()).
     function valueInput(node, value, max, onInput, multi, bare) {
         var input = el('div', 'form-control form-control-sm wsf-values' + (multi ? ' wsf-values-multi' : ''));
-        var names = valueNames(node);
+        var names = Object.assign(valueNames(node), mailWordNames(node));
+        var words = valueWords(names);
         var last = value || '';
         var range = null;
         var keep = function () {
@@ -6535,7 +6666,47 @@
             drawValues(input, text, names, bare);
             caret(atEnd());
         };
+        // A value or a recipient's word typed whole becomes its chip, the
+        // caret after it; the text saved is the same.
+        var typedChips = function () {
+            var walker = document.createTreeWalker(input, NodeFilter.SHOW_TEXT);
+            var texts = [];
+
+            while (walker.nextNode()) {
+                if (!walker.currentNode.parentNode.closest('.wsf-chip')) {
+                    texts.push(walker.currentNode);
+                }
+            }
+
+            texts.forEach(function (node) {
+                var parts = valueParts(node.nodeValue, words);
+                var chip = null;
+
+                if (!parts.some(function (part) { return part.token; })) {
+                    return;
+                }
+
+                parts.forEach(function (part) {
+                    var made = part.token ? valueChip(part.token, names, bare) : document.createTextNode(part.text);
+
+                    node.parentNode.insertBefore(made, node);
+
+                    if (part.token) {
+                        chip = made;
+                    }
+                });
+                node.parentNode.removeChild(node);
+
+                var place = document.createRange();
+
+                place.setStartAfter(chip);
+                place.collapse(true);
+                caret(place);
+            });
+        };
         var changed = function () {
+            typedChips();
+
             var text = valuesText(input, multi);
 
             if (text.length > max) {
@@ -6584,9 +6755,8 @@
 
             event.preventDefault();
             document.execCommand('insertText', false, multi ? text : text.replace(/\n+/g, ' '));
-            VALUE_TOKEN.lastIndex = 0;
 
-            if (VALUE_TOKEN.test(text)) {
+            if (valueParts(text, words).some(function (part) { return part.token; })) {
                 redraw(valuesText(input, multi));
                 changed();
             }
@@ -6617,7 +6787,7 @@
                     to: node.id,
                     fieldLabel: caption ? caption.textContent.trim() : ''
                 })));
-            } else if (state.edit && chip && input.contains(chip) && !bare && names[tokenBare(chip.getAttribute('data-token'))]) {
+            } else if (state.edit && chip && input.contains(chip) && !bare && names[tokenBare(chip.getAttribute('data-token'))] && !names[tokenBare(chip.getAttribute('data-token'))].word) {
                 askFallback(chip, names, changed);
             }
         });
@@ -6626,10 +6796,11 @@
         input.addEventListener('mouseup', keep);
         input.addEventListener('blur', keep);
 
-        // Puts a value where the caret was, else at the end.
-        input.wsfInsert = function (token) {
+        // Puts a value where the caret was, else at the end; `plain`: a
+        // word the run fills ({{date}}) goes in as typed text.
+        input.wsfInsert = function (token, plain) {
             var place = (range && input.contains(range.startContainer)) ? range : atEnd();
-            var chip = valueChip(token, names, bare);
+            var chip = plain ? document.createTextNode(token) : valueChip(token, names, bare);
             var after = document.createTextNode('');
 
             place.deleteContents();
@@ -6652,22 +6823,66 @@
     // word stays as typed: a table cell, MCP arguments, a check-in's question.
     var WORD_KINDS = ['post', 'email', 'sms', 'whatsapp', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
 
-    // The help under a value field: the words named only where they work.
-    function valuesHint(node) {
-        if (node.kind === 'value') {
-            return t('fl_values_hint_value');
+    // The words "Add value" offers under "Always", each a [word, label key]:
+    // {{date}} and {{time}} where the run fills them (WORD_KINDS), with
+    // {{weekday}} in a derived value box (ws_flow_derived_words()); none in
+    // any other box, where they would stay as typed.
+    function alwaysWords(kind) {
+        var words = [['{{date}}', 'fl_word_date'], ['{{time}}', 'fl_word_time']];
+
+        if (kind === 'value') {
+            return words.concat([['{{weekday}}', 'fl_word_weekday']]);
         }
 
-        return t((WORD_KINDS.indexOf(node.kind) >= 0) ? 'fl_values_hint' : 'fl_values_hint_plain');
+        return (WORD_KINDS.indexOf(kind) >= 0) ? words : [];
     }
 
-    // A field of a box's text with "Add value": the list of what started the
-    // run and the boxes before it, each value a chip put in the text; with
-    // `takes`, only the values it accepts ({ node, value }); `bare`: it takes
-    // no "When empty, write" text.
+    // The ^^fields^^ an e-mail box's texts fill for each recipient
+    // (ws_flow_mail_words()), as value names: '^^name^^' => its chip.
+    function mailWordNames(node) {
+        var names = {};
+
+        if (node.kind === 'email') {
+            ((FL.steps || {}).mail_words || []).forEach(function (word) {
+                names['^^' + word.key + '^^'] = { label: t('fl_values_recipient') + ' › ' + word.label, word: true };
+            });
+        }
+
+        return names;
+    }
+
+    // One group of the "Add value" list: its head, an optional note, a pick
+    // per item ({ label, word, token }) that puts its token in.
+    function valuesListGroup(list, title, note, items, pick) {
+        var head = el('div', 'wsf-values-group', title);
+
+        if (note) {
+            head.appendChild(el('span', 'fw-normal fg-secondary ms-2', note));
+        }
+
+        list.appendChild(head);
+        items.forEach(function (item) {
+            var button = K.button('wsf-values-pick', item.label);
+
+            if (item.word) {
+                button.appendChild(el('span', 'fg-secondary ms-2', item.word));
+            }
+
+            button.addEventListener('mousedown', function (event) { event.preventDefault(); });
+            button.addEventListener('click', function () { pick(item); });
+            list.appendChild(button);
+        });
+    }
+
+    // A field of a box's text with "Add value", a small button inside the
+    // field: the list says what a value is, then an e-mail's recipient
+    // words, what started the run and the boxes before it (each value a chip
+    // put in the text), and last the words the run always fills; with
+    // `takes`, only the values it accepts ({ node, value }); `bare`: it
+    // takes no "When empty, write" text.
     function valueField(node, label, value, max, onInput, multi, help, takes, bare) {
         var input = valueInput(node, value, max, onInput, multi, bare);
-        var wrap = field(label, input, help ? help + ' ' + valuesHint(node) : valuesHint(node));
+        var wrap = field(label, input, help);
         var caption = wrap.querySelector('label');
 
         // A label names a form control only; the text box is a div.
@@ -6680,7 +6895,8 @@
             return wrap;
         }
 
-        var add = K.button('btn btn-sm btn-outline theme-secondary mt-2', t('fl_values_add'), 'bi-plus-lg');
+        var holder = el('div', 'wsf-values-box');
+        var add = K.button('pg-icon-button pg-icon-button-sm wsf-values-add', '', 'bi-braces', t('fl_values_add'));
         var list = el('div', 'wsf-values-list d-none');
         var close = function (focus) {
             list.classList.add('d-none');
@@ -6689,6 +6905,10 @@
             if (focus) {
                 add.focus();
             }
+        };
+        var put = function (item) {
+            close(false);
+            input.wsfInsert(item.token, !!item.plain);
         };
 
         list.id = input.id + '-values';
@@ -6714,32 +6934,33 @@
             }).filter(function (group) {
                 return group.values.length > 0;
             });
+            var words = mailWordNames(node);
+            var always = alwaysWords(node.kind);
 
             K.clear(list);
+            list.appendChild(el('p', 'small fg-secondary mb-1 px-1', t('fl_values_what')));
+
+            if (!takes && Object.keys(words).length) {
+                valuesListGroup(list, t('fl_values_recipient'), t('fl_values_each'), Object.keys(words).map(function (token) {
+                    return { label: words[token].label.split(' › ').pop(), token: token };
+                }), put);
+            }
 
             if (!groups.length) {
-                list.appendChild(el('div', 'small fg-secondary', valuesNone(node)));
+                list.appendChild(el('div', 'small fg-secondary px-1', valuesNone(node)));
             }
 
             groups.forEach(function (group) {
-                var head = el('div', 'wsf-values-group', nameOf(group.node));
-
-                if (group.skipped) {
-                    head.appendChild(el('span', 'badge badge-subtle theme-warning ms-2', t('fl_values_skipped')));
-                }
-
-                list.appendChild(head);
-                group.values.forEach(function (value) {
-                    var pick = K.button('wsf-values-pick', value.label);
-
-                    pick.addEventListener('mousedown', function (event) { event.preventDefault(); });
-                    pick.addEventListener('click', function () {
-                        close(false);
-                        input.wsfInsert(value.token);
-                    });
-                    list.appendChild(pick);
-                });
+                valuesListGroup(list, nameOf(group.node), group.skipped ? t('fl_values_skipped') : '', group.values.map(function (one) {
+                    return { label: one.label, token: one.token };
+                }), put);
             });
+
+            if (!takes && always.length) {
+                valuesListGroup(list, t('fl_values_always'), '', always.map(function (word) {
+                    return { label: t(word[1]), word: word[0], token: word[0], plain: true };
+                }), put);
+            }
 
             list.classList.remove('d-none');
             add.setAttribute('aria-expanded', 'true');
@@ -6758,8 +6979,10 @@
             }
         });
 
-        input.parentNode.insertBefore(list, input.nextSibling);
-        input.parentNode.insertBefore(add, list);
+        input.parentNode.insertBefore(holder, input);
+        holder.appendChild(input);
+        holder.appendChild(add);
+        holder.parentNode.insertBefore(list, holder.nextSibling);
 
         return wrap;
     }
@@ -7982,22 +8205,33 @@
         emailSenderFields(box, node, group);
     }
 
+    // What a folded Sender row shows while closed: the box's own From name,
+    // else its From address, else the site's name it sends with. Pure.
+    function senderShown(config, site) {
+        return String(config.from_name || '').trim() || String(config.from_email || '').trim() || String(site || '');
+    }
+
     // An e-mail box's own sender, as a campaign's: From name and address,
     // Reply-to and BCC, each empty for the site's own; no BCC for a contact
-    // group. Folded away until one is set.
+    // group. Folded away until one is set; folded, its row shows who sends.
     function emailSenderFields(box, node, group) {
         var config = node.config;
         var keys = [['from_name', t('fl_email_from_name'), t('fl_email_from_name_help')], ['from_email', t('fl_email_from_email'), t('fl_email_from_email_help')],
             ['reply_to', t('fl_email_reply_to'), '']].concat(group ? [] : [['bcc', t('fl_email_bcc'), t('fl_email_bcc_help')]]);
-        var fold = el('details', 'mb-5');
-        var summary = el('summary', 'small fw-semibold mb-3', t('fl_email_sender'));
+        var fold = el('details', 'wsf-fold mb-5');
+        var summary = el('summary', 'wsf-fold-head small fw-semibold');
+        var shown = el('span', 'wsf-fold-shows fw-normal fg-secondary text-truncate', senderShown(config, (FL.steps || {}).mail_sender));
 
         fold.open = keys.some(function (key) { return !!config[key[0]]; });
+        summary.appendChild(el('i', 'bi bi-chevron-right'));
+        summary.appendChild(el('span', '', t('fl_email_sender')));
+        summary.appendChild(shown);
         fold.appendChild(summary);
 
         keys.forEach(function (key) {
             var input = textInput(config[key[0]], 100, function (value) {
                 config[key[0]] = value;
+                shown.textContent = senderShown(config, (FL.steps || {}).mail_sender);
                 refreshNode(node);
             });
 
@@ -8110,15 +8344,6 @@
                     config[key] = value;
                     refreshNode(node);
                 });
-                var hint = row.querySelector('.form-text');
-
-                // The value hint is said once, under the group.
-                if (hint) {
-                    Array.prototype.forEach.call(row.querySelectorAll('[aria-describedby="' + hint.id + '"]'), function (control) {
-                        control.removeAttribute('aria-describedby');
-                    });
-                    hint.remove();
-                }
 
                 // The variable as a chip naming what it stands for, before
                 // where it sits; never Meta's {{n}}.
@@ -8235,11 +8460,10 @@
             var address = valueField(node, t('fl_url'), config.url, 2000, function (value) {
                 config.url = value.trim();
                 refreshNode(node);
-            }, false, null, function (item) {
+            }, false, t('fl_hook_url_help'), function (item) {
                 return item.value.type === 'number';
             });
 
-            address.querySelector('.form-text').textContent = t('fl_hook_url_help');
             box.appendChild(address);
         } else {
             box.appendChild(field(t('fl_url'), textInput(config.url, 2000, function (value) {

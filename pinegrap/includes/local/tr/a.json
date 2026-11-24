@@ -5081,6 +5081,7 @@
     "Adds a difference": "Fark ekler",
     "Adds a list after this record view that shows the rows of the record the page shows, in their order. Lay out its rows as in any list.": "Bu kayıt görünümünden sonra, sayfanın gösterdiği kaydın satırlarını kendi sıralarıyla gösteren bir liste ekler. Satırlarını her listede olduğu gibi düzenleyin.",
     "Adds a row to the table “{var:1}”, filling in: {var:2}.": "“{var:1}” tablosuna bir satır ekler ve şunları doldurur: {var:2}.",
+    "Adds a value filled in as the flow runs: what started the run or what an earlier box gave.": "Akış çalışırken dolan bir değer ekler: çalışmayı başlatanın ya da önceki bir kutunun verdiği.",
     "Adds a webhook to the repositories linked to a Workspace channel, so their events are written into the channel.": "Bir Çalışma Alanı kanalına bağlanan depolara webhook ekler; olayları kanala yazılır.",
     "Adds accounts, cash and bank, invoices and delivery notes to the panel. Switching it off hides the screens; nothing that was entered is deleted.": "Panele cari hesap, kasa ve banka, fatura ve irsaliye ekler. Kapatmak ekranları gizler; girilen hiçbir şey silinmez.",
     "Adds an amount or a percentage; a minus sign lowers the price.": "Tutar ya da yüzde ekler; eksi işareti fiyatı düşürür.",

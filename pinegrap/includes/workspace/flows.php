@@ -3869,9 +3869,14 @@ function ws_flow_js_strings()
         'fl_wa_fallback'      => lang('Send an e-mail when there is no number or it fails'),
         'fl_wa_fallback_help' => lang('Only when the message cannot be queued; a message WhatsApp reports as failed later sends no e-mail.'),
         'fl_wa_fallback_to'   => lang('E-mail address'),
-        'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
-        'fl_values_hint_plain' => lang('Add value puts in what started the run or what an earlier box gave.'),
-        'fl_values_hint_value' => lang('Add value puts in what started the run or what an earlier box gave; {{date}}, {{time}} and {{weekday}} give today\'s date, the time and the day of the week.'),
+        'fl_values_what'      => lang('Adds a value filled in as the flow runs: what started the run or what an earlier box gave.'),
+        'fl_values_recipient' => lang('Recipient'),
+        'fl_values_each'      => lang('filled for each recipient'),
+        'fl_values_always'    => lang('Always'),
+        'fl_word_date'        => lang('Date'),
+        'fl_word_time'        => lang('Time'),
+        'fl_word_weekday'     => lang('Day of the week'),
+        'fl_help_more'        => lang('More about this field'),
         'fl_values_add'       => lang('Add value'),
         'fl_values_text'      => lang('What it did'),
         'fl_values_outcome'   => lang('Outcome'),
@@ -4356,6 +4361,11 @@ function ws_flow_js_config($viewer, $mode)
         // e-mail box may write to (flow_records.php, flow_mail_campaign.php).
         $steps['list_pages'] = function_exists('ws_flow_records_pages') ? ws_flow_records_pages() : array();
         $steps['mail_groups'] = function_exists('ws_flow_mail_groups') ? ws_flow_mail_groups($viewer) : array();
+        // The ^^fields^^ an e-mail box fills for each recipient, offered as
+        // the "Recipient" values of its texts, and the sender's name the
+        // folded Sender row shows while the box has none of its own.
+        $steps['mail_words'] = function_exists('ws_flow_mail_words') ? ws_flow_mail_words() : array();
+        $steps['mail_sender'] = defined('ORGANIZATION_NAME') ? (string) ORGANIZATION_NAME : '';
         // The Pinegrap AI box is offered while the site has it set up
         // (ws_step_ai_check()).
         $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();
