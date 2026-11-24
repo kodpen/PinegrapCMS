@@ -468,7 +468,7 @@ function ws_settings_department_drawer($department, $primary_ids, $channel, $for
     $body = ws_settings_department_fields($department, $primary_ids, $channel, function ($field) use ($id) {
         return 'ws_dept[' . $id . '][' . $field . ']';
     }, $form) . '
-            <button type="submit" name="ws_department_save" value="' . $id . '" form="' . h($form) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h($department ? lang('Save') : lang('Create the department')) . '</button>';
+            <button type="submit" name="ws_department_save" value="' . $id . '" form="' . h($form) . '" class="pg-button pg-button-fill pg-button-sm"><i class="bi bi-check2" aria-hidden="true"></i>' . h($department ? lang('Save') : lang('Create the department')) . '</button>';
 
     $title = $department ? h($department['name']) : h(lang('New department'));
 

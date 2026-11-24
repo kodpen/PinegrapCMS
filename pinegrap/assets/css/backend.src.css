@@ -22640,9 +22640,9 @@ button.ws-cal-more {
   max-height: 28rem;
   overflow-y: auto;
 }
-.ws-days .btn {
-  padding: .1rem .35rem;
-  font-size: .72rem;
+/* Seven day segments sit in a drawer's narrow column. */
+.ws-days > .pg-seg-item {
+  padding: 0 7px;
 }
 .ws-task-card-hidden {
   color: var(--pg-fg-2);
