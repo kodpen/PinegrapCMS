@@ -938,6 +938,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-5.md: Which colours does a Workspace design use?
 - decisions-made-workspace-5.md: What happens to the values of a deleted Flows box?
 - decisions-made-workspace-5.md: What is the Workspace's first page called?
+- decisions-made-workspace-50.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-50.md: What does the owner want changed in calls? (owner, 2026-11-24, agent channel message 12760)
 - decisions-made-workspace-6.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-6.md: What does a change made in the person's own calendar do to the Workspace task? (#4490)
 - decisions-made-workspace-6.md: Why does the pinned My Notes row open the Workspace list? (#4889)

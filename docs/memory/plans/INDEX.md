@@ -23,6 +23,7 @@
 - automation-platforms-steps-3.md: Plan automation-platforms, AX1 to AX4, the apps that wait for the release of 2026.11.0: the n8n node, the Zapier, Make and Pabbly Connect apps, what each needs of the owner, how each is built
 - automation-platforms-steps.md: Plan automation-platforms, steps AU1 to AU7: the contract and its test, newest-first lists, the subscription limit of 50, event fields and samples in three parts, the OAuth scheme
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
+- calls-next.md: Plan: Workspace calls after CL1–CL8: remembered devices, a window that grows, links in a new tab during a call, several screen shares, pop-out, raise hand, background removal
 - canvas-label-menu-cites.md: Plan (owner 2026-11-24): buttons that open the Artifact Canvas say "Edit in Artifact Canvas"; its "?" is the help link and shortcuts get their own icon; places citing a menu row draw its new icon
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
