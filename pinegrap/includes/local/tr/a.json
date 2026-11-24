@@ -518,6 +518,7 @@
     "A column is inserted right of column {1} when you save.": "Kaydettiğinizde {1} sütununun sağına bir sütun eklenir.",
     "A column left empty keeps what the row has.": "Boş bırakılan sütun satırdaki değerini korur.",
     "A column left empty stays empty in the new row.": "Boş bırakılan sütun yeni satırda boş kalır.",
+    "A column this layer showed was deleted from the table: pick another.": "Bu katmanın gösterdiği bir sütun tablodan silindi: başka birini seçin.",
     "A column's type cannot change once it is made.": "Bir sütunun türü oluşturulduktan sonra değiştirilemez.",
     "A coming copy of a repeating task: it is made on its start day.": "Tekrarlayan bir görevin gelecek kopyası: başlangıç gününde oluşturulur.",
     "A command cannot be scheduled. Write it as a message, or send it now.": "Bir komut zamanlanamaz. Mesaj olarak yazın ya da hemen gönderin.",

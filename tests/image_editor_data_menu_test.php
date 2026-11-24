@@ -247,6 +247,41 @@ function test_image_editor_data_menu_panel()
 	pg_assert_same(array('dataRefused'), $r['refused'], 'a table the reader may not read says so in Data');
 }
 
+// A column the layer names was deleted from the table: the panel says so,
+// the label select offers every column (a blank first, so picking the first
+// column is a change), and the next change drops the gone value column.
+function test_image_editor_data_menu_panel_column_gone()
+{
+	$r = image_editor_data_menu_node(
+		'var answers = { data_tables: { status: "success", tables: [{ id: 7, name: "Sales", channel: "", rows: 2, tone: null }] } };'
+		. 'var e = fake(answers), out = {}, cols = { "11": { name: "Region" }, "12": { name: "Revenue" }, "15": { name: "Units" } };'
+		. 'var rows = [{ cells: { "11": "N", "12": 1, "15": 2 } }, { cells: { "11": "S", "12": 3, "15": 4 } }];'
+		. 'e.doc.layers = [{ id: 1, type: "data", x: 0, y: 0, w: 600, h: 338, rot: 0, opacity: 1, data: M.dataCheck({ table: 7, kind: "bar", label: "10", values: ["12", "16"] }).data }];'
+		. 'e.dataRead(7, { columns: cols, rows: rows });'
+		. 'function panel() { var b = N("div"); e.dataFold = "data"; Editor.layerTypes.data.panel.call(e, b, [e.doc.layers[0]]); return b; }'
+		. 'var b = panel(); out.notes = cls(b, "pgie-note").map(function (n) { return n.textContent; });'
+		. 'var sel = all(b).filter(function (n) { return n.tagName === "SELECT"; })[0];'
+		. 'out.options = sel.children.map(function (o) { return [o.value === undefined ? o.attrs.value : o.value, o.attrs.hasOwnProperty("selected")]; });'
+		. 'sel.value = "11"; sel.listeners.change(); out.label = e.doc.layers[0].data.label;'
+		. 'b = panel(); var box = all(b).filter(function (n) { return n.tagName === "INPUT" && (n.type || n.attrs.type) === "checkbox"; });'
+		. 'out.boxes = box.length; box[1].checked = true; box[1].listeners.change(); out.values = e.doc.layers[0].data.values;'
+		. 'out.after = cls(panel(), "pgie-note").map(function (n) { return n.textContent; });'
+		. 'console.log(JSON.stringify(out));', true
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_true(in_array('dataColumnGone', $r['notes'], true), 'the panel says a column is gone');
+	pg_assert_same(array('', true), $r['options'][0], 'a blank first option stands for the gone label column');
+	pg_assert_same('11', $r['label'], 'the first column can be picked as the label');
+	pg_assert_same(2, $r['boxes'], 'a value checkbox for each number column left');
+	pg_assert_same(array('12', '15'), $r['values'], 'the gone value column is dropped by the next change');
+	pg_assert_false(in_array('dataColumnGone', $r['after'], true), 'no note once every column is there');
+}
+
 // The server's rows of the tables: the channel's name and its tone on each
 // board, none for a table of no channel.
 function test_image_editor_data_menu_tables_shape()
