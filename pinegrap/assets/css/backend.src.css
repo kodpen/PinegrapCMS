@@ -22676,6 +22676,13 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     border-radius: 0;
     box-shadow: none;
   }
+  /* The channel view's full window height (.ws-app:not(:has(.ws-home))
+     above) is the more specific selector: without this, 100dvh, which the
+     on-screen keyboard does not shorten, beat --ws-fit-h and left the
+     writing box under the keyboard. */
+  .ws-app:not(:has(.ws-home)) {
+    height: var(--ws-fit-h, calc(100vh - 3.125rem));
+  }
   body.workspace_channels {
     overflow: hidden;
   }
