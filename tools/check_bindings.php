@@ -252,7 +252,7 @@ foreach ($renderer_files as $file) {
 
 	$source = file_get_contents($file);
 	$short  = basename($file);
-	$calls  = '/(?:_eo_apply_visibility_bindings|_pg_sw_resolve_visibility)\(\s*[^,()]+(?:\([^()]*\))?\s*,\s*'
+	$calls  = '/(?:_eo_apply_visibility_bindings|_pg_sw_resolve_visibility|pg_cart_row_visibility)\(\s*[^,()]+(?:\([^()]*\))?\s*,\s*'
 	        . '|_pg_acct_render_signed_out\(\s*[^,]+,\s*[^,]+,\s*/';
 
 	if (!preg_match_all($calls, $source, $found, PREG_OFFSET_CAPTURE)) continue;

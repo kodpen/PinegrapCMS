@@ -16,4 +16,4 @@ module: subscriptions_account
 ## Tested?
 - `tests/subscriptions_account_test.php`: the lock is taken before the status write and let go after the card call; a lock not obtained writes nothing. Not run against a database.
 
-Related: commerce/subscriptions-account.md, commerce/subscriptions-renewal.md, commerce/subscriptions-operator-screen.md, api/api-customer-subscriptions.md
+Related: commerce/subscriptions-resume-charge-date.md, commerce/subscriptions-account.md, commerce/subscriptions-renewal.md, commerce/subscriptions-operator-screen.md, api/api-customer-subscriptions.md

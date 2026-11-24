@@ -986,6 +986,18 @@ function test_order_completion_shipping_less_step()
 	pg_assert_true(preg_match('/UPDATE ship_tos SET shipping_cost = \?\s+WHERE id = \? AND order_id = \? AND shipping_cost = \?/', $body) === 1, 'the write only lands while the row still holds the value read');
 }
 
+// The checkout's own request lowers the same recipient by a compare-and-set
+// too: the visitor's return and the payment service's message can run at
+// the same moment, and a relative decrement after the message's write lowered
+// the recipient twice.
+function test_order_completion_shipping_less_checkout()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	pg_assert_true(strpos($source, 'shipping_cost = shipping_cost -') === false, 'no relative decrement in the checkout');
+	pg_assert_true(preg_match('/UPDATE ship_tos SET shipping_cost = \?\s+WHERE id = \? AND order_id = \? AND shipping_cost = \?/', $source) === 1, 'the checkout writes only while the row still holds the cost it read');
+}
+
 function test_order_completion_keeps_legal_documents()
 {
 	pg_assert_true(pg_order_complete_keeps_legal_documents(array()), 'a checkout keeps the documents');

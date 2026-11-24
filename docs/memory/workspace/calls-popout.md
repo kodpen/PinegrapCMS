@@ -1,6 +1,6 @@
 ---
 name: calls-popout
-description: The Workspace call's Pop out (CN5): the call window moved into a Document Picture-in-Picture window above other windows and tabs, what it keeps, how it comes back
+description: The Workspace call's Pop out (CN5, #11455): the call window moved into a Document Picture-in-Picture window above other windows and tabs, what it keeps, how it comes back
 ---
 
 ## What does Pop out do?

@@ -1133,6 +1133,11 @@ function ws_events_process($limit = WS_EVENTS_BATCH)
             ws_flow_wake((string) $row['event'], $payload);
         }
 
+        // The runs it takes out of their flows (flow_leave.php).
+        if (function_exists('ws_flow_leave')) {
+            ws_flow_leave((string) $row['event'], $payload);
+        }
+
         // A line in the channels watching its record: the Workspace's, so
         // not while it is switched off and only flows hear the site.
         if (ws_enabled() && ws_watch_ready()) {

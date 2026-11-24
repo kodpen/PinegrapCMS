@@ -2309,18 +2309,8 @@ function pg_auth_token_sweep()
 }
 
 // The username property can either be a username or email address.
-/**
- * Case-folding for address comparison, multibyte-aware where the extension is
- * there. One function so the block list, its editor and any future caller fold
- * the same way - two different foldings would silently disagree about whether
- * an address is blocked.
- */
-function pg_email_fold($value)
-{
-    $value = (string) $value;
-
-    return function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
-}
+// pg_email_fold() lives in includes/authentication.php, beside the block list
+// match get_file.php shares.
 
 /**
  * Is this address on the block list?
@@ -2338,41 +2328,14 @@ function pg_email_fold($value)
  */
 function pg_email_blocked($email)
 {
-    // mb_strtolower, not strtolower: an address written with Turkish or any
-    // accented letters would otherwise only match if the operator typed it in
-    // exactly the same case, which is not what "blocked" is supposed to mean.
-    $email = pg_email_fold(trim((string) $email));
-
-    if (($email === '') || !defined('BANNED_EMAIL_ADDRESSES') || (BANNED_EMAIL_ADDRESSES === '')) {
+    // The match folds letter case multibyte-aware (pg_email_fold()): an
+    // address written with Turkish or accented letters matches however the
+    // operator typed it.
+    if (!defined('BANNED_EMAIL_ADDRESSES')) {
         return false;
     }
 
-    $at = strrpos($email, '@');
-    $domain = ($at === false) ? '' : substr($email, $at);   // keeps the "@"
-
-    foreach (preg_split('/[\r\n,;]+/', (string) BANNED_EMAIL_ADDRESSES) as $entry) {
-        $entry = pg_email_fold(trim($entry));
-        $entry = ltrim($entry, '*');
-
-        if ($entry === '') {
-            continue;
-        }
-
-        // A bare domain is written either way round; normalise to "@domain".
-        if (strpos($entry, '@') === false) {
-            $entry = '@' . $entry;
-        }
-
-        if (strpos($entry, '@') === 0) {
-            if (($domain !== '') && ($domain === $entry)) {
-                return true;
-            }
-        } elseif ($entry === $email) {
-            return true;
-        }
-    }
-
-    return false;
+    return pg_auth_email_on_list($email, (string) BANNED_EMAIL_ADDRESSES);
 }
 
 /**
@@ -4642,17 +4605,21 @@ function initialize_user()
 
         $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
 
-        // A disabled account's token signs nobody in; the cookie is cleared
-        // like an invalid one.
-        if ($token_user_id && pg_user_id_is_disabled($token_user_id)) {
-            $token_user_id = false;
+        // What refuses a remembered device, asked from the one function
+        // get_file.php asks too (includes/authentication.php), so a file
+        // request never opens a session this would refuse. A disabled
+        // account's token signs nobody in; the cookie is cleared like an
+        // invalid one. Nor does a member's whose address is on the block
+        // list: blocking stops every sign-in of the account
+        // (validate_login()), and a remembered device would otherwise keep it
+        // in for its whole life.
+        $remembered_refusal = $token_user_id ? pg_auth_remembered_signin_refusal($token_user_id) : '';
+
+        if ($remembered_refusal === 'blocked') {
+            log_activity(pg_log_lang(array('string' => 'remembered sign-in refused because the email address is blocked')), '');
         }
 
-        // Nor does a member's whose address is on the block list: blocking
-        // stops every sign-in of the account (validate_login()), and a
-        // remembered device would otherwise keep it in for its whole life.
-        if ($token_user_id && pg_user_id_login_blocked($token_user_id)) {
-            log_activity(pg_log_lang(array('string' => 'remembered sign-in refused because the email address is blocked')), '');
+        if (($remembered_refusal === 'disabled') || ($remembered_refusal === 'blocked')) {
             $token_user_id = false;
         }
 
@@ -4666,10 +4633,7 @@ function initialize_user()
             // session on the password that was typed back then; the token is
             // retired and the visitor is sent to set the factor up, the way
             // the sign-in screens do.
-            if (is_array($user) && isset($user['id'])
-                && function_exists('pg_mfa_required_for_user')
-                && pg_mfa_required_for_user($user['id'])
-                && !pg_mfa_has_factor($user['id'])) {
+            if (is_array($user) && isset($user['id']) && ($remembered_refusal === 'factor')) {
 
                 pg_auth_token_revoke((string) strtok((string) $_COOKIE['software']['auth'], ':'));
                 setcookie('software[auth]', '', time() - 1000, '/');

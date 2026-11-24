@@ -1070,13 +1070,17 @@ function ws_flow_anchor_start($viewer, $row, $fill)
     $context = json_encode(ws_flow_anchor_context($flow, $trigger, $fill), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $now = time();
 
+    // A run an event started is about what the event names (its person's
+    // contact first), so a leave rule finds it (flow_leave.php).
+    list($subject_type, $subject_id) = ws_flow_leave_run_subject((string) ($fill['event'] ?? ''), (array) ($fill['event_payload'] ?? array()), 'ws_flow_leave_contact_of');
+
     // Not db(): the duplicate start key of a step carried out twice is an
     // answer here.
     $written = db_q("INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
             subject_type, subject_id, context, depth, boxes_run, started_at, updated_at, finished_at)
-        SELECT ?, ?, 'running', ?, ?, ?, '', 0, ?, ?, 0, ?, ?, 0
+        SELECT ?, ?, 'running', ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 0
         FROM ws_flows WHERE id = ? AND status = 'live'",
-        array($flow_id, (int) $version['id'], (int) $flow['owner_id'], (int) $flow['owner_id'], (string) $start_key, (string) $context,
+        array($flow_id, (int) $version['id'], (int) $flow['owner_id'], (int) $flow['owner_id'], (string) $start_key, (string) $subject_type, (int) $subject_id, (string) $context,
             (int) ($fill['depth'] ?? 0), $now, $now, $flow_id));
 
     if (!$written) {
@@ -1286,12 +1290,12 @@ function ws_flow_run_now($viewer, $flow, $data = array())
  * How a run's end is written back to the converted action that started it.
  * Pure.
  *
- * @param string $state done | failed | cancelled
+ * @param string $state done | failed | cancelled | left
  * @return string done | failed | skipped, '' for a run still open
  */
 function ws_flow_anchor_run_status($state)
 {
-    $map = array('done' => 'done', 'failed' => 'failed', 'cancelled' => 'skipped');
+    $map = array('done' => 'done', 'failed' => 'failed', 'cancelled' => 'skipped', 'left' => 'skipped');
 
     return $map[(string) $state] ?? '';
 }
@@ -1368,6 +1372,7 @@ function ws_flow_anchor_run_ended($run, $state)
         'done'      => 'flow run {var:1} finished',
         'failed'    => 'flow run {var:1} failed',
         'cancelled' => 'flow run {var:1} was cancelled',
+        'left'      => 'flow run {var:1} left the flow',
     );
     $steps = json_decode((string) $kept['detail'], true);
     $steps = is_array($steps) ? $steps : array();

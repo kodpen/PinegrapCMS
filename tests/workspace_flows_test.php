@@ -266,7 +266,7 @@ function test_workspace_flows_normalize_keeps_the_shape()
 	));
 
 	pg_assert_same(1, $graph['v']);
-	pg_assert_same(array('v', 'nodes', 'edges', 'notes', 'frames'), array_keys($graph), 'unknown keys dropped');
+	pg_assert_same(array('v', 'nodes', 'edges', 'notes', 'frames', 'leave'), array_keys($graph), 'unknown keys dropped');
 	pg_assert_same(3, count($graph['nodes']), 'a box that is not an object is dropped');
 
 	$start = $graph['nodes'][0];

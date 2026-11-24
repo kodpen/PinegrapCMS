@@ -1,6 +1,6 @@
 ---
 name: calls-share
-description: Screen sharing in a Workspace call (CL4 #10908, CN4): several shares at once, one a member, by share/unshare marks, a share ends when its sharer leaves, the screen line, the share button
+description: Screen sharing in a Workspace call (CL4 #10908, CN4 #11392): several shares at once, one a member, by share/unshare marks, a share ends when its sharer leaves, the screen line, the share button
 ---
 
 ## How does the server know who shares?
@@ -9,7 +9,8 @@ description: Screen sharing in a Workspace call (CL4 #10908, CN4): several share
 - The live reads' call part says who: `call.sharers` (member ids, ascending, `[]` for none) from `ws_call_present()`. The API's call route does not name the sharers.
 
 ## What are the rules?
-- Any member in the live call may share (a guest too, `calls-guest.md`), while others share: several shares at once, one a member (CN4; it replaced CL4's one share at a time and its refusal "Someone else is sharing their screen.").
+- Any member in the live call may share (a guest too, `calls-guest.md`), while others share: several shares at once, one a member (CN4, #11392; it replaced CL4's one share at a time and its refusal "Someone else is sharing their screen.").
+- Owner (2026-11-24): several people share at once; one share at a time was the first plan's reading, not the owner's words (`workflow/decisions-made-workspace-50.md`).
 - `ws_call_share_send()` takes no lock: a member's marks decide only its own share, so two members starting at once both share.
 - `unshare` is the sharer's own: from a member not sharing nothing is written.
 - The share ends when its sharer leaves (`ws_call_leave()` deletes the member's signals, its marks with them), when the call ends, and 75 s after a closed tab's last renewal. Marks count in the member's 300 signals a minute.

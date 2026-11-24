@@ -1,6 +1,6 @@
 ---
 name: calls-window
-description: The Workspace call window's head (CN2): Make larger / Make smaller remembered, Full screen of the whole window, a tile pinned large, Hide my picture in the window's menu
+description: The Workspace call window's head (CN2, #11415): Make larger / Make smaller remembered, Full screen of the whole window, a tile pinned large, Hide my picture in the window's menu
 ---
 
 ## What is in the call window's head?
@@ -13,6 +13,7 @@ description: The Workspace call window's head (CN2): Make larger / Make smaller 
 - Every member tile, one's own too, holds a transparent `button.ws-call-tile-pin` over it, labelled "Show large": a click puts that tile's picture on the stage in the share's place (`is-showing`, `is-pinned`), its tile leaves the rail, every share goes to the rail. A second click, Unpin at the stage's top right, or a click on a share tile lets it go.
 - A pin is the viewer's own, kept for the call in the window (`mine.pin`: -1 none, 0 one's own, else the member id), never sent. The pinned member leaving, or one's own picture hidden, unpins.
 - In a voice call, or one's own camera off, the stage shows the person icon over the picture's place.
+- On a phone the window keeps its place (`calls-endurance.md`); a pinned tile takes the width, the rail one row under it.
 
 ## What does Hide my picture do?
 - The window's menu (`ul.menu.ws-call-menu`, opened by the module itself, so the guest page needs no Bootstrap script) holds "Hide my picture" / "Show my picture": it hides one's own tile on this screen only; the others still see it, the camera stays on. Not remembered.

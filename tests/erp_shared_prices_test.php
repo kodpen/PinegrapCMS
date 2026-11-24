@@ -105,7 +105,8 @@ function test_erp_shared_prices_retail_in_public()
 	pg_assert_contains('get_discounted_product_prices(false)', _erp_shared_prices_test_file('includes/fn/product_feeds.php'), 'the product feed');
 
 	$catalog = _erp_shared_prices_test_file('includes/fn/widgets_catalog.php');
-	pg_assert_contains("'price'           => sprintf('%01.2f', ((int)\$product['price']) / 100)", $catalog, 'the structured data reads the list price');
+	pg_assert_contains("get_discounted_product_prices(false)", $catalog, 'the structured data reads the price everybody gets');
+	pg_assert_contains("isset(\$product['price']) ? \$product['price'] : 0", $catalog, 'the structured data starts from the list price');
 
 	$ecommerce = _erp_shared_prices_test_file('includes/fn/ecommerce.php');
 	$start = strpos($ecommerce, 'function pg_erp_member_prices()');

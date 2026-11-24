@@ -88,7 +88,7 @@ function test_error_page_title_is_asked_by_the_page_renderer()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
 	$asked = strpos($source, 'pg_sw_error_title(');
-	$written = strpos($source, "if (\$page_title != '') {\n        \$content = preg_replace('/<title>");
+	$written = strpos($source, "if (\$page_title != '') {\n        \$content = pg_head_title_replace(");
 
 	pg_assert_true(($asked !== false) && ($written !== false) && ($asked < $written), 'before the title tag is written');
 	pg_assert_true(preg_match('/\(\(\$pg_error_screen = pg_sw_error_context\(\)\) !== null\)\)\s*\{\s*\$page_title = pg_sw_error_title\(\$pg_error_screen\[\'code\'\], \$page_title\);/', $source) === 1, 'only on an error screen');

@@ -12,6 +12,7 @@ description: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's dire
 - Anthropic's rules for bundles and connectors, and our tools checked against them: `api/claude-plugin-census.md`, `api/claude-plugin-tool-check.md`.
 
 ## Which steps?
+- Owner (2026-11-24): the rest (CB3, CB5) waits until after the launch, as the directory asks for a demo (`workflow/after-launch-roadmap.md`).
 - The steps CB1 to CB5 and what waits for the release of 2026.11.0: `claude-plugin-bundle-steps.md`. CB1 and CB2 are done; the "Connect to Claude" button (CB4a) goes now.
 
 ## What is asked of the owner along the way?

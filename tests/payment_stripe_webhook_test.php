@@ -481,6 +481,39 @@ function test_payment_stripe_webhook_receiver_completes_once()
 	pg_assert_contains("\$outcome['log'] = array();", $nothing);
 }
 
+function test_payment_stripe_webhook_renewal_failure_names_its_subscription()
+{
+	$intent = payment_stripe_webhook_test_intent(array(
+		'status'             => 'requires_payment_method',
+		'amount_received'    => 0,
+		'metadata'           => array('subscription_id' => '7'),
+		'last_payment_error' => array('code' => 'card_declined', 'message' => 'Your card was declined.'),
+	));
+	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.payment_failed', $intent));
+
+	pg_assert_false($answer['success']);
+	pg_assert_true($answer['raw']['renewal_failed']);
+	pg_assert_same('7', $answer['raw']['subscription_id']);
+	pg_assert_same('pi_3Abc', $answer['transaction_id']);
+	pg_assert_same('Your card was declined.', $answer['error']);
+	pg_assert_same(200, pg_payment_notify_outcome('stripe', $answer, null)['http'], 'acknowledged');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+	pg_assert_true(strpos($source, 'pg_payment_callback_renewal_failed($key, $answer);') < strpos($source, '$order = $answer[\'success\'] ? pg_payment_notify_order($answer) : null;'));
+
+	// The off-session refusal that starts the confirmation is not a failure.
+	$auth = $intent;
+	$auth['last_payment_error']['code'] = 'authentication_required';
+	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.payment_failed', $auth));
+	pg_assert_true($answer['raw']['ignored']);
+	pg_assert_false(isset($answer['raw']['renewal_failed']));
+
+	// An order's failed payment is not read.
+	$order = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.payment_failed', payment_stripe_webhook_test_intent(array('status' => 'requires_payment_method'))));
+	pg_assert_true($order['raw']['ignored']);
+	pg_assert_false(isset($order['raw']['renewal_failed']));
+}
+
 function test_payment_stripe_webhook_order_payment_answers_the_kept_card()
 {
 	// The order's payment kept its card for a subscription: the message that

@@ -222,9 +222,14 @@ function pg_subscription_transition_allowed($from, $to)
 
 /**
  * The columns a move writes. Back to active the retry ladder starts over;
- * cancelled and ended keep the time they happened, once.
+ * cancelled and ended keep the time they happened, once. A paused row
+ * resumed after its charge date is not charged at once: the date moves to
+ * the next one of its series (pg_subscription_renewal_next_at()), so the
+ * days between are free and the billing day stays.
  *
- * @param array  $row the subscriptions row as read
+ * @param array  $row the subscriptions row as read (status, cancelled_at,
+ *                    ended_at; for a resume also next_charge_at,
+ *                    created_at, period)
  * @param string $to
  * @param int    $now
  * @return array|null column => value, null when the move is refused
@@ -241,6 +246,16 @@ function pg_subscription_transition_fields($row, $to, $now)
 
     if ($to === 'active') {
         $fields['retry_count'] = 0;
+
+        $due = isset($row['next_charge_at']) ? (int) $row['next_charge_at'] : 0;
+
+        if (($from === 'paused') && ($due > 0) && ($due <= (int) $now)) {
+            $next = pg_subscription_renewal_next_at($row['created_at'] ?? 0, (string) ($row['period'] ?? ''), (int) $now);
+
+            if ($next > (int) $now) {
+                $fields['next_charge_at'] = $next;
+            }
+        }
     } elseif (($to === 'cancelled') && empty($row['cancelled_at'])) {
         $fields['cancelled_at'] = (int) $now;
     } elseif (($to === 'ended') && empty($row['ended_at'])) {
@@ -627,7 +642,7 @@ function pg_subscription_set_status($id, $to, $detail = '', $from = '')
         return false;
     }
 
-    $row = db_item("SELECT id, status, cancelled_at, ended_at FROM subscriptions WHERE id = '" . e((int) $id) . "'");
+    $row = db_item("SELECT id, status, cancelled_at, ended_at, next_charge_at, created_at, period FROM subscriptions WHERE id = '" . e((int) $id) . "'");
 
     // A move checked against one status is not made from another: a pause
     // checked on an active row must not stop the retries of a row the

@@ -85,6 +85,7 @@ function ws_api_flow_graph_schema()
         'edges' => array(array('from' => 'string', 'to' => 'string', 'on' => 'string')),
         'notes' => array(array('id' => 'string', 'text' => 'string', 'x' => 'integer', 'y' => 'integer', 'w' => 'integer', 'h' => 'integer', 'by' => 'string', 'day' => 'string')),
         'frames' => array(array('id' => 'string', 'name' => 'string', 'x' => 'integer', 'y' => 'integer', 'w' => 'integer', 'h' => 'integer', 'folded' => 'boolean')),
+        'leave'  => array(array('event' => 'string')),
     );
 }
 
@@ -420,7 +421,7 @@ function ws_api_flow_answer($viewer, $id, $full = true)
 
 /**
  * The fields of a flow write, in the shape ws_flow_save() reads; only those
- * sent. nodes, edges, notes and frames are the four parts of the draft: a part not
+ * sent. nodes, edges, notes, frames and leave are the parts of the draft: a part not
  * sent is kept from the draft as it is ($current), or empty on a new flow.
  *
  * @param array      $params
@@ -437,7 +438,7 @@ function ws_api_flow_input($params, $current = null)
         }
     }
 
-    $sent = array_intersect(array('nodes', 'edges', 'notes', 'frames'), array_keys($params));
+    $sent = array_intersect(array('nodes', 'edges', 'notes', 'frames', 'leave'), array_keys($params));
 
     if (($current === null) || !empty($sent)) {
         $graph = ($current !== null) ? ws_flow_graph_of($current) : ws_flow_graph_empty();
@@ -839,7 +840,7 @@ function ws_api_flow_from_template($templates, $params, $data)
         return array('ok' => false, 'error' => $error, 'status' => $status, 'field' => $field, 'data' => array());
     };
 
-    if (array_intersect(array('nodes', 'edges', 'notes', 'frames'), array_keys($params))) {
+    if (array_intersect(array('nodes', 'edges', 'notes', 'frames', 'leave'), array_keys($params))) {
         return $refused(lang('Send a template or boxes, not both.'), 422, 'template');
     }
 
@@ -1574,6 +1575,7 @@ function ws_api_flow_counts_schema()
         'days'    => 'integer',
         'since'   => 'integer',
         'boxes'   => 'WorkspaceFlowBoxCount[]',
+        'left'    => 'integer',
         'partial' => 'boolean',
     );
 }
@@ -1613,7 +1615,7 @@ function ws_api_flow_counts($params)
         api_fail_not_found(lang('Flow'));
     }
 
-    api_ok(array('days' => $counts['days'], 'since' => $counts['since'], 'boxes' => $counts['boxes'], 'partial' => $counts['partial']));
+    api_ok(array('days' => $counts['days'], 'since' => $counts['since'], 'boxes' => $counts['boxes'], 'left' => $counts['left'], 'partial' => $counts['partial']));
 }
 
 function ws_api_flow_runs_get($params)

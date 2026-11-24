@@ -7,7 +7,7 @@ description: The Flows editor with nothing chosen (FE3, #11165): no panel; the f
 - No panel: the chosen box's card closes (`wsf-side-open` off, `workspace-flows-side-panel.md`). Built in FE3 (`plans/flows-editor-next-steps.md`, board A1); before it a right column held the flow's summary (FW4, #9228).
 
 ## What is in the name's window? (sideFlow(box))
-- The chevron beside the flow's name (`.wsf-name-more`, "About this flow") opens a 320 px window under it (`#wsf-pop-flow`): Start, Boxes and arrows, Last flow run, Publishing (`wsf-side-facts`); the live/draft hint (`flowHelp()`, a reader "only its owner changes it"); the home channel field (`homeField()`); the Keyboard list folded.
+- The chevron beside the flow's name (`.wsf-name-more`, "About this flow") opens a 320 px window under it (`#wsf-pop-flow`): Start, Boxes and arrows, Last flow run, Publishing (`wsf-side-facts`); the live/draft hint (`flowHelp()`, a reader "only its owner changes it"); the home channel field (`homeField()`); Leaving the flow (`leaveField()`, `workspace-flows-leave.md`); the Keyboard list folded.
 - A reader has the chevron too. The window is drawn afresh each time it opens.
 
 ## How are the problems shown?

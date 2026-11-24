@@ -135,6 +135,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_whatsapp_box.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_split.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_send_hours.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_leave.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_values.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_loops.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_trial.php');

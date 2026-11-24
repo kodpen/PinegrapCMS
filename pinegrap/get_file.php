@@ -1811,12 +1811,17 @@ function initialize_user()
     ) {
         $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
 
-        // A disabled account's token signs nobody in.
-        if ($token_user_id && pg_auth_user_disabled($token_user_id)) {
-            $token_user_id = false;
-        }
+        // The refusals initialize_user() makes, from the same function: a
+        // disabled account's or a blocked member's token signs nobody in and
+        // its cookie is cleared. A token whose account owes a second factor
+        // is only not adopted here: the cookie stays, so the panel's next
+        // request retires it and sends the visitor to the setup. A session
+        // opened here would pass the panel without either check.
+        $remembered_refusal = $token_user_id ? pg_auth_remembered_signin_refusal($token_user_id) : '';
 
-        if ($token_user_id) {
+        if ($remembered_refusal === 'factor') {
+            // Not adopted; the cookie is left for the panel.
+        } elseif ($token_user_id && ($remembered_refusal === '')) {
 
             $user = pg_load_user_row($token_user_id);
 

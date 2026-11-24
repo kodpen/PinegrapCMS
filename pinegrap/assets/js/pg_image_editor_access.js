@@ -75,18 +75,18 @@
         }
     };
 
-    // ---- the help sheet ----
+    // ---- the keyboard shortcuts sheet ----
 
-    Editor.prototype.openHelp = function () {
+    Editor.prototype.openKeys = function () {
         var self = this;
 
-        if (this.helpBox || this.confirmBox) {
+        if (this.keysBox || this.confirmBox) {
             return;
         }
 
-        this.helpReturn = document.activeElement;
+        this.keysReturn = document.activeElement;
 
-        var close = button('pgie-ibtn sm', t('close'), 'close', function () { self.closeHelp(); });
+        var close = button('pgie-ibtn sm', t('close'), 'close', function () { self.closeKeys(); });
         var body = el('div', { class: 'pgie-keys' });
 
         M.keyMap(this.tools.list).forEach(function (g) {
@@ -115,28 +115,28 @@
             body
         ]);
 
-        this.helpBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-help-title' }, [box]);
+        this.keysBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-help-title' }, [box]);
         // A press beside the sheet closes it.
-        this.helpBox.addEventListener('pointerdown', function (e) {
-            if (e.target === self.helpBox) {
-                self.closeHelp();
+        this.keysBox.addEventListener('pointerdown', function (e) {
+            if (e.target === self.keysBox) {
+                self.closeKeys();
             }
         });
-        this.root.appendChild(this.helpBox);
+        this.root.appendChild(this.keysBox);
         close.focus();
     };
 
-    Editor.prototype.closeHelp = function () {
-        if (!this.helpBox) {
+    Editor.prototype.closeKeys = function () {
+        if (!this.keysBox) {
             return false;
         }
 
-        this.helpBox.parentNode.removeChild(this.helpBox);
-        this.helpBox = null;
+        this.keysBox.parentNode.removeChild(this.keysBox);
+        this.keysBox = null;
 
-        var back = this.helpReturn;
+        var back = this.keysReturn;
 
-        this.helpReturn = null;
+        this.keysReturn = null;
         ((back && back.isConnected && !back.disabled) ? back : this.stage).focus({ preventScroll: true });
 
         return true;
@@ -148,7 +148,7 @@
     // unsaved-changes question while one is open; the browser's own step
     // works between the ends. True when it moved the focus.
     Editor.prototype.trapTab = function (e) {
-        var box = this.helpBox || this.confirmBox || this.root;
+        var box = this.keysBox || this.confirmBox || this.root;
         var list = focusables(box), i = list.indexOf(document.activeElement);
 
         if (!list.length) {
@@ -221,12 +221,12 @@
     // ---- hooks ----
 
     Editor.inits.push(function () {
-        this.helpBox = null;
-        this.helpReturn = null;
+        this.keysBox = null;
+        this.keysReturn = null;
     });
 
     Editor.footItems.push(function () {
-        var self = this, b = button('pgie-ibtn sm', t('keysTitle'), 'keyboard', function () { self.openHelp(); });
+        var self = this, b = button('pgie-ibtn sm', t('keysTitle'), 'keyboard', function () { self.openKeys(); });
 
         b.setAttribute('aria-keyshortcuts', '?');
         b.setAttribute('aria-haspopup', 'dialog');
@@ -239,7 +239,7 @@
     // First in line: while the sheet is open only Tab, Enter and Space on
     // its buttons and Escape work; ? opens it; a letter picks a tool.
     Editor.keys.unshift(function (e, mod, k) {
-        if (this.helpBox) {
+        if (this.keysBox) {
             return (k !== 'Enter') && (k !== ' ');
         }
 
@@ -248,7 +248,7 @@
         }
 
         if (k === '?') {
-            this.openHelp();
+            this.openKeys();
             return true;
         }
 
@@ -277,6 +277,6 @@
     });
 
     Editor.escapes.unshift(function () {
-        return this.closeHelp();
+        return this.closeKeys();
     });
 }(window.PgImageEditor.parts));

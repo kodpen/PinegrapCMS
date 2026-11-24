@@ -119,5 +119,5 @@ function test_picture_group_empty_wording()
 	pg_assert_contains("in_array(\$group_key, array('ui', 'pictures'), true) ? lang('None yet') : lang('Not scanned')", $screen);
 	pg_assert_contains("lang('No picture yet. A picture made in the Artifact Canvas whose words are text layers is listed here once a page that shows it is saved in the Visual Page Editor or opened in another language.')", $screen);
 	pg_assert_contains("((\$group === 'pictures') ? '<div class=\"small fg-secondary py-3 border-bottom\">", $screen, 'the group has a note of its own');
-	pg_assert_contains("\$open_picture_label = lang('Edit this image in the Artifact Canvas');", $screen, 'the badge says what its press does');
+	pg_assert_contains("\$open_picture_label = lang('Edit in Artifact Canvas');", $screen, 'the badge says what its press does');
 }

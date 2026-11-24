@@ -253,3 +253,41 @@ function test_cart_tax_estimate_widget_passes_the_discount()
 	pg_assert_true((bool) preg_match('/pg_cart_estimate_tax\(\s*\$_pg_tax_lines,\s*\$_pg_def_rate,\s*\$discount_cents,/', $source), 'the discount goes in');
 	pg_assert_true((bool) preg_match('/oi\.tax_rate AS charged_rate" : ""\) \. "\s*FROM order_items oi\s*LEFT JOIN products p ON oi\.product_id = p\.id\s*WHERE oi\.order_id = \'\$oid_esc\'" \. pg_order_item_active_sql\(\'oi\'\) \. "\s*ORDER BY oi\.id ASC"/', $source), 'the lines in the order of their ids');
 }
+
+// The checkout took no tax on the lines: the order is tax-exempt, or the
+// buyer's address is in no tax zone (order_items.tax_rate 0, tax_total 0).
+// The cart shows none either, not the default rate's preview the checkout
+// will not charge.
+function test_cart_tax_estimate_checkout_took_no_tax()
+{
+	$lines = array(
+		cart_tax_estimate_test_charged(10000, 0, '0.000'),
+		cart_tax_estimate_test_charged(5000, 0, '0.000', 1, '10.000'),
+	);
+	pg_assert_same(0, pg_cart_estimate_tax($lines, 20.0), 'exempt or in no zone: no tax');
+
+	// A line added after the checkout has no charged rate yet: the preview.
+	$lines[] = cart_tax_estimate_test_charged(2500, 0, null);
+	pg_assert_same(3000, pg_cart_estimate_tax($lines, 20.0), 'a new line: the whole cart previewed');
+}
+
+// A recurring line that starts later is taxed alone by the checkout
+// (pg_order_line_taxes()): its stored tax still fits, and the preview takes
+// it alone too.
+function test_cart_tax_estimate_line_taxed_alone()
+{
+	$later = cart_tax_estimate_test_charged(1003, 181, '18.000');
+	$later['recurring'] = 1;
+	$later['recurring_start_date'] = '0000-00-00';
+	$later['start_days'] = 30;
+	$lines = array(cart_tax_estimate_test_charged(1003, 181, '18.000'), $later);
+	$checkout = pg_order_line_taxes(array(1 => array('amount' => 1003, 'rate' => 18.0), 2 => array('amount' => 1003, 'rate' => 18.0, 'alone' => true)));
+	pg_assert_same(362, array_sum($checkout), 'the checkout takes each line alone');
+	pg_assert_same(362, pg_cart_estimate_tax($lines, 20.0, 0, '2026-11-12'), 'the stored taxes, not the default rate\'s preview');
+
+	foreach ($lines as $key => $line) {
+		$lines[$key]['tax_total'] = 0;
+		$lines[$key]['charged_rate'] = null;
+	}
+	pg_assert_same(402, pg_cart_estimate_tax($lines, 20.0, 0, '2026-11-12'), 'the preview takes the later line alone: 201 + 201');
+}

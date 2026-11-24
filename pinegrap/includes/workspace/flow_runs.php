@@ -132,6 +132,8 @@ function ws_flow_run_statuses()
         'done'      => lang('Done'),
         'failed'    => lang('Failed'),
         'cancelled' => lang('Cancelled'),
+        // Ended by a leave rule of its flow (flow_leave.php).
+        'left'      => lang('Left the flow'),
     );
 }
 
@@ -4156,7 +4158,7 @@ function ws_flow_runs_sweep($limit = 200)
     }
 
     $ids = array_map('intval', (array) db_values("SELECT id FROM ws_flow_runs
-        WHERE status IN ('done', 'failed', 'cancelled') AND updated_at < '" . (time() - WS_FLOW_RUNS_KEEP) . "'
+        WHERE status IN ('done', 'failed', 'cancelled', 'left') AND updated_at < '" . (time() - WS_FLOW_RUNS_KEEP) . "'
         ORDER BY updated_at LIMIT " . max(1, (int) $limit)));
 
     if (empty($ids)) {

@@ -19,7 +19,7 @@ description: An ERP account using another account's prices (price_account_id, 11
 - `pg_erp_member_prices()` takes the products to weigh from `erp_account_storefront_scope()`, so the cart, line prices, offers and product page get the shared price with no change of their own. The recorded rule against a campaign stands (`erp_storefront_price()`, `erp-account-prices.md`).
 
 ## Where does retail stand?
-- Feeds call `get_discounted_product_prices(false)`, the structured data reads `products.price`, the API's product fields are the list price.
+- Feeds call `get_discounted_product_prices(false)`, the structured data reads `products.price` or the offer price everybody gets (`get_discounted_product_prices(false)`, #11459), the API's product fields are the list price.
 - `pg_erp_member_prices()` marks the page personal (`pg_page_cache_personal('member_price')`) when it returns any price, so the page cache never keeps a page drawn with one member's price (signed-in pages already bypass it).
 
 ## Where is it chosen?

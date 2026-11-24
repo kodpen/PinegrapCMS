@@ -66,6 +66,13 @@ if (!$is_gateway_return && !pg_order_page_known($_POST['page_id'] ?? '', 'expres
     output_error(lang('An express order page could not be found for the id that was passed.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// The payment service's own message may have completed the order before
+// the visitor came back: init.php has let go of it, and the return leads
+// to its receipt instead of checking out a new, empty order.
+if ($is_gateway_return) {
+    pg_payment_return_receipt('express_order', $_GET['mode'] ?? '');
+}
+
 initialize_order();
 
 $liveform = new liveform('express_order');

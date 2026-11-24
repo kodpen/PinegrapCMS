@@ -204,6 +204,7 @@
 - recycle-bin-offline.md: Everything inside the Recycle Bin folder is offline for visitors, whatever the access type a binned folder carries itself
 - recycle-bin-purge-rights.md: The daily recycle bin purge deletes as the software (administrator role), whoever's explorer visit claims it; a hidden short link is refused, never its record dropped
 - registration-gate-form-submitter.md: The registration folder gate in get_page.php lets a visitor without a session reach a custom form's confirmation page with the code of a form this session submitted (PR #4959, bug #4804)
+- remembered-sign-in-refusals.md: The one decision that refuses a remembered device (software[auth] token): disabled, blocked member, required two-step missing; asked by initialize_user() and get_file.php alike (#11454)
 - request-lists-json-bodies.md: JSON body keys read as one value (token, action, mode, ids, text) that hold a list or an object count as not given: image editor API, translations calls, Workspace canvas save, notes import
 - request-lists-record-forms.md: pg_request_refuse_lists(): nine record forms (ad, ad region, auto dialog, contact group, container, key code, login region, menu, product attribute) refuse a field posted as a list
 - request-lists-record-screens.md: Edit Page, Edit File, Edit Theme File and the Product Builder (add and edit) refuse a field posted as a list (name[]=x) before any write; pg_pb_list_fields() names the product form's own lists

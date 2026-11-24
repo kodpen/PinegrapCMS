@@ -78,7 +78,7 @@
 - cart-recovery-whatsapp-page.md: Recovered carts: a WhatsApp single-use offer key as a touch and its use as clicked/restored, a pop-up taken up on a page (channel page, source popup), the left-cart test of 6 hours to 30 days [decision: here]
 - cart-save-for-later.md: Opt-in Save for Later: cart_action.php endpoint, pg_order_item_active_sql() in every cart and checkout reader, what still counts a saved line, lines dropped when the order is placed (#732).
 - cart-stock-below-minimum.md: Checkout stock check against a product's minimum quantity: a line the stock can only cover below the minimum is removed, not cut, in a cart with or without a bundle
-- cart-tax-estimate.md: Cart widget tax (pg_cart_estimate_tax): stored line taxes while they fit, else the default-rate preview; the order discount's share off as the checkout takes it (#3455, #9045)
+- cart-tax-estimate.md: Cart widget tax (pg_cart_estimate_tax): stored line taxes while they fit, else the default-rate preview; a 0-rate line the checkout decided; the order discount's share off (#3455, #9045)
 - cart-widget-low-stock.md: Cart widget low-stock warning (define, tokens, exact condition), cart query stock columns and out_of_stock_message.
 - cart-widget-payment-plan-and-gates.md: Who writes cart recurring payment plan columns, the Messages-node-before-loop liveform snapshot rule, and the double gate for staff-only offline payment checkbox.
 - cart-widget-rows-and-groups.md: Cart widget row types (donation, offer gift, normal), pending offers own-form rule, tax/shipping notice, and recipient/recurring group heading bands with their sorting.
@@ -230,7 +230,7 @@
 - order-completion-from-payment.md: pg_order_complete_from_payment() (A3, #3021; account A3b, #3035): a payment service's message completes an incomplete order the visitor left: why, values, lines, receipt, account, legal documents [decision: decisions-made-product-2.md, decisions-made-schema-3.md]
 - order-completion-line-comments.md: Order completion stage functions for a line's comments, its e-mailed page and the product_ordered and order_completed campaigns (A2c4): inputs, unit rules, what changed
 - order-completion-lines.md: Per-line stage functions of the order completion (#2713, #2740, #2766, A2c3b): stock, reservations, membership, folder access, gift cards, product forms, submitted forms, watcher
-- order-completion-shipping-less.md: The recipient that gives up the shipping's minor units on a payment callback is lowered by a compare-and-set, so two callbacks lower it once
+- order-completion-shipping-less.md: The recipient that gives up the shipping's minor units is lowered by a compare-and-set in the checkout and on a payment callback, so a return and a message lower it once
 - order-completion-stock-and-spots.md: What a completed order or local sale does to stock and event spots: fresh stock read, the hold released with the take, the out_of_stock flag, what is announced
 - order-completion.md: pg_order_complete() (#2638, every stage since #2972): the session-free completion of an incomplete order, the once-only lock, its context, what it writes in order
 - order-delete.md: What deleting an order removes (delete_order.php, the only DELETE FROM orders), the kept legal document copies among them, and who calls it
@@ -310,6 +310,7 @@
 - payment-iyzico-threeds-return.md: How the iyzico card driver's complete() finishes the 3-D Secure return (PR #1710): the iyzipay_3ds_state row and its claim, the instalment limit, the amount check, the totals the order keeps (#1422)
 - payment-method-lists.md: One list of checkout payment methods (pg_payment_checkout_methods(), PR #1743): screens that read it, what a redirect driver still needs by hand, the Pay With Iyzico gaps kept [decision: decisions-made-product.md]
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines [decision: here]
+- payment-return-after-message.md: A payment return that comes after the service's message completed the order leads to its receipt (pg_payment_return_receipt()), not to a new empty order's checkout
 - payment-return-language.md: The address a payment service sends the visitor back to carries the language of the page they paid from (pg_tr_script_url()), so completion, receipt mail and receipt page are in it (#11423)
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
 - paypal-express-return-query.md: How the classic PayPal Express Checkout return in submit_order.php reads token and PayerID: one string each, an array or a missing one empty (#5270)
@@ -449,6 +450,7 @@
 - subscriptions-account.md: The customer's subscriptions in My Account (slice 5a): the my_account "subscriptions" section, pause/resume/cancel at period end/update card, ownership, events, the job ending cancelled rows [decision: decisions-made-product-5.md]
 - subscriptions-completion-paths.md: Which order completion makes a store-run subscription (the visitor's return or the payment service's message, under one lock), and what a renewal payment no row waits for does (#11422)
 - subscriptions-decisions.md: Why driver subscriptions are built as they are (approved 2026-10-19, #3183): store-run renewals first, legacy profiles untouched, renewals as normal orders, no proration; the PRs of each slice [decision: decisions-made-product-5.md]
+- subscriptions-held-renewal.md: How a held subscription renewal (confirmation, pending or unclear charge) ends: Stripe's payment_intent.payment_failed puts it on the 1/3/7 ladder, no outcome in 7 days ends it (#11427, PR #11448) [decision: here]
 - subscriptions-iyzico.md: iyzico store-run subscriptions (PR #3249, decided in #3183): the stored-card renewals switch, card_ref, charge_renewal, update_card, subscription_cancel, the checkout row [decision: decisions-made-product-5.md]
 - subscriptions-later-start.md: Recurring lines that start after the order day on the driver gateways (PR #3378, decided in #3310): their row on today's card, the first charge on the start date, the nothing-today order refused [decision: decisions-made-product-6.md]
 - subscriptions-mails.md: Subscription e-mails (decided in #3288): renewed / failed / cancelled campaign profiles, which event mails which, once per event, the fields, the signed card update page, step 11.0.129
@@ -458,6 +460,7 @@
 - subscriptions-operator-words-errors.md: Operator Subscriptions screen: staff event words, the Event type column, 404 and the not_found move error, the one-line next-charge range on a phone (#5744, #5745, #5746)
 - subscriptions-price-notice.md: Subscription price change (decided in #3311, PR #3495): price_notice event 14 days ahead, subscription_price_changed mail, applied from the first renewal on or after its date, step 11.0.132 [decision: decisions-made-product-6.md]
 - subscriptions-renewal.md: Renewals of store-run subscriptions (PR #3290, decided in #3183): job branch, per-row lock, renewal order, next date, 1/3/7 ladder, held rows and Stripe's paid report [decision: decisions-made-product-5.md]
+- subscriptions-resume-charge-date.md: Resuming a paused store-run subscription whose charge date passed moves next_charge_at to the next series date; no charge on resume (PR #11447, #11426) [decision: here]
 - subscriptions-stripe.md: Stripe store-run subscriptions (PR #3270, decided in #3183): Customer and setup_future_usage on the first payment, card_ref, off-session charge_renewal, Checkout setup page, detach on cancel [decision: decisions-made-product-5.md]
 - subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref [decision: decisions-made-product-5.md]
 - supplier-feed-cost-api.md: Supplier feeds (SF6, #11121, F11 and F14): the feed's buy price as an order line's cost, the stock plan's supplier from the feed's ERP account, and the three API routes [decision: decisions-made-schema-48.md]

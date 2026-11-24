@@ -452,6 +452,18 @@ function pg_cron_jobs()
             'lane'        => 'heavy',
             'lock'        => 600,
         ),
+        // Security Scan's file walk: reads the disk, so heavy. Resumable like
+        // the accessibility pass: records its run only when the walk is
+        // through and asks to be due again in a minute until then.
+        'security_scan_job' => array(
+            'label'       => lang('Security Scan'),
+            'script'      => 'security_scan_job.php',
+            'interval'    => 86400,
+            'stale_after' => 259200,
+            'dispatch'    => true,
+            'lane'        => 'heavy',
+            'lock'        => 600,
+        ),
         'auto_backup' => array(
             'label'       => lang('Auto backup'),
             'script'      => 'auto_backup.php',

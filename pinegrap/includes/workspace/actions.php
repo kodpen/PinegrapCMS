@@ -1223,7 +1223,7 @@ function ws_handle_action($action, $request)
                 return ws_action_error($counts['error']);
             }
 
-            return ws_action_ok(array('counts' => array('days' => $counts['days'], 'since' => $counts['since'], 'boxes' => $counts['boxes'], 'partial' => $counts['partial'])));
+            return ws_action_ok(array('counts' => array('days' => $counts['days'], 'since' => $counts['since'], 'boxes' => $counts['boxes'], 'left' => $counts['left'], 'partial' => $counts['partial'])));
 
         // Tidy on the canvas (flow_draft.php): the places of the boxes of the
         // draft as the editor holds it, laid out again; nothing is saved here,

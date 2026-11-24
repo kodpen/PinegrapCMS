@@ -321,6 +321,7 @@
 - image-editor-data-still.md: A canvas with data layers saved out of the Artifact Canvas (DV5): the Workspace's file drawn without rows, Files keeps the layers, an export is a still that says so
 - image-editor-detach-sound.md: Artifact Canvas Detach sound where the hand is: the bar over a clip, a clip row's menu on the tracks, Detach from a video under Add sound; the reasons it is refused [decision: here]
 - image-editor-draw.md: The Artifact Canvas's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
+- image-editor-edit-label.md: Every button that opens the Artifact Canvas on an existing picture reads "Edit in Artifact Canvas" (owner 2026-11-24): the places, the tooltip on icon buttons, what keeps its own words [decision: decisions-made-panel-18.md]
 - image-editor-encode.md: The Artifact Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 - image-editor-eraser.md: The Artifact Canvas's eraser (Draw panel): pen strokes cut, shapes and paths masked (l.erase), locked layers kept, the mask on the stage, in a save and in the SVG, refits that keep it in place [decision: decisions-made-product-30.md]
 - image-editor-export.md: The Artifact Canvas's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
@@ -329,7 +330,7 @@
 - image-editor-glyph.md: The Artifact Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
 - image-editor-groups-look.md: Artifact Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw [decision: here]
 - image-editor-groups.md: Artifact Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw [decision: decisions-made-product-80.md]
-- image-editor-help.md: The Artifact Canvas's Help button in the top bar: its address from the server (config help, pg_help_url(), empty under private label) and the docs anchor the open tool picks (M.helpAnchor())
+- image-editor-help.md: The Artifact Canvas's Help button in the top bar: its address from the server (config help, pg_help_url(), empty under private label) and the docs anchor the open tool picks (M.helpAnchor()) [decision: decisions-made-panel-18.md]
 - image-editor-import.md: Import in the Artifact Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas [decision: here]
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
 - image-editor-keys.md: The Artifact Canvas's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
@@ -518,7 +519,7 @@
 - main-menu-drawer-focus.md: The phone main menu drawer (below lg) is inert while shut, Escape gives focus back to the bar button, focus leaving it shuts it; the symptoms they fixed
 - main-menu-drawer-only.md: A drawer-only screen (output_header()'s menu_drawer, Page Design Studio): the main menu as the phone drawer at every width, opened by the screen's own button (#9712)
 - main-menu-entry-gates.md: Main menu entries follow the gate of the screen they open: the screens that had no menu path for some of the people they admit, the entries that led to a refusal, and how both were checked
-- main-menu-icon-cite.md: Places outside the main menu that stand for a menu row (header quick note, Workspace tools dock, dashboard card heads, My Notes empty screen) draw the row's icon at rest with pg_menu_icon_cite()
+- main-menu-icon-cite.md: Places outside the main menu that stand for a menu row (header quick note, Workspace tools dock, dashboard card heads, My Notes empty screen) draw the row's icon at rest with pg_menu_icon_cite() [decision: decisions-made-panel-18.md]
 - main-menu-icon-motion.md: Main menu row icons in motion: one hover move per drawing (data-m, pg-mi-* keyframes), the live Automation flows dot and Calendars day, the Design examples pattern "Menu row icon" [decision: decisions-made-panel-17.md]
 - main-menu-icon-rows.md: Which drawing each main menu row takes (menu_icon name, the key in ui/main-menu-icons-drawing/icons.js), its idea and its hover move, by category [decision: decisions-made-panel-17.md]
 - main-menu-icons.md: Main menu icons: the rows' one-line drawings (pg_menu_icon()) on a tile in their category's colour (pg_menu_icon_tile(), pg_menu_category_tone()), the seven tones, the panel entries' tiles [decision: decisions-made-panel-17.md, decisions-made-panel-19.md, decisions-made-panel-2.md]
