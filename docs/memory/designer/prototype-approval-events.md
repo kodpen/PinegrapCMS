@@ -17,7 +17,7 @@ module: prototype_events
 ## Who hears them in the Workspace?
 - Start events in `ws_events_catalog()` with record `page` (`ws_events_record_of()`: `page_id`) and right `designs`, a `ws_viewer()` key true for roles 0-1; listed once `pg_proto_comments_ready()` / `pg_proto_approval_ready()`.
 - `ws_events_creator_sees()` asks `ws_events_prototype_sees()`: a team member who is an administrator or a designer, as the Share prototype dialog.
-- Flow values: `ws_flow_event_outputs()` (page, design, share link, guest's name; the note; the comment and the comment it answers). Parity line in `tests/workspace_flows_parity_test.php`.
+- Flow values: `ws_flow_event_outputs()` (page, design, share link, guest's name; the note; the comment and the comment it answers). Parity line in `tests/workspace_flows_parity_test.php`. Quick start: the Content and campaigns area (`flow_quick.php`); an application's event list files them under Pages (`api_app_event_area()`).
 
 ## Which API routes and MCP tools read them?
 - `GET /design/designs/{id}/prototype-verdicts` (`DesignPrototypeVerdict`): newest first, `page_id` and `link_id` filters, cursor paged; `current` true for the newest of its link and page, `older` when the draft changed since (`pg_proto_verdict_state()`).
