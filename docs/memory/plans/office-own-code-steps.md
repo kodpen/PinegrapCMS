@@ -25,7 +25,7 @@ description: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, 
 
 ## Document editing (.docx)
 - OD1, bold, italic and underline on selected text. Done: PR #11152 (`platform/office-docx-format.md`).
-- OD2, a paragraph's kind: normal, heading 1 to 3, bulleted or numbered list. Done: PR #PRNUM (`platform/office-docx-paragraph-kind.md`).
+- OD2, a paragraph's kind: normal, heading 1 to 3, bulleted or numbered list. Done: PR #11489 (`platform/office-docx-paragraph-kind.md`).
 - OD3, add a paragraph after another and delete one; a paragraph holding a picture, a table cell's last paragraph or a section break is not deleted.
 
 ## Software-wide
