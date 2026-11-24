@@ -2441,6 +2441,7 @@
     "{var:1}: one item": "{var:1}: bir öğe",
     "{var:1}: please correct your entry": "{var:1}: lütfen başvurunuzu düzeltin",
     "{var:1}: script \"{var:2}\" is not in the archive and was left out.": "{var:1}: \"{var:2}\" betiği arşivde yok, atlandı.",
+    "{var:1}: script \"{var:2}\" was left out: its type \"{var:3}\" does not run on the page (a script waiting for cookie consent, for example).": "{var:1}: \"{var:2}\" betiği alınmadı: \"{var:3}\" türü sayfada çalışmaz (örneğin çerez onayını bekleyen bir betik).",
     "{var:1}: set to “{var:2}” on {var:3} records ({var:4})": "{var:1}: {var:3} kayıtta “{var:2}” yapılır ({var:4})",
     "{var:1}: stylesheet \"{var:2}\" is not in the archive and was left out.": "{var:1}: \"{var:2}\" stil dosyası arşivde yok, atlandı.",
     "{var:1}: table {var:2} does not exist": "{var:1}: {var:2} tablosu yok",

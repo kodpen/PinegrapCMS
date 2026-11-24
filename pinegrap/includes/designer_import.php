@@ -653,6 +653,14 @@ function pg_designer_import_html($html, $html_path, $ctx)
         $type = strtolower(trim((string)$sc->getAttribute('type')));
         $is_module = ($type === 'module');
         if ($src !== '') {
+            // A script of another type is not one the page runs: a consent
+            // manager holds back a tracker as type="text/plain" until the
+            // visitor agrees. Loaded as a design script it would run on
+            // every visit, agreed or not.
+            if (!pg_di_script_type_runs($type)) {
+                $out['warnings'][] = lang(array('string' => '{var:1}: script "{var:2}" was left out: its type "{var:3}" does not run on the page (a script waiting for cookie consent, for example).', 'vars' => array($html_path, $src, $type)));
+                continue;
+            }
             if (empty($ctx->keep_framework) && pg_di_is_framework_url($src)) {
                 pg_di_note_bootstrap_major(pg_di_bootstrap_major($src, ''), $src, $ctx);
                 continue;
@@ -673,7 +681,7 @@ function pg_designer_import_html($html, $html_path, $ctx)
         }
         // Inline script — only real JavaScript. JSON-LD, templates and the
         // like stay out; they would only run as errors.
-        if ($type !== '' && $type !== 'text/javascript' && $type !== 'module' && $type !== 'application/javascript') continue;
+        if (!pg_di_script_type_runs($type)) continue;
         $code = trim($sc->textContent);
         if ($code === '') continue;
         if ($is_module) $inline_mod .= $code . "\n";
@@ -712,6 +720,16 @@ function pg_designer_import_html($html, $html_path, $ctx)
     if (!empty($ctx->classic) && $out['page_title'] !== '') $root_props['title'] = $out['page_title'];
     $out['tree'] = pg_di_restore_region_tags(pg_di_root($children, $root_props), $ctx);
     return $out;
+}
+
+// Whether a <script> of this type attribute (lower-cased, trimmed) is one a
+// browser runs: none, a JavaScript MIME type or "module". Pure.
+function pg_di_script_type_runs($type)
+{
+    $type = trim(strtolower((string)$type));
+    if (($semi = strpos($type, ';')) !== false) $type = trim(substr($type, 0, $semi));
+    return in_array($type, array('', 'module', 'text/javascript', 'application/javascript', 'application/x-javascript',
+        'text/ecmascript', 'application/ecmascript'), true);
 }
 
 /**
