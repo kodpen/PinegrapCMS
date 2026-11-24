@@ -137,7 +137,7 @@ function test_designer_home_status_is_words_and_a_shaped_mark()
 // Every start card: its drawing, then the icon and title, then one sentence.
 function test_designer_home_start_card_order()
 {
-	$html = pg_designer_home_start_card(pg_designer_home_drawing('blank'), 'bi-file-earmark-plus', 'Create New', 'An empty page.', array('modal' => '#sdNewDesignModal'));
+	$html = pg_designer_home_start_card(pg_designer_home_drawing('blank'), 'bi-file-earmark-plus', 'Create New', 'An empty page.', array('modal' => '#sdStartModal', 'start' => 'blank'));
 	$ill = strpos($html, 'sdh-ill');
 	$title = strpos($html, 'sdh-start-title');
 	$text = strpos($html, 'sdh-start-text');
@@ -191,4 +191,63 @@ function test_designer_home_design_picture_is_the_page_edit_opens()
 	$none = pg_designer_list_thumb($d, null);
 	pg_assert_false(strpos($none, 'data-pg-live-picture') !== false, 'no page: the outline alone');
 	pg_assert_contains('sdh-blank', $none);
+}
+
+// The New design window lists its starts in one order; a start a later step
+// adds takes its place in this list.
+function test_designer_start_kinds_order()
+{
+	$keys = array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true));
+	pg_assert_same(array('blank', 'template', 'import', 'paste'), $keys, 'blank, template, ZIP file, pasted markup');
+	foreach (pg_designer_start_kinds(true) as $k) {
+		pg_assert_true($k['title'] !== '' && $k['line'] !== '' && $k['icon'] !== '', $k['key'] . ': a title, one line and an icon');
+		pg_assert_same(false, $k['disabled'], $k['key'] . ': open while there are templates');
+	}
+}
+
+function test_designer_start_kinds_template_waits_for_templates()
+{
+	foreach (pg_designer_start_kinds(false) as $k) {
+		pg_assert_same($k['key'] === 'template', $k['disabled'], $k['key'] . ': only the template start waits for a template');
+	}
+}
+
+// ?start= and a card's data-sd-start name the start the window opens on.
+function test_designer_start_key_falls_back_to_blank()
+{
+	$kinds = pg_designer_start_kinds(true);
+	pg_assert_same('import', pg_designer_start_key('import', $kinds), 'a known start');
+	pg_assert_same('paste', pg_designer_start_key('paste', $kinds), 'a known start');
+	pg_assert_same('blank', pg_designer_start_key('figma', $kinds), 'a start not built yet');
+	pg_assert_same('blank', pg_designer_start_key(array('x'), $kinds), 'not text');
+	pg_assert_same('blank', pg_designer_start_key('template', pg_designer_start_kinds(false)), 'a start that waits');
+}
+
+// Where the window's main button leads for a start and a framework.
+function test_designer_start_go_href()
+{
+	pg_assert_same('add_system_style.php?framework=bootstrap5', pg_designer_start_go_href('blank', 'bootstrap5', false), 'blank');
+	pg_assert_same('add_system_style.php?framework=custom&from=pages', pg_designer_start_go_href('blank', 'custom', true), 'from the pages screen');
+	pg_assert_same('add_system_style.php?framework=bootstrap5&start=import', pg_designer_start_go_href('import', 'bootstrap5', false), 'a ZIP file');
+	pg_assert_same('add_system_style.php?framework=custom&start=paste', pg_designer_start_go_href('paste', 'custom', false), 'pasted markup');
+	pg_assert_same('add_system_style.php?framework=bootstrap5', pg_designer_start_go_href('blank', 'tailwind', false), 'an unknown framework is Bootstrap 5');
+	pg_assert_same('', pg_designer_start_go_href('template', 'bootstrap5', false), 'a template card carries its own address');
+}
+
+// The window: one tab a start, each with its drawing, title and line, each
+// pointing at its own pane; one filled button in the foot.
+function test_designer_start_window_markup()
+{
+	$html = pg_designer_start_window(array(), false);
+	pg_assert_true(strpos($html, 'id="sdStartModal"') !== false, 'the window');
+	pg_assert_same(1, preg_match_all('/role="tablist"/', $html), 'one list of starts');
+	foreach (pg_designer_start_kinds(false) as $k) {
+		$tab = 'id="sd-ns-tab-' . $k['key'] . '"';
+		pg_assert_true(strpos($html, $tab) !== false, $k['key'] . ': its tab');
+		pg_assert_true(strpos($html, 'id="sd-ns-pane-' . $k['key'] . '"') !== false, $k['key'] . ': its pane');
+		pg_assert_true(preg_match('/<button[^>]*' . preg_quote($tab, '/') . '[^>]*>.*?<svg.*?<\/button>/s', $html) === 1, $k['key'] . ': a drawing in its tab');
+	}
+	pg_assert_same(1, preg_match_all('/pg-button-fill" id="sd-ns-go"/', $html), 'one filled button in the foot');
+	pg_assert_same(0, preg_match('/\bbtn btn-/', substr($html, 0, (int) strpos($html, 'id="sd-ns-pane-template"'))), 'look A buttons only');
+	pg_assert_true(strpos($html, 'data-href="add_system_style.php?framework=custom&amp;start=import"') !== false, 'a framework choice carries its address');
 }

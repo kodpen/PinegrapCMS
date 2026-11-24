@@ -156,6 +156,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-108.md: Which ten features come in levels? (owner, 2026-11-24, in the architect's window)
 - decisions-made-product-108.md: What keeps the designer simple and quick?
 - decisions-made-product-108.md: What is the architect's reading, not his words?
+- decisions-made-product-109.md: Where are the rules and the earlier parts?
+- decisions-made-product-109.md: What does a form list's feed send for a record whose detail page is not public? (owner, 2026-11-24, in the architect's window, bug #11440)
+- decisions-made-product-109.md: Whose order is a cart opened by its saved-cart link and completed by another person? (owner, 2026-11-24, in the architect's window, bug #11435)
+- decisions-made-product-109.md: Does a shared component that draws a converted common region count as used? (architect, 2026-11-24, bug #11502)
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)
@@ -762,6 +766,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-50.md: Does launch_summary_lines get a column for the answer's kind? (owner, 2026-11-24, in the architect's window)
 - decisions-made-schema-51.md: Where are the rules and the earlier parts?
 - decisions-made-schema-51.md: Does the Security Scan get a table? (owner, 2026-11-24, agent channel message 12847)
+- decisions-made-schema-52.md: Where are the rules and the earlier parts?
+- decisions-made-schema-52.md: Does a renamed record keep its old address by a table? (owner, 2026-11-24, in the architect's window, bug #11439)
+- decisions-made-schema-52.md: Which columns does form_old_address have? (architect, 2026-11-24)
+- decisions-made-schema-52.md: When is a row written and removed? (architect, 2026-11-24)
+- decisions-made-schema-52.md: What does an old name answer? (architect, 2026-11-24)
 - decisions-made-schema-6.md: Where are the rules and the earlier steps?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (midday)?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (afternoon)?
@@ -1216,7 +1225,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-prototype-comments-rules.md: Prototype comments: what a later change must keep (a deleted link takes its comments, a deleted page's comments stay, personal data erase), and the architect's schema answer
 - designer/designer-publish-sheet-held-row.md: The Publish sheet's held row: where the hold comes from (an open experiment's variant, a release bundle's draft, a draft waiting for a prototype link's approval), the labels and texts, Publish anyway
 - designer/designer-right-column.md: The designer's right column (Options and Design tabs, 336 px default, kept width, narrow form under 300 px) and the bottom panel's closed strip and remembered state
+- designer/designer-variables-drawing-computed-rows.md: The computed rows a bound control's list offers in Options (boards B6 and B7 of the variables drawing, DV3): the type scale's steps and the base unit's multiples, their names, the chip, the order
 - designer/editor-turkish-terms.md: The names Page Design Studio, Artifact Canvas (was Design Canvas), Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test
+- designer/figma-import-converter.md: The Figma converter (#11509): a frame of a Figma nodes answer to a designer tree, with the lists of pictures, instances, colours, variables and the report left for the next step
 - designer/form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - designer/form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - designer/layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
@@ -1522,7 +1533,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-place-map.md: Bug hunt of the place map (architect 2026-11-20, agent channel message 10779): three faults fixed in #10770, two issues opened (#10779, #10780), both fixed in #10838, what was read clean
 - workflow/bug-hunt-product-bundles.md: Bug hunt of product bundles (architect 2026-11-20, agent channel message 10426, #10680): four faults fixed, three issues opened, what was read clean
 - workflow/bug-hunt-referral-money.md: Bug hunt of the referral programme's rules and money (referral.php, its settings card and mail, the Referrals Report): three faults fixed, three issues closed later, what read clean
-- workflow/bug-hunt.md: A bug hunt (owner 2026-11-15), only in an area the architect named, at most three per coordinator at a time; it fixes its finds in its own PR, a bug issue only for the rest
+- workflow/bug-hunt.md: A bug hunt (owner 2026-11-15): only in an area the architect named, at most three per coordinator, since 2026-11-24 only when no plan step is free; it fixes its finds in its own PR
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps

@@ -25,9 +25,9 @@ priority: 8
 - A step with no screen (a pure model, a server step, a census, a close-out) waits for no drawing.
 
 ## Which steps, in this order?
-- DD1 (M) `designer-variables.md`: the Variables tab with its four groups, the Options chip with "Detach", "Used in n places", the start questions, Export and Import. Holds DV2 to DV5.
+- DD1 (M) Done (#11508). `designer-variables.md`: the Variables tab with its four groups, the Options chip with "Detach", "Used in n places", the start questions, Export and Import. Holds DV2 to DV5.
 - DD2 (M) `designer-sketch.md`: "Build the page" and "Build again", "Page details", the two AI actions, the reference picture. Holds SK4 to SK7.
-- DD3 (M) `designer-start-import.md`: Figma on Connections, the frame list, the report; Canva's form, reference pictures and brand. Holds ST3, ST5, ST6.
+- DD3 (M) Done (#11525). `designer-start-import.md`: Figma on Connections, the frame list, the report; Canva's form, reference pictures and brand. Holds ST3, ST5, ST6.
 - DD5 (S) `designer-preview-as.md`: the "Preview as" bar, its three choosers, the "Check all cases" list. Holds PW3, PW4.
 - DD6 (M) `designer-component-overrides.md`: marking a field open, the component's list, "This place" with the dot and reset, variants. Holds CO3 to CO5.
 - DD7 (M) `designer-publish-check.md`: the sheet's results, the five groups, a finding with Fix, Show me and Ignore, the weight budget. Holds PC4, PC5.

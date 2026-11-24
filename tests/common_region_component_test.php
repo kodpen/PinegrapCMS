@@ -119,3 +119,26 @@ function test_common_region_ids_from_categories()
 	)), 'only well-formed common region categories, each once, in order');
 	pg_assert_same(array(), pg_common_region_ids_from_categories(array()));
 }
+
+// A converted common region (and a designed pop-up) is drawn after the page's
+// own passes for page conditions and page links have run: the component's
+// drawing decides its own conditions and points its links itself.
+function test_common_region_component_finish_decides_page_conditions()
+{
+	$signed_in = array('join' => 'all', 'conds' => array(array('token' => '__visit_signed_in', 'op' => '', 'operand' => '')));
+	$signed_out = array('join' => 'all', 'conds' => array(array('token' => '__visit_signed_in', 'op' => 'empty', 'operand' => '')));
+	$html = '<div>' . pg_page_fact_wrap('<p>Members only</p>', $signed_in)
+		. pg_page_fact_wrap('<p>Sign in</p>', $signed_out) . '</div>';
+
+	// An e-mail belongs to no visit: signed out.
+	$out = pg_common_region_component_finish($html, true);
+	pg_assert_false(strpos($out, 'Members only') !== false, 'a signed-in band is not shown to a signed-out visit: ' . $out);
+	pg_assert_contains('<p>Sign in</p>', $out);
+	pg_assert_false(strpos($out, '<!--pg-pf:') !== false, 'no condition marker is left');
+}
+
+function test_common_region_component_finish_page_link_marker_goes()
+{
+	$out = pg_common_region_component_finish('<p><span data-pg-page-link="0">x</span></p>', true);
+	pg_assert_same('<p><span>x</span></p>', $out, 'the page-link marker never reaches the visitor');
+}
