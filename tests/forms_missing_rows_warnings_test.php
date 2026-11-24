@@ -123,15 +123,13 @@ function test_nothing_chosen_reads_defaults()
 	pg_assert_true(strpos($export, "\$quiz = \$row['quiz'] ?? '';") !== false, 'no form row');
 }
 
-// A recurring instance starts on the event's own date before the switch.
+// A recurring instance's date comes from pg_calendar_occurrence_date(), which
+// keeps the event's own date for a kind it does not know
+// (calendar_event_repeat_test.php); unset, it was read as today.
 function test_calendar_instance_date_starts_on_the_event_date()
 {
 	$source = forms_missing_rows_test_source('includes/fn/calendar.php');
-	$start = strpos($source, "\$event_start_date = \$start_date;\n        switch (\$recurrence_type) {");
+	$body = substr($source, strpos($source, 'function get_calendar_event('));
 
-	if ($start === false) {
-		$start = strpos($source, "\$event_start_date = \$start_date;\r\n        switch (\$recurrence_type) {");
-	}
-
-	pg_assert_true($start !== false, 'date set before the switch');
+	pg_assert_true(strpos($body, '$event_start_date = pg_calendar_occurrence_date($start_date,') !== false, 'instance date from pg_calendar_occurrence_date()');
 }

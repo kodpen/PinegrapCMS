@@ -9,7 +9,8 @@ module: calendar
 - Every event on the location is read (the edited one left out); a recurring event is expanded occurrence by occurrence (exceptions skipped) until an occurrence starts after the asked end.
 
 ## How long does one occurrence of a recurring event last?
-- As long as the event itself: `pg_calendar_occurrence_window($occurrence_date, $start, $end)` starts the occurrence on its own date at the event's start time and adds the event's length in seconds.
+- As long as the event itself: `pg_calendar_occurrence_window($occurrence_date, $start, $end)` starts the occurrence on its own date at the event's start time and ends it at the event's end time, as many calendar days later as the event's own end is after its start. The event page (`get_calendar_event()`) takes an occurrence's end from it too.
+- Counted in days and clock time, not seconds, since the calendar events hunt: across a clock change a two-day all-day weekly event ended at 00:59 on a third day (on its page and in the room check), and an overnight event stored on the night of a change ended an hour early every later week.
 - Before #4632 the end was the end time on the occurrence's start date, so a recurring overnight event (22:00 to 02:00) ended before it started and a multi-day one lasted only its first day: such events never blocked the room, and the location could be double-booked.
 - Tests: `tests/calendar_occurrence_window_test.php`.
 
