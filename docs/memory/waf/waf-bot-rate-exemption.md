@@ -13,6 +13,6 @@ description: Only a crawler waf_bot_verified() proved skips the global, sensitiv
 
 ## Is IS_BOT still used?
 - Yes, unchanged and defined in the same three places of `waf_handle_bot()`: it feeds the consent notice, the language redirect, the page cache, `pg_request_is_automated()` (`includes/fn/seo.php`) and visitor tracking. Do not test a handler by defining it: `tools/test.php` runs every test in one process and the constant would leak.
-- The help text under Settings > Firewall > Rate Limiting says only crawlers whose address proves their name are exempt.
+- The help text under Site Settings › Firewall and HTTPS › Limits, Rate limiting, says only crawlers whose address proves their name are exempt.
 
 Related: docs/memory/waf/waf-ai-bots-ranges.md, docs/memory/waf/waf-bot-policy-credential-endpoints.md, docs/memory/waf/waf-inflight-request-cap.md
