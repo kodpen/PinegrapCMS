@@ -17,10 +17,11 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-// Runs the script with the given cookies, presses one of the notice's
-// buttons and returns the cookies left and whether the page reloaded; null
-// when Node cannot run.
-function consent_js_revoke_test_run($cookies, $button)
+// Runs the script with the given cookies and held scripts (category per
+// script), presses one of the notice's buttons (none for null) and returns
+// the cookies left, whether the page reloaded and the categories of the held
+// scripts it started; null when Node cannot run.
+function consent_js_revoke_test_run($cookies, $button, $held = array())
 {
 	if (!function_exists('exec')) {
 		return null;
@@ -51,6 +52,13 @@ function consent_js_revoke_test_run($cookies, $button)
 		. '    el({ "data-pg-cc-category": "analytics", "data-pg-cc-revoke": ' . json_encode(implode(' ', $revoke['analytics'])) . ' }),' . "\n"
 		. '    el({ "data-pg-cc-category": "marketing", "data-pg-cc-revoke": ' . json_encode(implode(' ', $revoke['marketing'])) . ' })' . "\n"
 		. '];' . "\n"
+		. 'var started = [];' . "\n"
+		. 'var held = ' . json_encode(array_values($held)) . '.map(function (category) {' . "\n"
+		. '    var node = el({ type: "text/plain", "data-pg-consent": category, "data-pg-src": "/held.js" });' . "\n"
+		. '    node.attributes = Object.keys(node.attrs).map(function (n) { return { name: n, value: node.attrs[n] }; });' . "\n"
+		. '    node.parentNode = { replaceChild: function () { node.live = true; started.push(category); } };' . "\n"
+		. '    return node;' . "\n"
+		. '});' . "\n"
 		. 'var fab = el(), card = el(), intro = el(), prefs = el(), onclick = null;' . "\n"
 		. 'var root = el({ "data-path": "/", "data-categories": "analytics,marketing" });' . "\n"
 		. 'root.querySelector = function (s) { return s === ".pg-cc-fab" ? fab : s === ".pg-cc-card" ? card : s.indexOf("intro") !== -1 ? intro : s.indexOf("prefs") !== -1 ? prefs : null; };' . "\n"
@@ -58,7 +66,9 @@ function consent_js_revoke_test_run($cookies, $button)
 		. 'root.addEventListener = function (type, fn) { if (type === "click") { onclick = fn; } };' . "\n"
 		. 'var document = { activeElement: null,' . "\n"
 		. '    getElementById: function () { return root; },' . "\n"
-		. '    querySelector: function () { return null; }, querySelectorAll: function () { return []; },' . "\n"
+		. '    querySelector: function () { return null; },' . "\n"
+		. '    querySelectorAll: function (s) { return s.indexOf("data-pg-consent") !== -1 ? held.filter(function (n) { return !n.live; }) : []; },' . "\n"
+		. '    createElement: function () { return el(); },' . "\n"
 		. '    addEventListener: function () {}, dispatchEvent: function () {}, contains: function () { return false; } };' . "\n"
 		. 'Object.defineProperty(document, "cookie", {' . "\n"
 		. '    get: function () { return Object.keys(jar).map(function (n) { return n + "=" + jar[n]; }).join("; "); },' . "\n"
@@ -70,8 +80,8 @@ function consent_js_revoke_test_run($cookies, $button)
 		. 'var navigator = {};' . "\n"
 		. 'function CustomEvent() {}' . "\n"
 		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_consent.js') . "\n"
-		. 'onclick({ target: el({ "data-pg-cc": ' . json_encode($button) . ' }) });' . "\n"
-		. 'console.log(JSON.stringify({ cookies: jar, reloaded: reloaded }));';
+		. (($button === null) ? '' : 'onclick({ target: el({ "data-pg-cc": ' . json_encode($button) . ' }) });' . "\n")
+		. 'console.log(JSON.stringify({ cookies: jar, reloaded: reloaded, started: started }));';
 
 	$file = @tempnam(sys_get_temp_dir(), 'pgcc');
 
@@ -128,4 +138,49 @@ function test_consent_js_withdrawal_deletes_and_reloads()
 
 	pg_assert_same(array('pg_consent' => '1.a1.m1', '_ga' => 'GA1.1.1'), $result['cookies'], 'accepting keeps them');
 	pg_assert_same(false, $result['reloaded'], 'no reload on accept');
+}
+
+// A page that asks about a category the visitor has not answered yet (a map
+// block brings marketing to a visitor who answered statistics only): closing
+// the notice refuses the new category and keeps the earlier yes, with no
+// reload. Before, closing refused every category, deleted the statistics
+// cookies and reloaded the page.
+function test_consent_js_closing_a_new_question_keeps_the_earlier_answers()
+{
+	$result = consent_js_revoke_test_run(array('pg_consent' => '1.a1', '_ga' => 'GA1.1.1'), 'close');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('pg_consent' => '1.a1.m0', '_ga' => 'GA1.1.1'), $result['cookies'], 'statistics kept, marketing refused');
+	pg_assert_same(false, $result['reloaded'], 'no reload');
+
+	// Reject all still refuses everything.
+	$result = consent_js_revoke_test_run(array('pg_consent' => '1.a1', '_ga' => 'GA1.1.1'), 'reject');
+
+	pg_assert_same(array('pg_consent' => '1.a0.m0'), $result['cookies'], 'reject all');
+	pg_assert_same(true, $result['reloaded'], 'withdrawal reloads');
+}
+
+// While the notice asks about the new category, the scripts held for a
+// category already allowed start, as on any other page; nothing starts for
+// the unanswered one or for a refused one.
+function test_consent_js_allowed_scripts_start_while_a_new_question_waits()
+{
+	$result = consent_js_revoke_test_run(array('pg_consent' => '1.a1'), null, array('analytics', 'marketing'));
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('analytics'), $result['started'], 'statistics started, marketing waits');
+
+	$result = consent_js_revoke_test_run(array('pg_consent' => '1.a0'), null, array('analytics', 'marketing'));
+
+	pg_assert_same(array(), $result['started'], 'nothing for a refusal');
+
+	$result = consent_js_revoke_test_run(array(), null, array('analytics', 'marketing'));
+
+	pg_assert_same(array(), $result['started'], 'nothing before any answer');
 }
