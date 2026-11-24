@@ -14200,6 +14200,7 @@
                 setHtml(body, message.html);
                 chipMenus(body, self.channel);
                 self.bindChecks(body, message);
+                self.shareTextMarks(body, message);
             }
 
             // Changed after it was sent: said at its end, where it shows
@@ -14641,6 +14642,9 @@
 
                 items = items.concat(self.shareItems(message));
             }
+
+            // Its tables and checklists in an agent channel.
+            items = items.concat(self.shareTextItems(message));
 
             if (message.can_edit || message.can_delete || message.can_hide) {
                 items.push('-');
@@ -15355,7 +15359,8 @@
         // the message's file, or the channel's note whose card it is.
         // file.share / note_card.share: open (the link: id, until,
         // can_revoke) or null, and can_make; null outside an agent channel
-        // and on a person's note.
+        // and on a person's note. text_shares: the same for each table and
+        // checklist of the text (kind, item_id = its number, name).
 
         // The item of a message a link is made to: kind, id, name, share;
         // null when it has none.
@@ -15407,9 +15412,13 @@
         // The item menu's entry: Share by link... while no link is open and
         // the reader may post, Stop sharing for who may take the open one
         // back. done() runs once the change is made (the Files tab redraws).
-        shareItems: function (message, done) {
+        // A table or a checklist of the text is given as item, with its own
+        // words for the entries.
+        shareItems: function (message, done, item, words) {
             var self = this;
-            var item = self.shareItem(message);
+
+            item = item || self.shareItem(message);
+
             var share = item && item.share;
 
             if (!share || message.deleted || message.past || self.era) {
@@ -15417,15 +15426,66 @@
             }
 
             if (share.open) {
-                return share.open.can_revoke ? [{ icon: 'bi-link-45deg', label: t('sl_stop'), action: function () { self.shareStop(message, done); } }] : [];
+                return share.open.can_revoke ? [{ icon: 'bi-link-45deg', label: words ? words.stop : t('sl_stop'), action: function () { self.shareStopLink(share.open.id, done); } }] : [];
             }
 
-            return share.can_make ? [{ icon: 'bi-link-45deg', label: t('sl_share'), action: function () { self.shareDialog(message, done); } }] : [];
+            return share.can_make ? [{ icon: 'bi-link-45deg', label: words ? words.share : t('sl_share'), action: function () { self.shareDialog(message, done, item); } }] : [];
+        },
+
+        // The tables and checklists of a message's text as items: kind, id
+        // (the number of its kind), name, share.
+        shareTextList: function (message) {
+            return (message.text_shares || []).map(function (share) {
+                return { kind: share.kind, id: share.item_id, name: share.name, share: share };
+            });
+        },
+
+        // The menu's entries of the tables and checklists: "Share table by
+        // link..." / "Stop sharing the table", with the name added when the
+        // text holds more than one block.
+        shareTextItems: function (message) {
+            var self = this;
+            var list = self.shareTextList(message);
+            var items = [];
+
+            list.forEach(function (item) {
+                var table = (item.kind === 'table');
+                var more = (list.length > 1) ? ' · ' + item.name : '';
+
+                items = items.concat(self.shareItems(message, null, item, {
+                    share: (table ? t('sl_share_table') : t('sl_share_list')) + more,
+                    stop: (table ? t('sl_stop_table') : t('sl_stop_list')) + more
+                }));
+            });
+
+            return items;
+        },
+
+        // The mark on each shared table and checklist drawn in the text: on
+        // its titled block, else on the table's frame or the list.
+        shareTextMarks: function (body, message) {
+            var self = this;
+            var list = self.shareTextList(message);
+
+            if (!list.length) {
+                return;
+            }
+
+            var found = { table: body.querySelectorAll('.ws-table-wrap'), list: body.querySelectorAll('ul.ws-checklist') };
+
+            list.forEach(function (item) {
+                var node = found[item.kind] ? found[item.kind][item.id - 1] : null;
+
+                if (node && item.share.open) {
+                    var titled = node.parentNode && node.parentNode.classList.contains('ws-block-titled') ? node.parentNode : null;
+                    self.shareMark(titled || node, item);
+                }
+            });
         },
 
         // The small dialog: the item's name and the end as three choices;
         // Create makes the link, then the same dialog shows its address once.
-        shareDialog: function (message, done) {
+        shareDialog: function (message, done, picked) {
             var self = this;
             var choices = String(t('sl_day_choices')).split(',');
             var days = String(t('sl_day_default'));
@@ -15444,7 +15504,7 @@
 
             press();
 
-            var item = self.shareItem(message);
+            var item = picked || self.shareItem(message);
 
             ask(item.name, t('sl_create'), false, formParts.group(t('sl_ends'), seg.node)).then(function (yes) {
                 if (!yes) {
@@ -15472,11 +15532,6 @@
             row.appendChild(copy);
 
             ask(t('sl_shown_once', until), t('sl_done'), false, row, { info: true });
-        },
-
-        // Stop sharing, asked once: the address stops working at once.
-        shareStop: function (message, done) {
-            this.shareStopLink(this.shareItem(message).share.open.id, done);
         },
 
         // Stop sharing a link by its id, asked once (the item's menu, the
