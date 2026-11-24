@@ -21,6 +21,9 @@ module: image_editor_data
   - Text: Title (one undo step while typed), Number format (12.3K / 12,3 B), Type size (Small, Medium, Large).
 - A donut shows no sort or row limit. A table the reader may not read shows "You cannot read this table." in Data.
 
+## How does it look on a phone?
+- DV6: below 600 px the picker fills the screen but an 8 px edge, its cards two a row (`.pgie-presets`); in the panel's sheet the kinds go three a row so Look stays short. On touch a table row, a fold, a value column and Change are 44 px tall.
+
 ## What do the actions answer?
 - `includes/fn/image_editor_data.php`, reached by `pg_image_editor_api()`'s action dispatch. `data_tables`: `ws_wtables_reached()` (200 at most) as `{id, name, channel, rows, tone}`; `tone` is the channel colour on each board (`ws_canvas_chart_tone()`), null without one. No Workspace: an empty list.
 - `data_rows {table}`: `ws_canvas_data_rows()` with the reader's rights, `{read}` as `editor.dataRead()` takes it (columns and cells kept JSON objects). A data layer on the stage whose rows are not read asks once (`dataLoad()`).

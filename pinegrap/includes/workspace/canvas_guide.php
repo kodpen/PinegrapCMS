@@ -151,7 +151,7 @@ function ws_canvas_guide_text()
         . '- Grid and axes: horizontal gridlines only, ' . $m['grid'] . ' thick and solid (never dashed), in grid; the baseline ' . $m['baseline'] . ' thick in baseline; ' . $m['ticks_min'] . ' to ' . $m['ticks_max'] . ' round steps (0, 10K, 20K).' . "\n"
         . '- Values: label only what the story is about (the highlighted bar, the end of a line), never a number on every point. A legend from two series up; one series needs none, the title says what it is.' . "\n"
         . '- Numbers as the channel\'s language writes them, with the unit in the subtitle.' . "\n\n"
-        . 'Chart kinds: ' . implode(', ', $v['kinds']) . '. A bar chart compares amounts, a stacked bar the parts of each amount, a line or an area a change over time, a donut the parts of one whole, a figure tile one number with its change and a sparkline of its trend, a sparkline strip a trend in one row. Two measures of a different scale are two charts, never a second axis.';
+        . 'Chart kinds: ' . implode(', ', $v['kinds']) . '. A bar chart compares amounts, a stacked bar the parts of each amount, a line or an area a change over time, a donut the parts of one whole, a figure tile one number with its change and a sparkline of its trend, a sparkline strip a trend in one row. Two measures of a different scale are two charts, never a second axis. When the numbers live in a Workspace table, add a data layer to the canvas (add with type data) instead of drawing them: it follows the table\'s rows.';
 }
 
 /**
