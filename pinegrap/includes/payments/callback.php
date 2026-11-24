@@ -376,6 +376,10 @@ function pg_payment_callback_renewal($key, $answer)
         $line = pg_log_lang(array('string' => '{var:1}. The amount or the subscription\'s first order does not match: nothing was written. Check the payment on {var:2}\'s own screen.', 'vars' => array($source, pg_payment_log_name($key))));
         log_activity($line, 'SYSTEM');
         pg_ops_alert('payment_notice', $line);
+    } elseif ($result === 'unrecorded') {
+        $line = pg_log_lang(array('string' => '{var:1}. The subscription no longer waits for this payment and no renewal order holds it: nothing was written. Check the payment on {var:2}\'s own screen and refund it if it is not owed.', 'vars' => array($source, pg_payment_log_name($key))));
+        log_activity($line, 'SYSTEM');
+        pg_ops_alert('payment_notice', $line);
     }
 
     pg_payment_callback_answer(($result === 'busy') ? 503 : 200, array('status' => $result));

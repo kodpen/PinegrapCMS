@@ -746,3 +746,50 @@ function test_subscription_renewal_confirmed_last_payment_ends_the_row()
 	pg_assert_same(0, (int) $store['next_charge_at']);
 	pg_assert_true(in_array('write_order', $calls, true));
 }
+
+function test_subscription_renewal_confirmed_flags_a_payment_no_order_holds()
+{
+	$now = mktime(12, 0, 0, 4, 2, 2027);
+	$paid = array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_9', 'amount' => 17688);
+
+	// Held by a confirmation link, then cancelled (and ended by the job);
+	// the customer confirms the payment on Stripe's page afterwards. The
+	// money is taken and no order holds it: staff must be told.
+	$cancelled = subscriptions_renewal_test_row(array('status' => 'ended', 'next_charge_at' => '0', 'cancelled_at' => '1', 'ended_at' => '2'));
+	$calls = array();
+	$io = subscriptions_renewal_test_io($cancelled, $calls, $paid);
+	$io['recorded'] = function ($id, $transaction_id) use (&$calls) {
+		$calls[] = array('recorded', $id, $transaction_id);
+		return false;
+	};
+
+	pg_assert_same('unrecorded', pg_subscription_renewal_confirmed('stripe', 7, $paid, $now, $io));
+	pg_assert_same(array('recorded', 7, 'pi_9'), $calls[1], 'looked up under the lock');
+	pg_assert_same('unlock', end($calls));
+	pg_assert_false(in_array('write_order', $calls, true), 'nothing is written for a row that no longer runs');
+
+	// The cron's own off-session renewal reports back: its order holds it.
+	$active = subscriptions_renewal_test_row();
+	$calls = array();
+	$io = subscriptions_renewal_test_io($active, $calls, $paid);
+	$io['recorded'] = function ($id, $transaction_id) {
+		return true;
+	};
+	pg_assert_same('nothing', pg_subscription_renewal_confirmed('stripe', 7, $paid, $now, $io));
+
+	// Another driver's row is not this payment's.
+	$calls = array();
+	$io = subscriptions_renewal_test_io($cancelled, $calls, $paid);
+	$io['recorded'] = function ($id, $transaction_id) {
+		return false;
+	};
+	pg_assert_same('nothing', pg_subscription_renewal_confirmed('iyzico', 7, $paid, $now, $io));
+
+	// The callback alerts staff about it.
+	$callback = file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+	$unrecorded = substr($callback, strpos($callback, "} elseif (\$result === 'unrecorded') {"), 600);
+	pg_assert_contains("pg_ops_alert('payment_notice', \$line);", $unrecorded);
+
+	$io = pg_subscription_renewal_io();
+	pg_assert_true(is_callable($io['recorded']), 'the real io looks the payment up');
+}
