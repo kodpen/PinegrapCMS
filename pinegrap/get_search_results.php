@@ -44,11 +44,11 @@ function get_search_results($properties) {
     // A query sent as an array (?query[]=x) counts as no query:
     // trim() refused it with an error page.
     if (isset($_GET[$page_id . '_query']) && is_string($_GET[$page_id . '_query'])) {
-        $query = trim($_GET[$page_id . '_query']);
+        $query = pg_search_query_text($_GET[$page_id . '_query']);
         
     // else if there is a general query, then use it (this is for backwards compatibility)
     } else if (isset($_GET['query']) && is_string($_GET['query'])) {
-        $query = trim($_GET['query']);
+        $query = pg_search_query_text($_GET['query']);
     }
 
     // Add the search to the visit's site search terms.
@@ -510,7 +510,8 @@ function get_search_results($properties) {
         }
 
         // The day's search rollup (includes/fn/site_search_stats.php).
-        pg_site_search_count($query, count($featured_items) + count($catalog_items) + count($results));
+        // A simple search keeps its pages in $pages, not in $results.
+        pg_site_search_count($query, pg_search_legacy_result_count(SEARCH_TYPE, $featured_items, $catalog_items, $pages, $results));
     }
 
     if ($layout_type == 'system') {
