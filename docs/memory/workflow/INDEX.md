@@ -152,6 +152,7 @@
 - decisions-made-product-103.md: Decisions made, product part 103 (2026-11-24 on): a subscription resumed after its charge date waits for the next series date; a held renewal with no outcome ends after 7 days
 - decisions-made-product-104.md: Decisions made, product part 104 (2026-11-24 on): launch aimed at 1 January 2027; the addons table with AH4 to AH8 and the Claude plugin bundle wait until after the launch; mobile API goes on
 - decisions-made-product-105.md: Decisions made, product part 105 (2026-11-24 on): the visual designer before the launch: design variables, the Prototype as a drawing board, Figma and Canva import, quick starts, more shaping options
+- decisions-made-product-106.md: Decisions made, product part 106 (2026-11-24 on): seven more designer features before the launch, their screens drawn first by the design session with nobody approving a sheet
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
@@ -399,7 +400,7 @@
 - readme-screenshots.md: The README's screenshots in .github/readme/: which files, light and dark, why not docs/, how they are taken again before a release
 - sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout [decision: here]
 - sandbox-on-windows.md: A throwaway Pinegrap install on the owner's Windows machine without touching dev: a private mysqld on its own port, a git archive export, php -S, the installer by curl, CLI scripts, the API over HTTP [decision: decisions-made-workspace-31.md]
-- screen-described-in-plan.md: A plan describes each screen it adds in words, by the composition rules; no drawing is approved before a step and no screenshot goes to the architect or the owner for a yes (owner, 2026-11-20) [decision: here]
+- screen-described-in-plan.md: A plan describes each screen it adds in words, by the composition rules; no drawing is approved before a step and no screenshot goes to the architect or the owner for a yes (owner, 2026-11-20) [decision: decisions-made-product-106.md]
 - screen-description-checks.md: What a screen description of a redrawn screen must hold so the result matches it: every part the screen has today placed, countable lines a unit test pins, who looks on dev after landing [decision: here]
 - screen-follows-drawing.md: A screen the architect drew is built as drawn: button order, sentences, pills, links; a words-only description beside it gives way (owner, 2026-11-21) [decision: here]
 - session-checks.md: Working rule (2026-10-25): how much a session checks before its PR: the tests of its area and what the change touches, a private static-analysis cache, a sandbox only with a reason, no review chains
