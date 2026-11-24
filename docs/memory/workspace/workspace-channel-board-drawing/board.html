@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workspace: a channel's Board tab (board and list views, automations)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<style>
+
+@font-face { font-family: "Inter"; src: url("../../../../pinegrap/assets/fonts/inter/InterVariable.woff2") format("woff2"); font-weight: 100 900; }
+:root {
+  --bg: #ffffff; --surface: rgb(245,245,245); --card: #ffffff; --ink: #1a1c1e; --ink2: #5a656c; --ink3: #8a949a;
+  --rule: rgba(128,128,128,.18); --tint: rgba(128,128,128,.10); --tint2: rgba(128,128,128,.16);
+  --primary: #64b5f6; --primary-ink: #1565c0; --primary-subtle: #e3f2fd; --primary-line: #bbdefb; --on-accent: #1a1c1e;
+  --ok-ink: #2e7d32; --ok-subtle: #e8f5e9; --bad-ink: #c62828; --bad-subtle: #ffebee;
+  --warn-ink: #8a6d00; --warn-subtle: #fff8e1; --info-ink: #006064; --info-subtle: #e0f7fa;
+  --violet-ink: #5e35b1; --violet-subtle: #ede7f6;
+  --shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 1px rgba(0,0,0,.03);
+  --lift: 0 14px 34px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+  --sheet: #eef0f2;
+}
+[data-theme="dark"] {
+  --bg: #16181b; --surface: #1e2125; --card: #272b30; --ink: #e8eaec; --ink2: #b3bcc2; --ink3: #808a91;
+  --rule: rgba(160,160,160,.20); --tint: rgba(160,160,160,.12); --tint2: rgba(160,160,160,.20);
+  --primary-ink: #90caf9; --primary-subtle: #10243a; --primary-line: #1e4976;
+  --ok-ink: #a5d6a7; --ok-subtle: #12261a; --bad-ink: #ef9a9a; --bad-subtle: #2e1719;
+  --warn-ink: #ffe082; --warn-subtle: #2c2511; --info-ink: #80deea; --info-subtle: #0d2a2e;
+  --violet-ink: #b39ddb; --violet-subtle: #211a35;
+  --shadow: 0 1px 2px rgba(0,0,0,.35);
+  --lift: 0 16px 38px rgba(0,0,0,.6);
+  --sheet: #0d0e10;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; line-height: 1.4; color: var(--ink); background: var(--sheet); padding: 28px; width: 1416px; -webkit-font-smoothing: antialiased; }
+.frame-wrap { margin-bottom: 34px; }
+.frame-head { display: flex; align-items: baseline; gap: 12px; margin: 0 4px 12px; }
+.frame-letter { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: var(--bg); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex: none; align-self: center; }
+.frame-title { font-size: 19px; font-weight: 680; letter-spacing: -.01em; }
+.frame-sub { color: var(--ink2); font-size: 13.5px; }
+.frame { background: var(--bg); border: 1px solid var(--rule); border-radius: 18px; overflow: hidden; position: relative; }
+.notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 26px; margin: 14px 6px 0; color: var(--ink2); font-size: 13px; }
+.notes b { color: var(--ink); font-weight: 620; }
+.notes div { padding-left: 12px; border-left: 2px solid var(--tint2); }
+
+/* channel head and tabs */
+.ch-head { display: flex; align-items: center; gap: 12px; padding: 16px 22px 0; }
+.ch-name { font-size: 17px; font-weight: 680; letter-spacing: -.01em; }
+.ch-desc { color: var(--ink2); }
+.ch-faces { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--ink2); font-size: 12.5px; }
+.tabs { display: flex; gap: 4px; padding: 12px 16px 0; border-bottom: 1px solid var(--rule); }
+.tab { padding: 8px 12px 11px; color: var(--ink2); font-weight: 540; position: relative; display: flex; align-items: center; gap: 7px; }
+.tab.on { color: var(--ink); font-weight: 640; }
+.tab.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2.5px; border-radius: 2px; background: var(--primary); }
+.tab .n { font-size: 11.5px; padding: 1px 7px; border-radius: 20px; background: var(--tint); color: var(--ink2); font-weight: 600; }
+.tab.gone { text-decoration: line-through; opacity: .45; }
+
+/* counts strip */
+.counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 18px 22px 4px; }
+.count { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 14px; background: var(--bg); }
+.count.sel { border-color: var(--primary-line); background: var(--primary-subtle); }
+.tile { width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; flex: none; }
+.tile.sm { width: 28px; height: 28px; border-radius: 9px; font-size: 14px; }
+.t-blue { background: var(--primary-subtle); color: var(--primary-ink); }
+.t-amber { background: var(--warn-subtle); color: var(--warn-ink); }
+.t-rose { background: var(--bad-subtle); color: var(--bad-ink); }
+.t-green { background: var(--ok-subtle); color: var(--ok-ink); }
+.t-teal { background: var(--info-subtle); color: var(--info-ink); }
+.t-violet { background: var(--violet-subtle); color: var(--violet-ink); }
+.t-gray { background: var(--tint); color: var(--ink2); }
+.count .num { font-size: 21px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.count .lbl { color: var(--ink2); font-size: 12.5px; }
+
+/* toolbar */
+.bar { display: flex; align-items: center; gap: 10px; padding: 14px 22px 14px; flex-wrap: nowrap; }
+.seg { display: inline-flex; background: var(--tint); border-radius: 11px; padding: 3px; }
+.seg span { padding: 6px 12px; border-radius: 9px; color: var(--ink2); font-weight: 560; display: inline-flex; gap: 7px; align-items: center; }
+.seg span.on { background: var(--bg); color: var(--ink); box-shadow: var(--shadow); font-weight: 640; }
+.chip { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--rule); color: var(--ink2); font-weight: 540; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; background: var(--bg); }
+.chip.on { background: var(--primary-subtle); border-color: var(--primary-line); color: var(--primary-ink); font-weight: 640; }
+.sep { width: 1px; height: 22px; background: var(--rule); margin: 0 2px; }
+.grow { flex: 1; }
+.search { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 11px; background: var(--tint); color: var(--ink3); width: 190px; }
+.btn { padding: 7px 13px; border-radius: 11px; border: 1px solid var(--rule); font-weight: 600; display: inline-flex; gap: 7px; align-items: center; white-space: nowrap; background: var(--bg); color: var(--ink); }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
+.btn.flow i { color: var(--violet-ink); }
+.btn .n { font-size: 11.5px; padding: 0 7px; border-radius: 20px; background: var(--violet-subtle); color: var(--violet-ink); font-weight: 700; }
+.sel-box { padding: 7px 12px; border-radius: 11px; border: 1px solid var(--rule); display: inline-flex; gap: 8px; align-items: center; font-weight: 560; }
+.lbl-quiet { color: var(--ink3); font-size: 12.5px; font-weight: 560; }
+
+/* columns */
+.cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 0 22px 22px; align-items: start; }
+.col { background: var(--surface); border-radius: 16px; padding: 10px; min-height: 120px; }
+.col-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 10px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.d-todo { background: #90a4ae; } .d-doing { background: #64b5f6; } .d-waiting { background: #ffd54f; } .d-done { background: #81c784; }
+.col-name { font-weight: 660; font-size: 14px; }
+.col-count { font-size: 12px; color: var(--ink2); background: var(--tint2); padding: 1px 8px; border-radius: 20px; font-weight: 640; font-variant-numeric: tabular-nums; }
+.col-tools { margin-left: auto; display: flex; gap: 2px; color: var(--ink3); }
+.col-tools i { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+.col-flow { display: flex; align-items: center; gap: 7px; margin: 0 2px 10px; padding: 6px 9px; border-radius: 10px; background: var(--violet-subtle); color: var(--violet-ink); font-size: 12px; font-weight: 560; }
+.list { display: flex; flex-direction: column; gap: 9px; }
+.card { background: var(--card); border: 1px solid var(--rule); border-radius: 13px; padding: 11px 12px 10px; box-shadow: var(--shadow); }
+.card-top { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; color: var(--ink3); font-size: 11.5px; }
+.num-id { font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: .01em; }
+.prio { margin-left: auto; font-size: 11px; font-weight: 680; padding: 1px 8px; border-radius: 20px; display: inline-flex; gap: 5px; align-items: center; }
+.prio.urgent { background: var(--bad-subtle); color: var(--bad-ink); }
+.prio.high { background: var(--warn-subtle); color: var(--warn-ink); }
+.title { font-weight: 620; font-size: 13.8px; line-height: 1.32; letter-spacing: -.005em; }
+.tags { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+.tag { font-size: 11.2px; padding: 1.5px 8px; border-radius: 7px; background: var(--tint); color: var(--ink2); font-weight: 560; }
+.meta { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--ink2); font-size: 12px; }
+.due { display: inline-flex; gap: 5px; align-items: center; padding: 2px 8px; border-radius: 8px; background: var(--tint); font-weight: 580; }
+.due.soon { background: var(--warn-subtle); color: var(--warn-ink); }
+.due.late { background: var(--bad-subtle); color: var(--bad-ink); }
+.due.fin { background: var(--ok-subtle); color: var(--ok-ink); }
+.steps { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.steps .track { width: 34px; height: 4px; border-radius: 3px; background: var(--tint2); overflow: hidden; display: inline-block; }
+.steps .track b { display: block; height: 100%; background: var(--primary); border-radius: 3px; }
+.faces { margin-left: auto; display: inline-flex; }
+.face { width: 22px; height: 22px; border-radius: 50%; font-size: 10.5px; font-weight: 700; color: #1a1c1e; display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--card); margin-left: -6px; }
+.face:first-child { margin-left: 0; }
+.f-E { background: #90caf9; } .f-A { background: #f48fb1; } .f-M { background: #a5d6a7; } .f-S { background: #ffcc80; } .f-more { background: var(--tint2); color: var(--ink2); }
+.ch-faces .face { border-color: var(--bg); width: 24px; height: 24px; }
+.card.done .title { color: var(--ink2); font-weight: 560; }
+.card.drag { box-shadow: var(--lift); transform: rotate(-2.2deg) translate(18px, -6px); border-color: var(--primary-line); position: relative; z-index: 3; }
+.slot { border: 1.5px dashed var(--primary); background: var(--primary-subtle); border-radius: 13px; height: 54px; display: flex; align-items: center; justify-content: center; color: var(--primary-ink); font-size: 12px; font-weight: 600; gap: 7px; }
+.add { display: flex; align-items: center; gap: 7px; padding: 8px 8px 4px; color: var(--ink3); font-weight: 560; font-size: 12.5px; }
+.more { padding: 8px 8px 2px; color: var(--primary-ink); font-weight: 600; font-size: 12.5px; }
+
+/* list view: today's task cards */
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 0 22px 22px; }
+.tcard { border: 1px solid var(--rule); border-radius: 14px; padding: 13px 14px 12px; background: var(--card); box-shadow: var(--shadow); }
+.tcard .row1 { display: flex; align-items: center; gap: 8px; color: var(--ink3); font-size: 12px; margin-bottom: 6px; }
+.tcard .state { font-weight: 620; color: var(--ink2); }
+.tcard .foot { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.btn.ghost { padding: 5px 10px; font-size: 12.5px; color: var(--ink2); }
+
+/* automations drawer */
+.dim { opacity: .42; filter: saturate(.7); }
+.drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 452px; background: var(--bg); border-left: 1px solid var(--rule); box-shadow: var(--lift); padding: 20px 22px; display: flex; flex-direction: column; }
+.dr-head { display: flex; align-items: center; gap: 12px; }
+.dr-title { font-size: 17px; font-weight: 680; letter-spacing: -.01em; }
+.dr-x { margin-left: auto; color: var(--ink3); font-size: 15px; }
+.dr-lead { color: var(--ink2); margin: 10px 0 16px; }
+.rule { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--rule); border-radius: 14px; margin-bottom: 9px; }
+.rule.on { border-color: var(--primary-line); }
+.rule .when { font-size: 12px; color: var(--ink2); }
+.rule .then { font-weight: 640; font-size: 13.8px; }
+.rule .ran { font-size: 11.5px; color: var(--ink3); margin-top: 2px; }
+.sw { margin-left: auto; width: 36px; height: 21px; border-radius: 20px; background: var(--tint2); position: relative; flex: none; }
+.sw::after { content: ""; position: absolute; top: 2.5px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.sw.on { background: var(--primary); }
+.sw.on::after { left: 17px; background: #fff; }
+.dr-kind { font-size: 11.5px; font-weight: 680; color: var(--ink3); text-transform: uppercase; letter-spacing: .05em; margin: 12px 2px 8px; }
+.own { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1.5px dashed var(--tint2); border-radius: 14px; color: var(--ink); font-weight: 620; }
+.own .s { color: var(--ink2); font-weight: 480; font-size: 12.3px; }
+.log { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--rule); color: var(--ink2); font-size: 12.3px; }
+.log div { display: flex; gap: 8px; align-items: center; padding: 3px 0; }
+.log i { color: var(--ok-ink); }
+/* a rule's row asking for its answer */
+.rule.open { flex-wrap: wrap; border-color: var(--primary-line); }
+.ask { flex-basis: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 0 2px 48px; }
+.ask label { color: var(--ink2); font-size: 12.5px; margin-right: auto; }
+.btn.sm { padding: 5px 11px; font-size: 12.5px; }
+/* phone width */
+.narrow-row { display: flex; gap: 28px; align-items: flex-start; }
+.frame.narrow { width: 390px; flex: none; }
+.narrow .ch-head { padding: 14px 14px 0; }
+.narrow .tabs { padding: 10px 8px 0; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+.narrow .counts { display: flex; overflow: hidden; padding: 14px 14px 2px; gap: 10px; }
+.narrow .count { flex: none; width: 168px; }
+.narrow .bar { flex-wrap: wrap; padding: 12px 14px; gap: 8px; }
+.narrow .bar .line { display: flex; gap: 8px; width: 100%; align-items: center; overflow: hidden; }
+.narrow .search { flex: 1; width: auto; }
+.narrow .btn.icon { padding: 7px 10px; }
+.narrow .cols { display: flex; overflow: hidden; padding: 0 14px 16px; gap: 10px; }
+.narrow .col { flex: none; width: 292px; }
+.side-notes { display: flex; flex-direction: column; gap: 14px; color: var(--ink2); font-size: 13px; padding-top: 6px; max-width: 520px; }
+.side-notes b { color: var(--ink); font-weight: 620; }
+.side-notes div { padding-left: 12px; border-left: 2px solid var(--tint2); }
+.sheet-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin: 0 4px 6px; }
+.sheet-sub { color: var(--ink2); margin: 0 4px 28px; max-width: 1000px; }
+</style>
+</head>
+<body>
+<p class="sheet-title">A channel's Board tab · board view, list view, automations</p>
+<p class="sheet-sub">The screens of plan <b>workspace-channel-board</b>, each with the steps that build it. Sample tasks, names and counts are examples; the labels are the ones the steps write. Add <b>?theme=dark</b> to the address for the dark look, <b>?f=A</b> (B, C, D) for one board.</p>
+<div id="root"></div>
+<script>
+var q = new URLSearchParams(location.search);
+if (q.get('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+var only = q.get('f');
+
+var TASKS = {
+  todo: [
+    { id: 142, t: 'Winter campaign landing page copy', tags: ['Content'], due: '28 Nov', prio: 'high', steps: [0, 4], who: ['E', 'A'] },
+    { id: 145, t: 'Reshoot the product photos', tags: ['Pictures'], due: '2 Dec', who: ['M'] },
+    { id: 147, t: 'Clean the newsletter list', tags: ['E-mail'], rep: 1, who: ['A'] },
+    { id: 150, t: 'Set up the discount codes', tags: ['Store'], due: '30 Nov', who: ['S'] }
+  ],
+  doing: [
+    { id: 138, t: 'Home page banner design', tags: ['Pictures', 'Home page'], due: 'Tomorrow', dueKind: 'soon', prio: 'urgent', steps: [3, 5], notes: 4, who: ['M', 'E'] },
+    { id: 139, t: 'Update the shipping texts', tags: ['Store'], due: '2 days late', dueKind: 'late', who: ['S'] },
+    { id: 141, t: 'Ad pictures (3 sizes)', tags: ['Ads'], due: '27 Nov', steps: [1, 3], who: ['M'] }
+  ],
+  waiting: [
+    { id: 133, t: 'Campaign budget approval', tags: ['Approval'], due: 'Today', dueKind: 'soon', notes: 2, who: ['E'] },
+    { id: 136, t: 'Price list from the supplier', tags: ['Store'], due: '1 day late', dueKind: 'late', who: ['S'] }
+  ],
+  done: [
+    { id: 128, t: 'Campaign calendar', due: 'Done yesterday', dueKind: 'fin', who: ['E'], done: 1 },
+    { id: 130, t: 'Colour palette choice', due: '22 Nov', dueKind: 'fin', who: ['M'], done: 1 },
+    { id: 131, t: 'Audience list', due: '21 Nov', dueKind: 'fin', who: ['A'], done: 1 }
+  ]
+};
+var NAMES = { todo: 'To do', doing: 'In progress', waiting: 'Waiting', done: 'Done' };
+
+function faces(list) { return '<span class="faces">' + list.map(function (f) { return '<span class="face f-' + f + '">' + f + '</span>'; }).join('') + '</span>'; }
+function prio(c) {
+  if (c.prio === 'urgent') return '<span class="prio urgent"><i class="bi bi-flag-fill"></i>Urgent</span>';
+  if (c.prio === 'high') return '<span class="prio high"><i class="bi bi-flag-fill"></i>High</span>';
+  return '';
+}
+function stepsLine(c) { return c.steps ? '<span class="steps"><span class="track"><b style="width:' + Math.round(100 * c.steps[0] / c.steps[1]) + '%"></b></span>' + c.steps[0] + '/' + c.steps[1] + '</span>' : ''; }
+function card(c, extra) {
+  var h = '<div class="card' + (c.done ? ' done' : '') + (extra ? ' ' + extra : '') + '"><div class="card-top"><span class="num-id">#' + c.id + '</span>';
+  if (c.rep) h += '<i class="bi bi-arrow-repeat"></i>';
+  if (c.done) h += '<i class="bi bi-check-circle-fill" style="color:var(--ok-ink)"></i>';
+  h += prio(c) + '</div><div class="title">' + c.t + '</div>';
+  if (c.tags) h += '<div class="tags">' + c.tags.map(function (t) { return '<span class="tag">' + t + '</span>'; }).join('') + '</div>';
+  h += '<div class="meta">';
+  if (c.due) h += '<span class="due ' + (c.dueKind || '') + '"><i class="bi bi-' + (c.dueKind === 'fin' ? 'check2' : 'calendar3') + '"></i>' + c.due + '</span>';
+  h += stepsLine(c);
+  if (c.notes) h += '<span><i class="bi bi-chat-left-text"></i> ' + c.notes + '</span>';
+  return h + faces(c.who) + '</div></div>';
+}
+function column(key, o) {
+  o = o || {};
+  var name = NAMES[key];
+  var h = '<div class="col"><div class="col-head"><span class="dot d-' + key + '"></span><span class="col-name">' + name + '</span><span class="col-count">' + (key === 'done' ? 15 : TASKS[key].length) + '</span><span class="col-tools"><i class="bi bi-plus-lg"></i><i class="bi bi-three-dots"></i></span></div>';
+  if (o.flow) h += '<div class="col-flow"><i class="bi bi-lightning-charge-fill"></i>' + o.flow + '</div>';
+  h += '<div class="list">';
+  TASKS[key].slice(0, o.limit || 99).forEach(function (c, i) { h += card(c, o.drag === i ? 'drag' : ''); });
+  if (o.slot) h += '<div class="slot"><i class="bi bi-arrow-down-short"></i>Drop here: status becomes “' + name + '”</div>';
+  h += '</div>';
+  if (key === 'done') h += '<div class="more">12 finished earlier</div>';
+  else h += '<div class="add"><i class="bi bi-plus-lg"></i>New task in this column</div>';
+  return h + '</div>';
+}
+var TABS = [['Messages', 0, 'chat-dots'], ['Board', 1, 'kanban', 9], ['Decisions', 0, 'patch-check', 6], ['Files', 0, 'folder2', 14], ['Summary', 0, 'card-text'], ['Memory', 0, 'lightbulb']];
+function head() {
+  var h = '<div class="ch-head"><span class="tile t-blue"><i class="bi bi-hash"></i></span><div><div class="ch-name">winter-campaign</div><div class="ch-desc">Getting the winter campaign ready</div></div>';
+  h += '<div class="ch-faces">' + faces(['E', 'A', 'M', 'S']).replace('</span></span>', '</span><span class="face f-more">+4</span></span>') + '8 people</div></div><div class="tabs">';
+  TABS.forEach(function (t) { h += '<span class="tab' + (t[1] ? ' on' : '') + '"><i class="bi bi-' + t[2] + '"></i>' + t[0] + (t[3] ? '<span class="n">' + t[3] + '</span>' : '') + '</span>'; });
+  return h + '</div>';
+}
+function counts(sel) {
+  var c = [['t-blue', 'bi-list-check', 9, 'Open tasks'], ['t-amber', 'bi-calendar-week', 4, 'Due this week'], ['t-rose', 'bi-exclamation-circle', 2, 'Overdue'], ['t-green', 'bi-check2-circle', 3, 'Done in the last 7 days']];
+  return '<div class="counts">' + c.map(function (x, i) { return '<div class="count' + (sel === i ? ' sel' : '') + '"><span class="tile ' + x[0] + '"><i class="bi ' + x[1] + '"></i></span><div><div class="num">' + x[2] + '</div><div class="lbl">' + x[3] + '</div></div></div>'; }).join('') + '</div>';
+}
+function seg(view) { return '<span class="seg"><span class="' + (view === 'board' ? 'on' : '') + '"><i class="bi bi-kanban"></i>Board</span><span class="' + (view === 'list' ? 'on' : '') + '"><i class="bi bi-list-ul"></i>List</span></span>'; }
+function bar(view, mid) {
+  return '<div class="bar">' + seg(view) + '<span class="sep"></span>' + mid + '<span class="grow"></span><span class="search"><i class="bi bi-search"></i>Search the cards</span><span class="chip"><i class="bi bi-person"></i>Only mine</span><span class="btn"><i class="bi bi-funnel"></i>Filter</span><span class="btn flow"><i class="bi bi-lightning-charge-fill"></i>Automations<span class="n">2</span></span><span class="btn primary"><i class="bi bi-plus-lg"></i>New task</span></div>';
+}
+var GROUP = '<span class="chip on">By status</span><span class="chip">By person</span><span class="chip">By date</span>';
+function notes(list) { return '<div class="notes">' + list.map(function (n) { return '<div>' + n + '</div>'; }).join('') + '</div>'; }
+function wrap(letter, title, sub, body, list, cls) {
+  return '<div class="frame-wrap" id="f' + letter + '"><div class="frame-head"><span class="frame-letter">' + letter + '</span><span class="frame-title">' + title + '</span><span class="frame-sub">' + sub + '</span></div>' + body + (list ? notes(list) : '') + '</div>';
+}
+function frame(inner, cls) { return '<div class="frame' + (cls ? ' ' + cls : '') + '">' + inner + '</div>'; }
+var DONE_RULE = 'A task that comes here: write to the channel';
+
+var A = frame(head() + counts() + bar('board', GROUP) + '<div class="cols">' + column('todo') + column('doing', { drag: 2 }) + column('waiting', { slot: 1 }) + column('done', { flow: DONE_RULE }) + '</div>');
+
+var listCards = TASKS.doing.concat(TASKS.waiting, TASKS.todo.slice(0, 1));
+var stateOf = { 138: 'doing', 139: 'doing', 141: 'doing', 133: 'waiting', 136: 'waiting', 142: 'todo' };
+var B = frame(head() + counts() + bar('list', '<span class="sel-box">Open tasks<i class="bi bi-chevron-down" style="font-size:11px;color:var(--ink3)"></i></span>') + '<div class="grid">' +
+  listCards.map(function (c) {
+    var s = stateOf[c.id];
+    var h = '<div class="tcard"><div class="row1"><span class="dot d-' + s + '"></span><span class="state">' + NAMES[s] + '</span><span class="num-id">#' + c.id + '</span>' + prio(c);
+    h += '</div><div class="title" style="font-size:14.5px">' + c.t + '</div><div class="tags">' + c.tags.map(function (t) { return '<span class="tag">' + t + '</span>'; }).join('') + '</div><div class="foot">';
+    if (c.due) h += '<span class="due ' + (c.dueKind || '') + '"><i class="bi bi-calendar3"></i>' + c.due + '</span>';
+    h += stepsLine(c);
+    if (c.notes) h += '<span style="color:var(--ink2);font-size:12px"><i class="bi bi-chat-left-text"></i> ' + c.notes + '</span>';
+    return h + faces(c.who) + '<span class="btn ghost"><i class="bi bi-check2"></i>Mark done</span></div></div>';
+  }).join('') + '</div>');
+
+function rule(on, tone, icon, when, then, ran, ask) {
+  return '<div class="rule' + (on ? ' on' : '') + (ask ? ' open' : '') + '"><span class="tile ' + tone + '"><i class="bi ' + icon + '"></i></span><div><div class="when">' + when + '</div><div class="then">' + then + '</div>' + (ran ? '<div class="ran">' + ran + '</div>' : '') + '</div><span class="sw' + (on ? ' on' : '') + '"></span>' + (ask || '') + '</div>';
+}
+var ASK = '<div class="ask"><label>Who approves?</label><span class="sel-box" style="padding:5px 10px">Elif<i class="bi bi-chevron-down" style="font-size:11px;color:var(--ink3)"></i></span><span class="btn sm">Cancel</span><span class="btn primary sm">Turn on</span></div>';
+var C = frame('<div class="dim">' + head() + counts() + bar('board', GROUP) + '<div class="cols">' + column('todo') + column('doing') + column('waiting') + column('done', { flow: DONE_RULE }) + '</div></div>' +
+  '<div class="drawer"><div class="dr-head"><span class="tile t-violet"><i class="bi bi-lightning-charge-fill"></i></span><div class="dr-title">Board automations</div><i class="bi bi-x-lg dr-x"></i></div>' +
+  '<div class="dr-lead">Choose what happens when a task gets somewhere.</div>' +
+  '<div class="dr-kind">Ready rules</div>' +
+  rule(1, 't-green', 'bi-megaphone', 'When a task is done', 'Write to the channel', 'Ran 3 times this week') +
+  rule(1, 't-rose', 'bi-bell', 'When a task is overdue', 'Remind its person', 'Ran 2 times this week') +
+  rule(0, 't-amber', 'bi-shield-check', 'When a task comes to “Waiting”', 'Ask for approval', '', ASK) +
+  rule(0, 't-blue', 'bi-plus-square', 'When a task is done', 'Make the next task') +
+  '<div class="dr-kind">Your own rule</div>' +
+  '<div class="own"><span class="tile t-gray"><i class="bi bi-plus-lg"></i></span><div>Build your own flow<div class="s">Opens the Flows quick setup with this channel chosen</div></div><i class="bi bi-arrow-up-right" style="margin-left:auto;color:var(--ink3)"></i></div>' +
+  '<div class="log"><div><i class="bi bi-check-circle-fill"></i>Today 14:20 · “Campaign calendar” was done · written to the channel</div><div><i class="bi bi-check-circle-fill"></i>Today 09:00 · “Update the shipping texts” is overdue · S was reminded</div></div></div>');
+
+var narrowBar = '<div class="bar"><div class="line">' + seg('board') + '<span class="grow"></span><span class="btn primary"><i class="bi bi-plus-lg"></i>New task</span></div><div class="line">' + GROUP + '</div><div class="line"><span class="search"><i class="bi bi-search"></i>Search the cards</span><span class="btn icon"><i class="bi bi-person"></i></span><span class="btn icon"><i class="bi bi-funnel"></i></span><span class="btn icon flow"><i class="bi bi-lightning-charge-fill"></i><span class="n">2</span></span></div></div>';
+var Dn = '<div class="narrow-row">' + frame(head().replace(/<div class="ch-faces">.*?8 people<\/div>/, '') + counts() + narrowBar + '<div class="cols">' + column('doing', { limit: 2 }) + column('waiting', { limit: 2 }) + '</div>', 'narrow') +
+  '<div class="side-notes"><div><b>BM1, BM3 at phone width.</b> The tabs and the four figures are each one row that scrolls sideways; nothing is hidden behind a menu.</div><div><b>The toolbar wraps into three lines:</b> the Segmented control with the filled “New task”; the grouping chips; the search field with “Only mine”, “Filter” and “Automations” as icon buttons that keep their names for a screen reader.</div><div><b>The columns scroll sideways</b> as today, one column and the edge of the next in view. The Automations drawer covers the whole width.</div></div></div>';
+
+var frames = {
+  A: wrap('A', 'Board view', 'Tasks and Board in one tab, “Board”', A, [
+    '<b>BM1:</b> the tab with the count of open tasks, the Segmented control “Board” / “List”, one toolbar for both views with the one filled button “New task”.',
+    '<b>BM2, BM3:</b> tasks only in three groupings. The four figures say what the board holds; a figure is a button that filters both views, a second press clears it. Columns, cards and the dashed drop place while a card is dragged.',
+    '<b>BM5:</b> “Automations” with the count of rules that are on, and one quiet line under the head of a column a rule is tied to.'
+  ]),
+  B: wrap('B', 'List view', 'The same tab with “List” chosen: today’s Tasks pane', B, [
+    '<b>BM1:</b> today’s task cards in their grid, with “Mark done”. Nothing of the Tasks tab is lost.',
+    '<b>The choice</b> of open, closed or all tasks takes the grouping chips’ place; the search, “Only mine”, “Filter” and “New task” are the board’s.',
+    '<b>The view</b> a person chose is remembered. A room without the board keeps its “Tasks” tab as it is.'
+  ]),
+  C: wrap('C', 'Automations drawer', '“Automations” opens it over the board', C, [
+    '<b>BM5 over BM4:</b> ready rules as Switch rows. On makes and publishes the rule’s flow, off pauses it, never deletes it.',
+    '<b>A rule that needs an answer</b> asks for it in its own row when first turned on (the third row here); “Turn on” is the drawer’s one filled button, only while a row asks.',
+    '<b>Last runs</b> at the foot come from the flows’ own record. No message pops up after a move: a flow runs a moment later.'
+  ]),
+  D: wrap('D', 'Phone width', 'The board view at 390 px', Dn, null)
+};
+document.getElementById('root').innerHTML = Object.keys(frames).filter(function (k) { return !only || only === k; }).map(function (k) { return frames[k]; }).join('');
+</script>
+</body>
+</html>
