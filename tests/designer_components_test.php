@@ -164,3 +164,22 @@ function test_designer_components_custom_form_page_reads_nested_widgets()
 		'a form widget inside a placed shared component keeps the classic form from drawing a second time');
 }
 
+// The body of one `case '<sub>':` of the shared component panel handler.
+function _test_components_panel_case($sub)
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/shared_component.php');
+	$start = strpos($src, "case '" . $sub . "':");
+	if ($start === false) return '';
+	$end = strpos($src, "\n        case '", $start + 1);
+	return (string) substr($src, $start, ($end === false ? strlen($src) : $end) - $start);
+}
+
+// A save of a component another tab deleted wrote nothing and answered
+// success: the editor dropped the changes as saved.
+function test_designer_components_update_refuses_a_deleted_component()
+{
+	$body = _test_components_panel_case('update');
+	$check = strpos($body, 'pg_shared_component_gone_message()');
+	$write = strpos($body, 'UPDATE shared_components');
+	pg_assert_true($check !== false && $write !== false && $check < $write, 'update answers an error for a row that is gone, before it writes');
+}

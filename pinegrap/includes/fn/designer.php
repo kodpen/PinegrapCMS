@@ -711,6 +711,19 @@ function pg_shared_component_reach_read(array $ids, $fetch)
     return array_values($seen);
 }
 
+// Whether the shared component row is still there.
+function pg_shared_component_exists($sid)
+{
+    $sid = (int)$sid;
+    return ($sid > 0) && (db_value("SELECT id FROM shared_components WHERE id = '$sid' LIMIT 1") !== null);
+}
+
+// A write to a shared component deleted meanwhile, refused.
+function pg_shared_component_gone_message()
+{
+    return lang('This shared component was deleted meanwhile, so the change to it was not saved.');
+}
+
 // The loop refusal, naming the components along it ("Header → Cart → Header").
 function pg_shared_component_loop_message($loop)
 {

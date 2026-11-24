@@ -181,6 +181,12 @@ function pg_panel_shared_component($request, $action)
             if ($sc_tree === '' || json_decode($sc_tree) === null) {
                 respond(array('status' => 'error', 'message' => lang('Invalid tree data.')));
             }
+            // Deleted from another tab or the designs home meanwhile: the
+            // editor keeps the change unsaved and says why, instead of
+            // taking an UPDATE of no row for a save.
+            if (!pg_shared_component_exists($sc_id)) {
+                respond(array('status' => 'error', 'message' => pg_shared_component_gone_message()));
+            }
             // The tree may place other shared components, never this one —
             // directly or through them: that loop could not be drawn.
             $sc_loop = pg_shared_component_cycle(array($sc_id), array($sc_id => json_decode($sc_tree, true)));
@@ -320,6 +326,9 @@ function pg_panel_shared_component($request, $action)
             if ($sc_src_cfg !== null && ($sc_src_cfg === '' || json_decode($sc_src_cfg) === null)) {
                 respond(array('status' => 'error', 'message' => lang('Invalid system region config.')));
             }
+            if (!pg_shared_component_exists($sc_id)) {
+                respond(array('status' => 'error', 'message' => pg_shared_component_gone_message()));
+            }
             $sc_cfg_val = ($sc_src_cfg === null) ? 'NULL' : "'" . e($sc_src_cfg) . "'";
             db("UPDATE shared_components
                     SET system_region_config = $sc_cfg_val, updated_at = " . time() . "
@@ -339,6 +348,9 @@ function pg_panel_shared_component($request, $action)
             }
             // Auto-suffix, but skip our own current name to allow no-op rename
             $sc_current = db_value("SELECT name FROM shared_components WHERE id = '$sc_id' LIMIT 1");
+            if ($sc_current === null || $sc_current === false) {
+                respond(array('status' => 'error', 'message' => pg_shared_component_gone_message()));
+            }
             if ($sc_current !== $sc_name) {
                 $sc_name = _sc_unique_name($sc_name);
             }
