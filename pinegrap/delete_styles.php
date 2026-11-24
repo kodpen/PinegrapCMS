@@ -44,6 +44,10 @@ $number_of_preserved_styles = 0;
 require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
 $recycle_styles = pg_recycle_style_ready();
 
+// Which pages hold a style back: pages in the bin no longer do once it keeps
+// styles (pg_style_pages_holding_sql()).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/style_usage.php');
+
 // Loop through all styles that where selected.
 foreach ($style_ids as $style_id) {
     // If this style is being used by a folder or page,
@@ -62,9 +66,7 @@ foreach ($style_ids as $style_id) {
             db_value(
                 "SELECT COUNT(*)
                 FROM page
-                WHERE
-                    (page_style = '" . escape($style_id) . "')
-                    OR (mobile_style_id = '" . escape($style_id) . "')")
+                WHERE " . pg_style_pages_holding_where($style_id))
         )
     ) {
         $number_of_preserved_styles++;
