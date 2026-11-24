@@ -840,12 +840,12 @@ function ws_personal_ical_card($user_id)
                     <input type="hidden" name="feed_action" value="own_add">
                     <div class="row g-3 align-items-end">
                         <div class="lg:col-7">
-                            <label class="form-label small" for="ws_own_url">' . h(lang('Secret address in iCal format')) . '</label>
-                            <input class="form-control form-control-sm" type="password" name="own_url" id="ws_own_url" required autocomplete="off" spellcheck="false" placeholder="https://…/basic.ics">
+                            <label class="pg-field-label" for="ws_own_url">' . h(lang('Secret address in iCal format')) . '</label>
+                            <input class="pg-input pg-input-sm" type="password" name="own_url" id="ws_own_url" required autocomplete="off" spellcheck="false" placeholder="https://…/basic.ics">
                         </div>
                         <div class="col-7 lg:col-3">
-                            <label class="form-label small" for="ws_own_name">' . h(lang('Name')) . '</label>
-                            <input class="form-control form-control-sm" type="text" name="own_name" id="ws_own_name" maxlength="120">
+                            <label class="pg-field-label" for="ws_own_name">' . h(lang('Name')) . '</label>
+                            <input class="pg-input pg-input-sm" type="text" name="own_name" id="ws_own_name" maxlength="120">
                         </div>
                         <div class="col-5 lg:col-2 text-end">
                             <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Add')) . '</button>

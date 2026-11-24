@@ -506,7 +506,7 @@ function ws_notes_quick_markup($rights, $parent_target = '')
                                     <label for="pg_quick_note_text" class="fw-semibold small mb-0">' . $notes_icon_me . h(lang('Quick note')) . '</label>
                                     <a class="small pg-link-body-emphasis" href="' . h($base . 'workspace_notes.php') . '"' . $parent_target . '>' . $notes_icon_me . h(lang('My Notes')) . '</a>
                                 </div>
-                                <textarea id="pg_quick_note_text" name="body" class="form-control form-control-sm" rows="4" maxlength="' . WS_NOTE_MAX . '" placeholder="' . h(lang('Write a note. Its first line becomes its title.')) . '"></textarea>
+                                <textarea id="pg_quick_note_text" name="body" class="pg-input pg-input-sm" rows="4" maxlength="' . WS_NOTE_MAX . '" placeholder="' . h(lang('Write a note. Its first line becomes its title.')) . '"></textarea>
                                 <div class="d-flex align-items-center flex-wrap gap-3 mt-3">
                                     <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Save')) . '</button>
                                     <span class="small fg-secondary d-none sm:d-inline">Ctrl+Enter</span>

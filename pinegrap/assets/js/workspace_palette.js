@@ -206,7 +206,7 @@
 
         head.appendChild(icon('bi-search', 'ws-palette-glass'));
 
-        ui.input = el('input', 'form-control ws-palette-input');
+        ui.input = el('input', 'ws-palette-input');
         ui.input.type = 'search';
         ui.input.autocomplete = 'off';
         ui.input.spellcheck = false;

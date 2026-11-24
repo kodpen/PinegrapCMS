@@ -215,9 +215,9 @@ if (!$feed) {
         $google = ws_calendar_feed_google_url($token);
 
         $address = '
-                <label class="form-label small fw-semibold" for="ws_ical_url">' . h(lang('Your calendar address')) . '</label>
+                <label class="pg-field-label" for="ws_ical_url">' . h(lang('Your calendar address')) . '</label>
                 <div class="input-group mb-3">
-                    <input type="text" class="form-control font-monospace" id="ws_ical_url" value="' . h(ws_calendar_feed_url($token)) . '" readonly>
+                    <input type="text" class="pg-input font-monospace" id="ws_ical_url" value="' . h(ws_calendar_feed_url($token)) . '" readonly>
                     <button type="button" class="pg-button pg-button-quiet" id="ws_ical_copy"><i class="bi bi-clipboard" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
                     <span class="visually-hidden" role="status" aria-live="polite" id="ws_ical_copy_status" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>
                 </div>

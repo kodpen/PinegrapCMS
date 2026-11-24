@@ -186,7 +186,8 @@
     },
     "assets/js/workspace_guest.js": {
         "button": 3,
-        "tabs": 0
+        "tabs": 0,
+        "field": 0
     },
     "assets/js/workspace_mail.js": {
         "button": 0,
@@ -201,7 +202,7 @@
     "assets/js/workspace_palette.js": {
         "button": 1,
         "tabs": 0,
-        "field": 1
+        "field": 0
     },
     "assets/js/workspace_recurrence.js": {
         "button": 1,
@@ -630,7 +631,7 @@
         "tabs": 0
     },
     "includes/fn/output.php": {
-        "button": 162,
+        "button": 156,
         "tabs": 0
     },
     "includes/fn/page_bulk.php": {
@@ -658,7 +659,7 @@
         "tabs": 0
     },
     "includes/fn/prototype.php": {
-        "button": 5,
+        "button": 4,
         "tabs": 0
     },
     "includes/fn/prototype_links.php": {
@@ -777,6 +778,11 @@
         "button": 1,
         "tabs": 0
     },
+    "includes/settings/workspace_team.php": {
+        "button": 0,
+        "tabs": 0,
+        "field": 8
+    },
     "includes/templates/edit_auto_dialog.php": {
         "button": 1,
         "tabs": 0
@@ -821,18 +827,25 @@
         "button": 2,
         "tabs": 0
     },
-    "includes/workspace/agent_activity.php": {
-        "button": 0,
-        "tabs": 0
-    },
     "includes/workspace/bulk.php": {
         "button": 0,
         "tabs": 0,
         "field": 3
     },
-    "includes/workspace/calendar_sync.php": {
+    "includes/workspace/calls_settings.php": {
         "button": 0,
-        "tabs": 0
+        "tabs": 0,
+        "field": 1
+    },
+    "includes/workspace/link_preview.php": {
+        "button": 0,
+        "tabs": 0,
+        "field": 1
+    },
+    "includes/workspace/mail_add.php": {
+        "button": 0,
+        "tabs": 0,
+        "field": 1
     },
     "includes/workspace/mail_list.php": {
         "button": 1,
@@ -841,53 +854,23 @@
     },
     "includes/workspace/mail_pane.php": {
         "button": 1,
-        "tabs": 0
-    },
-    "includes/workspace/notes.php": {
-        "button": 1,
         "tabs": 0,
-        "field": 1
+        "field": 0
     },
-    "includes/workspace/personal_ical.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 4
-    },
-    "includes/workspace/personal_plan_mail.php": {
-        "button": 0,
-        "tabs": 0
-    },
-    "includes/workspace/screen.php": {
-        "button": 0,
-        "tabs": 0
-    },
-    "includes/workspace/tasks.php": {
-        "button": 0,
-        "tabs": 0
-    },
-    "includes/workspace/team_settings.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 7
-    },
-    "includes/workspace/workdays.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 15
-    },
-    "includes/workspace/wtable_channel.php": {
+    "includes/workspace/mail_phone.php": {
         "button": 0,
         "tabs": 0,
         "field": 3
     },
-    "includes/workspace/wtable_query.php": {
+    "includes/workspace/notes.php": {
+        "button": 1,
+        "tabs": 0,
+        "field": 0
+    },
+    "includes/workspace/team_settings.php": {
         "button": 0,
         "tabs": 0,
-        "field": 8
-    },
-    "includes/workspace/wtable_screen.php": {
-        "button": 0,
-        "tabs": 0
+        "field": 1
     },
     "install/index.php": {
         "button": 40,
@@ -934,7 +917,7 @@
         "tabs": 0
     },
     "product_builder.php": {
-        "button": 37,
+        "button": 35,
         "tabs": 0
     },
     "router.php": {
@@ -990,7 +973,7 @@
         "tabs": 0
     },
     "view_commissions.php": {
-        "button": 3,
+        "button": 1,
         "tabs": 0
     },
     "view_contact_groups.php": {
@@ -998,7 +981,7 @@
         "tabs": 0
     },
     "view_contacts.php": {
-        "button": 16,
+        "button": 14,
         "tabs": 0
     },
     "view_design_files.php": {
@@ -1022,7 +1005,7 @@
         "tabs": 0
     },
     "view_log.php": {
-        "button": 5,
+        "button": 3,
         "tabs": 0
     },
     "view_menu_items.php": {
@@ -1034,11 +1017,11 @@
         "tabs": 0
     },
     "view_order.php": {
-        "button": 17,
+        "button": 12,
         "tabs": 0
     },
     "view_orders.php": {
-        "button": 19,
+        "button": 17,
         "tabs": 0
     },
     "view_pages.php": {
@@ -1082,7 +1065,7 @@
         "tabs": 0
     },
     "view_submitted_forms.php": {
-        "button": 8,
+        "button": 6,
         "tabs": 0
     },
     "view_subscriptions.php": {
@@ -1114,69 +1097,9 @@
         "tabs": 0,
         "field": 3
     },
-    "workspace_calendar_feed.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 2
-    },
     "workspace_guest.php": {
         "button": 4,
         "tabs": 0,
         "field": 1
-    },
-    "workspace_mcp.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 3
-    },
-    "workspace_meeting_link.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 6
-    },
-    "workspace_template.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 23
-    },
-    "workspace_wtables.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 81
-    },
-    "includes/settings/workspace_team.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 8
-    },
-    "includes/workspace/agent_start_text.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 1
-    },
-    "includes/workspace/calls_settings.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 1
-    },
-    "includes/workspace/link_preview.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 1
-    },
-    "includes/workspace/mail_add.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 1
-    },
-    "includes/workspace/mail_phone.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 3
-    },
-    "includes/workspace/mcp_form.php": {
-        "button": 0,
-        "tabs": 0,
-        "field": 6
     }
 }

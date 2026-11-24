@@ -19,6 +19,6 @@ description: WL9: the small Workspace scripts' form-control and form-label lines
 ## What stayed?
 - The writing box (`div.ws-rich form-control` in `workspace_editor.js`, and the mail's `classList.add('form-control')` on it): a rich text box, not a field; `.pg-input`'s 36px height and flex would break it.
 - The task board's toolbar search (`form-control form-adorn rounded-pill pg-toolbar-search` in `workspace_board_channel.js`): the panel's toolbar search, the same as the other toolbars (`tests/bs6_form_adorn_test.php`).
-- `form-text` help lines; `workspace_flow.js` and `workspace_palette.js` (held by other PRs then) and the PHP screens' fields: WL9b in the plan.
+- `form-text` help lines. The palette's search box and the PHP screens' fields moved in WL9b (`look-workspace-fields-screens.md`); `workspace_flow.js` is WL9c in the plan.
 
-Related: docs/memory/ui/look-workspace-fields.md, docs/memory/ui/look-check.md
+Related: docs/memory/ui/look-workspace-fields.md, docs/memory/ui/look-workspace-fields-screens.md, docs/memory/ui/look-check.md
