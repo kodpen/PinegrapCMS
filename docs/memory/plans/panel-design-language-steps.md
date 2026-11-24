@@ -11,7 +11,7 @@ priority: 2
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each step with its tests and its topic file `ui/look-<part>.md`.
 
-- DL0 (no product code) The reference sheet, made by the architect with the owner in the architect's window (#8842): each part in both themes, the source beside the picture. Pages: `panel-design-language-sheet.md`.
+- DL0 (no product code) The reference sheet, made with the owner (#8842): each part in both themes, the source beside the picture. Pages: `panel-design-language-sheet.md`.
 
 - DL1 (M) Type and the recipes. Inter (variable, its optical size axis gives headings the Display cut; OFL; self-hosted under `assets/fonts/`); the type scale and weights as `--pg-*` tokens; the recipes as classes in `backend.src.css`. No screen changes but by the typeface. Done in #8879 (`ui/look-type-and-recipes.md`).
 
@@ -19,11 +19,11 @@ priority: 2
 
 - DL2 (M) The Design examples screen: a panel page for the Designer role and above that shows every recipe live in both themes, with its class names and what is not done. A step copies from it; the owner looks at it. Done in #8907 (`ui/look-design-examples.md`).
 
-- DL3 (M) The bell's drawer in look A: rows from the recipes, the fold drawn as gathered rows with the count beside the title, titles that say what happened and with what (`ui/bell-row.md` rewritten). Approved from a real panel's screenshots: dark, light, phone width. Done in #8897.
+- DL3 (M) The bell's drawer in look A: rows from the recipes, the fold as gathered rows with the count beside the title, titles saying what happened (`ui/bell-row.md`). Approved from a real panel's screenshots: dark, light, phone width. Done in #8897.
 
 - DL4 (S) The check and the rule. `tools/check_look.php` in CI counts panel rules outside the recipes (a font size or weight off the scale, a colour outside the tokens) and lets the count only fall. Key rule in `ui/README.md`: a panel screen is built from the recipes; a new recipe is drawn first and asked on an `architect` issue. Done in #8905 (`ui/look-check.md`).
 
-- DL5a to DL5f (M each) The screen families, one step each, in order: the dashboard (not given, #8938); list screens (toolbar, table, row actions); add and edit screens (cards, field widths, the save bar); settings (section cards, the modal); report screens; Workspace (channel, lists). Each waits for its sheet part. Done: DL5b #8921, DL5c's cards and save bar #8934, DL5d #8952, DL5e #8981.
+- DL5a to DL5f (M each) The screen families, one step each, in order: the dashboard (not given, #8938); list screens (toolbar, table, row actions); add and edit screens (cards, field widths, the save bar); settings (section cards, the modal); report screens; Workspace: the channel screen, the gaps of `workspace/canvas-phone.md` (lists done, #11079). Each waits for its sheet part. Done: DL5b #8921, DL5c's cards and save bar #8934, DL5d #8952, DL5e #8981.
 - DL5c field widths: the rules in #9658, the spans with panel-old-screens.
 
 - DL6 (S) Close-out: `ui/look-overview.md`, the lasting rules in `ui/`, this plan and its folder deleted but for what the overview names.

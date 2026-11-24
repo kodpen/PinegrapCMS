@@ -4,7 +4,7 @@ description: Panel foot at the window's bottom, none on the Workspace channel vi
 ---
 
 ## Where does the foot (`#footer`, `output_footer()`) stand?
-- At the window's bottom when a screen is short, after the content when it scrolls. `body:not(.toolbar) .software-content` is a flex column with `min-height: calc(100vh - var(--pg-navbar-h))` (100dvh where supported), and `> #footer` has `margin-top: auto`. No fixed foot over the content. Built in #11075 (plan workspace-interface, step WI4).
+- At the window's bottom when a screen is short, after the content when it scrolls. `body:not(.toolbar) .software-content` is a flex column with `min-height: calc(100vh - var(--pg-navbar-h))` (100dvh where supported), and `> #footer` has `margin-top: auto`. No fixed foot over the content. Built in #11075; owner (2026-11-22, `workflow/decisions-made-workspace-48.md`).
 - Before, the foot stood right under the content: in the middle of a short screen, and under the channel's writing box, where it took about 85px of the conversation.
 - The visual editor (`body.toolbar`) prints no foot and is left out of the rule.
 - A flex item is its own formatting context, so a margin of the first or last element inside a direct child of `.software-content` no longer runs out of it. The sweep of every panel screen at 1440px before and after (#11075) found nothing but the foot moved.

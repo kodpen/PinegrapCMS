@@ -1,10 +1,10 @@
 ---
 name: workspace-channel-new-line
-description: The channel's "New" line (board C1): where it stands (newLineAt()), the read mark it is drawn by, Go to new messages scrolling to it
+description: The channel's "New" line (#11269, board C1): where it stands (newLineAt()), the read mark it is drawn by, Go to new messages scrolling to it
 ---
 
 ## What is the "New" line?
-- A rose hairline with "New · N messages" ("New · 1 message") at its middle, over the first message someone else wrote after the reader's last visit (board C1 of `workspace-interface-drawing/screens.html`, `.ws-new-line` in `backend.src.css`). Built in WI8 (`plans/workspace-interface-steps-2.md`).
+- A rose hairline with "New · N messages" ("New · 1 message") at its middle, over the first message someone else wrote after the reader's last visit (board C1 of `workspace-interface-drawing/screens.html`, `.ws-new-line` in `backend.src.css`). Built in #11269.
 - Drawn by `drawMessages()` in `assets/js/workspace.js`, under the message's day chip; the message under it starts a run of its own (its name and avatar show).
 
 ## Where does it stand?
@@ -14,3 +14,6 @@ description: The channel's "New" line (board C1): where it stands (newLineAt()),
 
 ## What does "Go to new messages" do?
 - The catch-up line's button (`catchupNode()`, `workspace-channel-catchup.md`) scrolls to the drawn "New" line; when the line is not on the screen (over 50 new messages), it jumps to the first unread message as before. "Go to where you were mentioned" is unchanged.
+
+## Why?
+- Owner (2026-11-22, `workflow/decisions-made-workspace-48.md`): nothing marked where a channel's unread messages began.

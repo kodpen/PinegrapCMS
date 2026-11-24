@@ -7,9 +7,9 @@ description: The tools dock of the Workspace list (#3817, #6281, dock #11101): p
 - `ws_nav_groups()`: `tools` = My Tasks, My Notes, Data (Tables), Flows, Work Calendar, My calendar, Planning Board, Decision Timeline, E-mails, each under its gate, in that order; `more` = Scheduled actions or messages, My MCP connections, Calendar subscription, My meeting link, General memory (`ws_memory_general_can()`, #10440), Archived channels, Private channels (staff). `ws_nav_group_titles()` names Tools and More (`tests/workspace_nav_tools_test.php`).
 - A cell shows `short` (Tasks, Notes, Flows, Calendar, Board, Decisions; the first two since #11101) or else the label; the full label is its title and `data-pg-menu-label`.
 
-## How is the dock drawn? (boards L1, L2 of plans/workspace-interface, #11101)
+## How is the dock drawn? (#11101, boards L1, L2 of `workspace-interface-drawing/list.html`)
 - `.ws-side-dock` after the list in `workspace_side.js`, `position: sticky; bottom: 0` in the menu body (the one scroller, as the head sticks to its top); `#menu .menu-body` drops its 100 px bottom padding while the list is open, so the dock reaches the edge.
-- A head line "Tools" with "⋯" (`pg-icon-button-sm .ws-side-dock-more`, `aria-expanded`, `aria-controls="ws-side-more"`); under it `.ws-side-cells`, four across: `navCell()` draws a 26 px `.pg-icon-tile` in the place's tone (the `.ws-side-cell[data-ws-nav]` rules: tasks teal, notes and data amber, flows and decisions blue, calendar and e-mails rose, board violet, my calendar grey) over the short name at the count size. The open screen's cell has the quiet fill.
+- A head line "Tools" with "⋯" (`.ws-side-dock-more`, `aria-expanded`, `aria-controls`); under it `.ws-side-cells`, four across: `navCell()` draws a 26 px `.pg-icon-tile` in the place's tone (the `.ws-side-cell[data-ws-nav]` rules: tasks teal, notes and data amber, flows and decisions blue, calendar and e-mails rose, board violet, my calendar grey) over the short name at the count size. The open screen's cell has the quiet fill.
 - Owner (2026-11-22): one state, never folded, never icons without names. The `tools` key of `ws-side-closed` is no longer read or written.
 
 ## What does More do?
@@ -26,6 +26,6 @@ description: The tools dock of the Workspace list (#3817, #6281, dock #11101): p
 - `PGWsSide.has(key)` says the list holds a place, drawn or behind More; `PGWsSide.openFor(key)` opens More's card for one of its places, then draws again. `workspace_tour.js` counts such a place as present and calls `openFor()` before ringing it.
 
 ## Why?
-- Owner (2026-10-30, `workflow/decisions-made-workspace-5.md`): the screens of a working day at a glance, the rest one click away. Owner (2026-11-22, `workflow/decisions-made-workspace-48.md`): the dock at the list's foot, as drawn, never folded; the count on My Tasks.
+- Owner (2026-10-30, `workflow/decisions-made-workspace-5.md`): the screens of a working day at a glance, the rest one click away. Owner (2026-11-22, `workflow/decisions-made-workspace-48.md`): the dock at the list's foot, as drawn, never folded; the count on My Tasks. It replaced the tiles two across.
 
-Related: docs/memory/workspace/workspace-menu-list.md, docs/memory/plans/workspace-interface-list.md
+Related: docs/memory/workspace/workspace-menu-list.md, docs/memory/workspace/workspace-menu-rows.md
