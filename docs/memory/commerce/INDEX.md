@@ -212,6 +212,7 @@
 - offer-order-discount-ladder.md: Tiered order discount (ladder) and how the order discount is chosen: rungs, nothing below the first rung, every valid order discount weighed against the final subtotal
 - offer-percent-rounding.md: A coupon (offer code) percentage as a figure (order, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), any PHP version (PR #1367)
 - offer-rule-gift-lines-not-counted.md: An offer's required products, group condition and up-sell count only lines the shopper added (added_by_offer = 0), so a gift cannot keep its own offer alive
+- offer-use-at-submit.md: The checkout's submit asks again whether the offers an order uses still hold (dates, usage limit, code), under a lock per limited offer and single-use key code (pg_order_offer_use_check(), PR #11414)
 - order-address-postcode-note.md: The order screen's warning-only note when a Turkish postcode belongs to another province than the address's state (pg_shipping_postcode_province())
 - order-auto-registration-set-password-link.md: An account an order's auto-registration opens has no password and gets the set password link; the receipt e-mail is split so the store's BCC copy never carries the link (PR #1220).
 - order-cancel-commissions.md: Affiliate commissions on order cancel and restore (#4174): voided to ineligible with status_before_cancel, profiles stopped with disabled_by_cancel, hand edit clears it, list badge [decision: decisions-made-product-15.md]
@@ -302,6 +303,7 @@
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config
 - payment-gateway-secrets.md: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #3058; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit [decision: decisions-made-product-39.md]
 - payment-hosted-classic-pages.md: Hosted card box (Stripe Payment Element, PR #2556) on the classic order preview and express order pages; how payment_hosted.js finds an unmarked card section
+- payment-iyzico-basket.md: How pg_payment_iyzico_basket() makes the iyzico basket add up to the price: lines charged today only, shared over lines above zero (#11389, #11390)
 - payment-iyzico-checkout.md: How submit_order.php pays with iyzico: the driver branch for Iyzipay and Pay With Iyzico, return modes, state, the removed inline code (PR #2770) and the instalment surcharge skip
 - payment-iyzico-refusals.md: iyzico card refusals (PR #8517): the visitor sentence by error code, the Site Log line with order, payment id, error group and mdStatus, the 3-D Secure return stopping at a failed verification [decision: here]
 - payment-iyzico-threeds-return.md: How the iyzico card driver's complete() finishes the 3-D Secure return (PR #1710): the iyzipay_3ds_state row and its claim, the instalment limit, the amount check, the totals the order keeps (#1422)
