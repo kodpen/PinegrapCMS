@@ -192,6 +192,22 @@
         return node;
     }
 
+    // A place's icon: the main menu row's drawing the server sent (svg, a
+    // place that stands for a row), else its bi icon.
+    function navIcon(item) {
+        if (item.svg) {
+            var box = document.createElement('span');
+
+            box.innerHTML = item.svg;
+
+            if (box.firstChild) {
+                return box.firstChild;
+            }
+        }
+
+        return icon(item.icon);
+    }
+
     // An icon with a small mark in its corner (ws_icon_badged_html() in
     // includes/workspace/channel_icons.php); the plain icon without one.
     function badgedIcon(name, badge, extra) {
@@ -732,7 +748,7 @@
 
             node.setAttribute('data-ws-nav', item.key);
             node.setAttribute('data-pg-menu-label', item.label);
-            node.appendChild(icon(item.icon));
+            node.appendChild(navIcon(item));
             node.appendChild(el('span', 'ws-channel-name', item.label));
             inPlace(node, navHooks[item.key]);
             box.appendChild(node);
@@ -756,7 +772,7 @@
             }
 
             tile.setAttribute('aria-hidden', 'true');
-            tile.appendChild(icon(item.icon));
+            tile.appendChild(navIcon(item));
             node.appendChild(tile);
             node.appendChild(el('span', 'ws-side-cell-name', item.short || item.label));
 

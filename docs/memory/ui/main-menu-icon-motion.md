@@ -11,4 +11,4 @@ module: output
 - Live, Calendars: the server prints the day (`.pg-mi-date`) and puts the site's time of day and date on the svg (`data-pg-day`, `data-pg-day-date`); `initMenuDay()` in `backend.src.js` moves the day on at the site's midnight. The Dashboard row is tiles: its clock, `data-pg-clock` and the clock's script went.
 - Design examples' pattern "Menu row icon" (`pg_look_examples_menu_icon_pattern()`) draws a tile in each category's colour with the real `pg_menu_icon_tile()`; its items (`.pg-look-mi-item`) play the move on hover and focus, and the flows item's dot runs.
 
-Related: docs/memory/ui/main-menu-icons.md, docs/memory/plans/main-menu-icons-redraw.md
+Related: docs/memory/ui/main-menu-icons.md, docs/memory/ui/main-menu-icon-rows.md

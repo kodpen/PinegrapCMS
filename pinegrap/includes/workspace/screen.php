@@ -82,6 +82,11 @@ function ws_js_strings()
         'tasks_found_none'       => lang('No task matches the filters or the search.'),
         'tasks_none_title'       => lang('No tasks'),
         'notes_none_title'       => lang('No notes yet'),
+        'board_none_title'       => lang('Nobody on the board'),
+        'board_found_none'       => lang('Nobody in this department is on the board.'),
+        'board_span'             => lang('How many days'),
+        'conflicts_count'        => ws_js_template('Clashes: {var:1}', 1),
+        'calendar_shows'         => lang('What the calendar shows'),
         'cancel'                 => lang('Cancel'),
         'cannot_post'            => lang('You cannot write in this channel.'),
         'cell_title'             => ws_js_template('{var:1} h planned of {var:2} h', 2),
@@ -1041,6 +1046,11 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'message_max'  => WS_MESSAGE_MAX,
         // The Design Canvas's icon on New canvas, in one colour like its neighbours.
         'canvas_icon'  => pg_design_canvas_icon_one_colour(),
+        // The drawings of the main menu rows a place of the screen stands
+        // for (the My Notes empty screen), at rest (pg_menu_icon_cite()).
+        'menu_icons'   => array(
+            'notes' => pg_menu_icon_cite('notes'),
+        ),
         // Which model rewrites a message in the composer (pg_ai_write_engine():
         // pinegrap | browser), '' for no button. The screen's gate has
         // already let only the team in (pg_ai_write_user_may()'s rule).

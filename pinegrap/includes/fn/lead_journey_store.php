@@ -286,9 +286,12 @@ function pg_lead_page_view($visitor_id, $page_name)
     }
 
     $session = pg_lead_session();
+    // The product or product group the page showed, so its category can be
+    // an interest (includes/fn/lead_score.php).
+    $item = function_exists('pg_track_content') ? pg_track_content() : array();
 
     if (($session['visit_id'] > 0) && ($session['visitor_id'] === $visitor_id)) {
-        $pages = pg_lead_pages_add($session['pages'], $page_name, $now);
+        $pages = pg_lead_pages_add($session['pages'], $page_name, $now, $item);
         db_q("UPDATE lead_visits SET pages = ? WHERE id = ? AND browser_id = ?", array(json_encode($pages), (string) $session['visit_id'], (string) $browser['id']));
         $session['pages'] = $pages;
         pg_lead_session_store($session);
@@ -304,7 +307,7 @@ function pg_lead_page_view($visitor_id, $page_name)
 
     $flag = defined('PAY_PER_CLICK_FLAG') ? (string) PAY_PER_CLICK_FLAG : '';
     $copy = pg_lead_visit_copy($visit, pg_visitor_channel($visit, $flag), $page_name);
-    $pages = pg_lead_pages_add(array(), $page_name, $now);
+    $pages = pg_lead_pages_add(array(), $page_name, $now, $item);
 
     db_q(
         "INSERT INTO lead_visits (browser_id, contact_id, visitor_id, started_at, channel, campaign, referrer_host, landing_page, pages) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",

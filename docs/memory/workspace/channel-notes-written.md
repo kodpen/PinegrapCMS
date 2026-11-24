@@ -9,7 +9,7 @@ description: A document in a channel is a note written there: Write a note, POST
 - Owner (2026-11-23): such a note is the channel's (`channel-note-owned.md`). An edit writes no message, wakes nobody and writes no inbox line: the card says who changed it and when; whoever wants it announced writes a message.
 
 ## How is a note written in a channel?
-- Panel: "Write a note" in the composer's attach (paperclip) menu, for who may post (`channel-note-card.md`). Action `ws_note_channel_write` (channel_id, title, body, channel_edit).
+- Panel: "Write a note" in the composer's attach (paperclip) menu and the Notes tab's bar, for who may post (`channel-note-card.md`). Action `ws_note_channel_write` (channel_id, title, body).
 - `ws_note_channel_write()` (notes.php) writes a new note of the channel's (`owner_channel_id`) and posts its card in one move; `ws_note_channel_write_check()` makes the same refusals first (may not post, empty, over `WS_NOTE_MAX`, the channel's `WS_NOTE_CHANNEL_LIMIT`, the card's message). A card that could not be posted deletes the new note (PR #10742).
 - API: `POST /workspace/channels/{id}/notes` (`workspace.channels.notes.create`, `api_channel_notes.php`, an MCP tool), dry run, Idempotency-Key, 201 with message_id, note_id, revision. Its body is Markdown, converted by `ws_note_import_convert()`; a body over `WS_NOTE_MAX` is refused with the limit (422 on body), never cut.
 - The card's message is written as `POST …/files` writes one: `ws_api_message_writer()` passed through `ws_note_share_channel()`'s `$options` (app_id, via_client_id).

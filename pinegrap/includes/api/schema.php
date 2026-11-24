@@ -1069,6 +1069,49 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'feedback.responses',
+			'method'  => 'GET',
+			'path'    => '/feedback/responses',
+			'scope'   => 'customers:read',
+			'handler' => 'api_feedback_responses',
+			'returns' => array('list' => 'FeedbackResponse'),
+			'summary' => 'Satisfaction survey answers',
+			'description' => 'The satisfaction surveys sent to customers, newest first, cursor paged: status answered (the default), waiting, no_answer or all. Each carries its survey, kind (nps, csat, effort), what it followed (record_type, record_id), the contact, score, band (low, middle, high), comment, the follow-up task and its outcome. Read only.',
+			'details' => 'score and band are given only once answered_at is set, since 0 is an NPS answer. NPS is 0-10 (low 0-6, high 9-10), CSAT 1-5 (low 1-2, high 4-5), effort 1-7 where 1 is easiest (low 6-7, high 1-2). touchpoint is what the survey follows: booking, ticket, course, form, delivery, mail or periodic. subject_id is the booking\'s service, the ticket\'s event, the course or the form page. answers holds the extra questions as the answer page kept them. stopped is true when the person said Don\'t ask me again. A low answer gets a follow-up task (task_id, owner_user_id), escalated_at when it was still open after 48 hours, and outcome called, solved or not_reached once closed. staff_user_id is given only to an account with the manager role or up; for the user role contact_id is null for a contact outside its contact groups, and contact_id lists only a contact it may open. The same answers are announced as the feedback.received and feedback.detractor webhook events. A site not yet updated to the version with surveys has an empty list.',
+			'params'  => array(
+				array('name' => 'status',     'in' => 'query', 'type' => 'enum', 'values' => array('answered', 'waiting', 'no_answer', 'all'), 'default' => 'answered'),
+				array('name' => 'kind',       'in' => 'query', 'type' => 'enum', 'values' => array('nps', 'csat', 'effort')),
+				array('name' => 'band',       'in' => 'query', 'type' => 'enum', 'values' => array('low', 'middle', 'high'), 'description' => 'Only the answers of this band.'),
+				array('name' => 'survey_id',  'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the sends of this survey.'),
+				array('name' => 'touchpoint', 'in' => 'query', 'type' => 'enum', 'values' => array('booking', 'ticket', 'course', 'form', 'delivery', 'mail', 'periodic'), 'description' => 'Only the surveys that follow this.'),
+				array('name' => 'contact_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the surveys sent to this contact.'),
+				array('name' => 'since',      'in' => 'query', 'type' => 'datetime', 'description' => 'Only the surveys sent at or after this moment.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'feedback.summary',
+			'method'  => 'GET',
+			'path'    => '/feedback/summary',
+			'scope'   => 'customers:read',
+			'handler' => 'api_feedback_summary',
+			'returns' => 'FeedbackSummary',
+			'summary' => 'Satisfaction survey figures for a month or a year',
+			'description' => 'The figures of Communication > Surveys > Results: the surveys sent in a month (or the twelve months ending with it), their answers, answer rate, low answers, the score, open follow-ups, a row per group and the frequent words of the comments. One kind at a time, since an NPS and a CSAT do not add up: kind, or a survey_id, which uses its own kind. Read only.',
+			'details' => 'A month is the site\'s, YYYY-MM; a later one reads as the current month. score is the NPS (-100 to 100, with promoters, passives and detractors) or the share of satisfied (CSAT 4-5) or easy (effort 1-2) answers in percent; average is the CSAT or effort mean. rate is answers of the sends in percent. group: touchpoint (the default), service, staff, course, event, form or month; staff is refused with 403 below the manager role. A staff member with fewer than staff_min answers has few true and only sent and answered. words lists the 20 words found in the most comments, each counted once a comment, without stop words; no AI. open_followups counts low answers whose follow-up task has no outcome yet. Before the update with surveys ready is false and every figure is empty.',
+			'params'  => array(
+				array('name' => 'month',      'in' => 'query', 'type' => 'string', 'max_length' => 7, 'description' => 'The month as YYYY-MM; with period=year, the last of the twelve. Defaults to the current month.'),
+				array('name' => 'period',     'in' => 'query', 'type' => 'enum', 'values' => array('month', 'year'), 'default' => 'month'),
+				array('name' => 'kind',       'in' => 'query', 'type' => 'enum', 'values' => array('nps', 'csat', 'effort'), 'default' => 'nps'),
+				array('name' => 'survey_id',  'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this survey, with its own kind.'),
+				array('name' => 'touchpoint', 'in' => 'query', 'type' => 'enum', 'values' => array('booking', 'ticket', 'course', 'form', 'delivery', 'mail', 'periodic'), 'description' => 'Only the surveys that follow this.'),
+				array('name' => 'group',      'in' => 'query', 'type' => 'enum', 'values' => array('touchpoint', 'service', 'staff', 'course', 'event', 'form', 'month'), 'default' => 'touchpoint')
+			)
+		),
+
+		array(
 			'id'      => 'pick_waves.list',
 			'method'  => 'GET',
 			'path'    => '/pick-waves',

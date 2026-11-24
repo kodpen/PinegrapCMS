@@ -15,7 +15,7 @@ description: The derived value box of a flow (kind value, T3, PR #2701): its all
 
 ## How does a run work it out?
 - `ws_flow_pure_values($graph, $values)`: the inputs filled raw by `ws_flow_derived_fill()`, from the run's values, the constants and derived boxes already worked out (passes in dependency order). A derived loop gives ''.
-- Date words: `{{date}}` (`Y-m-d`), `{{time}}` (`H:i`), `{{weekday}}` in typed `a`/`b` are `$now` (3rd argument, `time()` by default) in the site's zone (`ws_flow_derived_words()`), filled before the values, so a value holding a word stays. Why: a counter line in one flow (`workflow/decisions-made-product-30.md`). Named in `fl_values_hint_value`, draft hint `value.a`.
+- Date words: `{{date}}` (`Y-m-d`), `{{time}}` (`H:i`), `{{weekday}}` in typed `a`/`b` are `$now` (3rd argument, `time()` by default) in the site's zone (`ws_flow_derived_words()`), filled before the values, so a value holding a word stays. Why: a counter line in one flow (`workflow/decisions-made-product-30.md`). Offered under "Always" in Add value, draft hint `value.a`.
 - Worked out each time a reader runs; no cache, no row.
 
 ## How long can a derived value be?

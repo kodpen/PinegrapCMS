@@ -247,36 +247,32 @@ function test_menu_communication_row_draws_a_bubble_with_two_arrows()
 	pg_assert_false(strpos($css, 'pg-mi-campaigns') !== false, 'no rule of the megaphone is left');
 }
 
-function test_menu_tools_markup_opens_its_groups()
+function test_menu_tools_markup_is_one_list_under_group_headings()
 {
 	$groups = array(
 		array('label' => 'Monitoring', 'icon' => 'bi-activity', 'items' => array(
 			array('label' => 'Site Log', 'icon' => 'bi-journal-text', 'url' => 'view_log.php'),
 			array('label' => 'System Informations', 'icon' => 'bi-info-circle', 'url' => 'si.php', 'target' => '_blank'))),
 		array('label' => 'Empty', 'icon' => 'bi-x', 'items' => array()),
-		array('label' => 'Jobs', 'icon' => 'bi-tools', 'items' => array(
+		array('label' => 'Jobs & <b>tasks</b>', 'icon' => 'bi-tools', 'items' => array(
 			array('label' => 'Purge Cache', 'icon' => 'bi-trash3', 'url' => 'purge_cache.php?token=a&b', 'confirm' => 'Sure?'))));
 
-	$menu = pg_menu_tools_markup($groups, '/pinegrap/', '', 'system');
+	$menu = pg_menu_tools_markup($groups, '/pinegrap/', '');
 
-	// First level: the screen itself, then every group with screens.
-	pg_assert_true(strpos($menu['entries'], 'href=\'/pinegrap/system_tools.php\'') < strpos($menu['entries'], 'menu_entry_25_tools_0'), 'the screen comes first');
-	pg_assert_contains('id=\'menu_entry_25_tools_0\'', $menu['entries'], 'a group entry');
-	pg_assert_contains('data-pg-menu-panel=\'menu_panel_25_tools_0\'', $menu['entries'], 'a group opens its panel');
-	pg_assert_contains('data-pg-menu-panel=\'menu_panel_25_tools_2\'', $menu['entries'], 'groups keep their numbers');
-	pg_assert_false(strpos($menu['entries'] . $menu['panels'], 'Empty') !== false, 'a group without screens is left out');
-	pg_assert_contains('href=\'/pinegrap/view_log.php\'', $menu['entries'], 'a group entry leads to its first screen');
-	pg_assert_false(strpos($menu['entries'] . $menu['panels'], 'data-pg-settings-page') !== false, 'no settings page here');
+	pg_assert_same(2, substr_count($menu, 'class=\'pg-menu-panel-heading\''), 'a heading per group with tools');
+	pg_assert_false(strpos($menu, 'Empty') !== false, 'a group without tools prints no heading');
+	pg_assert_contains('Jobs &amp; &lt;b&gt;tasks&lt;/b&gt;', $menu, 'the heading is escaped');
+	pg_assert_true(strpos($menu, 'Monitoring') < strpos($menu, 'view_log.php') && strpos($menu, 'si.php') < strpos($menu, 'Jobs'), 'each group\'s tools under its heading');
+	pg_assert_false(strpos($menu, 'system_tools.php') !== false, 'no entry for the screen itself');
+	pg_assert_false(strpos($menu, 'data-pg-menu-panel') !== false || strpos($menu, 'pg-menu-panel"') !== false, 'no second-level panel');
+	pg_assert_same(3, substr_count($menu, '<a '), 'every tool is an entry');
+	pg_assert_contains('target=\'_blank\' rel=\'noopener\'', $menu, 'a tool that opens apart keeps its target');
+	pg_assert_contains('data-confirm-content=\'Sure?\'', $menu, 'a job keeps its question');
+	pg_assert_contains('purge_cache.php?token=a&amp;b', $menu, 'addresses are escaped');
+	pg_assert_contains('bi-trash3 bi-me-2\'>Purge Cache</a>', $menu, 'a tool keeps its icon');
 
-	// Second level.
-	pg_assert_contains('id="menu_panel_25_tools_0"', $menu['panels'], 'the group panel');
-	pg_assert_same(2, substr_count($menu['panels'], 'data-pg-menu-tone="system"'), 'each group panel colours its icons as the row');
-	pg_assert_contains('data-pg-menu-row="menu_entry_25_tools_0"', $menu['panels'], 'belongs to its entry');
-	pg_assert_contains('target=\'_blank\' rel=\'noopener\'', $menu['panels'], 'a screen that opens apart keeps its target');
-	pg_assert_contains('data-confirm-content=\'Sure?\'', $menu['panels'], 'a job keeps its question');
-	pg_assert_contains('purge_cache.php?token=a&amp;b', $menu['panels'], 'addresses are escaped');
-
-	pg_assert_same(array('entries' => '', 'panels' => ''), pg_menu_tools_markup(array(), '/pinegrap/', ''), 'no group, nothing');
+	pg_assert_same('', pg_menu_tools_markup(array(), '/pinegrap/', ''), 'no group, nothing');
+	pg_assert_same('', pg_menu_tools_markup(array(array('label' => 'Empty', 'icon' => 'bi-x', 'items' => array())), '/pinegrap/', ''), 'no tool, nothing');
 }
 
 function test_menu_tools_markup_in_the_toolbar()
@@ -286,10 +282,16 @@ function test_menu_tools_markup_in_the_toolbar()
 		array('label' => 'System Informations', 'icon' => 'bi-info-circle', 'url' => 'si.php', 'target' => '_blank'))));
 
 	$menu = pg_menu_tools_markup($groups, '/pinegrap/', ' target=\'_parent\'');
-	$all = $menu['entries'] . $menu['panels'];
 
-	pg_assert_same(3, substr_count($all, 'target=\'_parent\''), 'every link but the one with its own target leaves the toolbar frame');
-	pg_assert_same(1, substr_count($all, 'target=\'_blank\''), 'its own target wins');
+	pg_assert_same(1, substr_count($menu, 'target=\'_parent\''), 'every tool but the one with its own target leaves the toolbar frame');
+	pg_assert_same(1, substr_count($menu, 'target=\'_blank\''), 'its own target wins');
+}
+
+function test_menu_tools_heading_is_drawn()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_contains('#menu .pg-menu-panel-body > .pg-menu-panel-heading {', $css, 'the group heading has its rule');
 }
 
 

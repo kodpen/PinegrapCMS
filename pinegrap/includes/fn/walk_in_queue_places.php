@@ -395,6 +395,34 @@ function pg_waiting_place_url($place_id, $from = '')
 }
 
 /**
+ * A place's tabs, the same strip on each of its screens: Set-up and Desks
+ * (edit_queue_place.php), Today (queue_desk.php), Report (queue_report.php).
+ *
+ * @param int    $place_id
+ * @param string $active setup, desks, today or report
+ * @param int    $desks  the place's desks, counted on the Desks tab
+ * @return string HTML
+ */
+function pg_waiting_place_tabs($place_id, $active, $desks)
+{
+    $id = (int) $place_id;
+    $tabs = array(
+        'setup'  => array('edit_queue_place.php?id=' . $id, lang('Set-up')),
+        'desks'  => array('edit_queue_place.php?id=' . $id . '&view=desks', lang('Desks')),
+        'today'  => array('queue_desk.php?place=' . $id, lang('Today')),
+        'report' => array('queue_report.php?place=' . $id, lang('Report')),
+    );
+    $html = '';
+
+    foreach ($tabs as $key => $tab) {
+        $html .= '<a class="pg-seg-item' . (($key === $active) ? ' is-active" aria-current="page' : '') . '" href="' . h($tab[0]) . '">' . h($tab[1])
+            . (($key === 'desks') ? ' <span class="pg-seg-count">' . (int) $desks . '</span>' : '') . '</a>';
+    }
+
+    return '<span class="pg-seg" role="group" aria-label="' . h(lang('Place')) . '">' . $html . '</span>';
+}
+
+/**
  * A place's state as its pill, in the same words on every screen: Open
  * (teal), Paused (amber), Closed (grey).
  *

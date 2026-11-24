@@ -824,6 +824,33 @@
         return node;
     }
 
+    // Date stepping of a bar: the arrows round a quiet "Today" or "This
+    // month"; onStep(-1), onStep(0) for the middle one, onStep(1).
+    function barSteps(prevLabel, nowLabel, nextLabel, onStep) {
+        var node = el('div', 'ws-bar-steps');
+
+        [[-1, prevLabel, 'bi-chevron-left'], [0, nowLabel, ''], [1, nextLabel, 'bi-chevron-right']].forEach(function (step) {
+            var item = step[2]
+                ? lookButton('pg-icon-button pg-icon-button-sm', '', step[2])
+                : lookButton('pg-button pg-button-quiet pg-button-sm', step[1], '');
+
+            if (step[2]) {
+                item.title = step[1];
+                item.setAttribute('aria-label', step[1]);
+            }
+
+            item.addEventListener('click', function () { onStep(step[0]); });
+            node.appendChild(item);
+        });
+
+        return node;
+    }
+
+    // The text of a select's chosen option, for a filter's tag.
+    function selectedText(control) {
+        return control.options[control.selectedIndex] ? control.options[control.selectedIndex].text : '';
+    }
+
     // "Filter" of a bar, a quiet button with the count of what is set; its
     // floating box holds the fields one under the other, "Clear" and
     // "Close"; what is set is a tag under the bar (.tags, placed by the
@@ -1079,9 +1106,17 @@
     function emptyScreen(spec) {
         var box = el('div', 'ws-empty-screen');
         var tile = el('span', 'pg-icon-tile ws-empty-screen-tile pg-tone-' + (spec.tone || 'gray'));
+        // A screen that stands for a main menu row draws that row's icon
+        // (CFG.menu_icons, server markup); its bi icon is the fallback.
+        var drawn = (spec.menuIcon && CFG && CFG.menu_icons) ? (CFG.menu_icons[spec.menuIcon] || '') : '';
 
         tile.setAttribute('aria-hidden', 'true');
-        tile.appendChild(icon(spec.icon || 'bi-inbox', ''));
+
+        if (drawn) {
+            tile.innerHTML = drawn;
+        } else {
+            tile.appendChild(icon(spec.icon || 'bi-inbox', ''));
+        }
         box.appendChild(tile);
         box.appendChild(el('div', 'pg-title-section ws-empty-screen-title', spec.title));
 
@@ -9438,7 +9473,9 @@
             team: function () { return (BOOT && BOOT.people) || []; },
             calendarLanes: calendarLanes,
             pressKeys: pressKeys,
-            onContext: onContext
+            onContext: onContext,
+            // A screen's one-line bar (My calendar).
+            bar: { steps: barSteps, views: barViews, label: barLabel, button: lookButton }
         };
     }
 
@@ -12346,7 +12383,15 @@
             tabs.setAttribute('role', 'tablist');
             self.tabsNode = tabs;
 
-            var tabList = [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')], ['summary', t('tab_summary')]];
+            var tabList = [['messages', t('tab_messages')], ['decisions', t('tab_decisions')], ['tasks', t('tab_tasks')], ['files', t('tab_files')]];
+
+            // The Notes tab beside Files, once the channel has a note of its
+            // own (workspace_channel_notes.js).
+            if (window.PGWsChannelNotes && window.PGWsChannelNotes.tabShown(channel.tab_counts, self.tab)) {
+                tabList.push(['notes', t('cn_tab')]);
+            }
+
+            tabList.push(['summary', t('tab_summary')]);
 
             if (self.hasBoard(channel)) {
                 tabList.push(['board', t('tab_board')]);
@@ -12495,6 +12540,11 @@
                 self.loadList('ws_channel_decisions', t('no_decisions'));
             } else if (self.tab === 'files') {
                 self.drawFiles();
+            } else if ((self.tab === 'notes') && window.PGWsChannelNotes) {
+                window.PGWsChannelNotes.tab(window.PGWsKit, pane, channel, Object.assign(self.noteHooks(), {
+                    current: function () { return (self.channel === channel) && (self.pane === pane); },
+                    counted: function () { self.sync(); }
+                }));
             } else if (self.tab === 'tasks') {
                 self.drawTasks();
             } else if ((self.tab === 'memory') && window.PGWsMemory && channel.memory) {
@@ -12528,7 +12578,28 @@
                 return;
             }
 
-            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
+            // The channel's first note came while the screen was open: its
+            // Notes tab is added after Files, as drawCenter() places it.
+            var filesTab = self.tabsNode.querySelector('[data-ws-tab="files"]');
+
+            if (filesTab && window.PGWsChannelNotes && window.PGWsChannelNotes.tabShown(counts, self.tab) && !self.tabsNode.querySelector('[data-ws-tab="notes"]')) {
+                var notesTab = button('', t('cn_tab'));
+
+                notesTab.id = filesTab.id.replace(/-files$/, '-notes');
+                notesTab.setAttribute('role', 'tab');
+                notesTab.setAttribute('aria-selected', 'false');
+                notesTab.setAttribute('aria-controls', filesTab.getAttribute('aria-controls'));
+                notesTab.tabIndex = -1;
+                notesTab.setAttribute('data-ws-tab', 'notes');
+                notesTab.addEventListener('click', function () {
+                    self.tab = 'notes';
+                    self.drawCenter();
+                    self.syncAddress();
+                });
+                filesTab.insertAdjacentElement('afterend', notesTab);
+            }
+
+            [['decisions', counts.decisions, 'tab_decisions_count'], ['tasks', counts.tasks, 'tab_tasks_count'], ['files', counts.files, 'tab_files_count'], ['notes', counts.notes, 'cn_tab_count'], ['summary', counts.summary ? 1 : 0, 'tab_summary_written']].forEach(function (mark) {
                 var tab = self.tabsNode.querySelector('[data-ws-tab="' + mark[0] + '"]');
                 var was = tab ? tab.querySelector('.ws-tab-mark') : null;
 
@@ -25752,26 +25823,25 @@
 
         var state = { from: CFG.board_from, days: 7, department_id: 0, only_me: false, person_id: parseInt(params().person || 0, 10) || 0, priority: '', agent_channels: (params().agents === '1') ? 'only' : '' };
         var lastData = null;
-        var bar = el('nav', 'pg-toolbar navigation mb-5');
+        // One line (board S2 of plans/workspace-interface): Add to the plan,
+        // New task; the week's arrows and "Today", the range, 1 week or 2
+        // weeks; then "Just me", the agents toggle, Clashes with its count
+        // and "Filter" (department, priority).
+        var bar = el('nav', 'pg-toolbar ws-bar');
+        var frame = el('div', 'ws-bar-frame');
         var wrap = el('div', 'ws-board-wrap');
         var legend = el('div', 'd-flex flex-wrap gap-5 small fg-secondary mt-3');
 
-        root.appendChild(bar);
-        root.appendChild(wrap);
-        root.appendChild(legend);
+        frame.appendChild(bar);
+        root.appendChild(frame);
 
-        var addEvent = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('add_plan_item'), 'bi-calendar-plus');
+        var addEvent = lookButton('pg-button pg-button-fill', t('add_plan_item'), 'bi-calendar-plus');
         addEvent.addEventListener('click', function () { eventForm(null, {}, load); });
         bar.appendChild(addEvent);
 
-        var addTask = button('btn btn-sm btn-text theme-secondary', t('new_task'), 'bi-check2-square');
+        var addTask = barLabel(lookButton('pg-button pg-button-quiet', t('new_task'), 'bi-check2-square'));
         addTask.addEventListener('click', function () { taskDrawer.open(0, {}, load); });
         bar.appendChild(addTask);
-
-        var nav = el('div', 'btn-group btn-group-sm');
-        var prev = button('btn btn-text theme-secondary', '', 'bi-chevron-left', t('previous'));
-        var today = button('btn btn-text theme-secondary', t('today'));
-        var next = button('btn btn-text theme-secondary', '', 'bi-chevron-right', t('next'));
 
         function shift(days) {
             var date = new Date(state.from + 'T12:00:00');
@@ -25780,75 +25850,40 @@
             load();
         }
 
-        prev.addEventListener('click', function () { shift(-state.days); });
-        next.addEventListener('click', function () { shift(state.days); });
-        today.addEventListener('click', function () {
-            state.from = CFG.board_from;
-            load();
-        });
-
-        nav.appendChild(prev);
-        nav.appendChild(today);
-        nav.appendChild(next);
-        bar.appendChild(nav);
-
-        var range = el('span', 'fw-semibold small');
-        bar.appendChild(range);
-
-        var span = el('div', 'btn-group btn-group-sm');
-
-        [[7, t('one_week')], [14, t('two_weeks')]].forEach(function (option) {
-            var item = button('btn btn-text theme-secondary' + (state.days === option[0] ? ' active' : ''), option[1]);
-            item.setAttribute('aria-pressed', state.days === option[0] ? 'true' : 'false');
-            item.addEventListener('click', function () {
-                state.days = option[0];
-                Array.prototype.forEach.call(span.children, function (child) {
-                    child.classList.remove('active');
-                    child.setAttribute('aria-pressed', 'false');
-                });
-                item.classList.add('active');
-                item.setAttribute('aria-pressed', 'true');
+        bar.appendChild(barSteps(t('previous'), t('today'), t('next'), function (step) {
+            if (step) {
+                shift(step * state.days);
+            } else {
+                state.from = CFG.board_from;
                 load();
-            });
-            span.appendChild(item);
-        });
-
-        bar.appendChild(span);
-
-        var dept = select(departmentOptions(t('all_departments')), 0);
-        dept.classList.add('w-auto');
-        dept.setAttribute('aria-label', t('department'));
-        dept.addEventListener('change', function () {
-            state.department_id = parseInt(dept.value, 10) || 0;
-            load();
-        });
-        bar.appendChild(dept);
-
-        var meWrap = el('div', 'form-field mb-0');
-        var me = el('input', '');
-        me.type = 'checkbox';
-        me.id = 'ws-board-only-me';
-        var meLabel = el('label', 'small', t('only_me'));
-        meLabel.htmlFor = me.id;
-        me.addEventListener('change', function () {
-            state.only_me = me.checked;
-            load();
-        });
-        meWrap.appendChild(el('div', 'switch')).appendChild(me);
-        meWrap.appendChild(meLabel);
-        bar.appendChild(meWrap);
-
-        // Only the tasks of a priority on the board; the day's load still
-        // counts all of them.
-        bar.appendChild(priorityFilter('', function (value) {
-            state.priority = value;
-
-            if (lastData) {
-                draw(lastData);
             }
         }));
 
+        var range = el('span', 'ws-bar-range');
+        bar.appendChild(range);
+
+        var span = formParts.seg(t('board_span'), [[7, t('one_week')], [14, t('two_weeks')]], function (days) {
+            state.days = days;
+            Object.keys(span.items).forEach(function (key) {
+                span.items[key].setAttribute('aria-pressed', 'false');
+            });
+            span.items[days].setAttribute('aria-pressed', 'true');
+            load();
+        });
+
+        Object.keys(span.items).forEach(function (key) {
+            span.items[key].setAttribute('aria-pressed', (parseInt(key, 10) === state.days) ? 'true' : 'false');
+        });
+        bar.appendChild(span.node);
+
         bar.appendChild(el('div', 'pg-toolbar-grow'));
+
+        var me = formParts.switchRow(t('only_me'), false);
+        me.input.addEventListener('change', function () {
+            state.only_me = me.input.checked;
+            load();
+        });
+        bar.appendChild(me.row);
 
         var agents = taskAgentsToggle(state.agent_channels === 'only', function (on) {
             state.agent_channels = on ? 'only' : '';
@@ -25856,9 +25891,45 @@
         });
         bar.appendChild(agents);
 
-        var conflicts = button('btn btn-sm btn-outline theme-secondary', t('conflicts'), 'bi-exclamation-triangle');
+        // Clashes of the two weeks its drawer lists, counted after each load.
+        var conflicts = barLabel(lookButton('pg-button pg-button-quiet', t('conflicts'), 'bi-exclamation-triangle'));
+        var conflictCount = el('span', 'ws-bar-count');
+
+        conflictCount.hidden = true;
+        conflicts.appendChild(conflictCount);
         conflicts.addEventListener('click', showConflicts);
         bar.appendChild(conflicts);
+
+        var dept = formParts.select(departmentOptions(t('all_departments')), '0', true);
+        dept.addEventListener('change', function () {
+            state.department_id = parseInt(dept.value, 10) || 0;
+            load();
+        });
+
+        // Only the tasks of a priority on the board; the day's load still
+        // counts all of them.
+        var priority = formParts.select(priorityOptions(), '', true);
+        priority.addEventListener('change', function () {
+            state.priority = priority.value;
+            filter.refresh();
+
+            if (lastData) {
+                draw(lastData);
+            }
+        });
+
+        var filter = barFilter({
+            fields: [
+                { label: t('department'), control: dept, tag: function () { return state.department_id ? t('department') + ': ' + selectedText(dept) : ''; }, clear: function () { state.department_id = 0; dept.value = '0'; } },
+                { label: t('priority'), control: priority, tag: function () { return state.priority ? t('priority') + ': ' + selectedText(priority) : ''; }, clear: function () { state.priority = ''; priority.value = ''; } }
+            ],
+            phone: [{ label: t('board_span'), node: span.node }, { node: me.row }, { node: agents }],
+            onChange: load
+        });
+        bar.appendChild(filter.slot);
+        root.appendChild(filter.tags);
+        root.appendChild(wrap);
+        root.appendChild(legend);
 
         [['ws-swatch-ok', t('legend_ok')], ['ws-swatch-full', t('legend_full')], ['ws-swatch-over', t('legend_over')], ['ws-swatch-away', t('legend_away')]].forEach(function (item) {
             var entry = el('span', 'd-inline-flex align-items-center gap-1');
@@ -25873,8 +25944,37 @@
             api('ws_board', state).then(function (data) {
                 agents.shown(data.agent_channels || 0);
                 lastData = data;
+                filter.refresh();
                 draw(data);
             }).catch(fail);
+            countConflicts();
+        }
+
+        function conflictRange() {
+            var to = new Date(state.from + 'T12:00:00');
+
+            to.setDate(to.getDate() + 13);
+
+            return { from: state.from, to: to.toISOString().slice(0, 10) };
+        }
+
+        // Only the answer to the latest question is counted.
+        var conflictSerial = 0;
+
+        function countConflicts() {
+            var mine = ++conflictSerial;
+
+            api('ws_conflicts', conflictRange()).then(function (result) {
+                if (mine === conflictSerial) {
+                    var number = (result.conflicts || []).length;
+
+                    conflictCount.textContent = String(number);
+                    conflictCount.hidden = !number;
+                    conflicts.setAttribute('aria-label', number ? t('conflicts_count', number) : t('conflicts'));
+                }
+            }).catch(function () {
+                conflictCount.hidden = true;
+            });
         }
 
         function draw(data) {
@@ -25893,10 +25993,17 @@
                 grid.appendChild(el('div', 'ws-board-head' + (day.today ? ' ws-today' : '') + (day.weekend ? ' ws-weekend' : ''), day.label));
             });
 
+            // Nobody on the board: a department that has nobody says so and
+            // offers Clear; else the people are added in the user settings.
             if (!data.rows.length) {
-                var empty = el('div', 'ws-empty');
+                var empty = el('div', 'ws-board-empty');
                 empty.style.gridColumn = '1 / -1';
-                empty.textContent = t('board_empty');
+                empty.appendChild(state.department_id
+                    ? barEmptyFound(t('board_found_none'), function () {
+                        filter.reset();
+                        load();
+                    })
+                    : emptyScreen({ tone: 'violet', icon: 'bi-people', title: t('board_none_title'), text: t('board_empty') }));
                 grid.appendChild(empty);
             }
 
@@ -26157,10 +26264,7 @@
             body.appendChild(el('p', 'small fg-secondary', t('conflicts_help')));
             showOffcanvas(node);
 
-            var to = new Date(state.from + 'T12:00:00');
-            to.setDate(to.getDate() + 13);
-
-            api('ws_conflicts', { from: state.from, to: to.toISOString().slice(0, 10) }).then(function (data) {
+            api('ws_conflicts', conflictRange()).then(function (data) {
                 if (!data.conflicts.length) {
                     var empty = el('div', 'ws-empty');
                     empty.appendChild(icon('bi-emoji-smile'));
@@ -26252,7 +26356,12 @@
             return true;
         }
 
-        var bar = el('nav', 'pg-toolbar navigation mb-5 ws-cal-toolbar');
+        // One line (board S2 of plans/workspace-interface): the month's
+        // arrows and "This month", the month's name; Tasks, Conversations
+        // and Plan items as pressed segments; then the agents toggle and
+        // "Filter" (person, department, priority, status).
+        var bar = el('nav', 'pg-toolbar ws-bar');
+        var frame = el('div', 'ws-bar-frame');
         var layout = el('div', 'row g-7');
         var mainCol = el('div', 'xl:col-9');
         var sideCol = el('div', 'xl:col-3');
@@ -26263,58 +26372,35 @@
         sideCol.appendChild(side);
         layout.appendChild(mainCol);
         layout.appendChild(sideCol);
-        root.appendChild(bar);
-        root.appendChild(layout);
+        frame.appendChild(bar);
+        root.appendChild(frame);
 
         // ── toolbar ──
 
-        var nav = el('div', 'btn-group btn-group-sm');
-        var prev = button('btn btn-text theme-secondary', '', 'bi-chevron-left', t('previous_month'));
-        var now = button('btn btn-text theme-secondary', t('this_month'));
-        var next = button('btn btn-text theme-secondary', '', 'bi-chevron-right', t('next_month'));
-
-        prev.addEventListener('click', function () { if (data) { state.month = data.prev; load(); } });
-        next.addEventListener('click', function () { if (data) { state.month = data.next; load(); } });
-        now.addEventListener('click', function () { state.month = ''; load(); });
-        nav.appendChild(prev);
-        nav.appendChild(now);
-        nav.appendChild(next);
-        bar.appendChild(nav);
-
-        var title = el('h2', 'ws-cal-title');
-        bar.appendChild(title);
-
-        var personSelect = select([[0, t('everyone')]].concat(BOOT.people.map(function (member) { return [member.id, member.name]; })), state.person_id);
-        personSelect.classList.add('w-auto');
-        personSelect.setAttribute('aria-label', t('person'));
-        personSelect.addEventListener('change', function () {
-            state.person_id = parseInt(personSelect.value, 10) || 0;
-            load();
-        });
-        bar.appendChild(personSelect);
-
-        var dept = select(departmentOptions(t('all_departments')), 0);
-        dept.classList.add('w-auto');
-        dept.setAttribute('aria-label', t('department'));
-        dept.addEventListener('change', function () {
-            state.department_id = parseInt(dept.value, 10) || 0;
-            load();
-        });
-        bar.appendChild(dept);
-
-        bar.appendChild(priorityFilter('', function (value) {
-            state.priority = value;
-            draw();
+        bar.appendChild(barSteps(t('previous_month'), t('this_month'), t('next_month'), function (step) {
+            if (!step) {
+                state.month = '';
+                load();
+            } else if (data) {
+                state.month = (step < 0) ? data.prev : data.next;
+                load();
+            }
         }));
 
-        var statusFilter = select([['all', t('all_tasks')], ['open', t('open_tasks')], ['closed', t('closed_tasks')]], 'all');
-        statusFilter.classList.add('w-auto');
-        statusFilter.setAttribute('aria-label', t('task_status_filter'));
-        statusFilter.addEventListener('change', function () {
-            state.status = statusFilter.value;
+        var title = el('h2', 'ws-cal-title pg-title-section');
+        bar.appendChild(title);
+
+        var shows = formParts.seg(t('calendar_shows'), [['tasks', t('tasks')], ['talk', t('conversations')], ['events', t('plan_items')]], function (key) {
+            state.show[key] = !state.show[key];
+            shows.items[key].setAttribute('aria-pressed', state.show[key] ? 'true' : 'false');
             draw();
+        }, 'ws-bar-shows');
+
+        [['tasks', 'bi-check2-square'], ['talk', 'bi-chat-dots'], ['events', 'bi-calendar-event']].forEach(function (option) {
+            shows.items[option[0]].insertBefore(icon(option[1], ''), shows.items[option[0]].firstChild);
+            shows.items[option[0]].setAttribute('aria-pressed', 'true');
         });
-        bar.appendChild(statusFilter);
+        bar.appendChild(shows.node);
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
@@ -26324,22 +26410,49 @@
         });
         bar.appendChild(agents);
 
-        var shows = el('div', 'btn-group btn-group-sm');
-        shows.setAttribute('role', 'group');
-
-        [['tasks', t('tasks'), 'bi-check2-square'], ['talk', t('conversations'), 'bi-chat-dots'], ['events', t('plan_items'), 'bi-calendar-event']].forEach(function (option) {
-            var toggle = button('btn btn-text theme-secondary active', option[1], option[2]);
-            toggle.setAttribute('aria-pressed', 'true');
-            toggle.addEventListener('click', function () {
-                state.show[option[0]] = !state.show[option[0]];
-                toggle.classList.toggle('active', state.show[option[0]]);
-                toggle.setAttribute('aria-pressed', state.show[option[0]] ? 'true' : 'false');
-                draw();
-            });
-            shows.appendChild(toggle);
+        var personSelect = formParts.select([[0, t('everyone')]].concat(BOOT.people.map(function (member) { return [member.id, member.name]; })), state.person_id, true);
+        personSelect.addEventListener('change', function () {
+            state.person_id = parseInt(personSelect.value, 10) || 0;
+            load();
         });
 
-        bar.appendChild(shows);
+        var dept = formParts.select(departmentOptions(t('all_departments')), '0', true);
+        dept.addEventListener('change', function () {
+            state.department_id = parseInt(dept.value, 10) || 0;
+            load();
+        });
+
+        var priority = formParts.select(priorityOptions(), '', true);
+        priority.addEventListener('change', function () {
+            state.priority = priority.value;
+            draw();
+        });
+
+        var statusFilter = formParts.select([['all', t('all_tasks')], ['open', t('open_tasks')], ['closed', t('closed_tasks')]], 'all', true);
+        statusFilter.addEventListener('change', function () {
+            state.status = statusFilter.value;
+            draw();
+        });
+
+        // Person and department are read by ws_calendar; priority and
+        // status only narrow what is drawn. Clearing all of them loads.
+        var filter = barFilter({
+            fields: [
+                { label: t('person'), control: personSelect, tag: function () { return state.person_id ? selectedText(personSelect) : ''; }, clear: function () { state.person_id = 0; personSelect.value = '0'; } },
+                { label: t('department'), control: dept, tag: function () { return state.department_id ? t('department') + ': ' + selectedText(dept) : ''; }, clear: function () { state.department_id = 0; dept.value = '0'; } },
+                { label: t('priority'), control: priority, tag: function () { return state.priority ? t('priority') + ': ' + selectedText(priority) : ''; }, clear: function () { state.priority = ''; priority.value = ''; } },
+                { label: t('task_status_filter'), control: statusFilter, tag: function () { return (state.status !== 'all') ? selectedText(statusFilter) : ''; }, clear: function () { state.status = 'all'; statusFilter.value = 'all'; } }
+            ],
+            phone: [{ label: t('calendar_shows'), node: shows.node }, { node: agents }],
+            onChange: load
+        });
+
+        [personSelect, dept, priority, statusFilter].forEach(function (control) {
+            control.addEventListener('change', filter.refresh);
+        });
+        bar.appendChild(filter.slot);
+        root.appendChild(filter.tags);
+        root.appendChild(layout);
 
         // ── loading and drawing ──
 
@@ -26350,6 +26463,7 @@
                 state.person_id = result.person_id || 0;
                 personSelect.value = String(state.person_id);
                 agents.shown(result.agent_channels || 0);
+                filter.refresh();
 
                 if (window.history && window.history.replaceState) {
                     window.history.replaceState(null, '', CFG.urls.calendar + '?month=' + result.month + (state.person_id ? '&person=' + state.person_id : '') + (state.agents ? '&agents=1' : ''));
@@ -27943,7 +28057,12 @@
         var serial = 0;
         var day = { key: '', list: null };
 
-        var bar = el('nav', 'pg-toolbar navigation mb-5');
+        // One line (board S2 of plans/workspace-interface): channel, person
+        // and the date range in the bar (behind "Filter" with the department
+        // when the team has departments, and below 1100 px); "Notes too",
+        // the agents toggle and the search.
+        var bar = el('nav', 'pg-toolbar ws-bar');
+        var frame = el('div', 'ws-bar-frame');
         var layout = el('div', 'row g-7');
         var mainCol = el('div', 'xl:col-9');
         var sideCol = el('div', 'xl:col-3 d-none xl:d-block');
@@ -27961,45 +28080,37 @@
         sideCol.appendChild(side);
         layout.appendChild(mainCol);
         layout.appendChild(sideCol);
-        root.appendChild(bar);
-        root.appendChild(layout);
+        frame.appendChild(bar);
+        root.appendChild(frame);
 
         // ── toolbar ──
 
-        var channelSelect = select([[0, t('tl_all_channels')]], 0);
-        channelSelect.classList.add('w-auto');
-        channelSelect.setAttribute('aria-label', t('tl_all_channels'));
+        var channelSelect = formParts.select([[0, t('tl_all_channels')]], '0', true);
         channelSelect.addEventListener('change', function () {
             state.channel_id = parseInt(channelSelect.value, 10) || 0;
             load(true);
         });
-        bar.appendChild(channelSelect);
 
         var deptSelect = null;
 
         if (BOOT.departments && BOOT.departments.length) {
-            deptSelect = select(departmentOptions(t('all_departments')), state.department_id);
-            deptSelect.classList.add('w-auto');
-            deptSelect.setAttribute('aria-label', t('all_departments'));
+            deptSelect = formParts.select(departmentOptions(t('all_departments')), String(state.department_id), true);
             deptSelect.addEventListener('change', function () {
                 state.department_id = parseInt(deptSelect.value, 10) || 0;
                 load(true);
             });
-            bar.appendChild(deptSelect);
         }
 
-        var personSelect = select([[0, t('everyone')]].concat(BOOT.people.map(function (member) { return [member.id, member.name]; })), state.person_id);
-        personSelect.classList.add('w-auto');
-        personSelect.setAttribute('aria-label', t('person'));
+        var personSelect = formParts.select([[0, t('everyone')]].concat(BOOT.people.map(function (member) { return [member.id, member.name]; })), String(state.person_id), true);
         personSelect.addEventListener('change', function () {
             state.person_id = parseInt(personSelect.value, 10) || 0;
             load(true);
         });
-        bar.appendChild(personSelect);
 
-        // The two days stay side by side when the toolbar wraps, sharing the
-        // row on a phone; each says what it is while empty.
+        // The two days stay side by side, in the bar and in the box; each
+        // says what it is while empty.
         var dates = el('div', 'd-flex gap-1 ws-tl-dates');
+        dates.setAttribute('role', 'group');
         var dateField = function (key, label) {
             var input = el('input', 'form-control form-control-sm');
             pgDateField(input, 'date');
@@ -28017,19 +28128,15 @@
 
         var fromInput = dateField('from', t('tl_from'));
         var toInput = dateField('to', t('tl_to'));
-        bar.appendChild(dates);
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
-        var notesToggle = button('btn btn-sm btn-text theme-secondary' + (state.notes ? ' active' : ''), t('tl_notes'), 'bi-sticky');
-        notesToggle.setAttribute('aria-pressed', state.notes ? 'true' : 'false');
-        notesToggle.addEventListener('click', function () {
-            state.notes = !state.notes;
-            notesToggle.classList.toggle('active', state.notes);
-            notesToggle.setAttribute('aria-pressed', state.notes ? 'true' : 'false');
+        var notes = formParts.switchRow(t('tl_notes'), state.notes);
+        notes.input.addEventListener('change', function () {
+            state.notes = notes.input.checked;
             load(true);
         });
-        bar.appendChild(notesToggle);
+        bar.appendChild(notes.row);
 
         // Agent channels' decisions are left out of the list; this shows
         // theirs alone. It shows once the person may read an agent channel.
@@ -28046,22 +28153,37 @@
         });
         bar.appendChild(agentsToggle);
 
-        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
-        var searchIcon = el('span', 'form-adorn-text');
-        searchIcon.setAttribute('aria-hidden', 'true');
-        searchIcon.appendChild(icon('bi-search'));
-        searchGroup.appendChild(searchIcon);
-        var search = el('input', 'form-ghost');
-        search.type = 'search';
-        search.value = state.search;
-        search.placeholder = t('tl_search');
-        search.setAttribute('aria-label', search.placeholder);
-        search.addEventListener('input', debounce(function () {
-            state.search = search.value.trim();
+        var filter = barFilter({
+            fields: [
+                { label: t('tl_channel'), control: channelSelect, tag: function () { return state.channel_id ? selectedText(channelSelect) : ''; }, clear: function () { state.channel_id = 0; channelSelect.value = '0'; } },
+                deptSelect ? { label: t('department'), control: deptSelect, tag: function () { return state.department_id ? t('department') + ': ' + selectedText(deptSelect) : ''; }, clear: function () { state.department_id = 0; deptSelect.value = '0'; } } : null,
+                { label: t('person'), control: personSelect, tag: function () { return state.person_id ? selectedText(personSelect) : ''; }, clear: function () { state.person_id = 0; personSelect.value = '0'; } },
+                { label: t('tl_dates'), control: dates, tag: function () { return (state.from || state.to) ? (state.from ? dmy(state.from) : '…') + ' – ' + (state.to ? dmy(state.to) : '…') : ''; }, clear: function () {
+                    state.from = '';
+                    state.to = '';
+                    fromInput.value = '';
+                    toInput.value = '';
+                    dateShown(fromInput);
+                    dateShown(toInput);
+                } }
+            ].filter(Boolean),
+            inline: true,
+            phone: [{ node: notes.row }, { node: agentsToggle }],
+            onChange: function () { load(true); }
+        });
+        // The fields lead the line, as the screen has no main action.
+        bar.insertBefore(filter.slot, bar.firstChild);
+
+        var searchGroup = barSearch(t('tl_search'), function (value) {
+            state.search = value.trim();
             load(true);
-        }, 300));
-        searchGroup.appendChild(search);
+        });
+        var search = searchGroup.input;
+
+        search.value = state.search;
         bar.appendChild(searchGroup);
+        root.appendChild(filter.tags);
+        root.appendChild(layout);
 
         var moreButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('tl_more'), 'bi-arrow-down');
         moreButton.addEventListener('click', function () { load(false); });
@@ -28081,24 +28203,9 @@
         }
 
         function clearFilters() {
-            state.channel_id = 0;
-            state.department_id = 0;
-            state.person_id = 0;
-            state.from = '';
-            state.to = '';
+            filter.reset();
             state.search = '';
-            channelSelect.value = '0';
-            personSelect.value = '0';
-            fromInput.value = '';
-            toInput.value = '';
-            dateShown(fromInput);
-            dateShown(toInput);
             search.value = '';
-
-            if (deptSelect) {
-                deptSelect.value = '0';
-            }
-
             load(true);
         }
 
@@ -28399,17 +28506,17 @@
             day.list.appendChild(itemNode(item));
         }
 
+        // Nothing to show: narrowed by the filters or the search, it says
+        // so and offers Clear; else where decisions come from.
         function emptyNode() {
-            var empty = el('div', 'ws-empty');
-            empty.appendChild(icon('bi-patch-check'));
-            empty.appendChild(document.createTextNode(filtered() ? t('tl_empty') : t('tl_empty_all')));
+            var empty = el('div', 'card');
 
-            if (filtered()) {
-                var reset = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5 mt-3', t('tl_clear'), 'bi-x-circle');
-                reset.addEventListener('click', clearFilters);
-                empty.appendChild(el('br'));
-                empty.appendChild(reset);
-            }
+            empty.appendChild(filtered()
+                ? barEmptyFound(t('tl_empty'), function () {
+                    clearFilters();
+                    search.focus();
+                })
+                : emptyScreen({ tone: 'blue', icon: 'bi-clock-history', title: t('tl_none_title'), text: t('tl_empty_all') }));
 
             return empty;
         }
@@ -28458,6 +28565,7 @@
                     drawSide(data.channels || []);
                     drawSummary(data);
                     drawHidden(data.hidden || []);
+                    filter.refresh();
                     agentsToggle.classList.toggle('d-none', !(state.agents || data.agent_channels > 0));
                     list.removeAttribute('aria-busy');
 
@@ -29134,7 +29242,7 @@
             if (none) {
                 var empty = el('div', 'pg-card');
 
-                empty.appendChild(emptyScreen({ tone: 'amber', icon: 'bi-journal-text', title: t('notes_none_title'), text: t('notes_intro'), action: { label: t('notes_new'), icon: 'bi-plus-lg', onClick: function () { startNew(); } } }));
+                empty.appendChild(emptyScreen({ tone: 'amber', icon: 'bi-journal-text', menuIcon: 'notes', title: t('notes_none_title'), text: t('notes_intro'), action: { label: t('notes_new'), icon: 'bi-plus-lg', onClick: function () { startNew(); } } }));
                 list.appendChild(empty);
             }
 

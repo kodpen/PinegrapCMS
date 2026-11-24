@@ -136,6 +136,26 @@ function pg_dashboard_v2_cards()
 }
 
 /**
+ * The cards that stand for a main menu row, and that row's menu_icon name
+ * (output_menu()): their head draws the row's drawing (pg_menu_icon_cite())
+ * in place of the bi icon of pg_dashboard_v2_cards().
+ *
+ * @return array card id => menu_icon name
+ */
+function pg_dashboard_v2_card_menu_icons()
+{
+    return array(
+        'flows'     => 'flows',
+        'notes'     => 'notes',
+        'mail'      => 'mail',
+        'files'     => 'folders',
+        'calendars' => 'calendars',
+        'orders'    => 'orders',
+        'offers'    => 'offers',
+    );
+}
+
+/**
  * The cards drawn again at the session's refresh time (their content moves
  * minute to minute), and the slow ones asked for on their own beside the
  * batch so they do not hold the others back.

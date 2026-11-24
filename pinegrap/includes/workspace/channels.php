@@ -323,6 +323,8 @@ function ws_channel_tab_counts($channel)
         'files'     => (int) db_value("SELECT COUNT(*) FROM ws_messages
             WHERE channel_id = '" . $channel_id . "' AND file_id > 0 AND deleted_at = 0"),
         'summary'   => (trim((string) ($channel['summary'] ?? '')) !== ''),
+        // The notes written in it (notes.php): the Notes tab shows from one.
+        'notes'     => function_exists('ws_note_channel_count') ? ws_note_channel_count($channel_id) : 0,
     );
 }
 

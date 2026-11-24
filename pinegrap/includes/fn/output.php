@@ -3971,6 +3971,21 @@ function pg_menu_icon($name, $color_class = '', $space = 'me-3')
 }
 
 /**
+ * A main menu row's drawing where a place outside the menu stands for that
+ * row (a Notes tile, a dashboard card's head): at rest, in the size and
+ * colour of the glyph it replaces (.pg-mi-cite, backend.src.css). An icon of
+ * an action or an object keeps its Bootstrap icon.
+ *
+ * @param string $name  a menu_icon name of output_menu()
+ * @param string $class classes added to the svg (a margin)
+ * @return string the svg, '' for a name without a drawing
+ */
+function pg_menu_icon_cite($name, $class = '')
+{
+    return pg_menu_icon((string) $name, 'pg-mi-cite' . ($class !== '' ? ' ' . $class : ''), '');
+}
+
+/**
  * A main menu row's icon on its tile: the drawing (pg_menu_icon()) or the
  * fallback icon, in the colour of the row's category, on a tint of it.
  *
@@ -4879,9 +4894,9 @@ function output_menu($properties = false)
     // SYSTEM TOOLS. Slot 25: 3, 13, 18, 19 and 20 are retired and 22 to 24
     // are taken, and operators pin rows by their slot
     // (user.selected_appmenu_items_array), so no slot is ever reused. The
-    // screens beside Site Settings, under system_tools.php's own gate: the
-    // screen first, then each group of pg_settings_tool_groups() opening a
-    // panel of its screens, every one under its own gate.
+    // screens beside Site Settings, under system_tools.php's own gate: every
+    // tool of pg_settings_tool_groups() in one list under its group's
+    // heading, each under its own gate (pg_menu_tools_markup()).
     // The groups live in the settings registry, which is not one of the
     // function modules and loads only behind PG_SETTINGS_MENU.
     $menu_tools_groups = array();
@@ -4897,7 +4912,7 @@ function output_menu($properties = false)
     }
 
     if ($user['role'] <= 2 && pg_settings_tool_count($menu_tools_groups) > 0) {
-        $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target, pg_menu_category_tone(25));
+        $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target);
 
         $menu_items[25]['id'] = 25;
         $menu_items[25]['href'] = 'system_tools.php';
@@ -4905,8 +4920,7 @@ function output_menu($properties = false)
         $menu_items[25]['color_class'] = 'settings-color';
         $menu_items[25]['title'] = 'System tools';
         $menu_items[25]['context'] = true;
-        $menu_items[25]['data-bs-content'] = $menu_tools['entries'];
-        $menu_panels_nested .= $menu_tools['panels'];
+        $menu_items[25]['data-bs-content'] = $menu_tools;
     }
 
     // AUTOMATION FLOWS. Slot 26, the next free one (22 to 25 are taken, the
@@ -5645,62 +5659,44 @@ function pg_menu_heading($key, $label)
 }
 
 /**
- * The System tools row's entries and second-level panels.
+ * The System tools row's entries: every tool of the System tools screen in
+ * one list, under a heading per group of pg_settings_tool_groups().
  *
- * First the System tools screen itself, then one entry per group of
- * pg_settings_tool_groups() that has a screen, each opening a panel with its
- * screens. A screen keeps its own target (rel noopener) and its question
+ * No entry for the screen itself (it opens from Site Settings' "System
+ * tools" row and the search) and no second-level panels: a group's name is
+ * only a heading. A group with no tool for the person prints no heading. A
+ * tool keeps its own target (rel noopener) and its question
  * (data-confirm-content, asked by the panel's link handler).
  *
  * @param array  $groups        label, icon, items (label, icon, url, target, confirm)
  * @param string $base          the panel folder's address, ending in /
  * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
- * @param string $tone          the row's category (pg_menu_category_tone()), for the
- *                              group panels' icons
- * @return array entries (first level), panels (the second level, as markup);
- *               both empty when no group has a screen
+ * @return string the entries, '' when no group has a tool
  */
-function pg_menu_tools_markup($groups, $base, $parent_target, $tone = '')
+function pg_menu_tools_markup($groups, $base, $parent_target)
 {
     $class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
-    $chevron = '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i>';
-
     $entries = '';
-    $panels = '';
 
-    foreach ($groups as $number => $group) {
+    foreach ($groups as $group) {
 
         if (empty($group['items'])) {
             continue;
         }
 
-        $entry_id = 'menu_entry_25_tools_' . $number;
-        $panel_id = 'menu_panel_25_tools_' . $number;
-        $items = '';
+        // A heading, not a link: the menu's script and its search read only
+        // the links of a panel.
+        $entries .= '<div class=\'pg-menu-panel-heading\'>' . h($group['label']) . '</div>';
 
         foreach ($group['items'] as $item) {
             $target = isset($item['target']) ? ' target=\'' . h($item['target']) . '\' rel=\'noopener\'' : $parent_target;
             $confirm = isset($item['confirm']) ? ' data-confirm-content=\'' . h($item['confirm']) . '\'' : '';
 
-            $items .= '<a href=\'' . h($base . $item['url']) . '\'' . $target . $confirm . ' class=\'' . $class . h($item['icon']) . ' bi-me-2\'>' . h($item['label']) . '</a>';
+            $entries .= '<a href=\'' . h($base . $item['url']) . '\'' . $target . $confirm . ' class=\'' . $class . h($item['icon']) . ' bi-me-2\'>' . h($item['label']) . '</a>';
         }
-
-        // Its address is the group's first screen, for a middle click; a
-        // plain click opens the group.
-        $first = reset($group['items']);
-
-        $entries .= '<a id=\'' . $entry_id . '\' href=\'' . h($base . $first['url']) . '\'' . $parent_target . ' class=\'' . $class . h($group['icon']) . ' bi-me-2 pg-menu-parent\' data-pg-menu-panel=\'' . $panel_id . '\' aria-controls=\'' . $panel_id . '\' aria-expanded=\'false\'>' . h($group['label']) . $chevron . '</a>';
-
-        $panels .= pg_menu_panel($panel_id, $entry_id, $group['label'], $items, $tone);
     }
 
-    if ($entries === '') {
-        return array('entries' => '', 'panels' => '');
-    }
-
-    $entries = '<a href=\'' . h($base . 'system_tools.php') . '\'' . $parent_target . ' class=\'' . $class . 'bi-tools bi-me-2\'>' . h(lang('System tools')) . '</a><hr class=\'divider my-3\' />' . $entries;
-
-    return array('entries' => $entries, 'panels' => $panels);
+    return $entries;
 }
 
 /**

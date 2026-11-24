@@ -10,7 +10,7 @@ module: walk_in_queue_places
 
 ## How is the screen put together?
 - List: Place, Services, Desks open (`1 of 3`), Waiting now (today's `waiting` numbers), the pill (`pg_waiting_place_pill()`: Open teal, Paused amber, Closed grey). "Add place" (fill) opens a drawer asking the name and the first service (letter A, 10 minutes); the place starts closed with the priority groups Elderly, Disabled person, Pregnant. Row menu: "Print the QR poster", Delete (danger).
-- A place: name and pill in the head; the state button "Open the queue" / "Close the queue" is quiet beside the tab's one fill (Save on Set-up, "Add desk" on Desks), as the application programme's head (architect, 2026-11-20). Tabs Set-up, Desks and Today (the desk screen, `walk-in-queue-desk.md`); Report (WQ7) comes later.
+- A place: name and pill in the head; the state button "Open the queue" / "Close the queue" is quiet beside the tab's one fill (Save on Set-up, "Add desk" on Desks), as the application programme's head (architect, 2026-11-20). Tabs Set-up, Desks, Today (the desk screen, `walk-in-queue-desk.md`) and Report (`walk-in-queue-report.md`) (`pg_waiting_place_tabs()`).
 - Set-up: name and address, then six folded rows drawn with `pg_settings_fold()` (Site Settings' helper; the screen defines `PG_SETTINGS_ENTRY` to load it): Services, Hours, Taking a number, Messages, Calling order, Keep personal data. A row that keeps the place closed carries "Not set" and opens first. Foot: Save, Cancel.
 - Desks: a row each (name, its services, Closed / Paused / "Open · <person>"), Remove (danger, confirm; refused while the desk is open). "Add desk" asks the name and the services (all ticked; at least one).
 

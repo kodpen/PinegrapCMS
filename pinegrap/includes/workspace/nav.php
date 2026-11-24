@@ -31,7 +31,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @return array[] head (the settings gear beside the search), top (Today,
  *                 the one place over the channels), tools (the tiles), more
  *                 (behind the More tile) => items (key, label, icon, url; a
- *                 tile's short name; count, a tile's number)
+ *                 tile's short name; count, a tile's number; menu_icon, the
+ *                 main menu row the place stands for)
  */
 function ws_nav_groups($viewer, $flags = null)
 {
@@ -80,7 +81,7 @@ function ws_nav_groups($viewer, $flags = null)
     // The tiles: the screens of a working day, in the order they are drawn.
     // A tile shows a short name; the full one is its title.
     if (!empty($flags['notes'])) {
-        $groups['tools'][] = array('key' => 'notes', 'label' => lang('My Notes'), 'short' => lang('Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php');
+        $groups['tools'][] = array('key' => 'notes', 'label' => lang('My Notes'), 'short' => lang('Notes'), 'icon' => 'bi-journal-text', 'menu_icon' => 'notes', 'url' => $base . 'workspace_notes.php');
     }
 
     if (!empty($flags['wtables'])) {
@@ -88,7 +89,7 @@ function ws_nav_groups($viewer, $flags = null)
     }
 
     if (!empty($flags['flows'])) {
-        $groups['tools'][] = array('key' => 'flows', 'label' => lang('Automation flows'), 'short' => lang('Flows'), 'icon' => 'bi-diagram-3', 'url' => $base . 'workspace_flows.php');
+        $groups['tools'][] = array('key' => 'flows', 'label' => lang('Automation flows'), 'short' => lang('Flows'), 'icon' => 'bi-diagram-3', 'menu_icon' => 'flows', 'url' => $base . 'workspace_flows.php');
     }
 
     $groups['tools'][] = array('key' => 'calendar', 'label' => lang('Work Calendar'), 'short' => lang('Calendar'), 'icon' => 'bi-calendar3', 'url' => $base . 'workspace_calendar.php');
@@ -194,7 +195,8 @@ function ws_side_screen($script)
  * with only what the browser needs.
  *
  * @param array $groups ws_nav_groups()
- * @return array head, top, tools, more => [key, label, short, icon, url, count (when one)]
+ * @return array head, top, tools, more => [key, label, short, icon, url, count (when one),
+ *               svg (the menu row's drawing, when the place stands for one)]
  */
 function ws_side_nav($groups)
 {
@@ -211,6 +213,14 @@ function ws_side_nav($groups)
                 'icon'  => (string) $item['icon'],
                 'url'   => (string) $item['url'],
             );
+
+            // A tile that stands for a main menu row (My Notes, Automation
+            // flows) draws that row's icon; the bi icon is its fallback.
+            $svg = (!empty($item['menu_icon']) && function_exists('pg_menu_icon_cite')) ? pg_menu_icon_cite($item['menu_icon']) : '';
+
+            if ($svg !== '') {
+                $entry['svg'] = $svg;
+            }
 
             // A number on the tile, as the unread e-mails.
             if (!empty($item['count'])) {

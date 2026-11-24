@@ -129,6 +129,79 @@ function test_lead_score_interest_topics()
 	pg_assert_same(5, count(pg_lead_interest_topics(array(array('kind' => 'visit', 'at' => $now, 'pages' => $pages)), $many, $now)), 'top five');
 }
 
+function test_lead_score_interest_topics_product_category()
+{
+	$day = 86400;
+	$now = LEAD_SCORE_TEST_NOW;
+	$folders = array('product-detail' => array(3, 'Shop'), 'tractor-a' => array(4, 'Tractors'));
+	$categories = array(
+		'product:12' => array(array(20, 'Seeds'), array(21, 'Organic')),
+		'product_group:20' => array(array(20, 'Seeds')),
+	);
+	$rows = array(
+		array('kind' => 'visit', 'at' => $now, 'pages' => array(
+			array('product-detail', 100, 'product', 12),
+			array('catalog', 30, 'product_group', 20),
+			array('product-detail', 50, 'product', 99),
+			array('tractor-a', 20),
+		)),
+	);
+
+	$topics = pg_lead_interest_topics($rows, $folders, $now, 30, $categories);
+	$by_name = array_column($topics, null, 'name');
+
+	pg_assert_same(80.0, $by_name['Seeds']['weight'], 'half of the product and the whole group page');
+	pg_assert_same('category', $by_name['Seeds']['kind'], 'a product group is a category');
+	pg_assert_same(50.0, $by_name['Organic']['weight'], 'a product in two groups shares its seconds');
+	pg_assert_same(50.0, $by_name['Shop']['weight'], 'a product no longer in the catalogue falls back to the page folder');
+	pg_assert_same('folder', $by_name['Tractors']['kind'], 'a plain page keeps its folder');
+	pg_assert_same(false, isset($by_name['Shop']) && ($by_name['Shop']['weight'] > 50.0), 'the product page with a category is not counted to its folder too');
+
+	pg_assert_same(array('product' => array(12, 99), 'product_group' => array(20)), pg_lead_interest_items($rows + array(1 => array('kind' => 'form', 'at' => $now))), 'the items of the visits');
+	pg_assert_same(array(), pg_lead_interest_items(array(array('kind' => 'visit', 'at' => $now - $day, 'pages' => array(array('home', 5), array('x', 5, 'order', 3))))), 'an unknown item type is not looked up');
+}
+
+function test_lead_score_list_cell()
+{
+	pg_assert_same('', pg_lead_score_list_cell(null, 60), 'not scored: empty');
+	pg_assert_same('42', pg_lead_score_list_cell('42', 60), 'the figure alone below the threshold');
+	pg_assert_true(strpos(pg_lead_score_list_cell(60, 60), 'pg-pill') !== false, 'hot from the threshold on');
+	pg_assert_same('0', pg_lead_score_list_cell(0, 60), 'a scored contact with no interest shows 0');
+}
+
+function test_lead_score_settings_input()
+{
+	$post = array(
+		'lead_score_threshold' => '70',
+		'lead_score_pricing_pages' => array('4', '4', 'x', '9'),
+		'lead_score_half_life' => '14',
+		'lead_score_keep_months' => '6',
+	);
+	foreach (pg_lead_score_weights() as $kind => $points) {
+		$post['lead_score_weight_' . $kind] = (string) $points;
+	}
+	$post['lead_score_weight_form'] = '40';
+
+	$input = pg_lead_score_settings_input($post);
+	pg_assert_same(array(), $input['errors'], 'all in bounds');
+	pg_assert_same(70, $input['settings']['threshold']);
+	pg_assert_same(40, $input['settings']['weights']['form']);
+	pg_assert_same(array(4, 9), $input['settings']['pricing_pages'], 'page ids once, nothing else');
+	pg_assert_same(array(), $input['settings']['contact_pages'], 'no page chosen');
+	pg_assert_same(14, $input['settings']['half_life']);
+	pg_assert_same(6, $input['settings']['keep_months']);
+
+	$bad = pg_lead_score_settings_input(array('lead_score_threshold' => '0', 'lead_score_weight_form' => '101', 'lead_score_half_life' => 'abc', 'lead_score_keep_months' => '37') + $post);
+	pg_assert_same(array('lead_score_weight_form', 'lead_score_threshold', 'lead_score_half_life', 'lead_score_keep_months'), array_keys($bad['errors']), 'each field out of bounds is named');
+}
+
+function test_lead_score_settings_text()
+{
+	pg_assert_same('', pg_lead_score_settings_text(pg_lead_score_settings(array())), 'the defaults store nothing');
+	$text = pg_lead_score_settings_text(array('threshold' => 80));
+	pg_assert_same(80, pg_lead_score_settings($text)['threshold'], 'read back as written');
+}
+
 function test_lead_score_interest_points_by_kind()
 {
 	$score = pg_lead_interest_score(array(array('kind' => 'form', 'at' => LEAD_SCORE_TEST_NOW), array('kind' => 'download', 'at' => LEAD_SCORE_TEST_NOW)), LEAD_SCORE_TEST_NOW);

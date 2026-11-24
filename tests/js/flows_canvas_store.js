@@ -102,7 +102,8 @@ function line(title) {
 // boxes in one row, its second task reading the first one's task in its
 // description (a data thread). big: 7's draft holds notes enough to be over
 // the 60 000 bytes a keepalive save may carry. wait: 7 holds a Wait box
-// (delay_1) with a time of day. empty: no flow at all.
+// (delay_1) with a time of day. mail: 7 holds an e-mail box (email_1).
+// empty: no flow at all.
 function fixture(name) {
     const onboarding = {
         v: 1,
@@ -139,6 +140,17 @@ function fixture(name) {
             box('end_1', 'end', 640, 0)
         ];
         onboarding.edges = [{ from: 'manual_1', to: 'delay_1', on: 'next' }, { from: 'delay_1', to: 'end_1', on: 'done' }];
+    }
+
+    // mail: 7 is a start, an e-mail box to the record's person for
+    // marketing, its subject holding the recipient's ^^name^^, and an end.
+    if (name === 'mail') {
+        onboarding.nodes = [
+            box('manual_1', 'manual', 0, 0),
+            box('email_1', 'email', 320, 0, 'Welcome', { recipient: 'record_person', purpose: 'marketing', subject: 'Welcome, ^^name^^', body: 'Hello', to: '', from_name: '', from_email: '', reply_to: '', bcc: '' }),
+            box('end_1', 'end', 640, 0)
+        ];
+        onboarding.edges = [{ from: 'manual_1', to: 'email_1', on: 'next' }, { from: 'email_1', to: 'end_1', on: 'done' }];
     }
 
     if (name === 'big') {

@@ -20,7 +20,7 @@ description: Plan feedback-loop, steps FD1a to FD8: the pure rules, the store, s
 
 - FD6 (M) after FD4a, done (#11113, `platform/feedback-report.md`): the report with its filters and Excel, the frequent words, the contact card's history, the two group conditions. Features: Q12, Q13, Q14.
 
-- FD7 (S) after FD5 and FD6: `GET /feedback/responses` and `GET /feedback/summary` with their types, `php tools/check_api_schema.php`, the MCP tools. Features: Q15.
+- FD7 (S) after FD5 and FD6, done (#11235, `api/api-feedback.md`): `GET /feedback/responses` and `GET /feedback/summary` with their types, `php tools/check_api_schema.php`, the MCP tools. Features: Q15.
 
 - FD8 (S) close-out: every Q number checked against the code with its PR; `platform/feedback-loop.md` written; this plan's three files deleted; the changelog `[NEW]` line named in its PR.
 

@@ -297,3 +297,78 @@ function test_workspace_channel_notes_js_hooks()
 		pg_assert_contains("'" . $key . "'", $notes, 'the string ' . $key . ' is sent to the screen');
 	}
 }
+
+// A channel's own note: its foot names who wrote it, and its card does not
+// send to the notes screen, where it is not listed.
+function test_workspace_channel_notes_js_owned_card()
+{
+	$changed = workspace_channel_notes_js_test_function('changedWords');
+	$foot = workspace_channel_notes_js_test_function('footWords');
+	$may = workspace_channel_notes_js_test_function('mayEdit');
+	$items = workspace_channel_notes_js_test_function('menuItems');
+
+	$result = workspace_channel_notes_js_test_node(workspace_channel_notes_js_test_t() . $changed . $foot . $may . $items . '
+console.log(JSON.stringify({
+	foot: footWords({ owned: true, owner: { name: "Ayşe" }, changed_by: "Changed by Build bot", updated: "now" }, t),
+	poster: menuItems({ owned: true, access: "edit", channel_id: 3 }),
+	reader: menuItems({ owned: true, access: "view", channel_id: 3 })
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('cn_written_by(Ayşe)', 'Changed by Build bot · now'), $result['foot'], '"Written by" the writer, then who changed it');
+	pg_assert_same(array('read', 'edit', 'versions'), $result['poster'], 'who may post edits it; no notes screen, no switch');
+	pg_assert_same(array('read', 'versions'), $result['reader'], 'a reader reads it and its versions');
+}
+
+// The Notes tab: when it shows, a row's menu and its meta line.
+function test_workspace_channel_notes_js_tab()
+{
+	$shown = workspace_channel_notes_js_test_function('tabShown');
+	$rows = workspace_channel_notes_js_test_function('rowItems');
+	$meta = workspace_channel_notes_js_test_function('rowMeta');
+
+	pg_assert_true($shown !== '' && $rows !== '' && $meta !== '', 'tabShown(), rowItems() and rowMeta() are in the script');
+
+	$result = workspace_channel_notes_js_test_node(workspace_channel_notes_js_test_t() . $shown . $rows . $meta . '
+console.log(JSON.stringify({
+	shown: [tabShown({ notes: 2 }, "messages"), tabShown({ notes: 0 }, "messages"), tabShown({ notes: 0 }, "notes"), tabShown(null, "files")],
+	deleter: rowItems({ can_delete: true }, true),
+	reader: rowItems({ can_delete: false }, true),
+	noExport: rowItems({ can_delete: false }, false),
+	meta: rowMeta({ changed_by: "@mehmet", updated: "5 min" }, t),
+	metaTime: rowMeta({ changed_by: "", updated: "5 min" }, t)
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, false, true, false), $result['shown'], 'shown once the channel has a note, or while it is the open tab');
+	pg_assert_same(array('open', 'versions', 'export', 'delete'), $result['deleter'], 'Open, Versions, Export, Delete for who may delete');
+	pg_assert_same(array('open', 'versions', 'export'), $result['reader'], 'no Delete for anybody else');
+	pg_assert_same(array('open', 'versions'), $result['noExport'], 'no Export where the screen has no export address');
+	pg_assert_same('cn_changed_by(@mehmet) · 5 min', $result['meta'], '"Changed by <name> · <time>"');
+	pg_assert_same('5 min', $result['metaTime'], 'nobody named: the time alone');
+}
+
+function test_workspace_channel_notes_js_tab_wiring()
+{
+	$script = workspace_channel_notes_js_test_source();
+	$workspace = workspace_channel_notes_js_test_source('assets/js/workspace.js');
+	$notes = workspace_channel_notes_js_test_source('includes/workspace/notes.php');
+
+	pg_assert_contains("kit.api('ws_channel_notes', params)", $script, 'the tab reads the channel\'s notes a page at a time');
+	pg_assert_contains("'pg-toolbar ws-pane-toolbar ws-cn-bar'", $script, 'its bar is the panes\' toolbar');
+	pg_assert_true(strpos($script, 'cn_channel_edit') === false || strpos(workspace_channel_notes_js_test_function('write'), 'cn_channel_edit') === false, 'Write a note has no edit switch: a channel\'s note is edited by its posters');
+	pg_assert_contains("window.PGWsChannelNotes.tab(window.PGWsKit, pane, channel,", $workspace, 'drawCenter() draws the Notes tab through the script');
+	pg_assert_contains("window.PGWsChannelNotes.tabShown(channel.tab_counts, self.tab)", $workspace, 'beside Files once the channel has a note');
+	pg_assert_contains("['notes', counts.notes, 'cn_tab_count']", $workspace, 'its mark counts the notes');
+	pg_assert_contains("'owned'        => ws_note_channel_of(\$note) > 0,", $notes, 'the card map says a note is the channel\'s');
+
+	foreach (array('cn_written_by', 'cn_changed_by', 'cn_tab', 'cn_tab_count', 'cn_search', 'cn_open', 'cn_none', 'cn_none_found', 'cn_older', 'cn_delete_confirm') as $key) {
+		pg_assert_contains("'" . $key . "'", $notes, 'the string ' . $key . ' is sent to the screen');
+	}
+}

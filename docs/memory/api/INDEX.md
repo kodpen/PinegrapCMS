@@ -16,8 +16,10 @@
 - agent-guide-designer.md: The guide's designer topic: lines shared with the built-in assistant, <pg-keep> kinds, worked lists the test applies, colours and fonts on design_designs_list, the design_change prompt
 - agent-guide-engine.md: The guide for AI agents (agent_guide.php): topic registry, topic files, GET /guide (guide.read, no scope), MCP guide_read, pinegrap://guide resources, "Guide: <topic>." on tools, size limits
 - agent-guide-hints.md: Hints on API refusals: hint and guide on the error object from pg_agent_guide_hints(), the designer's own refusal codes on design.proposals.create, the hash check (design_page_changed)
+- agent-guide-overview.md: The AI agent guide as a whole (2026.11.0, #10709 to #11236): decisions, its parts, which file holds what, how a part is added, what was left out [decision: decisions-made-product-85.md]
 - agent-guide-panel-door.md: The guide for a browser agent through the panel session: agent_guide.php, llms.txt in the software folder, the rel="help" head link, "AI agent guide" in the account menu, the designer link
 - agent-guide-panel.md: The guide's panel topic for a browser agent: screens from the Ctrl+K list under the viewer's gates, Save button and Visual Page Editor rules, whose gates, sizes
+- agent-guide-sizes.md: The MCP tool list measured before the AI agent guide (2026-11-20) and at its close-out (2026-11-24): bytes, tools, the largest areas, the compact list, the opening instructions
 - agent-guide-workspace-erp.md: The guide's workspace and erp topics for AI agents: what each says, when each is listed, the canvas guide pointed at and not copied, sizes and the tool list's bytes
 - ai-connections-feature-cards.md: The feature cards without a key (CX9b): the Provider select and the chosen provider's connection on the assistants' form and the Voice message transcripts card, own keys, the 11.0.241 voice data step
 - ai-connections.md: One connection per AI provider (CX9a): where its key is kept, the key an assistant calls with, the 11.0.240 data step that moved the keys, its page on Connections and who may change it [decision: here]
@@ -64,6 +66,7 @@
 - api-experiments.md: The experiments API resource (PX7, #6295; dry_run #8099): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
 - api-fault-envelope.md: An uncaught Throwable or a fatal error inside integration.php or mcp.php answers 500 server_error as JSON with request_id and X-Request-Id, never PHP's message; the error log line carries the same id
 - api-fediverse.md: GET /fediverse/followers and /fediverse/deliveries (fediverse:read): shapes, paging, the state filter, who may hold the scope; the personal data export and erasure of a Fediverse account
+- api-feedback.md: GET /feedback/responses and GET /feedback/summary (FD7, customers:read, MCP tools): the sent surveys with their answers, the Results screen's figures, staff and contact rules for the user role
 - api-field-errors.md: External API 422 lists every wrong field in error.errors (field, code, message; at most 20); a JSON list as body is 400 invalid_json, [] an empty body (#10156)
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies

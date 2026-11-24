@@ -1906,6 +1906,32 @@ html[data-bs-theme="dark"] body .design-color {
   80%, 100% { transform: translate(17.5px, 14px); opacity: 0; }
 }
 
+/* A main menu row's drawing where a place outside the menu stands for that
+   row (pg_menu_icon_cite()): the size and colour of the glyph it replaces,
+   at rest, with no tile of its own and no live part. */
+svg.pg-mi-cite {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  overflow: visible;
+}
+.pg-mi-cite .pg-mi-f,
+.pg-mi-cite .pg-mi-date {
+  fill: currentColor;
+  stroke: none;
+}
+.pg-mi-cite .pg-mi-date {
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+}
+.pg-mi-cite .pg-mi-h {
+  fill: none;
+}
+.pg-mi-cite [data-l] {
+  display: none;
+}
+
 /* The Design Canvas's icon outside the main menu (pg_design_canvas_icon()):
    the editor's top bar; its size also serves the one-colour form below.
    body .design-color sets
@@ -2662,11 +2688,27 @@ body:not(.toolbar) .software-content > #footer {
   --bs-link-opacity: 1;
 }
 
-/* An entry that opens a second-level panel (System tools): its arrow sits
-   in its right padding, as on the rows. */
+/* An entry that opens a second-level panel (the Page Design Studio's
+   Other): its arrow sits in its right padding, as on the rows. */
 #menu .menu-body .pg-menu-panel-body > a.pg-menu-parent {
   position: relative;
   padding-right: 1.25rem;
+}
+/* A group's name over its entries (the System tools row,
+   pg_menu_tools_markup()): a small quiet title, not a link, lined up with
+   the entries' tiles. */
+#menu .pg-menu-panel-body > .pg-menu-panel-heading {
+  margin: 0.75rem 0.5rem 0.1875rem;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--pg-fg-3);
+  user-select: none;
+}
+#menu .pg-menu-panel-body > .pg-menu-panel-heading:first-child {
+  margin-top: 0.25rem;
 }
 #menu .pg-menu-panel-body > hr {
   height: 0;
@@ -3115,6 +3157,12 @@ body:not(.toolbar) .software-content > #footer {
   justify-content: center;
   font-size: var(--pg-tap-icon);
   line-height: 1;
+}
+/* A menu row's drawing on a control (the quick note): the icons' size. */
+#header .pg-rightcluster > ul > li > .nav-link > .pg-mi-cite {
+  width: var(--pg-tap-icon);
+  height: var(--pg-tap-icon);
+  vertical-align: 0;
 }
 /* The left group is a plain .navbar-nav, whose items stretch to the row rather
    than centring in it: that is why the toggle sat a pixel above the controls
@@ -20900,6 +20948,26 @@ button.ws-file-name {
   flex-direction: column;
   gap: .75rem;
 }
+/* The Notes tab (PGWsChannelNotes.tab()): its bar, then the Files tab's
+   rows with the note icon in place of the extension. */
+.ws-pane-notes .ws-cn-bar {
+  flex-wrap: nowrap;
+}
+.ws-pane-notes .ws-cn-bar .ws-bar-search {
+  min-width: 0;
+  flex: 0 1 18rem;
+}
+.ws-cn-row .ws-file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: none;
+  color: inherit;
+  text-align: start;
+}
+.ws-cn-row .ws-cn-row-icon {
+  color: var(--ws-accent);
+}
 .ws-file-group {
   padding: .75rem .9rem;
   border: 1px solid var(--pg-border-color);
@@ -21639,13 +21707,6 @@ button.ws-file-name {
 }
 
 /* The month calendar. */
-.ws-cal-toolbar .ws-cal-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  margin: 0 .5rem;
-  letter-spacing: -.01em;
-  text-transform: capitalize;
-}
 .ws-cal {
   border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--ws-radius);
@@ -21998,11 +22059,6 @@ button.ws-cal-more {
 .ws-calsync-plans-text {
   flex: 1;
   min-width: 0;
-}
-.ws-mycal-steps {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 .ws-mycal-week .ws-cal-day {
   min-height: 22rem;
@@ -28437,6 +28493,81 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 .wsf-values-pick:hover,
 .wsf-values-pick:focus-visible {
   background: var(--pg-secondary-bg-subtle);
+}
+/* "Add value" as a small button inside its text box, at the bottom right
+   (valueField()); the text keeps clear of it. */
+.wsf-values-box {
+  position: relative;
+}
+.wsf-values-box .wsf-values {
+  padding-right: 2.25rem;
+}
+.wsf-values-add {
+  position: absolute;
+  right: var(--ws-space-1);
+  bottom: var(--ws-space-1);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+/* A field's name with its "?" at the right, and the small window the "?"
+   opens over the panel with the field's whole help (helpAsk()). */
+.wsf-field-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+}
+.wsf-help-ask {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: -.25rem 0 -.25rem auto;
+}
+.wsf-help-pop {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  margin-top: var(--ws-space-1);
+  padding: var(--ws-space-2) .75rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+/* A folded part of a box's settings (the e-mail's Sender): one row with a
+   chevron, its name and, while closed, what it holds at the right. */
+.wsf-fold-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  min-height: 2.375rem;
+  border-top: 1px solid var(--pg-border-color);
+  border-bottom: 1px solid var(--pg-border-color);
+  list-style: none;
+  cursor: pointer;
+}
+.wsf-fold-head::-webkit-details-marker {
+  display: none;
+}
+.wsf-fold-head .bi {
+  color: var(--pg-fg-3);
+}
+.wsf-fold[open] > .wsf-fold-head {
+  margin-bottom: var(--ws-space-3);
+}
+.wsf-fold[open] > .wsf-fold-head .bi {
+  transform: rotate(90deg);
+}
+.wsf-fold-shows {
+  min-width: 0;
+  margin-left: auto;
+}
+.wsf-fold[open] .wsf-fold-shows {
+  display: none;
 }
 .wsf-people-list {
   max-height: 12rem;
@@ -35407,6 +35538,37 @@ textarea.pg-campaign-text {
   border-top: 1px solid var(--pg-border-color-translucent);
 }
 
+/* Date stepping (barSteps()): the arrows round "Today"; then the month's
+   name or the range the screen shows. */
+.ws-bar-steps {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+.ws-bar .ws-cal-title,
+.ws-bar-range {
+  flex: none;
+  margin: 0 4px;
+  white-space: nowrap;
+}
+.ws-bar .ws-cal-title {
+  text-transform: capitalize;
+}
+.ws-bar-range {
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+}
+.ws-bar-shows,
+.ws-bar > .ws-plan-switch {
+  flex: none;
+}
+/* The Decision Timeline's two days in the bar. */
+.ws-bar-filter > .ws-tl-dates {
+  flex: none;
+  width: 16rem;
+}
+
 /* An empty screen, in the content's card. */
 .ws-empty-screen {
   display: grid;
@@ -35454,6 +35616,10 @@ textarea.pg-campaign-text {
   }
   .ws-bar-search > input {
     width: 100%;
+  }
+  /* Calendars and the board: the range text yields before the line wraps. */
+  .ws-bar-range {
+    display: none;
   }
 }
 /* A phone keeps the main action, "Filter" (its icon and count) and the

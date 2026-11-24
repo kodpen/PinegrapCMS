@@ -26,4 +26,4 @@ description: Decisions list, panel part 17 (2026-11-22 on): main menu row icons 
 - Each tool keeps its gate, its target and its confirmation; a group with no tool for the person prints no heading.
 
 ## How is it built? (architect, 2026-11-22)
-- `plans/main-menu-icons-redraw.md`, steps MI1 to MI3, one worker at a time.
+- In three steps: the tiles and drawings (#11202), the moves (#11233), the System tools list (#11247). What was built: `ui/main-menu-icons.md`, `ui/main-menu-icon-rows.md`, `ui/main-menu-icon-motion.md`, `ui/main-menu-system-tools-row.md`; the drawing stays in `ui/main-menu-icons-drawing/`.
