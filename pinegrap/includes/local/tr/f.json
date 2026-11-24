@@ -1695,6 +1695,7 @@
     "Found in a field outside the town with forty others, the coin travelled a long way in a merchant's purse before it was buried.": "Kasabanın dışındaki bir tarlada kırk sikkeyle birlikte bulundu; gömülmeden önce bir tüccarın kesesinde uzun yol gitmişti.",
     "Found me through": "Beni nereden buldu",
     "Found the one?": "Aradığınızı buldunuz mu?",
+    "Found {var:1}": "{var:1} bulundu",
     "Found {var:1} item for: {var:2}": "{var:2} için {var:1} ürün bulundu",
     "Found {var:1} items for: {var:2}": "{var:2} için {var:1} ürün bulundu",
     "Found {var:1} item{suffix:1} for \"{var:2}\".": "\"{var:2}\" için {var:1} öğe bulundu.",

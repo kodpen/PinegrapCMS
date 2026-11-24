@@ -18,9 +18,9 @@ module: security_scan_files
 
 ## How does the walk run and resume?
 - Roots in order: the software folder, `FILE_DIRECTORY_PATH` as `data/files`, `LAYOUT_DIRECTORY_PATH` as `data/layouts` (`pg_security_files_roots()`; `pg_security_place_disk_path()` maps a place back to disk).
-- Skipped: `.git`, `data/backups`, `data/temp/restore_<id>`, and the upload folders inside the software folder (walked as their own roots). Symbolic links are not followed. A quarantine folder (SC3) must be added to `pg_security_walk_skipped()`.
+- Skipped: `.git`, `data/backups`, `data/temp/restore_<id>`, and the upload folders inside the software folder (walked as their own roots). Symbolic links are not followed. The quarantine folder `data/quarantine` is skipped too (`security-scan-section.md`).
 - Sorted walk; the cursor is the last place done, compared segment by segment (`pg_security_place_compare()`, `pg_security_folder_done()`), so a resumed tick skips folders already done.
-- `security_scan_job.php`, catalogue `security_scan_job`: heavy lane, daily, lock 600 s, budget `SEO_ANALYZE_TIME_BUDGET` capped by `pg_cron_time_left()`; unfinished, `pg_cron_due_again()`; finished, `pg_cron_ran()`. A web request needs a signed-in Manager.
+- `security_scan_job.php`, catalogue `security_scan_job`: heavy lane, daily, lock 600 s, budget `SEO_ANALYZE_TIME_BUDGET` capped by `pg_cron_time_left()`; it runs the joined scan (`pg_security_scan_run()`, files first, `security-scan-section.md`); unfinished, `pg_cron_due_again()`; finished, `pg_cron_ran()`. A web request needs a signed-in Manager.
 - Content is read in 1 MB chunks with a 512-byte carry, at most 32 MB per file.
 
 ## Where is the run kept, and what does a finished run do?

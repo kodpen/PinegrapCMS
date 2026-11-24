@@ -2,16 +2,16 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Security Scan, file scan: walks the software folder and the upload folders
- * and records what looks like a planted file as findings
- * (includes/fn/security_scan_files.php). It only reads: nothing is deleted,
- * moved or blocked.
+ * Security Scan: one full scan of the files, the stored content and the
+ * accounts and settings, recorded as findings
+ * (includes/fn/security_scan_section.php). It only reads: nothing is
+ * deleted, moved or blocked.
  *
  * Run by the general job's dispatcher (heavy lane) or from the command line.
- * A run stops after its time budget and the next one carries on where it
- * stopped. The run is recorded only once the walk is through, so the
- * dispatcher hands an unfinished scan out again on the next tick instead of
- * a day later.
+ * A run stops after its time budget, or at once while Scan now holds the
+ * scan, and the next one carries on where it stopped. The run is recorded
+ * only once the scan is through, so the dispatcher hands an unfinished scan
+ * out again on the next tick instead of a day later.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -29,7 +29,7 @@ if (!pg_cron_is_background_run()) {
     validate_area_access($user, 'manager');
 }
 
-$security_scan = pg_security_files_run(pg_cron_time_left(defined('SEO_ANALYZE_TIME_BUDGET') ? (int) SEO_ANALYZE_TIME_BUDGET : 120));
+$security_scan = pg_security_scan_run(pg_cron_time_left(defined('SEO_ANALYZE_TIME_BUDGET') ? (int) SEO_ANALYZE_TIME_BUDGET : 120));
 
 if ($security_scan['done']) {
     pg_cron_ran('security_scan_job');

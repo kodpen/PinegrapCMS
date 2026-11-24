@@ -17,8 +17,8 @@ module: security_scan_accounts
 
 ## What does a finding hold?
 - `detail` is JSON facts, never a sentence: `created` (and `name` for a key), `mode`, or `version`/`state`/`fixed_in`. No user name or e-mail.
-- `pg_security_accounts_reason($kind, $detail)` and `pg_security_accounts_advice($kind)` give the reason and "What to do" in the reader's language ('' for another module's kind); the section (SC3) escapes them.
+- `pg_security_accounts_reason($kind, $detail)` and `pg_security_accounts_advice($kind)` give the reason and "What to do" in the reader's language ('' for another module's kind); the section escapes them (`pg_security_rule_text()`).
 - A new account or key stops being seen after 30 days, so a full scan marks it gone; Ignore acknowledges it sooner.
 
 ## How does it join the scan?
-- The runner (SC2) merges `pg_security_accounts_scan(time())` into its full scan with `pg_security_finding_merge()`; until then nothing calls it.
+- The joined run `pg_security_scan_run()` records `pg_security_accounts_scan()` last, then marks this module's unseen findings gone (`security-scan-section.md`).

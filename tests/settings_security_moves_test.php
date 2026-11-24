@@ -99,7 +99,7 @@ function test_settings_security_moves_card_order()
 		array('pgset-session', 'pgset-throttle', 'pgset-mfa', 'pgset-device', 'pgset-signin', 'pgset-captcha', 'pgset-membership', 'pgset-audit', 'pgset-deletion', 'pgset-encryption'),
 		settings_security_moves_test_sections('security'));
 	pg_assert_same(
-		array('pgset-headers', 'pgset-waf', 'pgset-limits', 'pgset-bots', 'pgset-iplists', 'pgset-countries', 'pgset-proxies', 'pgset-waf-logs'),
+		array('pgset-headers', 'pgset-waf', 'pgset-scan', 'pgset-limits', 'pgset-bots', 'pgset-iplists', 'pgset-countries', 'pgset-proxies', 'pgset-waf-logs'),
 		settings_security_moves_test_sections('firewall'));
 
 	// The firewall pane draws its cards as rows in pg_firewall_fold_order().
