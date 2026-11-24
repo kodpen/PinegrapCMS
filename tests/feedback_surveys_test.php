@@ -145,6 +145,8 @@ function test_feedback_surveys_sent_after_words()
 	$mail = pg_feedback_survey_start('mail');
 	$mail['delay_minutes'] = 0;
 	pg_assert_same('Right after a mail conversation', pg_feedback_sent_after_words($mail), 'no delay');
+	pg_assert_same('2 hours after a queue visit', pg_feedback_sent_after_words(pg_feedback_survey_start('queue')), 'a queue visit');
+	pg_assert_same(array('place' => 0), pg_feedback_survey_start('queue')['filter'], 'a queue survey filters by place');
 }
 
 function test_feedback_surveys_mail_has_every_score()

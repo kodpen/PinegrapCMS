@@ -5,9 +5,9 @@ module: feedback_sends
 ---
 
 ## Which events queue a survey?
-- `pg_announce()` hands every event to `pg_feedback_heard()` (`includes/fn/feedback_sends.php`, loaded everywhere). `pg_feedback_event_record()`: `booking.completed` (booking), `ticket.checked_in` (ticket), `course.completed` (course id), `form.submitted` (submission), `order.delivered` (order), `workspace.mail.closed` (conversation).
+- `pg_announce()` hands every event to `pg_feedback_heard()` (`includes/fn/feedback_sends.php`, loaded everywhere). `pg_feedback_event_record()`: `booking.completed` (booking), `ticket.checked_in` (ticket), `course.completed` (course id), `form.submitted` (submission), `order.delivered` (order), `workspace.mail.closed` (conversation), `queue.served` (touchpoint `queue`, record type `queue`, the walk-in number).
 - `custom_form.php` queues `form.submitted` with `api_webhook_enqueue()`, so it calls `pg_feedback_heard()` itself.
-- Each switched-on, not archived survey of the touchpoint whose filter takes the record (`pg_feedback_filter_takes()`: service, event, course, form page, mail box; 0 any) gets a row. A failure is logged, never thrown to the announcing code.
+- Each switched-on, not archived survey of the touchpoint whose filter takes the record (`pg_feedback_filter_takes()`: service, event, course, form page, mail box, queue place; 0 any) gets a row. A failure is logged, never thrown to the announcing code.
 
 ## What is stored at the queue?
 - `pg_feedback_queue_row()` (pure): the recipient by the survey's channel (address; number in `pg_sms_number()` form), `person_hash`, `subject_id` (service, calendar event, course, form page, mail box), `staff_user_id` (`booking_staff.user_id`), `due_at` = now + delay moved into the sending hours.
@@ -21,6 +21,10 @@ module: feedback_sends
 - `booking.completed`: `pg_booking_status_event()` and the API's `api_booking_move_event()` give `completed` for a move to `done`; `pg_booking_changed()` announces it and mails nothing (`commerce/booking-messages.md`).
 - `booking.completed` and `ticket.checked_in` are flow starts (`pg_event_workspace_events()`, `ws_events_catalog()`, outputs, quick setup's Reservations area); the ticket's record is its calendar event (calendars right).
 - `workspace.mail.closed`: from `ws_mail_conversation_set()` when a change closes a conversation (`ws_mail_conversation_closed_event()`, pure); webhook only, ids, `assignee_id`, `closed_by` (`workspace/mail-status.md`).
+
+## How does a walk-in queue number become a survey? (WQ8b)
+- `queue.served` from `pg_waiting_finish()` (Finish on the desk). Facts from `waiting_tickets`: email, phone, contact_id, `place_id` as subject, `staff_user_id` (who called it), state, `cleared_at`; nothing before `pg_waiting_ready()`.
+- Starting card "After a queue visit": CSAT, 2 hours, filter `place`. Before the send the number must still be `served` with `cleared_at` 0: a keep period shorter than the delay cancels it. A low score goes to the calling staff user (`pg_feedback_owner()`), else the fallback.
 
 Test: `tests/feedback_sends_test.php`.
 

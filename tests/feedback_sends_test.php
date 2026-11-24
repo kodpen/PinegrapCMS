@@ -38,11 +38,13 @@ function test_feedback_sends_event_record()
 	pg_assert_same(array('touchpoint' => 'form', 'type' => 'form', 'id' => 31), pg_feedback_event_record('form.submitted', array('id' => 31, 'form_id' => 8)));
 	pg_assert_same(array('touchpoint' => 'delivery', 'type' => 'order', 'id' => 12), pg_feedback_event_record('order.delivered', array('id' => 12, 'ship_to_id' => 3)));
 	pg_assert_same(array('touchpoint' => 'mail', 'type' => 'conversation', 'id' => 310), pg_feedback_event_record('workspace.mail.closed', array('conversation_id' => 310)));
+	pg_assert_same(array('touchpoint' => 'queue', 'type' => 'queue', 'id' => 58), pg_feedback_event_record('queue.served', array('id' => 58, 'place_id' => 3)));
+	pg_assert_same(null, pg_feedback_event_record('queue.no_show', array('id' => 58)), 'a number not here asks nothing');
 	pg_assert_same(null, pg_feedback_event_record('booking.confirmed', array('id' => 4)), 'a confirmed booking asks nothing');
 	pg_assert_same(null, pg_feedback_event_record('booking.completed', array()), 'no record, no survey');
 
 	foreach (array_keys(feedback_sends_test_touchpoints()) as $touchpoint) {
-		pg_assert_true(in_array($touchpoint, array('booking', 'ticket', 'course', 'form', 'delivery', 'mail', 'periodic'), true), $touchpoint . ' is followed');
+		pg_assert_true(in_array($touchpoint, array('booking', 'ticket', 'course', 'form', 'delivery', 'mail', 'queue', 'periodic'), true), $touchpoint . ' is followed');
 	}
 }
 
@@ -62,6 +64,8 @@ function test_feedback_sends_filter_takes()
 	pg_assert_false(pg_feedback_filter_takes('booking', array('service' => 5), 6));
 	pg_assert_false(pg_feedback_filter_takes('mail', array('box' => 2), 1), 'another mailbox');
 	pg_assert_true(pg_feedback_filter_takes('delivery', array(), 0), 'a delivery has no filter');
+	pg_assert_true(pg_feedback_filter_takes('queue', array('place' => 0), 4), '0 takes every queue place');
+	pg_assert_false(pg_feedback_filter_takes('queue', array('place' => 3), 4), 'another queue place');
 	pg_assert_false(pg_feedback_filter_takes('form', array('form' => 8, 'field' => 0, 'value' => ''), 9));
 }
 
@@ -113,6 +117,9 @@ function test_feedback_sends_record_verdict()
 	pg_assert_same('cancel', pg_feedback_record_verdict('order', array('state' => 'cancelled'), array(), $now, $now), 'a cancelled order');
 	pg_assert_same('cancel', pg_feedback_record_verdict('order', array('state' => 'shipped', 'review_requested' => true), array(), $now, $now), 'its review request went in the last 30 days');
 	pg_assert_same('send', pg_feedback_record_verdict('order', array('state' => 'shipped', 'review_requested' => false), array(), $now, $now));
+	pg_assert_same('send', pg_feedback_record_verdict('queue', array('state' => 'served', 'cleared_at' => 0), array(), $now, $now), 'a served number');
+	pg_assert_same('cancel', pg_feedback_record_verdict('queue', array('state' => 'served', 'cleared_at' => $now), array(), $now, $now), 'its personal fields cleared');
+	pg_assert_same('cancel', pg_feedback_record_verdict('queue', array('state' => 'left'), array(), $now, $now), 'a number no longer served');
 	pg_assert_same('cancel', pg_feedback_record_verdict('conversation', array('state' => 'open'), array(), $now, $now), 'a conversation opened again');
 	pg_assert_same('send', pg_feedback_record_verdict('conversation', array('state' => 'closed'), array(), $now, $now));
 	pg_assert_same('send', pg_feedback_record_verdict('course', array('email' => 'a@example.com'), array(), $now, $now));

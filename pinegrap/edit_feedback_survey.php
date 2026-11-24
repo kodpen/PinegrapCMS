@@ -217,7 +217,7 @@ $fs_question = $fs_card('question', lang('Question'), lang('One question with a 
 
 // 2. Sent after: what it follows (fixed once made), its filter, the delay.
 $fs_filter = '';
-$fs_any = array('service' => array('services', lang('Service'), lang('Any service')), 'event' => array('events', lang('Event'), lang('Any event')), 'course' => array('courses', lang('Course'), lang('Any course')), 'box' => array('boxes', lang('Mailbox'), lang('Any mailbox')));
+$fs_any = array('service' => array('services', lang('Service'), lang('Any service')), 'event' => array('events', lang('Event'), lang('Any event')), 'course' => array('courses', lang('Course'), lang('Any course')), 'box' => array('boxes', lang('Mailbox'), lang('Any mailbox')), 'place' => array('places', lang('Place'), lang('Any place')));
 
 foreach ($fs_any as $key => $spec) {
     if (isset($fs['filter'][$key])) {
