@@ -922,7 +922,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-48.md: How do the Tools stand in the list? (owner, 2026-11-22, in the architect's window)
 - decisions-made-workspace-48.md: What else changes of them? (owner, 2026-11-22, in the architect's window)
 - decisions-made-workspace-48.md: What is added? (the same word)
-- decisions-made-workspace-48.md: When may its steps be given out?
+- decisions-made-workspace-48.md: Where does it stand now?
 - decisions-made-workspace-49.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-49.md: Whose is a note written in a channel? (owner, 2026-11-23, in the architect's window)
 - decisions-made-workspace-49.md: Is an item of an agent channel shared by a link? (owner, 2026-11-23, in the architect's window)
@@ -1382,6 +1382,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded and drawn as gathered lines, pgBellOpen() for the old inbox address, the Workspace count
 - ui/page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
+- ui/panel-shell-foot.md: Panel foot at the window's bottom, none on the Workspace channel view; top bar description ends 16px before the search field; no Ctrl+K there on Workspace screens
 - ui/panel-top-bar-phone.md: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark or page heading), below 576px no quick note, below 390px no logo, why, the test that keeps it
 - ui/picker-field.md: The picker field pg_picker_field() (PK5): combobox with the chosen value and its picture, search list, Browse, clear, phone sheet, marks; which screens use it and who prints the script
 - ui/picker-overview.md: The one picker for a file or a page as a whole: what it is, the decisions that bind it, its two faces and bridges, which file holds each part, what stays outside it, how a new kind is added
@@ -1600,7 +1601,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-bulk-sources.md: A person's own bulk product drafts (bulk_sources.php): several lines under /create product, /create product answering or sent with a channel spreadsheet, the table reader, ws_bulk_create_card()
 - workspace/workspace-calendar-write-plans.md: A person's own plans written one way to their Google or Outlook calendar (calendar_sync.php, PC13): the My calendar switch, the second calendar, which plans, the body, off and deleted
 - workspace/workspace-calendar-write.md: A person's Workspace tasks written to their own Google or Outlook calendar (calendar_sync.php, #4387, #4420): app-made calendar, derived ids, sealed state per person, the hourly job
-- workspace/workspace-channel-catchup.md: Over a channel's conversation (C2, C3 of workspace-channel-screen.md): the catch-up line in place of the greeting card, the pinned line, one row on a phone
+- workspace/workspace-channel-catchup.md: Over a channel's conversation (C2, C3 of workspace-channel-screen.md): the catch-up line in place of the greeting card, Go to new messages to the New line, the pinned line, one row on a phone
 - workspace/workspace-channel-composer.md: The channel's writing box in one row (C5 of workspace-channel-screen.md): no hint line, marks behind Aa; on a phone the field on top and the tools with Send under it, the keyboard rules
 - workspace/workspace-channel-decision-fold.md: A decision longer than about eight lines on a channel's Decisions tab is folded behind Show more / Show less (foldLong() in workspace.js, TD1)
 - workspace/workspace-channel-decisions-tab.md: The channel's Decisions tab draws each decision as a card of its own with a gap between them, not stacked like the conversation's messages
@@ -1608,6 +1609,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-head.md: The channel header in one line (C1 of workspace-channel-screen.md, tour #6281): name and tags, people, search, info, task, tour, menu; a phone keeps back, name, ⋯; the purpose in the info panel
 - workspace/workspace-channel-identity-motion.md: Workspace channel shell as one card in the channel colour (wash, pill tabs), day chip, writing box card (CL1 #8678); group colour chips; send pop, bounce, slide-in (#2094)
 - workspace/workspace-channel-messages.md: The channel's messages as drawn (C4 of workspace-channel-screen.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
+- workspace/workspace-channel-new-line.md: The channel's "New" line (#11269, board C1): where it stands (newLineAt()), the read mark it is drawn by, Go to new messages scrolling to it
 - workspace/workspace-channel-panels.md: The side panels as drawn (C6 of workspace-channel-screen.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
 - workspace/workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, TD1): tasks in columns, decisions one list of wide cards, each kind of file a card; My tasks keeps its rows
 - workspace/workspace-channel-screen.md: The Workspace channel screen as redrawn (C1–C8) and its card look (CL1-CL4, what it left alone): what every change keeps, the phone rules, who changes the design, where each part is
@@ -1650,8 +1652,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-highlights-not-saved-replies.md: Why message highlights (ws_highlights) and saved replies (ws_saved_replies) stay two features with two tables: what each keeps, where they differ, the owner's question of 2026-11-16
 - workspace/workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
 - workspace/workspace-memory-tab.md: The Memory tab as rows under folding project headings (GM3a): the general memory and the channel's own as two parts, a row's columns, Move to the general memory, the form, ws_memory_list's parts
+- workspace/workspace-menu-list.md: The Workspace list in the main menu (#2545, #6281, redrawn #11079-#11141): workspace_side.js draws ws_side_payload(): order, All / Unread, tools dock, who sees what, data, hooks
 - workspace/workspace-menu-tools.md: The tools dock of the Workspace list (#3817, #6281, dock #11101): places (My Tasks first), short names, tones, the count on My Tasks, More as a card, the tour opening hidden places
-- workspace/workspace-menu-unread.md: The Workspace list's All / Unread filter (board L2): which rows Unread keeps, ws-side-filter, Mark all as read (ws_read_all), "Everything is read", the keys Alt+Up/Down and Alt+Shift+Up/Down
+- workspace/workspace-menu-unread.md: The Workspace list's All / Unread filter (#11141, board L2): which rows Unread keeps, ws-side-filter, Mark all as read (ws_read_all), "Everything is read", the keys Alt+Up/Down and Alt+Shift+Up/Down
 - workspace/workspace-message-box-width.md: Channel message boxes: 90rem wide at most, .5rem apart (grouped lines joined), a faint sender tint over 1700px (data-ws-tone; light 5 %, dark 2.2 %)
 - workspace/workspace-message-highlights-mine.md: My highlights in My Notes (HL4 #9935): the button beside Import, the list in the note's pane, the chips, the jump that flashes the highlight, bulk removal, the empty state
 - workspace/workspace-message-highlights.md: A reader's highlights on part of a message (ws_highlights, 11.0.222): anchor, scopes, who makes or removes one, note, limits, cleanup, drawing

@@ -20,7 +20,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - `flows-editor-*`: 8 files.
 - `integrations-census-*`: 12 files; start at `integrations-census.md`.
 - `storefront-api-*`: 9 files.
-- `workspace-interface-*`: 6 files; start at `workspace-interface.md`.
 
 ## Files
 

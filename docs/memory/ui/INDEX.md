@@ -552,7 +552,7 @@
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .menu: Bootstrap's capture-phase keydown handler acts on it, so its keys are taken on the window; closing on scroll and a long press
 - page-bulk-edit-dialog.md: Pages list Modify Selected: a dialog of the list (no popup window), the move-to-folder check, and a notice, site log line and audit built from what was written
 - page-bulk-edit.md: The two bulk page edits (Pages list Modify Selected, File Manager bulk page panel) share pg_page_bulk_decide()/apply(): style rule, sitemap by type and noindex, SEO stale mark, tag cloud
-- page-button-bar.md: The #button_bar strip under a screen's heading is the .pg-toolbar component: full-width nav, buttons as direct children, which wrappers are allowed, fields in it, the list filter select.
+- page-button-bar.md: The #button_bar strip under a screen's heading is the .pg-toolbar component: buttons as direct children, allowed wrappers, fields, the list filter select; Workspace screens' .ws-bar
 - page-edit-layout.md: Create Page and Edit Page: wide layout (form, sticky status and save bar columns, Summary card), rows hidden with d-none via pg_page_row(), bindPageTypePicker(), no fake popovers
 - page-form-count-defaults.md: Create/Edit Page and the designer's Page Type pane save an emptied or zero Photo Gallery column count or Form View Directory summary box as the form's default (4 / 30 / 5), not 0
 - page-form-group-names.md: Create/Edit Page type properties and the ERP accounts import: radio questions are legends, the custom form's two e-mail blocks are named by their switch
@@ -598,7 +598,7 @@
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page [decision: here]
 - panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()
-- panel-shell-foot.md: Panel foot at the window's bottom, none on the Workspace channel view; top bar description ends 16px before the search field; no Ctrl+K there on Workspace screens
+- panel-shell-foot.md: Panel foot at the window's bottom, none on the Workspace channel view; top bar description ends 16px before the search field; no Ctrl+K there on Workspace screens [decision: decisions-made-workspace-48.md]
 - panel-small-select-arrow.md: A small select (select.form-control.form-control-sm) keeps its longest option clear of the arrow: 1.75rem end padding, the arrow 0.5rem in
 - panel-spacing-tokens.md: B10 spacing (#5356): cards on Bootstrap 6's card padding with the header in line, menu rows inset with rounded corners, on Bootstrap 6's --bs-spacer-N scale
 - panel-stepper-and-product-names.md: Accessible names of number steppers, catalog landmarks, the Modify Selected (Products) value boxes and the product screen fields, and the tests that pin them
@@ -811,5 +811,5 @@
 - workspace-avatar-faces.md: A face from avatar() in the Workspace scripts keeps Bootstrap's .avatar (classList.add, never className =) and is sized by --bs-avatar-size; why a check-in answer's photo once covered the channel
 - workspace-screen-bar-calendars-board-timeline.md: The one-line bar and empty screens of Work Calendar, My calendar, Planning Board and Decision Timeline: barSteps(), pressed segments, Clashes count, inline filters
 - workspace-screen-bar-notes-data.md: The one-line bar and empty screen of My Notes (startNotes(), "⋯" with Pin to the menu, Import, Export all) and Data (ws_wtable_list_bar(), ws_empty_screen_html())
-- workspace-screen-bar.md: A Workspace screen's one-line bar (My Tasks first): "Filter", its box and tags line, views as a select when narrow, the empty screen; barFilter(), emptyScreen() in workspace.js
+- workspace-screen-bar.md: A Workspace screen's one-line bar (My Tasks first): "Filter", its box and tags line, views as a select when narrow, the empty screen; barFilter(), emptyScreen() in workspace.js [decision: decisions-made-workspace-48.md]
 - zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps

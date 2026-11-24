@@ -135,9 +135,3 @@
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
 - website-second-set-conditions-per-plan.md: What the architect asked of each of the eight website plans of poll 82 before they were written: newsletter, appointment link, map, customer value, referral, wholesale, event tickets, courses
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
-- workspace-interface-details.md: Plan workspace-interface, the rules a drawing cannot show: which number a row's pill holds, muted channels, the join row, Mark all as read, the tasks count, the keys' edges, the New line, the foot
-- workspace-interface-list.md: Plan workspace-interface, the list in words (boards L1 to L3): rows and their marks, the All and Unread filter, Mark all as read, the tools dock (never folded) and More, the keys
-- workspace-interface-screens.md: Plan workspace-interface, the screens in words (boards C1, S1 to S3): one bar for every Workspace screen, where each screen's controls go, the empty screen, the panel's foot, the New line
-- workspace-interface-steps-2.md: Plan workspace-interface, steps WI4 to WI9 (the screen line): the panel's foot and top bar, each screen's bar, the New line, close-out; what holds for every step, the order
-- workspace-interface-steps.md: Plan workspace-interface, steps WI1 to WI3 (the list line): rows and marks, the tools dock and the tasks count, Unread with Mark all as read and the keys; how a step is checked
-- workspace-interface.md: Plan (owner 2026-11-22): the Workspace's interface improved: the list in the main menu redrawn (tools dock, Unread filter, row marks, keys), one bar for its screens, the panel's foot, a New line
