@@ -523,11 +523,13 @@ function pg_ltd_closed_figures($censuses, $styles, $designs)
  * The components a page places are read once each, as the walk meets them.
  *
  * @return array  'censuses' (page id => pg_classic_closed_census()),
- *                'designs' (int)
+ *                'designs' (int), 'pages' (page id => its design's id),
+ *                'components' (id => decoded tree, null when unreadable:
+ *                the ones the pages place)
  */
 function pg_ltd_closed_measure()
 {
-    $out = array('censuses' => array(), 'designs' => 0);
+    $out = array('censuses' => array(), 'designs' => 0, 'pages' => array(), 'components' => array());
     if (!pg_multi_page_design_ready() || !pg_style_framework_ready()) return $out;
     $legacy = array();
     foreach ((array)db_items("SELECT style_id FROM style WHERE style_layout = 'visual_designer' AND style_framework = 'legacy'") as $r) {
@@ -566,7 +568,9 @@ function pg_ltd_closed_measure()
             }
         }
         $out['censuses'][(int)$r['page_id']] = pg_classic_closed_census($tree, $components);
+        $out['pages'][(int)$r['page_id']] = $style;
     }
+    $out['components'] = $components;
     return $out;
 }
 
