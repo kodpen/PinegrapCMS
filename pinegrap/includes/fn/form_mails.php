@@ -86,7 +86,8 @@ function pg_cf_form_mails_plan(array $settings, array $mail)
 /**
  * The administrator addresses the chosen options of a pick list, radio
  * button or check box add, in the order found, each once. An option may
- * hold several, separated by commas. Pure.
+ * hold several, separated by commas; an empty one between commas is
+ * skipped. Pure.
  *
  * @param string[] $option_addresses form_field_options.email_address values
  * @return string[]
@@ -99,7 +100,7 @@ function pg_cf_option_admin_addresses(array $option_addresses)
         foreach (explode(',', (string) $value) as $address) {
             $address = trim($address);
 
-            if (!in_array($address, $addresses, true)) {
+            if (($address !== '') && !in_array($address, $addresses, true)) {
                 $addresses[] = $address;
             }
         }

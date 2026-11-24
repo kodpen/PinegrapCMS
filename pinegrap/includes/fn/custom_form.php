@@ -5651,6 +5651,54 @@ function pg_cf_throttle_log($row)
 }
 
 /**
+ * Whether a posted value is longer than the field's maximum length, counted
+ * as the browser counts its maxlength: letters, not bytes, and a line break
+ * once (a text area posts it as CRLF). Pure.
+ *
+ * @param mixed $value     the posted value; a list of choices is never too long
+ * @param int   $maxlength form_fields.maxlength, 0 for no limit
+ * @return bool
+ */
+function pg_cf_value_too_long($value, $maxlength)
+{
+    $maxlength = (int) $maxlength;
+
+    if (($maxlength <= 0) || is_array($value)) {
+        return false;
+    }
+
+    return mb_strlen(str_replace("\r\n", "\n", (string) $value), 'UTF-8') > $maxlength;
+}
+
+/**
+ * The file upload fields the form did not draw for this visitor: an office
+ * use only field outside staff's edit mode, and a field the form dropped
+ * (the SMS question it could not ask). A file posted for one anyway is no
+ * answer, and the validation of what was drawn never saw it. Pure.
+ *
+ * @param array $fields          form_fields rows (id, type, office_use_only), keyed as read
+ * @param bool  $office_use_only whether office use only fields were drawn
+ * @param array $dropped         keys of $fields the form dropped
+ * @return string[] field ids
+ */
+function pg_cf_undrawn_upload_ids(array $fields, $office_use_only, array $dropped)
+{
+    $ids = array();
+
+    foreach ($fields as $key => $field) {
+        if (($field['type'] ?? '') !== 'file upload') {
+            continue;
+        }
+
+        if (isset($dropped[$key]) || (!$office_use_only && ((int) ($field['office_use_only'] ?? 0) === 1))) {
+            $ids[] = (string) $field['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
  * Copies a custom form's uploaded file to where it is kept.
  *
  * Only a whole upload is copied: an error code (a file over
