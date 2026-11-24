@@ -285,12 +285,13 @@ function ws_claude_connection_card_html($v)
 /**
  * The routine's fields posted from Claude's page on Connections, in the
  * shape ws_claude_settings_save() takes: the switch, the application and
- * the summary as stored, so the save writes only the address and the token.
- * Pure.
+ * the summary as stored, so the save writes only the address and the token;
+ * app_kept says the application is passed on, not chosen, so a linked one
+ * deleted in Application Access does not refuse the save. Pure.
  *
  * @param array $source $_POST
  * @param array $config ws_claude_config()
- * @return array as ws_claude_settings_input()
+ * @return array as ws_claude_settings_input(), with app_kept true
  */
 function ws_claude_routine_input($source, $config)
 {
@@ -301,10 +302,29 @@ function ws_claude_routine_input($source, $config)
     return array(
         'enabled'         => !empty($config['enabled']),
         'app_id'          => (int) ($config['app_id'] ?? 0),
+        'app_kept'        => true,
         'routine_url'     => is_scalar($url) ? trim((string) $url) : '',
         'token'           => is_scalar($token) ? trim((string) $token) : '',
         'token_clear'     => is_scalar($clear) && ((string) $clear !== '') && ((string) $clear !== '0'),
         'summary_hour'    => null,
         'summary_channel' => 0,
     );
+}
+
+/**
+ * What a Save on Claude's page does: the input ws_claude_settings_save()
+ * takes, and whether it is written at all. A Save that changes neither the
+ * address nor the token writes nothing, as a write clears the routine's
+ * last error and the wait it was given (the row's save keeps the same
+ * rule). Pure.
+ *
+ * @param array $source $_POST
+ * @param array $config ws_claude_config()
+ * @return array input (ws_claude_routine_input()), write (bool)
+ */
+function ws_claude_routine_decision($source, $config)
+{
+    $input = ws_claude_routine_input($source, $config);
+
+    return array('input' => $input, 'write' => ws_claude_settings_changed($input, (array) $config + array('enabled' => false, 'app_id' => 0, 'routine_url' => ''), null));
 }
