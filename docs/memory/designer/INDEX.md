@@ -275,6 +275,7 @@
 - design-theme-look-drawing.md: The small drawing of a look (pg_design_look_drawing() and its twin _sdLookDrawing()): what it draws from the preview row, where it shows, the twin test
 - design-theme-pale-colours.md: A palette colour too pale for a white page (Silver, Electric Blue's second colour): outline button border, focus ring, tick, radio dot and switch knob drawn in its readable shade
 - design-theme-product-looks.md: The looks and palettes for bold product pages (display, precision; onyx, silver, electric): values, why the names, the catalog test
+- design-variables-model.md: A design's variables (DV1, 2026.11.0): the list, defaults from look and palette, the variables stylesheet with its pg-theme head, the reader, the text-on-surface contrast check
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
 - designer-assistant-apply-answers.md: Assistant Apply's "Unexpected token '<'" (#8970): its cause, class names sent as lists (#9093), what an operation's fields accept, how the Assistant actions keep their answer JSON (#9093)
@@ -588,6 +589,7 @@
 - migration-carries-designs.md: Migration screen Designs switch (LD4): get_designs via the template export, managed files, install with target ids, skipped bin/drafts/Workspace folders, what stays behind [decision: decisions-made-product-21.md]
 - multi-page-design-model.md: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
+- new-design-window.md: The New design window (#sdStartModal) on the Page Design Studio home: the list of starts, each start's pane, the foot's button, ?start=, and how a later start is added
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
 - no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image on the page and the canvas (#9199): an icon without words; its address in data-pg-fallback, never in the onerror code
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
@@ -722,6 +724,7 @@
 - site-search-translated.md: What the site search reads on a page served in another language (pages, products and groups, form records, a list's own search box), the words and ı/i, the order, the fences, and what it leaves out [decision: decisions-made-product-50.md]
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
+- sketch-reader.md: The Prototype view's sketch reader (assets/js/pg_sketch_reader.js, window.PGSketchReader): boxes drawn in a frame in, sections with kinds and unsure marks out; its input, rules, output and test
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.
 - style-complete.md: pg_style_complete.js: smart completion in the designer code editors (attributes, CSS values, var(--…) tokens, Bootstrap JS API), no duplicate options, tests
 - style-copy-delete-binned-pages.md: Pages in the Recycle Bin and a style: a design's copy leaves them out, and they do not keep a classic style from going to the bin once the bin holds styles
