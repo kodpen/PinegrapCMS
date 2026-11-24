@@ -497,11 +497,11 @@ function pg_file_image_dimensions($file)
     }
 
     // Never fetched from the object store here: a list measures many files.
+    // The displayed size, EXIF orientation applied, as every writer of the
+    // pixels reports it (pg_image_display_size()).
     $path = function_exists('pg_file_present_path') ? pg_file_present_path($file) : FILE_DIRECTORY_PATH . '/' . $file['name'];
-    $size = ($path !== '') ? @getimagesize($path) : false;
 
-    $width  = isset($size[0]) ? (int) $size[0] : 0;
-    $height = isset($size[1]) ? (int) $size[1] : 0;
+    list($width, $height) = ($path !== '') ? pg_image_display_size($path) : array(0, 0);
 
     if (($width > 0) && ($height > 0) && isset($file['id'])) {
         db("UPDATE files
