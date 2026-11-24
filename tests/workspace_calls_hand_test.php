@@ -78,11 +78,11 @@ function test_workspace_calls_hand_present_names_the_hands()
 	$call = array('id' => 5, 'channel_id' => 7, 'kind' => 'voice', 'started_by' => 3, 'started_at' => 1700000000, 'state' => 'live');
 	$members = array(array('id' => 10, 'user_id' => 3, 'guest_id' => 0, 'joined_at' => 1700000000));
 
-	pg_assert_same(array(10), ws_call_present($call, $members, array(), 0, array('10'))['hands'], 'the raised hands\' member ids');
+	pg_assert_same(array(10), ws_call_present($call, $members, array(), array(), array('10'))['hands'], 'the raised hands\' member ids');
 	pg_assert_same(array(), ws_call_present($call, $members, array())['hands'], 'none: an empty list');
 
 	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_calls.php');
-	pg_assert_false(isset(ws_api_call_present(ws_call_present($call, $members, array(), 0, array(10)))['call']['hands']), 'the API\'s call route does not name the hands');
+	pg_assert_false(isset(ws_api_call_present(ws_call_present($call, $members, array(), array(), array(10)))['call']['hands']), 'the API\'s call route does not name the hands');
 }
 
 function test_workspace_calls_hand_texts()

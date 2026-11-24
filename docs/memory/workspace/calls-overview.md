@@ -4,7 +4,7 @@ description: Start here for Workspace voice and video calls (plan CL1-CL8, close
 ---
 
 ## What are Workspace calls?
-- Voice and video calls in the Workspace, browser to browser (WebRTC, a mesh of every pair), between two people, a channel's members (four at most) and a guest in its room; screen sharing one at a time. Owner (2026-11-20): asked in agent channel message 9832, scope poll 157 ("Aşamalı"), tables poll 158 (`workflow/decisions-made-workspace-40.md`, `workflow/decisions-made-schema-29.md`).
+- Voice and video calls in the Workspace, browser to browser (WebRTC, a mesh of every pair), between two people, a channel's members (four at most) and a guest in its room; screen sharing, several members at once (CN4). Owner (2026-11-20): asked in agent channel message 9832, scope poll 157 ("Aşamalı"), tables poll 158 (`workflow/decisions-made-workspace-40.md`, `workflow/decisions-made-schema-29.md`).
 - About one participant in ten needs a relay (TURN) the site's owner enters; a larger meeting would be an outside meeting service in a plan of its own.
 
 ## Which rules does every change keep?

@@ -6,13 +6,15 @@
  * that rings the other person of a conversation of two (Accept, Decline),
  * and the call window that stays at the bottom of the screen while the
  * person moves between channels: a grid of up to four, the one speaking
- * marked; mute, the camera, sharing one's screen (one member at a time),
- * the microphone, camera and speaker in use (remembered in this browser
- * for the next call, with whether the person was muted or had the camera
- * off), raising a hand, hang up. A tile shows a raised hand and a weak
- * connection; the person speaking while muted is told so. Another member's shared
- * screen is shown large in the same window (the stage), the tiles beside
- * it, or under it on a narrow screen; it can be made smaller or full screen.
+ * marked; mute, the camera, sharing one's screen (several members at once,
+ * one share each), the microphone, camera and speaker in use (remembered
+ * in this browser for the next call, with whether the person was muted or
+ * had the camera off), raising a hand, hang up. A tile shows a raised hand
+ * and a weak connection; the person speaking while muted is told so.
+ * Another member's shared screen is shown large in the same window (the
+ * stage), the tiles beside it, or under it on a narrow screen, the other
+ * shares among them as tiles a click puts on the stage; it can be made
+ * smaller or full screen.
  *
  * Sound and picture go from browser to browser (WebRTC). The site carries
  * only who is in the call and the browsers' connection messages
@@ -22,7 +24,7 @@
  * higher member id) makes the offer, so both never offer at once. Every
  * connection carries a line for a shared screen from its first offer, so a
  * share only puts the screen's track on it and needs no new offer; the
- * server says who shares (the call part's sharer). assets/js/workspace.js
+ * server says who shares (the call part's sharers). assets/js/workspace.js
  * draws the head and hands the rings of its look (ws_sync's rings) in here
  * with its own helpers. The guest page (assets/js/workspace_guest.js) shows
  * its room's running call with a Join button only (joinButton()): a guest
@@ -426,27 +428,33 @@
         return (sorted.length > at) ? sorted[at] : -1;
     }
 
-    // The share button against the call's sharer: shown where the browser
-    // can share a screen, pressed while this member shares, held while
-    // another member does (one share at a time).
-    function shareState(sharer, me, can) {
+    // The share button against the call's sharers: shown where the browser
+    // can share a screen, pressed while this member shares; others' shares
+    // never hold it (several at once, one each).
+    function shareState(sharers, me, can) {
         if (!can) {
-            return { show: false, on: false, busy: false };
+            return { show: false, on: false };
         }
 
-        return { show: true, on: !!sharer && (sharer === me), busy: !!sharer && (sharer !== me) };
+        return { show: true, on: (sharers || []).indexOf(me) >= 0 };
     }
 
-    // What the window shows of a share: the stage while another member
+    // What the window shows of the shares: the stage while another member
     // shares (large, or card-sized when made smaller), the notice while
     // this member shares, and the labels of the share area's two buttons.
-    function stageState(sharer, me, small, can, full) {
-        var showing = !!sharer && (sharer !== me);
-        var share = shareState(sharer, me, can);
+    // The stage holds the share the viewer chose (chosen), else the first
+    // other one; the other shares go to the rail. One's own is on neither.
+    function stageState(sharers, me, small, can, full, chosen) {
+        var others = (sharers || []).filter(function (id) { return id !== me; });
+        var main = (others.indexOf(chosen) >= 0) ? chosen : (others[0] || 0);
+        var showing = !!main;
+        var share = shareState(sharers, me, can);
 
         return {
             classes: { 'is-showing': showing, 'is-stage': showing && !small, 'is-self-sharing': share.on },
             share: share,
+            main: main,
+            rail: others.filter(function (id) { return id !== main; }),
             size: small ? { label: 'call_larger', icon: 'bi-arrows-angle-expand' } : { label: 'call_smaller', icon: 'bi-arrows-angle-contract' },
             full: full ? { label: 'call_full_exit', icon: 'bi-fullscreen-exit' } : { label: 'call_full_screen', icon: 'bi-fullscreen' }
         };
@@ -903,17 +911,17 @@
             mine.names[member.member_id] = member.name || '';
         });
 
-        mine.sharer = part.call.sharer || 0;
+        mine.sharers = (part.call.sharers || []).map(Number);
         mine.hands = part.call.hands || [];
 
         // The server no longer holds this member's share (it lapsed): the
         // screen stops. A read sent before the share was written is not
         // taken for that.
-        if (mine.sharing && (mine.sharer !== mine.memberId)) {
+        if (mine.sharing && (mine.sharers.indexOf(mine.memberId) < 0)) {
             if ((Date.now() - mine.sharedAt) > SHARE_SETTLE) {
                 shareStop(mine, false);
             } else {
-                mine.sharer = mine.memberId;
+                mine.sharers.push(mine.memberId);
             }
         }
 
@@ -1127,7 +1135,7 @@
     }
 
     // Starts sharing: the browser lets the person choose a screen, a window
-    // or a tab; the server is asked first, as one member shares at a time.
+    // or a tab; the server is told before the screen goes out.
     function shareStart(mine) {
         if (mine.sharing || mine.shareAsking) {
             return;
@@ -1159,7 +1167,7 @@
                 mine.sharing = true;
                 mine.sharedAt = Date.now();
                 mine.screenTrack = track;
-                mine.sharer = mine.memberId;
+                mine.sharers = (mine.sharers || []).filter(function (id) { return id !== mine.memberId; }).concat([mine.memberId]);
                 // The browser's own "Stop sharing" ends it as the button does.
                 track.onended = function () { shareStop(mine, true); };
                 Object.keys(mine.peers).forEach(function (id) { screenOn(mine.peers[id], track); });
@@ -1167,9 +1175,9 @@
             }, function (error) {
                 mine.shareAsking = false;
                 track.stop();
-                var said = (error && error.message) || t('call_share_busy');
-
-                h().toast(said, 'warning');
+                if (error && error.message) {
+                    h().toast(error.message, 'warning');
+                }
             });
         }).catch(function () {
             // The person closed the browser's chooser: nothing is shared.
@@ -1184,9 +1192,7 @@
         mine.sharing = false;
         mine.screenTrack = null;
 
-        if (mine.sharer === mine.memberId) {
-            mine.sharer = 0;
-        }
+        mine.sharers = (mine.sharers || []).filter(function (id) { return id !== mine.memberId; });
 
         Object.keys(mine.peers).forEach(function (id) { screenOn(mine.peers[id], null); });
 
@@ -1214,8 +1220,8 @@
         }
 
         var full = !!document.fullscreenElement && (document.fullscreenElement === mine.shareArea);
-        var state = stageState(mine.sharer || 0, mine.memberId, !!mine.small, !!mine.shareButton, full);
-        var held = state.classes['is-showing'] ? mine.peers[mine.sharer] : null;
+        var state = stageState(mine.sharers || [], mine.memberId, !!mine.small, !!mine.shareButton, full, mine.watching || 0);
+        var held = state.main ? mine.peers[state.main] : null;
         var screen = (held && held.screen) || null;
 
         // Leaving the stage leaves full screen too.
@@ -1233,7 +1239,7 @@
             mine.shareVideo.srcObject = screen;
         }
 
-        mine.shareName.textContent = held ? t('call_sharing', mine.names[mine.sharer] || '') : '';
+        mine.shareName.textContent = held ? t('call_sharing', mine.names[state.main] || '') : '';
 
         if (held) {
             mine.shareName.insertBefore(h().icon('bi-display'), mine.shareName.firstChild);
@@ -1247,12 +1253,68 @@
         if (mine.shareButton) {
             mine.shareButton.setAttribute('aria-pressed', state.share.on ? 'true' : 'false');
             mine.shareButton.classList.toggle('is-active', state.share.on);
-            mine.shareButton.disabled = state.share.busy;
-            iconSwap(mine.shareButton, state.share.on ? 'bi-display-fill' : 'bi-display',
-                state.share.busy ? t('call_sharing', mine.names[mine.sharer] || '') : t(state.share.on ? 'call_share_stop' : 'call_share'));
+            iconSwap(mine.shareButton, state.share.on ? 'bi-display-fill' : 'bi-display', t(state.share.on ? 'call_share_stop' : 'call_share'));
         }
 
+        railDraw(mine, state.rail);
         names();
+    }
+
+    // The other shares as tiles at the rail's end, after the members'
+    // tiles: the screen (never cut) and its sharer's name by a screen icon;
+    // a click puts it on the stage, the one there taking its place here.
+    function railDraw(mine, rail) {
+        var el = h().el;
+
+        mine.screens = mine.screens || {};
+        Object.keys(mine.screens).forEach(function (id) {
+            if (rail.indexOf(Number(id)) < 0) {
+                mine.screens[id].node.remove();
+                delete mine.screens[id];
+            }
+        });
+
+        rail.forEach(function (id) {
+            var held = mine.screens[id];
+
+            if (!held) {
+                var node = el('button', 'ws-call-tile is-screen');
+                var video = el('video', 'ws-call-video');
+
+                node.type = 'button';
+                video.autoplay = true;
+                video.playsInline = true;
+                video.muted = true;
+                node.appendChild(video);
+                held = { node: node, video: video, name: el('div', 'ws-call-tile-name'), text: null };
+                node.appendChild(held.name);
+                node.addEventListener('click', function () {
+                    mine.watching = id;
+                    stageDraw(mine);
+                });
+                mine.screens[id] = held;
+            }
+
+            // In the rail's order, after the members' tiles.
+            mine.grid.appendChild(held.node);
+
+            var screen = (mine.peers[id] && mine.peers[id].screen) || null;
+            var text = mine.names[id] || '';
+
+            if (held.video.srcObject !== screen) {
+                held.video.srcObject = screen;
+            }
+
+            if (held.text !== text) {
+                held.text = text;
+                held.name.textContent = text;
+                held.name.insertBefore(h().icon('bi-display'), held.name.firstChild);
+                held.node.setAttribute('aria-label', t('call_share_show', text));
+                held.node.title = t('call_share_show', text);
+            }
+        });
+
+        layout(mine);
     }
 
     // The share area: the shared screen (never cut: contain), the sharer's
@@ -1489,7 +1551,8 @@
             sinkSet(video, mine.speaker);
         }
 
-        mine.grid.appendChild(node);
+        // Before the other shares' tiles, which close the rail.
+        mine.grid.insertBefore(node, mine.grid.querySelector('.is-screen'));
         layout(mine);
 
         return held;
@@ -1588,7 +1651,8 @@
     }
 
     function layout(mine) {
-        var count = mine.grid ? mine.grid.children.length : 0;
+        // The members' tiles only: the other shares' tiles are not people.
+        var count = mine.grid ? mine.grid.querySelectorAll('.ws-call-tile:not(.is-screen)').length : 0;
 
         // The stylesheet lays the tiles out by their number.
         if (mine.grid) {
@@ -1623,7 +1687,7 @@
 
         label(mine.selfTile, t('call_you'), !!mine.sharing);
         Object.keys(mine.peers).forEach(function (id) {
-            label(mine.peers[id].tile, mine.names[id] || '', Number(id) === mine.sharer);
+            label(mine.peers[id].tile, mine.names[id] || '', (mine.sharers || []).indexOf(Number(id)) >= 0);
         });
     }
 

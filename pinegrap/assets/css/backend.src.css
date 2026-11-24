@@ -20727,6 +20727,24 @@ a.ws-chip-message:hover,
 .ws-call.is-showing .ws-call-stage[data-count] .ws-call-tile.is-self .ws-call-tile-name {
   display: block;
 }
+/* Another share at the rail's end: a button that puts it on the stage;
+   its screen shows in voice calls too and is never cut. */
+.ws-call-tile.is-screen {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ws-call-tile.is-screen:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
+}
+.ws-call-tile.is-screen .ws-call-video {
+  visibility: visible;
+  object-fit: contain;
+}
 .ws-call.is-stage {
   width: min(72rem, calc(100vw - 2rem));
   height: min(45rem, calc(100vh - 2rem));
