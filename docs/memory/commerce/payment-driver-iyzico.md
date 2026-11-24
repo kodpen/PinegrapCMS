@@ -8,8 +8,8 @@ description: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their subm
 - Card: `authorize` (direct payment or 3-D Secure start), `complete` (the 3-D Secure return), `refund`, `cancel`, and the store-run subscription operations (`subscriptions-iyzico.md`); capabilities installments, partial_refund, threeds, and `recurring` store while its one field (stored-card renewals) is on. PWI: `authorize`, `complete`, `refund`, `cancel`; installments, partial_refund.
 - Requests carry the gateway code's values: CreatePaymentRequest (instalment price from RetrieveInstallmentInfo at the BIN; protected currency converts every amount at today's rate), CreateThreedsPaymentRequest, PWI initialize (base currency), AmountBaseRefund (view_order.php, fn/returns.php), Cancel (process_order_cancellation(), the amount check's void). Same visitor sentences and log lines, except a refused card payment (`payment-iyzico-refusals.md`).
 
-## Why do the basket's items add up to the price?
-- iyzico refuses a basket whose items do not sum to `price`. Under a protected currency the price is the subtotal converted as a whole, so `pg_payment_iyzico_basket($lines, $rate, $converted)` shares that converted subtotal over the lines by their base totals (`pg_tax_spread()`, largest remainder). Before, each unit was converted and rounded on its own: 2 x 39.95 + 15.00 at 0.0297 came to 2.83 against a price of 2.82 (bug hunt price rounding).
+## How is the basket built?
+- `pg_payment_iyzico_basket()`: the items always add up to `price` (`payment-iyzico-basket.md`).
 
 ## Why is a card refund refused with a protected currency?
 - The card is charged in it at the day's rate; AmountBaseRefund reads its price in the payment's currency, so 20.00 TRY would go back as 20.00 USD. `pg_payment_iyzico_card_refund_with()` refuses before sending (#1415): refund in the iyzico panel, then record it on the return (view_return.php, "Record a refund made another way"). The order screen cannot (its "Mark refund as processed" only clears a cancelled order's flag).
