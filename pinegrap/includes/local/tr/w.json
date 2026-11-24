@@ -115,6 +115,7 @@
     "Waitlist": "Yedek listeye al",
     "Waitlisted": "Bekleme listesinde",
     "Waits for the database upgrade": "Veritabanı güncellemesini bekliyor",
+    "Waits for the database upgrade.": "Veritabanı güncellemesini bekliyor.",
     "Waits until {var:1}, then the boxes after it start.": "{var:1} tarihine kadar bekler, sonra ardından gelen kutular başlar.",
     "Waits until {var:1}.": "{var:1} saatine kadar bekliyor.",
     "Waits {var:1}, then the boxes after it start.": "{var:1} bekler, sonra sonraki kutular başlar.",

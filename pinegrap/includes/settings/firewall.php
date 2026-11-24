@@ -148,6 +148,27 @@ $firewall_parts['waf'] = array('html' => '
 // ── Limits ──
 // Rate limiting, the in-flight cap and the automatic bans: every limit the
 // firewall puts on one address. firewall.save.php writes them as before.
+// Under them, the limits Accounts and sign-in keeps as value rows: shown
+// here, saved there (a category writes only its own columns).
+$firewall_limit_values = '';
+
+foreach (pg_settings_limits_overview(
+    array('ready' => !empty($login_throttle_ready), 'on' => isset($login_throttle) && $login_throttle == 1,
+        'attempts' => isset($login_throttle_attempts) ? $login_throttle_attempts : 0, 'minutes' => isset($login_throttle_minutes) ? $login_throttle_minutes : 0,
+        'lockout' => isset($login_throttle_lockout) ? $login_throttle_lockout : 0),
+    array('ready' => !empty($form_limits_ready), 'ip_hour' => isset($form_limit_ip_hour) ? $form_limit_ip_hour : 0,
+        'recipient_day' => isset($form_limit_recipient_day) ? $form_limit_recipient_day : 0, 'domain_hour' => isset($form_limit_domain_hour) ? $form_limit_domain_hour : 0)) as $firewall_limit_value) {
+    $firewall_limit_values .= '
+                            <div class="pg-value-row">
+                                <span class="pg-icon-tile pg-tone-' . $firewall_limit_value['tone'] . '" aria-hidden="true"><i class="bi ' . $firewall_limit_value['icon'] . '"></i></span>
+                                <span class="pg-value-row-text"><span class="pg-value-row-name">' . h($firewall_limit_value['name']) . '</span><span class="pg-value-row-line">' . h($firewall_limit_value['line']) . '</span></span>'
+        . ($firewall_limit_value['href'] !== ''
+            ? '
+                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($firewall_limit_value['href']) . '" aria-label="' . h(lang('Change') . ': ' . $firewall_limit_value['name']) . '">' . h(lang('Change')) . '</a>'
+            : '') . '
+                            </div>';
+}
+
 $firewall_parts['limits'] = array('html' => '
     <div id="pgset-limits" class="pg-set-card">
         <div class="card">
@@ -225,6 +246,12 @@ $firewall_parts['limits'] = array('html' => '
                         </label>
                         <div class="form-text">' . lang('An address banned again after its ban ran out is banned four times as long each time, up to this ceiling. 10080 is seven days.') . '</div>
                     </div>' : '') . '
+                    <div class="col-12">
+                        <div class="pg-group-label mb-1">' . lang('Limits kept in Accounts and sign-in') . '</div>
+                        <div class="pg-card-inner">' . $firewall_limit_values . '
+                        </div>
+                        <div class="pg-field-help">' . h(lang('Each is set and saved in Accounts and sign-in; Change opens its row there.')) . '</div>
+                    </div>
                 </div>
             </div>
         </div>
