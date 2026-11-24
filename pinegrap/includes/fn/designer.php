@@ -4708,6 +4708,35 @@ function pg_scroller_inject($content, $src = null)
 }
 
 /**
+ * Whether $html holds a block whose script a page pass brings (the theme
+ * switcher, a sideways row, Listen, a map of places, a course or Notify me
+ * block, an interaction, a tooltip, popover or tabs, an in-browser summary,
+ * a favourite heart, a booking widget, a rich-text field).
+ *
+ * A common region made a shared component and a designed pop-up are drawn
+ * after get_page_content.php has run those passes, so their markup is asked
+ * this and, when it says yes, the passes run again; each adds its file only
+ * once. A marker matched here that a pass then turns down costs nothing but
+ * that pass's own check. Pure.
+ *
+ * @param string $html markup drawn after the page's script passes
+ * @return bool
+ */
+function pg_block_scripts_needed($html)
+{
+    $html = (string) $html;
+    if ($html === '') return false;
+
+    foreach (array('data-pg-theme-switcher', 'data-pg-scroller', 'data-pg-listen', 'data-pg-map', 'data-pg-course',
+                   'data-pg-push', 'data-pg-fx', 'data-pg-ai-summarize', 'data-pg-wishlist', 'data-pg-booking',
+                   'data-pg-rich-text') as $marker) {
+        if (stripos($html, $marker) !== false) return true;
+    }
+
+    return (bool) preg_match(pg_bs_tips_pattern(), $html);
+}
+
+/**
  * Emit Fancybox v6 (Fancyapps) assets exactly once per request.
  *
  * Fancybox v6 replaces the legacy pg_lightbox custom build for the new

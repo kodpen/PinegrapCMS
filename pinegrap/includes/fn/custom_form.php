@@ -3169,6 +3169,13 @@ function pg_cf_id_count($html, $id)
     return (int)preg_match_all('~\s(?i:id)\s*=\s*(?:"' . $q . '"|\'' . $q . '\'|' . $q . '(?=[\s/>]))~', (string)$html);
 }
 
+// The comment that stands before the rich-text editor's code on a page, so
+// a second pg_cf_rich_text_inject() finds it there.
+function pg_cf_rich_text_marker()
+{
+    return '<!--pg-rich-text-editor-->';
+}
+
 /**
  * Bring the rich-text editor to a drawn page that has rich-text text areas.
  *
@@ -3182,10 +3189,13 @@ function pg_cf_rich_text_inject($content)
 {
     $content = (string)$content;
     if (strpos($content, 'data-pg-rich-text') === false) return $content;
+    // Once a page: the passes run again for a common region made a shared
+    // component and for a designed pop-up, both drawn after them.
+    if (strpos($content, pg_cf_rich_text_marker()) !== false) return $content;
     $ids = pg_cf_rich_text_ids($content);
     if (!$ids) return $content;
 
-    $code = get_wysiwyg_editor_code($ids) . "\n";
+    $code = pg_cf_rich_text_marker() . get_wysiwyg_editor_code($ids) . "\n";
 
     // The last </body>: an earlier one can belong to markup the page shows
     // as text or carries in an attribute.

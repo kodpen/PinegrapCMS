@@ -650,14 +650,126 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = _expand_custom_php($content);
     }
 
-    // ── Theme switcher ──────────────────────────────────────────────────────────
-    // A theme switcher carries no script of its own. Checked once every shared
-    // component and widget is drawn in, so a switcher in a shared component -
-    // of this design or of another one - brings the file as surely as one
-    // placed on the page (pg_theme_switcher_inject()). Not in an e-mail.
-    if (!$email && strpos($content, 'data-pg-theme-switcher') !== false && function_exists('pg_theme_switcher_inject')) {
-        $content = pg_theme_switcher_inject($content);
-    }
+    // ── Block scripts ───────────────────────────────────────────────────────────
+    // Blocks carry markers and no script; the passes below bring each file
+    // once everything is drawn in. A common region made a shared component
+    // and a designed pop-up are drawn later, so the passes run again for them
+    // (pg_block_scripts_needed()); each adds its file only once.
+    $pg_block_scripts = function ($content) use ($email, $page_id, $style_layout) {
+        // ── Theme switcher ──────────────────────────────────────────────────────
+        // A theme switcher carries no script of its own. Checked once every shared
+        // component and widget is drawn in, so a switcher in a shared component -
+        // of this design or of another one - brings the file as surely as one
+        // placed on the page (pg_theme_switcher_inject()). Not in an e-mail.
+        if (!$email && strpos($content, 'data-pg-theme-switcher') !== false && function_exists('pg_theme_switcher_inject')) {
+            $content = pg_theme_switcher_inject($content);
+        }
+
+        // ── Sideways rows ───────────────────────────────────────────────────────
+        // The previous / next buttons of a row marked data-pg-scroller carry no
+        // script either; the row brings it (pg_scroller_inject()), checked once
+        // everything is drawn in. Not in an e-mail.
+        if (!$email && stripos($content, 'data-pg-scroller') !== false && function_exists('pg_scroller_inject')) {
+            $content = pg_scroller_inject($content);
+        }
+
+        // ── Listen ──────────────────────────────────────────────────────────────
+        // A "Listen" block carries data-pg-listen and no script; the page brings
+        // the script and its labels (pg_listen_inject()), checked once everything
+        // is drawn in. The module loads only for such a page. Not in an e-mail.
+        if (!$email && stripos($content, 'data-pg-listen') !== false) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/listen.php');
+            $content = pg_listen_inject($content);
+        }
+
+        // ── Map of places ───────────────────────────────────────────────────────
+        // The block carries data-pg-map and no script; the page brings the script,
+        // its texts and the page's id (pg_place_list_inject()), and the script
+        // asks places.php for the places. The module loads only for such a page.
+        if (!$email && stripos($content, 'data-pg-map') !== false) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
+            $content = pg_place_list_inject($content, (int) $page_id);
+        }
+
+        // ── Course blocks ───────────────────────────────────────────────────────
+        // The learner's blocks carry data-pg-course, no script, and are hidden;
+        // while the "Courses" switch is on the page brings the script and its
+        // settings (pg_course_blocks_inject()), and the script asks
+        // course_action.php for the member's view. The module loads only for
+        // such a page. Not in an e-mail.
+        if (!$email && stripos($content, 'data-pg-course') !== false) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/course_blocks.php');
+            $content = pg_course_blocks_inject($content, (int) $page_id);
+        }
+
+        // ── Notify me ───────────────────────────────────────────────────────────
+        // A "Notify me" block carries data-pg-push, no script, and is hidden; while
+        // visitor notifications are on the page brings the script and its settings
+        // (pg_site_push_block_inject()), checked once everything is drawn in. The
+        // module loads only for such a page. Not in an e-mail.
+        if (!$email && stripos($content, 'data-pg-push') !== false) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_block.php');
+            $content = pg_site_push_block_inject($content);
+        }
+
+        // ── Interactions ────────────────────────────────────────────────────────
+        // A node with an interaction carries data-pg-fx attributes, no script;
+        // the page brings the head style and the script (pg_fx_inject()),
+        // checked once everything is drawn in. Not in an e-mail.
+        if (!$email && stripos($content, 'data-pg-fx') !== false && function_exists('pg_fx_inject')) {
+            $content = pg_fx_inject($content);
+        }
+
+        // ── Tooltips and popovers ───────────────────────────────────────────────
+        // Bootstrap starts neither by itself: a visual editor page holding a
+        // tooltip (the panel's Tooltip option) or a popover gets the small script
+        // that does (pg_bs_tips_inject()), checked once everything is drawn in.
+        // A page with tabs gets it too: it shows the tab holding the address's
+        // anchor, which Bootstrap does not.
+        // Classic pages start their own. Not in an e-mail.
+        if (!$email && $style_layout === 'visual_designer' && function_exists('pg_bs_tips_inject')) {
+            $content = pg_bs_tips_inject($content);
+        }
+
+        // ── In-browser summary ──────────────────────────────────────────────────
+        // A form item view's button bound to the ai_summarize action brings the
+        // script that summarizes the record with the browser's built-in AI
+        // (pg_ai_summary_inject()), checked once everything is drawn in, the way
+        // the theme switcher is. Not in an e-mail.
+        if (!$email && strpos($content, 'data-pg-ai-summarize') !== false && function_exists('pg_ai_summary_inject')) {
+            $content = pg_ai_summary_inject($content);
+        }
+
+        // ── Favourite hearts ────────────────────────────────────────────────────
+        // A catalog widget's heart (data-pg-wishlist) brings the script that
+        // fills it from the visitor's list and saves to it (pg_wishlist_inject()),
+        // checked once everything is drawn in. Not in an e-mail.
+        if (!$email && strpos($content, 'data-pg-wishlist') !== false && function_exists('pg_wishlist_inject')) {
+            $content = pg_wishlist_inject($content);
+        }
+
+        // ── Booking widget ──────────────────────────────────────────────────────
+        // A booking widget with services (data-pg-booking) brings its script
+        // (pg_booking_widget_inject()); its calendar comes with the site's date
+        // control, which the same attribute brings. Not in an e-mail.
+        if (!$email && strpos($content, 'data-pg-booking=') !== false && function_exists('pg_booking_widget_inject')) {
+            $content = pg_booking_widget_inject($content);
+        }
+
+        // ── Rich-text editor for designed forms ─────────────────────────────────
+        // A designed form's rich-text text areas carry data-pg-rich-text; one
+        // editor for all of them is loaded once everything is drawn in, so a
+        // second form and a form inside a shared component are covered
+        // (pg_cf_rich_text_inject()). Not in an e-mail, not in a background
+        // render (the SEO pass, the editor's Preview, the search index).
+        if (!$email && !pg_seo_rendering() && !(defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)
+            && strpos($content, 'data-pg-rich-text') !== false && function_exists('pg_cf_rich_text_inject')) {
+            $content = pg_cf_rich_text_inject($content);
+        }
+
+        return $content;
+    };
+    $content = $pg_block_scripts($content);
 
     // ── Colour mode ─────────────────────────────────────────────────────────────
     // The design's mode on <html>, with the few lines in <head> that let a
@@ -665,108 +777,6 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // in an e-mail.
     if (!$email && $pg_color_mode !== '') {
         $content = pg_design_color_mode_apply($content, $pg_color_mode);
-    }
-
-    // ── Sideways rows ───────────────────────────────────────────────────────────
-    // The previous / next buttons of a row marked data-pg-scroller carry no
-    // script either; the row brings it (pg_scroller_inject()), checked once
-    // everything is drawn in. Not in an e-mail.
-    if (!$email && stripos($content, 'data-pg-scroller') !== false && function_exists('pg_scroller_inject')) {
-        $content = pg_scroller_inject($content);
-    }
-
-    // ── Listen ──────────────────────────────────────────────────────────────────
-    // A "Listen" block carries data-pg-listen and no script; the page brings
-    // the script and its labels (pg_listen_inject()), checked once everything
-    // is drawn in. The module loads only for such a page. Not in an e-mail.
-    if (!$email && stripos($content, 'data-pg-listen') !== false) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/fn/listen.php');
-        $content = pg_listen_inject($content);
-    }
-
-    // ── Map of places ───────────────────────────────────────────────────────────
-    // The block carries data-pg-map and no script; the page brings the script,
-    // its texts and the page's id (pg_place_list_inject()), and the script
-    // asks places.php for the places. The module loads only for such a page.
-    if (!$email && stripos($content, 'data-pg-map') !== false) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/fn/place_list.php');
-        $content = pg_place_list_inject($content, (int) $page_id);
-    }
-
-    // ── Course blocks ───────────────────────────────────────────────────────────
-    // The learner's blocks carry data-pg-course, no script, and are hidden;
-    // while the "Courses" switch is on the page brings the script and its
-    // settings (pg_course_blocks_inject()), and the script asks
-    // course_action.php for the member's view. The module loads only for
-    // such a page. Not in an e-mail.
-    if (!$email && stripos($content, 'data-pg-course') !== false) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/fn/course_blocks.php');
-        $content = pg_course_blocks_inject($content, (int) $page_id);
-    }
-
-    // ── Notify me ───────────────────────────────────────────────────────────────
-    // A "Notify me" block carries data-pg-push, no script, and is hidden; while
-    // visitor notifications are on the page brings the script and its settings
-    // (pg_site_push_block_inject()), checked once everything is drawn in. The
-    // module loads only for such a page. Not in an e-mail.
-    if (!$email && stripos($content, 'data-pg-push') !== false) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_push_block.php');
-        $content = pg_site_push_block_inject($content);
-    }
-
-    // ── Interactions ────────────────────────────────────────────────────────────
-    // A node with an interaction carries data-pg-fx attributes, no script;
-    // the page brings the head style and the script (pg_fx_inject()),
-    // checked once everything is drawn in. Not in an e-mail.
-    if (!$email && stripos($content, 'data-pg-fx') !== false && function_exists('pg_fx_inject')) {
-        $content = pg_fx_inject($content);
-    }
-
-    // ── Tooltips and popovers ───────────────────────────────────────────────────
-    // Bootstrap starts neither by itself: a visual editor page holding a
-    // tooltip (the panel's Tooltip option) or a popover gets the small script
-    // that does (pg_bs_tips_inject()), checked once everything is drawn in.
-    // A page with tabs gets it too: it shows the tab holding the address's
-    // anchor, which Bootstrap does not.
-    // Classic pages start their own. Not in an e-mail.
-    if (!$email && $style_layout === 'visual_designer' && function_exists('pg_bs_tips_inject')) {
-        $content = pg_bs_tips_inject($content);
-    }
-
-    // ── In-browser summary ──────────────────────────────────────────────────────
-    // A form item view's button bound to the ai_summarize action brings the
-    // script that summarizes the record with the browser's built-in AI
-    // (pg_ai_summary_inject()), checked once everything is drawn in, the way
-    // the theme switcher is. Not in an e-mail.
-    if (!$email && strpos($content, 'data-pg-ai-summarize') !== false && function_exists('pg_ai_summary_inject')) {
-        $content = pg_ai_summary_inject($content);
-    }
-
-    // ── Favourite hearts ────────────────────────────────────────────────────────
-    // A catalog widget's heart (data-pg-wishlist) brings the script that
-    // fills it from the visitor's list and saves to it (pg_wishlist_inject()),
-    // checked once everything is drawn in. Not in an e-mail.
-    if (!$email && strpos($content, 'data-pg-wishlist') !== false && function_exists('pg_wishlist_inject')) {
-        $content = pg_wishlist_inject($content);
-    }
-
-    // ── Booking widget ──────────────────────────────────────────────────────────
-    // A booking widget with services (data-pg-booking) brings its script
-    // (pg_booking_widget_inject()); its calendar comes with the site's date
-    // control, which the same attribute brings. Not in an e-mail.
-    if (!$email && strpos($content, 'data-pg-booking=') !== false && function_exists('pg_booking_widget_inject')) {
-        $content = pg_booking_widget_inject($content);
-    }
-
-    // ── Rich-text editor for designed forms ─────────────────────────────────────
-    // A designed form's rich-text text areas carry data-pg-rich-text; one
-    // editor for all of them is loaded once everything is drawn in, so a
-    // second form and a form inside a shared component are covered
-    // (pg_cf_rich_text_inject()). Not in an e-mail, not in a background
-    // render (the SEO pass, the editor's Preview, the search index).
-    if (!$email && !pg_seo_rendering() && !(defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)
-        && strpos($content, 'data-pg-rich-text') !== false && function_exists('pg_cf_rich_text_inject')) {
-        $content = pg_cf_rich_text_inject($content);
     }
 
     // ── Search marking ──────────────────────────────────────────────────────────
@@ -5510,6 +5520,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
     $common_region_components = $common_region_ids ? pg_common_region_components($common_region_ids) : array();
+    // Whether a component drawn here holds a block that brings a script.
+    $pg_region_scripts = false;
 
     foreach ($regions[0] as $region) {
         $row = $cregion_rows[strip_tags($region)];
@@ -5545,6 +5557,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 }
 
                 $content = str_replace($region, $component_html, $content);
+                $pg_region_scripts = $pg_region_scripts || pg_block_scripts_needed($component_html);
                 continue;
             }
 
@@ -5665,6 +5678,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             
             $content = preg_replace('/<pregion><\/pregion>/i', pg_regex_replacement($pregion_content), $content, 1);
         }
+    }
+
+    // A common region drawn as a shared component brings the scripts of its
+    // blocks, as the same component placed on the page does.
+    if ($pg_region_scripts) {
+        $content = $pg_block_scripts($content);
     }
 
     // ── Date and time fields ────────────────────────────────────────────────────
@@ -6653,6 +6672,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // Otherwise HTML does not contain </body> or </html>, so just place js at end.
             } else {
                 $content .= $output_js ;
+            }
+
+            // A designed pop-up's content brings the scripts of its blocks,
+            // as the page's own content does.
+            if (pg_block_scripts_needed($auto_dialog_templates)) {
+                $content = $pg_block_scripts($content);
             }
         }
     }
