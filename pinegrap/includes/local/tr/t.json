@@ -2330,6 +2330,7 @@
     "The application in Microsoft Entra": "Microsoft Entra'daki uygulama",
     "The application is missing these permissions: {var:1}": "Uygulamada şu izinler eksik: {var:1}",
     "The application it reads and writes through, with that application's permissions.": "Okuyup yazdığı uygulama, o uygulamanın izinleriyle.",
+    "The application key \"{name}\" was created on {date}.": "\"{name}\" uygulama anahtarı {date} tarihinde oluşturuldu.",
     "The application opens this site's sign-in page. The person signs in with their own panel account, sees what the application asks for and agrees or refuses; the application never sees the password.": "Uygulama bu sitenin oturum açma sayfasını açar. Kişi kendi panel hesabıyla oturum açar, uygulamanın ne istediğini görür ve onaylar ya da reddeder; uygulama parolayı hiç görmez.",
     "The application opens this site's sign-in page. The person signs in with their own panel account; the application never sees the password.": "Uygulama bu sitenin giriş sayfasını açar. Kişi kendi panel hesabıyla giriş yapar; uygulama parolayı hiçbir zaman görmez.",
     "The application owner does not hold the ERP cash right.": "Uygulamanın sahibi ERP kasa yetkisine sahip değil.",
