@@ -1,6 +1,6 @@
 ---
 name: workspace-task-timer-guards
-description: The task timer's guards (PR #PRNUM): a drawer's Stop stops only its task's timer, one running timer per person, the drawer total over every entry, one repeat series per task
+description: The task timer's guards (PR #11413): a drawer's Stop stops only its task's timer, one running timer per person, the drawer total over every entry, one repeat series per task
 ---
 
 ## What does the drawer's Stop stop?

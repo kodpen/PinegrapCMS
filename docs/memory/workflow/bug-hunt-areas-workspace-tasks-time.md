@@ -1,13 +1,13 @@
 ---
 name: bug-hunt-areas-workspace-tasks-time
-description: Bug hunt 28, Workspace tasks and time (2026-11-24, PR #PRNUM): timer in two tabs and over midnight, a task changed while its timer runs, totals, who edits another's time, a repeat made twice
+description: Bug hunt 28, Workspace tasks and time (2026-11-24, PR #11413): timer in two tabs and over midnight, a task changed while its timer runs, totals, who edits another's time, a repeat made twice
 ---
 
 ## What was the area?
 - Hunt 28, given 2026-11-24: Workspace tasks, their statuses, due dates and timers. To look at: a timer running in two tabs or over midnight, a task moved or deleted while its timer runs, time totals against the entries, who may edit another person's time, a repeated task made twice.
 - Files read: `includes/workspace/task_time.php`, the time cases of `includes/workspace/actions.php`, the time routes of `api_resources.php`, `includes/workspace/recurrence.php` (save, run, tick), `assets/js/workspace_task_time.js`.
 
-## What did it fix? (PR #PRNUM)
+## What did it fix? (PR #11413)
 - A Stop in a stale tab stopped the timer on another task: the drawer's Stop now stops only a timer on its own task, else "Your timer runs on another task now." (`ws_task_time_stops_here()`, `workspace-task-timer-guards.md`).
 - Two tabs pressing Start at once left two running timers, the older one never stopped: after the insert the others are stopped and kept (`ws_task_time_extra_running()`).
 - The drawer's total summed only the 200 entries it lists, so it fell short of the task card and lists on a long task: now `ws_task_time_totals()`.
