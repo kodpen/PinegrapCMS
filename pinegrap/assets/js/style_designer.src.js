@@ -1056,7 +1056,9 @@ const StyleDesigner = (function () {
         var page = u.page_name || u.style_name || ('#' + (u.page_id || u.style_id));
         if (u.binned) page += ' — ' + _sdT('Recycle Bin');
         var mine = _design && parseInt(_design.styleId, 10) === parseInt(u.style_id, 10);
-        return (mine || !u.style_name) ? page : (page + ' (' + u.style_name + ')');
+        var text = (mine || !u.style_name) ? page : (page + ' (' + u.style_name + ')');
+        // Drawn by a converted common region's tag, not placed.
+        return u.common_region ? (text + ' — ' + _sdT('common region tag "{var:1}"', [u.common_region])) : text;
     }
     function _sharedUsageTip(usage) {
         return usage.length
@@ -27188,9 +27190,13 @@ const StyleDesigner = (function () {
                                     var _u = _sharedUsage[sid] || [];
                                     var _msg;
                                     if (_u.length) {
+                                        // A converted common region comes back on the pages
+                                        // printing its tag: nothing breaks there.
+                                        var _region = _u.filter(function (x) { return !!x.common_region; }).length;
                                         _msg = _sdT('"{var:1}" is used on {var:2} pages:', [sname, _u.length]) + '\n\n' +
                                                _u.map(function(x){ return '• ' + _sharedUsageText(x); }).join('\n') +
-                                               '\n\n' + _sdT('Deleting it breaks the references on those pages. Are you sure?');
+                                               '\n\n' + (_region ? _sdT('It draws the common region wherever its tag stands; deleting it brings back the region\'s earlier content on those pages.') + '\n' : '') +
+                                               (_region === _u.length ? _sdT('Delete it?') : _sdT('Deleting it breaks the references on those pages. Are you sure?'));
                                     } else {
                                         _msg = _sdT('Delete "{var}"?', sname) + '\n' + _sdT('(It is not used on any page.)');
                                     }
