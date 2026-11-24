@@ -320,3 +320,13 @@ function test_ws_note_unshare_refuses_a_channel_note()
 	pg_assert_same(lang('A channel\'s note keeps its card in its channel.'), $result['error'], 'and is told why');
 }
 
+// An edit of a channel's note writes no inbox line, its writer's neither;
+// a person's note tells its owner and the people it is shared with.
+function test_ws_note_change_told_skips_a_channel_note()
+{
+	pg_assert_same(array(), ws_note_change_told(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10), array(), 3, 0), 'a channel\'s note tells nobody');
+	pg_assert_same(array(7, 8), ws_note_change_told(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 0), array(8, 3, 8), 3, 0), 'a person\'s note tells its owner and the people, not the one who changed it');
+	pg_assert_same(array(8), ws_note_change_told(array('id' => 5, 'user_id' => 7), array(8), 3, 7), 'nor the one skipped');
+	pg_assert_contains('ws_note_change_told(', ws_channel_notes_test_source('ws_note_notify_change'), 'the inbox follows the rule');
+}
+

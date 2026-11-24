@@ -3347,23 +3347,15 @@ function ws_note_inbox_kinds()
  */
 function ws_note_notify_change($viewer, $note, $skip = 0)
 {
-    if (!ws_notes_inbox_ready()) {
+    // A channel's note tells nobody: its card shows who changed it.
+    if (!ws_notes_inbox_ready() || (ws_note_channel_of($note) > 0)) {
         return;
     }
 
-    $people = array((int) $note['user_id']);
-
-    foreach ((array) db_values("SELECT user_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id > 0") as $user_id) {
-        $people[] = (int) $user_id;
-    }
-
+    $shared = (array) db_values("SELECT user_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id > 0");
     $now = time();
 
-    foreach (array_unique($people) as $user_id) {
-        if (($user_id <= 0) || ($user_id === (int) $viewer['id']) || ($user_id === (int) $skip)) {
-            continue;
-        }
-
+    foreach (ws_note_change_told($note, $shared, (int) $viewer['id'], (int) $skip) as $user_id) {
         $existing = (int) db_value("SELECT id FROM ws_inbox
             WHERE user_id = '" . $user_id . "' AND kind = 'note_updated' AND note_id = '" . (int) $note['id'] . "' AND read_at = 0
             LIMIT 1");
@@ -3375,6 +3367,34 @@ function ws_note_notify_change($viewer, $note, $skip = 0)
 
         ws_notify($user_id, 'note_updated', array('note_id' => (int) $note['id'], 'actor_id' => (int) $viewer['id'], 'quiet' => true));
     }
+}
+
+/**
+ * Who is told that a note changed: its owner and the people it is shared
+ * with, but not the one who changed it nor the one skipped. A channel's note
+ * tells nobody, its writer neither: the card says who changed it. Pure.
+ *
+ * @param array $note      user_id, owner_channel_id
+ * @param int[] $shared    the user_id of its person shares
+ * @param int   $viewer_id who changed it
+ * @param int   $skip      somebody else not to tell
+ * @return int[]
+ */
+function ws_note_change_told($note, $shared, $viewer_id, $skip)
+{
+    if (ws_note_channel_of($note) > 0) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach (array_merge(array((int) $note['user_id']), array_map('intval', (array) $shared)) as $user_id) {
+        if (($user_id > 0) && ($user_id !== (int) $viewer_id) && ($user_id !== (int) $skip) && !in_array($user_id, $out, true)) {
+            $out[] = $user_id;
+        }
+    }
+
+    return $out;
 }
 
 /**
