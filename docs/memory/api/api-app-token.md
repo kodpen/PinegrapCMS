@@ -22,4 +22,4 @@ description: An application key and its secret as one token (Authorization: Bear
 
 ## Where is it described?
 - OpenAPI: the `applicationKey` scheme's text names the token; the `deviceToken` text says a `pgkt_` Bearer is an application key. No new scheme.
-- The sheet's field that shows the token comes with step AA3 of the app-access redraw plan.
+- Step 3 of New application and a new secret show it masked with Copy, beside the key and the secret (`application-access-drawer-guides.md`).

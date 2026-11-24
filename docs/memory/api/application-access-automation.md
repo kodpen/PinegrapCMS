@@ -1,22 +1,22 @@
 ---
 name: application-access-automation
-description: Application Access for automation platforms: the "Automation platform" starting point, the secret sheet's three values, New subscription and Send a sample, one create check with POST /webhooks
+description: Application Access for automation platforms: the "Automation platform" starting point, its note in step 3, New subscription and Send a sample, one create check with POST /webhooks
 ---
 
 ## What does the "Automation platform" starting point do?
 - New application's first step, the "Automation platform" card (`api_app_templates()`, `application-access-new-sheet.md`): it ticks the rows of `api_app_start_choices(pg_automation_contract_scopes(), api_scope_groups())` (`includes/api/app_access.php`), and step 2 names them in one line.
 - A row offering both levels of a contract scope takes write; a scope no row offers (a module that is off) is left out. Tested: never a scope holding a `moves_money` route.
-- Nothing about the choice is stored: the application is an integration like any other. The posted `start`, checked against the cards, sets the kind and adds the note to the one secret sheet that follows (`api_new_credentials['automation']`).
+- Nothing about the choice is stored: the application is an integration like any other. The posted `start`, checked against the cards, sets the kind and adds the note to step 3 that follows (`api_new_credentials['automation']`).
 
-## What does the secret sheet show?
-- Every integration's sheet (made or rotated): 1 Site address (the API found from it through `/.well-known/pinegrap.json`), 2 Key, 3 Secret, each with Copy; the note "An automation platform asks for these three values…" only after the automation starting point.
+## What does step 3 show for it?
+- Step 3 (made or rotated) shows the site address (the API found from it through `/.well-known/pinegrap.json`), the key, the secret and the one token, each with Copy; the note "An automation platform asks for these three values…" only after the automation starting point.
 
 ## How does "New subscription" make a subscription?
 - Events tab › New subscription: the address (textarea, 500 characters), the events as a searchable list, each with its area pill (`api_app_event_area()`: the name's first segment, order.* Orders; a module's event its module) and catalogue line (`lang()`), chosen ones as chips posting `hook_events[]`, at most 20; the count "n / 50" beside the tab's line. Posts `api_action=webhook_create` through the drawer form.
 - One check for both callers: `api_webhook_create_check($url, $events, $held)` (`includes/api/resources/webhooks.php`) answers the route's refusals (status, code, field, text): url required and within 500, events within 20, `api_http_check_url()`, every name in the catalogue, the limit (`api_webhook_held_count()`). Then `api_webhook_store()` writes the row. `api_webhook_create_bounds()` equals the route row's `max_length`/`max_items` (tested).
 - The channel group stays API-only: the panel makes whole-site subscriptions.
 - Nothing typed is dropped: while the form holds an address or a chosen event, the drawer's Save does not post; it shows the form with "The subscription is not created yet…" (architect 2026-11-17; `hookFormHolds()`, tested).
-- The new parts use the design language: `pg-button` (Create the form's one fill, the rest quiet or ghost), `pg-icon-button`, `pg-input`, `pg-field-label`, `pg-checkbox`, `pg-pill`. The starting point copies the dialog's own choice cards (no radio recipe yet); the old rows' Stop/Remove and the tab strip moved with S6b (#10534).
+- The new parts use the design language: `pg-button` (Create the form's one fill, the rest quiet or ghost), `pg-icon-button`, `pg-input`, `pg-field-label`, `pg-checkbox`, `pg-pill`. The starting point is a `.pg-start` card (`application-access-new-sheet.md`); the old rows' Stop/Remove and the tab strip moved with S6b (#10534).
 - After the post the drawer opens on the Events tab again (`$_SESSION['software']['api_hooks_back']`): the form with its error and values, or the signing secret once, removed on leaving the tab.
 
 ## How is a sample sent?

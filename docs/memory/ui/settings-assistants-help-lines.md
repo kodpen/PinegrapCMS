@@ -15,6 +15,6 @@ description: Site Settings › Assistants and agents, the help (AT3): one line p
 - Why: owner (2026-11-20) "kopya içerik gibi sürekli" (`workflow/decisions-made-panel-11.md`); one line a field or part (`ui/screen-composition-rules.md`).
 
 ## What does Add an agent offer?
-- The drawer opens with "Start from an application", leading to Application Access (`api_settings.php`). The agent starting point there comes with AA5 of `plans/app-access-redraw-steps.md`; the link is then pointed at it.
+- The drawer opens with "Start from an application", leading to Application Access (`api_settings.php`). It opens the list; the "Agent in a channel" starting point is under New application (#11072, `api/application-access-agent-tab.md`).
 
 Related: docs/memory/ui/settings-fold-rows.md, docs/memory/ui/screen-composition-rules.md

@@ -1,6 +1,6 @@
 ---
 name: application-access-console-guide
-description: The Claude Console guide of api_app_guides() (AA7b): a Claude Managed Agents agent working its channel requests over MCP as the application; its intro, steps and notes
+description: The Claude Console guide of api_app_guides() (#11203): a Claude Managed Agents agent working its channel requests over MCP as the application; its intro, steps and notes
 ---
 
 ## Where is the guide?

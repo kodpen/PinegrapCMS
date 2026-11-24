@@ -1,12 +1,12 @@
 ---
 name: mcp-agent-own-tools
-description: An application agent's own routes as MCP tools ('mcp' => 'agent', AA7a #10867): which ten, only for an active app agent's own key, the callers that never see them, the budget, the second sending form
+description: An application agent's own routes as MCP tools ('mcp' => 'agent', #10867): which ten, only for an active app agent's own key, the callers that never see them, the budget, the second sending form
 ---
 
 ## Which routes are tools for the agent?
 - Ten rows carry `'mcp' => 'agent'`: `workspace.agent_instructions.get`, `workspace.agent_requests.list` / `claim` / `brief` / `answer` / `fail` / `progress`, `workspace.agent_report.set`, `workspace.agent_wake.get` / `set`. Tool name = route id with dots as underscores (`workspace_agent_requests_claim`).
 - `workspace.agent_feedback.get` stays `'mcp' => false`: not in the plan's list (U16).
-- Why: a Claude Console agent (Claude Managed Agents) reaches the site over MCP with one bearer token from a vault (`claude-console-agents.md`, `api-app-token.md`); before AA7a it could not work its queue there.
+- Why: a Claude Console agent (Claude Managed Agents) reaches the site over MCP with one bearer token from a vault (`claude-console-agents.md`, `api-app-token.md`); before #10867 it could not work its queue there.
 
 ## Who sees them?
 - Only a key used as itself whose application has an active `app` agent: `pg_mcp_agent_routes_open($device, $agent)` (pure) with `api_current_device()` and `ws_api_agent_caller_row()`, read once a request by `pg_mcp_caller_is_agent()`; `pg_mcp_routes()` passes it to `pg_mcp_routes_for($schema, $scopes, $agent)`.
