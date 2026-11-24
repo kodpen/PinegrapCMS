@@ -67,8 +67,33 @@ function api_customer_present($row) {
 			'country' => $row['business_country']
 		),
 		'lead_source' => $row['lead_source'],
-		'email_suppressed' => !empty($row['email_suppressed'])
+		'email_suppressed' => !empty($row['email_suppressed']),
+		'interest_score' => isset($row['lead_interest']) ? (int)$row['lead_interest'] : null,
+		'topics' => api_customer_topics(isset($row['lead_topics']) ? $row['lead_topics'] : null)
 	);
+
+}
+
+// The names of a contact's interests, strongest first, from
+// contact_scores.topics (JSON of {id, kind, name, weight}); empty before the
+// scheduled job scored the contact. Pure.
+function api_customer_topics($json) {
+
+	$names = array();
+
+	$topics = is_string($json) ? json_decode($json, true) : null;
+
+	foreach (is_array($topics) ? $topics : array() as $topic) {
+
+		if (is_array($topic) && isset($topic['name']) && ((string)$topic['name'] !== '')) {
+
+			$names[] = (string)$topic['name'];
+
+		}
+
+	}
+
+	return $names;
 
 }
 
@@ -193,7 +218,28 @@ function api_customer_select() {
 			contacts.business_address_1, contacts.business_city,
 			contacts.business_state, contacts.business_zip_code, contacts.business_country,
 			contacts.lead_source,
-			" . api_customer_suppressed_sql(pg_mail_bounces_ready()) . " AS email_suppressed
+			" . api_customer_suppressed_sql(pg_mail_bounces_ready()) . " AS email_suppressed,
+			" . api_customer_score_sql(api_customer_scores_ready());
+
+}
+
+// Whether the visitor journey's scores table is there.
+function api_customer_scores_ready() {
+
+	return function_exists('pg_lead_ready') && pg_lead_ready() && pg_schema_has('contact_scores', 'scored_at');
+
+}
+
+// The interest score and interests of the Customer answer, with the table they
+// come from; nulls before the scores table exists. One scores row a contact at
+// most (its key), so the join never doubles a row. Pure.
+function api_customer_score_sql($ready) {
+
+	return $ready
+		? "contact_scores.interest AS lead_interest, contact_scores.topics AS lead_topics
+		FROM contacts
+		LEFT JOIN contact_scores ON contact_scores.contact_id = contacts.id"
+		: "NULL AS lead_interest, NULL AS lead_topics
 		FROM contacts";
 
 }
@@ -801,7 +847,9 @@ function api_customer_schema() {
 			'country' => 'string?'
 		),
 		'lead_source' => 'string?',
-		'email_suppressed' => 'boolean'
+		'email_suppressed' => 'boolean',
+		'interest_score' => 'integer?',
+		'topics' => 'string[]'
 	);
 
 }
