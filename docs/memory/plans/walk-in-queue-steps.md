@@ -21,7 +21,7 @@ description: Plan walk-in-queue, steps WQ1a to WQ9: the pure rules, the store, p
 
 - WQ6 (S) after WQ4: the lobby screen (a signed display link, no menu, the chime) and the kiosk screen. Features: W10.
 
-- WQ7 (M) after WQ5: the report with the staffing line, Excel. Features: W11.
+- WQ7 (M) after WQ5, done in #11246: the report with the staffing line, Excel. Features: W11.
 
 - WQ8 (S) after WQ7: the four events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`); the API routes with their types, `php tools/check_api_schema.php`; the MCP tools. Features: W12, W13.
 

@@ -24,6 +24,6 @@ module: walk_in_queue_report
 - `?export=xlsx` through `pg_xlsx_write_book()`: Summary, one sheet each for Desk, Staff member and Service (times in minutes, one decimal), Arrivals, Desks needed. Typed cells by `pg_waiting_report_sheet()`, text never a formula.
 
 ## How was it checked?
-- Unit tests for every pure part (fold, percentile, Erlang C, staffing, sheets, tabs). The screen drawn on a sandbox at 1440 and 390 px (#PR).
+- Unit tests for every pure part (fold, percentile, Erlang C, staffing, sheets, tabs). The screen drawn on a sandbox at 1440 and 390 px (#11246).
 
 Related: docs/memory/commerce/walk-in-queue-desk.md, docs/memory/commerce/walk-in-queue-store.md, docs/memory/commerce/walk-in-queue-rules.md
