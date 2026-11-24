@@ -1,6 +1,6 @@
 ---
 name: lead-hot-contacts
-description: The contacts list's Hot Contacts view (LJ4b): its condition, columns and order, the empty line, Open and Remind me (a Workspace follow-up), the bell link of contacts_hot; no assignee column yet
+description: The contacts list's Hot Contacts view (LJ4b): its condition, columns and order, the empty line, Open and Remind me (a Workspace follow-up), the bell link of contacts_hot, the Followed by column
 module: contact_list
 ---
 
@@ -10,8 +10,8 @@ module: contact_list
 - Order: score high to low, then the latest visit (fixed, not the kept sort; no sort menu); the column heads still sort.
 
 ## Which columns?
-- `pg_contact_list_hot_columns()`: picture, Contact (name, the company under it), Score (the figure with the "Hot" pill), Why (the strongest reason, `pg_contact_list_hot_reason()`: the interest reason with the most points, else the fit one), Last visit (`last_visit_at`), the groups when toggled on, Action.
-- No assignee column: contacts have no assignee field. Open point for the architect: what "assignee" reads (plan `lead-journey-steps.md`).
+- `pg_contact_list_hot_columns()`: picture, Contact (name, the company under it), Score (the figure with the "Hot" pill), Why (the strongest reason, `pg_contact_list_hot_reason()`: the interest reason with the most points, else the fit one), Last visit (`last_visit_at`), Followed by (Workspace on only, `lead-hot-contacts-followed-by.md`), the groups when toggled on, Action.
+- No assignee column: contacts have no assignee field and none is added.
 
 ## What do the row actions do?
 - Open: the contact screen. Remind me: only with the Workspace on and the user a member with the contacts right (`pg_contact_list_hot_remind()`).
@@ -23,5 +23,5 @@ module: contact_list
 ## Where does the bell lead?
 - Ops alert `contacts_hot` links `view_contacts.php?filter=hot_contacts` (`visitors/lead-tell.md`).
 
-Tests: `tests/contact_list_hot_test.php`, `tests/workspace_followup_test.php`, `tests/lead_tell_test.php`.
+Tests: `tests/contact_list_hot_test.php`, `tests/contact_list_followed_by_test.php`, `tests/workspace_followup_test.php`, `tests/lead_tell_test.php`.
 Related: docs/memory/visitors/lead-tell.md, docs/memory/visitors/lead-score-settings.md

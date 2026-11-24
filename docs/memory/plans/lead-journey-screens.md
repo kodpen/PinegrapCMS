@@ -27,7 +27,7 @@ description: Plan lead-journey, how its screens are put together (LJ2 to LJ5): t
 - Foot: Save fill, Cancel quiet, "Back to the defaults" quiet.
 
 ## How is the Hot contacts view laid out? (LJ4)
-- A view of the contacts list, beside its other views, on the list table driver: contact, score, the first reason, last visit, assignee. Row actions quiet small: Open, "Remind me" (the follow-up). No fill of its own.
+- A view of the contacts list, beside its other views, on the list table driver: contact, score, the first reason, last visit, "Followed by" (with the Workspace on, LJ4c). Row actions quiet small: Open, "Remind me" (the follow-up). No fill of its own.
 - Empty: "No contact is hot today" and a link to the threshold's setting.
 
 ## How is the Lead sources report laid out? (LJ5)

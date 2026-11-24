@@ -24,7 +24,7 @@ description: Plan lead-journey, features J1 to J15: the browser key and the tie,
 
 ## Who is told?
 - (J10) `customer.hot` (planned as `contact.hot`) once when the score passes the site's threshold (default 60), again only after it fell below and rose; `customer.returned` when a hot contact starts a new visit, at most once a day per contact. Through `pg_announce()`, the catalogue, fixtures and flow start boxes.
-- (J11) A daily "Hot contacts" list (score, reasons, last visit, assignee) on the contacts screen; staff told through `pg_ops_alert()` once a day.
+- (J11) A daily "Hot contacts" list (score, reasons, last visit, "Followed by": who holds an open follow-up) on the contacts screen; staff told through `pg_ops_alert()` once a day.
 
 ## Which page or campaign brought a lead?
 - (J12) For each contact that became a lead (a form or booking) and each that became a customer (a first order or a paid invoice): first and last touch. A report by channel, campaign and landing or content page: leads, customers, the revenue of commerce sites, over a period; Excel.
