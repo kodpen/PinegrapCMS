@@ -23,6 +23,6 @@ module: prototype_approval
 ## How are "Answer by" and the mails timed?
 - `pg_proto_answer_by_check($value, $expires_at, $now)`: empty (no date) or a real `YYYY-MM-DD` from today on and no later than the link's expiry day (0: never expires). Errors: `date`, `past`, `after_expiry`. Days are the site's (`date()`).
 - `pg_proto_answer_by_reminder_due()`: the day before the date, pages undecided, not sent that day.
-- `pg_proto_answer_mail_rate()`: one answer mail per link an hour, a `waf_rate_exceeded()` counter with the link id as subject, as the bell line (`designer-prototype-comments-list.md`). `pg_proto_answer_mail_due()`: a valid approver address, answers to tell of, the hour's mail not gone.
+- `pg_proto_answer_mail_rate()`: one answer mail per link an hour, a `waf_rate_exceeded()` counter with the link id as subject, as the bell line (`designer-prototype-comments-list.md`). `pg_proto_answer_mail_due()`: a valid approver address, answers to tell of, the hour's mail not gone. Sending: `prototype-approval-mails.md`.
 
 Related: docs/memory/plans/prototype-approval.md, docs/memory/designer/designer-prototype-comments-door.md

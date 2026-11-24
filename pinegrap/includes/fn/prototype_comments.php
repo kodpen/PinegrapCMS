@@ -631,7 +631,7 @@ function pg_proto_comment_answer($comment_id, $text, $user_id, $username)
         return 0;
     }
 
-    return pg_proto_comment_save(array(
+    $id = pg_proto_comment_save(array(
         'link_id' => (int) $root['link_id'],
         'style_id' => (int) $root['style_id'],
         'page_id' => (int) $root['page_id'],
@@ -644,6 +644,14 @@ function pg_proto_comment_answer($comment_id, $text, $user_id, $username)
         'body' => $text,
         'resolved_at' => (int) $root['resolved_at'],
     ));
+
+    // The approver of a link asking approval hears of the answer, at most
+    // once an hour per link.
+    if ($id > 0) {
+        pg_proto_answer_mail((int) $root['link_id']);
+    }
+
+    return $id;
 }
 
 /**
