@@ -241,7 +241,8 @@
 - visitor-form-list-fields.md: Visitor form handlers with a field posted as a list: member registration and activation, the reservation and watcher forms' session index, the built-in CAPTCHA answer (PR #11061)
 - volunteer-account-list.md: My Account's account.volunteering list (the member's coming volunteer shifts), its tokens, and the designer twins of the volunteering section and list
 - volunteer-board.md: A volunteer programme's Shifts tab (VS3): the week's board by day, role pills and their three colours, Add shift with Repeat weekly, Copy last week, a shift's drawer with Call volunteers and Remove
-- volunteer-document-file.md: A volunteer document's file: a files row (attachment 1, folder 0, volunteer-doc- name), get_file.php's door, and the search and picker exclusion due with uploading [decision: here]
+- volunteer-document-file.md: A volunteer document's file: a files row (attachment 1, folder 0, volunteer-doc- name), get_file.php's door, and its exclusion from the panel search and the file pickers [decision: here]
+- volunteer-document-upload.md: "Upload a new one" under My documents (VS4c): who uploads, the kind, number and date checks, PDF or picture by first bytes, 10 MB cap, 20 documents, the stored row and the Open links
 - volunteer-hours.md: Volunteer check-in and hours (VS6): a place's QR poster, volunteer_check_in.php, the Hours tab's list of the day, "Did not come" after 30 minutes, hours approval, hours outside a shift
 - volunteer-messages.md: Volunteer passes of the general job (VS5): unfilled-shift call, day-before reminder, document notices; channels, 09-20 hours, SMS kind volunteer, Shift calls switch
 - volunteer-programmes.md: Contacts › Volunteers (VS2): the programmes list, a programme's Set-up rows, applications from its form with Approve, the Volunteers tab and the profile drawer; who sees what
