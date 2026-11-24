@@ -5,7 +5,8 @@
  * the steps before going live, blockers first, "Do it" opening the screen
  * where each is done, "Not for this site" on a step's menu, "Change
  * purpose" and "Hide set-up" on the card's menu, and the purpose dialog
- * ("What is this site for?"). The data is what
+ * ("What is this site for?"); the foot "Ready to go live?" opens the
+ * go-live check ("Must be fixed", "Worth a look", "Go live"). The data is what
  * includes/dashboard/v2/cards/launch.php returns; every text in it was
  * translated on the server. Choices are saved through the panel action
  * launch_journey_save, then the card is drawn anew from the server.
@@ -180,6 +181,135 @@
         pgUI.dialog.show(parts.root);
     }
 
+    // One group of the go-live check: a heading and its gathered lines,
+    // each with "Fix", or "Nothing to fix".
+    function golivegroup(title, rows, labels) {
+        var el = pgDash.el;
+        var group = el("section", "pg-dash-golive-group");
+        group.appendChild(el("h3", "pg-dash-golive-title", title));
+
+        if (!rows.length) {
+            group.appendChild(el("p", "pg-text-meta mb-0", labels.nothing));
+            return group;
+        }
+
+        var gather = el("div", "pg-gather");
+        rows.forEach(function (step) {
+            var line = el("div", "pg-gather-line");
+            line.appendChild(el("b", "", step.name));
+            line.appendChild(el("span", "", step.line));
+            var end = el("span", "pg-gather-line-end");
+            var fix = el("a", "pg-button pg-button-quiet pg-button-sm", labels.fix);
+            fix.href = step.url;
+            fix.setAttribute("aria-label", labels.fix + ": " + step.name);
+            end.appendChild(fix);
+            line.appendChild(end);
+            gather.appendChild(line);
+        });
+        group.appendChild(gather);
+
+        return group;
+    }
+
+    // The go-live check: "Must be fixed" and "Worth a look", then "Go live".
+    // A second press shows what "Go live" changes itself and, with a blocker
+    // left, names each and asks for "I know, go live anyway".
+    function goliveDialog(data) {
+        var el = pgDash.el;
+        var labels = data.labels;
+        var golive = data.golive;
+        var parts = pgUI.dialog.build({
+            id: "pg_dash_launch_golive",
+            title: labels.check,
+            size: "lg",
+            scrollable: true,
+            closeLabel: labels.close
+        });
+
+        var check = el("div", "pg-dash-golive");
+        check.appendChild(golivegroup(labels.must, golive.must, labels));
+        check.appendChild(golivegroup(labels.worth, golive.worth, labels));
+        parts.body.appendChild(check);
+
+        var confirm = el("div", "pg-dash-golive-confirm");
+        confirm.hidden = true;
+        var anyway = null;
+
+        if (golive.changes.length) {
+            confirm.appendChild(el("p", "fw-bold mb-1", labels.changes));
+            var changes = el("ul", "mb-3");
+            golive.changes.forEach(function (text) {
+                changes.appendChild(el("li", "", text));
+            });
+            confirm.appendChild(changes);
+        }
+
+        if (golive.left.length) {
+            confirm.appendChild(el("p", "fw-bold mb-1", labels.left));
+            var left = el("ul", "mb-3");
+            golive.left.forEach(function (step) {
+                left.appendChild(el("li", "", step.name + ": " + step.line));
+            });
+            confirm.appendChild(left);
+
+            var field = el("div", "d-flex align-items-center gap-2");
+            anyway = el("input", "pg-checkbox");
+            anyway.type = "checkbox";
+            anyway.id = "pg_dash_launch_golive_anyway";
+            field.appendChild(anyway);
+            var label = el("label", "pg-text-2", labels.anyway);
+            label.setAttribute("for", anyway.id);
+            field.appendChild(label);
+            confirm.appendChild(field);
+        }
+        parts.body.appendChild(confirm);
+
+        var note = el("p", "pg-dash-launch-note fg-emphasis-danger mt-3 mb-0");
+        note.setAttribute("role", "status");
+        note.hidden = true;
+        parts.body.appendChild(note);
+
+        var cancel = el("button", "pg-button pg-button-quiet", labels.cancel);
+        cancel.type = "button";
+        cancel.addEventListener("click", function () {
+            pgUI.dialog.hide(parts.root);
+        });
+
+        var go = el("button", "pg-button pg-button-fill", labels.go_live);
+        go.type = "button";
+        go.addEventListener("click", function () {
+            // The first press shows the confirmation when there is anything
+            // to name; nothing to name goes live at once.
+            if (confirm.hidden && (golive.changes.length || golive.left.length)) {
+                confirm.hidden = false;
+                (anyway || go).focus();
+                return;
+            }
+            if (anyway && !anyway.checked) {
+                anyway.focus();
+                return;
+            }
+            go.disabled = true;
+            save({go_live: 1, anyway: anyway && anyway.checked ? 1 : 0}, function () {
+                pgUI.dialog.hide(parts.root).then(redraw);
+            }, function (text) {
+                go.disabled = false;
+                note.textContent = text || labels.failed;
+                note.hidden = false;
+            });
+        });
+
+        parts.footer.appendChild(cancel);
+        parts.footer.appendChild(go);
+
+        pgUI.dialog.on(parts.root, "hidden", function () {
+            parts.root.remove();
+        }, {once: true});
+
+        document.body.appendChild(parts.root);
+        pgUI.dialog.show(parts.root);
+    }
+
     function row(step, data, body) {
         var el = pgDash.el;
         var labels = data.labels;
@@ -262,6 +392,21 @@
             list.appendChild(row(step, data, body));
         });
         body.appendChild(list);
+
+        // The foot: "Ready to go live?" opens the go-live check; once the
+        // site went live, the time it did.
+        if (data.golive) {
+            var foot = el("div", "pg-dash-launch-foot");
+            if (data.live_at) {
+                foot.appendChild(el("span", "pg-text-meta", labels.live.replace("{var:1}", data.live_at)));
+            } else if (window.pgUI) {
+                var ready = el("button", "pg-button pg-button-fill pg-button-sm", labels.ready);
+                ready.type = "button";
+                ready.addEventListener("click", function () { goliveDialog(data); });
+                foot.appendChild(ready);
+            }
+            body.appendChild(foot);
+        }
 
         if (data.ask && !asked && window.pgUI) {
             asked = true;

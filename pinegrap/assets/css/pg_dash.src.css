@@ -5619,6 +5619,35 @@
     color: var(--pgd-good);
   }
 
+  /* The foot: "Ready to go live?" or the go-live time. */
+  .pg-dash-launch-foot {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: .75rem;
+  }
+
+  /* The go-live check: a group's heading at the list title's size, and a
+     long line wraps with "Fix" kept at the end. */
+  .pg-dash-golive-title {
+    font-size: .9375rem;
+    font-weight: 650;
+    margin-bottom: .5rem;
+  }
+
+  .pg-dash-golive .pg-gather-line {
+    flex-wrap: wrap;
+  }
+
+  .pg-dash-golive .pg-gather-line-end {
+    margin-left: auto;
+  }
+
+  /* The go-live check: its two groups apart. */
+  .pg-dash-golive-group + .pg-dash-golive-group,
+  .pg-dash-golive + .pg-dash-golive-confirm:not([hidden]) {
+    margin-top: 1.5rem;
+  }
+
   /* The purpose choice: one card a row on a phone, two from 576 px. */
   @media (min-width: 576px) {
     .pg-dash-launch-purposes { grid-template-columns: 1fr 1fr; }

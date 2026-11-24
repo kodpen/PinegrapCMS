@@ -21,7 +21,7 @@ module: launch_journey_site
 - Head "N of M done", a pill Blocked / In progress / Ready, the card menu "Change purpose" and "Hide set-up". Rows blockers first (`pg_launch_journey_card()`), each with an icon tile, its line ("SPF found, DKIM missing, DMARC found"), "Do it" (a `#settings/<category>/pgset-*` anchor or a screen, `pg_launch_journey_step_face()`) and a menu "Not for this site"; a blocker also shows the pill "Must be fixed" and has no menu; a step done shows a check.
 - Saves go through the panel action `launch_journey_save` {purpose | hide | close}: general gate, token, role 0 in the handler, values kept by `pg_launch_journey_request_changes()`; then the card is drawn anew.
 - The card reads the states again when the tab is shown again and when the Site Settings dialog closes.
-- Every step done or hidden: the card stores `closed` and answers denied, which takes it off the dashboard. "Ready to go live?" and the go-live check come with SJ3.
+- Every step done or hidden: the card stores `closed` and answers denied, which takes it off the dashboard. "Ready to go live?" and the go-live check: `ui/launch-journey-go-live.md`.
 
 ## How is the purpose chosen?
 - While no purpose is stored the dialog "What is this site for?" opens once per page: eight radio cards (`.pg-start` starting-point cards, one a row under 576 px), "Choose" the fill, "Later" quiet; the card meanwhile follows the purpose Other.
