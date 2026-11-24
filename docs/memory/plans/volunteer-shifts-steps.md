@@ -19,7 +19,8 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
   - If it opens document uploading first: the same PR leaves `volunteer-doc-` `files` rows out of the panel search and the file pickers (decision schema-47, `core/volunteer-document-file.md`); uploading is never opened without it.
   - Built (#11217), `core/volunteer-signup.md`: the sign-up store, the signed page, the link from the profile drawer, the swap approval, the My Account section and flag.
 
-- VS4b (S) after VS4: the `account.volunteering` list and its designer twins, as `account.tickets` (`commerce/event-tickets-page.md`). Features: G7.
+- VS4b (S) after VS4 (done, #11251): the `account.volunteering` list and its designer twins, as `account.tickets` (`commerce/event-tickets-page.md`). Features: G7.
+  - Built (#11251), `core/volunteer-account-list.md`.
 
 - VS4c (S) after VS4: "Upload a new one" on the volunteer's page, with the search and picker exclusion above. Features: G2.
 

@@ -1375,6 +1375,7 @@
     "Repeats its row for each attribute filter the visitor has turned on, with a way to remove it.": "Ziyaretçinin açtığı her özellik filtresi için satırını, filtreyi kaldırma yoluyla birlikte yineler.",
     "Repeats its row for each attribute of the product, with its name and value.": "Ürünün her özelliği için satırını adı ve değeriyle yineler.",
     "Repeats its row for each booking of the signed-in member still to come.": "Oturum açmış üyenin henüz gelmemiş her randevusu için satırını yineler.",
+    "Repeats its row for each coming volunteer shift of the signed-in member.": "Satırını oturum açmış üyenin her yaklaşan gönüllü vardiyası için tekrarlar.",
     "Repeats its row for each day name of the week, the header of the month grid.": "Haftanın her gün adı için satırını yineler; ay tablosunun başlığıdır.",
     "Repeats its row for each day of the month grid.": "Ay tablosunun her günü için satırını yineler.",
     "Repeats its row for each event of one day.": "Bir günün her etkinliği için satırını yineler.",
