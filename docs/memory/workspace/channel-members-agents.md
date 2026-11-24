@@ -19,5 +19,5 @@ description: A channel's agents and guests among its members (#8936, GV2): agent
 - A person's: "Online" while `ws_presence()` reads online, else `user.user_online_timestamp` in the same short words; no new column. Other members keep the online dot on the face.
 
 ## Why?
-- Owner (2026-11-12, #8880): a manager should see who is registered in a channel and follow agents that go down; a person's time only for managers (`workflow/decisions-made-workspace-19.md`). The look: `plans/panel-design-language-dialogs.md`.
+- Owner (2026-11-12, #8880): a manager should see who is registered in a channel and follow agents that go down; a person's time only for managers (`workflow/decisions-made-workspace-19.md`). The look: `ui/look-sheet-dialogs.md`.
 - Tests: `tests/workspace_channel_members_test.php`, `tests/workspace_channel_info_test.php`.

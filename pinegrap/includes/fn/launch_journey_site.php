@@ -224,3 +224,67 @@ function pg_launch_journey_facts($user, $purpose)
 
     return $facts;
 }
+
+/**
+ * "Go live": turns maintenance mode off and removes the robots.txt rule that
+ * closes the whole site, each written to the Site Log, then keeps the
+ * go-live time (the first one stays, so the first week counts from it). A
+ * payment mode is never changed. The check is read again here, never taken
+ * from the request; with a blocker left the request must carry "I know, go
+ * live anyway", and the blockers it went live with are named in the log.
+ *
+ * @param array $user
+ * @param array $request anyway
+ * @return string '' when the site went live, else the reason in words
+ */
+function pg_launch_journey_go_live($user, $request)
+{
+    $stored = pg_launch_journey_stored();
+    $purpose = ($stored['purpose'] !== '') ? $stored['purpose'] : 'other';
+    $facts = pg_launch_journey_facts($user, $purpose);
+    $check = pg_launch_journey_golive_check($purpose, $facts, $stored['hidden']);
+    $left = pg_launch_journey_golive_left($check);
+
+    if (!pg_launch_journey_golive_allowed($left, $request)) {
+        return lang('Some things must still be fixed. Confirm to go live anyway.');
+    }
+
+    $changes = pg_launch_journey_golive_changes($facts);
+
+    if (in_array('maintenance', $changes, true) && pg_schema_has('config', 'maintenance_mode')) {
+        if (db("UPDATE config SET maintenance_mode = '0', last_modified_user_id = '" . (int) $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()") === false) {
+            return lang('The change could not be saved.');
+        }
+        log_activity(lang('Go live: maintenance mode was switched off.'));
+    }
+
+    if (in_array('robots', $changes, true)) {
+        $opened = pg_launch_journey_robots_opened($facts['robots_text']);
+        if (db("UPDATE config SET additional_robots_content = '" . e($opened) . "', last_modified_user_id = '" . (int) $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()") === false) {
+            return lang('The change could not be saved.');
+        }
+        log_activity(lang('Go live: the robots.txt rule closing the whole site to search engines was removed.'));
+    }
+
+    if (($stored['live_at'] < 1) && !pg_launch_journey_store(array('live_at' => time()))) {
+        return lang('The change could not be saved.');
+    }
+
+    if ($left) {
+        $names = array();
+        foreach ($left as $row) {
+            $names[] = pg_launch_journey_step_face($row['key'])['name'] . ' (' . pg_launch_journey_step_line($row, $facts) . ')';
+        }
+        log_activity(lang(array('string' => 'The site went live with these left to fix: {var:1}', 'vars' => array(implode('; ', $names)))));
+    } else {
+        log_activity(lang('The site went live.'));
+    }
+
+    // System Status reads maintenance mode and robots.txt: told at once
+    // rather than after its ten-minute cache.
+    if ($changes && function_exists('pg_system_status_forget')) {
+        pg_system_status_forget();
+    }
+
+    return '';
+}

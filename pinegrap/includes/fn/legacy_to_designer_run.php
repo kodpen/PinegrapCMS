@@ -38,6 +38,9 @@
  *   5. page_parts    as above, on the pages the style moved to the design
  *   6. types         as above
  *
+ * A design moved earlier (legacy_earlier_designs.php) gets only the
+ * page_parts and types steps, on its own pages.
+ *
  * The cursor is data/temp/legacy_to_designer.json, written after every
  * step; a lost one ends the run (every step skips what an earlier run
  * wrote, so starting again is safe). The starter layouts posted with
@@ -66,13 +69,16 @@ define('PG_LTD_PART_LEVELS', 6);
 define('PG_LTD_STARTERS_BYTES', 8388608);
 
 /**
- * The steps of one style, in order: a style moving alone, or one of a set.
+ * The steps of one style, in order: a style moving alone, one of a set, or
+ * a design moved earlier (its pages' region nodes and page types only).
  *
  * @param bool $set
+ * @param bool $earlier
  * @return array
  */
-function pg_ltd_steps($set = false)
+function pg_ltd_steps($set = false, $earlier = false)
 {
+    if ($earlier) return array('page_parts', 'types');
     return $set ? array('set_design', 'regions', 'set_pages', 'frame', 'page_parts', 'types') : array('regions', 'design', 'page_regions', 'frame', 'page_parts', 'types');
 }
 
@@ -123,8 +129,21 @@ function pg_ltd_state_new($style_ids, $user, $now, $sets = array())
         'lines'    => array(),
         'more'     => 0,
     );
-    $state['step'] = pg_ltd_steps(pg_ltd_state_set($state) >= 0)[0];
+    $state['step'] = pg_ltd_state_steps($state)[0];
     return $state;
+}
+
+/**
+ * The steps of the style under the cursor (pg_ltd_steps()): a design the
+ * run lists in 'earlier' gets an earlier design's steps.
+ *
+ * Pure: no query.
+ */
+function pg_ltd_state_steps($state)
+{
+    $id = pg_ltd_state_progress($state)['style'];
+    $earlier = $id > 0 && in_array($id, array_map('intval', (array)($state['earlier'] ?? array())), true);
+    return pg_ltd_steps(pg_ltd_state_set($state) >= 0, $earlier);
 }
 
 /**
@@ -153,11 +172,11 @@ function pg_ltd_state_set($state)
  */
 function pg_ltd_state_advance($state, $skip_style = false)
 {
-    $steps = pg_ltd_steps(pg_ltd_state_set($state) >= 0);
+    $steps = pg_ltd_state_steps($state);
     $at = array_search((string)$state['step'], $steps, true);
     if ($skip_style || $at === false || $at + 1 >= count($steps)) {
         $state['index'] = (int)$state['index'] + 1;
-        $state['step'] = pg_ltd_steps(pg_ltd_state_set($state) >= 0)[0];
+        $state['step'] = pg_ltd_state_steps($state)[0];
     } else {
         $state['step'] = $steps[$at + 1];
     }
@@ -402,24 +421,26 @@ function pg_ltd_starters_read()
  * pages keep their System region; when the editor cannot be loaded the
  * screen says so and the next press converts without the page types.
  *
- * @return string  a <script> block for the form #ltd_convert
+ * @param string $form_id  the Convert form's id; its note is "<id>_note"
+ * @return string  a <script> block for that form
  */
-function pg_ltd_convert_script()
+function pg_ltd_convert_script($form_id = 'ltd_convert')
 {
     $data = json_encode(array(
         'scripts' => array_values(pg_js_bundle_urls('assets/js/style_designer.min.js')),
         'preparing' => lang('Preparing the page types\' layouts…'),
         'failed' => lang('The page types\' layouts could not be built in this browser. Press Convert again to move without them: those pages keep their System region.'),
+        'form' => (string)$form_id,
     ), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
     return '
 <script>
 (function () {
     var o = ' . $data . ';
-    var form = document.getElementById("ltd_convert");
+    var form = document.getElementById(o.form);
     if (!form) return;
     var kinds = [];
     try { kinds = JSON.parse(form.getAttribute("data-kinds") || "[]"); } catch (error) { kinds = []; }
-    var note = document.getElementById("ltd_convert_note");
+    var note = document.getElementById(o.form + "_note");
     var button = form.querySelector("button[type=submit]");
     var plain = false;
     var send = function (starters) {
@@ -506,8 +527,20 @@ function pg_ltd_run_start($style_ids, $user, $set_keys = array(), $starters = ar
     foreach (db_items("SELECT style_id, style_name FROM style WHERE style_id IN (" . implode(',', $state['styles']) . ")") as $r) {
         $state['names'][(string)(int)$r['style_id']] = (string)$r['style_name'];
     }
-    // Each starter passes the check a tree saved from the editor passes; one
-    // that fails is dropped and its pages keep their System region.
+    pg_ltd_starters_keep($starters);
+    pg_ltd_state_write($state);
+    return is_file(pg_ltd_state_path()) ? '' : lang('The move could not be started: data/temp is not writable.');
+}
+
+/**
+ * A new run's starter layouts kept beside its cursor (pg_ltd_starters_path()),
+ * the last run's removed. Each passes the check a tree saved from the editor
+ * passes; one that fails is dropped and its pages keep their System region.
+ *
+ * @param array $starters  kind => tree
+ */
+function pg_ltd_starters_keep($starters)
+{
     $kept = array();
     foreach ((array)$starters as $kind => $tree) {
         $check = _validate_and_clean_tree_json(json_encode($tree));
@@ -516,8 +549,6 @@ function pg_ltd_run_start($style_ids, $user, $set_keys = array(), $starters = ar
     }
     @unlink(pg_ltd_starters_path());
     if ($kept) @file_put_contents(pg_ltd_starters_path(), pg_designer_tree_encode($kept));
-    pg_ltd_state_write($state);
-    return is_file(pg_ltd_state_path()) ? '' : lang('The move could not be started: data/temp is not writable.');
 }
 
 /**
@@ -605,6 +636,11 @@ function pg_ltd_run_step($state, $user)
         return pg_ltd_state_advance($state, true);
     }
     $designed = (string)$row['style_layout'] === 'visual_designer';
+    // A design moved earlier is worked only while it is still a design.
+    if (!$designed && in_array($style_id, array_map('intval', (array)($state['earlier'] ?? array())), true)) {
+        $state = pg_ltd_state_line($state, 'skipped', lang('The design is not a Legacy design with pages any more.'));
+        return pg_ltd_state_advance($state, true);
+    }
 
     switch ($state['step']) {
         case 'set_design':

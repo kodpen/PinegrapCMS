@@ -92,6 +92,11 @@ function webhook_payloads_test_builders()
 		'pg_feedback_detractor_payload' => function () {
 			return pg_feedback_detractor_payload(pg_feedback_event_payload(array('id' => 1, 'record_type' => 'booking', 'record_id' => 2, 'contact_id' => 3, 'channel' => 'email', 'score' => 2, 'band' => 1, 'comment' => '', 'answered_at' => 0), array('id' => 4, 'name' => 'A', 'kind' => 2, 'touchpoint' => 'booking'), true), 5, 6);
 		},
+		'pg_volunteer_event_payload' => function ($event = '') {
+			return pg_volunteer_event_payload($event, array('volunteer_id' => 1, 'signup_id' => 2, 'shift_id' => 3, 'programme_id' => 4, 'programme' => 'P', 'contact_id' => 5, 'form_id' => 6,
+				'skills' => '["Driving"]', 'applied_at' => 1000, 'approved_at' => 2000, 'approved_by' => 7, 'role' => 'r1', 'programme_roles' => '{"r1":{"name":"Driver"}}', 'place' => 'Hall',
+				'start_time' => '2026-12-05 09:00:00', 'end_time' => '2026-12-05 12:00:00', 'how' => 'waitlist', 'needed' => 2, 'asked' => 3, 'check_in' => '2026-12-05 08:55:00', 'checked_by' => 0, 'minutes' => 180, 'worked_on' => null));
+		},
 		'pg_booking_event_payload' => function () {
 			return pg_booking_event_payload(array('id' => 1, 'service_id' => 2, 'staff_id' => 3, 'user_id' => 0, 'name' => 'A', 'email' => 'a@example.com', 'start_at' => 0, 'end_at' => 0, 'status' => 'confirmed', 'source' => 'site'));
 		},

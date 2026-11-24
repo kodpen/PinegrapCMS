@@ -805,3 +805,180 @@ function pg_launch_journey_request_changes($request)
 
     return $changes;
 }
+
+/**
+ * A robots.txt text with its catch-all closing taken out: every
+ * "Disallow: /" in a group that names "*" is removed, and a group left with
+ * no rule loses its User-agent lines too, so they do not join the next
+ * group (RFC 9309). Every other line, comment and group stays as written.
+ * Pure.
+ *
+ * @param string $text the operator's robots.txt extras
+ * @return string
+ */
+function pg_launch_journey_robots_opened($text)
+{
+    $raw = preg_split('/\r\n|\r|\n/', (string) $text);
+    $lines = pg_robots_record_lines($text);
+    $groups = array();
+    $group = null;
+
+    foreach ($lines as $i => $line) {
+        if ($line === '') {
+            continue;
+        }
+
+        if (preg_match('/^user-agent\s*:\s*(\S+)/i', $line, $match)) {
+            if (($group === null) || $group['rules']) {
+                $groups[] = array('agents' => array(), 'agent_lines' => array(), 'rules' => array());
+                $group = &$groups[count($groups) - 1];
+            }
+
+            $group['agents'][] = $match[1];
+            $group['agent_lines'][] = $i;
+            continue;
+        }
+
+        if ($group !== null) {
+            $group['rules'][] = $i;
+        }
+    }
+    unset($group);
+
+    $drop = array();
+
+    foreach ($groups as $group) {
+        if (!in_array('*', $group['agents'], true)) {
+            continue;
+        }
+
+        $kept = 0;
+
+        foreach ($group['rules'] as $i) {
+            if (preg_match('#^disallow\s*:\s*/$#i', $lines[$i])) {
+                $drop[$i] = true;
+            } else {
+                $kept++;
+            }
+        }
+
+        if (($kept === 0) && $group['rules']) {
+            foreach ($group['agent_lines'] as $i) {
+                $drop[$i] = true;
+            }
+        }
+    }
+
+    $out = array();
+
+    foreach ($raw as $i => $line) {
+        if (!isset($drop[$i])) {
+            $out[] = $line;
+        }
+    }
+
+    // Blank lines left where a group was are folded into one.
+    return trim(preg_replace("/\n{3,}/", "\n\n", implode("\n", $out)));
+}
+
+/**
+ * What "Go live" changes itself, in the order the confirmation names them:
+ * maintenance mode turned off, the robots.txt rule closing the whole site
+ * removed. Each only when it applies; a payment mode is never changed. Pure.
+ *
+ * @param array $facts
+ * @return array list of 'maintenance', 'robots'
+ */
+function pg_launch_journey_golive_changes($facts)
+{
+    $changes = array();
+
+    if (!empty($facts['maintenance'])) {
+        $changes[] = 'maintenance';
+    }
+
+    if (isset($facts['robots_text']) && pg_robots_catch_all_closed((string) $facts['robots_text'])) {
+        $changes[] = 'robots';
+    }
+
+    return $changes;
+}
+
+/**
+ * The blockers "Go live" leaves: every blocker of the go-live check but
+ * the two it removes itself. Pure.
+ *
+ * @param array $check pg_launch_journey_golive_check()
+ * @return array rows
+ */
+function pg_launch_journey_golive_left($check)
+{
+    $left = array();
+
+    foreach ($check['blockers'] as $row) {
+        if (($row['key'] === 'maintenance') || (($row['key'] === 'search_open') && ($row['reason'] === 'robots_closed'))) {
+            continue;
+        }
+
+        $left[] = $row;
+    }
+
+    return $left;
+}
+
+/**
+ * What the go-live check dialog draws: "Must be fixed" and "Worth a look"
+ * as rows (key, name, line, url), the changes "Go live" makes as their
+ * sentences, and the blockers it leaves, each named. Pure.
+ *
+ * @param string $purpose
+ * @param array  $facts
+ * @param mixed  $hidden
+ * @return array must, worth, changes, left
+ */
+function pg_launch_journey_golive_view($purpose, $facts, $hidden)
+{
+    $check = pg_launch_journey_golive_check($purpose, $facts, $hidden);
+    $rows = function ($list) use ($facts) {
+        $out = array();
+        foreach ($list as $row) {
+            $face = pg_launch_journey_step_face($row['key']);
+            $out[] = array(
+                'key'  => $row['key'],
+                'name' => $face['name'],
+                'line' => pg_launch_journey_step_line($row, $facts),
+                'url'  => $face['url'],
+            );
+        }
+        return $out;
+    };
+    $sentences = array(
+        'maintenance' => lang('Maintenance mode turns off'),
+        'robots'      => lang('Search engines may index the site'),
+    );
+    $changes = array();
+
+    foreach (pg_launch_journey_golive_changes($facts) as $change) {
+        $changes[] = $sentences[$change];
+    }
+
+    return array(
+        'must'    => $rows($check['blockers']),
+        'worth'   => $rows($check['warnings']),
+        'changes' => $changes,
+        'left'    => $rows(pg_launch_journey_golive_left($check)),
+    );
+}
+
+/**
+ * Whether a "Go live" request may go ahead: with a blocker left it must
+ * carry "I know, go live anyway". Pure.
+ *
+ * @param array $left    pg_launch_journey_golive_left()
+ * @param array $request anyway
+ * @return bool
+ */
+function pg_launch_journey_golive_allowed($left, $request)
+{
+    return !$left || !empty($request['anyway']);
+}

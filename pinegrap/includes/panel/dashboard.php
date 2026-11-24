@@ -28,7 +28,11 @@
  *                                new dashboard (includes/dashboard/v2/
  *                                personal.php)
  *   launch_journey_save          the set-up card's purpose, a step not for
- *                                this site, or Hide set-up (administrators)
+ *                                this site, Hide set-up, or Go live
+ *                                (administrators)
+ *   launch_summary               the agency summary's lines and signed link:
+ *                                read, add, remove, a new link, withdraw
+ *                                (administrators)
  *   tour_seen                    a guided tour has been watched or skipped
  *   contact_quick_save           the account menu's quick form for one's own
  *                                name
@@ -541,6 +545,17 @@ function pg_panel_launch_journey_save($request, $action)
         respond(array('status' => 'error', 'message' => lang('Only an administrator can change the set-up.')));
     }
 
+    // "Go live" reads the go-live check again and makes its own changes.
+    if (!empty($request['go_live'])) {
+        $refused = pg_launch_journey_go_live($user, $request);
+
+        if ($refused !== '') {
+            respond(array('status' => 'error', 'message' => $refused));
+        }
+
+        respond(array('status' => 'success'));
+    }
+
     $changes = pg_launch_journey_request_changes($request);
 
     if (!$changes || !pg_launch_journey_store($changes)) {
@@ -548,6 +563,54 @@ function pg_panel_launch_journey_save($request, $action)
     }
 
     respond(array('status' => 'success'));
+}
+
+function pg_panel_launch_summary($request, $action)
+{
+    // Behind the general gate; the agency summary belongs to the set-up
+    // card, an administrator's alone. Every answer is the drawer's data
+    // after the change.
+    validate_token();
+
+    global $user;
+    $user = validate_user();
+
+    if ((int) $user['role'] !== 0) {
+        respond(array('status' => 'error', 'message' => lang('Only an administrator can change the set-up.')));
+    }
+
+    if (!pg_launch_summary_ready()) {
+        respond(array('status' => 'error', 'message' => lang('Run the upgrade to use this setting.')));
+    }
+
+    $op = (string) ($request['op'] ?? 'get');
+    $ok = true;
+
+    if ($op === 'add') {
+        $ok = pg_launch_summary_line_add($request['text'] ?? '', (int) $user['id']);
+    } elseif ($op === 'remove') {
+        $ok = pg_launch_summary_line_remove((int) ($request['id'] ?? 0));
+    } elseif ($op === 'link') {
+        $link = pg_launch_summary_link_new(time(), (int) ($request['days'] ?? 0), pg_booking_key());
+        $ok = ($link['hash'] !== '') && pg_launch_summary_link_store($link);
+        if ($ok) {
+            log_activity('Agency summary link made, working until ' . date('Y-m-d', $link['expires_at']));
+        }
+    } elseif ($op === 'withdraw') {
+        $link = pg_launch_summary_link();
+        $ok = ($link['hash'] !== '') && pg_launch_summary_link_store(array('withdrawn_at' => time()) + $link);
+        if ($ok) {
+            log_activity('Agency summary link withdrawn');
+        }
+    } elseif ($op !== 'get') {
+        $ok = false;
+    }
+
+    if (!$ok) {
+        respond(array('status' => 'error', 'message' => lang('The change could not be saved.')));
+    }
+
+    respond(array('status' => 'success', 'summary' => pg_launch_summary_drawer_data()));
 }
 
 function pg_panel_update_dashboard_appearance($request, $action)

@@ -17,7 +17,7 @@ description: Order of work after the owner's message of 2026-11-16 (agent channe
 - Work in hand is finished, never dropped for a newer plan.
 
 ## What is look modernisation, and what is not?
-- It is the work nobody asked for by name: the old panel screens moved to look A (`panel-old-screens*`) and the design language's remaining steps (`panel-design-language*`). Both carry `priority: 2`; none of their steps is given while a step of 6 is free. A step of theirs already open is finished; no new one starts.
+- It is the work nobody asked for by name: the old panel screens moved to look A (`panel-old-screens*`) (closed; the design language closed too, `ui/look-overview.md`) and what `ui/look-open-work.md` names. Look work carries `priority: 2`; none of their steps is given while a step of 6 is free. A step of theirs already open is finished; no new one starts.
 - It is not a look step inside a plan the owner asked for: such a step carries its plan's priority. Asked on 2026-11-16 for the Auto Dialogs screens of the pop-ups plan (agent channel message 5837): it stayed 6, as the designed pop-ups hung on it (done, `platform/auto-dialog-pop-ups.md`). The same held for the agents' settings plan (done, `workspace/workspace-agent-settings.md`) and the plan drawers plan (done, `workspace/workspace-plan-drawers-look.md`).
 - The owner was told this reading in message 5829 and may lower any of them with a word.
 

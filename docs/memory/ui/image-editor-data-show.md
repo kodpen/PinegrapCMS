@@ -5,7 +5,7 @@ module: image_editor_data
 ---
 
 ## Where is it?
-- On an opened table of the Data screen (`workspace_wtables.php?id=N`), first in the head's button bar: "Show on a canvas" as a `pg-button pg-button-ghost` with the Design Canvas's one-colour icon and its word, opening a `.menu` with "As a chart" and "As a table" (Menus pattern of the Design examples screen). Plan: `plans/canvas-data-views.md`, screens `plans/canvas-data-views-screens.md`.
+- On an opened table of the Data screen (`workspace_wtables.php?id=N`), first in the head's button bar: "Show on a canvas" as a `pg-button pg-button-ghost` with the Design Canvas's one-colour icon and its word, opening a `.menu` with "As a chart" and "As a table" (Menus pattern of the Design examples screen). The feature: `workspace/canvas-data-views.md`.
 - DV3 drew it quiet and small after Run from table, only for a table of a channel; the owner did not find it (2026-11-21), so DV2b moved it first, gave it the plain look and offered it for every table.
 - Shown to someone who may use it (`pg_image_editor_data_show_check()`); the screen prints the editor's loader and the JSON it hands the editor (`pg_image_editor_data_show_assets()`) after the bar. A table made just now on the Data screen (no channel) opens with it in place.
 

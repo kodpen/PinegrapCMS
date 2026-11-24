@@ -925,6 +925,7 @@
     "Ended on {var:1}": "Süresi doldu: {var:1}",
     "Ended subscriptions": "Aboneliği biten",
     "Ended {var:1}": "Bitti: {var:1}",
+    "Ended. Make a new link to share the summary again.": "Süresi doldu. Özeti yeniden paylaşmak için yeni bir bağlantı oluşturun.",
     "Endpoint address": "Uç nokta adresi",
     "Endpoints": "Uç Noktalar",
     "Ends": "Bitiş saati",

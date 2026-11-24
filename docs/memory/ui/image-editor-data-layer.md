@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## What is a data layer?
-- A layer `{type: 'data', x, y, w, h, rot, opacity, data}` whose `data` describes a Workspace table drawn as a chart or a plain table. It holds the description and never the rows; the rows are read when it is drawn. Plan: `plans/canvas-data-views.md`; owner record: `workflow/decisions-made-workspace-41.md`.
+- A layer `{type: 'data', x, y, w, h, rot, opacity, data}` whose `data` describes a Workspace table drawn as a chart or a plain table. It holds the description and never the rows; the rows are read when it is drawn. The feature as one: `workspace/canvas-data-views.md`; owner record: `workflow/decisions-made-workspace-41.md`.
 - It keeps upright when the picture turns (`UPRIGHT` in the model), as a text does. It writes nothing to its table.
 
 ## What does the description hold?

@@ -1,5 +1,5 @@
 /* Shared by the two sheets of this folder: the sheet's frame and the Workspace
-   list. Every colour and size comes from plans/panel-design-language/sheet.css. */
+   list. Every colour and size comes from ui/look-sheet/sheet.css. */
 .stage { width: 1512px; }
 .board { margin-bottom: 40px; }
 .cap small { display: block; margin-top: 2px; color: var(--fg3); font-size: 12.5px; }

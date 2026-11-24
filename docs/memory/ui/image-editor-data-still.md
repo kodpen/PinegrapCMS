@@ -5,7 +5,7 @@ module: image_editor_data
 ---
 
 ## What does the Workspace's file of a canvas with data layers show?
-- Its data layers as frames with no rows and the line "The rows show where the canvas is opened." (`dataBare`). That file is what Download from the card, the Files tab's tile, a guest's page and a message's thumbnail show, to every reader of the channel whatever table they may read. Plan: `plans/canvas-data-views.md`.
+- Its data layers as frames with no rows and the line "The rows show where the canvas is opened." (`dataBare`). That file is what Download from the card, the Files tab's tile, a guest's page and a message's thumbnail show, to every reader of the channel whatever table they may read. The feature: `workspace/canvas-data-views.md`.
 - Why: before DV5 it held the rows of whoever saved it, so a reader who may not read the table (a guest above all) saw them. DV4 (`workspace/canvas-data-follow.md`) named this; the card draws the rows again for each reader, so the file needs none.
 - Which saves: `M.dataSendBare(mode, to)` is true for the caller's `save.url` (a channel's or a note's canvas, new or edited in place) and a copy sent to a channel (`to.url`); `sendBody()` then draws with `drawArtboardBare()`. A pending agent canvas's picture drawn by a member's browser (`workspace_canvas_picture.js` `draw()`) is bare too and reads no rows.
 

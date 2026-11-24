@@ -546,6 +546,32 @@ function api_webhook_event_payloads_site() {
 		'answered_at' => array('string', 'When it was first answered (UTC, ISO 8601).')
 	);
 
+	// A volunteer profile, and a place on a shift
+	// (pg_volunteer_event_payload()).
+	$volunteer = array(
+		'id'           => array('integer', 'The volunteer profile.'),
+		'programme_id' => array('integer', 'The volunteer programme (GET /volunteer/programmes).'),
+		'programme'    => array('string', 'The programme\'s name.'),
+		'contact_id'   => array('integer?', 'The volunteer\'s contact (GET /customers/{id}), null for none.')
+	);
+
+	$volunteer_sample = array('id' => 41, 'programme_id' => 3, 'programme' => 'Food bank', 'contact_id' => 884);
+
+	$place = array(
+		'id'           => array('integer', 'The sign-up (GET /volunteer/hours once it has hours).'),
+		'shift_id'     => array('integer', 'The shift (GET /volunteer/shifts).'),
+		'programme_id' => array('integer', 'The volunteer programme (GET /volunteer/programmes).'),
+		'programme'    => array('string', 'The programme\'s name.'),
+		'volunteer_id' => array('integer', 'The volunteer profile.'),
+		'contact_id'   => array('integer?', 'The volunteer\'s contact (GET /customers/{id}), null for none.'),
+		'role'         => array('string', 'The role\'s key in the programme.'),
+		'role_name'    => array('string', 'The role\'s name; empty when the role was removed.'),
+		'place'        => array('string', 'Where the shift is.'),
+		'start_at'     => array('string?', 'When the shift starts (UTC, ISO 8601).')
+	);
+
+	$place_sample = array('id' => 940, 'shift_id' => 77, 'programme_id' => 3, 'programme' => 'Food bank', 'volunteer_id' => 41, 'contact_id' => 884, 'role' => 'r1', 'role_name' => 'Driver', 'place' => 'Warehouse', 'start_at' => '2026-12-05T06:00:00Z');
+
 	$feedback_sample = array('id' => 5120, 'survey_id' => 4, 'survey_name' => 'After a booking', 'kind' => 'csat', 'touchpoint' => 'booking',
 		'record_type' => 'booking', 'record_id' => 771, 'contact_id' => 884, 'channel' => 'email', 'score' => 2, 'band' => 'low',
 		'comment' => 'I waited half an hour past my time.', 'answered_at' => '2026-11-21T09:40:00Z');
@@ -673,6 +699,69 @@ function api_webhook_event_payloads_site() {
 			'owner_id' => array('integer', 'The user who follows it up (GET /users/{id}), 0 for nobody.'),
 			'task_id'  => array('integer', 'The Workspace follow-up task, 0 for none.')
 		), 'sample' => $feedback_sample + array('owner_id' => 12, 'task_id' => 3104)),
+
+		'volunteer.applied' => array(
+			'fields' => $volunteer + array(
+				'form_id'    => array('integer?', 'The form entry the application came from (GET /forms/{id}/submissions/{submission_id}), null for none.'),
+				'skills'     => array('string', 'The skills the form gave, separated by commas; empty for none.'),
+				'applied_at' => array('string?', 'When the application came in (UTC, ISO 8601).')
+			),
+			'sample' => $volunteer_sample + array('form_id' => 2210, 'skills' => 'Driving, First aid', 'applied_at' => '2026-11-20T09:12:00Z')
+		),
+
+		'volunteer.approved' => array(
+			'fields' => $volunteer + array(
+				'approved_by' => array('integer?', 'The coordinator who approved it (GET /users/{id}), null for none.'),
+				'approved_at' => array('string?', 'When it was approved (UTC, ISO 8601).')
+			),
+			'sample' => $volunteer_sample + array('approved_by' => 12, 'approved_at' => '2026-11-21T08:30:00Z')
+		),
+
+		'shift.signed_up' => array(
+			'fields' => $place + array(
+				'end_at' => array('string?', 'When the shift ends (UTC, ISO 8601).'),
+				'how'    => array('string', 'sign_up (a free place), waitlist (moved up when a place opened) or swap (took a place another volunteer offered).')
+			),
+			'sample' => $place_sample + array('end_at' => '2026-12-05T11:00:00Z', 'how' => 'sign_up')
+		),
+
+		'shift.unfilled' => array(
+			'fields' => array(
+				'id'           => array('integer', 'The shift (GET /volunteer/shifts).'),
+				'programme_id' => array('integer', 'The volunteer programme (GET /volunteer/programmes).'),
+				'programme'    => array('string', 'The programme\'s name.'),
+				'place'        => array('string', 'Where the shift is.'),
+				'start_at'     => array('string?', 'When the shift starts (UTC, ISO 8601).'),
+				'end_at'       => array('string?', 'When the shift ends (UTC, ISO 8601).'),
+				'needed'       => array('integer', 'Places still free across its roles when the call went.'),
+				'asked'        => array('integer', 'Volunteers the call asked.')
+			),
+			'sample' => array('id' => 77, 'programme_id' => 3, 'programme' => 'Food bank', 'place' => 'Warehouse', 'start_at' => '2026-12-05T06:00:00Z', 'end_at' => '2026-12-05T11:00:00Z', 'needed' => 2, 'asked' => 6)
+		),
+
+		'volunteer.checked_in' => array(
+			'fields' => $place + array(
+				'checked_in_at' => array('string?', 'When the volunteer checked in (UTC, ISO 8601).'),
+				'checked_by'    => array('integer?', 'The coordinator who checked them in (GET /users/{id}), null for the volunteer\'s own scan.')
+			),
+			'sample' => $place_sample + array('checked_in_at' => '2026-12-05T05:56:00Z', 'checked_by' => null)
+		),
+
+		'volunteer.hours_approved' => array(
+			'fields' => array(
+				'id'           => array('integer', 'The hours row (GET /volunteer/hours).'),
+				'shift_id'     => array('integer?', 'The shift, null for hours worked outside a shift.'),
+				'programme_id' => array('integer', 'The volunteer programme (GET /volunteer/programmes).'),
+				'programme'    => array('string', 'The programme\'s name.'),
+				'volunteer_id' => array('integer', 'The volunteer profile.'),
+				'contact_id'   => array('integer?', 'The volunteer\'s contact (GET /customers/{id}), null for none.'),
+				'day'          => array('string', 'The day worked, YYYY-MM-DD in the site\'s time.'),
+				'minutes'      => array('integer', 'The minutes approved.'),
+				'approved_by'  => array('integer?', 'The coordinator who approved them (GET /users/{id}), null for none.'),
+				'approved_at'  => array('string?', 'When they were approved (UTC, ISO 8601).')
+			),
+			'sample' => array('id' => 940, 'shift_id' => 77, 'programme_id' => 3, 'programme' => 'Food bank', 'volunteer_id' => 41, 'contact_id' => 884, 'day' => '2026-12-05', 'minutes' => 300, 'approved_by' => 12, 'approved_at' => '2026-12-05T15:00:00Z')
+		),
 
 		'course.completed' => array(
 			'fields' => array(

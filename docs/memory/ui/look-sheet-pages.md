@@ -1,17 +1,17 @@
 ---
-name: panel-design-language-sheet
+name: look-sheet-pages
 description: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
 ---
 
 ## Which pages does the sheet have?
-- In `plans/panel-design-language/`, each as its source (`.html` with `sheet.css`) and as pictures in both themes (`-dark.jpg`, `-light.jpg`). Open a source with Inter and Inter Display installed.
+- In `ui/look-sheet/`, each as its source (`.html` with `sheet.css`) and as pictures in both themes (`-dark.jpg`, `-light.jpg`). Open a source with Inter and Inter Display installed.
 - `basics`: type, buttons, the segmented control, status pills, icon tiles, fields; a small list with figure cards; a settings card.
 - `add-page`: an add or edit screen on a 1920 px window, the main menu as its 60 px rail.
 - `table-page`: a list on the table driver on a 1920 px window, the main menu as its 60 px rail.
 - `bell-drawer`: the bell's drawer in the second pass (#8860): the head's icon buttons, the filter row (a segmented control with counts, the "Unread" button), day groups, the rows, a fold as gathered rows, the foot's device switch.
-- `dialogs`: the confirm, form and settings dialogs and a drawer drawn as "Channel info" (#8860, #8880); numbers in `panel-design-language-dialogs.md`.
-- `report-page`: a report screen (#8955): ready reports, period, figures, chart, grouped table, and under it the bars card and the report settings drawer; numbers in `panel-design-language-report.md`.
-- Still to draw, each with the owner: Workspace, phone widths. Not the dashboard: it keeps its own look for now (#8938).
+- `dialogs`: the confirm, form and settings dialogs and a drawer drawn as "Channel info" (#8860, #8880); numbers in `look-sheet-dialogs.md`.
+- `report-page`: a report screen (#8955): ready reports, period, figures, chart, grouped table, and under it the bars card and the report settings drawer; numbers in `look-sheet-report.md`.
+- Not drawn: the Workspace and phone widths (`look-open-work.md`). Not the dashboard: it keeps its own drawn look (#8938).
 
 ## What is only a placeholder in a picture?
 - The main menu and the top bar are gray bars: they show where the page sits and are not drawn here. The ruler under a screen and the caption above it are notes, not parts of the screen.

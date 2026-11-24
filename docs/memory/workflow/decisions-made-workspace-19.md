@@ -27,4 +27,4 @@ description: Decisions list, workspace part 19 (2026-11-12): a discussion follow
 ## Who is listed as a channel's member, and who sees a last seen? (owner, 2026-11-12, #8880)
 - The channel's agents are listed with its people, in the channel head's faces and in "Channel info", with their handle and a mark that tells them from people; both get a last seen. A person's last seen time is shown only to managers; an agent's to everyone in the channel.
 - Owner (2026-11-12): "kanallarda uygulama olarak dahil olan bir ajan varsa bunlar kullanıcı gibi üst tarafta kendi etiketleri ile […] görünsün ki yönetici kanalda kimler kayıtlı bilsin. birde hem kullanıcı hem de ajanların son görülme zamanı üyeler bölümünde görünsün […] bu sayede düşen ajanları takip edebiliriz". Asked who sees a person's time: "Yalnızca yöneticiler (Önerilen)"; not chosen: "Kanaldaki herkes".
-- Step A22 of `plans/agent-channel-steps-7.md`; the look he approved: `plans/panel-design-language-dialogs.md`.
+- Step A22 of `plans/agent-channel-steps-7.md`; the look he approved: `ui/look-sheet-dialogs.md`.

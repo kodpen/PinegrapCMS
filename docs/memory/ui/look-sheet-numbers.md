@@ -1,12 +1,11 @@
 ---
-name: panel-design-language-look
+name: look-sheet-numbers
 description: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
-priority: 2
 ---
 
 ## Where do these numbers come from?
-- From the sheet the owner approved (#8842, its second pass #8860): `plans/panel-design-language/`; `panel-design-language-sheet.md` lists its pages. `sheet.css` holds every token and shared part; a page's own style block only places things. The pictures are what counts.
-- DL1 turns them into `--pg-*` tokens and classes; where a Bootstrap 6 token gives the same pixel, the token is used.
+- From the sheet the owner approved (#8842, its second pass #8860): `ui/look-sheet/`; `look-sheet-pages.md` lists its pages. `sheet.css` holds every token and shared part; a page's own style block only places things. The pictures are what counts.
+- They live as `--pg-*` tokens and recipe classes in `backend.src.css` (`look-type-and-recipes.md`); where a Bootstrap 6 token gives the same pixel, the token is used.
 
 ## What is the type?
 - Inter for text, its Display cut for headings (letter spacing -0.03em at 24 px, -0.015em at 17 px). Text 14 px / 1.45; second text and buttons 13 px; time, place, help and table headings 12 px; a count 11 px.
@@ -32,7 +31,7 @@ priority: 2
 - Segmented control (in place of filter chips): a quiet track with 3 px padding, corners 11 px; segments 26 px high, 13 / 500; the chosen one is a raised thumb; a count in the third text colour.
 - Status pill: 22 px high, round, 12 / 550, a 6 px dot with a halo, the tone as a faint fill with a line of it. Paid and live teal, waiting amber, on the way blue, cancelled and out of stock rose, draft gray.
 - Icon tile: 28 px (34 px in a settings row), corners 9 px (11 px), a 14 px glyph in the tone on a diagonal gradient of the tone (26% to 11% dark, 17% to 8% light) with a line of it. A person is a round avatar.
-- A tone names the module: team blue, shop teal, content rose, accounting and warnings amber, reports violet, system gray. A new module gets its tone in DL1's list, never a colour of its own in a screen.
+- A tone names the module: team blue, shop teal, content rose, accounting and warnings amber, reports violet, system gray. A new module gets its tone in the tone list of `backend.src.css`, never a colour of its own in a screen.
 
 ## What is a row, and how are rows gathered?
 - The bell's row (`bell-drawer.html`): tile, a title on one line with the time at its right, at most two lines of text, a button only when the row asks for something, the unread dot at the right; a read row is dimmed; hover shows the quick actions.

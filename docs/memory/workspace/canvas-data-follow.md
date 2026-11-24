@@ -5,7 +5,7 @@ module: image_editor_data
 ---
 
 ## What does a card with data layers show?
-- The canvas drawn again in the browser of whoever looks at it, its data layers from the rows that reader may read, in place of the stored picture; the image viewer opened from the card shows that drawing too. Plan: `plans/canvas-data-views.md`, census `plans/canvas-data-views-follow.md`.
+- The canvas drawn again in the browser of whoever looks at it, its data layers from the rows that reader may read, in place of the stored picture; the image viewer opened from the card shows that drawing too. The feature: `canvas-data-views.md`.
 - Nothing is written: no picture, no version, no stamp. A changed description is a version as any save; changed rows are not. A table the reader may not read draws "You cannot read this table." in its layer.
 - Why the browser and not the server's draw again: one stored picture is seen by every reader, the rows follow each reader's rights; the owner asked for no drawing cost per data change (channel message 9848).
 

@@ -12,6 +12,11 @@
  * closed and answers denied, which takes it off the dashboard; Site Settings
  * › General brings it back.
  *
+ * The card's foot, "Ready to go live?", opens the go-live check: "Must be
+ * fixed" and "Worth a look", and "Go live", which turns maintenance mode off
+ * and removes the robots.txt rule closing the whole site itself
+ * (pg_launch_journey_go_live()).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -44,6 +49,35 @@ function pg_dashboard_v2_launch_labels()
         'close'    => lang('Close'),
         'failed'   => lang('The change could not be saved.'),
         'blocker'  => lang('Must be fixed'),
+        'ready'    => lang('Ready to go live?'),
+        'check'    => lang('Go-live check'),
+        'must'     => lang('Must be fixed'),
+        'worth'    => lang('Worth a look'),
+        'nothing'  => lang('Nothing to fix'),
+        'fix'      => lang('Fix'),
+        'go_live'  => lang('Go live'),
+        'cancel'   => lang('Cancel'),
+        'changes'  => lang('Go live changes this itself:'),
+        'left'     => lang('These are not fixed yet:'),
+        'anyway'   => lang('I know, go live anyway'),
+        'live'     => lang('Live since {var:1}'),
+        // The agency summary's drawer.
+        'summary'      => lang('Agency summary'),
+        'summary_line' => lang('What the customer sees on their link, and what they answered.'),
+        'need'         => lang('What we need from you'),
+        'no_lines'     => lang('No lines yet. Add what the customer should send: a logo, texts, domain access.'),
+        'add'          => lang('Add a line'),
+        'add_hint'     => lang('For example: your logo as SVG or PNG'),
+        'remove'       => lang('Remove'),
+        'link'         => lang('Link for the customer'),
+        'copy'         => lang('Copy'),
+        'withdraw'     => lang('Withdraw link'),
+        'withdraw_ask' => lang('The customer\'s link stops working at once. Their answers are kept.'),
+        'expiry'       => lang('The link works for'),
+        'days'         => lang('{var:1} days'),
+        'make'         => lang('Make a new link'),
+        'loading'      => lang('Loading…'),
+        'no_key'       => lang('The agency summary needs the site\'s encryption key and the latest upgrade.'),
     );
 }
 
@@ -62,7 +96,8 @@ function pg_dashboard_v2_card_launch($user, $period, $compare)
     }
 
     $purpose = ($stored['purpose'] !== '') ? $stored['purpose'] : 'other';
-    $card = pg_launch_journey_card($purpose, pg_launch_journey_facts($user, $purpose), $stored['hidden']);
+    $facts = pg_launch_journey_facts($user, $purpose);
+    $card = pg_launch_journey_card($purpose, $facts, $stored['hidden']);
 
     // Every step done or hidden: the journey ends by itself.
     if ($card['finished'] && ($stored['purpose'] !== '')) {
@@ -85,5 +120,8 @@ function pg_dashboard_v2_card_launch($user, $period, $compare)
         'purpose'  => ($stored['purpose'] !== '') ? $stored['purpose'] : $stored['suggested'],
         'purposes' => $purposes,
         'labels'   => pg_dashboard_v2_launch_labels(),
+        // The foot: "Ready to go live?" and its check, or the go-live time.
+        'golive'   => pg_launch_journey_golive_view($purpose, $facts, $stored['hidden']),
+        'live_at'  => ($stored['live_at'] > 0) ? get_absolute_time(array('timestamp' => $stored['live_at'], 'format' => 'plain_text', 'size' => 'short')) : '',
     ));
 }
