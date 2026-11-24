@@ -413,7 +413,8 @@ function pg_pick_pack_pill($status)
  *
  * @param int $wave_id
  * @return array rows: ship_to_id, order_id, order_number, ship_by,
- *               removed_at, units, pack_status (-1 none)
+ *               removed_at, units, pack_status (-1 none), pack_missing
+ *               (order_packs.missing, null none)
  */
 function pg_pick_wave_addresses($wave_id)
 {
@@ -425,7 +426,8 @@ function pg_pick_wave_addresses($wave_id)
             COALESCE(orders.order_number, '') AS order_number,
             (SELECT COALESCE(SUM(order_items.quantity), 0) FROM order_items
                 WHERE order_items.ship_to_id = wave_row.ship_to_id" . pg_order_item_active_sql() . ") AS units,
-            COALESCE(order_packs.status, -1) AS pack_status
+            COALESCE(order_packs.status, -1) AS pack_status,
+            order_packs.missing AS pack_missing
         FROM pick_wave_orders AS wave_row
         LEFT JOIN orders ON orders.id = wave_row.order_id
         LEFT JOIN order_packs ON order_packs.ship_to_id = wave_row.ship_to_id

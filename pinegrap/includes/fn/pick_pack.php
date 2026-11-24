@@ -4,7 +4,8 @@
  *
  * Pick and pack: the pure rules. The shelf address sort, the wave rule's
  * filter, the cancelled order leaving its wave, the pick list totals, the
- * verdict on one scan at the pack screen and the pack's state. Nothing here
+ * verdict on one scan at the pack screen and the pack's state, a short
+ * pick's missing lines and count fixes, the Packing card's figures. Nothing here
  * reads or writes the database: the screens and endpoints hand in the rows
  * they read and store what comes back. Verdicts are codes, never texts; the
  * screen that shows one translates it.
@@ -880,5 +881,219 @@ function pg_pack_event_payload(array $pack, $order_number)
         'units' => (int) (isset($pack['units']) ? $pack['units'] : 0),
         'scanned' => (int) (isset($pack['scanned']) ? $pack['scanned'] : 0),
         'missing' => $missing,
+    );
+}
+
+// Most units a short pick's count fix may set a location to.
+if (!defined('PG_PACK_COUNT_MAX')) {
+    define('PG_PACK_COUNT_MAX', 1000000);
+}
+
+// The longest time one pack counts towards its packer's units an hour: a
+// pack left open over lunch would otherwise drag the figure down.
+if (!defined('PG_PACK_TIME_CAP')) {
+    define('PG_PACK_TIME_CAP', 3600);
+}
+
+/**
+ * order_packs.missing as stored, read back: product_id => units missing,
+ * only whole units above zero.
+ *
+ * @param mixed $stored the JSON text, a decoded array or null
+ * @return array product_id => units, by product id
+ */
+function pg_pack_missing_decode($stored)
+{
+    $rows = is_array($stored) ? $stored : json_decode((string) $stored, true);
+    $out = array();
+
+    foreach ((array) $rows as $key => $row) {
+        // pg_pack_missing() keeps product_id => units; the event's list form
+        // (product_id, units) is read as well.
+        if (is_array($row)) {
+            $id = isset($row['product_id']) ? $row['product_id'] : null;
+            $units = isset($row['units']) ? $row['units'] : 0;
+        } else {
+            $id = $key;
+            $units = $row;
+        }
+
+        if (!is_numeric($id) || !is_numeric($units) || (int) $id < 0 || (int) $units <= 0) {
+            continue;
+        }
+
+        $out[(int) $id] = (isset($out[(int) $id]) ? $out[(int) $id] : 0) + (int) $units;
+    }
+
+    ksort($out);
+
+    return $out;
+}
+
+/**
+ * The short pick drawer's count fixes: the products whose switch "Set this
+ * location's count to what was found" is on, with the number typed. Only a
+ * product still missing from the pack and tracking its stock is taken; a
+ * number that is not a whole number from 0 up is left out.
+ *
+ * @param mixed $on      posted product_id => '1' of the switches
+ * @param mixed $found   posted product_id => the number typed
+ * @param array $missing pg_pack_missing(): product_id => units
+ * @param array $tracked product ids whose stock is counted
+ * @return array product_id => units now at the location
+ */
+function pg_pack_count_fixes($on, $found, array $missing, array $tracked)
+{
+    $out = array();
+    $tracked = array_map('intval', $tracked);
+
+    foreach ((array) $on as $id => $flag) {
+        if (!is_numeric($id) || (string) $flag !== '1') {
+            continue;
+        }
+
+        $id = (int) $id;
+
+        if ($id <= 0 || empty($missing[$id]) || !in_array($id, $tracked, true)) {
+            continue;
+        }
+
+        $value = (is_array($found) && isset($found[$id]) && is_scalar($found[$id])) ? trim((string) $found[$id]) : '';
+
+        if ($value === '' || !ctype_digit($value) || (int) $value > PG_PACK_COUNT_MAX) {
+            continue;
+        }
+
+        $out[$id] = (int) $value;
+    }
+
+    ksort($out);
+
+    return $out;
+}
+
+/**
+ * A short pack's missing lines as short texts, "Cap × 2", in product order.
+ *
+ * @param array  $missing    product_id => units (pg_pack_missing_decode())
+ * @param array  $names      product_id => the name to show
+ * @param string $gone_label the name of a line whose product is gone (id 0)
+ *                           or not in $names
+ * @return string[]
+ */
+function pg_pack_missing_list(array $missing, array $names, $gone_label)
+{
+    $out = array();
+
+    foreach ($missing as $id => $units) {
+        $name = (isset($names[$id]) && trim((string) $names[$id]) !== '') ? trim((string) $names[$id]) : (string) $gone_label;
+        $out[] = $name . ' × ' . (int) $units;
+    }
+
+    return $out;
+}
+
+/**
+ * The first day of the week $today is in, Monday.
+ *
+ * @param int $today the day's start
+ * @return int
+ */
+function pg_pack_week_start($today)
+{
+    $weekday = (int) date('N', (int) $today);
+
+    return ($weekday > 1) ? (int) strtotime('-' . ($weekday - 1) . ' days', (int) $today) : (int) $today;
+}
+
+/**
+ * The Packing card's figures, from the pack records alone.
+ *
+ * Waiting: addresses paid and not packed (a short one waits too); oldest:
+ * the earliest known ship-by day among them; due: those whose ship-by day is
+ * today or before. Packed today and the packers' week: packs closed packed
+ * from $week_start on. Units an hour counts each pack's time from its first
+ * scan to its close, at most PG_PACK_TIME_CAP, and stays null below one
+ * minute in all; refused scans count every pack the packer closed, short too.
+ *
+ * @param int[] $waiting    the ship-by day of each waiting address (0 unknown)
+ * @param array $packs      the packs closed this week: 'status', 'packer_id',
+ *                          'started_at', 'packed_at' (short_at for a short
+ *                          one), 'units', 'refused'
+ * @param int   $today      the day's start
+ * @return array 'waiting', 'oldest' (0 none known), 'due', 'packed_today',
+ *               'packers': rows of 'packer_id', 'packs', 'units',
+ *               'per_hour' (int or null), 'refused'; most packs first
+ */
+function pg_pack_card_figures(array $waiting, array $packs, $today)
+{
+    $today = (int) $today;
+    $oldest = 0;
+    $due = 0;
+
+    foreach ($waiting as $ship_by) {
+        $ship_by = (int) $ship_by;
+
+        if ($ship_by <= 0) {
+            continue;
+        }
+
+        if ($oldest === 0 || $ship_by < $oldest) {
+            $oldest = $ship_by;
+        }
+
+        if ($ship_by <= $today) {
+            $due++;
+        }
+    }
+
+    $packers = array();
+    $packed_today = 0;
+
+    foreach ($packs as $pack) {
+        $id = (int) (isset($pack['packer_id']) ? $pack['packer_id'] : 0);
+
+        if (!isset($packers[$id])) {
+            $packers[$id] = array('packer_id' => $id, 'packs' => 0, 'units' => 0, 'seconds' => 0, 'refused' => 0);
+        }
+
+        $packers[$id]['refused'] += max(0, (int) (isset($pack['refused']) ? $pack['refused'] : 0));
+
+        if ((int) (isset($pack['status']) ? $pack['status'] : -1) !== PG_PACK_PACKED) {
+            continue;
+        }
+
+        $closed = (int) (isset($pack['packed_at']) ? $pack['packed_at'] : 0);
+        $started = (int) (isset($pack['started_at']) ? $pack['started_at'] : 0);
+        $packers[$id]['packs']++;
+        $packers[$id]['units'] += max(0, (int) (isset($pack['units']) ? $pack['units'] : 0));
+
+        if ($started > 0 && $closed > $started) {
+            $packers[$id]['seconds'] += min(PG_PACK_TIME_CAP, $closed - $started);
+        }
+
+        if ($closed >= $today) {
+            $packed_today++;
+        }
+    }
+
+    $rows = array();
+
+    foreach ($packers as $row) {
+        $row['per_hour'] = ($row['seconds'] >= 60) ? (int) round($row['units'] * 3600 / $row['seconds']) : null;
+        unset($row['seconds']);
+        $rows[] = $row;
+    }
+
+    usort($rows, function ($a, $b) {
+        return array($b['packs'], $b['units'], $a['packer_id']) <=> array($a['packs'], $a['units'], $b['packer_id']);
+    });
+
+    return array(
+        'waiting' => count($waiting),
+        'oldest' => $oldest,
+        'due' => $due,
+        'packed_today' => $packed_today,
+        'packers' => $rows,
     );
 }

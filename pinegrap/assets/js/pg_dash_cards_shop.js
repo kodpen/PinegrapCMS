@@ -2,9 +2,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The new dashboard's shop cards (assets/js/pg_dash.js draws the frames):
- * Ecommerce summary, Sales map, Operations Desk, Orders, Offers and Exchange
- * rates. The data is what includes/dashboard/v2/cards/<id>.php returns; every
- * text in it comes from the server.
+ * Ecommerce summary, Sales map, Operations Desk, Orders, Offers, Exchange
+ * rates and Packing. The data is what includes/dashboard/v2/cards/<id>.php
+ * returns; every text in it comes from the server.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -366,6 +366,26 @@
         svg.setAttribute("data-label", label);
         return svg;
     }
+
+    // Packing: the four figures, then a row a packer for this week with
+    // packs and units an hour under the name and the refused scans at the
+    // end.
+    pgDash.renderers.packing = function (body, data, card, config) {
+        var el = pgDash.el;
+        body.appendChild(pgDash.tiles(data.tiles));
+        body.appendChild(el("h3", "pg-dash-rows-title", data.rows_title));
+        if ((data.rows || []).length) {
+            body.appendChild(list(data.rows, {
+                name: function (row) { return row.text; },
+                meta: function (row) { return row.meta; },
+                value: function () { return ""; },
+                note: function (row) { return row.note; }
+            }));
+        } else {
+            body.appendChild(el("p", "pg-dash-shop-note", data.none));
+        }
+        more(body, data.url, config);
+    };
 
     // A currency on one line: the code, its name, the week's line in the
     // change's tone, the rate over the change.

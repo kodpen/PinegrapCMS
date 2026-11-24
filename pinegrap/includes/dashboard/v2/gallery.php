@@ -72,6 +72,7 @@ function pg_dashboard_v2_gallery_cards()
         'offers'     => $g(lang('Active campaigns and coupons'), 0, 'rows'),
         'recovery'   => $g(lang('Left carts the messages brought back, by channel'), 1, 'funnel'),
         'fx'         => $g(lang('Rates and their weekly course'), 0, 'line'),
+        'packing'    => $g(lang('Parcels waiting to be packed and each packer\'s week'), 1, 'boxes'),
         'perf'       => $g(lang('Response time gauge and slow pages'), 0, 'gauge'),
         'subs'       => $g(lang('The state of the Pinegrap subscription'), 0, 'boxes'),
     );

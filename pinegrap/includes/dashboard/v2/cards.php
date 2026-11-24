@@ -72,6 +72,7 @@ function pg_dashboard_v2_cards()
     $built = array_merge($built, array('pins', 'perf'));
     $built[] = 'visitmap';
     $built[] = 'mail';
+    $built[] = 'packing';
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
@@ -123,6 +124,7 @@ function pg_dashboard_v2_cards()
         'offers'     => $card(lang('Offers'), 'bi-tag', 'shop', 'S', null, 'shop'),
         'recovery'   => $card(lang('Recovered carts'), 'bi-cart-check', 'shop', 'S', 2, 'shop_summary'),
         'fx'         => $card(lang('Exchange rates'), 'bi-currency-exchange', 'shop', 'S', null, 'shop'),
+        'packing'    => $card(lang('Packing'), 'bi-box-seam', 'shop', 'M', null, 'shop'),
         // System
         'perf'       => $card(lang('Performance'), 'bi-speedometer2', 'system', 'S', null, 'perf'),
         'subs'       => $card(lang('Subscriptions'), 'bi-patch-check', 'system', 'S', null, 'designer'),

@@ -7,8 +7,9 @@
  * address open a code finds its order; with one each code counts one unit
  * of a line. A refused scan turns the field's row red for two seconds with
  * the reason and a low tone; a checked pack turns the screen to "Packed"
- * with what followed and "Next order" in focus. Texts come from the page
- * (data-texts) and are written with textContent only.
+ * with what followed and "Next order" in focus; "Short…" opens the drawer
+ * that closes it short. Texts come from the page (data-texts) and are
+ * written with textContent only.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -119,7 +120,9 @@
         }
     }
 
-    function drawDone(rows) {
+    // A closed pack: its pill (Packed, or Short), what followed as rows,
+    // and "Next order" in focus.
+    function drawDone(rows, short) {
         var card = document.createElement('div');
         var pill = document.createElement('span');
         var list = document.createElement('ul');
@@ -127,8 +130,8 @@
 
         stopCamera();
         card.className = 'pg-card pg-look-pad';
-        pill.className = 'pg-pill pg-tone-teal';
-        pill.textContent = texts.packed;
+        pill.className = 'pg-pill ' + (short ? 'pg-tone-rose' : 'pg-tone-teal');
+        pill.textContent = short ? texts.short : texts.packed;
         card.appendChild(pill);
         list.className = 'pg-pack-done';
 
@@ -371,6 +374,98 @@
             } else {
                 startCamera();
             }
+        });
+    }
+
+    // "Short…": the drawer lists the lines not full with what they miss
+    // now, as the cards show it, and closes the pack short.
+    var phone = window.matchMedia('(max-width: 575.98px)');
+    var shortDrawer = document.getElementById('pack_short');
+    var shortOpen = root.querySelector('[data-pg-pack-short-open]');
+
+    if (shortDrawer && shortOpen && window.pgUI) {
+        shortOpen.addEventListener('click', function () {
+            Array.prototype.forEach.call(shortDrawer.querySelectorAll('[data-pg-pack-short-line]'), function (row) {
+                var card = root.querySelector('[data-pg-pack-line="' + row.getAttribute('data-pg-pack-short-line') + '"]');
+                var left = 0;
+
+                if (card) {
+                    left = parseInt(card.getAttribute('data-pg-pack-want'), 10) - parseInt(card.querySelector('[data-pg-pack-scanned]').textContent, 10);
+                }
+
+                left = Math.max(0, left || 0);
+                row.classList.toggle('d-none', left === 0);
+                row.querySelector('[data-pg-pack-short-left]').textContent = String(texts.missing).replace('{var:1}', String(left));
+            });
+            shortDrawer.classList.toggle('drawer-end', !phone.matches);
+            shortDrawer.classList.toggle('drawer-bottom', phone.matches);
+            window.pgUI.drawer.show(shortDrawer);
+        });
+
+        window.pgUI.drawer.on(shortDrawer, 'hidden', function () {
+            focusField();
+        });
+
+        shortDrawer.querySelector('[data-pg-pack-short]').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            if (busy) {
+                return;
+            }
+
+            var submit = event.target.querySelector('[type="submit"]');
+            var data = { request: 'short', ship_to: shipTo };
+
+            new FormData(event.target).forEach(function (value, key) {
+                data[key] = value;
+            });
+            busy = true;
+            submit.disabled = true;
+            post(data).then(function (answer) {
+                busy = false;
+                submit.disabled = false;
+
+                // The drawer closes before the screen changes under it.
+                return Promise.resolve(window.pgUI.drawer.hide(shortDrawer)).then(function () {
+                    if (answer && answer.ok) {
+                        drawDone(answer.done || [], true);
+                        return;
+                    }
+
+                    if (answer && answer.reload) {
+                        window.location.reload();
+                        return;
+                    }
+
+                    say((answer && answer.message) || texts.failed, true);
+                });
+            }).catch(function () {
+                busy = false;
+                submit.disabled = false;
+                say(texts.failed, true);
+            });
+        });
+    }
+
+    // "Finish the pack": a pack closed short opens again for its missing
+    // units.
+    var reopen = root.querySelector('[data-pg-pack-reopen]');
+
+    if (reopen) {
+        reopen.addEventListener('click', function () {
+            reopen.disabled = true;
+            post({ request: 'reopen', ship_to: shipTo }).then(function (answer) {
+                if (answer && answer.ok && answer.url) {
+                    window.location.href = answer.url;
+                    return;
+                }
+
+                reopen.disabled = false;
+                window.alert((answer && answer.message) || texts.failed);
+            }).catch(function () {
+                reopen.disabled = false;
+                window.alert(texts.failed);
+            });
         });
     }
 
