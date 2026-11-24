@@ -9407,6 +9407,7 @@ function get_tables() {
 		'prototype_links',
 		'prototype_comments',
 		'prototype_verdicts',
+		'security_finding',
 	);
 
 }
