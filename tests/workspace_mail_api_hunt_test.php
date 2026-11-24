@@ -54,3 +54,18 @@ function test_ws_api_mail_draft_change_of_text_drops_stale_html()
 	$source = ws_mail_api_hunt_test_source('ws_api_mail_drafts_update');
 	pg_assert_true(strpos($source, 'ws_api_mail_draft_update_fields(') < strpos($source, 'ws_mail_draft_merge('), 'the update reads the fields after the rule');
 }
+
+function test_ws_mail_draft_delete_lets_a_held_drafts_files_go()
+{
+	$lines = array(array('id' => 40, 'file_id' => 7), array('id' => 41, 'file_id' => 8), array('id' => 42, 'file_id' => 9));
+
+	pg_assert_same(array(7, 9), ws_mail_draft_held_files_unused($lines, array(8)), 'a file another line or draft still holds stays');
+	pg_assert_same(array(), ws_mail_draft_held_files_unused(array(), array()), 'no lines, nothing');
+	pg_assert_same(array(7), ws_mail_draft_held_files_unused(array(array('id' => 1, 'file_id' => 7), array('id' => 2, 'file_id' => 7)), array()), 'each file once');
+
+	$source = ws_mail_api_hunt_test_source('ws_mail_draft_delete');
+	$delete = strpos($source, 'DELETE FROM ws_mail_items');
+	$discard = strpos($source, 'ws_upload_discard(');
+	pg_assert_true(($delete !== false) && ($discard !== false) && ($delete < $discard), 'the files go only after the draft row is gone');
+	pg_assert_contains('deleted_at > 0', $source, 'only the held lines taken out of the channel');
+}
