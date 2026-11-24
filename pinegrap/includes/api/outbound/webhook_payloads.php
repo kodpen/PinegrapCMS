@@ -176,6 +176,21 @@ function api_webhook_event_payloads() {
 	$rhythm_sample = array('id' => 884, 'stage' => 'due', 'previous_stage' => 'regular', 'interval_days' => 30, 'days_since_last_order' => 34, 'chance' => 80,
 		'expected_value' => 96000, 'last_order_id' => 1042, 'last_order_number' => '100318');
 
+	// The visitor journey's interest score (pg_lead_event_payload()).
+	$lead = array(
+		'id'            => array('integer', 'The customer record (GET /customers/{id}).'),
+		'score'         => array('integer', 'The interest score, 0 to 100: points from visits, forms, bookings and campaign e-mails, fading by the half-life.'),
+		'fit'           => array('integer', 'The fit score, 0 to 100, from the contact\'s fields.'),
+		'threshold'     => array('integer', 'The site\'s hot threshold the score is laid against.'),
+		'reasons'       => array('string[]', 'Up to three acts that gave the most points: pricing_page, contact_page, return_7d, form, booking, campaign_click or download.'),
+		'topic'         => array('string', 'The strongest interest (a page folder or a product group), empty for none.'),
+		'topics'        => array('string[]', 'Up to five interests, strongest first.'),
+		'last_visit_at' => array('string?', 'When the newest visit started (UTC), null for none.')
+	);
+
+	$lead_sample = array('id' => 884, 'score' => 72, 'fit' => 60, 'threshold' => 60, 'reasons' => array('pricing_page', 'return_7d', 'form'),
+		'topic' => 'Services', 'topics' => array('Services', 'Garden furniture'), 'last_visit_at' => '2026-11-24T09:30:00Z');
+
 	$group = array(
 		'id'   => array('integer', 'The product group (GET /product-groups/{id}).'),
 		'name' => array('string', 'The product group\'s name.')
@@ -332,6 +347,9 @@ function api_webhook_event_payloads() {
 		),
 
 		'customer.rhythm_stage_changed' => array('fields' => $rhythm, 'sample' => $rhythm_sample),
+
+		'customer.hot'      => array('fields' => $lead, 'sample' => $lead_sample),
+		'customer.returned' => array('fields' => $lead, 'sample' => $lead_sample),
 
 		'customer.reorder_due' => array(
 			'fields' => $rhythm + array(

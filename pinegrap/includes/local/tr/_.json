@@ -936,6 +936,7 @@
     "{var:1} connection was ended.": "{var:1} bağlantı sonlandırıldı.",
     "{var:1} connections were ended.": "{var:1} bağlantı sonlandırıldı.",
     "{var:1} connection{suffix:1}": "{var:1} bağlantı",
+    "{var:1} contact(s) became hot in the last day": "Son bir günde {var:1} kişi sıcak oldu",
     "{var:1} contact(s) could not be given an account: the card carries no name or company.": "{var:1} kişiye cari açılamadı: kartta ad da firma da yok.",
     "{var:1} contact(s) from contact group(s) ({var:2}) were deleted": "Rehber gruplarından ({var:2}) {var:1} kişi silindi",
     "{var:1} contact(s) have been merged successfully.": "{var:1} kişi başarıyla birleştirildi.",

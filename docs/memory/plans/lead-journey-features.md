@@ -23,7 +23,7 @@ description: Plan lead-journey, features J1 to J15: the browser key and the tie,
 - (J9) Topics of the pages and records seen (the page's folder; on a product page the product's category; no new field), weighted by time spent and fading like J6; the top five on the contact. Contact groups and flows can filter by a topic and by a score range.
 
 ## Who is told?
-- (J10) `contact.hot` once when the score passes the site's threshold (default 60), again only after it fell below and rose; `contact.returned` when a hot contact starts a new visit, at most once a day per contact. Through `pg_announce()`, the catalogue, fixtures and flow start boxes.
+- (J10) `customer.hot` (planned as `contact.hot`) once when the score passes the site's threshold (default 60), again only after it fell below and rose; `customer.returned` when a hot contact starts a new visit, at most once a day per contact. Through `pg_announce()`, the catalogue, fixtures and flow start boxes.
 - (J11) A daily "Hot contacts" list (score, reasons, last visit, assignee) on the contacts screen; staff told through `pg_ops_alert()` once a day.
 
 ## Which page or campaign brought a lead?

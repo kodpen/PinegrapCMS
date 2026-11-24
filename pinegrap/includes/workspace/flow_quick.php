@@ -75,7 +75,7 @@ function ws_flow_quick_areas()
             'event:application.scored', 'event:application.decided')),
         'customers'     => $area(lang('Customers'), 'bi-people', 'site', array('event:customer.created', 'event:customer.updated',
             'event:contact_group.joined', 'event:customer.consent_changed', 'event:user.created', 'event:credit.issued', 'event:credit.expired', 'event:referral.rewarded',
-            'event:course.completed', 'event:customer.rhythm_stage_changed', 'event:customer.reorder_due')),
+            'event:course.completed', 'event:customer.rhythm_stage_changed', 'event:customer.reorder_due', 'event:customer.hot', 'event:customer.returned')),
         'bookings'      => $area(lang('Reservations'), 'bi-calendar-event', 'site', array('event:booking.created', 'event:booking.confirmed',
             'event:booking.rescheduled', 'event:booking.cancelled', 'event:booking.completed', 'event:calendar_event.reserved', 'event:ticket.checked_in')),
         'products'      => $area(lang('Products and stock'), 'bi-box-seam', 'site', array('event:stock.low', 'event:inventory.changed')),

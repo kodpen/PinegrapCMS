@@ -172,6 +172,13 @@ function pg_ops_alert_codes()
             'type'  => 'warning',
             'url'   => 'marketplace_settings.php',
         ),
+        // Contacts whose interest score reached the site's threshold in the
+        // last day (pg_lead_alert_send()), told once a day.
+        'contacts_hot' => array(
+            'label' => lang('Contacts became hot'),
+            'type'  => 'warning',
+            'url'   => 'view_contacts.php',
+        ),
         // New delivery problems found by the hourly pass, one row a walk
         // (pg_delivery_tower_alerts_send()).
         'parcel_stuck' => array(

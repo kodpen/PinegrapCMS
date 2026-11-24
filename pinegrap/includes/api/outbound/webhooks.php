@@ -209,6 +209,12 @@ function api_webhook_core_events() {
 		// never a name or an address. A customer without a contact, or with
 		// only marketplace orders, is never announced.
 		'customer.rhythm_stage_changed' => 'The nightly customer rhythm pass moved a customer to another stage: regular, due, late, slipping (slipping away), lost or won_back. Between two orders a stage only moves forward, once per stage; a rebuild that only changes the store\'s figures, and a customer\'s first stage, are not announced. Only for a customer with a contact, never a marketplace buyer',
+		// The visitor journey's interest score (includes/fn/lead_tell.php),
+		// from the scoring pass: id is the contact; the scores, the reason
+		// codes and the interests follow, never the pages seen. Contacts with
+		// a panel role are never scored.
+		'customer.hot'         => 'A contact\'s interest score reached the site\'s hot threshold (60 unless changed under Site Settings, Visitors and privacy); again only after it fell below and rose. Only contacts whose visits are tied with the marketing cookie yes, never a panel user',
+		'customer.returned'    => 'A hot contact started a new visit; at most once a day a contact. Only contacts whose visits are tied with the marketing cookie yes, never a panel user',
 		'customer.reorder_due' => 'Products a customer buys again are due by their own rhythm: each product named once per purchase, from 3 days before its due day until 7 days after it, and at most one event per customer in 7 days (these days are the shop\'s settings). Not for a product bought again since, off sale or out of stock; with the comparison share on, one due customer in ten is held back and not announced. Only for a customer with a contact, never a marketplace buyer',
 		// Announced where a person or an integration moves contacts on
 		// purpose: the API and the panel's contact screens (add, edit, and

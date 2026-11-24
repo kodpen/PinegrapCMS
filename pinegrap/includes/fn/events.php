@@ -324,6 +324,8 @@ function pg_event_workspace_events()
         'shipment.problem_resolved',
         'customer.rhythm_stage_changed',
         'customer.reorder_due',
+        'customer.hot',
+        'customer.returned',
         'subscription.failed',
         'subscription.renewed',
         'subscription.cancelled',
