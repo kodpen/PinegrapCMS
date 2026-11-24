@@ -481,6 +481,21 @@
         };
     }
 
+    // Pop out: offered where the browser has Document Picture-in-Picture
+    // and the call is not already in its small window; the small window's
+    // size (CSS pixels) for the call's kind and its people, one's own tile
+    // counted: a voice call shows names and tools, a group's video a grid.
+    function popState(can, popped, kind, count) {
+        var video = kind === 'video';
+        var many = count > 2;
+
+        return {
+            show: !!can && !popped,
+            width: video ? (many ? 480 : 360) : 320,
+            height: video ? (many ? 420 : 320) : 180
+        };
+    }
+
     // Whether a click on a link would take this page elsewhere and so end
     // the call: a link to another address of the site or outside it, in
     // this tab. A hash on the same address, a script or mail link, a
@@ -2268,6 +2283,7 @@
         shareState: shareState,
         stageState: stageState,
         leavesPage: leavesPage,
+        popState: popState,
         keepAlive: keepAlive,
         handState: handState,
         inbound: inbound,
