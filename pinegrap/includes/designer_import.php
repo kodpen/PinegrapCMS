@@ -43,6 +43,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // not counted against memory_limit.
 define('PG_DI_MAX_HTML', 8 * 1024 * 1024);
 
+// The most folders an archive entry may lie in. Each folder of its path is a
+// file manager folder row; a web project is a handful deep.
+define('PG_DI_MAX_DEPTH', 16);
+
 // ── Public entry points ─────────────────────────────────────────────────────
 
 /**
@@ -116,6 +120,10 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
         if ($type === 'skip') continue;
         if ($type === 'blocked') {
             $res['warnings'][] = lang(array('string' => 'Not uploaded, files of that type are not allowed: {var:1}', 'vars' => $norm));
+            continue;
+        }
+        if ($type === 'deep') {
+            $res['warnings'][] = lang(array('string' => '{var:1} was not imported: it lies more than {var:2} folders deep.', 'vars' => array(mb_substr($norm, 0, 200), PG_DI_MAX_DEPTH)));
             continue;
         }
         $entries[$norm] = array('type' => $type, 'index' => $i);
@@ -1440,11 +1448,12 @@ function pg_di_should_skip($path)
     return false;
 }
 
-// What an archive entry is to the import: html, css, js, asset, skip (noise,
-// pg_di_should_skip()) or blocked (a name the upload rule refuses at every
+// What an archive entry is to the import: html, css, js, asset, deep (more
+// than PG_DI_MAX_DEPTH folders), skip (noise, pg_di_should_skip()) or blocked (a name the upload rule refuses at every
 // other door, pg_upload_name_blocked()). Pure.
 function pg_di_entry_type($path)
 {
+    if (substr_count((string)$path, '/') > PG_DI_MAX_DEPTH) return 'deep';
     if (pg_di_should_skip($path)) return 'skip';
     if (pg_upload_name_blocked(pg_basename($path))) return 'blocked';
     $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
@@ -1778,7 +1787,7 @@ function pg_di_folder_path($segments, $ctx)
     $level  = (int)db_value("SELECT folder_level FROM folder WHERE folder_id = '$parent' LIMIT 1");
     $key    = '';
     foreach ($segments as $seg) {
-        $seg = trim((string)$seg);
+        $seg = pg_di_folder_segment($seg);
         if ($seg === '') continue;
         $key .= '/' . $seg;
         if (isset($ctx->folders[$key])) { $parent = $ctx->folders[$key]; $level++; continue; }
@@ -1787,7 +1796,7 @@ function pg_di_folder_path($segments, $ctx)
         if (!$found) {
             $level++;
             db("INSERT INTO folder (folder_name, folder_parent, folder_level, folder_order, folder_user, folder_timestamp)
-                VALUES ('" . e(mb_substr($seg, 0, 100)) . "', '$parent', '$level', '0', '" . (int)$ctx->user_id . "', UNIX_TIMESTAMP())");
+                VALUES ('" . e($seg) . "', '$parent', '$level', '0', '" . (int)$ctx->user_id . "', UNIX_TIMESTAMP())");
             $found = (int)mysqli_insert_id(db::$con);
             if ($found > 0 && isset($ctx->created)) $ctx->created['folders'][] = $found;
         } else {
@@ -1797,6 +1806,13 @@ function pg_di_folder_path($segments, $ctx)
         $parent = $found;
     }
     return $parent;
+}
+
+// A folder name as folder_name (100 characters) stores it, so the name that
+// is looked up is the name that was written. Pure.
+function pg_di_folder_segment($seg)
+{
+    return trim(mb_substr(trim((string)$seg), 0, 100, 'UTF-8'));
 }
 
 // Flat, unique, URL-safe name for an archive file. Reserved up front so

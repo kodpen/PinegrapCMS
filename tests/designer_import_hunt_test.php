@@ -137,3 +137,22 @@ function test_designer_import_hunt_blocked_entry_warned()
 	pg_assert_contains("pg_di_entry_type(\$norm)", $src);
 	pg_assert_contains("files of that type are not allowed", $src);
 }
+
+function test_designer_import_hunt_deep_entry_left_out()
+{
+	// Every folder of an entry's path becomes a folder row: a path of
+	// thousands of folders made thousands of rows per entry.
+	pg_assert_same('deep', pg_di_entry_type(str_repeat('a/', 5000) . 'x.png'));
+	pg_assert_same('deep', pg_di_entry_type(str_repeat('a/', PG_DI_MAX_DEPTH + 1) . 'index.html'));
+	pg_assert_same('asset', pg_di_entry_type(str_repeat('a/', PG_DI_MAX_DEPTH) . 'x.png'));
+}
+
+function test_designer_import_hunt_folder_segment_cut_before_lookup()
+{
+	// folder_name holds 100 characters: a longer folder name was stored cut
+	// and looked up whole, so it was never found and made again.
+	pg_assert_same(str_repeat('ğ', 100), pg_di_folder_segment('  ' . str_repeat('ğ', 140) . ' '));
+	pg_assert_same('css', pg_di_folder_segment(' css '));
+	$src = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_import.php');
+	pg_assert_contains('$seg = pg_di_folder_segment($seg);', $src);
+}

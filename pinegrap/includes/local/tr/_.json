@@ -2277,6 +2277,7 @@
     "{var:1} was moved to the Recycle Bin on Claude's proposal.": "{var:1}, Claude'un önerisiyle Geri Dönüşüm Kutusuna taşındı.",
     "{var:1} was moved to the Recycle Bin on Claude's proposal. It held: {var:2}": "{var:1}, Claude'un önerisiyle Geri Dönüşüm Kutusuna taşındı. İçerdikleri: {var:2}",
     "{var:1} was not built: {var:2}": "{var:1} oluşturulmadı: {var:2}",
+    "{var:1} was not imported: it lies more than {var:2} folders deep.": "{var:1} alınmadı: {var:2} klasörden daha derinde.",
     "{var:1} was not imported: the design uses its own Bootstrap / jQuery.": "{var:1} içe aktarılmadı: tasarım kendi Bootstrap / jQuery'sini kullanıyor.",
     "{var:1} was not saved: too many files were sent from your connection. Please try again later.": "{var:1} kaydedilmedi: bağlantınızdan çok fazla dosya gönderildi. Lütfen daha sonra yeniden deneyin.",
     "{var:1} was not sent: send pictures (JPG, PNG, GIF, WebP), PDF, office documents or ZIP files.": "{var:1} gönderilmedi: resim (JPG, PNG, GIF, WebP), PDF, ofis belgesi veya ZIP dosyası gönderin.",
