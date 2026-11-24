@@ -7,7 +7,7 @@ description: Bug hunt of channel notes (CN1-CN3) and the share door (SL1-SL6): s
 - Channel notes with the share door: who reads and changes a channel's note, what My Notes lists, a note moved or copied, a channel deleted; the guest's read-only door (`workspace_share.php`): a link ended, taken back, an unknown token, the item deleted after sharing.
 - Files: `includes/workspace/notes.php` (access, save, move, copy, delete, purge, cards, readers, inbox), `api_channel_notes.php`, the notes routes of `api_resources.php`, `share_links.php`, `share_links_text.php`, `api_share_links.php`, `workspace_share.php`, the panel actions in `actions.php`.
 
-## What did it fix?
+## What did it fix? (#11351)
 - A channel note's writer could take its card's share back (`ws_note_unshare()` counted the writer as owner): the card said "no longer shared" and a share link to the note closed. Now refused: "A channel's note keeps its card in its channel."
 - Somebody's edit of a channel's note wrote a "note_updated" bell line to its writer, even after they had left the channel. `ws_note_change_told()` (pure) tells nobody for a channel's note.
 - A channel note's files stayed open to its writer after they left the channel: `ws_note_readers()` always added `user_id`. `ws_note_readers_of()` (pure) gives a channel's note to its channel's members only.
