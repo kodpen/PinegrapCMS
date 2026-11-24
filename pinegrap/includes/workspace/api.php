@@ -190,6 +190,51 @@ function ws_webhook_events()
 }
 
 /**
+ * The read scope of each event's data (api_webhook_event_scopes()): a task's
+ * under tasks:read, as GET /workspace/tasks; a command typed for the
+ * application under workspace:commands, which it registered it with; the
+ * rest under workspace:read. A new event is added here by hand: a test
+ * refuses one without its line.
+ *
+ * @return array  event => scope
+ */
+function ws_webhook_event_scopes()
+{
+    return array(
+        'workspace.task.created'                 => 'tasks:read',
+        'workspace.task.assigned'                => 'tasks:read',
+        'workspace.task.status_changed'          => 'tasks:read',
+        'workspace.task.completed'               => 'tasks:read',
+        'workspace.message.created'              => 'workspace:read',
+        'workspace.message.transcribed'          => 'workspace:read',
+        'workspace.task.note_added'              => 'tasks:read',
+        'workspace.poll.closed'                  => 'workspace:read',
+        'workspace.template.applied'             => 'workspace:read',
+        'workspace.task.time_logged'             => 'tasks:read',
+        'workspace.task.delegated'               => 'tasks:read',
+        'workspace.task.assistant_answered'      => 'tasks:read',
+        'workspace.approval.requested'           => 'workspace:read',
+        'workspace.approval.decided'             => 'workspace:read',
+        'workspace.channel_group.created'        => 'workspace:read',
+        'workspace.channel_group.updated'        => 'workspace:read',
+        'workspace.channel_group.access_changed' => 'workspace:read',
+        'workspace.channel_group.deleted'        => 'workspace:read',
+        'workspace.flow.run.finished'            => 'workspace:read',
+        'workspace.flow.run.failed'              => 'workspace:read',
+        'workspace.flow.run.cancelled'           => 'workspace:read',
+        'workspace.flow.run.waiting'             => 'workspace:read',
+        'workspace.wtable.row.created'           => 'workspace:read',
+        'workspace.wtable.row.updated'           => 'workspace:read',
+        'workspace.wtable.row.deleted'           => 'workspace:read',
+        'workspace.wtable.row.restored'          => 'workspace:read',
+        'workspace.mail.received'                => 'workspace:read',
+        'workspace.mail.closed'                  => 'workspace:read',
+        'workspace.app.command'                  => 'workspace:commands',
+        'workspace.app.mentioned'                => 'workspace:read',
+    );
+}
+
+/**
  * The objects the endpoints answer with.
  *
  * @return array

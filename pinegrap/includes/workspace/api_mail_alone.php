@@ -113,6 +113,16 @@ function ws_mail_alone_webhook_events()
 }
 
 /**
+ * The read scope of each of those events (api_webhook_event_scopes()).
+ *
+ * @return array
+ */
+function ws_mail_alone_webhook_event_scopes()
+{
+    return ws_mail_alone_pick_events(ws_webhook_event_scopes());
+}
+
+/**
  * The objects the routes return.
  *
  * @return array

@@ -166,6 +166,52 @@ function erp_webhook_events()
 }
 
 /**
+ * The read scope of each event's data (api_webhook_event_scopes()): a
+ * receipt or a payment is read under the cash scope, as GET /erp/receipts is;
+ * the rest under erp:read. A new event is added here by hand: a test refuses
+ * one without its line.
+ *
+ * @return array  event => scope
+ */
+function erp_webhook_event_scopes()
+{
+    return array(
+        'erp.account.created'            => 'erp:read',
+        'erp.invoice.created'            => 'erp:read',
+        'erp.invoice.paid'               => 'erp:read',
+        'erp.invoice.cancelled'          => 'erp:read',
+        'erp.invoice.edoc_changed'       => 'erp:read',
+        'erp.invoice.overdue'            => 'erp:read',
+        'erp.edoc.received'              => 'erp:read',
+        'erp.invoice.note_changed'       => 'erp:read',
+        'erp.receipt.created'            => 'erp_cash:read',
+        'erp.receipt.cancelled'          => 'erp_cash:read',
+        'erp.waybill.created'            => 'erp:read',
+        'erp.waybill.cancelled'          => 'erp:read',
+        'erp.expense.created'            => 'erp:read',
+        'erp.expense.paid'               => 'erp:read',
+        'erp.expense.cancelled'          => 'erp:read',
+        'erp.quote.created'              => 'erp:read',
+        'erp.quote.accepted'             => 'erp:read',
+        'erp.quote.rejected'             => 'erp:read',
+        'erp.quote.cancelled'            => 'erp:read',
+        'erp.quote.reopened'             => 'erp:read',
+        'erp.quote.invoiced'             => 'erp:read',
+        'erp.quote.signed'               => 'erp:read',
+        'erp.quote_template.saved'       => 'erp:read',
+        'erp.quote_template.deleted'     => 'erp:read',
+        'erp.stock_count.applied'        => 'erp:read',
+        'erp.purchase_order.created'     => 'erp:read',
+        'erp.purchase_order.changed'     => 'erp:read',
+        'erp.purchase_order.sent'        => 'erp:read',
+        'erp.purchase_order.received'    => 'erp:read',
+        'erp.purchase_order.cancelled'   => 'erp:read',
+        'erp.purchase_order.reopened'    => 'erp:read',
+        'erp.purchase_order.invoiced'    => 'erp:read',
+    );
+}
+
+/**
  * The objects the endpoints answer with, and the function that declares each
  * one's fields (beside the presenter that builds the same shape).
  *
