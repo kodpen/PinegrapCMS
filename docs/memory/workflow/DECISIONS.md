@@ -720,6 +720,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-48.md: How is a value appended to an ENUM of the open version? (architect, 2026-11-22)
 - decisions-made-schema-48.md: Does ws_notes get a column for the channel that owns a note? (owner, 2026-11-23, in the architect's window)
 - decisions-made-schema-48.md: Is there a table for share links? (owner, 2026-11-23, in the architect's window)
+- decisions-made-schema-49.md: Where are the rules and the earlier parts?
+- decisions-made-schema-49.md: Which columns does prototype approval get? (architect, 2026-11-24, PA1b #11298)
+- decisions-made-schema-49.md: Is the approver tied to a contact, and is there a retention rule? (architect, 2026-11-24)
 - decisions-made-schema-5.md: Where are the rules and the earlier steps?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-29 (evening)?
 - decisions-made-schema-5.md: Which schema was approved on 2026-10-30?

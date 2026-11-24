@@ -236,6 +236,7 @@
 - decisions-made-schema-46.md: Decisions list, schema part 46 (2026-11-21 on): the tables of the walk-in queue, volunteer shifts, the set-up journey and prototype approval, five columns on prototype_links (poll 206)
 - decisions-made-schema-47.md: Decisions list, schema part 47 (2026-11-21 on): the agreed columns and keys of the walk-in queue's three tables (WQ1b) and the volunteer shifts' five tables (VS1b)
 - decisions-made-schema-48.md: Decisions list, schema part 48 (2026-11-22 on): erp_order_costs.source gains supplier; ws_notes.owner_channel_id for a channel's note; the ws_share_links table
+- decisions-made-schema-49.md: Decisions list, schema part 49 (2026-11-24 on): the agreed columns of prototype approval (PA1b): five on prototype_links, the table prototype_verdicts, no contact id, no retention rule
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
