@@ -11,7 +11,8 @@
  * go-live check ("Must be fixed", "Worth a look", "Go live"). The data is what
  * includes/dashboard/v2/cards/launch.php returns; every text in it was
  * translated on the server. Choices are saved through the panel action
- * launch_journey_save, then the card is drawn anew from the server.
+ * launch_journey_save, then the card is drawn anew from the server. The
+ * "First week" and "Start here" cards are drawn here too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -643,6 +644,104 @@
             summaryOpened = true;
             summaryDrawer(data);
         }
+    };
+
+    // "First week": "Day 3 of 7" in the head, then four rows (the first
+    // order or form entry, visitors, the first e-mail delivered, alerts),
+    // each with its pill Waiting, Seen or Problem. Data from
+    // includes/dashboard/v2/cards/firstweek.php.
+    pgDash.renderers.firstweek = function (body, data) {
+        var el = pgDash.el;
+
+        var top = el("div", "pg-dash-launch-top");
+        top.appendChild(el("span", "pg-dash-launch-head", data.head));
+        body.appendChild(top);
+
+        var list = el("ul", "pg-dash-launch-rows");
+        (data.rows || []).forEach(function (step) {
+            var item = el("li", "pg-list-row pg-dash-launch-row");
+            var tile = el("span", "pg-icon-tile pg-tone-" + step.tone);
+            tile.setAttribute("aria-hidden", "true");
+            tile.appendChild(el("i", "bi " + step.icon));
+            item.appendChild(tile);
+
+            var main = el("div", "pg-list-row-main");
+            var head = el("div", "pg-list-row-head");
+            head.appendChild(el("span", "pg-list-row-title", step.name));
+            main.appendChild(head);
+            main.appendChild(el("div", "pg-list-row-text", step.line));
+            item.appendChild(main);
+
+            var side = el("div", "pg-list-row-side pg-dash-launch-side");
+            side.appendChild(el("span", "pg-pill pg-tone-" + step.pill_tone, step.pill));
+            item.appendChild(side);
+            list.appendChild(item);
+        });
+        body.appendChild(list);
+    };
+
+    // "Start here": a new team member's three to five screens, each a link
+    // with a line of what it is for; "Hide" on the card's menu marks the
+    // card's key through the panel action tour_seen. Data from
+    // includes/dashboard/v2/cards/starthere.php.
+    pgDash.renderers.starthere = function (body, data, entry) {
+        var el = pgDash.el;
+        var labels = data.labels || {};
+
+        var top = el("div", "pg-dash-launch-top");
+        top.appendChild(el("span", "flex-grow-1"));
+        var note = el("p", "pg-dash-launch-note fg-emphasis-danger mb-2");
+        note.setAttribute("role", "status");
+        note.hidden = true;
+        top.appendChild(menu(labels.menu, [{
+            text: labels.hide,
+            run: function () {
+                $.ajax({
+                    contentType: "application/json",
+                    url: "api.php",
+                    data: JSON.stringify({
+                        action: "tour_seen",
+                        key: data.key,
+                        token: (typeof software_token !== "undefined") ? software_token : ""
+                    }),
+                    type: "POST",
+                    dataType: "json"
+                }).done(function (answer) {
+                    if (answer && answer.status === "success") {
+                        // The gate is closed now: the card answers denied.
+                        if (pgDash.reload && pgDash.frame && pgDash.frame(entry.id)) {
+                            pgDash.reload(entry);
+                        }
+                    } else {
+                        failedNote(body, labels.failed);
+                    }
+                }).fail(function () {
+                    failedNote(body, labels.failed);
+                });
+            }
+        }]));
+        body.appendChild(top);
+        body.appendChild(note);
+
+        var list = el("ul", "pg-dash-launch-rows");
+        (data.rows || []).forEach(function (screen) {
+            var item = el("li", "pg-list-row pg-dash-launch-row");
+            var tile = el("span", "pg-icon-tile pg-tone-" + screen.tone);
+            tile.setAttribute("aria-hidden", "true");
+            tile.appendChild(el("i", "bi " + screen.icon));
+            item.appendChild(tile);
+
+            var main = el("div", "pg-list-row-main");
+            var head = el("div", "pg-list-row-head");
+            var link = el("a", "pg-list-row-title", screen.name);
+            link.href = screen.url;
+            head.appendChild(link);
+            main.appendChild(head);
+            main.appendChild(el("div", "pg-list-row-text", screen.line));
+            item.appendChild(main);
+            list.appendChild(item);
+        });
+        body.appendChild(list);
     };
 
     // The states are read again when the tab is shown again and when the
