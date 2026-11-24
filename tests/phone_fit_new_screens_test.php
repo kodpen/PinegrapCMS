@@ -45,3 +45,13 @@ function test_phone_fit_lobby_past_number_stays_whole()
 	pg_assert_true(strpos($page, '<strong class="pg-tabular flex-grow-1 text-nowrap"') !== false, 'the page draws the number on one line');
 	pg_assert_true(strpos($script, "element('strong', 'pg-tabular flex-grow-1 text-nowrap'") !== false, 'the 5-second redraw too');
 }
+
+function test_phone_fit_launch_step_blocker_pill_is_not_cut_off()
+{
+	// Inside the one-line title the ellipsis hid "Must fix" on a phone.
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_dash_cards_launch.js');
+
+	pg_assert_true(strpos($script, 'title.appendChild(el("span", "pg-pill pg-tone-rose", labels.blocker))') === false, 'the pill is not inside the title');
+	pg_assert_true(strpos($script, 'head.appendChild(el("span", "pg-pill pg-tone-rose text-nowrap", labels.blocker))') !== false, 'the pill stands beside the title');
+	pg_assert_true(preg_match('/var head = el\("div", "pg-list-row-head pg-list-row-head-wrap"\);\s*var title = el\("span", "pg-list-row-title", step\.name\);/', $script) === 1, 'the step head wraps the pill to a line of its own');
+}
