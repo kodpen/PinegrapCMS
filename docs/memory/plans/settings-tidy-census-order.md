@@ -11,7 +11,7 @@ description: Survey of the Site Settings categories, its second part: how old ea
 - Old buttons in helpers drawn into settings, not reached by the S5 pass: `includes/fn/address_autocomplete.php:804`, `carrier_api.php:648`, `carrier_labels.php:1446`, `geo.php:658`, `google_reviews.php:451`.
 
 ## What is already planned?
-- Assistants and agents: done (AT1 to AT6, `ui/settings-fold-rows.md`). Features: done (`ui/settings-features.md`). E-mail: `plans/mail-settings-one*.md`. Mailboxes: done (`ui/look-settings-mailboxes.md`). Visitors and privacy: done (`ui/settings-privacy.md`). Bookings: done (`ui/booking-settings.md`). Communication: done (`ui/settings-communication.md`). Item 4 below: each names its plan, its other files `<plan>-*.md`.
+- Assistants and agents: done (AT1 to AT6, `ui/settings-fold-rows.md`). Features: done (`ui/settings-features.md`). E-mail: done (`ui/settings-mail.md`). Mailboxes: done (`ui/look-settings-mailboxes.md`). Visitors and privacy: done (`ui/settings-privacy.md`). Bookings: done (`ui/booking-settings.md`). Communication: done (`ui/settings-communication.md`). Item 4 below: each names its plan, its other files `<plan>-*.md`.
 - Credentials on category cards: connections-merges CX11 (`plans/connections-merges-build.md`); Ecommerce, Accounting, Integrations, Updates and maintenance and the Workspace's categories are still to come, and a tidy of one of them waits for its CX11 step.
 - The starting-point sheet and the numbered-steps drawer: DX2 (#10885).
 

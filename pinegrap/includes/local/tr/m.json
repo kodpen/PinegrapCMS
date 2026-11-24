@@ -96,6 +96,7 @@
     "Mailboxes": "E-posta kutuları",
     "Mailboxes read incoming e-mail: the mail sent to a mailbox's address is brought in here, read and answered.": "Posta kutuları gelen e-postayı okur: bir posta kutusunun adresine gelen e-posta buraya getirilir, okunur ve yanıtlanır.",
     "Mailboxes read their e-mail through an account connected for them; which account a mailbox uses is chosen in its form in Site Settings › Mailboxes.": "Posta kutuları e-postalarını onlar için bağlanan bir hesapla okur; bir posta kutusunun hangi hesabı kullandığı Site Ayarları › Posta kutuları'ndaki formunda seçilir.",
+    "Mailchimp can keep a list in step with the site's customers, orders and products. It is set up on Mailchimp's page of Connections.": "Mailchimp, sitenin müşterileri, siparişleri ve ürünleriyle eşit bir liste tutabilir. Bağlantılar'daki Mailchimp sayfasından kurulur.",
     "Mailing List": "E-posta Listesi",
     "Mailing List (loop_area)": "E-posta Listesi (loop_area)",
     "Mailing List Welcome E-mail": "E-posta Listesi Hoş Geldiniz E-postası",

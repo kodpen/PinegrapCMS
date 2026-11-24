@@ -4679,6 +4679,8 @@
     "Customers outside the team": "Ekip dışından müşteriler",
     "Customers who share a membership number are extended together.": "Aynı üyelik numarasını paylaşan müşteriler birlikte uzatılır.",
     "Customers' SMS could not be read from {var:1}: {var:2}": "Müşteri SMS'leri {var:1} üzerinden okunamadı: {var:2}",
+    "Customers, orders and products are synced to a Mailchimp list. Its key and sync are kept on Mailchimp's page of Connections.": "Müşteriler, siparişler ve ürünler bir Mailchimp listesine eşitlenir. Anahtarı ve eşitleme ayarları Bağlantılar'daki Mailchimp sayfasında tutulur.",
+    "Customers, orders and products synced to a list": "Bir listeye eşitlenen müşteriler, siparişler ve ürünler",
     "Customers, subscribers and people who wrote in": "Müşteriler, aboneler ve yazıp ulaşan kişiler",
     "Customs: Contents Type": "Gümrük: İçerik türü",
     "Customs: Default Country of Origin": "Gümrük: Varsayılan menşe ülkesi",

@@ -93,20 +93,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $opt_in_label = $row['opt_in_label'];
     $plain_text_email_campaign_footer = $row['plain_text_email_campaign_footer'];
 
-    // MailChimp, moved in from mailchimp_settings.php. The store id falls back
-    // to the site's own hostname because that is the name the store is created
-    // with and the screen has always offered it as the default.
+    // Whether Mailchimp is connected, for the Campaign mail row's line; its
+    // settings are on its page of Connections (includes/fn/mailchimp_settings.php).
     $mailchimp = $row['mailchimp'];
     // Only whether a key is stored: the key itself is never printed.
     $mailchimp_key_stored = ((string) $row['mailchimp_key'] !== '');
-    $mailchimp_list_id = $row['mailchimp_list_id'];
-    $mailchimp_store_id = ($row['mailchimp_store_id'] !== '') ? $row['mailchimp_store_id'] : HOSTNAME_SETTING;
-    $mailchimp_sync_days = $row['mailchimp_sync_days'];
-    $mailchimp_sync_limit = $row['mailchimp_sync_limit'];
-    $mailchimp_automation = $row['mailchimp_automation'];
-
-    $mailchimp_checked = ($mailchimp == 1) ? ' checked="checked"' : '';
-    $mailchimp_automation_checked = ($mailchimp_automation == 1) ? ' checked="checked"' : '';
     $visitor_tracking = $row['visitor_tracking'];
     // Visitor record retention (2026.4.10, 10.3). Read with isset so the
     // screen opens on an installation that has not run the upgrade, where

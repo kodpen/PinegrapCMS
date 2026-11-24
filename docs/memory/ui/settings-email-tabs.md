@@ -22,11 +22,11 @@ module: email_settings_tabs
 ## How is the tab kept in the address?
 - Dialog: `#settings/email/pgset-email-<tab>`, written on a tab change; after a save the pane's script reopens the tab the address names.
 - Page: `settings_email.php#pgset-email-<tab>`; the form's action takes the same fragment, so the save's redirect returns to the tab. `settings_mail_sending.php` and `settings_mailboxes.php` keep their keys; `screen.php` turns them into `email` on their tab and posts back to them.
-- Old keys in the dialog: `data-pgmoved` (`modal.php`); `open()` and `fromUrl()` turn `mail_sending` / `mailboxes`, their pages and `#settings/<old>/…` into `email` on the tab. Old anchors (`pgset-campaigns`, `pgset-mailchimp`, `mail_transport_card`, `mail_domain_card`, `ws-mail`) point at `email`. The registry's mail rows name `#settings/email/…`.
+- Old keys in the dialog: `data-pgmoved` (`modal.php`); `open()` and `fromUrl()` turn `mail_sending` / `mailboxes`, their pages and `#settings/<old>/…` into `email` on the tab. Old anchors (`pgset-campaigns`, `mail_transport_card`, `mail_domain_card`, `ws-mail`) point at `email`; `pgset-mailchimp` opens Mailchimp's page of Connections (`data-pgaway`, `connections-mailchimp-page.md`). The registry's mail rows name `#settings/email/…`.
 
 ## What does a save write?
 - `email.save.php`: `mail_sending.save.php` only when the reader opens the Sending tab and `email_sending_tab` was posted (it writes every field of its cards; Bring in an .eml file posts its own form to the Mailboxes page), then `mailboxes.save.php` (acts only on what it finds) unless the first refused. The audit line is `email`; old `mail_sending` / `mailboxes` lines are named "E-mail › <tab>" (`pg_audit_view_settings_names()`).
 
 Tests: `tests/settings_email_tabs_test.php`, `tests/settings_workspace_gate_test.php`.
 
-Related: docs/memory/ui/settings-mail-sending.md, docs/memory/workspace/workspace-mail-settings-dialog.md, docs/memory/plans/mail-settings-one-steps.md
+Related: docs/memory/ui/settings-mail.md, docs/memory/ui/settings-mail-sending.md, docs/memory/workspace/workspace-mail-settings-dialog.md

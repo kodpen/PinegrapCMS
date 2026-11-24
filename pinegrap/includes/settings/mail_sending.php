@@ -5,10 +5,11 @@
  * Site Settings › E-mail › E-mail sending tab as folded rows: How e-mail
  * leaves (its two ways sheets hold the accounts, the sending service and the
  * mail servers of system e-mail and of campaigns), Sending domain (SPF, DKIM
- * with the site's key, DMARC), Campaign mail, MailChimp and Send a test. The rows' lines are includes/fn/
- * mail_sending_rows.php; what the cards save and run is includes/fn/
- * mail_settings.php, config.php defines read here from the constants; the
- * campaign texts and MailChimp are config row columns, prepared by
+ * with the site's key, DMARC), Campaign mail (with the line of Mailchimp's
+ * connection, set on its page of Connections) and Send a test. The rows'
+ * lines are includes/fn/mail_sending_rows.php; what the cards save and run
+ * is includes/fn/mail_settings.php, config.php defines read here from the
+ * constants; the campaign texts are config row columns, prepared by
  * includes/settings/prep.php.
  *
  * @author      Erdal Güral (Kodpen)
@@ -232,7 +233,9 @@ $pg_settings_modals[] = pg_settings_drawer(
 
 // ── Campaign mail ──
 // The scheduled job and the texts every campaign carries; how campaigns
-// leave is their ways sheet's.
+// leave is their ways sheet's. Mailchimp's key and sync are set on its page
+// of Connections; the row shows whether it is connected.
+$mail_mailchimp_on = !empty($mailchimp) && !empty($mailchimp_key_stored);
 $mail_parts['campaign'] = array('html' => '
                         <div id="pgset-mail-campaign" class="pg-set-card">
                             <div class="card">
@@ -264,6 +267,17 @@ $mail_parts['campaign'] = array('html' => '
                                         <div class="col-12">
                                             <label for="plain_text_email_campaign_footer" class="pg-field-label">' . lang('Plain Text Footer') . '</label>
                                             <textarea name="plain_text_email_campaign_footer" id="plain_text_email_campaign_footer" class="pg-input">' . h($plain_text_email_campaign_footer) . '</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-12" id="pgsub-mailchimp-connection">
+                                            <div class="d-flex flex-wrap align-items-center gap-3"><span class="fw-semibold">' . h(lang(array('string' => '{var:1} connection', 'vars' => 'Mailchimp'))) . '</span>' . ($mail_mailchimp_on
+                                                ? '<span class="pg-pill pg-tone-teal">' . h(lang('Connected')) . '</span>'
+                                                : '<span class="pg-pill pg-tone-gray">' . h(lang('Not connected')) . '</span>') . '</div>
+                                            <div class="form-text mt-0">' . h($mail_mailchimp_on
+                                                ? lang('Customers, orders and products are synced to a Mailchimp list. Its key and sync are kept on Mailchimp\'s page of Connections.')
+                                                : lang('Mailchimp can keep a list in step with the site\'s customers, orders and products. It is set up on Mailchimp\'s page of Connections.')) . '</div>
+                                            <a class="pg-button pg-button-quiet pg-button-sm mt-2" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=mailchimp">' . h($mail_mailchimp_on ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
                                         </div>
                                     </div>
                                 </div>
@@ -309,68 +323,6 @@ $mail_parts['domain'] = array('html' => '
                         <div id="pgset-mail-domain" class="pg-set-card">
                             ' . pg_mail_domain_health_card($mail_domain_health, false, array('record' => $mail_txt_record, 'fields' => $mail_dkim_fields)) . '
                         </div>') + pg_mail_sending_fold_domain($mail_domain_health);
-
-// ── MailChimp ──
-// Written to the config row by this category's save, checked at Mailchimp
-// first (mail_sending.save.php).
-$mail_parts['mailchimp'] = array('html' => '
-                        <div id="pgset-mailchimp" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 pg-title-section">
-                                    <span lang="en">' . lang('MailChimp') . '</span>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12">
-                                            <div class="form-field">' . pg_settings_tile('envelope-paper', 'team') . '
-                                                <div class="switch"><input type="checkbox" name="mailchimp" id="mailchimp" value="1"' . $mailchimp_checked . ' class="collapse-switcher" data-bs-target="#mailchimp_row"></div>
-                                                <label for="mailchimp">' . lang('MailChimp Sync') . '</label><div class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="collapse" id="mailchimp_row">
-                                        <div class="row mt-3">
-                                            <div class="col-12">
-                                                <label for="mailchimp_key" class="form-label pg-field-label">' . lang('API Key') . '</label>
-                                                <input type="text" name="mailchimp_key" id="mailchimp_key" class="form-control" value="" maxlength="100" autocomplete="off" spellcheck="false" placeholder="' . ($mailchimp_key_stored ? h(lang('Leave blank to keep the stored key')) : '') . '">' . ($mailchimp_key_stored ? '
-                                                <div class="form-text">' . lang('A secret is saved (never shown here). Type a new value only to replace it.') . '</div>
-                                                <div class="d-flex align-items-center gap-3 mt-2">
-                                                    <input value="1" class="pg-checkbox" type="checkbox" id="mailchimp_key_clear" name="mailchimp_key_clear">
-                                                    <label for="mailchimp_key_clear">' . lang('Remove the stored key') . '</label>
-                                                </div>' : '') . '
-                                            </div>
-                                            <div class="col-12">
-                                                <label for="mailchimp_list_id" class="form-label pg-field-label">' . lang('List ID') . '</label>
-                                                <input type="text" name="mailchimp_list_id" id="mailchimp_list_id" class="form-control" value="' . h($mailchimp_list_id) . '" maxlength="100">
-                                            </div>
-                                            <div class="col-12">
-                                                <label for="mailchimp_store_id" class="form-label pg-field-label">' . lang('Store ID') . '</label>
-                                                <input type="text" name="mailchimp_store_id" id="mailchimp_store_id" class="form-control" value="' . h($mailchimp_store_id) . '" maxlength="100">
-                                            </div>
-                                            <div class="col-12">
-                                                <label for="mailchimp_sync_days" class="form-label pg-field-label">' . lang('Historical Sync') . '</label>
-                                                <label class="form-control form-adorn form-adorn-end">
-                                                    <span class="form-adorn-text" aria-hidden="true">' . lang('days in the past') . '</span>
-                                                    <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-ghost text-end" value="' . h($mailchimp_sync_days ? $mailchimp_sync_days : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal">
-                                                </label>
-                                                <div class="form-text">' . lang('Set how far in the past to sync orders. Leave blank to sync all historical orders.') . '</div>
-                                            </div>
-                                            <div class="col-12">
-                                                <label for="mailchimp_sync_limit" class="form-label pg-field-label">' . lang('Limit Sync') . '</label>
-                                                <input type="text" name="mailchimp_sync_limit" id="mailchimp_sync_limit" class="form-control text-end" value="' . h($mailchimp_sync_limit ? $mailchimp_sync_limit : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal">
-                                                <div class="form-text">' . lang('max number of orders to sync each time cron job runs') . '</div>
-                                            </div>
-                                            <div class="col-12">
-                                                <div class="form-field">
-                                                    <div class="switch"><input type="checkbox" name="mailchimp_automation" id="mailchimp_automation" value="1"' . $mailchimp_automation_checked . '></div>
-                                                    <label for="mailchimp_automation">' . lang('Automation') . '</label><div class="form-text fg-danger">' . lang('only enable after all historical orders have been synced, to start sending MailChimp automation campaigns') . '</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>') + pg_mail_sending_fold_mailchimp(!empty($mailchimp_checked), isset($mailchimp_list_id) ? (string) $mailchimp_list_id : '');
 
 // ── Send a test ──
 // The address it goes to, the button (it saves first) and the last test's

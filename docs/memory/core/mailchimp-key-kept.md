@@ -1,12 +1,12 @@
 ---
 name: mailchimp-key-kept
-description: The Mailchimp API key: never printed on the settings card (empty box keeps it), data center checked as a host label, masked in the error log line and mail
+description: The Mailchimp API key: never printed on Mailchimp's page of Connections (empty box keeps it), data center checked as a host label, masked in the error log line and mail
 module: mailchimp_key
 ---
 
-## Is the stored Mailchimp key shown on the settings card?
-- No. `includes/settings/contact.php` draws the box empty; `prep.php` only sets `$mailchimp_key_stored`. With a key stored the box says "Leave blank to keep the stored key" and a "Remove the stored key" tick is drawn.
-- `contact.save.php` takes the key from `pg_mailchimp_key_for_save()` (`includes/fn/mailchimp_key.php`): a typed key replaces, an empty box keeps `config.mailchimp_key`, the tick clears it. With sync on and no key left, "API Key is required".
+## Is the stored Mailchimp key shown where it is set?
+- No. Mailchimp's page of Connections (`pg_mailchimp_settings_fields()`, `ui/connections-mailchimp-page.md`) draws the box empty. With a key stored the box says "Leave blank to keep the stored key" and a "Remove the stored key" tick is drawn.
+- `pg_mailchimp_settings_decide()` takes the key from `pg_mailchimp_key_for_save()` (`includes/fn/mailchimp_key.php`): a typed key replaces, an empty box keeps `config.mailchimp_key`, the tick clears it. With sync on and no key left, "API Key is required".
 - Before: the key (full access to the Mailchimp account) was printed into `value=` for every manager who opened the card.
 
 ## Why is the data center checked?

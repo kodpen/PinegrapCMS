@@ -21,7 +21,7 @@ description: Decisions list, product part 76 (2026-11-17): connectors managed in
 - After poll 146 the card's key field moved to OpenAI's page on Connections (CX9), the Google key to its own: `decisions-made-product-81.md`.
 
 ## Where is e-mail sending set up? (owner, 2026-11-17, agent channel poll 148, message 9367)
-- Asked how its four places merge (CX3), he chose "Site Ayarları'nda "E-posta gönderimi" kategorisi olsun": a new Site Settings category between Communication and Mailboxes, for a manager as today. It holds the sending service and the system e-mail, the campaign card with Communication's two texts (İleti İzni Etiketi, Düz Metin Altbilgisi), the sending domain and MailChimp.
+- Asked how its four places merge (CX3), he chose "Site Ayarları'nda "E-posta gönderimi" kategorisi olsun": a new Site Settings category between Communication and Mailboxes, for a manager as today. It holds the sending service and the system e-mail, the campaign card with Communication's two texts (İleti İzni Etiketi, Düz Metin Altbilgisi), the sending domain and MailChimp (on Connections since EM6, poll 211).
 - SMTP Settings leaves System tools and its old addresses open the category; the test and DKIM buttons become "Kaydet ve …". The poll told him this takes into the dialog a screen the 2026-10-30 arrangement had kept outside as a tool. Two steps, no table or column.
 - Unchanged in every option: Google's and Microsoft's application on Connections, each mailbox's server in Mailboxes.
 - Not chosen: SMTP Settings staying on System tools as the one mail place; nothing moving.

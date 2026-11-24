@@ -88,10 +88,10 @@ function test_product_zero_blank_runs_in_the_loader()
 // The Mailchimp boxes print a stored 0 (all orders, no limit) as blank.
 function test_product_zero_blank_mailchimp_boxes_print_zero_blank()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mailchimp_settings.php');
 
-	foreach (array('mailchimp_sync_days', 'mailchimp_sync_limit') as $id) {
+	foreach (array('mailchimp_sync_days' => 'days', 'mailchimp_sync_limit' => 'limit') as $id => $key) {
 		pg_assert_true(preg_match('/<input\b[^>]*\bid="' . $id . '"[^>]*>/', $source, $match) === 1, $id . ' box');
-		pg_assert_true(strpos($match[0], 'value="\' . h($' . $id . ' ? $' . $id . ' : \'\') . \'"') !== false, $id . ' prints 0 blank');
+		pg_assert_true(strpos($match[0], 'value="\' . h($app[\'' . $key . '\'] ? (string) $app[\'' . $key . '\'] : \'\') . \'"') !== false, $id . ' prints 0 blank');
 	}
 }

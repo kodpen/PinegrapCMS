@@ -635,7 +635,6 @@ function pg_settings_email_category()
             'pgset-mail-system'    => lang('How e-mail leaves'),
             'pgset-mail-domain'    => lang('Sending domain'),
             'pgset-mail-campaign'  => lang('Campaign mail'),
-            'pgset-mailchimp'      => lang('MailChimp'),
             'pgset-mail-test'      => lang('Send a test'),
             'pgset-ws-mail'        => lang('Mailboxes'),
         ),
@@ -643,7 +642,6 @@ function pg_settings_email_category()
             'pgset-mail-system'    => array_values(array_unique(array_merge(pg_settings_keywords(lang('smtp, mail, e-mail, sending service, postmark, mailgun, brevo, resend, amazon ses, api key, webhook')), pg_settings_keywords(lang('smtp, mail, e-mail, hostname, port, username, password, gmail, microsoft, connected account, test e-mail'))))),
             'pgset-mail-domain'    => array_values(array_unique(array_merge(pg_settings_keywords(lang('spf, dkim, dmarc, bounce, complaint, spam, reputation, sending domain')), pg_settings_keywords(lang('dkim, selector, domain, txt record, dns, signature'))))),
             'pgset-mail-campaign'  => array_values(array_unique(array_merge(pg_settings_keywords(lang('campaign, campaign job, smtp, e-mail campaign, bulk mail')), pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer'))))),
-            'pgset-mailchimp'      => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
             'pgset-mail-test'      => pg_settings_keywords(lang('test e-mail, send a test, test')),
             'pgset-ws-mail'        => pg_settings_keywords(lang('workspace, mailbox, mailboxes, e-mail')),
         ),
@@ -653,7 +651,7 @@ function pg_settings_email_category()
                 'gate'     => '',
                 'module'   => 'mail_sending',
                 'prep'     => true,
-                'sections' => array('pgset-mail-system', 'pgset-mail-domain', 'pgset-mail-campaign', 'pgset-mailchimp', 'pgset-mail-test'),
+                'sections' => array('pgset-mail-system', 'pgset-mail-domain', 'pgset-mail-campaign', 'pgset-mail-test'),
             ),
             'mailboxes' => array(
                 'label'    => lang('Mailboxes'),
@@ -1159,6 +1157,24 @@ function pg_settings_go($url = null)
 
 
 /**
+ * The old anchors of a card that left Site Settings for a service's page of
+ * Connections: a link to one opens that page, not the dialog. Pure.
+ *
+ * @return array old anchor => registry key of the service (connections.php?service=)
+ */
+function pg_settings_anchors_to_connections()
+{
+    return array(
+        // MailChimp's card left E-mail › Sending; before that it was a card
+        // of Communication.
+        'pgset-mailchimp' => 'mailchimp',
+        'mailchimp_row'   => 'mailchimp',
+        'mailchimp_key'   => 'mailchimp',
+    );
+}
+
+
+/**
  * Where a link written before the split should land.
  *
  * A #hash never reaches the server, so an old settings.php#pgset-waf cannot be
@@ -1210,11 +1226,11 @@ function pg_settings_legacy_anchors()
         'translation_google_key' => array('languages', 'pgset-translation-engines'),
         'pgset-cookies'    => array('privacy',    'pgset-cookies'),
         'pgset-legal'      => array('privacy',    'pgset-legal'),
-        // Communication's campaign texts and MailChimp moved into E-mail
-        // sending, now the E-mail category's Sending tab; an old
-        // Communication link lands there.
+        // Communication's campaign texts moved into E-mail sending, now the
+        // E-mail category's Sending tab; an old Communication link lands
+        // there. MailChimp's card left for Connections
+        // (pg_settings_anchors_to_connections()).
         'pgset-campaigns'  => array('email', 'pgset-mail-campaign'),
-        'pgset-mailchimp'  => array('email', 'pgset-mailchimp'),
         'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),
         // The bubble's fields left Chat for Chat on the site; an old link to

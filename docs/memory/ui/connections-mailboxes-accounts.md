@@ -18,10 +18,11 @@ module: connections_screen
 - State (`ws_mail_connection_state()`, pure, tested; read by `ws_mail_connection_read()`): Connected when an account of the provider serves `mail_read`; "Connected for another purpose" when its accounts hold only other purposes, with "The account is connected for Sending e-mail only; reading mail needs one more sign-in, for Reading mailboxes." and "Sign in for mailboxes in Connections"; else Not connected.
 - Why (#10825): Connections' Gmail and Microsoft 365 mail rows read purpose `mail` (sending), so an account connected there showed Connected on Connections and Not connected on Mailboxes. Connecting one purpose never adds another; `mail_read` needs its own consent (`https://mail.google.com/`).
 - Connected, on the card only (not in a box's drawer): "Next, add the mailbox with Add a mailbox and choose Mail service: Gmail or Google Workspace." (Microsoft 365 or Outlook.com for Microsoft). A connected account adds no mailbox by itself.
-- The card shows both providers (`ws_mail_connections_html()`). A Gmail box's form shows Google's in its connected-account way and opens the page in a new tab, so a half-filled form being added stays as typed.
+- The card shows both providers (`ws_mail_connections_html()`). A box's form (Edit) shows Google's in its connected-account way and opens the page in a new tab, so a half-filled form stays as typed.
+- Since EM5 (#11175) a new box signs in on Add a mailbox's Sign in step while the application is set up (`workspace/mail-add-sheet.md`).
 - A user below manager cannot open Connections: they read who connects it, with no link.
 - Stays in the box form: server, user, password and the "Connected account" select (which account a box uses is the box's setting), the redirect addresses, the Gmail API line and Google's warning.
-- Since EM4 the select also lists the site's sending accounts, each with "Allow reading mail", which asks the provider again for the same account (`api/mail-one-account.md`).
+- Since EM4 (#11103) the select also lists the site's sending accounts, each with "Allow reading mail", which asks the provider again for the same account, one row (`api/mail-one-account.md`);.
 
 ## What did not change?
 - No registry row: `gmail` and `microsoft_mail` stay on E-mail sending (poll 148); no service was added (`pg_connections_count()`: `api/connections-registry.md`). No data step, table or column.

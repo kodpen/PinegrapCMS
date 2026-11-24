@@ -31,7 +31,7 @@ function test_smtp_settings_wide_layout()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
 	$at = -1;
 
-	foreach (array('pgset-mail-system', 'pgset-mail-campaign', 'pgset-mail-domain', 'pgset-mailchimp', 'pgset-mail-test') as $section) {
+	foreach (array('pgset-mail-system', 'pgset-mail-campaign', 'pgset-mail-domain', 'pgset-mail-test') as $section) {
 		$here = strpos($source, '<div id="' . $section . '" class="pg-set-card">');
 		pg_assert_true(($here !== false) && ($here > $at), $section . ' in its place');
 		$at = $here;
@@ -65,9 +65,9 @@ function test_mail_domain_health_card_column_wrapper()
 }
 
 // Communication's two campaign texts sit in the Campaign card, outside the
-// job's fold, and MailChimp is the category's last card; Communication holds
-// neither, and its old anchors land on the new cards.
-function test_mail_sending_holds_the_campaign_texts_and_mailchimp()
+// job's fold; MailChimp left for its page of Connections. Communication
+// holds neither, and the old Campaigns anchor lands on the Campaign card.
+function test_mail_sending_holds_the_campaign_texts()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.php');
 	$campaign = strpos($source, 'id="pgset-mail-campaign"');
@@ -80,7 +80,7 @@ function test_mail_sending_holds_the_campaign_texts_and_mailchimp()
 	}
 
 	foreach (array('mailchimp', 'mailchimp_key', 'mailchimp_list_id', 'mailchimp_store_id', 'mailchimp_sync_days', 'mailchimp_sync_limit', 'mailchimp_automation') as $field) {
-		pg_assert_contains('name="' . $field . '"', $source, $field . ' is posted by E-mail sending');
+		pg_assert_false(strpos($source, 'name="' . $field . '"') !== false, $field . ' is no longer posted by E-mail sending');
 	}
 
 	$contact = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/contact.php') . (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/contact.save.php');
@@ -91,7 +91,7 @@ function test_mail_sending_holds_the_campaign_texts_and_mailchimp()
 
 	$anchors = pg_settings_legacy_anchors();
 	pg_assert_same(array('email', 'pgset-mail-campaign'), $anchors['pgset-campaigns'], 'an old Campaigns link');
-	pg_assert_same(array('email', 'pgset-mailchimp'), $anchors['pgset-mailchimp'], 'an old MailChimp link');
+	pg_assert_false(isset($anchors['pgset-mailchimp']), 'an old MailChimp link opens Connections, not the dialog');
 }
 
 // The tab is folded rows, How e-mail leaves first; its cards are look A:
@@ -119,7 +119,7 @@ function test_mail_sending_in_the_panel_look()
 		}
 	}
 
-	foreach (array('id="mail_transport_card"', "pg_settings_tile('megaphone', 'team')", "pg_settings_tile('envelope-paper', 'team')", 'class="pg-input font-monospace"', 'class="pg-checkbox"', 'class="pg-value-row"', 'class="pg-card-inner"') as $kept) {
+	foreach (array('id="mail_transport_card"', "pg_settings_tile('megaphone', 'team')", 'class="pg-input font-monospace"', 'class="pg-value-row"', 'class="pg-card-inner"') as $kept) {
 		pg_assert_contains($kept, $source, $kept);
 	}
 }

@@ -805,7 +805,9 @@ function pg_connections_screen_carrier_pages()
  *                    'integrations' (bool: may open Integrations, Google
  *                    reviews' key and Place ID), 'maintenance' (bool:
  *                    may open Updates and maintenance, connecting Google
- *                    Drive, OneDrive and Dropbox accounts for backups)
+ *                    Drive, OneDrive and Dropbox accounts for backups),
+ *                    'mail_sending' (bool: may open E-mail › Sending,
+ *                    Mailchimp's key and sync)
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -838,6 +840,8 @@ function pg_connections_screen_page_cards($id, $can)
     } elseif (($id === 'google_translate') && !empty($can['languages'])) {
         $cards[] = 'details';
     } elseif (in_array($id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && !empty($can['contact'])) {
+        $cards[] = 'details';
+    } elseif (($id === 'mailchimp') && !empty($can['mail_sending'])) {
         $cards[] = 'details';
     } elseif (($id === 'signin_apple') && !empty($can['signin'])) {
         $cards[] = 'details';

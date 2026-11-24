@@ -6,7 +6,7 @@ module: look_examples
 
 ## Where are they?
 - `pg_look_examples_mail_patterns($p)` in `includes/fn/look_examples.php`, merged at the end of `pg_look_examples_patterns()`; the recipes in the block "Look A: tabs with a state, value rows, choice cards, step line, provider sign-in, result line, confirm with its effects" of `backend.src.css`, after the starting-point cards.
-- Source: the owner-approved drawing `plans/mail-settings-one/email-settings.html` (boards A to E), copied value for value. The EM steps of the e-mail settings plan copy these and write no recipe of their own.
+- Source: the owner-approved drawing `ui/email-settings-drawing/email-settings.html` (boards A to E), copied value for value. The E-mail category's parts copy these and write no recipe of their own (`settings-mail.md`).
 - A pattern with `'phone' => true` is the phone pane's (DX4): the choice cards and the step line.
 
 ## Which classes draw which part?

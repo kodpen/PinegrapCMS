@@ -213,7 +213,8 @@ function test_connections_screen_folds_the_mail_routes()
 		pg_assert_same(0, strpos($registry[$id]['place'], '#settings/email/'), $id . ' is set up in E-mail\'s Sending tab');
 	}
 
-	pg_assert_same('#settings/email/pgset-mailchimp', $registry['mailchimp']['place'], 'Mailchimp is set up there too');
+	pg_assert_same('connections.php', $registry['mailchimp']['place'], 'Mailchimp is set up on its page of Connections');
+	pg_assert_same('#settings/email/pgset-mail-campaign', $registry['mailchimp']['found_at'], 'and found at the Campaign mail row that shows it');
 	pg_assert_same(84, pg_connections_count(), 'the figure stays');
 
 	$rows = array(

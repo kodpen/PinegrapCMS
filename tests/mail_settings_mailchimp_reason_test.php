@@ -45,8 +45,10 @@ function test_mail_settings_mailchimp_reason_leaves_the_key_out()
 
 function test_mail_settings_mailchimp_reason_used_by_every_refusal()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mail_sending.save.php');
+	// The refusals are checked on Mailchimp's page of Connections.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mailchimp_settings.php');
 
-	pg_assert_same(0, substr_count($source, "h(\$mailchimp_answer['message'])"), 'no refusal prints the whole message');
-	pg_assert_same(5, substr_count($source, 'pg_mail_settings_mailchimp_reason($mailchimp_answer[\'message\'], $mailchimp_key_post)'), 'each of the five refusals shows the reason');
+	pg_assert_same(0, substr_count($source, "h(\$answer['message'])"), 'no refusal prints the whole message');
+	pg_assert_contains("return h(pg_mail_settings_mailchimp_reason(\$answer['message'], \$key));", $source, 'the reason, key masked');
+	pg_assert_same(5, substr_count($source, '. $reason($answer));'), 'each of the five refusals shows the reason');
 }

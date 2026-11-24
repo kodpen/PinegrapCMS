@@ -193,6 +193,13 @@ function pg_settings_modal_markup($user)
         $output_anchors[$old] = $target[0] . '|' . $target[1];
     }
 
+    // An old card anchor whose card left for a page of Connections.
+    $output_away = array();
+
+    foreach (pg_settings_anchors_to_connections() as $old => $service) {
+        $output_away[$old] = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=' . rawurlencode($service);
+    }
+
     // Where an old category key, now a tab of another, should land.
     $output_moved = array();
 
@@ -205,6 +212,7 @@ function pg_settings_modal_markup($user)
     data-pgurl="' . h(pg_settings_pane_url()) . '"
     data-pganchors="' . h(json_encode($output_anchors)) . '"
     data-pgmoved="' . h(json_encode($output_moved)) . '"
+    data-pgaway="' . h(json_encode($output_away ? $output_away : new stdClass())) . '"
     data-pghelp="' . h(json_encode($output_help)) . '"
     data-pgleavetitle="' . h(lang('Unsaved Changes')) . '"
     data-pgleave="' . h(lang('The changes on this screen have not been saved. Close anyway?')) . '"
