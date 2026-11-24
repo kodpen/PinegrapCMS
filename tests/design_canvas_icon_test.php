@@ -97,7 +97,7 @@ function test_design_canvas_icon_on_the_buttons_that_open_the_canvas()
 {
 	$mono = 'pg_design_canvas_icon_one_colour(';
 
-	// The panel's "Edit this image in the Artifact Canvas" buttons.
+	// The panel's "Edit in Artifact Canvas" buttons.
 	foreach (array('edit_design_file.php', 'edit_file.php', 'includes/fn/design_file_list_edit.php', 'includes/dashboard/widgets/widget_18.php') as $file) {
 		$code = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		$at = strpos($code, 'data-pg-image-edit=');
@@ -137,23 +137,23 @@ function test_design_canvas_icon_on_the_remaining_buttons()
 	pg_assert_contains("menuItem(L.image_editor_icon, L.new_image, 'new_image_link', !actions.image)", $folders, 'the context menu draws it on New image');
 	pg_assert_false(strpos($folders, 'bi-easel') !== false, 'no easel glyph left in the File Manager');
 
-	// Translations: the queue row's Edit in the Artifact Canvas; the picture chip keeps bi-image.
+	// Translations: the queue row's Edit in Artifact Canvas; the picture chip keeps bi-image.
 	$translations = file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
-	pg_assert_contains("'\">' . pg_design_canvas_icon_one_colour('') . lang('Edit in the Artifact Canvas')", $translations, 'the queue row draws it');
+	pg_assert_contains("'\">' . pg_design_canvas_icon_one_colour('') . lang('Edit in Artifact Canvas')", $translations, 'the queue row draws it');
 	pg_assert_contains('<i class="bi bi-image me-1" aria-hidden="true"></i>', $translations, 'the picture chip keeps its picture glyph');
 
-	// Channels: Edit image on a message's picture (channel and thread menus), Edit the picture on a note's canvas.
+	// Channels: Edit in Artifact Canvas on a message's picture (channel and thread menus) and on a note's canvas.
 	$workspace = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
-	pg_assert_same(2, substr_count($workspace, "items.push({ icon: 'pg-design-canvas', label: message.mine ? t('file_edit_image') : t('file_edit_send')"), 'both message menus use it');
+	pg_assert_same(2, substr_count($workspace, "items.push({ icon: 'pg-design-canvas', label: t('file_edit_image')"), 'both message menus use it');
 	pg_assert_contains("return doc ? { icon: icon('pg-design-canvas'), label: t('file_edit_image'), run: function () { editNoteCanvas(media); } } : null;", $workspace, 'a note\'s canvas picture uses it');
 	pg_assert_contains('go.appendChild(offered.icon);', file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_editor.js'), 'the note\'s media action takes a drawn icon');
 
 	// Page Design Studio: three buttons and two menu entries, from the canvas's config.
 	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("return (cfg && cfg.canvasIcon) || '<i class=\"bi bi-brush\" aria-hidden=\"true\"></i>';", $designer, 'the designer reads it from the canvas config');
-	pg_assert_same(3, substr_count($designer, "title=\"' + esc(_sdT('Edit the image in the Artifact Canvas')) + '\"") , 'three buttons say where they open');
+	pg_assert_same(3, substr_count($designer, "title=\"' + esc(_sdT('Edit in Artifact Canvas')) + '\" aria-label=\"' + esc(_sdT('Edit in Artifact Canvas')) + '\"") , 'three buttons say where they open');
 	pg_assert_same(3, substr_count($designer, "\">' + _sdCanvasIcon() + '</button>'"), 'the three buttons draw it');
-	pg_assert_same(2, substr_count($designer, "iconHtml: _sdCanvasIcon(), label: _sdT('Edit Image')"), 'both Edit Image entries');
-	pg_assert_false(strpos($designer, "icon: 'bi-brush', label: _sdT('Edit Image')") !== false, 'no brush glyph left on Edit Image');
+	pg_assert_same(2, substr_count($designer, "iconHtml: _sdCanvasIcon(), label: _sdT('Edit in Artifact Canvas')"), 'both edit entries');
+	pg_assert_false(strpos($designer, "icon: 'bi-brush', label: _sdT('Edit") !== false, 'no brush glyph left on an edit entry');
 	pg_assert_contains('.pg-mi.pg-dc-mono .pg-mi-at { fill: none; }', file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css'), 'the designer sizes it and drops the tint itself');
 }
