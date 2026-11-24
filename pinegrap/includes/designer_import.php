@@ -1762,12 +1762,7 @@ function pg_di_slug($s)
 // database).
 function pg_di_page_name($path, $taken, &$seen)
 {
-    $base = pg_di_slug(pg_file_name_stem($path));
-    $dir  = str_replace('\\', '/', dirname($path));
-    $cands = array($base);
-    if ($dir !== '.' && $dir !== '') {
-        $cands[] = pg_di_slug(str_replace('/', '-', $dir) . '-' . $base);
-    }
+    $cands = pg_di_page_name_candidates($path);
     foreach ($cands as $c) {
         if (in_array($c, $taken, true) || in_array($c, $seen, true)) continue;
         $exists = (int)db_value("SELECT page_id FROM page WHERE page_name = '" . e($c) . "' LIMIT 1");
@@ -1776,12 +1771,42 @@ function pg_di_page_name($path, $taken, &$seen)
     }
     $c = $cands[count($cands) - 1];
     for ($i = 2; $i < 500; $i++) {
-        $try = $c . '-' . $i;
+        $try = pg_di_page_name_numbered($c, $i);
         if (in_array($try, $taken, true) || in_array($try, $seen, true)) continue;
         if ((int)db_value("SELECT page_id FROM page WHERE page_name = '" . e($try) . "' LIMIT 1")) continue;
         return $try;
     }
-    return $c . '-' . uniqid();
+    return pg_di_page_name_numbered($c, uniqid());
+}
+
+// The names a page file may take, in order: its own (index.html → index),
+// then with its folders in front (blog/post.html → blog-post). Each fits the
+// 100 characters a page name holds (pg_designer_page_name_error()); a longer
+// one lost the page at its save. Pure.
+function pg_di_page_name_candidates($path)
+{
+    $base = pg_di_slug(pg_file_name_stem($path));
+    $dir  = str_replace('\\', '/', dirname($path));
+    $cands = array(pg_di_page_name_cut($base, 100));
+    if ($dir !== '.' && $dir !== '') {
+        $cands[] = pg_di_page_name_cut(pg_di_slug(str_replace('/', '-', $dir) . '-' . $base), 100);
+    }
+    return $cands;
+}
+
+// $name with "-$n" after it, the name cut so the whole fits 100. Pure.
+function pg_di_page_name_numbered($name, $n)
+{
+    $suffix = '-' . $n;
+    return pg_di_page_name_cut($name, 100 - strlen($suffix)) . $suffix;
+}
+
+// A slug cut to $max characters, without a hyphen left at its end. Pure.
+function pg_di_page_name_cut($slug, $max)
+{
+    if (strlen($slug) <= $max) return $slug;
+    $cut = rtrim(substr($slug, 0, $max), '-');
+    return $cut === '' ? 'page' : $cut;
 }
 
 // ── File manager ────────────────────────────────────────────────────────────

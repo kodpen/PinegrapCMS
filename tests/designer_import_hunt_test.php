@@ -187,3 +187,21 @@ function test_designer_import_hunt_single_page_size_ceiling()
 	pg_assert_same(1, count($res['errors']));
 	pg_assert_contains('8', $res['errors'][0]);
 }
+
+function test_designer_import_hunt_page_name_fits_column()
+{
+	// A page name holds 100 characters and the save refuses a longer one:
+	// a long file name, or a folder path in front of a taken name, lost
+	// the page on a ZIP import.
+	$long = str_repeat('uzun-baslik-', 12) . 'son';
+	$c = pg_di_page_name_candidates('blog/' . $long . '/index.html');
+
+	pg_assert_same('index', $c[0]);
+	pg_assert_true(mb_strlen($c[1]) <= 100, 'folder candidate too long');
+	pg_assert_same(0, strpos($c[1], 'blog-uzun-baslik-'));
+	$d = pg_di_page_name_candidates($long . $long . '.html');
+	pg_assert_true(mb_strlen($d[0]) <= 100, 'file candidate too long');
+	pg_assert_false(substr($d[0], -1) === '-', 'cut name ends in a hyphen');
+	pg_assert_true(mb_strlen(pg_di_page_name_numbered(str_repeat('a', 100), 12)) <= 100, 'numbered name too long');
+	pg_assert_same('about-2', pg_di_page_name_numbered('about', 2));
+}
