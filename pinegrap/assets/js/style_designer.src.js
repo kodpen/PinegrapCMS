@@ -45057,6 +45057,7 @@ const StyleDesigner = (function () {
             ['__menu_item_name',          _sdT('Menu item name')],
             ['__menu_item_id',            _sdT('Menu item ID')],
             ['__menu_item_target',        _sdT('Menu item window (_blank or empty)')],
+            ['__menu_item_rel',           _sdT('Menu item link relation (noopener or empty)')],
             ['__menu_item_has_children',  _sdT('Has sub-items (1 or empty)')],
             ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
             ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
@@ -66983,6 +66984,7 @@ const StyleDesigner = (function () {
                 ['__menu_item_id',            _sdT('Menu item ID')],
                 ['__menu_item_url',           _sdT('Menu item address')],
                 ['__menu_item_target',        _sdT('Menu item window (_blank or empty)')],
+                ['__menu_item_rel',           _sdT('Menu item link relation (noopener or empty)')],
                 ['__menu_item_has_children',  _sdT('Has sub-items (1 or empty)')],
                 ['__menu_item_is_current',    _sdT('Links to the page shown (1 or empty)')],
                 ['__menu_item_holds_current', _sdT('Holds the item of the page shown (1 or empty)')]
@@ -67180,6 +67182,7 @@ const StyleDesigner = (function () {
         __menu_item_id: '2',
         __menu_item_url: '#',
         __menu_item_target: '',
+        __menu_item_rel: '',
         __menu_item_has_children: '',
         __menu_item_is_current: '',
         __menu_item_holds_current: '',

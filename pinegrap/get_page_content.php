@@ -1952,7 +1952,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // assumes there is only one current menu item.  If multiple are set,
             // then menu items do not collapse properly.  We should eventually spend some time and resolve this
             // in order to add support for multiple current menu items.
-            $query =  "SELECT id FROM menu_items WHERE (link_page_id = ?) AND (menu_id = ?)";
+            $query =  "SELECT id FROM menu_items WHERE (link_page_id = ?) AND (menu_id = ?) ORDER BY id LIMIT 1";
             $result = db_q($query, array((string) $page_id, (string) $menu_id)) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             if(isset($row)){

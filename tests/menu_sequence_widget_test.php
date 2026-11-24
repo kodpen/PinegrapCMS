@@ -41,6 +41,11 @@ function test_menu_sequence_widget_order()
 	$loop = _msw_items();
 	$loop[0]['parent_id'] = 4;
 	pg_assert_same(array('shoes', 'boots', 'home', 'bags'), array_column(pg_mw_sequence($loop), 'page'), 'parents that loop end the walk');
+
+	// An offline page (Recycle Bin, drafts) is no step: its link leads nowhere.
+	$offline = _msw_items();
+	$offline[2]['link_page_folder_id'] = 9;
+	pg_assert_same(array('home', 'boots', 'bags'), array_column(pg_mw_sequence($offline, function ($folder) { return (int)$folder === 9; }), 'page'), 'the offline page is left out, its sub-items stay');
 }
 
 function test_menu_sequence_widget_values()
