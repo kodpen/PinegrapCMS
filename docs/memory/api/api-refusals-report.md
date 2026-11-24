@@ -7,7 +7,7 @@ module: api_refusals
 ## What does it show?
 - The API calls answered 400 or above in the last 30 days (at most 30), from `api_request_log`, added up by route, error code and application, most refused first; each code with the guide section its hint names (`agent-guide-hints.md`), so the owner sees which guide section to mend.
 - Nothing new is recorded: what the log retention of API Settings has purged is gone.
-- Built in PR AG13b of plan ai-guide (feature G19).
+- Built in #11236 (plan ai-guide, AG13b; feature G19).
 
 ## Where is it?
 - `includes/fn/api_refusals.php`: `pg_api_refusals_sql()` (the one read), `pg_api_refusals_fold()` (ids out of paths, groups added up), `pg_api_refusals_report($routes, $days)`.

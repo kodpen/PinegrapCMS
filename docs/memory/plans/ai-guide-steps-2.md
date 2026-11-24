@@ -15,7 +15,7 @@ description: Plan ai-guide, steps AG8 to AG14 and the order of all fourteen: the
 - AG13 (M) after AG2: hints, then the report. AG13a done: #10766.
   - Hints: new `includes/fn/agent_guide_hints.php` (the registry by error code, each naming a section that exists: a test), `includes/api/response.php` (`api_fail()` reads it), the designer's refusal codes made distinct where two cases share one.
   - The report: `api_settings.php` and a reader for `GET /reports/api-refusals`, one indexed read of `api_request_log`. Features: G18, G19. Cut in two PRs (hints, then the report) if it passes the size limit.
-  - AG13b (the report), done (#PRNUM): `includes/fn/api_refusals.php`, the Refused calls card, `GET /reports/api-refusals` (`api/api-refusals-report.md`).
+  - AG13b (the report), done (#11236): `includes/fn/api_refusals.php`, the Refused calls card, `GET /reports/api-refusals` (`api/api-refusals-report.md`).
 - AG14 (S) close-out, after all: every G number checked against the code with its PR; `api/agent-guide-overview.md` and its files written; `api/api-mcp-server.md`, `api/api-oauth-consent-presets.md`, `api/api-plugin-scopes.md` (the money mark is now read at run time) and `plans/claude-plugin-bundle-steps.md` (CB3 names `guide_read`) updated; the plan's files deleted; the changelog `[NEW]` line named in its PR; the tool list measured again and written into the overview.
 
 ## Which steps run side by side?
