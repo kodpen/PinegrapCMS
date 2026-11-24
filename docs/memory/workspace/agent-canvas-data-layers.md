@@ -1,6 +1,6 @@
 ---
 name: agent-canvas-data-layers
-description: An agent adds or changes a canvas's data layer by its description (DV6 #11228, canvas_data_write.php): add type data, the data operation, the caller's read of the table, the box, the refusals, the read
+description: An agent adds or changes a canvas data layer by its description (DV6 #11228, canvas_data_write.php): add type data, the data operation, the table read, the refusals
 ---
 
 ## What can an agent do with a data layer?
