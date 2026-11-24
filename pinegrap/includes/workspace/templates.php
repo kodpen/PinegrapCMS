@@ -1441,20 +1441,20 @@ function ws_templates_settings_card($self_url, $viewer, $form = null)
         $actions = '';
 
         if ($present['builtin']) {
-            $actions .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_url . '?copy=' . rawurlencode($present['id'])) . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</a>';
+            $actions .= '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($edit_url . '?copy=' . rawurlencode($present['id'])) . '"><i class="bi bi-copy" aria-hidden="true"></i>' . h(lang('Copy')) . '</a>';
         } else {
             $label = $present['archived'] ? lang('Bring it back') : lang('Move to the archive');
             $icon_name = $present['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive';
-            $actions .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_url . '?id=' . (int) $present['id']) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
+            $actions .= '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($edit_url . '?id=' . (int) $present['id']) . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
 
             if ($form !== null) {
-                $actions .= '<button type="submit" name="' . ($present['archived'] ? 'ws_template_restore' : 'ws_template_archive') . '" value="' . (int) $present['id'] . '" form="' . h($form) . '" class="btn btn-sm btn-text theme-secondary" title="' . h($label) . '" aria-label="' . h($label) . '"><i class="bi ' . $icon_name . '" aria-hidden="true"></i></button>';
+                $actions .= '<button type="submit" name="' . ($present['archived'] ? 'ws_template_restore' : 'ws_template_archive') . '" value="' . (int) $present['id'] . '" form="' . h($form) . '" class="pg-icon-button pg-icon-button-sm" title="' . h($label) . '" aria-label="' . h($label) . '"><i class="bi ' . $icon_name . '" aria-hidden="true"></i></button>';
             } else {
                 $actions .= '<form method="post" action="' . h($self_url) . '" class="d-inline">' . get_token_field()
                 . '<input type="hidden" name="ws_action" value="template_archive">'
                 . '<input type="hidden" name="template_id" value="' . (int) $present['id'] . '">'
                 . '<input type="hidden" name="archive" value="' . ($present['archived'] ? 0 : 1) . '">'
-                . '<button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '" aria-label="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '"><i class="bi ' . ($present['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>'
+                . '<button type="submit" class="pg-icon-button pg-icon-button-sm" title="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '" aria-label="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '"><i class="bi ' . ($present['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>'
                 . '</form>';
             }
         }
@@ -1499,7 +1499,7 @@ function ws_templates_settings_card($self_url, $viewer, $form = null)
             <div class="card mt-7" id="ws-templates">
                 <div class="card-header d-flex align-items-center gap-3">
                     <h2 class="h6 mb-0 ws-grow"><i class="bi bi-layout-text-window me-1" aria-hidden="true"></i>' . h(lang('Channel templates')) . '</h2>
-                    <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h($edit_url) . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New template')) . '</a>
+                    <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($edit_url) . '"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New template')) . '</a>
                 </div>
                 <div class="card-body">
                     <p class="small fg-secondary">' . h(lang('A template sets a channel up with its tasks, notes, summary and pinned message: when a channel is made from it, or later from the channel\'s menu.')) . '</p>

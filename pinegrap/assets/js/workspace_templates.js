@@ -74,7 +74,8 @@
         node.type = 'button';
 
         if (iconName) {
-            node.appendChild(icon(iconName, label ? 'me-1' : ''));
+            // A button of the look's recipes spaces its icon with its gap.
+            node.appendChild(icon(iconName, (label && !/\bpg-button\b/.test(className)) ? 'me-1' : ''));
         }
 
         if (label) {
@@ -265,8 +266,8 @@
             applyModal.tabIndex = -1;
             applyModal.innerHTML = '<div class="dialog-header"><h2 class="dialog-title h6" data-ws-tpl-title></h2><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
                 + '<div class="dialog-body"><p class="small fg-secondary" data-ws-tpl-help></p><div data-ws-tpl-list></div></div>'
-                + '<div class="dialog-footer"><a class="btn btn-sm btn-text theme-secondary me-auto d-none" data-ws-tpl-manage></a><button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog" data-ws-tpl-cancel></button>'
-                + '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-tpl-ok></button></div>';
+                + '<div class="dialog-footer"><a class="pg-button pg-button-ghost pg-button-sm me-auto d-none" data-ws-tpl-manage></a><button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-dismiss="dialog" data-ws-tpl-cancel></button>'
+                + '<button type="button" class="pg-button pg-button-fill pg-button-sm" data-ws-tpl-ok></button></div>';
             document.body.appendChild(applyModal);
         }
 
@@ -375,8 +376,8 @@
                 window.getSelection().removeAllRanges();
 
                 var tools = el('div', 'ws-note-actions');
-                var list = button('btn btn-sm btn-text theme-secondary', '', 'bi-ui-checks', t('insert_checklist'));
-                var table = button('btn btn-sm btn-text theme-secondary', '', 'bi-table', t('insert_table'));
+                var list = button('pg-icon-button pg-icon-button-sm', '', 'bi-ui-checks', t('insert_checklist'));
+                var table = button('pg-icon-button pg-icon-button-sm', '', 'bi-table', t('insert_table'));
 
                 list.addEventListener('click', function () {
                     window.PGWsEditor.openChecklist('', function (markup) {
@@ -484,7 +485,7 @@
         var reorderHint = null;
 
         function draggable(row, list, items, item, redraw) {
-            var handle = button('btn btn-sm btn-text theme-secondary ws-tpl-handle', '', 'bi-grip-vertical', t('tpl_drag'));
+            var handle = button('pg-icon-button pg-icon-button-sm ws-tpl-handle', '', 'bi-grip-vertical', t('tpl_drag'));
 
             // One hidden hint, shared by every grip on the screen.
             if (!reorderHint) {
@@ -589,7 +590,7 @@
             title.required = true;
             head.appendChild(title);
 
-            var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('tpl_remove_task'));
+            var remove = button('pg-icon-button pg-icon-button-sm', '', 'bi-trash', t('tpl_remove_task'));
             remove.addEventListener('click', function () {
                 collect();
                 tasks.splice(tasks.indexOf(row), 1);
@@ -649,7 +650,7 @@
             (task.checklist || []).forEach(function (value) { itemField(value); });
             listBox.appendChild(items);
 
-            var addItem = button('btn btn-sm btn-link px-0', t('add_item'), 'bi-plus-lg');
+            var addItem = button('pg-button pg-button-ghost pg-button-sm', t('add_item'), 'bi-plus-lg');
             addItem.addEventListener('click', function () { itemField('').focus(); });
             listBox.appendChild(addItem);
             node.appendChild(listBox);
@@ -732,7 +733,7 @@
                 taskBox.appendChild(taskRow(row, position));
             });
 
-            var add = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('tpl_add_task'), 'bi-plus-lg');
+            var add = button('pg-button pg-button-quiet pg-button-sm', t('tpl_add_task'), 'bi-plus-lg');
             add.addEventListener('click', function () {
                 collect();
                 keySeed += 1;
@@ -764,7 +765,7 @@
             title.setAttribute('aria-label', t('title'));
             head.appendChild(title);
 
-            var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('tpl_remove_note'));
+            var remove = button('pg-icon-button pg-icon-button-sm', '', 'bi-trash', t('tpl_remove_note'));
             remove.addEventListener('click', function () {
                 collect();
                 notes.splice(notes.indexOf(row), 1);
@@ -799,7 +800,7 @@
                 noteBox.appendChild(noteRow(row));
             });
 
-            var add = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('add_note'), 'bi-plus-lg');
+            var add = button('pg-button pg-button-quiet pg-button-sm', t('add_note'), 'bi-plus-lg');
             add.addEventListener('click', function () {
                 collect();
                 notes.push({ data: { title: '', body: '' } });

@@ -28,6 +28,18 @@
 (function () {
     'use strict';
 
+    // A button of the look's recipes (.pg-button): its gap spaces the icon,
+    // so the icon carries no margin.
+    function lookButton(h, className, label, iconName, title) {
+        var node = h.button(className, label, '', title);
+
+        if (iconName) {
+            node.insertBefore(h.icon(iconName, ''), node.firstChild);
+        }
+
+        return node;
+    }
+
     // h:mm:ss of a timer that has run so many seconds.
     function clock(seconds) {
         seconds = Math.max(0, Math.floor(seconds));
@@ -132,7 +144,7 @@
                 row.appendChild(counter);
                 ticker(counter, timer.started_at, time.now);
 
-                var stop = h.button('btn btn-sm btn-outline theme-danger rounded-pill px-5 ms-auto', h.t('tt_stop'), 'bi-stop-circle');
+                var stop = lookButton(h, 'pg-button pg-button-danger pg-button-sm ms-auto', h.t('tt_stop'), 'bi-stop-circle');
                 stop.addEventListener('click', function () {
                     stop.disabled = true;
                     h.api('ws_task_time_stop', { task_id: task.id }).then(function (data) {
@@ -152,7 +164,7 @@
                 row.appendChild(h.el('span', 'small fg-secondary', h.t('tt_running_other', timer.number)));
             }
 
-            var start = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5 ms-auto', h.t('tt_start'), 'bi-play-circle');
+            var start = lookButton(h, 'pg-button pg-button-quiet pg-button-sm ms-auto', h.t('tt_start'), 'bi-play-circle');
             start.addEventListener('click', function () {
                 start.disabled = true;
                 h.api('ws_task_time_start', { task_id: task.id }).then(function (data) {
@@ -224,7 +236,7 @@
             check.appendChild(billableLabel);
             foot.appendChild(check);
 
-            var add = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 ms-auto', h.t('tt_add'), 'bi-plus-lg');
+            var add = lookButton(h, 'pg-button pg-button-quiet pg-button-sm ms-auto', h.t('tt_add'), 'bi-plus-lg');
 
             function submit() {
                 if (amount.value.trim() === '') {
@@ -349,8 +361,8 @@
             check.appendChild(billableLabel);
             foot.appendChild(check);
 
-            var cancel = h.button('btn btn-sm btn-text theme-secondary rounded-pill ms-auto', h.t('cancel'));
-            var save = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', h.t('save'), 'bi-check-lg');
+            var cancel = h.button('pg-button pg-button-ghost pg-button-sm ms-auto', h.t('cancel'));
+            var save = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('save'), 'bi-check-lg');
 
             function submit() {
                 if (amount.value.trim() === '') {
@@ -449,7 +461,7 @@
                 row.appendChild(h.el('span', 'ws-task-time-amount' + (entry.running ? ' fg-danger' : ''), entry.label));
 
                 if (entry.can_edit) {
-                    var edit = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-pencil', h.t('edit'));
+                    var edit = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-pencil', h.t('edit'));
                     edit.setAttribute('data-ws-time-edit', String(entry.id));
                     edit.addEventListener('click', function () {
                         editForm(time, entry, row, edit);
@@ -458,7 +470,7 @@
                 }
 
                 if (entry.can_delete) {
-                    var remove = h.button('btn btn-sm btn-text theme-secondary py-0 px-1 ws-tool-danger', '', 'bi-trash', h.t('delete'));
+                    var remove = h.button('pg-icon-button pg-icon-button-sm ws-tool-danger', '', 'bi-trash', h.t('delete'));
                     remove.addEventListener('click', function () {
                         h.ask(h.t('tt_delete_confirm'), h.t('delete'), true).then(function (yes) {
                             if (!yes) {
@@ -558,7 +570,7 @@
                     line.appendChild(h.el('span', 'ws-task-time-amount', invoice.time_label));
 
                     if (invoice.can_unlink) {
-                        var unlink = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-link-45deg', h.t('tt_unlink'));
+                        var unlink = h.button('pg-icon-button pg-icon-button-sm', '', 'bi-link-45deg', h.t('tt_unlink'));
                         unlink.addEventListener('click', function () {
                             h.ask(h.t('tt_unlink_confirm'), h.t('tt_unlink'), true).then(function (yes) {
                                 if (!yes) {
@@ -581,7 +593,7 @@
             // Only where the ERP, the customer and the right are all there;
             // the server asks again when the draft is made.
             if (data.can_invoice && data.unbilled > 0) {
-                var open = h.button('btn btn-sm btn-outline theme-secondary mt-5', h.t('tt_invoice'), 'bi-receipt');
+                var open = lookButton(h, 'pg-button pg-button-quiet pg-button-sm mt-5', h.t('tt_invoice'), 'bi-receipt');
                 open.addEventListener('click', function () {
                     open.remove();
                     body.appendChild(invoiceForm(data));
@@ -629,7 +641,7 @@
             tax.inputMode = 'decimal';
 
             var actions = h.el('div', 'col-12 d-flex gap-3');
-            var save = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', h.t('tt_invoice'), 'bi-receipt');
+            var save = lookButton(h, 'pg-button pg-button-quiet pg-button-sm', h.t('tt_invoice'), 'bi-receipt');
 
             save.addEventListener('click', function () {
                 save.disabled = true;
