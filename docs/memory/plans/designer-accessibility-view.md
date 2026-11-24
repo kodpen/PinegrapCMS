@@ -25,7 +25,7 @@ priority: 6
 - It finds no fault the audit does not know: one list of faults stays, the audit's.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- AV1 (M) The reader, pure: the keyboard's order over a tree, the heading outline, regions and their names, pictures' texts.
+- AV1 (M) The reader, pure: the keyboard's order over a tree, the heading outline, regions and their names, pictures' texts. In progress.
 - AV2 (M) after AV1 and DD16: the card and the three kinds of marks.
 - AV3 (S) after AV2: the sight filters.
 - AV4 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.
