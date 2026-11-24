@@ -1071,7 +1071,8 @@ function pg_ltd_stay_targets($tree)
  *
  * @param array $p  a pg_ltd_plan() entry
  * @return array  'editable' (list of array('key', 'label', 'names')),
- *                'code' (list of array('label', 'reason')), 'skipped'
+ *                'code' (list of array('label', 'count', 'names',
+ *                'reason'), a row a kind), 'skipped'
  *                (list of array('label', 'reason')), 'common' (bool: a
  *                common region becomes a component)
  */
@@ -1128,18 +1129,25 @@ function pg_ltd_plan_groups($p)
     $out['common'] = !empty($editable['common']);
 
     $kinds = array(
-        'dynamic'       => array(lang('Dynamic region'), lang('PHP code: it stays code and runs on the site as written.')),
-        'system'        => array(lang('System region'), lang('The page type draws it: it stays as on the site.')),
-        'mobile_switch' => array(lang('Mobile Switch'), lang('Drawn as on the site; it has no design element.')),
-        'pdf'           => array(lang('PDF region'), lang('Drawn as on the site; it has no design element.')),
-        'designer_php'  => array(lang('Designer region'), lang('Its PHP blocks stay code as Custom PHP elements.')),
+        'dynamic'       => array(lang('Dynamic regions'), lang('PHP code: it stays code and runs on the site as written.')),
+        'system'        => array(lang('System regions'), lang('The page type draws it: it stays as on the site.')),
+        'mobile_switch' => array(lang('Mobile switches'), lang('Drawn as on the site; it has no design element.')),
+        'pdf'           => array(lang('PDF regions'), lang('Drawn as on the site; it has no design element.')),
+        'designer_php'  => array(lang('Designer regions with PHP'), lang('Its PHP blocks stay code as Custom PHP elements.')),
     );
+    // One row a kind: its regions share the reason.
+    $by_kind = array();
     foreach ($code as $r) {
-        $kind = $kinds[$r['type']];
-        $out['code'][] = array('label' => $kind[0] . ($r['name'] !== '' ? ' · ' . $r['name'] : ''), 'reason' => $kind[1]);
+        if (!isset($by_kind[$r['type']])) $by_kind[$r['type']] = array('count' => 0, 'names' => array());
+        ++$by_kind[$r['type']]['count'];
+        if ($r['name'] !== '' && !in_array($r['name'], $by_kind[$r['type']]['names'], true)) $by_kind[$r['type']]['names'][] = $r['name'];
+    }
+    foreach ($kinds as $type => $kind) {
+        if (!isset($by_kind[$type])) continue;
+        $out['code'][] = array('label' => $kind[0], 'count' => $by_kind[$type]['count'], 'names' => $by_kind[$type]['names'], 'reason' => $kind[1]);
     }
     if ($layouts > 0) {
-        $out['code'][] = array('label' => lang(array('string' => 'Pages with a custom layout ({var:1})', 'vars' => array(pg_format_number($layouts, 0)))),
+        $out['code'][] = array('label' => lang('Pages with a custom layout'), 'count' => $layouts, 'names' => array(),
                                'reason' => lang('Its layout has pieces that have no design element.'));
     }
     return $out;
@@ -1183,10 +1191,13 @@ function pg_ltd_plan_groups_html($groups)
     }
     if ($groups['code']) {
         $rows = '';
+        $total = 0;
         foreach ($groups['code'] as $r) {
-            $rows .= $row('pg-tone-amber', 'bi-code-slash', $r['label'], '', '<div class="pg-list-row-text">' . h($r['reason']) . '</div>');
+            $total += (int)$r['count'];
+            $rows .= $row('pg-tone-amber', 'bi-code-slash', $r['label'], pg_format_number((int)$r['count'], 0),
+                '<div class="pg-list-row-text">' . h($r['reason']) . '</div>' . ($r['names'] ? $names($r['names']) : ''));
         }
-        $out .= $label(lang('Stays code, drawn as on the site'), count($groups['code'])) . '<div class="ltd-plan-rows">' . $rows . '</div>';
+        $out .= $label(lang('Stays code, drawn as on the site'), $total) . '<div class="ltd-plan-rows">' . $rows . '</div>';
     }
     if ($groups['skipped']) {
         $rows = '';

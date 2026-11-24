@@ -67,9 +67,14 @@ function test_led_groups_of_a_style()
 	pg_assert_same(array('Promo'), $by['designer'], 'a designer region made before is not counted');
 	pg_assert_same(2, count($by['widgets']), 'the frame\'s widgets and the pages\'');
 	pg_assert_true($g['common'], 'a common region converts');
-	pg_assert_same(4, count($g['code']), 'dynamic, pdf, designer region with PHP, custom layouts');
-	pg_assert_contains('latest-news', $g['code'][0]['label']);
-	pg_assert_contains('3', $g['code'][3]['label'], 'the custom layout pages counted');
+	pg_assert_same(4, count($g['code']), 'a row a kind: dynamic, pdf, designer region with PHP, custom layouts');
+	pg_assert_same(array('latest-news'), $g['code'][0]['names']);
+	pg_assert_same(array(), $g['code'][1]['names'], 'a region with no name counts, unnamed');
+	pg_assert_same(3, $g['code'][3]['count'], 'the custom layout pages counted');
+
+	$two = pg_ltd_plan_groups(_led_style(array('stays' => array(array('type' => 'system', 'name' => 'a'), array('type' => 'system', 'name' => 'b')), 'designer_php' => array(), 'custom_layouts' => 0)));
+	pg_assert_same(1, count($two['code']), 'regions of one kind share a row');
+	pg_assert_same(2, $two['code'][0]['count']);
 	pg_assert_same(1, count($g['skipped']));
 	pg_assert_same('shop', $g['skipped'][0]['label'], 'a held page is skipped');
 	pg_assert_contains('Ayşe', $g['skipped'][0]['reason']);
@@ -91,6 +96,7 @@ function test_led_groups_of_a_refused_style_and_sets()
 	$g = pg_ltd_plan_groups($set);
 	pg_assert_same(2, count($g['skipped']), 'the held page and the refused style');
 	pg_assert_same(4, count($g['code']), 'the set gathers its styles\' rows once');
+	pg_assert_same(1, $g['code'][0]['count'], 'a region two styles share counts once');
 
 	$moved = pg_ltd_plan_groups(array('kind' => 'set', 'name' => 'old set', 'skip' => 'no_pages', 'styles' => array(_led_style())));
 	pg_assert_same(array(), $moved['editable'], 'a set moved before lists nothing');
@@ -103,7 +109,7 @@ function test_led_groups_html()
 	for ($i = 1; $i <= 7; $i++) $names[] = 'p<' . $i . '>';
 	$html = pg_ltd_plan_groups_html(array(
 		'editable' => array(array('key' => 'content', 'label' => lang('Page content'), 'names' => $names)),
-		'code' => array(array('label' => 'Dynamic region · x', 'reason' => 'why')),
+		'code' => array(array('label' => 'Dynamic regions', 'count' => 1, 'names' => array('x'), 'reason' => 'why')),
 		'skipped' => array(), 'common' => false,
 	));
 	pg_assert_contains(lang('Becomes editable'), $html);

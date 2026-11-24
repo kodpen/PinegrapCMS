@@ -12,7 +12,7 @@ module: legacy_to_designer, legacy_to_designer_plan, legacy_to_designer_run
 ## How is the dry run drawn?
 - Each set or style: its name, then three group labels (`pg-group-label` with a count) over list rows (`pg-list-row`), from `pg_ltd_plan_groups()` (pure) and `pg_ltd_plan_groups_html()`.
 - "Becomes editable": a row a kind (Page content, Common regions, Designer regions, Menus and widgets) with its count; five names, the rest behind "Show all N". Page content counts pages given a tree or whose page regions move in.
-- "Stays code, drawn as on the site": Dynamic, System, Mobile Switch and PDF regions of the frame and the pages (`pg_ltd_stay_targets()`), designer regions holding PHP (Custom PHP elements), pages with a custom layout; each with one line of reason.
+- "Stays code, drawn as on the site": a row a kind with its count, reason and names: Dynamic, System, Mobile Switch and PDF regions of the frame and the pages (`pg_ltd_stay_targets()`), designer regions holding PHP (Custom PHP elements), pages with a custom layout. A row a region made home-1's set eleven System region rows in the sandbox.
 - "Skipped": held pages, refused styles, a set with nothing left to move.
 - The old line-by-line list stays folded under "What is written, line by line".
 - When a common region converts, one help-size line above the foot: from now on they are edited in the Page Design Studio, on classic pages too (`classic-regions-in-designer.md`).
@@ -20,6 +20,9 @@ module: legacy_to_designer, legacy_to_designer_plan, legacy_to_designer_run
 ## What are the buttons?
 - Foot: "Convert" filled, "Cancel" quiet (back to the screen with nothing ticked).
 - A run that ends sends the screen to `?ended=1#ltd-ended`: a card "The move has ended" with "Open the design" filled (`edit_system_style.php?id=<design>`; with several designs one button each, the first filled) and "Report" quiet, which jumps to the first of Earlier moves, opened. `pg_ltd_run_designs($run)` (pure) gives each set's design, then each style moved alone; the screen keeps those that are visual designs now.
+
+## What did the sandbox show (#11227)?
+- home-1 from Edit Style arrives with its set ticked: 148 pages, 2 common and 113 designer regions become editable; 11 System regions and 83 custom layout pages stay code. auto-dialog's set converted: "Open the design" opened the new design; the measure went from 0 / 0 to 0 / 2 fully editable, the System region left on both (LE5).
 
 ## Not covered yet?
 - "Page types that get a widget" under Becomes editable: the run has no such step until LE5.
