@@ -1,6 +1,6 @@
 ---
 name: calls-share-stage
-description: How a Workspace call shows shared screens (CL4 #10908, CN4): the stage, the tile rail, other shares as rail tiles a click swaps, phone layout, smaller and full screen, the sharer's notice
+description: How a Workspace call shows shared screens (CL4 #10908, CN4 #11392): the stage, the tile rail, other shares as rail tiles a click swaps, phone layout, smaller and full screen, the sharer's notice
 ---
 
 ## How is a shared screen shown? (architect, agent channel 11318)

@@ -1,6 +1,6 @@
 ---
 name: calls-hand
-description: Raise hand / Lower hand in a Workspace call, the tile's Hand raised and Weak connection marks (getStats), "You are muted" while speaking muted (calls-next CN6, #11385)
+description: Raise hand / Lower hand in a Workspace call, the tile's Hand raised and Weak connection marks (getStats), "You are muted" while speaking muted (CN6, #11385)
 ---
 
 ## How does a raised hand reach the others?

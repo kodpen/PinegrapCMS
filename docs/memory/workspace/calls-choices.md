@@ -1,6 +1,6 @@
 ---
 name: calls-choices
-description: Workspace calls remember the chosen microphone, camera and speaker and the mute and camera state in the browser (CN1): the key, the fallback, the Speaker or headphones select
+description: Workspace calls remember the chosen microphone, camera and speaker and the mute and camera state in the browser (CN1, #11384): the key, the fallback, the Speaker or headphones select
 ---
 
 ## What does a call remember, and where?
