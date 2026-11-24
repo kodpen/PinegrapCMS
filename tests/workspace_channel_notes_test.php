@@ -342,3 +342,19 @@ function test_ws_note_readers_of_a_channel_note_are_its_members()
 	pg_assert_contains('ws_note_readers_of(', ws_channel_notes_test_source('ws_note_readers'), 'the folder follows the rule');
 }
 
+// Claude reaches a channel's note only through its channel, whatever the
+// owner's access; a person's note as before.
+function test_ws_note_claude_reach_of_a_channel_note_asks_its_channel()
+{
+	$allowed = function ($channel_id) {
+		return (int) $channel_id === 20;
+	};
+
+	pg_assert_same(false, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10, 'access' => 'edit'), array(), $allowed), 'a channel closed to Claude keeps its note from Claude');
+	pg_assert_same(true, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 20, 'access' => 'view'), array(), $allowed), 'an allowed channel gives it');
+	pg_assert_same(true, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 3, 'owner_channel_id' => 0, 'access' => 'owner'), array(), $allowed), 'a note of the owner\'s own');
+	pg_assert_same(true, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'access' => 'view'), array(array('user_id' => 3, 'channel_id' => 0)), $allowed), 'a person share');
+	pg_assert_same(false, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'access' => 'view'), array(array('user_id' => 0, 'channel_id' => 10)), $allowed), 'a share only in a closed channel');
+	pg_assert_same(true, ws_note_claude_reach_of(3, array('id' => 5, 'user_id' => 7, 'access' => 'view'), array(array('user_id' => 0, 'channel_id' => 20)), $allowed), 'a share in an allowed channel');
+}
+

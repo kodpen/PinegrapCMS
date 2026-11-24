@@ -654,6 +654,45 @@ function ws_note_access_of($viewer_id, $note, $shares, $reach)
 }
 
 /**
+ * Whether the application Claude works through reaches a note its owner may
+ * read (access in the row): a channel's note only through its channel, which
+ * Claude must be allowed in whatever the owner's access; a person's note the
+ * owner owns or edits, or reads through a share by name or through a channel
+ * Claude is allowed in. Pure but for $allowed.
+ *
+ * @param int      $viewer_id the owner of the application
+ * @param array    $note      user_id, owner_channel_id, access
+ * @param array[]  $shares    ws_note_shares rows: user_id, channel_id
+ * @param callable $allowed   channel id => the owner reads it and Claude may
+ *                            be asked there
+ * @return bool
+ */
+function ws_note_claude_reach_of($viewer_id, $note, $shares, $allowed)
+{
+    $owner_channel = ws_note_channel_of($note);
+
+    if ($owner_channel > 0) {
+        return (bool) $allowed($owner_channel);
+    }
+
+    if ((string) ($note['access'] ?? '') !== 'view') {
+        return true;
+    }
+
+    foreach ((array) $shares as $share) {
+        if ((int) $share['user_id'] === (int) $viewer_id) {
+            return true;
+        }
+
+        if (((int) $share['channel_id'] > 0) && $allowed((int) $share['channel_id'])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * A note the person may reach at least as far as asked.
  *
  * @param array  $viewer

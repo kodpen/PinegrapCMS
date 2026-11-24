@@ -7865,7 +7865,8 @@ function ws_api_note_or_404($viewer, $note_id)
 /**
  * Whether the current application reaches a note the owner may read: always,
  * except for the application Claude works through and a note that reached
- * the owner only through a channel Claude may not be asked in.
+ * the owner only through a channel Claude may not be asked in, a channel's
+ * note of such a channel too (ws_note_claude_reach_of()).
  *
  * @param array $viewer
  * @param array $note with access (ws_note_for())
@@ -7873,25 +7874,18 @@ function ws_api_note_or_404($viewer, $note_id)
  */
 function ws_api_note_reachable($viewer, $note)
 {
-    if (!ws_api_is_claude() || ($note['access'] !== 'view')) {
+    if (!ws_api_is_claude()) {
         return true;
     }
 
-    foreach ((array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'") as $share) {
-        if ((int) $share['user_id'] === (int) $viewer['id']) {
-            return true;
-        }
+    $shares = (ws_note_channel_of($note) > 0) ? array()
+        : (array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'");
 
-        if ((int) $share['channel_id'] > 0) {
-            $channel = ws_channel($share['channel_id']);
+    return ws_note_claude_reach_of((int) $viewer['id'], $note, $shares, function ($channel_id) use ($viewer) {
+        $channel = ws_channel($channel_id);
 
-            if ($channel && ws_can_read_channel($viewer, $channel) && ws_claude_channel_allowed($channel)) {
-                return true;
-            }
-        }
-    }
-
-    return false;
+        return $channel && ws_can_read_channel($viewer, $channel) && ws_claude_channel_allowed($channel);
+    });
 }
 
 /**
