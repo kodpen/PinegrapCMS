@@ -462,7 +462,7 @@ description: Generated from the module field of the memory files: each includes/
 - `waf_log_list`: [[waf-log-paging]]
 - `waf_notice`: [[waf-ban-notice]]
 - `waf_rescue`: [[waf-self-rescue]], [[waf-settings-save-and-release]]
-- `walk_in_queue`: [[walk-in-overview]], [[walk-in-queue-rules]]
+- `walk_in_queue`: [[walk-in-overview]], [[walk-in-queue]], [[walk-in-queue-rules]]
 - `walk_in_queue_arrivals`: [[walk-in-queue-arrivals]]
 - `walk_in_queue_desk`: [[walk-in-queue-desk]]
 - `walk_in_queue_places`: [[walk-in-queue-places]]

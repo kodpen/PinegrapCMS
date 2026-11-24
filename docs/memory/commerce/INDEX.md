@@ -488,6 +488,7 @@
 - visitor-currency-zero-rate.md: init.php uses a visitor's chosen currency only while its exchange rate is above zero (pg_visitor_currency_row()); a 0 rate falls back to the base currency
 - walk-in-overview.md: Start file for the walk-in-queue-* files: the walk-in queue (Calendars › Queue), its decisions, its screens by label, which file holds each part, adding one
 - walk-in-queue-arrivals.md: Walk-in queue arrivals (WQ5): priority from staff, the kiosk and the desk row; I have a booking (today's booking by phone or e-mail); I'm on my way; where a moved-back number stands
+- walk-in-queue-decisions.md: Walk-in queue decisions: owner polls 201 and 207, the architect's tables, place, roles and screen parts, the words on screen, what binds the code, what was left out [decision: here]
 - walk-in-queue-desk.md: Walk-in queue desk (WQ4, queue_desk.php): Today tab, My desk, place staff, Open this desk, Call next, Call again, Not here, Send to another service, Finish, Pause
 - walk-in-queue-events.md: Walk-in queue events queue.joined, called, served, no_show (WQ8): where announced, payload, catalogues, kept on demand, who may start a flow on them
 - walk-in-queue-lobby-kiosk.md: Walk-in queue lobby screen (queue_lobby.php) and kiosk (queue_kiosk.php), WQ6: signed display links, the board, the chime, the kiosk's cards, the Screens card on the Desks tab
@@ -497,6 +498,7 @@
 - walk-in-queue-report.md: Walk-in queue Report tab (WQ7, queue_report.php): waits and handling, left and not here by desk, staff and service, arrivals by hour, Desks needed (Erlang C), Excel
 - walk-in-queue-rules.md: The walk-in queue's pure rules in includes/fn/walk_in_queue.php: the order, the number A-012, cap and closing, the estimate, Not here, the signed link token
 - walk-in-queue-store.md: Walk-in queue tables waiting_places, waiting_desks, waiting_tickets (11.0.266, WQ1b): what each holds, states, the keep-period clear, erase, export, inventory, contact merge [decision: here]
+- walk-in-queue.md: Walk-in queue features W1 to W14 (Calendars › Queue, queue.php, the desk, lobby, kiosk, report, events, API): what each does, the file that holds it and the PR that built it [decision: decisions-made-product-93.md, decisions-made-schema-47.md]
 - wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch [decision: decisions-made-product-64.md, decisions-made-product-65.md]
 - wishlist-heart.md: Favourite heart in the catalog widgets: catalog_wishlist / wishlist actions, the binding pass, pg_wishlist.js and its injection, the variant event, why pages stay cacheable
 - wishlist.md: Favourites core (includes/fn/wishlist.php, wishlist.php): owner model, the pg_wishlist cookie, lazy merge at sign-in, the toggle and state endpoint, rate limit, trim, privacy export
