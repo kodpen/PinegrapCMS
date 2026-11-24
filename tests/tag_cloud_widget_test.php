@@ -106,3 +106,23 @@ function test_tag_cloud_widget_page_info()
 	$js = (string)file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js');
 	pg_assert_contains('cfg.search_page_name = _sdTagCloudDefaultPage();', $js, 'a new widget takes an open page of this design, never simply the first');
 }
+
+// A page in the Drafts folder or the recycle bin keeps its keyword rows: the
+// condition leaves them out of a tag cloud of pages and keeps product rows.
+function test_tag_cloud_hidden_page_condition()
+{
+	pg_assert_same('', pg_tcw_hidden_page_sql(array()));
+	pg_assert_same('', pg_tcw_hidden_page_sql(array(0, '0')));
+	pg_assert_same(" AND NOT (tag_cloud_keywords.item_type = 'page' AND tag_cloud_keywords.item_id IN (SELECT page_id FROM page WHERE page_folder IN (12,40)))",
+		pg_tcw_hidden_page_sql(array(12, '40', 12, "40'; DROP")));
+}
+
+// Every read of page keywords for visitors puts the condition in.
+function test_tag_cloud_page_reads_leave_out_hidden_pages()
+{
+	$root = PG_FUNCTIONS_DIR . '/';
+	$widget = (string)file_get_contents($root . 'includes/fn/widgets_tag_cloud.php');
+	pg_assert_same(2, substr_count($widget, 'pg_tcw_hidden_page_sql(pg_page_off_site_folder_ids())'));
+	$classic = (string)file_get_contents($root . 'get_page_content.php');
+	pg_assert_true(strpos($classic, "WHERE (item_type = 'page')\" . pg_tcw_hidden_page_sql(pg_page_off_site_folder_ids())") !== false);
+}
