@@ -5462,7 +5462,8 @@ function ws_change_write_user($viewer, $action, $record, $values)
     }
 
     if (array_key_exists('email', $values)) {
-        db("UPDATE user SET user_email = '" . e($values['email']) . "', user_user = '" . (int) $viewer['id'] . "', user_timestamp = UNIX_TIMESTAMP()
+        // A pending reset link went to the old address and ends with it.
+        db("UPDATE user SET " . pg_user_reset_link_clear_sql((string) $values['email']) . " user_email = '" . e($values['email']) . "', user_user = '" . (int) $viewer['id'] . "', user_timestamp = UNIX_TIMESTAMP()
             WHERE user_id = '" . (int) $record['id'] . "' LIMIT 1");
 
         ws_change_log(lang(array(
