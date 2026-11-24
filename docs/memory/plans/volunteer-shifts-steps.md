@@ -34,7 +34,7 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 - VS8 (S) after VS7 (done, #11307): the six events through `pg_announce()`, their catalogues and payload fixtures (`workspace/workspace-flows-adding.md`); the API routes with their types, `php tools/check_api_schema.php`; the MCP tools. Features: G16.
   - Built (#11307), `core/volunteer-events.md`, `api/api-volunteers.md`.
 
-- VS8b (S) after VS8: the volunteer's own "Pause my volunteering" and "Leave the programme" (`pg_volunteer_move()`). Features: G3.
+- VS8b (S) after VS8: the volunteer's own "Pause my volunteering" and "Leave the programme" (done, #11342): `core/volunteer-self-move.md`. Features: G3.
 
 - VS9 (S) close-out: every G number checked against the code with its PR; `core/volunteer-shifts.md` written; this plan's files deleted; the changelog `[NEW]` line named in its PR.
 

@@ -5,7 +5,8 @@
  * The markup of a volunteer's own shifts (pg_volunteer_self_view()): each
  * programme with "My next shifts" and their Cancel, Offer my place or Keep
  * my place, "Shifts for you" with Sign up, Join the waitlist or Take this
- * place, the documents' dates with "Upload a new one". Drawn twice: in the site's look
+ * place, the documents' dates with "Upload a new one", "Pause my
+ * volunteering" and "Leave the programme". Drawn twice: in the site's look
  * (Bootstrap 5.3.8, the classes of widgets_volunteering.php) for the
  * my_account widget's "volunteering" section, and in look A for the signed
  * page volunteer.php. Every button is a small POST
@@ -82,9 +83,11 @@ function pg_volunteer_signup_label(array $signup)
  * @param string $label
  * @param array  $fields  name => value
  * @param string $confirm a question asked before sending, '' for none
+ * @param string $yes     the sending button's label after the question,
+ *                        '' for "Yes, cancel"
  * @return string HTML
  */
-function _pg_volunteer_page_button(array $form, $class, $label, array $fields, $confirm = '')
+function _pg_volunteer_page_button(array $form, $class, $label, array $fields, $confirm = '', $yes = '')
 {
     $html = '<form method="post" action="' . h($form['action']) . '" class="d-inline">' . $form['hidden'];
 
@@ -99,7 +102,7 @@ function _pg_volunteer_page_button(array $form, $class, $label, array $fields, $
     // Asked twice without a script: the button that sends shows only once
     // the volunteer opened this.
     return '<details><summary class="' . $class . '">' . h($label) . '</summary>' . $html
-        . '<p class="small my-2">' . h($confirm) . '</p><button type="submit" class="' . $class . '">' . h(lang('Yes, cancel')) . '</button></form></details>';
+        . '<p class="small my-2">' . h($confirm) . '</p><button type="submit" class="' . $class . '">' . h(($yes !== '') ? $yes : lang('Yes, cancel')) . '</button></form></details>';
 }
 
 /**
@@ -208,10 +211,39 @@ function pg_volunteer_page_html(array $views, array $form, array $classes)
         }
 
         $html .= pg_volunteer_calls_form_html($form, $c, $volunteer, $programme['call_channels']);
+        $html .= pg_volunteer_self_move_html($form, $c, $volunteer);
         $html .= '</div></section>';
     }
 
     return $html;
+}
+
+/**
+ * "Pause my volunteering" (an active volunteer) and "Leave the programme"
+ * (active or paused), each asking first what happens.
+ *
+ * @param array $form      action, hidden
+ * @param array $c         the classes
+ * @param array $volunteer id, state
+ * @return string HTML, '' for an applicant
+ */
+function pg_volunteer_self_move_html(array $form, array $c, array $volunteer)
+{
+    $profile = array('p' => (int) $volunteer['id']);
+    $given = lang('Your coming shifts are given up and their places go to the next volunteers on the waitlist; the coordinator is told. Shift calls stop. Your hours stay.');
+    $buttons = '';
+
+    if ($volunteer['state'] === 'active') {
+        $buttons .= _pg_volunteer_page_button($form, $c['quiet'], lang('Pause my volunteering'), $profile + array('action' => 'pause'),
+            lang('Pause your volunteering?') . ' ' . $given . ' ' . lang('Only the coordinator can make your volunteering active again.'), lang('Yes, pause'));
+    }
+
+    if (in_array($volunteer['state'], array('active', 'paused'), true)) {
+        $buttons .= _pg_volunteer_page_button($form, $c['danger'], lang('Leave the programme'), $profile + array('action' => 'leave'),
+            lang('Leave the programme?') . ' ' . $given . ' ' . lang('You can no longer sign up for its shifts, and this page closes.'), lang('Yes, leave'));
+    }
+
+    return ($buttons !== '') ? '<div class="d-flex flex-wrap gap-2 mt-5">' . $buttons . '</div>' : '';
 }
 
 /**
@@ -270,10 +302,13 @@ function pg_volunteer_answer_text($answer)
         'cancelled' => lang('Your place was cancelled.'),
         'offered'   => lang('Your place is offered to the other volunteers. You keep it until someone takes it.'),
         'kept'      => lang('You kept your place.'),
+        'paused'    => lang('Your volunteering is paused and your coming shifts were given up. Ask the coordinator to make it active again.'),
+        'left'      => lang('You left the programme and your coming shifts were given up. Thank you for volunteering with us.'),
         'calls_saved' => lang('Your shift calls choice was saved.'),
         'doc_saved'   => lang('Your document was uploaded.'),
     );
     $refusals = array(
+        'already_paused' => lang('Your volunteering is already paused.'),
         'doc_kind'    => lang('Please choose one of the documents listed.'),
         'doc_date'    => lang('Please enter the date the document is valid until, today or later.'),
         'doc_missing' => lang('Please choose the file to upload.'),
