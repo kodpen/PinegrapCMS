@@ -256,6 +256,7 @@
     "Each form's own period": "Her formun kendi süresi",
     "Each gets a copy in their own notes and a line in their inbox. Your note stays as it is.": "Her biri kendi notlarına bir kopya alır ve gelen kutusuna bildirim düşer. Sizin notunuz olduğu gibi kalır.",
     "Each hash is the 40-character hash of a text.": "Her hash bir metnin 40 karakterlik hash'idir.",
+    "Each hour reads desks needed / desks that called, on an average such day. Bold: fewer desks called than needed. Worked out from the arrivals and the median handling time, so a busy hour's needs are seen even where nobody called.": "Her saat, ortalama bir böyle günde gereken masa / çağıran masa olarak okunur. Kalın: gerekenden az masa çağırdı. Gelişlerden ve ortanca işlem süresinden hesaplanır; böylece kimsenin çağırmadığı yoğun bir saatin ihtiyacı da görülür.",
     "Each id in {var:1} must be the id of one of the poll's options.": "{var:1} içindeki her id oylamanın seçeneklerinden birinin kimliği olmalı.",
     "Each invoice is": "Her fatura",
     "Each is set and saved in Accounts and sign-in; Change opens its row there.": "Her biri Hesaplar ve Giriş'te ayarlanır ve kaydedilir; Değiştir oradaki satırını açar.",

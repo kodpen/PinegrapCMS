@@ -491,10 +491,6 @@ if ($qp_place['status'] === 'paused') {
     $qp_state_button .= '<button type="submit" form="qp_state_form" name="submit_open" value="1" class="pg-button pg-button-quiet"><i class="bi bi-play-circle" aria-hidden="true"></i>' . h(lang('Open the queue')) . '</button>';
 }
 
-$qp_tab = function ($view, $label, $count = null) use ($qp_id, $qp_view) {
-    return '<a class="pg-seg-item' . (($qp_view === $view) ? ' is-active" aria-current="page' : '') . '" href="edit_queue_place.php?id=' . $qp_id . (($view === 'setup') ? '' : '&amp;view=' . $view) . '">' . h($label) . (($count !== null) ? ' <span class="pg-seg-count">' . (int) $count . '</span>' : '') . '</a>';
-};
-
 echo pg_page_shell(array(
     'title' => $qp_place['name'],
     'extra classes' => 'calendar pg-measure-edit',
@@ -514,7 +510,7 @@ echo pg_page_shell(array(
         'primary' => ($qp_view === 'desks')
             ? array('<button type="button" class="pg-button pg-button-fill" data-pg-queue-drawer="qp_desk_add"' . ($qp_place['services'] ? '' : ' disabled') . '><i class="bi bi-plus-circle" aria-hidden="true"></i>' . h(lang('Add desk')) . '</button>', $qp_state_button)
             : $qp_state_button,
-        'view' => '<span class="pg-seg" role="group" aria-label="' . h(lang('Place')) . '">' . $qp_tab('setup', lang('Set-up')) . $qp_tab('desks', lang('Desks'), count($qp_desks)) . '<a class="pg-seg-item" href="queue_desk.php?place=' . $qp_id . '">' . h(lang('Today')) . '</a></span>',
+        'view' => pg_waiting_place_tabs($qp_id, $qp_view, count($qp_desks)),
         'secondary' => '<button type="button" class="pg-button pg-button-ghost" data-pg-queue-drawer="qp_number_add"' . (($qp_place['status'] === 'open') ? '' : ' disabled title="' . h(lang('Open the queue to add a number.')) . '"') . '><i class="bi bi-person-plus" aria-hidden="true"></i>' . h(lang('Add a number')) . '</button>'
             . '<a class="pg-button pg-button-ghost" href="queue_poster.php?id=' . $qp_id . '" target="_blank" rel="noopener"><i class="bi bi-qr-code" aria-hidden="true"></i>' . h(lang('Print the QR poster')) . '</a>',
     )) . '
