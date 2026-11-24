@@ -1,10 +1,10 @@
 ---
 name: agent-canvas-data-layers
-description: An agent adds or changes a canvas's data layer by its description (DV6, canvas_data_write.php): add type data, the data operation, the caller's read of the table, the box, the refusals, the read
+description: An agent adds or changes a canvas's data layer by its description (DV6 #11228, canvas_data_write.php): add type data, the data operation, the caller's read of the table, the box, the refusals, the read
 ---
 
 ## What can an agent do with a data layer?
-- In a canvas edit (POST messages/{id}/canvas, its MCP tool, the assistants' `edit_canvas`): `add` with `type: 'data'` and `data` (the layer's description, `ui/image-editor-data-layer.md`) puts a data layer on top; `{op: 'data', layer, data}` lays the sent fields over a data layer's description. Built in DV6 (#11177).
+- In a canvas edit (POST messages/{id}/canvas, its MCP tool, the assistants' `edit_canvas`): `add` with `type: 'data'` and `data` (the layer's description, `ui/image-editor-data-layer.md`) puts a data layer on top; `{op: 'data', layer, data}` lays the sent fields over a data layer's description. Built in DV6 (#11228).
 - The route's text tells agents to add a data layer in place of a drawn `chart` when the numbers live in a Workspace table: the canvas then follows its rows (`workspace/canvas-data-follow.md`), a drawn chart does not.
 
 ## How is the description checked?
