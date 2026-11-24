@@ -3296,6 +3296,8 @@ function ws_flow_js_strings()
         'fl_view_list'        => lang('List'),
         'fl_outline_help'     => lang('The boxes in the order of their arrows, each with its settings. Everything the canvas does can be done here too.'),
         'fl_threads'          => lang('Data threads'),
+        'fl_values_one'       => lang('1 value'),
+        'fl_values_mark'      => ws_js_template('{var:1} values', 1),
         'fl_thread_line'      => ws_js_template('{var:1} reads {var:2}', 2),
         'fl_kind_constants'   => lang('Constants'),
         'fl_constants_none'   => lang('No value yet'),

@@ -2642,7 +2642,7 @@ console.log(JSON.stringify({
     clear: threadPath(104, y, 704, y, 46, []),
     below: threadPath(104, y, 704, y, 46, [{ x: 300, y: 400 }]),
     under: threadPath(104, y, 704, y, 46, [{ x: 300, y: 40 }]),
-    deep: threadPath(104, y, 704, y, 46, [{ x: 300, y: 100 }])
+    deep: threadPath(104, y, 704, y, 46, [{ x: 300, y: 110 }])
 }));
 JS
 	);
@@ -2652,21 +2652,30 @@ JS
 	}
 
 	pg_assert_same(46, $result['clear']['sag'], 'nothing in the way: its own sag');
-	pg_assert_same('M104 81 Q404 127 704 81', $result['clear']['d'], 'the quadratic curve below the chord');
+	// It leaves the dot straight down and enters the chip straight up: 12 px
+	// upright at each end, the curve between them with its control points
+	// right below the ends, so it never crosses a name beside them.
+	pg_assert_same('M104 81 V93 C104 124 704 124 704 93 V81', $result['clear']['d'], 'upright ends, the curve below the chord');
 	pg_assert_same(46, $result['below']['sag'], 'a box far below is not in the way');
 	pg_assert_true($result['under']['sag'] > 46, 'a box in the way: it hangs deeper');
-	// The curve's lowest point is halfway between the ends' level and the
-	// control point; it passes below the box and its data row (40 + 72 + 18).
-	pg_assert_true(81 + $result['under']['sag'] / 2 > 130, 'and passes below the box');
+	// The curve's lowest point is three quarters of the way from the upright
+	// ends' level to its control points; it passes below the box and its
+	// data row (40 + 72 + 18).
+	preg_match('/ C[0-9.]+ ([0-9.]+) /', $result['under']['d'], $control);
+	pg_assert_true(93 + 0.75 * ((float) $control[1] - 93) > 130, 'and passes below the box');
 	pg_assert_same(46, $result['deep']['sag'], 'a box too far down to pass below: its own sag');
 }
 
 // The row as drawn: a box's chips and dots within its width, a value no
 // thread takes drawn only while its box is selected, and the dots in the
-// order of the boxes they reach.
+// order of the boxes they reach. With the strip's Data threads not pressed
+// (the start) only the threads of the box chosen or pointed at are drawn,
+// and a box reading values whose threads are not drawn carries the
+// "N values" mark; nothing is dimmed. Before, every thread was drawn all the
+// time and those of other boxes dimmed.
 function test_workspace_flows_canvas_data_row_drawing()
 {
-	$result = ws_flows_canvas_test_node(array('dataRowSlots', 'threadPath', 'toneClass', 'drawData'), ws_flows_canvas_test_sizes() . <<<'JS'
+	$result = ws_flows_canvas_test_node(array('dataRowSlots', 'threadPath', 'toneClass', 'drawData', 'threadFocus', 'markThreads', 'pointThreads'), ws_flows_canvas_test_sizes() . <<<'JS'
 var THREAD_TONES = { number: 3, text: 3 };
 var drawn = {};
 var nodes = [
@@ -2676,10 +2685,10 @@ var nodes = [
 ];
 function nodeById(id) { return nodes.filter(function (node) { return node.id === id; })[0] || null; }
 function thread(token, to, field) { return { token: token, from: 'a', to: to, field: field, fieldLabel: field, value: token, type: 'text', tone: 0, skipped: false }; }
-function dataThreads() { return [thread('t1', 'b', 'title'), thread('t2', 'b', 'text'), thread('t3', 'c', 'text'), thread('t4', 'b', 'title')]; }
+var extra = [];
+function dataThreads() { return [thread('t1', 'b', 'title'), thread('t2', 'b', 'text'), thread('t3', 'c', 'text'), thread('t4', 'b', 'title')].concat(extra); }
 function boxValues() { return ['t1', 't2', 't3', 't4', 't5', 't6'].map(function (token) { return { token: token, label: token, type: 'text' }; }); }
 function bindTargets() { return []; }
-function markThreads() {}
 function liveDot() {}
 function threadHit() {}
 function svgEl(tag, className) { return new FakeNode(tag, className); }
@@ -2699,16 +2708,43 @@ el = function (tag, className, text) {
 state.graph = { nodes: nodes };
 state.edit = true;
 function row(id) {
-    return (drawn[id] ? drawn[id].children : []).map(function (item) {
+    return (drawn[id] ? drawn[id].children : []).filter(function (item) { return item.className.indexOf('wsf-data-mark') === -1; }).map(function (item) {
         return { kind: item.className.indexOf('wsf-data-out') !== -1 ? 'out' : 'field', left: parseInt(item.style.left, 10), width: parseInt(item.style['--wsf-w'], 10), name: item.title, unused: item.className.indexOf('wsf-data-unused') !== -1 };
     });
 }
-drawData();
-var out = { plain: row('a'), reader: row('b'), paths: ui.svg.children.length };
-drawn = {};
+function mark(id) {
+    var found = (drawn[id] ? drawn[id].children : []).filter(function (item) { return item.className === 'wsf-data-mark'; })[0];
+    return found ? { dots: found.children.length - 1, text: found.title, hidden: found.getAttribute('aria-hidden') } : null;
+}
+function redraw() { drawn = {}; ui.svg.children = []; drawData(); }
+state.threads = true;
+redraw();
+var out = { plain: row('a'), reader: row('b'), paths: ui.svg.children.length, allMark: mark('b') };
 state.selected = { type: 'node', id: 'a' };
-drawData();
+redraw();
 out.selected = row('a');
+state.threads = false;
+state.selected = null;
+redraw();
+out.rest = { a: row('a'), b: row('b'), c: row('c'), paths: ui.svg.children.length, markB: mark('b'), markC: mark('c'), markA: mark('a') };
+drawn = {};
+ui.svg.children = [];
+pointThreads('c');
+out.pointed = { a: row('a').map(function (item) { return item.name; }), c: row('c').filter(function (item) { return !item.unused; }).map(function (item) { return item.name; }), paths: ui.svg.children.length, markB: mark('b'), markC: mark('c') };
+drawn = {};
+ui.svg.children = [];
+pointThreads('');
+out.leaving = { timers: live(), still: ui.svg.children.length };
+fire();
+out.left = { paths: ui.svg.children.length, markC: mark('c') };
+state.selected = { type: 'node', id: 'b' };
+redraw();
+out.chosen = { a: row('a').map(function (item) { return item.name; }), b: row('b').filter(function (item) { return !item.unused; }).map(function (item) { return item.name; }), open: row('b').filter(function (item) { return item.unused; }).length, paths: ui.svg.children.length, markC: mark('c') };
+// The chosen box reads a value of c, which reads one of a: c shows the dot
+// its thread leaves, not its mark under it.
+extra = [{ token: 't7', from: 'c', to: 'b', field: 'note', fieldLabel: 'note', value: 't7', type: 'number', tone: 0, skipped: false }];
+redraw();
+out.giving = { c: row('c').map(function (item) { return item.name; }), markC: mark('c') };
 console.log(JSON.stringify(out));
 JS
 	);
@@ -2729,6 +2765,31 @@ JS
 	pg_assert_same(4, $result['paths'], 'a thread per value and field');
 	pg_assert_same(6, count($result['selected']), 'selected: its unused values too');
 	pg_assert_same(array(true, true), array_slice(array_column($result['selected'], 'unused'), 4), 'the unused ones last');
+	pg_assert_same(null, $result['allMark'], 'every thread drawn: no mark');
+
+	pg_assert_same(array(), $result['rest']['a'], 'at rest: no row of dots');
+	pg_assert_same(array(), $result['rest']['b'], 'at rest: no chips');
+	pg_assert_same(0, $result['rest']['paths'], 'at rest: no thread');
+	pg_assert_same(array('dots' => 3, 'text' => 'fl_values_mark 3', 'hidden' => 'true'), $result['rest']['markB'], 'a box reading three values: three dots and its count');
+	pg_assert_same(array('dots' => 1, 'text' => 'fl_values_one', 'hidden' => 'true'), $result['rest']['markC'], 'one value: its own words');
+	pg_assert_same(null, $result['rest']['markA'], 'a box reading nothing: no mark');
+
+	pg_assert_same(array('t3'), $result['pointed']['a'], 'pointed: only the dot its thread leaves on the other box');
+	pg_assert_same(array('text'), $result['pointed']['c'], 'pointed: its own chip');
+	pg_assert_same(1, $result['pointed']['paths'], 'pointed: only its thread');
+	pg_assert_same(null, $result['pointed']['markC'], 'the pointed box shows its chips, not its mark');
+	pg_assert_same(3, $result['pointed']['markB']['dots'], 'the other reading box keeps its mark');
+	pg_assert_same(array(200), $result['leaving']['timers'], 'leaving the box: its threads go after 200 ms');
+	pg_assert_same(0, $result['left']['paths'], 'then they are gone');
+	pg_assert_same(1, $result['left']['markC']['dots'], 'and its mark is back');
+
+	pg_assert_same(array('t1', 't2', 't4'), $result['chosen']['a'], 'chosen: the dots it reads from');
+	pg_assert_same(array('title', 'text'), $result['chosen']['b'], 'chosen: its chips');
+	pg_assert_same(6, $result['chosen']['open'], 'and its own unused values, so a thread can be drawn from one');
+	pg_assert_same(3, $result['chosen']['paths'], 'chosen: its threads in, none of the others');
+	pg_assert_same(1, $result['chosen']['markC']['dots'], 'another reading box keeps its mark');
+	pg_assert_same(array('t7'), $result['giving']['c'], 'a reading box giving the chosen one a value shows its dot');
+	pg_assert_same(null, $result['giving']['markC'], 'and no mark under it');
 }
 
 // Every kind of box has a line icon of its own in workspace.js's set (16 ×
