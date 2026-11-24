@@ -1,6 +1,6 @@
 ---
 name: notifications-menu
-description: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
+description: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws when the count moves
 ---
 
 ## What is the bell's panel?
@@ -22,6 +22,7 @@ description: The bell's drawer #notifications at the right edge: opened by the b
 - The 20 s poll reads `pgUI.drawer.isOpen('#notifications')`. `tests/bell_drawer_test.php` pins the markup, opening and scrolling.
 
 ## When does the 20 s unread poll redraw the open list?
-- Only when the unread count rises above `$unreadsCallback`, a top-level count that holds the count the open list shows: each drawing sets it to the list's unread rows, each poll to the server's count. Opening reads nothing (`bell-read-rule.md`).
+- When the unread count differs from `$unreadsCallback`, a top-level count that holds the count the open list shows: each drawing sets it to the list's unread rows, each poll to the server's count. A rise is something new; a fall is rows read on another device or tab, down to none (#11438). A change made in this list polls with `editcallback_check`, which never redraws. Opening reads nothing (`bell-read-rule.md`).
+- Before #11438 only a rise redrew it: rows read on the phone kept their unread dot in the open drawer, and at a count of 0 nothing was redrawn.
 - It used to be reset to 0 every poll, so with anything unread the open list was emptied, scrolled to the top and lost the focused row every 20 s.
 - The poll calls `get_notifications(true)` (`keep_place`): the old list stays until the new one arrives, then the scroll and the focus on the same `li[notification-id]` row come back. `tests/panel_timers_test.php` pins it.
