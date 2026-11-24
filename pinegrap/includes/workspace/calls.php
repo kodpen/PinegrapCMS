@@ -1384,6 +1384,7 @@ function ws_call_js_strings()
         'call_larger'     => lang('Make larger'),
         'call_full_screen' => lang('Full screen'),
         'call_full_exit'  => lang('Exit full screen'),
+        'call_pop_out'    => lang('Pop out'),
         'call_join_here'  => lang('Join here'),
         'call_elsewhere'  => lang('You are already in this call in another window.'),
         'call_moved'      => lang('The call goes on in another window.'),
