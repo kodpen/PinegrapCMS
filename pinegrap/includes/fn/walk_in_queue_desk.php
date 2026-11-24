@@ -303,7 +303,7 @@ function pg_waiting_desk_current($desk_id)
 function pg_waiting_desk_waiting($place, $services = null, $now = null)
 {
     $now = ($now === null) ? time() : (int) $now;
-    $rows = (array) db_items("SELECT id, service, letter, number, joined_at, priority, booking_id, booking_at, on_way_at, name, notices FROM waiting_tickets WHERE place_id = '" . (int) $place['id'] . "' AND state = 'waiting' AND day = '" . pg_waiting_today($now) . "'");
+    $rows = (array) db_items("SELECT id, service, letter, number, joined_at, priority, booking_id, booking_at, on_way_at, moved_back, called_at, name, notices FROM waiting_tickets WHERE place_id = '" . (int) $place['id'] . "' AND state = 'waiting' AND day = '" . pg_waiting_today($now) . "'");
 
     if ($services !== null) {
         $rows = array_filter($rows, function ($row) use ($services) {
@@ -393,7 +393,7 @@ function pg_waiting_finish($ticket, $now = null)
 /**
  * "Not here", offered the place's minutes after the call: the person
  * leaves as not here, or, once and when the place moves people back,
- * waits again (where they then stand is the place's priority step's).
+ * waits again, standing behind those already waiting.
  *
  * @param array    $ticket
  * @param array    $place
@@ -409,7 +409,9 @@ function pg_waiting_not_here($ticket, $place, $now = null)
     }
 
     if (pg_waiting_not_here_outcome((int) $ticket['moved_back'], (int) $place['settings']['move_back']) === 'moved_back') {
-        return pg_waiting_ticket_move($ticket, "state = 'waiting', moved_back = 1, desk_id = 0, staff_user_id = 0, called_at = 0") ? 'moved_back' : '';
+        // called_at keeps the moment of the move: the order rule stands the
+        // number there (pg_waiting_order_time()).
+        return pg_waiting_ticket_move($ticket, "state = 'waiting', moved_back = 1, desk_id = 0, staff_user_id = 0, called_at = '" . $now . "'") ? 'moved_back' : '';
     }
 
     return pg_waiting_ticket_move($ticket, "state = 'no_show', done_at = '" . $now . "'") ? 'no_show' : '';

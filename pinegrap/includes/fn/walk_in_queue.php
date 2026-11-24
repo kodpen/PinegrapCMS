@@ -16,8 +16,8 @@
  *   divided by the open desks serving the service; shown rounded to five
  *   minutes. Without a handling time only "N ahead" is shown.
  * - "Not here" is offered M minutes after the call; the first time a person
- *   may be moved back (a setting, off by default), the second time they
- *   leave.
+ *   may be moved back (a setting, off by default) and stands as if they
+ *   joined at that moment, the second time they leave.
  * - A number's page opens by a signed link: an HMAC of the number under the
  *   site's ENCRYPTION_KEY (pg_booking_key()), only its sha256 stored, the
  *   way a booking's manage link is.
@@ -49,9 +49,12 @@ const PG_WAITING_KEEP_MAX = 365;
  * The moment a number takes its place in the order. A walk-in stands at the
  * time it joined; a booking that arrived no later than its time plus the
  * grace window stands at its booked time (never earlier, even when it came
- * early), a later one at its arrival as a walk-in.
+ * early), a later one at its arrival as a walk-in. A number moved back
+ * after "Not here" waits again with called_at kept as the moment it was
+ * moved back, and stands there: behind everyone who was already waiting,
+ * never before its own place.
  *
- * @param array $ticket        joined_at, booking_at (0 without a booking)
+ * @param array $ticket        joined_at, booking_at (0 without a booking), moved_back, called_at
  * @param int   $grace_seconds the place's grace window
  * @return int
  */
@@ -59,12 +62,13 @@ function pg_waiting_order_time($ticket, $grace_seconds)
 {
     $joined = isset($ticket['joined_at']) ? (int) $ticket['joined_at'] : 0;
     $booked = isset($ticket['booking_at']) ? (int) $ticket['booking_at'] : 0;
+    $time = (($booked > 0) && ($joined <= $booked + max(0, (int) $grace_seconds))) ? $booked : $joined;
 
-    if (($booked > 0) && ($joined <= $booked + max(0, (int) $grace_seconds))) {
-        return $booked;
+    if (!empty($ticket['moved_back']) && !empty($ticket['called_at'])) {
+        $time = max($time, (int) $ticket['called_at']);
     }
 
-    return $joined;
+    return $time;
 }
 
 /**

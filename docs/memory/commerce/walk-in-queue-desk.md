@@ -15,14 +15,14 @@ module: walk_in_queue_desk
 ## What does the screen show?
 - No desk of the viewer's open here: "Open this desk", a row per desk (its services, Closed / "Open · person" / "Paused · person"), the button on closed rows. A user has one desk open per place; a desk opens only while closed (one conditional UPDATE), so two people never open one desk.
 - A desk open: the now-serving card (number, service and desk, name, pills, "Called N min ago"). Buttons in one row: "Call next" (the fill), "Call again", "Not here", "Send to another service", "Finish" (quiet); Pause / Resume and "Close desk" in the card's menu.
-- Under it "Waiting": today's waiting numbers for the desk's services (every service when no desk is open), in calling order (`pg_waiting_order()`): number, service, pills Priority (with the group's name), Booked, On the way, minutes waited.
+- Under it "Waiting": today's waiting numbers for the desk's services (every service when no desk is open), in calling order (`pg_waiting_order()`): number, service, pills Priority (group's name), Booked (its time), On the way, minutes waited, a priority menu.
 - The live part (`?part=live`) is read again every 15 seconds by `assets/js/queue_desk.js` while the tab is shown, no drawer or menu is open and no button in it has focus; a sign-in page as answer stops it.
 
 ## What does each button do?
 - `pg_waiting_desk_buttons()` decides which work: Call next only at an open desk with nobody at it and someone waiting; the number at the desk is ended (Finish, Not here, sent on) before the next call or Close desk; Not here after the place's "Not here after" minutes.
 - Call next (`pg_waiting_call_next()`): the first by `pg_waiting_next()` taken with `UPDATE … SET state = 'called' … WHERE id = ? AND state = 'waiting'`; when another desk took that person, the next is tried (5 tries). Then the "called" notice with the desk's name and `pg_waiting_notify_ahead()` for the service.
 - Call again: `called_at` moves to now (Not here counts from the last call; the lobby screen sees a new call). No second message.
-- Not here: `no_show` with `done_at`; with the place's "Move a person who is not here back once" on, the first time it waits again with `moved_back = 1` (where it then stands is WQ5's).
+- Not here: `no_show` with `done_at`; with the place's "Move a person who is not here back once" on, the first time it waits again with `moved_back = 1`, behind those waiting (`walk-in-queue-arrivals.md`).
 - Send to another service: waits again in the other service, keeps `joined_at`, takes that service's letter and the day's next count (the unique key forbids keeping the old count); the person's page shows the new number.
 - Finish: `served` with `done_at`; the estimate reads `done_at - called_at`. Each move is written only while the number is still `called` to that desk (`pg_waiting_ticket_move()`).
 - Pause: the desk is `paused`, called to by nobody and not counted in the estimate; Close desk frees it (`user_id` and `opened_at` 0).

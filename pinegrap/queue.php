@@ -9,7 +9,10 @@
  * links with from=qr, the site with nothing; each way has its switch on the
  * place. Then the person's page, ?n=<id>&t=<token>, the number's signed
  * link: the number, how many are ahead, the estimate, the desk once called
- * and "Leave the queue". The page reads where the number stands every 15
+ * and "Leave the queue"; a number taken from the site offers "I'm on my
+ * way". A place that folds bookings in offers "I have a booking": today's
+ * booking is found by the phone or e-mail it was made with. The page reads
+ * where the number stands every 15
  * seconds (&read=1, JSON) while it is shown. It shows numbers, never a
  * name. Every POST carries the form token. Counted on the firewall's
  * sensitive allowance (waf_sensitive_scripts()), but for the 15-second
@@ -77,6 +80,12 @@ if (isset($qu_input['n'])) {
         go($qu_link);
     }
 
+    if ($qu_action === 'on_way') {
+        validate_token_field();
+        pg_waiting_on_way($qu_ticket);
+        go($qu_link);
+    }
+
     $qu_status = pg_waiting_ticket_status($qu_ticket, $qu_place);
 
     if ($qu_read) {
@@ -89,11 +98,21 @@ if (isset($qu_input['n'])) {
         . '<p class="pg-display-4 fw-bold text-center mb-5">' . h($qu_status['number']) . '</p>'
         . '<div class="text-center mb-7" role="status" aria-live="polite">'
         . '<p class="h5 mb-2" data-pg-queue-field="headline">' . h($qu_status['headline']) . '</p>'
-        . '<p class="mb-0" data-pg-queue-field="line">' . h($qu_status['line']) . '</p></div>';
+        . '<p class="mb-0" data-pg-queue-field="line">' . h($qu_status['line']) . '</p>'
+        . '<p class="pg-text-meta mt-2 mb-0" data-pg-queue-field="note"' . (($qu_status['note'] === '') ? ' hidden' : '') . '>' . h($qu_status['note']) . '</p></div>';
+    $qu_hidden = get_token_field() . '<input type="hidden" name="n" value="' . (int) $qu_ticket['id'] . '"><input type="hidden" name="t" value="' . h($qu_token) . '">';
+
+    if ($qu_status['on_way']) {
+        $qu_content .= '<form method="post" action="' . h($qu_page) . '" class="text-center mb-5" data-pg-queue-on-way>' . $qu_hidden
+            . '<p class="pg-field-help mb-3">' . h(lang('Not at the place yet? Tell the desk you are coming.')) . '</p>'
+            . '<button type="submit" name="action" value="on_way" class="pg-button pg-button-fill">' . h(lang('I\'m on my way')) . '</button></form>';
+    } elseif (($qu_status['state'] === 'waiting') && ((int) $qu_ticket['on_way_at'] > 0)) {
+        $qu_content .= '<p class="pg-field-help text-center mb-5">' . h(lang('The desk knows you are on your way.')) . '</p>';
+    }
 
     if ($qu_status['state'] === 'waiting') {
         $qu_content .= '<form method="post" action="' . h($qu_page) . '" class="text-center" data-pg-queue-leave="' . h(lang('Leave the queue? Your number is given up.')) . '">'
-            . get_token_field() . '<input type="hidden" name="n" value="' . (int) $qu_ticket['id'] . '"><input type="hidden" name="t" value="' . h($qu_token) . '">'
+            . $qu_hidden
             . '<button type="submit" name="action" value="leave" class="pg-button pg-button-quiet">' . h(lang('Leave the queue')) . '</button></form>';
     }
 
@@ -118,11 +137,12 @@ if (!$qu_place) {
 $qu_from = (($qu_input['from'] ?? '') === 'qr') ? 'qr' : '';
 $qu_way = ($qu_from === 'qr') ? 'qr' : 'site';
 $qu_error = '';
-$qu_values = array('service' => '', 'name' => '', 'phone' => '', 'email' => '', 'party_size' => 1);
+$qu_values = array('service' => '', 'name' => '', 'phone' => '', 'email' => '', 'party_size' => 1, 'booking' => '');
+$qu_bookings = pg_waiting_takes_bookings($qu_place);
 
 if ($qu_action === 'take') {
     validate_token_field();
-    $qu_join = pg_waiting_join_input($_POST, $qu_place);
+    $qu_join = pg_waiting_join_input($_POST, $qu_place, false, $qu_bookings);
 
     foreach (array_keys($qu_values) as $qu_key) {
         $qu_values[$qu_key] = is_scalar($_POST[$qu_key] ?? null) ? (string) $_POST[$qu_key] : '';
@@ -186,8 +206,10 @@ $qu_content .= '<form method="post" action="' . h($qu_page) . '">' . get_token_f
     . (empty($qu_place['settings']['party_size']) ? '' : $qu_field('party_size', 'number', lang('How many people come'), $qu_values['party_size'], ' min="1" max="' . PG_WAITING_PARTY_MAX . '" step="1"'))
     . $qu_field('name', 'text', lang('Name (optional)'), $qu_values['name'], ' maxlength="100" autocomplete="name"')
     . $qu_field('phone', 'tel', lang('Phone (optional)'), $qu_values['phone'], ' maxlength="40" autocomplete="tel"')
-    . (empty($qu_place['settings']['notices']['email']) ? '' : $qu_field('email', 'email', lang('E-mail (optional)'), $qu_values['email'], ' maxlength="190" autocomplete="email"'))
+    . ((empty($qu_place['settings']['notices']['email']) && !$qu_bookings) ? '' : $qu_field('email', 'email', lang('E-mail (optional)'), $qu_values['email'], ' maxlength="190" autocomplete="email"'))
     . ((pg_waiting_notice_channel($qu_place['settings']['notices'], '1', '') === '') ? '' : '<p class="pg-field-help mb-5">' . h(lang('Give a phone number to get a message when your turn comes.')) . '</p>')
+    . (!$qu_bookings ? '' : '<div class="d-flex align-items-start gap-3 mb-5"><input type="checkbox" class="pg-switch" id="qu_booking" name="booking" value="1" aria-describedby="qu_booking_help"' . (($qu_values['booking'] !== '') ? ' checked' : '') . '>'
+        . '<div><label class="pg-text-2" for="qu_booking">' . h(lang('I have a booking')) . '</label><p class="pg-field-help mb-0" id="qu_booking_help">' . h(lang('Your booking for today is found by the phone or e-mail you booked with; you are called at its time.')) . '</p></div></div>')
     . '<button type="submit" name="action" value="take" class="pg-button pg-button-fill w-100">' . h(lang('Take a number')) . '</button></form>';
 
 print $qu_card('bi-ticket-perforated', $qu_place['name'], $qu_content);
