@@ -1097,3 +1097,32 @@ function pg_pack_card_figures(array $waiting, array $packs, $today)
         'packers' => $rows,
     );
 }
+
+/**
+ * Whether a "Packing only" user may open one label's document: only the
+ * active outbound label of an address whose pack is checked (packed) and
+ * was checked by that user, the label the Pack screen opens. Users who see
+ * orders pass the order screen's own gate and never reach this.
+ *
+ * @param array      $user  validate_user()'s row
+ * @param array      $label shipment_labels row
+ * @param array|null $pack  order_packs row of the label's address, null without one
+ * @return bool
+ */
+function pg_pack_label_user_can(array $user, array $label, $pack)
+{
+    if (((int) ($user['role'] ?? 4) !== 3) || empty($user['manage_packing']) || ((int) ($user['id'] ?? 0) <= 0)) {
+        return false;
+    }
+
+    if (!is_array($pack) || !empty($label['is_return']) || !empty($label['label_removed_at'])) {
+        return false;
+    }
+
+    $ship_to_id = (int) ($label['ship_to_id'] ?? 0);
+
+    return ($ship_to_id > 0)
+        && ((int) ($pack['ship_to_id'] ?? 0) === $ship_to_id)
+        && ((int) ($pack['status'] ?? 0) === 1)
+        && ((int) ($pack['packer_id'] ?? 0) === (int) $user['id']);
+}
