@@ -8015,6 +8015,7 @@ const StyleDesigner = (function () {
             (_bodyCls.length ? ' class="' + _bodyCls.join(' ') + '"' : '') + '></body></html>');
         doc.close();
         canvasDoc = doc;
+        _sdMirrorRebind();
         if (canvasZoom !== 1.0 && doc.documentElement) doc.documentElement.style.zoom = canvasZoom;
 
         // Inject Bootstrap JS bundle so data-bs-toggle/data-bs-dismiss/data-bs-target all work natively.
@@ -93867,6 +93868,14 @@ const StyleDesigner = (function () {
         return kit;
     }
     // ── end of parts on demand ────────────────────────────────────────────
+
+    // The canvas mirrors (the part 'mirror') follow the canvas document when
+    // it is written anew. Nothing runs while the part has not been loaded.
+    function _sdMirrorRebind() {
+        if (!_sdPartLoaded('mirror')) return;
+        var api = _sdPartApis.mirror;
+        if (api && typeof api.rebind === 'function') api.rebind();
+    }
 
     // The assistant panel is the part 'ai', handed over only to the designers
     // it serves. Its toolbar button and the canvas menu's "Ask the assistant
