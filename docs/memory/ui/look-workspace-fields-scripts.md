@@ -3,7 +3,7 @@ name: look-workspace-fields-scripts
 description: WL9: the small Workspace scripts' form-control and form-label lines on pg-input and pg-field-label, the CSS that followed, the 16px tip fields, what stayed
 ---
 
-## Which scripts moved? (WL9, #PRNUM)
+## Which scripts moved? (WL9, #11417)
 - Twenty `assets/js/workspace_*.js` scripts: acks, approvals, board_channel, channel_agents, customer, editor, highlights, mail, note_group_shares, note_groups, note_lock, page_card, recurrence, replies, status, task_approval, task_delegate, task_links, task_time, templates.
 - The same mapping as WL8 (`look-workspace-fields.md`): `form-control form-control-sm` is `pg-input pg-input-sm`, `form-control` is `pg-input`; `form-label` (with `small`, `mb-1`) is `pg-field-label`; `mb-0`, `mt-3`, `mt-4` that place a caption stay.
 - A field inside an `input-group-sm` (Repeat's "every" number and unit, a template's checklist line) is `pg-input pg-input-sm`, the old small size; the checklist line's remove button is `pg-button pg-button-quiet pg-button-sm`.

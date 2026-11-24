@@ -21,7 +21,7 @@ priority: 2
 - WL7 (S) Done (#11366). The PHP screens, about 75 buttons: `workspace_wtables.php` (26) and `includes/workspace/wtable_*.php`, `workdays.php`, `personal_ical.php`, `calendar_sync.php`, `tasks.php`, `agent_activity.php`, `bulk.php`, `notes.php`, `personal_plan_mail.php`, `screen.php`, `team_settings.php`; `workspace_mcp.php`, `workspace_calendar_feed.php`, `workspace_meeting_link.php`, `workspace_guest.php`, `workspace_approval.php`.
 - WL7 left: `notes.php` (1, held by #11351 then), `workspace_guest.php` (4) and `workspace_approval.php` (2), pages without the panel stylesheet; WL11 names them.
 - WL8 (M) Done (#11391). Fields, first part: `formRow()` builds its row from the form parts, so its 65 callers move with it; then the `form-control` and `form-label` lines of `workspace.js`. Waits for WL1 and WL2.
-- WL9 (M) Done (#PRNUM). Fields, second part: twenty `workspace_*.js` scripts (`ui/look-workspace-fields-scripts.md`).
+- WL9 (M) Done (#11417). Fields, second part: twenty `workspace_*.js` scripts (`ui/look-workspace-fields-scripts.md`).
 - WL9b (M) Fields, third part: `workspace_flow.js` (50, held by #11410), `workspace_palette.js` (1, held by #11401), then the PHP screens' fields (`workspace_wtables.php` after WL10).
 - WL10 (M) Bulk Delete on Data, not a look step. Waits for WL7. Described in `workspace-look-leftover-screens.md`.
 - WL11 (S) Close-out: what stayed goes to `ui/look-open-work.md`, `ui/look-overview.md` takes the Workspace out of its "left out" line, `workspace/canvas-phone.md` loses its DL5f part, this plan is deleted.
