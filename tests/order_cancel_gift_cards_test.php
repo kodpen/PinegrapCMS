@@ -171,3 +171,25 @@ function test_order_cancel_commissions_bad_id()
 	pg_assert_same(array('voided' => 0, 'stopped' => 0), pg_order_cancel_commissions(0));
 	pg_assert_same(array('restored' => 0, 'started' => 0), pg_order_restore_commissions(-4));
 }
+
+// What a return already gave back of the gift card part is not asked of the
+// operator again: the cards are named for what the order still owes them,
+// the last card first trimmed.
+function test_order_cancel_gift_cards_line_names_only_what_is_still_owed()
+{
+	$cards = array(
+		array('code' => 'ABCD1234EFGH5678', 'gift_card_id' => '3', 'amount' => '1250', 'givex' => '0'),
+		array('code' => 'WXYZ1234EFGH9999', 'gift_card_id' => '4', 'amount' => '2000', 'givex' => '0'));
+
+	$line = pg_order_gift_card_refund_line('1187', $cards, 2250);
+	pg_assert_contains('Gift cards paid ' . pg_order_log_money(2250) . ' of it:', $line, 'the total is what is still owed');
+	pg_assert_contains('************5678 (#3) ' . pg_order_log_money(1250), $line, 'the first card in full');
+	pg_assert_contains('************9999 (#4) ' . pg_order_log_money(1000), $line, 'the last card trimmed');
+
+	$line = pg_order_gift_card_refund_line('1187', $cards, 1000);
+	pg_assert_false(strpos($line, '9999') !== false, 'a card owed nothing is not named');
+	pg_assert_contains('************5678 (#3) ' . pg_order_log_money(1000), $line, 'the first card trimmed');
+
+	pg_assert_same('', pg_order_gift_card_refund_line('1187', $cards, 0), 'nothing owed asks nothing');
+	pg_assert_contains(pg_order_log_money(3250), pg_order_gift_card_refund_line('1187', $cards), 'no owed figure: what the cards paid');
+}

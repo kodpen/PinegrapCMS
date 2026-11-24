@@ -12257,7 +12257,8 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // and the restore keep the record of it); only an order the payment step
     // left without an outcome is flagged here.
     $gift_card_refund_line = pg_order_gift_card_refund_line($order_log_number, (array) db_items(
-        "SELECT code, gift_card_id, amount, givex FROM applied_gift_cards WHERE order_id = '" . e($order_id) . "'"));
+        "SELECT code, gift_card_id, amount, givex FROM applied_gift_cards WHERE order_id = '" . e($order_id) . "' ORDER BY id"),
+        pg_order_gift_card_owed($order_id));
     if ($gift_card_refund_line !== '') {
         log_activity($gift_card_refund_line);
         if ($refund_status_outcome === '') {
@@ -12546,13 +12547,21 @@ function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_me
 // its id, a Givex card marked) and the amount as money text, '' when no card
 // paid anything. $order_number names the order (pg_order_log_number());
 // $applied_gift_cards are the order's applied_gift_cards rows. A customer's
-// own cancellation writes it, so it takes the software language.
-function pg_order_gift_card_refund_line($order_number, $applied_gift_cards)
+// own cancellation writes it, so it takes the software language. $owed
+// (minor units, pg_order_gift_card_owed()) is what the order still owes the
+// cards once a return gave part back: the cards are named for that much, the
+// last ones trimmed first; null names what each card paid.
+function pg_order_gift_card_refund_line($order_number, $applied_gift_cards, $owed = null)
 {
     $parts = array();
     $total = 0;
+    $left = ($owed === null) ? null : max(0, (int) $owed);
     foreach ($applied_gift_cards as $card) {
         $amount = (int) round((float) $card['amount']);
+        if ($left !== null) {
+            $amount = min($amount, $left);
+            $left -= max(0, $amount);
+        }
         if ($amount <= 0) {
             continue;
         }

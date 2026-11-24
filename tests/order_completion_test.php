@@ -960,8 +960,9 @@ function test_order_completion_gift_card_redemption_guards_the_balance()
 	$update = substr($body, (int) strpos($body, '"UPDATE gift_cards'));
 	$update = substr($update, 0, (int) strpos($update, 'output_error'));
 
-	pg_assert_true(strpos($update, 'AND (balance >= ?)') !== false, 'the decrement runs only while the balance covers the amount');
-	pg_assert_true(preg_match('/UPDATE gift_cards.*?mysqli_affected_rows\(db::\$con\) < 1/s', $body) === 1, 'a decrement that changed no row is a failed card');
+	pg_assert_true(strpos($update, 'AND (balance = ?)') !== false, 'the decrement is written only over the balance read');
+	pg_assert_true(preg_match('/UPDATE gift_cards.*?mysqli_affected_rows\(db::\$con\) === 1/s', $body) === 1, 'only a decrement that changed the row redeems');
+	pg_assert_true(strpos($body, 'pg_order_gift_card_redeem_take(') !== false, 'the amount is at most what the card holds');
 }
 
 // The recipient that gives up the shipping's minor units is lowered by a
@@ -1010,4 +1011,28 @@ function test_order_completion_keeps_legal_documents()
 
 	$renewal = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/subscription_renewal.php', 'pg_subscription_renewal_order_write');
 	pg_assert_contains("'renewal'        => true,", $renewal, 'the renewal tells the completion');
+}
+
+// A card another order spent part of between the checkout and the
+// redemption gives what it still holds instead of nothing.
+function test_order_completion_gift_card_redeem_take()
+{
+	pg_assert_same(3000, pg_order_gift_card_redeem_take(3000, 5000), 'the balance covers the amount');
+	pg_assert_same(3000, pg_order_gift_card_redeem_take(3000, 3000), 'exactly the balance');
+	pg_assert_same(2500, pg_order_gift_card_redeem_take(3000, 2500), 'what is left of a card spent meanwhile');
+	pg_assert_same(0, pg_order_gift_card_redeem_take(3000, 0), 'a spent card gives nothing');
+	pg_assert_same(0, pg_order_gift_card_redeem_take(3000, -5), 'never below zero');
+	pg_assert_same(0, pg_order_gift_card_redeem_take(0, 5000), 'nothing to take');
+	pg_assert_same(1235, pg_order_gift_card_redeem_take('1234.6', '9000'), 'minor units rounded, never truncated');
+}
+
+// The order preview's gift card door counts only the lines charged now, as
+// submit_order() does: a cart holding a gift card and a line saved for later
+// took the card, which the submit then removed.
+function test_order_preview_gift_card_door_skips_saved_lines()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/order_preview.php');
+	$door = substr($source, strpos($source, "if (\$liveform->get_field_value('gift_card_code') != '')"), 900);
+
+	pg_assert_contains('pg_order_item_active_sql()', $door, 'the saved-for-later lines are left out');
 }
