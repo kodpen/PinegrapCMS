@@ -1775,8 +1775,9 @@ function pg_designer_components_rows()
 
         // Where it is placed: page (design), the recycle bin marked. The
         // confirmation reads the same lines from data-usage.
-        $usage_lines = array();
-        $usage_cell  = '';
+        $usage_lines  = array();
+        $usage_cell   = '';
+        $region_drawn = false;
         foreach ((isset($comp_usage[$sid]) ? $comp_usage[$sid] : array()) as $u) {
             // A binned page of a deleted design has no design name left: the
             // page alone, never "page ()".
@@ -1784,10 +1785,18 @@ function pg_designer_components_rows()
             if ($page === '') $page = (string)$u['style_name'];
             if ($page === '') $page = '#' . (int)$u['page_id'];
             $line = ((int)$u['page_id'] > 0 && (string)$u['style_name'] !== '') ? $page . ' (' . $u['style_name'] . ')' : $page;
+            // Drawn by a converted common region's tag, not placed.
+            if (isset($u['common_region'])) {
+                $line .= ' — ' . lang(array('string' => 'common region tag "{var:1}"', 'vars' => array((string)$u['common_region'])));
+                $region_drawn = true;
+            }
             $usage_lines[] = $line;
             $usage_cell .= '<div>' . h($line)
                 . (!empty($u['binned']) ? ' <span class="badge theme-secondary">' . h(lang('Recycle Bin')) . '</span>' : '')
                 . '</div>';
+        }
+        if ($region_drawn) {
+            $usage_cell .= '<div class="small fg-secondary">' . h(lang('It draws the common region wherever its tag stands; deleting it brings back the region\'s earlier content on those pages.')) . '</div>';
         }
         if ($usage_cell === '') {
             $usage_cell = '<span class="badge theme-success">' . h(lang('Not used')) . '</span>';
