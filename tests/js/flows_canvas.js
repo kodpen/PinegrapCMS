@@ -462,7 +462,8 @@ const KEYS = {
     '+': { code: 'Equal', keyCode: 187, text: '+' },
     '=': { code: 'Equal', keyCode: 187, text: '=' },
     '-': { code: 'Minus', keyCode: 189, text: '-' },
-    '_': { code: 'Minus', keyCode: 189, text: '_' }
+    '_': { code: 'Minus', keyCode: 189, text: '_' },
+    '/': { code: 'Slash', keyCode: 191, text: '/' }
 };
 const MODIFIERS = { Alt: 1, Control: 2, Meta: 4, Shift: 8 };
 

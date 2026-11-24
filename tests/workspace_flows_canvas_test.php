@@ -4013,3 +4013,79 @@ JS
 	pg_assert_same(array(0, 0, 0, 0), $out['unread'], 'a home the person does not read: none chosen');
 	pg_assert_same(array(0, 0, 0, 0), $out['noflow'], 'no flow: none chosen');
 }
+
+// The add list at an arrow (FE6, board B1): "Often next" is a fixed table
+// by the box before (after a message: Wait, Condition, Task; after a Wait:
+// Condition, a message, Task; else Wait, Condition, an e-mail), a kind not
+// offered giving its place to the row's next. A box added on an arrow cuts
+// it in two on its first outcome; when the arrow's ends stand closer than
+// 260 px, its end and every box after it move one column (288 px) right,
+// the box before and the boxes beside untouched. A "+" stands after a box
+// while an outcome that leads on has no arrow.
+function test_workspace_flows_canvas_add_at_an_arrow()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$consts = '';
+
+	foreach (array('OFTEN_NEXT', 'SIDE_OUTCOMES', 'LAYOUT_STEP_X', 'LAYOUT_STEP_Y', 'INSERT_GAP', 'BOX_W', 'BOX_H') as $name) {
+		preg_match('/^    var ' . $name . ' = .*?;$/ms', $source, $found);
+		pg_assert_true(!empty($found), $name . ' is declared');
+		$consts .= ($found[0] ?? '') . "\n";
+	}
+
+	preg_match('/^    var KINDS = \{.*?\n    \};$/ms', $source, $kinds);
+
+	$result = ws_flows_canvas_test_node(
+		array('oftenNext', 'freeOutcome', 'addKinds', 'downstream', 'insertOnEdge', 'placeAfter'),
+		"var GRID = 16;\n" . $consts . ($kinds[0] ?? '') . "\n" . <<<'JS'
+var out = {};
+var all = Object.keys(KINDS);
+out.message = oftenNext('email', all);
+out.wait = oftenNext('delay', all);
+out.other = oftenNext('condition', all);
+out.none = oftenNext('', all);
+out.noPost = oftenNext('delay', all.filter(function (kind) { return kind !== 'post'; }));
+var edges = [{ from: 'a', to: 'b', on: 'done' }, { from: 'b', to: 'c', on: 'yes' }, { from: 'x', to: 'c', on: 'done' }];
+out.free = [freeOutcome(['done', 'failed'], 'a', edges), freeOutcome(['done', 'failed'], 'c', edges), freeOutcome(['yes', 'no'], 'b', edges), freeOutcome([], 'z', edges)];
+out.arrow = addKinds([['manual', ''], ['email', ''], ['end', ''], ['value', ''], ['condition', '']], true).map(function (item) { return item[0]; });
+out.loose = addKinds([['manual', ''], ['email', ''], ['end', ''], ['value', '']], false).map(function (item) { return item[0]; });
+var nodes = [{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 288, y: 0 }, { id: 'c', x: 576, y: 64 }, { id: 'x', x: 0, y: 256 }, { id: 'n', x: 1000, y: 1000 }];
+var close = insertOnEdge(nodes, edges, 0, 'n', 'yes');
+out.close = close;
+var wide = insertOnEdge([{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 576, y: 32 }], [{ from: 'a', to: 'b', on: 'next' }], 0, 'n', 'done');
+out.wide = wide;
+out.end = insertOnEdge(nodes, edges, 0, 'n', '').edges;
+out.missing = insertOnEdge(nodes, edges, 9, 'n', 'done');
+out.after = placeAfter(nodes, nodes[0]);
+out.afterFree = placeAfter(nodes, nodes[2]);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array('delay', 'condition', 'task'), $result['message'], 'after a message: Wait, Condition, Task');
+	pg_assert_same(array('condition', 'post', 'task'), $result['wait'], 'after a Wait: Condition, a message, Task');
+	pg_assert_same(array('delay', 'condition', 'email'), $result['other'], 'else: Wait, Condition, an e-mail');
+	pg_assert_same(array('delay', 'condition', 'email'), $result['none'], 'with no box before: the other row');
+	pg_assert_same(array('condition', 'task', 'email'), $result['noPost'], 'a kind not offered gives its place to the row\'s next');
+	pg_assert_same(array('', 'done', 'no', ''), $result['free'], 'the first outcome that leads on with no arrow; failed never counts');
+	pg_assert_same(array('email', 'condition'), $result['arrow'], 'on an arrow: no start, no value, no end');
+	pg_assert_same(array('email', 'end'), $result['loose'], 'after an outcome: the end too');
+	pg_assert_same(array(
+		array('from' => 'a', 'to' => 'n', 'on' => 'done'),
+		array('from' => 'b', 'to' => 'c', 'on' => 'yes'),
+		array('from' => 'x', 'to' => 'c', 'on' => 'done'),
+		array('from' => 'n', 'to' => 'b', 'on' => 'yes'),
+	), $result['close']['edges'], 'the arrow is cut in two on the new box\'s first outcome');
+	pg_assert_same(array('b' => 288, 'c' => 288), $result['close']['moved'], 'the arrow\'s end and the boxes after it move one column right');
+	pg_assert_same(array(288, 0), array($result['close']['x'], $result['close']['y']), 'the new box stands between the two');
+	pg_assert_same(array(), $result['wide']['moved'], 'with room enough nothing moves');
+	pg_assert_same(array(288, 16), array($result['wide']['x'], $result['wide']['y']), 'in the middle of the gap, on the grid');
+	pg_assert_same(3, count($result['end']), 'a box that ends the flow takes the arrow\'s first half only');
+	pg_assert_same(null, $result['missing'], 'no such arrow: nothing');
+	pg_assert_same(array('x' => 288, 'y' => 128), $result['after'], 'after a box: one column right, a row lower past a box there');
+	pg_assert_same(array('x' => 864, 'y' => 64), $result['afterFree'], 'a free place: the same row');
+}

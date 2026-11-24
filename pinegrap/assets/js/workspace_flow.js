@@ -309,6 +309,28 @@
         ['values', 'constants']
     ];
 
+    // The add list at an arrow (board B1): the three kinds offered first by
+    // the box before, a fixed table (no use is counted). Each row lists one
+    // more kind, taken when one of the three is not offered to the person.
+    var OFTEN_NEXT = {
+        message: ['delay', 'condition', 'task', 'email'],
+        delay: ['condition', 'post', 'task', 'email'],
+        other: ['delay', 'condition', 'email', 'task']
+    };
+
+    // The outcomes a box takes when it fails or runs out: a box whose other
+    // outcomes all have an arrow shows no "+" for these.
+    var SIDE_OUTCOMES = ['failed', 'cancelled', 'timeout', 'expired', 'withdrawn'];
+
+    // A column of the flow's layout (WS_FLOW_LAYOUT_STEP_X and _Y of
+    // ws_flow_auto_layout()); a box added at an arrow whose ends stand
+    // closer than INSERT_GAP moves the boxes after it one column right.
+    var LAYOUT_STEP_X = 288;
+    var LAYOUT_STEP_Y = 128;
+    var INSERT_GAP = 260;
+    // How long the pointer rests on an arrow before its "+" shows (ms).
+    var PLUS_REST = 250;
+
     // The box whose line icon stands for a way to start in the flow list.
     var START_BOXES = { time: 'schedule', manual: 'manual', event: 'event', join: 'join' };
 
@@ -331,6 +353,10 @@
         problems: [],
         warnings: [],       // what may be published but a reader should know
         selected: null,     // { type: node | edge, id }
+        addAt: null,        // the add list's place: { edge } an arrow's index, or { from, on, point } after a box
+        addQuery: '',       // its search
+        addGroup: '',       // its group chip pressed
+        edgeMids: [],       // each arrow's middle on the canvas, by its index
         pop: '',            // the bar's window open: '', flow (the name's) or problems
         popFlow: null,      // the flow that window belongs to
         view: { x: 40, y: 40, k: 1 },
@@ -1238,6 +1264,12 @@
             }
         });
         ui.main = el('div', 'wsf-main');
+        // The add list at a place on the canvas (openAdd()).
+        ui.addPop = el('div', 'wsf-add-pop d-none');
+        ui.addPop.id = 'wsf-add-pop';
+        ui.addPop.setAttribute('role', 'dialog');
+        ui.addPop.setAttribute('aria-label', t('fl_add_here'));
+        ui.addPop.addEventListener('keydown', addKey);
         // On a phone, in both views: the one button that opens the left panel
         // as a sheet of the full height (foldPalette()).
         ui.addBox = K.button('pg-button pg-button-quiet pg-button-sm wsf-add-box md:d-none', t('fl_palette'), 'bi-plus-lg');
@@ -1252,6 +1284,10 @@
         ui.main.addEventListener('pointerdown', function (event) {
             if (state.paletteOver && !ui.palette.contains(event.target)) {
                 foldPalette(false, false);
+            }
+
+            if (state.addAt && !ui.addPop.contains(event.target)) {
+                closeAdd(false);
             }
         });
         // The chosen box's panel: a card over the canvas's right edge, open
@@ -1281,6 +1317,7 @@
         ui.stage.appendChild(ui.setup);
         ui.main.appendChild(ui.stage);
         ui.main.appendChild(ui.palette);
+        ui.main.appendChild(ui.addPop);
         ui.main.appendChild(ui.outlineBox);
         ui.main.appendChild(ui.scheduled);
         // The ways to start a flow and the template gallery, in place of
@@ -1339,6 +1376,21 @@
         ui.boxes = el('div', 'pgc-boxes');
         ui.layer.appendChild(ui.svg);
         ui.layer.appendChild(ui.boxes);
+        // The "+" of the arrow pointed at or chosen, and the dashed "+"
+        // after each box with a free outcome (drawPluses()): they open the
+        // add list there.
+        ui.edgePlus = K.button('wsf-plus wsf-edge-plus d-none', '', 'bi-plus-lg', t('fl_add_on_arrow'));
+        ui.edgePlus.tabIndex = -1;
+        ui.edgePlus.addEventListener('pointerenter', function () { window.clearTimeout(ui.plusTimer); });
+        ui.edgePlus.addEventListener('pointerleave', edgePlusLater);
+        ui.edgePlus.addEventListener('click', function () {
+            var index = parseInt(ui.edgePlus.getAttribute('data-edge-plus'), 10);
+
+            openAdd({ edge: index }, state.edgeMids[index]);
+        });
+        ui.outPluses = el('div', 'wsf-out-pluses');
+        ui.layer.appendChild(ui.outPluses);
+        ui.layer.appendChild(ui.edgePlus);
         ui.viewport.appendChild(ui.layer);
 
         ui.empty = el('div', 'wsf-empty d-none', t('fl_empty_canvas'));
@@ -3711,6 +3763,7 @@
         });
 
         drawLoops();
+        state.edgeMids = [];
 
         (state.graph ? state.graph.edges : []).forEach(function (edge, index) {
             var from = nodeById(edge.from);
@@ -3724,6 +3777,8 @@
             var path = drawn.path;
             var group = drawn.group;
 
+            state.edgeMids[index] = { x: path.mx, y: path.my };
+
             // In a run, an arrow its box ended on was taken.
             var step = state.run ? stepOf(edge.from) : null;
 
@@ -3735,6 +3790,10 @@
                 edgePill(group, path, outcomeText(from, edge.on));
             }
         });
+
+        if (ui.outPluses) {
+            drawPluses();
+        }
 
         markSelected();
         markProblems();
@@ -7236,7 +7295,7 @@
         var list = el('ul', 'mb-0 ps-5 fg-secondary');
 
         keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'areas', 'windows', 'rail', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+        ['tab', 'areas', 'windows', 'rail', 'add', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
@@ -12151,6 +12210,514 @@
         return config;
     }
 
+    // ── Adding where a box goes (board B1) ─────────────────────────────
+
+    // The kinds offered first after a box of this kind ('' for none): the
+    // table's row of a message, of a Wait or else the other one, its first
+    // three kinds among those offered.
+    function oftenNext(before, offered) {
+        var row = (before === 'delay') ? OFTEN_NEXT.delay : ((KINDS[before] && (KINDS[before].group === 'message')) ? OFTEN_NEXT.message : OFTEN_NEXT.other);
+
+        return row.filter(function (kind) { return offered.indexOf(kind) !== -1; }).slice(0, 3);
+    }
+
+    // The first outcome of a box that leads on and has no arrow, '' when
+    // each has one: outs its outcomes in order (kindOf().out).
+    function freeOutcome(outs, id, edges) {
+        return (outs || []).filter(function (on) {
+            return (SIDE_OUTCOMES.indexOf(on) === -1) && !edges.some(function (edge) { return (edge.from === id) && (edge.on === on); });
+        })[0] || '';
+    }
+
+    // The kinds the add list offers at a place: a box an arrow may lead
+    // into; on an arrow, one that also leads on, so the arrow goes on past
+    // it. items are the palette's ([kind, name]).
+    function addKinds(items, onArrow) {
+        return items.filter(function (item) {
+            var kind = KINDS[item[0]];
+
+            return kind && kind.into && (!onArrow || (kind.out.length > 0));
+        });
+    }
+
+    // The ids an arrow leads to from a box, that box among them, never
+    // through stop (the box the new one comes after).
+    function downstream(edges, id, stop) {
+        var seen = {};
+        var queue = [id];
+
+        seen[id] = true;
+
+        while (queue.length) {
+            var at = queue.shift();
+
+            edges.forEach(function (edge) {
+                if ((edge.from === at) && (edge.to !== stop) && !seen[edge.to]) {
+                    seen[edge.to] = true;
+                    queue.push(edge.to);
+                }
+            });
+        }
+
+        return Object.keys(seen);
+    }
+
+    // A box added on the arrow at index (pure): the arrow cut in two, its
+    // first half into the new box on the arrow's outcome, the second from
+    // the new box on out (its first outcome; none for a box that ends the
+    // flow) to the arrow's end. When the gap between the two ends is under
+    // INSERT_GAP, the arrow's end and every box after it move one column
+    // right. Answers the new box's place, the arrows and how far each
+    // moved box goes (by id); null for no such arrow.
+    function insertOnEdge(nodes, edges, index, id, out) {
+        var edge = edges[index];
+        var find = function (key) { return nodes.filter(function (node) { return node.id === key; })[0] || null; };
+        var from = edge ? find(edge.from) : null;
+        var to = edge ? find(edge.to) : null;
+
+        if (!from || !to) {
+            return null;
+        }
+
+        var shift = ((to.x - (from.x + BOX_W)) < INSERT_GAP) ? LAYOUT_STEP_X : 0;
+        var moved = {};
+
+        if (shift) {
+            downstream(edges, to.id, from.id).forEach(function (key) {
+                moved[key] = shift;
+            });
+        }
+
+        var cut = edges.map(function (item, at) {
+            if (at !== index) {
+                return item;
+            }
+
+            var first = {};
+
+            Object.keys(item).forEach(function (key) { first[key] = item[key]; });
+            first.to = id;
+
+            return first;
+        });
+
+        if (out) {
+            cut.push({ from: id, to: to.id, on: out });
+        }
+
+        return {
+            x: Math.round(((from.x + BOX_W + to.x + shift) / 2 - BOX_W / 2) / GRID) * GRID,
+            y: Math.round(((from.y + to.y) / 2) / GRID) * GRID,
+            edges: cut,
+            moved: moved
+        };
+    }
+
+    // Where a box added after another goes: one column right of it, a row
+    // lower for each box standing there.
+    function placeAfter(nodes, from) {
+        var x = from.x + LAYOUT_STEP_X;
+        var y = from.y;
+        var taken = function () {
+            return nodes.some(function (node) {
+                return (node !== from) && (Math.abs(node.x - x) < BOX_W) && (Math.abs(node.y - y) < BOX_H);
+            });
+        };
+
+        for (var tries = 0; taken() && (tries < 60); tries++) {
+            y += LAYOUT_STEP_Y;
+        }
+
+        return { x: x, y: y };
+    }
+
+    // May a box be added at a place on this canvas? The draft edited, not
+    // a run shown nor a drawing embedded elsewhere.
+    function addable() {
+        return !!(state.edit && state.flow && !state.run && !state.embed && state.graph);
+    }
+
+    // The "+" after each box with an outcome that leads on and has no
+    // arrow, dashed, beside its right edge; drawn again with the arrows.
+    // The arrow's "+" goes back to the arrow chosen, or away.
+    function drawPluses() {
+        K.clear(ui.outPluses);
+
+        if (!addable()) {
+            ui.edgePlus.classList.add('d-none');
+            return;
+        }
+
+        state.graph.nodes.forEach(function (node) {
+            var on = freeOutcome(kindOf(node).out, node.id, state.graph.edges);
+
+            if (!on) {
+                return;
+            }
+
+            var plus = K.button('wsf-plus wsf-out-plus', '', 'bi-plus-lg', t('fl_add_after', nameOf(node)));
+
+            plus.tabIndex = -1;
+            plus.style.left = (node.x + BOX_W + 12) + 'px';
+            plus.style.top = (node.y + BOX_H / 2 - 10) + 'px';
+            plus.addEventListener('click', function () {
+                openAdd({ from: node.id, on: on }, { x: node.x + BOX_W + 22, y: node.y + BOX_H / 2 });
+            });
+            ui.outPluses.appendChild(plus);
+        });
+
+        edgePlusAt(null);
+    }
+
+    // The arrow's "+" at the middle of the arrow at index; null: at the
+    // arrow chosen, else hidden.
+    function edgePlusAt(index) {
+        var chosen = (state.selected && (state.selected.type === 'edge')) ? state.selected.id : null;
+        var at = (index === null) ? chosen : index;
+        var mid = (at === null) ? null : state.edgeMids[at];
+
+        window.clearTimeout(ui.plusTimer);
+        ui.edgePlus.classList.toggle('d-none', !mid || !addable());
+
+        if (mid) {
+            ui.edgePlus.setAttribute('data-edge-plus', String(at));
+            ui.edgePlus.style.left = (mid.x - 10) + 'px';
+            ui.edgePlus.style.top = (mid.y - 10) + 'px';
+        }
+    }
+
+    // The pointer left an arrow or its "+": the "+" goes a moment later,
+    // so it can be reached from the arrow.
+    function edgePlusLater() {
+        window.clearTimeout(ui.plusTimer);
+        ui.plusTimer = window.setTimeout(function () { edgePlusAt(null); }, 400);
+    }
+
+    // The add list opened at a place: on the arrow at an index ({ edge }),
+    // or after a box on an outcome ({ from, on }, with point where an
+    // arrow's end was dropped). anchor is the canvas point it opens under.
+    function openAdd(at, anchor) {
+        if (!addable() || !at || !anchor) {
+            return;
+        }
+
+        if (state.paletteOver) {
+            foldPalette(false, false);
+        }
+
+        state.addAt = at;
+        state.addQuery = '';
+        state.addGroup = '';
+        drawAdd();
+        ui.addPop.classList.remove('d-none');
+
+        // Under the place, kept inside the canvas; above it when there is
+        // no room below.
+        var main = ui.main.getBoundingClientRect();
+        var view = ui.viewport.getBoundingClientRect();
+        var x = view.left - main.left + anchor.x * state.view.k + state.view.x;
+        var y = view.top - main.top + anchor.y * state.view.k + state.view.y;
+        var width = ui.addPop.offsetWidth || 280;
+        var height = ui.addPop.offsetHeight || 360;
+        var top = (y + 16 + height > main.height - 8) ? Math.max(8, y - 16 - height) : y + 16;
+
+        ui.addPop.style.left = Math.max(8, Math.min(x - width / 2, main.width - width - 8)) + 'px';
+        ui.addPop.style.top = top + 'px';
+
+        var search = ui.addPop.querySelector('.wsf-add-search');
+
+        if (search) {
+            search.focus({ preventScroll: true });
+        }
+    }
+
+    // The add list closed; back puts the focus on the canvas, on the box
+    // or arrow it opened at.
+    function closeAdd(back) {
+        if (!state.addAt) {
+            return;
+        }
+
+        var at = state.addAt;
+
+        state.addAt = null;
+        ui.addPop.classList.add('d-none');
+        K.clear(ui.addPop);
+
+        if (back) {
+            var box = at.from ? ui.viewport.querySelector('[data-refocus="box-' + at.from + '"]') : null;
+
+            (box || ui.viewport).focus({ preventScroll: true });
+        }
+    }
+
+    // The add list: the search ("/" reaches it), the rows, the hint that
+    // an arrow's end dropped on the canvas opens it too.
+    function drawAdd() {
+        K.clear(ui.addPop);
+
+        var find = el('div', 'wsf-add-find');
+        var search = el('input', 'pg-input pg-input-sm wsf-add-search');
+        var key = el('kbd', 'wsf-add-key', '/');
+
+        search.type = 'search';
+        search.value = state.addQuery;
+        search.placeholder = t('fl_palette_search');
+        search.setAttribute('aria-label', t('fl_palette_search'));
+        search.setAttribute('aria-controls', 'wsf-add-list');
+        search.addEventListener('input', function () {
+            state.addQuery = search.value;
+            drawAddList();
+        });
+        key.setAttribute('aria-hidden', 'true');
+        find.appendChild(search);
+        find.appendChild(key);
+        ui.addPop.appendChild(find);
+        ui.addList = el('div', 'wsf-add-list');
+        ui.addList.id = 'wsf-add-list';
+        ui.addPop.appendChild(ui.addList);
+        ui.addPop.appendChild(el('p', 'wsf-palette-tip pg-text-meta', t('fl_add_drop_tip')));
+        drawAddList();
+    }
+
+    // The kinds offered here and the kind of the box before.
+    function addOffer() {
+        var at = state.addAt || {};
+        var edge = (at.edge !== undefined) ? state.graph.edges[at.edge] : null;
+        var before = nodeById(edge ? edge.from : (at.from || ''));
+
+        return { items: addKinds(paletteItems(), !!edge), before: before ? before.kind : '' };
+    }
+
+    // Typed words: every box whose name holds them. Else "Often next",
+    // then the groups as chips with their counts, the one pressed showing
+    // its boxes under them.
+    function drawAddList() {
+        var offer = addOffer();
+        var words = K.foldText(state.addQuery).split(/\s+/).filter(Boolean);
+
+        K.clear(ui.addList);
+
+        if (words.length) {
+            var found = offer.items.filter(function (item) {
+                var name = K.foldText(t(item[1]));
+
+                return words.every(function (word) { return name.indexOf(word) !== -1; });
+            });
+
+            found.forEach(function (item) { ui.addList.appendChild(addRow(item)); });
+
+            if (!found.length) {
+                ui.addList.appendChild(el('p', 'pg-text-meta fg-secondary wsf-add-none', t('fl_palette_none')));
+            }
+
+            return;
+        }
+
+        var kinds = offer.items.map(function (item) { return item[0]; });
+        var often = oftenNext(offer.before, kinds);
+
+        if (often.length) {
+            ui.addList.appendChild(el('h3', 'wsf-palette-stage-head', t('fl_add_often')));
+            often.forEach(function (kind) {
+                ui.addList.appendChild(addRow(offer.items[kinds.indexOf(kind)]));
+            });
+        }
+
+        var chips = el('div', 'wsf-add-chips');
+        var rows = el('div', 'wsf-palette-rows');
+
+        ui.addList.appendChild(el('h3', 'wsf-palette-stage-head', t('fl_add_all')));
+        chips.setAttribute('role', 'group');
+        chips.setAttribute('aria-label', t('fl_add_all'));
+        PALETTE_GROUPS.forEach(function (group) {
+            var items = offer.items.filter(function (item) { return paletteGroupOf(item[0]) === group[0]; });
+
+            if (!items.length) {
+                return;
+            }
+
+            var on = state.addGroup === group[0];
+            var chip = K.button('pg-button pg-button-quiet pg-button-sm wsf-add-chip', t(group[1]));
+
+            chip.appendChild(el('span', 'wsf-palette-count', String(items.length)));
+            chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+            chip.setAttribute('data-add-group', group[0]);
+            chip.addEventListener('click', function () {
+                state.addGroup = on ? '' : group[0];
+                drawAddList();
+
+                var again = ui.addList.querySelector('[data-add-group="' + group[0] + '"]');
+
+                if (again) {
+                    again.focus();
+                }
+            });
+            chips.appendChild(chip);
+
+            if (on) {
+                items.forEach(function (item) { rows.appendChild(addRow(item)); });
+            }
+        });
+        ui.addList.appendChild(chips);
+        ui.addList.appendChild(rows);
+    }
+
+    // A row of the add list: the box's tile and name; a click or Enter adds it here.
+    function addRow(item) {
+        var row = el('button', 'wsf-palette-item wsf-add-item wsf-group-' + ((paletteGroupOf(item[0]) === 'end') ? 'logic' : KINDS[item[0]].group));
+        var name = t(item[1]);
+
+        row.type = 'button';
+        row.title = name;
+        row.setAttribute('data-add-kind', item[0]);
+        row.appendChild(paletteTile(item[0]));
+        row.appendChild(el('span', 'wsf-palette-name', name));
+        row.addEventListener('click', function () { addHere(item[0]); });
+
+        return row;
+    }
+
+    // The add list's keys: Esc closes it, Enter in the search adds the
+    // first box listed, the up and down arrows go from row to row.
+    function addKey(event) {
+        var rows = Array.prototype.slice.call(ui.addPop.querySelectorAll('.wsf-add-item'));
+        var search = ui.addPop.querySelector('.wsf-add-search');
+        var at = rows.indexOf(document.activeElement);
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            closeAdd(true);
+        } else if ((event.key === 'Enter') && (event.target === search) && rows.length) {
+            event.preventDefault();
+            addHere(rows[0].getAttribute('data-add-kind'));
+        } else if ((event.key === 'ArrowDown') && rows.length) {
+            event.preventDefault();
+            rows[Math.min(at + 1, rows.length - 1)].focus();
+        } else if ((event.key === 'ArrowUp') && (at !== -1)) {
+            event.preventDefault();
+            (at ? rows[at - 1] : search).focus();
+        }
+    }
+
+    // A box of this kind added where the list was opened, in one undo
+    // step: on an arrow, the arrow cut in two and the boxes after it moved
+    // when there is no room (insertOnEdge()); after a box, joined to it on
+    // the outcome, at the dropped end or one column right.
+    function addHere(kind) {
+        var at = state.addAt;
+        var limits = FL.limits || {};
+
+        if (!addable() || !at || !KINDS[kind] || !memberKind(kind)) {
+            return;
+        }
+
+        if (state.graph.nodes.length >= (limits.nodes || 100)) {
+            K.toast(t('fl_too_many_boxes', limits.nodes || 100), 'warning');
+            return;
+        }
+
+        var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: 0, y: 0, config: newConfig(kind) };
+        var out = kindOf(node).out[0] || '';
+
+        if (at.edge !== undefined) {
+            var plan = insertOnEdge(state.graph.nodes, state.graph.edges, at.edge, node.id, out);
+
+            if (!plan) {
+                closeAdd(true);
+                return;
+            }
+
+            state.graph.nodes.forEach(function (item) {
+                if (plan.moved[item.id]) {
+                    item.x = coord(item.x + plan.moved[item.id]);
+                }
+            });
+            node.x = coord(plan.x);
+            node.y = coord(plan.y);
+            state.graph.edges = plan.edges;
+        } else {
+            var from = nodeById(at.from);
+
+            if (!from || !kindOf(node).into) {
+                closeAdd(true);
+                return;
+            }
+
+            var spot = at.point || placeAfter(state.graph.nodes, from);
+
+            node.x = coord(spot.x);
+            node.y = coord(spot.y);
+            state.graph.edges.push({ from: from.id, to: node.id, on: at.on });
+        }
+
+        state.graph.nodes.push(node);
+        closeAdd(false);
+        state.selected = { type: 'node', id: node.id };
+        changed(true);
+        focusSelected();
+        announce(t('fl_added', t(KINDS[kind].name)));
+    }
+
+    // An arrow drawn from a box's port and let go on the empty canvas
+    // (dropped() of the core): the add list opens there, and the box
+    // chosen is joined on the first outcome free, else the first.
+    function arrowDropped(from, port, point) {
+        var outs = kindOf(from).out;
+
+        if (!outs.length) {
+            return;
+        }
+
+        state.selected = { type: 'node', id: from.id };
+        markSelected();
+        openAdd({ from: from.id, on: freeOutcome(outs, from.id, state.graph.edges) || outs[0], point: { x: point.x, y: point.y - BOX_H / 2 } }, point);
+    }
+
+    // A on the canvas: the add list on the arrow chosen, or after the box
+    // chosen on its first free outcome (else its first).
+    function addAtSelected() {
+        var selected = state.selected;
+
+        if (!addable() || !selected) {
+            return false;
+        }
+
+        if (selected.type === 'edge') {
+            openAdd({ edge: selected.id }, state.edgeMids[selected.id]);
+            return true;
+        }
+
+        var node = (selected.type === 'node') ? nodeById(selected.id) : null;
+        var outs = node ? kindOf(node).out : [];
+
+        if (!outs.length) {
+            return false;
+        }
+
+        openAdd({ from: node.id, on: freeOutcome(outs, node.id, state.graph.edges) || outs[0] }, { x: node.x + BOX_W + 22, y: node.y + BOX_H / 2 });
+
+        return true;
+    }
+
+    // "/" on the canvas: the search of the add list when it is open, else
+    // of the list of boxes beside the rail.
+    function searchBoxes() {
+        if (state.addAt) {
+            ui.addPop.querySelector('.wsf-add-search').focus();
+            return true;
+        }
+
+        if (!addable()) {
+            return false;
+        }
+
+        foldPalette(true, true);
+
+        return true;
+    }
+
     function addItem(kind, at) {
         if (!state.edit || !state.flow || !memberKind(kind)) {
             return;
@@ -14495,6 +15062,11 @@
         markSelected();
         drawSettings();
 
+        // An arrow chosen keeps its "+" shown.
+        if (ui.edgePlus) {
+            edgePlusAt(null);
+        }
+
         // The outline draws the form of the box selected only.
         if (state.outline && !state.run && (outlineOpen() !== open)) {
             drawOutline();
@@ -14624,6 +15196,7 @@
         },
         canConnect: canConnect,
         connected: arrowDrawn,
+        dropped: arrowDropped,
         view: function (next) {
             if (next) {
                 state.view = next;
@@ -14637,7 +15210,7 @@
         // A link on a box (the task of a waiting box) and the last run's
         // flag keep their own clicks and keys (Enter follows the link,
         // opens the fold).
-        ownClicks: '.pgc-node a[href], .wsf-flag-canvas',
+        ownClicks: '.pgc-node a[href], .wsf-flag-canvas, .wsf-plus',
         press: pointerPress,
         move: pointerDrag,
         release: pointerRelease,
@@ -14663,6 +15236,28 @@
             var box = event.target.closest ? event.target.closest('.pgc-node[data-node]') : null;
 
             pointThreads(box ? box.getAttribute('data-node') : '');
+        });
+
+        // An arrow pointed at shows its "+" at its middle (edgePlusAt())
+        // once the pointer rests on it a moment: a pointer crossing arrows
+        // or pressing one at once to choose it gets no "+" in its way.
+        ui.svg.addEventListener('pointerover', function (event) {
+            var edge = event.target.closest ? event.target.closest('.pgc-edge[data-edge]') : null;
+
+            if (edge && !canvas.dragging()) {
+                window.clearTimeout(ui.plusTimer);
+                ui.plusTimer = window.setTimeout(function () {
+                    if (!canvas.dragging()) {
+                        edgePlusAt(parseInt(edge.getAttribute('data-edge'), 10));
+                    }
+                }, PLUS_REST);
+            }
+        });
+
+        ui.svg.addEventListener('pointerout', function (event) {
+            if (event.relatedTarget !== ui.edgePlus) {
+                edgePlusLater();
+            }
         });
 
         ui.boxes.addEventListener('pointerout', function (event) {
@@ -14925,6 +15520,10 @@
             askConnect(nodeById(selected.id));
         } else if (((key === 'v') || (key === 'V')) && !event.ctrlKey && !event.metaKey && selected && (selected.type === 'node')) {
             askBind(nodeById(selected.id));
+        } else if (((key === 'a') || (key === 'A')) && !event.ctrlKey && !event.metaKey && addAtSelected()) {
+            // The add list opened at the box or arrow chosen.
+        } else if ((key === '/') && searchBoxes()) {
+            // The search of the add list, or of the list beside the rail.
         } else if ((key === 'Escape') && state.binding) {
             endBinding();
         } else if ((key === 'Enter') && selected) {
