@@ -781,3 +781,26 @@ function pg_ltd_report()
     }
     return $out;
 }
+
+/**
+ * What "Open in the Page Design Studio" on All Page Styles ticks on the move
+ * screen: the set the style belongs to, else the style alone; nothing for a
+ * style the report does not list (already a design, or gone).
+ *
+ * Pure: no query.
+ *
+ * @param array $sets      pg_ltd_sets()
+ * @param int   $style_id
+ * @return array  'styles' (ids), 'sets' (keys)
+ */
+function pg_ltd_door_choice($sets, $style_id)
+{
+    $id = (int)$style_id;
+    $none = array('styles' => array(), 'sets' => array());
+    if ($id <= 0) return $none;
+    foreach ((array)($sets['sets'] ?? array()) as $set) {
+        if (in_array($id, array_map('intval', (array)$set['styles']), true)) return array('styles' => array(), 'sets' => array((string)$set['key']));
+    }
+    if (isset($sets['alone'][$id])) return array('styles' => array($id), 'sets' => array());
+    return $none;
+}

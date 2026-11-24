@@ -99,7 +99,7 @@ function test_style_quick_cells()
 	pg_assert_same('b', $cells['collection']['attributes']['data-pg-edit-value'], 'the collection opens as stored');
 	pg_assert_same('custom', $cells['layout_type']['attributes']['data-pg-edit-value'], 'the override opens as stored');
 	pg_assert_same(3, (int) $cells['pages']['attributes']['data-pg-sort-value'], 'pages sort by their count');
-	pg_assert_contains('classic=1', $cells['designer']['html'], 'a designer opens the style in the visual designer');
+	pg_assert_contains('legacy_to_designer.php?style=7#ltd-dry-run', $cells['designer']['html'], 'a designer reaches the visual designer through the move screen');
 
 	$viewer = pg_style_list_cells(pg_test_style_quick_row(), pg_style_quick_edit_columns(), 0, 0, false);
 	pg_assert_same('', $viewer['designer']['html'], 'no designer button without the right');

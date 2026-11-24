@@ -175,12 +175,12 @@ function pg_style_list_cells(array $style, array $quick_edit, $folders, $pages, 
         return $more + pg_list_edit_cell_attributes($quick_edit, $field, $id, pg_style_quick_value($field, $style));
     };
 
-    // A classic style edited as code opens in the visual designer, its code
-    // as the shared component framing its pages; nothing changes on the site
-    // until the design is saved (includes/fn/classic_style_design.php).
+    // A classic style edited as code reaches the visual designer through the
+    // move screen: the style, or the set it moves with, arrives ticked with
+    // its dry run, and Convert moves it (legacy_to_designer.php).
     $designer_button = '';
     if ($editable && $designer) {
-        $designer_button = '<a class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Open in the Page Design Studio')) . '" aria-label="' . h(lang('Open in the Page Design Studio')) . '" href="edit_system_style.php?id=' . $id . '&amp;classic=1"><i class="bi bi-magic" aria-hidden="true"></i></a>';
+        $designer_button = '<a class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Open in the Page Design Studio')) . '" aria-label="' . h(lang('Open in the Page Design Studio')) . '" href="legacy_to_designer.php?style=' . $id . '#ltd-dry-run"><i class="bi bi-magic" aria-hidden="true"></i></a>';
     }
 
     $type = in_array((string) $style['type'], array('custom', 'system'), true) ? (string) $style['type'] : 'custom';
