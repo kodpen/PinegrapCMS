@@ -23,7 +23,7 @@ priority: 2
 - WL8 (M) Done (#11391). Fields, first part: `formRow()` builds its row from the form parts, so its 65 callers move with it; then the `form-control` and `form-label` lines of `workspace.js`. Waits for WL1 and WL2.
 - WL9 (M) Done (#11417). Fields, second part: twenty `workspace_*.js` scripts (`ui/look-workspace-fields-scripts.md`).
 - WL9b (M) Done (#11481). The palette's and PHP screens' fields (`ui/look-workspace-fields-screens.md`).
-- WL9c (S) `workspace_flow.js`'s 61 fields, after FE14 (#11475) lands.
+- WL9c (S) Done (#PR). `workspace_flow.js`'s 61 fields (`ui/look-workspace-fields-scripts.md`).
 - WL10 (M) Done (#11404). Bulk Delete on Data, not a look step. Described in `workspace-look-leftover-screens.md`.
 - WL11 (S) Close-out: what stayed goes to `ui/look-open-work.md`, `ui/look-overview.md` takes the Workspace out of its "left out" line, `workspace/canvas-phone.md` loses its DL5f part, this plan is deleted.
 
