@@ -183,3 +183,11 @@ function test_designer_components_update_refuses_a_deleted_component()
 	$write = strpos($body, 'UPDATE shared_components');
 	pg_assert_true($check !== false && $write !== false && $check < $write, 'update answers an error for a row that is gone, before it writes');
 }
+
+// Deleting one component (the palette's and the widget panel's Delete) left
+// no line in the activity log; the bulk delete writes one.
+function test_designer_components_single_delete_is_logged()
+{
+	$body = _test_components_panel_case('delete');
+	pg_assert_contains('log_activity(', $body, 'the delete names the row in the activity log');
+}

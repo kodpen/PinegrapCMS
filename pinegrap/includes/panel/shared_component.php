@@ -361,14 +361,24 @@ function pg_panel_shared_component($request, $action)
             break;
 
         // ── DELETE ───────────────────────────────────────────────────────
-        // Phase 1: no dependency check; Phase 2 will add usage guard + force flag.
+        // One row, after the editor showed where it is placed; logged as
+        // the bulk delete is.
         case 'delete':
             $sc_id = isset($request['id']) ? (int)$request['id'] : 0;
             if ($sc_id <= 0) {
                 respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
             }
+            $sc_name = db_value("SELECT name FROM shared_components WHERE id = '$sc_id' LIMIT 1");
+            // Already gone (deleted from another tab): done, nothing to log.
+            if ($sc_name === null) {
+                respond(array('status' => 'success'));
+            }
             db("DELETE FROM shared_components WHERE id = '$sc_id' LIMIT 1");
             _sc_delete_grants(array($sc_id));
+            log_activity(lang(array(
+                'string' => '{var:1} shared components and system widgets were deleted: {var:2}',
+                'vars'   => array(1, (string)$sc_name),
+            )), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
             respond(array('status' => 'success'));
             break;
 
