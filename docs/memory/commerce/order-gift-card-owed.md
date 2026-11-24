@@ -13,7 +13,7 @@ module: ecommerce
 - `pg_order_gift_card_owed_sql($order_id_sql = 'orders.id', $has_order_refunds = true)`: `GREATEST(0, redeemed - returned)`, two correlated sub-selects; `false` leaves the return term out (schema before `order_refunds`, which came with `orders.refunded_amount` in 2026.1.14).
 - `pg_order_gift_card_owed_amount($redeemed, $returned)`: the same in PHP, pure.
 - `pg_order_gift_card_owed($order_id)`: one order from the database, 0 on a failed query.
-- The `return_gift_card` rows are written by a return's credit or manual refund beyond the payment money (`pg_return_refund()`, #10259, `gift-card-part-owed.md`); its plan reads `pg_order_gift_card_owed()`.
+- The `return_gift_card` rows are written by a return's credit or manual refund beyond the payment money (`pg_return_refund()`, #10259, `gift-card-part-owed.md`) and by a cancelled order's refund given as store credit (`pg_credit_refund_cancel_rows()`, #11496); before, that refund wrote one `credit` row of the whole amount, so after a restore a return or a second cancellation gave the gift card part as credit again.
 
 ## Who reads it?
 - `pg_order_cancel_refund_owed($order)` takes `gift_card` from `$order['gift_card_owed']` when the caller selected it (`... AS gift_card_owed`), otherwise asks `pg_order_gift_card_owed($order['id'])`. `pg_order_cancel_refund_owed_sql()` adds `pg_order_gift_card_owed_sql()`. So the order screen banner, its "Gift cards paid" sentence and the Give it as store credit amount, cancel notices, bulk cancel, the Refund Pending card and the dashboard refund lane show one figure.
