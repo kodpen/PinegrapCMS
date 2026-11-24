@@ -62,6 +62,7 @@
 - launch-journey-screens.md: Plan launch-journey, how its first screens are put together (SJ2, SJ3): the set-up card on the dashboard, the purpose choice as radio cards, the go-live check
 - launch-journey-steps.md: Plan launch-journey, steps SJ1a to SJ7: the pure catalogue, the store, the set-up card and purpose, the go-live check, the first week and team paths, the agency summary, API, close-out
 - launch-journey.md: Plan (owner 2026-11-20, poll 204): a set-up path by the site's purpose, steps marked from the real settings, a go-live check, the first week, a team member's path, the agency summary, API; SJ1a to SJ7
+- launch-summary-files.md: Plan: the agency summary's customer page shows the steps still open, and a "What we need from you" line can ask for one file or several instead of text; LS1, LS2
 - legacy-editable-layouts.md: Plan legacy-editable, layouts: a System region becomes its widget in the run; a stock layout by carried settings, a layout file by a piece map keeping the theme's markup; what stays code
 - legacy-editable-regions.md: Plan legacy-editable, regions: one door through the move screen, the run's new page_parts step, Login, Cart and Comments in the run, the true canvas of every region left, designs moved earlier
 - legacy-editable-screens.md: Plan legacy-editable, its screens in words: the move screen's dry run in three groups, the "Designs moved earlier" card, a part that stays classic on the canvas, the Region panel's dropped pieces

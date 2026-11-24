@@ -107,6 +107,7 @@
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-100.md: Decisions list, product part 100 (2026-11-24 on): Claude's routine address and token and the MCP servers move from the Assistants and agents tab to Connections, a leading line stays
+- decisions-made-product-101.md: Decisions made, product part 101 (2026-11-24 on): the agency summary's customer page also shows the steps not done, and a line can ask the customer for files instead of text
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
@@ -249,6 +250,7 @@
 - decisions-made-schema-48.md: Decisions list, schema part 48 (2026-11-22 on): erp_order_costs.source gains supplier; ws_notes.owner_channel_id for a channel's note; the ws_share_links table
 - decisions-made-schema-49.md: Decisions list, schema part 49 (2026-11-24 on): the agreed columns of prototype approval (PA1b): five on prototype_links, the table prototype_verdicts, no contact id, no retention rule
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
+- decisions-made-schema-50.md: Decisions list, schema part 50 (2026-11-24 on): one column answer_kind on launch_summary_lines for a line that asks for files; no new table
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
 - decisions-made-schema-8.md: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014, #5227)
