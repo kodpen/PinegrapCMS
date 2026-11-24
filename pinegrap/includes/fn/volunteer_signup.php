@@ -94,6 +94,22 @@ function pg_volunteer_signup_actions(array $signup, array $shift, $now, $cutoff_
 }
 
 /**
+ * Whether cancelling a sign-up in this state writes its cancel time: a
+ * signed place given back does; leaving the waitlist does not, since the
+ * volunteer never held a place. The programme's Report counts a late
+ * cancel by that time, so a waitlist leave past the cut-off is none. The
+ * row itself stays, so the unfilled call does not ask that volunteer again
+ * for the shift. Pure.
+ *
+ * @param string $state the sign-up's state before the cancel
+ * @return bool
+ */
+function pg_volunteer_cancel_stamped($state)
+{
+    return (string) $state === 'signed';
+}
+
+/**
  * What a volunteer with no live sign-up on a shift can do there, role by
  * role: 'sign_up' while the role has a free place, 'take' an offered place
  * nobody asked for yet (the first by id), else 'waitlist'. Only roles the
@@ -549,7 +565,7 @@ function pg_volunteer_self_act($volunteer_id, $action, $shift_id, $role = '', $t
         $asked = isset(pg_volunteer_swaps_pending($shift['signups'])[(int) $own['id']]);
 
         if (in_array($action, pg_volunteer_signup_actions($own, $shift, $now, $programme['cutoff_hours'], $asked), true)) {
-            if (($action === 'cancel') && db_q("UPDATE volunteer_signups SET state = 'cancelled', offered_at = 0, cancelled_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = ?", array((int) $own['id'], $own['state'])) && (mysqli_affected_rows(db::$con) > 0)) {
+            if (($action === 'cancel') && db_q("UPDATE volunteer_signups SET state = 'cancelled', offered_at = 0, cancelled_at = " . (pg_volunteer_cancel_stamped($own['state']) ? 'UNIX_TIMESTAMP()' : '0') . ", updated_at = UNIX_TIMESTAMP() WHERE id = ? AND state = ?", array((int) $own['id'], $own['state'])) && (mysqli_affected_rows(db::$con) > 0)) {
                 $answer = 'cancelled';
 
                 // A swap asked of this place is cancelled with it.

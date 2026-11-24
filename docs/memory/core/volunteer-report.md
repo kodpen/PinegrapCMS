@@ -12,7 +12,7 @@ module: volunteer_report
 
 ## What is counted? (`pg_volunteer_report_build()`)
 - A shift counts in the week it starts: its roles' counts as places needed; signed places up to each role's count as filled; "Did not come" (`outcome` `no_show`).
-- Late cancel: a `cancelled` sign-up whose `cancelled_at` (read on the site's clock) is past the programme's cut-off before the start, or after it (`pg_volunteer_late_cancel()`).
+- Late cancel: a `cancelled` sign-up whose `cancelled_at` (read on the site's clock) is past the programme's cut-off before the start, or after it (`pg_volunteer_late_cancel()`). Leaving the waitlist writes no `cancelled_at`, so it is no late cancel (#11345, `core/volunteer-signup.md`).
 - Approved minutes only, in the week of their day, by role ('' is "Outside a shift") and by volunteer (most hours first). Active volunteers now and those whose `left_at` falls in the period.
 - Hours by programme: each programme's own Report total; there is no all-programmes report.
 

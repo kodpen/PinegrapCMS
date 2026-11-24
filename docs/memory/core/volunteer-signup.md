@@ -21,6 +21,7 @@ module: volunteer_signup, volunteer_page_view, widgets_volunteering
 ## How is a place written?
 - Every action runs under `GET_LOCK('pg_volunteer_shift_<id>')` and checks the choice again (`pg_volunteer_self_act()`), so a role never goes over its count. A cancelled row of the same volunteer is used again (the unique shift-volunteer key).
 - Cancelling a signed place runs the waitlist pass for its role (`pg_volunteer_waitlist_write()`): the first waiting who still fit become signed and get an e-mail.
+- Leaving the waitlist cancels the row with `cancelled_at` 0; only a signed place given back is stamped (`pg_volunteer_cancel_stamped()`). The Report counts a late cancel by that stamp, so a waitlist leave past the cut-off is none (#11345); the row stays, so the unfilled call does not ask the volunteer again for that shift.
 - My Account's buttons post to `volunteer.php` with `p` (one of the member's own profiles) and `send_to`; the answer is a `my_account` liveform notice.
 
 ## How does a swap work?
