@@ -529,6 +529,7 @@
     "Cancel this run? Its open boxes are skipped; the tasks it opened stay as they are and its approval requests stay open.": "Bu çalıştırma iptal edilsin mi? Açık kutuları atlanır; açtığı görevler olduğu gibi kalır, onay istekleri açık kalır.",
     "Cancel this run? Its open boxes are skipped; the tasks it opened stay as they are.": "Bu çalıştırma iptal edilsin mi? Açık kutuları atlanır; açtığı görevler olduğu gibi kalır.",
     "Cancel this scheduled action? It will not run again.": "Bu programlanmış işlem iptal edilsin mi? Bir daha çalışmaz.",
+    "Cancel this shift? Your place goes to the next volunteer.": "Bu vardiya iptal edilsin mi? Yeriniz sıradaki gönüllüye geçer.",
     "Cancel unpaid bank transfer orders after": "Ödenmemiş havale siparişlerini şu süre sonra iptal et",
     "Cancel until": "İptal süresi",
     "Cancel until {var:1} hours before": "{var:1} saat öncesine kadar iptal",

@@ -4,20 +4,24 @@ description: Plan volunteer-shifts, steps VS1a to VS9: pure rules, store, progra
 ---
 
 ## Which steps are there?
-- VS1a (S) first, no schema (done, #10922): new `includes/fn/volunteer_shifts.php`, pure: who fits a role on a day (skills, trainings, a document valid then, free hours, no other shift), the waitlist pass, the cut-off, the call's pick, the show-up rate, hours sums, document notice days, the signed token. `tests/volunteer_shifts_test.php` red first: overlapping shifts, a document ending the day before, a cancel 23 and 25 hours before, two waiting. Features: G4, G7, G8, G10, G13 (the rules).
+- VS1a (S) first, no schema (done, #10922): new `includes/fn/volunteer_shifts.php`, pure: who fits a role on a day (skills, trainings, a document valid then, free hours, no other shift), the waitlist pass, the cut-off, the call's pick, the show-up rate, hours sums, document notice days, the signed token. Features: G4, G7, G8, G10, G13 (the rules).
 
-- VS1b (M) after VS1a (done, #10949): the five `volunteer_*` tables (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns brought to the architect before ready; the five privacy registrations and `pg_contact_holders()`; a document's file (poll 208) behind `get_file.php` as `volunteer-shifts.md` says, that door brought to the architect before ready; no health report kind; their tests. Features: G2, G4 (the store).
-  - Built (#10949), `core/volunteer-store.md`; columns approved (decision schema-47), migration label 11.0.270.
+- VS1b (M) after VS1a (done, #10949): the five `volunteer_*` tables (poll 206, `workflow/decisions-made-schema-46.md`) as a migration step in the open version, their columns brought to the architect before ready; the privacy registrations; a document's file behind `get_file.php`; their tests. Features: G2, G4 (the store).
+  - Built (#10949), `core/volunteer-store.md`.
 
 - VS2 (M) after VS1b (done, #11136): Contacts › Volunteers: the programmes list and a programme's Set-up (form and its fields, roles, rules, messages, coordinators); applications with Approve; the volunteer's profile. Features: G1, G2, G3.
-  - If it opens document uploading: the same PR leaves `volunteer-doc-` `files` rows out of the panel search and the file pickers (decision schema-47, `core/volunteer-document-file.md`); uploading is never opened without it.
-  - Built (#11136), `core/volunteer-programmes.md`; uploading not opened, so the exclusion stays with VS4.
+  - Built (#11136), `core/volunteer-programmes.md`; uploading not opened, so the exclusion goes with VS4c.
 
 - VS3 (M) after VS2 (done, #11163): shifts with roles and counts, the weekly series, "Copy last week", the board. Features: G5, G6.
   - Built (#11163), `core/volunteer-board.md`; its Call volunteers goes by e-mail.
 
 - VS4 (M) after VS3: "My volunteering" in My Account (`_pg_my_account_extras()`, its list and designer twin) and the signed-link page (new root `volunteer.php`, in `waf_sensitive_scripts()`): sign up, cancel, the waitlist pass, "Offer my place". Features: G7, G8, G9.
   - If it opens document uploading first: the same PR leaves `volunteer-doc-` `files` rows out of the panel search and the file pickers (decision schema-47, `core/volunteer-document-file.md`); uploading is never opened without it.
+  - Built (#11217), `core/volunteer-signup.md`: the sign-up store, the signed page, the link from the profile drawer, the swap approval, the My Account section and flag.
+
+- VS4b (S) after VS4: the `account.volunteering` list and its designer twins, as `account.tickets` (`commerce/event-tickets-page.md`). Features: G7.
+
+- VS4c (S) after VS4: "Upload a new one" on the volunteer's page, with the search and picker exclusion above. Features: G2.
 
 - VS5 (M) after VS4: the general job's passes: the unfilled call, the day-before reminder, the document notices; SMS and WhatsApp kind `volunteer`, a service message (poll 207); the profile's "Shift calls" switch turns the calls off. Features: G4, G10.
 

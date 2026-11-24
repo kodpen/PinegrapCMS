@@ -348,7 +348,7 @@ function pg_volunteer_shift_get($programme_id, $shift_id)
     $shift = pg_volunteer_shift_decode($row);
     $shift['signups'] = array();
 
-    foreach ((array) db_items("SELECT volunteer_signups.id, volunteer_signups.volunteer_id, volunteer_signups.role, volunteer_signups.state, volunteer_signups.check_in, volunteer_signups.approved_at, volunteer_signups.created_at, contacts.first_name, contacts.last_name, contacts.email_address FROM volunteer_signups
+    foreach ((array) db_items("SELECT volunteer_signups.id, volunteer_signups.volunteer_id, volunteer_signups.role, volunteer_signups.state, volunteer_signups.offered_at, volunteer_signups.swap_from, volunteer_signups.check_in, volunteer_signups.approved_at, volunteer_signups.created_at, contacts.first_name, contacts.last_name, contacts.email_address FROM volunteer_signups
         INNER JOIN volunteers ON volunteers.id = volunteer_signups.volunteer_id
         LEFT JOIN contacts ON contacts.id = volunteers.contact_id
         WHERE volunteer_signups.shift_id = '" . $shift['id'] . "' ORDER BY volunteer_signups.created_at, volunteer_signups.id") as $signup) {

@@ -31,6 +31,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_programme_setup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_board.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_board_view.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_signup.php');
 
 $user = validate_user();
 
@@ -130,6 +131,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         log_activity('a shift of volunteer programme "' . $vp['name'] . '" was removed');
         $liveform->add_notice(h(lang(array('string' => 'The shift was removed. Volunteers told: {var:1}.', 'vars' => array($vp_told)))));
         go($vp_back);
+    }
+
+    // A swap a volunteer asked for, when the programme wants it approved.
+    if (isset($_POST['submit_swap_approve']) || isset($_POST['submit_swap_refuse'])) {
+        $vp_approve = isset($_POST['submit_swap_approve']);
+        $vp_shift_id = (int) ($_POST['shift'] ?? 0);
+
+        if (pg_volunteer_swap_decide($vp, $vp_shift_id, (int) ($_POST[$vp_approve ? 'submit_swap_approve' : 'submit_swap_refuse'] ?? 0), $vp_approve)) {
+            log_activity('a place swap on a shift of volunteer programme "' . $vp['name'] . '" was ' . ($vp_approve ? 'approved' : 'refused'));
+            $liveform->add_notice(h($vp_approve ? lang('The place was handed over. Both volunteers are told by e-mail.') : lang('The request was refused. The place stays with its volunteer.')));
+        } else {
+            $liveform->add_error(h(lang('The shift changed meanwhile. Please check it and try again.')));
+        }
+
+        go($vp_back . '&shift=' . $vp_shift_id);
+    }
+
+    // A new signed link to the volunteer's own shifts, by e-mail.
+    if (isset($_POST['submit_send_link'])) {
+        $vp_person = pg_volunteer_people($vp, array('active', 'paused'), max(1, (int) $_POST['submit_send_link']))[(int) $_POST['submit_send_link']] ?? null;
+
+        if (($vp_person !== null) && pg_volunteer_link_send($vp, $vp_person)) {
+            log_activity('a sign-up link was sent to volunteer "' . $vp_person['name'] . '" of programme "' . $vp['name'] . '"');
+            $liveform->add_notice(h(lang(array('string' => 'The link was sent to {var:1}.', 'vars' => array($vp_person['email_address'])))));
+        } else {
+            $liveform->add_error(h(lang('The link could not be sent: the volunteer needs a valid e-mail address.')));
+        }
+
+        go($vp_back . '&volunteer=' . (int) $_POST['submit_send_link']);
     }
 
     if ($vp_staff && (isset($_POST['submit_open']) || isset($_POST['submit_pause']))) {
@@ -335,7 +365,8 @@ if ($vp_person !== null) {
     if ($vp_person['state'] === 'applied') {
         $buttons = '<button type="submit" form="vp_people_form" name="submit_approve" value="' . (int) $vp_person['id'] . '" class="pg-button pg-button-fill">' . h(lang('Approve')) . '</button>';
     } elseif ($vp_person['state'] !== 'left') {
-        $buttons = (($vp_person['state'] === 'paused')
+        $buttons = '<button type="submit" form="vp_people_form" name="submit_send_link" value="' . (int) $vp_person['id'] . '" class="pg-button pg-button-quiet" data-confirm-content="' . h(lang('A link to their own shifts is e-mailed to the volunteer. A link sent before stops working.')) . '"><i class="bi bi-envelope" aria-hidden="true"></i>' . h(lang('Send sign-up link')) . '</button>'
+            . (($vp_person['state'] === 'paused')
                 ? '<button type="submit" form="vp_people_form" name="submit_resume" value="' . (int) $vp_person['id'] . '" class="pg-button pg-button-quiet">' . h(lang('Make active')) . '</button>'
                 : '<button type="submit" form="vp_people_form" name="submit_pause_person" value="' . (int) $vp_person['id'] . '" class="pg-button pg-button-quiet">' . h(lang('Pause')) . '</button>')
             . '<button type="submit" form="vp_people_form" name="submit_left" value="' . (int) $vp_person['id'] . '" class="pg-button pg-button-danger" data-confirm-content="' . h(lang('The volunteer is marked as left and takes no new shifts. Their hours stay.')) . '">' . h(lang('Mark as left')) . '</button>';

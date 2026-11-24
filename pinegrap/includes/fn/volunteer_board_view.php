@@ -221,9 +221,17 @@ function pg_volunteer_shift_drawer_html(array $programme, array $shift, $to_call
         $lines = '';
 
         foreach ($shift['signups'] as $signup) {
-            if (($signup['role'] === (string) $key) && in_array($signup['state'], array('signed', 'waiting'), true)) {
-                $lines .= '<div class="pg-card-inner-row"><span class="pg-text-2 flex-grow-1 min-width-0">' . h($signup['name']) . '</span>' . (($signup['state'] === 'waiting') ? '<span class="pg-pill pg-tone-gray">' . h(lang('Waitlisted')) . '</span>' : '') . '</div>';
+            if (($signup['role'] !== (string) $key) || !in_array($signup['state'], array('signed', 'waiting'), true)) {
+                continue;
             }
+
+            $swap = ($signup['state'] === 'waiting') ? (int) ($signup['swap_from'] ?? 0) : 0;
+            $pill = ($swap > 0) ? '<span class="pg-pill pg-tone-blue">' . h(lang('Asks to take a place')) . '</span>'
+                . '<button type="submit" name="submit_swap_refuse" value="' . (int) $signup['id'] . '" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Refuse')) . '</button>'
+                . '<button type="submit" name="submit_swap_approve" value="' . (int) $signup['id'] . '" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Approve')) . '</button>'
+                : (($signup['state'] === 'waiting') ? '<span class="pg-pill pg-tone-gray">' . h(lang('Waitlisted')) . '</span>'
+                : (((int) ($signup['offered_at'] ?? 0) > 0) ? '<span class="pg-pill pg-tone-amber">' . h(lang('Place offered')) . '</span>' : ''));
+            $lines .= '<div class="pg-card-inner-row gap-2"><span class="pg-text-2 flex-grow-1 min-width-0">' . h($signup['name']) . '</span>' . $pill . '</div>';
         }
 
         $roles .= '<h6 class="pg-field-label d-flex align-items-center gap-2">' . h(pg_volunteer_role_name($programme, $key)) . ' ' . pg_volunteer_role_pill(lang('Places'), $filled, $count, pg_volunteer_role_tone($filled, $count, $shift, $now, $programme['call_days'])) . '</h6>'
