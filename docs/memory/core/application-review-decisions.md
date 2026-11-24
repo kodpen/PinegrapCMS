@@ -21,7 +21,7 @@ module: application_decisions
 - Once per declined entry: the call is the `audit_log` line `waitlist_call` (after `called`) on the declined entry, and `pg_application_waitlist_called()` reads it; the called entry gets a `decision` line with `called_for`.
 
 ## How do the decision e-mails go?
-- Only on a press (plan rule): the fill "Send the decision e-mails" opens a drawer: 1. counts per decision (e-mails, those with no address, "No text written"), 2. a preview per decision rendered with its first recipient's answers, 3. Send with the number that goes.
+- Only on a press (`application-review.md`): the fill "Send the decision e-mails" opens a drawer: 1. counts per decision (e-mails, those with no address, "No text written"), 2. a preview per decision rendered with its first recipient's answers, 3. Send with the number that goes.
 - Texts are the programme's `texts.accepted|rejected|waitlisted` `{subject, body}`, plain text, `^^field^^` filled by `get_variable_submitted_form_data_for_content()`. A decision whose subject or text is empty sends nothing.
 - Address: `get_submitter_email_address()` (the contact e-mail field, else the submitting user's), checked with `validate_email_address()`.
 - `pg_application_mail_send()` claims each entry by `UPDATE … SET mailed_at WHERE mailed_at = 0 AND decision = ?` before `email()` (queued), and writes an `audit_log` line `mail`.
@@ -31,4 +31,4 @@ module: application_decisions
 - Only once mailed (`pg_application_result_visible()`, `mailed_at` > 0) and only to the submitter: this session's reference codes, the submitting account, or the account whose address matches (`pg_email_address_matches()`). Watchers and managers see nothing there.
 - The submitter cannot decline from the site; a manager records it.
 
-Related: docs/memory/core/application-review-ranking.md, docs/memory/core/application-review-programme.md, docs/memory/plans/application-review-screens-review.md
+Related: docs/memory/core/application-review-ranking.md, docs/memory/core/application-review-programme.md, docs/memory/core/application-review.md

@@ -4,7 +4,7 @@ description: Start file of the application review desk (Forms › Application pr
 ---
 
 ## What is the desk?
-- A form run as an application programme: a period, eligibility, weighted criteria in rounds, reviewers and outside jurors, blind review, combined scores, a shortlist, decisions and their e-mails. A form with no programme works as before. Plan and its binding rules: `plans/application-review.md` until its close-out.
+- A form run as an application programme: a period, eligibility, weighted criteria in rounds, reviewers and outside jurors, blind review, combined scores, a shortlist, decisions and their e-mails. A form with no programme works as before. Binding rules, the features and the PR of each: `application-review.md`.
 
 ## Which file holds what?
 - Pure rules (eligibility, weighted sums, leniency correction, assignment, shortlist cut): `application-review-rules.md`.

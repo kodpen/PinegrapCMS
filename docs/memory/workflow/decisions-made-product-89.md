@@ -19,6 +19,6 @@ description: Decisions list, product part 89 (2026-11-20 on): plans from the own
 ## Should a form become an application programme with reviewers, weighted criteria, combined scores, rounds and decisions? (owner, 2026-11-20, agent channel poll 196, channel message 10821)
 - "Evet, plana girsin": programme and eligibility, criteria, assignment and conflicts, blind review, the reviewer screen and external jurors, combining with the leniency correction, rounds and decision e-mails, report and API.
 - Not chosen: "Evet, önce jüri puanlaması ve kısa liste" (criteria, assignment, the reviewer screen, combining and the shortlist first), "Hayır, gerek yok".
-- The plan: `plans/application-review.md`.
+- Built as the application review desk: `core/application-review.md`.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/marketplace-repricer.md, docs/memory/plans/feedback-loop.md, docs/memory/plans/application-review.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/commerce/marketplace-repricer.md, docs/memory/plans/feedback-loop.md, docs/memory/core/application-review.md

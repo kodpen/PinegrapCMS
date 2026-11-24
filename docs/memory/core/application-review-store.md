@@ -23,4 +23,4 @@ description: Application review desk tables (11.0.258, #10832): defaults, person
 ## Which audit_log record types does it use?
 - `application_program` ("Application programme") and `application_entry` ("Application") in `pg_audit_view_labels('type')`. A score, conflict, override, decision or mail is written on the entry, so the erasure finds it. No edit screen link yet (AR2 on).
 
-Related: docs/memory/core/application-review-rules.md, docs/memory/core/personal-data-erasure.md, docs/memory/core/personal-data-export.md, docs/memory/plans/application-review.md
+Related: docs/memory/core/application-review-rules.md, docs/memory/core/personal-data-erasure.md, docs/memory/core/personal-data-export.md, docs/memory/core/application-review.md
