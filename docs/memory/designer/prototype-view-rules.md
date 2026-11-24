@@ -7,7 +7,7 @@ description: What a later change to the designer's Prototype view must keep (K1 
 - (K1) An arrow is the link's href: drawing writes `props.href`, the `_attrs` href, the btn or the nth link of a text (`hrefPatch()`), kept by page id for a tab. The normal Save or Publish writes it; the view has no save path of its own.
 - (K2) Who may draw: roles 0-1 everywhere, roles 2-3 inside editable areas; a locked tab draws nothing; classic menus, legacy regions and widget page settings are read-only arrows.
 - (K3) The two warnings, once per opening (once per batch for Suggest targets): a shared component changes everywhere, a live page's link goes live on Publish.
-- (K4) Ctrl+Z and Ctrl+Y undo the open tab and read the map again; the editor's document shortcuts skip the view.
+- (K4) Ctrl+Z and Ctrl+Y undo the open tab and read the map again; the editor's document shortcuts skip the view. While the Sketch switch is on they undo the sketch instead (designer/prototype-sketch-tool.md).
 - (K5) Broken has one definition, `pg_link_resolve()` and its JS twin; no hidden page name reaches a content-level operator.
 - (K6) Moved frames of saved tabs and shared components are kept on the design (`proto` of the tab layout, both normalisers), the rest per browser.
 - (K7) The view is a snapshot; a later load or a close drops an earlier answer (`_sdProto.seq`).
