@@ -22,10 +22,10 @@ description: After the owner's answer to the integrations census (2026-11-17): w
 - A session opens no account and accepts no terms: each plan lists what its outside steps need of him.
 
 ## Where are the plans?
-- By the R&D agent (PR #10099): `automation-platforms.md`, `connections-hub` (closed; its open merges are `connections-merges.md`) and `market-table-stakes.md`, each with `priority: 4` (`workflow/plan-priority.md`) and a section "What waits for the release of 2026.11.0?".
+- By the R&D agent (PR #10099): `automation-platforms.md`, `connections-hub` (closed; its merges were built and closed, `ui/connections-one-place.md`) and `market-table-stakes.md`, each with `priority: 4` (`workflow/plan-priority.md`) and a section "What waits for the release of 2026.11.0?".
 - Of the OpenAPI items the automation plan keeps only the events' fields and samples: parameter descriptions and example bodies are generated already (`api/api-openapi-explains.md`).
 - One OAuth client for each platform would work on paper but brings no instant trigger, so the apps stay on key and secret (`api/oauth-client-automation-platforms.md`).
 
 ## What is still the owner's?
-- Each when its step is near: the look of the hub's drawing, the sheet of the "Connect to Claude" button, the subscription form in Application Access, each merge into the hub (`connections-merges.md`) and each setting that moves, the wording of the public figure; Google's verification only with the broker (package 5).
+- Each when its step is near: the look of the hub's drawing, the sheet of the "Connect to Claude" button, the subscription form in Application Access, each merge into the hub (built, `ui/connections-one-place.md`) and each setting that moves, the wording of the public figure; Google's verification only with the broker (package 5).
 - The poll "which packages, in which order" is not asked: his answer covers it.

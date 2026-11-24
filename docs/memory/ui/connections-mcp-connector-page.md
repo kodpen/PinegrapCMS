@@ -5,7 +5,7 @@ module: connections_screen
 ---
 
 ## Why did the connectors' address and sign-in move?
-- Owner (2026-11-24, poll 222, `workflow/decisions-made-product-100.md`): Connections is the one place an outside service is set up; the tab's row keeps a line leading there. Step CX11k3 of `plans/connections-merges-build.md`. Claude's half: `connections-claude-page.md`.
+- Owner (2026-11-24, poll 222, `workflow/decisions-made-product-100.md`): Connections is the one place an outside service is set up; the tab's row keeps a line leading there. Step CX11k3 of `connections-one-place.md`. Claude's half: `connections-claude-page.md`.
 
 ## What does a connector's page show?
 - `connections.php?service=mcp_<key>` for the 12 rows of `ws_mcp_catalogue()` (`pg_connections_screen_mcp_connector()` gives the key the row covers). Status, "Connection details" (`ws_mcp_connection_card_html()`, `includes/workspace/mcp_catalogue.php`), Where it is used (one row, "Tools for the Workspace's assistants", leading to Site Settings › Assistants and agents › MCP servers, with the server's state pill).

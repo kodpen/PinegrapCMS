@@ -5,7 +5,7 @@ module: connections_screen, sms
 ---
 
 ## Where is an SMS provider's account typed?
-- On `connections.php?service=netgsm`, `?service=iletimerkezi`, `?service=twilio` (CX11d2 of `plans/connections-merges-build.md`, architect 2026-11-20). No single "SMS" page.
+- On `connections.php?service=netgsm`, `?service=iletimerkezi`, `?service=twilio` (CX11d2 of `connections-one-place.md`, architect 2026-11-20). No single "SMS" page.
 - "Connection details": `pg_sms_settings_page_fields()`: the provider's help line, its two credentials and sender (`pg_sms_settings_account_fields()`, page look), Twilio's "Address for customers' messages" (`pg_sms_webhook_field()`), Test Number, "Save" and "Save and try".
 - Write `sms_save` (provider = `connections_return`): `pg_sms_account_check()` then `pg_sms_account_save()` only when nothing was marked. "Disconnect" in Status (`sms_remove`, `pg_sms_account_forget()`) deletes that provider's row while one is stored.
 

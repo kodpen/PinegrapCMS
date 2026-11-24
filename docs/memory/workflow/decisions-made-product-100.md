@@ -11,6 +11,6 @@ description: Decisions list, product part 100 (2026-11-24 on): Claude's routine 
 - The clash asked: Connections is the one place where an outside service is set up (poll 146), while the Assistants and agents tab he accepted as drawn (poll 190, `decisions-made-panel-12.md`) kept Claude's routine address and token and the MCP servers card (the servers' address and token, the 12 connectors) on the tab.
 - What moves: the address, the token and the MCP servers go to Claude's page and the connectors' pages on Connections. The tab's folded rows stay where they are drawn; inside, a line leads to Connections, as on the other merged cards.
 - Not chosen: the tab as drawn, the Connections plan closing with nothing moved.
-- Steps CX11k2 (Claude) and CX11k3 (MCP) of `plans/connections-merges-build.md`.
+- Steps CX11k2 (Claude) and CX11k3 (MCP) of `ui/connections-one-place.md`.
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-panel-12.md

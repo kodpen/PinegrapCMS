@@ -5,7 +5,7 @@ module: payments, connections_screen
 ---
 
 ## Where are their keys typed?
-- On their pages (CX11g2 #10973, plan `plans/connections-merges-build.md`): `connections.php?service=stripe`, `paypal`, `paytr`, `givex`. PayPal Express Checkout's keys are on PayPal's page below PayPal Checkout's: one product, so no service of its own and `pg_connections_count()` stays 84.
+- On their pages (CX11g2 #10973, `connections-one-place.md`): `connections.php?service=stripe`, `paypal`, `paytr`, `givex`. PayPal Express Checkout's keys are on PayPal's page below PayPal Checkout's: one product, so no service of its own and `pg_connections_count()` stays 84.
 - The card gateways moved in CX11g1: `connections-payment-gateways-page.md`.
 
 ## What moved for the drivers (Stripe, PayPal Checkout, PayTR)?

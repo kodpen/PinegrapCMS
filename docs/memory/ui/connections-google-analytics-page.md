@@ -5,7 +5,7 @@ module: google_analytics
 ---
 
 ## Where are the Google tag and the GA4 property set?
-- On `connections.php?service=google_analytics` (CX11b, the Visitors and privacy group of plan `plans/connections-merges-build.md`), no longer on Site Settings › Visitors and privacy › Visitor Tracking.
+- On `connections.php?service=google_analytics` (CX11b, the Visitors and privacy group of `connections-one-place.md`), no longer on Site Settings › Visitors and privacy › Visitor Tracking.
 - "Connection details" ("Bağlantı bilgileri"), first form: the switch "Enable Google Analytics", "Web Property ID" (the Google tag ID) and "Website Analytics URL" (the Visitors menu's link), "Save" filled. `pg_ga_tag_input()` takes each in its own format, `pg_ga_tag_save()` writes the three `config` columns.
 - Second form, "Google Analytics figures": the property list, or the chosen property with "Read the figures now" and "Stop using this property", through `pg_ga_save_from_screen()` as before.
 - "Status": the Google accounts connected for `google_analytics` with "Connect a Google account", the tag's state, the chosen property. "Where it is used": the tag (to the Visitor Tracking card) and the figures (to the dashboard).

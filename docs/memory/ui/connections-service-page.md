@@ -11,7 +11,7 @@ module: connections_screen
 ## What does it show?
 - "Status" ("Durum"): the state pill, why no state is read, and for an account reader the accounts with Connect again (the service's purpose) and Disconnect for the site's own, the last error on file, a link to the provider's drawer. Then where its settings are and "Open its settings".
 - "Where it is used" ("Kullanıldığı yerler"): one row from the registry's `uses` and place, with the state, a link to the place.
-- A service set elsewhere has those two cards; its step adds "Bağlantı bilgileri" (`plans/connections-merges-panel-rules.md`).
+- A service set elsewhere has those two cards; its step adds "Bağlantı bilgileri" (`connections-service-page-layout.md`).
 
 ## Which cards does GitHub's page have? (CX8, #10418)
 - `pg_connections_screen_page_cards()` gives the order and gates: Status, "Connection details" ("Bağlantı bilgileri", manager), Where it is used, "Repository links" ("Depo bağlantıları", only with `ws_github_links_can_manage()`, the Workspace settings right). A card the viewer may not open is not shown.

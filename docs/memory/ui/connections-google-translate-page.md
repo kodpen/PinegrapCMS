@@ -5,7 +5,7 @@ module: connections_screen
 ---
 
 ## Where is the Google Cloud Translation key typed?
-- On `connections.php?service=google_translate` (CX11c, the Languages and Translation group of plan `plans/connections-merges-build.md`), no longer on Site Settings › Languages and Translation › Translation Engines.
+- On `connections.php?service=google_translate` (CX11c, the Languages and Translation group of `connections-one-place.md`), no longer on Site Settings › Languages and Translation › Translation Engines.
 - "Connection details": "Google Cloud Translation API key", a password field never filled back ("Stored. Leave empty to keep it."), "Save" filled and "Save and try" quiet. Try sends "Hello" en→tr through `pg_tr_google_request()` with the typed key, or the stored one when the field is empty; Google's error is shown escaped.
 - `pg_tr_google_key_valid()` (`includes/translate/store.php`) takes 1 to 200 letters, digits, dashes and underscores; `pg_tr_google_key_store()` seals it into `config.translation_google_key` as before.
 - "Status" has "Disconnect" (`translate_remove`) while a key is stored. "Where it is used": the Translation Engines card, and the languages whose engine or fallback is `google` (`pg_tr_languages(false)`).

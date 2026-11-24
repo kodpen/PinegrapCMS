@@ -5,7 +5,7 @@ module: seo
 ---
 
 ## Where is the IndexNow key typed?
-- On `connections.php?service=indexnow` (CX11a, the SEO group of plan `plans/connections-merges-build.md`), no longer on Site Settings › SEO › Search Engine Optimization.
+- On `connections.php?service=indexnow` (CX11a, the SEO group of `connections-one-place.md`), no longer on Site Settings › SEO › Search Engine Optimization.
 - "Connection details" ("Bağlantı bilgileri"): the key (plain text, it is public in its file), "Save" filled, "Save and try" and "Generate" quiet. Generate makes 32 hex characters on the server (`pg_indexnow_key_new()`) and saves; the old `generateIndexNowKey()` of `backend.src.js` is gone.
 - "Status" ("Durum"): the state, "Key file" (a link to `/<key>.txt`, or a warning when it is missing), Disconnect (empties the key and removes its file). "Where it is used": one row to the SEO card.
 

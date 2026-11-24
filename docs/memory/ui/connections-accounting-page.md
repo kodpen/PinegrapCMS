@@ -5,7 +5,7 @@ module: connections_screen, parasut
 ---
 
 ## Where is an e-document provider's connection set?
-- On its page (CX11h #11030, plan `plans/connections-merges-build.md`): `connections.php?service=parasut`, `?service=isbasi`. The list is `pg_connections_screen_accounting_pages()`; each key is the driver code (`erp_edoc_drivers()`). Built by `connections_edoc_page()` in `connections.php`.
+- On its page (CX11h #11030, `connections-one-place.md`): `connections.php?service=parasut`, `?service=isbasi`. The list is `pg_connections_screen_accounting_pages()`; each key is the driver code (`erp_edoc_drivers()`). Built by `connections_edoc_page()` in `connections.php`.
 - Gate: who may open Site Settings › Accounting (`connections_accounting_may_manage()`, `$can['accounting']` in `pg_connections_screen_page_cards()`); the write checks the same.
 
 ## What does Paraşüt's page hold?

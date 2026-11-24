@@ -12,7 +12,7 @@ description: Survey of the Site Settings categories, its second part: how old ea
 
 ## What is already planned?
 - Assistants and agents: done (AT1 to AT6, `ui/settings-fold-rows.md`). Features: done (`ui/settings-features.md`). E-mail: done (`ui/settings-mail.md`). Mailboxes: done (`ui/look-settings-mailboxes.md`). Visitors and privacy: done (`ui/settings-privacy.md`). Bookings: done (`ui/booking-settings.md`). Communication: done (`ui/settings-communication.md`). Firewall and HTTPS with Accounts and sign-in: done (`ui/settings-firewall.md`, `ui/settings-accounts.md`).
-- Credentials on category cards: connections-merges CX11 (`plans/connections-merges-build.md`); Ecommerce, Accounting, Integrations, Updates and maintenance and the Workspace's categories are still to come, and a tidy of one of them waits for its CX11 step.
+- Credentials on category cards: all moved to Connections, the plan closed on 2026-11-24 (`ui/connections-one-place.md`); a tidy no longer waits for a connections step.
 - The starting-point sheet and the numbered-steps drawer: DX2 (#10885).
 
 ## What is decided and stays?

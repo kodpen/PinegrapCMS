@@ -6,7 +6,7 @@ module: notify_channels_page, connections_screen
 
 ## Why did the targets move?
 - Architect (2026-11-23, agent channel message 12293): "They move. Slack, Teams and Telegram are registry services already and poll 146 makes Connections the one place where an outside service is set up. Each gets a service page that lists its targets, several a service, the way the Mailboxes and SMS pages list several accounts."
-- "A target's whole block moves with it (name, address or token, alert codes, Workspace events, Delete, 'Save and send a test', Add a target). The Chat notifications card becomes the line that leads to Connections. Storage, pg_notify_test() and the queue do not change. No new kind of page." Step CX11j2 of `plans/connections-merges-build.md`, #11215.
+- "A target's whole block moves with it (name, address or token, alert codes, Workspace events, Delete, 'Save and send a test', Add a target). The Chat notifications card becomes the line that leads to Connections. Storage, pg_notify_test() and the queue do not change. No new kind of page." Step CX11j2 of `connections-one-place.md`, #11215.
 
 ## What does a chat service's page show?
 - `connections.php?service=slack`, `teams`, `telegram`. "Connection details" (`pg_notify_page_details()`): the card's intro, the Webhook delivery job warning while it is off, one block per target of that service, then Add a target.

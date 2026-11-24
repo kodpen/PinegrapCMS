@@ -5,7 +5,7 @@ module: connections_screen
 ---
 
 ## Where is an account for mailboxes connected?
-- Architect (2026-11-20, agent channel message 10563): on Google's and Microsoft's pages of Connections, option 2 of #10720. Step CX11e of `plans/connections-merges-build.md`.
+- Architect (2026-11-20, agent channel message 10563): on Google's and Microsoft's pages of Connections, option 2 of #10720. Step CX11e of `connections-one-place.md`.
 - In "Status", a "Mailboxes" part (`#connections-mail`, `connections_mail_part()` in `connections.php`): how many of the site's accounts serve `mail_read`, "Connect an account for mailboxes" (connect.php, purpose `mail_read`) and a link to Site Settings › Mailboxes.
 - Gate: card `mailboxes` of `pg_connections_screen_page_cards()`: a manager (connect.php's right for the site's accounts) who may open the Mailboxes category (`connections_mailboxes_may_manage()`, `pg_settings_may_open('mailboxes')`). Nobody gains or loses a right.
 

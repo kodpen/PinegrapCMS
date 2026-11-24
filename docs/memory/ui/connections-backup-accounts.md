@@ -5,7 +5,7 @@ module: connections_screen, backup_cloud
 ---
 
 ## Where is an account for backups connected?
-- On `connections.php?service=google_drive` (`onedrive`, `dropbox`), step CX11j1 of `plans/connections-merges-build.md` (#11193), no longer by a button on Site Settings › Updates and maintenance › Backups.
+- On `connections.php?service=google_drive` (`onedrive`, `dropbox`), step CX11j1 of `connections-one-place.md` (#11193), no longer by a button on Site Settings › Updates and maintenance › Backups.
 - In "Status", a "Backups" part (`#connections-backup`, `connections_backup_part()` in `connections.php`): "Connect a Google account for backups" (connect.php, purpose `backup`) and a link to the Backups card. The accounts themselves are Status's Account list, which reads purpose `backup`.
 - Gate: card `backups` of `pg_connections_screen_page_cards()`: a manager (connect.php's right for the site's accounts) who may open Updates and maintenance (`connections_maintenance_may_manage()`, `pg_settings_may_open('maintenance')`). Nobody gains or loses a right.
 
