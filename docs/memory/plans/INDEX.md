@@ -46,9 +46,6 @@
 - channel-share-links.md: Plan (owner 2026-11-23): an item of an agent channel shared by an unguessable link with an end date: files first, then notes, tables and lists; what the address answers; steps SL1 to SL6
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
-- communication-settings-tidy-screens.md: Plan communication-settings-tidy, its screen: the Communication pane as folded rows, Chat and Chat on the site with their groups, the words and what must be true
-- communication-settings-tidy-steps.md: Plan communication-settings-tidy, steps CM1 to CM3: the pane as folded rows with Chat split in two, the message cards' switches, close-out
-- communication-settings-tidy.md: Plan (owner 2026-11-21): Communication as folded rows, the Chat card's two popover levels split into "Chat" and "Chat on the site", each field saying whom it binds
 - connections-merges-build.md: Plan connections-merges, the build after poll 149: CX7 the frame, CX8 GitHub, CX9 AI providers, CX10 Google and Microsoft, CX11 the other groups; the architect's cut
 - connections-merges-cx10-google.md: CX10 of plan connections-merges, what Google's and Microsoft's pages add: the two redirect addresses, the APIs to enable, the "API not enabled" error, Google's verification warning
 - connections-merges-panel-rules.md: Connections management screen (plan connections-merges): the architect's rules for a service's panel: one connection per provider and its data step, the count (84), gates, card titles
