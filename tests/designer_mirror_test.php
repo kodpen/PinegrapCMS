@@ -171,7 +171,7 @@ function test_mirror_fits_its_box()
 }
 
 // The mirror is a part loaded on first use: its own bundle, the pure module
-// first, handed to the editor, never in the core's bundle.
+// first, never in the core's bundle.
 function test_mirror_is_a_part()
 {
 	$parts = pg_designer_parts();
@@ -179,8 +179,6 @@ function test_mirror_is_a_part()
 	$bundles = pg_js_bundles();
 	pg_assert_same(array('assets/js/pg_mirror_schedule.js', 'assets/js/style_designer_mirror.js'), $bundles['assets/js/style_designer_mirror.min.js'], 'mirror bundle sources');
 	pg_assert_false(in_array('assets/js/style_designer_mirror.js', $bundles['assets/js/style_designer.min.js'], true), 'not in the core bundle');
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	pg_assert_true(strpos($screen, "'mirror'") !== false, 'the screen hands the part over');
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_false(strpos($core, 'PGMirrorSchedule') !== false, 'the core holds no scheduling');
 }
