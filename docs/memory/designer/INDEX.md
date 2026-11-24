@@ -536,6 +536,7 @@
 - legacy-bootstrap-twins.md: Theme parts as designer twins on a trial design (LB6, #9308): photo backgrounds, sliders as carousels, lightbox as Fancybox; what stays with its script, rows switched off
 - legacy-design-framework.md: The legacy framework key of a classic style moved into the editor (LG3): registry entry and flags, who writes it, the 11.0.187 data step, the Legacy / Eski badge on Designs
 - legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
+- legacy-earlier-designs.md: The "Designs moved earlier" card (LE11): fully editable pages per Legacy design, its dry run drawer, its run of page_parts and types only, a design moved before the frame split
 - legacy-editable-measure.md: The measure of the move to the visual designer (LE1, #11128): pg_classic_closed_census() counts the region nodes left on a moved page by kind; the move screen's four figures
 - legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
 - legacy-layouts-census.md: Census of the page types' custom layouts for their move to Bootstrap 5.3.8 (LL1, #8968): per type the widget twin, layouts that differ from the template, Bootstrap 3 names

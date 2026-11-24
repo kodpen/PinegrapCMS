@@ -222,6 +222,7 @@ description: Generated from the module field of the memory files: each includes/
 - `legacy_bootstrap_trial`: [[legacy-bootstrap-trial-design]]
 - `legacy_bootstrap_twins`: [[legacy-bootstrap-twins]]
 - `legacy_design_theme`: [[legacy-design-theme]]
+- `legacy_earlier_designs`: [[legacy-earlier-designs]]
 - `legacy_to_classic`: [[legacy-to-classic]]
 - `legacy_to_designer`: [[legacy-editable-measure]], [[legacy-one-door]], [[legacy-set]], [[legacy-to-designer-report]]
 - `legacy_to_designer_plan`: [[legacy-one-door]], [[legacy-set]], [[legacy-to-designer-bulk-run]], [[legacy-types-step]]
