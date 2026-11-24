@@ -80,6 +80,24 @@ function test_page_schedule_parse_refuses_what_is_no_time()
 	}
 }
 
+// The night the clocks go forward a datetime-local box still offers the hour
+// that is skipped: it is the moment the clocks jump, not a time that does not
+// exist, and is read as the first minute after the jump.
+function test_page_schedule_parse_skipped_hour_of_a_clock_change()
+{
+	page_schedule_test_in_zone('Europe/Berlin', function () {
+		// 2026-03-29 02:00 CET becomes 03:00 CEST (01:00 UTC).
+		pg_assert_same(array('ok' => true, 'time' => gmmktime(1, 30, 0, 3, 29, 2026)), pg_page_schedule_parse('2026-03-29T02:30'));
+		pg_assert_same(array('ok' => true, 'time' => gmmktime(1, 0, 0, 3, 29, 2026)), pg_page_schedule_parse('2026-03-29T02:00'));
+		pg_assert_same(gmmktime(1, 0, 0, 3, 29, 2026), pg_page_schedule_parse('2026-03-29T03:00')['time']);
+		// The hour that comes twice when the clocks go back is taken once.
+		pg_assert_true(pg_page_schedule_parse('2026-10-25T02:30')['ok']);
+		// A date the calendar lacks stays refused in a zone with clock changes too.
+		pg_assert_false(pg_page_schedule_parse('2026-02-30T10:00')['ok']);
+		pg_assert_false(pg_page_schedule_parse('2026-03-29T24:30')['ok']);
+	});
+}
+
 // A stored time is shown as the box takes it, and read back to the minute.
 function test_page_schedule_format_round_trip()
 {
