@@ -221,7 +221,7 @@
 - poll-question-picture.md: A poll question's own picture (poll_picture.php, #9948): carried by the question's message, the image check, ask again carries it, change while unanswered, the API routes, ws_poll.php --file [decision: here]
 - poll-take-back.md: Take back and Ask again on a poll (poll_again.php): the asker (a person or the asking application), withdrawn_at, again_of, panel actions, API withdraw and again routes
 - quiet-hours.md: A person's quiet hours (#9844, #9862): set in a channel's Notifications or from a team devices session, ws_profiles.quiet_hours, the rule pg_quiet_hours_left() reads, the person's own only [decision: decisions-made-schema-22.md, decisions-made-workspace-35.md]
-- share-links-api.md: Share links of an agent channel's items (SL1): the ws_share_links table (11.0.275), share_links.php's make, find, state, take back and sweep, the three API routes and MCP tools
+- share-links-api.md: Share links of agent channel items (SL1, SL2): ws_share_links (11.0.275), make, find, state, take back, sweep, the API routes and MCP tools, the workspace_share.php address
 - task-app-mark.md: Task application mark (ws_tasks.app_id, #9994): routes that write it, "Made by <application>", the "Made by agents" filter on My Tasks, created_by_app and made_by in the API [decision: decisions-made-schema-23.md]
 - voice-browser-to-text.md: "Convert to text" for a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
