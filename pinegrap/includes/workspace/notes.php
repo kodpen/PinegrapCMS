@@ -2934,13 +2934,48 @@ function ws_note_folder_id($note, $user_id = 0, $create = true)
  */
 function ws_note_readers($note)
 {
+    $shares = (array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'");
+    $channel_ids = array(ws_note_channel_of($note));
+
+    foreach ($shares as $share) {
+        $channel_ids[] = (int) $share['channel_id'];
+    }
+
+    $members = array();
+
+    foreach (array_unique(array_filter($channel_ids)) as $channel_id) {
+        $members[$channel_id] = array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $channel_id . "'"));
+    }
+
+    return ws_note_readers_of($note, $shares, $members);
+}
+
+/**
+ * ws_note_readers() on rows given. A channel's note is read by the members
+ * of its channel alone, its writer only while one of them; a person's note
+ * by its owner, the people it is shared with and the members of the
+ * channels it is shared in. Pure.
+ *
+ * @param array   $note    user_id, owner_channel_id
+ * @param array[] $shares  ws_note_shares rows: user_id, channel_id
+ * @param array   $members channel id => member user ids
+ * @return int[]
+ */
+function ws_note_readers_of($note, $shares, $members)
+{
+    $owner_channel = ws_note_channel_of($note);
+
+    if ($owner_channel > 0) {
+        return array_values(array_unique(array_filter(array_map('intval', (array) ($members[$owner_channel] ?? array())))));
+    }
+
     $ids = array((int) $note['user_id']);
 
-    foreach ((array) db_items("SELECT user_id, channel_id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'") as $share) {
+    foreach ((array) $shares as $share) {
         if ((int) $share['user_id'] > 0) {
             $ids[] = (int) $share['user_id'];
         } elseif ((int) $share['channel_id'] > 0) {
-            foreach ((array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $share['channel_id'] . "'") as $member) {
+            foreach ((array) ($members[(int) $share['channel_id']] ?? array()) as $member) {
                 $ids[] = (int) $member;
             }
         }

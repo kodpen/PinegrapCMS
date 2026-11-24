@@ -330,3 +330,15 @@ function test_ws_note_change_told_skips_a_channel_note()
 	pg_assert_contains('ws_note_change_told(', ws_channel_notes_test_source('ws_note_notify_change'), 'the inbox follows the rule');
 }
 
+// The files of a channel's note are for the channel's members only: its
+// writer who left the channel loses them.
+function test_ws_note_readers_of_a_channel_note_are_its_members()
+{
+	$members = array(10 => array(3, 4), 20 => array(5));
+
+	pg_assert_same(array(3, 4), ws_note_readers_of(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10), array(array('user_id' => 0, 'channel_id' => 10)), $members), 'a channel\'s note: its channel\'s members, not its writer');
+	pg_assert_same(array(3, 4), ws_note_readers_of(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 10), array(), $members), 'with no card row too');
+	pg_assert_same(array(7, 8, 5), ws_note_readers_of(array('id' => 5, 'user_id' => 7, 'owner_channel_id' => 0), array(array('user_id' => 8, 'channel_id' => 0), array('user_id' => 0, 'channel_id' => 20)), $members), 'a person\'s note: its owner, the people, the channels');
+	pg_assert_contains('ws_note_readers_of(', ws_channel_notes_test_source('ws_note_readers'), 'the folder follows the rule');
+}
+
