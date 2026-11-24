@@ -10,7 +10,7 @@ module: image_editor
 
 ## Where did the keyboard shortcuts go?
 - Their sheet keeps its own button, the keyboard icon at the footer's end ("Keyboard shortcuts"), and the `?` key: `Editor.prototype.openKeys()` / `closeKeys()` in the access part (`image-editor-access.md`).
-- Until #PRNUM the access part also named its sheet `openHelp()`, bundled after the core, so the top bar's question mark opened the shortcuts instead of the page. `test_image_editor_access_help_is_not_the_keys_sheet` keeps `openHelp()` to the core.
+- Until #11468 the access part also named its sheet `openHelp()`, bundled after the core, so the top bar's question mark opened the shortcuts instead of the page. `test_image_editor_access_help_is_not_the_keys_sheet` keeps `openHelp()` to the core.
 
 ## Which section does it open?
 - `Editor.prototype.openHelp()` adds `#anchor` from `M.helpAnchor(tool, state)` (model) and opens a new tab with `noopener`.

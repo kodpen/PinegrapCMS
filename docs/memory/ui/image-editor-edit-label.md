@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## What does a button that opens the canvas on a picture say?
-- "Edit in Artifact Canvas", Turkish "Yapıt Tuvalinde Düzenle": one key, `lang()` in PHP and panel scripts, `_sdT()` in the Page Design Studio (owner 2026-11-24, `workflow/decisions-made-panel-18.md`).
+- "Edit in Artifact Canvas", Turkish "Yapıt Tuvalinde Düzenle": one key, `lang()` in PHP and panel scripts, `_sdT()` in the Page Design Studio (owner 2026-11-24, `workflow/decisions-made-panel-18.md`, #11468).
 - An icon-only button keeps the icon and carries the words as `title` and `aria-label`; the live site's mascot button has them as `title` (with the file name) and as its image's `alt`.
 - A button that makes a new canvas keeps its words: "New canvas", "New image", the File Manager's blank canvas, Workspace tables' "Show on a canvas".
 
