@@ -29,6 +29,6 @@ description: Hand-over note of the architect session that stopped on 2026-11-22 
 
 ## What does a look need?
 - A sandbox (`bash tools/setup_sandbox.sh`, `ui/panel-screenshots.md`); Workspace and ERP are off on a fresh one and are switched on for the menu's and the bell's rows.
-- A drawing is an HTML sheet on `plans/panel-design-language/sheet.css` with its pictures beside it (`architect-draws-new-part.md`); a question about a screen carries its picture (`owner-question-picture.md`).
+- A drawing is an HTML sheet on `ui/look-sheet/sheet.css` with its pictures beside it (`architect-draws-new-part.md`); a question about a screen carries its picture (`owner-question-picture.md`).
 
 Related: docs/memory/workflow/architect.md, docs/memory/workflow/architect-no-hand-over.md

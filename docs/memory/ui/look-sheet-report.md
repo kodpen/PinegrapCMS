@@ -1,14 +1,14 @@
 ---
-name: panel-design-language-report
+name: look-sheet-report
 description: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 ---
 
 ## Where is it drawn?
-- `plans/panel-design-language/report-page.html` with `report-page-dark.jpg` and `report-page-light.jpg`; approved by the owner on 2026-11-12 (#8955, `workflow/decisions-made-panel-8.md`). Tokens and shared parts: `panel-design-language-look.md`.
+- `ui/look-sheet/report-page.html` with `report-page-dark.jpg` and `report-page-light.jpg`; approved by the owner on 2026-11-12 (#8955, `workflow/decisions-made-panel-8.md`). Tokens and shared parts: `look-sheet-numbers.md`.
 - The screen's parts today: `ui/report-view.md`, `ui/report-settings-drawer.md`, `ui/report-table-rows.md`. The drawing re-dresses them and adds no part; the levels, fields and options stay what the screens have.
 
 ## How is the page laid out?
-- Content as wide as a list (`panel-design-language-sheet.md`; the page is drawn at the earlier 1280 px); 16 px between the blocks.
+- Content as wide as a list (`look-sheet-pages.md`; the page is drawn at the earlier 1280 px); 16 px between the blocks.
 - Head: the report's name in the Display cut, an amber pill while it is unsaved; at the right "Export" and "Report settings" (quiet), then "Save" (filled).
 - A strip under it: the label "Ready reports" and a segmented control of them.
 - The tools row: the period as a segmented control, the date range as a 34 px field, a divider, each filter as a 32 px pill (the field's name in second text, the value in 550, a small close icon), "Add filter", and at the right end the switch that compares with the previous period.
@@ -27,4 +27,4 @@ description: Look A's report screen (#8955): ready reports and the period on top
 
 ## What is drawn under the screen?
 - The bars card (620 px) for a level that is a name and not a date: rows 34 px, the name 150 px, a 10 px track filled with the accent gradient, the figure (550), the share. A level with no fitting chart shows one line saying so, never an empty plot.
-- The report settings drawer, 430 px, built as the drawer of `panel-design-language-dialogs.md`: sections "Summarize by" (numbered levels, each a grip, a select and a remove button; "Add level"), "Filters" (field, operator, value, remove; "Add filter"), "Options" (rows with a switch). Foot with a line: "Apply" (filled), "Cancel" (quiet), "Reset" (ghost) at the right end.
+- The report settings drawer, 430 px, built as the drawer of `look-sheet-dialogs.md`: sections "Summarize by" (numbered levels, each a grip, a select and a remove button; "Add level"), "Filters" (field, operator, value, remove; "Add filter"), "Options" (rows with a switch). Foot with a line: "Apply" (filled), "Cancel" (quiet), "Reset" (ghost) at the right end.

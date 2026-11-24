@@ -7,9 +7,9 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries.
 
 ## Is the second pass of look A the reference? (owner, 2026-11-12, #8860)
-- Yes: depth on surfaces, a filled button with a gradient, a segmented control in place of filter chips, status pills with a dot, an icon tile on each settings row, headings in Inter's Display cut. Numbers: `plans/panel-design-language-look.md`; pages: `plans/panel-design-language-sheet.md`.
+- Yes: depth on surfaces, a filled button with a gradient, a segmented control in place of filter chips, status pills with a dot, an icon tile on each settings row, headings in Inter's Display cut. Numbers: `ui/look-sheet-numbers.md`; pages: `ui/look-sheet-pages.md`.
 - Owner (2026-11-12), who had asked for a more modern drawing ("tasarımları biraz daha modernize edermisin"), on the second pass: "bunları sevdim".
-- The bell's drawer redrawn in the second pass (`plans/panel-design-language/bell-drawer.html`), owner (2026-11-12): "uygun, çekmeceyi de plana ekle".
+- The bell's drawer redrawn in the second pass (`ui/look-sheet/bell-drawer.html`), owner (2026-11-12): "uygun, çekmeceyi de plana ekle".
 
 ## How wide is an add or edit screen? (owner, 2026-11-13, #9070)
 - Centred and at most 1700 px: status column 376, 24 between, the form column the rest. An input never runs the width of the window; in the form column fields keep the grid (#9271, part 8). The save bar sits at the bottom, as wide as the content. The layout's three parts stay (`ui/edit-screen-wide-layout.md`).
@@ -21,7 +21,7 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 - No pager: rows are added on scroll, with "Daha fazla göster" in the foot (owner, 2026-11-12, #8860).
 
 ## Is the dialogs and drawers page the reference? (owner, 2026-11-12, #8860)
-- Yes: the confirm, form and settings dialogs and the drawer as drawn (`plans/panel-design-language-dialogs.md`).
+- Yes: the confirm, form and settings dialogs and the drawer as drawn (`ui/look-sheet-dialogs.md`).
 - Owner (2026-11-12), shown the page in both themes: "tasarımlarını onaylıyorum bu arada plana koyabilirsin".
 
 ## Which drawing is the Artifact Canvas icon? (owner, 2026-11-12, #8903)

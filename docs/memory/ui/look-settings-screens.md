@@ -4,7 +4,7 @@ description: Settings screens in look A (DL5d, #8952): dialog size, rail, head a
 ---
 
 ## Where is it drawn, and where is the CSS?
-- From `plans/panel-design-language/dialogs.html` (the settings dialog) and `basics.html` (the settings card), numbers in `plans/panel-design-language-dialogs.md`.
+- From `ui/look-sheet/dialogs.html` (the settings dialog) and `basics.html` (the settings card), numbers in `ui/look-sheet-dialogs.md`.
 - The dialog's rail, head and foot: in the old block "The settings modal" of `backend.src.css`, values replaced in place. The cards: block "Look A: settings" at the file's end, and selectors beside the recipes (`.pg-card`, `.pg-card-inner`, `.pg-group-label`, the 32 px field, the switch, `.pg-floatbar`).
 - Tokens it added: `--pg-surface-menu` (a rail's surface), `--pg-scrim` (a dialog's scrim), `--pg-shadow-sheet` (a dialog's or drawer's large shadow).
 
