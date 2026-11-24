@@ -18,7 +18,7 @@ priority: 7
 - Every fetch is the server's, with the size, count and type limits of an upload; the token is sealed as other connected accounts' are and is never sent to the browser.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- ST1 (S) Census, no product code: what Figma's and Canva's APIs give today (sign-in kinds, file and node reads, picture export, styles and variables and on which plans, rate limits, terms), written to `api/`; a difference from this plan goes to the architect before ST3.
+- ST1 (S) Census, no product code: what Figma's and Canva's APIs give today (sign-in kinds, file and node reads, picture export, styles and variables and on which plans, rate limits, terms), written to `api/`; a difference from this plan goes to the architect before ST3. Done in #11491: `api/figma-canva-census.md`.
 - ST2 (M) The New design window with the starts that exist; the home's cards open it.
 - ST3 (M) after ST1: Figma on Connections, the file read, the frame list.
 - ST4 (M) after ST1: the Figma converter, pure: a frame's nodes to a tree; tests on stored answers.
