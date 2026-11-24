@@ -39,6 +39,7 @@
     var input = document.getElementById('pack_code');
     var answer = document.getElementById('pack_answer');
     var busy = false;
+    var waiting = [];
     var refusedTimer = null;
     var audio = null;
 
@@ -191,20 +192,46 @@
         });
     }
 
+    // The codes still to send once an answer came: none when the screen
+    // moves on (an order found, a pack closed, a reload), else those read
+    // meanwhile, in the order they were read.
+    function afterAnswer(queue, data, scanning) {
+        if (data && (data.reload || (data.ok && (data.done || !scanning)))) {
+            return [];
+        }
+
+        return queue;
+    }
+
+    // Each code empties the field, so a scanner's next code never lands
+    // behind it; one read while the last is answered waits its turn.
     function read(code) {
         code = String(code || '').trim();
+        input.value = '';
 
-        if (!code || busy) {
+        if (!code) {
+            return;
+        }
+
+        if (busy) {
+            waiting.push(code);
+
             return;
         }
 
         busy = true;
-        input.value = '';
 
         var scanning = shipTo !== '0';
 
         post(scanning ? { request: 'scan', ship_to: shipTo, code: code } : { request: 'find', code: code }).then(function (data) {
             busy = false;
+            waiting = afterAnswer(waiting, data, scanning);
+
+            if (waiting.length) {
+                setTimeout(function () {
+                    read(waiting.shift());
+                }, 0);
+            }
 
             if (!data || !data.ok) {
                 if (data && data.reload) {
@@ -249,8 +276,31 @@
             say(data.text, !data.good);
         }).catch(function () {
             busy = false;
+            waiting = [];
             say(texts.failed, true);
         });
+    }
+
+    // Whether a camera frame's code is read: another code at once, the same
+    // code only after it left the view for half a second, so a product held
+    // in front of the camera counts one unit however long it stays, and a
+    // frame or two missed while it is held is no new unit.
+    function cameraRead(state, code, now) {
+        if (!code) {
+            if (state.code && !state.goneAt) {
+                state.goneAt = now;
+            }
+
+            return false;
+        }
+
+        var again = code === state.code && state.goneAt && now - state.goneAt >= 500;
+        var fresh = code !== state.code || again;
+
+        state.code = code;
+        state.goneAt = 0;
+
+        return !!fresh;
     }
 
     // The camera: the browser's own barcode reader, read a frame at a time.
@@ -259,11 +309,11 @@
     var detector = null;
     var stream = null;
     var reading = false;
-    var lastCode = '';
-    var lastAt = 0;
+    var seen = { code: '', goneAt: 0 };
 
     function stopCamera() {
         reading = false;
+        seen = { code: '', goneAt: 0 };
 
         if (stream) {
             stream.getTracks().forEach(function (track) {
@@ -288,13 +338,10 @@
         }
 
         detector.detect(video).then(function (codes) {
-            var now = Date.now();
+            var code = codes.length ? String(codes[0].rawValue || '') : '';
 
-            // One code is read once while it stays in front of the camera.
-            if (codes.length && (codes[0].rawValue !== lastCode || now - lastAt > 1500)) {
-                lastCode = codes[0].rawValue;
-                lastAt = now;
-                read(lastCode);
+            if (cameraRead(seen, code, Date.now())) {
+                read(code);
             }
         }).catch(function () {
             // A frame the reader could not take; the next one is tried.
