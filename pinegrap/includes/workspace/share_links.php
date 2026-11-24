@@ -238,6 +238,46 @@ function ws_share_link_made_by($link, $maker)
 }
 
 /**
+ * The conversation's line when a link is made or taken back: "<who> shared
+ * <item> by link until <date>" or "<who> stopped sharing <item>". Pure.
+ *
+ * @param bool   $made     made (true) or taken back
+ * @param string $who      ws_share_link_who(): a person's tag, an agent's @handle
+ * @param string $name     the item's name
+ * @param int    $until_at the link's end
+ * @return string
+ */
+function ws_share_link_line($made, $who, $name, $until_at)
+{
+    $name = trim(preg_replace('/\s+/u', ' ', (string) $name));
+
+    if ($made) {
+        return lang(array('string' => '{var:1} shared {var:2} by link until {var:3}',
+            'vars' => array((string) $who, $name, date('d.m.Y H:i', (int) $until_at))));
+    }
+
+    return lang(array('string' => '{var:1} stopped sharing {var:2}', 'vars' => array((string) $who, $name)));
+}
+
+/**
+ * The mark of an item a link is open to, as the screen draws it: the link,
+ * its end and whether this reader may take it back. Pure.
+ *
+ * @param array $link       ws_share_links row
+ * @param bool  $can_revoke ws_share_link_can_revoke()
+ * @return array id, until_at, until, can_revoke
+ */
+function ws_share_link_item_mark($link, $can_revoke)
+{
+    return array(
+        'id'         => (int) $link['id'],
+        'until_at'   => (int) $link['expires_at'],
+        'until'      => date('d.m.Y H:i', (int) $link['expires_at']),
+        'can_revoke' => (bool) $can_revoke,
+    );
+}
+
+/**
  * The cut-off of the sweep: a row whose end (its take-back, else its expiry)
  * lies before it is deleted. Pure.
  *
@@ -280,6 +320,33 @@ function ws_share_link_file_headers($name)
     return array(
         'mime'        => (string) $type['mime'],
         'disposition' => pg_http_content_disposition((string) $name, !empty($type['inline'])),
+    );
+}
+
+/**
+ * The words of the item's mark, its menu and the dialog
+ * (assets/js/workspace.js).
+ *
+ * @return array key => text
+ */
+function ws_share_link_js_strings()
+{
+    return array(
+        'sl_share'        => lang('Share by link…'),
+        'sl_stop'         => lang('Stop sharing'),
+        'sl_stop_ask'     => lang('The address stops working at once.'),
+        'sl_until'        => ws_js_template('Shared by link until {var:1}', 1),
+        'sl_ends'         => lang('Ends after'),
+        'sl_day'          => lang('1 day'),
+        'sl_days'         => ws_js_template('{var:1} days', 1),
+        'sl_create'       => lang('Create'),
+        'sl_shown_once'   => ws_js_template('Shown once. Anyone with this address can read this item until {var:1}.', 1),
+        'sl_address'      => lang('Address'),
+        'sl_copy'         => lang('Copy'),
+        'sl_done'         => lang('Done'),
+        // The end's choices and the one chosen first, not words.
+        'sl_day_choices'  => WS_SHARE_LINK_DAYS,
+        'sl_day_default'  => (string) WS_SHARE_LINK_DEFAULT_DAYS,
     );
 }
 
@@ -602,6 +669,8 @@ function ws_share_link_make($message, $checked, $kind, $item_id, $maker, $now = 
 
     log_activity(lang(array('string' => 'a workspace item was shared by link until {var:1}: {var:2}', 'vars' => array(date('d.m.Y H:i', (int) $checked['expires_at']), (string) $checked['name']))));
 
+    ws_share_link_note($message, $maker, true, (int) $checked['expires_at'], (int) $checked['channel']['id']);
+
     return array('ok' => true, 'error' => '', 'link' => ws_share_link($id), 'url' => ws_share_link_url($token));
 }
 
@@ -634,11 +703,13 @@ function ws_share_link_can_revoke($viewer, $link, $channel, $maker)
  * Takes a link back: the address stops working at once. A link already taken
  * back stays as it was.
  *
- * @param array $link
- * @param int|null $now
+ * @param array      $link
+ * @param int|null   $now
+ * @param array|null $by ws_share_link_maker() of who took it back: the
+ *                       conversation's line names them; none writes no line
  * @return bool whether this call took it back
  */
-function ws_share_link_revoke($link, $now = null)
+function ws_share_link_revoke($link, $now = null, $by = null)
 {
     $now = ($now === null) ? time() : (int) $now;
 
@@ -648,9 +719,142 @@ function ws_share_link_revoke($link, $now = null)
 
     if ($done) {
         log_activity(lang(array('string' => 'a workspace share link was taken back: {var:1}', 'vars' => '#' . (int) $link['id'])));
+
+        if (is_array($by)) {
+            $message = ws_message((int) $link['message_id']);
+
+            if (is_array($message) && ((int) $message['deleted_at'] === 0)) {
+                ws_share_link_note($message, $by, false, (int) $link['expires_at'], (int) $link['channel_id']);
+            }
+        }
     }
 
     return $done;
+}
+
+/**
+ * Who a line names: a person by their tag, an application by the @handle of
+ * its agent in the channel (any agent of it, else its name).
+ *
+ * @param array $maker      ws_share_link_maker()
+ * @param int   $channel_id the agent channel
+ * @return string
+ */
+function ws_share_link_who($maker, $channel_id)
+{
+    if ((string) $maker['kind'] !== 'app') {
+        return '<@user:' . (int) $maker['id'] . '>';
+    }
+
+    $handle = '';
+
+    if (function_exists('ws_agents_ready') && ws_agents_ready()) {
+        $handle = (string) db_value("SELECT a.handle FROM ws_agents a
+            LEFT JOIN ws_channel_agents ca ON ca.agent_id = a.id AND ca.channel_id = '" . (int) $channel_id . "'
+            WHERE a.kind = 'app' AND a.app_id = '" . (int) $maker['id'] . "'
+            ORDER BY (ca.agent_id IS NULL), a.id LIMIT 1");
+    }
+
+    if ($handle !== '') {
+        return '@' . $handle;
+    }
+
+    $app = function_exists('ws_app_sender') ? ws_app_sender((int) $maker['id']) : null;
+
+    return (is_array($app) && ((string) ($app['name'] ?? '') !== '')) ? (string) $app['name'] : '#' . (int) $maker['id'];
+}
+
+/**
+ * Writes the conversation's line of a link made or taken back, in the
+ * message's own channel, and makes open screens read the message again for
+ * its mark. A system line: no agent is woken, no bell line written.
+ *
+ * @param array $message    ws_messages row
+ * @param array $maker      ws_share_link_maker() of who did it
+ * @param bool  $made
+ * @param int   $until_at   the link's end
+ * @param int   $channel_id the agent channel
+ */
+function ws_share_link_note($message, $maker, $made, $until_at, $channel_id)
+{
+    ws_message_system((int) $message['channel_id'], ws_share_link_line($made, ws_share_link_who($maker, $channel_id),
+        (string) $message['file_name'], $until_at));
+
+    if (function_exists('ws_message_touch')) {
+        ws_message_touch((int) $message['id']);
+    }
+}
+
+/**
+ * The share marks of a page of messages, read in one query: per message
+ * with a file, the open link (ws_share_link_item_mark()) or null, and
+ * whether this reader may make one (can_make). Messages outside an agent
+ * channel get nothing.
+ *
+ * @param array   $viewer
+ * @param array[] $rows     ws_messages rows
+ * @param array   $can_post channel id => may post
+ * @return array message id => open, can_make
+ */
+function ws_share_links_map($viewer, $rows, $can_post)
+{
+    if (!ws_share_links_ready()) {
+        return array();
+    }
+
+    $agent = array();
+    $files = array();
+
+    foreach ((array) $rows as $row) {
+        $channel_id = (int) $row['channel_id'];
+
+        if (((int) $row['file_id'] <= 0) || ((int) $row['deleted_at'] > 0)) {
+            continue;
+        }
+
+        if (!array_key_exists($channel_id, $agent)) {
+            $agent[$channel_id] = ws_share_link_agent_channel(ws_channel($channel_id));
+        }
+
+        if ($agent[$channel_id]) {
+            $files[(int) $row['id']] = $row;
+        }
+    }
+
+    if (!$files) {
+        return array();
+    }
+
+    $now = time();
+    $open = array();
+
+    foreach ((array) db_items("SELECT * FROM ws_share_links WHERE message_id IN (" . implode(',', array_keys($files)) . ")
+        AND kind = 'file' AND revoked_at = 0 AND expires_at > '" . $now . "'") as $link) {
+        $open[(int) $link['message_id']] = $link;
+    }
+
+    $maker = ws_share_link_maker((int) $viewer['id']);
+    $out = array();
+
+    foreach ($files as $id => $row) {
+        $channel = $agent[(int) $row['channel_id']];
+        $link = $open[$id] ?? null;
+
+        // A link stays to the file it was made to; a file replaced since
+        // has none.
+        if ($link && ((int) $link['item_id'] !== (int) $row['file_id'])) {
+            $link = null;
+        }
+
+        $past = function_exists('ws_message_in_past') && ws_message_in_past($row);
+
+        $out[$id] = array(
+            'open'     => ($link && !$past) ? ws_share_link_item_mark($link, ws_share_link_can_revoke($viewer, $link, $channel, $maker)) : null,
+            'can_make' => !$link && !$past && !empty($can_post[(int) $row['channel_id']]),
+        );
+    }
+
+    return $out;
 }
 
 /**

@@ -928,6 +928,7 @@
     "Endpoint address": "Uç nokta adresi",
     "Endpoints": "Uç Noktalar",
     "Ends": "Bitiş saati",
+    "Ends after": "Bitiş süresi",
     "Ends at": "Bitiş",
     "Ends at {var:1}": "{var:1} saatinde bitiyor",
     "Ends {var:1}": "{var:1} döngüsünü bitirir",

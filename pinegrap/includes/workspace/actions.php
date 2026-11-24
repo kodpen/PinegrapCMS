@@ -2684,6 +2684,54 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // Share by link: the item of a message of an agent channel gets an
+        // address with an end (share_links.php). The address is answered
+        // this once; the message comes back with its mark.
+        case 'ws_share_link_make':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $maker = ws_share_link_maker((int) $viewer['id']);
+            $checked = ws_share_link_make_check($viewer, $message, 'file', (int) $message['file_id'], (string) ($request['days'] ?? ''), $maker);
+
+            if (!$checked['ok']) {
+                return ws_action_error($checked['error']);
+            }
+
+            $made = ws_share_link_make($message, $checked, 'file', (int) $message['file_id'], $maker);
+
+            if (!$made['ok']) {
+                return ws_action_error($made['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0], 'url' => $made['url'], 'until' => date('d.m.Y H:i', (int) $checked['expires_at'])));
+
+        // Stop sharing: the address stops working at once.
+        case 'ws_share_link_revoke':
+            $link = function_exists('ws_share_link') ? ws_share_link((int) ($request['link_id'] ?? 0)) : null;
+            $channel = $link ? ws_channel((int) $link['channel_id']) : null;
+            $maker = ws_share_link_maker((int) $viewer['id']);
+
+            if (!$link || !is_array($channel) || !ws_can_read_channel($viewer, $channel)) {
+                return ws_action_error(lang('That link could not be found.'));
+            }
+
+            if (!ws_share_link_can_revoke($viewer, $link, $channel, $maker)) {
+                return ws_action_error(lang('Only who made the link or manages the channel can take it back.'));
+            }
+
+            ws_share_link_revoke($link, null, $maker);
+
+            $message = ws_message((int) $link['message_id']);
+            $payload = $message ? ws_message_payloads($viewer, array($message)) : array();
+
+            return ws_action_ok(array('message' => $payload ? $payload[0] : null));
+
         case 'ws_delete':
             $message = ws_message((int) ($request['message_id'] ?? 0));
 

@@ -227,3 +227,20 @@ function test_share_link_answer_counts_an_unknown_token_against_the_address()
 	pg_assert_contains("!== 'open'", $body, 'only an open link answers');
 	pg_assert_contains('pg_file_withheld(', $body, 'a withheld file never leaves');
 }
+
+function test_share_link_line_names_who_the_item_and_the_end()
+{
+	$until = mktime(14, 30, 0, 12, 1, 2026);
+
+	pg_assert_same('<@user:2> shared plan.png by link until 01.12.2026 14:30', ws_share_link_line(true, '<@user:2>', 'plan.png', $until));
+	pg_assert_same('@coordinator stopped sharing plan.png', ws_share_link_line(false, '@coordinator', 'plan.png', $until));
+	pg_assert_same('@a shared my plan.png by link until 01.12.2026 14:30', ws_share_link_line(true, '@a', "my\n  plan.png ", $until), 'the name stays on one line');
+}
+
+function test_share_link_item_mark_carries_the_end_and_never_the_address()
+{
+	$mark = ws_share_link_item_mark(share_links_test_link(array('expires_at' => mktime(9, 0, 0, 1, 2, 2027))), true);
+
+	pg_assert_same(array('id' => 5, 'until_at' => mktime(9, 0, 0, 1, 2, 2027), 'until' => '02.01.2027 09:00', 'can_revoke' => true), $mark);
+	pg_assert_same(false, ws_share_link_item_mark(share_links_test_link(), 0)['can_revoke']);
+}

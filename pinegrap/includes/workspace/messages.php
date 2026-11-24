@@ -214,6 +214,9 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'design'     => (function_exists('ws_design_ai') && ws_design_ai()) ? pg_design_ai_proposals_map($viewer, $ids) : array(),
         // How many earlier versions of an edited file the viewer may list
         // (file_edits.php).
+        // The open share link of a file in an agent channel, and whether the
+        // reader may make one (share_links.php).
+        'share_links' => function_exists('ws_share_links_map') ? ws_share_links_map($viewer, $rows, $can_post) : array(),
         'versions'   => function_exists('ws_file_versions_map') ? ws_file_versions_map(array_map(function ($row) {
             return ((int) $row['file_id'] > 0) ? (int) $row['id'] : 0;
         }, $rows), (int) $viewer['id']) : array(),
@@ -536,6 +539,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 'versions' => (int) ($extra['versions'][$id] ?? 0),
                 // A recording's length, waveform and transcript (voice.php).
                 'voice'    => (($kind === 'audio') && function_exists('ws_voice_panel_present')) ? ws_voice_panel_present((int) $row['file_id']) : null,
+                // In an agent channel: the open link to it (its mark, Stop
+                // sharing) and can_make (Share by link...); null elsewhere.
+                'share'    => $extra['share_links'][$id] ?? null,
             );
         }
     }
