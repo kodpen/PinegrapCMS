@@ -1055,6 +1055,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/payment-gateway-secrets.md: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #3058; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit
 - commerce/payment-iyzico-refusals.md: iyzico card refusals (PR #8517): the visitor sentence by error code, the Site Log line with order, payment id, error group and mdStatus, the 3-D Secure return stopping at a failed verification
 - commerce/payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
+- commerce/pick-pack-short-count.md: Short pick's count fix (#11346): drawer switch asks the shelf figure, the location gets max(0, shelf − units held by paid unsent orders), the count movement note, the held query
 - commerce/pick-pack-tables.md: Pick and pack's four tables and their keys, the reserved `lines` column, what an order's deletion removes, the "Packing only" right user.manage_packing
 - commerce/pick-pack.md: Pick and pack start file: shelf address, Orders › Pick waves, Orders › Pack barcode check, label on a checked pack, Short…, Packing card, API; K1-K16 with PRs, what is not built
 - commerce/place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country
@@ -1082,7 +1083,6 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/tr-place-list.md: The Turkish place list (includes/geo/places/TR.json, 81 provinces, 973 districts): lookup, the city box suggester, the spelling written at save, the order screen's note for an unlisted district
 - commerce/user-delete-store-credit.md: Deleting a user account voids its open store credit (note "Account deleted", audit revoke) and releases the closed cards; a card that lost the void race stays bound (#9016)
 - commerce/walk-in-queue-decisions.md: Walk-in queue decisions: owner polls 201 and 207, the architect's tables, place, roles and screen parts, the words on screen, what binds the code, what was left out
-- commerce/walk-in-queue-places.md: Calendars › Queue (WQ2): the places list, a place's Set-up (six folded rows) and Desks tabs, the place's JSON keys and bounds, Open the queue's checks, Delete and Remove, the QR poster
 - commerce/walk-in-queue-store.md: Walk-in queue tables waiting_places, waiting_desks, waiting_tickets (11.0.266, WQ1b): what each holds, states, the keep-period clear, erase, export, inventory, contact merge
 - commerce/wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch
 - core/application-review-my-reviews.md: "My reviews" (AR3b): opened by programme membership with no Forms right, the queue, the scoring screen, blind review, "I know this applicant", reminders 3 and 1 days before a round's end
@@ -1462,6 +1462,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean
 - workflow/bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean
 - workflow/bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean
+- workflow/bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean
 - workflow/bug-hunt-back-in-stock-notices.md: Bug hunt of back-in-stock notices and the event waiting list (PR #10712): three faults fixed, one issue opened (#10713), what was read clean
 - workflow/bug-hunt-cart-recovery-figures.md: Bug hunt of the Recovered carts counting side (2026-11-20): the two faults fixed, the three decision issues opened, what was read clean
 - workflow/bug-hunt-channel-commands-server.md: Bug hunt of the channel commands' server side (commands.php, command_registry.php, app_commands.php, quick_edit.php, changes.php): the three faults fixed, the issue opened, what was read clean

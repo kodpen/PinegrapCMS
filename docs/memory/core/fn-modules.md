@@ -289,7 +289,7 @@ description: Generated from the module field of the memory files: each includes/
 - `order_status`: [[shipworks-order-feed]]
 - `order_view`: [[order-screen-head]], [[order-screen-redraw-rules]], [[order-screen-shipment-card]], [[order-screen-shipping-input]], [[order-screen-side-panel]], [[order-screen-wide-layout]], [[order-view-screen-rows]], [[print-order-shipping-card]]
 - `output`: [[agent-guide-panel-door]], [[designer-left-panel-hide]], [[list-status-words]], [[look-erp-lists]], [[look-shared-buttons]], [[main-menu-communication-icon]], [[main-menu-drawer-only]], [[main-menu-icon-cite]], [[main-menu-icon-motion]], [[main-menu-icon-rows]], [[main-menu-icons]], [[main-menu-system-tools-row]], [[panel-old-browser-notice]], [[picture-text-auto-panel]], [[settings-pane-stale-page]]
-- `pack`: [[pick-pack-pack]]
+- `pack`: [[pick-pack-pack]], [[pick-pack-short-count]]
 - `page_audience`: [[audience-conditions]]
 - `page_bulk`: [[page-bulk-edit]], [[page-bulk-edit-dialog]]
 - `page_bundles`: [[bug-hunt-areas-release-bundle]], [[release-bundle]], [[release-bundle-dialogs]], [[release-bundle-publish]], [[release-bundle-publish-errors]], [[release-bundle-tables]], [[release-bundle-time]]
