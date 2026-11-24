@@ -280,6 +280,10 @@ function pg_panel_actions()
         'write_permissions_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_write_permissions_repair', 'exempt' => true, 'token' => true, 'write' => true),
         'purge_cache' => array('file' => 'system.php', 'handler' => 'pg_panel_purge_cache', 'exempt' => true, 'token' => true, 'write' => true),
         'ca_bundle_update' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_update', 'exempt' => false, 'token' => true, 'write' => true),
+        // The Security Scan section of Site Settings > Firewall and HTTPS:
+        // Manager and above; the handlers check the role and the token.
+        'security_scan_step' => array('file' => 'security.php', 'handler' => 'pg_panel_security_scan_step', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
+        'security_scan_act' => array('file' => 'security.php', 'handler' => 'pg_panel_security_scan_act', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
     );
 
     // Live chat in the panel is open to every backend role, role 3 included;

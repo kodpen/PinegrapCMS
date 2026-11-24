@@ -69,7 +69,7 @@ function settings_firewall_fold_test_rows()
 
 function test_settings_firewall_fold_order_and_names()
 {
-	pg_assert_same(array('headers', 'waf', 'limits', 'bots', 'iplists', 'countries', 'proxies', 'waf-logs'), pg_firewall_fold_order(), 'the rows in the description\'s order');
+	pg_assert_same(array('headers', 'waf', 'scan', 'limits', 'bots', 'iplists', 'countries', 'proxies', 'waf-logs'), pg_firewall_fold_order(), 'the rows in the description\'s order');
 
 	$names = array();
 
@@ -80,7 +80,7 @@ function test_settings_firewall_fold_order_and_names()
 		pg_assert_false(stripos($face['name'], 'Enable') === 0, $key . ': a name never starts with Enable');
 	}
 
-	pg_assert_same(array(lang('HTTPS'), lang('Firewall'), lang('Limits'), lang('Bots'), lang('Addresses'), lang('Countries'), lang('Trusted proxies'), lang('Logs')), $names, 'the rows\' names');
+	pg_assert_same(array(lang('HTTPS'), lang('Firewall'), lang('Security Scan'), lang('Limits'), lang('Bots'), lang('Addresses'), lang('Countries'), lang('Trusted proxies'), lang('Logs')), $names, 'the rows\' names');
 }
 
 function test_settings_firewall_fold_lines()

@@ -78,6 +78,30 @@ function pg_security_file_reason($kind)
 }
 
 /**
+ * What to do about a file finding, in words, for the screen.
+ *
+ * @param string $kind
+ * @return string
+ */
+function pg_security_file_advice($kind)
+{
+    switch ((string) $kind) {
+        case 'file_php_unknown':
+            return lang('If nobody on your team put this file here, quarantine it and change the passwords of the staff and hosting accounts.');
+        case 'file_upload_executable':
+            return lang('Uploads never need a name the server can run: quarantine the file, then look at who uploaded it.');
+        case 'file_picture_php':
+            return lang('A real picture never holds PHP code: quarantine the file.');
+        case 'file_server_config':
+            return lang('Compare the file with what your team or host set. If nobody changed it, put back the earlier copy; if the change is expected, ignore this finding.');
+        case 'file_shell_mark':
+            return lang('Quarantine the file at once, change every password of the site and the hosting account, and ask your host to look for other changed files.');
+    }
+
+    return '';
+}
+
+/**
  * The extensions PHP may run a file under, whatever handler a host mapped.
  *
  * @return string[]
@@ -477,8 +501,8 @@ function pg_security_folder_done($folder, $cursor)
 /**
  * Folders of the software folder the walk never enters: the upload folders
  * (walked on their own, as they may live elsewhere), the backups and a
- * restore's unpacked copy (archives and copies the site does not run) and the
- * Git folder.
+ * restore's unpacked copy (archives and copies the site does not run), the
+ * quarantine folder (files a person moved away) and the Git folder.
  *
  * @param string $place
  * @return bool
@@ -487,7 +511,7 @@ function pg_security_walk_skipped($place)
 {
     // data/temp/restore_<id> holds a backup being restored
     // (pg_restore_work_path()), the same content as data/backups.
-    return in_array((string) $place, array('.git', 'data/backups', 'data/files', 'data/layouts'), true)
+    return in_array((string) $place, array('.git', 'data/backups', 'data/files', 'data/layouts', PG_SECURITY_QUARANTINE_FOLDER), true)
         || (preg_match('#^data/temp/restore_[^/]+$#', (string) $place) === 1);
 }
 

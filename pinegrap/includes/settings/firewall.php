@@ -145,6 +145,40 @@ $firewall_parts['waf'] = array('html' => '
         </div>
     </div>') + pg_firewall_fold_waf(!empty($waf_schema_ready), $waf_enabled_checked !== '', $waf_mode_block_checked !== '' ? 'block' : 'monitor', $output_waf_self_ban !== '');
 
+// ── Security Scan ──
+// The findings of the scan (includes/fn/security_scan_section.php) and its
+// last run. Nothing here is saved by the pane's form: Scan now and each
+// finding's actions go to api.php (security_scan_step, security_scan_act).
+$scan_ready = pg_security_finding_ready();
+$scan_rows = $scan_ready ? pg_security_section_rows() : array();
+$scan_state = $scan_ready ? pg_security_scan_stored_state() : pg_security_scan_state(null);
+$scan_running = ((int) $scan_state['started'] > 0);
+$scan_when = ((int) $scan_state['last_finished'] > 0) ? strip_tags(get_relative_time(array('timestamp' => (int) $scan_state['last_finished'], 'mid_sentence' => true))) : '';
+
+$firewall_parts['scan'] = array('html' => '
+    <div id="pgset-scan" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Security Scan') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div class="col-12">
+                        <div class="form-text mt-0">' . lang('Looks each day for planted files, foreign scripts in stored content, new staff accounts and keys, and risky server settings. It only reads: a file moves only when you choose Quarantine.') . '</div>
+                    </div>' . ($scan_ready ? '
+                    <div class="col-12">
+                        <div class="d-flex flex-wrap align-items-center gap-3">
+                            <span class="pg-text-2" id="pg_scan_run_line" role="status" aria-live="polite">' . pg_security_section_run_line($scan_state) . '</span>
+                            <button type="button" class="pg-button pg-button-quiet pg-button-sm" id="pg_scan_now" data-pg-scan-failed="' . h(lang('The scan could not go on. Reload the page and try again.')) . '"><i class="bi bi-arrow-repeat" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Scan now') . '</span></button>
+                        </div>
+                    </div>
+                    <div class="col-12" id="pg_scan_list">' . pg_security_section_list($scan_rows) . '</div>' : '
+                    <div class="col-12"><p class="pg-text-2 mb-0">' . lang('The scan is ready once the upgrade has run.') . '</p></div>') . '
+                </div>
+            </div>
+        </div>
+    </div>') + pg_firewall_fold_scan($scan_ready, (int) $scan_state['last_finished'], $scan_running, pg_security_section_open_counts($scan_rows), $scan_when);
+
 // ── Limits ──
 // Rate limiting, the in-flight cap and the automatic bans: every limit the
 // firewall puts on one address. firewall.save.php writes them as before.
