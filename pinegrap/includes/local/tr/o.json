@@ -982,6 +982,7 @@
     "Only a completed order can be returned.": "Yalnızca tamamlanmış bir sipariş iade edilebilir.",
     "Only a condition or a loop holds steps of its own.": "Yalnızca bir koşul ya da döngü kendi adımlarını içerebilir.",
     "Only a custom form layout can be converted.": "Yalnızca özel form düzeni dönüştürülebilir.",
+    "Only a data layer takes the data operation.": "data işlemini yalnızca bir veri katmanı alır.",
     "Only a designer can load an earlier revision.": "Önceki bir sürümü yalnız tasarımcı yükleyebilir.",
     "Only a designer can move pages between designs.": "Sayfaları tasarımlar arasında yalnızca bir tasarımcı taşıyabilir.",
     "Only a designer can open a classic style in the Page Design Studio.": "Klasik bir stili Sayfa Tasarım Stüdyosu'nda yalnızca tasarımcı açabilir.",
