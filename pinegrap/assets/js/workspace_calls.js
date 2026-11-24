@@ -1431,7 +1431,7 @@
         mine.state = el('span', 'ws-call-state');
         bar.appendChild(mine.state);
 
-        mine.sizeButton = makeButton('pg-icon-button', '', 'bi-arrows-angle-expand', t('call_larger'));
+        mine.sizeButton = makeButton('pg-icon-button ws-call-not-popped', '', 'bi-arrows-angle-expand', t('call_larger'));
         mine.sizeButton.addEventListener('click', function () {
             mine.size = mine.sizeButton.dataset.next || 'large';
             choicesSave({ size: mine.size });
@@ -1440,7 +1440,7 @@
         bar.appendChild(mine.sizeButton);
 
         if (document.fullscreenEnabled && win.requestFullscreen) {
-            mine.fullButton = makeButton('pg-icon-button', '', 'bi-fullscreen', t('call_full_screen'));
+            mine.fullButton = makeButton('pg-icon-button ws-call-not-popped', '', 'bi-fullscreen', t('call_full_screen'));
             mine.fullButton.setAttribute('aria-pressed', 'false');
             mine.fullButton.addEventListener('click', function () {
                 if (document.fullscreenElement) {
@@ -1452,9 +1452,106 @@
             bar.appendChild(mine.fullButton);
         }
 
-        bar.appendChild(menuDraw(mine));
+        // Pop out, where the browser has Document Picture-in-Picture.
+        if (popState(!!window.documentPictureInPicture, false, mine.kind, 1).show) {
+            var pop = makeButton('pg-icon-button ws-call-not-popped', '', 'bi-pip', t('call_pop_out'));
+
+            pop.setAttribute('aria-label', t('call_pop_out'));
+            pop.addEventListener('click', function () { popOut(mine); });
+            bar.appendChild(pop);
+        }
+
+        var menu = menuDraw(mine);
+
+        menu.classList.add('ws-call-not-popped');
+        bar.appendChild(menu);
 
         return bar;
+    }
+
+    // Pop out: the call window moves into a Document Picture-in-Picture
+    // window, which stays above other windows and tabs. The same nodes go
+    // there, so their handlers and connections stay; it shows the tiles,
+    // Mute, camera and Hang up (.is-popped hides the rest). Closing it
+    // brings the window back to the page.
+    function popOut(mine) {
+        var size = popState(true, !!mine.pip, mine.kind, 1 + Object.keys(mine.peers).length);
+
+        if (!size.show) {
+            return;
+        }
+
+        if (document.fullscreenElement && (document.fullscreenElement === mine.node)) {
+            document.exitFullscreen().catch(function () {});
+        }
+
+        window.documentPictureInPicture.requestWindow({ width: size.width, height: size.height }).then(function (pip) {
+            if ((call !== mine) || !mine.node) {
+                pip.close();
+                return;
+            }
+
+            popDocument(pip.document);
+            mine.pip = pip;
+            mine.node.classList.add('is-popped');
+            pip.document.body.appendChild(mine.node);
+            mediaReplay(mine);
+            pip.addEventListener('pagehide', function () { popBack(mine); });
+        }).catch(function () {});
+    }
+
+    // The small window closed (by the person or the browser): the call
+    // window returns to the page, unless the call ended with it.
+    function popBack(mine) {
+        if (!mine.pip) {
+            return;
+        }
+        mine.pip = null;
+
+        if ((call !== mine) || !mine.node) {
+            return;
+        }
+        mine.node.classList.remove('is-popped');
+        document.body.appendChild(mine.node);
+        mediaReplay(mine);
+        stageDraw(mine);
+    }
+
+    // The small window's page gets this page's theme and language (the
+    // root's attributes) and its stylesheets: a linked sheet by its
+    // address, an inline one by its rules.
+    function popDocument(doc) {
+        Array.prototype.forEach.call(document.documentElement.attributes, function (one) {
+            doc.documentElement.setAttribute(one.name, one.value);
+        });
+        Array.prototype.forEach.call(document.styleSheets, function (sheet) {
+            var node;
+
+            if (sheet.href) {
+                node = doc.createElement('link');
+                node.rel = 'stylesheet';
+                node.href = sheet.href;
+            } else {
+                node = doc.createElement('style');
+
+                try {
+                    node.textContent = Array.prototype.map.call(sheet.cssRules, function (rule) { return rule.cssText; }).join('\n');
+                } catch (error) {
+                    return;
+                }
+            }
+            doc.head.appendChild(node);
+        });
+        doc.body.className = 'ws-call-pip';
+    }
+
+    // A moved picture may stop; each plays on where it lands.
+    function mediaReplay(mine) {
+        Array.prototype.forEach.call(mine.node.querySelectorAll('video'), function (video) {
+            if (video.srcObject && video.paused) {
+                video.play().catch(function () {});
+            }
+        });
     }
 
     // The window's menu: Hide my picture / Show my picture, which hides
@@ -1627,6 +1724,13 @@
         [mine.muteButton, mine.cameraButton, mine.shareButton, mine.handButton, devices].forEach(function (node) {
             if (node) {
                 node.setAttribute('aria-label', node.title);
+            }
+        });
+
+        // Popped out, the small window keeps Mute, camera and Hang up.
+        [mine.shareButton, mine.handButton, devices, panel].forEach(function (node) {
+            if (node) {
+                node.classList.add('ws-call-not-popped');
             }
         });
 
@@ -2181,6 +2285,12 @@
 
         if (document.fullscreenElement && mine.node && (document.fullscreenElement === mine.node)) {
             document.exitFullscreen().catch(function () {});
+        }
+
+        // Its small window goes with the call (popBack() finds it ended).
+        if (mine.pip) {
+            mine.pip.close();
+            mine.pip = null;
         }
 
         if (mine.node) {

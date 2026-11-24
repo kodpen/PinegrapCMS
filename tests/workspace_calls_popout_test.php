@@ -72,3 +72,24 @@ JS
 	pg_assert_same(array(480, 420), array($got['four']['width'], $got['four']['height']), 'a group on video: room for a grid of four');
 	pg_assert_same(array(320, 180), array($got['voice']['width'], $got['voice']['height']), 'a voice call: names and tools only');
 }
+
+function test_workspace_calls_popout_wiring()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_calls.js');
+
+	pg_assert_true(strpos($js, 'documentPictureInPicture.requestWindow(') !== false, 'the pop-out is a Document Picture-in-Picture window');
+	pg_assert_true(strpos($js, "'pagehide'") !== false && strpos($js, 'popBack(') !== false, 'closing the small window returns the call to the page');
+	pg_assert_true(strpos($js, "t('call_pop_out')") !== false, 'the head button is labelled Pop out');
+	pg_assert_true(strpos($js, 'mine.pip.close()') !== false, 'hanging up closes the small window');
+
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/calls.php');
+
+	pg_assert_true(strpos($php, "'call_pop_out'") !== false, 'the label is sent to the browser translated');
+
+	foreach (array('assets/css/backend.src.css', 'assets/css/workspace_guest.css') as $sheet) {
+		$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $sheet);
+
+		pg_assert_true(strpos($css, '.ws-call.is-popped') !== false, $sheet . ' fills the small window with the call');
+		pg_assert_true(strpos($css, '.ws-call.is-popped .ws-call-not-popped') !== false, $sheet . ' hides what the small window leaves out');
+	}
+}

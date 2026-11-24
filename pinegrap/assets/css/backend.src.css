@@ -20886,6 +20886,31 @@ a.ws-chip-message:hover,
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+/* Popped out: the call window fills its small Picture-in-Picture window,
+   which shows the tiles, Mute, camera and Hang up only. */
+.ws-call-pip {
+  margin: 0;
+  overflow: hidden;
+  background: var(--pg-bg-body);
+}
+.ws-call.is-popped,
+.ws-call.is-popped.is-stage {
+  position: static;
+  inset: auto;
+  width: 100%;
+  height: 100vh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.ws-call.is-popped .ws-call-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.ws-call.is-popped .ws-call-not-popped {
+  display: none;
+}
 /* The head's Join button in a narrow head: its words give way first. */
 @container (max-width: 40rem) {
   .ws-head-channel .ws-call-join {
