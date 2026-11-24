@@ -20757,6 +20757,26 @@ button.ws-file-name {
   flex-direction: column;
   gap: .75rem;
 }
+/* The Notes tab (PGWsChannelNotes.tab()): its bar, then the Files tab's
+   rows with the note icon in place of the extension. */
+.ws-pane-notes .ws-cn-bar {
+  flex-wrap: nowrap;
+}
+.ws-pane-notes .ws-cn-bar .ws-bar-search {
+  min-width: 0;
+  flex: 0 1 18rem;
+}
+.ws-cn-row .ws-file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: none;
+  color: inherit;
+  text-align: start;
+}
+.ws-cn-row .ws-cn-row-icon {
+  color: var(--ws-accent);
+}
 .ws-file-group {
   padding: .75rem .9rem;
   border: 1px solid var(--pg-border-color);

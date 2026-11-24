@@ -4729,6 +4729,31 @@ function ws_handle_action($action, $request)
             // A page at a time: before is where the last page ended.
             return ws_action_ok(ws_channel_files_page($viewer, $channel['id'], (int) ($request['before'] ?? 0)));
 
+        case 'ws_channel_notes':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            // The Notes tab: a page at a time, the latest change first; after
+            // and after_id are where the last page ended.
+            $after = ((int) ($request['after_id'] ?? 0) > 0)
+                ? array('group' => 0, 'updated_at' => (int) ($request['after'] ?? 0), 'id' => (int) $request['after_id'])
+                : null;
+            $page = ws_note_channel_page($viewer, $channel, array(
+                'search' => (string) ($request['q'] ?? ''),
+                'after'  => $after,
+                'limit'  => 50,
+            ));
+
+            return ws_action_ok(array(
+                'notes'    => $page['rows'],
+                'total'    => (int) $page['total'],
+                'after'    => ($page['next'] !== null) ? (int) $page['next']['updated_at'] : 0,
+                'after_id' => ($page['next'] !== null) ? (int) $page['next']['id'] : 0,
+            ));
+
         case 'ws_channel_tasks':
             $channel = ws_action_channel($viewer, $request);
 
