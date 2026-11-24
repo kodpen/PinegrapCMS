@@ -285,12 +285,13 @@ function ws_claude_connection_card_html($v)
 /**
  * The routine's fields posted from Claude's page on Connections, in the
  * shape ws_claude_settings_save() takes: the switch, the application and
- * the summary as stored, so the save writes only the address and the token.
- * Pure.
+ * the summary as stored, so the save writes only the address and the token;
+ * app_kept says the application is passed on, not chosen, so a linked one
+ * deleted in Application Access does not refuse the save. Pure.
  *
  * @param array $source $_POST
  * @param array $config ws_claude_config()
- * @return array as ws_claude_settings_input()
+ * @return array as ws_claude_settings_input(), with app_kept true
  */
 function ws_claude_routine_input($source, $config)
 {
@@ -301,6 +302,7 @@ function ws_claude_routine_input($source, $config)
     return array(
         'enabled'         => !empty($config['enabled']),
         'app_id'          => (int) ($config['app_id'] ?? 0),
+        'app_kept'        => true,
         'routine_url'     => is_scalar($url) ? trim((string) $url) : '',
         'token'           => is_scalar($token) ? trim((string) $token) : '',
         'token_clear'     => is_scalar($clear) && ((string) $clear !== '') && ((string) $clear !== '0'),

@@ -69,7 +69,7 @@ function test_connections_claude_page_input_writes_routine_only()
 	), $config);
 
 	pg_assert_same(array(
-		'enabled' => true, 'app_id' => 7, 'routine_url' => 'https://api.anthropic.com/v1/claude_code/routines/trig_2/fire',
+		'enabled' => true, 'app_id' => 7, 'app_kept' => true, 'routine_url' => 'https://api.anthropic.com/v1/claude_code/routines/trig_2/fire',
 		'token' => 'tok', 'token_clear' => true, 'summary_hour' => null, 'summary_channel' => 0,
 	), $input, 'the switch, the application and the summary as stored');
 

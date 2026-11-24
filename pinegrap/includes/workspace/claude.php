@@ -2493,6 +2493,20 @@ function ws_claude_settings_changed($input, $config, $summary = null)
 }
 
 /**
+ * Is the application of a save checked against Application Access? Not
+ * when the save only passes the stored one on (Claude's page on
+ * Connections, app_kept): a linked application deleted there would refuse
+ * the routine's address with a field that page does not have. Pure.
+ *
+ * @param array $input ws_claude_settings_input() or ws_claude_routine_input()
+ * @return bool
+ */
+function ws_claude_settings_app_checked($input)
+{
+    return empty($input['app_kept']) && ((int) ($input['app_id'] ?? 0) > 0);
+}
+
+/**
  * Checks the card's connection and stores it: the switch, the application,
  * the routine's address and token, and the daily summary. Everything is
  * checked before anything is written; a refusal names its field.
@@ -2504,7 +2518,7 @@ function ws_claude_settings_save($input)
 {
     $refused = array();
 
-    if (($input['app_id'] > 0) && !ws_claude_app($input['app_id'])) {
+    if (ws_claude_settings_app_checked($input) && !ws_claude_app($input['app_id'])) {
         $refused['app_id'] = lang('That application could not be found.');
     }
 
