@@ -54,6 +54,7 @@
 - bug-hunt-areas-main-menu-redraw.md: The bug hunt of the main menu after its redraw (MI1-MI3, MZ1), 2026-11-24: the rail's row names for a screen reader, the phone drawer's focus, what read clean
 - bug-hunt-areas-member-accounts.md: Bug hunt area 21, member accounts (2026-11-24): sign-up, sign-in, reset, e-mail change, blocked and deleted members; the four faults fixed, what read clean, what was left
 - bug-hunt-areas-migration-steps-11.md: Bug hunt of the 2026.11.0 migration steps (area 13, #11376): no fault; run twice, cut off at 57 points, paused, upgraded from a real 2026.4.10 install, tables of schema-46 to -49 matched
+- bug-hunt-areas-multi-language-pages.md: Bug hunt 32, multi-language pages (#11423): the language lost on a payment's return and in the form sender's subject, what was read clean, what needs an order language column
 - bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet [decision: here]
 - bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-phone-dark-new-screens.md: Bug hunt 15 (2026-11-24): the 2026.11.0 screens at 390 px and in the dark theme on a sandbox; the five faults fixed in #11382, what read clean, what was not reached
@@ -70,8 +71,10 @@
 - bug-hunt-areas-rights-new-screens.md: Bug hunt of rights by role on the 2026.11.0 screens (volunteers, queue, pick and pack, Hot Contacts, launch journey, share links, prototype settings): two faults fixed in #11374
 - bug-hunt-areas-scheduled-tasks.md: The bug hunt in the scheduled tasks (area 19, #11394): the cron entry and its jobs, what was fixed, what was read clean, what is left
 - bug-hunt-areas-settings-save.md: The owner's backend sweep of 2026-11-22: every Site Settings pane saved unchanged on the sandbox; what an unchanged save rewrites and why that is no fault; the one fault it found
+- bug-hunt-areas-shipping-rates.md: The bug hunt of shipping rates (area 34, 2026-11-24): zones, base rate bands, free shipping offers, a method for an address it does not serve; three faults fixed, what was read clean
 - bug-hunt-areas-site-search.md: Bug hunt of the visitor site search (area 20, 2026-11-24): four faults fixed in the hunt's PR, what was read clean, and the noindex question left as it is
 - bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean [decision: decisions-made-product-19.md]
+- bug-hunt-areas-subscriptions-recurring.md: The bug hunt of subscriptions and recurring orders (area 33, 2026-11-24): renewals, retries, pause and cancel dates, price changes, card tokens, mails; what it fixed, what was read clean
 - bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean [decision: here]
 - bug-hunt-areas-workspace-look-regressions.md: Hunt 16, 2026-11-24: what the Workspace's move to the panel look (WL2-WL7) broke, what was fixed, what read clean
 - bug-hunt-areas-workspace-phone.md: The bug hunt of a Workspace channel at phone width after the writing box change (#10495), 2026-11-20: what it fixed, the issues it opened, what read clean

@@ -309,6 +309,7 @@
 - payment-iyzico-threeds-return.md: How the iyzico card driver's complete() finishes the 3-D Secure return (PR #1710): the iyzipay_3ds_state row and its claim, the instalment limit, the amount check, the totals the order keeps (#1422)
 - payment-method-lists.md: One list of checkout payment methods (pg_payment_checkout_methods(), PR #1743): screens that read it, what a redirect driver still needs by hand, the Pay With Iyzico gaps kept [decision: decisions-made-product.md]
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines [decision: here]
+- payment-return-language.md: The address a payment service sends the visitor back to carries the language of the page they paid from (pg_tr_script_url()), so completion, receipt mail and receipt page are in it (#11423)
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
 - paypal-express-return-query.md: How the classic PayPal Express Checkout return in submit_order.php reads token and PayerID: one string each, an array or a missing one empty (#5270)
 - pick-pack-label-gate.md: The site switch "Create a label only after the pack is checked" (PP4b): its config_text row, the one check every outbound label path reads, the not_packed refusal and API 409 pack_not_checked
@@ -414,6 +415,7 @@
 - shipping-label-checkout-rate.md: Checkout live rate of a method linked to a label service (R3): get_shipping_realtime_rate() branch, parcel, cache rows, stale fallback, purge, currency, no price = not offered [decision: decisions-made-product-39.md]
 - shipping-method-label-link.md: A shipping method linked to a carrier label service (11.0.177, #8403): label_driver and label_service, the Carrier Service picker, the carrier it sets, API fields, Create Label [decision: decisions-made-schema-13.md]
 - shipping-panel-terms.md: The Turkish words the shipping screens use for fees, handling and transit days, cut-offs and adjustment direction, and which shared keys carry them (#5556, #5557, #5567)
+- shipping-rate-paths.md: Where a recipient's shipping cost is worked out (five copies of one formula), which one charges, how the cart's Checkout button re-checks a chosen method, and how a zone matches a state by id
 - shipping-report.md: Shipping report (view_shipping_report.php): which orders it counts, how its period is read and kept, the longest period, the figures and line over its table
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers [decision: decisions-made-product-12.md, decisions-made-product-7.md]
 - shipworks-order-feed.md: ShipWorks feed (getcount, getorders): which orders it sends (complete, exported, never cancelled), the exported mark's Audit trail line, no order status sent (#9138, #9142)
@@ -444,6 +446,7 @@
 - storefront-api-missing-fields.md: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) answer malformed fields in JSON, never a warning or a 500; get_product answers enabled products only
 - storefront-pack-decisions.md: Lasting decisions of the storefront pack (reviews, wishlist, back in stock, bundles; 2026-10-19, finished with #2902) and where each part is documented
 - subscriptions-account.md: The customer's subscriptions in My Account (slice 5a): the my_account "subscriptions" section, pause/resume/cancel at period end/update card, ownership, events, the job ending cancelled rows [decision: decisions-made-product-5.md]
+- subscriptions-completion-paths.md: Which order completion makes a store-run subscription (the visitor's return or the payment service's message, under one lock), and what a renewal payment no row waits for does (#11422)
 - subscriptions-decisions.md: Why driver subscriptions are built as they are (approved 2026-10-19, #3183): store-run renewals first, legacy profiles untouched, renewals as normal orders, no proration; the PRs of each slice [decision: decisions-made-product-5.md]
 - subscriptions-iyzico.md: iyzico store-run subscriptions (PR #3249, decided in #3183): the stored-card renewals switch, card_ref, charge_renewal, update_card, subscription_cancel, the checkout row [decision: decisions-made-product-5.md]
 - subscriptions-later-start.md: Recurring lines that start after the order day on the driver gateways (PR #3378, decided in #3310): their row on today's card, the first charge on the start date, the nothing-today order refused [decision: decisions-made-product-6.md]

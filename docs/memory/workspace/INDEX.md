@@ -93,6 +93,7 @@
 - calls-share-stage.md: How a Workspace call shows shared screens (CL4 #10908, CN4): the stage, the tile rail, other shares as rail tiles a click swaps, phone layout, smaller and full screen, the sharer's notice
 - calls-share.md: Screen sharing in a Workspace call (CL4 #10908, CN4): several shares at once, one a member, by share/unshare marks, a share ends when its sharer leaves, the screen line, the share button
 - calls-signalling.md: Which live read carries a Workspace call (CL1 census): ws_sync and the guest page's state, the data/temp/ws_calls_live stamp that keeps an idle channel's cost, how often a browser in a call looks
+- calls-window.md: The Workspace call window's head (CN2): Make larger / Make smaller remembered, Full screen of the whole window, a tile pinned large, Hide my picture in the window's menu
 - canvas-binding-line.md: An application's binding of a table to a canvas shows in the channel as a line with Undo (CO7d): the system line and its ws_refs, the reader's words, who may undo, what Undo puts back
 - canvas-bridge.md: A live page's data bridge (#8947): page to shell to panel to site and back, the message shape, the canvas named by the card and never the page, the bounds and the stop, the who call, the proofs
 - canvas-card.md: The joined card of a canvas with a drawing and a page (CO7c, #9274): file.joined, part chips, the Drawing / Page switch, one Versions drawer with Show and Put back, which file each panel action reads [decision: decisions-made-workspace-20.md]
