@@ -670,7 +670,7 @@
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
 - server-paged-lists.md: Lists the server searches and pages (list table driver): which moved off DataTables' server paging, what the search box finds (words, labels, Turkish I), the row cells [decision: decisions-made-product-10.md, decisions-made-product-22.md]
-- settings-accounts-rows.md: Site Settings › Accounts and sign-in as folded rows: order, each row's line, Sign-in attempts and Deleting many at once on rows of their own, providers as connect rows, anchors
+- settings-accounts.md: Site Settings › Accounts and sign-in as folded rows: order, each row's line, Sign-in attempts and Deleting many at once on rows of their own, providers as connect rows, anchors
 - settings-ai-voice-rows.md: Pinegrap AI's and Voice's opened rows in Site Settings › Assistants and agents (AT5): one column, the fold Application, their drawers, what a test pins
 - settings-appearance-footer-links.md: Footer links of Private label branding (Site Settings › Appearance) as list rows with a drawer each; Move up, Move down, Remove; the order function; the pane drawn after a save
 - settings-appearance.md: Site Settings › Appearance as folded rows: Panel look (acrylic, Panel CSS), Dashboard, Rich-text editor, Private label branding; who sees which row, what moved, what stayed
@@ -694,7 +694,8 @@
 - settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed [decision: here]
 - settings-filter-autofill.md: Settings category screens: a password manager wrote the saved username ("admin") into the toolbar filter and every section card vanished; the token and the focus guard that stop it (PR #1700)
 - settings-firewall-https-logs.md: Site Settings › Firewall and HTTPS, the HTTPS row (Secure Mode first, the headers, the policy) and the Logs row (both logs, fail2ban files under a details): lines, fields, anchors
-- settings-firewall.md: Site Settings › Firewall and HTTPS as folded rows: the eight rows in order and their state lines, the Limits row, the bans drawer, the segmented controls, what stayed (ids, names, the save)
+- settings-firewall-limits.md: Firewall and HTTPS › Limits row: Rate limiting, Open at Once, Automatic temporary bans, value rows Sign-in attempts and Form submissions with Change to Accounts and sign-in
+- settings-firewall.md: Site Settings › Firewall and HTTPS as folded rows: the eight rows in order and their state lines, the Limits row, the bans drawer, the segmented controls, what stayed (ids, names, the save) [decision: decisions-made-product-97.md]
 - settings-fold-rows.md: Folded rows of a Site Settings pane (Assistants and agents, AT1): pg_settings_fold(), each part's state line, what opens a row, the cards kept whole inside the rows [decision: decisions-made-panel-11.md, decisions-made-panel-12.md]
 - settings-folder-pickers.md: Site Settings and page folder pickers leave out the Workspace (settings also the Recycle Bin); settings saves refuse them; a stored one is shown marked
 - settings-general.md: Site Settings › General as folded rows: Organization, Site address (Hostname, Other host names and HTTPS value rows, Outgoing proxy), Software, Date and time; what moved, what stayed [decision: here]
