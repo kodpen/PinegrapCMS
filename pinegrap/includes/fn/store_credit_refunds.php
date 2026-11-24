@@ -65,7 +65,7 @@ function pg_credit_refund_bonus()
 
 /**
  * What the credit card holds for a refund: the refund and the bonus on it,
- * rounded with round() at the smallest unit. A bonus of 0, empty or negative
+ * rounded half away from zero at the smallest unit (pg_percent_of()). A bonus of 0, empty or negative
  * adds nothing; it is capped like the setting.
  *
  * @param int   $amount  the refund in minor units
@@ -86,7 +86,8 @@ function pg_credit_refund_card_amount($amount, $percent)
         return $amount;
     }
 
-    return $amount + (int) round($amount * $percent / 100);
+    // The exact product, rounded half away from zero on every PHP version.
+    return $amount + (int) pg_percent_of($amount, $percent);
 }
 
 /**
