@@ -453,6 +453,36 @@ function free_work_cut($text, $width = FREE_WORK_LINE)
 	return $text;
 }
 
+// The subjects of every commit reachable from $ref in the repository at
+// $git_dir, as free_work_landed() reads them. The whole history is read, no
+// date window: a step whose PR landed long ago is still done. null when git
+// fails.
+function free_work_log_subjects($git_dir, $ref)
+{
+	exec('git -C ' . escapeshellarg((string) $git_dir) . ' log --format=%s ' . escapeshellarg((string) $ref) . ' -- 2>/dev/null', $out, $code);
+
+	return ($code === 0) ? $out : null;
+}
+
+// A bare, commits-only copy of $url's development branch at $dir, made on
+// the first call and brought up to date on the next ones: a shallow clone
+// (cloud sessions fetch a few days of history) does not reach the older
+// landed PRs, and the commits alone (no trees or files, --filter=tree:0) are
+// a few megabytes. Returns the branch's ref in it, or null when git fails.
+function free_work_history_mirror($url, $dir)
+{
+	$dir = (string) $dir;
+	$quiet = ' >/dev/null 2>&1';
+
+	if (!is_file($dir . '/HEAD')) {
+		exec('git clone -q --bare --filter=tree:0 --single-branch --branch development ' . escapeshellarg((string) $url) . ' ' . escapeshellarg($dir) . $quiet, $out, $code);
+	} else {
+		exec('git -C ' . escapeshellarg($dir) . ' fetch -q origin +refs/heads/development:refs/heads/development' . $quiet, $out, $code);
+	}
+
+	return ($code === 0) ? 'refs/heads/development' : null;
+}
+
 // The test runner loads this file for the functions above.
 if (defined('PG_TEST_RUNNER')) {
 	return;
@@ -491,9 +521,27 @@ function free_work_gh_lines($path, $jq)
 
 free_work_run('git fetch -q origin development');
 
-// The plan PRs landed in the last 60 days: a step one of them names is done
-// even when its plan line does not say so yet.
-$landed = free_work_landed(free_work_run('git log --since=60.days --format=%s origin/development'));
+// Every plan PR that landed: a step one of them names is done even when its
+// plan line does not say so. A shallow clone's history is read from the
+// commits-only mirror; when that fails, from the clone, with a warning.
+$subjects = null;
+
+if (trim(implode('', free_work_run('git rev-parse --is-shallow-repository'))) === 'true') {
+	$url = trim(implode('', free_work_run('git remote get-url origin')));
+	$mirror = sys_get_temp_dir() . '/pinegrap-free-work-' . substr(md5($url), 0, 12) . '.git';
+	$ref = free_work_history_mirror($url, $mirror);
+	$subjects = ($ref === null) ? null : free_work_log_subjects($mirror, $ref);
+
+	if ($subjects === null) {
+		fwrite(STDERR, "free_work: the full history could not be fetched; steps landed before this shallow clone's oldest commit may print as free.\n");
+	}
+}
+
+if ($subjects === null) {
+	$subjects = free_work_run('git log --format=%s origin/development');
+}
+
+$landed = free_work_landed($subjects);
 
 $titles = array();
 $queue = 0;
