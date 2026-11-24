@@ -3523,7 +3523,8 @@ function pg_sw_route_record_address($page_id, $segment)
         // A record the detail page's filters keep out gets no redirect: the
         // answer would tell which names exist.
         if (!pg_sw_record_passes_filters($form_page_id, pg_sw_record_view_filters($detail_view['cfg']), $record['id'], $detail_page_id)) continue;
-        return pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], true);
+        // Under the language directory the visitor came in with (/en/...).
+        return pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], true, defined('LANGUAGE_PATH') ? LANGUAGE_PATH : null);
     }
     return '';
 }
