@@ -1116,6 +1116,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
 - core/software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
 - core/volunteer-document-file.md: A volunteer document's file: a files row (attachment 1, folder 0, volunteer-doc- name), get_file.php's door, and its exclusion from the panel search and the file pickers
+- core/volunteer-shifts-decisions.md: Volunteer shifts decisions: owner polls 202, 206, 207, 208, the architect's tables, place and screen parts, the words on screen, what binds the code, what was left out
 - core/volunteer-store.md: The five volunteer_* tables (11.0.270): JSON and DATETIME columns, NULL shift_id for outside hours, erasure, export, inventory, the left-volunteers rule
 - designer/bound-media-src.md: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211)
 - designer/canvas-closed-blocks-content.md: Content nodes the server draws (Messages, Breadcrumb, Variant Attribute, Applied Offers, Carousel, own code, Language Switcher): what each opens to today and what stays closed
