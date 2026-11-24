@@ -1194,6 +1194,7 @@ function api_openapi_objects()
         'PrivacyRequest' => 'api_privacy_request_schema',
         'PrivacyRequestDetail' => 'api_privacy_request_detail_schema',
         'SystemStatus'   => 'api_system_status_schema',
+        'ApiRefusalsReport' => 'api_refusals_report_schema',
         'SalesReport'    => 'api_sales_report_schema',
         'SalesWatchReport' => 'api_sales_watch_report_schema',
         'DeliveryReport' => 'api_delivery_report_schema',
