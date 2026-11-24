@@ -5698,7 +5698,8 @@ function pg_sw_feed_category_xml($form_page_id, $field_id, $values)
 // through it; $extra widens the pick for the box alone: `select` columns,
 // a `join`, a `where` condition and a `limit`, each SQL its caller built,
 // or a function given the filters and the form that answers them.
-// Returns records, cfg, form_page_id, detail_page_name, detail_pretty,
+// Returns records, cfg, form_page_id, detail_page_name, detail_page_id
+// (0 without a detail page), detail_pretty,
 // filter_clause and filters (the filters applied).
 function pg_sw_form_feed_pick($page_id, $page_name, $feed, $extra = array())
 {
@@ -5709,13 +5710,16 @@ function pg_sw_form_feed_pick($page_id, $page_name, $feed, $extra = array())
     // links to its detail page when that page is bound to the same form.
     // A record of a form with pretty URLs on links by its name.
     $detail_page_name = '';
+    $detail_page_id   = 0;
     $detail_pretty    = false;
     if ($feed['type'] === 'form_item_view') {
         $detail_page_name = $page_name;
+        $detail_page_id   = (int)$page_id;
         $detail_pretty    = pg_sw_form_pretty_urls($form_page_id);
     } else {
         $detail_target    = pg_sw_list_detail_target(isset($cfg['detail_page_id']) ? (int)$cfg['detail_page_id'] : 0, $form_page_id);
         $detail_page_name = $detail_target['page_name'];
+        $detail_page_id   = ($detail_page_name !== '') ? (int)$cfg['detail_page_id'] : 0;
         $detail_pretty    = $detail_target['pretty'];
     }
 
@@ -5745,6 +5749,7 @@ function pg_sw_form_feed_pick($page_id, $page_name, $feed, $extra = array())
         'cfg'              => $cfg,
         'form_page_id'     => $form_page_id,
         'detail_page_name' => $detail_page_name,
+        'detail_page_id'   => $detail_page_id,
         'detail_pretty'    => $detail_pretty,
         'filter_clause'    => $filter_clause,
         'filters'          => $filters,
@@ -5766,11 +5771,47 @@ function pg_sw_form_feed_pick_sql($form_page_id, $filter_clause, $extra)
          LIMIT " . $limit;
 }
 
+// Whether a feed item that opens a page of this folder access is a teaser:
+// any access but public ('' is no detail page, the item opens the public
+// feed page). Pure.
+function pg_sw_feed_teaser_access($access_control_type)
+{
+    return (string)$access_control_type !== '' && (string)$access_control_type !== 'public';
+}
+
+// The folder access of a page ('' for no page), as get_access_control_type()
+// gives it.
+function pg_sw_feed_page_access($page_id)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return '';
+    $folder_id = db_value("SELECT page_folder FROM page WHERE page_id = '" . $page_id . "' LIMIT 1");
+    if ($folder_id === null || $folder_id === false || $folder_id === '') return '';
+    return (string)get_access_control_type((int)$folder_id);
+}
+
+// One <item> of a form feed. $item holds title, link and description as
+// text, guid, categories and enclosure as XML, pubDate as RFC 2822. A teaser
+// leaves out the description and the enclosure. Pure.
+function pg_sw_feed_item_xml($item, $teaser)
+{
+    return '
+        <item>
+            <title>' . h((string)$item['title']) . '</title>
+            <link>' . h((string)$item['link']) . '</link>
+            ' . $item['guid'] . '
+            ' . ($teaser ? '' : '<description>' . h((string)$item['description']) . '</description>') . '
+            <pubDate>' . $item['pubDate'] . '</pubDate>
+            ' . $item['categories'] . ($teaser ? '' : $item['enclosure']) . '
+        </item>';
+}
+
 // The channel and the items of a form widget page's feed: the newest fifty
 // complete records of the form, the widget's own filters applied, each
 // with the fields whose RSS element is title, description, media or category.
 // An item links to the widget's detail page (?r=) when it has one, and to the
 // page itself for a record page; the channel describes the host page.
+// An item whose page is not public is a teaser (pg_sw_feed_item_xml()).
 // Same return shape as _pg_build_catalog_listing_rss_parts().
 function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_description, $feed)
 {
@@ -5785,6 +5826,9 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
     $filter_where     = $filter_clause['where'];
     $filter_join      = $filter_clause['join'];
     $records          = $pick['records'];
+    // Items that open a page a signed-out visitor may not read are teasers,
+    // whoever asks: no description and no media.
+    $teaser = pg_sw_feed_teaser_access(pg_sw_feed_page_access($pick['detail_page_id']));
 
     // The category and media fields, read once; title and description per
     // record through pg_sw_submitted_form_rss_text().
@@ -5808,7 +5852,7 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         }
 
         $enclosure = '';
-        if ($media_field_id > 0) {
+        if ($media_field_id > 0 && !$teaser) {
             $media = db_item("SELECT data, file_id FROM form_data WHERE form_id = '" . $form_id . "' AND form_field_id = '" . $media_field_id . "' LIMIT 1");
             // An upload only when a visitor who is not signed in may open it: the
             // enclosure's address must not answer with the sign-in screen.
@@ -5823,15 +5867,15 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
             }
         }
 
-        $items .= '
-        <item>
-            <title>' . h($text['title'] !== '' ? $text['title'] : lang('There is not an RSS title specified in the form.')) . '</title>
-            <link>' . h($link) . '</link>
-            ' . $guid . '
-            <description>' . h($text['description'] !== '' ? $text['description'] : lang('There is not an RSS description specified in the form.')) . '</description>
-            <pubDate>' . date('r', (int)$record['submitted_timestamp']) . '</pubDate>
-            ' . $categories . $enclosure . '
-        </item>';
+        $items .= pg_sw_feed_item_xml(array(
+            'title'       => $text['title'] !== '' ? $text['title'] : lang('There is not an RSS title specified in the form.'),
+            'link'        => $link,
+            'guid'        => $guid,
+            'description' => $text['description'] !== '' ? $text['description'] : lang('There is not an RSS description specified in the form.'),
+            'pubDate'     => date('r', (int)$record['submitted_timestamp']),
+            'categories'  => $categories,
+            'enclosure'   => $enclosure,
+        ), $teaser);
     }
 
     $channel_title = trim((string)$page_title) !== '' ? trim((string)$page_title) : $page_name;
