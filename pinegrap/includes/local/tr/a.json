@@ -1086,6 +1086,7 @@
     "A flow can hold at most {var:1} boxes.": "Bir akışta en fazla {var:1} kutu olabilir.",
     "A flow can hold at most {var:1} frames.": "Bir akış en çok {var:1} çerçeve tutabilir.",
     "A flow can hold at most {var:1} notes.": "Bir akışta en fazla {var:1} not olabilir.",
+    "A flow can hold at most {var:1} rules for leaving it.": "Bir akışta en çok {var:1} çıkış kuralı olabilir.",
     "A flow cannot start itself.": "Bir akış kendini başlatamaz.",
     "A flow has one box that starts it.": "Bir akışı tek bir kutu başlatır.",
     "A flow holds at most {var:1} boxes: {var:2} rows were left out.": "Bir akış en çok {var:1} kutu tutar: {var:2} satır dışarıda bırakıldı.",

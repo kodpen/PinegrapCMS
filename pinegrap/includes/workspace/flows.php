@@ -19,7 +19,8 @@
  *    "nodes": [{"id", "kind", "label", "x", "y", "config"}],
  *    "edges": [{"from", "to", "on"}],
  *    "notes": [{"id", "text", "x", "y", "w", "h", "by", "day"}],
- *    "frames": [{"id", "name", "x", "y", "w", "h", "folded"}]}
+ *    "frames": [{"id", "name", "x", "y", "w", "h", "folded"}],
+ *    "leave": [{"event"}]}
  * ws_flow_graph_normalize() keeps it in that shape and ws_flow_graph_check()
  * lists what stops it from being published; both are pure. A draft may hold
  * problems, a published version never does.
@@ -444,7 +445,7 @@ function ws_flow_node_id_valid($id)
  */
 function ws_flow_graph_empty()
 {
-    return array('v' => 1, 'nodes' => array(), 'edges' => array(), 'notes' => array(), 'frames' => array());
+    return array('v' => 1, 'nodes' => array(), 'edges' => array(), 'notes' => array(), 'frames' => array(), 'leave' => array());
 }
 
 /**
@@ -739,7 +740,7 @@ function ws_flow_tell_of($graph)
  * Nothing is refused here; ws_flow_graph_check() says what is wrong.
  *
  * @param array|string $graph
- * @return array v, nodes, edges, notes, frames
+ * @return array v, nodes, edges, notes, frames, leave (ws_flow_leave_normalize())
  */
 function ws_flow_graph_normalize($graph)
 {
@@ -839,6 +840,8 @@ function ws_flow_graph_normalize($graph)
             'folded' => ($folded === true) || ($folded === 1) || ($folded === '1') || ($folded === 'true'),
         );
     }
+
+    $out['leave'] = ws_flow_leave_normalize($graph['leave'] ?? array());
 
     return $out;
 }
@@ -1323,6 +1326,10 @@ function ws_flow_graph_check($graph)
         $problems[] = ws_flow_problem('too_many', null, null, lang(array('string' => 'A flow can hold at most {var:1} frames.', 'vars' => WS_FLOW_MAX_FRAMES)));
     }
 
+    if (count($graph['leave']) > WS_FLOW_MAX_LEAVE) {
+        $problems[] = ws_flow_problem('too_many', null, null, lang(array('string' => 'A flow can hold at most {var:1} rules for leaving it.', 'vars' => WS_FLOW_MAX_LEAVE)));
+    }
+
     // The boxes, by id; a second box with an id already taken is not one an
     // arrow can reach.
     $nodes = array();
@@ -1776,6 +1783,7 @@ function ws_flow_problems($graph)
         return empty($problem['warning']);
     }));
     $types = function_exists('ws_scheduled_record_types') ? ws_scheduled_record_types() : array();
+    $problems = array_merge($problems, ws_flow_leave_problems($graph));
 
     foreach ($graph['nodes'] as $node) {
         if (($node['kind'] === 'manual') && ($node['config']['subject'] !== '') && !isset($types[$node['config']['subject']])) {
@@ -3013,6 +3021,7 @@ function ws_flow_graph_present($graph, $edit = false)
         'edges' => $graph['edges'],
         'notes' => $graph['notes'],
         'frames' => $graph['frames'] ?? array(),
+        'leave'  => $graph['leave'] ?? array(),
     );
 }
 
@@ -3307,6 +3316,9 @@ function ws_flow_detail($viewer, $flow)
         // The boxes a patch of Pinegrap AI opened here added or changed
         // (flow_draft.php), marked for whoever may change it.
         'ai_marks' => ($edit && ($draft !== null)) ? ws_flow_ai_marks($viewer, $flow, $version, $draft) : null,
+        // The runs that left the flow in the last 30 days, for whoever may
+        // change it (the name's window).
+        'left_30'  => $edit ? ws_flow_left_count($flow['id'], 30) : null,
     );
 }
 
@@ -4163,6 +4175,14 @@ function ws_flow_js_strings()
         'fl_home'             => lang('Home channel'),
         'fl_home_none'        => lang('No channel (only you)'),
         'fl_home_help'        => lang('Once the flow is published, the people who read this channel may run it.'),
+        // Leaving the flow in the name's window (leaveField()).
+        'fl_exit'            => lang('Leaving the flow'),
+        'fl_exit_help'       => lang('If one of these happens, the run about that contact or record ends, whichever box it is at.'),
+        'fl_exit_pick'       => lang('Choose what happens'),
+        'fl_exit_add'        => lang('Add a rule'),
+        'fl_exit_added'      => ws_js_template('The run ends when: {var:1}', 1),
+        'fl_exit_remove'     => ws_js_template('Remove the rule: {var:1}', 1),
+        'fl_exit_count'      => ws_js_template('Runs that left this way in the last 30 days: {var:1}', 1),
         'fl_keys'             => lang('Keyboard'),
         'fl_side_tab_settings' => lang('Settings'),
         'fl_side_tab_links'   => lang('Connections'),
@@ -4273,6 +4293,7 @@ function ws_flow_js_strings()
         'fl_run_done'         => lang('Done'),
         'fl_run_failed'       => lang('Failed'),
         'fl_run_cancelled_state' => lang('Cancelled'),
+        'fl_run_left_state'   => lang('Left the flow'),
         // The run's flag (runFlag() in workspace_flow.js).
         'fl_flag_done'        => lang('Done'),
         'fl_flag_last'        => lang('Last flow run'),
@@ -4633,7 +4654,9 @@ function ws_flow_js_config($viewer, $mode)
         // (ws_flow_run_contact_check() decides which).
         'run_customer' => !empty($viewer['contacts']),
         'derived'  => function_exists('ws_flow_derived_rules') ? ws_flow_derived_lists() : array(),
-        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'frames' => WS_FLOW_MAX_FRAMES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20,
+        // The events a run may leave the flow on (flow_leave.php).
+        'leave'    => ws_flow_leave_js($viewer),
+        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'frames' => WS_FLOW_MAX_FRAMES, 'leave' => WS_FLOW_MAX_LEAVE, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20,
             'web_fields' => defined('WS_FLOW_WEB_FIELDS_MAX') ? WS_FLOW_WEB_FIELDS_MAX : 20),
     );
 }

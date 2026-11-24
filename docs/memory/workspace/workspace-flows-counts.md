@@ -4,7 +4,7 @@ description: The counts of a flow's boxes (ws_flow_counts(), FE11a): runs waitin
 ---
 
 ## What does ws_flow_counts() answer?
-- `ws_flow_counts($viewer, $flow, $days, $keep = null)` in `includes/workspace/flow_counts.php` answers `ok`, `error`, `days`, `since` (Unix time counted from), `boxes` and `partial`.
+- `ws_flow_counts($viewer, $flow, $days, $keep = null)` in `includes/workspace/flow_counts.php` answers `ok`, `error`, `days`, `since` (Unix time counted from), `boxes`, `left` (runs a leave rule ended since `since`, narrowed to the same runs; `workspace-flows-leave.md`) and `partial`.
 - `boxes` is one line per box id with a count: `node`, `waiting` (runs still going, running or waiting, whose step at the box is waiting now; a run counts once even when a loop passed the box twice), `passed` (steps of the box done since `since`), `failed` (steps failed since `since`). Boxes with nothing are left out; ids of every version the runs followed come back.
 - `days` (`ws_flow_counts_days()`): 7 when none is sent, whole days from 1 to the days ended runs are kept (`WS_FLOW_RUNS_KEEP`, 30).
 

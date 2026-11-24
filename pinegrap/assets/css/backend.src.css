@@ -29199,7 +29199,8 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 .wsf-run-done { --wsf-run-fg: var(--pg-success-fg-emphasis); --wsf-run-bg: var(--pg-success-bg-subtle); --wsf-run-line: var(--pg-success-border-subtle); }
 .wsf-run-failed { --wsf-run-fg: var(--pg-danger-fg-emphasis); --wsf-run-bg: var(--pg-danger-bg-subtle); --wsf-run-line: var(--pg-danger-border-subtle); }
 .wsf-run-skipped,
-.wsf-run-cancelled { --wsf-run-fg: var(--pg-secondary-fg-emphasis); --wsf-run-bg: var(--pg-secondary-bg-subtle); --wsf-run-line: var(--pg-secondary-border-subtle); }
+.wsf-run-cancelled,
+.wsf-run-left { --wsf-run-fg: var(--pg-secondary-fg-emphasis); --wsf-run-bg: var(--pg-secondary-bg-subtle); --wsf-run-line: var(--pg-secondary-border-subtle); }
 .wsf-run-none { --wsf-run-fg: var(--pg-fg-2); --wsf-run-bg: transparent; --wsf-run-line: var(--pg-border-color); }
 .wsf-run-badge {
   display: inline-flex;

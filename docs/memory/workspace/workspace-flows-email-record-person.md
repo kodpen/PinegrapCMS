@@ -8,7 +8,8 @@ description: Flow e-mail box to the person of the run's record (B8): recipient r
 - Code: `includes/workspace/flow_mail_person.php`; hooks in `ws_step_run()` and `ws_flow_box_try()` (steps.php), `ws_scheduled_mail()` (scheduled.php).
 
 ## Which person?
-- `ws_flow_mail_person_source()` (pure): a run's `subject_type` contact (started by hand for a contact, or the no-order start); else the event's record by `ws_events_record_of()`: order, form, booking, contact; `workspace.mail.received` its `conversation_id`. Anything else (a schedule, stock.low, a flow started by another) has none.
+- `ws_flow_mail_person_source()` (pure): a run's `subject_type` contact when its context has no event (started by hand for a contact, or the no-order start); else the event's record by `ws_events_record_of()`: order, form, booking, contact; `workspace.mail.received` its `conversation_id`. Anything else (a schedule, stock.low, a flow started by another) has none.
+- A run an event started keeps the event's contact as its subject (`workspace-flows-leave.md`); its address still comes from the event's record.
 - `ws_flow_mail_person()`: the record read with the owner's rights (`ws_step_record_get_read()`; a mail by `ws_can_read_channel()` on its channel), then the address: `orders.billing_email_address`, `get_submitter_email_address()`, `bookings.email`, `contacts.email_address`, `ws_mail_conversations.customer_email`.
 
 ## Consent and unsubscribe?

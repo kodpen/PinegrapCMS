@@ -27,7 +27,8 @@
         waiting: ['fl_run_waiting', 'bi-hourglass-split'],
         running: ['fl_run_running', 'bi-arrow-repeat'],
         failed: ['fl_run_failed', 'bi-x-octagon-fill'],
-        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle']
+        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle'],
+        left: ['fl_run_left_state', 'bi-box-arrow-right']
     };
     // A result longer than this many characters, or of more than one line,
     // folds behind the flag's down arrow.
