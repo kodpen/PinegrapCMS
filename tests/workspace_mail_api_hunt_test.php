@@ -69,3 +69,15 @@ function test_ws_mail_draft_delete_lets_a_held_drafts_files_go()
 	pg_assert_true(($delete !== false) && ($discard !== false) && ($delete < $discard), 'the files go only after the draft row is gone');
 	pg_assert_contains('deleted_at > 0', $source, 'only the held lines taken out of the channel');
 }
+
+function test_ws_mail_draft_reply_keeps_its_conversations_to_and_subject()
+{
+	$conversation = array('id' => 7, 'customer_email' => 'customer@example.com', 'subject' => 'Order 12');
+
+	pg_assert_same(array('to' => 'customer@example.com', 'cc' => 'c@example.com', 'bcc' => '', 'subject' => 'Order 12', 'text' => 'Hi'),
+		ws_mail_draft_reply_fields(array('to' => 'other@example.com', 'cc' => 'c@example.com', 'bcc' => '', 'subject' => 'Changed', 'text' => 'Hi'), $conversation),
+		'a reply goes to its customer under its subject, whatever was sent');
+
+	$source = ws_mail_api_hunt_test_source('ws_mail_draft_create_check');
+	pg_assert_contains('ws_mail_draft_reply_fields(', $source, 'a new reply draft takes them from its conversation');
+}

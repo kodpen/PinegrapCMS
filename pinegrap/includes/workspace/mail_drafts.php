@@ -386,15 +386,7 @@ function ws_mail_draft_create_check($viewer, $draft, $reached = null)
             return array_merge($out, array('error' => 'no_access'));
         }
 
-        // An answer goes to the conversation's customer under its subject,
-        // as the reply drawer sends it.
-        if (!array_key_exists('to', $input['fields'])) {
-            $fields['to'] = (string) $conversation['customer_email'];
-        }
-
-        if (!array_key_exists('subject', $input['fields'])) {
-            $fields['subject'] = (string) $conversation['subject'];
-        }
+        $fields = ws_mail_draft_reply_fields($fields, $conversation);
 
         $box = ws_mail_box((int) $conversation['box_id']);
         $out = array_merge($out, array('kind' => 'reply', 'conversation' => $conversation, 'box' => $box ?: array('id' => (int) $conversation['box_id'], 'address' => '')));
@@ -429,6 +421,23 @@ function ws_mail_draft_create_check($viewer, $draft, $reached = null)
     }
 
     return array_merge($out, array('ok' => true, 'fields' => $fields));
+}
+
+/**
+ * A reply draft's fields: an answer goes to the conversation's customer
+ * under its subject, as the reply drawer sends it, so a To or subject sent
+ * with it is not kept (ws_mail_draft_merge() keeps them on a change). Pure.
+ *
+ * @param array $fields       to, cc, bcc, subject, text
+ * @param array $conversation ws_mail_conversations row
+ * @return array
+ */
+function ws_mail_draft_reply_fields($fields, $conversation)
+{
+    $fields['to'] = (string) $conversation['customer_email'];
+    $fields['subject'] = (string) $conversation['subject'];
+
+    return $fields;
 }
 
 /**
