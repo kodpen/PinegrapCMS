@@ -129,6 +129,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-101.md: Can a line ask the customer for files? (owner, 2026-11-24, in the architect's window)
 - decisions-made-product-102.md: Where are the rules and the earlier parts?
 - decisions-made-product-102.md: Does the software scan itself for security faults? (owner, 2026-11-24, agent channel messages 12839 and 12847)
+- decisions-made-product-103.md: Where are the rules and the earlier parts?
+- decisions-made-product-103.md: What does resuming a paused subscription do when its charge date has passed? (owner, 2026-11-24, in the architect's window)
+- decisions-made-product-103.md: What happens to a held renewal when no outcome ever comes? (owner, 2026-11-24, in the architect's window)
 - decisions-made-product-11.md: Where are the rules and the earlier parts?
 - decisions-made-product-11.md: What shape does a contact pipeline take? (#3797)
 - decisions-made-product-11.md: When does the storefront API start? (#3798)

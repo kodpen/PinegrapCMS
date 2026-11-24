@@ -143,6 +143,7 @@
 - decisions-made-product-100.md: Decisions list, product part 100 (2026-11-24 on): Claude's routine address and token and the MCP servers move from the Assistants and agents tab to Connections, a leading line stays
 - decisions-made-product-101.md: Decisions made, product part 101 (2026-11-24 on): the agency summary's customer page also shows the steps not done, and a line can ask the customer for files instead of text
 - decisions-made-product-102.md: Decisions made, product part 102 (2026-11-24 on): a rule-based Security Scan joined to the firewall's screen and card, with a manual run and a full test round; not an antivirus
+- decisions-made-product-103.md: Decisions made, product part 103 (2026-11-24 on): a subscription resumed after its charge date waits for the next series date; a held renewal with no outcome ends after 7 days
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
