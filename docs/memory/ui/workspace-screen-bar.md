@@ -4,7 +4,7 @@ description: A Workspace screen's one-line bar (My Tasks first): "Filter", its b
 ---
 
 ## What is the rule of a Workspace screen's bar?
-- One `.pg-toolbar.ws-bar` line in a `.ws-bar-frame`, never a second row. Order: the main action (`pg-button-fill`, at most one), a second action, date stepping, the views; the grow slot; switches, "Filter", the search, "⋯" for rare actions (board S1 of `plans/workspace-interface-screens.md`).
+- One `.pg-toolbar.ws-bar` line in a `.ws-bar-frame`, never a second row. Order: the main action (`pg-button-fill`, at most one), a second action, date stepping, the views; the grow slot; switches, "Filter", the search, "⋯" for rare actions (board S1 of `workspace/workspace-interface-drawing/screens.html`, #11104).
 - The frame is a size container (`ws-bar`) and gives the 12 px top edge; the bar stands inside the shell's padding, unlike the full-width `#ws-root > .pg-toolbar` of the older screens (`workspace/workspace-screen-frame.md`).
 - Built with the helpers of `assets/js/workspace.js`, after `skeleton()`: `barViews()`, `barFilter()`, `barSearch()`, `emptyScreen()`, `barEmptyFound()`. Classes in the block "Look A: screen bar with filters, empty screen" of `backend.src.css`.
 

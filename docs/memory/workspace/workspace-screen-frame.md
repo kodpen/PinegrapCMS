@@ -1,12 +1,16 @@
 ---
 name: workspace-screen-frame
-description: Every Workspace screen but the channel one is padded by .ws-shell-main (no screen list), where sticky columns stop, how the MCP servers card wraps on a phone
+description: Every Workspace screen but the channel one is padded by .ws-shell-main (no screen list); its one-line bar (#11104-#11238); the panel's foot (#11075); sticky columns; the MCP servers card on a phone
 ---
 
 ## Where does a Workspace screen get its side padding?
 - From `.ws-shell-main`, on every screen but the channel one: `body.workspace .ws-shell-main { padding: 0 .75rem .75rem }`.
 - A `.row` inside keeps its gutter (its side margins fall inside the padding; its top margin rises over the breadcrumb bar, below), so a screen drawn in `#ws-root` by its script and one whose columns the server prints get the same 12px edge. `#ws-root` has no padding of its own; its `.pg-toolbar` and a server-drawn `#button_bar` stretch over the padding with `-.75rem` side margins; a screen's one-line bar (`.ws-bar` in its `.ws-bar-frame`) stays inside it (`ui/workspace-screen-bar.md`).
+- My Tasks, My Notes, Data, Work Calendar, My calendar, Planning Board and Decision Timeline draw that one-line bar and the empty screen (#11104, #11214, #11238); a new screen builds its bar the same way.
 - A new Workspace screen only needs `'extra classes' => 'workspace workspace_<name>'` and `<main id="content" class="container-fluid p-0"><div class="ws-shell"><div class="ws-shell-main">`; `tests/workspace_screen_frame_test.php` checks every `workspace_*.php` that draws `#content`.
+
+## Where is the panel's foot?
+- At the window's bottom on every Workspace screen and on Today; the channel view prints none, so the writing box stands at the bottom (#11075, `ui/panel-shell-foot.md`). The top bar's field shows no "Ctrl+K" there.
 
 ## Why no list of screens?
 - Until 2026-11-04 the padding sat on `#ws-root`, and screens without it (settings, MCP, template, calendar subscription, tables) were named in `:is(...)` / `:not(...)` lists. Each screen left out ran its cards against the page edge with the columns touching (MCP and template before #2882, tables 2026-11-01, calendar subscription reported by the owner). The E-mails list (`workspace_mail.php`) sat outside the shell with no `workspace` body class; it now uses the shell too.

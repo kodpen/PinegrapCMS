@@ -1,10 +1,10 @@
 ---
 name: workspace-channel-catchup
-description: Over a channel's conversation (C2, C3 of workspace-channel-screen.md): the catch-up line in place of the greeting card, the pinned line, one row on a phone
+description: Over a channel's conversation (C2, C3 of workspace-channel-screen.md): the catch-up line in place of the greeting card, Go to new messages to the New line, the pinned line, one row on a phone
 ---
 
 ## What does a channel show above the conversation?
-- `catchupNode()` (workspace.js) draws one line only when `briefing.catchup` is set: "While you were away" (or "Waiting for you" when only tasks are late) with the counts as words (`a new message` / `{var:1} new messages`, mentions, overdue tasks), Go to where you were mentioned or Go to new messages (`jumpTo(go, true)`), Overdue tasks (the Tasks tab), Sum up what I missed (`ws_brief_recap`, the summary under the line) and close.
+- `catchupNode()` (workspace.js) draws one line when `briefing.catchup` is set: "While you were away" (or "Waiting for you" when only tasks are late) with the counts as words (`a new message` / `{var:1} new messages`, mentions, overdue tasks), Go to where you were mentioned (`jumpTo(go, true)`) or Go to new messages (to the "New" line, #11269, `workspace-channel-new-line.md`), Overdue tasks (the Tasks tab), Sum up what I missed (`ws_brief_recap`, the summary under the line) and close.
 - Closed, it stays closed in that channel for the day (`ws-brief-closed:<channel>:<date>` in localStorage, the old card's key). On a phone its buttons keep their icons only and the lead word goes; they and Close are 2.5rem touch targets, negative block margins keep the row thin (#3945).
 
 ## How do the catch-up line and the pinned message stand?

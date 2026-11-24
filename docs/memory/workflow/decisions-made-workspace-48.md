@@ -8,7 +8,7 @@ description: Decisions made, workspace part 48 (2026-11-22 on): a plan to improv
 
 ## Is the Workspace's interface improved, its menu included? (owner, 2026-11-22, in the architect's window)
 - Owner: "workspace arayüzde iyileştirme planlarmısın. menüsü dahil". He named no part and gave no picture.
-- The architect looked at the screens on a sandbox with 13 channels in the two themes and at a phone's width, drew two sheets (`workspace/workspace-interface-drawing/`) and wrote `plans/workspace-interface.md`. The sheets were shown to him in the same window.
+- The architect looked at the screens on a sandbox with 13 channels in the two themes and at a phone's width, drew two sheets (`workspace/workspace-interface-drawing/`, kept as the reference) and wrote a plan. The sheets were shown to him in the same window.
 
 ## What of his earlier decisions does the plan keep?
 - The list's place (the main menu's Workspace panel only, no column or rail of the Workspace's own), its access rule and its links on other pages (2026-10-28, `decisions-made-workspace.md`).
@@ -20,7 +20,7 @@ description: Decisions made, workspace part 48 (2026-11-22 on): a plan to improv
 - So the tools never fold and never stand as icons without their names; the folded row was taken out of the plan and the sheets. This replaces the tiles two across at the list's end (2026-10-30, `decisions-made-workspace-5.md`).
 
 ## What else changes of them? (owner, 2026-11-22, in the architect's window)
-- Told that the rest waited for his word (the channels not joined, the pin, the panel's foot and everything the plan adds, listed to him): "gerisi uygun detaylı açıklandıysa ok". So the rest is accepted as the sheets and the plan describe it; `plans/workspace-interface-details.md` was written for the rules a drawing cannot show.
+- Told that the rest waited for his word (the channels not joined, the pin, the panel's foot and everything the plan adds, listed to him): "gerisi uygun detaylı açıklandıysa ok". So the rest is accepted as the sheets and the plan describe it.
 - More: from rows under the tiles to a card over the list.
 - Channels not joined: from dimmed rows in the list to one row that opens them.
 - A pinned channel's pin shows on pointing only; section names lose their capitals.
@@ -31,7 +31,8 @@ description: Decisions made, workspace part 48 (2026-11-22 on): a plan to improv
 - One bar for every Workspace screen with the filters behind one button, one drawing of an empty screen.
 - A "New" line over a channel's first unread message.
 
-## When may its steps be given out?
-- From now, as any plan's: nothing of it waits for a word. Where a step meets something neither the boards nor the plan's words settle, it asks the architect.
+## Where does it stand now?
+- Built: the list's rows #11079 (`workspace/workspace-menu-rows.md`), the tools dock and the count on My Tasks #11101 (`workspace-menu-tools.md`), Unread, Mark all as read and the keys #11141 (`workspace-menu-unread.md`); the panel's foot #11075 (`ui/panel-shell-foot.md`); the screens' bar #11104, #11214, #11238 (`ui/workspace-screen-bar.md`); the "New" line #11269 (`workspace/workspace-channel-new-line.md`).
+- Left out: a rail of the Workspace's own, direct messages, presence, a new look for messages, the channel header or the tabs, My Tasks grouped by day, the Flows screens and E-mails.
 
-Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-workspace-47.md, docs/memory/workflow/decisions-made-workspace-5.md, docs/memory/workflow/decisions-made-workspace-6.md, docs/memory/plans/workspace-interface.md
+Related: docs/memory/workflow/decisions-made.md, docs/memory/workflow/decisions-made-workspace-47.md, docs/memory/workflow/decisions-made-workspace-5.md, docs/memory/workflow/decisions-made-workspace-6.md, docs/memory/workspace/workspace-menu-list.md

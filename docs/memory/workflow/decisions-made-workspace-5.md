@@ -4,7 +4,7 @@ description: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspa
 ---
 
 ## How is the Workspace list laid out?
-- As `workspace/workspace-menu-list.md` describes it: one search field, the places (Today, Inbox, My Tasks), one Channels section (pinned, groups, the rest), My discussions, Tools tiles with More. The place and the access rules of #2545 stay (`decisions-made-workspace.md`).
+- As `workspace/workspace-menu-list.md` describes it: one search field, Today, one Channels section (pinned, groups, the rest), My discussions, the Tools with More. Inbox went on 2026-11-03 (`-6.md`); the Tools a dock, More a card on 2026-11-22 (`-48.md`). The place and the access rules of #2545 stay (`decisions-made-workspace.md`).
 - Owner decision (2026-10-30, "Menü çok karışık"; on the drawn proposal "Menü yapısı ve kanal görünümü uygun"): the list was hard to find one's way in.
 
 ## Does the channel screen change too?
@@ -16,7 +16,7 @@ description: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspa
 - Owner decision (2026-10-31, "buluttaki ajanlar tasarımı kafalarına göre yazarlarsa iyice karışır … tasarımı güncellemeye direkt sen gir"): sessions each drawing the design their own way would scatter it.
 
 ## Is the Workspace inbox a list of its own?
-- No: the panel bell is the one inbox (`ui/notifications-one-inbox.md`). Since 4.83 every Workspace inbox row is also a bell row (`ws_bell_add()`), read in either place is read in both, so one item showed in two lists with two counts. The merge is in the view: `ws_inbox` stays for the API, sync and push.
+- No: the panel bell is the one inbox (`ui/notifications-one-inbox.md`). Since 4.83 every inbox row is also a bell row (`ws_bell_add()`), so one item showed in two lists. The merge is in the view: `ws_inbox` stays for the API, sync and push.
 - Owner decision (2026-10-31, "workspace gelen kutusu da normal site gelen kutusuna katmayı değerlendirelim", then "önerin kabul").
 
 ## Which colours does a Workspace design use?

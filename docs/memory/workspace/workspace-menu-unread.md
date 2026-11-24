@@ -1,6 +1,6 @@
 ---
 name: workspace-menu-unread
-description: The Workspace list's All / Unread filter (board L2): which rows Unread keeps, ws-side-filter, Mark all as read (ws_read_all), "Everything is read", the keys Alt+Up/Down and Alt+Shift+Up/Down
+description: The Workspace list's All / Unread filter (#11141, board L2): which rows Unread keeps, ws-side-filter, Mark all as read (ws_read_all), "Everything is read", the keys Alt+Up/Down and Alt+Shift+Up/Down
 ---
 
 ## What does the filter draw?
@@ -26,6 +26,6 @@ description: The Workspace list's All / Unread filter (board L2): which rows Unr
 - Not taken while `pgUI.anyOpen('dialog'|'drawer')` or the Flows editor (`.wsf-app` shown), from a select or a date/time/number field, or while a writing box holds a selection; Ctrl or Cmd with it leave it to the page.
 
 ## Why?
-- Owner (2026-11-22, plan workspace-interface): unread was told by bold text and a grey count alone; nothing listed only what is new, and nothing read it all at once.
+- Owner (2026-11-22, `workflow/decisions-made-workspace-48.md`): unread was told by bold text and a grey count alone; nothing listed only what is new, and nothing read it all at once.
 
 Related: docs/memory/workspace/workspace-menu-rows.md, docs/memory/workspace/workspace-menu-tools.md, docs/memory/workspace/workspace-menu-list.md
