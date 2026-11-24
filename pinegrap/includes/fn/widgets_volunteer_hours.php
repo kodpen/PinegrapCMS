@@ -4,8 +4,9 @@
  *
  * A volunteer's own hours tools on their page (includes/fn/volunteer_page_view.php),
  * drawn for the visitor in the site's look and in look A: the link to the
- * check-in page that reads a place's QR poster, and "Add hours outside a
- * shift" with the browser's own date field, sent for approval.
+ * check-in page that reads a place's QR poster, the approved hours of this
+ * year with "Get my certificate", and "Add hours outside a shift" with the
+ * browser's own date field, sent for approval.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -17,9 +18,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/volunteer_certificate.php');
+
 /**
  * The volunteer's hours tools: the check-in page that reads a place's
- * poster, and hours worked outside a shift, sent for approval.
+ * poster, this year's approved hours with the certificate's link, and
+ * hours worked outside a shift, sent for approval.
  *
  * @param array $form    action, hidden
  * @param array $c       the look's classes
@@ -33,9 +37,11 @@ function pg_volunteer_page_hours_html(array $form, array $c, array $profile)
     $look_a = (strpos($c['quiet'], 'pg-button') === 0);
     $label = 'class="' . ($look_a ? 'pg-field-label' : 'form-label') . '"';
     $input = $look_a ? 'pg-input' : 'form-control';
+    $year = pg_volunteer_approved_minutes((int) $profile['p'], date('Y') . '-01-01', date('Y-m-d'));
 
     return '<h3 class="h6 mb-2">' . h(lang('Hours')) . '</h3>'
         . '<p class="' . $c['meta'] . '">' . h(lang('At your shift, scan the QR poster of your place to check in and out.')) . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/volunteer_check_in.php') . '">' . h(lang('Scan the poster')) . '</a></p>'
+        . '<p class="' . $c['meta'] . '">' . h(lang(array('string' => 'Approved hours this year: {var:1}.', 'vars' => array(pg_volunteer_hours_number($year))))) . ' <a href="' . h(pg_volunteer_certificate_url(array('p' => (int) $profile['p']))) . '" target="_blank" rel="noopener">' . h(lang('Get my certificate')) . '</a></p>'
         . '<details class="mb-5"><summary class="' . $c['quiet'] . '">' . h(lang('Add hours outside a shift')) . '</summary>'
         . '<form method="post" action="' . h($form['action']) . '" class="mt-3">' . $form['hidden']
         . '<input type="hidden" name="p" value="' . (int) $profile['p'] . '"><input type="hidden" name="action" value="hours">'

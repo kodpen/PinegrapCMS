@@ -915,6 +915,7 @@
     "Hours approved: {var:1}.": "Onaylanan saat kaydı: {var:1}.",
     "Hours are in the site's time zone, {var:1}. A day left empty is a day off. Busy times on the staff member's Workspace calendar are not offered.": "Saatler sitenin saat dilimindedir: {var:1}. Boş bırakılan gün izin günüdür. Personelin Çalışma Alanı takvimindeki dolu zamanlar sunulmaz.",
     "Hours before the start a reminder is sent, separated by commas; at most three, between 1 and 168. Empty sends none.": "Hatırlatmanın başlangıçtan kaç saat önce gideceği, virgülle ayrılmış; en çok üç, 1 ile 168 arası. Boş bırakılırsa hatırlatma gitmez.",
+    "Hours by role": "Göreve göre saatler",
     "Hours in a working day": "Bir iş günündeki saat",
     "Hours may change on public holidays.": "Resmî tatillerde saatler değişebilir.",
     "Hours of manual data entry": "Saatler süren manuel veri girişi",

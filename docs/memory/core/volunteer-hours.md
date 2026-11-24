@@ -23,7 +23,7 @@ module: volunteer_hours, volunteer_hours_view, widgets_volunteer_hours
 
 ## What does the Hours tab show?
 - "Today": a card a shift, a row a signed volunteer with a pill (Not here yet, Checked in 09:02, Checked out, Did not come) and quiet Check in, Check out, Did not come for a volunteer with no phone.
-- "Waiting for approval": a shift's row once checked in and either checked out or ended; a row outside a shift at once (`pg_volunteer_hours_waiting()`). Approve quiet per row; "Approve selected" is the toolbar's fill. Approval stamps `approved_at`/`approved_by` and keeps the minutes counted (check-in to out, else the shift's length) in `minutes`. No refuse button yet.
+- "Waiting for approval": a shift's row once checked in and either checked out or ended; a row outside a shift at once (`pg_volunteer_hours_waiting()`). Approve quiet per row; "Approve selected" is the toolbar's fill. Approval stamps `approved_at`/`approved_by` and keeps the minutes counted (check-in to out, else the shift's length) in `minutes`. No refuse button yet. An approval reaching 50, 100 or 250 hours sends the thank-you e-mail (`core/volunteer-certificate.md`).
 - "QR posters": a button a place.
 
 ## How are hours outside a shift entered?
