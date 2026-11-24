@@ -713,14 +713,33 @@ function pg_mfa_begin_setup($user_id)
 }
 
 /**
+ * Whether confirming an authenticator key keeps the account's recovery codes
+ * instead of replacing them: when its passkeys are already its second factor
+ * and it has unused codes. Those codes were given with the first passkey and
+ * new ones are only had with the password and an e-mailed code
+ * (account_security.php); turning the key on asks for the session alone, so
+ * it must not hand out a fresh set and void the owner's.
+ *
+ * @param bool $passkey   pg_mfa_has_passkey()
+ * @param int  $remaining pg_mfa_recovery_remaining()
+ * @return bool
+ */
+function pg_mfa_setup_keeps_codes($passkey, $remaining)
+{
+    return $passkey && ((int) $remaining > 0);
+}
+
+/**
  * Confirm the key being set up with the first code the app shows. On success
  * the key becomes the account's second factor, a fresh set of recovery codes
- * replaces any earlier one, and the account's other remember-me tokens and
- * its API devices are revoked: they were issued without a second step.
+ * replaces any earlier one (unless pg_mfa_setup_keeps_codes()), and the
+ * account's other remember-me tokens and its API devices are revoked: they
+ * were issued without a second step.
  *
  * @param int    $user_id
  * @param string $code
- * @return string[]|false The recovery codes in plain text (shown once), or
+ * @return string[]|false The new recovery codes in plain text (shown once),
+ *                        an empty array when the account kept its codes, or
  *                        false when the code was not accepted.
  */
 function pg_mfa_confirm_setup($user_id, $code)
@@ -757,7 +776,12 @@ function pg_mfa_confirm_setup($user_id, $code)
         return false;
     }
 
-    $codes = pg_mfa_recovery_regenerate($user_id);
+    // An account whose passkeys were already its second factor keeps the
+    // codes it has: turning the key on asks for the session alone, and new
+    // codes for such an account need the password and an e-mailed code.
+    $codes = pg_mfa_setup_keeps_codes(pg_mfa_has_passkey($user_id), pg_mfa_recovery_remaining($user_id))
+        ? array()
+        : pg_mfa_recovery_regenerate($user_id);
 
     pg_mfa_revoke_other_sessions($user_id);
 
@@ -833,7 +857,12 @@ function pg_mfa_revoke_other_sessions($user_id)
         return;
     }
 
-    db("DELETE FROM auth_tokens WHERE user_id = '" . (int) $user_id . "' AND selector != '" . e($keep) . "'");
+    // One by one through pg_auth_token_revoke(), which also ends the device
+    // notifications of each browser signed out here.
+    foreach ((array) db_values("SELECT selector FROM auth_tokens
+        WHERE user_id = '" . (int) $user_id . "' AND selector != '" . e($keep) . "'") as $selector) {
+        pg_auth_token_revoke((string) $selector);
+    }
 
     // Same as pg_auth_token_revoke_user(): devices signed in to the external
     // API are sessions of the same person.

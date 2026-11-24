@@ -234,7 +234,12 @@ if (strpos($action, 'mfa_') === 0) {
         }
 
         pg_mfa_attempt_clear($user_id);
-        $_SESSION['software']['mfa_codes_show'] = $codes;
+
+        // None when a passkey account kept its codes (pg_mfa_setup_keeps_codes()).
+        if ($codes) {
+            $_SESSION['software']['mfa_codes_show'] = $codes;
+        }
+
         go($mfa_back);
     }
 
