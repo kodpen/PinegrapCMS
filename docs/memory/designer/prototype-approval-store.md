@@ -24,4 +24,4 @@ module: prototype_verdicts
 - Inventory: `prototype_links` (person `approver_email`) and `prototype_verdicts`, both `contract`, `until_erased`.
 - No contact id is kept, so `pg_contact_holders()` has no entry, and there is no retention rule: verdicts are kept as prototype comments are (the decisions list, schema part 49).
 
-Related: docs/memory/designer/prototype-approval-fingerprints.md, docs/memory/designer/designer-prototype-comments-door.md, docs/memory/plans/prototype-approval-steps.md
+Related: docs/memory/designer/prototype-approval-fingerprints.md, docs/memory/designer/designer-prototype-comments-door.md, docs/memory/designer/prototype-approval.md
