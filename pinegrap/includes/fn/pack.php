@@ -7,7 +7,11 @@
  * options, one product scan checked against them, and the checked pack: its
  * row closed with packer and time, the label made through the label path,
  * the marketplace package accepted, order.packed announced and one audit
- * line written. The rules are the pure functions of includes/fn/pick_pack.php.
+ * line written. A pack closed short keeps its missing lines, may set the
+ * location's count down, tells staff (pack_short) and announces
+ * order.pack_short; "Finish the pack" opens it again. The Packing card's
+ * figures are read from the pack rows. The rules are the pure functions of
+ * includes/fn/pick_pack.php.
  *
  * Nothing here reads a price, a total or a customer's e-mail: the screen is
  * open to a user with the "Packing only" right.
@@ -35,7 +39,8 @@ if (!defined('PG_PACK_CHOICES_MAX')) {
  *
  * @param int $ship_to_id
  * @return array|null ship_to_id, order_id, order_number, ship_by, wave_id
- *                    (its open wave, 0 none)
+ *                    (its open wave, 0 none), location_id (the order's stock
+ *                    location, 0 without locations)
  */
 function pg_pack_address($ship_to_id)
 {
@@ -59,6 +64,7 @@ function pg_pack_address($ship_to_id)
         'ship_by' => (int) $row['ship_by'],
         'shipped' => (bool) $row['shipped'],
         'wave_id' => $wave_id,
+        'location_id' => (int) $row['location_id'],
     );
 }
 
@@ -207,7 +213,7 @@ function pg_pack_read(array $address)
 
     if (!$pack) {
         $pack = array('id' => 0, 'order_id' => (int) $address['order_id'], 'ship_to_id' => (int) $address['ship_to_id'], 'wave_id' => (int) $address['wave_id'],
-            'status' => PG_PACK_OPEN, 'packer_id' => 0, 'started_at' => 0, 'packed_at' => 0, 'units' => 0, 'scanned' => 0, 'refused' => 0, 'scan_lines' => null);
+            'status' => PG_PACK_OPEN, 'packer_id' => 0, 'started_at' => 0, 'packed_at' => 0, 'short_at' => 0, 'units' => 0, 'scanned' => 0, 'refused' => 0, 'scan_lines' => null, 'missing' => null);
     }
 
     $pack['status'] = (int) $pack['status'];
@@ -499,4 +505,229 @@ function pg_pack_verdict_text(array $verdict, $refusal = '')
     }
 
     return ($refusal !== '') ? $refusal : lang('No product found with this barcode or product code.');
+}
+
+/**
+ * The products of these ids whose stock is counted, the only ones a short
+ * pick may set a count for.
+ *
+ * @param array $ids product ids
+ * @return int[]
+ */
+function pg_pack_tracked_products(array $ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+    if (!$ids) {
+        return array();
+    }
+
+    return array_map('intval', db_values("SELECT id FROM products WHERE id IN (" . implode(',', $ids) . ") AND inventory = '1'"));
+}
+
+/**
+ * Closes the address's pack as short: the lines not full are kept as its
+ * missing units, the packer and the time with them, and the address waits
+ * to be finished. A pack with every unit scanned, or none to send, is not
+ * closed short.
+ *
+ * @param array $address pg_pack_address()
+ * @param int   $user_id
+ * @return array 'ok', 'error' ('busy', 'closed', 'not_short'), 'pack' (its
+ *               'missing' as product_id => units)
+ */
+function pg_pack_close_short(array $address, $user_id)
+{
+    $lock = pg_pack_lock_name($address['ship_to_id']);
+
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
+        return array('ok' => false, 'error' => 'busy');
+    }
+
+    $pack = pg_pack_open($address, $user_id);
+    $state = pg_pack_state($pack['lines'], true);
+    $error = ($pack['status'] !== PG_PACK_OPEN) ? 'closed' : (($state['status'] !== PG_PACK_SHORT) ? 'not_short' : '');
+
+    if ($error !== '') {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+        return array('ok' => false, 'error' => $error, 'pack' => $pack);
+    }
+
+    $now = time();
+
+    db(
+        "UPDATE order_packs SET
+            status = '" . PG_PACK_SHORT . "',
+            packer_id = '" . (int) $user_id . "',
+            short_at = '" . $now . "',
+            units = '" . (int) $state['units'] . "',
+            scanned = '" . (int) $state['scanned'] . "',
+            missing = '" . e(json_encode($state['missing'])) . "'
+        WHERE id = '" . (int) $pack['id'] . "' AND status = '" . PG_PACK_OPEN . "'");
+    db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+    $pack['status'] = PG_PACK_SHORT;
+    $pack['packer_id'] = (int) $user_id;
+    $pack['short_at'] = $now;
+    $pack['units'] = $state['units'];
+    $pack['scanned'] = $state['scanned'];
+    $pack['missing'] = $state['missing'];
+
+    return array('ok' => true, 'error' => '', 'pack' => $pack);
+}
+
+/**
+ * What follows a pack closed short: the counts the packer set, one audit
+ * line, staff told (pack_short, once a day) and order.pack_short.
+ *
+ * @param array $address pg_pack_address()
+ * @param array $pack    pg_pack_close_short()'s pack
+ * @param array $fixes   pg_pack_count_fixes(): product_id => units found
+ * @param int   $user_id
+ * @return array rows: 'tone' (teal, amber), 'text' (plain)
+ */
+function pg_pack_after_short(array $address, array $pack, array $fixes, $user_id)
+{
+    $label = lang(array('string' => 'Order {var:1}', 'vars' => array($address['order_number'])));
+    $rows = array();
+
+    foreach ($fixes as $product_id => $units) {
+        $set = pg_stock_set((int) $product_id, (int) $address['location_id'], (int) $units, 'count', (string) $address['order_number'],
+            array('user_id' => (int) $user_id, 'note' => lang('Counted at a short pick')));
+        $code = (string) db_value("SELECT name FROM products WHERE id = '" . (int) $product_id . "'");
+
+        if (!empty($set['ok'])) {
+            pg_marketplace_product_changed((int) $product_id);
+            $rows[] = array('tone' => 'teal', 'text' => lang(array('string' => 'The count of {var:1} was set to {var:2}', 'vars' => array($code, (int) $units))));
+        } else {
+            $rows[] = array('tone' => 'amber', 'text' => lang(array('string' => 'The count of {var:1} was not changed', 'vars' => array($code))));
+        }
+    }
+
+    pg_audit('pack', 'order_pack', (int) $pack['id'], array('status' => PG_PACK_OPEN), array(
+        'status' => PG_PACK_SHORT,
+        'ship_to_id' => (int) $address['ship_to_id'],
+        'units' => (int) $pack['units'],
+        'scanned' => (int) $pack['scanned'],
+        'refused' => (int) $pack['refused'],
+        'missing' => $pack['missing'],
+        'counted' => $fixes,
+    ), $label);
+
+    $missing = array_sum($pack['missing']);
+
+    pg_ops_alert('pack_short', lang(array('string' => 'Order {var:1} was closed short: {var:2} units missing.', 'vars' => array($address['order_number'], $missing))));
+
+    pg_announce('order.pack_short', pg_pack_event_payload($pack + array('order_id' => $address['order_id'], 'wave_id' => $address['wave_id']), $address['order_number']));
+
+    return $rows;
+}
+
+/**
+ * Opens a pack closed short again ("Finish the pack"): its scans are kept
+ * and the packer scans what was missing.
+ *
+ * @param array $address pg_pack_address()
+ * @return bool whether a short pack was opened
+ */
+function pg_pack_reopen(array $address)
+{
+    $done = db_q(
+        "UPDATE order_packs SET status = '" . PG_PACK_OPEN . "', missing = NULL
+        WHERE ship_to_id = '" . (int) $address['ship_to_id'] . "' AND status = '" . PG_PACK_SHORT . "'");
+
+    return $done && (mysqli_affected_rows(db::$con) > 0);
+}
+
+/**
+ * Names of products to show beside a short pack's missing units: the
+ * product's short description, else its code.
+ *
+ * @param array $ids product ids
+ * @return array id => name
+ */
+function pg_pack_product_names(array $ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+    $out = array();
+
+    if (!$ids) {
+        return $out;
+    }
+
+    foreach (db_items("SELECT id, name, short_description FROM products WHERE id IN (" . implode(',', $ids) . ")") as $row) {
+        $name = trim(strip_tags((string) $row['short_description']));
+        $out[(int) $row['id']] = ($name !== '') ? $name : (string) $row['name'];
+    }
+
+    return $out;
+}
+
+/**
+ * The "Short" pill of an address closed short, its missing lines and
+ * "Finish the pack", for the order screen and a wave's addresses. '' when
+ * the address's pack is not short.
+ *
+ * @param int        $ship_to_id
+ * @param mixed|null $missing    order_packs.missing when the caller read it,
+ *                               null to read it here
+ * @return string HTML
+ */
+function pg_pack_short_notice($ship_to_id, $missing = null)
+{
+    if ($missing === null) {
+        $row = db_item("SELECT missing FROM order_packs WHERE ship_to_id = '" . (int) $ship_to_id . "' AND status = '" . PG_PACK_SHORT . "'");
+
+        if (!$row) {
+            return '';
+        }
+
+        $missing = $row['missing'];
+    }
+
+    $missing = pg_pack_missing_decode($missing);
+    $list = pg_pack_missing_list($missing, pg_pack_product_names(array_keys($missing)), lang('A removed product'));
+
+    return '<span class="pg-pack-short">'
+        . '<span class="pg-pill pg-tone-rose">' . h(lang('Short')) . '</span>'
+        . ($list ? '<span class="pg-text-meta">' . h(lang(array('string' => 'Missing: {var:1}', 'vars' => array(implode(', ', $list))))) . '</span>' : '')
+        . '<a class="pg-button pg-button-quiet pg-button-sm" href="pack.php?ship_to=' . (int) $ship_to_id . '">' . h(lang('Finish the pack')) . '</a>'
+        . '</span>';
+}
+
+/**
+ * The Packing card's figures: the addresses waiting, the packs closed this
+ * week by packer, each packer's name.
+ *
+ * @return array pg_pack_card_figures() with 'names' (user id => name)
+ */
+function pg_pack_card_data()
+{
+    $today = pg_pick_today();
+    $week = pg_pack_week_start($today);
+    $waiting = array();
+
+    foreach (pg_pick_waiting_addresses() as $row) {
+        if ($row['paid'] && !$row['shipped'] && !$row['packed']) {
+            $waiting[] = (int) $row['ship_by'];
+        }
+    }
+
+    $packs = db_items(
+        "SELECT status, packer_id, started_at, packed_at, units, refused FROM order_packs
+        WHERE (status = '" . PG_PACK_PACKED . "' AND packed_at >= '" . $week . "')
+            OR (status = '" . PG_PACK_SHORT . "' AND short_at >= '" . $week . "')");
+
+    $figures = pg_pack_card_figures($waiting, $packs, $today);
+    $figures['names'] = array();
+    $ids = array_filter(array_column($figures['packers'], 'packer_id'));
+
+    if ($ids) {
+        foreach (db_items("SELECT user_id, user_username FROM user WHERE user_id IN (" . implode(',', array_map('intval', $ids)) . ")") as $row) {
+            $figures['names'][(int) $row['user_id']] = (string) $row['user_username'];
+        }
+    }
+
+    return $figures;
 }

@@ -1137,6 +1137,15 @@ if (!$_POST) {
                     pg_order_view_address_type($ship_tos[$key]['address_type']),
                 ), 'strlen'));
 
+                // A parcel closed short on the Pack screen: the "Short" pill,
+                // its missing lines and "Finish the pack".
+                $output_pack_short = '';
+
+                if (pg_pick_waves_ready()) {
+                    require_once(PG_FUNCTIONS_DIR . '/includes/fn/pack.php');
+                    $output_pack_short = pg_pack_short_notice((int) $ship_tos[$key]['ship_to_id']);
+                }
+
                 $shipment_cards[(int) $ship_tos[$key]['ship_to_id']] = array(
                     'name' => (string) $ship_tos[$key]['ship_to_name'],
                     'actions' => $output_shipment_label_actions,
@@ -1148,6 +1157,7 @@ if (!$_POST) {
                                 ' . (($shipping_address_meta !== '') ? '<p class="pg-address-meta">' . $shipping_address_meta . '</p>' : '') . '
                                 ' . str_replace('col-12 small', 'd-block small', $output_postcode_province) . '
                                 ' . (($ship_tos[$key]['address_verified'] == 1) ? '<p class="pg-address-same"><i class="bi bi-patch-check" aria-hidden="true"></i>' . h(lang('Address verified')) . '</p>' : '') . '
+                                ' . $output_pack_short . '
                             </div>
                             <dl class="pg-kv">
                                 ' . pg_order_view_kv(lang('Shipping Method'), $shipping_method) . '

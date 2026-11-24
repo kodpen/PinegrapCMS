@@ -9690,6 +9690,8 @@ button.no-popover:focus-visible {
 .pg-pack-done > li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .pg-pack-ok { color: var(--pg-tone-teal); }
 .pg-pack-warn { color: var(--pg-tone-amber); }
+.pg-pack-short { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pg-pack-found { flex: none; width: 6rem; }
 
 /* ── Settings screen section anchors ──────────────────────────────────────
    The settings cards carry an id (#pgset-security, #pgset-waf, …) so the

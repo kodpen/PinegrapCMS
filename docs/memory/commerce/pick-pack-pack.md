@@ -26,6 +26,6 @@ module: pack
 - `pg_pack_event_payload()`: id, order_number, ship_to_id, wave_id, packer_id, units, scanned, missing (product_id, units); no customer data. In the webhook catalogue and samples, the Workspace events, the flow start events (Orders area) and their outputs (units, wave).
 
 ## What is not built?
-- "Short…" and `order.pack_short` (PP5); the site switch that wants a checked pack before a label (PP4b). Not opened in a browser or run on a database; the pure parts are pinned by `tests/pack_screen_test.php`.
+- The site switch that wants a checked pack before a label (PP4b). Not opened in a browser or run on a database; the pure parts are pinned by `tests/pack_screen_test.php`. "Short…", `order.pack_short` and the Packing card: `pick-pack-short.md`.
 
 Related: docs/memory/commerce/pick-pack-rules.md, docs/memory/commerce/pick-pack-waves.md, docs/memory/commerce/pick-pack-tables.md

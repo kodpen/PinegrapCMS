@@ -9,7 +9,9 @@
  * for each product scanned; a refused scan turns the field's row red with
  * the reason. Every unit scanned closes the pack: the label, the
  * marketplace package and order.packed follow (includes/fn/pack.php), and
- * "Next order" waits in focus. Scans are posted to this file with
+ * "Next order" waits in focus. "Short…" opens a drawer of the lines not
+ * full and closes the pack short, a location's count set to what was found
+ * where the packer asks; "Finish the pack" opens it again. Scans are posted to this file with
  * request=… and answered in JSON (assets/js/pack.js). Manager and up, the
  * orders right or the "Packing only" right; no price, total or e-mail.
  *
@@ -115,6 +117,39 @@ if ($request !== '') {
         ));
     }
 
+    if ($request === 'short' || $request === 'reopen') {
+        $ship_to_id = (isset($_POST['ship_to']) && is_string($_POST['ship_to']) && ctype_digit($_POST['ship_to'])) ? (int) $_POST['ship_to'] : 0;
+        $address = pg_pack_address($ship_to_id);
+
+        if (!$address) {
+            pack_json(array('ok' => false, 'message' => lang('This address can no longer be packed: its order was cancelled or changed.')), 404);
+        }
+
+        // "Finish the pack": the scans are kept, the missing units scanned.
+        if ($request === 'reopen') {
+            pg_pack_reopen($address);
+            pack_json(array('ok' => true, 'url' => 'pack.php?ship_to=' . (int) $address['ship_to_id']));
+        }
+
+        $result = pg_pack_close_short($address, (int) $user['id']);
+
+        if (!$result['ok']) {
+            $messages = array(
+                'busy' => lang('Another scan of this address is being counted. Try again.'),
+                'closed' => lang('This pack is closed already.'),
+                'not_short' => lang('No unit is missing from this pack.'),
+            );
+
+            pack_json(array('ok' => false, 'reload' => ($result['error'] !== 'busy'), 'message' => $messages[$result['error']]), 409);
+        }
+
+        $pack = $result['pack'];
+        $fixes = pg_pack_count_fixes($_POST['on'] ?? array(), $_POST['found'] ?? array(), $pack['missing'], pg_pack_tracked_products(array_keys($pack['missing'])));
+        $rows = array(array('tone' => 'amber', 'text' => lang(array('string' => '{var:1} of {var:2} units in the box; the address waits for the rest.', 'vars' => array((int) $pack['scanned'], (int) $pack['units'])))));
+
+        pack_json(array('ok' => true, 'done' => array_merge($rows, pg_pack_after_short($address, $pack, $fixes, (int) $user['id']))));
+    }
+
     pack_json(array('ok' => false, 'message' => lang('Unknown request.')), 400);
 }
 
@@ -128,6 +163,8 @@ $texts = array(
     'print' => lang('Print the label'),
     'packed' => lang('Packed'),
     'next' => lang('Next order'),
+    'short' => lang('Short'),
+    'missing' => lang('{var:1} missing'),
 );
 $token = h((string) ($_SESSION['software']['token'] ?? ''));
 
@@ -144,6 +181,65 @@ $scan_field = function ($label, $help) use ($texts) {
             <video class="pg-pack-video d-none" muted playsinline aria-label="' . h(lang('Camera')) . '"></video>
         </form>';
 };
+
+/**
+ * The "Short…" drawer: a row for each line, those full hidden by the script
+ * when it opens, each with its missing units and, for a product whose stock
+ * is counted, the switch that sets the location's count to what was found.
+ *
+ * @param array $pack pg_pack_read()
+ * @return string HTML
+ */
+function pack_short_drawer(array $pack)
+{
+    $tracked = pg_pack_tracked_products(array_column($pack['lines'], 'product_id'));
+    $rows = '';
+
+    foreach ($pack['lines'] as $index => $line) {
+        $left = pg_pack_line_left($line);
+        $id = (int) $line['product_id'];
+        $fix = '';
+
+        if ($id > 0 && in_array($id, $tracked, true)) {
+            $fix = '
+                <div class="d-flex align-items-center gap-3 mt-2">
+                    <input type="checkbox" class="pg-switch" id="pack_fix_' . $id . '" name="on[' . $id . ']" value="1" aria-describedby="pack_fix_' . $id . '_help">
+                    <label class="pg-text-2 flex-grow-1" for="pack_fix_' . $id . '">' . h(lang('Set this location\'s count to what was found')) . '</label>
+                    <label class="visually-hidden" for="pack_found_' . $id . '">' . h(lang('Units found')) . '</label>
+                    <input type="number" class="pg-input pg-pack-found" id="pack_found_' . $id . '" name="found[' . $id . ']" value="0" min="0" max="' . PG_PACK_COUNT_MAX . '" step="1" inputmode="numeric">
+                </div>
+                <div class="pg-field-help" id="pack_fix_' . $id . '_help">' . h(lang('The units still on the shelf.')) . '</div>';
+        }
+
+        $rows .= '
+            <li class="pg-card pg-look-pad' . (($left === 0) ? ' d-none' : '') . '" data-pg-pack-short-line="' . (int) $index . '">
+                <span class="pg-list-row-title">' . h($line['name']) . '</span>
+                ' . ($line['options'] ? '<strong class="pg-text-2 d-block">' . h(implode(' · ', $line['options'])) . '</strong>' : '') . '
+                <span class="pg-text-meta d-block" data-pg-pack-short-left>' . h(lang(array('string' => '{var:1} missing', 'vars' => array($left)))) . '</span>
+                ' . $fix . '
+            </li>';
+    }
+
+    return '
+    <dialog class="drawer drawer-end" id="pack_short" aria-labelledby="pack_short_title" style="width:min(480px,100%);--pg-drawer-height:80vh">
+        <form class="d-flex flex-column h-100" data-pg-pack-short>
+            <div class="drawer-header">
+                <div class="flex-grow-1 min-width-0">
+                    <h5 class="drawer-title mb-0" id="pack_short_title">' . h(lang('Units missing')) . '</h5>
+                    <p class="small fg-2 mb-0 mt-1">' . h(lang('The pack closes with these units missing and the address waits until it is finished.')) . '</p>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="drawer-body flex-grow-1 overflow-auto">
+                <ul class="pg-pack-lines">' . $rows . '</ul>
+            </div>
+            <div class="drawer-footer border-top p-5 d-flex align-items-center justify-content-end gap-3">
+                <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="drawer">' . h(lang('Cancel')) . '</button>
+                <button type="submit" class="pg-button pg-button-fill">' . h(lang('Close as short')) . '</button>
+            </div>
+        </form>
+    </dialog>';
+}
 
 $ship_to_id = (isset($_GET['ship_to']) && is_string($_GET['ship_to']) && ctype_digit($_GET['ship_to'])) ? (int) $_GET['ship_to'] : 0;
 $address = ($ship_to_id > 0) ? pg_pack_address($ship_to_id) : null;
@@ -194,12 +290,29 @@ if ($ship_to_id > 0 && !$address) {
             ' . $scan_field(lang('Scan each product'), lang('A product scanned or its code typed counts one unit.')) . '
         </div>
         <ul class="pg-pack-lines" data-pg-pack-lines>' . $cards . '</ul>';
-        $foot = '<div class="pg-pack-foot"><a class="pg-button pg-button-quiet" href="pack.php">' . h(lang('Leave this order')) . '</a></div>';
+        $foot = '<div class="pg-pack-foot">
+            <button type="button" class="pg-button pg-button-quiet" data-pg-pack-short-open>' . h(lang('Short…')) . '</button>
+            <a class="pg-button pg-button-quiet" href="pack.php">' . h(lang('Leave this order')) . '</a>
+        </div>' . pack_short_drawer($pack);
+    } elseif ($pack['status'] === PG_PACK_SHORT) {
+        $missing = pg_pack_missing_decode($pack['missing']);
+        $list = pg_pack_missing_list($missing, pg_pack_product_names(array_keys($missing)), lang('A removed product'));
+        $body = '
+        <div class="pg-card pg-look-pad mb-4">
+            <span class="pg-pill pg-tone-rose">' . h(lang('Short')) . '</span>
+            <p class="pg-text-2 mt-3">' . h(lang('This parcel was closed with units missing.')) . '</p>
+            ' . ($list ? '<p class="pg-text-meta">' . h(lang(array('string' => 'Missing: {var:1}', 'vars' => array(implode(', ', $list))))) . '</p>' : '') . '
+            <div class="pg-pack-foot">
+                <button type="button" class="pg-button pg-button-quiet" data-pg-pack-reopen>' . h(lang('Finish the pack')) . '</button>
+                <a class="pg-button pg-button-fill" href="pack.php" autofocus>' . h(lang('Next order')) . '</a>
+            </div>
+        </div>
+        <ul class="pg-pack-lines">' . $cards . '</ul>';
     } else {
         $body = '
         <div class="pg-card pg-look-pad mb-4">
-            <span class="pg-pill ' . (($pack['status'] === PG_PACK_PACKED) ? 'pg-tone-teal">' . h(lang('Packed')) : 'pg-tone-rose">' . h(lang('Short'))) . '</span>
-            <p class="pg-text-2 mt-3">' . h(($pack['status'] === PG_PACK_PACKED) ? lang('This parcel is packed and checked.') : lang('This parcel was closed with units missing.')) . '</p>
+            <span class="pg-pill pg-tone-teal">' . h(lang('Packed')) . '</span>
+            <p class="pg-text-2 mt-3">' . h(lang('This parcel is packed and checked.')) . '</p>
             <a class="pg-button pg-button-fill" href="pack.php" autofocus>' . h(lang('Next order')) . '</a>
         </div>
         <ul class="pg-pack-lines">' . $cards . '</ul>';

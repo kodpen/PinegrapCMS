@@ -53,6 +53,9 @@ function api_webhook_core_events() {
 		// address, its wave, the packer and the units follow, never the
 		// customer.
 		'order.packed'         => 'Every unit of an order\'s address was scanned into its box on the Pack screen, once per address (a pack closed short is not announced as packed)',
+		// The same data when the packer closes the pack short: missing
+		// lists the units not scanned by product.
+		'order.pack_short'     => 'An order\'s address was closed on the Pack screen with units missing; it waits until the pack is finished',
 		// A customer return (includes/fn/returns.php). id is the order's, as
 		// in every order.* event; return_id, status, source, reason and the
 		// lines follow. Announced from the return model, so every path that

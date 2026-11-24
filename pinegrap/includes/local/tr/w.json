@@ -1904,6 +1904,7 @@
     "When an order is delivered.": "Bir sipariş teslim edildiğinde.",
     "When an order is shipped": "Sipariş kargoya verildiğinde",
     "When an order reserves a calendar event": "Bir sipariş bir takvim etkinliğini rezerve ettiğinde",
+    "When an order's parcel is closed with units missing": "Bir siparişin kolisi eksik ürünle kapatıldığında",
     "When an order's parcel is packed and checked": "Bir siparişin kolisi paketlenip denetlendiğinde",
     "When and Where": "Ne Zaman ve Nerede",
     "When and how do I pay for a course?": "Kurs ücretini ne zaman ve nasıl öderim?",

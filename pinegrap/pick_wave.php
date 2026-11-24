@@ -7,8 +7,9 @@
  * shelf order, the shelf address large at the left; on a phone each row is
  * a tick target, a ticked row greys and sinks to the end, and the bar reads
  * "12 of 31 picked" (a tick is posted with ajax=1 and answered in JSON).
- * Addresses: each order's ship-by day, units and pack, those that left the
- * wave as grey rows. Manager and up, the orders right or the "Packing only"
+ * Addresses: each order's ship-by day, units and pack (a short one with its
+ * missing lines and "Finish the pack"), those that left the wave as grey
+ * rows. Manager and up, the orders right or the "Packing only"
  * right; the order number links to the order only for those who see orders.
  *
  * @author      Erdal Güral (Kodpen)
@@ -20,6 +21,7 @@
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/pick_waves.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/pack.php');
 
 $user = validate_user();
 pg_pick_validate_access($user);
@@ -146,9 +148,12 @@ foreach ($pw_addresses as $row) {
             'order' => pg_list_cell($order),
             'ship_by' => pg_list_cell($day, 'align-middle', array('data-pg-sort-value' => (int) $row['ship_by'])),
             'units' => pg_list_cell(h(pg_format_number($row['units'], 0)), 'align-middle', array('data-pg-sort-value' => (int) $row['units'])),
+            // A short pack names its missing lines and opens the Pack
+            // screen on it ("Finish the pack").
             'pack' => pg_list_cell($gone
                 ? '<span class="pg-pill pg-tone-gray">' . h(lang('Cancelled, taken out')) . '</span>'
-                : pg_pick_pack_pill($row['pack_status']), 'align-middle', array('data-pg-sort-value' => $gone ? 9 : (int) $row['pack_status'])),
+                : (((int) $row['pack_status'] === PG_PACK_SHORT) ? pg_pack_short_notice((int) $row['ship_to_id'], (string) $row['pack_missing']) : pg_pick_pack_pill($row['pack_status'])),
+                'align-middle', array('data-pg-sort-value' => $gone ? 9 : (int) $row['pack_status'])),
         ),
     );
 }

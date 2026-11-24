@@ -192,6 +192,14 @@ function pg_ops_alert_codes()
             'url'   => 'view_orders.php',
             'group' => 'shipping',
         ),
+        // A parcel closed short on the Pack screen (pg_pack_after_short());
+        // the detail names the order. Once a day.
+        'pack_short' => array(
+            'label' => lang('A parcel was closed with units missing'),
+            'type'  => 'warning',
+            'url'   => 'view_pick_waves.php',
+            'group' => 'shipping',
+        ),
     );
 }
 
